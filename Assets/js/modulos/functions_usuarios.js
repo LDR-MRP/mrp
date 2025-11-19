@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function(){
             //     "titleAttr":"Esportar a CSV",
             //     "className": "btn btn-info"
             // }
-        ],
+        ], 
         "resonsieve":"true",
         "bDestroy": true,
         "iDisplayLength": 10,
@@ -98,7 +98,14 @@ document.addEventListener('DOMContentLoaded', function(){
             divLoading.style.display = "flex";
             let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
             let ajaxUrl = base_url+'/Usuarios/setUsuario'; 
+
             let formData = new FormData(formUsuario);
+
+            let chk = document.querySelector('#chkEnviarPass');
+           let valorChk = chk && chk.checked ? 1 : 0;
+             formData.set('chkEnviarPass', valorChk); 
+
+
             request.open("POST",ajaxUrl,true);
             request.send(formData);
             request.onreadystatechange = function(){
@@ -110,8 +117,8 @@ document.addEventListener('DOMContentLoaded', function(){
                             tableUsuarios.api().ajax.reload();
                         }else{
                             htmlStatus = intStatus == 1 ? 
-                            '<span class="badge badge-success">Activo</span>' : 
-                            '<span class="badge badge-danger">Inactivo</span>';
+                            '<span class="badge bg-success">Activo</span>' : 
+                            '<span class="badge bg-danger">Inactivo</span>';
                             rowTable.cells[1].textContent = strNombre;
                             rowTable.cells[2].textContent = strApellido;
                             rowTable.cells[3].textContent = strEmail;
@@ -283,8 +290,8 @@ function fntViewUsuario(idpersona){
             if(objData.status)
             {
                let estadoUsuario = objData.data.status == 1 ? 
-                '<span class="badge badge-success">Activo</span>' : 
-                '<span class="badge badge-danger">Inactivo</span>';
+                '<span class="badge bg-success">Activo</span>' : 
+                '<span class="badge bg-danger">Inactivo</span>';
 
                 document.querySelector("#celIdentificacion").innerHTML = objData.data.identificacion;
                 document.querySelector("#celNombre").innerHTML = objData.data.nombres;
@@ -334,12 +341,16 @@ function fntEditUsuario(element,idpersona){
                     document.querySelector("#listStatus").value = 2;
                 }
                 $('#listStatus').selectpicker('render');
+
+            
             }
         }
-    
+        document.querySelector("#txtPassword").removeAttribute("required");
+                document.querySelector("#txtPassword").value = "";
         $('#modalFormUsuario').modal('show');
     }
 }
+
 
 function fntDelUsuario(idpersona){
     Swal.fire({
@@ -414,7 +425,10 @@ function openModal()
     document.querySelector('#titleModal').innerHTML = "Nuevo Usuario";
     document.querySelector("#formUsuario").reset();
     $('#modalFormUsuario').modal('show');
+    document.querySelector("#txtPassword").setAttribute("required", "required");
+
 }
+
 
 function openModalPerfil(){
     $('#modalFormPerfil').modal('show');

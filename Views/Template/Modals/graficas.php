@@ -12,7 +12,7 @@
 	          type: 'pie'
 	      },
 	      title: {
-	          text: 'Ventas por tipo pago, <?= $pagosMes['mes'].' '.$pagosMes['anio'] ?>'
+	          text: 'tipo pago, <?= $pagosMes['mes'].' '.$pagosMes['anio'] ?>'
 	      },
 	      tooltip: {
 	          pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
@@ -48,8 +48,8 @@
 </script>
 <?php } ?>
 <?php 
-	if($grafica = "ventasMes"){
-		$ventasMes = $data;
+	if($grafica = "gastosMes"){
+		$gastosMes = $data;
  ?>
 <script>
 	  Highcharts.chart('graficaMes', {
@@ -57,15 +57,15 @@
 	          type: 'line'
 	      },
 	      title: {
-	          text: 'Ventas de <?= $ventasMes['mes'].' del '.$ventasMes['anio'] ?>'
+	          text: 'Ventas de <?= $gastosMes['mes'].' del '.$gastosMes['anio'] ?>'
 	      },
 	      subtitle: {
-	          text: 'Total Ventas <?= SMONEY.'. '.formatMoney($ventasMes['total']) ?> '
+	          text: 'Total Ventas <?= SMONEY.'. '.formatMoney($gastosMes['total']) ?> '
 	      },
 	      xAxis: {
 	          categories: [
 	            <?php 
-	                foreach ($ventasMes['ventas'] as $dia) {
+	                foreach ($gastosMes['ventas'] as $dia) {
 	                  echo $dia['dia'].",";
 	                }
 	            ?>
@@ -88,7 +88,7 @@
 	          name: '',
 	          data: [
 	            <?php 
-	                foreach ($ventasMes['ventas'] as $dia) {
+	                foreach ($gastosMes['ventas'] as $dia) {
 	                  echo $dia['total'].",";
 	                }
 	            ?>

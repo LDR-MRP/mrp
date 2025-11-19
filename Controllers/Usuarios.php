@@ -27,8 +27,7 @@
 
 		public function setUsuario(){
 
-			// dep($_POST);
-			// exit;
+	
 			if($_POST){			
 				if(empty($_POST['txtNombre']) || empty($_POST['txtApellido']) || empty($_POST['txtTelefono']) || empty($_POST['txtEmail']) || empty($_POST['listRolid']) || empty($_POST['listStatus']) )
 				{
@@ -42,7 +41,9 @@
 					$strEmail = strtolower(strClean($_POST['txtEmail']));
 					$intTipoId = intval(strClean($_POST['listRolid']));
 					$intStatus = intval(strClean($_POST['listStatus']));
-					$intEnviarCorreo = intval(strClean($_POST['chkEnviarPass']));
+					$intEnviarCorreo = isset($_POST['chkEnviarPass']) 
+                    ? intval(strClean($_POST['chkEnviarPass'])) 
+                    : 0;
 					$strPasswordLineal =  $_POST['txtPassword'];
 					$request_user = "";
 					if($idUsuario == 0)
@@ -108,6 +109,8 @@
 			}
 			die();
 		}
+
+
 
 		public function getUsuarios()
 		{
