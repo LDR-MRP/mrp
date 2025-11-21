@@ -818,6 +818,19 @@
 
 
     <script src="<?= media(); ?>/js/modulos/<?= $data['page_functions_js']; ?>"></script>
+
+
+    <script>
+
+const primerTabEl = document.querySelector('#nav-tab a[href="#listplantas"]');
+const primerTab = new bootstrap.Tab(primerTabEl);
+
+// Tab NUEVO
+const firstTabEl = document.querySelector('#nav-tab a[href="#agregarplanta"]');
+const firstTab = new bootstrap.Tab(firstTabEl);
+
+
+    </script>
 </body>
 
 </html>

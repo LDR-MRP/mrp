@@ -30,7 +30,7 @@
                     <ul class="nav nav-tabs-custom card-header-tabs border-bottom-0" role="tablist">
                         <li class="nav-item">
                             <a class="nav-link active" data-bs-toggle="tab" href="#listlineasdetrabajo" role="tab">
-                                LINEAS DE TRABAJO
+                                LISTADO DE ESTACIONES
                             </a>
                         </li>
                         <li class="nav-item">
@@ -70,7 +70,7 @@
 
                         <div class="tab-pane" id="agregarlineasdetrabajo" role="tabpanel">
                             <form id="formLineas" autocomplete="off"  class="form-steps was-validated" autocomplete="off">
-                                <input type="hidden" id="idlinea" name="idlinea">
+                                <input type="hidden" id="idestacion" name="idestacion">
                                 <div class="row">
                                     <!-- NOMBRE -->
                                     <div class="col-lg-6">

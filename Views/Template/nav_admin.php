@@ -237,7 +237,13 @@
                                      <?php } ?>
                                          <?php if(!empty($_SESSION['permisos'][19]['r'])){ ?>
                                         <li class="nav-item">
-                                        <a href="<?= base_url(); ?>/cap_estaciones" target="_blank" class="nav-link" data-key="t-detached">Estaciones</a>
+                                        <a href="<?= base_url(); ?>/cap_estaciones"  class="nav-link" data-key="t-detached">Estaciones</a>
+                                    </li>
+                                     <?php } ?>
+
+                                        <?php if(!empty($_SESSION['permisos'][20]['r'])){ ?>
+                                        <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/cap_plantas"  class="nav-link" data-key="t-detached">Plantas</a>
                                     </li>
                                      <?php } ?>
                                 </ul>

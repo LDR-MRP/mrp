@@ -1,5 +1,5 @@
 <?php
-class Cap_lineasdtrabajo extends Controllers
+class Cap_estaciones extends Controllers
 {
 	public function __construct()
 	{
@@ -13,20 +13,20 @@ class Cap_lineasdtrabajo extends Controllers
 		getPermisos(MCLINEAS);
 	}
 
-	public function Cap_lineasdtrabajo()
+	public function Cap_estaciones()
 	{
 		if (empty($_SESSION['permisosMod']['r'])) {
 			header("Location:" . base_url() . '/dashboard');
 		}
-		$data['page_tag'] = "Líneas";
-		$data['page_title'] = "Líneas <small>de trabajo</small>";
+		$data['page_tag'] = "Estaciones";
+		$data['page_title'] = "Estaciones";
 		$data['page_name'] = "bom";
-		$data['page_functions_js'] = "functions_cap_lineasdtrabajo.js";
-		$this->views->getView($this, "cap_lineasdtrabajo", $data);
+		$data['page_functions_js'] = "functions_cap_estaciones.js";
+		$this->views->getView($this, "cap_estaciones", $data);
 	}
 
 	//CAPTURAR UNA NUEVA LÍNEA
-	public function setCategoria()
+	public function setEstacion()
 	{
 		if ($_POST) {
 			if (
@@ -48,7 +48,7 @@ class Cap_lineasdtrabajo extends Controllers
 				$arrResponse = array("status" => false, "msg" => 'Datos incorrectos.');
 			} else {
 
-				$intIdLinea = intval($_POST['idlinea']);
+				$intIdestacion = intval($_POST['idestacion']);
 				$strNombre = strClean($_POST['nombre-linea-input']);
 				$strProceso = strClean($_POST['proceso-linea-input']);
 				$strEstandar = strClean($_POST['estandar-input']);
@@ -63,11 +63,13 @@ class Cap_lineasdtrabajo extends Controllers
 				$intEstatus = strClean($_POST['estado-select']);
 				$strDescripcion = strClean($_POST['descripcion-linea-textarea']);
 
-				if ($intIdLinea == 0) {
+				if ($intIdestacion == 0) {
 
-											//Crear
+					$claveUnica = $this->model->generarClave();
+
+						//Crear
 						if($_SESSION['permisosMod']['w']){
-							$request_cateria = $this->model->inserLinea($strCategoria, $strDescipcion,$imgPortada,$ruta,$intStatus);
+							$request_cateria = $this->model->insertEstacion($claveUnica,$strNombre,$strProceso,$strEstandar,$strUnMedida,$strMermaFija,$strMermaProceso,$strTiemajuste,$strUnEntrada,$strUnSalida,$strUSD,$strMX,$intEstatus,$strDescripcion);
 							$option = 1;
 						}
 

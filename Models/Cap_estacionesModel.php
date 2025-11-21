@@ -1,6 +1,6 @@
 <?php 
 
-	class Cap_lineasdtrabajoModel extends Mysql
+	class Cap_estacionesModel extends Mysql
 	{
 
 
@@ -9,11 +9,11 @@
 			parent::__construct();
 		}
 
-
-			public function generarClave()
+		
+	public function generarClave()
 	{
 		$fecha = date('Ymd'); // 20250606
-		$prefijo = 'LN' . $fecha . '-';
+		$prefijo = '100-VG' . $fecha . '-';
 
 		$sql = "SELECT codigo_solicitud FROM viaticos_generales 
             WHERE codigo_solicitud LIKE '$prefijo%' 
@@ -32,6 +32,7 @@
 		return $prefijo . str_pad($numero, 4, '0', STR_PAD_LEFT); // VIA-20250606-0004
 
 	}
+
 
 
 
