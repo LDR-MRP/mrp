@@ -17,28 +17,29 @@
 		}
 
 
-    public function generarClave()
-    {
-        $fecha = date('Ymd'); // 20250606
-        $prefijo = 'LN-';
 
-        $sql = "SELECT cve_linea FROM mrp_linea 
-            WHERE cve_linea LIKE '$prefijo%' 
+        public function generarClave()
+{
+    $fechaCorta = date('ymd'); // Ej: 251121
+    $prefijo = 'LN-' . $fechaCorta . '-';
+
+    $sql = "SELECT cve_linea 
+            FROM mrp_linea
+            WHERE cve_linea LIKE '{$prefijo}%' 
             ORDER BY cve_linea DESC 
             LIMIT 1";
 
-        $result = $this->select($sql);
-        $numero = 1;
+    $result = $this->select($sql);
+    $numero = 1;
 
-        if (!empty($result)) {  
-            $ultimaClave = $result['cve_linea'];
-            $ultimoNumero = (int) substr($ultimaClave, -4);
-            $numero = $ultimoNumero + 1;
-        }
-
-        return $prefijo . str_pad($numero, 4, '0', STR_PAD_LEFT);
-
+    if (!empty($result)) {
+        $ultimaClave = $result['cve_linea'];      // PLT-251121-0003
+        $ultimoNumero = (int) substr($ultimaClave, -3); 
+        $numero = $ultimoNumero + 1;
     }
+
+    return $prefijo . str_pad($numero, 3, '0', STR_PAD_LEFT);
+}
  
     public function inserLinea($claveUnica, $planta, $nombre_linea, $fecha_creacion, $intEstatus)
     {

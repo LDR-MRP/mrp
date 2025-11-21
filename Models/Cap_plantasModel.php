@@ -15,29 +15,30 @@ class Cap_plantasModel extends Mysql
         parent::__construct();
     }
 
-
     public function generarClave()
-    {
-        $fecha = date('Ymd'); // 20250606
-        $prefijo = 'PLT-';
+{
+    $fechaCorta = date('ymd'); // Ej: 251121
+    $prefijo = 'PLT-' . $fechaCorta . '-';
 
-        $sql = "SELECT cve_planta FROM mrp_planta 
-            WHERE cve_planta LIKE '$prefijo%' 
+    $sql = "SELECT cve_planta 
+            FROM mrp_planta
+            WHERE cve_planta LIKE '{$prefijo}%' 
             ORDER BY cve_planta DESC 
             LIMIT 1";
 
-        $result = $this->select($sql);
-        $numero = 1;
+    $result = $this->select($sql);
+    $numero = 1;
 
-        if (!empty($result)) {  
-            $ultimaClave = $result['cve_planta'];
-            $ultimoNumero = (int) substr($ultimaClave, -4);
-            $numero = $ultimoNumero + 1;
-        }
-
-        return $prefijo . str_pad($numero, 4, '0', STR_PAD_LEFT);
-
+    if (!empty($result)) {
+        $ultimaClave = $result['cve_planta'];      // PLT-251121-0003
+        $ultimoNumero = (int) substr($ultimaClave, -3); 
+        $numero = $ultimoNumero + 1;
     }
+
+    return $prefijo . str_pad($numero, 3, '0', STR_PAD_LEFT);
+}
+
+   
 
     public function inserPlanta($claveUnica, $nombre_planta, $fecha_creacion, $direccion, $intEstatus)
     {
