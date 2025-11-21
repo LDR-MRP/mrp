@@ -10,7 +10,7 @@ class Cap_plantas extends Controllers
             header('Location: ' . base_url() . '/login');
             die();
         }
-        getPermisos(MCLINEAS);
+        getPermisos(MCPLANTAS);
     }
 
     public function Cap_plantas()
