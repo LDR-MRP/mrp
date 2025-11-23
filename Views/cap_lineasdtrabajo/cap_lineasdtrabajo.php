@@ -33,11 +33,13 @@
                                 LINEAS DE TRABAJO
                             </a>
                         </li>
+                        <?php if($_SESSION['permisosMod']['w']){ ?>
                         <li class="nav-item">
                             <a class="nav-link" data-bs-toggle="tab" href="#agregarlinea" role="tab">
                                 NUEVO
                             </a>
                         </li>
+                           <?php } ?>
                     </ul>
                 </div>
                 <!-- end card header -->
@@ -152,11 +154,13 @@
         <div class="container-fluid">
             <div class="row">
                 <div class="col-sm-6">
-                    <script>document.write(new Date().getFullYear())</script> © Velzon.
+                    <script>
+                        document.write(new Date().getFullYear())
+                    </script> © LDR.
                 </div>
                 <div class="col-sm-6">
                     <div class="text-sm-end d-none d-sm-block">
-                        Design & Develop by Themesbrand
+                        LDR Solutions · MRP
                     </div>
                 </div>
             </div>

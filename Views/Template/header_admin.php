@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-layout="vertical" data-topbar="light" data-sidebar="light" data-sidebar-size="lg" data-sidebar-image="none" data-preloader="disable">
+<html lang="en" data-layout="horizontal" data-topbar="light" data-sidebar="light" data-sidebar-size="lg" data-sidebar-image="none" data-preloader="disable">
 
 <head>
 
@@ -70,13 +70,13 @@
         <div class="navbar-header">
             <div class="d-flex">
                 <!-- LOGO -->
-                <div class="navbar-brand-box horizontal-logo">
+                <div class="navbar-brand-box horizontal-logo"> 
                     <a href="index.html" class="logo logo-dark">
                         <span class="logo-sm">
                             <img src="<?= media(); ?>/minimal/images/logo-sm.png" alt="" height="22">
                         </span>
                         <span class="logo-lg">
-                            <img src="<?= media(); ?>/minimal/images/logo-dark.png" alt="" height="17">
+                            <img src="<?= media(); ?>/minimal/images/ldr_negro.png" alt="" height="55">
                         </span>
                     </a>
 

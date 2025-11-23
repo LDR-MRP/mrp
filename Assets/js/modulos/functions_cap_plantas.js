@@ -3,28 +3,24 @@ let rowTable = "";
 let divLoading = document.querySelector("#divLoading");
 
 // Inputs del formulario
-const planta = document.querySelector('#idplanta');
-const nombre = document.querySelector('#nombre-planta-input');
-const estado = document.querySelector('#estado-select');
-const direccion = document.querySelector('#direccion-linea-textarea');
+const planta     = document.querySelector('#idplanta');
+const nombre     = document.querySelector('#nombre-planta-input');
+const estado     = document.querySelector('#estado-select');
+const direccion  = document.querySelector('#direccion-linea-textarea');
 
-// Mis referencias globales
+// Mis referencias globales 
 let primerTab;   // Tab LISTA
 let firstTab;    // Tab NUEVO/ACTUALIZAR
 let tabNuevo;
-let spanBtnText;
+let spanBtnText = null;
+let formPlantas = null;
 
 document.addEventListener('DOMContentLoaded', function () {
 
     // --------------------------------------------------------------------
-    //  TABS BOOTSTRAP
+    //  REFERENCIAS DEL FORMULARIO
     // --------------------------------------------------------------------
-    const primerTabEl = document.querySelector('#nav-tab a[href="#listplantas"]');
-    const firstTabEl = document.querySelector('#nav-tab a[href="#agregarplanta"]');
-
-    primerTab = new bootstrap.Tab(primerTabEl); // LISTA
-    firstTab = new bootstrap.Tab(firstTabEl);  // NUEVO / ACTUALIZAR
-    tabNuevo = firstTabEl;
+    formPlantas = document.querySelector("#formPlantas");
     spanBtnText = document.querySelector('#btnText');
 
     // --------------------------------------------------------------------
@@ -44,39 +40,52 @@ document.addEventListener('DOMContentLoaded', function () {
             { "data": "estado" },
             { "data": "options" }
         ],
-        'dom': 'lBfrtip',
-        'buttons': [],
+        "dom": "lBfrtip",
+        "buttons": [],
         "resonsieve": "true",
         "bDestroy": true,
         "iDisplayLength": 10,
         "order": [[0, "desc"]]
     });
 
-    const formPlantas = document.querySelector("#formPlantas");
+    // --------------------------------------------------------------------
+    //  TABS BOOTSTRAP
+    // --------------------------------------------------------------------
+    const primerTabEl = document.querySelector('#nav-tab a[href="#listplantas"]');
+    const firstTabEl  = document.querySelector('#nav-tab a[href="#agregarplanta"]');
 
-    // --------------------------------------------------------------------
-    //  CLICK EN "NUEVO" → MODO NUEVO
-    // --------------------------------------------------------------------
-    tabNuevo.addEventListener('click', () => {
-        tabNuevo.textContent = 'NUEVO';
-        spanBtnText.textContent = 'REGISTRAR';
+    if (primerTabEl && firstTabEl && spanBtnText) {
+        // ⚠️ IMPORTANTE: NO usar "let" aquí, usamos las globales
+        primerTab = new bootstrap.Tab(primerTabEl); // LISTA
+        firstTab  = new bootstrap.Tab(firstTabEl);  // NUEVO / ACTUALIZAR
+        tabNuevo  = firstTabEl;                     // elemento del tab
 
-        // Limpiar formulario
-        formPlantas.reset();
-        planta.value = '';
-        estado.value = '2';
-    });
+        // ----------------------------------------------------------------
+        //  CLICK EN "NUEVO" → MODO NUEVO
+        // ----------------------------------------------------------------
+        tabNuevo.addEventListener('click', () => {
+            tabNuevo.textContent      = 'NUEVO';
+            spanBtnText.textContent   = 'REGISTRAR';
 
-    // --------------------------------------------------------------------
-    // CLICK EN "PLANTAS" → RESETEAR NAV A NUEVO
-    // --------------------------------------------------------------------
-    primerTabEl.addEventListener('click', () => {
-        tabNuevo.textContent = 'NUEVO';
-        spanBtnText.textContent = 'REGISTRAR';
-        planta.value = '';
-        estado.value = '2';
-        formPlantas.reset();
-    });
+            // Limpiar formulario
+            formPlantas.reset();
+            planta.value = '';
+            estado.value = '2';
+        });
+
+        // ----------------------------------------------------------------
+        // CLICK EN "PLANTAS" → RESETEAR NAV A NUEVO
+        // ----------------------------------------------------------------
+        primerTabEl.addEventListener('click', () => {
+            tabNuevo.textContent      = 'NUEVO';
+            spanBtnText.textContent   = 'REGISTRAR';
+            planta.value              = '';
+            estado.value              = '2';
+            formPlantas.reset();
+        });
+    } else {
+        console.warn('Tabs de lineas no encontrados o btnText faltante.');
+    }
 
     // --------------------------------------------------------------------
     // FORM → CREAR / ACTUALIZAR PLANTA
@@ -86,8 +95,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         divLoading.style.display = "flex";
 
-        let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-        let ajaxUrl = base_url + '/cap_plantas/setPlanta';
+        let request  = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+        let ajaxUrl  = base_url + '/cap_plantas/setPlanta';
         let formData = new FormData(formPlantas);
 
         request.open("POST", ajaxUrl, true);
@@ -110,8 +119,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (objData.tipo == 'insert') {
 
-
-
                     Swal.fire({
                         title: objData.msg,
                         text: '¿Deseas ingresar un nuevo registro?',
@@ -128,18 +135,18 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (result.isConfirmed) {
                             // Seguir en modo NUEVO
                             formPlantas.reset();
-                            planta.value = '';
-                            estado.value = '2';
-                            tabNuevo.textContent = 'NUEVO';
+                            planta.value            = '';
+                            estado.value            = '2';
+                            tabNuevo.textContent    = 'NUEVO';
                             spanBtnText.textContent = 'REGISTRAR';
                             tablePlantas.api().ajax.reload();
 
                         } else {
                             // Regresar al listado
                             formPlantas.reset();
-                            planta.value = '';
-                            estado.value = '2';
-                            tabNuevo.textContent = 'NUEVO';
+                            planta.value            = '';
+                            estado.value            = '2';
+                            tabNuevo.textContent    = 'NUEVO';
                             spanBtnText.textContent = 'REGISTRAR';
                             primerTab.show();
                             tablePlantas.api().ajax.reload();
@@ -158,9 +165,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     }).then(() => {
                         // Acción final después de OK (opcional)
                         formPlantas.reset();
-                        planta.value = '';
-                        estado.value = '2';
-                        tabNuevo.textContent = 'NUEVO';
+                        planta.value            = '';
+                        estado.value            = '2';
+                        tabNuevo.textContent    = 'NUEVO';
                         spanBtnText.textContent = 'REGISTRAR';
                         primerTab.show();
                         tablePlantas.api().ajax.reload();
@@ -182,8 +189,8 @@ document.addEventListener('DOMContentLoaded', function () {
 function fntEditInfo(idplanta) {
 
     // Cambiar textos a modo ACTUALIZAR
-    if (tabNuevo) tabNuevo.textContent = 'ACTUALIZAR';
-    if (spanBtnText) spanBtnText.textContent = "ACTUALIZAR";
+    if (tabNuevo)    tabNuevo.textContent    = 'ACTUALIZAR';
+    if (spanBtnText) spanBtnText.textContent = 'ACTUALIZAR';
 
     let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
     let ajaxUrl = base_url + '/cap_plantas/getPlanta/' + idplanta;
@@ -198,10 +205,10 @@ function fntEditInfo(idplanta) {
 
             if (objData.status) {
 
-                planta.value = objData.data.idplanta;
-                nombre.value = objData.data.nombre_planta;
-                estado.value = objData.data.estado;
-                 direccion.value = objData.data.direccion;
+                planta.value    = objData.data.idplanta;
+                nombre.value    = objData.data.nombre_planta;
+                estado.value    = objData.data.estado;
+                direccion.value = objData.data.direccion;
 
                 // Cambiar al tab de captura
                 if (firstTab) firstTab.show();
@@ -216,7 +223,6 @@ function fntEditInfo(idplanta) {
 // ------------------------------------------------------------------------
 //  ELIMINAR UN REGISTRO DEL LISTADO
 // ------------------------------------------------------------------------
-
 function fntDelInfo(idplanta) {
     Swal.fire({
         html: `
@@ -240,7 +246,6 @@ function fntDelInfo(idplanta) {
         showCancelButton: true,
         confirmButtonText: "Sí, eliminar",
         cancelButtonText: "Cancelar",
-
         customClass: {
             confirmButton: "btn btn-primary w-xs me-2 mb-1",
             cancelButton: "btn btn-danger w-xs mb-1"
@@ -249,18 +254,18 @@ function fntDelInfo(idplanta) {
         showCloseButton: true
     }).then((result) => {
 
-
         if (!result.isConfirmed) {
             return;
         }
 
-
         let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
         let ajaxUrl = base_url + '/cap_plantas/delPlanta';
         let strData = "idPlanta=" + idplanta;
+
         request.open("POST", ajaxUrl, true);
         request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
         request.send(strData);
+
         request.onreadystatechange = function () {
             if (request.readyState == 4 && request.status == 200) {
                 let objData = JSON.parse(request.responseText);
@@ -273,10 +278,9 @@ function fntDelInfo(idplanta) {
             }
         }
 
-
     });
 
-} 
+}
 
 // ------------------------------------------------------------------------
 //  VER EL DETALLE DE LA PLANTA
@@ -284,21 +288,24 @@ function fntDelInfo(idplanta) {
 function fntViewPlanta(idplanta) {
     let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
     let ajaxUrl = base_url + '/cap_plantas/getPlanta/' + idplanta;
+
     request.open("GET", ajaxUrl, true);
     request.send();
+
     request.onreadystatechange = function () {
         if (request.readyState == 4 && request.status == 200) {
             let objData = JSON.parse(request.responseText);
 
             if (objData.status) {
-                let estadoUsuario = objData.data.estado == 1 ?
-                    '<span class="badge bg-success">Activo</span>' :
-                    '<span class="badge bg-danger">Inactivo</span>';
 
-                document.querySelector("#celClave").innerHTML = objData.data.cve_planta;
-                document.querySelector("#celNombre").innerHTML = objData.data.nombre_planta;
-                document.querySelector("#celFecha").innerHTML = objData.data.fecha_creacion;
-                document.querySelector("#celEstado").innerHTML = estadoUsuario;
+                let estadoUsuario = objData.data.estado == 1
+                    ? '<span class="badge bg-success">Activo</span>'
+                    : '<span class="badge bg-danger">Inactivo</span>';
+
+                document.querySelector("#celClave").innerHTML     = objData.data.cve_planta;
+                document.querySelector("#celNombre").innerHTML    = objData.data.nombre_planta;
+                document.querySelector("#celFecha").innerHTML     = objData.data.fecha_creacion;
+                document.querySelector("#celEstado").innerHTML    = estadoUsuario;
                 document.querySelector("#celDireccion").innerHTML = objData.data.direccion;
 
                 $('#modalViewPlanta').modal('show');
@@ -308,4 +315,3 @@ function fntViewPlanta(idplanta) {
         }
     }
 }
-
