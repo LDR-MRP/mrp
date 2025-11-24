@@ -93,8 +93,8 @@
                                         <div class="mb-3">
                                             <label class="form-label" for="listPlantas">PLANTA</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="nombre-linea-addon">pla</span>
-                                       <select class="form-control"  id="listPlantas" name="listPlantas" required=""></select>
+                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>pla</span>
+                                       <select class="form-control"  id="listPlantas" name="listPlantas" required="" ></select>
                                                 <div class="invalid-feedback">El campo de planta es obligatorio</div>
                                             </div>
                                         </div>

@@ -111,7 +111,7 @@
                                     <div class="input-group mb-3">
                                         <span class="input-group-text" id="direccion-linea-addon">dir</span>
                                         <textarea class="form-control" id="direccion-linea-textarea" name="direccion-linea-textarea"
-                                            placeholder="Ingresa la dirección" rows="3" required
+                                            placeholder="Ingresa la dirección" rows="3" 
                                             aria-describedby="direccion-linea-addon"></textarea>
                                     </div>
                                 </div>

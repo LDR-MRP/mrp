@@ -152,13 +152,13 @@ class Cap_lineasdtrabajo extends Controllers
     }
 
 
-    		public function getSelectPlantas(){
+    		public function getSelectLineas(){
 			$htmlOptions = '<option value="">--Seleccione--</option>';
-			$arrData = $this->model->selectOptionPlantas();
+			$arrData = $this->model->selectOptionLineas();
 			if(count($arrData) > 0 ){
 				for ($i=0; $i < count($arrData); $i++) { 
 					if($arrData[$i]['estado'] == 2 ){
-					$htmlOptions .= '<option value="'.$arrData[$i]['idplanta'].'">'.$arrData[$i]['cve_planta']. ''.$arrData[$i]['nombre_linea'].'</option>';
+					$htmlOptions .= '<option value="'.$arrData[$i]['idlinea'].'">'.$arrData[$i]['cve_linea']. ''.$arrData[$i]['nombre_linea'].'</option>';
 					}
 				}
 			}

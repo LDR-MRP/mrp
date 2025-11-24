@@ -85,7 +85,7 @@ INNER JOIN mrp_planta AS pla ON li.plantaid = pla.idplanta
 		return $request;
 	}
 
-        		public function selectOptionPlantas()
+        		public function selectOptionLineas()
 		{
 			$sql = "SELECT * FROM  mrp_linea 
 					WHERE estado = 2";

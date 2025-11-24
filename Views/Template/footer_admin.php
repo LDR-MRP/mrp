@@ -784,7 +784,7 @@
 
     <!-- Dashboard init -->
     <!-- <script src="<?= media(); ?>/minimal/js/pages/dashboard-ecommerce.init.js"></script> -->
-     
+      
 
     <!-- App js --> 
     <script src="<?= media(); ?>/minimal/js/app.js"></script>

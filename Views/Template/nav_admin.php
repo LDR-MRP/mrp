@@ -230,14 +230,18 @@
                                         <a href="layouts-detached.html" target="_blank" class="nav-link" data-key="t-detached">Transferencias</a>
                                     </li>
                                      <?php } ?>
+
+                                                                              <?php if(!empty($_SESSION['permisos'][19]['r'])){ ?>
+                                        <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/cap_estaciones"  class="nav-link" data-key="t-detached">Estaciones</a>
+                                    </li>
+                                     <?php } ?>
+
+
+
                                         <?php if(!empty($_SESSION['permisos'][18]['r'])){ ?>
                                         <li class="nav-item">
                                         <a href="<?= base_url(); ?>/cap_lineasdtrabajo"  class="nav-link" data-key="t-detached">Líneas de trabajo</a>
-                                    </li>
-                                     <?php } ?>
-                                         <?php if(!empty($_SESSION['permisos'][19]['r'])){ ?>
-                                        <li class="nav-item">
-                                        <a href="<?= base_url(); ?>/cap_estaciones"  class="nav-link" data-key="t-detached">Estaciones</a>
                                     </li>
                                      <?php } ?>
 
