@@ -15,34 +15,38 @@ class Cap_plantasModel extends Mysql
         parent::__construct();
     }
 
-    public function generarClave()
+public function generarClave()
 {
-    $fechaCorta = date('ymd'); // Ej: 251121
-    $prefijo = 'PLT-' . $fechaCorta . '-';
-
+    
     $sql = "SELECT cve_planta 
             FROM mrp_planta
-            WHERE cve_planta LIKE '{$prefijo}%' 
-            ORDER BY cve_planta DESC 
+            WHERE cve_planta LIKE 'PL%' 
+              AND estado != 0
+            ORDER BY CAST(SUBSTRING(cve_planta, 3) AS UNSIGNED) DESC
             LIMIT 1";
 
     $result = $this->select($sql);
+
     $numero = 1;
 
+
     if (!empty($result)) {
-        $ultimaClave = $result['cve_planta'];      // PLT-251121-0003
-        $ultimoNumero = (int) substr($ultimaClave, -3); 
+        $ultimaClave = $result['cve_planta'];  
+        $ultimoNumero = (int) substr($ultimaClave, 2); 
         $numero = $ultimoNumero + 1;
     }
 
-    return $prefijo . str_pad($numero, 3, '0', STR_PAD_LEFT);
+    
+    return 'PL' . str_pad($numero, 2, '0', STR_PAD_LEFT);
 }
+
+
 
    
 
     public function inserPlanta($claveUnica, $nombre_planta, $fecha_creacion, $direccion, $intEstatus)
     {
-
+ 
         $return = 0;
         $this->strClave = $claveUnica;
         $this->strNombre = $nombre_planta;
@@ -51,7 +55,7 @@ class Cap_plantasModel extends Mysql
         $this-> intEstatus = $intEstatus;
 
 
-        $sql = "SELECT * FROM mrp_planta WHERE nombre_planta = '{$this->strNombre}' ";
+        $sql = "SELECT * FROM mrp_planta WHERE nombre_planta = '{$this->strNombre}'";
         $request = $this->select_all($sql);
 
         if (empty($request)) {

@@ -18,28 +18,48 @@
 
 
 
-        public function generarClave()
+public function generarClave(int $idPlanta)
 {
-    $fechaCorta = date('ymd'); // Ej: 251121
-    $prefijo = 'LN-' . $fechaCorta . '-';
+    // 1. Obtener la clave de la planta (PL01, PL02, etc.)
+    $sqlPlanta = "SELECT cve_planta 
+                  FROM mrp_planta 
+                  WHERE idplanta = {$idPlanta}
+                  LIMIT 1";
 
-    $sql = "SELECT cve_linea 
-            FROM mrp_linea
-            WHERE cve_linea LIKE '{$prefijo}%' 
-            ORDER BY cve_linea DESC 
-            LIMIT 1";
+    $planta = $this->select($sqlPlanta);
 
-    $result = $this->select($sql);
+    if (empty($planta)) {
+        // Si no encuentra planta, puedes manejar el error como quieras
+        return null; 
+    }
+
+    $cvePlanta = $planta['cve_planta']; // Ej: PL01
+    $prefijo   = $cvePlanta . '-LN';     // Ej: PL01-L
+
+    // 2. Buscar la última línea registrada para esa planta
+    $sqlLinea = "SELECT cve_linea 
+                 FROM mrp_linea
+                 WHERE plantaid = {$idPlanta}
+                   AND cve_linea LIKE '{$prefijo}%'
+                   AND estado != 0
+                 ORDER BY CAST(REPLACE(cve_linea, '{$prefijo}', '') AS UNSIGNED) DESC
+                 LIMIT 1";
+
+    $result = $this->select($sqlLinea);
+
     $numero = 1;
 
     if (!empty($result)) {
-        $ultimaClave = $result['cve_linea'];      // PLT-251121-0003
-        $ultimoNumero = (int) substr($ultimaClave, -3); 
-        $numero = $ultimoNumero + 1;
+        $ultimaClave = $result['cve_linea'];     // Ej: PL01-L05
+        // quitar el prefijo "PL01-L" y quedarnos con "05"
+        $numeroStr   = str_replace($prefijo, '', $ultimaClave);
+        $numero      = ((int) $numeroStr) + 1;
     }
 
-    return $prefijo . str_pad($numero, 3, '0', STR_PAD_LEFT);
+    // 3. Construir la clave de línea: PL01-L01, PL01-L02, etc.
+    return $prefijo . str_pad($numero, 2, '0', STR_PAD_LEFT);
 }
+
  
     public function inserLinea($claveUnica, $planta, $nombre_linea, $fecha_creacion, $intEstatus)
     {
@@ -85,10 +105,11 @@ INNER JOIN mrp_planta AS pla ON li.plantaid = pla.idplanta
 		return $request;
 	}
 
-        		public function selectOptionLineas()
+        		public function selectOptionLineas($idplanta)
 		{
+            $this->intPlanta = $idplanta;
 			$sql = "SELECT * FROM  mrp_linea 
-					WHERE estado = 2";
+					WHERE estado = 2 AND plantaid = $this->intPlanta";
 			$request = $this->select_all($sql);
 			return $request;
 		}

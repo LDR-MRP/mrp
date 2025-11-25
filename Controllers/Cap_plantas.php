@@ -33,7 +33,7 @@ class Cap_plantas extends Controllers
                 empty($_POST['nombre-planta-input'])
                 || empty($_POST['estado-select'])
             ) {
-                $arrResponse = array("status" => false, "msg" => 'Datos incorrectos.');
+                $arrResponse = array("status" => false, "msg" => 'Datos incorrectos .');
             } else {
 
                 $intIdplanta = intval($_POST['idplanta']);
@@ -68,7 +68,7 @@ class Cap_plantas extends Controllers
                     	$arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update');
                     }
                 } else if ($request_planta == 'exist') {
-                    $arrResponse = array('st atus' => false, 'msg' => '¡Atención! La categoría ya existe.');
+                    $arrResponse = array('status' => false, 'msg' => '¡Atención! La categoría ya existe.');
                 } else {
                     $arrResponse = array("status" => false, "msg" => 'No es posible almacenar los datos.');
                 }
@@ -157,7 +157,7 @@ class Cap_plantas extends Controllers
 			if(count($arrData) > 0 ){
 				for ($i=0; $i < count($arrData); $i++) { 
 					if($arrData[$i]['estado'] == 2 ){
-					$htmlOptions .= '<option value="'.$arrData[$i]['idplanta'].'">'.$arrData[$i]['cve_planta']. ''.$arrData[$i]['nombre_planta'].'</option>';
+					$htmlOptions .= '<option value="'.$arrData[$i]['idplanta'].'">'.$arrData[$i]['cve_planta']. ' - '.$arrData[$i]['nombre_planta'].'</option>';
 					}
 				}
 			}

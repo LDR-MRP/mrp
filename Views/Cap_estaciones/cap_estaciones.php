@@ -50,7 +50,7 @@
                                 style="width:100%">
                                 <thead>
                                     <tr> 
-                                      <th>ID</th>
+                                      <th>CLAVE</th>
                                         <th>NOMBRE ESTACIÓN</th>
                                          <th>LÍNEA ASIGNADA</th>
                                         <th>FECHA REGISTRO</th>
@@ -72,6 +72,39 @@
                         <div class="tab-pane" id="agregarEstacion" role="tabpanel">
                             <form id="formEstaciones" autocomplete="off"  class="form-steps was-validated" autocomplete="off">
                                 <input type="hidden" id="idestacion" name="idestacion">
+
+
+                                                                <div class="row">
+                                    <!-- PLANTA -->
+                                    <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="listPlantas">PLANTA</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" >Pla</span>
+                                               <select class="form-control" name="listPlantas" id="listPlantas" required></select>
+                                                      <div class="invalid-feedback">El campo planta es obligatorio</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- ÑLINEA -->
+                                   <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="listLineas">LINEA</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" >Li</span>
+                                               <select class="form-control" name="listLineas" id="listLineas" required>
+                                                <option value="">--Seleccione--</option>
+                                               </select>
+                                                      <div class="invalid-feedback">El campo planta es obligatorio</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- end row -->
+
+
+
                                 <div class="row">
                                     <!-- NOMBRE -->
                                     <div class="col-lg-6">
@@ -251,7 +284,7 @@
 
                                 <div class="row">
                                     <!-- MX -->
-                                    <div class="col-lg-6 col-sm-6">
+                                    <!-- <div class="col-lg-6 col-sm-6">
                                         <div class="mb-3">
                                             <label class="form-label" for="listLineas">LÍNEA</label>
                                             <div class="input-group mb-3">
@@ -260,10 +293,10 @@
                                                       <div class="invalid-feedback">El campo Línea es obligatorio</div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </div> -->
 
                                     <!-- ESTADO -->
-                                    <div class="col-lg-6 col-sm-6"> 
+                                    <div class="col-lg-12 col-sm-6"> 
                                         <div class="mb-3">
                                             <label class="form-label" for="estado-select">ESTADO</label>
                                             <div class="input-group has-validation mb-3">

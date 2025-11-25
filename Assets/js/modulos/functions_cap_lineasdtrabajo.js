@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         // Modo NUEVO nuevamente
                         formLineas.reset();
                         if (selectPlantas) selectPlantas.value = '';
-                        if (estado) estado.value = '1';
+                        if (estado) estado.value = '2';
                         if (spanBtnText) spanBtnText.textContent = 'REGISTRAR';
                         if (tabNuevo) tabNuevo.textContent = 'NUEVO';
 
@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }).then(() => {
                         formLineas.reset();
                         if (selectPlantas) selectPlantas.value = '';
-                        if (estado) estado.value = '1';
+                        if (estado) estado.value = '2';
                         if (spanBtnText) spanBtnText.textContent = 'REGISTRAR';
                         if (tabNuevo) tabNuevo.textContent = 'NUEVO';
                         if (primerTab) primerTab.show();

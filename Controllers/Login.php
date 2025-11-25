@@ -36,9 +36,15 @@
 						$arrData = $requestUser;
 						if($arrData['status'] == 1){
 							$_SESSION['idUser'] = $arrData['idusuario'];
-							$_SESSION['login'] = true;
+							$_SESSION['login'] = true; 
 
 							$arrData = $this->model->sessionLogin($_SESSION['idUser']);
+
+							 $evento = 'Inicio de Sesión';
+                            $ip = $_SERVER['REMOTE_ADDR'];
+                            $detalle = $_SERVER['HTTP_USER_AGENT'];
+                            $this->model->registrarAcceso($_SESSION['idUser'],$evento, $ip, $detalle);
+
 							sessionUser($_SESSION['idUser']);							
 							$arrResponse = array('status' => true, 'msg' => 'ok');
 						}else{

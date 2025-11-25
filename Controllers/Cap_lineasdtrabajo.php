@@ -1,29 +1,29 @@
 <?php
 class Cap_lineasdtrabajo extends Controllers
 {
-	public function __construct()
-	{
-		parent::__construct();
-		session_start();
-		//session_regenerate_id(true);
-		if (empty($_SESSION['login'])) {
-			header('Location: ' . base_url() . '/login');
-			die();
-		}
-		getPermisos(MCLINEAS);
-	}
+    public function __construct()
+    {
+        parent::__construct();
+        session_start();
+        //session_regenerate_id(true);
+        if (empty($_SESSION['login'])) {
+            header('Location: ' . base_url() . '/login');
+            die();
+        }
+        getPermisos(MCLINEAS);
+    }
 
-	public function Cap_lineasdtrabajo()
-	{
-		if (empty($_SESSION['permisosMod']['r'])) {
-			header("Location:" . base_url() . '/dashboard');
-		}
-		$data['page_tag'] = "Líneas";
-		$data['page_title'] = "Líneas <small>de trabajo</small>";
-		$data['page_name'] = "bom";
-		$data['page_functions_js'] = "functions_cap_lineasdtrabajo.js";
-		$this->views->getView($this, "cap_lineasdtrabajo", $data);
-	}
+    public function Cap_lineasdtrabajo()
+    {
+        if (empty($_SESSION['permisosMod']['r'])) {
+            header("Location:" . base_url() . '/dashboard');
+        }
+        $data['page_tag'] = "Líneas";
+        $data['page_title'] = "Líneas <small>de trabajo</small>";
+        $data['page_name'] = "bom";
+        $data['page_functions_js'] = "functions_cap_lineasdtrabajo.js";
+        $this->views->getView($this, "cap_lineasdtrabajo", $data);
+    }
 
     public function setLinea()
     {
@@ -31,20 +31,21 @@ class Cap_lineasdtrabajo extends Controllers
             if (
                 empty($_POST['nombre-linea-input'])
                 || empty($_POST['listPlantas'])
-				|| empty($_POST['estado-select'])
+                || empty($_POST['estado-select'])
             ) {
                 $arrResponse = array("status" => false, "msg" => 'Datos incorrectos.');
             } else {
 
                 $intIdlinea = intval($_POST['idlinea']);
                 $nombre_linea = strClean($_POST['nombre-linea-input']);
-				$planta = intval($_POST['listPlantas']);
+                $planta = intval($_POST['listPlantas']);
                 $estado = intval($_POST['estado-select']);
 
 
                 if ($intIdlinea == 0) {
 
-                    $claveUnica = $this->model->generarClave();
+
+                    $claveUnica = $this->model->generarClave($planta);
                     $fecha_creacion = date('Y-m-d H:i:s');
 
                     //Crear 
@@ -56,21 +57,25 @@ class Cap_lineasdtrabajo extends Controllers
                 } else {
                     //Actualizar
                     if ($_SESSION['permisosMod']['u']) {
-                        $request_linea = $this->model->updateLinea($intIdlinea,$planta,$nombre_linea,$estado);
+                        $request_linea = $this->model->updateLinea($intIdlinea, $planta, $nombre_linea, $estado);
                         $option = 2;
                     }
                 }
-                if ($request_linea > 0) {
+
+                if ($request_linea === 'exist') {
+
+                    $arrResponse = array('status' => false, 'msg' => '¡Atención! La línea ya existe.');
+
+                } else if ($request_linea > 0) {
+
                     if ($option == 1) {
                         $arrResponse = array('status' => true, 'msg' => 'La información se ha registrado exitosamente', 'tipo' => 'insert');
+                    } else {
+                        $arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update');
+                    }
 
-                    }
-                    else{
-                    	$arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update');
-                    }
-                } else if ($request_linea == 'exist') {
-                    $arrResponse = array('st atus' => false, 'msg' => '¡Atención! La categoría ya existe.');
                 } else {
+
                     $arrResponse = array("status" => false, "msg" => 'No es posible almacenar los datos.');
                 }
 
@@ -90,7 +95,7 @@ class Cap_lineasdtrabajo extends Controllers
 
                 if ($arrData[$i]['estado'] == 2) {
                     $arrData[$i]['estado'] = '<span class="badge bg-success">Activo</span>';
-                } else if($arrData[$i]['estado'] == 1) {
+                } else if ($arrData[$i]['estado'] == 1) {
                     $arrData[$i]['estado'] = '<span class="badge bg-danger">Inactivo</span>';
                 }
 
@@ -152,19 +157,20 @@ class Cap_lineasdtrabajo extends Controllers
     }
 
 
-    		public function getSelectLineas(){
-			$htmlOptions = '<option value="">--Seleccione--</option>';
-			$arrData = $this->model->selectOptionLineas();
-			if(count($arrData) > 0 ){
-				for ($i=0; $i < count($arrData); $i++) { 
-					if($arrData[$i]['estado'] == 2 ){
-					$htmlOptions .= '<option value="'.$arrData[$i]['idlinea'].'">'.$arrData[$i]['cve_linea']. ''.$arrData[$i]['nombre_linea'].'</option>';
-					}
-				}
-			}
-			echo $htmlOptions;
-			die();	
-		}
+    public function getSelectLineas($idplanta)
+    {
+        $htmlOptions = '<option value="">--Seleccione--</option>';
+        $arrData = $this->model->selectOptionLineas($idplanta);
+        if (count($arrData) > 0) {
+            for ($i = 0; $i < count($arrData); $i++) {
+                if ($arrData[$i]['estado'] == 2) {
+                    $htmlOptions .= '<option value="' . $arrData[$i]['idlinea'] . '">' . $arrData[$i]['cve_linea'] . ' - ' . $arrData[$i]['nombre_linea'] . '</option>';
+                }
+            }
+        }
+        echo $htmlOptions;
+        die();
+    }
 
 
 

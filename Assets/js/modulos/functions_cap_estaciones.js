@@ -10,6 +10,7 @@ let estandar = null;
 let unidaddmedida = null;
 let tiempo = null;
 let mx = null;
+let selectPlantas = null;
 let selectLineas = null;
 let estado = null;
 let descripcion = null;
@@ -40,6 +41,7 @@ document.addEventListener('DOMContentLoaded', function () {
     unidaddmedida = document.querySelector('#unidad-medida-select');
     tiempo = document.querySelector('#tiempo-ajuste-input');
     mx = document.querySelector('#mx-input');
+    selectPlantas = document.querySelector('#listPlantas');
     selectLineas = document.querySelector('#listLineas');
     estado = document.querySelector('#estado-select');
     descripcion = document.querySelector('#descripcion-estacion-textarea');
@@ -58,9 +60,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --------------------------------------------------------------------
-    //  CARGAR LÍNEAS POR AJAX
+    //  CARGAR PLANTAS  POR AJAX
     // --------------------------------------------------------------------
-    fntLineas(); 
+    // fntLineas(); 
+    fntPlantas();
     // --------------------------------------------------------------------
     //  DATATABLE ESTACIONES
     // --------------------------------------------------------------------
@@ -113,6 +116,7 @@ document.addEventListener('DOMContentLoaded', function () {
             estacion.value = '';
             formEstaciones.reset();
             if (selectLineas) selectLineas.value = '';
+             if (selectPlantas) selectPlantas.value = '';
 
         });
 
@@ -123,6 +127,7 @@ document.addEventListener('DOMContentLoaded', function () {
             spanBtnText.textContent = 'REGISTRAR';
             formEstaciones.reset();
             if (selectLineas) selectLineas.value = '';
+             if (selectPlantas) selectPlantas.value = '';
 
         });
     } else {
@@ -189,6 +194,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         // Modo NUEVO nuevamente
                         formEstaciones.reset();
+                        if (selectPlantas) selectPlantas.value = '';
                         if (selectLineas) selectLineas.value = '';
                         if (estado) estado.value = '1';
                         if (spanBtnText) spanBtnText.textContent = 'REGISTRAR';
@@ -211,6 +217,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         allowEscapeKey: false
                     }).then(() => {
                         formEstaciones.reset();
+                        if (selectPlantas) selectPlantas.value = '';
                         if (selectLineas) selectLineas.value = '';
                         if (estado) estado.value = '1';
                         if (spanBtnText) spanBtnText.textContent = 'REGISTRAR';
@@ -286,6 +293,7 @@ function fntEditInfo(idestacion) {
             if (unidaddmedida) unidaddmedida.value = objData.data.unidad_medida;
             if (tiempo) tiempo.value = objData.data.tiempo_ajuste;
             if (mx) mx.value = objData.data.mxn;
+               if (selectPlantas) selectPlantas.value = objData.data.plantaid;
             if (selectLineas) selectLineas.value = objData.data.lineaid;
             if (estado) estado.value = objData.data.estado;
             if (descripcion) descripcion.value = objData.data.descripcion;
@@ -397,27 +405,78 @@ function fntViewPlanta(idestacion) {
 }
 
 // ------------------------------------------------------------------------
-//  VER EL CATALOGO DE LÍNEAS
+//  VER EL CATALOGO DE PLANTAS
 // ------------------------------------------------------------------------
-function fntLineas(selectedValue = "") {
-    if (document.querySelector('#listLineas')) {
-        let ajaxUrl = base_url + '/cap_lineasdtrabajo/getSelectLineas';
+function fntPlantas(selectedValue = "") {
+    const selectPlantas = document.querySelector('#listPlantas');
+    if (selectPlantas) {
+        let ajaxUrl = base_url + '/cap_plantas/getSelectPlantas';
         let request = (window.XMLHttpRequest) ?
             new XMLHttpRequest() :
             new ActiveXObject('Microsoft.XMLHTTP');
+
         request.open("GET", ajaxUrl, true);
         request.send();
         request.onreadystatechange = function () {
             if (request.readyState == 4 && request.status == 200) {
-                document.querySelector('#listLineas').innerHTML = request.responseText;
+                // Rellenamos el select de plantas
+                selectPlantas.innerHTML = request.responseText;
 
+                // Si viene un valor seleccionado, lo marcamos
                 if (selectedValue !== "") {
-                    select.value = selectedValue;
+                    selectPlantas.value = selectedValue;
                 }
+
+                // Cargar líneas de la planta seleccionada al inicio
+                if (selectPlantas.value !== "") {
+                    fntLineas(selectPlantas.value);
+                }
+            }
+        }
+
+        // AQUÍ APLICAMOS EL onchange
+        selectPlantas.addEventListener('change', function () {
+            const idPlanta = this.value;
+            fntLineas(idPlanta); // Cargamos las líneas de esa planta
+        });
+    }
+}
+
+
+// ------------------------------------------------------------------------
+//  VER EL CATALOGO DE LÍNEAS
+// ------------------------------------------------------------------------
+function fntLineas(idPlanta, selectedLinea = "") {
+    const selectLineas = document.querySelector('#listLineas');
+
+    if (!selectLineas) return; 
+
+    // Si no hay planta seleccionada, limpiamos las líneas
+    if (!idPlanta) {
+        selectLineas.innerHTML = '<option value="">--Seleccione--</option>';
+        return;
+    }
+
+    let ajaxUrl = base_url + '/Cap_lineasdtrabajo/getSelectLineas/' + idPlanta;
+    let request = (window.XMLHttpRequest) ?
+        new XMLHttpRequest() :
+        new ActiveXObject('Microsoft.XMLHTTP');
+
+    request.open("GET", ajaxUrl, true);
+    request.send();
+    request.onreadystatechange = function () {
+        if (request.readyState == 4 && request.status == 200) {
+            // El controlador debe regresar los <option> ya listos
+            selectLineas.innerHTML = request.responseText;
+
+            // Si quieres preseleccionar alguna línea
+            if (selectedLinea !== "") {
+                selectLineas.value = selectedLinea;
             }
         }
     }
 }
+
 
 // ------------------------------------------------------------------------
 //  VER EL DETALLE DE LA LA ESTACION

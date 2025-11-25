@@ -5,6 +5,7 @@ class Cap_estacionesModel extends Mysql
 
 	public $intIdestacion;
 	public $strClave;
+	public $intPlanta;
 	public $intLinea;
 	public $strNombre;
 	public $strProceso;
@@ -25,34 +26,64 @@ class Cap_estacionesModel extends Mysql
 
 
 
-	public function generarClave()
-	{
-		$fechaCorta = date('ymd'); // Ej: 251121
-		$prefijo = 'ES-' . $fechaCorta . '-';
+public function generarClave(int $idLinea)
+{
+    // 1. Obtener la clave de la línea (ej: PL01-LN01)
+    $sqlLinea = "SELECT cve_linea 
+                 FROM mrp_linea 
+                 WHERE idlinea = {$idLinea}
+                 LIMIT 1";
 
-		$sql = "SELECT cve_estacion 
-            FROM mrp_estacion
-            WHERE cve_estacion LIKE '{$prefijo}%' 
-            ORDER BY cve_estacion DESC 
-            LIMIT 1";
+    $linea = $this->select($sqlLinea);
 
-		$result = $this->select($sql);
-		$numero = 1;
+    if (empty($linea)) {
+        // Si no encuentra la línea, puedes regresar null o lanzar excepción
+        return null;
+    }
 
-		if (!empty($result)) {
-			$ultimaClave = $result['cve_estacion'];      // PLT-251121-0003
-			$ultimoNumero = (int) substr($ultimaClave, -3);
-			$numero = $ultimoNumero + 1;
-		}
+    $cveLinea = $linea['cve_linea'];      // Ej: PL01-LN01
+    $prefijo  = $cveLinea . '-ES';        // Ej: PL01-LN01-ES
 
-		return $prefijo . str_pad($numero, 3, '0', STR_PAD_LEFT);
-	}
+    // 2. Buscar la última estación de ESA línea (consecutivo por línea)
+    //    cve_estacion tiene forma: PL01-LN01-ES01
+    //    SUBSTRING_INDEX(..., '-', -1)  -> "ES01"
+    //    SUBSTRING(..., 3)              -> "01"
+    $sqlEstacion = "SELECT cve_estacion
+                    FROM mrp_estacion
+                    WHERE lineaid = {$idLinea}          -- O lineaid, según tu columna
+                      AND cve_estacion LIKE '{$prefijo}%'
+                      AND estado != 0
+                    ORDER BY CAST(
+                        SUBSTRING(
+                            SUBSTRING_INDEX(cve_estacion, '-', -1),
+                            3
+                        ) AS UNSIGNED
+                    ) DESC
+                    LIMIT 1";
 
-	public function insertEstacion($claveUnica, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $fecha_creacion, $estado)
+    $result = $this->select($sqlEstacion);
+
+    $numero = 1;
+
+    if (!empty($result)) {
+        $ultimaClave = $result['cve_estacion'];  // Ej: PL01-LN01-ES05
+        $sufijo      = substr($ultimaClave, strrpos($ultimaClave, '-') + 1); // "ES05"
+        $numStr      = substr($sufijo, 2);  // "05"
+        $numero      = ((int)$numStr) + 1;
+    }
+
+    // 3. Construir clave final: PL01-LN01-ES01, PL01-LN01-ES02...
+    return $prefijo . str_pad($numero, 2, '0', STR_PAD_LEFT);
+}
+
+
+
+	public function insertEstacion($claveUnica, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $fecha_creacion, $estado)
 	{
 
 		$return = 0;
 		$this->strClave = $claveUnica;
+		$this->intPlanta = $planta;
 		$this->intLinea = $linea;
 		$this->strNombre = $nombre_estacion;
 		$this->strProceso = $proceso;
@@ -69,9 +100,10 @@ class Cap_estacionesModel extends Mysql
 		$request = $this->select_all($sql);
 
 		if (empty($request)) {
-			$query_insert = "INSERT INTO mrp_estacion(cve_estacion,lineaid,nombre_estacion,proceso,estandar,unidad_medida,tiempo_ajuste,mxn,descripcion,fecha_creacion,estado) VALUES(?,?,?,?,?,?,?,?,?,?,?)";
+			$query_insert = "INSERT INTO mrp_estacion(cve_estacion,plantaid,lineaid,nombre_estacion,proceso,estandar,unidad_medida,tiempo_ajuste,mxn,descripcion,fecha_creacion,estado) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)";
 			$arrData = array(
 				$this->strClave,
+				$this->intPlanta,
 				$this->intLinea,
 				$this->strNombre,
 				$this->strProceso,
@@ -133,11 +165,12 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 	}
 
 
-	public function updateEstacion($idestacion, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $estado)
+	public function updateEstacion($idestacion, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $estado)
 	{
 
 
 		$this->intIdestacion = $idestacion;
+		$this->intPlanta = $planta;
 		$this->intLinea = $linea;
 		$this->strNombre = $nombre_estacion;
 		$this->strProceso = $proceso;
@@ -156,7 +189,8 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 
 		if (empty($request)) {
 			$sql = "UPDATE mrp_estacion 
-                SET lineaid	 = ?, 
+                SET plantaid= ?,
+				    lineaid = ?, 
                     nombre_estacion = ?, 
                     proceso = ?,
 					estandar = ?,
@@ -167,6 +201,7 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 					estado = ?
                 WHERE idestacion = {$this->intIdestacion}";
 			$arrData = array(
+				$this->intPlanta,
 				$this->intLinea,
 				$this->strNombre,
 				$this->strProceso,

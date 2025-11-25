@@ -23,7 +23,7 @@
 			$request = $this->select($sql);
 			return $request;
 		}
-
+ 
 		public function sessionLogin(int $iduser){
 			$this->intIdUsuario = $iduser;
 			//BUSCAR ROLE 
@@ -45,6 +45,13 @@
 			$_SESSION['userData'] = $request;
 			return $request;
 		}
+
+		    public function registrarAcceso($idusuario, $evento, $ip, $detalle)
+    {
+        $sql = "INSERT INTO login_logs (idusuario, evento, ip, detalle) VALUES (?,?,?,?)";
+        $array = array($idusuario, $evento, $ip, $detalle);
+        return $this->insert($sql, $array);
+    }
 
 		public function getUserEmail(string $strEmail){
 			$this->strUsuario = $strEmail;

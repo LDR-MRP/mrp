@@ -92,6 +92,7 @@ class Cap_estaciones extends Controllers
             } else {
 
                 $intIdEstacion = intval($_POST['idestacion']);
+                $planta = intval($_POST['listPlantas']);
 				$linea = intval($_POST['listLineas']);
                 $nombre_estacion = strClean($_POST['nombre-estacion-input']);
 				$proceso = strClean($_POST['proceso-estacion-input']);
@@ -101,37 +102,42 @@ class Cap_estaciones extends Controllers
 				$mxinput = strClean($_POST['mx-input']);
                 $descripcion = strClean($_POST['descripcion-estacion-textarea']);
                 $estado = intval($_POST['estado-select']);
-
+ 
 
                 if ($intIdEstacion == 0) {
 
-                    $claveUnica = $this->model->generarClave();
+                    $claveUnica = $this->model->generarClave($linea);
                     $fecha_creacion = date('Y-m-d H:i:s');
 
                     //Crear 
                     if ($_SESSION['permisosMod']['w']) {
-                        $request_linea = $this->model->insertEstacion($claveUnica, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion,$fecha_creacion,$estado);
+                        $request_estacion = $this->model->insertEstacion($claveUnica, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion,$fecha_creacion,$estado);
                         $option = 1;
                     }
 
                 } else {
                     //Actualizar
                     if ($_SESSION['permisosMod']['u']) {
-                        $request_linea = $this->model->updateEstacion($intIdEstacion,$linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $estado);
+                        $request_estacion = $this->model->updateEstacion($intIdEstacion, $planta,$linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $estado);
                         $option = 2;
                     }
                 }
-                if ($request_linea > 0) {
+
+
+                                if ($request_estacion === 'exist') {
+
+                    $arrResponse = array('status' => false, 'msg' => '¡Atención! La estación ya existe.');
+
+                } else if ($request_estacion > 0) {
+
                     if ($option == 1) {
                         $arrResponse = array('status' => true, 'msg' => 'La información se ha registrado exitosamente', 'tipo' => 'insert');
+                    } else {
+                        $arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update');
+                    }
 
-                    }
-                    else{
-                    	$arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update');
-                    }
-                } else if ($request_linea == 'exist') {
-                    $arrResponse = array('st atus' => false, 'msg' => '¡Atención! La categoría ya existe.');
                 } else {
+
                     $arrResponse = array("status" => false, "msg" => 'No es posible almacenar los datos.');
                 }
 

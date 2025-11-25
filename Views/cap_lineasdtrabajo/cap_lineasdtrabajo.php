@@ -52,7 +52,7 @@
                                 style="width:100%">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
+                                        <th>CLAVE</th>
                                         <th>NOMBRE LÍNEA</th>
                                          <th>PLANTA ASIGNADA</th>
                                         <th>FECHA REGISTRO</th>
