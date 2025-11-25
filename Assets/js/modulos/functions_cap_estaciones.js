@@ -409,8 +409,8 @@ function fntViewPlanta(idestacion) {
 // ------------------------------------------------------------------------
 function fntPlantas(selectedValue = "") {
     const selectPlantas = document.querySelector('#listPlantas');
-    if (selectPlantas) {
-        let ajaxUrl = base_url + '/cap_plantas/getSelectPlantas';
+    if (selectPlantas) { 
+        let ajaxUrl = base_url + '/Cap_plantas/getSelectPlantas';
         let request = (window.XMLHttpRequest) ?
             new XMLHttpRequest() :
             new ActiveXObject('Microsoft.XMLHTTP');
