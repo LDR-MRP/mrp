@@ -16,6 +16,13 @@ class Cap_estacionesModel extends Mysql
 	public $strDescripcion;
 	public $strFecha;
 	public $intEstatus;
+	public $strTipomantenimiento;
+	public $strFechaProgramada;
+	public $strfechaInicio;
+	public $strfechaFin;
+	public $strcomentarios;
+	public $strfecha_creacion;
+	public $intIdmantenimiento;
 
 
 	public function __construct()
@@ -96,7 +103,7 @@ public function generarClave(int $idLinea)
 		$this->intEstatus = $estado;
 
 
-		$sql = "SELECT * FROM mrp_estacion WHERE nombre_estacion = '{$this->strNombre}' ";
+		$sql = "SELECT * FROM mrp_estacion WHERE plantaid = '{$this->intPlanta}' AND lineaid = '{$this->intLinea}' AND nombre_estacion = '{$this->strNombre}' ";
 		$request = $this->select_all($sql);
 
 		if (empty($request)) {
@@ -126,15 +133,49 @@ public function generarClave(int $idLinea)
 
 
 
-	public function selectEstaciones()
-	{
-		$sql = "SELECT est.*, li.nombre_linea
-FROM  mrp_estacion AS est
-INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
-		WHERE est.estado != 0 ";
-		$request = $this->select_all($sql);
-		return $request;
-	}
+public function selectEstaciones()
+{
+    $sql = "SELECT 
+                est.*, 
+                li.nombre_linea,
+
+                /* ID del último mantenimiento (o NULL si no existe) */
+                mem.idmantenimiento AS id_mantenimiento,
+
+                /* Tipo de mantenimiento (o 1 si no tiene ninguno) */
+                COALESCE(mem.mantenimiento, 1) AS estacion_mantenimiento
+
+            FROM mrp_estacion AS est
+            INNER JOIN mrp_linea AS li 
+                ON est.lineaid = li.idlinea
+
+            /* Último mantenimiento por estación */
+            LEFT JOIN (
+                SELECT 
+                    m1.estacionid,
+                    m1.idmantenimiento,
+                    m1.mantenimiento
+                FROM mrp_estacion_mantenimiento m1
+                INNER JOIN (
+                    SELECT 
+                        estacionid,
+                        MAX(idmantenimiento) AS ultimo_mto
+                    FROM mrp_estacion_mantenimiento
+                    GROUP BY estacionid
+                ) m2 
+                    ON m1.estacionid   = m2.estacionid
+                   AND m1.idmantenimiento = m2.ultimo_mto
+            ) AS mem 
+                ON mem.estacionid = est.idestacion
+
+            WHERE est.estado != 0;
+";
+
+    $request = $this->select_all($sql);
+    return $request;
+}
+
+
 
 	public function selectOptionPlantas()
 	{
@@ -165,7 +206,7 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 	}
 
 
-	public function updateEstacion($idestacion, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $estado)
+	public function Mantenimiento($idestacion, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $estado)
 	{
 
 
@@ -183,7 +224,7 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 
 		// Verificar duplicado EXCLUYENDO el mismo registro
 		$sql = "SELECT * FROM mrp_estacion 
-            WHERE nombre_estacion = '{$this->strNombre}' 
+            WHERE plantaid = '{$this->intPlanta}' AND lineaid = '{$this->intLinea}' AND nombre_estacion = '{$this->strNombre}' 
               AND idestacion != {$this->intIdestacion}";
 		$request = $this->select_all($sql);
 
@@ -217,6 +258,101 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 			$request = "exist";
 		}
 
+		return $request;
+	}
+
+	
+
+
+		public function insertManteminiento($intIdEstacion, $tipoMantenimiento, $fechaProgramada, $fechaInicio, $fechaFin, $mantenimiento, $comentarios, $fecha_creacion)
+	{
+
+		$return = 0;
+		$this->intIdestacion = $intIdEstacion;
+		$this->strTipomantenimiento = $tipoMantenimiento;
+		$this->strFechaProgramada = $fechaProgramada;
+		$this->strfechaInicio = $fechaInicio;
+		$this->strfechaFin = $fechaFin;
+		$this->intEstatus = $mantenimiento;
+		$this->strcomentarios = $comentarios;
+		$this->strfecha_creacion = $fecha_creacion;
+
+
+			$query_insert = "INSERT INTO mrp_estacion_mantenimiento(estacionid,tipo,fecha_programada,fecha_inicio,fecha_fin,comentarios,fecha_creacion,mantenimiento) VALUES(?,?,?,?,?,?,?,?)";
+			$arrData = array(
+				$this->intIdestacion,
+				$this->strTipomantenimiento,
+				$this->strFechaProgramada,
+				$this->strfechaInicio,
+				$this->strfechaFin,
+				$this->strcomentarios,
+				$this->strfecha_creacion,
+				$this->intEstatus
+			);
+			$request_insert = $this->insert($query_insert, $arrData);
+			$return = $request_insert;
+
+		return $return;
+
+	}
+
+	public function updateEstacionMantenimiento(int $idestacion){
+
+		$this->intIdestacion = $idestacion;
+		$sql = "UPDATE mrp_estacion SET estado = ? WHERE idestacion = $this->intIdestacion ";
+		$arrData = array(3);
+		$request = $this->update($sql, $arrData);
+		return $request;
+
+	}
+
+
+
+		public function selectMantenimiento(int $idmantenimiento)
+	{
+		$this->intIdmantenimiento = $idmantenimiento;
+		$sql = "SELECT * FROM  mrp_estacion_mantenimiento WHERE idmantenimiento = $this->intIdmantenimiento";
+		$request = $this->select($sql);
+		return $request;
+	}
+
+
+
+	public function updateMantenimiento(int $intIdMantenimiento, $tipoMantenimiento, $fechaProgramada, $fechaInicio, $fechaFin, $mantenimiento, $comentarios)
+	{
+
+		$this->intIdmantenimiento = $intIdMantenimiento;
+
+		$this->strTipomantenimiento = $tipoMantenimiento;
+		$this->strFechaProgramada = $fechaProgramada;
+		$this->strfechaInicio = $fechaInicio;
+		$this->strfechaFin = $fechaFin;
+		$this->intEstatus = $mantenimiento;
+		$this->strcomentarios = $comentarios;
+
+
+
+
+		$sql = "UPDATE mrp_estacion_mantenimiento SET tipo = ?, fecha_programada = ?, fecha_inicio = ?, fecha_fin = ?, comentarios = ?, mantenimiento=? WHERE idmantenimiento  = $this->intIdmantenimiento ";
+		$arrData = array(
+			$this->strTipomantenimiento,
+			$this->strFechaProgramada,
+			$this->strfechaInicio,
+			$this->strfechaFin,
+			$this->strcomentarios,
+            $this->intEstatus
+		);
+		$request = $this->update($sql, $arrData);
+		return $request;
+
+	}
+
+
+		public function MantenimientoByEstacion(int $idestacion)
+	{
+		$this->intIdestacion = $idestacion;
+		$sql = "SELECT * FROM mrp_estacion_mantenimiento WHERE estacionid = $this->intIdestacion";
+		$request = $this->select_all($sql);
 		return $request;
 	}
 

@@ -154,7 +154,7 @@ class Cap_plantas extends Controllers
     		public function getSelectPlantas(){
 		$htmlOptions = '<option value="" selected>--Seleccione--</option>';
 			$arrData = $this->model->selectOptionPlantas();
-			if(count($arrData) > 0 ){
+			if(count($arrData) > 0 ){ 
 				for ($i=0; $i < count($arrData); $i++) { 
 					if($arrData[$i]['estado'] == 2 ){
 					$htmlOptions .= '<option value="'.$arrData[$i]['idplanta'].'">'.$arrData[$i]['cve_planta']. ' - '.$arrData[$i]['nombre_planta'].'</option>';

@@ -115,7 +115,7 @@
                                      <?php } ?>
                                       <?php if(!empty($_SESSION['permisos'][4]['r'])){ ?>
                                     <li class="nav-item">
-                                        <a href="<?= base_url(); ?>/pcapacidad"  class="nav-link" data-key="t-detached">Capacidad</a>
+                                        <a href="<?= base_url(); ?>/pla_productos"  class="nav-link" data-key="t-detached">Productos</a>
                                     </li>
                                        <?php } ?>
                                            <?php if(!empty($_SESSION['permisos'][5]['r'])){ ?>

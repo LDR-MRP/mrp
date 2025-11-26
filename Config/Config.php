@@ -63,7 +63,7 @@
 
 	//Submodulos Planeación
 	const MPBOM = 3;
-	const MPCAPACIDAD = 4;
+	const MPPRODUCTOS = 4;
 	const MPDEMANDA = 5;
 	const MPORDENES = 6;
 
