@@ -23,6 +23,7 @@ class Cap_estacionesModel extends Mysql
 	public $strcomentarios;
 	public $strfecha_creacion;
 	public $intIdmantenimiento;
+	public $intHerramientas;
 
 
 	public function __construct()
@@ -85,7 +86,7 @@ public function generarClave(int $idLinea)
 
 
 
-	public function insertEstacion($claveUnica, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $fecha_creacion, $estado)
+	public function insertEstacion($claveUnica, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $fecha_creacion, $requiereHerramientas, $estado)
 	{
 
 		$return = 0;
@@ -100,6 +101,7 @@ public function generarClave(int $idLinea)
 		$this->strMx = $mxinput;
 		$this->strDescripcion = $descripcion;
 		$this->strFecha = $fecha_creacion;
+		$this->intHerramientas = $requiereHerramientas;
 		$this->intEstatus = $estado;
 
 
@@ -107,7 +109,7 @@ public function generarClave(int $idLinea)
 		$request = $this->select_all($sql);
 
 		if (empty($request)) {
-			$query_insert = "INSERT INTO mrp_estacion(cve_estacion,plantaid,lineaid,nombre_estacion,proceso,estandar,unidad_medida,tiempo_ajuste,mxn,descripcion,fecha_creacion,estado) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)";
+			$query_insert = "INSERT INTO mrp_estacion(cve_estacion,plantaid,lineaid,nombre_estacion,proceso,estandar,unidad_medida,tiempo_ajuste,mxn,descripcion,fecha_creacion,herramientas,estado) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)";
 			$arrData = array(
 				$this->strClave,
 				$this->intPlanta,
@@ -120,6 +122,7 @@ public function generarClave(int $idLinea)
 				$this->strMx,
 				$this->strDescripcion,
 				$this->strFecha,
+				$this->intHerramientas,
 				$this->intEstatus
 			);
 			$request_insert = $this->insert($query_insert, $arrData);

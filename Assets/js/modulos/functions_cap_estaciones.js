@@ -365,6 +365,10 @@ function fntEditInfo(idestacion) {
             if (!descripcion) descripcion = document.querySelector('#descripcion-estacion-textarea');
 
 
+          const radiosHerramientas  = document.querySelectorAll('input[name="requiere_herramientas"]');
+
+
+
 
 
             if (estacion) estacion.value = objData.data.idestacion;
@@ -379,6 +383,14 @@ function fntEditInfo(idestacion) {
             if (selectLineas) selectLineas.value = objData.data.lineaid;
             if (estado) estado.value = objData.data.estado;
             if (descripcion) descripcion.value = objData.data.descripcion;
+
+          if (radiosHerramientas && radiosHerramientas.length > 0) {
+    radiosHerramientas.forEach(radio => {
+        if (radio.value == objData.data.herramientas) {
+            radio.checked = true;
+        }
+    });
+}
 
             // Cambiar al tab de captura
             if (firstTab) firstTab.show();

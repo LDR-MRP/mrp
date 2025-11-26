@@ -116,14 +116,14 @@ class Cap_estaciones extends Controllers
 
                     //Crear 
                     if ($_SESSION['permisosMod']['w']) {
-                        $request_estacion = $this->model->insertEstacion($claveUnica, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $fecha_creacion, $estado);
+                        $request_estacion = $this->model->insertEstacion($claveUnica, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $fecha_creacion, $requiereHerramientas, $estado);
                         $option = 1;
                     }
 
                 } else {
                     //Actualizar
                     if ($_SESSION['permisosMod']['u']) {
-                        $request_estacion = $this->model->updateEstacion($intIdEstacion, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $estado);
+                        $request_estacion = $this->model->updateEstacion($intIdEstacion, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $requiereHerramientas, $estado);
                         $option = 2;
                     }
                 }
