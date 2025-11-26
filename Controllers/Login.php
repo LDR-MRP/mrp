@@ -20,7 +20,7 @@
 			$data['page_functions_js'] = "functions_login.js";
 			$this->views->getView($this,"login",$data);
 		}
-
+ 
 		public function loginUser(){
 			//dep($_POST);
 			if($_POST){
@@ -34,7 +34,7 @@
 						$arrResponse = array('status' => false, 'msg' => 'El usuario o la contraseña es incorrecto.' ); 
 					}else{
 						$arrData = $requestUser;
-						if($arrData['status'] == 1){
+						if($arrData['status'] == 1){ 
 							$_SESSION['idUser'] = $arrData['idusuario'];
 							$_SESSION['login'] = true; 
 
@@ -43,7 +43,8 @@
 							 $evento = 'Inicio de Sesión';
                             $ip = $_SERVER['REMOTE_ADDR'];
                             $detalle = $_SERVER['HTTP_USER_AGENT'];
-                            $this->model->registrarAcceso($_SESSION['idUser'],$evento, $ip, $detalle);
+							$fecha_creacion = date('Y-m-d H:i:s');
+                            $this->model->registrarAcceso($_SESSION['idUser'],$evento, $ip, $detalle, $fecha_creacion);
 
 							sessionUser($_SESSION['idUser']);							
 							$arrResponse = array('status' => true, 'msg' => 'ok');

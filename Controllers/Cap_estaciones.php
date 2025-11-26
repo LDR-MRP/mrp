@@ -133,7 +133,7 @@ class Cap_estaciones extends Controllers
 
                     $arrResponse = array('status' => false, 'msg' => '¡Atención! La estación ya existe.');
 
-                } else if ($request_estacion > 0) {
+                } else if ($request_estacion > 0) {  
 
                     if ($option == 1) {
                         $arrResponse = array('status' => true, 'msg' => 'La información se ha registrado exitosamente', 'tipo' => 'insert');
@@ -296,6 +296,8 @@ class Cap_estaciones extends Controllers
                 $intIdMantenimiento = intval($_POST['idmantenimiento']);
                 $intIdEstacion = intval($_POST['idestacionmto']);
 
+               
+               $responsable = strClean($_POST['responsable-mantenimiento-input']);
                 $tipoMantenimiento = strClean($_POST['tipo_mantenimiento']);
                 $fechaProgramada = strClean($_POST['fecha_programada']);
                 $fechaInicio = strClean($_POST['fecha_inicio']);
@@ -313,7 +315,7 @@ class Cap_estaciones extends Controllers
 
                     //Crear 
                     // if ($_SESSION['permisosMod']['w']) {
-                    $request_mantenimiento = $this->model->insertManteminiento($intIdEstacion, $tipoMantenimiento, $fechaProgramada, $fechaInicio, $fechaFin, $mantenimiento, $comentarios, $fecha_creacion);
+                    $request_mantenimiento = $this->model->insertManteminiento($intIdEstacion, $responsable, $tipoMantenimiento, $fechaProgramada, $fechaInicio, $fechaFin, $mantenimiento, $comentarios, $fecha_creacion);
                     $option = 1;
 
 
@@ -322,7 +324,7 @@ class Cap_estaciones extends Controllers
                 } else {
                     //Actualizar
                     // if ($_SESSION['permisosMod']['u']) {
-                    $request_mantenimiento = $this->model->updateMantenimiento($intIdMantenimiento, $tipoMantenimiento, $fechaProgramada, $fechaInicio, $fechaFin, $mantenimiento, $comentarios);
+                    $request_mantenimiento = $this->model->updateMantenimiento($intIdMantenimiento, $responsable, $tipoMantenimiento, $fechaProgramada, $fechaInicio, $fechaFin, $mantenimiento, $comentarios);
                     $option = 2;
                     // }
                 }

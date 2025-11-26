@@ -46,10 +46,10 @@
 			return $request;
 		}
 
-		    public function registrarAcceso($idusuario, $evento, $ip, $detalle)
+		    public function registrarAcceso($idusuario, $evento, $ip, $detalle, $fecha)
     {
-        $sql = "INSERT INTO login_logs (idusuario, evento, ip, detalle) VALUES (?,?,?,?)";
-        $array = array($idusuario, $evento, $ip, $detalle);
+        $sql = "INSERT INTO login_logs (idusuario, evento, ip, detalle, fecha) VALUES (?,?,?,?,?)";
+        $array = array($idusuario, $evento, $ip, $detalle, $fecha);
         return $this->insert($sql, $array);
     }
 

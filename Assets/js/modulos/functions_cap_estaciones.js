@@ -2,8 +2,8 @@ let tableEstaciones;
 let rowTable = "";
 let divLoading = null;
 
-
-let estacion = null;  // #idestacion (hidden)
+// Inputs generales estación
+let estacion = null;      // #idestacion (hidden)
 let idestacion = null;
 let idmantenimiento = null;
 let nombre = null;
@@ -17,25 +17,22 @@ let selectLineas = null;
 let estado = null;
 let descripcion = null;
 
-
 // Referencias globales para tabs y botón
 let primerTab = null;
 let firstTab = null;
-let tabNuevo = null; // elemento <a> del tab "NUEVO/ACTUALIZAR"
-let spanBtnText = null; // span del botón (REGISTRAR / ACTUALIZAR)
+let tabNuevo = null;      // elemento <a> del tab "NUEVO/ACTUALIZAR"
+let spanBtnText = null;   // span del botón (REGISTRAR / ACTUALIZAR)
 let formEstaciones = null;
 
-
+// Campos de mantenimiento
 let tipoMantenimientoSelect = null;
 let fechaProgramadaGroup = null;
 let fechaProgramadaInput = null;
 let fechaInicioInput = null;
 let fechaFinInput = null;
-let descripcionTxt = null;
 let comentarios = null;
 
 document.addEventListener('DOMContentLoaded', function () {
-
 
     // --------------------------------------------------------------------
     //  REFERENCIAS BÁSICAS
@@ -43,7 +40,6 @@ document.addEventListener('DOMContentLoaded', function () {
     divLoading = document.querySelector("#divLoading");
     formEstaciones = document.querySelector("#formEstaciones");
     spanBtnText = document.querySelector('#btnText');
-
 
     estacion = document.querySelector('#idestacion');
     idestacion = document.querySelector('#idestacion');
@@ -58,37 +54,25 @@ document.addEventListener('DOMContentLoaded', function () {
     estado = document.querySelector('#estado-select');
     descripcion = document.querySelector('#descripcion-estacion-textarea');
 
+    // Mantenimiento
     tipoMantenimientoSelect = document.querySelector('#tipo_mantenimiento');
     fechaProgramadaGroup = document.querySelector('#grupo-fecha-programada');
-
-
     fechaProgramadaInput = document.querySelector('#fecha_programada');
     fechaInicioInput = document.querySelector('#fecha_inicio');
     fechaFinInput = document.querySelector('#fecha_fin');
     comentarios = document.querySelector('#comentarios');
 
-
-    let tiposConFecha = ['preventivo', 'calibracion', 'predictivo'];
-
-
-
-
-
-
-
-
-
     // Si este JS se carga en una vista donde no existe el form, salimos
     if (!formEstaciones) {
-        console.warn('formEstaciones no encontrado. JS de lineas no se inicializa en esta vista.');
+        console.warn('formEstaciones no encontrado. JS de estaciones no se inicializa en esta vista.');
         return;
     }
 
     // --------------------------------------------------------------------
-    //  CARGAR PLANTAS  POR AJAX
+    //  CARGAR PLANTAS POR AJAX
     // --------------------------------------------------------------------
-    // fntLineas(); 
     fntPlantas();
+
     // --------------------------------------------------------------------
     //  DATATABLE ESTACIONES
     // --------------------------------------------------------------------
@@ -122,7 +106,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-
     // --------------------------------------------------------------------
     //  TABS BOOTSTRAP (solo si existen)
     // --------------------------------------------------------------------
@@ -130,49 +113,38 @@ document.addEventListener('DOMContentLoaded', function () {
     const firstTabElp = document.querySelector('#nav-tab a[href="#agregarEstacion"]');
 
     if (primerTabElp && firstTabElp && spanBtnText) {
-        // IMPORTANTE: NO usar "let" aquí, usamos las globales
         primerTab = new bootstrap.Tab(primerTabElp); // LISTA
-        firstTab = new bootstrap.Tab(firstTabElp);  // NUEVO / ACTUALIZAR
-        tabNuevo = firstTabElp;                     // elemento del tab
+        firstTab = new bootstrap.Tab(firstTabElp);    // NUEVO / ACTUALIZAR
+        tabNuevo = firstTabElp;
 
         // CLICK EN "NUEVO" → MODO NUEVO
         tabNuevo.addEventListener('click', () => {
             tabNuevo.textContent = 'NUEVO';
             spanBtnText.textContent = 'REGISTRAR';
-            estacion.value = '';
+            if (estacion) estacion.value = '';
             formEstaciones.reset();
             if (selectLineas) selectLineas.value = '';
             if (selectPlantas) selectPlantas.value = '';
-
         });
 
         // CLICK EN "LISTA" → RESET
         primerTabElp.addEventListener('click', () => {
-            estacion.value = '';
+            if (estacion) estacion.value = '';
             tabNuevo.textContent = 'NUEVO';
             spanBtnText.textContent = 'REGISTRAR';
             formEstaciones.reset();
             if (selectLineas) selectLineas.value = '';
             if (selectPlantas) selectPlantas.value = '';
-
         });
     } else {
-        console.warn('Tabs de lineas no encontrados o btnText faltante.');
+        console.warn('Tabs de estaciones no encontrados o btnText faltante.');
     }
 
     // --------------------------------------------------------------------
-    //  SUBMIT FORM 
+    //  SUBMIT FORM ESTACIONES
     // --------------------------------------------------------------------
     formEstaciones.addEventListener('submit', function (e) {
         e.preventDefault(); // evitar envío por URL
-
-
-
-        // Validar planta si aplica
-        // if (selectLineas && selectLineas.value === '') {
-        //     Swal.fire("Aviso", "Debes seleccionar una planta.", "warning");
-        //     return;
-        // }
 
         if (divLoading) divLoading.style.display = "flex";
 
@@ -215,10 +187,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         allowEscapeKey: false
                     }).then((result) => {
 
-                        // Siempre recargamos el DataTable
                         if (tableEstaciones) tableEstaciones.ajax.reload();
 
-                        // Modo NUEVO nuevamente
                         formEstaciones.reset();
                         if (selectPlantas) selectPlantas.value = '';
                         if (selectLineas) selectLineas.value = '';
@@ -227,11 +197,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (tabNuevo) tabNuevo.textContent = 'NUEVO';
 
                         if (!result.isConfirmed && primerTab) {
-                            // Regresar al listado
                             primerTab.show();
                         }
-
                     });
+
                 } else {
                     // UPDATE
                     Swal.fire({
@@ -259,64 +228,137 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     });
 
-
-
-
-    tipoMantenimientoSelect.addEventListener('change', function () {
-        const mostrar = this.value === 'preventivo'
-            || this.value === 'calibracion'
-            || this.value === 'predictivo';
-
-        if (mostrar) {
-            fechaProgramadaGroup.classList.remove('d-none');
-            fechaProgramadaInput.required = true;   // lo hace obligatorio
-        } else {
-            fechaProgramadaGroup.classList.add('d-none');
-            fechaProgramadaInput.required = false;  // deja de ser obligatorio
-            fechaProgramadaInput.value = '';        // limpia el valor
-        }
-    });
+    // --------------------------------------------------------------------
+    //  VALIDACIONES DE FECHAS DE MANTENIMIENTO
+    // --------------------------------------------------------------------
+    // *** NUEVO: función helper para obtener hoy en formato YYYY-MM-DD
+function getTodayYMD() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
 
 
 
+    if (tipoMantenimientoSelect) {
+        tipoMantenimientoSelect.addEventListener('change', function () {
+            const value = this.value;
 
-    //NUEVA MANTENIMEINTO
-    let formMantenimiento = document.querySelector("#formMantenimiento");
-    formMantenimiento.onsubmit = function (e) {
-        e.preventDefault();
+            const aplicaFechaProgramada =
+                value === 'preventivo' ||
+                value === 'calibracion' ||
+                value === 'predictivo';
 
-        divLoading.style.display = "flex";
-        let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-        let ajaxUrl = base_url + '/Cap_estaciones/setMantenimiento';
-        let formData = new FormData(formMantenimiento);
-        request.open("POST", ajaxUrl, true);
-        request.send(formData);
-        request.onreadystatechange = function () {
-            if (request.readyState == 4 && request.status == 200) {
-
-                let objData = JSON.parse(request.responseText);
-                if (objData.status) {
-
-                    if (tableEstaciones) tableEstaciones.ajax.reload();
-                    $('#modalMantenimiento').modal("hide");
-                    formMantenimiento.reset();
-
-                } else {
-                    swal("Error", objData.msg, "error");
+            if (aplicaFechaProgramada) {
+                // Mostrar y hacer obligatoria fecha_programada
+                if (fechaProgramadaGroup) fechaProgramadaGroup.classList.remove('d-none');
+                if (fechaProgramadaInput) {
+                    fechaProgramadaInput.required = true;
+                    // *** NUEVO: bloquear fechas anteriores a hoy
+                    fechaProgramadaInput.min = getTodayYMD();
                 }
+            } else {
+                if (fechaProgramadaGroup) fechaProgramadaGroup.classList.add('d-none');
+                if (fechaProgramadaInput) {
+                    fechaProgramadaInput.required = false;
+                    fechaProgramadaInput.value = '';
+                    fechaProgramadaInput.removeAttribute('min');
+                }
+                // Si no aplica, también limpiar restricciones de inicio
+                if (fechaInicioInput) fechaInicioInput.removeAttribute('min');
             }
-            divLoading.style.display = "none";
-            return false;
+        });
+    }
+
+    // *** NUEVO: cuando cambia fecha_programada, fecha_inicio solo puede ser desde ahí en adelante
+    if (fechaProgramadaInput && fechaInicioInput) {
+        fechaProgramadaInput.addEventListener('change', function () {
+            const fechaProg = this.value;
+            if (!fechaProg) {
+                fechaInicioInput.removeAttribute('min');
+                return;
+            }
+
+            // fecha_inicio a partir de fecha_programada
+            fechaInicioInput.min = fechaProg;
+
+            // Si ya tenía fecha_inicio menor a programada, la ajustamos
+            if (fechaInicioInput.value && fechaInicioInput.value < fechaProg) {
+                fechaInicioInput.value = fechaProg;
+            }
+
+            // Opcional: también podrías ajustar fecha_fin si ya existía
+            if (fechaFinInput && fechaFinInput.value && fechaFinInput.value < fechaProg) {
+                fechaFinInput.value = fechaProg;
+            }
+        });
+    }
+
+    // *** NUEVO: siempre que seleccione fecha_inicio,
+    // fecha_fin se habilita solo a partir de esa fecha hacia adelante.
+    if (fechaInicioInput && fechaFinInput) {
+        fechaInicioInput.addEventListener('change', function () {
+            const fechaIni = this.value;
+            if (!fechaIni) {
+                fechaFinInput.removeAttribute('min');
+                return;
+            }
+
+            // fecha_fin a partir de fecha_inicio
+            fechaFinInput.min = fechaIni;
+
+            // Si ya tenía fecha_fin menor, la ajustamos
+            if (fechaFinInput.value && fechaFinInput.value < fechaIni) {
+                fechaFinInput.value = fechaIni;
+            }
+        });
+    }
+
+    // --------------------------------------------------------------------
+    //  FORM MANTENIMIENTO (NUEVO / UPDATE)
+    // --------------------------------------------------------------------
+    let formMantenimiento = document.querySelector("#formMantenimiento");
+    if (formMantenimiento) {
+        formMantenimiento.onsubmit = function (e) {
+            e.preventDefault();
+
+            if (divLoading) divLoading.style.display = "flex";
+
+            let request = (window.XMLHttpRequest)
+                ? new XMLHttpRequest()
+                : new ActiveXObject('Microsoft.XMLHTTP');
+
+            let ajaxUrl = base_url + '/Cap_estaciones/setMantenimiento';
+            let formData = new FormData(formMantenimiento);
+
+            request.open("POST", ajaxUrl, true);
+            request.send(formData);
+
+            request.onreadystatechange = function () {
+                if (request.readyState == 4 && request.status == 200) {
+
+                    let objData = JSON.parse(request.responseText);
+                    if (objData.status) {
+
+                        if (tableEstaciones) tableEstaciones.ajax.reload();
+                        $('#modalMantenimiento').modal("hide");
+                        formMantenimiento.reset();
+                        Swal.fire("¡Mantenimiento!", objData.msg, "success");
+
+                    } else {
+                        swal("Error", objData.msg, "error");
+                    }
+                }
+                if (divLoading) divLoading.style.display = "none";
+                return false;
+            }
         }
     }
 
-
-
-
-
 }, false);
-
 
 // ------------------------------------------------------------------------
 // FUNCIÓN EDITAR ESTACION 
@@ -327,7 +369,6 @@ function fntEditInfo(idestacion) {
     if (tabNuevo) tabNuevo.textContent = 'ACTUALIZAR';
     if (spanBtnText) spanBtnText.textContent = "ACTUALIZAR";
 
-    // Opcional: limpiar antes de llenar
     if (formEstaciones) formEstaciones.reset();
 
     let request = (window.XMLHttpRequest)
@@ -350,49 +391,42 @@ function fntEditInfo(idestacion) {
 
         if (objData.status) {
 
-            // Asegurarnos de tener las referencias por si el DOM cambió
+            // Cargar líneas de la planta y seleccionar la línea
+            fntLineas(objData.data.plantaid, objData.data.lineaid);
+
+            // Asegurarnos de tener las referencias
             if (!estacion) estacion = document.querySelector('#idestacion');
             if (!nombre) nombre = document.querySelector('#nombre-estacion-input');
-
             if (!proceso) proceso = document.querySelector('#proceso-estacion-input');
             if (!estandar) estandar = document.querySelector('#estandar-input');
             if (!unidaddmedida) unidaddmedida = document.querySelector('#unidad-medida-select');
             if (!tiempo) tiempo = document.querySelector('#tiempo-ajuste-input');
             if (!mx) mx = document.querySelector('#mx-input');
-
-            if (!selectLineas) selectLineas = document.querySelector('#listLineas');
+            if (!selectPlantas) selectPlantas = document.querySelector('#listPlantas');
             if (!estado) estado = document.querySelector('#estado-select');
             if (!descripcion) descripcion = document.querySelector('#descripcion-estacion-textarea');
 
-
-          const radiosHerramientas  = document.querySelectorAll('input[name="requiere_herramientas"]');
-
-
-
-
+            const radiosHerramientas = document.querySelectorAll('input[name="requiere_herramientas"]');
 
             if (estacion) estacion.value = objData.data.idestacion;
             if (nombre) nombre.value = objData.data.nombre_estacion;
-
             if (proceso) proceso.value = objData.data.proceso;
             if (estandar) estandar.value = objData.data.estandar;
             if (unidaddmedida) unidaddmedida.value = objData.data.unidad_medida;
             if (tiempo) tiempo.value = objData.data.tiempo_ajuste;
             if (mx) mx.value = objData.data.mxn;
             if (selectPlantas) selectPlantas.value = objData.data.plantaid;
-            if (selectLineas) selectLineas.value = objData.data.lineaid;
             if (estado) estado.value = objData.data.estado;
             if (descripcion) descripcion.value = objData.data.descripcion;
 
-          if (radiosHerramientas && radiosHerramientas.length > 0) {
-    radiosHerramientas.forEach(radio => {
-        if (radio.value == objData.data.herramientas) {
-            radio.checked = true;
-        }
-    });
-}
+            if (radiosHerramientas && radiosHerramientas.length > 0) {
+                radiosHerramientas.forEach(radio => {
+                    if (radio.value == objData.data.herramientas) {
+                        radio.checked = true;
+                    }
+                });
+            }
 
-            // Cambiar al tab de captura
             if (firstTab) firstTab.show();
 
         } else {
@@ -414,7 +448,7 @@ function fntDelInfo(idestacion) {
                 colors="primary:#f7b84b,secondary:#f06548" 
                 style="width:100px;height:100px">
             </lord-icon>
-
+ 
             <div class="mt-4 pt-2 fs-15 mx-5">
                 <h4>Confirmar eliminación</h4>
                 <p class="text-muted mx-4 mb-0">
@@ -465,7 +499,7 @@ function fntDelInfo(idestacion) {
 }
 
 // ------------------------------------------------------------------------
-//  VER EL DETALLE DE LA ESTACION 
+//  VER EL DETALLE DE LA ESTACION (PLANTA?)
 // ------------------------------------------------------------------------
 function fntViewPlanta(idestacion) {
     let request = (window.XMLHttpRequest)
@@ -502,8 +536,8 @@ function fntViewPlanta(idestacion) {
 //  VER EL CATALOGO DE PLANTAS
 // ------------------------------------------------------------------------
 function fntPlantas(selectedValue = "") {
-    const selectPlantas = document.querySelector('#listPlantas');
-    if (selectPlantas) {
+    const selectPlantasLocal = document.querySelector('#listPlantas');
+    if (selectPlantasLocal) {
         let ajaxUrl = base_url + '/Cap_plantas/getSelectPlantas';
         let request = (window.XMLHttpRequest) ?
             new XMLHttpRequest() :
@@ -513,41 +547,35 @@ function fntPlantas(selectedValue = "") {
         request.send();
         request.onreadystatechange = function () {
             if (request.readyState == 4 && request.status == 200) {
-                // Rellenamos el select de plantas
-                selectPlantas.innerHTML = request.responseText;
+                selectPlantasLocal.innerHTML = request.responseText;
 
-                // Si viene un valor seleccionado, lo marcamos
                 if (selectedValue !== "") {
-                    selectPlantas.value = selectedValue;
+                    selectPlantasLocal.value = selectedValue;
                 }
 
-                // Cargar líneas de la planta seleccionada al inicio
-                if (selectPlantas.value !== "") {
-                    fntLineas(selectPlantas.value);
+                if (selectPlantasLocal.value !== "") {
+                    fntLineas(selectPlantasLocal.value);
                 }
             }
         }
 
-        // AQUÍ APLICAMOS EL onchange
-        selectPlantas.addEventListener('change', function () {
+        selectPlantasLocal.addEventListener('change', function () {
             const idPlanta = this.value;
-            fntLineas(idPlanta); // Cargamos las líneas de esa planta
+            fntLineas(idPlanta);
         });
     }
 }
-
 
 // ------------------------------------------------------------------------
 //  VER EL CATALOGO DE LÍNEAS
 // ------------------------------------------------------------------------
 function fntLineas(idPlanta, selectedLinea = "") {
-    const selectLineas = document.querySelector('#listLineas');
+    const selectLineasLocal = document.querySelector('#listLineas');
 
-    if (!selectLineas) return;
+    if (!selectLineasLocal) return;
 
-    // Si no hay planta seleccionada, limpiamos las líneas
     if (!idPlanta) {
-        selectLineas.innerHTML = '<option value="">--Seleccione--</option>';
+        selectLineasLocal.innerHTML = '<option value="">--Seleccione--</option>';
         return;
     }
 
@@ -560,20 +588,17 @@ function fntLineas(idPlanta, selectedLinea = "") {
     request.send();
     request.onreadystatechange = function () {
         if (request.readyState == 4 && request.status == 200) {
-            // El controlador debe regresar los <option> ya listos
-            selectLineas.innerHTML = request.responseText;
+            selectLineasLocal.innerHTML = request.responseText;
 
-            // Si quieres preseleccionar alguna línea
             if (selectedLinea !== "") {
-                selectLineas.value = selectedLinea;
+                selectLineasLocal.value = selectedLinea;
             }
         }
     }
 }
 
-
 // ------------------------------------------------------------------------
-//  VER EL DETALLE DE LA LA ESTACION
+//  VER EL DETALLE DE LA ESTACION
 // ------------------------------------------------------------------------
 function fntViewLinea(idestacion) {
     let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
@@ -609,8 +634,6 @@ function fntViewLinea(idestacion) {
     }
 }
 
-
-
 // ------------------------------------------------------------------------
 //  MOSTRAR MODAL DE MANTENIMIENTO
 // ------------------------------------------------------------------------
@@ -622,24 +645,29 @@ function fntAddMantenimiento(idestacion) {
     if (titleModal) titleModal.innerHTML = "Registrar Mantenimiento";
     if (btnText) btnText.innerHTML = "Registrar";
 
-    document.querySelector("#formMantenimiento").reset();
+    const formMantenimiento = document.querySelector("#formMantenimiento");
+    if (formMantenimiento) formMantenimiento.reset();
+
     const modal = document.getElementById('modalMantenimiento');
-    const inputidEstacions = modal.querySelector('#idestacionmto');
+    const inputidEstacions = modal ? modal.querySelector('#idestacionmto') : null;
     if (inputidEstacions) inputidEstacions.value = idestacion || '';
 
+    // *** NUEVO: recalcular estado de fecha_programada/inputs al abrir
+    if (tipoMantenimientoSelect) {
+        tipoMantenimientoSelect.dispatchEvent(new Event('change'));
+    }
 
     cargarHistoricoMantenimientos(idestacion);
-
-
 
     activarTabAgregar();
     $('#modalMantenimiento').modal('show');
 }
 
-
+// ------------------------------------------------------------------------
+//  EDITAR MANTENIMIENTO
+// ------------------------------------------------------------------------
 function fnteditMantenimiento(idmantenimiento) {
 
-    // Título y texto del botón del modal
     const titleModal = document.querySelector('#titleModalMto');
     const btnText = document.querySelector('#btnTextMto');
 
@@ -657,29 +685,29 @@ function fnteditMantenimiento(idmantenimiento) {
 
             if (objData.status) {
 
-
                 const inputIdEstacion = document.querySelector('#idestacionmto');
+                 const strresponsable = document.querySelector('#responsable-mantenimiento-input');
                 const inputIdmantenimiento = document.querySelector('#idmantenimiento');
-                const tipoMantenimientoSelect = document.querySelector('#tipo_mantenimiento');
-                const fechaProgramadaInput = document.querySelector('#fecha_programada');
-                const fechaInicioInput = document.querySelector('#fecha_inicio');
-                const fechaFinInput = document.querySelector('#fecha_fin');
+                const tipoMantenimientoSelectLocal = document.querySelector('#tipo_mantenimiento');
+                const fechaProgramadaInputLocal = document.querySelector('#fecha_programada');
+                const fechaInicioInputLocal = document.querySelector('#fecha_inicio');
+                const fechaFinInputLocal = document.querySelector('#fecha_fin');
                 const estadoSelect = document.querySelector('#estado-mantenimiento-select');
                 const comentariosInput = document.querySelector('#comentarios');
 
-
                 if (inputIdEstacion) inputIdEstacion.value = objData.data.estacionid;
+                     if (strresponsable) strresponsable.value = objData.data.responsable;
                 if (inputIdmantenimiento) inputIdmantenimiento.value = objData.data.idmantenimiento;
-                if (tipoMantenimientoSelect) tipoMantenimientoSelect.value = objData.data.tipo;
-                if (fechaProgramadaInput) fechaProgramadaInput.value = objData.data.fecha_programada;
-                if (fechaInicioInput) fechaInicioInput.value = objData.data.fecha_inicio;
-                if (fechaFinInput) fechaFinInput.value = objData.data.fecha_fin;
+                if (tipoMantenimientoSelectLocal) tipoMantenimientoSelectLocal.value = objData.data.tipo;
+                if (fechaProgramadaInputLocal) fechaProgramadaInputLocal.value = objData.data.fecha_programada;
+                if (fechaInicioInputLocal) fechaInicioInputLocal.value = objData.data.fecha_inicio;
+                if (fechaFinInputLocal) fechaFinInputLocal.value = objData.data.fecha_fin;
                 if (estadoSelect) estadoSelect.value = objData.data.mantenimiento;
                 if (comentariosInput) comentariosInput.value = objData.data.comentarios;
 
-
-                if (tipoMantenimientoSelect) {
-                    tipoMantenimientoSelect.dispatchEvent(new Event('change'));
+                // Disparar la lógica de ocultar/mostrar fecha_programada y restricciones
+                if (tipoMantenimientoSelectLocal) {
+                    tipoMantenimientoSelectLocal.dispatchEvent(new Event('change'));
                 }
 
                 if (objData.data.estacionid) {
@@ -695,7 +723,9 @@ function fnteditMantenimiento(idmantenimiento) {
     }
 }
 
-
+// ------------------------------------------------------------------------
+//  CARGAR HISTÓRICO DE MANTENIMIENTOS
+// ------------------------------------------------------------------------
 function cargarHistoricoMantenimientos(idEstacion) {
     const tbody = document.querySelector('#tableHistoricoMantenimiento tbody');
 
@@ -718,9 +748,32 @@ function cargarHistoricoMantenimientos(idEstacion) {
 
             if (objData.status && Array.isArray(objData.data) && objData.data.length > 0) {
 
+
+
                 let html = "";
 
                 objData.data.forEach(function (mto, index) {
+
+                                    let badgeEstado = "";
+switch (String(mto.mantenimiento)) {
+    case "2":
+        badgeEstado = '<span class="badge bg-warning">Pendiente</span>';
+        break;
+    case "3":
+        badgeEstado = '<span class="badge bg-info">En proceso</span>';
+        break;
+    case "4":
+        badgeEstado = '<span class="badge bg-success">Finalizado</span>';
+        break;
+    case "5":
+        badgeEstado = '<span class="badge bg-danger">Cancelado</span>';
+        break;
+    default:
+        badgeEstado = '<span class="badge bg-secondary">Sin estatus</span>';
+        break;
+}
+
+
                     html += `
                         <tr>
                             <td>${mto.idmantenimiento}</td>
@@ -728,7 +781,8 @@ function cargarHistoricoMantenimientos(idEstacion) {
                             <td>${mto.fecha_inicio ?? ''}</td>
                             <td>${mto.fecha_fin ?? ''}</td>
                             <td>${mto.comentarios ?? ''}</td>
-                            <td>${mto.estado_texto ?? ''}</td>
+                            <td>${mto.responsable ?? ''}</td>
+                            <td>${badgeEstado}</td>
                         </tr>
                     `;
                 });
@@ -746,33 +800,26 @@ function cargarHistoricoMantenimientos(idEstacion) {
     }
 }
 
-
+// ------------------------------------------------------------------------
+//  ACTIVAR TAB AGREGAR MANTENIMIENTO
+// ------------------------------------------------------------------------
 function activarTabAgregar() {
-    // Contenido del tab
     const paneAgregar = document.getElementById("pane-agregar-mto");
-    // Botón del tab
     const tabAgregar = document.getElementById("tab-agregar-mto");
 
     if (paneAgregar && tabAgregar) {
-        // Quitar clases activas a todos los tabs
         document.querySelectorAll('#nav-tab-mto button').forEach(btn => {
             btn.classList.remove('active');
             btn.setAttribute('aria-selected', 'false');
         });
 
-        // Quitar clases activas a todos los panes
         document.querySelectorAll('#nav-tabContent-mto .tab-pane').forEach(pane => {
             pane.classList.remove('show', 'active');
         });
 
-        // Activar el tab AGREGAR
         tabAgregar.classList.add('active');
         tabAgregar.setAttribute('aria-selected', 'true');
 
-        // Activar el pane AGREGAR
         paneAgregar.classList.add('show', 'active');
     }
 }
-
-
-

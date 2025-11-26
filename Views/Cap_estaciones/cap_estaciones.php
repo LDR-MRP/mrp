@@ -532,6 +532,16 @@
                             aria-labelledby="tab-agregar-mto" tabindex="0">
 
                             <div class="row">
+
+                                     <div class="col-lg-12">
+                                    <label class="form-label" for="responsable-mantenimiento-input">RESPONSABLE</label>
+                                    <div class="input-group mb-3">
+                                    <input type="text" class="form-control" id="responsable-mantenimiento-input" name="responsable-mantenimiento-input">
+                                         <div class="invalid-feedback">El campo responsable es obligatorio</div>
+                                    </div>
+                                </div>
+
+
                                 <div class="col-lg-12">
                                     <label class="form-label" for="tipo_mantenimiento">TIPO DE MANTENIMIENTO</label>
                                     <div class="input-group mb-3">
@@ -615,6 +625,7 @@
                                             <th>Fecha inicio</th>
                                             <th>Fecha fin</th>
                                             <th>Comentarios</th>
+                                              <th>Responsable</th>
                                             <th>Estado</th>
                                         </tr>
                                     </thead>

@@ -24,7 +24,7 @@ class Cap_estacionesModel extends Mysql
 	public $strfecha_creacion;
 	public $intIdmantenimiento;
 	public $intHerramientas;
-
+public $strResponsable;
 
 	public function __construct()
 	{
@@ -267,11 +267,12 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 	
 
 
-		public function insertManteminiento($intIdEstacion, $tipoMantenimiento, $fechaProgramada, $fechaInicio, $fechaFin, $mantenimiento, $comentarios, $fecha_creacion)
+		public function insertManteminiento($intIdEstacion, $responsable, $tipoMantenimiento, $fechaProgramada, $fechaInicio, $fechaFin, $mantenimiento, $comentarios, $fecha_creacion)
 	{
 
 		$return = 0;
 		$this->intIdestacion = $intIdEstacion;
+		$this->strResponsable = $responsable;
 		$this->strTipomantenimiento = $tipoMantenimiento;
 		$this->strFechaProgramada = $fechaProgramada;
 		$this->strfechaInicio = $fechaInicio;
@@ -281,9 +282,10 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 		$this->strfecha_creacion = $fecha_creacion;
 
 
-			$query_insert = "INSERT INTO mrp_estacion_mantenimiento(estacionid,tipo,fecha_programada,fecha_inicio,fecha_fin,comentarios,fecha_creacion,mantenimiento) VALUES(?,?,?,?,?,?,?,?)";
+			$query_insert = "INSERT INTO mrp_estacion_mantenimiento(estacionid,responsable,tipo,fecha_programada,fecha_inicio,fecha_fin,comentarios,fecha_creacion,mantenimiento) VALUES(?,?,?,?,?,?,?,?,?)";
 			$arrData = array(
 				$this->intIdestacion,
+				$this->strResponsable,
 				$this->strTipomantenimiento,
 				$this->strFechaProgramada,
 				$this->strfechaInicio,
@@ -321,11 +323,11 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 
 
 
-	public function updateMantenimiento(int $intIdMantenimiento, $tipoMantenimiento, $fechaProgramada, $fechaInicio, $fechaFin, $mantenimiento, $comentarios)
+	public function updateMantenimiento(int $intIdMantenimiento, $responsable, $tipoMantenimiento, $fechaProgramada, $fechaInicio, $fechaFin, $mantenimiento, $comentarios)
 	{
 
 		$this->intIdmantenimiento = $intIdMantenimiento;
-
+       $this->strResponsable = $responsable;
 		$this->strTipomantenimiento = $tipoMantenimiento;
 		$this->strFechaProgramada = $fechaProgramada;
 		$this->strfechaInicio = $fechaInicio;
@@ -336,8 +338,9 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 
 
 
-		$sql = "UPDATE mrp_estacion_mantenimiento SET tipo = ?, fecha_programada = ?, fecha_inicio = ?, fecha_fin = ?, comentarios = ?, mantenimiento=? WHERE idmantenimiento  = $this->intIdmantenimiento ";
+		$sql = "UPDATE mrp_estacion_mantenimiento SET responsable=?, tipo = ?, fecha_programada = ?, fecha_inicio = ?, fecha_fin = ?, comentarios = ?, mantenimiento=? WHERE idmantenimiento  = $this->intIdmantenimiento ";
 		$arrData = array(
+			$this->strResponsable,
 			$this->strTipomantenimiento,
 			$this->strFechaProgramada,
 			$this->strfechaInicio,
