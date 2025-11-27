@@ -39,25 +39,25 @@
                             <div class="collapse menu-dropdown" id="sidebarDashboards">
                                 <ul class="nav nav-sm flex-column">
                                     <li class="nav-item">
-                                        <a href="dashboard-analytics.html" class="nav-link" data-key="t-analytics"> Analytics </a>
+                                        <a href="#" class="nav-link" data-key="t-analytics"> Analytics </a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="dashboard-crm.html" class="nav-link" data-key="t-crm"> CRM </a>
+                                        <a href="#" class="nav-link" data-key="t-crm"> CRM </a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="index.html" class="nav-link" data-key="t-ecommerce"> Ecommerce </a>
+                                        <a href="#" class="nav-link" data-key="t-ecommerce"> Ecommerce </a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="dashboard-crypto.html" class="nav-link" data-key="t-crypto"> Crypto </a>
+                                        <a href="#" class="nav-link" data-key="t-crypto"> Crypto </a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="dashboard-projects.html" class="nav-link" data-key="t-projects"> Projects </a>
+                                        <a href="#" class="nav-link" data-key="t-projects"> Projects </a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="dashboard-nft.html" class="nav-link" data-key="t-nft"> NFT</a>
+                                        <a href="#" class="nav-link" data-key="t-nft"> NFT</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a href="dashboard-job.html" class="nav-link" data-key="t-job">Job</a>
+                                        <a href="#" class="nav-link" data-key="t-job">Job</a>
                                     </li>
                                 </ul>
                             </div>
@@ -86,10 +86,10 @@
                                         <div class="collapse menu-dropdown" id="sidebarTickets">
                                             <ul class="nav nav-sm flex-column">
                                                 <li class="nav-item">
-                                                    <a href="apps-tickets-list.html" class="nav-link" data-key="t-list-view"> Listado</a>
+                                                    <a href="#" class="nav-link" data-key="t-list-view"> Listado</a>
                                                 </li>
                                                 <li class="nav-item">
-                                                    <a href="apps-tickets-details.html" class="nav-link" data-key="t-ticket-details"> Tickets de soporte </a>
+                                                    <a href="#" class="nav-link" data-key="t-ticket-details"> Tickets de soporte </a>
                                                 </li>
                                             </ul>
                                         </div>
@@ -198,17 +198,17 @@
                                 <ul class="nav nav-sm flex-column">
                                      <?php if(!empty($_SESSION['permisos'][9]['r'])){ ?>
                                     <li class="nav-item">
-                                        <a href="layouts-horizontal.html" target="_blank" class="nav-link" data-key="t-horizontal">BOM</a>
+                                        <a href="#"  class="nav-link" data-key="t-horizontal">BOM</a>
                                     </li>
                                      <?php } ?>
                                           <?php if(!empty($_SESSION['permisos'][10]['r'])){ ?>
                                     <li class="nav-item">
-                                        <a href="layouts-detached.html" target="_blank" class="nav-link" data-key="t-detached">Lead times</a>
+                                        <a href="#"  class="nav-link" data-key="t-detached">Lead times</a>
                                     </li>
                                        <?php } ?>
                                        <?php if(!empty($_SESSION['permisos'][11]['r'])){ ?>
                                         <li class="nav-item">
-                                        <a href="layouts-detached.html" target="_blank" class="nav-link" data-key="t-detached">MRP run</a>
+                                        <a href="#"  class="nav-link" data-key="t-detached">MRP run</a>
                                     </li>
                                        <?php } ?>
                                 </ul>
@@ -224,17 +224,17 @@
                                 <ul class="nav nav-sm flex-column">
                                       <?php if(!empty($_SESSION['permisos'][12]['r'])){ ?>
                                     <li class="nav-item">
-                                        <a href="layouts-horizontal.html" target="_blank" class="nav-link" data-key="t-horizontal">Liberación</a>
+                                        <a href="#"  class="nav-link" data-key="t-horizontal">Liberación</a>
                                     </li>
                                       <?php } ?>
                                         <?php if(!empty($_SESSION['permisos'][13]['r'])){ ?>
                                     <li class="nav-item">
-                                        <a href="layouts-detached.html" target="_blank" class="nav-link" data-key="t-detached">Seguimiento</a>
+                                        <a href="#"  class="nav-link" data-key="t-detached">Seguimiento</a>
                                     </li>
                                         <?php } ?>
                                                 <?php if(!empty($_SESSION['permisos'][14]['r'])){ ?>
                                         <li class="nav-item">
-                                        <a href="layouts-detached.html" target="_blank" class="nav-link" data-key="t-detached">Cierre</a>
+                                        <a href="#"  class="nav-link" data-key="t-detached">Cierre</a>
                                     </li>
                                        <?php } ?>
                                 </ul>
@@ -252,17 +252,17 @@
                                 <ul class="nav nav-sm flex-column">
                                      <?php if(!empty($_SESSION['permisos'][15]['r'])){ ?>
                                     <li class="nav-item">
-                                        <a href="layouts-horizontal.html" target="_blank" class="nav-link" data-key="t-horizontal">Calendario de producción</a>
+                                        <a href="#" class="nav-link" data-key="t-horizontal">Calendario de producción</a>
                                     </li> 
                                      <?php } ?>
                                        <?php if(!empty($_SESSION['permisos'][16]['r'])){ ?>
                                     <li class="nav-item">
-                                        <a href="layouts-detached.html" target="_blank" class="nav-link" data-key="t-detached">Requerimientos</a>
+                                        <a href="#" class="nav-link" data-key="t-detached">Requerimientos</a>
                                     </li>
                                      <?php } ?>
                                         <?php if(!empty($_SESSION['permisos'][17]['r'])){ ?>
                                         <li class="nav-item">
-                                        <a href="layouts-detached.html" target="_blank" class="nav-link" data-key="t-detached">Transferencias</a>
+                                        <a href="#" class="nav-link" data-key="t-detached">Transferencias</a>
                                     </li>
                                      <?php } ?>
 
