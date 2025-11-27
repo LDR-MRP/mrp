@@ -1,8 +1,7 @@
 <?php 
 
-	class Inv_lineasdproductoModel extends Mysql
+	class Inv_inventarioModel extends Mysql
 	{
-
 
 		public function __construct()
 		{
