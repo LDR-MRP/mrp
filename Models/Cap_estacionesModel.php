@@ -24,7 +24,14 @@ class Cap_estacionesModel extends Mysql
 	public $strfecha_creacion;
 	public $intIdmantenimiento;
 	public $intHerramientas;
+	public $intModulo;
+	public $intAccion;
+	public $intIdUsuario;
+	public $strTabla;
+	public $intIdregistro;
 public $strResponsable;
+public $strip;
+public $strDetalle;
 
 	public function __construct()
 	{
@@ -82,6 +89,38 @@ public function generarClave(int $idLinea)
 
     // 3. Construir clave final: PL01-LN01-ES01, PL01-LN01-ES02...
     return $prefijo . str_pad($numero, 2, '0', STR_PAD_LEFT);
+}
+
+
+public function insertAuditoria($modulo, $accion, $id_usuario, $tabla, $idregistro, $fecha_creacion, $ip, $detalle){
+
+	
+		$return = 0;
+		$this->intModulo= $modulo;
+		$this->intAccion = $accion; 
+		$this->intIdUsuario = $id_usuario;
+		$this->strTabla = $tabla;
+		$this->intIdregistro = $idregistro;
+		$this->strfecha_creacion = $fecha_creacion;
+			$this->strip = $ip;
+				$this->strDetalle = $detalle;
+
+			$query_insert = "INSERT INTO mrp_auditoria(idmodulo,idaccion,idusuario,tabla_afectada,id_registro,fecha_hora,ip,navegador) VALUES(?,?,?,?,?,?,?,?)";
+			$arrData = array(
+				$this->intModulo,
+				$this->intAccion,
+				$this->intIdUsuario,
+				$this->strTabla,
+				$this->intIdregistro,
+				$this->strfecha_creacion,
+				$this->strip,
+				$this->strDetalle
+			);
+			$request_insert = $this->insert($query_insert, $arrData);
+			$return = $request_insert;
+
+		return $return;
+
 }
 
 
@@ -209,7 +248,7 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 	}
 
 
-	public function Mantenimiento($idestacion, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $estado)
+	public function updateEstacion($idestacion, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $requiereHerramientas, $estado)
 	{
 
 
@@ -223,6 +262,7 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 		$this->strTiempo = $tiempoajuste;
 		$this->strMx = $mxinput;
 		$this->strDescripcion = $descripcion;
+		$this->intHerramientas = $requiereHerramientas;
 		$this->intEstatus = $estado;
 
 		// Verificar duplicado EXCLUYENDO el mismo registro
@@ -242,6 +282,7 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 					tiempo_ajuste = ?,
 					mxn = ?,
 					descripcion = ?,
+					herramientas = ?,
 					estado = ?
                 WHERE idestacion = {$this->intIdestacion}";
 			$arrData = array(
@@ -254,6 +295,7 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 				$this->strTiempo,
 				$this->strMx,
 				$this->strDescripcion,
+				$this->intHerramientas,
 				$this->intEstatus
 			);
 			$request = $this->update($sql, $arrData);

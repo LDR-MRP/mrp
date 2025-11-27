@@ -10,7 +10,7 @@ class Cap_estaciones extends Controllers
             header('Location: ' . base_url() . '/login');
             die();
         }
-        getPermisos(MCLINEAS);
+        getPermisos(MCESTACIONESTRABAJO);
     }
 
     public function Cap_estaciones()
@@ -81,78 +81,186 @@ class Cap_estaciones extends Controllers
 
     public function setEstacion()
     {
+        if (!$_POST) {
+            // Si quieres, podrías devolver algo aquí también
+            return;
+        }
 
+        // --------------------------------------------------------------------
+        //  Datos de auditoría
+        // --------------------------------------------------------------------
+        $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $fechaEvento = date('Y-m-d H:i:s'); // para auditoría y creación
 
-        if ($_POST) {
-            if (
-                empty($_POST['nombre-estacion-input'])
-                || empty($_POST['listLineas'])
-                || empty($_POST['estado-select'])
-            ) {
-                $arrResponse = array("status" => false, "msg" => 'Datos incorrectos.');
-            } else {
+        // --------------------------------------------------------------------
+        //  Validación básica de campos obligatorios
+        // --------------------------------------------------------------------
+        if (
+            empty($_POST['nombre-estacion-input']) ||
+            empty($_POST['listLineas']) ||
+            empty($_POST['estado-select'])
+        ) {
+            $arrResponse = array("status" => false, "msg" => 'Datos incorrectos.');
+            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+            return;
+        }
 
-                $intIdEstacion = intval($_POST['idestacion']);
-                $planta = intval($_POST['listPlantas']);
-                $linea = intval($_POST['listLineas']);
-                $nombre_estacion = strClean($_POST['nombre-estacion-input']);
-                $proceso = strClean($_POST['proceso-estacion-input']);
-                $estandar = strClean($_POST['estandar-input']);
-                $unidaddmedida = strClean($_POST['unidad-medida-select']);
-                $tiempoajuste = strClean($_POST['tiempo-ajuste-input']);
-                $mxinput = strClean($_POST['mx-input']);
-                $descripcion = strClean($_POST['descripcion-estacion-textarea']);
-                $estado = intval($_POST['estado-select']);
+        // --------------------------------------------------------------------
+        //  Limpieza y asignación de datos
+        // --------------------------------------------------------------------
+        $intIdEstacion = intval($_POST['idestacion'] ?? 0);
+        $planta = intval($_POST['listPlantas'] ?? 0);
+        $linea = intval($_POST['listLineas'] ?? 0);
+        $nombre_estacion = strClean($_POST['nombre-estacion-input']);
+        $proceso = strClean($_POST['proceso-estacion-input'] ?? '');
+        $estandar = strClean($_POST['estandar-input'] ?? '');
+        $unidaddmedida = strClean($_POST['unidad-medida-select'] ?? '');
+        $tiempoajuste = strClean($_POST['tiempo-ajuste-input'] ?? '');
+        $mxinput = strClean($_POST['mx-input'] ?? '');
+        $descripcion = strClean($_POST['descripcion-estacion-textarea'] ?? '');
+        $estado = intval($_POST['estado-select']);
 
-                $requiereHerramientas = intval($_POST['requiere_herramientas']);
+        // Si por alguna razón no viene el radio, lo dejamos en 0
+        $requiereHerramientas = isset($_POST['requiere_herramientas'])
+            ? intval($_POST['requiere_herramientas'])
+            : 0;
 
+        $request_estacion = null;
+        $option = 0;
 
+        // --------------------------------------------------------------------
+        //  Crear nueva estación
+        // --------------------------------------------------------------------
+        if ($intIdEstacion == 0) {
 
-
-                if ($intIdEstacion == 0) {
-
-                    $claveUnica = $this->model->generarClave($linea);
-                    $fecha_creacion = date('Y-m-d H:i:s');
-
-                    //Crear 
-                    if ($_SESSION['permisosMod']['w']) {
-                        $request_estacion = $this->model->insertEstacion($claveUnica, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $fecha_creacion, $requiereHerramientas, $estado);
-                        $option = 1;
-                    }
-
-                } else {
-                    //Actualizar
-                    if ($_SESSION['permisosMod']['u']) {
-                        $request_estacion = $this->model->updateEstacion($intIdEstacion, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $requiereHerramientas, $estado);
-                        $option = 2;
-                    }
-                }
-
-
-                if ($request_estacion === 'exist') {
-
-                    $arrResponse = array('status' => false, 'msg' => '¡Atención! La estación ya existe.');
-
-                } else if ($request_estacion > 0) {  
-
-                    if ($option == 1) {
-                        $arrResponse = array('status' => true, 'msg' => 'La información se ha registrado exitosamente', 'tipo' => 'insert');
-                    } else {
-                        $arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update');
-                    }
-
-                } else {
-
-                    $arrResponse = array("status" => false, "msg" => 'No es posible almacenar los datos.');
-                }
-
+            if (!$_SESSION['permisosMod']['w']) {
+                $arrResponse = array("status" => false, "msg" => 'No tiene permisos para registrar estaciones.');
                 echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            // Generar clave única por estación
+            $claveUnica = $this->model->generarClave($linea);
+
+            // Insertar estación
+            $request_estacion = $this->model->insertEstacion(
+                $claveUnica,
+                $planta,
+                $linea,
+                $nombre_estacion,
+                $proceso,
+                $estandar,
+                $unidaddmedida,
+                $tiempoajuste,
+                $mxinput,
+                $descripcion,
+                $fechaEvento,         
+                $requiereHerramientas,
+                $estado
+            );
+
+            $option = 1;
+
+            // Registro de auditoría solo si no hubo duplicado
+            if ($request_estacion > 0 && $request_estacion !== 'exist') {
+                $this->model->insertAuditoria(
+                    MCESTACIONESTRABAJO,
+                    1,                        
+                    $idusuario,
+                    'mrp_estacion',
+                    $request_estacion,      
+                    $fechaEvento,
+                    $ip,
+                    $detalle
+                );
+            }
+
+            // --------------------------------------------------------------------
+            //  Actualizar estación existente
+            // --------------------------------------------------------------------
+        } else {
+
+            if (!$_SESSION['permisosMod']['u']) {
+                $arrResponse = array("status" => false, "msg" => 'No tiene permisos para actualizar estaciones.');
+                echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            $request_estacion = $this->model->updateEstacion(
+                $intIdEstacion,
+                $planta,
+                $linea,
+                $nombre_estacion,
+                $proceso,
+                $estandar,
+                $unidaddmedida,
+                $tiempoajuste,
+                $mxinput,
+                $descripcion,
+                $requiereHerramientas,
+                $estado
+            );
+
+            $option = 2;
+
+            if ($request_estacion > 0 && $request_estacion !== 'exist') {
+                $this->model->insertAuditoria(
+                    MCESTACIONESTRABAJO,
+                    2,                  // acción: actualización
+                    $idusuario,
+                    'mrp_estacion',
+                    $intIdEstacion,     // id registro actualizado
+                    $fechaEvento,
+                    $ip,
+                    $detalle
+                );
             }
         }
+
+        // --------------------------------------------------------------------
+        //  Respuesta según resultado del modelo
+        // --------------------------------------------------------------------
+        if ($request_estacion === 'exist') {
+
+            $arrResponse = array(
+                'status' => false,
+                'msg' => '¡Atención! La estación ya existe.'
+            );
+
+        } elseif ($request_estacion > 0) {
+
+            if ($option == 1) {
+                $arrResponse = array(
+                    'status' => true,
+                    'msg' => 'La información se ha registrado exitosamente.',
+                    'tipo' => 'insert'
+                );
+            } else {
+                $arrResponse = array(
+                    'status' => true,
+                    'msg' => 'La información ha sido actualizada correctamente.',
+                    'tipo' => 'update'
+                );
+            }
+
+        } else {
+
+            $arrResponse = array(
+                "status" => false,
+                "msg" => 'No es posible almacenar los datos.'
+            );
+        }
+
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
     }
+
 
     public function getEstaciones()
     {
+
+
 
 
         if ($_SESSION['permisosMod']['r']) {
@@ -296,8 +404,8 @@ class Cap_estaciones extends Controllers
                 $intIdMantenimiento = intval($_POST['idmantenimiento']);
                 $intIdEstacion = intval($_POST['idestacionmto']);
 
-               
-               $responsable = strClean($_POST['responsable-mantenimiento-input']);
+
+                $responsable = strClean($_POST['responsable-mantenimiento-input']);
                 $tipoMantenimiento = strClean($_POST['tipo_mantenimiento']);
                 $fechaProgramada = strClean($_POST['fecha_programada']);
                 $fechaInicio = strClean($_POST['fecha_inicio']);
@@ -372,26 +480,26 @@ class Cap_estaciones extends Controllers
         die();
     }
 
-        public function getMantenimientosByEstacion($idestacion)
+    public function getMantenimientosByEstacion($idestacion)
     {
         // if ($_SESSION['permisosMod']['r']) {
-            $intIdestacion = intval($idestacion);
-            if ($intIdestacion > 0) {
-                $arrData = $this->model->MantenimientoByEstacion($intIdestacion);
-                if (empty($arrData)) {
-                    $arrResponse = array('status' => false, 'msg' => 'Datos no encontrados.');
-                } else {
+        $intIdestacion = intval($idestacion);
+        if ($intIdestacion > 0) {
+            $arrData = $this->model->MantenimientoByEstacion($intIdestacion);
+            if (empty($arrData)) {
+                $arrResponse = array('status' => false, 'msg' => 'Datos no encontrados.');
+            } else {
 
-                    $arrResponse = array('status' => true, 'data' => $arrData);
-                }
-                echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+                $arrResponse = array('status' => true, 'data' => $arrData);
             }
+            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        }
         // }
         die();
     }
 
 
-    
+
 
 
 

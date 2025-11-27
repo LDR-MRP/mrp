@@ -105,92 +105,42 @@
                                                     <div class="col-lg-6">
                                                         <div class="mb-3">
                                                             <label for="firstnameInput" class="form-label">Nombres</label>
-                                                            <input type="text" class="form-control" id="firstnameInput" placeholder="Enter your firstname" value="Dave">
+                                                            <input type="text" class="form-control" id="firstnameInput" placeholder="Enter your firstname" value="<?= $_SESSION['userData']['nombres']; ?>">
                                                         </div>
                                                     </div>
                                                     <!--end col-->
                                                     <div class="col-lg-6">
                                                         <div class="mb-3">
-                                                            <label for="lastnameInput" class="form-label">Last
-                                                                Name</label>
-                                                            <input type="text" class="form-control" id="lastnameInput" placeholder="Enter your lastname" value="Adame">
+                                                            <label for="lastnameInput" class="form-label">Apellidos
+                                                                </label>
+                                                            <input type="text" class="form-control" id="lastnameInput" placeholder="Enter your lastname" value="<?= $_SESSION['userData']['apellidos']; ?>">
                                                         </div>
                                                     </div>
                                                     <!--end col-->
                                                     <div class="col-lg-6">
                                                         <div class="mb-3">
-                                                            <label for="phonenumberInput" class="form-label">Phone
-                                                                Number</label>
-                                                            <input type="text" class="form-control" id="phonenumberInput" placeholder="Enter your phone number" value="+(1) 987 6543">
+                                                            <label for="phonenumberInput" class="form-label">Número de teléfono</label>
+                                                            <input type="text" class="form-control" id="phonenumberInput" placeholder="Enter your phone number" value="<?= $_SESSION['userData']['telefono']; ?>">
                                                         </div>
                                                     </div>
                                                     <!--end col-->
                                                     <div class="col-lg-6">
                                                         <div class="mb-3">
-                                                            <label for="emailInput" class="form-label">Email
-                                                                Address</label>
-                                                            <input type="email" class="form-control" id="emailInput" placeholder="Enter your email" value="daveadame@velzon.com">
+                                                            <label for="emailInput" class="form-label">Dirección de correo electrónico</label>
+                                                            <input type="email" class="form-control" id="emailInput" placeholder="Enter your email" value="<?= $_SESSION['userData']['email_user']; ?>">
                                                         </div>
                                                     </div>
                                                     <!--end col-->
                                                     <div class="col-lg-12">
                                                         <div class="mb-3">
-                                                            <label for="JoiningdatInput" class="form-label">Joining
-                                                                Date</label>
+                                                            <label for="JoiningdatInput" class="form-label">Fecha de ingreso</label>
                                                             <input type="text" class="form-control" data-provider="flatpickr" id="JoiningdatInput" data-date-format="d M, Y" data-deafult-date="24 Nov, 2021" placeholder="Select date" />
                                                         </div>
                                                     </div>
                                                     <!--end col-->
-                                                    <div class="col-lg-12">
-                                                        <div class="mb-3">
-                                                            <label for="skillsInput" class="form-label">Skills</label>
-                                                            <select class="form-control" name="skillsInput" data-choices data-choices-text-unique-true multiple id="skillsInput">
-                                                                <option value="illustrator">Illustrator</option>
-                                                                <option value="photoshop">Photoshop</option>
-                                                                <option value="css">CSS</option>
-                                                                <option value="html">HTML</option>
-                                                                <option value="javascript" selected>Javascript</option>
-                                                                <option value="python">Python</option>
-                                                                <option value="php">PHP</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <!--end col-->
-                                                    <div class="col-lg-6">
-                                                        <div class="mb-3">
-                                                            <label for="designationInput" class="form-label">Designation</label>
-                                                            <input type="text" class="form-control" id="designationInput" placeholder="Designation" value="Lead Designer / Developer">
-                                                        </div>
-                                                    </div>
-                                                    <!--end col-->
-                                                    <div class="col-lg-6">
-                                                        <div class="mb-3">
-                                                            <label for="websiteInput1" class="form-label">Website</label>
-                                                            <input type="text" class="form-control" id="websiteInput1" placeholder="www.example.com" value="www.velzon.com" />
-                                                        </div>
-                                                    </div>
-                                                    <!--end col-->
-                                                    <div class="col-lg-4">
-                                                        <div class="mb-3">
-                                                            <label for="cityInput" class="form-label">City</label>
-                                                            <input type="text" class="form-control" id="cityInput" placeholder="City" value="California" />
-                                                        </div>
-                                                    </div>
-                                                    <!--end col-->
-                                                    <div class="col-lg-4">
-                                                        <div class="mb-3">
-                                                            <label for="countryInput" class="form-label">Country</label>
-                                                            <input type="text" class="form-control" id="countryInput" placeholder="Country" value="United States" />
-                                                        </div>
-                                                    </div>
-                                                    <!--end col-->
-                                                    <div class="col-lg-4">
-                                                        <div class="mb-3">
-                                                            <label for="zipcodeInput" class="form-label">Zip
-                                                                Code</label>
-                                                            <input type="text" class="form-control" minlength="5" maxlength="6" id="zipcodeInput" placeholder="Enter zipcode" value="90011">
-                                                        </div>
-                                                    </div>
+
+
+
                                                     <!--end col-->
                                                     <div class="col-lg-12">
                                                         <div class="mb-3 pb-2">
