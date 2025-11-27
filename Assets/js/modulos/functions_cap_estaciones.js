@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --------------------------------------------------------------------
-    //  TABS BOOTSTRAP (solo si existen)
+    //  TABS BOOTSTRAP VER QUE EXITAAN
     // --------------------------------------------------------------------
     const primerTabElp = document.querySelector('#nav-tab a[href="#listEstaciones"]');
     const firstTabElp = document.querySelector('#nav-tab a[href="#agregarEstacion"]');
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (selectPlantas) selectPlantas.value = '';
         });
 
-        // CLICK EN "LISTA" → RESET
+        // CLICK EN "LISTA" → RESETE
         primerTabElp.addEventListener('click', () => {
             if (estacion) estacion.value = '';
             tabNuevo.textContent = 'NUEVO';
@@ -141,7 +141,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --------------------------------------------------------------------
-    //  SUBMIT FORM ESTACIONES
+    //  SUBMIT FORM ESTACIONES FORMSS
     // --------------------------------------------------------------------
     formEstaciones.addEventListener('submit', function (e) {
         e.preventDefault(); // evitar envío por URL
@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // --------------------------------------------------------------------
     //  VALIDACIONES DE FECHAS DE MANTENIMIENTO
     // --------------------------------------------------------------------
-    // *** NUEVO: función helper para obtener hoy en formato YYYY-MM-DD
+    // *** NUEVO: función 
 function getTodayYMD() {
     const today = new Date();
     const year = today.getFullYear();

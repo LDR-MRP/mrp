@@ -136,15 +136,50 @@
                                 <?php if(!empty($_SESSION['permisos'][7]['r']) || !empty($_SESSION['permisos'][8]['r'])){ ?>
                         <li class="nav-item">
                             <a class="nav-link menu-link" href="#sidebarRequerimientos" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarRequerimientos">
-                                <i data-feather="layout" class="icon-dual"></i> <span data-key="t-layouts">Requerimientos</span> 
+                                <i data-feather="layout" class="icon-dual"></i> <span data-key="t-layouts">Inventario</span> 
                             </a>
                             <div class="collapse menu-dropdown" id="sidebarRequerimientos">
                                 <ul class="nav nav-sm flex-column">
-                                    <?php if(!empty($_SESSION['permisos'][7]['r'])){ ?>
+                                    <?php 
+                                    /*
+                                    if(!empty($_SESSION['permisos'][7]['r'])){ ?>
                                     <li class="nav-item">
                                         <a href="<?= base_url(); ?>/rforecast"  class="nav-link" data-key="t-horizontal">Forecast</a>
                                     </li>
-                                       <?php } ?>
+                                       <?php } 
+                                       */
+                                       ?>
+
+                                    <?php if (!empty($_SESSION['permisos'][21]['r'])) { ?>
+                                        <li class="nav-item">
+                                            <a href="<?= base_url(); ?>/inv_lineasdproducto" class="nav-link" data-key="t-detached">Líneas de producto</a>
+                                        </li>
+                                    <?php } ?>
+                                    
+                                    <?php if (!empty($_SESSION['permisos'][22]['r'])) { ?>
+                                        <li class="nav-item">
+                                            <a href="<?= base_url(); ?>/inv_precios" class="nav-link" data-key="t-detached">Precios</a>
+                                        </li>
+                                    <?php } ?>
+                                    
+                                    <?php if (!empty($_SESSION['permisos'][23]['r'])) { ?>
+                                        <li class="nav-item">
+                                            <a href="<?= base_url(); ?>/inv_inventario" class="nav-link" data-key="t-detached">Inventario</a>
+                                        </li>
+                                    <?php } ?>
+                                        
+                                        <?php if (!empty($_SESSION['permisos'][24]['r'])) { ?>
+                                            <li class="nav-item">
+                                                <a href="<?= base_url(); ?>/inv_almacenes" class="nav-link" data-key="t-detached">Almacenes</a>
+                                            </li>
+                                        <?php } ?>
+                                        
+                                        <?php if (!empty($_SESSION['permisos'][25]['r'])) { ?>
+                                            <li class="nav-item">
+                                                <a href="<?= base_url(); ?>/inv_productossustitutos" class="nav-link" data-key="t-detached">Productos sustitutos</a>
+                                            </li>
+                                        <?php } ?>
+
                                         <?php if(!empty($_SESSION['permisos'][8]['r'])){ ?>
                                     <li class="nav-item">
                                         <a href="<?= base_url(); ?>/rpsemanal"  class="nav-link" data-key="t-detached">Programación Semanal</a>

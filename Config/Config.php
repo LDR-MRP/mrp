@@ -90,6 +90,14 @@
 	const MCESTACIONESTRABAJO = 19;
 	const MCPLANTAS = 20;
 
+		//Submodulos inventario
+const MILPRODUCTO = 21;//LINEAS DE PRODUCTO
+const MIPRECIOS = 22; //PRECIOS
+const MIINVENTARIO = 23;
+const MIALMACENES = 24;
+const MIPRODUCTOSSUSTITUTOS = 25;
+
+
 
 	const PERROR = 9;
 

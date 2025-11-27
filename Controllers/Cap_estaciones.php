@@ -25,64 +25,13 @@ class Cap_estaciones extends Controllers
         $this->views->getView($this, "cap_estaciones", $data);
     }
 
-    //CAPTURAR UNA NUEVA LÍNEA
-    // public function setEstacion()
-    // {
-    // 	if ($_POST) {
-    // 		if (
-    // 			empty($_POST['nombre-linea-input'])
-    // 			|| empty($_POST['proceso-linea-input'])
-    // 			|| empty($_POST['estandar-input'])
-    // 			|| empty($_POST['unidad-medida-input'])
-    // 			|| empty($_POST['merma-fija-input'])
-    // 			|| empty($_POST['merma-proceso-input'])
-    // 			|| empty($_POST['tiempo-ajuste-input'])
-    // 			|| empty($_POST['unidad-entrada-input'])
-    // 			|| empty($_POST['unidad-salida-input'])
-    // 			|| empty($_POST['usd-input'])
-    // 			|| empty($_POST['mx-input'])
-    // 			|| empty($_POST['estado-select'])
-    // 			|| empty($_POST['descripcion-linea-textarea'])
-
-    // 		) {
-    // 			$arrResponse = array("status" => false, "msg" => 'Datos incorrectos.');
-    // 		} else {
-
-    // 			$intIdestacion = intval($_POST['idestacion']);
-    // 			$strNombre = strClean($_POST['nombre-linea-input']);
-    // 			$strProceso = strClean($_POST['proceso-linea-input']);
-    // 			$strEstandar = strClean($_POST['estandar-input']);
-    // 			$strUnMedida = strClean($_POST['unidad-medida-input']);
-    // 			$strMermaFija = strClean($_POST['merma-fija-input']);
-    // 			$strMermaProceso = strClean($_POST['merma-proceso-input']);
-    // 			$strTiemajuste = strClean($_POST['tiempo-ajuste-inpu']);
-    // 			$strUnEntrada = strClean($_POST['unidad-entrada-input']);
-    // 			$strUnSalida = strClean($_POST['unidad-salida-input']);
-    // 			$strUSD = strClean($_POST['usd-input']);
-    // 			$strMX = strClean($_POST['mx-input']);
-    // 			$intEstatus = strClean($_POST['estado-select']);
-    // 			$strDescripcion = strClean($_POST['descripcion-linea-textarea']);
-
-    // 			if ($intIdestacion == 0) {
-
-    // 				$claveUnica = $this->model->generarClave();
-
-    // 					//Crear
-    // 					if($_SESSION['permisosMod']['w']){
-    // 						$request_cateria = $this->model->insertEstacion($claveUnica,$strNombre,$strProceso,$strEstandar,$strUnMedida,$strMermaFija,$strMermaProceso,$strTiemajuste,$strUnEntrada,$strUnSalida,$strUSD,$strMX,$intEstatus,$strDescripcion);
-    // 						$option = 1;
-    // 					}
-
-    // 			}
-    // 		}
-    // 	}
-    // }
+    //CAPTURAR UNA NUEVA ESTACIÓN
 
 
     public function setEstacion()
     {
         if (!$_POST) {
-            // Si quieres, podrías devolver algo aquí también
+          
             return;
         }
 
@@ -92,10 +41,10 @@ class Cap_estaciones extends Controllers
         $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
         $ip = $_SERVER['REMOTE_ADDR'] ?? '';
         $detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
-        $fechaEvento = date('Y-m-d H:i:s'); // para auditoría y creación
+        $fechaEvento = date('Y-m-d H:i:s'); 
 
         // --------------------------------------------------------------------
-        //  Validación básica de campos obligatorios
+        //  campos obligatorios
         // --------------------------------------------------------------------
         if (
             empty($_POST['nombre-estacion-input']) ||
@@ -272,7 +221,7 @@ class Cap_estaciones extends Controllers
                 $btnDelete = '';
                 $btnaddMantemimiento = '';
 
-                // Guardamos el estado numérico ORIGINAL
+              
                 $estado = intval($arrData[$i]['estado']);
 
                 $mantenimiento = intval($arrData[$i]['estacion_mantenimiento']);
