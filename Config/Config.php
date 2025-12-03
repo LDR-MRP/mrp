@@ -1,5 +1,5 @@
 <?php
-// BASE_URL = "http://mrp.com";
+//const BASE_URL = "http://mrp.com";
 const BASE_URL ="http://pruebasmrp.ldrhumanresources.com";
 //Zona horaria
 date_default_timezone_set('America/Mexico_City');

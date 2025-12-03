@@ -105,7 +105,7 @@ public function insertAuditoria($modulo, $accion, $id_usuario, $tabla, $idregist
 			$this->strip = $ip;
 				$this->strDetalle = $detalle;
 
-			$query_insert = "INSERT INTO mrp_auditoria(idmodulo,idaccion,idusuario,tabla_afectada,id_registro,fecha_hora,ip,navegador) VALUES(?,?,?,?,?,?,?,?)";
+			$query_insert = "INSERT INTO mrp_auditoria(moduloid,accionid,usuarioid,tabla_afectada,id_registro,fecha_hora,ip,navegador) VALUES(?,?,?,?,?,?,?,?)";
 			$arrData = array(
 				$this->intModulo,
 				$this->intAccion,
