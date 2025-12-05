@@ -64,7 +64,7 @@ const MDASHBOARD = 1;
 const MUSUARIOS = 2;
 
 //Submodulos Planeación
-const MPBOMCOMPONENTES = 6;
+const MPCONFPRODUCTOS = 6;
 const MPBOMCONTROL = 7;
 const MPPRODUCTOSTERMINADOS = 8;
 const MPPLANPRODUCCION = 9;

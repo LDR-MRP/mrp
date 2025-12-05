@@ -49,7 +49,7 @@ public function generarClave()
  
         $return = 0;
         $this->strClave = $claveUnica;
-        $this->strNombre = $nombre_planta;
+        $this->strNombre = $nombre_planta; 
         $this->strFecha = $fecha_creacion;
         $this->strDireccion = $direccion;
         $this-> intEstatus = $intEstatus;

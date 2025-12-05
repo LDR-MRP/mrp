@@ -110,7 +110,7 @@
                                 <ul class="nav nav-sm flex-column">
                                     <?php if(!empty($_SESSION['permisos'][6]['r'])){ ?>
                                     <li class="nav-item">
-                                        <a href="<?= base_url(); ?>/plan_bomcomponentes"  class="nav-link" data-key="t-horizontal">BOM - Componentes</a>
+                                        <a href="<?= base_url(); ?>/plan_confproductos"  class="nav-link" data-key="t-horizontal">Configuración de productos</a>
                                     </li>
                                      <?php } ?>
                                     <?php if(!empty($_SESSION['permisos'][7]['r'])){ ?>

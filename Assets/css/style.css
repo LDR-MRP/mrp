@@ -25,3 +25,46 @@
 	width: 50px;
 	height: 50px;
 }
+
+
+
+
+/* CONTENEDOR DEL SCROLL (franja de tabs) */
+.checkout-tab .step-arrow-nav {
+    overflow-x: auto !important;        /* fuerza scroll horizontal */
+    -webkit-overflow-scrolling: touch;  /* scroll suave */
+}
+
+/* UL de tabs en una sola fila */
+.checkout-tab .step-arrow-nav .custom-nav {
+    display: flex !important;
+    flex-wrap: nowrap !important;       /* que no bajen de línea */
+    white-space: nowrap !important;
+    gap: 4px;
+    padding-bottom: 6px;
+}
+
+/* Cada li no se estira, solo ocupa lo que necesita */
+.checkout-tab .step-arrow-nav .custom-nav .nav-item {
+    flex: 0 0 auto !important;
+}
+
+/* Opcional: estilito de scrollbar, NO afecta colores del tema */
+.checkout-tab .step-arrow-nav::-webkit-scrollbar {
+    height: 6px;
+}
+
+.checkout-tab .step-arrow-nav::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 8px;
+}
+
+
+.dropzone-hover {
+    border: 2px dashed #0d6efd;
+    background-color: rgba(13, 110, 253, 0.03);
+}
+
+
+
+
