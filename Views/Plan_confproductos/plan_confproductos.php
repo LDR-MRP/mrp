@@ -122,7 +122,7 @@
                                         </li>
 
                                         <!-- TAB: ESPECIFICACIONES CRÍTICAS -->
-                                        <li class="nav-item" role="presentation">
+                                        <!-- <li class="nav-item" role="presentation">
                                             <button class="nav-link fs-15 p-3" id="tab-especificaciones-criticas"
                                                 data-bs-toggle="pill" data-bs-target="#pane-especificaciones-criticas"
                                                 type="button" role="tab" aria-controls="pane-especificaciones-criticas"
@@ -131,7 +131,7 @@
                                                     class="ri-alert-line fs-16 p-2 bg-primary-subtle text-primary rounded-circle align-middle me-2"></i>
                                                 Especificaciones críticas
                                             </button>
-                                        </li>
+                                        </li> -->
 
                                         <!-- TAB: FINALIZADO -->
                                         <li class="nav-item" role="presentation">
@@ -160,7 +160,7 @@
 
                                         <form id="formConfProducto" name="formConfProducto"
                                             class="form-steps was-validated" autocomplete="off">
-                                            <input type="hidden" id="idproducto" name="idproducto">
+                                            <input type="text" id="idproducto" name="idproducto">
 
                                             <div class="row">
                                                 <!-- Producto -->
@@ -257,7 +257,7 @@
                                             <form id="formDocumentacion" name="formDocumentacion"
                                                 class="form-steps was-validated" autocomplete="off">
 
-                                                <input type="hidden" id="idproducto_documentacion"
+                                                <input type="text" id="idproducto_documentacion"
                                                     name="idproducto_documentacion">
 
                                                 <div class="row gy-5">
@@ -390,6 +390,8 @@
                                      
 
                                             <input type="text" id="idproducto_descriptiva" name="idproducto_descriptiva">
+
+                                            <input type="text" id="iddescriptiva" name="iddescriptiva">
 
 
                                             <!-- ========= FICHA TÉCNICA ========= -->
@@ -789,6 +791,7 @@
                                                     <i
                                                         class="ri-arrow-right-line label-icon align-middle fs-16 ms-2"></i>
                                                     <span id="btnText">REGISTRAR</span>
+                                                    
                                                 </button>
                                             </div>
                                         </form>
@@ -827,27 +830,15 @@
 
 
                                              <form id="formRutaProducto" class="form-steps was-validated" >
+
+                                             <input type="text" id="idproducto_proceso" name="idproducto_proceso">
+
+
                 <!-- Fila de producto / planta / línea -->
                 <div class="row g-3 mb-3">
-                    <!-- Producto -->
-                    <div class="col-lg-4 col-md-6">
-                        <label for="listProductos" class="form-label">Producto</label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-box-seam"></i></span>
-                            <select id="listProductos" name="listProductos" class="form-select" required>
-                                <option value="">Seleccione un producto...</option>
-                                <option value="PRD-001">Chasis ligero 1.6L</option>
-                                <option value="PRD-002">Camión urbano 4.5T</option>
-                                <option value="PRD-003">Pickup doble cabina</option>
-                            </select>
-                            <div class="invalid-feedback">
-                                Debe seleccionar un producto.
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Planta -->
-                    <div class="col-lg-4 col-md-6">
+                    <div class="col-lg-6 col-md-6">
                         <label for="listPlantasSelect" class="form-label">Planta</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-building"></i></span>
@@ -861,7 +852,7 @@
                     </div>
 
                     <!-- Línea -->
-                    <div class="col-lg-4 col-md-6">
+                    <div class="col-lg-6 col-md-6">
                         <label for="listLineasSelect" class="form-label">Línea de producción</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-diagram-3"></i></span>
@@ -982,7 +973,7 @@
                                     <!-- end pane procesos -->
 
                                     <!-- PESTAÑA: ESPECIFICACIONES CRÍTICAS -->
-                                    <div class="tab-pane fade" id="pane-especificaciones-criticas" role="tabpanel"
+                                    <!-- <div class="tab-pane fade" id="pane-especificaciones-criticas" role="tabpanel"
                                         aria-labelledby="tab-especificaciones-criticas">
                                         <div>
                                             <h5 class="mb-1">Especificaciones críticas</h5>
@@ -992,8 +983,7 @@
                                             </p>
                                         </div>
 
-                                        <!-- Tu contenido / formulario de especificaciones críticas aquí -->
-
+                         
                                         <div class="d-flex align-items-start gap-3 mt-4">
                                             <button type="button" class="btn btn-light btn-label previestab"
                                                 data-previous="tab-procesos">
@@ -1007,7 +997,7 @@
                                                 Ir a finalizado
                                             </button>
                                         </div>
-                                    </div>
+                                    </div> -->
                                     <!-- end pane especificaciones críticas -->
 
                                     <!-- PESTAÑA: FINALIZADO -->

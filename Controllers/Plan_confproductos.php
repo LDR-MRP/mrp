@@ -271,7 +271,7 @@ class Plan_confproductos extends Controllers
 					$insert = $this->model->insertDocumento($intIdProducto, $strTipoDocumento, $strDescripcion, $nombreDocumento, $fecha_creacion);
 
 					if ($insert > 0) {
-						$arrResponse = array('status' => true, 'msg' => '¡La información se ha registrado exitosamente!', 'tipo' => 'insert', 'idproducto' => $intIdProducto);
+						$arrResponse = array('status' => true, 'msg' => 'La información se ha registrado exitosamente.', 'tipo' => 'insert', 'idproducto' => $intIdProducto);
 						$this->model->insertAuditoria(
 							MPCONFPRODUCTOS,
 							1,
@@ -407,12 +407,6 @@ class Plan_confproductos extends Controllers
 
 
 		if ($_POST) {
-			if (
-				empty($_POST['idproducto_descriptiva'])
-				//AQUÍ VALIDAR DEL BACKEND PARA VER QUE CAMPOS SERÁN OBLIGATORIOS POR DEFUALT SERÁ EL IDPRODUCTO
-			) {
-				$arrResponse = array("status" => false, "msg" => 'Datos incorrectos .');
-			} else {
 
 				// --------------------------------------------------------------------
 				//  Datos de auditoría
@@ -424,8 +418,8 @@ class Plan_confproductos extends Controllers
 
 
 
-				$intIdproducto = intval($_POST['idproducto_descriptiva']);
-
+				$intIdDescriptiva = intval($_POST['iddescriptiva']);
+                $intProducto = intval($_POST['idproducto_descriptiva']);
 				$marca = strClean($_POST['txtMarca']);
 				$modelo = strClean($_POST['txtModelo']);
 				$largo_total = strClean($_POST['txtLargoTotal']);
@@ -451,7 +445,7 @@ class Plan_confproductos extends Controllers
 				$equipamiento = strClean($_POST['txtEquipamiento']);
 
 
-				if ($intIdproducto != 0) {
+				if ($intIdDescriptiva == 0) {
 
 					$fecha_creacion = date('Y-m-d H:i:s');
 					// $estado = 2;
@@ -459,7 +453,7 @@ class Plan_confproductos extends Controllers
 					//Crear 
 					// if ($_SESSION['permisosMod']['w']) {
 					$request_descriptiva = $this->model->insertDescriptiva(
-						$intIdproducto,
+						$intProducto,
 						$marca,
 						$modelo,
 						$largo_total,
@@ -492,14 +486,39 @@ class Plan_confproductos extends Controllers
 				} else {
 					//Actualizar
 					// if ($_SESSION['permisosMod']['u']) {
-					// $request_descriptiva = $this->model->updateProducto($intIdproducto, $inventarioid, $lineaproductoid, $descripcion, $estado);
+					 $request_descriptiva = $this->model->updateDescriptiva(
+						$intIdDescriptiva,
+						$marca,
+						$modelo,
+						$largo_total,
+						$distancia_ejes,
+						$peso_bruto_vehicular,
+						$motor,
+						$cilindros,
+						$desplazamiento_c,
+						$tipo_combustible,
+						$potencia,
+						$torque,
+						$transmision,
+						$eje_delantero,
+						$suspension_delantera,
+						$eje_trasero,
+						$suspension_trasera,
+						$llantas,
+						$sistema_frenos,
+						$asistencias,
+						$sistema_electrico,
+						$capacidad_combustible,
+						$direccion,
+						$equipamiento,
+					 );
 
-					// $option = 2;
+				$option = 2;
 					// }
 				}
 				if ($request_descriptiva > 0) {
 					if ($option == 1) {
-						$arrResponse = array('status' => true, 'msg' => 'La información se ha registrado exitosamente', 'tipo' => 'insert', 'idproducto' => $intIdproducto);
+						$arrResponse = array('status' => true, 'msg' => 'La información se ha registrado exitosamente.', 'tipo' => 'insert', 'iddescriptiva' => $request_descriptiva);
 						$this->model->insertAuditoria(
 							MPCONFPRODUCTOS,
 							1,
@@ -510,21 +529,49 @@ class Plan_confproductos extends Controllers
 							$ip,
 							$detalle
 						);
-						// } else {
-						// 	$arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update', 'idproducto' => $intIdproducto);
-						// }
+						} else {
+							$arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update', 'iddescriptiva' => $request_descriptiva);
+						}
 					} else {
 						$arrResponse = array("status" => false, "msg" => 'No es posible almacenar los datos.');
 					}
 
 					echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-				}
+				
 			}
 		}
+	
+		
+
+		// --------------------------------------------------------------------
+	// FUNCIÓN PARA OBTENER LOS DOCUMENTOS POR PRODUCTO
+	// --------------------------------------------------------------------
+
+	public function getDescriptiva($productoid)
+	{
+		$productoid = intval($productoid);
+		$arrData = $this->model->selectDescriptivaByProducto($productoid);
+		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+		die();
+
 	}
 
 
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 
+	// --------------------------------------------------------------------
+	// FUNCIONES PARA EL MODULO DE PROCESOS
+	// --------------------------------------------------------------------
+
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 
 
 	public function getSelectEstaciones($idlinea)

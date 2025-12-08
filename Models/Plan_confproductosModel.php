@@ -13,7 +13,7 @@ class Plan_confproductosModel extends Mysql
 	public $intIdDocumento;
 	public $strTipoDoc;
 
-		//////////////////////
+	//////////////////////
 	//AUDITORIA
 
 	public $intModulo;
@@ -27,32 +27,33 @@ class Plan_confproductosModel extends Mysql
 
 	//////////////////////
 	//DESRIPTIVA
+	public $intDescriptiva;
 	public $strMarca;
-public $strModelo;
-public $strLargoTotal;
-public $strDistanciaEjes;
-public $strPesoBrutoVehicular;
-public $strMotor;
-public $strCilindros;
-public $strDesplazamientoC;
-public $strDesplazamientoCilindros;
-public $strDesplazamiento;
-public $strTipoCombustible;
-public $strPotencia;
-public $strTorque;
-public $strTransmision;
-public $strEjeDelantero;
-public $strSuspensionDelantera;
-public $strEjeTrasero;
-public $strSuspensionTrasera;
-public $strLlantas;
-public $strSistemaFrenos;
-public $strAsistencias;
-public $strSistemaElectrico;
-public $strCapacidadCombustible;
-public $strDireccion;
-public $strEquipamiento;
-PUBLIC $intlinea;
+	public $strModelo;
+	public $strLargoTotal;
+	public $strDistanciaEjes;
+	public $strPesoBrutoVehicular;
+	public $strMotor;
+	public $strCilindros;
+	public $strDesplazamientoC;
+	public $strDesplazamientoCilindros;
+	public $strDesplazamiento;
+	public $strTipoCombustible;
+	public $strPotencia;
+	public $strTorque;
+	public $strTransmision;
+	public $strEjeDelantero;
+	public $strSuspensionDelantera;
+	public $strEjeTrasero;
+	public $strSuspensionTrasera;
+	public $strLlantas;
+	public $strSistemaFrenos;
+	public $strAsistencias;
+	public $strSistemaElectrico;
+	public $strCapacidadCombustible;
+	public $strDireccion;
+	public $strEquipamiento;
+	public $intlinea;
 
 
 
@@ -176,8 +177,9 @@ PUBLIC $intlinea;
 		return $return;
 	}
 
-	
-	public function updateProducto($intIdProducto, $inventarioid, $lineaproductoid, $descripcion, $estado){
+
+	public function updateProducto($intIdProducto, $inventarioid, $lineaproductoid, $descripcion, $estado)
+	{
 		$this->intIdProducto = $intIdProducto;
 		$this->intIdinventario = $inventarioid;
 		$this->intlineaproductoid = $lineaproductoid;
@@ -261,6 +263,17 @@ PUBLIC $intlinea;
 
 	}
 
+
+
+	public function selectDescriptivaByProducto($descriptivaid)
+	{
+		$this->intDescriptiva = $descriptivaid;
+		$sql = "SELECT * FROM mrp_productos_descriptiva WHERE iddescriptiva = $this->intDescriptiva ";
+		$request = $this->select_all($sql);
+		return $request;
+
+	}
+
 	public function deleteDocumento($iddocumento)
 	{
 
@@ -272,54 +285,88 @@ PUBLIC $intlinea;
 
 	}
 
-	
-		public function selectProducto(int $productoid){
-			$this->intIdProducto = $productoid;
-			$sql = "SELECT * FROM mrp_productos
-					WHERE idproducto = $this->intIdProducto";
-			$request = $this->select($sql);
-			return $request;
-		}
 
-
-public function insertDescriptiva(
-    $productoid, $marca, $modelo, $largo_total, $distancia_ejes, $peso_bruto_vehicular,
-    $motor, $cilindros, $desplazamiento_c, $tipo_combustible, $potencia, $torque, $transmision,
-    $eje_delantero, $suspension_delantera, $eje_trasero, $suspension_trasera, $llantas, $sistema_frenos,
-    $asistencias, $sistema_electrico, $capacidad_combustible, $direccion, $equipamiento, $fecha_creacion
-) {
-
-    $return = 0;
-
-    // Asignación de valores a propiedades
+public function selectProducto(int $productoid)
+{
     $this->intIdProducto = $productoid;
-    $this->strMarca = $marca;
-    $this->strModelo = $modelo;
-    $this->strLargoTotal = $largo_total;
-    $this->strDistanciaEjes = $distancia_ejes;
-    $this->strPesoBrutoVehicular = $peso_bruto_vehicular;
-    $this->strMotor = $motor;
-    $this->strCilindros = $cilindros;
-    $this->strDesplazamientoC = $desplazamiento_c;
-    $this->strTipoCombustible = $tipo_combustible;
-    $this->strPotencia = $potencia;
-    $this->strTorque = $torque;
-    $this->strTransmision = $transmision;
-    $this->strEjeDelantero = $eje_delantero;
-    $this->strSuspensionDelantera = $suspension_delantera;
-    $this->strEjeTrasero = $eje_trasero;
-    $this->strSuspensionTrasera = $suspension_trasera;
-    $this->strLlantas = $llantas;
-    $this->strSistemaFrenos = $sistema_frenos;
-    $this->strAsistencias = $asistencias;
-    $this->strSistemaElectrico = $sistema_electrico;
-    $this->strCapacidadCombustible = $capacidad_combustible;
-    $this->strDireccion = $direccion;
-    $this->strEquipamiento = $equipamiento;
-    $this->strFecha= $fecha_creacion;
+
+    $sql = "SELECT 
+                p.*, 
+                IFNULL(d.iddescriptiva, 0)   AS iddescriptiva,
+                IFNULL(r.idruta_producto, 0) AS idruta_producto
+            FROM mrp_productos AS p
+            LEFT JOIN mrp_productos_descriptiva AS d
+                ON d.productoid = p.idproducto
+            LEFT JOIN mrp_producto_ruta AS r
+                ON r.productoid = p.idproducto
+            WHERE p.idproducto = {$this->intIdProducto}";
+
+    $request = $this->select($sql);
+    return $request;
+}
 
 
-    $query_insert = "INSERT INTO mrp_productos_descriptiva(
+
+
+	public function insertDescriptiva(
+		$productoid,
+		$marca,
+		$modelo,
+		$largo_total,
+		$distancia_ejes,
+		$peso_bruto_vehicular,
+		$motor,
+		$cilindros,
+		$desplazamiento_c,
+		$tipo_combustible,
+		$potencia,
+		$torque,
+		$transmision,
+		$eje_delantero,
+		$suspension_delantera,
+		$eje_trasero,
+		$suspension_trasera,
+		$llantas,
+		$sistema_frenos,
+		$asistencias,
+		$sistema_electrico,
+		$capacidad_combustible,
+		$direccion,
+		$equipamiento,
+		$fecha_creacion
+	) {
+
+		$return = 0;
+
+		// Asignación de valores a propiedades
+		$this->intIdProducto = $productoid;
+		$this->strMarca = $marca;
+		$this->strModelo = $modelo;
+		$this->strLargoTotal = $largo_total;
+		$this->strDistanciaEjes = $distancia_ejes;
+		$this->strPesoBrutoVehicular = $peso_bruto_vehicular;
+		$this->strMotor = $motor;
+		$this->strCilindros = $cilindros;
+		$this->strDesplazamientoC = $desplazamiento_c;
+		$this->strTipoCombustible = $tipo_combustible;
+		$this->strPotencia = $potencia;
+		$this->strTorque = $torque;
+		$this->strTransmision = $transmision;
+		$this->strEjeDelantero = $eje_delantero;
+		$this->strSuspensionDelantera = $suspension_delantera;
+		$this->strEjeTrasero = $eje_trasero;
+		$this->strSuspensionTrasera = $suspension_trasera;
+		$this->strLlantas = $llantas;
+		$this->strSistemaFrenos = $sistema_frenos;
+		$this->strAsistencias = $asistencias;
+		$this->strSistemaElectrico = $sistema_electrico;
+		$this->strCapacidadCombustible = $capacidad_combustible;
+		$this->strDireccion = $direccion;
+		$this->strEquipamiento = $equipamiento;
+		$this->strFecha = $fecha_creacion;
+
+
+		$query_insert = "INSERT INTO mrp_productos_descriptiva(
         productoid, marca, modelo, largo_total, distancia_ejes, peso_bruto_vehicular,
         motor, cilindros, desplazamiento_c, tipo_combustible, potencia, torque, transmision,
         eje_delantero, suspension_delantera, eje_trasero, suspension_trasera, llantas, sistema_frenos,
@@ -327,50 +374,139 @@ public function insertDescriptiva(
     ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
 
-    $arrData = array(
-        $this->intIdProducto,
-        $this->strMarca,
-        $this->strModelo,
-        $this->strLargoTotal,
-        $this->strDistanciaEjes,
-        $this->strPesoBrutoVehicular,
-        $this->strMotor,
-        $this->strCilindros,
-        $this->strDesplazamientoC,
-        $this->strTipoCombustible,
-        $this->strPotencia,
-        $this->strTorque,
-        $this->strTransmision,
-        $this->strEjeDelantero,
-        $this->strSuspensionDelantera,
-        $this->strEjeTrasero,
-        $this->strSuspensionTrasera,
-        $this->strLlantas,
-        $this->strSistemaFrenos,
-        $this->strAsistencias,
-        $this->strSistemaElectrico,
-        $this->strCapacidadCombustible,
-        $this->strDireccion,
-        $this->strEquipamiento,
-        $this->strFecha
-    );
+		$arrData = array(
+			$this->intIdProducto,
+			$this->strMarca,
+			$this->strModelo,
+			$this->strLargoTotal,
+			$this->strDistanciaEjes,
+			$this->strPesoBrutoVehicular,
+			$this->strMotor,
+			$this->strCilindros,
+			$this->strDesplazamientoC,
+			$this->strTipoCombustible,
+			$this->strPotencia,
+			$this->strTorque,
+			$this->strTransmision,
+			$this->strEjeDelantero,
+			$this->strSuspensionDelantera,
+			$this->strEjeTrasero,
+			$this->strSuspensionTrasera,
+			$this->strLlantas,
+			$this->strSistemaFrenos,
+			$this->strAsistencias,
+			$this->strSistemaElectrico,
+			$this->strCapacidadCombustible,
+			$this->strDireccion,
+			$this->strEquipamiento,
+			$this->strFecha
+		);
 
-    // Ejecutar insert
-    $request_insert = $this->insert($query_insert, $arrData);
-    $return = $request_insert;
+		// Ejecutar insert
+		$request_insert = $this->insert($query_insert, $arrData);
+		$return = $request_insert;
 
-    return $return;
-} 
+		return $return;
+	}
 
 
-public function selectOptionEstacionesByLinea($idlinea){
-	            $this->intlinea = $idlinea;
-			$sql = "SELECT * FROM  mrp_estacion 
+
+	public function updateDescriptiva(
+		$descriptivaid,
+		$marca,
+		$modelo,
+		$largo_total,
+		$distancia_ejes,
+		$peso_bruto_vehicular,
+		$motor,
+		$cilindros,
+		$desplazamiento_c,
+		$tipo_combustible,
+		$potencia,
+		$torque,
+		$transmision,
+		$eje_delantero,
+		$suspension_delantera,
+		$eje_trasero,
+		$suspension_trasera,
+		$llantas,
+		$sistema_frenos,
+		$asistencias,
+		$sistema_electrico,
+		$capacidad_combustible,
+		$direccion,
+		$equipamiento
+	) {
+		$this->intDescriptiva = $descriptivaid;
+		$this->strMarca = $marca;
+		$this->strModelo = $modelo;
+		$this->strLargoTotal = $largo_total;
+		$this->strDistanciaEjes = $distancia_ejes;
+		$this->strPesoBrutoVehicular = $peso_bruto_vehicular;
+		$this->strMotor = $motor;
+		$this->strCilindros = $cilindros;
+		$this->strDesplazamientoC = $desplazamiento_c;
+		$this->strTipoCombustible = $tipo_combustible;
+		$this->strPotencia = $potencia;
+		$this->strTorque = $torque;
+		$this->strTransmision = $transmision;
+		$this->strEjeDelantero = $eje_delantero;
+		$this->strSuspensionDelantera = $suspension_delantera;
+		$this->strEjeTrasero = $eje_trasero;
+		$this->strSuspensionTrasera = $suspension_trasera;
+		$this->strLlantas = $llantas;
+		$this->strSistemaFrenos = $sistema_frenos;
+		$this->strAsistencias = $asistencias;
+		$this->strSistemaElectrico = $sistema_electrico;
+		$this->strCapacidadCombustible = $capacidad_combustible;
+		$this->strDireccion = $direccion;
+		$this->strEquipamiento = $equipamiento;
+
+		$sql = "UPDATE mrp_productos_descriptiva SET marca=?, modelo=?, largo_total=?, distancia_ejes=?, peso_bruto_vehicular=?,
+        motor=?, cilindros=?, desplazamiento_c=?, tipo_combustible=?, potencia=?, torque=?, transmision=?,
+        eje_delantero=?, suspension_delantera=?, eje_trasero=?, suspension_trasera=?, llantas=?, sistema_frenos=?,
+        asistencias=?, sistema_electrico=?, capacidad_combustible=?, direccion=?, equipamiento=? WHERE iddescriptiva = $this->intDescriptiva";
+
+		$arrData = array(
+			$this->strMarca,
+			$this->strModelo,
+			$this->strLargoTotal,
+			$this->strDistanciaEjes,
+			$this->strPesoBrutoVehicular,
+			$this->strMotor,
+			$this->strCilindros,
+			$this->strDesplazamientoC,
+			$this->strTipoCombustible,
+			$this->strPotencia,
+			$this->strTorque,
+			$this->strTransmision,
+			$this->strEjeDelantero,
+			$this->strSuspensionDelantera,
+			$this->strEjeTrasero,
+			$this->strSuspensionTrasera,
+			$this->strLlantas,
+			$this->strSistemaFrenos,
+			$this->strAsistencias,
+			$this->strSistemaElectrico,
+			$this->strCapacidadCombustible,
+			$this->strDireccion,
+			$this->strEquipamiento
+		);
+		$request = $this->update($sql, $arrData);
+		return $request;
+
+	}
+
+
+	public function selectOptionEstacionesByLinea($idlinea)
+	{
+		$this->intlinea = $idlinea;
+		$sql = "SELECT * FROM  mrp_estacion 
 					WHERE estado = 2 AND lineaid = $this->intlinea";
-			$request = $this->select_all($sql);
-			return $request;
+		$request = $this->select_all($sql);
+		return $request;
 
-}
+	}
 
 
 

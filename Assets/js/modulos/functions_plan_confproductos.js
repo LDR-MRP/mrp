@@ -3,23 +3,25 @@ let tableDocumentos;
 let divLoading = null;
 
 // Inputs / elementos del formulario
-let productoid = null;          // #idcomponente (hidden, id del componente)
-let idproducto_documentacion = null;   // #idproducto_documentacion (hidden para docs)
+let productoid = null;          
+let idproducto_documentacion = null;   
+let idproducto_descriptiva = null;
+let inputiddescriptiva = null;
+let idproducto_proceso = null;
 
 // Referencias globales para tabs y botón
 let primerTab = null;         // instancia bootstrap.Tab (LISTA)
 let tabNuevo = null;          // <a> del tab "NUEVO/ACTUALIZAR"
-let spanBtnText = null;       // span del botón (REGISTRAR / ACTUALIZAR)
-let formConfigProd = null;           // formulario de componentes
-let formDocumentacion = null; // formulario de documentación
-let formConfDescriptiva =null;
+let spanBtnText = null;      
+let formConfigProd = null;           
+let formDocumentacion = null; 
+let formConfDescriptiva = null;
 
 // NAVS INFERIORES 
 let btnInfoGeneral = null;
 let btnDocumentacion = null;
 let btnDescriptiva = null;
 let btnProcesos = null;
-let btnEspecificaciones = null;
 let btnFinalizado = null;
 
 let rutaEstaciones = [];
@@ -29,29 +31,30 @@ document.addEventListener('DOMContentLoaded', function () {
     // --------------------------------------------------------------------
     //  REFERENCIAS BÁSICAS
     // --------------------------------------------------------------------
-    divLoading        = document.querySelector("#divLoading");
-    formConfigProd           = document.querySelector("#formConfProducto");
+    divLoading = document.querySelector("#divLoading");
+    formConfigProd = document.querySelector("#formConfProducto");
     formDocumentacion = document.querySelector("#formDocumentacion");
     formConfDescriptiva = document.querySelector("#formConfDescriptiva");
 
 
-    spanBtnText       = document.querySelector('#btnText');
+    spanBtnText = document.querySelector('#btnText');
 
-    productoid        = document.querySelector('#idproducto');
+    productoid = document.querySelector('#idproducto');
     idproducto_documentacion = document.querySelector('#idproducto_documentacion');
     idproducto_descriptiva = document.querySelector('#idproducto_descriptiva');
+    inputiddescriptiva = document.querySelector('#iddescriptiva');
+    idproducto_proceso = document.querySelector('#idproducto_proceso');
 
-    
+
 
     // DECLARACIÓN DE NAVS INFERIORES
     btnInfoGeneral = document.getElementById('tab-informacion-general');
     btnDocumentacion = document.getElementById('tab-documentacion');
     btnDescriptiva = document.getElementById('tab-descriptiva-tecnica');
-    btnProcesos = document.getElementById('tab-procesos');
-    btnEspecificaciones = document.getElementById('tab-especificaciones-criticas');
+    btnProcesos = document.getElementById('tab-procesos');;
     btnFinalizado = document.getElementById('tab-finalizado');
 
-    // Estado inicial de las tabs inferiores (según si ya hay id componente)
+    // Estado inicial de las tabs inferiores 
     refreshLowerTabs();
 
     // --------------------------------------------------------------------
@@ -72,9 +75,9 @@ document.addEventListener('DOMContentLoaded', function () {
             "aServerSide": true,
             "ajax": {
                 "url": base_url + "/Plan_confproductos/getDocumentos",
-                "type": "POST", 
-                "data": function (d) { 
-                    // Aquí agregas el id del componente que está en el input oculto
+                "type": "POST",
+                "data": function (d) {
+ 
                     d.idproducto_documentacion = idproducto_documentacion ? idproducto_documentacion.value : '';
                 },
                 "dataSrc": ""
@@ -103,6 +106,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
+    if (btnDescriptiva) {
+        btnDescriptiva.addEventListener('click', function () {
+            loadDescriptivaForProducto();
+        });
+    }
+
+
 
     // --------------------------------------------------------------------
     //  DATATABLE PRODUCTOS
@@ -140,38 +151,39 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --------------------------------------------------------------------
     //  TABS BOOTSTRAP (LISTA / NUEVO)
-    //  OJO: en el HTML el tab es #navAgregarProducto
     // --------------------------------------------------------------------
     const primerTabEl = document.querySelector('#nav-tab a[href="#navListProductos"]');
-    const firstTabEl  = document.querySelector('#nav-tab a[href="#navAgregarProducto"]');
+    const firstTabEl = document.querySelector('#nav-tab a[href="#navAgregarProducto"]');
 
     if (primerTabEl && firstTabEl && spanBtnText) {
         primerTab = new bootstrap.Tab(primerTabEl); // LISTA
-        tabNuevo  = firstTabEl;                     // NUEVO / ACTUALIZAR
+        tabNuevo = firstTabEl;                     // NUEVO / ACTUALIZAR
 
         // CLICK EN "NUEVO" → modo NUEVO
         tabNuevo.addEventListener('click', () => {
-            tabNuevo.textContent    = 'NUEVO';
+            tabNuevo.textContent = 'NUEVO';
             spanBtnText.textContent = 'REGISTRAR';
 
             if (productoid) productoid.value = '';
             if (idproducto_documentacion) idproducto_documentacion.value = '';
             if (idproducto_descriptiva) idproducto_descriptiva.value = '';
+            if (idproducto_proceso) idproducto_proceso.value = '';
 
-            
+
+
+
+
 
             if (formConfigProd) formConfigProd.reset();
 
-            const selectProductos       = document.querySelector('#listProductos');
+            const selectProductos = document.querySelector('#listProductos');
             const selectLineasProductos = document.querySelector('#listLineasProductos');
 
-            if (selectProductos)       selectProductos.value = '';
+            if (selectProductos) selectProductos.value = '';
             if (selectLineasProductos) selectLineasProductos.value = '';
 
             // Nuevo producto → bloquear pasos inferiores otra vez
             refreshLowerTabs();
-
-            // Siempre arrancar en Información General
             setInfoGeneralActive();
         });
 
@@ -179,20 +191,21 @@ document.addEventListener('DOMContentLoaded', function () {
         primerTabEl.addEventListener('click', () => {
             if (productoid) productoid.value = '';
             if (idproducto_documentacion) idproducto_documentacion.value = '';
-             if (idproducto_descriptiva) idproducto_descriptiva.value = '';
+            if (idproducto_descriptiva) idproducto_descriptiva.value = '';
+            if (idproducto_proceso) idproducto_proceso.value = '';
 
-            tabNuevo.textContent    = 'NUEVO';
+
+
+            tabNuevo.textContent = 'NUEVO';
             spanBtnText.textContent = 'REGISTRAR';
 
             if (formConfigProd) formConfigProd.reset();
 
-            const selectProductos       = document.querySelector('#listProductos');
+            const selectProductos = document.querySelector('#listProductos');
             const selectLineasProductos = document.querySelector('#listLineasProductos');
 
-            if (selectProductos)       selectProductos.value = '';
+            if (selectProductos) selectProductos.value = '';
             if (selectLineasProductos) selectLineasProductos.value = '';
-
-            // Regresamos a listado → bloquear pasos inferiores
             refreshLowerTabs();
         });
     } else {
@@ -212,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? new XMLHttpRequest()
                 : new ActiveXObject('Microsoft.XMLHTTP');
 
-            let ajaxUrl  = base_url + '/Plan_confproductos/setProducto';
+            let ajaxUrl = base_url + '/Plan_confproductos/setProducto';
             let formData = new FormData(formConfigProd);
 
             request.open("POST", ajaxUrl, true);
@@ -235,11 +248,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (objData.tipo === 'insert') {
 
                         // Guardamos el id del producto en ambos inputs
-                        if (productoid)        productoid.value        = objData.idproducto;
+                        if (productoid) productoid.value = objData.idproducto;
                         if (idproducto_documentacion) idproducto_documentacion.value = objData.idproducto;
-                          if (idproducto_descriptiva) idproducto_descriptiva.value = objData.idproducto;
+                        if (idproducto_descriptiva) idproducto_descriptiva.value = objData.idproducto;
+                        if (inputiddescriptiva) inputiddescriptiva.value = '0';
 
-                        // Ya hay id de producto → habilitar tabs inferiores
+                        if (idproducto_proceso) idproducto_proceso.value = objData.idproducto;
+
                         refreshLowerTabs();
 
                         Swal.fire({
@@ -255,7 +270,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                             if (tableAlmacenes) tableAlmacenes.ajax.reload();
 
-                            // Cambiamos directamente a la tab DOCUMENTACIÓN
                             if (btnDocumentacion) {
                                 const tabDoc = new bootstrap.Tab(btnDocumentacion);
                                 tabDoc.show();
@@ -263,25 +277,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
                             formConfigProd.reset();
 
-                            const selectProductos       = document.querySelector('#listProductos');
+                            const selectProductos = document.querySelector('#listProductos');
                             const selectLineasProductos = document.querySelector('#listLineasProductos');
 
-                            if (selectProductos)       selectProductos.value = '';
+                            if (selectProductos) selectProductos.value = '';
                             if (selectLineasProductos) selectLineasProductos.value = '';
 
                             if (spanBtnText) spanBtnText.textContent = 'REGISTRAR';
-                            if (tabNuevo)    tabNuevo.textContent    = 'NUEVO';
+                            if (tabNuevo) tabNuevo.textContent = 'NUEVO';
 
-                            // Si NO confirma (por si pones otro botón a futuro), regresa a la lista
                             if (!result.isConfirmed && primerTab) {
                                 primerTab.show();
                             }
                         });
 
                     } else {
-                        // caso UPDATE si lo necesitas
+                        // caso UPDATE 
                         if (spanBtnText) spanBtnText.textContent = 'ACTUALIZAR';
-                        if (tabNuevo)    tabNuevo.textContent    = 'ACTUALIZAR';
+                        if (tabNuevo) tabNuevo.textContent = 'ACTUALIZAR';
                         Swal.fire("¡Operación exitosa!", objData.msg, "success");
                     }
 
@@ -305,7 +318,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? new XMLHttpRequest()
                 : new ActiveXObject('Microsoft.XMLHTTP');
 
-            let ajaxUrl  = base_url + '/Plan_confproductos/setDocumentacion';
+            let ajaxUrl = base_url + '/Plan_confproductos/setDocumentacion';
             let formData = new FormData(formDocumentacion);
 
             request.open("POST", ajaxUrl, true);
@@ -329,12 +342,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         if (tableDocumentos) tableDocumentos.ajax.reload();
 
-                        // Por si quisieras en un futuro habilitar más pasos en base a docs:
                         refreshLowerTabs();
 
                         Swal.fire({
-                            title:'¡Operación exitosa!',
-                            text:  objData.msg,
+                            title: '¡Operación exitosa!',
+                            text: objData.msg,
                             icon: 'success',
                             confirmButtonText: 'OK',
                             confirmButtonColor: '#28a745',
@@ -361,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-        // --------------------------------------------------------------------
+    // --------------------------------------------------------------------
     //  SUBMIT FORM PARA GUARDAR LA DESCRIPTIVA
     // --------------------------------------------------------------------
     if (formConfDescriptiva) {
@@ -374,7 +386,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? new XMLHttpRequest()
                 : new ActiveXObject('Microsoft.XMLHTTP');
 
-            let ajaxUrl  = base_url + '/Plan_confproductos/setDescriptiva';
+            let ajaxUrl = base_url + '/Plan_confproductos/setDescriptiva';
             let formData = new FormData(formConfDescriptiva);
 
             request.open("POST", ajaxUrl, true);
@@ -396,35 +408,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     if (objData.tipo === 'insert') {
 
-                        // if (tableDocumentos) tableDocumentos.ajax.reload();
-
-                        // Por si quisieras en un futuro habilitar más pasos en base a docs:
-                        refreshLowerTabs();
-
-                        Swal.fire({
-                            title: objData.msg,
-                            text:  'A continuación, sigue la configuración de la ruta de procesos del producto.',
-                            icon: 'success',
-                            confirmButtonText: 'OK',
-                            confirmButtonColor: '#28a745',
-                            cancelButtonColor: '#dc3545',
-                            allowOutsideClick: false,
-                            allowEscapeKey: false
-                        }).then((result) => {
-
-                            formConfDescriptiva.reset();
-                            if (idproducto_descriptiva) idproducto_descriptiva.value = objData.idproducto;
-
-                                                        // Cambiamos directamente a la tab DOCUMENTACIÓN
-                            if (btnProcesos) {
-                                const tabDoc = new bootstrap.Tab(btnProcesos);
-                                tabDoc.show();
-                            }
-
-                        });
+                         if (inputiddescriptiva) inputiddescriptiva.value = objData.iddescriptiva;
+if (spanBtnText) spanBtnText.textContent = 'ACTUALIZAR';
+                        
+                        Swal.fire("¡Operación exitosa!", objData.msg, "success");
 
                     } else {
-                        // caso UPDATE docs
+                        
+
+                        Swal.fire("¡Operación exitosa!", objData.msg, "success");
                     }
 
                 } else {
@@ -449,7 +441,138 @@ function initTabInformacion() {
     fntLineasProducto();
     fntPlantas();
 }
- 
+
+
+// ------------------------------------------------------------------------
+//  CARGAR DESCRIPTIVA TÉCNICA SI YA EXISTE
+// ------------------------------------------------------------------------
+function loadDescriptivaForProducto() {
+    if (!formConfDescriptiva) return;
+
+    const btnSubmitDes = formConfDescriptiva.querySelector('button[type="submit"]');
+    if (!inputiddescriptiva || !inputiddescriptiva.value.trim()) {
+        resetDescriptivaSinHidden();
+        if (btnSubmitDes) btnSubmitDes.textContent = 'REGISTRAR';
+        return;
+    }
+
+    const idProd = inputiddescriptiva.value.trim();
+
+    let ajaxUrl = base_url + '/Plan_confproductos/getDescriptiva/' + idProd;
+    let request = (window.XMLHttpRequest)
+        ? new XMLHttpRequest()
+        : new ActiveXObject('Microsoft.XMLHTTP');
+
+    request.open("GET", ajaxUrl, true);
+    request.send();
+
+    request.onreadystatechange = function () {
+        if (request.readyState !== 4) return;
+
+        if (request.status !== 200) {
+            console.error("Error en getDescriptiva:", request.status);
+            resetDescriptivaSinHidden();
+            if (btnSubmitDes) btnSubmitDes.textContent = 'REGISTRAR';
+            return;
+        }
+
+        let objData;
+        try {
+            objData = JSON.parse(request.responseText);
+        } catch (e) {
+            console.error("JSON inválido:", e);
+            resetDescriptivaSinHidden();
+            if (btnSubmitDes) btnSubmitDes.textContent = 'REGISTRAR';
+            return;
+        }
+
+        console.log('getDescriptiva response:', objData);
+
+        let d = null;
+
+        if (Array.isArray(objData) && objData.length > 0) {
+            d = objData[0];   
+        }
+
+        if (!d) {
+            resetDescriptivaSinHidden();
+            if (btnSubmitDes) btnSubmitDes.textContent = 'REGISTRAR';
+            return;
+        }
+
+        //  existe descriptiva → llenar form
+        const inputMarca = formConfDescriptiva.querySelector('#txtMarca');
+        const inputModelo = formConfDescriptiva.querySelector('#txtModelo');
+        const inputLargoTotal = formConfDescriptiva.querySelector('#txtLargoTotal');
+        const inputDistanciaEjes = formConfDescriptiva.querySelector('#txtDistanciaEjes');
+        const inputPesoBrutoVehicular = formConfDescriptiva.querySelector('#txtPesoBruto');
+        const inputMotor = formConfDescriptiva.querySelector('#txtMotor');
+        const inputCilindros = formConfDescriptiva.querySelector('#txtDesplazamientoCilindros');
+        const inputDesplazamiento = formConfDescriptiva.querySelector('#txtDesplazamiento');
+        const inputTipoCombustible = formConfDescriptiva.querySelector('#txtTipoCombustible');
+        const inputPotencia = formConfDescriptiva.querySelector('#txtPotencia');
+        const inputTorque = formConfDescriptiva.querySelector('#txtTorque');
+        const inputTransmision = formConfDescriptiva.querySelector('#txtTransmision');
+        const inputEjeDelantero = formConfDescriptiva.querySelector('#txtEjeDelantero');
+        const inputSuspDelantera = formConfDescriptiva.querySelector('#txtSuspensionDelantera');
+        const inputEjeTrasero = formConfDescriptiva.querySelector('#txtEjeTrasero');
+        const inputSuspTrasera = formConfDescriptiva.querySelector('#txtSuspensionTrasera');
+        const inputLlantas = formConfDescriptiva.querySelector('#txtLlantas');
+        const inputSistemaFrenos = formConfDescriptiva.querySelector('#txtSistemaFrenos');
+        const inputAsistencias = formConfDescriptiva.querySelector('#txtAsistencias');
+        const inputSistemaElectrico = formConfDescriptiva.querySelector('#txtSistemaElectrico');
+        const inputCapCombustible = formConfDescriptiva.querySelector('#txtCapacidadCombustible');
+        const inputDireccion = formConfDescriptiva.querySelector('#txtDireccion');
+        const inputEquipamiento = formConfDescriptiva.querySelector('#txtEquipamiento');
+
+        if (inputMarca) inputMarca.value = d.marca ?? '';
+        if (inputModelo) inputModelo.value = d.modelo ?? '';
+        if (inputLargoTotal) inputLargoTotal.value = d.largo_total ?? '';
+        if (inputDistanciaEjes) inputDistanciaEjes.value = d.distancia_ejes ?? '';
+        if (inputPesoBrutoVehicular) inputPesoBrutoVehicular.value = d.peso_bruto_vehicular ?? '';
+        if (inputMotor) inputMotor.value = d.motor ?? '';
+        if (inputCilindros) inputCilindros.value = d.cilindros ?? '';
+        if (inputDesplazamiento) inputDesplazamiento.value = d.desplazamiento_c ?? '';
+        if (inputTipoCombustible) inputTipoCombustible.value = d.tipo_combustible ?? '';
+        if (inputPotencia) inputPotencia.value = d.potencia ?? '';
+        if (inputTorque) inputTorque.value = d.torque ?? '';
+        if (inputTransmision) inputTransmision.value = d.transmision ?? '';
+        if (inputEjeDelantero) inputEjeDelantero.value = d.eje_delantero ?? '';
+        if (inputSuspDelantera) inputSuspDelantera.value = d.suspension_delantera ?? '';
+        if (inputEjeTrasero) inputEjeTrasero.value = d.eje_trasero ?? '';
+        if (inputSuspTrasera) inputSuspTrasera.value = d.suspension_trasera ?? '';
+        if (inputLlantas) inputLlantas.value = d.llantas ?? '';
+        if (inputSistemaFrenos) inputSistemaFrenos.value = d.sistema_frenos ?? '';
+        if (inputAsistencias) inputAsistencias.value = d.asistencias ?? '';
+        if (inputSistemaElectrico) inputSistemaElectrico.value = d.sistema_electrico ?? '';
+        if (inputCapCombustible) inputCapCombustible.value = d.capacidad_combustible ?? '';
+        if (inputDireccion) inputDireccion.value = d.direccion ?? '';
+        if (inputEquipamiento) inputEquipamiento.value = d.equipamiento ?? '';
+
+        // Botón en modo ACTUALIZAR
+        if (btnSubmitDes) btnSubmitDes.textContent = 'ACTUALIZAR';
+    };
+}
+
+
+
+function resetDescriptivaSinHidden() {
+    if (!formConfDescriptiva) return;
+
+    // Guardar los valores ANTES de hacer reset
+    const valProducto   = idproducto_descriptiva ? idproducto_descriptiva.value : '';
+    const valDescriptiva = inputiddescriptiva ? inputiddescriptiva.value : '';
+
+    formConfDescriptiva.reset();
+
+    if (idproducto_descriptiva) idproducto_descriptiva.value = valProducto;
+    if (inputiddescriptiva)     inputiddescriptiva.value = valDescriptiva;
+}
+
+
+
+
+
 // ------------------------------------------------------------------------
 //  VER EL CATÁLOGO DE PRODUCTOS
 // ------------------------------------------------------------------------
@@ -474,7 +597,6 @@ function fntInventarios(selectedValue = "") {
         }
     };
 
-    // cambio de producto → cargar detalle
     selectProductos.addEventListener('change', function () {
         const idProducto = this.value;
         if (idProducto !== "") {
@@ -496,14 +618,14 @@ function fntInventarioDetalle(idInventario) {
     request.send();
     request.onreadystatechange = function () {
         if (request.readyState == 4 && request.status == 200) {
-            let objData       = JSON.parse(request.responseText);
-            let descripcion   = objData.descripcion;
+            let objData = JSON.parse(request.responseText);
+            let descripcion = objData.descripcion;
             let lineaproducto = objData.lineaproductoid;
 
-            let inputDescripcion      = document.getElementById("txtDescripcion");
+            let inputDescripcion = document.getElementById("txtDescripcion");
             let selectLineasProductos = document.getElementById("listLineasProductos");
 
-            if (inputDescripcion)      inputDescripcion.value      = descripcion;
+            if (inputDescripcion) inputDescripcion.value = descripcion;
             if (selectLineasProductos) selectLineasProductos.value = lineaproducto;
         }
     };
@@ -531,7 +653,7 @@ function fntLineasProducto(selectedValue = "") {
                 selectLineasProductos.value = selectedValue;
             }
         }
-    }; 
+    };
 }
 
 // ------------------------------------------------------------------------
@@ -540,12 +662,11 @@ function fntLineasProducto(selectedValue = "") {
 function refreshLowerTabs() {
     const hasProducto = idproducto_documentacion && idproducto_documentacion.value.trim() !== '';
 
-    if (btnInfoGeneral)   btnInfoGeneral.disabled   = false; // siempre disponible
+    if (btnInfoGeneral) btnInfoGeneral.disabled = false; // siempre disponible
     if (btnDocumentacion) btnDocumentacion.disabled = !hasProducto;
     if (btnDescriptiva) btnDescriptiva.disabled = !hasProducto;
     if (btnProcesos) btnProcesos.disabled = !hasProducto;
-    if (btnEspecificaciones)      btnEspecificaciones.disabled      = !hasProducto;
-    if (btnFinalizado)    btnFinalizado.disabled    = !hasProducto;
+    if (btnFinalizado) btnFinalizado.disabled = !hasProducto;
 
 }
 
@@ -559,7 +680,7 @@ function setInfoGeneralActive() {
 // ------------------------------------------------------------------------
 //  ELIMINAR UN DOCUMENTO POR PRODUCTO
 // ------------------------------------------------------------------------
-function fntDelDocumento(iddocumento){
+function fntDelDocumento(iddocumento) {
 
     Swal.fire({
         html: `
@@ -656,7 +777,7 @@ function fntEditProducto(idproducto) {
         // Datos reales del producto
         let data = objData.data || objData;
 
-        // 1) Abrir la pestaña "NUEVO" (navAgregarProducto)
+        //  Abrir la pestaña "NUEVO" (navAgregarProducto)
         const tabAgregarEl = document.querySelector('#nav-tab a[href="#navAgregarProducto"]');
         if (tabAgregarEl) {
             const tab = new bootstrap.Tab(tabAgregarEl);
@@ -664,22 +785,21 @@ function fntEditProducto(idproducto) {
             tabNuevo = tabAgregarEl; // actualizamos la referencia global por si acaso
         }
 
-        // 2) Cambiar textos a ACTUALIZAR
-        if (tabNuevo)    tabNuevo.textContent    = 'ACTUALIZAR';
+        if (tabNuevo) tabNuevo.textContent = 'ACTUALIZAR';
         if (spanBtnText) spanBtnText.textContent = 'ACTUALIZAR';
 
-        // 3) Setear los IDs ocultos
-        if (productoid)        productoid.value        = data.idproducto;
+        // 3) Setear los IDs ocultosFD
+        if (productoid) productoid.value = data.idproducto;
         if (idproducto_documentacion) idproducto_documentacion.value = data.idproducto;
+        if (inputiddescriptiva) inputiddescriptiva.value = data.iddescriptiva;
 
         // Habilitar tabs inferiores porque ya hay producto
         refreshLowerTabs();
 
-        // 4) Llenar formulario formConfProducto
-        const selectProductos       = document.querySelector('#listProductos');
+        const selectProductos = document.querySelector('#listProductos');
         const selectLineasProductos = document.querySelector('#listLineasProductos');
-        const inputDescripcion      = document.querySelector('#txtDescripcion');
-        const selectEstado          = document.querySelector('#intEstado');
+        const inputDescripcion = document.querySelector('#txtDescripcion');
+        const selectEstado = document.querySelector('#intEstado');
 
         if (selectProductos && data.inventarioid) {
             selectProductos.value = data.inventarioid;
@@ -696,20 +816,18 @@ function fntEditProducto(idproducto) {
         if (selectEstado && data.estado) {
             selectEstado.value = data.estado;
         }
-
-        // Siempre mostrar Información General primero al editar
         setInfoGeneralActive();
     };
 }
 
 
 
-   // ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 //  VER EL CATALOGO DE PLANTAS
 // ------------------------------------------------------------------------
 function fntPlantas(selectedValue = "") {
     const selectPlantasLocal = document.querySelector('#listPlantasSelect');
-    const selectLineasLocal  = document.querySelector('#listLineasSelect');
+    const selectLineasLocal = document.querySelector('#listLineasSelect');
 
     if (!selectPlantasLocal) return;
 
@@ -724,7 +842,6 @@ function fntPlantas(selectedValue = "") {
         if (request.readyState === 4 && request.status === 200) {
             selectPlantasLocal.innerHTML = request.responseText;
 
-            // Si vienes de editar y quieres precargar una planta:
             if (selectedValue !== "") {
                 selectPlantasLocal.value = selectedValue;
                 // Cargar líneas para esa planta
@@ -733,11 +850,9 @@ function fntPlantas(selectedValue = "") {
         }
     };
 
-    // Solo agregar el change UNA vez
     if (!selectPlantasLocal.dataset.bound) {
         selectPlantasLocal.addEventListener('change', function () {
             const idPlanta = this.value;
-            // Reset de líneas cuando cambias de planta
             if (selectLineasLocal) {
                 selectLineasLocal.innerHTML = '<option value="">--Seleccione--</option>';
             }
@@ -756,7 +871,6 @@ function fntLineas(idPlanta, selectedLinea = "") {
 
     if (!selectLineasLocal) return;
 
-    // Si no hay planta, solo reseteamos el select de líneas
     if (!idPlanta) {
         selectLineasLocal.innerHTML = '<option value="">--Seleccione--</option>';
         return;
@@ -773,17 +887,17 @@ function fntLineas(idPlanta, selectedLinea = "") {
         if (request.readyState === 4 && request.status === 200) {
             selectLineasLocal.innerHTML = request.responseText;
 
-            // Si vienes de editar y quieres precargar una línea:
+
             if (selectedLinea !== "") {
                 selectLineasLocal.value = selectedLinea;
             }
 
-            // Al cambiar de línea → cargar estaciones
+        
             const idLineaActual = selectLineasLocal.value;
             if (idLineaActual) {
                 fntEstaciones(idLineaActual);
             } else {
-                fntEstaciones(""); // para limpiar lista de estaciones
+                fntEstaciones("");
             }
         }
     };
@@ -802,10 +916,10 @@ function fntLineas(idPlanta, selectedLinea = "") {
 //  VER EL CATALOGO DE ESTACIONES POR LÍNEA
 // ------------------------------------------------------------------------
 function fntEstaciones(idLinea, selectedEstacion = "") {
-    const selectEstaciones   = document.querySelector('#listEstacionesSelect'); // opcional
-    const listaEstaciones    = document.querySelector('#listaEstaciones');
-    const badgeCount         = document.querySelector('#countEstacionesDisponibles');
-    const msgSinEstaciones   = document.querySelector('#mensajeSinEstaciones');
+    const selectEstaciones = document.querySelector('#listEstacionesSelect'); // opcional
+    const listaEstaciones = document.querySelector('#listaEstaciones');
+    const badgeCount = document.querySelector('#countEstacionesDisponibles');
+    const msgSinEstaciones = document.querySelector('#mensajeSinEstaciones');
 
     if (!listaEstaciones || !badgeCount) return;
 
@@ -916,8 +1030,8 @@ function fntEstaciones(idLinea, selectedEstacion = "") {
 //  AGREGAR ESTACIÓN A LA RUTA (por clic o drop)
 // ------------------------------------------------------------------------
 function agregarEstacionARuta(est, botonOrigen) {
-    const listaRuta        = document.querySelector('#listaRuta');
-    const placeholderRuta  = document.querySelector('#placeholderRuta');
+    const listaRuta = document.querySelector('#listaRuta');
+    const placeholderRuta = document.querySelector('#placeholderRuta');
 
     if (!listaRuta) return;
 
@@ -941,7 +1055,6 @@ function agregarEstacionARuta(est, botonOrigen) {
     li.className = 'list-group-item d-flex justify-content-between align-items-center';
     li.setAttribute('data-idestacion', idEstacion);
 
-    // Índice inicial visual (luego se corrige en actualizarIndicesRuta)
     const indexVisual = rutaEstaciones.length;
 
     li.innerHTML = `
@@ -983,23 +1096,23 @@ function agregarEstacionARuta(est, botonOrigen) {
 //  REMOVER ESTACIÓN DE LA RUTA
 // ------------------------------------------------------------------------
 function removerEstacionDeRuta(idEstacion) {
-    const listaRuta       = document.querySelector('#listaRuta');
-    const inputRuta       = document.querySelector('#ruta_estaciones');
+    const listaRuta = document.querySelector('#listaRuta');
+    const inputRuta = document.querySelector('#ruta_estaciones');
 
     if (!listaRuta || !inputRuta) return;
 
     const idStr = idEstacion.toString();
 
-    // 1) Quitar del arreglo
+    // Quitar del arregloO
     rutaEstaciones = rutaEstaciones.filter(id => id !== idStr);
 
-    // 2) Quitar el <li> correspondiente
+    // Quitar el <li> correspondient
     const li = listaRuta.querySelector(`li[data-idestacion="${idStr}"]`);
     if (li) {
         listaRuta.removeChild(li);
     }
 
-    // 3) Re-habilitar el botón en la lista de estaciones disponibles
+    // Re-habilitar el botó en la lista de estaciones disponibles
     const listaEstaciones = document.querySelector('#listaEstaciones');
     if (listaEstaciones) {
         const btnOrigen = listaEstaciones.querySelector(`button[data-idestacion="${idStr}"]`);
@@ -1009,10 +1122,10 @@ function removerEstacionDeRuta(idEstacion) {
         }
     }
 
-    // 4) Renumerar los badges de orden (1,2,3,...) después de quitar
+    //Renumerar los badges de orden (1,2,3,...) después de quitar
     renumerarRuta();
 
-    // 5) Actualizar contador y hidden
+    //  Actualizar contador y hidden
     actualizarResumenRuta();
 }
 
@@ -1040,10 +1153,10 @@ function renumerarRuta() {
 //  ACTUALIZAR CONTADOR, PLACEHOLDER E INPUT HIDDEN
 // ------------------------------------------------------------------------
 function actualizarResumenRuta() {
-    const countRuta       = document.querySelector('#countRuta');
+    const countRuta = document.querySelector('#countRuta');
     const placeholderRuta = document.querySelector('#placeholderRuta');
-    const listaRuta       = document.querySelector('#listaRuta');
-    const inputRuta       = document.querySelector('#ruta_estaciones');
+    const listaRuta = document.querySelector('#listaRuta');
+    const inputRuta = document.querySelector('#ruta_estaciones');
 
     if (!countRuta || !listaRuta || !inputRuta) return;
 
@@ -1069,7 +1182,7 @@ function actualizarResumenRuta() {
 //  MOVER ESTACIÓN HACIA ARRIBA EN LA RUTA
 // ------------------------------------------------------------------------
 function moverArriba(btn) {
-    const li   = btn.closest('li');
+    const li = btn.closest('li');
     const prev = li.previousElementSibling;
     if (prev) {
         li.parentNode.insertBefore(li, prev);
@@ -1081,7 +1194,7 @@ function moverArriba(btn) {
 //  MOVER ESTACIÓN HACIA ABAJO EN LA RUTA
 // ------------------------------------------------------------------------
 function moverAbajo(btn) {
-    const li   = btn.closest('li');
+    const li = btn.closest('li');
     const next = li.nextElementSibling;
     if (next) {
         li.parentNode.insertBefore(next, li);
@@ -1093,7 +1206,7 @@ function moverAbajo(btn) {
 //  ELIMINAR ESTACIÓN DE LA RUTA
 // ------------------------------------------------------------------------
 function eliminarDeRuta(btn) {
-    const li         = btn.closest('li');
+    const li = btn.closest('li');
     const idEstacion = li.getAttribute('data-idestacion');
 
     // Eliminar el li del DOM
@@ -1117,10 +1230,10 @@ function eliminarDeRuta(btn) {
 //  ACTUALIZAR ARREGLO, CONTADOR, PLACEHOLDER E INPUT HIDDEN
 // ------------------------------------------------------------------------
 function actualizarHiddenRuta() {
-    const listaRuta       = document.querySelector('#listaRuta');
-    const countRuta       = document.querySelector('#countRuta');
+    const listaRuta = document.querySelector('#listaRuta');
+    const countRuta = document.querySelector('#countRuta');
     const placeholderRuta = document.querySelector('#placeholderRuta');
-    const inputRuta       = document.querySelector('#ruta_estaciones');
+    const inputRuta = document.querySelector('#ruta_estaciones');
 
     if (!listaRuta || !countRuta || !inputRuta) return;
 
@@ -1148,7 +1261,7 @@ function actualizarHiddenRuta() {
     // Actualizar input hidden con los IDs en orden
     inputRuta.value = rutaEstaciones.join(',');
 
-    // Renumerar badges (1,2,3,...) de los pasos
+    // Renumerar badges (1,2,3,...) de los paso
     actualizarIndicesRuta();
 }
 
@@ -1178,7 +1291,7 @@ function actualizarIndicesRuta() {
 //  PERMITIR DROP SOBRE LA RUTA
 // ------------------------------------------------------------------------
 function allowDrop(ev) {
-    ev.preventDefault(); // necesario para que "drop" funcione
+    ev.preventDefault(); 
     const dropRuta = document.querySelector('#dropRuta');
     if (dropRuta) {
         dropRuta.classList.add('dropzone-hover');
@@ -1227,9 +1340,4 @@ function dropOnRuta(ev) {
     // Reutilizamos la misma lógica de click
     agregarEstacionARuta(est, btnOrigen);
 }
-
-
-
-
-
 
