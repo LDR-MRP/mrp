@@ -820,7 +820,7 @@ function fntEditProducto(idproducto) {
     };
 }
 
-
+ 
 
 // ------------------------------------------------------------------------
 //  VER EL CATALOGO DE PLANTAS

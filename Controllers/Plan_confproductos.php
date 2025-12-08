@@ -397,13 +397,13 @@ class Plan_confproductos extends Controllers
 
 	// --------------------------------------------------------------------
 	// --------------------------------------------------------------------
-	// --------------------------------------------------------------------
+	// ---------------------------------------------------- ----------------
 	// --------------------------------------------------------------------
 	// --------------------------------------------------------------------
 
 
 	public function setDescriptiva()
-	{
+	{ 
 
 
 		if ($_POST) {
@@ -516,7 +516,7 @@ class Plan_confproductos extends Controllers
 				$option = 2;
 					// }
 				}
-				if ($request_descriptiva > 0) {
+				if ($request_descriptiva > 0) { 
 					if ($option == 1) {
 						$arrResponse = array('status' => true, 'msg' => 'La información se ha registrado exitosamente.', 'tipo' => 'insert', 'iddescriptiva' => $request_descriptiva);
 						$this->model->insertAuditoria(
@@ -529,6 +529,10 @@ class Plan_confproductos extends Controllers
 							$ip,
 							$detalle
 						);
+
+
+
+
 						} else {
 							$arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update', 'iddescriptiva' => $request_descriptiva);
 						}

@@ -264,7 +264,7 @@
                                 <ul class="nav nav-sm flex-column">
                                       <?php if(!empty($_SESSION['permisos'][39]['r'])){ ?>
                                     <li class="nav-item">
-                                        <a href="#"  class="nav-link" data-key="t-horizontal">Clientes</a>
+                                        <a href="<?= base_url(); ?>/cli_clientes"  class="nav-link" data-key="t-horizontal">Clientes</a>
                                     </li>
                                       <?php } ?>
 
