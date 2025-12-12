@@ -123,11 +123,11 @@ class Plan_confproductosModel extends Mysql
 
 		$sql = "SELECT 
             inv.*,
-			lp.cve_linea as linea_clave,
+			lp.cve_linea_producto as linea_clave,
             lp.descripcion AS linea_descripcion
         FROM wms_inventario AS inv
         INNER JOIN wms_linea_producto AS lp 
-        ON inv.lineaproductoid = lp.idlinea WHERE inv.tipo_ele ='P'";
+        ON inv.lineaproductoid = lp.idlineaproducto WHERE inv.tipo_elemento ='P'";
 
 		$request = $this->select_all($sql);
 		return $request;
@@ -143,7 +143,7 @@ class Plan_confproductosModel extends Mysql
 
 	public function selectOptionLineasProductos()
 	{
-		$sql = "SELECT * FROM wms_linea_producto  WHERE status !=0";
+		$sql = "SELECT * FROM wms_linea_producto  WHERE estado !=0";
 		$request = $this->select_all($sql);
 		return $request;
 	}
@@ -197,19 +197,19 @@ class Plan_confproductosModel extends Mysql
 		$request = $this->update($sql, $arrData);
 
 		return $request;
-	}
+	} 
 	public function selectProductos()
 	{
 
 		$sql = "SELECT com.*,
 		       com.estado AS estado_producto, 
-               inv.cve_art,
+               inv.cve_articulo,
                inv.descripcion AS descripcion_producto,
-               lp.cve_linea,
+               lp.cve_linea_producto,
                lp.descripcion AS descripcion_linea
         FROM  mrp_productos AS com
         INNER JOIN wms_inventario AS inv ON com.inventarioid = inv.idinventario
-        INNER JOIN wms_linea_producto AS lp ON lp.idlinea = com.lineaproductoid
+        INNER JOIN wms_linea_producto AS lp ON lp.idlineaproducto = com.lineaproductoid
         WHERE com.estado != 0;";
 		$request = $this->select_all($sql);
 		return $request;
@@ -254,7 +254,7 @@ class Plan_confproductosModel extends Mysql
 	public function selectDocumentosByProducto($productoid)
 	{
 		$this->intIdProducto = $productoid;
-		$sql = "SELECT doc.*, com.inventarioid, inv.cve_art, inv.descripcion as descripcion_articulo FROM mrp_productos_documentos AS doc
+		$sql = "SELECT doc.*, com.inventarioid, inv.cve_articulo, inv.descripcion as descripcion_articulo FROM mrp_productos_documentos AS doc
 		INNER JOIN mrp_productos AS com ON com.idproducto = doc.productoid
 		INNER JOIN wms_inventario AS inv ON inv.idinventario = com.inventarioid
 		WHERE doc.estado !=0 AND doc.productoid = $this->intIdProducto ";

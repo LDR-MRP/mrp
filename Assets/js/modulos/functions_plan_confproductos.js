@@ -125,16 +125,16 @@ document.addEventListener('DOMContentLoaded', function () {
     } else {
         tableAlmacenes = $(tableCompEl).DataTable({
             "aProcessing": true,
-            "aServerSide": true,
+            "aServerSide": true, 
             "ajax": {
                 "url": base_url + "/Plan_confproductos/getProductos",
                 "dataSrc": ""
             },
             "columns": [
                 { "data": "cve_producto" },
-                { "data": "cve_art" },
+                { "data": "cve_articulo" },
                 { "data": "descripcion_producto" },
-                { "data": "cve_linea" },
+                { "data": "cve_linea_producto" },
                 { "data": "descripcion_linea" },
                 { "data": "fecha_creacion" },
                 { "data": "estado_producto" },

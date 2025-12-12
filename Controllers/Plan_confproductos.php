@@ -40,9 +40,9 @@ class Plan_confproductos extends Controllers
 		$arrData = $this->model->selectOptionProductos();
 		if (count($arrData) > 0) {
 			for ($i = 0; $i < count($arrData); $i++) {
-				// if ($arrData[$i]['estado'] == 2) {
-				$htmlOptions .= '<option value="' . $arrData[$i]['idinventario'] . '">' . $arrData[$i]['cve_art'] . '</option>';
-				// }
+				if ($arrData[$i]['estado'] == 2) {
+				$htmlOptions .= '<option value="' . $arrData[$i]['idinventario'] . '">' . $arrData[$i]['cve_articulo'] . '</option>';
+				}
 			}
 		}
 		echo $htmlOptions;
@@ -72,7 +72,7 @@ class Plan_confproductos extends Controllers
 		if (count($arrData) > 0) {
 			for ($i = 0; $i < count($arrData); $i++) {
 				// if ($arrData[$i]['estado'] == 2) {
-				$htmlOptions .= '<option value="' . $arrData[$i]['idlinea'] . '">' . $arrData[$i]['cve_linea'] . ' - ' . $arrData[$i]['descripcion'] . '</option>';
+				$htmlOptions .= '<option value="' . $arrData[$i]['idlineaproducto'] . '">' . $arrData[$i]['cve_linea_producto'] . ' - ' . $arrData[$i]['descripcion'] . '</option>';
 				// }
 			}
 		}
