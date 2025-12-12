@@ -934,9 +934,26 @@
                                     <p id="placeholderRuta" class="text-muted small mb-0">
                                         Arrastre aquí las estaciones o haga clic sobre ellas para construir la ruta del producto.
                                     </p>
-                                    <ul id="listaRuta" class="list-group list-group-flush mt-2">
-                                        <!-- Items de ruta se agregan por JS -->
-                                    </ul>
+
+ <div class="table-responsive">
+  <table class="table table-sm align-middle table-hover mb-0">
+    <thead class="table-light">
+      <tr>
+        <th style="width: 60px;">#</th>
+        <th>Estaciones</th>
+        <th style="width: 130px;">Componentes</th>
+        <th style="width: 130px;">Herramientas</th>
+        <th class="text-end" style="width: 160px;">Opciones</th>
+      </tr>
+    </thead>
+    <tbody id="listaRuta"></tbody>
+  </table>
+</div>
+
+<!-- <div id="placeholderRuta" class="text-muted small mt-2">
+  Aún no hay estaciones en la ruta.
+</div> -->
+
                                 </div>
                                 <input type="hidden" name="ruta_estaciones" id="ruta_estaciones">
                             </div>
@@ -1070,6 +1087,8 @@
     </div>
 </footer>
 
+<!-- MODALES CREADOS PARA LA CONFIGURACIÓN DE PRODUCTOS -->
+
 <div class="modal fade" id="modalViewEstacion" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0">
@@ -1143,7 +1162,33 @@
 
             </div>
         </div>
+    </div> 
+</div>
+
+<!-- MODALES PARA HERRAMIENTAS -->
+
+<div class="modal fade" id="modalHerramientas" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0">
+      <div class="modal-header bg-primary-subtle p-3">
+        <h5 class="modal-title" id="titleModal">Capturar herramienta</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="close-modal"></button>
+      </div>
+  <div class="modal-body">
+
+  </div>
+
+  <div class="modal-footer">
+    <div class="hstack gap-2 justify-content-end">
+      <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+      <!-- <button type="submit" id="btnActionForm" class="btn btn-success">
+        <span id="btnText">Guardar</span>
+      </button> -->
     </div>
+
+    </div>
+  </div>
+</div>
 </div>
 
 

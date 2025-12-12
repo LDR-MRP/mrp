@@ -85,7 +85,7 @@
                             <img src="<?= media(); ?>/minimal/images/logo-sm.png" alt="" height="22">
                         </span>
                         <span class="logo-lg">
-                            <img src="<?= media(); ?>/minimal/images/logo-light.png" alt="" height="17">
+                            <img src="<?= media(); ?>/minimal/images/logo-light.png" alt="" height="55">
                         </span>
                     </a>
                 </div>

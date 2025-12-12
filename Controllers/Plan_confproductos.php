@@ -9,7 +9,7 @@ class Plan_confproductos extends Controllers
 		if (empty($_SESSION['login'])) {
 			header('Location: ' . base_url() . '/login');
 			die();
-		}
+		} 
 		getPermisos(MPCONFPRODUCTOS);
 	}
 
@@ -592,6 +592,83 @@ class Plan_confproductos extends Controllers
 		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
 		die();
 	}
+
+
+public function setRutaProducto()
+{
+    header('Content-Type: application/json');
+
+    $arrData = [
+        'status' => false,
+        'msg'    => 'Error al guardar ruta'
+    ];
+
+    if (!isset($_POST['ruta'])) {
+        $arrData = ['status' => false, 'msg' => 'No se recibió ruta'];
+        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $arr = json_decode($_POST['ruta'], true);
+    if (json_last_error() !== JSON_ERROR_NONE || !is_array($arr) || empty($arr)) {
+        $arrData = ['status' => false, 'msg' => 'Payload inválido'];
+        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $data = $arr[0];
+
+    $planta  = (int)($data['listPlantasSelect'] ?? 0);
+    $linea   = (int)($data['listLineasSelect'] ?? 0);
+    $prod    = 48; // tu valor fijo
+    $detalle = $data['detalle_ruta'] ?? [];
+
+    $fecha_creacion_ruta = date('Y-m-d H:i:s');
+
+    if (!$planta || !$linea || !$prod || !is_array($detalle) || count($detalle) == 0) {
+        $arrData = ['status' => false, 'msg' => 'Datos incompletos'];
+        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    try {
+        // 1) Insert header ruta
+        $idruta = $this->model->insertRuta($prod, $planta, $linea, $fecha_creacion_ruta);
+
+        if (!$idruta) {
+            $arrData = ['status' => false, 'msg' => 'No se pudo generar la ruta'];
+            echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // 2) Insert detalle
+        foreach ($detalle as $row) {
+            $idestacion = (int)($row['idestacion'] ?? 0);
+            $orden      = (int)($row['orden'] ?? 0);
+
+            if ($idestacion && $orden) {
+                $fecha_creacion_ruta_detalle = date('Y-m-d H:i:s');
+                $this->model->insertRutaDetalle($idruta, $idestacion, $orden, $fecha_creacion_ruta_detalle);
+            }
+        }
+
+        $arrData = [
+            'status' => true,
+            'msg'    => 'Ruta guardada',
+            'idruta' => $idruta
+        ];
+    } catch (\Throwable $e) {
+        $arrData = [
+            'status' => false,
+            'msg'    => 'Error al guardar ruta',
+            'error'  => $e->getMessage()
+        ];
+    }
+
+    echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 
 
 

@@ -16,6 +16,7 @@ let spanBtnText = null;
 let formConfigProd = null;           
 let formDocumentacion = null; 
 let formConfDescriptiva = null;
+let formRuta = null;
 
 // NAVS INFERIORES 
 let btnInfoGeneral = null;
@@ -35,6 +36,7 @@ document.addEventListener('DOMContentLoaded', function () {
     formConfigProd = document.querySelector("#formConfProducto");
     formDocumentacion = document.querySelector("#formDocumentacion");
     formConfDescriptiva = document.querySelector("#formConfDescriptiva");
+    formRuta = document.querySelector('#formRutaProducto');
 
 
     spanBtnText = document.querySelector('#btnText');
@@ -425,6 +427,44 @@ if (spanBtnText) spanBtnText.textContent = 'ACTUALIZAR';
             };
         });
     }
+
+
+
+
+  if (!formRuta) return;
+
+  formRuta.addEventListener('submit', function (e) {
+    e.preventDefault(); // evita recargar
+
+    const payload = construirPayloadRuta(); // la función que ya armamos
+
+    // Validaciones rápidas
+    const d = payload[0];
+    if (!d.listPlantasSelect || !d.listLineasSelect) {
+      console.error('Faltan datos: planta/linea/producto');
+      return;
+    }
+    if (!d.detalle_ruta || d.detalle_ruta.length === 0) {
+      console.error('No hay estaciones en la ruta');
+      return;
+    }
+
+    // Enviar
+    const formData = new FormData(formRuta);
+    formData.append('ruta', JSON.stringify(payload));
+
+    fetch(base_url + '/Plan_confproductos/setRutaProducto', {
+      method: 'POST',
+      body: formData
+    })
+    .then(r => r.json())
+    .then(res => {
+      console.log(res);
+      // aquí manejas tu UI (toast, swal, etc.)
+    })
+    .catch(err => console.error(err));
+  });
+
 
 
 
@@ -1011,7 +1051,8 @@ function fntEstaciones(idLinea, selectedEstacion = "") {
                         {
                             idestacion: est.idestacion,
                             cve_estacion: est.cve_estacion,
-                            nombre_estacion: est.nombre_estacion
+                            nombre_estacion: est.nombre_estacion,
+                            herramientas: est.herramientas
                         },
                         item
                     );
@@ -1030,66 +1071,143 @@ function fntEstaciones(idLinea, selectedEstacion = "") {
 //  AGREGAR ESTACIÓN A LA RUTA (por clic o drop)
 // ------------------------------------------------------------------------
 function agregarEstacionARuta(est, botonOrigen) {
-    const listaRuta = document.querySelector('#listaRuta');
-    const placeholderRuta = document.querySelector('#placeholderRuta');
+  const tbody = document.querySelector('#listaRuta');
+  if (!tbody) return;
 
-    if (!listaRuta) return;
+  const idEstacion = est.idestacion.toString();
 
-    const idEstacion = est.idestacion.toString();
+  // Evitar duplicados
+  if (rutaEstaciones.includes(idEstacion)) return;
 
-    // Evitar duplicados
-    if (rutaEstaciones.includes(idEstacion)) {
-        return;
-    }
+  // Guardar en arreglo
+  rutaEstaciones.push(idEstacion);
 
-    // Agregamos temporalmente al arreglo (después se recalcula en actualizarHiddenRuta)
-    rutaEstaciones.push(idEstacion);
+  // Crear fila
+  const tr = document.createElement('tr');
+  tr.setAttribute('data-idestacion', idEstacion);
 
-    // Ocultamos el placeholder porque ya hay al menos una estación
-    if (placeholderRuta) {
-        placeholderRuta.classList.add('d-none');
-    }
+  const indexVisual = rutaEstaciones.length;
 
-    // Crear el item visual para la ruta
-    const li = document.createElement('li');
-    li.className = 'list-group-item d-flex justify-content-between align-items-center';
-    li.setAttribute('data-idestacion', idEstacion);
+  const btnHerramientas = (est.herramientas == 1)
+  ? `
+    <button type="button"
+            class="btn btn-outline-success btn-sm"
+            onclick="abrirHerramientas(${est.idestacion})"
+            title="Asignar herramientas">
+      <i class="ri-tools-line"></i>
+      <span class="d-none d-md-inline">Herramientas</span>
+    </button>
+  `
+  : `
+    <span class="text-muted small">N/A</span>
+  `;
 
-    const indexVisual = rutaEstaciones.length;
 
-    li.innerHTML = `
-        <div class="d-flex align-items-center gap-2">
-            <span class="badge text-bg-primary badge-step">${indexVisual}</span>
-            <div>
-                <div class="fw-semibold">${est.cve_estacion}</div>
-                <small class="text-muted">${est.nombre_estacion}</small>
-            </div>
-        </div>
-        <div class="btn-group btn-group-sm">
-            <button type="button" class="btn btn-outline-secondary" onclick="moverArriba(this)">
-                <i class="ri-arrow-up-s-line fs-16"></i>
-            </button>
-            <button type="button" class="btn btn-outline-secondary" onclick="moverAbajo(this)">
-                <i class="ri-arrow-down-s-line fs-16"></i>
-            </button>
-            <button type="button" class="btn btn-outline-danger" onclick="eliminarDeRuta(this)">
-                <i class="ri-delete-bin-5-fill fs-16"></i>
-            </button>
-        </div>
-    `;
+  tr.innerHTML = `
+    <td><span class="badge text-bg-primary badge-step">${indexVisual}</span></td>
 
-    // Agregamos el item a la lista de la ruta
-    listaRuta.appendChild(li);
+    <td>
+      <div class="fw-semibold">${est.cve_estacion}</div>
+      <small class="text-muted">${est.nombre_estacion}</small>
+    </td>
 
-    // Inhabilitar el botón de la lista de estaciones disponibles
-    if (botonOrigen) {
-        botonOrigen.disabled = true;
-        botonOrigen.classList.add('disabled', 'opacity-50');
-    }
+    <td>
+      <button type="button" class="btn btn-outline-primary btn-sm"
+        onclick="abrirComponentes(${est.idestacion})" title="Asignar componentes">
+        <i class="ri-settings-3-line"></i>
+        <span class="d-none d-md-inline">Componentes</span>
+      </button>
+    </td>
 
-    // Recalcular arreglo, índices, contador e input hidden
-    actualizarHiddenRuta();
+    <td>
+    ${btnHerramientas}
+    </td>
+
+    <td class="text-end">
+      <div class="btn-group btn-group-sm">
+        <button type="button" class="btn btn-outline-secondary" onclick="moverArriba(this)" title="Subir">
+          <i class="ri-arrow-up-s-line"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary" onclick="moverAbajo(this)" title="Bajar">
+          <i class="ri-arrow-down-s-line"></i>
+        </button>
+        <button type="button" class="btn btn-outline-danger" onclick="eliminarDeRuta(this)" title="Eliminar">
+          <i class="ri-delete-bin-5-fill"></i>
+        </button>
+      </div>
+    </td>
+  `;
+
+  tbody.appendChild(tr);
+  reindexarRutaVisual();
+  actualizarCountRuta();
+
+  // si existe el botón origen, lo guardamos en el tr
+if (botonOrigen) {
+  // marcamos el botón con su id de estación (por si no lo tiene)
+  botonOrigen.dataset.idestacion = idEstacion;
+
+  // guardamos una "clave" para encontrarlo luego
+  tr.dataset.btnOrigenId = botonOrigen.dataset.idestacion;
 }
+
+  // Inhabilitar en lista principal (por si acaso)
+  if (botonOrigen) {
+    botonOrigen.disabled = true;
+    botonOrigen.classList.add('disabled', 'opacity-50');
+  } else {
+    setBotonEstacionDisponible(idEstacion, false);
+  }
+
+  // Placeholder + hidden + reindex
+  actualizarPlaceholderRuta();
+  actualizarHiddenRuta(); // tu función ya existente
+}
+
+function setBotonEstacionDisponible(idEstacion, disponible) {
+  const btn = document.querySelector(`.btn-add-estacion[data-idestacion="${idEstacion}"]`);
+  if (!btn) return;
+
+  btn.disabled = !disponible;
+  btn.classList.toggle('disabled', !disponible);
+  btn.classList.toggle('opacity-50', !disponible);
+}
+
+
+function actualizarPlaceholderRuta() {
+  const tbody = document.querySelector('#listaRuta');
+  const placeholder = document.querySelector('#placeholderRuta');
+  if (!placeholder || !tbody) return;
+
+  const hayFilas = tbody.querySelectorAll('tr').length > 0;
+  placeholder.classList.toggle('d-none', hayFilas);
+}
+
+// Reconstruye rutaEstaciones según el orden actual del DOM (tbody)
+function reconstruirRutaDesdeDOM() {
+  const tbody = document.querySelector('#listaRuta');
+  if (!tbody) return;
+
+  const filas = Array.from(tbody.querySelectorAll('tr'));
+  rutaEstaciones = filas.map(tr => tr.getAttribute('data-idestacion'));
+}
+
+// Recalcula los numeritos # (badge-step) según el orden actual del tbody
+function reindexarRutaVisual() {
+  const tbody = document.querySelector('#listaRuta');
+  if (!tbody) return;
+
+  const filas = Array.from(tbody.querySelectorAll('tr'));
+
+  filas.forEach((tr, idx) => {
+    const badge = tr.querySelector('.badge-step');
+    if (badge) badge.textContent = String(idx + 1);
+  });
+}
+
+
+
+
 
 
 // ------------------------------------------------------------------------
@@ -1182,49 +1300,80 @@ function actualizarResumenRuta() {
 //  MOVER ESTACIÓN HACIA ARRIBA EN LA RUTA
 // ------------------------------------------------------------------------
 function moverArriba(btn) {
-    const li = btn.closest('li');
-    const prev = li.previousElementSibling;
-    if (prev) {
-        li.parentNode.insertBefore(li, prev);
-        actualizarHiddenRuta();
-    }
+  const tr = btn.closest('tr');
+  const tbody = document.querySelector('#listaRuta');
+  if (!tr || !tbody) return;
+
+  const prev = tr.previousElementSibling;
+  if (!prev) return; // ya está arriba
+
+  tbody.insertBefore(tr, prev);
+
+  reconstruirRutaDesdeDOM();
+  reindexarRutaVisual();
+  actualizarHiddenRuta();
+  actualizarCountRuta();
 }
 
-// ------------------------------------------------------------------------
-//  MOVER ESTACIÓN HACIA ABAJO EN LA RUTA
-// ------------------------------------------------------------------------
 function moverAbajo(btn) {
-    const li = btn.closest('li');
-    const next = li.nextElementSibling;
-    if (next) {
-        li.parentNode.insertBefore(next, li);
-        actualizarHiddenRuta();
-    }
+  const tr = btn.closest('tr');
+  const tbody = document.querySelector('#listaRuta');
+  if (!tr || !tbody) return;
+
+  const next = tr.nextElementSibling;
+  if (!next) return; // ya está abajo
+
+  tbody.insertBefore(next, tr); // swap
+
+  reconstruirRutaDesdeDOM();
+  reindexarRutaVisual();
+  actualizarHiddenRuta();
+  actualizarCountRuta();
 }
+
 
 // ------------------------------------------------------------------------
 //  ELIMINAR ESTACIÓN DE LA RUTA
 // ------------------------------------------------------------------------
 function eliminarDeRuta(btn) {
-    const li = btn.closest('li');
-    const idEstacion = li.getAttribute('data-idestacion');
+  const tr = btn.closest('tr');
+  if (!tr) return;
 
-    // Eliminar el li del DOM
-    li.parentNode.removeChild(li);
+  const id = (tr.getAttribute('data-idestacion') || '').trim();
 
-    // Re-habilitar el botón en la lista de estaciones disponibles
-    const listaEstaciones = document.querySelector('#listaEstaciones');
-    if (listaEstaciones) {
-        const btnOrigen = listaEstaciones.querySelector(`button[data-idestacion="${idEstacion}"]`);
-        if (btnOrigen) {
-            btnOrigen.disabled = false;
-            btnOrigen.classList.remove('disabled', 'opacity-50');
-        }
+  // 1) HABILITAR botón origen (si existe)
+  const btnKey = (tr.dataset.btnOrigenId || '').trim();
+  if (btnKey) {
+    // busca el botón en la lista principal
+    const boton = document.querySelector(`.btn-add-estacion[data-idestacion="${btnKey}"]`)
+               || document.querySelector(`button[data-idestacion="${btnKey}"]`);
+    if (boton) {
+      boton.disabled = false;
+      boton.classList.remove('disabled', 'opacity-50');
     }
+  }
 
-    // Recalcular arreglo, índices, contador e hidden
-    actualizarHiddenRuta();
+  // 2) quitar fila
+  tr.remove();
+
+  // 3) reconstruir + reindex + hidden + placeholder
+  reconstruirRutaDesdeDOM();
+  reindexarRutaVisual();
+  actualizarPlaceholderRuta();
+  actualizarHiddenRuta();
+  actualizarCountRuta();
 }
+
+function actualizarCountRuta() {
+  const tbody = document.querySelector('#listaRuta');      // <tbody>
+  const countRuta = document.querySelector('#countRuta');  // tu span/div del contador
+
+  if (!tbody || !countRuta) return;
+
+  const total = tbody.querySelectorAll('tr').length;
+  countRuta.textContent = total;
+}
+
 
 // ------------------------------------------------------------------------
 //  ACTUALIZAR ARREGLO, CONTADOR, PLACEHOLDER E INPUT HIDDEN
@@ -1263,6 +1412,7 @@ function actualizarHiddenRuta() {
 
     // Renumerar badges (1,2,3,...) de los paso
     actualizarIndicesRuta();
+     actualizarCountRuta();
 }
 
 // ------------------------------------------------------------------------
@@ -1341,3 +1491,47 @@ function dropOnRuta(ev) {
     agregarEstacionARuta(est, btnOrigen);
 }
 
+////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+// CONFIGURACIÓN DE HERRAMIENTAS 
+////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+
+function abrirHerramientas(){
+    $('#modalHerramientas').modal('show');
+}
+
+
+////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+// GUARDADO DE INFORMACIÓN RUTA
+////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+
+function construirPayloadRuta() {
+  const plantaSel = document.querySelector('#listPlantasSelect');
+  const lineaSel  = document.querySelector('#listLineasSelect');
+  const inpProd   = document.querySelector('#idproducto_proceso');
+  const tbodyRuta = document.querySelector('#listaRuta');
+
+  const planta = plantaSel ? (plantaSel.value || '') : '';
+  const linea  = lineaSel  ? (lineaSel.value  || '') : '';
+  const idproducto = inpProd ? (inpProd.value || '') : '';
+
+  const filas = tbodyRuta ? Array.from(tbodyRuta.querySelectorAll('tr')) : [];
+  const detalle_ruta = filas.map((tr, idx) => ({
+    idestacion: (tr.getAttribute('data-idestacion') || '').toString().trim(),
+    orden: idx + 1
+  }));
+
+  return [{
+    listPlantasSelect: planta,
+    listLineasSelect: linea,
+    idproducto_proceso: idproducto,
+    detalle_ruta
+  }];
+}
+
+
+
+ 

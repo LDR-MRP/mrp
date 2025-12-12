@@ -55,6 +55,14 @@ class Plan_confproductosModel extends Mysql
 	public $strEquipamiento;
 	public $intlinea;
 
+	// set detalle ruta
+	public $intPlantaid;
+	public $intlineid;
+	// RUta detalle 
+	public $intRutaid;
+	public $intEstacionid;
+	public $intOrden;
+
 
 
 	public function __construct()
@@ -505,6 +513,56 @@ public function selectProducto(int $productoid)
 					WHERE estado = 2 AND lineaid = $this->intlinea";
 		$request = $this->select_all($sql);
 		return $request;
+
+	}
+
+	/////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////
+	// QUERYS PARA INSERTAR DETALLE DE RUTAS DEL PRODUCTO
+	/////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////
+
+	public function insertRuta($prod, $planta, $linea, $fecha_creacion_ruta)
+	{
+
+		$this->intlineaproductoid = $prod;
+		$this->intPlantaid = $planta;
+		$this->intlineid = $linea;
+		$this->strfecha_creacion = $fecha_creacion_ruta;
+
+		
+		$query_insert = "INSERT INTO mrp_producto_ruta(productoid,plantaid,lineaid,fecha_creacion) VALUES(?,?,?,?)";
+		$arrData = array(
+			$this->intlineaproductoid,
+			$this->intPlantaid,
+			$this->intlineid,
+			$this->strfecha_creacion
+		);
+		$request_insert = $this->insert($query_insert, $arrData);
+		$return = $request_insert;
+
+		return $return;
+
+	}
+
+	public function insertRutaDetalle($idruta, $idestacion, $orden, $fecha_creacion_ruta_detalle)
+	{
+		$this->intRutaid = $idruta;
+		$this->intEstacionid = $idestacion;
+		$this->intOrden = $orden;
+		$this->strfecha_creacion = $fecha_creacion_ruta_detalle;
+
+		$query_insert = "INSERT INTO mrp_producto_ruta_detalle(ruta_productoid,estacionid,orden,fecha_creacion) VALUES(?,?,?,?)";
+		$arrData = array(
+			$this->intRutaid,
+			$this->intEstacionid,
+			$this->intOrden,
+			$this->strfecha_creacion
+		);
+		$request_insert = $this->insert($query_insert, $arrData);
+		$return = $request_insert;
+
+		return $return;
 
 	}
 
