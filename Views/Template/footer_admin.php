@@ -817,7 +817,7 @@
     <!-- <script src="<?= media(); ?>/minimal/js/pages/sweetalerts.init.js"></script> -->
 
 
-    <script src="<?= media(); ?>/js/modulos/<?= $data['page_functions_js']; ?>"></script>
+    <script src="<?= media(); ?>/js/modulos/<?= $data['page_functions_js']; ?> " defer></script>
 
 
     <script>
