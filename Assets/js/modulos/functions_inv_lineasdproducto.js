@@ -2,12 +2,12 @@ let tableLineasProducto;
 let rowTable = "";
 let divLoading = document.querySelector("#divLoading");
 
-// Inputs del formulario
-const cve_linea_producto = document.querySelector('#clave-linea-producto-input');
-const estado = document.querySelector('#estado-select');
-const descripcion = document.querySelector('#descripcion-linea-producto-textarea');
+// Inputs del formulario (los dejamos globales, pero se asignan cuando exista el DOM)
+let cve_linea_producto = null;
+let estado = null;
+let descripcion = null;
 
-// Mis referencias globales 
+// Mis referencias globales
 let primerTab;
 let firstTab;
 let tabNuevo;
@@ -16,36 +16,51 @@ let formLineasProducto = null;
 
 document.addEventListener('DOMContentLoaded', function () {
 
+    // ------------------------------------------------------------
+    //  1) REFERENCIAS (NO ASUMAS QUE EXISTE EL FORM EN ESTA VISTA)
+    // ------------------------------------------------------------
     formLineasProducto = document.querySelector("#formLineasProducto");
     spanBtnText = document.querySelector('#btnText');
 
-        if (!formLineasProducto) {
-        console.warn('formLineasProducto no encontrado. JS de lineas no se inicializa en esta vista.');
-        return;
+    // Inputs (solo si existen)
+    cve_linea_producto = document.querySelector('#clave-linea-producto-input');
+    estado = document.querySelector('#estado-select');
+    descripcion = document.querySelector('#descripcion-linea-producto-textarea');
+
+    // ------------------------------------------------------------
+    //  2) DATATABLE (ESTO SÍ DEBE CORRER AUNQUE NO EXISTA EL FORM)
+    // ------------------------------------------------------------
+    if (document.querySelector('#tableLineasProducto')) {
+
+        // evita doble inicialización si tu vista se carga más de una vez
+        if (!$.fn.DataTable.isDataTable('#tableLineasProducto')) {
+            tableLineasProducto = $('#tableLineasProducto').DataTable({
+                aProcessing: true,
+                aServerSide: true,
+                ajax: {
+                    url: base_url + "/Inv_lineasdproducto/getLineasProductos",
+                    dataSrc: ""
+                },
+                columns: [
+                    { data: "cve_linea_producto" },
+                    { data: "descripcion" },
+                    { data: "fecha_creacion" },
+                    { data: "estado" },
+                    { data: "options" }
+                ],
+                dom: "lBfrtip",
+                buttons: [],
+                responsive: true,   // ✅ (antes tenías "resonsieve": "true")
+                bDestroy: true,
+                iDisplayLength: 10,
+                order: [[0, "desc"]]
+            });
+        }
     }
 
-    tableLineasProducto = $('#tableLineasProducto').dataTable({
-        "aProcessing": true,
-        "aServerSide": true,
-        "ajax": {
-            "url": base_url + "/Inv_lineasdproducto/getLineasProductos",
-            "dataSrc": ""
-        },
-        "columns": [
-            { "data": "cve_linea_producto" },
-            { "data": "descripcion" },
-            { "data": "fecha_creacion" },
-            { "data": "estado" },
-            { "data": "options" }
-        ],
-        "dom": "lBfrtip",
-        "buttons": [],
-        "resonsieve": "true",
-        "bDestroy": true,
-        "iDisplayLength": 10,
-        "order": [[0, "desc"]]
-    });
-
+    // ------------------------------------------------------------
+    //  3) TABS BOOTSTRAP (SETEA SOLO SI EXISTEN)
+    // ------------------------------------------------------------
     const primerTabEl = document.querySelector('#nav-tab a[href="#listlineasproductos"]');
     const firstTabEl  = document.querySelector('#nav-tab a[href="#agregarlineasproducto"]');
 
@@ -54,38 +69,67 @@ document.addEventListener('DOMContentLoaded', function () {
         firstTab  = new bootstrap.Tab(firstTabEl);
         tabNuevo  = firstTabEl;
 
-        tabNuevo.addEventListener('click', () => {
-            spanBtnText.textContent = 'REGISTRAR';
-            formLineasProducto.reset();
-            document.querySelector("#idlineaproducto").value = 0;
-        });
-    }else {
+        // OJO: solo si existe el form (si no, no tiene sentido resetear)
+        if (formLineasProducto) {
+            tabNuevo.addEventListener('click', () => {
+                spanBtnText.textContent = 'REGISTRAR';
+                formLineasProducto.reset();
+                const idHidden = document.querySelector("#idlineaproducto");
+                if (idHidden) idHidden.value = 0;
+            });
+        }
+    } else {
         console.warn('Tabs de lineas no encontrados o btnText faltante.');
     }
 
-    formLineasProducto.addEventListener('submit', function(e){
-        e.preventDefault();
+    // ------------------------------------------------------------
+    //  4) SUBMIT FORM (AQUÍ ESTABA TU ERROR EN SERVIDOR)
+    //     SOLO AGREGAMOS EL LISTENER SI EL FORM EXISTE
+    // ------------------------------------------------------------
+    if (formLineasProducto) {
 
-        let formData = new FormData(formLineasProducto);
-        let url = base_url + "/Inv_lineasdproducto/setLineaProducto";
+        formLineasProducto.addEventListener('submit', function(e){
+            e.preventDefault();
 
-        fetch(url,{
-            method:"POST",
-            body:formData
-        })
-        .then(res => res.json())
-        .then(objData => {
-            if(objData.status){
-                $('#tableLineasProducto').DataTable().ajax.reload();
-                primerTab.show();
-                Swal.fire("Correcto", objData.msg, "success");
-                formLineasProducto.reset();
-            } else {
-                Swal.fire("Error", objData.msg, "error");
-            }
+            let formData = new FormData(formLineasProducto);
+            let url = base_url + "/Inv_lineasdproducto/setLineaProducto";
+
+            fetch(url, {
+                method:"POST",
+                body: formData
+            })
+            .then(res => res.json())
+            .then(objData => {
+                if (objData.status) {
+                    if ($.fn.DataTable.isDataTable('#tableLineasProducto')) {
+                        $('#tableLineasProducto').DataTable().ajax.reload();
+                    }
+                    if (primerTab) primerTab.show();
+
+                    Swal.fire("Correcto", objData.msg, "success");
+                    formLineasProducto.reset();
+
+                    const idHidden = document.querySelector("#idlineaproducto");
+                    if (idHidden) idHidden.value = 0;
+
+                    if (spanBtnText) spanBtnText.textContent = 'REGISTRAR';
+
+                } else {
+                    Swal.fire("Error", objData.msg, "error");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                Swal.fire("Error", "Error de red o servidor.", "error");
+            });
         });
-    });
-});
+
+    } else {
+        // Esto explica EXACTO tu caso de servidor: el JS corre pero el form aún no está en DOM
+        console.warn('formLineasProducto no encontrado en este render. (Si tu vista se carga por AJAX, esto es normal).');
+    }
+
+}, false);
 
 // ----------------------------------------------
 // VER DETALLE
@@ -114,13 +158,21 @@ function fntEditLineaProducto(id){
     .then(objData => {
 
         if(objData.status){
-            document.querySelector("#idlineaproducto").value = objData.data.idlineaproducto;
-            cve_linea_producto.value = objData.data.cve_linea_producto;
-            descripcion.value = objData.data.descripcion;
-            estado.value = objData.data.estado;
 
-            spanBtnText.textContent = "ACTUALIZAR";
-            firstTab.show();
+            // por si el DOM aún no tenía referencias:
+            const idHidden = document.querySelector("#idlineaproducto");
+            const inpClave = document.querySelector('#clave-linea-producto-input');
+            const inpDesc  = document.querySelector('#descripcion-linea-producto-textarea');
+            const selEstado= document.querySelector('#estado-select');
+            const btnText  = document.querySelector('#btnText');
+
+            if (idHidden) idHidden.value = objData.data.idlineaproducto;
+            if (inpClave) inpClave.value = objData.data.cve_linea_producto;
+            if (inpDesc)  inpDesc.value  = objData.data.descripcion;
+            if (selEstado)selEstado.value= objData.data.estado;
+
+            if (btnText) btnText.textContent = "ACTUALIZAR";
+            if (firstTab) firstTab.show();
         }
     });
 }
@@ -129,7 +181,6 @@ function fntEditLineaProducto(id){
 //  ELIMINAR UNA LINEA DE PRODUCTO
 // ------------------------------------------------------------------------
 function fntDelInfo(idlineaproducto) {
-
     Swal.fire({
         html: `
         <div class="mt-3">
@@ -177,10 +228,10 @@ function fntDelInfo(idlineaproducto) {
                 let objData = JSON.parse(request.responseText);
 
                 if (objData.status) {
-
                     Swal.fire("Correcto", objData.msg, "success");
-                    $('#tableLineasProducto').DataTable().ajax.reload();
-
+                    if ($.fn.DataTable.isDataTable('#tableLineasProducto')) {
+                        $('#tableLineasProducto').DataTable().ajax.reload();
+                    }
                 } else {
                     Swal.fire("Error", objData.msg, "error");
                 }
