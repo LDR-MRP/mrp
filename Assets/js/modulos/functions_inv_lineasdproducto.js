@@ -19,6 +19,11 @@ document.addEventListener('DOMContentLoaded', function () {
     formLineasProducto = document.querySelector("#formLineasProducto");
     spanBtnText = document.querySelector('#btnText');
 
+        if (!formLineasProducto) {
+        console.warn('formLineasProducto no encontrado. JS de lineas no se inicializa en esta vista.');
+        return;
+    }
+
     tableLineasProducto = $('#tableLineasProducto').dataTable({
         "aProcessing": true,
         "aServerSide": true,
@@ -54,6 +59,8 @@ document.addEventListener('DOMContentLoaded', function () {
             formLineasProducto.reset();
             document.querySelector("#idlineaproducto").value = 0;
         });
+    }else {
+        console.warn('Tabs de lineas no encontrados o btnText faltante.');
     }
 
     formLineasProducto.addEventListener('submit', function(e){

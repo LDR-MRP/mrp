@@ -33,13 +33,13 @@
                                LÍNEAS DE PRODUCTOS
                             </a>
                         </li>
-           
+                          <?php if($_SESSION['permisosMod']['w']){ ?>
                         <li class="nav-item">
                             <a class="nav-link" data-bs-toggle="tab" href="#agregarlineasproducto" role="tab">
                                 NUEVO
                             </a>
                         </li>
-                     
+                         <?php } ?>
                     </ul>
                 </div>
                 <!-- end card header -->
