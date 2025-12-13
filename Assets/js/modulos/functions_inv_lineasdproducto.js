@@ -8,9 +8,9 @@ let estado = null;
 let descripcion = null;
 
 // Mis referencias globales
-let primerTab;
-let firstTab;
-let tabNuevo;
+let primerTab= null;
+let firstTab= null;
+let tabNuevo= null;
 let spanBtnText = null;
 let formLineasProducto = null;
 
@@ -20,7 +20,8 @@ document.addEventListener('DOMContentLoaded', function () {
     //  1) REFERENCIAS (NO ASUMAS QUE EXISTE EL FORM EN ESTA VISTA)
     // ------------------------------------------------------------
     formLineasProducto = document.querySelector("#formLineasProducto");
-    spanBtnText = document.querySelector('#btnText');
+    spanBtnText   = document.querySelector('#btnText');
+  
 
     // Inputs (solo si existen)
     cve_linea_producto = document.querySelector('#clave-linea-producto-input');
@@ -50,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ],
                 dom: "lBfrtip",
                 buttons: [],
-                responsive: true,   // ✅ (antes tenías "resonsieve": "true")
+                responsive: true,   
                 bDestroy: true,
                 iDisplayLength: 10,
                 order: [[0, "desc"]]
@@ -63,6 +64,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // ------------------------------------------------------------
     const primerTabEl = document.querySelector('#nav-tab a[href="#listlineasproductos"]');
     const firstTabEl  = document.querySelector('#nav-tab a[href="#agregarlineasproducto"]');
+    
 
     if (primerTabEl && firstTabEl && spanBtnText) {
         primerTab = new bootstrap.Tab(primerTabEl);
