@@ -16,7 +16,15 @@ let formLineasProducto = null;
 
 document.addEventListener('DOMContentLoaded', function () {
 
-    formLineasProducto = document.querySelector("#formLineasProducto");
+    formLineasProducto = document.querySelector("#formLineasProducto"); 
+
+        if (!formLineasProducto) {
+        console.warn('formLineasProducto no encontrado. JS de lineas no se inicializa en esta vista.');
+        return;
+    }
+
+
+
     spanBtnText = document.querySelector('#btnText');
 
     tableLineasProducto = $('#tableLineasProducto').dataTable({
@@ -46,7 +54,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (primerTabEl && firstTabEl && spanBtnText) {
         primerTab = new bootstrap.Tab(primerTabEl);
-        firstTab  = new bootstrap.Tab(firstTabEl);
+        firstTab  = new bootstrap.Tab(firstTabEl); 
         tabNuevo  = firstTabEl;
 
         tabNuevo.addEventListener('click', () => {
