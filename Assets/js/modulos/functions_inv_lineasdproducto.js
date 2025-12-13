@@ -16,12 +16,8 @@ let formLineasProducto = null;
 
 document.addEventListener('DOMContentLoaded', function () {
 
-    formLineasProducto = document.querySelector("#formLineasProducto"); 
-
-        if (!formLineasProducto) {
-        console.warn('formLineasProducto no encontrado. JS de lineas no se inicializa en esta vista.');
-        return;
-    }
+    formLineasProducto = document.querySelector("#formLineasProducto");
+  if (!formLineasProducto) return;
 
 
 
