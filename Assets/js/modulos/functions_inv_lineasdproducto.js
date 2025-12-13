@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function () {
         "aProcessing": true,
         "aServerSide": true,
         "ajax": {
-          "url": base_url + "/Inv_lineasdproducto/getLineasProductos",
+          "url": base_url + "/inv_lineasdproducto/getLineasProductos",
           "dataSrc": ""
         },
         "columns": [
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (divLoading) divLoading.style.display = "flex";
 
-    let url = base_url + "/Inv_lineasdproducto/setLineaProducto";
+    let url = base_url + "/inv_lineasdproducto/setLineaProducto";
     let formData = new FormData(formLineasProducto);
 
     fetch(url, { method: "POST", body: formData })
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function () {
 // VER DETALLE
 // ----------------------------------------------
 function fntViewLineaProducto(id){
-  fetch(base_url + "/Inv_lineasdproducto/getLineaProducto/" + id)
+  fetch(base_url + "/inv_lineasdproducto/getLineaProducto/" + id)
     .then(res => res.json())
     .then(objData => {
       if(objData.status){
@@ -202,7 +202,7 @@ function fntEditLineaProducto(id){
   if (tabNuevo)    tabNuevo.textContent    = 'ACTUALIZAR';
   if (spanBtnText) spanBtnText.textContent = 'ACTUALIZAR';
 
-  fetch(base_url + "/Inv_lineasdproducto/getLineaProducto/" + id)
+  fetch(base_url + "/inv_lineasdproducto/getLineaProducto/" + id)
     .then(res => res.json())
     .then(objData => {
 
@@ -266,7 +266,7 @@ function fntDelInfo(idlineaproducto) {
     if (!result.isConfirmed) return;
 
     let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-    let ajaxUrl = base_url + '/Inv_lineasdproducto/delLineaProducto';
+    let ajaxUrl = base_url + '/inv_lineasdproducto/delLineaProducto';
     let strData = "idlineaproducto=" + idlineaproducto;
 
     request.open("POST", ajaxUrl, true);
