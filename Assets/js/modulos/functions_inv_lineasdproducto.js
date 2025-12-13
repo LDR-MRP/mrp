@@ -16,8 +16,8 @@ let formLineasProducto = null;
 
 document.addEventListener('DOMContentLoaded', function () {
 
-    formLineasProducto = document.querySelector("#formLineasProducto");
-  if (!formLineasProducto) return;
+formLineasProducto = document.querySelector("#formLineasProducto");
+if (!formLineasProducto) return;
 
 
 
@@ -60,28 +60,28 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    formLineasProducto.addEventListener('submit', function(e){
-        e.preventDefault();
+document.addEventListener('submit', function(e){
+  if (e.target && e.target.id === 'formLineasProducto') {
+    e.preventDefault();
 
-        let formData = new FormData(formLineasProducto);
-        let url = base_url + "/Inv_lineasdproducto/setLineaProducto";
+    let formData = new FormData(e.target);
+    let url = base_url + "/Inv_lineasdproducto/setLineaProducto";
 
-        fetch(url,{
-            method:"POST",
-            body:formData
-        })
-        .then(res => res.json())
-        .then(objData => {
-            if(objData.status){
-                $('#tableLineasProducto').DataTable().ajax.reload();
-                primerTab.show();
-                Swal.fire("Correcto", objData.msg, "success");
-                formLineasProducto.reset();
-            } else {
-                Swal.fire("Error", objData.msg, "error");
-            }
-        });
-    });
+    fetch(url,{ method:"POST", body: formData })
+      .then(res => res.json())
+      .then(objData => {
+        if(objData.status){
+          $('#tableLineasProducto').DataTable().ajax.reload();
+          if (primerTab) primerTab.show();
+          Swal.fire("Correcto", objData.msg, "success");
+          e.target.reset();
+        } else {
+          Swal.fire("Error", objData.msg, "error");
+        }
+      });
+  }
+});
+
 });
 
 // ----------------------------------------------
