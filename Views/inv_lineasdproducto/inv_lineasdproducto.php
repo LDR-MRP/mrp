@@ -56,7 +56,7 @@
                                         <th>DESCRIPCIÓN</th>
                                         <th>FECHA CREACIÓN</th>
                                         <th>ESTATUS</th>
-                                        <th>Action</th>
+                                        <th>ACCIONES</th>
                                     </tr>
                                 </thead>
                                 <tbody>
