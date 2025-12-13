@@ -1,4 +1,4 @@
-let tableLineasProducto;
+// let tableLineasProducto;
 let rowTable = "";
 let divLoading = document.querySelector("#divLoading");
 
@@ -8,81 +8,91 @@ const estado = document.querySelector('#estado-select');
 const descripcion = document.querySelector('#descripcion-linea-producto-textarea');
 
 // Mis referencias globales 
-let primerTab;
-let firstTab;
-let tabNuevo;
-let spanBtnText = null;
+// let primerTab;
+// let firstTab;
+// let tabNuevo;
+// let spanBtnText = null;
 let formLineasProducto = null;
+
+// let tableLineasProducto;
+// let primerTab, firstTab, tabNuevo, spanBtnText = null;
+
+let tableLineasProducto;
+let primerTab, firstTab, tabNuevo, spanBtnText = null;
 
 document.addEventListener('DOMContentLoaded', function () {
 
-formLineasProducto = document.querySelector("#formLineasProducto");
-if (!formLineasProducto) return;
-
-
-
-    spanBtnText = document.querySelector('#btnText');
-
-    tableLineasProducto = $('#tableLineasProducto').dataTable({
-        "aProcessing": true,
-        "aServerSide": true,
-        "ajax": {
-            "url": base_url + "/Inv_lineasdproducto/getLineasProductos",
-            "dataSrc": ""
-        },
-        "columns": [
-            { "data": "cve_linea_producto" },
-            { "data": "descripcion" },
-            { "data": "fecha_creacion" },
-            { "data": "estado" },
-            { "data": "options" }
-        ],
-        "dom": "lBfrtip",
-        "buttons": [],
-        "resonsieve": "true",
-        "bDestroy": true,
-        "iDisplayLength": 10,
-        "order": [[0, "desc"]]
+  // 1) Inicializa la TABLA si existe (siempre)
+  const tableEl = document.querySelector('#tableLineasProducto');
+  if (tableEl) {
+    tableLineasProducto = $('#tableLineasProducto').DataTable({
+      aProcessing: true,
+      aServerSide: true,
+      ajax: {
+        url: base_url + "/Inv_lineasdproducto/getLineasProductos",
+        dataSrc: ""
+      },
+      columns: [
+        { data: "cve_linea_producto" },
+        { data: "descripcion" },
+        { data: "fecha_creacion" },
+        { data: "estado" },
+        { data: "options" }
+      ],
+      dom: "lBfrtip",
+      buttons: [],
+      responsive: true,  
+      bDestroy: true,
+      iDisplayLength: 10,
+      order: [[0, "desc"]]
     });
+  }
 
-    const primerTabEl = document.querySelector('#nav-tab a[href="#listlineasproductos"]');
-    const firstTabEl  = document.querySelector('#nav-tab a[href="#agregarlineasproducto"]');
 
-    if (primerTabEl && firstTabEl && spanBtnText) {
-        primerTab = new bootstrap.Tab(primerTabEl);
-        firstTab  = new bootstrap.Tab(firstTabEl); 
-        tabNuevo  = firstTabEl;
+  const formLineasProducto = document.querySelector("#formLineasProducto");
+  if (!formLineasProducto) return; 
 
-        tabNuevo.addEventListener('click', () => {
-            spanBtnText.textContent = 'REGISTRAR';
-            formLineasProducto.reset();
-            document.querySelector("#idlineaproducto").value = 0;
-        });
-    }
+  spanBtnText = document.querySelector('#btnText');
 
-document.addEventListener('submit', function(e){
-  if (e.target && e.target.id === 'formLineasProducto') {
+  const primerTabEl = document.querySelector('#nav-tab a[href="#listlineasproductos"]');
+  const firstTabEl  = document.querySelector('#nav-tab a[href="#agregarlineasproducto"]');
+
+  if (primerTabEl && firstTabEl && spanBtnText) {
+    primerTab = new bootstrap.Tab(primerTabEl);
+    firstTab  = new bootstrap.Tab(firstTabEl);
+    tabNuevo  = firstTabEl;
+
+    tabNuevo.addEventListener('click', () => {
+      spanBtnText.textContent = 'REGISTRAR';
+      formLineasProducto.reset();
+      const id = document.querySelector("#idlineaproducto");
+      if (id) id.value = 0;
+    });
+  }
+
+  
+  formLineasProducto.addEventListener('submit', function(e){
     e.preventDefault();
 
-    let formData = new FormData(e.target);
+    let formData = new FormData(formLineasProducto);
     let url = base_url + "/Inv_lineasdproducto/setLineaProducto";
 
-    fetch(url,{ method:"POST", body: formData })
+    fetch(url,{ method:"POST", body:formData })
       .then(res => res.json())
       .then(objData => {
         if(objData.status){
           $('#tableLineasProducto').DataTable().ajax.reload();
           if (primerTab) primerTab.show();
           Swal.fire("Correcto", objData.msg, "success");
-          e.target.reset();
+          formLineasProducto.reset();
         } else {
           Swal.fire("Error", objData.msg, "error");
         }
       });
-  }
-});
+  });
 
 });
+
 
 // ----------------------------------------------
 // VER DETALLE
