@@ -2,12 +2,16 @@ let tableAlmacenes;
 let tableDocumentos;
 let divLoading = null;
 
+let tableHerramientas=null;
+
 // Inputs / elementos del formulario
 let productoid = null;          
 let idproducto_documentacion = null;   
 let idproducto_descriptiva = null;
 let inputiddescriptiva = null;
 let idproducto_proceso = null;
+let idproducto_especificacion = null;
+let idespecificacioninput=null;
 
 // Referencias globales para tabs y botón
 let primerTab = null;         // instancia bootstrap.Tab (LISTA)
@@ -17,6 +21,7 @@ let formConfigProd = null;
 let formDocumentacion = null; 
 let formConfDescriptiva = null;
 let formRuta = null;
+let formEspecificaciones=null;
 
 // NAVS INFERIORES 
 let btnInfoGeneral = null;
@@ -26,6 +31,10 @@ let btnProcesos = null;
 let btnFinalizado = null;
 
 let rutaEstaciones = [];
+
+
+    let tableEspecifica = null;
+let estacionActual = 0;
 
 document.addEventListener('DOMContentLoaded', function () {
 
@@ -37,6 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
     formDocumentacion = document.querySelector("#formDocumentacion");
     formConfDescriptiva = document.querySelector("#formConfDescriptiva");
     formRuta = document.querySelector('#formRutaProducto');
+    formEspecificaciones = document.querySelector('#formEspecificaciones');
 
 
     spanBtnText = document.querySelector('#btnText');
@@ -46,6 +56,12 @@ document.addEventListener('DOMContentLoaded', function () {
     idproducto_descriptiva = document.querySelector('#idproducto_descriptiva');
     inputiddescriptiva = document.querySelector('#iddescriptiva');
     idproducto_proceso = document.querySelector('#idproducto_proceso');
+
+    idproducto_especificacion = document.querySelector('#idproducto_especificacion');
+
+
+    idespecificacioninput = document.querySelector('#idespecificacion');
+    
 
 
 
@@ -99,6 +115,51 @@ document.addEventListener('DOMContentLoaded', function () {
             "order": [[0, "desc"]]
         });
     }
+
+
+
+        // --------------------------------------------------------------------
+    //  DATATABLE ESPECIFICACIONES
+    // --------------------------------------------------------------------
+    //  const tableEspecifica = document.querySelector('#tableEspecificaciones');
+
+    // if (!tableEspecifica) {
+    //     console.warn('tableEspecificaciones no encontrada en el DOM. No se inicializa DataTable de documentos.');
+    // } else {
+    //     tableEspecificaciones = $(tableEspecifica).DataTable({
+    //         "aProcessing": true,
+    //         "aServerSide": true,
+    //         "ajax": {
+    //             "url": base_url + "/Plan_confproductos/getEspecificaciones",
+    //             "type": "POST",
+    //             "data": function (d) {
+ 
+    //                 d.idproducto_especificacion = idproducto_especificacion ? idproducto_especificacion.value : '';
+    //             },
+    //             "dataSrc": ""
+    //         },
+
+    //         "columns": [
+    //             { "data": "idespecificacion" },
+    //             { "data": "especificacion" },
+    //             { "data": "fecha_creacion" },
+    //             { "data": "options" }
+    //         ],
+    //         'dom': 'lBfrtip',
+    //         'buttons': [],
+    //         "responsive": true,
+    //         "bDestroy": true,
+    //         "iDisplayLength": 10,
+    //         "order": [[0, "desc"]]
+    //     });
+    // }
+
+
+
+
+
+
+
 
     // Recargar documentos al entrar a la pestaña Documentación
     if (btnDocumentacion) {
@@ -169,6 +230,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (productoid) productoid.value = '';
             if (idproducto_documentacion) idproducto_documentacion.value = '';
             if (idproducto_descriptiva) idproducto_descriptiva.value = '';
+            if (idproducto_proceso) idproducto_proceso.value = '';
+
             if (idproducto_proceso) idproducto_proceso.value = '';
 
 
@@ -257,6 +320,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         if (idproducto_proceso) idproducto_proceso.value = objData.idproducto;
 
+                        if (idproducto_especificacion) idproducto_especificacion.value = objData.idproducto;
+
+
+                        
+
                         refreshLowerTabs();
 
                         Swal.fire({
@@ -307,71 +375,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // --------------------------------------------------------------------
-    //  SUBMIT FORM PARA GUARDAR LOS DOCUMENTOS
-    // --------------------------------------------------------------------
-    if (formDocumentacion) {
-        formDocumentacion.addEventListener('submit', function (e) {
-            e.preventDefault(); // evitar envío por URL
 
-            if (divLoading) divLoading.style.display = "flex";
-
-            let request = (window.XMLHttpRequest)
-                ? new XMLHttpRequest()
-                : new ActiveXObject('Microsoft.XMLHTTP');
-
-            let ajaxUrl = base_url + '/Plan_confproductos/setDocumentacion';
-            let formData = new FormData(formDocumentacion);
-
-            request.open("POST", ajaxUrl, true);
-            request.send(formData);
-
-            request.onreadystatechange = function () {
-                if (request.readyState !== 4) return;
-
-                if (divLoading) divLoading.style.display = "none";
-
-                if (request.status !== 200) {
-                    Swal.fire("Error", "Ocurrió un error en el servidor. Inténtalo de nuevo.", "error");
-                    return;
-                }
-
-                let objData = JSON.parse(request.responseText);
-
-                if (objData.status) {
-
-                    if (objData.tipo === 'insert') {
-
-                        if (tableDocumentos) tableDocumentos.ajax.reload();
-
-                        refreshLowerTabs();
-
-                        Swal.fire({
-                            title: '¡Operación exitosa!',
-                            text: objData.msg,
-                            icon: 'success',
-                            confirmButtonText: 'OK',
-                            confirmButtonColor: '#28a745',
-                            cancelButtonColor: '#dc3545',
-                            allowOutsideClick: false,
-                            allowEscapeKey: false
-                        }).then((result) => {
-
-                            formDocumentacion.reset();
-                            if (idproducto_documentacion) idproducto_documentacion.value = objData.idproducto;
-
-                        });
-
-                    } else {
-                        // caso UPDATE docs
-                    }
-
-                } else {
-                    Swal.fire("Error", objData.msg, "error");
-                }
-            };
-        });
-    }
 
 
 
@@ -459,11 +463,162 @@ if (spanBtnText) spanBtnText.textContent = 'ACTUALIZAR';
     })
     .then(r => r.json())
     .then(res => {
-      console.log(res);
+      console.log(res.msg);
       // aquí manejas tu UI (toast, swal, etc.)
     })
     .catch(err => console.error(err));
   });
+
+
+
+      // --------------------------------------------------------------------
+    //  SUBMIT FORM PARA GUARDAR LOS DOCUMENTOS
+    // --------------------------------------------------------------------
+    if (formDocumentacion) {
+        formDocumentacion.addEventListener('submit', function (e) {
+            e.preventDefault(); // evitar envío por URL
+
+            if (divLoading) divLoading.style.display = "flex";
+
+            let request = (window.XMLHttpRequest)
+                ? new XMLHttpRequest()
+                : new ActiveXObject('Microsoft.XMLHTTP');
+
+            let ajaxUrl = base_url + '/Plan_confproductos/setDocumentacion';
+            let formData = new FormData(formDocumentacion);
+
+            request.open("POST", ajaxUrl, true);
+            request.send(formData);
+
+            request.onreadystatechange = function () {
+                if (request.readyState !== 4) return;
+
+                if (divLoading) divLoading.style.display = "none";
+
+                if (request.status !== 200) {
+                    Swal.fire("Error", "Ocurrió un error en el servidor. Inténtalo de nuevo.", "error");
+                    return;
+                }
+
+                let objData = JSON.parse(request.responseText);
+
+                if (objData.status) {
+
+                    if (objData.tipo === 'insert') {
+
+                        if (tableDocumentos) tableDocumentos.ajax.reload();
+
+                        refreshLowerTabs();
+
+                        Swal.fire({
+                            title: '¡Operación exitosa!',
+                            text: objData.msg,
+                            icon: 'success',
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#28a745',
+                            cancelButtonColor: '#dc3545',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false
+                        }).then((result) => {
+
+                            formDocumentacion.reset();
+                            if (idproducto_documentacion) idproducto_documentacion.value = objData.idproducto;
+
+                        });
+
+                    } else {
+                        // caso UPDATE docs
+                    }
+
+                } else {
+                    Swal.fire("Error", objData.msg, "error");
+                }
+            };
+        });
+    }
+
+
+        // --------------------------------------------------------------------
+    //  SUBMIT FORM PARA GUARDAR LAS ESPECIFICAIONES ASIGNADAS A CADA ESTACION
+    // --------------------------------------------------------------------
+
+    if (formEspecificaciones) {
+        formEspecificaciones.addEventListener('submit', function (e) {
+            e.preventDefault(); // evitar envío por URL
+
+            if (divLoading) divLoading.style.display = "flex";
+
+            let request = (window.XMLHttpRequest)
+                ? new XMLHttpRequest()
+                : new ActiveXObject('Microsoft.XMLHTTP');
+
+            let ajaxUrl = base_url + '/Plan_confproductos/setEspecificacion';
+            let formData = new FormData(formEspecificaciones);
+
+            request.open("POST", ajaxUrl, true);
+            request.send(formData);
+
+            request.onreadystatechange = function () {
+                if (request.readyState !== 4) return;
+
+                if (divLoading) divLoading.style.display = "none";
+
+                if (request.status !== 200) {
+                    Swal.fire("Error", "Ocurrió un error en el servidor. Inténtalo de nuevo.", "error");
+                    return;
+                }
+
+                let objData = JSON.parse(request.responseText);
+
+                if (objData.status) {
+
+                    if (objData.tipo === 'insert') {
+
+                        if (tableEspecifica) tableEspecifica.ajax.reload(null, false);
+
+                        refreshLowerTabs();
+
+                        Swal.fire({
+                            title: '¡Operación exitosa!',
+                            text: objData.msg,
+                            icon: 'success',
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#28a745',
+                            cancelButtonColor: '#dc3545',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false
+                        }).then((result) => {
+
+                            
+
+                             if (txtEspecificacion) txtEspecificacion.value = '';
+                                 document.querySelector('#btnTextEspecificacion').innerHTML ="Registrar";
+
+                            // formEspecificaciones.reset();
+                            // if (idproducto_documentacion) idproducto_documentacion.value = objData.idproducto;
+
+                        });
+
+                    } else {
+
+                        //  if (spanBtnText) spanBtnText.textContent = 'ACTUALIZAR';
+                        // if (tabNuevo) tabNuevo.textContent = 'ACTUALIZAR';
+                         if (tableEspecifica) tableEspecifica.ajax.reload(null, false);
+                        Swal.fire("¡Operación exitosa!", objData.msg, "success");
+                           if (txtEspecificacion) txtEspecificacion.value = '';
+                           if (idespecificacioninput) idespecificacioninput.value = 0;
+
+                           document.querySelector('#btnTextEspecificacion').innerHTML ="Registrar";
+                           
+                 
+                    }
+
+                } else {
+                    Swal.fire("Error", objData.msg, "error");
+                }
+            };
+        });
+    }
 
 
 
@@ -832,6 +987,15 @@ function fntEditProducto(idproducto) {
         if (productoid) productoid.value = data.idproducto;
         if (idproducto_documentacion) idproducto_documentacion.value = data.idproducto;
         if (inputiddescriptiva) inputiddescriptiva.value = data.iddescriptiva;
+        
+             if (idproducto_proceso) idproducto_proceso.value = data.idproducto;
+
+                   if (idproducto_especificacion) idproducto_especificacion.value = data.idproducto;
+
+             
+
+
+        
 
         // Habilitar tabs inferiores porque ya hay producto
         refreshLowerTabs();
@@ -1111,9 +1275,17 @@ function agregarEstacionARuta(est, botonOrigen) {
       <small class="text-muted">${est.nombre_estacion}</small>
     </td>
 
+        <td style="width: 150px!important;">
+      <button type="button" class="btn btn-outline-info btn-sm"
+        onclick="abrirEspecificaciones(${est.idestacion},'${est.cve_estacion}')" title="Asignar especificaciones">
+        <i class="ri-settings-3-line"></i>
+        <span class="d-none d-md-inline">Especificaciones</span>
+      </button>
+    </td>
+
     <td>
       <button type="button" class="btn btn-outline-primary btn-sm"
-        onclick="abrirComponentes(${est.idestacion})" title="Asignar componentes">
+        onclick="abrirComponentes(${est.idestacion},'${est.cve_estacion}')" title="Asignar componentes">
         <i class="ri-settings-3-line"></i>
         <span class="d-none d-md-inline">Componentes</span>
       </button>
@@ -1491,6 +1663,292 @@ function dropOnRuta(ev) {
     agregarEstacionARuta(est, btnOrigen);
 }
 
+
+
+////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+// CONFIGURACIÓN DE ESPECIFICACIONES
+////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+
+function abrirEspecificaciones(idestacion,cve_estacion){
+
+    const modal = document.getElementById('modalEspecificaciones');
+    const inputIdEstacion = modal.querySelector('#idestacion');
+    if (inputIdEstacion) inputIdEstacion.value = idestacion || '';
+    document.querySelector('#titleModalEspecificaciones').innerHTML = "Especificaciones - " + cve_estacion;
+    $('#modalEspecificaciones').modal('show');
+    cargarEspecificaciones(idestacion);
+} 
+
+// ------------------------------------------------------------------------
+//  CARGAR ESPECIFIICAIONES
+// ------------------------------------------------------------------------
+
+
+function cargarEspecificaciones(idEstacion) {
+  estacionActual = parseInt(idEstacion || 0);
+
+  if (!estacionActual) return;
+
+
+  if (tableEspecifica) {
+    tableEspecifica.ajax.url(base_url + '/Plan_confproductos/getEspecificaciones/' + estacionActual).load();
+    return;
+  }
+
+  tableEspecifica = $('#tableEspecificaciones').DataTable({
+    responsive: true,
+    processing: true,
+    serverSide: false,
+    destroy: true,
+    ajax: {
+      url: base_url + '/Plan_confproductos/getEspecificaciones/' + estacionActual,
+      dataSrc: function (json) {
+        return (json && json.status && Array.isArray(json.data)) ? json.data : [];
+      }
+    },
+    columns: [
+    { data: 'idespecificacion' },
+      { data: 'especificacion' },
+      { data: 'fecha_creacion' },
+      { data: 'options', orderable: false, searchable: false }
+    ],
+    order: [[1, 'desc']],
+
+  });
+}
+
+
+// ------------------------------------------------------------------------
+//  ELIMINAR UNA ESPECIFICAción
+// ------------------------------------------------------------------------
+function fntDelEspecificacion(idespecificacion) {
+
+    Swal.fire({
+        html: `
+        <div class="mt-3">
+            <lord-icon 
+                src="https://cdn.lordicon.com/gsqxdxog.json" 
+                trigger="loop" 
+                colors="primary:#f7b84b,secondary:#f06548" 
+                style="width:100px;height:100px">
+            </lord-icon>
+
+            <div class="mt-4 pt-2 fs-15 mx-5">
+                <h4>Confirmar eliminación</h4>
+                <p class="text-muted mx-4 mb-0">
+                    ¿Estás seguro de que deseas eliminar este registro? 
+                    Esta acción no se puede deshacer.
+                </p>
+            </div>
+        </div>
+    `,
+        showCancelButton: true,
+        confirmButtonText: "Sí, eliminar",
+        cancelButtonText: "Cancelar",
+        customClass: {
+            confirmButton: "btn btn-primary w-xs me-2 mb-1",
+            cancelButton: "btn btn-danger w-xs mb-1"
+        },
+        buttonsStyling: false,
+        showCloseButton: true
+    }).then((result) => {
+
+        if (!result.isConfirmed) {
+            return;
+        }
+
+        let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+        let ajaxUrl = base_url + '/Plan_confproductos/delEspecificacion';
+        let strData = "idespecificacion=" + idespecificacion;
+
+        request.open("POST", ajaxUrl, true);
+        request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        request.send(strData);
+
+        request.onreadystatechange = function () {
+            if (request.readyState == 4 && request.status == 200) {
+                let objData = JSON.parse(request.responseText);
+                if (objData.status) {
+                    Swal.fire("¡Operación exitosa!", objData.msg, "success");
+
+              
+                    if (tableEspecifica) tableEspecifica.ajax.reload();
+                } else {
+                    Swal.fire("Atención!", objData.msg, "error");
+                }
+            }
+        }
+
+    });
+
+}
+
+
+function fntEditEspecificacion(idespecificacion){
+    //     rowTable = element.parentNode.parentNode.parentNode;
+    // document.querySelector('#titleModal').innerHTML ="Actualizar Categoría";
+    // document.querySelector('.modal-header').classList.replace("headerRegister", "headerUpdate");
+    // document.querySelector('#btnActionForm').classList.replace("btn-primary", "btn-info");
+    document.querySelector('#btnTextEspecificacion').innerHTML ="Actualizar";
+    let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+    let ajaxUrl = base_url+'/Plan_confproductos/getEspecificacion/'+idespecificacion;
+    request.open("GET",ajaxUrl,true);
+    request.send();
+    request.onreadystatechange = function(){
+        if(request.readyState == 4 && request.status == 200){
+            let objData = JSON.parse(request.responseText);
+            if(objData.status)
+            {
+                document.querySelector("#idespecificacion").value = objData.data.idespecificacion;
+                document.querySelector("#txtEspecificacion").value = objData.data.especificacion;
+
+            //   $('#modalEspecificaciones').modal('show');
+
+            }else{
+                swal("Error", objData.msg , "error");
+            }
+        }
+    }
+}
+
+
+////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+// CONFIGURACIÓN DE COMPONENTES
+////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+
+function abrirComponentes(idestacion){
+       fntAlmacenes();
+
+    $('#modalComponentes').modal('show');
+ 
+}
+
+
+function fntAlmacenes(selectedValue = "") {
+    const selectAlmacenesLocal = document.querySelector('#listAlmacenesSelect');
+    // const selectLineasLocal = document.querySelector('#listLineasSelect');
+
+    if (!selectAlmacenesLocal) return;
+
+    let ajaxUrl = base_url + '/Plan_confproductos/getSelectAlmacenes';
+    let request = (window.XMLHttpRequest)
+        ? new XMLHttpRequest()
+        : new ActiveXObject('Microsoft.XMLHTTP');
+
+    request.open("GET", ajaxUrl, true);
+    request.send();
+    request.onreadystatechange = function () {
+        if (request.readyState === 4 && request.status === 200) {
+            selectAlmacenesLocal.innerHTML = request.responseText;
+
+            if (selectedValue !== "") {
+                selectAlmacenesLocal.value = selectedValue;
+                fntLineas(selectAlmacenesLocal.value);
+            }
+        }
+    };
+
+    if (!selectAlmacenesLocal.dataset.bound) {
+        selectAlmacenesLocal.addEventListener('change', function () {
+            const idAlmacen = this.value;
+            fntHerramientas(idAlmacen);
+        });
+        selectAlmacenesLocal.dataset.bound = '1';
+    }
+}
+
+
+dtCatalog = new DataTable('#tblCatalog', {
+  data: [],
+  deferRender: true,
+  pageLength: 10,
+  lengthMenu: [10, 25, 50, 100],
+  order: [[0, 'asc']],
+  columns: [
+    { data: 'id' },
+    {
+      data: 'name',
+      render: (data, type, row) => `
+        <div class="fw-semibold">${data}</div>
+        <small class="text-muted mono">CVE: ${row.cve || ''}</small>
+      `
+    },
+    { data: 'type' },
+    { data: 'unit' },
+    {
+      data: null,
+      className: 'text-end',
+      orderable: false,
+      searchable: false,
+      render: (data, type, row) => `
+        <button class="btn btn-outline-primary btn-sm btn-add"
+          data-id="${row.id}">
+          Agregar
+        </button>
+      `
+    }
+  ]
+});
+
+
+// ------------------------------------------------------------------------
+//  MOSTRAR LAS HERRAMIENTAS POR INVENTARIO
+// ------------------------------------------------------------------------
+function fntHerramientas(idAlmacen) {
+  let ajaxUrl = base_url + '/Plan_confproductos/getHerramientas/' + idAlmacen;
+
+  let request = (window.XMLHttpRequest)
+    ? new XMLHttpRequest()
+    : new ActiveXObject('Microsoft.XMLHTTP');
+
+  request.open("GET", ajaxUrl, true);
+  request.send();
+
+  request.onreadystatechange = function () {
+    if (request.readyState !== 4) return;
+
+    if (request.status === 200) {
+      let objData = [];
+
+      try {
+        objData = JSON.parse(request.responseText);
+      } catch (e) {
+        console.error("JSON inválido:", e);
+        console.log("Respuesta cruda:", request.responseText);
+        return;
+      }
+
+      console.log("DATA:", objData);
+
+      // ✅ Asegura que sea arreglo
+      if (!Array.isArray(objData)) objData = [objData];
+
+      // ✅ Normaliza al formato del DataTable
+      const dataCatalog = objData.map(item => ({
+        id: Number(item.inventarioid),                 // Columna ID
+        name: item.descripcion_articulo || '',         // Columna Herramienta
+        type: item.linea_de_producto || 'N/A',         // Columna Tipo
+        unit: item.unidad_salida || 'PZA',             // Columna Unidad
+        cve: item.cve_articulo || ''                   // Extra (para mostrar CVE abajo)
+      }));
+
+      // ✅ Carga todo al DataTable
+      dtCatalog.clear();
+      dtCatalog.rows.add(dataCatalog);
+      dtCatalog.draw(false);
+
+    } else {
+      console.error("Error AJAX. Status:", request.status);
+      console.log("Respuesta:", request.responseText);
+    }
+  };
+}
+
+
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 // CONFIGURACIÓN DE HERRAMIENTAS 
@@ -1500,6 +1958,8 @@ function dropOnRuta(ev) {
 function abrirHerramientas(){
     $('#modalHerramientas').modal('show');
 }
+
+
 
 
 ////////////////////////////////////////////////////////////////

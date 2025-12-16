@@ -63,6 +63,11 @@ class Plan_confproductosModel extends Mysql
 	public $intEstacionid;
 	public $intOrden;
 
+	public $intIdEstacion;
+	public $intIdEspecificacion;
+	public $intIdespecificacion;
+	public $intIdalmacen;
+
 
 
 	public function __construct()
@@ -566,6 +571,125 @@ public function selectProducto(int $productoid)
 
 	}
 
+
+	
+
+	public function EspecificacionesByEstacion($idestacion){
+				$this->intIdEstacion = $idestacion;
+		$sql = "SELECT * FROM mrp_estacion_especificaciones WHERE estacionid = $this->intIdEstacion AND estado !=0";
+		$request = $this->select_all($sql);
+		return $request;
+	}
+
+	public function insertEspecificacion($intIdproducto, $intEstacionId, $descripcion, $fecha_creacion)
+	{
+		$return =0;
+		$this->intIdProducto = $intIdproducto;
+		$this->intIdEstacion = $intEstacionId;
+		$this->strDescripcion = $descripcion;
+		$this->strFecha = $fecha_creacion;
+
+		$query_insert = "INSERT INTO mrp_estacion_especificaciones(productoid,estacionid,especificacion,fecha_creacion) VALUES(?,?,?,?)";
+		$arrData = array(
+			$this->intIdProducto,
+			$this->intIdEstacion,
+			$this->strDescripcion,
+			$this->strFecha
+		);
+		$request_insert = $this->insert($query_insert, $arrData);
+		$return = $request_insert;
+
+		return $return;
+
+	}
+
+	public function updateEspecificacion($intEspecificacionid, $descripcion){
+
+		$this->intIdEspecificacion = $intEspecificacionid;
+		$this->strDescripcion = $descripcion;
+
+
+
+		$sql = "UPDATE mrp_estacion_especificaciones SET especificacion = ?  WHERE idespecificacion =$this->intIdEspecificacion";
+		$arrData = array(
+			$this->strDescripcion
+		);
+		$request = $this->update($sql, $arrData);
+
+		return $request;
+
+	}
+
+
+		public function deleteEspecificacion($idespecificacion)
+	{
+
+		$this->intIdespecificacion = $idespecificacion;
+		$sql = "UPDATE mrp_estacion_especificaciones SET estado = ? WHERE idespecificacion = $this->intIdespecificacion ";
+		$arrData = array(0);
+		$request = $this->update($sql, $arrData);
+		return $request;
+
+	}
+
+	
+
+		public function selectEspecificacion(int $idespecificacion){
+			$this->intIdespecificacion = $idespecificacion;
+			$sql = "SELECT * FROM mrp_estacion_especificaciones
+					WHERE idespecificacion = $this->intIdespecificacion";
+			$request = $this->select($sql);
+			return $request;
+		}
+
+
+	/////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////
+	// QUERYS PARA EL APARTADO DE COMPONENTES
+	/////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////
+		
+
+			public function selectOptionAlmacenes()
+	{
+
+		$sql = "SELECT * FROM wms_almacenes WHERE estado =2";
+
+		$request = $this->select_all($sql);
+		return $request;
+	}
+
+public function selectHerramientas(int $idalmacen)
+{
+    $this->intIdalmacen = (int)$idalmacen;
+    $lineaProducto = 1;
+
+    $sql = "SELECT
+            mov.idmovinventario,
+            mov.inventarioid,
+            mov.almacenid,
+            mov.estado,
+            mov.cantidad,
+            mov.fecha_movimiento,
+            inv.cve_articulo,
+            inv.descripcion AS descripcion_articulo,
+            inv.unidad_salida,
+            inv.ultimo_costo,
+            lin.descripcion AS linea_de_producto
+        FROM wms_movimientos_inventario mov
+        INNER JOIN wms_inventario inv ON inv.idinventario = mov.inventarioid
+        INNER JOIN wms_linea_producto lin ON lin.idlineaproducto = inv.lineaproductoid
+        WHERE mov.estado = 2
+          AND mov.almacenid = {$this->intIdalmacen}
+          AND inv.lineaproductoid = {$lineaProducto}
+    ";
+
+    return $this->select_all($sql) ?: [];
+}
+
+
+
+	
 
 
 

@@ -67,4 +67,23 @@
 
 
 
+.tabla-ruta{
+  table-layout: fixed;   /* obliga a respetar los width */
+  width: 100%;
+}
+
+.tabla-ruta th,
+.tabla-ruta td{
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Solo la columna Estaciones permite salto de línea */
+.tabla-ruta td:nth-child(2){
+  white-space: normal;
+}
+
+
+
 

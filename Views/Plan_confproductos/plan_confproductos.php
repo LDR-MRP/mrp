@@ -838,7 +838,7 @@
                 <div class="row g-3 mb-3">
 
                     <!-- Planta -->
-                    <div class="col-lg-6 col-md-6">
+                    <div class="col-lg-5 col-md-5">
                         <label for="listPlantasSelect" class="form-label">Planta</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-building"></i></span>
@@ -852,7 +852,7 @@
                     </div>
 
                     <!-- Línea -->
-                    <div class="col-lg-6 col-md-6">
+                    <div class="col-lg-7 col-md-7">
                         <label for="listLineasSelect" class="form-label">Línea de producción</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-diagram-3"></i></span>
@@ -870,7 +870,7 @@
 
                 <!-- Títulos secciones estaciones -->
                 <div class="row mb-2">
-                    <div class="col-md-6">
+                    <div class="col-md-5">
                         <h6 class="text-muted text-uppercase mb-2">
                             Estaciones disponibles
                         </h6>
@@ -879,7 +879,7 @@
                             Puedes arrastrarlas o dar clic para agregarlas a la ruta del producto.
                         </p>
                     </div>
-                    <div class="col-md-6 mt-3 mt-md-0">
+                    <div class="col-md-7 mt-3 mt-md-0">
                         <h6 class="text-muted text-uppercase mb-2">
                             Ruta del producto
                         </h6>
@@ -893,7 +893,7 @@
                 <!-- Estaciones disponibles / Ruta del producto -->
                 <div class="row g-4 align-items-stretch">
                     <!-- Estaciones disponibles -->
-                    <div class="col-md-6">
+                    <div class="col-md-5">
                         <div class="card h-100 border-0 shadow-sm">
                             <div class="card-header bg-white">
                                 <div class="d-flex justify-content-between align-items-center">
@@ -915,7 +915,7 @@
                     </div>
 
                     <!-- Ruta del producto (dropzone) -->
-                    <div class="col-md-6">
+                    <div class="col-md-7">
                         <div class="card h-100 border-0 shadow-sm">
                             <div class="card-header bg-white">
                                 <div class="d-flex justify-content-between align-items-center">
@@ -930,17 +930,18 @@
                                      class="dropzone"
                                      ondragover="allowDrop(event)"
                                      ondrop="dropOnRuta(event)"
-                                     ondragleave="dragLeaveRuta(event)">
+                                     ondragleave="dragLeaveRuta(event)"> 
                                     <p id="placeholderRuta" class="text-muted small mb-0">
                                         Arrastre aquí las estaciones o haga clic sobre ellas para construir la ruta del producto.
                                     </p>
 
  <div class="table-responsive">
-  <table class="table table-sm align-middle table-hover mb-0">
+  <table class="table table-sm align-middle table-hover mb-0 tabla-ruta">
     <thead class="table-light">
-      <tr>
+      <tr> 
         <th style="width: 60px;">#</th>
-        <th>Estaciones</th>
+        <th style="width: 150px!important;">Estaciones</th>
+        <th style="width: 150px;">Especificaciones</th>
         <th style="width: 130px;">Componentes</th>
         <th style="width: 130px;">Herramientas</th>
         <th class="text-end" style="width: 160px;">Opciones</th>
@@ -1165,16 +1166,119 @@
     </div> 
 </div>
 
-<!-- MODALES PARA HERRAMIENTAS -->
+<!-- MODALES PARA ESPECIFICACIONES -->
 
-<div class="modal fade" id="modalHerramientas" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
+<div class="modal fade" id="modalEspecificaciones" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog  modal-xl"> 
     <div class="modal-content border-0">
       <div class="modal-header bg-primary-subtle p-3">
-        <h5 class="modal-title" id="titleModal">Capturar herramienta</h5>
+        <h5 class="modal-title" id="titleModalEspecificaciones">Capturar Especificaciones</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="close-modal"></button>
       </div>
   <div class="modal-body">
+
+    <div class="card-body form-steps">
+                                            <form id="formEspecificaciones" name="formEspecificaciones"
+                                                class="form-steps was-validated" autocomplete="off">
+
+                                                <input type="hidden" id="idproducto_especificacion"
+                                                    name="idproducto_especificacion">
+
+                                                           <input type="hidden" id="idespecificacion"
+                                                    name="idespecificacion" value="0">
+
+                                                                                       <input type="hidden" id="idestacion"
+                                                    name="idestacion">
+
+                                                <div class="row gy-5">
+                                                    <!-- FORMULARIO DOCUMENTOS -->
+                                                    <div class="col-lg-4">
+                                                        <div class="px-lg-4">
+                                                            <div class="tab-content">
+                                                                <div class="tab-pane fade show active"
+                                                                    id="v-pills-bill-address" role="tabpanel">
+                                                                    <div>
+                                                                        <h5>Registro de especificaciones</h5>
+                                                                        <p class="text-muted">
+                                                                            Captura las especificaciones criticas para esta estación
+                                                                        </p>
+                                                                    </div>
+
+                                                                    <div>
+                                                                        <div class="row g-3">
+
+
+
+
+                                                                            <div class="col-12">
+                                                                                <label for="txtEspecificacion"
+                                                                                    class="form-label">Ingresa una breve descripción
+                                                                                </label>
+                                    
+                                                                                    <textarea class="form-control" name="txtEspecificacion" id="txtEspecificacion" rows="5" required></textarea>
+                                                                                <div class="invalid-feedback">El campo
+                                                                                    de descripción es obligatorio</div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <hr class="my-4 text-muted">
+                                                                    </div>
+
+                                                                    <div class="d-flex align-items-start gap-3 mt-4">
+                                                                        <button type="submit"
+                                                                            class="btn btn-success btn-label right ms-auto nexttab"
+                                                                            data-nexttab="tab-descriptiva-tecnica">
+                                                                            <i
+                                                                                class="ri-arrow-right-line label-icon align-middle fs-16 ms-2"></i>
+                                                                            
+
+                                                                            <span id="btnTextEspecificacion">Registrar</span>
+
+
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- TABLA DOCUMENTOS --> 
+                                                    <div class="col-lg-8">
+                                                        <div class="px-lg-4">
+                                                            <div class="tab-content">
+                                                                <div class="tab-pane fade show active"
+                                                                    id="v-pills-bill-address-list" role="tabpanel">
+                                                                    <div>
+                                                                        <h5>Listado de especificaciones</h5>
+                                                                    </div>
+
+                                                                    <div id="listEspecificaciones" role="tabpanel">
+                                                                        <table id="tableEspecificaciones"
+                                                                            class="table table-bordered dt-responsive nowrap table-striped align-middle"
+                                                                            style="width:100%">
+                                                                            <thead>
+                                                                                <tr>
+                                                                                    <th>#</th>
+                                                                                    <th>DESCRIPCIÓN</th>
+                                                                                    <th>FECHA REGISTRO</th>
+                                                                                    <th>OPCIONES</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody>
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <!-- end col -->
+                                                </div>
+                                                <!-- end row -->
+                                            </form>
+                                        </div>
+    
 
   </div>
 
@@ -1184,6 +1288,201 @@
       <!-- <button type="submit" id="btnActionForm" class="btn btn-success">
         <span id="btnText">Guardar</span>
       </button> -->
+    </div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- MODALES PARA COMPONENTES -->
+
+<div class="modal fade" id="modalComponentes" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content border-0">
+      <div class="modal-header bg-primary-subtle p-3">
+        <h5 class="modal-title" id="titleModal">Capturar Componentes</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="close-modal"></button>
+      </div>
+  <div class="modal-body">
+
+  
+
+    <!-- Top bar -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+      <div>
+        <h3 class="mb-1 page-title">Solicitud de Herramienta / Material</h3>
+        <div class="text-muted">Seleccione el almacén y gestione las herramientas requeridas con cantidades.</div>
+      </div>
+      <div class="d-flex gap-2">
+        <button id="btnClear" class="btn btn-outline-danger">Limpiar</button>
+        <button id="btnExport" class="btn btn-primary">Exportar JSON</button>
+      </div>
+    </div>
+
+    <!-- Warehouse selector -->
+    <div class="card soft-shadow mb-3">
+      <div class="card-body p-3 p-md-3">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-6 col-lg-6">
+            <label class="form-label mb-1">Almacén</label>
+
+
+                           <select class="form-control" name="listAlmacenesSelect"
+                                                                id="listAlmacenesSelect" required></select>
+            <div class="form-text">El catálogo se actualizará automáticamente al cambiar el almacén.</div>
+          </div>
+
+          <div class="col-md-6 col-lg-6">
+            <div class="info-panel">
+              <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                  <p class="title mb-1">Catálogo de inventario</p>
+                  <p class="desc">
+                    Las herramientas disponibles se cargan automáticamente con base en el almacén seleccionado.
+                  </p>
+                </div>
+                <span class="pill">
+                  <span class="dot"></span>
+                  Almacén activo: <span id="lblAlmacenActual">N/A</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- <div class="text-muted mt-2">
+              <small class="mono">
+             
+              </small>
+            </div> -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tables -->
+    <div class="row g-3">
+      <!-- Catalog -->
+      <div class="col-xl-7">
+        <div class="card soft-shadow h-100">
+          <div class="card-body p-3 p-md-4">
+            <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+              <div>
+                <div class="section-title">Catálogo por almacén</div>
+                <p class="section-subtitle">Busque, ordene y seleccione herramientas desde el inventario.</p>
+              </div>
+              <span class="pill"><span class="dot"></span> Catálogo</span>
+            </div>
+
+            <div class="table-responsive">
+              <table id="tblCatalog" class="display table table-hover">
+                <thead>
+                  <tr class="text-muted">
+                    <th>ID</th>
+                    <th>Herramienta</th>
+                    <th>Tipo</th>
+                    <th>Unidad</th>
+                    <th class="text-end">Acción</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div class="alert alert-warning border-0" role="alert" id="msgSelectAlmacen">
+                                                    <strong>  Selecciona un almacén </strong> para visualizar las herramientas disponibles. 
+                                                </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Selected -->
+      <div class="col-xl-5">
+        <div class="card soft-shadow h-100">
+          <div class="card-body p-3 p-md-4">
+            <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+              <div>
+                <div class="section-title">Herramientas seleccionadas</div>
+                <p class="section-subtitle">Indique la cantidad requerida por herramienta.</p>
+              </div>
+              <span class="pill"><span class="dot"></span> Seleccionados: <span id="countSelected">0</span></span>
+            </div>
+
+            <div class="table-responsive">
+              <table id="tblSelected" class="display table table-striped align-middle mb-0">
+                <thead>
+                  <tr class="text-muted">
+                    <th>ID</th>
+                    <th>Herramienta</th>
+                    <th>Tipo</th>
+                    <th>Unidad</th>
+                    <th>Cantidad</th>
+                    <th class="text-end">Acción</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div class="text-muted mt-2">
+              <small class="mono">Regla: cantidad mínima 1.</small>
+            </div>
+
+            <!-- SAVE BAR (solo aparece si hay seleccionados) -->
+            <div id="saveBar" class="save-bar d-none">
+              <button id="btnGuardarTodo" class="btn btn-success btn-save-all">
+                Guardar todo
+              </button>
+              <div class="text-muted mt-2">
+                <small>Se enviará el detalle por herramienta (una fila por registro) al backend.</small>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-3 text-muted">
+      <small class="mono">Nota: El botón “Guardar todo” se muestra automáticamente cuando hay al menos 1 herramienta agregada.</small>
+    </div>
+ 
+
+  </div>
+
+  <div class="modal-footer">
+    <div class="hstack gap-2 justify-content-end">
+      <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+      <button type="submit" id="btnActionForm" class="btn btn-success">
+        <span id="btnText">Guardar</span>
+      </button>
+    </div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MODALES PARA HERRAMIENTAS -->
+
+<div class="modal fade" id="modalHerramientas" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0">
+      <div class="modal-header bg-primary-subtle p-3">
+        <h5 class="modal-title" id="titleModal">Capturar Herramientas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="close-modal"></button>
+      </div>
+  <div class="modal-body">
+
+  </div>
+
+  <div class="modal-footer">
+    <div class="hstack gap-2 justify-content-end">
+      <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+      <button type="submit" id="btnActionForm" class="btn btn-success">
+        <span id="btnText">Guardar</span>
+      </button>
     </div>
 
     </div>
