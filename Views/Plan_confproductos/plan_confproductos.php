@@ -1302,7 +1302,7 @@
   <div class="modal-dialog modal-fullscreen">
     <div class="modal-content border-0">
       <div class="modal-header bg-primary-subtle p-3">
-        <h5 class="modal-title" id="titleModal">Capturar Componentes</h5>
+        <h5 class="modal-title" id="titleModalComponentes">Capturar Componentes</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="close-modal"></button>
       </div>
   <div class="modal-body">
@@ -1312,7 +1312,181 @@
     <!-- Top bar -->
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
       <div>
-        <h3 class="mb-1 page-title">Solicitud de Herramienta / Material</h3>
+        <h3 class="mb-1 page-title"> <i class="mdi mdi-video-input-component"></i> Componentes </h3>
+        <div class="text-muted">Seleccione el almacén y gestione los componentes requeridos con cantidades.</div>
+      </div>
+      <div class="d-flex gap-2">
+        <button id="btnClear" class="btn btn-outline-danger">Limpiar</button>
+        <button id="btnExport" class="btn btn-primary">Exportar JSON</button>
+      </div>
+    </div>
+
+    <!-- Warehouse selector -->
+    <div class="card soft-shadow mb-3">
+      <div class="card-body p-3 p-md-3">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-6 col-lg-6">
+            <label class="form-label mb-1">Almacén</label>
+
+
+            <select class="form-control" name="listAlmacenesSelectCompo"
+            id="listAlmacenesSelectCompo" required></select>
+            <div class="form-text">El catálogo se actualizará automáticamente al cambiar el almacén.</div>
+          </div>
+
+          <div class="col-md-6 col-lg-6">
+            <div class="info-panel">
+              <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                  <p class="title mb-1">Catálogo de inventario</p>
+                  <p class="desc">
+                    Los componentes disponibles se cargan automáticamente con base en el almacén seleccionado.
+                  </p>
+                </div>
+                <span class="pill">
+                  <span class="dot"></span>
+                  Almacén activo: <span id="lblAlmacenActual">N/A</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- <div class="text-muted mt-2">
+              <small class="mono">
+             
+              </small>
+            </div> -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tables -->
+    <div class="row g-3">
+      <!-- Catalog -->
+      <div class="col-xl-7">
+        <div class="card soft-shadow h-100">
+          <div class="card-body p-3 p-md-4">
+            <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+              <div>
+                <div class="section-title">Catálogo por almacén</div>
+                <p class="section-subtitle">Busque, ordene y seleccione Componentes desde el inventario.</p>
+              </div>
+              <span class="pill"><span class="dot"></span> Catálogo</span>
+            </div>
+
+            <div class="table-responsive">
+              <table id="tblCatalog" class="display table table-hover">
+                <thead>
+                  <tr class="text-muted">
+                    <th>ID</th>
+                    <th>Componente</th>
+                    <th>Tipo</th>
+                    <th>Unidad</th>
+                    <th class="text-end">Acción</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div class="alert alert-warning border-0" role="alert" id="msgSelectAlmacen">
+                                                    <strong>  Selecciona un almacén </strong> para visualizar los componentes disponibles. 
+                                                </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Selected -->
+      <div class="col-xl-5">
+        <div class="card soft-shadow h-100">
+          <div class="card-body p-3 p-md-4">
+            <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+              <div>
+                <div class="section-title">Componentes seleccionados</div>
+                <p class="section-subtitle">Indique la cantidad requerida por componente.</p>
+              </div>
+              <span class="pill"><span class="dot"></span> Seleccionados: <span id="countSelected">0</span></span>
+            </div>
+
+            <div class="table-responsive">
+              <table id="tblSelected" class="display table table-striped align-middle mb-0">
+                <thead>
+                  <tr class="text-muted">
+                    <th>ID</th>
+                    <th>Componente</th>
+                    <th>Tipo</th>
+                    <th>Unidad</th>
+                    <th>Cantidad</th>
+                    <th class="text-end">Acción</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div class="text-muted mt-2">
+              <small class="mono">Regla: cantidad mínima 1.</small>
+            </div>
+
+            <!-- SAVE BAR (solo aparece si hay seleccionados) -->
+            <div id="saveBar" class="save-bar d-none">
+              <button id="btnGuardarTodo" class="btn btn-success btn-save-all">
+                Guardar todo
+              </button>
+              <div class="text-muted mt-2">
+                <small>Se enviará el detalle por componente (una fila por registro) al backend.</small>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+<!-- 
+    <div class="mt-3 text-muted">
+      <small class="mono">Nota: El botón “Guardar todo” se muestra automáticamente cuando hay al menos 1 componente agregado.</small>
+    </div> -->
+
+        <div class="alert alert-danger alert-border-left alert-dismissible fade show mb-xl-0" role="alert">
+                                                    <i class="ri-error-warning-line me-3 align-middle fs-16"></i><strong>Nota</strong>
+                                                    - El botón “Guardar todo” se muestra automáticamente cuando hay al menos 1 componente agregado.
+                                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                                </div>
+ 
+
+  </div>
+
+  <div class="modal-footer">
+    <div class="hstack gap-2 justify-content-end">
+      <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+      <button type="submit" id="btnActionForm" class="btn btn-success">
+        <span id="btnText">Guardar</span>
+      </button>
+    </div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MODALES PARA HERRAMIENTAS -->
+
+<div class="modal fade" id="modalHerramientas" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content border-0">
+      <div class="modal-header bg-primary-subtle p-3">
+        <h5 class="modal-title" id="titleModalHerramientas">Capturar Herramientas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="close-modal"></button>
+      </div>
+  <div class="modal-body">
+
+  
+
+    <!-- Top bar -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+      <div>
+        <h3 class="mb-1 page-title"><i class="mdi mdi-tools"></i> Herramientas</h3>
         <div class="text-muted">Seleccione el almacén y gestione las herramientas requeridas con cantidades.</div>
       </div>
       <div class="d-flex gap-2">
@@ -1375,7 +1549,7 @@
             </div>
 
             <div class="table-responsive">
-              <table id="tblCatalog" class="display table table-hover">
+              <table id="tblCatalogHerramientas" class="display table table-hover">
                 <thead>
                   <tr class="text-muted">
                     <th>ID</th>
@@ -1444,36 +1618,16 @@
       </div>
     </div>
 
-    <div class="mt-3 text-muted">
+    <!-- <div class="mt-3 text-muted">
       <small class="mono">Nota: El botón “Guardar todo” se muestra automáticamente cuando hay al menos 1 herramienta agregada.</small>
-    </div>
+    </div> -->
+
+    <div class="alert alert-danger alert-border-left alert-dismissible fade show mb-xl-0" role="alert">
+                                                    <i class="ri-error-warning-line me-3 align-middle fs-16"></i><strong>Nota</strong>
+                                                    - El botón “Guardar todo” se muestra automáticamente cuando hay al menos 1 herramienta agregada.
+                                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                                </div>
  
-
-  </div>
-
-  <div class="modal-footer">
-    <div class="hstack gap-2 justify-content-end">
-      <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
-      <button type="submit" id="btnActionForm" class="btn btn-success">
-        <span id="btnText">Guardar</span>
-      </button>
-    </div>
-
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- MODALES PARA HERRAMIENTAS -->
-
-<div class="modal fade" id="modalHerramientas" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content border-0">
-      <div class="modal-header bg-primary-subtle p-3">
-        <h5 class="modal-title" id="titleModal">Capturar Herramientas</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="close-modal"></button>
-      </div>
-  <div class="modal-body">
 
   </div>
 

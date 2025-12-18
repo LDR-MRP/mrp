@@ -2,7 +2,7 @@ let tableAlmacenes;
 let tableDocumentos;
 let divLoading = null;
 
-let tableHerramientas=null;
+let dtCatalogHerramientas=null;
 
 // Inputs / elementos del formulario
 let productoid = null;          
@@ -1256,7 +1256,7 @@ function agregarEstacionARuta(est, botonOrigen) {
   ? `
     <button type="button"
             class="btn btn-outline-success btn-sm"
-            onclick="abrirHerramientas(${est.idestacion})"
+            onclick="abrirHerramientas(${est.idestacion},'${est.cve_estacion}')"
             title="Asignar herramientas">
       <i class="ri-tools-line"></i>
       <span class="d-none d-md-inline">Herramientas</span>
@@ -1820,9 +1820,9 @@ function fntEditEspecificacion(idespecificacion){
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 
-function abrirComponentes(idestacion){
+function abrirComponentes(idestacion,cve_estacion){
        fntAlmacenes();
-
+    document.querySelector('#titleModalComponentes').innerHTML = "Componentes - " + cve_estacion;
     $('#modalComponentes').modal('show');
  
 }
@@ -1862,12 +1862,16 @@ function fntAlmacenes(selectedValue = "") {
 }
 
 
-dtCatalog = new DataTable('#tblCatalog', {
+dtCatalogHerramientas = new DataTable('#tblCatalogHerramientas', {
   data: [],
   deferRender: true,
   pageLength: 10,
   lengthMenu: [10, 25, 50, 100],
   order: [[0, 'asc']],
+  autoWidth: false,   // recomendado
+  language: {
+    url: "https://cdn.datatables.net/plug-ins/2.1.8/i18n/es-ES.json"
+  },
   columns: [
     { data: 'id' },
     {
@@ -1893,6 +1897,9 @@ dtCatalog = new DataTable('#tblCatalog', {
     }
   ]
 });
+
+
+
 
 
 // ------------------------------------------------------------------------
@@ -1937,9 +1944,9 @@ function fntHerramientas(idAlmacen) {
       }));
 
       // ✅ Carga todo al DataTable
-      dtCatalog.clear();
-      dtCatalog.rows.add(dataCatalog);
-      dtCatalog.draw(false);
+      dtCatalogHerramientas.clear();
+      dtCatalogHerramientas.rows.add(dataCatalog);
+      dtCatalogHerramientas.draw(false);
 
     } else {
       console.error("Error AJAX. Status:", request.status);
@@ -1955,7 +1962,10 @@ function fntHerramientas(idAlmacen) {
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 
-function abrirHerramientas(){
+function abrirHerramientas(idestacion, cve_estacion){
+    //llamamos la función para listar los almacenes de donde extraeremos las herramientas
+     fntAlmacenes();
+      document.querySelector('#titleModalHerramientas').innerHTML = "Herramientas - " + cve_estacion;
     $('#modalHerramientas').modal('show');
 }
 
