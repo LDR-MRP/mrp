@@ -1,19 +1,20 @@
-let tableDistibuidores = null;
+let tableGrupos;
 let rowTable = "";
 let divLoading = document.querySelector("#divLoading");
 
 // Inputs del formulario
-const idcliente = document.querySelector("#idcliente");
-const nombre = document.querySelector("#nombre-cliente-input");
+const idgrupo = document.querySelector("#idgrupo");
+const codigoInput = document.querySelector("#codigo-grupo-input");
+const nombreInput = document.querySelector("#nombre-grupo-input");
+const descripcionInput = document.querySelector("#descripcion-grupo-input");
 const estado = document.querySelector("#estado-select");
-const direccion = document.querySelector("#direccion-linea-textarea");
 
 // Mis referencias globales
 let primerTab; // Tab LISTA
 let firstTab; // Tab NUEVO/ACTUALIZAR
 let tabNuevo;
 let spanBtnText = null;
-let formClientes = null;
+let formGrupos = null;
 
 document.addEventListener(
   "DOMContentLoaded",
@@ -21,27 +22,26 @@ document.addEventListener(
     // --------------------------------------------------------------------
     //  REFERENCIAS DEL FORMULARIO
     // --------------------------------------------------------------------
-    formClientes = document.querySelector("#formClientes");
+    formGrupos = document.querySelector("#formGrupos");
     spanBtnText = document.querySelector("#btnText");
 
     // --------------------------------------------------------------------
-    //  DATATABLE CLIENTES
+    //  DATATABLE GRUPOS
     // --------------------------------------------------------------------
-    tableDistibuidores = $("#cli_distribuidores").dataTable({
+    tableGrupos = $("#tableGrupos").dataTable({
       aProcessing: true,
       aServerSide: true,
       ajax: {
-        url: " " + base_url + "/cli_clientes/index",
+        url: " " + base_url + "/cli_grupos/index",
         dataSrc: "",
       },
       columns: [
         { data: "id" },
+        { data: "codigo" },
         { data: "nombre" },
-        { data: "tipo_negocio" },
-        { data: "nombre_comercial" },
-        { data: "razon_social" },
-        { data: "plaza" },
-        { data: "estatus" },
+        { data: "descripcion" },
+        { data: "fecha_registro" },
+        { data: "estado" },
         { data: "options" },
       ],
       dom: "lBfrtip",
@@ -56,10 +56,10 @@ document.addEventListener(
     //  TABS BOOTSTRAP
     // --------------------------------------------------------------------
     const primerTabEl = document.querySelector(
-      '#nav-tab a[href="#listclientes"]'
+      '#nav-tab a[href="#listgrupos"]'
     );
     const firstTabEl = document.querySelector(
-      '#nav-tab a[href="#agregarclientes"]'
+      '#nav-tab a[href="#agregargrupo"]'
     );
 
     if (primerTabEl && firstTabEl && spanBtnText) {
@@ -76,29 +76,29 @@ document.addEventListener(
         spanBtnText.textContent = "REGISTRAR";
 
         // Limpiar formulario
-        formClientes.reset();
-        cliente.value = "";
+        formGrupos.reset();
+        idgrupo.value = "";
         estado.value = "2";
       });
 
       // ----------------------------------------------------------------
-      // CLICK EN "CLIENTES" → RESETEAR NAV A NUEVO
+      // CLICK EN "GRUPOS" → RESETEAR NAV A NUEVO
       // ----------------------------------------------------------------
       primerTabEl.addEventListener("click", () => {
         tabNuevo.textContent = "NUEVO";
         spanBtnText.textContent = "REGISTRAR";
-        cliente.value = "";
+        idgrupo.value = "";
         estado.value = "2";
-        formClientes.reset();
+        formGrupos.reset();
       });
     } else {
       console.warn("Tabs de lineas no encontrados o btnText faltante.");
     }
 
     // --------------------------------------------------------------------
-    // FORM → CREAR / ACTUALIZAR CLIENTE
+    // FORM → CREAR / ACTUALIZAR GRUPO
     // --------------------------------------------------------------------
-    formClientes.addEventListener("submit", function (e) {
+    formGrupos.addEventListener("submit", function (e) {
       e.preventDefault();
 
       divLoading.style.display = "flex";
@@ -106,8 +106,8 @@ document.addEventListener(
       let request = window.XMLHttpRequest
         ? new XMLHttpRequest()
         : new ActiveXObject("Microsoft.XMLHTTP");
-      let ajaxUrl = base_url + "/cli_clientes/setCliente";
-      let formData = new FormData(formClientes);
+      let ajaxUrl = base_url + "/cli_grupos/setGrupo";
+      let formData = new FormData(formGrupos);
 
       request.open("POST", ajaxUrl, true);
       request.send(formData);
@@ -144,21 +144,21 @@ document.addEventListener(
             }).then((result) => {
               if (result.isConfirmed) {
                 // Seguir en modo NUEVO
-                formClientes.reset();
-                cliente.value = "";
+                formGrupos.reset();
+                idgrupo.value = "";
                 estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
-                tableDistibuidores = null.api().ajax.reload();
+                tableGrupos.api().ajax.reload();
               } else {
                 // Regresar al listado
-                formClientes.reset();
-                cliente.value = "";
+                formGrupos.reset();
+                idgrupo.value = "";
                 estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 primerTab.show();
-                tableDistibuidores = null.api().ajax.reload();
+                tableGrupos.api().ajax.reload();
               }
             });
           } else {
@@ -171,13 +171,13 @@ document.addEventListener(
               allowEscapeKey: false,
             }).then(() => {
               // Acción final después de OK (opcional)
-              formClientes.reset();
-              cliente.value = "";
+              formGrupos.reset();
+              idgrupo.value = "";
               estado.value = "2";
               tabNuevo.textContent = "NUEVO";
               spanBtnText.textContent = "REGISTRAR";
               primerTab.show();
-              tableDistibuidores = null.api().ajax.reload();
+              tableGrupos.api().ajax.reload();
             });
           }
         } else {
@@ -190,9 +190,9 @@ document.addEventListener(
 );
 
 // ------------------------------------------------------------------------
-// FUNCIÓN EDITAR CLIENTE → MODO ACTUALIZAR
+// FUNCIÓN EDITAR GRUPO → MODO ACTUALIZAR
 // ------------------------------------------------------------------------
-function fntEditCliente(idcliente) {
+function fntEditInfo(id_grupo) {
   // Cambiar textos a modo ACTUALIZAR
   if (tabNuevo) tabNuevo.textContent = "ACTUALIZAR";
   if (spanBtnText) spanBtnText.textContent = "ACTUALIZAR";
@@ -200,7 +200,7 @@ function fntEditCliente(idcliente) {
   let request = window.XMLHttpRequest
     ? new XMLHttpRequest()
     : new ActiveXObject("Microsoft.XMLHTTP");
-  let ajaxUrl = base_url + "/cli_clientes/getCliente/" + idcliente;
+  let ajaxUrl = base_url + "/cli_grupos/show/" + id_grupo;
 
   request.open("GET", ajaxUrl, true);
   request.send();
@@ -210,7 +210,11 @@ function fntEditCliente(idcliente) {
       let objData = JSON.parse(request.responseText);
 
       if (objData.status) {
-        cliente.value = objData.data.idcliente;
+        idgrupo.value = objData.data.id;
+        codigoInput.value = objData.data.codigo;
+        nombreInput.value = objData.data.nombre;
+        descripcionInput.value = objData.data.descripcion;
+        estado.value = objData.data.estado;
 
         // Cambiar al tab de captura
         if (firstTab) firstTab.show();
@@ -224,7 +228,7 @@ function fntEditCliente(idcliente) {
 // ------------------------------------------------------------------------
 //  ELIMINAR UN REGISTRO DEL LISTADO
 // ------------------------------------------------------------------------
-function fntDelCliente(idcliente) {
+function fntDelGrupo(idgrupo) {
   Swal.fire({
     html: `
         <div class="mt-3">
@@ -261,8 +265,8 @@ function fntDelCliente(idcliente) {
     let request = window.XMLHttpRequest
       ? new XMLHttpRequest()
       : new ActiveXObject("Microsoft.XMLHTTP");
-    let ajaxUrl = base_url + "/cli_clientes/destroy";
-    let strData = "idcliente=" + idcliente;
+    let ajaxUrl = base_url + "/cli_grupos/destroy";
+    let strData = "idgrupo=" + idgrupo;
 
     request.open("POST", ajaxUrl, true);
     request.setRequestHeader(
@@ -276,7 +280,7 @@ function fntDelCliente(idcliente) {
         let objData = JSON.parse(request.responseText);
         if (objData.status) {
           Swal.fire("¡Operación exitosa!", objData.msg, "success");
-          tableDistibuidores.api().ajax.reload();
+          tableGrupos.api().ajax.reload();
         } else {
           Swal.fire("Atención!", objData.msg, "error");
         }
@@ -286,14 +290,13 @@ function fntDelCliente(idcliente) {
 }
 
 // ------------------------------------------------------------------------
-//  VER EL DETALLE DEl CLIENTE
+//  VER EL DETALLE DE LA GRUPO
 // ------------------------------------------------------------------------
-function fntViewCliente(idcliente) {
+function fntViewGrupo(idgrupo) {
   let request = window.XMLHttpRequest
     ? new XMLHttpRequest()
     : new ActiveXObject("Microsoft.XMLHTTP");
-  let ajaxUrl = base_url + "/cli_clientes/show/" + idcliente;
-
+  let ajaxUrl = base_url + "/cli_grupos/show/" + idgrupo;
   request.open("GET", ajaxUrl, true);
   request.send();
 
@@ -307,13 +310,19 @@ function fntViewCliente(idcliente) {
             ? '<span class="badge bg-success">Activo</span>'
             : '<span class="badge bg-danger">Inactivo</span>';
 
-        document.querySelector("#celEstado").innerHTML = estadoUsuario;
+        document.querySelector("#idGrupo").innerHTML = objData.data.id;
+        document.querySelector("#codigoGrupo").innerHTML = objData.data.codigo;
+        document.querySelector("#nombreGrupo").innerHTML = objData.data.nombre;
+        document.querySelector("#descripcionGrupo").innerHTML =
+          objData.data.descripcion;
+        document.querySelector("#fechaGrupo").innerHTML =
+          objData.data.fecha_registro;
+        document.querySelector("#estadoGrupo").innerHTML = estadoUsuario;
 
-        $("#modalViewCliente").modal("show");
+        $("#modalViewGrupo").modal("show");
       } else {
         Swal.fire("Error", objData.msg, "error");
       }
     }
   };
 }
-

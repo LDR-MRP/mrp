@@ -1,47 +1,46 @@
-let tableDistibuidores = null;
+let tableMarcas;
 let rowTable = "";
 let divLoading = document.querySelector("#divLoading");
 
 // Inputs del formulario
-const idcliente = document.querySelector("#idcliente");
-const nombre = document.querySelector("#nombre-cliente-input");
+const idmarca = document.querySelector("#idmarca");
+const nombreInput = document.querySelector("#nombre-marca-input");
+const codigoInput = document.querySelector("#codigo-marca-input");
 const estado = document.querySelector("#estado-select");
-const direccion = document.querySelector("#direccion-linea-textarea");
 
 // Mis referencias globales
 let primerTab; // Tab LISTA
 let firstTab; // Tab NUEVO/ACTUALIZAR
 let tabNuevo;
 let spanBtnText = null;
-let formClientes = null;
+let formMarcas = null;
 
 document.addEventListener(
   "DOMContentLoaded",
   function () {
+    
     // --------------------------------------------------------------------
     //  REFERENCIAS DEL FORMULARIO
     // --------------------------------------------------------------------
-    formClientes = document.querySelector("#formClientes");
+    formMarcas = document.querySelector("#formMarcas");
     spanBtnText = document.querySelector("#btnText");
 
     // --------------------------------------------------------------------
-    //  DATATABLE CLIENTES
+    //  DATATABLE MARCAS
     // --------------------------------------------------------------------
-    tableDistibuidores = $("#cli_distribuidores").dataTable({
+    tableMarcas = $("#tableMarcas").dataTable({
       aProcessing: true,
       aServerSide: true,
       ajax: {
-        url: " " + base_url + "/cli_clientes/index",
+        url: " " + base_url + "/cli_marcas/index",
         dataSrc: "",
       },
       columns: [
         { data: "id" },
         { data: "nombre" },
-        { data: "tipo_negocio" },
-        { data: "nombre_comercial" },
-        { data: "razon_social" },
-        { data: "plaza" },
-        { data: "estatus" },
+        { data: "codigo" },
+        { data: "fecha_registro" },
+        { data: "estado" },
         { data: "options" },
       ],
       dom: "lBfrtip",
@@ -56,10 +55,10 @@ document.addEventListener(
     //  TABS BOOTSTRAP
     // --------------------------------------------------------------------
     const primerTabEl = document.querySelector(
-      '#nav-tab a[href="#listclientes"]'
+      '#nav-tab a[href="#listmarcas"]'
     );
     const firstTabEl = document.querySelector(
-      '#nav-tab a[href="#agregarclientes"]'
+      '#nav-tab a[href="#agregarmarca"]'
     );
 
     if (primerTabEl && firstTabEl && spanBtnText) {
@@ -76,29 +75,29 @@ document.addEventListener(
         spanBtnText.textContent = "REGISTRAR";
 
         // Limpiar formulario
-        formClientes.reset();
-        cliente.value = "";
+        formMarcas.reset();
+        idmarca.value = "";
         estado.value = "2";
       });
 
       // ----------------------------------------------------------------
-      // CLICK EN "CLIENTES" → RESETEAR NAV A NUEVO
+      // CLICK EN "MARCAS" → RESETEAR NAV A NUEVO
       // ----------------------------------------------------------------
       primerTabEl.addEventListener("click", () => {
         tabNuevo.textContent = "NUEVO";
         spanBtnText.textContent = "REGISTRAR";
-        cliente.value = "";
+        idmarca.value = "";
         estado.value = "2";
-        formClientes.reset();
+        formMarcas.reset();
       });
     } else {
       console.warn("Tabs de lineas no encontrados o btnText faltante.");
     }
 
     // --------------------------------------------------------------------
-    // FORM → CREAR / ACTUALIZAR CLIENTE
+    // FORM → CREAR / ACTUALIZAR MARCA
     // --------------------------------------------------------------------
-    formClientes.addEventListener("submit", function (e) {
+    formMarcas.addEventListener("submit", function (e) {
       e.preventDefault();
 
       divLoading.style.display = "flex";
@@ -106,8 +105,8 @@ document.addEventListener(
       let request = window.XMLHttpRequest
         ? new XMLHttpRequest()
         : new ActiveXObject("Microsoft.XMLHTTP");
-      let ajaxUrl = base_url + "/cli_clientes/setCliente";
-      let formData = new FormData(formClientes);
+      let ajaxUrl = base_url + "/cli_marcas/setMarca";
+      let formData = new FormData(formMarcas);
 
       request.open("POST", ajaxUrl, true);
       request.send(formData);
@@ -144,21 +143,21 @@ document.addEventListener(
             }).then((result) => {
               if (result.isConfirmed) {
                 // Seguir en modo NUEVO
-                formClientes.reset();
-                cliente.value = "";
+                formMarcas.reset();
+                idmarca.value = "";
                 estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
-                tableDistibuidores = null.api().ajax.reload();
+                tableMarcas.api().ajax.reload();
               } else {
                 // Regresar al listado
-                formClientes.reset();
-                cliente.value = "";
+                formMarcas.reset();
+                idmarca.value = "";
                 estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 primerTab.show();
-                tableDistibuidores = null.api().ajax.reload();
+                tableMarcas.api().ajax.reload();
               }
             });
           } else {
@@ -171,13 +170,13 @@ document.addEventListener(
               allowEscapeKey: false,
             }).then(() => {
               // Acción final después de OK (opcional)
-              formClientes.reset();
-              cliente.value = "";
+              formMarcas.reset();
+              idmarca.value = "";
               estado.value = "2";
               tabNuevo.textContent = "NUEVO";
               spanBtnText.textContent = "REGISTRAR";
               primerTab.show();
-              tableDistibuidores = null.api().ajax.reload();
+              tableMarcas.api().ajax.reload();
             });
           }
         } else {
@@ -190,9 +189,9 @@ document.addEventListener(
 );
 
 // ------------------------------------------------------------------------
-// FUNCIÓN EDITAR CLIENTE → MODO ACTUALIZAR
+// FUNCIÓN EDITAR MARCA → MODO ACTUALIZAR
 // ------------------------------------------------------------------------
-function fntEditCliente(idcliente) {
+function fntEditInfo(id_marca) {
   // Cambiar textos a modo ACTUALIZAR
   if (tabNuevo) tabNuevo.textContent = "ACTUALIZAR";
   if (spanBtnText) spanBtnText.textContent = "ACTUALIZAR";
@@ -200,7 +199,7 @@ function fntEditCliente(idcliente) {
   let request = window.XMLHttpRequest
     ? new XMLHttpRequest()
     : new ActiveXObject("Microsoft.XMLHTTP");
-  let ajaxUrl = base_url + "/cli_clientes/getCliente/" + idcliente;
+  let ajaxUrl = base_url + "/cli_marcas/show/" + id_marca;
 
   request.open("GET", ajaxUrl, true);
   request.send();
@@ -210,7 +209,10 @@ function fntEditCliente(idcliente) {
       let objData = JSON.parse(request.responseText);
 
       if (objData.status) {
-        cliente.value = objData.data.idcliente;
+        idmarca.value = objData.data.id;
+        nombreInput.value = objData.data.nombre;
+        codigoInput.value = objData.data.codigo;
+        estado.value = objData.data.estado;
 
         // Cambiar al tab de captura
         if (firstTab) firstTab.show();
@@ -224,7 +226,7 @@ function fntEditCliente(idcliente) {
 // ------------------------------------------------------------------------
 //  ELIMINAR UN REGISTRO DEL LISTADO
 // ------------------------------------------------------------------------
-function fntDelCliente(idcliente) {
+function fntDelMarca(idmarca) {
   Swal.fire({
     html: `
         <div class="mt-3">
@@ -261,8 +263,8 @@ function fntDelCliente(idcliente) {
     let request = window.XMLHttpRequest
       ? new XMLHttpRequest()
       : new ActiveXObject("Microsoft.XMLHTTP");
-    let ajaxUrl = base_url + "/cli_clientes/destroy";
-    let strData = "idcliente=" + idcliente;
+    let ajaxUrl = base_url + "/cli_marcas/destroy";
+    let strData = "idmarca=" + idmarca;
 
     request.open("POST", ajaxUrl, true);
     request.setRequestHeader(
@@ -276,7 +278,7 @@ function fntDelCliente(idcliente) {
         let objData = JSON.parse(request.responseText);
         if (objData.status) {
           Swal.fire("¡Operación exitosa!", objData.msg, "success");
-          tableDistibuidores.api().ajax.reload();
+          tableMarcas.api().ajax.reload();
         } else {
           Swal.fire("Atención!", objData.msg, "error");
         }
@@ -286,13 +288,13 @@ function fntDelCliente(idcliente) {
 }
 
 // ------------------------------------------------------------------------
-//  VER EL DETALLE DEl CLIENTE
+//  VER EL DETALLE DE LA MARCA
 // ------------------------------------------------------------------------
-function fntViewCliente(idcliente) {
+function fntViewMarca(idmarca) {
   let request = window.XMLHttpRequest
     ? new XMLHttpRequest()
     : new ActiveXObject("Microsoft.XMLHTTP");
-  let ajaxUrl = base_url + "/cli_clientes/show/" + idcliente;
+  let ajaxUrl = base_url + "/cli_marcas/show/" + idmarca;
 
   request.open("GET", ajaxUrl, true);
   request.send();
@@ -307,13 +309,17 @@ function fntViewCliente(idcliente) {
             ? '<span class="badge bg-success">Activo</span>'
             : '<span class="badge bg-danger">Inactivo</span>';
 
-        document.querySelector("#celEstado").innerHTML = estadoUsuario;
+        document.querySelector("#idMarca").innerHTML = objData.data.id;
+        document.querySelector("#nombreMarca").innerHTML = objData.data.nombre;
+        document.querySelector("#codigoMarca").innerHTML = objData.data.codigo;
+        document.querySelector("#fechaMarca").innerHTML =
+          objData.data.fecha_registro;
+        document.querySelector("#estadoMarca").innerHTML = estadoUsuario;
 
-        $("#modalViewCliente").modal("show");
+        $("#modalViewMarca").modal("show");
       } else {
         Swal.fire("Error", objData.msg, "error");
       }
     }
   };
 }
-
