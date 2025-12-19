@@ -9,7 +9,7 @@ class Plan_confproductos extends Controllers
 		if (empty($_SESSION['login'])) {
 			header('Location: ' . base_url() . '/login');
 			die();
-		}
+		} 
 		getPermisos(MPCONFPRODUCTOS);
 	}
 
@@ -40,9 +40,9 @@ class Plan_confproductos extends Controllers
 		$arrData = $this->model->selectOptionProductos();
 		if (count($arrData) > 0) {
 			for ($i = 0; $i < count($arrData); $i++) {
-				// if ($arrData[$i]['estado'] == 2) {
-				$htmlOptions .= '<option value="' . $arrData[$i]['idinventario'] . '">' . $arrData[$i]['cve_art'] . '</option>';
-				// }
+				if ($arrData[$i]['estado'] == 2) {
+				$htmlOptions .= '<option value="' . $arrData[$i]['idinventario'] . '">' . $arrData[$i]['cve_articulo'] . '</option>';
+				}
 			}
 		}
 		echo $htmlOptions;
@@ -72,7 +72,7 @@ class Plan_confproductos extends Controllers
 		if (count($arrData) > 0) {
 			for ($i = 0; $i < count($arrData); $i++) {
 				// if ($arrData[$i]['estado'] == 2) {
-				$htmlOptions .= '<option value="' . $arrData[$i]['idlinea'] . '">' . $arrData[$i]['cve_linea'] . ' - ' . $arrData[$i]['descripcion'] . '</option>';
+				$htmlOptions .= '<option value="' . $arrData[$i]['idlineaproducto'] . '">' . $arrData[$i]['cve_linea_producto'] . ' - ' . $arrData[$i]['descripcion'] . '</option>';
 				// }
 			}
 		}
@@ -594,8 +594,316 @@ class Plan_confproductos extends Controllers
 	}
 
 
+public function setRutaProducto()
+{
+    header('Content-Type: application/json');
+
+    $arrData = [
+        'status' => false,
+        'msg'    => 'Error al guardar ruta'
+    ];
+
+    if (!isset($_POST['ruta'])) {
+        $arrData = ['status' => false, 'msg' => 'No se recibió ruta'];
+        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $arr = json_decode($_POST['ruta'], true);
+    if (json_last_error() !== JSON_ERROR_NONE || !is_array($arr) || empty($arr)) {
+        $arrData = ['status' => false, 'msg' => 'Payload inválido'];
+        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $data = $arr[0];
+
+    $planta  = (int)($data['listPlantasSelect'] ?? 0);
+    $linea   = (int)($data['listLineasSelect'] ?? 0);
+    $prod    = 48; // tu valor fijo
+    $detalle = $data['detalle_ruta'] ?? [];
+
+    $fecha_creacion_ruta = date('Y-m-d H:i:s');
+
+    if (!$planta || !$linea || !$prod || !is_array($detalle) || count($detalle) == 0) {
+        $arrData = ['status' => false, 'msg' => 'Datos incompletos'];
+        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    try {
+        // 1) Insert header ruta
+        $idruta = $this->model->insertRuta($prod, $planta, $linea, $fecha_creacion_ruta);
+
+        if (!$idruta) {
+            $arrData = ['status' => false, 'msg' => 'No se pudo generar la ruta'];
+            echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // 2) Insert detalle
+        foreach ($detalle as $row) {
+            $idestacion = (int)($row['idestacion'] ?? 0);
+            $orden      = (int)($row['orden'] ?? 0);
+
+            if ($idestacion && $orden) {
+                $fecha_creacion_ruta_detalle = date('Y-m-d H:i:s');
+                $this->model->insertRutaDetalle($idruta, $idestacion, $orden, $fecha_creacion_ruta_detalle);
+            }
+        }
+
+        $arrData = [
+            'status' => true,
+            'msg'    => 'Ruta guardada',
+            'idruta' => $idruta
+        ];
+    } catch (\Throwable $e) {
+        $arrData = [
+            'status' => false,
+            'msg'    => 'Error al guardar ruta',
+            'error'  => $e->getMessage()
+        ];
+    }
+
+    echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+
+	// --------------------------------------------------------------------
+	// FUNCIONES PARA EL GUARDADO Y EDICION DE ESPECIFICAIONES POR ESTACION
+	// --------------------------------------------------------------------
+
+		public function setEspecificacion()
+	{
+
+	
+		if ($_POST) {
+			if (
+				empty($_POST['idproducto_especificacion'])
+				|| empty($_POST['idestacion'])
+			) {
+				$arrResponse = array("status" => false, "msg" => 'Datos incorrectos .');
+			} else {
+
+				// --------------------------------------------------------------------
+				//  Datos de auditoría
+				// --------------------------------------------------------------------
+				$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+				$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+				$fechaEvento = date('Y-m-d H:i:s');
+
+				$intEspecificacionid = intval($_POST['idespecificacion']);
+				$intIdproducto = intval($_POST['idproducto_especificacion']);
+				$intEstacionId = intval($_POST['idestacion']);
+				$descripcion = strClean($_POST['txtEspecificacion']);
+
+
+				if ($intEspecificacionid == 0) {
+
+					$fecha_creacion = date('Y-m-d H:i:s');
+					// $estado = 2;
+
+					//Crear 
+					// if ($_SESSION['permisosMod']['w']) {
+					$request_especificacion = $this->model->insertEspecificacion($intIdproducto, $intEstacionId, $descripcion, $fecha_creacion);
+
+					$option = 1;
+					// }
+
+				} else {
+					//Actualizar
+					// if ($_SESSION['permisosMod']['u']) {
+					$request_especificacion = $this->model->updateEspecificacion($intEspecificacionid, $descripcion);
+					$option = 2;
+					// }
+				}
+				if ($request_especificacion > 0) {
+					if ($option == 1) {
+						$arrResponse = array('status' => true, 'msg' => '¡La información se ha registrado exitosamente!', 'tipo' => 'insert', 'idespecificacion' => $request_especificacion);
+						$this->model->insertAuditoria(
+							MPCONFPRODUCTOS,
+							1,
+							$idusuario,
+							'mrp_estacion_especificaciones',
+							$request_especificacion,
+							$fechaEvento,
+							$ip,
+							$detalle
+						);
+					} else {
+						$arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update', 'idespecificacion' => $intEspecificacionid);
+						$this->model->insertAuditoria(
+							MPCONFPRODUCTOS,
+							2,
+							$idusuario,
+							'mrp_estacion_especificaciones',
+							$request_especificacion,
+							$fechaEvento,
+							$ip,
+							$detalle
+						);
+					}
+				} else if ($request_especificacion == 'exist') {
+					$arrResponse = array('status' => false, 'msg' => '¡Atención! La especificación ya existe.');
+				} else {
+					$arrResponse = array("status" => false, "msg" => 'No es posible almacenar los datos.');
+				}
+
+				echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+			}
+		}
+	}
+
+
+
+	public function getEspecificaciones($idestacion){
+        // if ($_SESSION['permisosMod']['r']) {
+        $intIdestacion = intval($idestacion);
+        if ($intIdestacion > 0) {
+            $arrData = $this->model->EspecificacionesByEstacion($intIdestacion);
+            if (empty($arrData)) {
+                $arrResponse = array('status' => false, 'msg' => 'Datos no encontrados.');
+            } else {
+
+				for ($i = 0; $i < count($arrData); $i++) {
+
+
+				$btnEdit = '<button type="button" class="btn btn-sm btn-soft-warning edit-list" title="Editar especificación" onClick="fntEditEspecificacion(' . $arrData[$i]['idespecificacion'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
+
+				$btnDelete = '<button class="btn btn-sm btn-soft-danger remove-list" title="Eliminar especificación" onClick="fntDelEspecificacion(' . $arrData[$i]['idespecificacion'] . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
+
+
+
+				$arrData[$i]['options'] = '<div class="text-center">' . $btnEdit . ' ' . $btnDelete . '</div>';
+				  }
+
+                $arrResponse = array('status' => true, 'data' => $arrData);
+            }
+
+
+
+
+            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        }
+        // }
+        die();
+
+}
+
+
+	public function delEspecificacion()
+	{
+		if ($_POST) {
+
+							// --------------------------------------------------------------------
+				//  Datos de auditoría
+				// --------------------------------------------------------------------
+				$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+				$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+				$fechaEvento = date('Y-m-d H:i:s');
+
+			$intIdEspecificacion = intval($_POST['idespecificacion']);
+			$requestDelete = $this->model->deleteEspecificacion($intIdEspecificacion);
+			if ($requestDelete == 'ok') {
+				$arrResponse = array('status' => true, 'msg' => 'El registro ha sido eliminado correctamente.');
+							$this->model->insertAuditoria(
+							MPCONFPRODUCTOS,
+							3,
+							$idusuario,
+							'mrp_estacion_especificaciones',
+							$intIdEspecificacion,
+							$fechaEvento,
+							$ip,
+							$detalle
+						);
+			} else if ($requestDelete == 'exist') {
+				$arrResponse = array('status' => false, 'msg' => 'No es posible almacenar el documento.');
+			} else {
+				$arrResponse = array('status' => false, 'msg' => 'Error al eliminar la categoría.');
+			}
+			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+
+		}
+		die();
+	}
+
+
+	
+		public function getEspecificacion($idespecificacion)
+		{
+			// if($_SESSION['permisosMod']['r']){
+				$intIdespecificacion = intval($idespecificacion);
+				if($intIdespecificacion > 0)
+				{
+					$arrData = $this->model->selectEspecificacion($intIdespecificacion);
+					if(empty($arrData))
+					{
+						$arrResponse = array('status' => false, 'msg' => 'Datos no encontrados.');
+					}else{
+
+						$arrResponse = array('status' => true, 'data' => $arrData);
+					}
+					echo json_encode($arrResponse,JSON_UNESCAPED_UNICODE);
+				}
+			// }
+			die();
+		}
+
+
+
+			// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
+
+	// --------------------------------------------------------------------
+	// FUNCIONES PARA EL MODULO DE COMPONENTES
+	// --------------------------------------------------------------------
+
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
+
+
+	public function getSelectAlmacenes()
+	{
+
+		$htmlOptions = '<option value="">--Seleccione--</option>';
+		$arrData = $this->model->selectOptionAlmacenes();
+		if (count($arrData) > 0) {
+			for ($i = 0; $i < count($arrData); $i++) {
+				if ($arrData[$i]['estado'] == 2) {
+					$htmlOptions .= '<option value="' . $arrData[$i]['idalmacen'] . '">' . $arrData[$i]['descripcion'] . '</option>';
+				}
+			}
+		}
+		echo $htmlOptions;
+		die();
+
+	}
+
+	
+	
+		// --------------------------------------------------------------------
+	// FUNCIÓN PARA VER EL DETALLE DE INVENTARIO POR REGIASTRO
+	// --------------------------------------------------------------------
+	public function getHerramientas($idalmacen)
+	{
+		$idalmacen = intval($idalmacen);
+		$arrData = $this->model->selectHerramientas($idalmacen);
+
+		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+		die();
+	}
 
 }
 
 
 ?>
+

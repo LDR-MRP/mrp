@@ -428,13 +428,13 @@ class Cap_estaciones extends Controllers
         }
         die();
     }
-
-    public function getMantenimientosByEstacion($idestacion)
+ 
+    public function getEspecificaciones($idestacion)
     {
         // if ($_SESSION['permisosMod']['r']) {
         $intIdestacion = intval($idestacion);
         if ($intIdestacion > 0) {
-            $arrData = $this->model->MantenimientoByEstacion($intIdestacion);
+            $arrData = $this->model->EspecificacionesByEstacion($intIdestacion);
             if (empty($arrData)) {
                 $arrResponse = array('status' => false, 'msg' => 'Datos no encontrados.');
             } else {
