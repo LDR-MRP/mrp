@@ -184,7 +184,7 @@
                                                         <div class="input-group mb-3">
                                                             <span class="input-group-text"
                                                                 id="nombre-producto-addon">Des</span>
-                                                            <input type="text" class="form-control"
+                                                            <input type="text" class="form-control form-disabled"
                                                                 placeholder="Ingresa el nombre del producto"
                                                                 id="txtDescripcion" name="txtDescripcion"
                                                                 aria-describedby="nombre-producto-addon" required>
@@ -204,7 +204,7 @@
                                                         <label class="form-label" for="listLineasProductos">Línea de
                                                             producto</label>
                                                         <div class="input-group mb-3">
-                                                            <select class="form-control" name="listLineasProductos"
+                                                            <select class="form-control form-disabled" name="listLineasProductos"
                                                                 id="listLineasProductos" required></select>
                                                             <div class="invalid-feedback">El campo línea de producto es
                                                                 obligatorio</div>
@@ -248,140 +248,194 @@
                                     <!-- end pane información general -->
 
                                     <!-- PESTAÑA: DOCUMENTACIÓN -->
-                                    <div class="tab-pane fade" id="pane-documentacion" role="tabpanel"
-                                        aria-labelledby="tab-documentacion">
+                             <!-- PESTAÑA: DOCUMENTACIÓN -->
+<div class="tab-pane fade" id="pane-documentacion" role="tabpanel" aria-labelledby="tab-documentacion">
 
-                                        <hr>
+    <hr>
 
-                                        <div class="card-body form-steps">
-                                            <form id="formDocumentacion" name="formDocumentacion"
-                                                class="form-steps was-validated" autocomplete="off">
+<!-- HEADER: DOCUMENTACIÓN (izquierda) + CARRITO/ID (derecha) -->
+<div class="row g-3 align-items-center mb-4 px-lg-4">
 
-                                                <input type="text" id="idproducto_documentacion"
-                                                    name="idproducto_documentacion">
+  <!-- Izquierda: título y descripción -->
+  <div class="col-lg-8">
+    <h5 class="mb-1">Documentación</h5>
+    <p class="text-muted mb-0">
+      Captura la documentación inicial del producto y consulta el listado de archivos.
+    </p>
+  </div>
 
-                                                <div class="row gy-5">
-                                                    <!-- FORMULARIO DOCUMENTOS -->
-                                                    <div class="col-lg-4">
-                                                        <div class="px-lg-4">
-                                                            <div class="tab-content">
-                                                                <div class="tab-pane fade show active"
-                                                                    id="v-pills-bill-address" role="tabpanel">
-                                                                    <div>
-                                                                        <h5>Registro de documentación</h5>
-                                                                        <p class="text-muted">
-                                                                            Captura la documentación inicial del
-                                                                            producto
-                                                                        </p>
-                                                                    </div>
+  <!-- Derecha: icono + ID -->
+  <div class="col-lg-4 text-lg-end">
+    <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-3 border bg-light">
+    <lord-icon src="https://cdn.lordicon.com/uetqnvvg.json" trigger="loop" colors="primary:#25a0e2,secondary:#00bd9d" style="width:80px;height:80px"></lord-icon>
+      <div class="small">
+        <span class="text-muted producto_clave">ID:</span><br>
+        <span class="fw-semibold descripcion_producto">MFDS1400457854</span>
+      </div>
+    </div>
+  </div>
 
-                                                                    <div>
-                                                                        <div class="row g-3">
-
-                                                                               <div class="col-12">
-                                                                                <label for="txtDescripcionDocumento"
-                                                                                    class="form-label">Tipo de documento</label>
-                                                                                    <select name="tipoDocumento" id="tipoDocumento" class="form-control" required>
-                                                                                        <option value="" selected>--Seleccione--</option>
-                                                                                        <option value="Ayuda visual">Ayuda Visual</option>
-                                                                                        <option value="Diagrama">Diagrama</option>
-                                                                                    </select>
-                                                                
-                                                                                <div class="invalid-feedback">El campo
-                                                                                    de descripción es obligatorio</div>
-                                                                            </div>
+</div>
 
 
+    <!-- CONTENIDO DOCUMENTACIÓN -->
+    <div class="card-body form-steps">
+        <form id="formDocumentacion" name="formDocumentacion"
+              class="form-steps was-validated" autocomplete="off">
 
-                                                                            <div class="col-12">
-                                                                                <label for="txtDescripcionDocumento"
-                                                                                    class="form-label">Descripción del documento
-                                                                                </label>
-                                                                                <input type="text" class="form-control"
-                                                                                    id="txtDescripcionDocumento"
-                                                                                    name="txtDescripcionDocumento"
-                                                                                    placeholder="Ingresa una breve descripción del documento a adjuntar"
-                                                                                    required>
-                                                                                <div class="invalid-feedback">El campo
-                                                                                    de descripción es obligatorio</div>
-                                                                            </div>
+            <input type="hidden" id="idproducto_documentacion" name="idproducto_documentacion">
 
-                                                                            <div class="col-12">
-                                                                                <label for="txtFile" class="form-label">
-                                                                                    Archivo(s)
-                                                                                </label>
-                                                                                <input type="file" class="form-control"
-                                                                                    id="txtFile" name="txtFile"
-                                                                                    required />
-                                                                            </div>
-                                                                        </div>
+            <div class="row gy-5">
 
-                                                                        <hr class="my-4 text-muted">
-                                                                    </div>
+                <!-- FORMULARIO DOCUMENTOS -->
+                <div class="col-lg-4">
+                    <div class="px-lg-4">
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="v-pills-bill-address" role="tabpanel">
 
-                                                                    <div class="d-flex align-items-start gap-3 mt-4">
-                                                                        <button type="submit"
-                                                                            class="btn btn-success btn-label right ms-auto nexttab"
-                                                                            data-nexttab="tab-descriptiva-tecnica">
-                                                                            <i
-                                                                                class="ri-arrow-right-line label-icon align-middle fs-16 ms-2"></i>
-                                                                            Registrar
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                <div class="mb-3">
+                                    <h5>Registro de documentación</h5>
+                                    <p class="text-muted mb-0">
+                                        Captura la documentación inicial del producto
+                                    </p>
+                                </div>
 
-                                                    <!-- TABLA DOCUMENTOS --> 
-                                                    <div class="col-lg-8">
-                                                        <div class="px-lg-4">
-                                                            <div class="tab-content">
-                                                                <div class="tab-pane fade show active"
-                                                                    id="v-pills-bill-address-list" role="tabpanel">
-                                                                    <div>
-                                                                        <h5>Listado de documentos</h5>
-                                                                    </div>
+                                <div class="row g-3">
 
-                                                                    <div id="listProductos" role="tabpanel">
-                                                                        <table id="tableDocumentos"
-                                                                            class="table table-bordered dt-responsive nowrap table-striped align-middle"
-                                                                            style="width:100%">
-                                                                            <thead>
-                                                                                <tr>
-                                                                                    <th>TIPO DE DOCUMENTO</th>
-                                                                                    <th>DESCRIPCIÓN</th>
-                                                                                    <th>ARCHIVO</th>
-                                                                                    <th>FECHA REGISTRO</th>
-                                                                                    <th>OPCIONES</th>
-                                                                                </tr>
-                                                                            </thead>
-                                                                            <tbody>
-                                                                            </tbody>
-                                                                        </table>
-                                                                    </div>
-
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <!-- end col -->
-                                                </div>
-                                                <!-- end row -->
-                                            </form>
+                                    <div class="col-12">
+                                        <label for="tipoDocumento" class="form-label">Tipo de documento</label>
+                                        <select name="tipoDocumento" id="tipoDocumento" class="form-control" required>
+                                            <option value="" selected>--Seleccione--</option>
+                                            <option value="Ayuda visual">Ayuda Visual</option>
+                                            <option value="Diagrama">Diagrama</option>
+                                        </select>
+                                        <div class="invalid-feedback">
+                                            El campo tipo de documento es obligatorio
                                         </div>
                                     </div>
+
+                                    <div class="col-12">
+                                        <label for="txtDescripcionDocumento" class="form-label">
+                                            Descripción del documento
+                                        </label>
+                                        <input type="text"
+                                               class="form-control"
+                                               id="txtDescripcionDocumento"
+                                               name="txtDescripcionDocumento"
+                                               placeholder="Ingresa una breve descripción del documento a adjuntar"
+                                               required>
+                                        <div class="invalid-feedback">
+                                            El campo de descripción es obligatorio
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label for="txtFile" class="form-label">Archivo(s)</label>
+                                        <input type="file"
+                                               class="form-control"
+                                               id="txtFile"
+                                               name="txtFile"
+                                               required>
+                                        <div class="invalid-feedback">
+                                            Debe seleccionar al menos un archivo
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <hr class="my-4 text-muted">
+
+                                <div class="d-flex align-items-start gap-3 mt-4">
+                                    <button type="submit"
+                                            class="btn btn-success btn-label right ms-auto nexttab"
+                                            data-nexttab="tab-descriptiva-tecnica">
+                                        <i class="ri-arrow-right-line label-icon align-middle fs-16 ms-2"></i>
+                                        Registrar
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TABLA DOCUMENTOS -->
+                <div class="col-lg-8">
+                    <div class="px-lg-4">
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="v-pills-bill-address-list" role="tabpanel">
+
+                                <div class="mb-3">
+                                    <h5>Listado de documentos</h5>
+                                </div>
+
+                                <div id="listProductos" role="tabpanel">
+                                    <table id="tableDocumentos"
+                                           class="table table-bordered dt-responsive nowrap table-striped align-middle"
+                                           style="width:100%">
+                                        <thead>
+                                            <tr>
+                                                <th>TIPO DE DOCUMENTO</th>
+                                                <th>DESCRIPCIÓN</th>
+                                                <th>ARCHIVO</th>
+                                                <th>FECHA REGISTRO</th>
+                                                <th>OPCIONES</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- end col -->
+
+            </div>
+            <!-- end row -->
+        </form>
+    </div>
+
+</div>
+<!-- end pane documentación -->
+
+                                  
                                     <!-- end pane documentación -->
 
                                     <!-- PESTAÑA: DESCRIPTIVA TÉCNICA -->
                                     <div class="tab-pane fade" id="pane-descriptiva-tecnica" role="tabpanel"
                                         aria-labelledby="tab-descriptiva-tecnica">
-                                        <div>
+                                        <!-- <div>
                                             <h5 class="mb-1">Descriptiva técnica</h5>
                                             <p class="text-muted mb-4">
                                                 Registra la información técnica detallada del producto.
                                             </p>
-                                        </div>
+                                        </div> -->
+
+                                        <!-- HEADER: DESCRIPTIVA (izquierda) + CARRITO/ID (derecha) -->
+<div class="row g-3 align-items-center mb-4 px-lg-4">
+
+  <!-- Izquierda: título y descripción -->
+  <div class="col-lg-8">
+    <h5 class="mb-1">Descriptiva técnica</h5>
+    <p class="text-muted mb-0">
+       Registra la información técnica detallada del producto.
+    </p>
+  </div>
+
+  <!-- Derecha: icono + ID -->
+  <div class="col-lg-4 text-lg-end">
+    <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-3 border bg-light">
+    <lord-icon src="https://cdn.lordicon.com/uetqnvvg.json" trigger="loop" colors="primary:#25a0e2,secondary:#00bd9d" style="width:80px;height:80px"></lord-icon>
+      <div class="small">
+        <span class="text-muted producto_clave">ID:</span><br>
+        <span class="fw-semibold descripcion_producto">MFDS1400457854</span>
+      </div>
+    </div>
+  </div>
+
+</div>
 
                                         <!-- FORMULARIO PARA LA DESCRIPTIVA TÉCNICA -->
 
@@ -821,17 +875,42 @@
                                     <!-- PESTAÑA: PROCESOS -->
                                     <div class="tab-pane fade" id="pane-procesos" role="tabpanel"
                                         aria-labelledby="tab-procesos">
-                                        <div>
+                                        <!-- <div>
                                             <h5 class="mb-1">Procesos</h5>
                                             <p class="text-muted mb-4">
                                                 Información de los procesos relacionados con este producto
                                             </p>
-                                        </div>
+                                        </div> -->
+
+                                                                                <!-- HEADER: DESCRIPTIVA (izquierda) + CARRITO/ID (derecha) -->
+<div class="row g-3 align-items-center mb-4 px-lg-4">
+
+  <!-- Izquierda: título y descripción -->
+  <div class="col-lg-8">
+    <h5 class="mb-1">Procesos</h5>
+    <p class="text-muted mb-0">
+       Información de los procesos relacionados con este producto
+    </p>
+  </div>
+
+  <!-- Derecha: icono + ID -->
+  <div class="col-lg-4 text-lg-end">
+    <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-3 border bg-light">
+    <lord-icon src="https://cdn.lordicon.com/uetqnvvg.json" trigger="loop" colors="primary:#25a0e2,secondary:#00bd9d" style="width:80px;height:80px"></lord-icon>
+      <div class="small">
+        <span class="text-muted producto_clave">ID:</span><br>
+        <span class="fw-semibold descripcion_producto">MFDS1400457854</span>
+      </div>
+    </div>
+  </div>
+
+</div>
 
 
                                              <form id="formRutaProducto" class="form-steps was-validated" >
 
                                              <input type="text" id="idproducto_proceso" name="idproducto_proceso">
+                                                 <input type="text" id="id_ruta_producto" name="id_ruta_producto">
 
 
                 <!-- Fila de producto / planta / línea -->
@@ -1312,14 +1391,26 @@
     <!-- Top bar -->
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
       <div>
-        <h3 class="mb-1 page-title"> <i class="mdi mdi-video-input-component"></i> Componentes </h3>
+        <h3 class="mb-1 page-title"> <i class="mdi mdi-video-input-component"></i> Inventario Componentes </h3>
         <div class="text-muted">Seleccione el almacén y gestione los componentes requeridos con cantidades.</div>
       </div>
       <div class="d-flex gap-2">
-        <button id="btnClear" class="btn btn-outline-danger">Limpiar</button>
-        <button id="btnExport" class="btn btn-primary">Exportar JSON</button>
+
+            <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-3 border bg-light">
+    <lord-icon src="https://cdn.lordicon.com/uetqnvvg.json" trigger="loop" colors="primary:#25a0e2,secondary:#00bd9d" style="width:80px;height:80px"></lord-icon>
+      <div class="small">
+        <span class="text-muted producto_clave">ID:</span><br>
+        <span class="fw-semibold descripcion_producto">MFDS1400457854</span>
       </div>
     </div>
+      </div>
+    </div>
+
+
+
+
+
+
 
     <!-- Warehouse selector -->
     <div class="card soft-shadow mb-3">
@@ -1327,10 +1418,11 @@
         <div class="row g-3 align-items-end">
           <div class="col-md-6 col-lg-6">
             <label class="form-label mb-1">Almacén</label>
+<input type="text" id="componentes_producto" name="componentes_producto">
+<input type="text" id="estacion_id" name="estacion_id">
 
-
-            <select class="form-control" name="listAlmacenesSelectCompo"
-            id="listAlmacenesSelectCompo" required></select>
+            <select class="form-control" name="listAlmaceneSCompSelect"
+            id="listAlmaceneSCompSelect" required></select>
             <div class="form-text">El catálogo se actualizará automáticamente al cambiar el almacén.</div>
           </div>
 
@@ -1375,11 +1467,12 @@
             </div>
 
             <div class="table-responsive">
-              <table id="tblCatalog" class="display table table-hover">
+              <table id="tblCatalogComponentes" class="display table table-hover">
                 <thead>
                   <tr class="text-muted">
-                    <th>ID</th>
+                    <th>#</th>
                     <th>Componente</th>
+                     <th>En stock</th>
                     <th>Tipo</th>
                     <th>Unidad</th>
                     <th class="text-end">Acción</th>
@@ -1389,9 +1482,9 @@
               </table>
             </div>
 
-            <div class="alert alert-warning border-0" role="alert" id="msgSelectAlmacen">
+            <!-- <div class="alert alert-warning border-0" role="alert" id="msgSelectAlmacen">
                                                     <strong>  Selecciona un almacén </strong> para visualizar los componentes disponibles. 
-                                                </div>
+                                                </div> -->
 
           </div>
         </div>
@@ -1406,14 +1499,21 @@
                 <div class="section-title">Componentes seleccionados</div>
                 <p class="section-subtitle">Indique la cantidad requerida por componente.</p>
               </div>
-              <span class="pill"><span class="dot"></span> Seleccionados: <span id="countSelected">0</span></span>
+              <!-- <span class="pill"><span class="dot"></span> Seleccionados : <span id="countSelected">0</span></span> -->
+
+              <span class="badge badge-label bg-warning">
+                                        <span id="countRuta">Seleccionados: </span> <span id="countSelected">0</span>
+                </span>
+
+
+
             </div>
 
             <div class="table-responsive">
-              <table id="tblSelected" class="display table table-striped align-middle mb-0">
+              <table id="tblSelectedComponentes" class="display table table-striped align-middle mb-0">
                 <thead>
                   <tr class="text-muted">
-                    <th>ID</th>
+                    <th>#</th>
                     <th>Componente</th>
                     <th>Tipo</th>
                     <th>Unidad</th>
@@ -1430,7 +1530,7 @@
             </div>
 
             <!-- SAVE BAR (solo aparece si hay seleccionados) -->
-            <div id="saveBar" class="save-bar d-none">
+            <div id="saveBar" class="save-bar">
               <button id="btnGuardarTodo" class="btn btn-success btn-save-all">
                 Guardar todo
               </button>
@@ -1448,11 +1548,11 @@
       <small class="mono">Nota: El botón “Guardar todo” se muestra automáticamente cuando hay al menos 1 componente agregado.</small>
     </div> -->
 
-        <div class="alert alert-danger alert-border-left alert-dismissible fade show mb-xl-0" role="alert">
+        <!-- <div class="alert alert-danger alert-border-left alert-dismissible fade show mb-xl-0" role="alert">
                                                     <i class="ri-error-warning-line me-3 align-middle fs-16"></i><strong>Nota</strong>
                                                     - El botón “Guardar todo” se muestra automáticamente cuando hay al menos 1 componente agregado.
                                                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                                </div>
+                                                </div> -->
  
 
   </div>
@@ -1484,14 +1584,31 @@
   
 
     <!-- Top bar -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+    <!-- <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
       <div>
-        <h3 class="mb-1 page-title"><i class="mdi mdi-tools"></i> Herramientas</h3>
+        <h3 class="mb-1 page-title"><i class="mdi mdi-tools"></i>Inventario Herramientas</h3>
         <div class="text-muted">Seleccione el almacén y gestione las herramientas requeridas con cantidades.</div>
       </div>
       <div class="d-flex gap-2">
         <button id="btnClear" class="btn btn-outline-danger">Limpiar</button>
         <button id="btnExport" class="btn btn-primary">Exportar JSON</button>
+      </div>
+    </div> -->
+
+        <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+      <div>
+    <h3 class="mb-1 page-title"><i class="mdi mdi-tools"></i>Inventario Herramientas</h3>
+        <div class="text-muted">Seleccione el almacén y gestione las herramientas requeridas con cantidades.</div>
+      </div>
+      <div class="d-flex gap-2">
+
+            <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-3 border bg-light">
+    <lord-icon src="https://cdn.lordicon.com/uetqnvvg.json" trigger="loop" colors="primary:#25a0e2,secondary:#00bd9d" style="width:80px;height:80px"></lord-icon>
+      <div class="small">
+        <span class="text-muted producto_clave">ID:</span><br>
+        <span class="fw-semibold descripcion_producto">MFDS1400457854</span>
+      </div>
+    </div>
       </div>
     </div>
 
@@ -1502,9 +1619,12 @@
           <div class="col-md-6 col-lg-6">
             <label class="form-label mb-1">Almacén</label>
 
+<input type="text" id="herramientas_producto" value="">
+<input type="text" id="estacion_id_herr" value="">
 
-                           <select class="form-control" name="listAlmacenesSelect"
-                                                                id="listAlmacenesSelect" required></select>
+
+                           <select class="form-control" name="listAlmacenesHerrSelect"
+                                                                id="listAlmacenesHerrSelect" required></select>
             <div class="form-text">El catálogo se actualizará automáticamente al cambiar el almacén.</div>
           </div>
 
@@ -1552,7 +1672,7 @@
               <table id="tblCatalogHerramientas" class="display table table-hover">
                 <thead>
                   <tr class="text-muted">
-                    <th>ID</th>
+                    <th>#</th>
                     <th>Herramienta</th>
                     <th>Tipo</th>
                     <th>Unidad</th>
@@ -1563,9 +1683,9 @@
               </table>
             </div>
 
-            <div class="alert alert-warning border-0" role="alert" id="msgSelectAlmacen">
+            <!-- <div class="alert alert-warning border-0" role="alert" id="msgSelectAlmacen">
                                                     <strong>  Selecciona un almacén </strong> para visualizar las herramientas disponibles. 
-                                                </div>
+                                                </div> -->
 
           </div>
         </div>
@@ -1584,10 +1704,10 @@
             </div>
 
             <div class="table-responsive">
-              <table id="tblSelected" class="display table table-striped align-middle mb-0">
+              <table id="tblSelectedHerramientas" class="display table table-striped align-middle mb-0">
                 <thead>
                   <tr class="text-muted">
-                    <th>ID</th>
+                    <th>#</th>
                     <th>Herramienta</th>
                     <th>Tipo</th>
                     <th>Unidad</th>
@@ -1604,8 +1724,8 @@
             </div>
 
             <!-- SAVE BAR (solo aparece si hay seleccionados) -->
-            <div id="saveBar" class="save-bar d-none">
-              <button id="btnGuardarTodo" class="btn btn-success btn-save-all">
+            <div id="saveBarHerr" class="save-bar">
+              <button id="btnGuardarTodoHerramientas" class="btn btn-success btn-save-all">
                 Guardar todo
               </button>
               <div class="text-muted mt-2">
@@ -1622,11 +1742,11 @@
       <small class="mono">Nota: El botón “Guardar todo” se muestra automáticamente cuando hay al menos 1 herramienta agregada.</small>
     </div> -->
 
-    <div class="alert alert-danger alert-border-left alert-dismissible fade show mb-xl-0" role="alert">
+    <!-- <div class="alert alert-danger alert-border-left alert-dismissible fade show mb-xl-0" role="alert">
                                                     <i class="ri-error-warning-line me-3 align-middle fs-16"></i><strong>Nota</strong>
                                                     - El botón “Guardar todo” se muestra automáticamente cuando hay al menos 1 herramienta agregada.
                                                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                                </div>
+                                                </div> -->
  
 
   </div>

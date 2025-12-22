@@ -68,6 +68,12 @@ class Plan_confproductosModel extends Mysql
 	public $intIdespecificacion;
 	public $intIdalmacen;
 
+	//COMPONENTES
+	public $intAlmacen;
+	public $intProducto;
+public $intEstacion;
+public $intInventario;
+public $intCantidad;
 
 
 	public function __construct()
@@ -75,28 +81,32 @@ class Plan_confproductosModel extends Mysql
 		parent::__construct();
 	}
 
-	public function generarClave()
-	{
-		$fecha = date('Ymd');
-		$prefijo = 'C-' . $fecha . '-';
+public function generarClave()
+{
+    $fecha   = date('Ymd');
+    $version = 'V01';
+    $prefijo = 'P-' . $fecha . '-';
 
-		$sql = "SELECT cve_producto FROM mrp_productos 
+    $sql = "SELECT cve_producto 
+            FROM mrp_productos 
             WHERE cve_producto LIKE '$prefijo%' 
             ORDER BY cve_producto DESC 
             LIMIT 1";
 
-		$result = $this->select($sql);
-		$numero = 1;
+    $result = $this->select($sql);
+    $numero = 1;
 
-		if (!empty($result)) {
-			$ultimoCodigo = $result['cve_producto'];
-			$ultimoNumero = (int) substr($ultimoCodigo, -4);
-			$numero = $ultimoNumero + 1;
-		}
+    if (!empty($result)) {
+        $ultimoCodigo = $result['cve_producto'];
 
-		return $prefijo . str_pad($numero, 4, '0', STR_PAD_LEFT);
+        // Extrae solo el consecutivo (0001) antes de -V01
+        $ultimoNumero = (int) substr($ultimoCodigo, -8, 4);
+        $numero = $ultimoNumero + 1;
+    }
 
-	}
+    return $prefijo . str_pad($numero, 4, '0', STR_PAD_LEFT) . '-' . $version;
+}
+
 
 	public function insertAuditoria($modulo, $accion, $id_usuario, $tabla, $idregistro, $fecha_creacion, $ip, $detalle)
 	{
@@ -305,7 +315,7 @@ public function selectProducto(int $productoid)
 
     $sql = "SELECT 
                 p.*, 
-                IFNULL(d.iddescriptiva, 0)   AS iddescriptiva,
+                IFNULL(d.iddescriptiva, 0)    AS iddescriptiva,
                 IFNULL(r.idruta_producto, 0) AS idruta_producto
             FROM mrp_productos AS p
             LEFT JOIN mrp_productos_descriptiva AS d
@@ -314,9 +324,11 @@ public function selectProducto(int $productoid)
                 ON r.productoid = p.idproducto
             WHERE p.idproducto = {$this->intIdProducto}";
 
-    $request = $this->select($sql);
-    return $request;
+    return $this->select($sql);
 }
+
+
+
 
 
 
@@ -662,8 +674,6 @@ public function selectProducto(int $productoid)
 public function selectHerramientas(int $idalmacen)
 {
     $this->intIdalmacen = (int)$idalmacen;
-    $lineaProducto = 1;
-
     $sql = "SELECT
             mov.idmovinventario,
             mov.inventarioid,
@@ -675,17 +685,340 @@ public function selectHerramientas(int $idalmacen)
             inv.descripcion AS descripcion_articulo,
             inv.unidad_salida,
             inv.ultimo_costo,
-            lin.descripcion AS linea_de_producto
+			inv.tipo_elemento
         FROM wms_movimientos_inventario mov
         INNER JOIN wms_inventario inv ON inv.idinventario = mov.inventarioid
-        INNER JOIN wms_linea_producto lin ON lin.idlineaproducto = inv.lineaproductoid
         WHERE mov.estado = 2
           AND mov.almacenid = {$this->intIdalmacen}
-          AND inv.lineaproductoid = {$lineaProducto}
+		  AND inv.tipo_elemento='H'
     ";
 
     return $this->select_all($sql) ?: [];
 }
+
+public function selectComponentes(int $idalmacen)
+{
+    $this->intIdalmacen = (int)$idalmacen;
+    $sql = "SELECT
+            mov.idmovinventario,
+            mov.inventarioid,
+            mov.almacenid,
+            mov.estado,
+            mov.cantidad,
+            mov.fecha_movimiento,
+			mov.existencia,
+            inv.cve_articulo,
+            inv.descripcion AS descripcion_articulo,
+            inv.unidad_salida,
+            inv.ultimo_costo,
+			inv.tipo_elemento
+        FROM wms_movimientos_inventario mov
+        INNER JOIN wms_inventario inv ON inv.idinventario = mov.inventarioid
+        WHERE mov.estado = 2
+          AND mov.almacenid = {$this->intIdalmacen}
+		  AND inv.tipo_elemento='C'
+    ";
+
+    return $this->select_all($sql) ?: [];
+}
+
+
+
+
+public function insertComponenteEstacion($idAlmacen,$idProducto,$idEstacion,$inventarioid,$cantidad,$estado,$fecha)
+{
+    $query = "INSERT INTO mrp_estacion_componentes
+              (almacenid, productoid, estacionid, inventarioid, cantidad, estado, fecha_creacion)
+              VALUES (?,?,?,?,?,?,?)";
+    $arrData = [
+        (int)$idAlmacen,
+        (int)$idProducto,
+        (int)$idEstacion,
+        (int)$inventarioid,
+        (int)$cantidad,
+        (int)$estado,
+        $fecha
+    ];
+    return $this->insert($query, $arrData);
+}
+
+
+
+public function updateComponenteEstacion($idcomponente, $cantidad, $estado)
+{
+    $query = "UPDATE mrp_estacion_componentes
+              SET cantidad = ?, estado = ?
+              WHERE idcomponente = ?";
+    $arrData = [(int)$cantidad, (int)$estado, (int)$idcomponente];
+    return $this->update($query, $arrData);
+}
+
+
+public function softDeleteComponentesNoEnLista($idAlmacen,$idProducto,$idEstacion,$idsMantener = [])
+{
+  $base = "UPDATE mrp_estacion_componentes
+           SET estado = 0
+           WHERE almacenid = ? AND productoid = ? AND estacionid = ?";
+
+  $params = [$idAlmacen,$idProducto,$idEstacion];
+
+  if (!empty($idsMantener)) {
+    $placeholders = implode(',', array_fill(0, count($idsMantener), '?'));
+    $base .= " AND inventarioid NOT IN ($placeholders)";
+    $params = array_merge($params, $idsMantener);
+  }
+
+  return $this->update($base, $params);
+}
+
+public function selectExistentesComponentes($idAlmacen, $idProducto, $idEstacion)
+{
+    $this->intAlmacen  = (int)$idAlmacen;
+    $this->intProducto = (int)$idProducto;
+    $this->intEstacion = (int)$idEstacion;
+
+    $sql = "SELECT inventarioid
+            FROM mrp_estacion_componentes
+            WHERE almacenid = {$this->intAlmacen}
+              AND productoid = {$this->intProducto}
+              AND estacionid = {$this->intEstacion}";
+
+    $request = $this->select_all($sql);
+    return $request;
+}
+
+
+
+public function selectComponentesEstacion($idestacion, $idproducto)
+{
+    $idestacion = (int)$idestacion;
+    $idproducto = (int)$idproducto;
+
+    $sql = "SELECT 
+              com.idcomponente,
+              com.almacenid,
+              com.inventarioid,
+              com.cantidad,
+              inv.cve_articulo,
+              inv.descripcion,
+              inv.unidad_salida
+            FROM mrp_estacion_componentes com
+            INNER JOIN wms_inventario inv ON inv.idinventario = com.inventarioid
+            WHERE com.estacionid = {$idestacion}
+              AND com.productoid = {$idproducto}
+              AND com.estado = 2";
+
+    return $this->select_all($sql);
+}
+
+
+public function selectComponentesEstacionAllEstados($idestacion, $idproducto, $idalmacen)
+{
+    $idestacion = (int)$idestacion;
+    $idproducto = (int)$idproducto;
+    $idalmacen  = (int)$idalmacen;
+
+    $sql = "SELECT idcomponente, inventarioid, estado
+            FROM mrp_estacion_componentes
+            WHERE estacionid = {$idestacion}
+              AND productoid = {$idproducto}
+              AND almacenid  = {$idalmacen}";
+
+    return $this->select_all($sql);
+}
+
+
+public function softDeleteComponentesNoIncluidos($idAlmacen, $idProducto, $idEstacion, $idsIncoming)
+{
+    $idAlmacen  = (int)$idAlmacen;
+    $idProducto = (int)$idProducto;
+    $idEstacion = (int)$idEstacion;
+
+    // si no viene ninguno, apagamos todos
+    if (empty($idsIncoming)) {
+        $sql = "UPDATE mrp_estacion_componentes
+                SET estado = 0
+                WHERE almacenid = {$idAlmacen}
+                  AND productoid = {$idProducto}
+                  AND estacionid = {$idEstacion}";
+        return $this->update($sql, []);
+    }
+
+    $ids = array_map('intval', $idsIncoming);
+    $inList = implode(',', $ids);
+
+    $sql = "UPDATE mrp_estacion_componentes
+            SET estado = 0
+            WHERE almacenid = {$idAlmacen}
+              AND productoid = {$idProducto}
+              AND estacionid = {$idEstacion}
+              AND inventarioid NOT IN ({$inList})";
+
+    return $this->update($sql, []);
+}
+
+
+
+
+
+
+
+/////////////////////////////////////////////
+// FUNCIONES PARA EL GUARDADO DE RUTA
+/////////////////////////////////////////////
+public function selectRutaByProducto(int $rutaid)
+{
+    $rutaid = (int)$rutaid;
+
+    $sql = "SELECT
+                r.idruta_producto,
+                r.productoid,
+                r.plantaid,
+                r.lineaid,
+                d.estacionid,
+                d.orden
+            FROM mrp_producto_ruta r
+            LEFT JOIN mrp_producto_ruta_detalle d
+                   ON d.ruta_productoid = r.idruta_producto
+                  AND d.estado = 2
+            WHERE r.idruta_producto = {$rutaid}
+              AND r.estado = 2
+            ORDER BY d.orden ASC";
+
+    $rows = $this->select_all($sql);
+
+    // Si no existe cabecera
+    if (empty($rows)) return [];
+
+    // Armar respuesta con el formato que espera tu JS
+    $payload = [
+        "listPlantasSelect"   => (string)($rows[0]['plantaid'] ?? "0"),
+        "listLineasSelect"    => (string)($rows[0]['lineaid'] ?? "0"),
+        "idproducto_proceso"  => (string)($rows[0]['productoid'] ?? "0"),
+        "detalle_ruta"        => []
+    ];
+
+    foreach ($rows as $r) {
+        // Si no hay detalle (LEFT JOIN sin coincidencias)
+        if (empty($r['estacionid'])) continue;
+
+        $payload["detalle_ruta"][] = [
+            "idestacion" => (string)$r['estacionid'],
+            "orden"      => (int)$r['orden']
+        ];
+    }
+
+    // Debe regresar un arreglo con un objeto (tal como tu ejemplo)
+    return [$payload];
+}
+
+
+
+
+public function selectHerramientasEstacion($idestacion, $idproducto)
+{
+    $idestacion = (int)$idestacion;
+    $idproducto = (int)$idproducto;
+
+    $sql = "SELECT 
+              herr.idherramienta,
+              herr.almacenid,
+              herr.inventarioid,
+              herr.cantidad,
+              inv.cve_articulo,
+              inv.descripcion,
+              inv.unidad_salida
+            FROM mrp_estacion_herramientas herr
+            INNER JOIN wms_inventario inv ON inv.idinventario = herr.inventarioid
+            WHERE herr.estacionid = {$idestacion}
+              AND herr.productoid = {$idproducto}
+              AND herr.estado = 2";
+
+    return $this->select_all($sql);
+}
+
+
+
+public function selectHerramientasEstacionAllEstados($idestacion, $idproducto, $idalmacen)
+{
+    $idestacion = (int)$idestacion;
+    $idproducto = (int)$idproducto;
+    $idalmacen  = (int)$idalmacen;
+
+    $sql = "SELECT idherramienta, inventarioid, estado
+            FROM mrp_estacion_herramientas
+            WHERE estacionid = {$idestacion}
+              AND productoid = {$idproducto}
+              AND almacenid  = {$idalmacen}";
+
+    return $this->select_all($sql);
+}
+
+
+public function updateHerramientaEstacion($idherramienta, $cantidad, $estado)
+{
+    $query = "UPDATE mrp_estacion_herramientas
+              SET cantidad = ?, estado = ?
+              WHERE idherramienta  = ?";
+    $arrData = [(int)$cantidad, (int)$estado, (int)$idherramienta];
+    return $this->update($query, $arrData);
+}
+
+
+public function insertHerramientaEstacion($idAlmacen,$idProducto,$idEstacion,$inventarioid,$cantidad,$estado,$fecha)
+{
+    $query = "INSERT INTO mrp_estacion_herramientas
+              (almacenid, productoid, estacionid, inventarioid, cantidad, estado, fecha_creacion)
+              VALUES (?,?,?,?,?,?,?)";
+    $arrData = [
+        (int)$idAlmacen,
+        (int)$idProducto,
+        (int)$idEstacion,
+        (int)$inventarioid,
+        (int)$cantidad,
+        (int)$estado,
+        $fecha
+    ];
+    return $this->insert($query, $arrData);
+}
+
+
+public function softDeleteHerramientasNoIncluidos($idAlmacen, $idProducto, $idEstacion, $idsIncoming)
+{
+    $idAlmacen  = (int)$idAlmacen;
+    $idProducto = (int)$idProducto;
+    $idEstacion = (int)$idEstacion;
+
+    // si no viene ninguno, apagamos todos
+    if (empty($idsIncoming)) {
+        $sql = "UPDATE mrp_estacion_herramientas
+                SET estado = 0
+                WHERE almacenid = {$idAlmacen}
+                  AND productoid = {$idProducto}
+                  AND estacionid = {$idEstacion}";
+        return $this->update($sql, []);
+    }
+
+    $ids = array_map('intval', $idsIncoming);
+    $inList = implode(',', $ids);
+
+    $sql = "UPDATE mrp_estacion_herramientas
+            SET estado = 0
+            WHERE almacenid = {$idAlmacen}
+              AND productoid = {$idProducto}
+              AND estacionid = {$idEstacion}
+              AND inventarioid NOT IN ({$inList})";
+
+    return $this->update($sql, []);
+}
+
+
+
+
+
+
+
+	
 
 
 

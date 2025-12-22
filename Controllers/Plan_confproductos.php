@@ -131,7 +131,7 @@ class Plan_confproductos extends Controllers
 				}
 				if ($request_producto > 0) {
 					if ($option == 1) {
-						$arrResponse = array('status' => true, 'msg' => '¡La información se ha registrado exitosamente!', 'tipo' => 'insert', 'idproducto' => $request_producto);
+						$arrResponse = array('status' => true, 'msg' => '¡La información se ha registrado exitosamente!', 'tipo' => 'insert', 'idproducto' => $request_producto, 'clave'=>$claveUnica, 'descripcion'=>$descripcion);
 						$this->model->insertAuditoria(
 							MPCONFPRODUCTOS,
 							1,
@@ -143,7 +143,7 @@ class Plan_confproductos extends Controllers
 							$detalle
 						);
 					} else {
-						$arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update', 'idproducto' => $request_producto);
+						$arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update', 'idproducto' => $request_producto, 'clave'=>$claveUnica, 'descripcion'=>$descripcion);
 						$this->model->insertAuditoria(
 							MPCONFPRODUCTOS,
 							2,
@@ -619,8 +619,8 @@ public function setRutaProducto()
     $data = $arr[0];
 
     $planta  = (int)($data['listPlantasSelect'] ?? 0);
-    $linea   = (int)($data['listLineasSelect'] ?? 0);
-    $prod    = 48; // tu valor fijo
+    $linea   = (int)($data['listLineasSelect'] ?? 0); 
+    $prod    = (int)($data['idproducto_proceso'] ?? 0); // tu valor fijo
     $detalle = $data['detalle_ruta'] ?? [];
 
     $fecha_creacion_ruta = date('Y-m-d H:i:s');
@@ -654,7 +654,7 @@ public function setRutaProducto()
 
         $arrData = [
             'status' => true,
-            'msg'    => 'Ruta guardada',
+            'msg'    => 'La ruta del producto fue guardada correctamente',
             'idruta' => $idruta
         ];
     } catch (\Throwable $e) {
@@ -888,10 +888,129 @@ public function setRutaProducto()
 
 	}
 
+		public function getSelectComponentes()
+	{
+
+		$htmlOptions = '<option value="">--Seleccione--</option>';
+		$arrData = $this->model->selectOptionAlmacenes();
+		if (count($arrData) > 0) {
+			for ($i = 0; $i < count($arrData); $i++) {
+				if ($arrData[$i]['estado'] == 2) {
+					$htmlOptions .= '<option value="' . $arrData[$i]['idalmacen'] . '">' . $arrData[$i]['descripcion'] . '</option>';
+				}
+			}
+		}
+		echo $htmlOptions;
+		die();
+
+	}
+
+public function setComponentesEstacion()
+{
+    header('Content-Type: application/json; charset=utf-8');
+
+    if (!isset($_POST['componentes'])) {
+        echo json_encode(['status'=>false,'msg'=>'No llegó el payload componentes'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $payload = json_decode($_POST['componentes'], true);
+    if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
+        echo json_encode(['status'=>false,'msg'=>'JSON inválido en componentes'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $d = $payload[0];
+
+    $idAlmacen  = (int)($d['idalmacen'] ?? 0);
+    $idProducto = (int)($d['idproducto'] ?? 0);
+    $idEstacion = (int)($d['idestacion'] ?? 0);
+    $detalle    = $d['detalle_componentes'] ?? [];
+
+    if (!$idAlmacen || !$idProducto || !$idEstacion) {
+        echo json_encode(['status'=>false,'msg'=>'Faltan datos: idalmacen/idproducto/idestacion'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if (!is_array($detalle)) $detalle = [];
+
+    // normalizar inventarioids entrantes
+    $incoming = [];
+    foreach ($detalle as $it) {
+        $inv = (int)($it['inventarioid'] ?? 0);
+        $cant = (int)($it['cantidad'] ?? 0);
+        if ($inv > 0 && $cant > 0) {
+            $incoming[$inv] = $cant; // evita duplicados
+        }
+    }
+
+    $fecha = date('Y-m-d H:i:s');
+
+    // 1) Traer existentes (incluye estado 0/1)
+    $existentes = $this->model->selectComponentesEstacionAllEstados($idEstacion, $idProducto, $idAlmacen);
+    $existMap = [];
+    foreach ($existentes as $row) {
+        $existMap[(int)$row['inventarioid']] = (int)$row['idcomponente'];
+    }
+
+    // 2) Insert/Update/Reactivar
+    foreach ($incoming as $inventarioid => $cantidad) {
+        if (isset($existMap[$inventarioid])) {
+            $idcomponente = $existMap[$inventarioid];
+            $this->model->updateComponenteEstacion($idcomponente, $cantidad, 2);
+        } else {
+            $this->model->insertComponenteEstacion($idAlmacen, $idProducto, $idEstacion, $inventarioid, $cantidad, 2, $fecha);
+        }
+    }
+
+    // 3) Soft delete: lo que existe en BD pero no viene en incoming
+    $idsIncoming = array_keys($incoming);
+    $this->model->softDeleteComponentesNoIncluidos($idAlmacen, $idProducto, $idEstacion, $idsIncoming);
+
+    echo json_encode(['status'=>true,'msg'=>'Componentes sincronizados correctamente'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+
+
+
+public function getComponentesEstacion($idestacion)
+{
+    header('Content-Type: application/json; charset=utf-8');
+
+    $idestacion = (int)$idestacion;
+    $idproducto = isset($_GET['idproducto']) ? (int)$_GET['idproducto'] : 0;
+
+    if ($idestacion <= 0 || $idproducto <= 0) {
+        echo json_encode(['status'=>false,'msg'=>'Faltan datos: idestacion/idproducto'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $rows = $this->model->selectComponentesEstacion($idestacion, $idproducto);
+
+    if (!$rows || count($rows) === 0) {
+        echo json_encode(['status'=>false,'msg'=>'Sin datos'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $idalmacen = (int)($rows[0]['almacenid'] ?? 0);
+
+    echo json_encode([
+        'status'   => true,
+        'idalmacen'=> $idalmacen,
+        'data'     => $rows
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+
+
+
+
 	
 	
-		// --------------------------------------------------------------------
-	// FUNCIÓN PARA VER EL DETALLE DE INVENTARIO POR REGIASTRO
+	// --------------------------------------------------------------------
+	// FUNCIÓN PARA MOSTRAR TODOS LAS HERRAMIENTAS
 	// --------------------------------------------------------------------
 	public function getHerramientas($idalmacen)
 	{
@@ -901,6 +1020,169 @@ public function setRutaProducto()
 		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
 		die();
 	}
+
+
+	public function getHerramientasEstacion($idestacion)
+{
+    header('Content-Type: application/json; charset=utf-8');
+
+    $idestacion = (int)$idestacion;
+    $idproducto = isset($_GET['idproducto']) ? (int)$_GET['idproducto'] : 0;
+
+    if ($idestacion <= 0 || $idproducto <= 0) {
+        echo json_encode(['status'=>false,'msg'=>'Faltan datos: idestacion/idproducto'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $rows = $this->model->selectHerramientasEstacion($idestacion, $idproducto);
+
+    if (!$rows || count($rows) === 0) {
+        echo json_encode(['status'=>false,'msg'=>'Sin datos'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $idalmacen = (int)($rows[0]['almacenid'] ?? 0);
+
+    echo json_encode([
+        'status'   => true,
+        'idalmacen'=> $idalmacen,
+        'data'     => $rows
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+
+public function setHerramientasEstacion()
+{
+
+    header('Content-Type: application/json; charset=utf-8');
+
+    if (!isset($_POST['herramientas'])) {
+        echo json_encode(['status'=>false,'msg'=>'No llegó el payload herramientas'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $payload = json_decode($_POST['herramientas'], true);
+    if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
+        echo json_encode(['status'=>false,'msg'=>'JSON inválido en herramientas'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $d = $payload[0];
+
+    $idAlmacen  = (int)($d['idalmacen'] ?? 0);
+    $idProducto = (int)($d['idproducto'] ?? 0);
+    $idEstacion = (int)($d['idestacion'] ?? 0);
+    $detalle    = $d['detalle_herramientas'] ?? [];
+
+    if (!$idAlmacen || !$idProducto || !$idEstacion) {
+        echo json_encode(['status'=>false,'msg'=>'Faltan datos: idalmacen/idproducto/idestacion'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if (!is_array($detalle)) $detalle = [];
+
+    // normalizar inventarioids entrantes
+    $incoming = [];
+    foreach ($detalle as $it) {
+        $inv = (int)($it['inventarioid'] ?? 0);
+        $cant = (int)($it['cantidad'] ?? 0);
+        if ($inv > 0 && $cant > 0) {
+            $incoming[$inv] = $cant; // evita duplicados
+        }
+    }
+
+    $fecha = date('Y-m-d H:i:s');
+
+    // 1) Traer existentes (incluye estado 0/1)
+    $existentes = $this->model->selectHerramientasEstacionAllEstados($idEstacion, $idProducto, $idAlmacen);
+    $existMap = [];
+    foreach ($existentes as $row) {
+        $existMap[(int)$row['inventarioid']] = (int)$row['idherramienta'];
+    }
+
+    // 2) Insert/Update/Reactivar
+    foreach ($incoming as $inventarioid => $cantidad) {
+        if (isset($existMap[$inventarioid])) {
+            $idcomponente = $existMap[$inventarioid];
+            $this->model->updateHerramientaEstacion($idcomponente, $cantidad, 2);
+        } else {
+            $this->model->insertHerramientaEstacion($idAlmacen, $idProducto, $idEstacion, $inventarioid, $cantidad, 2, $fecha);
+        }
+    }
+
+    // 3) Soft delete: lo que existe en BD pero no viene en incoming
+    $idsIncoming = array_keys($incoming);
+    $this->model->softDeleteHerramientasNoIncluidos($idAlmacen, $idProducto, $idEstacion, $idsIncoming);
+
+    echo json_encode(['status'=>true,'msg'=>'Componentes sincronizados correctamente'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+		// --------------------------------------------------------------------
+	// FUNCIÓN PARA MOSTRAR TODOS LOS COMPONENTES
+	// --------------------------------------------------------------------
+	public function getComponentes($idalmacen)
+	{
+		$idalmacen = intval($idalmacen);
+		$arrData = $this->model->selectComponentes($idalmacen);
+
+		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+
+		public function getSelectAlmacenesHerramientas()
+	{
+
+		$htmlOptions = '<option value="">--Seleccione--</option>';
+		$arrData = $this->model->selectOptionAlmacenes();
+		if (count($arrData) > 0) {
+			for ($i = 0; $i < count($arrData); $i++) {
+				if ($arrData[$i]['estado'] == 2) {
+					$htmlOptions .= '<option value="' . $arrData[$i]['idalmacen'] . '">' . $arrData[$i]['descripcion'] . '</option>';
+				}
+			}
+		}
+		echo $htmlOptions;
+		die();
+
+	}
+
+
+
+public function getRuta($rutaid)
+{
+    header('Content-Type: application/json; charset=utf-8');
+
+    $rutaid = (int)$rutaid;
+
+    if ($rutaid <= 0) {
+        echo json_encode([
+            'status' => false,
+            'msg'    => 'ID de ruta inválido'
+        ]);
+        die();
+    }
+
+    $arrData = $this->model->selectRutaByProducto($rutaid);
+
+    // Si no hay datos
+    if (empty($arrData)) {
+        echo json_encode([
+            'status' => false,
+            'msg'    => 'No se encontró la ruta'
+        ]);
+        die();
+    }
+
+    // ✅ Respuesta EXACTA que espera el frontend
+    echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+    die();
+}
+
+
+
 
 }
 
