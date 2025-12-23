@@ -1,23 +1,20 @@
-let tableDistibuidores = null;
+let tablePuestos;
 let rowTable = "";
 let divLoading = document.querySelector("#divLoading");
 
 // Inputs del formulario
-const idcliente = document.querySelector("#idcliente");
-const nombre = document.querySelector("#nombre-cliente-input");
+const idpuesto = document.querySelector("#idpuesto");
+const departamento_id = document.querySelector("#listPuestos");
+const nombreInput = document.querySelector("#nombre-puestos-input");
+const descripcionInput = document.querySelector("#descripcion-puestos-input");
 const estado = document.querySelector("#estado-select");
-const direccion = document.querySelector("#direccion-linea-textarea");
-
-const selectPais = document.querySelector("#listPaises");
-const selectEstado = document.querySelector("#listEstados");
-const selectMunicipio = document.querySelector("#listMunicipios");
 
 // Mis referencias globales
 let primerTab; // Tab LISTA
 let firstTab; // Tab NUEVO/ACTUALIZAR
 let tabNuevo;
 let spanBtnText = null;
-let formClientes = null;
+let formPuestos = null;
 
 document.addEventListener(
   "DOMContentLoaded",
@@ -25,29 +22,27 @@ document.addEventListener(
     // --------------------------------------------------------------------
     //  REFERENCIAS DEL FORMULARIO
     // --------------------------------------------------------------------
-    formClientes = document.querySelector("#formClientes");
+    formPuestos = document.querySelector("#formPuestos");
     spanBtnText = document.querySelector("#btnText");
 
-    fntGrupos();
-    fntPaises();
+    fntPuestos();
 
     // --------------------------------------------------------------------
-    //  DATATABLE CLIENTES
+    //  DATATABLE PUESTOS
     // --------------------------------------------------------------------
-    tableDistibuidores = $("#cli_distribuidores").dataTable({
+    tablePuestos = $("#tablePuestos").dataTable({
       aProcessing: true,
       aServerSide: true,
       ajax: {
-        url: " " + base_url + "/cli_clientes/index",
+        url: " " + base_url + "/cli_puestos/index",
         dataSrc: "",
       },
       columns: [
         { data: "id" },
-        { data: "nombre_grupo" },
-        { data: "tipo_negocio" },
-        { data: "nombre_comercial" },
-        { data: "razon_social" },
-        { data: "plaza" },
+        { data: "nombre_departamento" },
+        { data: "nombre_puesto" },
+        { data: "descripcion" },
+        { data: "fecha_registro" },
         { data: "estado" },
         { data: "options" },
       ],
@@ -63,10 +58,10 @@ document.addEventListener(
     //  TABS BOOTSTRAP
     // --------------------------------------------------------------------
     const primerTabEl = document.querySelector(
-      '#nav-tab a[href="#listclientes"]'
+      '#nav-tab a[href="#listpuestos"]'
     );
     const firstTabEl = document.querySelector(
-      '#nav-tab a[href="#agregarclientes"]'
+      '#nav-tab a[href="#agregarpuesto"]'
     );
 
     if (primerTabEl && firstTabEl && spanBtnText) {
@@ -83,29 +78,29 @@ document.addEventListener(
         spanBtnText.textContent = "REGISTRAR";
 
         // Limpiar formulario
-        formClientes.reset();
-        cliente.value = "";
+        formPuestos.reset();
+        idpuesto.value = "";
         estado.value = "2";
       });
 
       // ----------------------------------------------------------------
-      // CLICK EN "CLIENTES" → RESETEAR NAV A NUEVO
+      // CLICK EN "PUESTOS" → RESETEAR NAV A NUEVO
       // ----------------------------------------------------------------
       primerTabEl.addEventListener("click", () => {
         tabNuevo.textContent = "NUEVO";
         spanBtnText.textContent = "REGISTRAR";
-        cliente.value = "";
+        idpuesto.value = "";
         estado.value = "2";
-        formClientes.reset();
+        formPuestos.reset();
       });
     } else {
       console.warn("Tabs de lineas no encontrados o btnText faltante.");
     }
 
     // --------------------------------------------------------------------
-    // FORM → CREAR / ACTUALIZAR CLIENTE
+    // FORM → CREAR / ACTUALIZAR PUESTO
     // --------------------------------------------------------------------
-    formClientes.addEventListener("submit", function (e) {
+    formPuestos.addEventListener("submit", function (e) {
       e.preventDefault();
 
       divLoading.style.display = "flex";
@@ -113,8 +108,8 @@ document.addEventListener(
       let request = window.XMLHttpRequest
         ? new XMLHttpRequest()
         : new ActiveXObject("Microsoft.XMLHTTP");
-      let ajaxUrl = base_url + "/cli_clientes/setCliente";
-      let formData = new FormData(formClientes);
+      let ajaxUrl = base_url + "/cli_puestos/setPuesto";
+      let formData = new FormData(formPuestos);
 
       request.open("POST", ajaxUrl, true);
       request.send(formData);
@@ -151,21 +146,21 @@ document.addEventListener(
             }).then((result) => {
               if (result.isConfirmed) {
                 // Seguir en modo NUEVO
-                formClientes.reset();
-                cliente.value = "";
+                formPuestos.reset();
+                idpuesto.value = "";
                 estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
-                tableDistibuidores = null.api().ajax.reload();
+                tablePuestos.api().ajax.reload();
               } else {
                 // Regresar al listado
-                formClientes.reset();
-                cliente.value = "";
+                formPuestos.reset();
+                idpuesto.value = "";
                 estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 primerTab.show();
-                tableDistibuidores = null.api().ajax.reload();
+                tablePuestos.api().ajax.reload();
               }
             });
           } else {
@@ -178,13 +173,13 @@ document.addEventListener(
               allowEscapeKey: false,
             }).then(() => {
               // Acción final después de OK (opcional)
-              formClientes.reset();
-              cliente.value = "";
+              formPuestos.reset();
+              idpuesto.value = "";
               estado.value = "2";
               tabNuevo.textContent = "NUEVO";
               spanBtnText.textContent = "REGISTRAR";
               primerTab.show();
-              tableDistibuidores = null.api().ajax.reload();
+              tablePuestos.api().ajax.reload();
             });
           }
         } else {
@@ -197,9 +192,9 @@ document.addEventListener(
 );
 
 // ------------------------------------------------------------------------
-// FUNCIÓN EDITAR CLIENTE → MODO ACTUALIZAR
+// FUNCIÓN EDITAR PUESTO → MODO ACTUALIZAR
 // ------------------------------------------------------------------------
-function fntEditCliente(idcliente) {
+function fntEditInfo(id_puesto) {
   // Cambiar textos a modo ACTUALIZAR
   if (tabNuevo) tabNuevo.textContent = "ACTUALIZAR";
   if (spanBtnText) spanBtnText.textContent = "ACTUALIZAR";
@@ -207,7 +202,7 @@ function fntEditCliente(idcliente) {
   let request = window.XMLHttpRequest
     ? new XMLHttpRequest()
     : new ActiveXObject("Microsoft.XMLHTTP");
-  let ajaxUrl = base_url + "/cli_clientes/getCliente/" + idcliente;
+  let ajaxUrl = base_url + "/cli_puestos/show/" + id_puesto;
 
   request.open("GET", ajaxUrl, true);
   request.send();
@@ -217,7 +212,11 @@ function fntEditCliente(idcliente) {
       let objData = JSON.parse(request.responseText);
 
       if (objData.status) {
-        cliente.value = objData.data.idcliente;
+        idpuesto.value = objData.data.id;
+        departamento_id.value = objData.data.departamento_id;
+        nombreInput.value = objData.data.nombre_puesto;
+        descripcionInput.value = objData.data.descripcion;
+        estado.value = objData.data.estado;
 
         // Cambiar al tab de captura
         if (firstTab) firstTab.show();
@@ -231,7 +230,7 @@ function fntEditCliente(idcliente) {
 // ------------------------------------------------------------------------
 //  ELIMINAR UN REGISTRO DEL LISTADO
 // ------------------------------------------------------------------------
-function fntDelCliente(idcliente) {
+function fntDelPuesto(idpuesto) {
   Swal.fire({
     html: `
         <div class="mt-3">
@@ -268,8 +267,8 @@ function fntDelCliente(idcliente) {
     let request = window.XMLHttpRequest
       ? new XMLHttpRequest()
       : new ActiveXObject("Microsoft.XMLHTTP");
-    let ajaxUrl = base_url + "/cli_clientes/destroy";
-    let strData = "idcliente=" + idcliente;
+    let ajaxUrl = base_url + "/cli_puestos/destroy";
+    let strData = "idpuesto=" + idpuesto;
 
     request.open("POST", ajaxUrl, true);
     request.setRequestHeader(
@@ -283,7 +282,7 @@ function fntDelCliente(idcliente) {
         let objData = JSON.parse(request.responseText);
         if (objData.status) {
           Swal.fire("¡Operación exitosa!", objData.msg, "success");
-          tableDistibuidores.api().ajax.reload();
+          tablePuestos.api().ajax.reload();
         } else {
           Swal.fire("Atención!", objData.msg, "error");
         }
@@ -293,14 +292,13 @@ function fntDelCliente(idcliente) {
 }
 
 // ------------------------------------------------------------------------
-//  VER EL DETALLE DEl CLIENTE
+//  VER EL DETALLE DEl REGISTRO
 // ------------------------------------------------------------------------
-function fntViewCliente(idcliente) {
+function fntViewPuesto(idpuesto) {
   let request = window.XMLHttpRequest
     ? new XMLHttpRequest()
     : new ActiveXObject("Microsoft.XMLHTTP");
-  let ajaxUrl = base_url + "/cli_clientes/show/" + idcliente;
-
+  let ajaxUrl = base_url + "/cli_puestos/show/" + idpuesto;
   request.open("GET", ajaxUrl, true);
   request.send();
 
@@ -314,42 +312,18 @@ function fntViewCliente(idcliente) {
             ? '<span class="badge bg-success">Activo</span>'
             : '<span class="badge bg-danger">Inactivo</span>';
 
-        document.querySelector("#idcliente").innerHTML = objData.data.id;
-        document.querySelector("#nombregrupo").innerHTML =
-          objData.data.nombre_grupo;
-        document.querySelector("#tiponegocio").innerHTML =
-          objData.data.tipo_negocio;
-        document.querySelector("#nombrecomercial").innerHTML =
-          objData.data.nombre_comercial;
-        document.querySelector("#razonsocial").innerHTML =
-          objData.data.razon_social;
-        document.querySelector("#plaza").innerHTML = objData.data.plaza;
-        document.querySelector("#rfc").innerHTML = objData.data.rfc;
-        document.querySelector("#repve").innerHTML = objData.data.repve;
-        document.querySelector("#telefono").innerHTML = objData.data.telefono;
-        document.querySelector("#telefonoalt").innerHTML =
-          objData.data.telefono_alt;
-
-        document.querySelector("#tipo").innerHTML = objData.data.tipo;
-        document.querySelector("#calle").innerHTML = objData.data.calle;
-        document.querySelector("#numero_ext").innerHTML =
-          objData.data.numero_ext;
-        document.querySelector("#numero_int").innerHTML =
-          objData.data.numero_int;
-        document.querySelector("#colonia").innerHTML = objData.data.colonia;
-        document.querySelector("#codigo_postal").innerHTML =
-          objData.data.codigo_postal;
-        document.querySelector("#pais").innerHTML = objData.data.pais;
-        document.querySelector("#estado_id").innerHTML = objData.data.estado_id;
-        document.querySelector("#municipio").innerHTML = objData.data.municipio;
-        document.querySelector("#latitud_direccion").innerHTML = objData.data.latitud_direccion;
-        document.querySelector("#longitud_direccion").innerHTML = objData.data.longitud_direccion;
-
-        document.querySelector("#fecharegistro").innerHTML =
+        document.querySelector("#idpuesto").innerHTML = objData.data.id;
+        document.querySelector("#departamento_id").innerHTML =
+          objData.data.nombre_departamento;
+        document.querySelector("#nombrePuesto").innerHTML =
+          objData.data.nombre_puesto;
+        document.querySelector("#descripcionPuesto").innerHTML =
+          objData.data.descripcion;
+        document.querySelector("#fechaPuesto").innerHTML =
           objData.data.fecha_registro;
-        document.querySelector("#celEstado").innerHTML = estadoUsuario;
+        document.querySelector("#estadoPuesto").innerHTML = estadoUsuario;
 
-        $("#modalViewCliente").modal("show");
+        $("#modalViewPuesto").modal("show");
       } else {
         Swal.fire("Error", objData.msg, "error");
       }
@@ -358,11 +332,11 @@ function fntViewCliente(idcliente) {
 }
 
 // ------------------------------------------------------------------------
-//  VER EL CATALOGO DE GRUPOS
+//  VER EL CATALOGO DE PLANTAS
 // ------------------------------------------------------------------------
-function fntGrupos(selectedValue = "") {
-  if (document.querySelector("#listGrupos")) {
-    let ajaxUrl = base_url + "/cli_clientes/getSelectGrupos";
+function fntPuestos(selectedValue = "") {
+  if (document.querySelector("#listPuestos")) {
+    let ajaxUrl = base_url + "/cli_puestos/getSelectDepartamentos";
     let request = window.XMLHttpRequest
       ? new XMLHttpRequest()
       : new ActiveXObject("Microsoft.XMLHTTP");
@@ -370,7 +344,7 @@ function fntGrupos(selectedValue = "") {
     request.send();
     request.onreadystatechange = function () {
       if (request.readyState == 4 && request.status == 200) {
-        document.querySelector("#listGrupos").innerHTML = request.responseText;
+        document.querySelector("#listPuestos").innerHTML = request.responseText;
 
         if (selectedValue !== "") {
           select.value = selectedValue;
@@ -378,76 +352,4 @@ function fntGrupos(selectedValue = "") {
       }
     };
   }
-}
-
-// ------------------------------------------------------------------------
-//  VER EL CATALOGO DE PAISES
-// ------------------------------------------------------------------------
-function fntPaises(selected = "") {
-  let ajaxUrl = base_url + "/cli_clientes/getSelectPaises";
-  let request = new XMLHttpRequest();
-  request.open("GET", ajaxUrl, true);
-  request.send();
-
-  request.onreadystatechange = function () {
-    if (request.readyState === 4 && request.status === 200) {
-      selectPais.innerHTML = request.responseText;
-      if (selected) selectPais.value = selected;
-    }
-  };
-
-  selectPais.onchange = function () {
-    fntEstados(this.value);
-    selectMunicipio.innerHTML =
-      '<option value="">--Seleccione municipio--</option>';
-  };
-}
-
-// ------------------------------------------------------------------------
-//  VER EL CATALOGO DE ESTADOS
-// ------------------------------------------------------------------------
-function fntEstados(pais_id, selected = "") {
-  if (!pais_id) {
-    selectEstado.innerHTML = '<option value="">--Seleccione estado--</option>';
-    return;
-  }
-
-  let ajaxUrl = base_url + "/cli_clientes/getSelectEstados/" + pais_id;
-  let request = new XMLHttpRequest();
-  request.open("GET", ajaxUrl, true);
-  request.send();
-
-  request.onreadystatechange = function () {
-    if (request.readyState === 4 && request.status === 200) {
-      selectEstado.innerHTML = request.responseText;
-      if (selected) selectEstado.value = selected;
-    }
-  };
-
-  selectEstado.onchange = function () {
-    fntMunicipios(this.value);
-  };
-}
-
-// ------------------------------------------------------------------------
-//  VER EL CATALOGO DE MUNICIPIOS
-// ------------------------------------------------------------------------
-function fntMunicipios(estado_id, selected = "") {
-  if (!estado_id) {
-    selectMunicipio.innerHTML =
-      '<option value="">--Seleccione municipio--</option>';
-    return;
-  }
-
-  let ajaxUrl = base_url + "/cli_clientes/getSelectMunicipios/" + estado_id;
-  let request = new XMLHttpRequest();
-  request.open("GET", ajaxUrl, true);
-  request.send();
-
-  request.onreadystatechange = function () {
-    if (request.readyState === 4 && request.status === 200) {
-      selectMunicipio.innerHTML = request.responseText;
-      if (selected) selectMunicipio.value = selected;
-    }
-  };
 }
