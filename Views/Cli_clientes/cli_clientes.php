@@ -28,7 +28,7 @@
                     <ul class="nav nav-tabs-custom card-header-tabs border-bottom-0 " role="tablist" id="nav-tab">
                         <li class="nav-item">
                             <a class="nav-link active" data-bs-toggle="tab" href="#listplantas" role="tab">
-                                Lista de clientes
+                                Lista de distribuidores
                             </a>
                         </li>
                         <?php if ($_SESSION['permisosMod']['w']) { ?>
@@ -56,7 +56,7 @@
                                         <th>NOMBRE COMERCIAL</th>
                                         <th>RAZON SOCIAL</th>
                                         <th>PLAZA</th>
-                                        <th>ESTATUS</th>
+                                        <th>ESTADO</th>
                                         <th>ACCIÓN</th>
                                     </tr>
                                 </thead>
@@ -75,19 +75,10 @@
                                     <!-- select grupo_id -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label
-                                                for=" grupo-select">GRUPO</label>
-                                            <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="grupo-addon">Grp</span>
-                                                <select class="form-select" id="grupo-select" name="grupo-select"
-                                                    aria-describedby="grupo-addon" required>
-                                                    <option value="" selected>Selecciona un grupo</option>
-                                                    <?php
-                                                    foreach ($data['grupos'] as $grupo) {
-                                                        echo '<option value="' . $grupo['id'] . '">' . $grupo['nombre'] . '</option>';
-                                                    }
-                                                    ?>
-                                                </select>
+                                            <label class="form-label" for="listGrupos">GRUPOS</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>Gru</span>
+                                                <select class="form-control" id="listGrupos" name="listGrupos" required=""></select>
                                                 <div class="invalid-feedback">El campo grupo es obligatorio</div>
                                             </div>
                                         </div>
@@ -229,7 +220,7 @@
                                     <!-- campo tipo tipo 'Fiscal', 'Comercial', 'Taller', 'Sucursal' -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="tipo-input">TIPO DE NEGOCIO</label>
+                                            <label class="form-label" for="tipo-input">TIPO</label>
                                             <select class="form-select" id="tipo-input" name="tipo-input" required>
                                                 <option value="" disabled selected>Selecciona un tipo</option>
                                                 <option value="Fiscal">Fiscal</option>
@@ -237,7 +228,7 @@
                                                 <option value="Taller">Taller</option>
                                                 <option value="Sucursal">Sucursal</option>
                                             </select>
-                                            <div class="invalid-feedback">El campo tipo de negocio es obligatorio</div>
+                                            <div class="invalid-feedback">El campo tipo es obligatorio</div>
                                         </div>
                                     </div>
 
@@ -311,19 +302,10 @@
                                     <!-- select pais_id -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label
-                                                for=" pais-select">PAÍS</label>
-                                            <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="pais-addon">País</span>
-                                                <select class="form-select" id="pais-select" name="pais-select"
-                                                    aria-describedby="pais-addon" required>
-                                                    <option value="" selected>Selecciona un país</option>
-                                                    <?php
-                                                    foreach ($data['paises'] as $pais) {
-                                                        echo '<option value="' . $pais['id'] . '">' . $pais['nombre'] . '</option>';
-                                                    }
-                                                    ?>
-                                                </select>
+                                            <label class="form-label" for="listPaises">PAÍS</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>Pai</span>
+                                                <select class="form-control" id="listPaises" name="listPaises" required=""></select>
                                                 <div class="invalid-feedback">El campo país es obligatorio</div>
                                             </div>
                                         </div>
@@ -332,19 +314,10 @@
                                     <!-- select estado_id -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label
-                                                for=" estado-select">ESTADO</label>
-                                            <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="estado-addon">Estado</span>
-                                                <select class="form-select" id="estado-select" name="estado-select"
-                                                    aria-describedby="estado-addon" required>
-                                                    <option value="" selected>Selecciona un estado</option>
-                                                    <?php
-                                                    foreach ($data['estados'] as $estado) {
-                                                        echo '<option value="' . $estado['id'] . '">' . $estado['nombre'] . '</option>';
-                                                    }
-                                                    ?>
-                                                </select>
+                                            <label class="form-label" for="listEstados">ESTADOS</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>Est</span>
+                                                <select class="form-control" id="listEstados" name="listEstados" required=""></select>
                                                 <div class="invalid-feedback">El campo estado es obligatorio</div>
                                             </div>
                                         </div>
@@ -353,22 +326,11 @@
                                     <!-- select municipio_id -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label
-                                                    for=" municipio-select">MUNICIPIO</label>
-                                            <div class="input-group has-validation mb-3">
-                                                <div class="input-group has-validation mb-3">
-                                                    <span class="input-group-text" id="municipio-addon">Municipio</span>
-                                                    <select class="form-select" id="municipio-select" name="municipio-select"
-                                                        aria-describedby="municipio-addon" required>
-                                                        <option value="" selected>Selecciona un municipio</option>
-                                                        <?php
-                                                        foreach ($data['municipios'] as $municipio) {
-                                                            echo '<option value="' . $municipio['id'] . '">' . $municipio['nombre'] . '</option>';
-                                                        }
-                                                        ?>
-                                                    </select>
-                                                    <div class="invalid-feedback">El campo municipio es obligatorio</div>
-                                                </div>
+                                            <label class="form-label" for="listMunicipios">MUNICIPIOS</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>Mun</span>
+                                                <select class="form-control" id="listMunicipios" name="listMunicipios" required=""></select>
+                                                <div class="invalid-feedback">El campo municipio es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
@@ -388,6 +350,22 @@
                                             <label class="form-label" for="longitud">LONGITUD</label>
                                             <input type="text" class="form-control" id="longitud" name="longitud"
                                                 placeholder="Longitud del cliente">
+                                        </div>
+                                    </div>
+
+                                    <!-- campo estado -->
+                                    <div class="col-lg-6 col-sm-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="estado-select">ESTADO</label>
+                                            <div class="input-group has-validation mb-3">
+                                                <span class="input-group-text" id="estado-addon">Est</span>
+                                                <select class="form-select" id="estado-select" name="estado-select"
+                                                    aria-describedby="estado-addon" required>
+                                                    <option value="2" selected>Activo</option>
+                                                    <option value="1">inactivo</option>
+                                                </select>
+                                                <div class="invalid-feedback">El campo estado es obligatorio</div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -442,6 +420,95 @@
             <div class="modal-body">
                 <table class="table table-bordered">
                     <tbody>
+                        <tr>
+                            <td>ID:</td>
+                            <td id="idcliente">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>GRUPO:</td>
+                            <td id="nombregrupo">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>TIPO DE NEGOCIO:</td>
+                            <td id="tiponegocio">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>NOMBRE COMERCIAL:</td>
+                            <td id="nombrecomercial">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>RAZON SOCIAL:</td>
+                            <td id="razonsocial">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>RFC:</td>
+                            <td id="rfc">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>No. REPUVE:</td>
+                            <td id="repve">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>PLAZA:</td>
+                            <td id="plaza">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>TELÉFONO</td>
+                            <td id="telefono">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>TELÉFONO ALT:</td>
+                            <td id="telefonoalt">654654654</td>
+                        </tr>
+
+                        <tr>
+                            <td>TIPO</td>
+                            <td id="tipo">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>CALLE</td>
+                            <td id="calle">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>NÚMERO EXT</td>
+                            <td id="numero_ext">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>NÚMERO INT</td>
+                            <td id="numero_int">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>COLONIA</td>
+                            <td id="colonia">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>CODIGO POSTAL</td>
+                            <td id="codigo_postal">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>PAÍS</td>
+                            <td id="pais">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>ESTADO</td>
+                            <td id="estado_id">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>MUNICÍPIO</td>
+                            <td id="municipio">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>LATITUD</td>
+                            <td id="latitud_direccion">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>LONGITUD</td>
+                            <td id="longitud_direccion">654654654</td>
+                        </tr>
+                        <tr>
+                            <td>FECHA DE REGISTRO:</td>
+                            <td id="fecharegistro">654654654</td>
+                        </tr>
                         <tr>
                             <td>Estado:</td>
                             <td id="celEstado">654654654</td>

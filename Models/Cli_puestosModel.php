@@ -15,8 +15,19 @@ class Cli_puestosModel extends Mysql
 
     public function selectPuestos()
     {
-        $sql = "SELECT * FROM  cli_puestos 
-					WHERE estado != 0 ";
+        $sql = "SELECT 
+                p.id,
+                d.nombre AS nombre_departamento,
+                p.nombre AS nombre_puesto,
+                p.descripcion,
+                p.fecha_registro,
+                p.estado,
+                p.departamento_id
+            FROM cli_puestos p
+            INNER JOIN cli_departamentos d 
+                ON p.departamento_id = d.id
+            WHERE p.estado != 0";
+
         $request = $this->select_all($sql);
         return $request;
     }
@@ -24,7 +35,21 @@ class Cli_puestosModel extends Mysql
     public function selectPuesto(int $idpuesto)
     {
         $this->intIdpuesto = $idpuesto;
-        $sql = "SELECT * FROM cli_puestos WHERE id = $this->intIdpuesto";
+
+        $sql = "SELECT 
+                p.id,
+                d.nombre AS nombre_departamento,
+                p.nombre AS nombre_puesto,
+                p.descripcion,
+                p.fecha_registro,
+                p.estado,
+                p.departamento_id
+            FROM cli_puestos p
+            INNER JOIN cli_departamentos d 
+                ON p.departamento_id = d.id
+            WHERE p.id = $this->intIdpuesto
+              AND p.estado != 0";
+
         $request = $this->select($sql);
         return $request;
     }
@@ -89,9 +114,9 @@ class Cli_puestosModel extends Mysql
         }
     }
 
-    public function selectOptionPuestos()
+    public function selectOptionDepartamentos()
     {
-        $sql = "SELECT * FROM  cli_puestos 
+        $sql = "SELECT * FROM  cli_departamentos 
                     WHERE estado = 2";
         $request = $this->select_all($sql);
         return $request;

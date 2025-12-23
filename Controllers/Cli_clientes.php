@@ -18,8 +18,8 @@ class Cli_clientes extends Controllers
 		if (empty($_SESSION['permisosMod']['r'])) {
 			header("Location:" . base_url() . '/dashboard');
 		}
-		$data['page_tag'] = "Clientes";
-		$data['page_title'] = "Clientes";
+		$data['page_tag'] = "Distribuidores";
+		$data['page_title'] = "Distribuidores";
 		$data['page_name'] = "bom";
 		$data['page_functions_js'] = "functions_cli_clientes.js";
 		$this->views->getView($this, "cli_clientes", $data);
@@ -135,6 +135,62 @@ class Cli_clientes extends Controllers
 				echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 			}
 		}
+		die();
+	}
+
+	public function getSelectGrupos()
+	{
+		$htmlOptions = '<option value="">--Seleccione--</option>';
+		$arrData = $this->model->selectOptionGrupos();
+		if (count($arrData) > 0) {
+			for ($i = 0; $i < count($arrData); $i++) {
+				if ($arrData[$i]['estado'] == 2) {
+					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre']  . '</option>';
+				}
+			}
+		}
+		echo $htmlOptions;
+		die();
+	}
+
+	public function getSelectPaises()
+	{
+		$htmlOptions = '<option value="">--Seleccione--</option>';
+		$arrData = $this->model->selectOptionPaises();
+		if (count($arrData) > 0) {
+			for ($i = 0; $i < count($arrData); $i++) {
+				if ($arrData[$i]['estado'] == 2) {
+					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre']  . '</option>';
+				}
+			}
+		}
+		echo $htmlOptions;
+		die();
+	}
+
+	public function getSelectEstados($pais_id)
+	{
+		$htmlOptions = '<option value="">--Seleccione estado--</option>';
+		$arrData = $this->model->selectEstadosByPais(intval($pais_id));
+
+		foreach ($arrData as $row) {
+			$htmlOptions .= '<option value="' . $row['id'] . '">' . $row['nombre'] . '</option>';
+		}
+
+		echo $htmlOptions;
+		die();
+	}
+
+	public function getSelectMunicipios($estado_id)
+	{
+		$htmlOptions = '<option value="">--Seleccione municipio--</option>';
+		$arrData = $this->model->selectMunicipiosByEstado(intval($estado_id));
+
+		foreach ($arrData as $row) {
+			$htmlOptions .= '<option value="' . $row['id'] . '">' . $row['nombre'] . '</option>';
+		}
+
+		echo $htmlOptions;
 		die();
 	}
 }

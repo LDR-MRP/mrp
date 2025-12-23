@@ -18,7 +18,6 @@
                                 <li class="breadcrumb-item active"><?= $data['page_tag'] ?></li>
                             </ol>
                         </div>
-                        
                     </div>
                 </div>
             </div>
@@ -29,13 +28,13 @@
                 <div class="card-header">
                     <ul class="nav nav-tabs-custom card-header-tabs border-bottom-0 " role="tablist" id="nav-tab">
                         <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#listpuestos" role="tab">
-                                Lista de puestos
+                            <a class="nav-link active" data-bs-toggle="tab" href="#listcontactos" role="tab">
+                                Lista de contactos
                             </a>
                         </li>
                         <?php if ($_SESSION['permisosMod']['w']) { ?>
                             <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#agregarpuesto" role="tab">
+                                <a class="nav-link" data-bs-toggle="tab" href="#agregarcontacto" role="tab">
                                     NUEVO
                                 </a>
                             </li>
@@ -45,19 +44,20 @@
                 <!-- end card header -->
                 <div class="card-body">
                     <div class="tab-content">
-                        <div class="tab-pane active" id="listpuestos" role="tabpanel">
+                        <div class="tab-pane active" id="listcontactos" role="tabpanel">
 
-                            <table id="tablePuestos"
+                            <table id="tableContactos"
                                 class="table table-bordered dt-responsive nowrap table-striped align-middle"
                                 style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
-                                        <th>DEPARTAMENTO</th>
-                                        <th>NOMBRE</th>
-                                        <th>DESCRIPCIÓN</th>
-                                        <th>FECHA</th>
-                                        <th>ESTATUS</th>
+                                        <th>DISTRIBUIDOR</th>
+                                        <th>PUESTO</th>
+                                        <th>NOMBRE COMERCIAL</th>
+                                        <th>CORREO</th>
+                                        <th>TELÉFONO</th>
+                                        <th>ESTADO</th>
                                         <th>ACCIÓN</th>
                                     </tr>
                                 </thead>
@@ -72,19 +72,31 @@
 
 
 
-                        <div class="tab-pane" id="agregarpuesto" role="tabpanel">
-                            <form id="formPuestos" autocomplete="off" class="form-steps was-validated" autocomplete="off">
-                                <input type="hidden" id="idpuesto" name="idpuesto">
+                        <div class="tab-pane" id="agregarcontacto" role="tabpanel">
+                            <form id="formContactos" autocomplete="off" class="form-steps was-validated" autocomplete="off">
+                                <input type="hidden" id="idcontacto" name="idcontacto">
                                 <div class="row">
 
-                                    <!-- DEPARTAMENTO ID -->
+                                    <!-- DISTRIBUIDOR_ID -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="listPuestos">DEPARTAMENTO</label>
+                                            <label class="form-label" for="listDistribuidores">DISTRIBUIDOR</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>Dep</span>
+                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>Dis</span>
+                                                <select class="form-control" id="listDistribuidores" name="listDistribuidores" required=""></select>
+                                                <div class="invalid-feedback">El campo distribuidor es obligatorio</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- PUESTO_ID -->
+                                    <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="listPuestos">PUESTO</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>Pue</span>
                                                 <select class="form-control" id="listPuestos" name="listPuestos" required=""></select>
-                                                <div class="invalid-feedback">El campo de puestos es obligatorio</div>
+                                                <div class="invalid-feedback">El campo puesto es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
@@ -92,27 +104,41 @@
                                     <!-- campo nombre -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="nombre-puestos-input">NOMBRE</label>
+                                            <label class="form-label" for="nombre-contactos-input">NOMBRE</label>
                                             <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="nombre-puestos-addon">Nom</span>
-                                                <input type="text" class="form-control" placeholder="Ingrese el nombre del puesto" id="nombre-puestos-input"
-                                                    name="nombre-puestos-input"
-                                                    aria-describedby="nombre-puestos-addon" required>
+                                                <span class="input-group-text" id="nombre-contactos-addon">Nom</span>
+                                                <input type="text" class="form-control" placeholder="Ingrese el nombre del puesto" id="nombre-contactos-input"
+                                                    name="nombre-contactos-input"
+                                                    aria-describedby="nombre-contactos-addon" required>
                                                 <div class="invalid-feedback">El campo nombre es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- campo descripcion -->
+                                    <!-- campo correo -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="descripcion-puestos-input">DESCRIPCIÓN</label>
+                                            <label class="form-label" for="correo-contactos-input">CORREO</label>
                                             <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="descripcion-puestos-addon">Desc</span>
-                                                <input type="text" class="form-control" placeholder="Ingrese la descripcion del puesto" id="descripcion-puestos-input"
-                                                    name="descripcion-puestos-input"
-                                                    aria-describedby="descripcion-puestos-addon" required>
-                                                <div class="invalid-feedback">El campo descripción es obligatorio</div>
+                                                <span class="input-group-text" id="correo-contactos-addon">Cor</span>
+                                                <input type="email" class="form-control" placeholder="Ingrese el correo del puesto" id="correo-contactos-input"
+                                                    name="correo-contactos-input"
+                                                    aria-describedby="correo-contactos-addon" required>
+                                                <div class="invalid-feedback">El campo correo es obligatorio</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!--  campo telefono -->
+                                    <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="telefono-contactos-input">TELÉFONO</label>
+                                            <div class="input-group has-validation mb-3">
+                                                <span class="input-group-text" id="telefono-contactos-addon">Tel</span>
+                                                <input type="text" class="form-control" placeholder="Ingrese el teléfono del puesto" id="telefono-contactos-input"
+                                                    name="telefono-contactos-input"
+                                                    aria-describedby="telefono-contactos-addon" required>
+                                                <div class="invalid-feedback">El campo teléfono es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
@@ -175,7 +201,7 @@
 
 
 
-<div class="modal fade" id="modalViewPuesto" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+<div class="modal fade" id="modalViewContacto" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0">
             <div class="modal-header bg-primary-subtle p-3">
@@ -187,29 +213,37 @@
                     <tbody>
                         <tr>
                             <td>ID:</td>
-                            <td id="idpuesto">1</td>
+                            <td id="idcontacto">1</td>
                         </tr>
                         <tr>
-                            <td>Departamento:</td>
-                            <td id="departamento_id">1</td>
+                            <td>DISTRIBUIDOR:</td>
+                            <td id="nombreDistribuidor">Nombre distribuidor</td>
                         </tr>
                         <tr>
-                            <td>Nombre:</td>
-                            <td id="nombrePuesto">Larry</td>
+                            <td>PUESTO:</td>
+                            <td id="nombrePuesto">Nombre puesto</td>
                         </tr>
                         <tr>
-                            <td>Descripción:</td>
-                            <td id="descripcionPuesto">Larry</td>
+                            <td>NOMBRE COMERCIAL:</td>
+                            <td id="nombreContacto">Nombre comercial</td>
                         </tr>
                         <tr>
-                            <td>Fecha de creación:</td>
-                            <td id="fechaPuesto">Larry</td>
+                            <td>CORREO:</td>
+                            <td id="correoContacto">Correo</td>
+                        </tr>
+                        <tr>
+                            <td>TELEFONO:</td>
+                            <td id="telefonoContacto">Telefono</td>
+                        </tr>
+                        <tr>
+                            <td>FECHA DE REGISTRO:</td>
+                            <td id="fechaContacto">Fecha de registro</td>
+                        </tr>
+                        <tr>
+                            <td>ESTADO:</td>
+                            <td id="estadoContacto">Estado</td>
                         </tr>
 
-                        <tr>
-                            <td>Estado:</td>
-                            <td id="estadoPuesto">Larry</td>
-                        </tr>
                     </tbody>
                 </table>
             </div>

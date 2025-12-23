@@ -1,12 +1,14 @@
-let tablePuestos;
+let tableContactos;
 let rowTable = "";
 let divLoading = document.querySelector("#divLoading");
 
 // Inputs del formulario
-const idpuesto = document.querySelector("#idpuesto");
-const departamento_id = document.querySelector("#listPuestos");
-const nombreInput = document.querySelector("#nombre-puestos-input");
-const descripcionInput = document.querySelector("#descripcion-puestos-input");
+const idcontacto = document.querySelector("#idcontacto");
+const distribuidor_id = document.querySelector("#listDistribuidores");
+const puesto_id = document.querySelector("#listPuestos");
+const nombre = document.querySelector("#nombre-contactos-input");
+const correo = document.querySelector("#correo-contactos-input");
+const telefono = document.querySelector("#telefono-contactos-input");
 const estado = document.querySelector("#estado-select");
 
 // Mis referencias globales
@@ -14,7 +16,7 @@ let primerTab; // Tab LISTA
 let firstTab; // Tab NUEVO/ACTUALIZAR
 let tabNuevo;
 let spanBtnText = null;
-let formPuestos = null;
+let formContactos = null;
 
 document.addEventListener(
   "DOMContentLoaded",
@@ -22,27 +24,29 @@ document.addEventListener(
     // --------------------------------------------------------------------
     //  REFERENCIAS DEL FORMULARIO
     // --------------------------------------------------------------------
-    formPuestos = document.querySelector("#formPuestos");
+    formContactos = document.querySelector("#formContactos");
     spanBtnText = document.querySelector("#btnText");
 
+    fntDistribuidor();
     fntPuestos();
 
     // --------------------------------------------------------------------
-    //  DATATABLE PUESTOS
+    //  DATATABLE CONTACTOS
     // --------------------------------------------------------------------
-    tablePuestos = $("#tablePuestos").dataTable({
+    tableContactos = $("#tableContactos").dataTable({
       aProcessing: true,
       aServerSide: true,
       ajax: {
-        url: " " + base_url + "/cli_puestos/index",
+        url: " " + base_url + "/cli_contactos/index",
         dataSrc: "",
       },
       columns: [
         { data: "id" },
-        { data: "nombre_departamento" },
+        { data: "nombre_distribuidor" },
         { data: "nombre_puesto" },
-        { data: "descripcion" },
-        { data: "fecha_registro" },
+        { data: "nombre_contacto" },
+        { data: "correo" },
+        { data: "telefono" },
         { data: "estado" },
         { data: "options" },
       ],
@@ -58,10 +62,10 @@ document.addEventListener(
     //  TABS BOOTSTRAP
     // --------------------------------------------------------------------
     const primerTabEl = document.querySelector(
-      '#nav-tab a[href="#listpuestos"]'
+      '#nav-tab a[href="#listcontactos"]'
     );
     const firstTabEl = document.querySelector(
-      '#nav-tab a[href="#agregarpuesto"]'
+      '#nav-tab a[href="#agregarcontacto"]'
     );
 
     if (primerTabEl && firstTabEl && spanBtnText) {
@@ -78,29 +82,29 @@ document.addEventListener(
         spanBtnText.textContent = "REGISTRAR";
 
         // Limpiar formulario
-        formPuestos.reset();
-        idpuesto.value = "";
+        formContactos.reset();
+        idcontacto.value = "";
         estado.value = "2";
       });
 
       // ----------------------------------------------------------------
-      // CLICK EN "PUESTOS" → RESETEAR NAV A NUEVO
+      // CLICK EN "CONTACTOS" → RESETEAR NAV A NUEVO
       // ----------------------------------------------------------------
       primerTabEl.addEventListener("click", () => {
         tabNuevo.textContent = "NUEVO";
         spanBtnText.textContent = "REGISTRAR";
-        idpuesto.value = "";
+        idcontacto.value = "";
         estado.value = "2";
-        formPuestos.reset();
+        formContactos.reset();
       });
     } else {
       console.warn("Tabs de lineas no encontrados o btnText faltante.");
     }
 
     // --------------------------------------------------------------------
-    // FORM → CREAR / ACTUALIZAR PUESTO
+    // FORM → CREAR / ACTUALIZAR CONTACTO
     // --------------------------------------------------------------------
-    formPuestos.addEventListener("submit", function (e) {
+    formContactos.addEventListener("submit", function (e) {
       e.preventDefault();
 
       divLoading.style.display = "flex";
@@ -108,8 +112,8 @@ document.addEventListener(
       let request = window.XMLHttpRequest
         ? new XMLHttpRequest()
         : new ActiveXObject("Microsoft.XMLHTTP");
-      let ajaxUrl = base_url + "/cli_puestos/setPuesto";
-      let formData = new FormData(formPuestos);
+      let ajaxUrl = base_url + "/cli_contactos/setContacto/";
+      let formData = new FormData(formContactos);
 
       request.open("POST", ajaxUrl, true);
       request.send(formData);
@@ -146,21 +150,21 @@ document.addEventListener(
             }).then((result) => {
               if (result.isConfirmed) {
                 // Seguir en modo NUEVO
-                formPuestos.reset();
-                idpuesto.value = "";
+                formContactos.reset();
+                idcontacto.value = "";
                 estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
-                tablePuestos.api().ajax.reload();
+                tableContactos.api().ajax.reload();
               } else {
                 // Regresar al listado
-                formPuestos.reset();
-                idpuesto.value = "";
+                formContactos.reset();
+                idcontacto.value = "";
                 estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 primerTab.show();
-                tablePuestos.api().ajax.reload();
+                tableContactos.api().ajax.reload();
               }
             });
           } else {
@@ -173,13 +177,13 @@ document.addEventListener(
               allowEscapeKey: false,
             }).then(() => {
               // Acción final después de OK (opcional)
-              formPuestos.reset();
-              idpuesto.value = "";
+              formContactos.reset();
+              idcontacto.value = "";
               estado.value = "2";
               tabNuevo.textContent = "NUEVO";
               spanBtnText.textContent = "REGISTRAR";
               primerTab.show();
-              tablePuestos.api().ajax.reload();
+              tableContactos.api().ajax.reload();
             });
           }
         } else {
@@ -192,9 +196,9 @@ document.addEventListener(
 );
 
 // ------------------------------------------------------------------------
-// FUNCIÓN EDITAR PUESTO → MODO ACTUALIZAR
+// FUNCIÓN EDITAR CONTACTO → MODO ACTUALIZAR
 // ------------------------------------------------------------------------
-function fntEditInfo(id_puesto) {
+function fntEditInfo(id_contacto) {
   // Cambiar textos a modo ACTUALIZAR
   if (tabNuevo) tabNuevo.textContent = "ACTUALIZAR";
   if (spanBtnText) spanBtnText.textContent = "ACTUALIZAR";
@@ -202,7 +206,7 @@ function fntEditInfo(id_puesto) {
   let request = window.XMLHttpRequest
     ? new XMLHttpRequest()
     : new ActiveXObject("Microsoft.XMLHTTP");
-  let ajaxUrl = base_url + "/cli_puestos/show/" + id_puesto;
+  let ajaxUrl = base_url + "/cli_contactos/show/" + id_contacto;
 
   request.open("GET", ajaxUrl, true);
   request.send();
@@ -212,10 +216,12 @@ function fntEditInfo(id_puesto) {
       let objData = JSON.parse(request.responseText);
 
       if (objData.status) {
-        idpuesto.value = objData.data.id;
-        departamento_id.value = objData.data.departamento_id;
-        nombreInput.value = objData.data.nombre_puesto;
-        descripcionInput.value = objData.data.descripcion;
+        idcontacto.value = objData.data.id;
+        distribuidor_id.value = objData.data.distribuidor_id;
+        puesto_id.value = objData.data.puesto_id;
+        nombre.value = objData.data.nombre_contacto;
+        correo.value = objData.data.correo;
+        telefono.value = objData.data.telefono;
         estado.value = objData.data.estado;
 
         // Cambiar al tab de captura
@@ -230,7 +236,7 @@ function fntEditInfo(id_puesto) {
 // ------------------------------------------------------------------------
 //  ELIMINAR UN REGISTRO DEL LISTADO
 // ------------------------------------------------------------------------
-function fntDelPuesto(idpuesto) {
+function fntDelContacto(idcontacto) {
   Swal.fire({
     html: `
         <div class="mt-3">
@@ -267,8 +273,8 @@ function fntDelPuesto(idpuesto) {
     let request = window.XMLHttpRequest
       ? new XMLHttpRequest()
       : new ActiveXObject("Microsoft.XMLHTTP");
-    let ajaxUrl = base_url + "/cli_puestos/destroy";
-    let strData = "idpuesto=" + idpuesto;
+    let ajaxUrl = base_url + "/cli_contactos/destroy";
+    let strData = "idcontacto=" + idcontacto;
 
     request.open("POST", ajaxUrl, true);
     request.setRequestHeader(
@@ -282,7 +288,7 @@ function fntDelPuesto(idpuesto) {
         let objData = JSON.parse(request.responseText);
         if (objData.status) {
           Swal.fire("¡Operación exitosa!", objData.msg, "success");
-          tablePuestos.api().ajax.reload();
+          tableContactos.api().ajax.reload();
         } else {
           Swal.fire("Atención!", objData.msg, "error");
         }
@@ -294,11 +300,11 @@ function fntDelPuesto(idpuesto) {
 // ------------------------------------------------------------------------
 //  VER EL DETALLE DEl REGISTRO
 // ------------------------------------------------------------------------
-function fntViewPuesto(idpuesto) {
+function fntViewContacto(idcontacto) {
   let request = window.XMLHttpRequest
     ? new XMLHttpRequest()
     : new ActiveXObject("Microsoft.XMLHTTP");
-  let ajaxUrl = base_url + "/cli_puestos/show/" + idpuesto;
+  let ajaxUrl = base_url + "/cli_contactos/show/" + idcontacto;
   request.open("GET", ajaxUrl, true);
   request.send();
 
@@ -312,18 +318,22 @@ function fntViewPuesto(idpuesto) {
             ? '<span class="badge bg-success">Activo</span>'
             : '<span class="badge bg-danger">Inactivo</span>';
 
-        document.querySelector("#idpuesto").innerHTML = objData.data.id;
-        document.querySelector("#departamento_id").innerHTML =
-          objData.data.nombre_departamento;
+        document.querySelector("#idcontacto").innerHTML = objData.data.id;  
+        document.querySelector("#nombreDistribuidor").innerHTML =
+          objData.data.nombre_distribuidor;
         document.querySelector("#nombrePuesto").innerHTML =
           objData.data.nombre_puesto;
-        document.querySelector("#descripcionPuesto").innerHTML =
-          objData.data.descripcion;
-        document.querySelector("#fechaPuesto").innerHTML =
+        document.querySelector("#nombreContacto").innerHTML =
+          objData.data.nombre_contacto;
+        document.querySelector("#correoContacto").innerHTML =
+          objData.data.correo;
+        document.querySelector("#telefonoContacto").innerHTML =
+          objData.data.telefono;
+        document.querySelector("#fechaContacto").innerHTML =
           objData.data.fecha_registro;
-        document.querySelector("#estadoPuesto").innerHTML = estadoUsuario;
+        document.querySelector("#estadoContacto").innerHTML = estadoUsuario;
 
-        $("#modalViewPuesto").modal("show");
+        $("#modalViewContacto").modal("show");
       } else {
         Swal.fire("Error", objData.msg, "error");
       }
@@ -332,11 +342,35 @@ function fntViewPuesto(idpuesto) {
 }
 
 // ------------------------------------------------------------------------
-//  VER EL CATALOGO DE PLANTAS
+//  VER EL CATALOGO DE DISTRIBUIDORES
+// ------------------------------------------------------------------------
+function fntDistribuidor(selectedValue = "") {
+  if (document.querySelector("#listDistribuidores")) {
+    let ajaxUrl = base_url + "/cli_contactos/getSelectDistribuidores";
+    let request = window.XMLHttpRequest
+      ? new XMLHttpRequest()
+      : new ActiveXObject("Microsoft.XMLHTTP");
+    request.open("GET", ajaxUrl, true);
+    request.send();
+    request.onreadystatechange = function () {
+      if (request.readyState == 4 && request.status == 200) {
+        document.querySelector("#listDistribuidores").innerHTML =
+          request.responseText;
+
+        if (selectedValue !== "") {
+          select.value = selectedValue;
+        }
+      }
+    };
+  }
+}
+
+// ------------------------------------------------------------------------
+//  VER EL CATALOGO DE PUESTOS
 // ------------------------------------------------------------------------
 function fntPuestos(selectedValue = "") {
   if (document.querySelector("#listPuestos")) {
-    let ajaxUrl = base_url + "/cli_puestos/getSelectDepartamentos";
+    let ajaxUrl = base_url + "/cli_contactos/getSelectPuestos";
     let request = window.XMLHttpRequest
       ? new XMLHttpRequest()
       : new ActiveXObject("Microsoft.XMLHTTP");

@@ -90,6 +90,11 @@ const MPPROVEEDORES = 35;
 
 //Submodulos Clientes
 const MCCLIENTES = 39;
+const MCMARCAS = 40;
+const MCDEPARTAMENTOS = 41;
+const MCLI_GRUPOS = 42;
+const MCLI_PUESTOS = 43;
+const MCLI_CONTACTOS = 44;
 
 
 const PERROR = 9;

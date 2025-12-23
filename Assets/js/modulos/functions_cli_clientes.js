@@ -8,6 +8,10 @@ const nombre = document.querySelector("#nombre-cliente-input");
 const estado = document.querySelector("#estado-select");
 const direccion = document.querySelector("#direccion-linea-textarea");
 
+const selectPais = document.querySelector("#listPaises");
+const selectEstado = document.querySelector("#listEstados");
+const selectMunicipio = document.querySelector("#listMunicipios");
+
 // Mis referencias globales
 let primerTab; // Tab LISTA
 let firstTab; // Tab NUEVO/ACTUALIZAR
@@ -24,6 +28,9 @@ document.addEventListener(
     formClientes = document.querySelector("#formClientes");
     spanBtnText = document.querySelector("#btnText");
 
+    fntGrupos();
+    fntPaises();
+
     // --------------------------------------------------------------------
     //  DATATABLE CLIENTES
     // --------------------------------------------------------------------
@@ -36,12 +43,12 @@ document.addEventListener(
       },
       columns: [
         { data: "id" },
-        { data: "nombre" },
+        { data: "nombre_grupo" },
         { data: "tipo_negocio" },
         { data: "nombre_comercial" },
         { data: "razon_social" },
         { data: "plaza" },
-        { data: "estatus" },
+        { data: "estado" },
         { data: "options" },
       ],
       dom: "lBfrtip",
@@ -307,6 +314,39 @@ function fntViewCliente(idcliente) {
             ? '<span class="badge bg-success">Activo</span>'
             : '<span class="badge bg-danger">Inactivo</span>';
 
+        document.querySelector("#idcliente").innerHTML = objData.data.id;
+        document.querySelector("#nombregrupo").innerHTML =
+          objData.data.nombre_grupo;
+        document.querySelector("#tiponegocio").innerHTML =
+          objData.data.tipo_negocio;
+        document.querySelector("#nombrecomercial").innerHTML =
+          objData.data.nombre_comercial;
+        document.querySelector("#razonsocial").innerHTML =
+          objData.data.razon_social;
+        document.querySelector("#plaza").innerHTML = objData.data.plaza;
+        document.querySelector("#rfc").innerHTML = objData.data.rfc;
+        document.querySelector("#repve").innerHTML = objData.data.repve;
+        document.querySelector("#telefono").innerHTML = objData.data.telefono;
+        document.querySelector("#telefonoalt").innerHTML =
+          objData.data.telefono_alt;
+
+        document.querySelector("#tipo").innerHTML = objData.data.tipo;
+        document.querySelector("#calle").innerHTML = objData.data.calle;
+        document.querySelector("#numero_ext").innerHTML =
+          objData.data.numero_ext;
+        document.querySelector("#numero_int").innerHTML =
+          objData.data.numero_int;
+        document.querySelector("#colonia").innerHTML = objData.data.colonia;
+        document.querySelector("#codigo_postal").innerHTML =
+          objData.data.codigo_postal;
+        document.querySelector("#pais").innerHTML = objData.data.pais;
+        document.querySelector("#estado_id").innerHTML = objData.data.estado_id;
+        document.querySelector("#municipio").innerHTML = objData.data.municipio;
+        document.querySelector("#latitud_direccion").innerHTML = objData.data.latitud_direccion;
+        document.querySelector("#longitud_direccion").innerHTML = objData.data.longitud_direccion;
+
+        document.querySelector("#fecharegistro").innerHTML =
+          objData.data.fecha_registro;
         document.querySelector("#celEstado").innerHTML = estadoUsuario;
 
         $("#modalViewCliente").modal("show");
@@ -317,3 +357,97 @@ function fntViewCliente(idcliente) {
   };
 }
 
+// ------------------------------------------------------------------------
+//  VER EL CATALOGO DE GRUPOS
+// ------------------------------------------------------------------------
+function fntGrupos(selectedValue = "") {
+  if (document.querySelector("#listGrupos")) {
+    let ajaxUrl = base_url + "/cli_clientes/getSelectGrupos";
+    let request = window.XMLHttpRequest
+      ? new XMLHttpRequest()
+      : new ActiveXObject("Microsoft.XMLHTTP");
+    request.open("GET", ajaxUrl, true);
+    request.send();
+    request.onreadystatechange = function () {
+      if (request.readyState == 4 && request.status == 200) {
+        document.querySelector("#listGrupos").innerHTML = request.responseText;
+
+        if (selectedValue !== "") {
+          select.value = selectedValue;
+        }
+      }
+    };
+  }
+}
+
+// ------------------------------------------------------------------------
+//  VER EL CATALOGO DE PAISES
+// ------------------------------------------------------------------------
+function fntPaises(selected = "") {
+  let ajaxUrl = base_url + "/cli_clientes/getSelectPaises";
+  let request = new XMLHttpRequest();
+  request.open("GET", ajaxUrl, true);
+  request.send();
+
+  request.onreadystatechange = function () {
+    if (request.readyState === 4 && request.status === 200) {
+      selectPais.innerHTML = request.responseText;
+      if (selected) selectPais.value = selected;
+    }
+  };
+
+  selectPais.onchange = function () {
+    fntEstados(this.value);
+    selectMunicipio.innerHTML =
+      '<option value="">--Seleccione municipio--</option>';
+  };
+}
+
+// ------------------------------------------------------------------------
+//  VER EL CATALOGO DE ESTADOS
+// ------------------------------------------------------------------------
+function fntEstados(pais_id, selected = "") {
+  if (!pais_id) {
+    selectEstado.innerHTML = '<option value="">--Seleccione estado--</option>';
+    return;
+  }
+
+  let ajaxUrl = base_url + "/cli_clientes/getSelectEstados/" + pais_id;
+  let request = new XMLHttpRequest();
+  request.open("GET", ajaxUrl, true);
+  request.send();
+
+  request.onreadystatechange = function () {
+    if (request.readyState === 4 && request.status === 200) {
+      selectEstado.innerHTML = request.responseText;
+      if (selected) selectEstado.value = selected;
+    }
+  };
+
+  selectEstado.onchange = function () {
+    fntMunicipios(this.value);
+  };
+}
+
+// ------------------------------------------------------------------------
+//  VER EL CATALOGO DE MUNICIPIOS
+// ------------------------------------------------------------------------
+function fntMunicipios(estado_id, selected = "") {
+  if (!estado_id) {
+    selectMunicipio.innerHTML =
+      '<option value="">--Seleccione municipio--</option>';
+    return;
+  }
+
+  let ajaxUrl = base_url + "/cli_clientes/getSelectMunicipios/" + estado_id;
+  let request = new XMLHttpRequest();
+  request.open("GET", ajaxUrl, true);
+  request.send();
+
+  request.onreadystatechange = function () {
+    if (request.readyState === 4 && request.status === 200) {
+      selectMunicipio.innerHTML = request.responseText;
+      if (selected) selectMunicipio.value = selected;
+    }
+  };
+}
