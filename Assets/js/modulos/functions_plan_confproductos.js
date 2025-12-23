@@ -1,10 +1,3 @@
-/*****************************************************************************************
- *  PLAN_CONFPRODUCTOS.JS (COMPLETO + ORDENADO + FIX FINAL DE RUTA)
- *  - Carga ruta existente: pinta estaciones en #listaRuta (tbody) en orden y bloquea #listaEstaciones
- *  - Fix: funciones de hidden/indices trabajaban con <li> pero tu ruta es <tr>
- *  - Mantiene TODO lo que me pasaste integrado (documentos, descriptiva, procesos, especificaciones,
- *    componentes, herramientas, datatables, etc.)
- ******************************************************************************************/
 
 // ---------------------------------------------
 //  GLOBALES
@@ -548,7 +541,7 @@ document.querySelectorAll('.descripcion_producto').forEach(span => {
             });
 
           } else {
-            // update docs si lo ocupas
+            
           }
         } else {
           Swal.fire("Error", objData.msg, "error");
@@ -2337,7 +2330,7 @@ function abrirHerramientas(idestacion, cve_estacion) {
   const inputEstacion = document.querySelector('#estacion_id_herr');
   if (inputEstacion) inputEstacion.value = idestacion || '';
 
-  // set hidden producto (usa idproducto_proceso como lo haces en componentes)
+  
   if (typeof idproducto_proceso !== 'undefined' && idproducto_proceso) {
     const inputProducto = document.querySelector('#herramientas_producto');
     if (inputProducto) inputProducto.value = idproducto_proceso.value;
@@ -2456,7 +2449,7 @@ function prepararEventosCatalogoHerramientas() {
 }
 
 function agregarHerramientaASeleccionadas(filaCatalogo) {
-  // IMPORTANTE: en tu catálogo usas herramientaid=item.inventarioid
+
   const inventarioid = String(filaCatalogo.herramientaid || filaCatalogo.inventarioid || '');
 
   if (!inventarioid) return;
@@ -2715,7 +2708,7 @@ function construirPayloadRuta() {
     orden: idx + 1
   })).filter(x => x.idestacion);
 
-  // ✅ estaciones eliminadas (orden=0)
+
 const eliminadas = estacionesEliminadas.map(x => ({
   iddetalle: Number(x.iddetalle || 0),
   idestacion: String(x.idestacion || '').trim(),
@@ -2724,7 +2717,7 @@ const eliminadas = estacionesEliminadas.map(x => ({
 
   
 
-  // ✅ merge sin duplicados (si por algo está en actuales y eliminadas, gana actuales)
+
   const map = new Map();
   eliminadas.forEach(x => map.set(x.idestacion, x)); // primero 0
   actuales.forEach(x => map.set(x.idestacion, x));   // luego orden > 0

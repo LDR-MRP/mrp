@@ -1067,14 +1067,14 @@ public function setComponentesEstacion()
 
     $fecha = date('Y-m-d H:i:s');
 
-    // 1) Traer existentes (incluye estado 0/1)
+    //  Traer existentes (incluye estado 0/1)
     $existentes = $this->model->selectComponentesEstacionAllEstados($idEstacion, $idProducto, $idAlmacen);
     $existMap = [];
     foreach ($existentes as $row) {
         $existMap[(int)$row['inventarioid']] = (int)$row['idcomponente'];
     }
 
-    // 2) Insert/Update/Reactivar
+    // Insert/Update/Reactivar
     foreach ($incoming as $inventarioid => $cantidad) {
         if (isset($existMap[$inventarioid])) {
             $idcomponente = $existMap[$inventarioid];
@@ -1107,7 +1107,7 @@ public function setComponentesEstacion()
         }
     }
 
-    // 3) Soft delete: lo que existe en BD pero no viene en incoming
+
     $idsIncoming = array_keys($incoming);
     $this->model->softDeleteComponentesNoIncluidos($idAlmacen, $idProducto, $idEstacion, $idsIncoming);
 
