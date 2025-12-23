@@ -74,7 +74,8 @@ class Plan_confproductosModel extends Mysql
 public $intEstacion;
 public $intInventario;
 public $intCantidad;
-
+public $intIdDetalle;
+public $intIdRuta;
 
 	public function __construct()
 	{
@@ -523,15 +524,26 @@ public function selectProducto(int $productoid)
 	}
 
 
-	public function selectOptionEstacionesByLinea($idlinea)
-	{
-		$this->intlinea = $idlinea;
-		$sql = "SELECT * FROM  mrp_estacion 
-					WHERE estado = 2 AND lineaid = $this->intlinea";
-		$request = $this->select_all($sql);
-		return $request;
+public function selectOptionEstacionesByLinea($idlinea)
+{
+    $this->intlinea = (int)$idlinea;
 
-	}
+    $sql = "SELECT 
+            e.*,
+            COALESCE(m.mantenimiento, 1) AS mantenimiento
+        FROM mrp_estacion e
+        LEFT JOIN mrp_estacion_mantenimiento m 
+            ON m.estacionid = e.idestacion
+           AND m.estado = 2
+        WHERE e.estado = 2
+          AND e.lineaid = $this->intlinea
+    ";
+
+    return $this->select_all($sql);
+}
+
+
+
 
 	/////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////
@@ -580,6 +592,25 @@ public function selectProducto(int $productoid)
 		$return = $request_insert;
 
 		return $return;
+
+	}
+
+	
+
+		public function updateRutaDetalleOrdenCero($intEspecificacionid, $descripcion){
+
+		$this->intIdEspecificacion = $intEspecificacionid;
+		$this->strDescripcion = $descripcion;
+
+
+
+		$sql = "UPDATE mrp_estacion_especificaciones SET especificacion = ?  WHERE idespecificacion =$this->intIdEspecificacion";
+		$arrData = array(
+			$this->strDescripcion
+		);
+		$request = $this->update($sql, $arrData);
+
+		return $request;
 
 	}
 
@@ -739,7 +770,13 @@ public function insertComponenteEstacion($idAlmacen,$idProducto,$idEstacion,$inv
         (int)$estado,
         $fecha
     ];
-    return $this->insert($query, $arrData);
+    // return $this->insert($query, $arrData);
+
+
+		$request_insert = $this->insert($query, $arrData);
+		$return = $request_insert;
+
+		return $return;
 }
 
 
@@ -834,7 +871,7 @@ public function softDeleteComponentesNoIncluidos($idAlmacen, $idProducto, $idEst
     $idProducto = (int)$idProducto;
     $idEstacion = (int)$idEstacion;
 
-    // si no viene ninguno, apagamos todos
+
     if (empty($idsIncoming)) {
         $sql = "UPDATE mrp_estacion_componentes
                 SET estado = 0
@@ -876,7 +913,8 @@ public function selectRutaByProducto(int $rutaid)
                 r.plantaid,
                 r.lineaid,
                 d.estacionid,
-                d.orden
+                d.orden,
+				d.iddetalle 
             FROM mrp_producto_ruta r
             LEFT JOIN mrp_producto_ruta_detalle d
                    ON d.ruta_productoid = r.idruta_producto
@@ -890,7 +928,7 @@ public function selectRutaByProducto(int $rutaid)
     // Si no existe cabecera
     if (empty($rows)) return [];
 
-    // Armar respuesta con el formato que espera tu JS
+  
     $payload = [
         "listPlantasSelect"   => (string)($rows[0]['plantaid'] ?? "0"),
         "listLineasSelect"    => (string)($rows[0]['lineaid'] ?? "0"),
@@ -899,16 +937,17 @@ public function selectRutaByProducto(int $rutaid)
     ];
 
     foreach ($rows as $r) {
-        // Si no hay detalle (LEFT JOIN sin coincidencias)
+    
         if (empty($r['estacionid'])) continue;
 
         $payload["detalle_ruta"][] = [
+			"iddetalle" => (string)$r['iddetalle'],
             "idestacion" => (string)$r['estacionid'],
             "orden"      => (int)$r['orden']
         ];
     }
 
-    // Debe regresar un arreglo con un objeto (tal como tu ejemplo)
+   
     return [$payload];
 }
 
@@ -979,7 +1018,11 @@ public function insertHerramientaEstacion($idAlmacen,$idProducto,$idEstacion,$in
         (int)$estado,
         $fecha
     ];
-    return $this->insert($query, $arrData);
+    // return $this->insert($query, $arrData);
+		$request_insert = $this->insert($query, $arrData);
+		$return = $request_insert;
+
+		return $return;
 }
 
 
@@ -1021,8 +1064,201 @@ public function softDeleteHerramientasNoIncluidos($idAlmacen, $idProducto, $idEs
 	
 
 
+    // public function insertRuta(int $productoid, int $plantaid, int $lineaid, string $fecha_creacion, string $descripcion_ruta = '')
+    // {
+    //     $sql = "INSERT INTO mrp_producto_ruta
+    //             (productoid, plantaid, lineaid, descripcion_ruta, fecha_creacion, estado)
+    //             VALUES (?, ?, ?, ?, ?, 1)";
+    //     $arrData = [$productoid, $plantaid, $lineaid, $descripcion_ruta, $fecha_creacion];
 
-	
+    //     return (int)$this->insert($sql, $arrData); // regresa idruta_producto
+    // }
+
+ public function updateRutaHeader(int $idruta, int $planta, int $linea)
+    {
+        $this->intIdRuta = $idruta;
+
+        $sql = "UPDATE mrp_producto_ruta
+                SET plantaid = ?, lineaid = ?
+                WHERE idruta_producto = $this->intIdRuta";
+
+        $arrData = array($planta, $linea);
+        $request = $this->update($sql, $arrData);
+        return $request;
+    }
+
+
+    public function getRutaHeader(int $idruta_producto)
+    {
+        $sql = "SELECT idruta_producto, productoid, plantaid, lineaid, descripcion_ruta, fecha_creacion, estado
+                FROM mrp_producto_ruta
+                WHERE idruta_producto = ? LIMIT 1";
+        return $this->select($sql, [$idruta_producto]);
+    }
+
+// ==========================================================
+    //  VALIDAR QUE RUTA EXISTA Y SEA DEL PRODUCTO
+    // ==========================================================
+    public function rutaExisteParaProducto(int $idruta, int $prod)
+    {
+        $sql = "SELECT idruta_producto
+                FROM mrp_producto_ruta
+                WHERE idruta_producto = $idruta
+                  AND productoid = $prod
+                LIMIT 1";
+
+        $request = $this->select($sql);
+        return !empty($request);
+    }
+
+    // =========================================================
+    //  DETALLE: mrp_producto_ruta_detalle
+    // =========================================================
+
+    // public function insertRutaDetalle(int $ruta_productoid, int $estacionid, int $orden, string $fecha_creacion)
+    // {
+    //     $sql = "INSERT INTO mrp_producto_ruta_detalle
+    //             (ruta_productoid, estacionid, orden, fecha_creacion, estado)
+    //             VALUES (?, ?, ?, ?, 1)";
+    //     $arrData = [$ruta_productoid, $estacionid, $orden, $fecha_creacion];
+
+    //     return (int)$this->insert($sql, $arrData); // regresa iddetalle
+    // }
+
+    public function updateRutaDetalleOrden(int $iddetalle, int $orden)
+    {
+        $sql = "UPDATE mrp_producto_ruta_detalle
+                SET orden = ?
+                WHERE iddetalle = ? AND estado = 2";
+        return $this->update($sql, [$orden, $iddetalle]);
+    }
+
+    public function updateRutaDetalle(int $iddetalle, int $idestacion, int $orden)
+    {
+        $this->intIdDetalle = $iddetalle;
+
+        $sql = "UPDATE mrp_producto_ruta_detalle
+                SET estacionid = ?, orden = ?, estado = ?
+                WHERE iddetalle = $this->intIdDetalle";
+
+        $arrData = array($idestacion, $orden, 2);
+        $request = $this->update($sql, $arrData);
+        return $request;
+    }
+
+// ==========================================================
+    //  DELETE LÓGICO (tu estructura)
+    // ==========================================================
+    public function deleteRutaDetalleLogico(int $iddetalle)
+    {
+        $this->intIdDetalle = $iddetalle;
+
+        $sql = "UPDATE mrp_producto_ruta_detalle
+                SET estado = ?, orden = ?
+                WHERE iddetalle = $this->intIdDetalle";
+
+        $arrData = array(0, 0);
+        $request = $this->update($sql, $arrData);
+        return $request;
+    }
+
+    public function getDetallesRutaActivos(int $ruta_productoid)
+    {
+        $sql = "SELECT iddetalle, ruta_productoid, estacionid, orden
+                FROM mrp_producto_ruta_detalle
+                WHERE ruta_productoid = ? AND estado = 2
+                ORDER BY orden ASC";
+        return $this->select_all($sql, [$ruta_productoid]);
+    }
+
+    // ==========================================================
+    //  DESACTIVAR DETALLES QUE NO VINIERON EN PAYLOAD
+    // ==========================================================
+    public function disableDetallesNoEnPayload(int $idruta, array $idsDetalleVistos)
+    {
+        $this->intIdRuta = $idruta;
+
+        if (empty($idsDetalleVistos)) return false;
+
+        $ids = implode(',', array_map('intval', $idsDetalleVistos));
+
+        $sql = "UPDATE mrp_producto_ruta_detalle
+                SET estado = 0, orden = 0
+                WHERE ruta_productoid = $this->intIdRuta
+                  AND iddetalle NOT IN ($ids)";
+
+
+        $request = $this->update($sql, []);
+        return $request;
+    }
+
+    // ==========================================================
+    //  REINDEX ORDEN 1..N (solo estado=2)
+    // ==========================================================
+    public function reindexOrdenRuta(int $idruta)
+    {
+        $this->intIdRuta = $idruta;
+
+        $sql = "SELECT iddetalle
+                FROM mrp_producto_ruta_detalle
+                WHERE ruta_productoid = $this->intIdRuta
+                  AND estado = 2
+                ORDER BY orden ASC, iddetalle ASC";
+
+        $rows = $this->select_all($sql);
+        if (empty($rows)) return false;
+
+        $i = 1;
+        foreach ($rows as $r) {
+            $idd = (int)$r['iddetalle'];
+
+            $sqlUp = "UPDATE mrp_producto_ruta_detalle
+                      SET orden = ?
+                      WHERE iddetalle = $idd";
+
+            $this->update($sqlUp, array($i));
+            $i++;
+        }
+
+        return true;
+    }
+
+	public function deleteEspecificacionEstacionLogico(int $idestacion){
+	$this->intEstacionid = $idestacion;
+
+		$sql = "UPDATE mrp_estacion_especificaciones SET estado = ?  WHERE estacionid =$this->intEstacionid";
+		$arrData = array(
+			0
+		);
+		$request = $this->update($sql, $arrData);
+
+		return $request;
+	}
+
+		public function deleteComponentesEstacionLogico(int $idestacion){
+	$this->intEstacionid = $idestacion;
+
+		$sql = "UPDATE mrp_estacion_componentes SET estado = ?  WHERE estacionid =$this->intEstacionid";
+		$arrData = array(
+			0
+		);
+		$request = $this->update($sql, $arrData);
+
+		return $request;
+	}
+
+			public function deleteHerramientaEstacionLogico(int $idestacion){
+	$this->intEstacionid = $idestacion;
+
+		$sql = "UPDATE mrp_estacion_herramientas SET estado = ?  WHERE estacionid =$this->intEstacionid";
+		$arrData = array(
+			0
+		);
+		$request = $this->update($sql, $arrData);
+
+		return $request;
+	}
+
 
 
 

@@ -51,7 +51,7 @@
                             <thead>
                                 <tr>
                                     <th>CLAVE</th>
-                                    <th>CLAVE ARTICULO</th>
+                                    <!-- <th>CLAVE ARTICULO</th> -->
                                     <th>DESCRIPCION PRODUCTO</th>
                                     <th>CLAVE LÍNEA</th>
                                     <th>DESCRIPCIÓN LÍNEA</th>
@@ -160,7 +160,7 @@
 
                                         <form id="formConfProducto" name="formConfProducto"
                                             class="form-steps was-validated" autocomplete="off">
-                                            <input type="text" id="idproducto" name="idproducto">
+                                            <input type="hidden" id="idproducto" name="idproducto">
 
                                             <div class="row">
                                                 <!-- Producto -->
@@ -443,9 +443,9 @@
                                             class="form-steps was-validated" autocomplete="off">
                                      
 
-                                            <input type="text" id="idproducto_descriptiva" name="idproducto_descriptiva">
+                                            <input type="hidden" id="idproducto_descriptiva" name="idproducto_descriptiva">
 
-                                            <input type="text" id="iddescriptiva" name="iddescriptiva">
+                                            <input type="hidden" id="iddescriptiva" name="iddescriptiva">
 
 
                                             <!-- ========= FICHA TÉCNICA ========= -->
@@ -855,7 +855,7 @@
 
 
 
-                                        <div class="d-flex align-items-start gap-3 mt-4">
+                                        <!-- <div class="d-flex align-items-start gap-3 mt-4">
                                             <button type="button" class="btn btn-light btn-label previestab"
                                                 data-previous="tab-documentacion">
                                                 <i class="ri-arrow-left-line label-icon align-middle fs-16 me-2"></i>
@@ -868,7 +868,7 @@
                                                 <i class="ri-arrow-right-line label-icon align-middle fs-16 ms-2"></i>
                                                 Continuar a procesos
                                             </button>
-                                        </div>
+                                        </div> -->
                                     </div>
                                     <!-- end pane descriptiva técnica -->
 
@@ -909,8 +909,8 @@
 
                                              <form id="formRutaProducto" class="form-steps was-validated" >
 
-                                             <input type="text" id="idproducto_proceso" name="idproducto_proceso">
-                                                 <input type="text" id="id_ruta_producto" name="id_ruta_producto">
+                                             <input type="hidden" id="idproducto_proceso" name="idproducto_proceso">
+                                                 <input type="hidden" id="id_ruta_producto" name="id_ruta_producto">
 
 
                 <!-- Fila de producto / planta / línea -->
@@ -1053,7 +1053,7 @@
             </form>
 
 
-                                        <div class="d-flex align-items-start gap-3 mt-4">
+                                        <!-- <div class="d-flex align-items-start gap-3 mt-4">
                                             <button type="button" class="btn btn-light btn-label previestab"
                                                 data-previous="tab-descriptiva-tecnica">
                                                 <i class="ri-arrow-left-line label-icon align-middle fs-16 me-2"></i>
@@ -1065,7 +1065,7 @@
                                                 <i class="ri-arrow-right-line label-icon align-middle fs-16 ms-2"></i>
                                                 Continuar a especificaciones críticas
                                             </button>
-                                        </div>
+                                        </div> -->
                                     </div>
                                     <!-- end pane procesos -->
 
@@ -1114,11 +1114,16 @@
                                             </p>
 
                                             <h3 class="fw-semibold">
-                                                ID del producto:
-                                                <a href="apps-ecommerce-order-details.html"
-                                                    class="text-decoration-underline">
-                                                    VZ2451
-                                                </a>
+                                                <!-- ID del producto: -->
+                                             <div class="text-decoration-underline">          
+                                                     <span class="text-muted producto_clave">ID: P-20251223-0002-V01</span>
+                                               </div>
+
+
+                                              
+
+
+
                                             </h3>
                                         </div>
                                     </div>
@@ -1418,8 +1423,8 @@
         <div class="row g-3 align-items-end">
           <div class="col-md-6 col-lg-6">
             <label class="form-label mb-1">Almacén</label>
-<input type="text" id="componentes_producto" name="componentes_producto">
-<input type="text" id="estacion_id" name="estacion_id">
+<input type="hidden" id="componentes_producto" name="componentes_producto">
+<input type="hidden" id="estacion_id" name="estacion_id">
 
             <select class="form-control" name="listAlmaceneSCompSelect"
             id="listAlmaceneSCompSelect" required></select>
@@ -1435,10 +1440,13 @@
                     Los componentes disponibles se cargan automáticamente con base en el almacén seleccionado.
                   </p>
                 </div>
-                <span class="pill">
+
+
+                
+                <!-- <span class="pill">
                   <span class="dot"></span>
                   Almacén activo: <span id="lblAlmacenActual">N/A</span>
-                </span>
+                </span> -->
               </div>
             </div>
 
@@ -1534,9 +1542,9 @@
               <button id="btnGuardarTodo" class="btn btn-success btn-save-all">
                 Guardar todo
               </button>
-              <div class="text-muted mt-2">
+              <!-- <div class="text-muted mt-2">
                 <small>Se enviará el detalle por componente (una fila por registro) al backend.</small>
-              </div>
+              </div> -->
             </div>
 
           </div>
@@ -1619,8 +1627,8 @@
           <div class="col-md-6 col-lg-6">
             <label class="form-label mb-1">Almacén</label>
 
-<input type="text" id="herramientas_producto" value="">
-<input type="text" id="estacion_id_herr" value="">
+<input type="hidden" id="herramientas_producto" value="">
+<input type="hidden" id="estacion_id_herr" value="">
 
 
                            <select class="form-control" name="listAlmacenesHerrSelect"
@@ -1637,10 +1645,10 @@
                     Las herramientas disponibles se cargan automáticamente con base en el almacén seleccionado.
                   </p>
                 </div>
-                <span class="pill">
+                <!-- <span class="pill">
                   <span class="dot"></span>
                   Almacén activo: <span id="lblAlmacenActual">N/A</span>
-                </span>
+                </span> -->
               </div>
             </div>
 
@@ -1728,9 +1736,9 @@
               <button id="btnGuardarTodoHerramientas" class="btn btn-success btn-save-all">
                 Guardar todo
               </button>
-              <div class="text-muted mt-2">
+              <!-- <div class="text-muted mt-2">
                 <small>Se enviará el detalle por herramienta (una fila por registro) al backend.</small>
-              </div>
+              </div> -->
             </div>
 
           </div>

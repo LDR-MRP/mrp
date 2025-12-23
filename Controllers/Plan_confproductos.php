@@ -202,14 +202,14 @@ class Plan_confproductos extends Controllers
 				// 	$btnDelete = '<button class="btn btn-sm btn-soft-danger remove-list" title="Eliminar planta" onClick="fntDelInfo(' . $arrData[$i]['idproducto'] . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
 
 				// }
-				$btnViewPendiente = '<button class="btn btn-sm btn-soft-info edit-list" title="Ver Producto" ><i class="ri-eye-fill align-bottom text-muted"></i></button>';
+				// $btnViewPendiente = '<button class="btn btn-sm btn-soft-info edit-list" title="Ver Producto" ><i class="ri-eye-fill align-bottom text-muted"></i></button>';
 
 				$btnEdit = '<button class="btn btn-sm btn-soft-warning edit-list" title="Editar Producto" onClick="fntEditProducto(' . $arrData[$i]['idproducto'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
 
 
 
 				// $arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . '</div>';
-				$arrData[$i]['options'] = '<div class="text-center">' . $btnViewPendiente . ' ' . $btnEdit . '</div>';
+				$arrData[$i]['options'] = '<div class="text-center">'  . $btnEdit . '</div>';
 			}
 			echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
 		}
@@ -307,7 +307,7 @@ class Plan_confproductos extends Controllers
 
 		for ($i = 0; $i < count($arrData); $i++) {
 
-			$arrData[$i]['documento'] = '<a href="' . media() . '/uploads/doc_componentes/' . $arrData[$i]['ruta'] . '" class="btn btn-sm btn-soft-success btn-sm" title="Ver documento" target="_blank"><i class="bx bxs-file-pdfalign-bottom"></i></a>';
+			$arrData[$i]['documento'] = '<a href="' . media() . '/uploads/doc_componentes/' . $arrData[$i]['ruta'] . '" class="btn btn-sm btn-soft-success btn-sm" title="Ver documento" target="_blank"><i class="ri-file-text-fill align-bottom"></i></a>';
 
 			$btnDelete = '<button class="btn btn-sm btn-soft-danger remove-list" title="Eliminar planta" onClick="fntDelDocumento(' . $arrData[$i]['iddocumento'] . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
 
@@ -598,76 +598,192 @@ public function setRutaProducto()
 {
     header('Content-Type: application/json');
 
-    $arrData = [
-        'status' => false,
-        'msg'    => 'Error al guardar ruta'
-    ];
-
+    // 1) valida que venga ruta
     if (!isset($_POST['ruta'])) {
-        $arrData = ['status' => false, 'msg' => 'No se recibió ruta'];
-        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        echo json_encode(['status' => false, 'msg' => 'No se recibió ruta'], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
     $arr = json_decode($_POST['ruta'], true);
     if (json_last_error() !== JSON_ERROR_NONE || !is_array($arr) || empty($arr)) {
-        $arrData = ['status' => false, 'msg' => 'Payload inválido'];
-        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        echo json_encode(['status' => false, 'msg' => 'Payload inválido'], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
     $data = $arr[0];
 
+    // ✅ FIX: id_ruta_producto viene FUERA del JSON (hidden del form)
+    $idruta = isset($_POST['id_ruta_producto']) ? (int)$_POST['id_ruta_producto'] : 0;
+
     $planta  = (int)($data['listPlantasSelect'] ?? 0);
-    $linea   = (int)($data['listLineasSelect'] ?? 0); 
-    $prod    = (int)($data['idproducto_proceso'] ?? 0); // tu valor fijo
+    $linea   = (int)($data['listLineasSelect'] ?? 0);
+    $prod    = (int)($data['idproducto_proceso'] ?? 0);
     $detalle = $data['detalle_ruta'] ?? [];
 
-    $fecha_creacion_ruta = date('Y-m-d H:i:s');
-
-    if (!$planta || !$linea || !$prod || !is_array($detalle) || count($detalle) == 0) {
-        $arrData = ['status' => false, 'msg' => 'Datos incompletos'];
-        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+    if (!$planta || !$linea || !$prod || !is_array($detalle)) {
+        echo json_encode(['status' => false, 'msg' => 'Datos incompletos'], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
-    try {
-        // 1) Insert header ruta
-        $idruta = $this->model->insertRuta($prod, $planta, $linea, $fecha_creacion_ruta);
+    // ✅ regla: debe existir al menos 1 estación activa (orden > 0)
+    $tieneActivas = false;
+    // foreach ($detalle as $row) {
+    //     if ((int)($row['orden'] ?? 0) > 0) { $tieneActivas = true; break; }
+    // }
+    // if (!$tieneActivas) {
+    //     echo json_encode(['status' => false, 'msg' => 'La ruta debe tener al menos 1 estación activa.'], JSON_UNESCAPED_UNICODE);
+    //     exit;
+    // }
 
-        if (!$idruta) {
-            $arrData = ['status' => false, 'msg' => 'No se pudo generar la ruta'];
-            echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+    $now = date('Y-m-d H:i:s');
+
+	$idusuario   = $_SESSION['userData']['idusuario'] ?? 0;
+    $fechaEvento = date('Y-m-d H:i:s');
+    $ip          = $_SERVER['REMOTE_ADDR'] ?? '';
+	$detalleAudit = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+    try {
+
+        // ==========================================================
+        //  INSERT (idruta=0)
+        // ==========================================================
+        if ($idruta <= 0) {
+
+            $idruta = $this->model->insertRuta($prod, $planta, $linea, $now);
+            if (!$idruta) {
+                echo json_encode(['status' => false, 'msg' => 'No se pudo generar la ruta'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+			
+$this->model->insertAuditoria(
+    MPCONFPRODUCTOS,
+    1, // INSERT
+    $idusuario,
+    'mrp_producto_ruta',
+    $idruta,
+    $fechaEvento,
+    $ip,
+    $detalleAudit
+);
+
+            foreach ($detalle as $row) {
+                $idestacion = (int)($row['idestacion'] ?? 0);
+                $orden      = (int)($row['orden'] ?? 0);
+
+                // en insert ignoramos orden=0
+                if ($idestacion > 0 && $orden > 0) {
+                  $request_detalle =   $this->model->insertRutaDetalle($idruta, $idestacion, $orden, $now);
+
+
+					$this->model->insertAuditoria(
+    MPCONFPRODUCTOS,
+    1, // INSERT
+    $idusuario,
+    'mrp_producto_ruta_detalle',
+    $request_detalle,
+    $fechaEvento,
+    $ip,
+    $detalleAudit
+);
+                }
+            }
+
+            echo json_encode([
+                'status' => true,
+                'msg'    => 'Ruta registrada correctamente',
+                'idruta' => $idruta,
+                'tipo'   => 'insert'
+            ], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
-        // 2) Insert detalle
+        // ==========================================================
+        //  UPDATE (idruta>0)
+        // ==========================================================
+
+        // valida que exista y que sea del producto
+        if (!$this->model->rutaExisteParaProducto($idruta, $prod)) {
+            echo json_encode(['status' => false, 'msg' => 'La ruta no existe o no pertenece al producto'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // actualiza header (planta/linea)
+        $this->model->updateRutaHeader($idruta, $planta, $linea);
+
+
+$this->model->insertAuditoria(
+    MPCONFPRODUCTOS,
+    2, // UPDATE
+    $idusuario,
+    'mrp_producto_ruta',
+    $idruta,
+    $fechaEvento,
+    $ip,
+    $detalleAudit
+);
+
+        $idsDetalleVistos = []; // para desactivar los que no vinieron
+
         foreach ($detalle as $row) {
+
+            $iddetalle  = (int)($row['iddetalle'] ?? 0);
             $idestacion = (int)($row['idestacion'] ?? 0);
             $orden      = (int)($row['orden'] ?? 0);
 
-            if ($idestacion && $orden) {
-                $fecha_creacion_ruta_detalle = date('Y-m-d H:i:s');
-                $this->model->insertRutaDetalle($idruta, $idestacion, $orden, $fecha_creacion_ruta_detalle);
+            // 1) eliminar lógico si orden=0 y hay iddetalle
+            if ($orden === 0) {
+                if ($iddetalle > 0) {
+                    $this->model->deleteRutaDetalleLogico($iddetalle);
+                    $idsDetalleVistos[] = $iddetalle;
+
+					   $this->model->deleteEspecificacionEstacionLogico($idestacion);
+					   $this->model->deleteComponentesEstacionLogico($idestacion);
+					   $this->model->deleteHerramientaEstacionLogico($idestacion);
+                }
+                continue;
+            }
+
+            // 2) update si ya existe iddetalle
+            if ($iddetalle > 0) {
+                $this->model->updateRutaDetalle($iddetalle, $idestacion, $orden);
+                $idsDetalleVistos[] = $iddetalle;
+                continue;
+            }
+
+            // 3) insert nuevo si iddetalle=0
+            if ($idestacion > 0 && $orden > 0) {
+                $newId = $this->model->insertRutaDetalle($idruta, $idestacion, $orden, $now);
+                if ($newId) $idsDetalleVistos[] = (int)$newId;
             }
         }
 
-        $arrData = [
+        // 4) desactiva los detalles ACTUALES de la ruta que NO vinieron en el payload (evita fantasmas)
+        $this->model->disableDetallesNoEnPayload($idruta, $idsDetalleVistos);
+
+        // 5) reindex final (deja orden 1..N sin huecos, sólo estado=1)
+        $this->model->reindexOrdenRuta($idruta);
+
+        echo json_encode([
             'status' => true,
-            'msg'    => 'La ruta del producto fue guardada correctamente',
-            'idruta' => $idruta
-        ];
+            'msg'    => 'Ruta actualizada correctamente',
+            'idruta' => $idruta,
+            'tipo'   => 'update'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+
     } catch (\Throwable $e) {
-        $arrData = [
+        echo json_encode([
             'status' => false,
             'msg'    => 'Error al guardar ruta',
             'error'  => $e->getMessage()
-        ];
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
-
-    echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
-    exit;
 }
+
+
+
 
 
 	// --------------------------------------------------------------------
@@ -909,6 +1025,11 @@ public function setComponentesEstacion()
 {
     header('Content-Type: application/json; charset=utf-8');
 
+					$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+				$detalleAudit = $_SERVER['HTTP_USER_AGENT'] ?? '';
+				$fechaEvento = date('Y-m-d H:i:s');
+
     if (!isset($_POST['componentes'])) {
         echo json_encode(['status'=>false,'msg'=>'No llegó el payload componentes'], JSON_UNESCAPED_UNICODE);
         exit;
@@ -958,8 +1079,31 @@ public function setComponentesEstacion()
         if (isset($existMap[$inventarioid])) {
             $idcomponente = $existMap[$inventarioid];
             $this->model->updateComponenteEstacion($idcomponente, $cantidad, 2);
+							$this->model->insertAuditoria(
+							MPCONFPRODUCTOS,
+							2,
+							$idusuario,
+							'mrp_estacion_componentes',
+							$idcomponente,
+							$fechaEvento,
+							$ip,
+							$detalleAudit
+						);
+
+
         } else {
-            $this->model->insertComponenteEstacion($idAlmacen, $idProducto, $idEstacion, $inventarioid, $cantidad, 2, $fecha);
+            $request_componentes= $this->model->insertComponenteEstacion($idAlmacen, $idProducto, $idEstacion, $inventarioid, $cantidad, 2, $fecha);
+
+							$this->model->insertAuditoria(
+							MPCONFPRODUCTOS,
+							1,
+							$idusuario,
+							'mrp_estacion_componentes',
+							$request_componentes,
+							$fechaEvento,
+							$ip,
+							$detalleAudit
+						);
         }
     }
 
@@ -1057,6 +1201,11 @@ public function setHerramientasEstacion()
 
     header('Content-Type: application/json; charset=utf-8');
 
+				$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+				$detalleHerramienta = $_SERVER['HTTP_USER_AGENT'] ?? '';
+				$fechaEvento = date('Y-m-d H:i:s');
+
     if (!isset($_POST['herramientas'])) {
         echo json_encode(['status'=>false,'msg'=>'No llegó el payload herramientas'], JSON_UNESCAPED_UNICODE);
         exit;
@@ -1106,8 +1255,30 @@ public function setHerramientasEstacion()
         if (isset($existMap[$inventarioid])) {
             $idcomponente = $existMap[$inventarioid];
             $this->model->updateHerramientaEstacion($idcomponente, $cantidad, 2);
+
+							$this->model->insertAuditoria(
+							MPCONFPRODUCTOS,
+							2,
+							$idusuario,
+							'mrp_estacion_herramientas',
+							$idcomponente,
+							$fechaEvento,
+							$ip,
+							$detalleHerramienta
+						);
         } else {
-            $this->model->insertHerramientaEstacion($idAlmacen, $idProducto, $idEstacion, $inventarioid, $cantidad, 2, $fecha);
+           $request_herramienta= $this->model->insertHerramientaEstacion($idAlmacen, $idProducto, $idEstacion, $inventarioid, $cantidad, 2, $fecha);
+
+							$this->model->insertAuditoria(
+							MPCONFPRODUCTOS,
+							1,
+							$idusuario,
+							'mrp_estacion_herramientas',
+							$request_herramienta,
+							$fechaEvento,
+							$ip,
+							$detalleHerramienta
+						);
         }
     }
 

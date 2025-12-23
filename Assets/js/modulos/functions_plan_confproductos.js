@@ -58,6 +58,8 @@ let componentesSeleccionados = []; // [{inventarioid, name, type, unit, cve, can
 let dtSelectedHerramientas = null;
 let herramientasSeleccionadas = []; // [{inventarioid, name, type, unit, cve, cantidad}]
 
+let estacionesEliminadas = [];
+
 
 document.addEventListener('DOMContentLoaded', function () {
 
@@ -125,6 +127,9 @@ prepararGuardarTodoHerramientas();
         { "data": "fecha_creacion" },
         { "data": "options" }
       ],
+             "language": {
+    "url": "https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json"
+  },
       'dom': 'lBfrtip',
       'buttons': [],
       "responsive": true,
@@ -179,7 +184,7 @@ prepararGuardarTodoHerramientas();
       },
       "columns": [
         { "data": "cve_producto" },
-        { "data": "cve_articulo" },
+        // { "data": "cve_articulo" },
         { "data": "descripcion_producto" },
         { "data": "cve_linea_producto" },
         { "data": "descripcion_linea" },
@@ -187,6 +192,9 @@ prepararGuardarTodoHerramientas();
         { "data": "estado_producto" },
         { "data": "options" }
       ],
+        "language": {
+    "url": "https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json"
+  },
       'dom': 'lBfrtip',
       'buttons': [],
       "responsive": true,
@@ -195,6 +203,8 @@ prepararGuardarTodoHerramientas();
       "order": [[0, "desc"]]
     });
   }
+
+
 
   // --------------------------------------------------------------------
   //  TABS BOOTSTRAP (LISTA / NUEVO)
@@ -1386,6 +1396,13 @@ function aplicarRutaPendienteSiExiste() {
 
   resetRutaUI();
 
+  // ✅ NUEVO: guardar cuáles existían en BD
+  estacionesOriginales = new Set(
+    rutaDetallePendiente.map(x => String(x.idestacion).trim()).filter(Boolean)
+  );
+
+  estacionesEliminadas = [];
+
   rutaDetallePendiente
     .sort((a, b) => Number(a.orden) - Number(b.orden))
     .forEach(item => {
@@ -1397,7 +1414,8 @@ function aplicarRutaPendienteSiExiste() {
         idestacion: idEst,
         cve_estacion: btnOrigen.getAttribute('data-cve') || '',
         nombre_estacion: btnOrigen.getAttribute('data-nombre') || '',
-        herramientas: Number(btnOrigen.getAttribute('data-herramientas') || 0)
+        herramientas: Number(btnOrigen.getAttribute('data-herramientas') || 0),
+        iddetalle: Number(item.iddetalle || 0)
       };
 
       agregarEstacionARuta(est, btnOrigen);
@@ -1406,16 +1424,23 @@ function aplicarRutaPendienteSiExiste() {
   aplicoRutaPendiente = true;
 }
 
+
 function resetRutaUI() {
   const tbody = document.querySelector('#listaRuta');
   if (tbody) tbody.innerHTML = '';
 
   rutaEstaciones = [];
 
+  // ✅ NUEVO
+  estacionesOriginales = new Set();
+  estacionesEliminadas = []; // ✅ array
+
   actualizarPlaceholderRuta();
   actualizarCountRuta();
   actualizarInputHiddenRuta();
 }
+
+
 
 // ------------------------------------------------------------------------
 //  AGREGAR ESTACIÓN A LA RUTA (TABLA: <tr>)
@@ -1429,10 +1454,21 @@ function agregarEstacionARuta(est, botonOrigen) {
 
   if (rutaEstaciones.includes(idEstacion)) return;
 
+//   if (estacionesEliminadas.has(idEstacion)) {
+//     estacionesEliminadas.delete(idEstacion);
+//   }
+
+
+  estacionesEliminadas = estacionesEliminadas.filter(x => String(x.idestacion) !== idEstacion);
+
+  
+
   rutaEstaciones.push(idEstacion);
 
   const tr = document.createElement('tr');
   tr.setAttribute('data-idestacion', idEstacion);
+
+  tr.setAttribute('data-iddetalle', String(Number(est.iddetalle || 0)));
 
   const btnHerramientas = (Number(est.herramientas) === 1)
     ? `
@@ -1601,12 +1637,23 @@ function moverAbajo(btn) {
   actualizarCountRuta();
 }
 
+
+
 function eliminarDeRuta(btn) {
   const tr = btn.closest('tr');
   if (!tr) return;
 
-  const id = String(tr.getAttribute('data-idestacion') || '').trim();
-  if (id) desbloquearBotonEstacionPorId(id);
+  const idestacion = String(tr.getAttribute('data-idestacion') || '').trim();
+  const iddetalle  = Number(tr.getAttribute('data-iddetalle') || 0);
+
+  // ✅ si venía de BD, se marca como eliminada (orden=0)
+  if (iddetalle > 0 && idestacion) {
+    // evita duplicados
+    const ya = estacionesEliminadas.some(x => Number(x.iddetalle) === iddetalle);
+    if (!ya) estacionesEliminadas.push({ iddetalle, idestacion, orden: 0 });
+  }
+
+  if (idestacion) desbloquearBotonEstacionPorId(idestacion);
 
   tr.remove();
 
@@ -1615,6 +1662,10 @@ function eliminarDeRuta(btn) {
   actualizarInputHiddenRuta();
   actualizarCountRuta();
 }
+
+
+
+
 
 
 // ------------------------------------------------------------------------
@@ -2647,19 +2698,46 @@ async function cargarHerramientasGuardadasEstacion(idestacion) {
 // ======================================================================
 function construirPayloadRuta() {
   const plantaSel = document.querySelector('#listPlantasSelect');
-  const lineaSel = document.querySelector('#listLineasSelect');
-  const inpProd = document.querySelector('#idproducto_proceso');
+  const lineaSel  = document.querySelector('#listLineasSelect');
+  const inpProd   = document.querySelector('#idproducto_proceso');
   const tbodyRuta = document.querySelector('#listaRuta');
 
   const planta = plantaSel ? (plantaSel.value || '') : '';
-  const linea = lineaSel ? (lineaSel.value || '') : '';
+  const linea  = lineaSel  ? (lineaSel.value || '')  : '';
   const idproducto = inpProd ? (inpProd.value || '') : '';
 
-  const filas = tbodyRuta ? Array.from(tbodyRuta.querySelectorAll('tr')) : [];
-  const detalle_ruta = filas.map((tr, idx) => ({
-    idestacion: (tr.getAttribute('data-idestacion') || '').toString().trim(),
+  const filas = tbodyRuta ? Array.from(tbodyRuta.querySelectorAll('tr[data-idestacion]')) : [];
+
+  // estaciones actuales (orden real)
+  const actuales = filas.map((tr, idx) => ({
+    iddetalle: Number(tr.getAttribute('data-iddetalle') || 0),
+    idestacion: String(tr.getAttribute('data-idestacion') || '').trim(),
     orden: idx + 1
-  }));
+  })).filter(x => x.idestacion);
+
+  // ✅ estaciones eliminadas (orden=0)
+const eliminadas = estacionesEliminadas.map(x => ({
+  iddetalle: Number(x.iddetalle || 0),
+  idestacion: String(x.idestacion || '').trim(),
+  orden: 0
+})).filter(x => x.idestacion && x.iddetalle > 0);
+
+  
+
+  // ✅ merge sin duplicados (si por algo está en actuales y eliminadas, gana actuales)
+  const map = new Map();
+  eliminadas.forEach(x => map.set(x.idestacion, x)); // primero 0
+  actuales.forEach(x => map.set(x.idestacion, x));   // luego orden > 0
+
+// const detalle_ruta = Array.from(map.values());
+
+const detalle_ruta = Array.from(map.values());
+
+//   const detalle_ruta = filas.map((tr, idx) => ({
+//   iddetalle: Number(tr.getAttribute('data-iddetalle') || 0),
+//   idestacion: String(tr.getAttribute('data-idestacion') || '').trim(),
+//   orden: idx + 1
+// }));
 
   return [{
     listPlantasSelect: planta,
@@ -2668,4 +2746,8 @@ function construirPayloadRuta() {
     detalle_ruta
   }];
 }
+
+
+
+
 
