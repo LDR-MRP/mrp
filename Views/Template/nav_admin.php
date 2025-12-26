@@ -125,7 +125,8 @@
                                       <?php } ?>
                                       <?php if (!empty($_SESSION['permisos'][9]['r'])) { ?>
                                           <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/plan_planeacion" class="nav-link" data-key="t-two-column">Plan de producción</a>
+                                              <!-- <a href="<?= base_url(); ?>/plan_planeacion" class="nav-link" data-key="t-two-column">Plan de producción</a> -->
+                                                  <a href="#" class="nav-link" data-key="t-two-column">Plan de producción</a>
                                           </li>
                                       <?php } ?>
                                       <?php if (!empty($_SESSION['permisos'][10]['r'])) { ?>
