@@ -1,48 +1,50 @@
-let tableLineasProducto;
+let tablePrecios;
 let rowTable = "";
 let divLoading = document.querySelector("#divLoading");
 
 // Inputs del formulario
-const cve_linea_producto = document.querySelector('#clave-linea-producto-input');
+const cve_precio = document.querySelector('#clave-precio-input');
 const estado = document.querySelector('#estado-select');
-const descripcion = document.querySelector('#descripcion-linea-producto-textarea');
+const descripcion = document.querySelector('#descripcion-precio-textarea');
+const impuesto = document.querySelector('#impuesto-select');
 
 // Mis referencias globales 
 let primerTab;
 let firstTab;
 let tabNuevo;
 let spanBtnText = null;
-let formLineasProducto = null;
+let formPrecios = null;
 
 document.addEventListener('DOMContentLoaded', function () {
 
-    formLineasProducto = document.querySelector("#formLineasProducto");
+    formPrecios = document.querySelector("#formPrecios");
     spanBtnText = document.querySelector('#btnText');
 
-    tableLineasProducto = $('#tableLineasProducto').dataTable({
+    tablePrecios = $('#tablePrecios').dataTable({
         "aProcessing": true,
-        "aServerSide": false,
+        "aServerSide": true,
         "ajax": {
-            "url": base_url + "/Inv_lineasdproducto/getLineasProductos",
+            "url": base_url + "/Inv_precios/getPrecios",
             "dataSrc": ""
         },
         "columns": [
-            { "data": "cve_linea_producto" },
+            { "data": "cve_precio" },
             { "data": "descripcion" },
+            { "data": "con_impuesto" },
             { "data": "fecha_creacion" },
             { "data": "estado" },
             { "data": "options" }
         ],
         "dom": "lBfrtip",
         "buttons": [],
-        "responsive": true,
+        "resonsieve": "true",
         "bDestroy": true,
         "iDisplayLength": 10,
         "order": [[0, "desc"]]
     });
 
-    const primerTabEl = document.querySelector('#nav-tab a[href="#listlineasproductos"]');
-    const firstTabEl  = document.querySelector('#nav-tab a[href="#agregarlineasproducto"]');
+    const primerTabEl = document.querySelector('#nav-tab a[href="#listprecios"]');
+    const firstTabEl  = document.querySelector('#nav-tab a[href="#agregarPrecio"]');
 
     if (primerTabEl && firstTabEl && spanBtnText) {
         primerTab = new bootstrap.Tab(primerTabEl);
@@ -51,16 +53,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         tabNuevo.addEventListener('click', () => {
             spanBtnText.textContent = 'REGISTRAR';
-            formLineasProducto.reset();
-            document.querySelector("#idlineaproducto").value = 0;
+            formPrecios.reset();
+            document.querySelector("#idprecio").value = 0;
         });
     }
 
-    formLineasProducto.addEventListener('submit', function(e){
+    formPrecios.addEventListener('submit', function(e){
         e.preventDefault();
 
-        let formData = new FormData(formLineasProducto);
-        let url = base_url + "/Inv_lineasdproducto/setLineaProducto";
+        let formData = new FormData(formPrecios);
+        let url = base_url + "/Inv_precios/setPrecio";
 
         fetch(url,{
             method:"POST",
@@ -69,10 +71,10 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(res => res.json())
         .then(objData => {
             if(objData.status){
-                $('#tableLineasProducto').DataTable().ajax.reload();
+                $('#tablePrecios').DataTable().ajax.reload();
                 primerTab.show();
                 Swal.fire("Correcto", objData.msg, "success");
-                formLineasProducto.reset();
+                formPrecios.reset();
             } else {
                 Swal.fire("Error", objData.msg, "error");
             }
@@ -83,17 +85,18 @@ document.addEventListener('DOMContentLoaded', function () {
 // ----------------------------------------------
 // VER DETALLE
 // ----------------------------------------------
-function fntViewLineaProducto(id){
-    fetch(base_url + "/Inv_lineasdproducto/getLineaProducto/" + id)
+function fntViewPrecio(id){
+    fetch(base_url + "/Inv_precios/getPrecio/" + id)
     .then(res => res.json())
     .then(objData => {
         if(objData.status){
-            document.querySelector("#celClave").innerHTML = objData.data.cve_linea_producto;
+            document.querySelector("#celClave").innerHTML = objData.data.cve_precio;
             document.querySelector("#celDescripcion").innerHTML = objData.data.descripcion;
+            document.querySelector("#celImpuesto").innerHTML = objData.data.impuesto == 2 ? "NO" : "SI";
             document.querySelector("#celFecha").innerHTML = objData.data.fecha_creacion;
             document.querySelector("#celEstado").innerHTML = objData.data.estado == 2 ? "Activo" : "Inactivo";
 
-            $("#modalViewLineaProducto").modal("show");
+            $("#modalViewPrecio").modal("show");
         }
     });
 }
@@ -101,15 +104,16 @@ function fntViewLineaProducto(id){
 // ----------------------------------------------
 // EDITAR
 // ----------------------------------------------
-function fntEditLineaProducto(id){
-    fetch(base_url + "/Inv_lineasdproducto/getLineaProducto/" + id)
+function fntEditPrecio(id){
+    fetch(base_url + "/Inv_precios/getPrecio/" + id)
     .then(res => res.json())
     .then(objData => {
 
         if(objData.status){
-            document.querySelector("#idlineaproducto").value = objData.data.idlineaproducto;
-            cve_linea_producto.value = objData.data.cve_linea_producto;
+            document.querySelector("#idprecio").value = objData.data.idprecio;
+            cve_precio.value = objData.data.cve_precio;
             descripcion.value = objData.data.descripcion;
+            impuesto.value = objData.data.impuesto;
             estado.value = objData.data.estado;
 
             spanBtnText.textContent = "ACTUALIZAR";
@@ -119,9 +123,9 @@ function fntEditLineaProducto(id){
 }
 
 // ------------------------------------------------------------------------
-//  ELIMINAR UNA LINEA DE PRODUCTO
+//  ELIMINAR UN PRECIO
 // ------------------------------------------------------------------------
-function fntDelInfo(idlineaproducto) {
+function fntDelInfo(idprecio) {
 
     Swal.fire({
         html: `
@@ -156,8 +160,8 @@ function fntDelInfo(idlineaproducto) {
         if (!result.isConfirmed) return;
 
         let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-        let ajaxUrl = base_url + '/Inv_lineasdproducto/delLineaProducto';
-        let strData = "idlineaproducto=" + idlineaproducto;
+        let ajaxUrl = base_url + '/Inv_precios/delPrecio';
+        let strData = "idprecio=" + idprecio;
 
         request.open("POST", ajaxUrl, true);
         request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
@@ -172,7 +176,7 @@ function fntDelInfo(idlineaproducto) {
                 if (objData.status) {
 
                     Swal.fire("Correcto", objData.msg, "success");
-                    $('#tableLineasProducto').DataTable().ajax.reload();
+                    $('#tablePrecios').DataTable().ajax.reload();
 
                 } else {
                     Swal.fire("Error", objData.msg, "error");
@@ -181,6 +185,3 @@ function fntDelInfo(idlineaproducto) {
         }
     });
 }
-
-
-

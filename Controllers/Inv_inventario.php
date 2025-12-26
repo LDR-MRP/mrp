@@ -301,16 +301,27 @@ class Inv_inventario extends Controllers
 
 	public function buscarProductoKit()
 	{
-		if ($_SESSION['permisosMod']['r']) {
+		// Blindaje total para AJAX
+		ob_start();
 
-			$term = strClean($_GET['term'] ?? '');
-
-			$arrData = $this->model->buscarProductoKit($term);
-
-			echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+		if (!isset($_SESSION['permisosMod']['r']) || !$_SESSION['permisosMod']['r']) {
+			ob_clean();
+			header('Content-Type: application/json');
+			echo json_encode([]);
+			exit;
 		}
-		die();
+
+		$term = strClean($_GET['term'] ?? '');
+
+		// ✅ SIEMPRE llamar al MODELO
+		$arrData = $this->model->buscarProductoKit($term);
+
+		ob_clean();
+		header('Content-Type: application/json');
+		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+		exit;
 	}
+
 
 
 
