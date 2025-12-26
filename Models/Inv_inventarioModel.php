@@ -27,19 +27,40 @@ class Inv_inventarioModel extends Mysql
         string $pedimiento,
         int $estado
     ) {
-        // Validar duplicado
-        $sql = "SELECT idinventario FROM wms_inventario WHERE cve_articulo = ?";
-        $request = $this->select($sql, [$cve_articulo]);
+        // ==== VALIDAR DUPLICADO (SIN ?)
+        $cve_articulo = addslashes($cve_articulo);
+
+        $sql = "SELECT idinventario
+        FROM wms_inventario
+        WHERE cve_articulo = '{$cve_articulo}'";
+
+        $request = $this->select($sql);
 
 
         if (!empty($request)) {
             return "exist";
         }
 
+        // ==== INSERT (CON ?)
         $sql = "INSERT INTO wms_inventario
-            (cve_articulo, descripcion, unidad_entrada, unidad_salida, lineaproductoid, tipo_elemento,
-               factor_unidades, control_almacen, tiempo_surtido, peso, volumen, serie, lote, pedimiento, fecha_creacion, estado)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),?)";
+        (
+            cve_articulo,
+            descripcion,
+            unidad_entrada,
+            unidad_salida,
+            lineaproductoid,
+            tipo_elemento,
+            factor_unidades,
+            control_almacen,
+            tiempo_surtido,
+            peso,
+            volumen,
+            serie,
+            lote,
+            pedimiento,
+            fecha_creacion,
+            estado
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),?)";
 
         return $this->insert($sql, [
             $cve_articulo,
@@ -61,7 +82,7 @@ class Inv_inventarioModel extends Mysql
     }
 
     /* ===============================
-       SELECT ALL (DataTable)
+       SELECT ALL
     =============================== */
     public function selectInventarios()
     {
@@ -85,8 +106,13 @@ class Inv_inventarioModel extends Mysql
     =============================== */
     public function selectInventario(int $idinventario)
     {
-        $sql = "SELECT * FROM wms_inventario WHERE idinventario = ?";
-        return $this->select($sql, [$idinventario]);
+        $idinventario = (int)$idinventario;
+
+        $sql = "SELECT *
+                FROM wms_inventario
+                WHERE idinventario = $idinventario";
+
+        return $this->select($sql);
     }
 
     /* ===============================
@@ -110,15 +136,23 @@ class Inv_inventarioModel extends Mysql
         string $pedimiento,
         int $estado
     ) {
-        // Validar duplicado
-        $sql = "SELECT idinventario FROM wms_inventario 
-                WHERE cve_articulo = ? AND idinventario != ?";
-        $request = $this->select($sql, [$cve_articulo, $idinventario]);
+        // ==== VALIDAR DUPLICADO (SIN ?)
+        $idinventario = (int)$idinventario;
+        $cve_articulo = addslashes($cve_articulo);
+
+        $sql = "SELECT idinventario
+        FROM wms_inventario
+        WHERE cve_articulo = '{$cve_articulo}'
+          AND idinventario != {$idinventario}";
+
+        $request = $this->select($sql);
+
 
         if (!empty($request)) {
             return "exist";
         }
 
+        // ==== UPDATE (CON ?)
         $sql = "UPDATE wms_inventario SET
                     cve_articulo = ?,
                     descripcion = ?,
@@ -127,8 +161,8 @@ class Inv_inventarioModel extends Mysql
                     lineaproductoid = ?,
                     tipo_elemento = ?,
                     factor_unidades = ?,
-					ubicacion = ?,
-					tiempo_surtido = ?,
+                    ubicacion = ?,
+                    tiempo_surtido = ?,
                     peso = ?,
                     volumen = ?,
                     serie = ?,
@@ -158,36 +192,43 @@ class Inv_inventarioModel extends Mysql
     }
 
     /* ===============================
-       DELETE (lógico)
+       DELETE (LÓGICO)
     =============================== */
     public function deleteInventario(int $idinventario)
     {
-        $sql = "UPDATE wms_inventario SET estado = 0 WHERE idinventario = ?";
+        $sql = "UPDATE wms_inventario
+                SET estado = 0
+                WHERE idinventario = ?";
+
         return $this->update($sql, [$idinventario]);
     }
 
     /* ===============================
-   INSERT CLAVE ALTERNA
-=============================== */
+       CLAVES ALTERNAS
+    =============================== */
     public function insertClaveAlterna(
         int $inventarioid,
         string $cve_alterna,
         string $tipo
     ) {
-        // Evitar duplicados
+        $inventarioid = (int)$inventarioid;
+        $cve_alterna = addslashes($cve_alterna);
+
         $sql = "SELECT idclavealterna
-            FROM wms_claves_alternas
-            WHERE inventarioid = ?
-              AND cve_alterna = ?";
-        $request = $this->select($sql, [$inventarioid, $cve_alterna]);
+        FROM wms_claves_alternas
+        WHERE inventarioid = {$inventarioid}
+          AND cve_alterna = '{$cve_alterna}'";
+
+        $request = $this->select($sql);
+
 
         if (!empty($request)) {
             return "exist";
         }
 
         $sql = "INSERT INTO wms_claves_alternas
-            (inventarioid, cve_alterna, tipo)
-            VALUES (?, ?, ?)";
+                (inventarioid, cve_alterna, tipo)
+                VALUES (?, ?, ?)";
 
         return $this->insert($sql, [
             $inventarioid,
@@ -196,21 +237,26 @@ class Inv_inventarioModel extends Mysql
         ]);
     }
 
+    /* ===============================
+       BUSCADOR KIT
+    =============================== */
     public function buscarProductoKit(string $term)
     {
-
         $term = addslashes($term);
 
         $sql = "SELECT idinventario, cve_articulo, descripcion
-        FROM wms_inventario
-        WHERE cve_articulo LIKE '%{$term}%'
-           OR descripcion LIKE '%{$term}%'
-        LIMIT 20
-    ";
+            FROM wms_inventario
+            WHERE cve_articulo LIKE '%{$term}%'
+               OR descripcion LIKE '%{$term}%'
+            LIMIT 20";
 
         return $this->select_all($sql);
     }
 
+
+    /* ===============================
+       KIT
+    =============================== */
     public function insertKitDetalle(
         int $kitid,
         int $productoId,
@@ -218,9 +264,8 @@ class Inv_inventarioModel extends Mysql
         float $porcentaje
     ) {
         $sql = "INSERT INTO wms_kit_detalle
-        (idkitconfig, producto_id, cantidad, porcentaje)
-        VALUES (?, ?, ?, ?)
-    ";
+                (idkitconfig, producto_id, cantidad, porcentaje)
+                VALUES (?, ?, ?, ?)";
 
         return $this->insert($sql, [
             $kitid,
@@ -230,15 +275,14 @@ class Inv_inventarioModel extends Mysql
         ]);
     }
 
-
     public function insertKitConfig(
         int $inventarioid,
         float $precio,
         string $descripcion
     ) {
         $sql = "INSERT INTO wms_kit_config
-        (inventarioid, precio, descripcion, estado, fecha_creacion)
-        VALUES (?, ?, ?, 2, NOW())";
+                (inventarioid, precio, descripcion, estado, fecha_creacion)
+                VALUES (?, ?, ?, 2, NOW())";
 
         return $this->insert($sql, [
             $inventarioid,
@@ -247,7 +291,9 @@ class Inv_inventarioModel extends Mysql
         ]);
     }
 
-
+    /* ===============================
+       MOVIMIENTOS INVENTARIO
+    =============================== */
     public function insertMovimientoInventario(array $data)
     {
         $sql = "INSERT INTO wms_movimientos_inventario
@@ -266,7 +312,7 @@ class Inv_inventarioModel extends Mysql
             estado
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)";
 
-        $arrData = [
+        return $this->insert($sql, [
             $data['inventarioid'],
             $data['almacenid'],
             $data['concepmovid'],
@@ -278,8 +324,6 @@ class Inv_inventarioModel extends Mysql
             $data['existencia'],
             $data['signo'],
             $data['estado']
-        ];
-
-        return $this->insert($sql, $arrData);
+        ]);
     }
 }

@@ -17,7 +17,7 @@ class Inv_lineasdproducto extends Controllers{
         if (empty($_SESSION['permisosMod']['r'])) {
             header("Location:" . base_url() . '/dashboard');
         }
-        $data['page_tag'] = "Líneas de producto";
+            $data['page_tag'] = "Líneas de producto";
 			$data['page_title'] = "Líneas de producto";
 			$data['page_name'] = "bom";
 			$data['page_functions_js'] = "functions_inv_lineasdproducto.js";

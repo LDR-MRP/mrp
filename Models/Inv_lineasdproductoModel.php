@@ -17,16 +17,16 @@ class Inv_lineasdproductoModel extends Mysql
 
 
 
-   
+
 
     public function inserLineaProducto($cve_linea_producto, $descripcion, $fecha_creacion,  $intEstatus)
     {
- 
+
         $return = 0;
-        $this->strCveLineaProducto = $cve_linea_producto; 
+        $this->strCveLineaProducto = $cve_linea_producto;
         $this->strDescripcion = $descripcion;
         $this->strFecha = $fecha_creacion;
-        $this-> intEstatus = $intEstatus;
+        $this->intEstatus = $intEstatus;
 
 
         $sql = "SELECT * FROM wms_linea_producto WHERE cve_linea_producto = '{$this->strCveLineaProducto}'";
@@ -34,7 +34,7 @@ class Inv_lineasdproductoModel extends Mysql
 
         if (empty($request)) {
             $query_insert = "INSERT INTO wms_linea_producto(cve_linea_producto,descripcion,fecha_creacion,estado) VALUES(?,?,?,?)";
-            
+
             $arrData = array(
                 $this->strCveLineaProducto,
                 $this->strDescripcion,
@@ -47,45 +47,51 @@ class Inv_lineasdproductoModel extends Mysql
             $return = "exist";
         }
         return $return;
-
     }
 
-    
-		public function selectLineasProductos()
-		{
-			$sql = "SELECT * FROM  wms_linea_producto 
+
+    public function selectLineasProductos()
+    {
+        $sql = "SELECT * FROM  wms_linea_producto 
 					WHERE estado != 0 ";
-			$request = $this->select_all($sql);
-			return $request;
-		}
+        $request = $this->select_all($sql);
+        return $request;
+    }
 
-        		public function selectOptionLineasProductos()
-		{
-			$sql = "SELECT * FROM  wms_linea_producto 
+    public function selectOptionLineasProductos()
+    {
+        $sql = "SELECT * FROM  wms_linea_producto 
 					WHERE estado = 2";
-			$request = $this->select_all($sql);
-			return $request;
-		}
+        $request = $this->select_all($sql);
+        return $request;
+    }
 
-        		public function selectLineaProducto(int $idlineaproducto){
-			$this->intIdLineaProducto = $idlineaproducto;
-			$sql = "SELECT * FROM wms_linea_producto
-					WHERE idlineaproducto = $this->intIdLineaProducto";
-			$request = $this->select($sql);
-			return $request;
-		}
+    public function selectLineaProducto($idlineaproducto)
+    {
+        $this->intIdLineaProducto = intval($idlineaproducto);
 
-        		public function deleteLineaProducto(int $idlineaproducto)
-		{
-			$this->intIdLineaProducto = $idlineaproducto;
-			$sql = "UPDATE wms_linea_producto SET estado = ? WHERE idlineaproducto = $this->intIdLineaProducto ";
-			$arrData = array(0);
-			$request = $this->update($sql,$arrData);
-			return $request;
-		}
+        if ($this->intIdLineaProducto <= 0) {
+            return [];
+        }
 
-        
-		public function updateLineaProducto($idlineaproducto, $cve_linea_producto, $descripcion, $estado){
+        $sql = "SELECT * FROM wms_linea_producto
+            WHERE idlineaproducto = {$this->intIdLineaProducto}";
+        return $this->select($sql);
+    }
+
+
+    public function deleteLineaProducto(int $idlineaproducto)
+    {
+        $this->intIdLineaProducto = $idlineaproducto;
+        $sql = "UPDATE wms_linea_producto SET estado = ? WHERE idlineaproducto = $this->intIdLineaProducto ";
+        $arrData = array(0);
+        $request = $this->update($sql, $arrData);
+        return $request;
+    }
+
+
+    public function updateLineaProducto($idlineaproducto, $cve_linea_producto, $descripcion, $estado)
+    {
         $this->intIdLineaProducto = $idlineaproducto;
         $this->strCveLineaProducto = $cve_linea_producto;
         $this->strDescripcion = $descripcion;
@@ -107,8 +113,4 @@ class Inv_lineasdproductoModel extends Mysql
         }
         return $request;
     }
-
-
-
 }
-?>

@@ -487,6 +487,8 @@ function fntViewInventario(idinventario) {
         if (data.tipo_elemento === "P") tipoTxt = "Producto";
         if (data.tipo_elemento === "S") tipoTxt = "Servicio";
         if (data.tipo_elemento === "K") tipoTxt = "Kit";
+        if (data.tipo_elemento === "C") tipoTxt = "Componente";
+        if (data.tipo_elemento === "H") tipoTxt = "Herramienta";
 
         // Pintar datos en modal
         document.querySelector("#celClave").innerHTML = data.cve_articulo;

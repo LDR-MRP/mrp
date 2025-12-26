@@ -138,7 +138,7 @@
                           </li> <!-- end plan maestro Menu -->
                       <?php } ?>
 
-                      <?php if (!empty($_SESSION['permisos'][16]['r']) || !empty($_SESSION['permisos'][17]['r']) || !empty($_SESSION['permisos'][18]['r']) || !empty($_SESSION['permisos'][19]['r']) || !empty($_SESSION['permisos'][20]['r']) || !empty($_SESSION['permisos'][21]['r'])) { ?>
+                                <?php if(!empty($_SESSION['permisos'][16]['r']) || !empty($_SESSION['permisos'][17]['r']) || !empty($_SESSION['permisos'][18]['r']) || !empty($_SESSION['permisos'][19]['r']) || !empty($_SESSION['permisos'][20]['r']) || !empty($_SESSION['permisos'][21]['r']) || !empty($_SESSION['permisos'][22]['r']) || !empty($_SESSION['permisos'][23]['r'])){ ?>
                           <li class="nav-item">
                               <a class="nav-link menu-link" href="#sidebarRequerimientos" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarRequerimientos">
                                   <i data-feather="layout" class="icon-dual"></i> <span data-key="t-layouts">Inventario</span>
@@ -190,10 +190,16 @@
                                               <a href="<?= base_url(); ?>/rpsemanal" class="nav-link" data-key="t-detached">Esquema de impuestos</a>
                                           </li>
                                       <?php } ?>
-                                      <?php if (!empty($_SESSION['permisos'][22]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/rpsemanal" class="nav-link" data-key="t-detached">Movimientos</a>
-                                          </li>
+                                      <?php if(!empty($_SESSION['permisos'][22]['r'])){ ?>
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/inv_movimientosinventario"  class="nav-link" data-key="t-detached">Movimientos</a>
+                                    </li>
+                                       <?php } ?>
+
+                                        <?php if(!empty($_SESSION['permisos'][23]['r'])){ ?>
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/inv_concepmovinventarios"  class="nav-link" data-key="t-detached">Conceptos de movimientos</a>
+                                    </li>
                                       <?php } ?>
                                   </ul>
                               </div>
