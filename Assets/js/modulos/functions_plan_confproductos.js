@@ -1,3 +1,8 @@
+/*****************************************************************************************
+ *  PLAN_CONFPRODUCTOS.JS (COMPLETO + ORDENADO + LOADING GLOBAL)
+ *  - Integra LOADING en TODAS las peticiones (fetch + XHR) con wrappers
+ *  - Mantiene tu estructura y lógica (tabs, rutas, componentes, herramientas, DTs)
+ ******************************************************************************************/
 
 // ---------------------------------------------
 //  GLOBALES
@@ -51,14 +56,97 @@ let componentesSeleccionados = []; // [{inventarioid, name, type, unit, cve, can
 let dtSelectedHerramientas = null;
 let herramientasSeleccionadas = []; // [{inventarioid, name, type, unit, cve, cantidad}]
 
-let estacionesEliminadas = [];
+// NUEVOS para control de ruta
+let estacionesOriginales = new Set(); // estaciones que venían de BD
+let estacionesEliminadas = [];        // [{iddetalle, idestacion, orden:0}]
 
 
+// ================================
+// LOADER GLOBAL (UTILS)
+// ================================
+function showLoading() {
+  if (divLoading) divLoading.style.display = "flex";
+}
+function hideLoading() {
+  if (divLoading) divLoading.style.display = "none";
+}
+
+// Wrapper para fetch: siempre apaga loader
+async function fetchJSON(url, options = {}, { useLoading = true } = {}) {
+  try {
+    if (useLoading) showLoading();
+    const res = await fetch(url, options);
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      return { status: false, msg: `HTTP ${res.status}`, httpStatus: res.status, data };
+    }
+    return data;
+  } catch (err) {
+    console.error("fetchJSON error:", err);
+    return { status: false, msg: "Error de conexión", error: String(err) };
+  } finally {
+    if (useLoading) hideLoading();
+  }
+}
+
+// Wrapper para XHR: siempre apaga loader
+function xhrRequest({ method = "GET", url, data = null, headers = {}, responseType = "json", useLoading = true }) {
+  return new Promise((resolve) => {
+    try {
+      if (useLoading) showLoading();
+
+      let request = (window.XMLHttpRequest)
+        ? new XMLHttpRequest()
+        : new ActiveXObject('Microsoft.XMLHTTP');
+
+      request.open(method, url, true);
+
+      Object.entries(headers).forEach(([k, v]) => request.setRequestHeader(k, v));
+
+      request.onreadystatechange = function () {
+        if (request.readyState !== 4) return;
+
+        let out = null;
+
+        if (request.status >= 200 && request.status < 300) {
+          if (responseType === "json") {
+            try {
+              out = JSON.parse(request.responseText);
+            } catch (e) {
+              console.error("JSON inválido:", e);
+              console.log("Respuesta cruda:", request.responseText);
+              out = { status: false, msg: "JSON inválido" };
+            }
+          } else {
+            out = request.responseText;
+          }
+        } else {
+          out = { status: false, msg: `HTTP ${request.status}`, httpStatus: request.status };
+        }
+
+        resolve(out);
+      };
+
+      request.onerror = function () {
+        resolve({ status: false, msg: "Error de red" });
+      };
+
+      request.send(data);
+    } catch (err) {
+      console.error("xhrRequest error:", err);
+      resolve({ status: false, msg: "Error interno", error: String(err) });
+    }
+  }).finally(() => {
+    if (useLoading) hideLoading();
+  });
+}
+
+
+// ======================================================================
+//  DOM READY
+// ======================================================================
 document.addEventListener('DOMContentLoaded', function () {
-
-    initTablaSeleccionadosHerramientas();
-prepararEventosCatalogoHerramientas();
-prepararGuardarTodoHerramientas();
 
   // --------------------------------------------------------------------
   //  REFERENCIAS BÁSICAS
@@ -120,9 +208,9 @@ prepararGuardarTodoHerramientas();
         { "data": "fecha_creacion" },
         { "data": "options" }
       ],
-             "language": {
-    "url": "https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json"
-  },
+      "language": {
+        "url": "https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json"
+      },
       'dom': 'lBfrtip',
       'buttons': [],
       "responsive": true,
@@ -138,6 +226,13 @@ prepararGuardarTodoHerramientas();
   initTablaSeleccionadosComponentes();
   prepararEventosCatalogoComponentes();
   prepararGuardarTodoComponentes();
+
+  // --------------------------------------------------------------------
+  //  TABLA SELECCIONADOS HERRAMIENTAS
+  // --------------------------------------------------------------------
+  initTablaSeleccionadosHerramientas();
+  prepararEventosCatalogoHerramientas();
+  prepararGuardarTodoHerramientas();
 
   // --------------------------------------------------------------------
   //  Recargar documentos / cargar descriptiva / cargar procesos
@@ -177,7 +272,6 @@ prepararGuardarTodoHerramientas();
       },
       "columns": [
         { "data": "cve_producto" },
-        // { "data": "cve_articulo" },
         { "data": "descripcion_producto" },
         { "data": "cve_linea_producto" },
         { "data": "descripcion_linea" },
@@ -185,9 +279,9 @@ prepararGuardarTodoHerramientas();
         { "data": "estado_producto" },
         { "data": "options" }
       ],
-        "language": {
-    "url": "https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json"
-  },
+      "language": {
+        "url": "https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json"
+      },
       'dom': 'lBfrtip',
       'buttons': [],
       "responsive": true,
@@ -196,8 +290,6 @@ prepararGuardarTodoHerramientas();
       "order": [[0, "desc"]]
     });
   }
-
-
 
   // --------------------------------------------------------------------
   //  TABS BOOTSTRAP (LISTA / NUEVO)
@@ -272,121 +364,91 @@ prepararGuardarTodoHerramientas();
   //  SUBMIT FORM PARA AGREGAR / ACTUALIZAR PRODUCTOS
   // --------------------------------------------------------------------
   if (formConfigProd) {
-    formConfigProd.addEventListener('submit', function (e) {
+    formConfigProd.addEventListener('submit', async function (e) {
       e.preventDefault();
 
-      if (divLoading) divLoading.style.display = "flex";
+      const ajaxUrl = base_url + '/Plan_confproductos/setProducto';
+      const formData = new FormData(formConfigProd);
 
-      let request = (window.XMLHttpRequest)
-        ? new XMLHttpRequest()
-        : new ActiveXObject('Microsoft.XMLHTTP');
+      const objData = await fetchJSON(ajaxUrl, { method: "POST", body: formData }, { useLoading: true });
 
-      let ajaxUrl = base_url + '/Plan_confproductos/setProducto';
-      let formData = new FormData(formConfigProd);
+      if (!objData || objData.status === false) {
+        Swal.fire("Error", objData?.msg || "Ocurrió un error en el servidor.", "error");
+        return;
+      }
 
-      request.open("POST", ajaxUrl, true);
-      request.send(formData);
+      if (objData.status) {
 
-      request.onreadystatechange = function () {
-        if (request.readyState !== 4) return;
+        if (objData.tipo === 'insert') {
 
-        if (divLoading) divLoading.style.display = "none";
+          if (productoid) productoid.value = objData.idproducto;
+          if (idproducto_documentacion) idproducto_documentacion.value = objData.idproducto;
+          if (idproducto_descriptiva) idproducto_descriptiva.value = objData.idproducto;
+          if (inputiddescriptiva) inputiddescriptiva.value = '0';
+          if (idproducto_proceso) idproducto_proceso.value = objData.idproducto;
+          if (idproducto_especificacion) idproducto_especificacion.value = objData.idproducto;
 
-        if (request.status !== 200) {
-          Swal.fire("Error", "Ocurrió un error en el servidor. Inténtalo de nuevo.", "error");
-          return;
-        }
+          // ruta nueva: limpiar
+          if (id_ruta_producto) id_ruta_producto.value = '';
+          resetRutaUI();
+          rutaDetallePendiente = [];
+          aplicoRutaPendiente = false;
 
-        let objData = JSON.parse(request.responseText);
+          refreshLowerTabs();
 
-        if (objData.status) {
+          Swal.fire({
+            title: objData.msg,
+            text: 'A continuación, se procederá con la carga de la documentación del producto.',
+            icon: 'success',
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#dc3545',
+            allowOutsideClick: false,
+            allowEscapeKey: false
+          }).then((result) => {
 
-          if (objData.tipo === 'insert') {
+            if (tableAlmacenes) tableAlmacenes.ajax.reload();
 
-            if (productoid) productoid.value = objData.idproducto;
-            if (idproducto_documentacion) idproducto_documentacion.value = objData.idproducto;
-            if (idproducto_descriptiva) idproducto_descriptiva.value = objData.idproducto;
-            if (inputiddescriptiva) inputiddescriptiva.value = '0';
-            if (idproducto_proceso) idproducto_proceso.value = objData.idproducto;
-            if (idproducto_especificacion) idproducto_especificacion.value = objData.idproducto;
+            if (btnDocumentacion) {
+              const tabDoc = new bootstrap.Tab(btnDocumentacion);
+              tabDoc.show();
+            }
 
-            // ruta nueva: limpiar
-            if (id_ruta_producto) id_ruta_producto.value = '';
-            resetRutaUI();
-            rutaDetallePendiente = [];
-            aplicoRutaPendiente = false;
+            formConfigProd.reset();
 
-            refreshLowerTabs();
+            const selectProductos = document.querySelector('#listProductos');
+            const selectLineasProductos = document.querySelector('#listLineasProductos');
 
-            Swal.fire({
-              title: objData.msg,
-              text: 'A continuación, se procederá con la carga de la documentación del producto.',
-              icon: 'success',
-              confirmButtonText: 'OK',
-              confirmButtonColor: '#28a745',
-              cancelButtonColor: '#dc3545',
-              allowOutsideClick: false,
-              allowEscapeKey: false
-            }).then((result) => {
+            if (selectProductos) selectProductos.value = '';
+            if (selectLineasProductos) selectLineasProductos.value = '';
 
-              if (tableAlmacenes) tableAlmacenes.ajax.reload();
+            if (spanBtnText) spanBtnText.textContent = 'REGISTRAR';
+            if (tabNuevo) tabNuevo.textContent = 'NUEVO';
 
-              if (btnDocumentacion) {
-                const tabDoc = new bootstrap.Tab(btnDocumentacion);
-                tabDoc.show();
-              }
+            if (!result.isConfirmed && primerTab) primerTab.show();
+          });
 
-              formConfigProd.reset();
+          // INCRUSTAR CLAVE Y DESCRIPCIÓN
+          let clave_producto = objData.clave;
+          let descripcion_producto = objData.descripcion;
 
-              const selectProductos = document.querySelector('#listProductos');
-              const selectLineasProductos = document.querySelector('#listLineasProductos');
+          document.querySelectorAll('.producto_clave').forEach(span => {
+            if (clave_producto) span.textContent = 'ID: ' + clave_producto;
+          });
 
-              if (selectProductos) selectProductos.value = '';
-              if (selectLineasProductos) selectLineasProductos.value = '';
-
-              if (spanBtnText) spanBtnText.textContent = 'REGISTRAR';
-              if (tabNuevo) tabNuevo.textContent = 'NUEVO';
-
-              if (!result.isConfirmed && primerTab) primerTab.show();
-            });
-
-
-
-                // EN ESTA PARTE COLOCAMOS LA CLAVE DEL PRODUCTO Y MODELO 
-
-let clave_producto = objData.clave;
-let descripcion_producto = objData.descripcion;
-
-
-document.querySelectorAll('.producto_clave').forEach(span => {
-  if (clave_producto) {
-    span.textContent = 'ID: ' + clave_producto;
-  }
-});
-
-
-document.querySelectorAll('.descripcion_producto').forEach(span => {
-  if (descripcion_producto) {
-    span.textContent = descripcion_producto;
-  }
-});
-
-
-
-
-
-
-
-          } else {
-            if (spanBtnText) spanBtnText.textContent = 'ACTUALIZAR';
-            if (tabNuevo) tabNuevo.textContent = 'ACTUALIZAR';
-            Swal.fire("¡Operación exitosa!", objData.msg, "success");
-          }
+          document.querySelectorAll('.descripcion_producto').forEach(span => {
+            if (descripcion_producto) span.textContent = descripcion_producto;
+          });
 
         } else {
-          Swal.fire("Error", objData.msg, "error");
+          if (spanBtnText) spanBtnText.textContent = 'ACTUALIZAR';
+          if (tabNuevo) tabNuevo.textContent = 'ACTUALIZAR';
+          Swal.fire("¡Operación exitosa!", objData.msg, "success");
         }
-      };
+
+      } else {
+        Swal.fire("Error", objData.msg, "error");
+      }
     });
   }
 
@@ -394,45 +456,30 @@ document.querySelectorAll('.descripcion_producto').forEach(span => {
   //  SUBMIT FORM PARA GUARDAR LA DESCRIPTIVA
   // --------------------------------------------------------------------
   if (formConfDescriptiva) {
-    formConfDescriptiva.addEventListener('submit', function (e) {
+    formConfDescriptiva.addEventListener('submit', async function (e) {
       e.preventDefault();
 
-      if (divLoading) divLoading.style.display = "flex";
+      const ajaxUrl = base_url + '/Plan_confproductos/setDescriptiva';
+      const formData = new FormData(formConfDescriptiva);
 
-      let request = (window.XMLHttpRequest)
-        ? new XMLHttpRequest()
-        : new ActiveXObject('Microsoft.XMLHTTP');
+      const objData = await fetchJSON(ajaxUrl, { method: "POST", body: formData }, { useLoading: true });
 
-      let ajaxUrl = base_url + '/Plan_confproductos/setDescriptiva';
-      let formData = new FormData(formConfDescriptiva);
+      if (!objData || objData.status === false) {
+        Swal.fire("Error", objData?.msg || "Ocurrió un error en el servidor.", "error");
+        return;
+      }
 
-      request.open("POST", ajaxUrl, true);
-      request.send(formData);
-
-      request.onreadystatechange = function () {
-        if (request.readyState !== 4) return;
-
-        if (divLoading) divLoading.style.display = "none";
-
-        if (request.status !== 200) {
-          Swal.fire("Error", "Ocurrió un error en el servidor. Inténtalo de nuevo.", "error");
-          return;
-        }
-
-        let objData = JSON.parse(request.responseText);
-
-        if (objData.status) {
-          if (objData.tipo === 'insert') {
-            if (inputiddescriptiva) inputiddescriptiva.value = objData.iddescriptiva;
-            if (spanBtnText) spanBtnText.textContent = 'ACTUALIZAR';
-            Swal.fire("¡Operación exitosa!", objData.msg, "success");
-          } else {
-            Swal.fire("¡Operación exitosa!", objData.msg, "success");
-          }
+      if (objData.status) {
+        if (objData.tipo === 'insert') {
+          if (inputiddescriptiva) inputiddescriptiva.value = objData.iddescriptiva;
+          if (spanBtnText) spanBtnText.textContent = 'ACTUALIZAR';
+          Swal.fire("¡Operación exitosa!", objData.msg, "success");
         } else {
-          Swal.fire("Error", objData.msg, "error");
+          Swal.fire("¡Operación exitosa!", objData.msg, "success");
         }
-      };
+      } else {
+        Swal.fire("Error", objData.msg, "error");
+      }
     });
   }
 
@@ -440,19 +487,17 @@ document.querySelectorAll('.descripcion_producto').forEach(span => {
   //  SUBMIT FORM RUTA PRODUCTO
   // --------------------------------------------------------------------
   if (formRuta) {
-    formRuta.addEventListener('submit', function (e) {
+    formRuta.addEventListener('submit', async function (e) {
       e.preventDefault();
 
       const payload = construirPayloadRuta();
       const d = payload[0];
 
       if (!d.listPlantasSelect || !d.listLineasSelect) {
-        console.error('Faltan datos: planta/linea/producto');
         Swal.fire("Atención", "Selecciona Planta y Línea.", "warning");
         return;
       }
       if (!d.detalle_ruta || d.detalle_ruta.length === 0) {
-        console.error('No hay estaciones en la ruta');
         Swal.fire("Atención", "Agrega estaciones a la ruta.", "warning");
         return;
       }
@@ -460,33 +505,30 @@ document.querySelectorAll('.descripcion_producto').forEach(span => {
       const formData = new FormData(formRuta);
       formData.append('ruta', JSON.stringify(payload));
 
-      fetch(base_url + '/Plan_confproductos/setRutaProducto', {
+      const res = await fetchJSON(base_url + '/Plan_confproductos/setRutaProducto', {
         method: 'POST',
         body: formData
-      })
-        .then(r => r.json())
-        .then(res => {
-          if (res.status) {
-            Swal.fire({
-              icon: 'success',
-              title: '¡Operación exitosa!',
-              text: res.msg || 'La ruta del producto fue guardada correctamente',
-              confirmButtonText: 'Aceptar'
-            });
+      }, { useLoading: true });
 
-            const inputRuta = document.querySelector('#id_ruta_producto');
-            if (inputRuta && res.idruta) inputRuta.value = res.idruta;
+      if (res.status) {
+        Swal.fire({
+          icon: 'success',
+          title: '¡Operación exitosa!',
+          text: res.msg || 'La ruta del producto fue guardada correctamente',
+          confirmButtonText: 'Aceptar'
+        });
 
-          } else {
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: res.msg || 'No se pudo guardar la ruta',
-              confirmButtonText: 'Aceptar'
-            });
-          }
-        })
-        .catch(err => console.error(err));
+        const inputRuta = document.querySelector('#id_ruta_producto');
+        if (inputRuta && res.idruta) inputRuta.value = res.idruta;
+
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: res.msg || 'No se pudo guardar la ruta',
+          confirmButtonText: 'Aceptar'
+        });
+      }
     });
   }
 
@@ -494,59 +536,45 @@ document.querySelectorAll('.descripcion_producto').forEach(span => {
   //  SUBMIT FORM PARA GUARDAR LOS DOCUMENTOS
   // --------------------------------------------------------------------
   if (formDocumentacion) {
-    formDocumentacion.addEventListener('submit', function (e) {
+    formDocumentacion.addEventListener('submit', async function (e) {
       e.preventDefault();
 
-      if (divLoading) divLoading.style.display = "flex";
+      const ajaxUrl = base_url + '/Plan_confproductos/setDocumentacion';
+      const formData = new FormData(formDocumentacion);
 
-      let request = (window.XMLHttpRequest)
-        ? new XMLHttpRequest()
-        : new ActiveXObject('Microsoft.XMLHTTP');
+      const objData = await fetchJSON(ajaxUrl, { method: "POST", body: formData }, { useLoading: true });
 
-      let ajaxUrl = base_url + '/Plan_confproductos/setDocumentacion';
-      let formData = new FormData(formDocumentacion);
+      if (!objData || objData.status === false) {
+        Swal.fire("Error", objData?.msg || "Ocurrió un error en el servidor.", "error");
+        return;
+      }
 
-      request.open("POST", ajaxUrl, true);
-      request.send(formData);
+      if (objData.status) {
+        if (objData.tipo === 'insert') {
+          if (tableDocumentos) tableDocumentos.ajax.reload();
+          refreshLowerTabs();
 
-      request.onreadystatechange = function () {
-        if (request.readyState !== 4) return;
+          Swal.fire({
+            title: '¡Operación exitosa!',
+            text: objData.msg,
+            icon: 'success',
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#dc3545',
+            allowOutsideClick: false,
+            allowEscapeKey: false
+          }).then(() => {
+            formDocumentacion.reset();
+            if (idproducto_documentacion) idproducto_documentacion.value = objData.idproducto;
+          });
 
-        if (divLoading) divLoading.style.display = "none";
-
-        if (request.status !== 200) {
-          Swal.fire("Error", "Ocurrió un error en el servidor. Inténtalo de nuevo.", "error");
-          return;
-        }
-
-        let objData = JSON.parse(request.responseText);
-
-        if (objData.status) {
-          if (objData.tipo === 'insert') {
-            if (tableDocumentos) tableDocumentos.ajax.reload();
-            refreshLowerTabs();
-
-            Swal.fire({
-              title: '¡Operación exitosa!',
-              text: objData.msg,
-              icon: 'success',
-              confirmButtonText: 'OK',
-              confirmButtonColor: '#28a745',
-              cancelButtonColor: '#dc3545',
-              allowOutsideClick: false,
-              allowEscapeKey: false
-            }).then(() => {
-              formDocumentacion.reset();
-              if (idproducto_documentacion) idproducto_documentacion.value = objData.idproducto;
-            });
-
-          } else {
-            
-          }
         } else {
-          Swal.fire("Error", objData.msg, "error");
+          // opcional: reload tabla
+          if (tableDocumentos) tableDocumentos.ajax.reload();
         }
-      };
+      } else {
+        Swal.fire("Error", objData.msg, "error");
+      }
     });
   }
 
@@ -554,73 +582,57 @@ document.querySelectorAll('.descripcion_producto').forEach(span => {
   //  SUBMIT FORM ESPECIFICACIONES
   // --------------------------------------------------------------------
   if (formEspecificaciones) {
-    formEspecificaciones.addEventListener('submit', function (e) {
+    formEspecificaciones.addEventListener('submit', async function (e) {
       e.preventDefault();
 
-      if (divLoading) divLoading.style.display = "flex";
+      const ajaxUrl = base_url + '/Plan_confproductos/setEspecificacion';
+      const formData = new FormData(formEspecificaciones);
 
-      let request = (window.XMLHttpRequest)
-        ? new XMLHttpRequest()
-        : new ActiveXObject('Microsoft.XMLHTTP');
+      const objData = await fetchJSON(ajaxUrl, { method: "POST", body: formData }, { useLoading: true });
 
-      let ajaxUrl = base_url + '/Plan_confproductos/setEspecificacion';
-      let formData = new FormData(formEspecificaciones);
+      if (!objData || objData.status === false) {
+        Swal.fire("Error", objData?.msg || "Ocurrió un error en el servidor.", "error");
+        return;
+      }
 
-      request.open("POST", ajaxUrl, true);
-      request.send(formData);
+      if (objData.status) {
 
-      request.onreadystatechange = function () {
-        if (request.readyState !== 4) return;
+        if (objData.tipo === 'insert') {
 
-        if (divLoading) divLoading.style.display = "none";
+          if (tableEspecifica) tableEspecifica.ajax.reload(null, false);
+          refreshLowerTabs();
 
-        if (request.status !== 200) {
-          Swal.fire("Error", "Ocurrió un error en el servidor. Inténtalo de nuevo.", "error");
-          return;
-        }
-
-        let objData = JSON.parse(request.responseText);
-
-        if (objData.status) {
-
-          if (objData.tipo === 'insert') {
-
-            if (tableEspecifica) tableEspecifica.ajax.reload(null, false);
-            refreshLowerTabs();
-
-            Swal.fire({
-              title: '¡Operación exitosa!',
-              text: objData.msg,
-              icon: 'success',
-              confirmButtonText: 'OK',
-              confirmButtonColor: '#28a745',
-              cancelButtonColor: '#dc3545',
-              allowOutsideClick: false,
-              allowEscapeKey: false
-            }).then(() => {
-              // estos IDs están en tu HTML, si existen se limpian:
-              const txtEspecificacion = document.querySelector('#txtEspecificacion');
-              if (txtEspecificacion) txtEspecificacion.value = '';
-              const btnTextEsp = document.querySelector('#btnTextEspecificacion');
-              if (btnTextEsp) btnTextEsp.innerHTML = "Registrar";
-            });
-
-          } else {
-            if (tableEspecifica) tableEspecifica.ajax.reload(null, false);
-
-            Swal.fire("¡Operación exitosa!", objData.msg, "success");
-
+          Swal.fire({
+            title: '¡Operación exitosa!',
+            text: objData.msg,
+            icon: 'success',
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#dc3545',
+            allowOutsideClick: false,
+            allowEscapeKey: false
+          }).then(() => {
             const txtEspecificacion = document.querySelector('#txtEspecificacion');
             if (txtEspecificacion) txtEspecificacion.value = '';
-            if (idespecificacioninput) idespecificacioninput.value = 0;
             const btnTextEsp = document.querySelector('#btnTextEspecificacion');
             if (btnTextEsp) btnTextEsp.innerHTML = "Registrar";
-          }
+          });
 
         } else {
-          Swal.fire("Error", objData.msg, "error");
+          if (tableEspecifica) tableEspecifica.ajax.reload(null, false);
+
+          Swal.fire("¡Operación exitosa!", objData.msg, "success");
+
+          const txtEspecificacion = document.querySelector('#txtEspecificacion');
+          if (txtEspecificacion) txtEspecificacion.value = '';
+          if (idespecificacioninput) idespecificacioninput.value = 0;
+          const btnTextEsp = document.querySelector('#btnTextEspecificacion');
+          if (btnTextEsp) btnTextEsp.innerHTML = "Registrar";
         }
-      };
+
+      } else {
+        Swal.fire("Error", objData.msg, "error");
+      }
     });
   }
 
@@ -708,10 +720,11 @@ function initTabInformacion() {
   fntPlantas();
 }
 
+
 // ------------------------------------------------------------------------
 //  CARGAR DESCRIPTIVA TÉCNICA SI YA EXISTE
 // ------------------------------------------------------------------------
-function loadDescriptivaForProducto() {
+async function loadDescriptivaForProducto() {
   if (!formConfDescriptiva) return;
 
   const btnSubmitDes = formConfDescriptiva.querySelector('button[type="submit"]');
@@ -722,98 +735,80 @@ function loadDescriptivaForProducto() {
   }
 
   const idProd = inputiddescriptiva.value.trim();
+  const ajaxUrl = base_url + '/Plan_confproductos/getDescriptiva/' + idProd;
 
-  let ajaxUrl = base_url + '/Plan_confproductos/getDescriptiva/' + idProd;
-  let request = (window.XMLHttpRequest)
-    ? new XMLHttpRequest()
-    : new ActiveXObject('Microsoft.XMLHTTP');
+  const objData = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "json", useLoading: true });
 
-  request.open("GET", ajaxUrl, true);
-  request.send();
+  // si backend manda status false
+  if (objData && objData.status === false) {
+    resetDescriptivaSinHidden();
+    if (btnSubmitDes) btnSubmitDes.textContent = 'REGISTRAR';
+    return;
+  }
 
-  request.onreadystatechange = function () {
-    if (request.readyState !== 4) return;
+  let d = (Array.isArray(objData) && objData.length > 0) ? objData[0] : null;
+  if (!d) {
+    resetDescriptivaSinHidden();
+    if (btnSubmitDes) btnSubmitDes.textContent = 'REGISTRAR';
+    return;
+  }
 
-    if (request.status !== 200) {
-      console.error("Error en getDescriptiva:", request.status);
-      resetDescriptivaSinHidden();
-      if (btnSubmitDes) btnSubmitDes.textContent = 'REGISTRAR';
-      return;
-    }
+  const inputMarca = formConfDescriptiva.querySelector('#txtMarca');
+  const inputModelo = formConfDescriptiva.querySelector('#txtModelo');
+  const inputLargoTotal = formConfDescriptiva.querySelector('#txtLargoTotal');
+  const inputDistanciaEjes = formConfDescriptiva.querySelector('#txtDistanciaEjes');
+  const inputPesoBrutoVehicular = formConfDescriptiva.querySelector('#txtPesoBruto');
+  const inputMotor = formConfDescriptiva.querySelector('#txtMotor');
+  const inputCilindros = formConfDescriptiva.querySelector('#txtDesplazamientoCilindros');
+  const inputDesplazamiento = formConfDescriptiva.querySelector('#txtDesplazamiento');
+  const inputTipoCombustible = formConfDescriptiva.querySelector('#txtTipoCombustible');
+  const inputPotencia = formConfDescriptiva.querySelector('#txtPotencia');
+  const inputTorque = formConfDescriptiva.querySelector('#txtTorque');
+  const inputTransmision = formConfDescriptiva.querySelector('#txtTransmision');
+  const inputEjeDelantero = formConfDescriptiva.querySelector('#txtEjeDelantero');
+  const inputSuspDelantera = formConfDescriptiva.querySelector('#txtSuspensionDelantera');
+  const inputEjeTrasero = formConfDescriptiva.querySelector('#txtEjeTrasero');
+  const inputSuspTrasera = formConfDescriptiva.querySelector('#txtSuspensionTrasera');
+  const inputLlantas = formConfDescriptiva.querySelector('#txtLlantas');
+  const inputSistemaFrenos = formConfDescriptiva.querySelector('#txtSistemaFrenos');
+  const inputAsistencias = formConfDescriptiva.querySelector('#txtAsistencias');
+  const inputSistemaElectrico = formConfDescriptiva.querySelector('#txtSistemaElectrico');
+  const inputCapCombustible = formConfDescriptiva.querySelector('#txtCapacidadCombustible');
+  const inputDireccion = formConfDescriptiva.querySelector('#txtDireccion');
+  const inputEquipamiento = formConfDescriptiva.querySelector('#txtEquipamiento');
 
-    let objData;
-    try {
-      objData = JSON.parse(request.responseText);
-    } catch (e) {
-      console.error("JSON inválido:", e);
-      resetDescriptivaSinHidden();
-      if (btnSubmitDes) btnSubmitDes.textContent = 'REGISTRAR';
-      return;
-    }
+  if (inputMarca) inputMarca.value = d.marca ?? '';
+  if (inputModelo) inputModelo.value = d.modelo ?? '';
+  if (inputLargoTotal) inputLargoTotal.value = d.largo_total ?? '';
+  if (inputDistanciaEjes) inputDistanciaEjes.value = d.distancia_ejes ?? '';
+  if (inputPesoBrutoVehicular) inputPesoBrutoVehicular.value = d.peso_bruto_vehicular ?? '';
+  if (inputMotor) inputMotor.value = d.motor ?? '';
+  if (inputCilindros) inputCilindros.value = d.cilindros ?? '';
+  if (inputDesplazamiento) inputDesplazamiento.value = d.desplazamiento_c ?? '';
+  if (inputTipoCombustible) inputTipoCombustible.value = d.tipo_combustible ?? '';
+  if (inputPotencia) inputPotencia.value = d.potencia ?? '';
+  if (inputTorque) inputTorque.value = d.torque ?? '';
+  if (inputTransmision) inputTransmision.value = d.transmision ?? '';
+  if (inputEjeDelantero) inputEjeDelantero.value = d.eje_delantero ?? '';
+  if (inputSuspDelantera) inputSuspDelantera.value = d.suspension_delantera ?? '';
+  if (inputEjeTrasero) inputEjeTrasero.value = d.eje_trasero ?? '';
+  if (inputSuspTrasera) inputSuspTrasera.value = d.suspension_trasera ?? '';
+  if (inputLlantas) inputLlantas.value = d.llantas ?? '';
+  if (inputSistemaFrenos) inputSistemaFrenos.value = d.sistema_frenos ?? '';
+  if (inputAsistencias) inputAsistencias.value = d.asistencias ?? '';
+  if (inputSistemaElectrico) inputSistemaElectrico.value = d.sistema_electrico ?? '';
+  if (inputCapCombustible) inputCapCombustible.value = d.capacidad_combustible ?? '';
+  if (inputDireccion) inputDireccion.value = d.direccion ?? '';
+  if (inputEquipamiento) inputEquipamiento.value = d.equipamiento ?? '';
 
-    let d = (Array.isArray(objData) && objData.length > 0) ? objData[0] : null;
-    if (!d) {
-      resetDescriptivaSinHidden();
-      if (btnSubmitDes) btnSubmitDes.textContent = 'REGISTRAR';
-      return;
-    }
-
-    const inputMarca = formConfDescriptiva.querySelector('#txtMarca');
-    const inputModelo = formConfDescriptiva.querySelector('#txtModelo');
-    const inputLargoTotal = formConfDescriptiva.querySelector('#txtLargoTotal');
-    const inputDistanciaEjes = formConfDescriptiva.querySelector('#txtDistanciaEjes');
-    const inputPesoBrutoVehicular = formConfDescriptiva.querySelector('#txtPesoBruto');
-    const inputMotor = formConfDescriptiva.querySelector('#txtMotor');
-    const inputCilindros = formConfDescriptiva.querySelector('#txtDesplazamientoCilindros');
-    const inputDesplazamiento = formConfDescriptiva.querySelector('#txtDesplazamiento');
-    const inputTipoCombustible = formConfDescriptiva.querySelector('#txtTipoCombustible');
-    const inputPotencia = formConfDescriptiva.querySelector('#txtPotencia');
-    const inputTorque = formConfDescriptiva.querySelector('#txtTorque');
-    const inputTransmision = formConfDescriptiva.querySelector('#txtTransmision');
-    const inputEjeDelantero = formConfDescriptiva.querySelector('#txtEjeDelantero');
-    const inputSuspDelantera = formConfDescriptiva.querySelector('#txtSuspensionDelantera');
-    const inputEjeTrasero = formConfDescriptiva.querySelector('#txtEjeTrasero');
-    const inputSuspTrasera = formConfDescriptiva.querySelector('#txtSuspensionTrasera');
-    const inputLlantas = formConfDescriptiva.querySelector('#txtLlantas');
-    const inputSistemaFrenos = formConfDescriptiva.querySelector('#txtSistemaFrenos');
-    const inputAsistencias = formConfDescriptiva.querySelector('#txtAsistencias');
-    const inputSistemaElectrico = formConfDescriptiva.querySelector('#txtSistemaElectrico');
-    const inputCapCombustible = formConfDescriptiva.querySelector('#txtCapacidadCombustible');
-    const inputDireccion = formConfDescriptiva.querySelector('#txtDireccion');
-    const inputEquipamiento = formConfDescriptiva.querySelector('#txtEquipamiento');
-
-    if (inputMarca) inputMarca.value = d.marca ?? '';
-    if (inputModelo) inputModelo.value = d.modelo ?? '';
-    if (inputLargoTotal) inputLargoTotal.value = d.largo_total ?? '';
-    if (inputDistanciaEjes) inputDistanciaEjes.value = d.distancia_ejes ?? '';
-    if (inputPesoBrutoVehicular) inputPesoBrutoVehicular.value = d.peso_bruto_vehicular ?? '';
-    if (inputMotor) inputMotor.value = d.motor ?? '';
-    if (inputCilindros) inputCilindros.value = d.cilindros ?? '';
-    if (inputDesplazamiento) inputDesplazamiento.value = d.desplazamiento_c ?? '';
-    if (inputTipoCombustible) inputTipoCombustible.value = d.tipo_combustible ?? '';
-    if (inputPotencia) inputPotencia.value = d.potencia ?? '';
-    if (inputTorque) inputTorque.value = d.torque ?? '';
-    if (inputTransmision) inputTransmision.value = d.transmision ?? '';
-    if (inputEjeDelantero) inputEjeDelantero.value = d.eje_delantero ?? '';
-    if (inputSuspDelantera) inputSuspDelantera.value = d.suspension_delantera ?? '';
-    if (inputEjeTrasero) inputEjeTrasero.value = d.eje_trasero ?? '';
-    if (inputSuspTrasera) inputSuspTrasera.value = d.suspension_trasera ?? '';
-    if (inputLlantas) inputLlantas.value = d.llantas ?? '';
-    if (inputSistemaFrenos) inputSistemaFrenos.value = d.sistema_frenos ?? '';
-    if (inputAsistencias) inputAsistencias.value = d.asistencias ?? '';
-    if (inputSistemaElectrico) inputSistemaElectrico.value = d.sistema_electrico ?? '';
-    if (inputCapCombustible) inputCapCombustible.value = d.capacidad_combustible ?? '';
-    if (inputDireccion) inputDireccion.value = d.direccion ?? '';
-    if (inputEquipamiento) inputEquipamiento.value = d.equipamiento ?? '';
-
-    if (btnSubmitDes) btnSubmitDes.textContent = 'ACTUALIZAR';
-  };
+  if (btnSubmitDes) btnSubmitDes.textContent = 'ACTUALIZAR';
 }
 
+
 // ------------------------------------------------------------------------
-//  CARGAR RUTA SI YA EXISTE (FIX FINAL)
+//  CARGAR RUTA SI YA EXISTE (FIX FINAL) + LOADING
 // ------------------------------------------------------------------------
-function loadProcesoForProducto() {
+async function loadProcesoForProducto() {
   if (!formRuta) return;
 
   const btnSubmit = formRuta.querySelector('button[type="submit"]');
@@ -828,74 +823,48 @@ function loadProcesoForProducto() {
   const idRutaProd = id_ruta_producto.value.trim();
   const ajaxUrl = base_url + '/Plan_confproductos/getRuta/' + idRutaProd;
 
-  let request = (window.XMLHttpRequest)
-    ? new XMLHttpRequest()
-    : new ActiveXObject('Microsoft.XMLHTTP');
+  const objData = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "json", useLoading: true });
 
-  request.open("GET", ajaxUrl, true);
-  request.send();
+  // Si backend devuelve {status:false}
+  if (objData && objData.status === false) {
+    resetDescriptivaSinHidden();
+    resetRutaCompleta();
+    if (btnSubmit) btnSubmit.textContent = 'REGISTRAR';
+    return;
+  }
 
-  request.onreadystatechange = function () {
-    if (request.readyState !== 4) return;
+  const d = (Array.isArray(objData) && objData.length > 0) ? objData[0] : null;
 
-    if (request.status !== 200) {
-      console.error("Error en getRuta:", request.status);
-      resetDescriptivaSinHidden();
-      if (btnSubmit) btnSubmit.textContent = 'REGISTRAR';
-      resetRutaUI();
-      return;
-    }
+  if (!d) {
+    resetDescriptivaSinHidden();
+    if (btnSubmit) btnSubmit.textContent = 'REGISTRAR';
+    resetRutaUI();
+    return;
+  }
 
-    let objData;
-    try {
-      objData = JSON.parse(request.responseText);
-    } catch (e) {
-      console.error("JSON inválido:", e);
-      resetDescriptivaSinHidden();
-      if (btnSubmit) btnSubmit.textContent = 'REGISTRAR';
-      resetRutaUI();
-      return;
-    }
+  const listPlanta = formRuta.querySelector('#listPlantasSelect');
+  const inputProd = document.querySelector('#idproducto_proceso');
 
-        if (objData.status === false) {
-  resetDescriptivaSinHidden();
-  resetRutaCompleta();
-  if (btnSubmit) btnSubmit.textContent = 'REGISTRAR';
-  return;
+  const plantaId = String(d.listPlantasSelect ?? '').trim();
+  const lineaId = String(d.listLineasSelect ?? '').trim();
+
+  if (listPlanta) listPlanta.value = plantaId;
+  if (inputProd) inputProd.value = String(d.idproducto_proceso ?? '').trim();
+
+  rutaDetallePendiente = Array.isArray(d.detalle_ruta) ? d.detalle_ruta : [];
+  rutaDetallePendiente = [...rutaDetallePendiente].sort((a, b) => Number(a.orden) - Number(b.orden));
+  aplicoRutaPendiente = false;
+
+  // esto dispara: fntLineas -> fntEstaciones -> aplicarRutaPendienteSiExiste()
+  fntLineas(plantaId, lineaId);
+
+  if (btnSubmit) btnSubmit.textContent = 'ACTUALIZAR';
 }
 
-    const d = (Array.isArray(objData) && objData.length > 0) ? objData[0] : null;
 
-    if (!d) {
-      resetDescriptivaSinHidden();
-      if (btnSubmit) btnSubmit.textContent = 'REGISTRAR';
-      resetRutaUI();
-      return;
-    }
-
-
-
-
-    const listPlanta = formRuta.querySelector('#listPlantasSelect');
-    const inputProd = document.querySelector('#idproducto_proceso');
-
-    const plantaId = String(d.listPlantasSelect ?? '').trim();
-    const lineaId = String(d.listLineasSelect ?? '').trim();
-
-    if (listPlanta) listPlanta.value = plantaId;
-    if (inputProd) inputProd.value = String(d.idproducto_proceso ?? '').trim();
-
-    rutaDetallePendiente = Array.isArray(d.detalle_ruta) ? d.detalle_ruta : [];
-    rutaDetallePendiente = [...rutaDetallePendiente].sort((a, b) => Number(a.orden) - Number(b.orden));
-    aplicoRutaPendiente = false;
-
-    // esto dispara: fntLineas -> fntEstaciones -> aplicarRutaPendienteSiExiste()
-    fntLineas(plantaId, lineaId);
-
-    if (btnSubmit) btnSubmit.textContent = 'ACTUALIZAR';
-  };
-}
-
+// ------------------------------------------------------------------------
+//  RESET COMPLETO DE RUTA (cuando status=false)
+// ------------------------------------------------------------------------
 function resetRutaCompleta() {
   const listPlanta = document.querySelector('#listPlantasSelect');
   const listLinea  = document.querySelector('#listLineasSelect');
@@ -903,17 +872,20 @@ function resetRutaCompleta() {
   if (listPlanta) listPlanta.value = '';
   if (listLinea)  listLinea.value  = '';
 
-  // Limpia estaciones disponibles
   const listaEstaciones = document.querySelector('#listaEstaciones');
   if (listaEstaciones) listaEstaciones.innerHTML = '';
 
-  // Limpia ruta asignada
   const listaRuta = document.querySelector('#listaRuta');
   if (listaRuta) listaRuta.innerHTML = '';
 
-  // Resetea flags
   rutaDetallePendiente = [];
   aplicoRutaPendiente = false;
+  estacionesOriginales = new Set();
+  estacionesEliminadas = [];
+
+  actualizarPlaceholderRuta();
+  actualizarCountRuta();
+  actualizarInputHiddenRuta();
 }
 
 
@@ -929,75 +901,60 @@ function resetDescriptivaSinHidden() {
   if (inputiddescriptiva) inputiddescriptiva.value = valDescriptiva;
 }
 
+
 // ------------------------------------------------------------------------
 //  SELECT PRODUCTOS
 // ------------------------------------------------------------------------
-function fntInventarios(selectedValue = "") {
+async function fntInventarios(selectedValue = "") {
   const selectProductos = document.querySelector('#listProductos');
   if (!selectProductos) return;
 
-  let ajaxUrl = base_url + '/Plan_confproductos/getSelectProductos';
-  let request = (window.XMLHttpRequest)
-    ? new XMLHttpRequest()
-    : new ActiveXObject('Microsoft.XMLHTTP');
+  const ajaxUrl = base_url + '/Plan_confproductos/getSelectProductos';
+  const html = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "text", useLoading: true });
 
-  request.open("GET", ajaxUrl, true);
-  request.send();
-  request.onreadystatechange = function () {
-    if (request.readyState == 4 && request.status == 200) {
-      selectProductos.innerHTML = request.responseText;
+  if (typeof html === "string") {
+    selectProductos.innerHTML = html;
+    if (selectedValue !== "") selectProductos.value = selectedValue;
+  }
 
-      if (selectedValue !== "") selectProductos.value = selectedValue;
-    }
-  };
-
-  selectProductos.addEventListener('change', function () {
-    const idProducto = this.value;
-    if (idProducto !== "") fntInventarioDetalle(idProducto);
-  });
+  if (!selectProductos.dataset.bound) {
+    selectProductos.addEventListener('change', function () {
+      const idProducto = this.value;
+      if (idProducto !== "") fntInventarioDetalle(idProducto);
+    });
+    selectProductos.dataset.bound = "1";
+  }
 }
 
-function fntInventarioDetalle(idInventario) {
-  let ajaxUrl = base_url + '/Plan_confproductos/getSelectInventario/' + idInventario;
-  let request = (window.XMLHttpRequest)
-    ? new XMLHttpRequest()
-    : new ActiveXObject('Microsoft.XMLHTTP');
+async function fntInventarioDetalle(idInventario) {
+  const ajaxUrl = base_url + '/Plan_confproductos/getSelectInventario/' + idInventario;
+  const objData = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "json", useLoading: true });
 
-  request.open("GET", ajaxUrl, true);
-  request.send();
-  request.onreadystatechange = function () {
-    if (request.readyState == 4 && request.status == 200) {
-      let objData = JSON.parse(request.responseText);
-      let descripcion = objData.descripcion;
-      let lineaproducto = objData.lineaproductoid;
+  if (!objData || objData.status === false) return;
 
-      let inputDescripcion = document.getElementById("txtDescripcion");
-      let selectLineasProductos = document.getElementById("listLineasProductos");
+  let descripcion = objData.descripcion;
+  let lineaproducto = objData.lineaproductoid;
 
-      if (inputDescripcion) inputDescripcion.value = descripcion;
-      if (selectLineasProductos) selectLineasProductos.value = lineaproducto;
-    }
-  };
+  let inputDescripcion = document.getElementById("txtDescripcion");
+  let selectLineasProductos = document.getElementById("listLineasProductos");
+
+  if (inputDescripcion) inputDescripcion.value = descripcion;
+  if (selectLineasProductos) selectLineasProductos.value = lineaproducto;
 }
 
-function fntLineasProducto(selectedValue = "") {
+async function fntLineasProducto(selectedValue = "") {
   const selectLineasProductos = document.querySelector('#listLineasProductos');
   if (!selectLineasProductos) return;
 
-  let ajaxUrl = base_url + '/Plan_confproductos/getSelectLineasProductos';
-  let request = (window.XMLHttpRequest)
-    ? new XMLHttpRequest()
-    : new ActiveXObject('Microsoft.XMLHTTP');
+  const ajaxUrl = base_url + '/Plan_confproductos/getSelectLineasProductos';
+  const html = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "text", useLoading: true });
 
-  request.open("GET", ajaxUrl, true);
-  request.send();
-  request.onreadystatechange = function () {
-    if (request.readyState == 4 && request.status == 200) {
-      selectLineasProductos.innerHTML = request.responseText;
-      if (selectedValue !== "") selectLineasProductos.value = selectedValue;
-    }
-  };
+  if (typeof html === "string") {
+    selectLineasProductos.innerHTML = html;
+    if (selectedValue !== "") selectLineasProductos.value = selectedValue;
+  }
 }
+
 
 // ------------------------------------------------------------------------
 //  TABS INFERIORES
@@ -1017,6 +974,7 @@ function setInfoGeneralActive() {
   const tabInfo = new bootstrap.Tab(btnInfoGeneral);
   tabInfo.show();
 }
+
 
 // ------------------------------------------------------------------------
 //  ELIMINAR DOCUMENTO
@@ -1049,154 +1007,114 @@ function fntDelDocumento(iddocumento) {
     },
     buttonsStyling: false,
     showCloseButton: true
-  }).then((result) => {
-
+  }).then(async (result) => {
     if (!result.isConfirmed) return;
 
-    let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-    let ajaxUrl = base_url + '/Plan_confproductos/delDocumento';
-    let strData = "iddocumento=" + iddocumento;
+    const ajaxUrl = base_url + '/Plan_confproductos/delDocumento';
+    const strData = "iddocumento=" + encodeURIComponent(iddocumento);
 
-    request.open("POST", ajaxUrl, true);
-    request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-    request.send(strData);
+    const objData = await xhrRequest({
+      method: "POST",
+      url: ajaxUrl,
+      data: strData,
+      headers: { "Content-type": "application/x-www-form-urlencoded" },
+      responseType: "json",
+      useLoading: true
+    });
 
-    request.onreadystatechange = function () {
-      if (request.readyState == 4 && request.status == 200) {
-        let objData = JSON.parse(request.responseText);
-        if (objData.status) {
-          Swal.fire("¡Operación exitosa!", objData.msg, "success");
-          if (tableDocumentos) tableDocumentos.ajax.reload();
-        } else {
-          Swal.fire("Atención!", objData.msg, "error");
-        }
-      }
+    if (objData && objData.status) {
+      Swal.fire("¡Operación exitosa!", objData.msg, "success");
+      if (tableDocumentos) tableDocumentos.ajax.reload();
+    } else {
+      Swal.fire("Atención!", objData?.msg || "Error al eliminar", "error");
     }
   });
 }
 
+
 // ------------------------------------------------------------------------
 //  EDITAR PRODUCTO
 // ------------------------------------------------------------------------
-function fntEditProducto(idproducto) {
+async function fntEditProducto(idproducto) {
   if (!idproducto) return;
 
-  if (divLoading) divLoading.style.display = "flex";
+  const ajaxUrl = base_url + '/Plan_confproductos/getProducto/' + idproducto;
 
-  let request = (window.XMLHttpRequest)
-    ? new XMLHttpRequest()
-    : new ActiveXObject('Microsoft.XMLHTTP');
+  const objData = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "json", useLoading: true });
 
-  let ajaxUrl = base_url + '/Plan_confproductos/getProducto/' + idproducto;
-
-  request.open("GET", ajaxUrl, true);
-  request.send();
-
-  request.onreadystatechange = function () {
-    if (request.readyState != 4) return;
-
-    if (divLoading) divLoading.style.display = "none";
-
-    if (request.status != 200) {
-      Swal.fire("Error", "Error al consultar el PRODUCTO.", "error");
-      return;
-    }
-
-    let objData = JSON.parse(request.responseText);
-
-    if (!objData.status) {
-      Swal.fire("Aviso", objData.msg || "No se encontró la información del producto.", "warning");
-      return;
-    }
-
-    let data = objData.data || objData;
-
-    const tabAgregarEl = document.querySelector('#nav-tab a[href="#navAgregarProducto"]');
-    if (tabAgregarEl) {
-      const tab = new bootstrap.Tab(tabAgregarEl);
-      tab.show();
-      tabNuevo = tabAgregarEl;
-    }
-
-    if (tabNuevo) tabNuevo.textContent = 'ACTUALIZAR';
-    if (spanBtnText) spanBtnText.textContent = 'ACTUALIZAR';
-
-    if (productoid) productoid.value = data.idproducto;
-    if (idproducto_documentacion) idproducto_documentacion.value = data.idproducto;
-    if (inputiddescriptiva) inputiddescriptiva.value = data.iddescriptiva;
-    if (idproducto_proceso) idproducto_proceso.value = data.idproducto;
-    if (idproducto_especificacion) idproducto_especificacion.value = data.idproducto;
-    if (id_ruta_producto) id_ruta_producto.value = data.idruta_producto;
-
-    refreshLowerTabs();
-
-    const selectProductos = document.querySelector('#listProductos');
-    const selectLineasProductos = document.querySelector('#listLineasProductos');
-    const inputDescripcion = document.querySelector('#txtDescripcion');
-    const selectEstado = document.querySelector('#intEstado');
-
-    if (selectProductos && data.inventarioid) selectProductos.value = data.inventarioid;
-    if (inputDescripcion && data.descripcion) inputDescripcion.value = data.descripcion;
-    if (selectLineasProductos && data.lineaproductoid) selectLineasProductos.value = data.lineaproductoid;
-    if (selectEstado && data.estado) selectEstado.value = data.estado;
-
-
-    // EN ESTA PARTE COLOCAMOS LA CLAVE DEL PRODUCTO Y MODELO 
-
-let clave_producto = data.cve_producto;
-let descripcion_producto = data.descripcion;
-
-
-document.querySelectorAll('.producto_clave').forEach(span => {
-  if (clave_producto) {
-    span.textContent = 'ID: ' + clave_producto;
+  if (!objData || objData.status === false) {
+    Swal.fire("Aviso", objData?.msg || "No se encontró la información del producto.", "warning");
+    return;
   }
-});
 
+  let data = objData.data || objData;
 
-document.querySelectorAll('.descripcion_producto').forEach(span => {
-  if (descripcion_producto) {
-    span.textContent = descripcion_producto;
+  const tabAgregarEl = document.querySelector('#nav-tab a[href="#navAgregarProducto"]');
+  if (tabAgregarEl) {
+    const tab = new bootstrap.Tab(tabAgregarEl);
+    tab.show();
+    tabNuevo = tabAgregarEl;
   }
-});
+
+  if (tabNuevo) tabNuevo.textContent = 'ACTUALIZAR';
+  if (spanBtnText) spanBtnText.textContent = 'ACTUALIZAR';
+
+  if (productoid) productoid.value = data.idproducto;
+  if (idproducto_documentacion) idproducto_documentacion.value = data.idproducto;
+  if (inputiddescriptiva) inputiddescriptiva.value = data.iddescriptiva;
+  if (idproducto_proceso) idproducto_proceso.value = data.idproducto;
+  if (idproducto_especificacion) idproducto_especificacion.value = data.idproducto;
+  if (id_ruta_producto) id_ruta_producto.value = data.idruta_producto;
+
+  refreshLowerTabs();
+
+  const selectProductos = document.querySelector('#listProductos');
+  const selectLineasProductos = document.querySelector('#listLineasProductos');
+  const inputDescripcion = document.querySelector('#txtDescripcion');
+  const selectEstado = document.querySelector('#intEstado');
+
+  if (selectProductos && data.inventarioid) selectProductos.value = data.inventarioid;
+  if (inputDescripcion && data.descripcion) inputDescripcion.value = data.descripcion;
+  if (selectLineasProductos && data.lineaproductoid) selectLineasProductos.value = data.lineaproductoid;
+  if (selectEstado && data.estado) selectEstado.value = data.estado;
+
+  // CLAVE Y DESCRIPCIÓN EN SPANS
+  let clave_producto = data.cve_producto;
+  let descripcion_producto = data.descripcion;
+
+  document.querySelectorAll('.producto_clave').forEach(span => {
+    if (clave_producto) span.textContent = 'ID: ' + clave_producto;
+  });
+
+  document.querySelectorAll('.descripcion_producto').forEach(span => {
+    if (descripcion_producto) span.textContent = descripcion_producto;
+  });
 
 
-
-
-
-  
-
-    // al entrar, deja info general activa
-    setInfoGeneralActive();
-  };
+  setInfoGeneralActive();
 }
+
 
 // ------------------------------------------------------------------------
 //  PLANTAS / LÍNEAS / ESTACIONES
 // ------------------------------------------------------------------------
-function fntPlantas(selectedValue = "") {
+async function fntPlantas(selectedValue = "") {
   const selectPlantasLocal = document.querySelector('#listPlantasSelect');
   const selectLineasLocal = document.querySelector('#listLineasSelect');
 
   if (!selectPlantasLocal) return;
 
-  let ajaxUrl = base_url + '/Cap_plantas/getSelectPlantas';
-  let request = (window.XMLHttpRequest)
-    ? new XMLHttpRequest()
-    : new ActiveXObject('Microsoft.XMLHTTP');
+  const ajaxUrl = base_url + '/Cap_plantas/getSelectPlantas';
+  const html = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "text", useLoading: true });
 
-  request.open("GET", ajaxUrl, true);
-  request.send();
-  request.onreadystatechange = function () {
-    if (request.readyState === 4 && request.status === 200) {
-      selectPlantasLocal.innerHTML = request.responseText;
+  if (typeof html === "string") {
+    selectPlantasLocal.innerHTML = html;
 
-      if (selectedValue !== "") {
-        selectPlantasLocal.value = selectedValue;
-        fntLineas(selectPlantasLocal.value);
-      }
+    if (selectedValue !== "") {
+      selectPlantasLocal.value = selectedValue;
+      fntLineas(selectPlantasLocal.value);
     }
-  };
+  }
 
   if (!selectPlantasLocal.dataset.bound) {
     selectPlantasLocal.addEventListener('change', function () {
@@ -1208,7 +1126,7 @@ function fntPlantas(selectedValue = "") {
   }
 }
 
-function fntLineas(idPlanta, selectedLinea = "") {
+async function fntLineas(idPlanta, selectedLinea = "") {
   const selectLineasLocal = document.querySelector('#listLineasSelect');
   if (!selectLineasLocal) return;
 
@@ -1218,40 +1136,32 @@ function fntLineas(idPlanta, selectedLinea = "") {
     return;
   }
 
-  let ajaxUrl = base_url + '/Cap_lineasdtrabajo/getSelectLineas/' + idPlanta;
-  let request = (window.XMLHttpRequest)
-    ? new XMLHttpRequest()
-    : new ActiveXObject('Microsoft.XMLHTTP');
+  const ajaxUrl = base_url + '/Cap_lineasdtrabajo/getSelectLineas/' + idPlanta;
+  const html = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "text", useLoading: true });
 
-  request.open("GET", ajaxUrl, true);
-  request.send();
+  if (typeof html === "string") {
+    selectLineasLocal.innerHTML = html;
 
-  request.onreadystatechange = function () {
-    if (request.readyState !== 4) return;
+    const sel = String(selectedLinea ?? "").trim();
 
-    if (request.status === 200) {
-      selectLineasLocal.innerHTML = request.responseText;
+    if (sel !== "") {
+      selectLineasLocal.value = sel;
 
-      const sel = String(selectedLinea ?? "").trim();
+      const existe = Array.from(selectLineasLocal.options)
+        .some(opt => String(opt.value).trim() === sel);
 
-      if (sel !== "") {
-        selectLineasLocal.value = sel;
-
-        const existe = Array.from(selectLineasLocal.options)
-          .some(opt => String(opt.value).trim() === sel);
-
-        if (!existe) selectLineasLocal.value = "";
-      } else {
-        selectLineasLocal.value = "";
-      }
-
-      const idLineaActual = selectLineasLocal.value;
-      fntEstaciones(idLineaActual || "");
+      if (!existe) selectLineasLocal.value = "";
     } else {
-      selectLineasLocal.innerHTML = '<option value="">--Seleccione--</option>';
-      fntEstaciones("");
+      selectLineasLocal.value = "";
     }
-  };
+
+    const idLineaActual = selectLineasLocal.value;
+    fntEstaciones(idLineaActual || "");
+
+  } else {
+    selectLineasLocal.innerHTML = '<option value="">--Seleccione--</option>';
+    fntEstaciones("");
+  }
 
   if (!selectLineasLocal.dataset.bound) {
     selectLineasLocal.addEventListener('change', function () {
@@ -1264,7 +1174,7 @@ function fntLineas(idPlanta, selectedLinea = "") {
 // ---------------------------------------------
 //  ESTACIONES (con hook para aplicar ruta)
 // ---------------------------------------------
-function fntEstaciones(idLinea, selectedEstacion = "") {
+async function fntEstaciones(idLinea, selectedEstacion = "") {
   const selectEstaciones = document.querySelector('#listEstacionesSelect');
   const listaEstaciones = document.querySelector('#listaEstaciones');
   const badgeCount = document.querySelector('#countEstacionesDisponibles');
@@ -1281,99 +1191,75 @@ function fntEstaciones(idLinea, selectedEstacion = "") {
       selectEstaciones.innerHTML = '<option value="">--Seleccione--</option>';
     }
 
-    // limpia ruta si no hay línea
     resetRutaUI();
     return;
   }
 
-  let ajaxUrl = base_url + '/Plan_confproductos/getSelectEstaciones/' + idLinea;
-  let request = (window.XMLHttpRequest)
-    ? new XMLHttpRequest()
-    : new ActiveXObject('Microsoft.XMLHTTP');
+  const ajaxUrl = base_url + '/Plan_confproductos/getSelectEstaciones/' + idLinea;
+  const estaciones = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "json", useLoading: true });
 
-  request.open("GET", ajaxUrl, true);
-  request.send();
+  if (!Array.isArray(estaciones) || estaciones.length === 0) {
+    listaEstaciones.innerHTML = '';
+    badgeCount.textContent = '0';
+    if (msgSinEstaciones) msgSinEstaciones.classList.remove('d-none');
+    if (selectEstaciones) selectEstaciones.innerHTML = '<option value="">--Seleccione--</option>';
+    resetRutaUI();
+    return;
+  }
 
-  request.onreadystatechange = function () {
-    if (request.readyState !== 4) return;
+  listaEstaciones.innerHTML = '';
 
-    if (request.status === 200) {
-      let estaciones = [];
+  if (selectEstaciones) selectEstaciones.innerHTML = '<option value="">--Seleccione--</option>';
 
-      try {
-        estaciones = JSON.parse(request.responseText);
-      } catch (e) {
-        console.error('Respuesta JSON inválida en estaciones:', e);
-        return;
-      }
+  badgeCount.textContent = estaciones.length.toString();
+  if (msgSinEstaciones) msgSinEstaciones.classList.add('d-none');
 
-      listaEstaciones.innerHTML = '';
+  estaciones.forEach(est => {
+    const textConcatenado = `${est.cve_estacion} - ${est.nombre_estacion}`;
 
-      if (selectEstaciones) {
-        selectEstaciones.innerHTML = '<option value="">--Seleccione--</option>';
-      }
+    if (selectEstaciones) {
+      const option = document.createElement('option');
+      option.value = est.idestacion;
+      option.textContent = textConcatenado;
 
-      if (!Array.isArray(estaciones) || estaciones.length === 0) {
-        badgeCount.textContent = '0';
-        if (msgSinEstaciones) msgSinEstaciones.classList.remove('d-none');
-        resetRutaUI();
-        return;
-      }
-
-      badgeCount.textContent = estaciones.length.toString();
-      if (msgSinEstaciones) msgSinEstaciones.classList.add('d-none');
-
-      estaciones.forEach(est => {
-        const textConcatenado = `${est.cve_estacion} - ${est.nombre_estacion}`;
-
-        if (selectEstaciones) {
-          const option = document.createElement('option');
-          option.value = est.idestacion;
-          option.textContent = textConcatenado;
-
-          if (selectedEstacion && selectedEstacion == est.idestacion) option.selected = true;
-          selectEstaciones.appendChild(option);
-        }
-
-        const item = document.createElement('button');
-        item.type = 'button';
-        item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-        item.setAttribute('data-idestacion', String(est.idestacion));
-        item.setAttribute('data-cve', est.cve_estacion);
-        item.setAttribute('data-nombre', est.nombre_estacion);
-        item.setAttribute('data-herramientas', String(est.herramientas ?? 0));
-        item.setAttribute('draggable', 'true');
-
-        item.innerHTML = `
-          <div class="text-start">
-            <div class="fw-semibold">${est.cve_estacion}</div>
-            <small class="text-muted">${est.nombre_estacion}</small>
-          </div>
-        `;
-
-        item.addEventListener('dragstart', function (ev) {
-          ev.dataTransfer.setData('text/plain', String(est.idestacion));
-        });
-
-        item.addEventListener('click', function () {
-          agregarEstacionARuta({
-            idestacion: est.idestacion,
-            cve_estacion: est.cve_estacion,
-            nombre_estacion: est.nombre_estacion,
-            herramientas: est.herramientas
-          }, item);
-        });
-
-        listaEstaciones.appendChild(item);
-      });
-
-      // ✅ aquí ya existe DOM de estaciones -> aplicar ruta del backend (si existe)
-      aplicarRutaPendienteSiExiste();
-
-    } else {
-      console.error('Error al consultar estaciones. Status:', request.status);
+      if (selectedEstacion && selectedEstacion == est.idestacion) option.selected = true;
+      selectEstaciones.appendChild(option);
     }
-  };
+
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+    item.setAttribute('data-idestacion', String(est.idestacion));
+    item.setAttribute('data-cve', est.cve_estacion);
+    item.setAttribute('data-nombre', est.nombre_estacion);
+    item.setAttribute('data-herramientas', String(est.herramientas ?? 0));
+    item.setAttribute('draggable', 'true');
+
+    item.innerHTML = `
+      <div class="text-start">
+        <div class="fw-semibold">${est.cve_estacion}</div>
+        <small class="text-muted">${est.nombre_estacion}</small>
+      </div>
+    `;
+
+    item.addEventListener('dragstart', function (ev) {
+      ev.dataTransfer.setData('text/plain', String(est.idestacion));
+    });
+
+    item.addEventListener('click', function () {
+      agregarEstacionARuta({
+        idestacion: est.idestacion,
+        cve_estacion: est.cve_estacion,
+        nombre_estacion: est.nombre_estacion,
+        herramientas: est.herramientas
+      }, item);
+    });
+
+    listaEstaciones.appendChild(item);
+  });
+
+  // ✅ aquí ya existe DOM de estaciones -> aplicar ruta del backend (si existe)
+  aplicarRutaPendienteSiExiste();
 }
 
 
@@ -1389,7 +1275,7 @@ function aplicarRutaPendienteSiExiste() {
 
   resetRutaUI();
 
-  // ✅ NUEVO: guardar cuáles existían en BD
+  // guardar cuáles existían en BD
   estacionesOriginales = new Set(
     rutaDetallePendiente.map(x => String(x.idestacion).trim()).filter(Boolean)
   );
@@ -1424,15 +1310,13 @@ function resetRutaUI() {
 
   rutaEstaciones = [];
 
-  // ✅ NUEVO
   estacionesOriginales = new Set();
-  estacionesEliminadas = []; // ✅ array
+  estacionesEliminadas = [];
 
   actualizarPlaceholderRuta();
   actualizarCountRuta();
   actualizarInputHiddenRuta();
 }
-
 
 
 // ------------------------------------------------------------------------
@@ -1447,20 +1331,13 @@ function agregarEstacionARuta(est, botonOrigen) {
 
   if (rutaEstaciones.includes(idEstacion)) return;
 
-//   if (estacionesEliminadas.has(idEstacion)) {
-//     estacionesEliminadas.delete(idEstacion);
-//   }
-
-
+  // si estaba marcada como eliminada, la removemos
   estacionesEliminadas = estacionesEliminadas.filter(x => String(x.idestacion) !== idEstacion);
-
-  
 
   rutaEstaciones.push(idEstacion);
 
   const tr = document.createElement('tr');
   tr.setAttribute('data-idestacion', idEstacion);
-
   tr.setAttribute('data-iddetalle', String(Number(est.iddetalle || 0)));
 
   const btnHerramientas = (Number(est.herramientas) === 1)
@@ -1630,8 +1507,6 @@ function moverAbajo(btn) {
   actualizarCountRuta();
 }
 
-
-
 function eliminarDeRuta(btn) {
   const tr = btn.closest('tr');
   if (!tr) return;
@@ -1639,9 +1514,8 @@ function eliminarDeRuta(btn) {
   const idestacion = String(tr.getAttribute('data-idestacion') || '').trim();
   const iddetalle  = Number(tr.getAttribute('data-iddetalle') || 0);
 
-  // ✅ si venía de BD, se marca como eliminada (orden=0)
+  // si venía de BD, se marca como eliminada (orden=0)
   if (iddetalle > 0 && idestacion) {
-    // evita duplicados
     const ya = estacionesEliminadas.some(x => Number(x.iddetalle) === iddetalle);
     if (!ya) estacionesEliminadas.push({ iddetalle, idestacion, orden: 0 });
   }
@@ -1655,10 +1529,6 @@ function eliminarDeRuta(btn) {
   actualizarInputHiddenRuta();
   actualizarCountRuta();
 }
-
-
-
-
 
 
 // ------------------------------------------------------------------------
@@ -1685,10 +1555,7 @@ function dropOnRuta(ev) {
   if (!idEstacion) return;
 
   const btnOrigen = document.querySelector(`#listaEstaciones button[data-idestacion="${CSS.escape(String(idEstacion))}"]`);
-  if (!btnOrigen) {
-    console.warn('No se encontró el botón origen para la estación: ', idEstacion);
-    return;
-  }
+  if (!btnOrigen) return;
 
   const est = {
     idestacion: idEstacion,
@@ -1771,50 +1638,42 @@ function fntDelEspecificacion(idespecificacion) {
     },
     buttonsStyling: false,
     showCloseButton: true
-  }).then((result) => {
-
+  }).then(async (result) => {
     if (!result.isConfirmed) return;
 
-    let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-    let ajaxUrl = base_url + '/Plan_confproductos/delEspecificacion';
-    let strData = "idespecificacion=" + idespecificacion;
+    const ajaxUrl = base_url + '/Plan_confproductos/delEspecificacion';
+    const strData = "idespecificacion=" + encodeURIComponent(idespecificacion);
 
-    request.open("POST", ajaxUrl, true);
-    request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-    request.send(strData);
+    const objData = await xhrRequest({
+      method: "POST",
+      url: ajaxUrl,
+      data: strData,
+      headers: { "Content-type": "application/x-www-form-urlencoded" },
+      responseType: "json",
+      useLoading: true
+    });
 
-    request.onreadystatechange = function () {
-      if (request.readyState == 4 && request.status == 200) {
-        let objData = JSON.parse(request.responseText);
-        if (objData.status) {
-          Swal.fire("¡Operación exitosa!", objData.msg, "success");
-          if (tableEspecifica) tableEspecifica.ajax.reload();
-        } else {
-          Swal.fire("Atención!", objData.msg, "error");
-        }
-      }
+    if (objData && objData.status) {
+      Swal.fire("¡Operación exitosa!", objData.msg, "success");
+      if (tableEspecifica) tableEspecifica.ajax.reload();
+    } else {
+      Swal.fire("Atención!", objData?.msg || "Error al eliminar", "error");
     }
   });
 }
 
-function fntEditEspecificacion(idespecificacion) {
+async function fntEditEspecificacion(idespecificacion) {
   const btnTextEsp = document.querySelector('#btnTextEspecificacion');
   if (btnTextEsp) btnTextEsp.innerHTML = "Actualizar";
 
-  let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-  let ajaxUrl = base_url + '/Plan_confproductos/getEspecificacion/' + idespecificacion;
-  request.open("GET", ajaxUrl, true);
-  request.send();
-  request.onreadystatechange = function () {
-    if (request.readyState == 4 && request.status == 200) {
-      let objData = JSON.parse(request.responseText);
-      if (objData.status) {
-        document.querySelector("#idespecificacion").value = objData.data.idespecificacion;
-        document.querySelector("#txtEspecificacion").value = objData.data.especificacion;
-      } else {
-        swal("Error", objData.msg, "error");
-      }
-    }
+  const ajaxUrl = base_url + '/Plan_confproductos/getEspecificacion/' + idespecificacion;
+  const objData = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "json", useLoading: true });
+
+  if (objData && objData.status) {
+    document.querySelector("#idespecificacion").value = objData.data.idespecificacion;
+    document.querySelector("#txtEspecificacion").value = objData.data.especificacion;
+  } else {
+    Swal.fire("Error", objData?.msg || "No se pudo cargar", "error");
   }
 }
 
@@ -1855,34 +1714,24 @@ function resetModalComponentes() {
   const count = document.querySelector('#countSelected');
   if (count) count.textContent = '0';
 
-//   const saveBar = document.querySelector('#saveBar');
-//   if (saveBar) saveBar.classList.add('d-none');
-
   const btnGuardar = document.querySelector('#btnGuardarTodo');
   if (btnGuardar) btnGuardar.textContent = 'Guardar todo';
 }
 
-function fntAlmacenesHerramientas(selectedValue = "") {
+async function fntAlmacenesHerramientas(selectedValue = "") {
   const selectAlmacenesLocal = document.querySelector('#listAlmacenesHerrSelect');
   if (!selectAlmacenesLocal) return;
 
-  let ajaxUrl = base_url + '/Plan_confproductos/getSelectAlmacenes';
-  let request = (window.XMLHttpRequest)
-    ? new XMLHttpRequest()
-    : new ActiveXObject('Microsoft.XMLHTTP');
+  const ajaxUrl = base_url + '/Plan_confproductos/getSelectAlmacenes';
+  const html = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "text", useLoading: true });
 
-  request.open("GET", ajaxUrl, true);
-  request.send();
-  request.onreadystatechange = function () {
-    if (request.readyState === 4 && request.status === 200) {
-      selectAlmacenesLocal.innerHTML = request.responseText;
+  if (typeof html === "string") {
+    selectAlmacenesLocal.innerHTML = html;
 
-      if (selectedValue !== "") {
-        selectAlmacenesLocal.value = selectedValue;
-        fntLineas(selectAlmacenesLocal.value);
-      }
+    if (selectedValue !== "") {
+      selectAlmacenesLocal.value = selectedValue;
     }
-  };
+  }
 
   if (!selectAlmacenesLocal.dataset.bound) {
     selectAlmacenesLocal.addEventListener('change', function () {
@@ -1897,6 +1746,7 @@ function fntAlmacenesComponentes(selectedValue = "") {
   const sel = document.querySelector('#listAlmaceneSCompSelect');
   if (!sel) return Promise.resolve(false);
 
+  showLoading();
   return fetch(base_url + '/Plan_confproductos/getSelectComponentes')
     .then(r => r.text())
     .then(html => {
@@ -1909,6 +1759,7 @@ function fntAlmacenesComponentes(selectedValue = "") {
       return false;
     })
     .finally(() => {
+      hideLoading();
       if (!sel.dataset.bound) {
         sel.addEventListener('change', function () {
           fntComponentes(this.value);
@@ -1920,104 +1771,65 @@ function fntAlmacenesComponentes(selectedValue = "") {
 
 
 // ------------------------------------------------------------------------
-//  MOSTRAR HERRAMIENTAS
+//  MOSTRAR HERRAMIENTAS (LOADING)
 // ------------------------------------------------------------------------
-function fntHerramientas(idAlmacen) {
+async function fntHerramientas(idAlmacen) {
   let ajaxUrl = base_url + '/Plan_confproductos/getHerramientas/' + idAlmacen;
 
-  let request = (window.XMLHttpRequest)
-    ? new XMLHttpRequest()
-    : new ActiveXObject('Microsoft.XMLHTTP');
+  let objData = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "json", useLoading: true });
 
-  request.open("GET", ajaxUrl, true);
-  request.send();
+  if (!objData || objData.status === false) {
+    console.error("No se pudieron cargar herramientas:", objData?.msg || objData);
+    return;
+  }
 
-  request.onreadystatechange = function () {
-    if (request.readyState !== 4) return;
+  if (!Array.isArray(objData)) objData = [objData];
 
-    if (request.status === 200) {
-      let objData = [];
+  const dataCatalog = objData.map((item, index) => ({
+    id: index + 1,
+    name: item.descripcion_articulo || '',
+    herramientaid: item.inventarioid,
+    type: 'Herramienta',
+    unit: item.unidad_salida || 'PZA',
+    cve: item.cve_articulo || ''
+  }));
 
-      try {
-        objData = JSON.parse(request.responseText);
-      } catch (e) {
-        console.error("JSON inválido:", e);
-        console.log("Respuesta cruda:", request.responseText);
-        return;
-      }
-
-      if (!Array.isArray(objData)) objData = [objData];
-
-      const dataCatalog = objData.map((item, index) => ({
-        id: index + 1,
-        name: item.descripcion_articulo || '',
-        herramientaid: item.inventarioid,
-        type: 'Herramienta',
-        unit: item.unidad_salida || 'PZA',
-        cve: item.cve_articulo || ''
-      }));
-
-      dtCatalogHerramientas.clear();
-      dtCatalogHerramientas.rows.add(dataCatalog);
-      dtCatalogHerramientas.draw(false);
-
-    } else {
-      console.error("Error AJAX. Status:", request.status);
-      console.log("Respuesta:", request.responseText);
-    }
-  };
+  dtCatalogHerramientas.clear();
+  dtCatalogHerramientas.rows.add(dataCatalog);
+  dtCatalogHerramientas.draw(false);
 }
 
+
 // ------------------------------------------------------------------------
-//  MOSTRAR COMPONENTES
+//  MOSTRAR COMPONENTES (LOADING)
 // ------------------------------------------------------------------------
-function fntComponentes(idAlmacen) {
+async function fntComponentes(idAlmacen) {
   let ajaxUrl = base_url + '/Plan_confproductos/getComponentes/' + idAlmacen;
 
-  let request = (window.XMLHttpRequest)
-    ? new XMLHttpRequest()
-    : new ActiveXObject('Microsoft.XMLHTTP');
+  let objData = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "json", useLoading: true });
 
-  request.open("GET", ajaxUrl, true);
-  request.send();
+  if (!objData || objData.status === false) {
+    console.error("No se pudieron cargar componentes:", objData?.msg || objData);
+    return;
+  }
 
-  request.onreadystatechange = function () {
-    if (request.readyState !== 4) return;
+  if (!Array.isArray(objData)) objData = [objData];
 
-    if (request.status === 200) {
-      let objData = [];
+  const dataCatalog = objData.map((item, index) => ({
+    id: index + 1,
+    name: item.descripcion_articulo || '',
+    stock: item.existencia || '',
+    inventarioid: item.inventarioid,
+    type: 'Componente',
+    unit: item.unidad_salida || 'PZA',
+    cve: item.cve_articulo || ''
+  }));
 
-      try {
-        objData = JSON.parse(request.responseText);
-      } catch (e) {
-        console.error("JSON inválido:", e);
-        console.log("Respuesta cruda:", request.responseText);
-        return;
-      }
+  dtCatalogComponentes.clear();
+  dtCatalogComponentes.rows.add(dataCatalog);
+  dtCatalogComponentes.draw(false);
 
-      if (!Array.isArray(objData)) objData = [objData];
-
-      const dataCatalog = objData.map((item, index) => ({
-        id: index + 1,
-        name: item.descripcion_articulo || '',
-        stock: item.existencia || '',
-        inventarioid: item.inventarioid,
-        type: 'Componente',
-        unit: item.unidad_salida || 'PZA',
-        cve: item.cve_articulo || ''
-      }));
-
-      dtCatalogComponentes.clear();
-      dtCatalogComponentes.rows.add(dataCatalog);
-      dtCatalogComponentes.draw(false);
-
-      sincronizarBotonesCatalogoConSeleccionados();
-
-    } else {
-      console.error("Error AJAX. Status:", request.status);
-      console.log("Respuesta:", request.responseText);
-    }
-  };
+  sincronizarBotonesCatalogoConSeleccionados();
 }
 
 function sincronizarBotonesCatalogoConSeleccionados() {
@@ -2141,9 +1953,6 @@ function refrescarSeleccionadosComponentes() {
 
   const count = document.querySelector('#countSelected');
   if (count) count.textContent = String(componentesSeleccionados.length);
-
-//   const saveBar = document.querySelector('#saveBar');
-//   if (saveBar) saveBar.classList.toggle('d-none', componentesSeleccionados.length === 0);
 }
 
 function prepararEventosSeleccionadosComponentes() {
@@ -2187,7 +1996,7 @@ function prepararGuardarTodoComponentes() {
   const btn = document.querySelector('#btnGuardarTodo');
   if (!btn || btn.dataset.boundSave) return;
 
-  btn.addEventListener('click', function () {
+  btn.addEventListener('click', async function () {
     const selectAlmacen = document.querySelector('#listAlmaceneSCompSelect');
     const idAlmacen = selectAlmacen ? (selectAlmacen.value || '') : '';
 
@@ -2227,31 +2036,20 @@ function prepararGuardarTodoComponentes() {
       detalle_componentes: lista
     }];
 
-    if (divLoading) divLoading.style.display = "flex";
-
     const formData = new FormData();
     formData.append('componentes', JSON.stringify(payload));
 
-    fetch(base_url + '/Plan_confproductos/setComponentesEstacion', {
+    const res = await fetchJSON(base_url + '/Plan_confproductos/setComponentesEstacion', {
       method: 'POST',
       body: formData
-    })
-      .then(r => r.json())
-      .then(res => {
-        if (divLoading) divLoading.style.display = "none";
+    }, { useLoading: true });
 
-        if (res.status) {
-          Swal.fire("¡Operación exitosa!", res.msg || "Guardado correctamente", "success");
-          $('#modalComponentes').modal('hide');
-        } else {
-          Swal.fire("Error", res.msg || "No se pudo guardar", "error");
-        }
-      })
-      .catch(err => {
-        if (divLoading) divLoading.style.display = "none";
-        console.error(err);
-        Swal.fire("Error", "Ocurrió un error al guardar.", "error");
-      });
+    if (res.status) {
+      Swal.fire("¡Operación exitosa!", res.msg || "Guardado correctamente", "success");
+      $('#modalComponentes').modal('hide');
+    } else {
+      Swal.fire("Error", res.msg || "No se pudo guardar", "error");
+    }
   });
 
   btn.dataset.boundSave = '1';
@@ -2262,75 +2060,69 @@ async function cargarComponentesGuardadosEstacion(idestacion) {
   const idProducto = inputProducto ? (inputProducto.value || '') : '';
   if (!idestacion || !idProducto) return;
 
-  try {
-    const r = await fetch(
-      base_url + '/Plan_confproductos/getComponentesEstacion/' + idestacion +
-      '?idproducto=' + encodeURIComponent(idProducto)
-    );
-    const res = await r.json();
-    if (!res || !res.status) return;
+  const url = base_url + '/Plan_confproductos/getComponentesEstacion/' + idestacion +
+    '?idproducto=' + encodeURIComponent(idProducto);
 
-    const idAlmacen = String(res.idalmacen || '');
-    const data = Array.isArray(res.data) ? res.data : [];
-    if (!idAlmacen || data.length === 0) return;
+  const res = await fetchJSON(url, { method: "GET" }, { useLoading: true });
+  if (!res || !res.status) return;
 
-    await fntAlmacenesComponentes(idAlmacen);
+  const idAlmacen = String(res.idalmacen || '');
+  const data = Array.isArray(res.data) ? res.data : [];
+  if (!idAlmacen) return;
 
-    const sel = document.querySelector('#listAlmaceneSCompSelect');
-    if (sel) {
-      const existe = !!sel.querySelector(`option[value="${CSS.escape(idAlmacen)}"]`);
-      if (!existe) {
-        const opt = document.createElement('option');
-        opt.value = idAlmacen;
-        opt.textContent = idAlmacen;
-        sel.appendChild(opt);
-      }
+  await fntAlmacenesComponentes(idAlmacen);
 
-      sel.value = idAlmacen;
-      sel.dispatchEvent(new Event('change', { bubbles: true }));
+  const sel = document.querySelector('#listAlmaceneSCompSelect');
+  if (sel) {
+    const existe = !!sel.querySelector(`option[value="${CSS.escape(idAlmacen)}"]`);
+    if (!existe) {
+      const opt = document.createElement('option');
+      opt.value = idAlmacen;
+      opt.textContent = idAlmacen;
+      sel.appendChild(opt);
     }
 
-    componentesSeleccionados = data.map(x => ({
-      inventarioid: x.inventarioid,
-      name: x.descripcion || '',
-      type: 'Componente',
-      unit: x.unidad_salida || 'PZA',
-      cve: x.cve_articulo || '',
-      cantidad: Number(x.cantidad) || 1
-    }));
-
-    refrescarSeleccionadosComponentes();
-
-    setTimeout(() => sincronizarBotonesCatalogoConSeleccionados(), 120);
-
-    const btnGuardar = document.querySelector('#btnGuardarTodo');
-    if (btnGuardar) btnGuardar.textContent = 'Actualizar todo';
-
-  } catch (err) {
-    console.error(err);
+    sel.value = idAlmacen;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
   }
+
+  if (data.length === 0) {
+    componentesSeleccionados = [];
+    refrescarSeleccionadosComponentes();
+    setTimeout(() => sincronizarBotonesCatalogoConSeleccionados(), 120);
+    const btnGuardar = document.querySelector('#btnGuardarTodo');
+    if (btnGuardar) btnGuardar.textContent = 'Guardar todo';
+    return;
+  }
+
+  componentesSeleccionados = data.map(x => ({
+    inventarioid: x.inventarioid,
+    name: x.descripcion || '',
+    type: 'Componente',
+    unit: x.unidad_salida || 'PZA',
+    cve: x.cve_articulo || '',
+    cantidad: Number(x.cantidad) || 1
+  }));
+
+  refrescarSeleccionadosComponentes();
+
+  setTimeout(() => sincronizarBotonesCatalogoConSeleccionados(), 120);
+
+  const btnGuardar = document.querySelector('#btnGuardarTodo');
+  if (btnGuardar) btnGuardar.textContent = 'Actualizar todo';
 }
 
 
 // ======================================================================
-//  HERRAMIENTAS (MODAL)
-// ======================================================================
-// ======================================================================
 //  HERRAMIENTAS (MODAL + CARGA + GUARDADO) - CLON DE COMPONENTES
 // ======================================================================
 
-
-
-// ----------------------------------------------------------------------
-//  ABRIR MODAL HERRAMIENTAS (REEMPLAZA tu abrirHerramientas actual)
-// ----------------------------------------------------------------------
+// ABRIR MODAL HERRAMIENTAS
 function abrirHerramientas(idestacion, cve_estacion) {
 
-  // set hidden estación
   const inputEstacion = document.querySelector('#estacion_id_herr');
   if (inputEstacion) inputEstacion.value = idestacion || '';
 
-  
   if (typeof idproducto_proceso !== 'undefined' && idproducto_proceso) {
     const inputProducto = document.querySelector('#herramientas_producto');
     if (inputProducto) inputProducto.value = idproducto_proceso.value;
@@ -2338,23 +2130,16 @@ function abrirHerramientas(idestacion, cve_estacion) {
 
   resetModalHerramientas();
 
-  // Cargar select almacenes + bind change -> fntHerramientas(idAlmacen)
   fntAlmacenesHerramientas();
 
-  // Título
   const title = document.querySelector('#titleModalHerramientas');
   if (title) title.innerHTML = "Herramientas - " + cve_estacion;
 
-  // Mostrar modal
   $('#modalHerramientas').modal('show');
 
-  // Cargar guardadas de esa estación
   cargarHerramientasGuardadasEstacion(idestacion);
 }
 
-// ----------------------------------------------------------------------
-//  RESET MODAL HERRAMIENTAS
-// ----------------------------------------------------------------------
 function resetModalHerramientas() {
   const sel = document.querySelector('#listAlmacenesHerrSelect');
   if (sel) sel.value = '';
@@ -2367,16 +2152,10 @@ function resetModalHerramientas() {
   const count = document.querySelector('#countSelectedHerr');
   if (count) count.textContent = '0';
 
-//   const saveBar = document.querySelector('#saveBarHerr');
-//   if (saveBar) saveBar.classList.add('d-none');
-
   const btnGuardar = document.querySelector('#btnGuardarTodoHerramientas');
   if (btnGuardar) btnGuardar.textContent = 'Guardar todo';
 }
 
-// ----------------------------------------------------------------------
-//  INIT TABLA SELECCIONADAS HERRAMIENTAS (DT)
-// ----------------------------------------------------------------------
 function initTablaSeleccionadosHerramientas() {
   if (dtSelectedHerramientas) return;
 
@@ -2427,9 +2206,6 @@ function initTablaSeleccionadosHerramientas() {
   prepararEventosSeleccionadosHerramientas();
 }
 
-// ----------------------------------------------------------------------
-//  EVENTOS CATÁLOGO HERRAMIENTAS (btn-add)
-// ----------------------------------------------------------------------
 function prepararEventosCatalogoHerramientas() {
   const tabla = document.querySelector('#tblCatalogHerramientas');
   if (!tabla || tabla.dataset.boundAddHerr) return;
@@ -2449,9 +2225,7 @@ function prepararEventosCatalogoHerramientas() {
 }
 
 function agregarHerramientaASeleccionadas(filaCatalogo) {
-
   const inventarioid = String(filaCatalogo.herramientaid || filaCatalogo.inventarioid || '');
-
   if (!inventarioid) return;
 
   const existe = herramientasSeleccionadas.some(x => String(x.inventarioid) === inventarioid);
@@ -2500,14 +2274,8 @@ function refrescarSeleccionadosHerramientas() {
 
   const count = document.querySelector('#countSelectedHerr');
   if (count) count.textContent = String(herramientasSeleccionadas.length);
-
-//   const saveBar = document.querySelector('#saveBarHerr');
-//   if (saveBar) saveBar.classList.toggle('d-none', herramientasSeleccionadas.length === 0);
 }
 
-// ----------------------------------------------------------------------
-//  EVENTOS TABLA SELECCIONADAS (cantidad / eliminar)
-// ----------------------------------------------------------------------
 function prepararEventosSeleccionadosHerramientas() {
   const tabla = document.querySelector('#tblSelectedHerramientas');
   if (!tabla || tabla.dataset.boundSelHerr) return;
@@ -2545,14 +2313,11 @@ function eliminarHerramientaSeleccionada(inventarioid) {
   refrescarSeleccionadosHerramientas();
 }
 
-// ----------------------------------------------------------------------
-//  GUARDAR TODO HERRAMIENTAS (SYNC)
-// ----------------------------------------------------------------------
 function prepararGuardarTodoHerramientas() {
   const btn = document.querySelector('#btnGuardarTodoHerramientas');
   if (!btn || btn.dataset.boundSaveHerr) return;
 
-  btn.addEventListener('click', function () {
+  btn.addEventListener('click', async function () {
 
     const selectAlmacen = document.querySelector('#listAlmacenesHerrSelect');
     const idAlmacen = selectAlmacen ? (selectAlmacen.value || '') : '';
@@ -2575,10 +2340,6 @@ function prepararGuardarTodoHerramientas() {
       Swal.fire("Atención", "Selecciona un almacén para guardar.", "warning");
       return;
     }
-    // if (herramientasSeleccionadas.length === 0) {
-    //   Swal.fire("Atención", "No hay herramientas seleccionadas.", "warning");
-    //   return;
-    // }
 
     const lista = herramientasSeleccionadas.map(x => ({
       inventarioid: x.inventarioid,
@@ -2593,97 +2354,79 @@ function prepararGuardarTodoHerramientas() {
       detalle_herramientas: lista
     }];
 
-    if (divLoading) divLoading.style.display = "flex";
-
     const formData = new FormData();
     formData.append('herramientas', JSON.stringify(payload));
 
-    fetch(base_url + '/Plan_confproductos/setHerramientasEstacion', {
+    const res = await fetchJSON(base_url + '/Plan_confproductos/setHerramientasEstacion', {
       method: 'POST',
       body: formData
-    })
-      .then(r => r.json())
-      .then(res => {
-        if (divLoading) divLoading.style.display = "none";
+    }, { useLoading: true });
 
-        if (res.status) {
-          Swal.fire("¡Operación exitosa!", res.msg || "Guardado correctamente", "success");
-          $('#modalHerramientas').modal('hide');
-        } else {
-          Swal.fire("Error", res.msg || "No se pudo guardar", "error");
-        }
-      })
-      .catch(err => {
-        if (divLoading) divLoading.style.display = "none";
-        console.error(err);
-        Swal.fire("Error", "Ocurrió un error al guardar.", "error");
-      });
-
+    if (res.status) {
+      Swal.fire("¡Operación exitosa!", res.msg || "Guardado correctamente", "success");
+      $('#modalHerramientas').modal('hide');
+    } else {
+      Swal.fire("Error", res.msg || "No se pudo guardar", "error");
+    }
   });
 
   btn.dataset.boundSaveHerr = '1';
 }
 
-// ----------------------------------------------------------------------
-//  CARGAR HERRAMIENTAS GUARDADAS POR ESTACIÓN (para editar)
-// ----------------------------------------------------------------------
 async function cargarHerramientasGuardadasEstacion(idestacion) {
-    console.log(idestacion);
   const inputProducto = document.querySelector('#herramientas_producto');
   const idProducto = inputProducto ? (inputProducto.value || '') : '';
   if (!idestacion || !idProducto) return;
 
-  try {
-    const r = await fetch(
-      base_url + '/Plan_confproductos/getHerramientasEstacion/' + idestacion +
-      '?idproducto=' + encodeURIComponent(idProducto)
-    );
-    const res = await r.json();
-    if (!res || !res.status) return;
+  const url = base_url + '/Plan_confproductos/getHerramientasEstacion/' + idestacion +
+    '?idproducto=' + encodeURIComponent(idProducto);
 
-    const idAlmacen = String(res.idalmacen || '');
-    const data = Array.isArray(res.data) ? res.data : [];
-    if (!idAlmacen || data.length === 0) return;
+  const res = await fetchJSON(url, { method: "GET" }, { useLoading: true });
+  if (!res || !res.status) return;
 
-    // Seleccionar almacén
-    const sel = document.querySelector('#listAlmacenesHerrSelect');
-    if (sel) {
-      // si tu select no contiene el almacén, lo agregamos temporal
-      const existe = !!sel.querySelector(`option[value="${CSS.escape(idAlmacen)}"]`);
-      if (!existe) {
-        const opt = document.createElement('option');
-        opt.value = idAlmacen;
-        opt.textContent = idAlmacen;
-        sel.appendChild(opt);
-      }
+  const idAlmacen = String(res.idalmacen || '');
+  const data = Array.isArray(res.data) ? res.data : [];
+  if (!idAlmacen) return;
 
-      sel.value = idAlmacen;
-      // dispara carga del catálogo
-      sel.dispatchEvent(new Event('change', { bubbles: true }));
+  const sel = document.querySelector('#listAlmacenesHerrSelect');
+  if (sel) {
+    const existe = !!sel.querySelector(`option[value="${CSS.escape(idAlmacen)}"]`);
+    if (!existe) {
+      const opt = document.createElement('option');
+      opt.value = idAlmacen;
+      opt.textContent = idAlmacen;
+      sel.appendChild(opt);
     }
 
-    herramientasSeleccionadas = data.map(x => ({
-      inventarioid: String(x.inventarioid),
-      name: x.descripcion || '',
-      type: 'Herramienta',
-      unit: x.unidad_salida || 'PZA',
-      cve: x.cve_articulo || '',
-      cantidad: Number(x.cantidad) || 1
-    }));
-
-    refrescarSeleccionadosHerramientas();
-
-    setTimeout(() => sincronizarBotonesCatalogoHerrConSeleccionadas(), 120);
-
-    const btnGuardar = document.querySelector('#btnGuardarTodoHerramientas');
-    if (btnGuardar) btnGuardar.textContent = 'Actualizar todo';
-
-  } catch (err) {
-    console.error(err);
+    sel.value = idAlmacen;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
   }
+
+  if (data.length === 0) {
+    herramientasSeleccionadas = [];
+    refrescarSeleccionadosHerramientas();
+    setTimeout(() => sincronizarBotonesCatalogoHerrConSeleccionadas(), 120);
+    const btnGuardar = document.querySelector('#btnGuardarTodoHerramientas');
+    if (btnGuardar) btnGuardar.textContent = 'Guardar todo';
+    return;
+  }
+
+  herramientasSeleccionadas = data.map(x => ({
+    inventarioid: String(x.inventarioid),
+    name: x.descripcion || '',
+    type: 'Herramienta',
+    unit: x.unidad_salida || 'PZA',
+    cve: x.cve_articulo || '',
+    cantidad: Number(x.cantidad) || 1
+  }));
+
+  refrescarSeleccionadosHerramientas();
+
+  setTimeout(() => sincronizarBotonesCatalogoHerrConSeleccionadas(), 120);
+
+  const btnGuardar = document.querySelector('#btnGuardarTodoHerramientas');
+  if (btnGuardar) btnGuardar.textContent = 'Actualizar todo';
 }
-
-
 
 
 // ======================================================================
@@ -2701,36 +2444,23 @@ function construirPayloadRuta() {
 
   const filas = tbodyRuta ? Array.from(tbodyRuta.querySelectorAll('tr[data-idestacion]')) : [];
 
-  // estaciones actuales (orden real)
   const actuales = filas.map((tr, idx) => ({
     iddetalle: Number(tr.getAttribute('data-iddetalle') || 0),
     idestacion: String(tr.getAttribute('data-idestacion') || '').trim(),
     orden: idx + 1
   })).filter(x => x.idestacion);
 
-
-const eliminadas = estacionesEliminadas.map(x => ({
-  iddetalle: Number(x.iddetalle || 0),
-  idestacion: String(x.idestacion || '').trim(),
-  orden: 0
-})).filter(x => x.idestacion && x.iddetalle > 0);
-
-  
-
+  const eliminadas = estacionesEliminadas.map(x => ({
+    iddetalle: Number(x.iddetalle || 0),
+    idestacion: String(x.idestacion || '').trim(),
+    orden: 0
+  })).filter(x => x.idestacion && x.iddetalle > 0);
 
   const map = new Map();
   eliminadas.forEach(x => map.set(x.idestacion, x)); // primero 0
   actuales.forEach(x => map.set(x.idestacion, x));   // luego orden > 0
 
-// const detalle_ruta = Array.from(map.values());
-
-const detalle_ruta = Array.from(map.values());
-
-//   const detalle_ruta = filas.map((tr, idx) => ({
-//   iddetalle: Number(tr.getAttribute('data-iddetalle') || 0),
-//   idestacion: String(tr.getAttribute('data-idestacion') || '').trim(),
-//   orden: idx + 1
-// }));
+  const detalle_ruta = Array.from(map.values());
 
   return [{
     listPlantasSelect: planta,
@@ -2739,8 +2469,3 @@ const detalle_ruta = Array.from(map.values());
     detalle_ruta
   }];
 }
-
-
-
-
-
