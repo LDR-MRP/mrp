@@ -18,6 +18,8 @@
 			if(empty($_SESSION['permisosMod']['r'])){
 				header("Location:".base_url().'/dashboard');
 			}
+
+			
 			$data['page_tag'] = "Usuarios";
 			$data['page_title'] = "USUARIOS <small>Tienda Virtual</small>";
 			$data['page_name'] = "usuarios";
@@ -202,6 +204,8 @@
 			$data['page_title'] = "Perfil de usuario";
 			$data['page_name'] = "perfil";
 			$data['page_functions_js'] = "functions_usuarios.js";
+
+			 $data['usuario'] = $this->model->getUsuarioDatada();
 			$this->views->getView($this,"perfil",$data);
 		}
 
@@ -264,6 +268,214 @@
 				echo json_encode($arrResponse,JSON_UNESCAPED_UNICODE);
 			}
 			die();
+		}
+
+
+// public function setAvatar()
+// {
+//     header('Content-Type: application/json; charset=utf-8');
+//     date_default_timezone_set('America/Mexico_City');
+
+//     // 1) leer JSON raw
+//     $raw = file_get_contents("php://input");
+//     $json = json_decode($raw, true);
+
+//     if (json_last_error() !== JSON_ERROR_NONE || !is_array($json)) {
+//         echo json_encode(['status' => false, 'msg' => 'Payload JSON inválido'], JSON_UNESCAPED_UNICODE);
+//         exit;
+//     }
+
+//     // 2) validar campos mínimos
+//     $usuarioid = (int)($json['usuarioid'] ?? 0);
+//     $seed      = trim((string)($json['seed'] ?? ''));
+//     $gender    = trim((string)($json['gender'] ?? 'unisex'));
+//     $options   = $json['options'] ?? null;
+//     $svg       = (string)($json['svg'] ?? '');
+
+//     if ($usuarioid <= 0) {
+//         echo json_encode(['status' => false, 'msg' => 'usuarioid inválido'], JSON_UNESCAPED_UNICODE);
+//         exit;
+//     }
+//     if ($seed === '' || $svg === '') {
+//         echo json_encode(['status' => false, 'msg' => 'Faltan datos (seed/svg)'], JSON_UNESCAPED_UNICODE);
+//         exit;
+//     }
+
+//     // 3) seguridad: validar gender
+//     $allowedGender = ['male','female','unisex'];
+//     if (!in_array($gender, $allowedGender, true)) $gender = 'unisex';
+
+//     // 4) validar svg básico
+//     if (stripos($svg, '<svg') === false) {
+//         echo json_encode(['status' => false, 'msg' => 'SVG inválido'], JSON_UNESCAPED_UNICODE);
+//         exit;
+//     }
+
+//     // 5) carpeta destino (AJUSTA a tu estructura)
+//     // Ej: /home/.../public_html/Assets/avatars/
+//     $dir = dirname(__FILE__, 3) . '/Assets/avatars'; 
+//     if (!is_dir($dir)) {
+//         @mkdir($dir, 0755, true);
+//     }
+//     if (!is_dir($dir) || !is_writable($dir)) {
+//         echo json_encode(['status' => false, 'msg' => 'Carpeta avatars no disponible'], JSON_UNESCAPED_UNICODE);
+//         exit;
+//     }
+
+//     // 6) nombre único
+//     // Recomendado: usuarioid + fecha + random
+//     $unique = $usuarioid . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(4));
+//     $filename = 'avatar_' . $unique . '.svg';
+//     $filepath = rtrim($dir, '/\\') . DIRECTORY_SEPARATOR . $filename;
+
+//     // 7) normalizar svg (opcional)
+//     $svgClean = trim($svg);
+
+//     // 8) guardar archivo
+//     $okFile = @file_put_contents($filepath, $svgClean);
+//     if ($okFile === false) {
+//         echo json_encode(['status' => false, 'msg' => 'No se pudo guardar el archivo SVG'], JSON_UNESCAPED_UNICODE);
+//         exit;
+//     }
+
+//     // 9) options a string JSON para BD
+//     $optionsJson = '';
+//     if (is_array($options) || is_object($options)) {
+//         $optionsJson = json_encode($options, JSON_UNESCAPED_UNICODE);
+//     } else {
+//         // si te llega string ya en JSON
+//         $optionsJson = (string)$options;
+//     }
+
+//     // 10) (opcional) borrar avatar anterior si existía
+//     $old = $this->model->getAvatarByUser($usuarioid);
+//     $oldFile = $old['avatar_file'] ?? '';
+//     if (!empty($oldFile) && $oldFile !== $filename) {
+//         $oldPath = rtrim($dir, '/\\') . DIRECTORY_SEPARATOR . $oldFile;
+//         if (is_file($oldPath)) @unlink($oldPath);
+//     }
+
+//     // 11) actualizar BD
+//     $saved = $this->model->updateAvatar($usuarioid, $filename, $seed, $gender, $optionsJson);
+//     if (!$saved) {
+//         // rollback archivo si falla BD
+//         if (is_file($filepath)) @unlink($filepath);
+//         echo json_encode(['status' => false, 'msg' => 'No se pudo actualizar BD'], JSON_UNESCAPED_UNICODE);
+//         exit;
+//     }
+
+//     // 12) responder url pública
+//     // AJUSTA a tu helper (media()) si lo tienes:
+//     // $url = media().'/avatars/'.$filename;
+//     $url = (function_exists('media') ? media() : '') . '/avatars/' . $filename;
+
+//     echo json_encode([
+//         'status' => true,
+//         'msg'    => 'Avatar guardado',
+//         'file'   => $filename,
+//         'url'    => $url,
+//         'seed'   => $seed,
+//         'gender' => $gender
+//     ], JSON_UNESCAPED_UNICODE);
+//     exit;
+// }
+
+
+public function setAvatar()
+{
+    header('Content-Type: application/json; charset=utf-8');
+
+    $body = json_decode(file_get_contents('php://input'), true);
+
+    $usuarioid = (int)($body['usuarioid'] ?? 0);
+    $svg       = (string)($body['svg'] ?? '');
+    $seed      = (string)($body['seed'] ?? '');
+    $gender    = (string)($body['gender'] ?? 'unisex');
+    $options   = $body['options'] ?? [];
+
+    if ($usuarioid <= 0 || $svg === '') {
+        echo json_encode(['status'=>false,'msg'=>'Faltan datos (usuarioid/svg)']);
+        exit;
+    }
+
+    // ✅ Base path real (en hostinger normalmente es /home/.../public_html)
+    $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/');
+
+    // Prueba 1: Assets/avatars
+    $dir = $docRoot . '/Assets/avatars';
+
+    // Si tu carpeta realmente es assets/avatars (minúsculas), descomenta:
+    // $dir = $docRoot . '/assets/avatars';
+
+    // Debug de ruta (si falla, te lo va a devolver)
+    $debug = [
+        'document_root' => $docRoot,
+        'target_dir'    => $dir,
+        'dir_exists'    => is_dir($dir),
+        'dir_writable'  => is_writable($dir),
+        'php_user'      => function_exists('get_current_user') ? get_current_user() : null,
+    ];
+
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+        $debug['dir_exists_after_mkdir'] = is_dir($dir);
+        $debug['dir_writable_after_mkdir'] = is_writable($dir);
+    }
+
+    if (!is_dir($dir) || !is_writable($dir)) {
+        echo json_encode([
+            'status' => false,
+            'msg'    => 'Carpeta no existe o no es escribible (permisos/ruta)',
+            'debug'  => $debug
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    date_default_timezone_set('America/Mexico_City');
+    $ts   = date('YmdHis');
+    $rand = bin2hex(random_bytes(4));
+
+    $fileName = "avatar_{$usuarioid}_{$ts}_{$rand}.svg";
+    $fullPath = $dir . '/' . $fileName;
+
+    // ✅ Crear archivo (no mover)
+    $bytes = file_put_contents($fullPath, $svg, LOCK_EX);
+
+    if ($bytes === false || $bytes <= 0) {
+        echo json_encode([
+            'status' => false,
+            'msg'    => 'No se pudo escribir el SVG en disco',
+            'debug'  => array_merge($debug, [
+                'fullPath' => $fullPath
+            ])
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // Guardar en BD (tu modelo)
+    $optionsJson = json_encode($options, JSON_UNESCAPED_UNICODE);
+
+    $ok = $this->model->updateAvatarUsuario($usuarioid, $fileName, $seed, $gender, $optionsJson);
+
+    if (!$ok) {
+        @unlink($fullPath);
+        echo json_encode(['status'=>false,'msg'=>'Se guardó el archivo pero falló BD, se revirtió.']);
+        exit;
+    }
+
+    echo json_encode([
+        'status' => true,
+        'msg'    => 'Avatar guardado correctamente',
+        'file'   => $fileName,
+        'bytes'  => $bytes,
+        'url'    => media() . '/avatars/' . $fileName
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+
+		public function setAvatarUpload(){
+			dep($_POST);
 		}
 
 	}

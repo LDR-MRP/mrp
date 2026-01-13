@@ -42,8 +42,8 @@ let btnDescriptiva = null;
 let btnProcesos = null;
 let btnFinalizado = null;
 
-// RUTA (FIX FINAL)
-let rutaEstaciones = [];           // ids en orden (string)
+// RUTA 
+let rutaEstaciones = [];           
 let rutaDetallePendiente = [];     // detalle que viene del backend
 let aplicoRutaPendiente = false;   // evita re-aplicar varias veces
 
@@ -51,14 +51,14 @@ let tableEspecifica = null;
 let estacionActual = 0;
 
 let dtSelectedComponentes = null;
-let componentesSeleccionados = []; // [{inventarioid, name, type, unit, cve, cantidad}]
+let componentesSeleccionados = []; // 
 
 let dtSelectedHerramientas = null;
-let herramientasSeleccionadas = []; // [{inventarioid, name, type, unit, cve, cantidad}]
+let herramientasSeleccionadas = []; // 
 
 // NUEVOS para control de ruta
 let estacionesOriginales = new Set(); // estaciones que venían de BD
-let estacionesEliminadas = [];        // [{iddetalle, idestacion, orden:0}]
+let estacionesEliminadas = [];       
 
 
 // ================================
@@ -90,7 +90,7 @@ async function fetchJSON(url, options = {}, { useLoading = true } = {}) {
   }
 }
 
-// Wrapper para XHR: siempre apaga loader
+
 function xhrRequest({ method = "GET", url, data = null, headers = {}, responseType = "json", useLoading = true }) {
   return new Promise((resolve) => {
     try {
@@ -149,7 +149,7 @@ function xhrRequest({ method = "GET", url, data = null, headers = {}, responseTy
 document.addEventListener('DOMContentLoaded', function () {
 
   // --------------------------------------------------------------------
-  //  REFERENCIAS BÁSICAS
+  //  REFERENCIAS BÁSICASE
   // --------------------------------------------------------------------
   divLoading = document.querySelector("#divLoading");
   formConfigProd = document.querySelector("#formConfProducto");
@@ -388,7 +388,7 @@ document.addEventListener('DOMContentLoaded', function () {
           if (idproducto_proceso) idproducto_proceso.value = objData.idproducto;
           if (idproducto_especificacion) idproducto_especificacion.value = objData.idproducto;
 
-          // ruta nueva: limpiar
+         
           if (id_ruta_producto) id_ruta_producto.value = '';
           resetRutaUI();
           rutaDetallePendiente = [];
@@ -569,7 +569,7 @@ document.addEventListener('DOMContentLoaded', function () {
           });
 
         } else {
-          // opcional: reload tabla
+
           if (tableDocumentos) tableDocumentos.ajax.reload();
         }
       } else {
@@ -739,7 +739,7 @@ async function loadDescriptivaForProducto() {
 
   const objData = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "json", useLoading: true });
 
-  // si backend manda status false
+
   if (objData && objData.status === false) {
     resetDescriptivaSinHidden();
     if (btnSubmitDes) btnSubmitDes.textContent = 'REGISTRAR';
@@ -825,7 +825,7 @@ async function loadProcesoForProducto() {
 
   const objData = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "json", useLoading: true });
 
-  // Si backend devuelve {status:false}
+
   if (objData && objData.status === false) {
     resetDescriptivaSinHidden();
     resetRutaCompleta();
@@ -855,7 +855,7 @@ async function loadProcesoForProducto() {
   rutaDetallePendiente = [...rutaDetallePendiente].sort((a, b) => Number(a.orden) - Number(b.orden));
   aplicoRutaPendiente = false;
 
-  // esto dispara: fntLineas -> fntEstaciones -> aplicarRutaPendienteSiExiste()
+
   fntLineas(plantaId, lineaId);
 
   if (btnSubmit) btnSubmit.textContent = 'ACTUALIZAR';
@@ -863,7 +863,7 @@ async function loadProcesoForProducto() {
 
 
 // ------------------------------------------------------------------------
-//  RESET COMPLETO DE RUTA (cuando status=false)
+//  RESET COMPLETO DE RUTA 
 // ------------------------------------------------------------------------
 function resetRutaCompleta() {
   const listPlanta = document.querySelector('#listPlantasSelect');
@@ -1078,7 +1078,7 @@ async function fntEditProducto(idproducto) {
   if (selectLineasProductos && data.lineaproductoid) selectLineasProductos.value = data.lineaproductoid;
   if (selectEstado && data.estado) selectEstado.value = data.estado;
 
-  // CLAVE Y DESCRIPCIÓN EN SPANS
+
   let clave_producto = data.cve_producto;
   let descripcion_producto = data.descripcion;
 
@@ -1172,7 +1172,7 @@ async function fntLineas(idPlanta, selectedLinea = "") {
 }
 
 // ---------------------------------------------
-//  ESTACIONES (con hook para aplicar ruta)
+//  ESTACIONES
 // ---------------------------------------------
 async function fntEstaciones(idLinea, selectedEstacion = "") {
   const selectEstaciones = document.querySelector('#listEstacionesSelect');
@@ -1258,13 +1258,12 @@ async function fntEstaciones(idLinea, selectedEstacion = "") {
     listaEstaciones.appendChild(item);
   });
 
-  // ✅ aquí ya existe DOM de estaciones -> aplicar ruta del backend (si existe)
   aplicarRutaPendienteSiExiste();
 }
 
 
 // ======================================================================
-//  FIX FINAL RUTA: aplicar detalle del backend + bloqueo estaciones
+//  FIX FINAL RUTA
 // ======================================================================
 function aplicarRutaPendienteSiExiste() {
   if (aplicoRutaPendiente) return;
@@ -1275,7 +1274,7 @@ function aplicarRutaPendienteSiExiste() {
 
   resetRutaUI();
 
-  // guardar cuáles existían en BD
+
   estacionesOriginales = new Set(
     rutaDetallePendiente.map(x => String(x.idestacion).trim()).filter(Boolean)
   );
@@ -1514,7 +1513,7 @@ function eliminarDeRuta(btn) {
   const idestacion = String(tr.getAttribute('data-idestacion') || '').trim();
   const iddetalle  = Number(tr.getAttribute('data-iddetalle') || 0);
 
-  // si venía de BD, se marca como eliminada (orden=0)
+
   if (iddetalle > 0 && idestacion) {
     const ya = estacionesEliminadas.some(x => Number(x.iddetalle) === iddetalle);
     if (!ya) estacionesEliminadas.push({ iddetalle, idestacion, orden: 0 });
@@ -2468,4 +2467,368 @@ function construirPayloadRuta() {
     idproducto_proceso: idproducto,
     detalle_ruta
   }];
+}
+
+
+
+
+
+async function fntReportProducto(idproducto) {
+  if (!idproducto) return;
+
+  const ajaxUrl = base_url + '/Plan_confproductos/getProductoReporte/' + idproducto;
+
+  const objData = await xhrRequest({
+    method: "GET",
+    url: ajaxUrl,
+    responseType: "json",
+    useLoading: true
+  });
+
+  if (!objData || objData.status === false) {
+    Swal.fire("Aviso", objData?.msg || "No se encontró la información del producto.", "warning");
+    return;
+  }
+
+  const data = objData.data || objData;
+
+  console.log(data);
+
+
+  const logoUrl = base_url + '/Assets/images/ldr_logo_color.png'; 
+  const logoBase64 = await urlToBase64(logoUrl);
+
+  buildPdfProductoV1(data, logoBase64);
+}
+
+
+async function urlToBase64(url) {
+  const res = await fetch(url, { cache: "no-store" });
+  const blob = await res.blob();
+
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+
+function buildPdfProductoV1(payload, logoBase64) {
+  // ---------------------------
+  // Helpers
+  // ---------------------------
+  const p = payload?.producto || {};
+  const doc = payload?.documentacion?.data || [];
+  const dt = payload?.descriptiva_tecnica?.data || {};
+  const ruta = payload?.producto_configurado?.data || {};
+  const estaciones = Array.isArray(ruta?.estaciones_registradas) ? ruta.estaciones_registradas : [];
+
+  const fmt = (v) => (v === null || v === undefined) ? "" : String(v);
+  const safeList = (arr) => Array.isArray(arr) ? arr : [];
+
+  const nowStr = () => {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  // EstiloS
+  const tableLayout = {
+    hLineWidth: () => 0.5,
+    vLineWidth: () => 0.5,
+    hLineColor: () => "#d9d9d9",
+    vLineColor: () => "#d9d9d9",
+    paddingLeft: () => 6,
+    paddingRight: () => 6,
+    paddingTop: () => 4,
+    paddingBottom: () => 4,
+  };
+
+  const sectionBar = (title) => ({
+    table: { widths: ["*"], body: [[{ text: title, color: "#fff", bold: true, margin: [6, 5, 6, 5] }]] },
+    layout: "noBorders",
+    fillColor: "#8c8c8c",
+    margin: [0, 10, 0, 6]
+  });
+
+  const headerRow = (cols, fillColor = "#f5f5f5") =>
+    cols.map((t) => ({ text: t, bold: true, fillColor }));
+
+  const emptyRow = (colCount, label = "Sin registros") => {
+    const row = new Array(colCount).fill("");
+    row[0] = { text: "—", alignment: "center" };
+    row[1] = label;
+    return row;
+  };
+
+  // ---------------------------
+  // Contenido
+  // ---------------------------
+  const content = [];
+
+  // ---------------------------
+  // Encabezado
+  // ---------------------------
+  content.push({
+    table: {
+      widths: [70, "*", 170],
+      body: [[
+        logoBase64
+          ? { image: logoBase64, width: 65, margin: [0, 0, 0, 0] }
+          : { text: "", width: 65 },
+        {
+          text: "CONFIGURACIÓN DE PRODUCTO",
+          alignment: "center",
+          bold: true,
+          color: "#777",
+          fontSize: 12,
+          margin: [0, 12, 0, 0]
+        },
+{
+  stack: [
+    {
+      text: [
+        { text: "Doc. Code: ", bold: true },
+        "MRP-CP-V1.0"
+      ]
+    },
+    {
+      text: [
+        { text: "Versión: ", bold: true },
+        "1.0"
+      ]
+    },
+    {
+      text: [
+        { text: "Fecha: ", bold: true },
+        nowStr()
+      ]
+    }
+  ],
+  fontSize: 9,
+  alignment: "right",
+  margin: [0, 4, 0, 0]
+}
+      ]]
+    },
+    layout: {
+      ...tableLayout,
+      vLineWidth: () => 0,
+      hLineWidth: (i, node) => (i === node.table.body.length ? 1 : 0),
+      hLineColor: () => "#999"
+    },
+    margin: [0, 0, 0, 6]
+  });
+
+  // ---------------------------
+  // Datos generales
+  // ---------------------------
+  content.push(sectionBar("DATOS GENERALES DEL PRODUCTO"));
+
+  content.push({
+    table: {
+      widths: ["20%", "30%", "20%", "30%"],
+      body: [
+        ["Nombre / Descripción", fmt(p.descripcion), "Planta", fmt(p.nombre_planta)],
+        ["CVE Producto", fmt(p.cve_producto), "Línea Producto", fmt(p.nombre_linea)],
+        ["Fecha / Hora Registro", fmt(p.fecha_creacion), "Avance General", fmt(p.avance_general)]
+      ]
+    },
+    layout: tableLayout
+  });
+
+  // ---------------------------
+  // Documentación asociada
+  // ---------------------------
+  content.push(sectionBar("DOCUMENTACIÓN ASOCIADA"));
+
+  const docBody = [
+    headerRow(["#", "Tipo", "Descripción", "Archivo (Link)", "Fecha / Hora"], "#f5f5f5")
+  ];
+
+  if (safeList(doc).length) {
+safeList(doc).forEach((x, idx) => {
+  const fileName = fmt(x.ruta);
+
+
+  const publicLink = base_url + "/Assets/uploads/doc_componentes/" + fileName;
+
+  docBody.push([
+    { text: String(idx + 1), alignment: "center" },
+    fmt(x.tipo_documento),
+    fmt(x.descripcion),
+    fileName
+      ? { 
+          text: "Ver documento",
+          link: publicLink,
+          color: "#1a73e8",
+          decoration: "underline"
+        }
+      : "",
+    fmt(x.fecha_creacion)
+  ]);
+});
+
+  } else {
+    docBody.push(emptyRow(5));
+  }
+
+  content.push({
+    table: { widths: [24, 90, "*", 170, 110], body: docBody },
+    layout: tableLayout
+  });
+
+  // ---------------------------
+  // Descriptiva técnica
+  // (Dos columnas etiqueta/valor)
+  // ---------------------------
+  content.push(sectionBar("DESCRIPTIVA TÉCNICA"));
+
+  const descBody = [
+    ["Marca", fmt(dt.marca), "Modelo", fmt(dt.modelo)],
+    ["Largo total", fmt(dt.largo_total), "Distancia entre ejes", fmt(dt.distancia_ejes)],
+    ["Peso bruto vehicular", fmt(dt.peso_bruto_vehicular), "Motor", fmt(dt.motor)],
+    ["Cilindros", fmt(dt.cilindros), "Desplazamiento", fmt(dt.desplazamiento_c)],
+    ["Tipo combustible", fmt(dt.tipo_combustible), "Potencia", fmt(dt.potencia)],
+    ["Torque", fmt(dt.torque), "Transmisión", fmt(dt.transmision)],
+    ["Eje delantero", fmt(dt.eje_delantero), "Suspensión delantera", fmt(dt.suspension_delantera)],
+    ["Eje trasero", fmt(dt.eje_trasero), "Suspensión trasera", fmt(dt.suspension_trasera)],
+    ["Llantas", fmt(dt.llantas), "Sistema frenos", fmt(dt.sistema_frenos)],
+    ["Asistencias", fmt(dt.asistencias), "Sistema eléctrico", fmt(dt.sistema_electrico)],
+    ["Capacidad combustible", fmt(dt.capacidad_combustible), "Dirección", fmt(dt.direccion)],
+    ["Equipamiento", fmt(dt.equipamiento), "", ""],
+  ];
+
+  content.push({
+    table: { widths: ["20%", "30%", "20%", "30%"], body: descBody },
+    layout: tableLayout
+  });
+
+  // ---------------------------
+  // Estaciones (por proceso)
+  // ---------------------------
+  estaciones.forEach((e) => {
+    const estTitle = `ESTACIÓN ${fmt(e.orden)} – ${fmt(e.est_cve_estacion)} | ${fmt(e.est_nombre_estacion)}`;
+    content.push(sectionBar(estTitle));
+
+    // ========== Especificaciones críticas ==========
+    const espList = safeList(e?.especificaciones?.data);
+    const espBody = [
+      headerRow(["#", "Especificación crítica", "Fecha / Hora"], "#EEF2F7")
+    ];
+
+    if (espList.length) {
+      espList.forEach((x, i) => {
+        espBody.push([
+          { text: String(i + 1), alignment: "center" },
+          fmt(x.especificacion),
+          fmt(x.fecha_creacion)
+        ]);
+      });
+    } else {
+      espBody.push(emptyRow(3));
+    }
+
+    content.push({
+      table: { widths: [24, "*", 140], body: espBody },
+      layout: tableLayout
+    });
+
+    // ========== Componentes (TABLA SEPARADA) ==========
+    const compList = safeList(e?.componentes?.data);
+    const compBody = [
+      headerRow(["#", "Componente", "Cantidad", "Fecha / Hora"], "#EEF7F1")
+    ];
+
+    if (compList.length) {
+      compList.forEach((x, i) => {
+        compBody.push([
+          { text: String(i + 1), alignment: "center" },
+          fmt(x.nombre_componente),     
+          fmt(x.cantidad),
+          fmt(x.fecha_creacion)
+        ]);
+      });
+    } else {
+      compBody.push(emptyRow(4));
+    }
+
+    content.push({
+      table: { widths: [24, "*", 70, 140], body: compBody },
+      layout: tableLayout,
+      margin: [0, 8, 0, 0]
+    });
+
+    // ========== Herramientas (TABLA SEPARADA) ==========
+    const toolList = safeList(e?.herramientas?.data);
+    const toolBody = [
+      headerRow(["#", "Herramienta", "Cantidad", "Fecha / Hora"], "#F7F2EE")
+    ];
+
+    if (toolList.length) {
+      toolList.forEach((x, i) => {
+        toolBody.push([
+          { text: String(i + 1), alignment: "center" },
+          fmt(x.nombre_material),
+          fmt(x.cantidad),
+          fmt(x.fecha_creacion)
+        ]);
+      });
+    } else {
+      toolBody.push(emptyRow(4));
+    }
+
+    content.push({
+      table: { widths: [24, "*", 70, 140], body: toolBody },
+      layout: tableLayout,
+      margin: [0, 8, 0, 0]
+    });
+  });
+
+  // ---------------------------
+  // Control y aprobación (opcional, estilo auditoría)
+  // ---------------------------
+  content.push(sectionBar("CONTROL Y APROBACIÓN"));
+
+  content.push({
+    table: {
+      widths: ["12%", "21%", "12%", "21%", "12%", "22%"],
+      body: [
+        ["Elaboró", "", "Revisó", "", "Aprobó", ""],
+        [{ text: "Nombre / Firma / Fecha", color: "#777", fontSize: 8 }, "", { text: "Nombre / Firma / Fecha", color: "#777", fontSize: 8 }, "", { text: "Nombre / Firma / Fecha", color: "#777", fontSize: 8 }, ""]
+      ]
+    },
+    layout: tableLayout
+  });
+
+  // Observaciones
+  content.push(sectionBar("OBSERVACIONES / NOTAS"));
+  content.push({
+    table: { widths: ["*"], body: [[{ text: " ", margin: [0, 20, 0, 20] }]] },
+    layout: tableLayout
+  });
+
+  // ---------------------------
+  // Documento final
+  // ---------------------------
+  const docDefinition = {
+    pageSize: "A4",
+    pageMargins: [40, 50, 40, 70],
+    defaultStyle: { fontSize: 9 },
+    footer: function (currentPage, pageCount) {
+      return {
+        text: `Documento controlado – MRP LDR Solutions | Uso interno   •   Página ${currentPage} de ${pageCount}`,
+        alignment: "center",
+        fontSize: 8,
+        color: "#777",
+        margin: [40, 10, 40, 0]
+      };
+    },
+    content
+  };
+
+  const filename = `CFG_PRODUCTO_${fmt(p.cve_producto || p.idproducto || "reporte")}.pdf`;
+  pdfMake.createPdf(docDefinition).download(filename);
 }

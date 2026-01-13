@@ -91,6 +91,76 @@
     }
 }
 
+
+
+ function formatFechaLargaEs(string $ymd): string
+{
+  $ymd = trim($ymd);
+  if ($ymd === '') return '';
+
+  // Espera: 2026-01-08
+  $dt = DateTime::createFromFormat('Y-m-d', $ymd);
+  if (!$dt) return $ymd; 
+
+  $meses = [
+    1=>'enero',2=>'febrero',3=>'marzo',4=>'abril',5=>'mayo',6=>'junio',
+    7=>'julio',8=>'agosto',9=>'septiembre',10=>'octubre',11=>'noviembre',12=>'diciembre'
+  ];
+
+  $dia = $dt->format('d');
+  $mes = $meses[(int)$dt->format('n')] ?? '';
+  $anio = $dt->format('Y');
+
+  return "{$dia} de {$mes} de {$anio}";
+}
+
+
+function sendMailLocalCron($data, $template, $correos_copia = ''){
+    $mail = new PHPMailer(true);
+    ob_start();
+    require("Views/Template/Email/".$template.".php"); 
+    $mensaje = ob_get_clean();
+
+    $cc = explode(",", $correos_copia);
+
+    try {
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = 'notificacion@ldrsolutions.com.mx';
+        $mail->Password   = 'ppiz zylc bpod tczi';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        $mail->Port       = 465;
+
+        $mail->setFrom('notificacion@ldrsolutions.com.mx', 'Notificaciones LDR');
+          $mail->addAddress($data['email']);
+        
+  $cc = is_array($correos_copia) ? $correos_copia : explode(",", (string)$correos_copia);
+  foreach ($cc as $correo) {
+    $correo = trim($correo);
+    if ($correo !== '') $mail->addBCC($correo);
+  }
+
+        $mail->isHTML(true);
+        $mail->CharSet = 'UTF-8';
+        $mail->Encoding = 'base64';
+        $mail->Subject = $data['asunto'] . ' (' . $data['num_orden'] . ')';
+        $mail->Body    = $mensaje;
+
+        $mail->addCustomHeader('X-Mailer', 'PHPMailer');
+
+        $mail->send();
+
+        return true;
+    } catch (Exception $e) {
+        error_log("Error en el envío del mensaje a {$data['email']}: {$mail->ErrorInfo}");
+        return false;
+    }
+}
+
+
+
+
     function getPermisos(int $idmodulo){
         require_once ("Models/PermisosModel.php");
         $objPermisos = new PermisosModel();

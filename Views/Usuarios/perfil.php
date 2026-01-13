@@ -1,6 +1,8 @@
 <?php
   headerAdmin($data);
   getModal('modalPerfil',$data);
+
+  
  ?>
 
        <div class="main-content">
@@ -24,22 +26,26 @@
                         </div>
                     </div>
 
+                    <?= $avatar = $data['usuario']['avatar_file'] ?>
+
                     <div class="row">
                         <div class="col-xxl-3">
                             <div class="card mt-n5">
                                 <div class="card-body p-4">
                                     <div class="text-center">
                                         <div class="profile-user position-relative d-inline-block mx-auto  mb-4">
-                                            <img src="<?= media();?>/images/avatar.png" class="rounded-circle avatar-xl img-thumbnail user-profile-image" alt="user-profile-image">
+                                            <img src="<?= media();?>/avatars/<?= $avatar; ?>" class="rounded-circle avatar-xl img-thumbnail user-profile-image" alt="user-profile-image">
                                             <div class="avatar-xs p-0 rounded-circle profile-photo-edit">
-                                                <input id="profile-img-file-input" type="file" class="profile-img-file-input">
+                                                <!-- <input id="profile-img-file-input" type="file" class="profile-img-file-input"> -->
                                                 <label for="profile-img-file-input" class="profile-photo-edit avatar-xs">
-                                                    <span class="avatar-title rounded-circle bg-light text-body">
+                                                    <!-- <span class="avatar-title rounded-circle bg-light text-body">
                                                         <i class="ri-camera-fill"></i>
-                                                    </span>
+                                                    </span> -->
                                                 </label>
                                             </div>
                                         </div>
+
+                                    
                                         <h5 class="fs-16 mb-1"><?= $_SESSION['userData']['nombres'].' '.$_SESSION['userData']['apellidos']; ?></h5>
                                         <p class="text-muted mb-0"><?= $_SESSION['userData']['nombrerol']; ?></p>
                                     </div>
@@ -95,6 +101,15 @@
                                                 Política de privacidad
                                             </a>
                                         </li>
+
+
+                                        <li class="nav-item">
+  <a class="nav-link" data-bs-toggle="tab" href="#tabAvatar" role="tab">
+    <i class="ri-user-smile-line"></i>
+    Avatar / Foto
+  </a>
+</li>
+
                                     </ul>
                                 </div>
                                 <div class="card-body p-4">
@@ -526,6 +541,187 @@
                                             </div>
                                         </div>
                                         <!--end tab-pane-->
+
+<!-- =========================
+     TAB: AVATAR / FOTO
+========================== -->
+<div class="tab-pane" id="tabAvatar" role="tabpanel">
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card border">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="ri-user-3-line me-1"></i> Crear avatar</h6>
+        </div>
+        <div class="card-body">
+
+
+       
+
+        <input type="hidden" id="usuarioid" name="usuarioid" value=" <?= $_SESSION['userData']['idusuario'] ?>">
+
+        <input type="hidden" id="avatar_seed" name="avatar_seed" value="">
+<input type="hidden" id="avatar_svg"  name="avatar_svg"  value="">
+
+
+          <div class="alert alert-info py-2">
+            <i class="ri-information-line me-1"></i>
+            Elige <b>Hombre / Mujer / Unisex</b> y personaliza tu avatar. Al guardar, se asignará a tu perfil.
+          </div>
+
+          <!-- tipo -->
+          <label class="form-label fw-semibold">Tipo</label>
+          <div class="btn-group w-100 mb-3" role="group">
+            <input type="radio" class="btn-check" name="mrpGender" id="mrpMale" value="male" autocomplete="off">
+            <label class="btn btn-outline-dark" for="mrpMale"><i class="ri-men-line me-1"></i> Hombre</label>
+
+            <input type="radio" class="btn-check" name="mrpGender" id="mrpFemale" value="female" autocomplete="off">
+            <label class="btn btn-outline-dark" for="mrpFemale"><i class="ri-women-line me-1"></i> Mujer</label>
+
+            <input type="radio" class="btn-check" name="mrpGender" id="mrpUnisex" value="unisex" autocomplete="off" checked>
+            <label class="btn btn-outline-dark" for="mrpUnisex"><i class="ri-user-line me-1"></i> Unisex</label>
+          </div>
+
+          <!-- seed -->
+          <label class="form-label fw-semibold">Seed</label>
+          <div class="input-group mb-3">
+            <span class="input-group-text"><i class="ri-fingerprint-line"></i></span>
+            <input type="text" id="mrpSeed" class="form-control" placeholder="Ej: <?= $_SESSION['userData']['email_user'] ?? 'usuario'; ?>">
+            <button class="btn btn-outline-secondary" type="button" id="mrpGenSeed">
+              <i class="ri-shuffle-line me-1"></i> Generar
+            </button>
+          </div>
+
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Cabello / Top</label>
+              <select class="form-select" id="mrpTop"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Accesorios</label>
+              <select class="form-select" id="mrpAccessories"></select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Ojos</label>
+              <select class="form-select" id="mrpEyes"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Boca</label>
+              <select class="form-select" id="mrpMouth"></select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Ropa</label>
+              <select class="form-select" id="mrpClothing"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Barba / Bigote</label>
+              <select class="form-select" id="mrpFacialHair"></select>
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="row g-2">
+            <div class="col-6 col-md-3">
+              <label class="form-label fw-semibold">Piel</label>
+              <input type="color" class="form-control form-control-color w-100" id="mrpSkinColor" value="#f2d3b1">
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label fw-semibold">Cabello</label>
+              <input type="color" class="form-control form-control-color w-100" id="mrpHairColor" value="#2f2f2f">
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label fw-semibold">Ropa</label>
+              <input type="color" class="form-control form-control-color w-100" id="mrpClothingColor" value="#e97e2e">
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label fw-semibold">Fondo</label>
+              <input type="color" class="form-control form-control-color w-100" id="mrpBgColor" value="#ffffff">
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <button class="btn btn-outline-secondary" type="button" id="mrpRandom">
+              <i class="ri-dice-line me-1"></i> Random
+            </button>
+            <button class="btn btn-outline-danger" type="button" id="mrpReset">
+              <i class="ri-refresh-line me-1"></i> Reset
+            </button>
+            <button class="btn btn-primary ms-auto" type="button" id="mrpSaveAvatar">
+              <i class="ri-save-3-line me-1"></i> Guardar avatar
+            </button>
+          </div>
+
+          <div class="alert alert-warning mt-3 mb-0">
+            <i class="ri-mail-send-line me-1"></i>
+            <b>Nota:</b> Al guardar, tu avatar se asociará a tu perfil y podrá utilizarse en asignaciones operativas del MRP.
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div class="col-lg-6">
+      <div class="card border h-100">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="ri-eye-line me-1"></i> Vista previa</h6>
+        </div>
+        <div class="card-body d-flex flex-column">
+
+          <div class="p-3 border rounded-3 bg-light d-flex justify-content-center align-items-center flex-grow-1" style="min-height:360px;">
+            <div id="mrpAvatarPreview" style="width: 320px; max-width: 100%;"></div>
+          </div>
+
+          <div class="d-flex gap-2 mt-3">
+            <!-- <button class="btn btn-outline-secondary" type="button" id="mrpCopySvg">
+              <i class="ri-file-copy-line me-1"></i> Copiar SVG
+            </button> -->
+            <button class="btn btn-outline-primary" type="button" id="mrpDlSvg">
+              <i class="ri-download-line me-1"></i> SVG
+            </button>
+            <button class="btn btn-success" type="button" id="mrpDlPng">
+              <i class="ri-download-cloud-2-line me-1"></i> PNG
+            </button>
+          </div>
+
+          <canvas id="mrpCanvas" width="512" height="512" class="d-none"></canvas>
+
+          <hr class="my-3">
+
+          <!-- Upload image -->
+          <!-- <h6 class="mb-2"><i class="ri-image-add-line me-1"></i> O subir imagen</h6>
+          <input class="form-control" type="file" id="mrpFileAvatar" accept="image/*"> -->
+<!-- 
+          <div class="d-flex gap-2 mt-2">
+            <button class="btn btn-outline-secondary" type="button" id="mrpClearUpload">
+              <i class="ri-delete-bin-6-line me-1"></i> Quitar
+            </button>
+            <button class="btn btn-primary" type="button" id="mrpSaveUpload">
+              <i class="ri-save-3-line me-1"></i> Guardar imagen
+            </button>
+          </div> -->
+
+          <!-- <div class="mt-3 p-3 border rounded-3 bg-light d-flex justify-content-center align-items-center" style="min-height:220px;">
+            <img id="mrpUploadPreview" style="max-width: 85%; border-radius: 16px; display:none;" alt="preview">
+            <div id="mrpUploadEmpty" class="text-muted text-center">
+              <i class="ri-image-line" style="font-size:42px;"></i>
+              <div class="mt-2">Selecciona una imagen para previsualizar.</div>
+            </div>
+          </div> -->
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+
+
                                     </div>
                                 </div>
                             </div>
@@ -557,3 +753,453 @@
         </div>
 
 <?php footerAdmin($data); ?>
+
+<script>
+  window.MRP_AVATAR_SAVED = {
+    usuarioid: "<?= (int)$_SESSION['userData']['idusuario'] ?>",
+    seed: <?= json_encode($data['usuario']['avatar_seed'] ?? '') ?>,
+    gender: <?= json_encode($data['usuario']['avatar_gender'] ?? 'unisex') ?>,
+    options: <?= json_encode($data['usuario']['avatar_options'] ?? '') ?>,
+    url: <?= json_encode($data['avatarUrl'] ?? '') ?>
+  };
+</script>
+
+
+<script type="module">
+  // =========================================================
+  //  CONFIG (ajusta tu endpoint)
+  // =========================================================
+  const MRP_ENDPOINT_SAVE_AVATAR = (window.base_url || '') + '/Usuarios/setAvatar';
+
+  import { createAvatar } from "https://esm.sh/@dicebear/core?bundle";
+  import { avataaars } from "https://esm.sh/@dicebear/collection?bundle";
+
+  // =========================================================
+  //  REFS (ajusta IDs a tus inputs)
+  // =========================================================
+  const usuarioidEl = document.getElementById('usuarioid');
+
+  const preview = document.getElementById('mrpAvatarPreview');
+  const cnv = document.getElementById('mrpCanvas');
+
+  const seed = document.getElementById('mrpSeed');
+  const top = document.getElementById('mrpTop');
+  const accessories = document.getElementById('mrpAccessories');
+  const eyes = document.getElementById('mrpEyes');
+  const mouth = document.getElementById('mrpMouth');
+  const clothing = document.getElementById('mrpClothing');
+  const facialHair = document.getElementById('mrpFacialHair');
+
+  const skinColor = document.getElementById('mrpSkinColor');
+  const hairColor = document.getElementById('mrpHairColor');
+  const clothingColor = document.getElementById('mrpClothingColor');
+  const bgColor = document.getElementById('mrpBgColor');
+
+  const gMale = document.getElementById('mrpMale');
+  const gFemale = document.getElementById('mrpFemale');
+  const gUnisex = document.getElementById('mrpUnisex');
+
+  const btnGenSeed = document.getElementById('mrpGenSeed');
+  const btnRandom = document.getElementById('mrpRandom');
+  const btnReset = document.getElementById('mrpReset');
+  const btnSaveAvatar = document.getElementById('mrpSaveAvatar');
+
+  const btnCopySvg = document.getElementById('mrpCopySvg');
+  const btnDlSvg = document.getElementById('mrpDlSvg');
+  const btnDlPng = document.getElementById('mrpDlPng');
+
+  // tu imagen real de perfil en el sidebar/card
+  const imgProfile = document.querySelector('.user-profile-image');
+
+  // =========================================================
+  //  CATÁLOGOS + PRESETS
+  // =========================================================
+  const CATALOG = {
+    accessories: ["blank","kurt","prescription01","prescription02","round","sunglasses","wayfarers"],
+    top: [
+      "noHair","hat","turban","winterHat1","winterHat2","winterHat3","winterHat4",
+      "longHairBigHair","longHairBob","longHairBun","longHairCurly","longHairCurvy","longHairDreads",
+      "longHairFrida","longHairFro","longHairFroBand","longHairNotTooLong","longHairShavedSides",
+      "longHairMiaWallace","longHairStraight","longHairStraight2","longHairStraightStrand",
+      "shortHairDreads01","shortHairDreads02","shortHairFrizzle","shortHairShaggyMullet",
+      "shortHairShortCurly","shortHairShortFlat","shortHairShortRound","shortHairShortWaved",
+      "shortHairSides","shortHairTheCaesar","shortHairTheCaesarSidePart"
+    ],
+    eyes: ["default","close","cry","dizzy","eyeRoll","happy","hearts","side","squint","surprised","wink","winkWacky"],
+    mouth: ["default","concerned","disbelief","eating","grimace","sad","screamOpen","serious","smile","tongue","twinkle","vomit"],
+    clothing: ["blazerShirt","blazerSweater","collarSweater","graphicShirt","hoodie","overall","shirtCrewNeck","shirtScoopNeck","shirtVNeck"],
+    facialHair: ["blank","beardMedium","beardLight","beardMajestic","moustacheFancy","moustacheMagnum"]
+  };
+
+  // “Mixto/unisex” sin cara “femenina” por default: hoodie + shortHair
+  const PRESET = {
+    male: {
+      top: "shortHairShortWaved",
+      facialHair: "beardLight",
+      clothing: "shirtCrewNeck",
+      accessories: "blank",
+      eyes: "default",
+      mouth: "smile",
+      hairColor: "#2f2f2f",
+      clothingColor: "#0f172a"
+    },
+    female: {
+      top: "longHairStraight",
+      facialHair: "blank",
+      clothing: "collarSweater",
+      accessories: "blank",
+      eyes: "happy",
+      mouth: "smile",
+      hairColor: "#3b2f2f",
+      clothingColor: "#e97e2e"
+    },
+    unisex: {
+      top: "shortHairShortCurly",
+      facialHair: "blank",
+      clothing: "hoodie",
+      accessories: "blank",
+      eyes: "default",
+      mouth: "smile",
+      hairColor: "#2f2f2f",
+      clothingColor: "#e97e2e"
+    }
+  };
+
+  function fillSelect(sel, list, placeholder) {
+    sel.innerHTML = '';
+    const o0 = document.createElement('option');
+    o0.value = '';
+    o0.textContent = placeholder;
+    sel.appendChild(o0);
+    list.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = v;
+      sel.appendChild(opt);
+    });
+  }
+
+  fillSelect(top, CATALOG.top, '-- Cabello/Top --');
+  fillSelect(accessories, CATALOG.accessories, '-- Accesorios --');
+  fillSelect(eyes, CATALOG.eyes, '-- Ojos --');
+  fillSelect(mouth, CATALOG.mouth, '-- Boca --');
+  fillSelect(clothing, CATALOG.clothing, '-- Ropa --');
+  fillSelect(facialHair, CATALOG.facialHair, '-- Barba/Bigote --');
+
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function normalizeHex(hex){ return String(hex || '').replace('#','').trim(); }
+
+  function currentGender(){
+    if (gMale && gMale.checked) return 'male';
+    if (gFemale && gFemale.checked) return 'female';
+    return 'unisex';
+  }
+  function setGenderUI(g){
+    if (!gMale || !gFemale || !gUnisex) return;
+    if (g === 'male') gMale.checked = true;
+    else if (g === 'female') gFemale.checked = true;
+    else gUnisex.checked = true;
+  }
+
+  function applyPreset(type){
+    const p = PRESET[type] || PRESET.unisex;
+    if (top) top.value = p.top || '';
+    if (facialHair) facialHair.value = p.facialHair || '';
+    if (clothing) clothing.value = p.clothing || '';
+    if (accessories) accessories.value = p.accessories || '';
+    if (eyes) eyes.value = p.eyes || '';
+    if (mouth) mouth.value = p.mouth || '';
+    if (hairColor) hairColor.value = p.hairColor || hairColor.value;
+    if (clothingColor) clothingColor.value = p.clothingColor || clothingColor.value;
+    render();
+  }
+
+  function buildOptions(){
+    return {
+      seed: (seed?.value || 'usr-193d5885'),
+      radius: 18,
+      backgroundColor: [ normalizeHex(bgColor?.value || '#ffffff') ],
+      skinColor: [ normalizeHex(skinColor?.value || '#f2d3b1') ],
+      hairColor: [ normalizeHex(hairColor?.value || '#2f2f2f') ],
+      clothingColor: [ normalizeHex(clothingColor?.value || '#e97e2e') ],
+      ...(accessories?.value ? { accessories: [accessories.value] } : {}),
+      ...(top?.value ? { top: [top.value] } : {}),
+      ...(eyes?.value ? { eyes: [eyes.value] } : {}),
+      ...(mouth?.value ? { mouth: [mouth.value] } : {}),
+      ...(clothing?.value ? { clothing: [clothing.value] } : {}),
+      ...(facialHair?.value ? { facialHair: [facialHair.value] } : {})
+    };
+  }
+
+  function render(){
+    const options = buildOptions();
+    const avatar = createAvatar(avataaars, options);
+    const svg = avatar.toString();
+
+    if (preview) {
+      preview.innerHTML = svg;
+      const svgEl = preview.querySelector('svg');
+      if (svgEl) {
+        svgEl.style.width = '320px';
+        svgEl.style.maxWidth = '100%';
+        svgEl.style.height = 'auto';
+      }
+    }
+    return svg;
+  }
+
+  // =========================================================
+  //  EXPORT
+  // =========================================================
+  async function copySvg(){
+    const svg = render();
+    try {
+      await navigator.clipboard.writeText(svg);
+      alert('✅ SVG copiado al portapapeles');
+    } catch {
+      alert('⚠ No se pudo copiar. Revisa permisos del navegador.');
+    }
+  }
+
+  function downloadSvg(){
+    const svg = render();
+    const blob = new Blob([svg], { type:'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `avatar_${(seed?.value||'mrp').replace(/\s+/g,'_')}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function downloadPng(){
+    // Solo para descarga local (NO guardamos PNG en servidor)
+    const svg = render();
+    const svgBlob = new Blob([svg], { type:'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    img.onload = () => {
+      const ctx = cnv.getContext('2d');
+      ctx.clearRect(0,0,cnv.width,cnv.height);
+      ctx.fillStyle = bgColor?.value || '#ffffff';
+      ctx.fillRect(0,0,cnv.width,cnv.height);
+
+      const scale = Math.min(cnv.width / img.width, cnv.height / img.height);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      const x = (cnv.width - w)/2;
+      const y = (cnv.height - h)/2;
+      ctx.drawImage(img, x, y, w, h);
+
+      cnv.toBlob((blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `avatar_${(seed?.value||'mrp').replace(/\s+/g,'_')}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }, 'image/png');
+
+      URL.revokeObjectURL(url);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      alert('⚠ No se pudo convertir a PNG. Descarga SVG o prueba otro navegador.');
+    };
+
+    img.src = url;
+  }
+
+  // =========================================================
+  //  SAVE AVATAR -> BACKEND (UNA SOLA FUNCIÓN)
+  // =========================================================
+  function svgToDataUrl(svg){
+    const encoded = btoa(unescape(encodeURIComponent(svg)));
+    return 'data:image/svg+xml;base64,' + encoded;
+  }
+
+  async function saveAvatar(){
+    const usuarioid = Number(usuarioidEl?.value || 0);
+    if (!usuarioid) { alert('⚠ No se recibió usuarioid'); return; }
+
+    const payload = {
+      usuarioid,
+      gender: currentGender(),
+      seed: (seed?.value || 'usr-193d5885'),
+      options: buildOptions(),     // JSON completo
+      svg: render()                // SVG final
+    };
+
+    // UX: actualizar “foto” en pantalla inmediato
+    if (imgProfile) imgProfile.src = svgToDataUrl(payload.svg);
+
+    try {
+      const res = await fetch(MRP_ENDPOINT_SAVE_AVATAR, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json().catch(()=>null);
+
+      if (!res.ok || !data || data.status === false) {
+        console.warn('RESP:', data);
+        alert('⚠ No se pudo guardar el avatar. Revisa endpoint/servidor.');
+        return;
+      }
+
+      // si tu backend regresa url, úsala y evita el dataurl
+      if (data.url && imgProfile) imgProfile.src = data.url + '?v=' + Date.now();
+
+      // MUY IMPORTANTE: actualizar cache local “guardado”
+      window.MRP_AVATAR_SAVED = {
+        usuarioid,
+        seed: payload.seed,
+        gender: payload.gender,
+        options: payload.options,
+        url: data.url || (window.MRP_AVATAR_SAVED?.url || '')
+      };
+
+      alert('✅ Avatar guardado correctamente');
+    } catch (e) {
+      console.error(e);
+      alert('⚠ Error de red al guardar avatar (endpoint/servidor).');
+    }
+  }
+
+  // =========================================================
+  //  INIT DESDE BD (evita que siempre sea usr-193d5885)
+  // =========================================================
+  function parseMaybeJson(v){
+    if (!v) return null;
+    if (typeof v === 'object') return v;
+    try { return JSON.parse(v); } catch { return null; }
+  }
+
+  function applySavedOptions(savedOptions){
+    if (!savedOptions) return;
+
+    const get1 = (x) => Array.isArray(x) ? x[0] : x;
+
+    if (top && get1(savedOptions.top)) top.value = get1(savedOptions.top);
+    if (accessories && get1(savedOptions.accessories)) accessories.value = get1(savedOptions.accessories);
+    if (eyes && get1(savedOptions.eyes)) eyes.value = get1(savedOptions.eyes);
+    if (mouth && get1(savedOptions.mouth)) mouth.value = get1(savedOptions.mouth);
+    if (clothing && get1(savedOptions.clothing)) clothing.value = get1(savedOptions.clothing);
+    if (facialHair && get1(savedOptions.facialHair)) facialHair.value = get1(savedOptions.facialHair);
+
+    const hexToInput = (arrOrVal, fallback) => {
+      const v = get1(arrOrVal);
+      if (!v) return fallback;
+      const s = String(v).trim();
+      return s.startsWith('#') ? s : ('#' + s);
+    };
+
+    if (skinColor && savedOptions.skinColor) skinColor.value = hexToInput(savedOptions.skinColor, skinColor.value);
+    if (hairColor && savedOptions.hairColor) hairColor.value = hexToInput(savedOptions.hairColor, hairColor.value);
+    if (clothingColor && savedOptions.clothingColor) clothingColor.value = hexToInput(savedOptions.clothingColor, clothingColor.value);
+    if (bgColor && savedOptions.backgroundColor) bgColor.value = hexToInput(savedOptions.backgroundColor, bgColor.value);
+  }
+
+  (function initFromDB(){
+    // defaults mínimos
+    if (seed && !seed.value) seed.value = 'usr-193d5885';
+    if (skinColor && !skinColor.value) skinColor.value = '#f2d3b1';
+    if (hairColor && !hairColor.value) hairColor.value = '#2f2f2f';
+    if (clothingColor && !clothingColor.value) clothingColor.value = '#e97e2e';
+    if (bgColor && !bgColor.value) bgColor.value = '#ffffff';
+
+    const saved = window.MRP_AVATAR_SAVED || null;
+
+    // si no hay nada guardado => unisex preset + render
+    if (!saved || (!saved.seed && !saved.options && !saved.url)) {
+      setGenderUI('unisex');
+      applyPreset('unisex');
+      render();
+      return;
+    }
+
+    // si hay url del avatar, actualiza imagen principal
+    if (saved.url && imgProfile) {
+      imgProfile.src = saved.url + '?v=' + Date.now();
+    }
+
+    // seed guardado
+    if (saved.seed && seed) seed.value = saved.seed;
+
+    // gender guardado
+    setGenderUI(saved.gender || 'unisex');
+
+    // options guardadas
+    const opts = parseMaybeJson(saved.options);
+    if (opts) applySavedOptions(opts);
+    else applyPreset(saved.gender || 'unisex');
+
+    render();
+  })();
+
+  // =========================================================
+  //  EVENTS
+  // =========================================================
+  btnGenSeed?.addEventListener('click', () => {
+    seed.value = 'usr-' + Math.random().toString(16).slice(2,10);
+    render();
+  });
+
+  btnRandom?.addEventListener('click', () => {
+    seed.value = 'usr-' + Math.random().toString(16).slice(2,10);
+
+    const gen = currentGender();
+    if (gen === 'male') {
+      top.value = pick(CATALOG.top.filter(x => x.startsWith('shortHair') || x === 'noHair'));
+      facialHair.value = pick(CATALOG.facialHair.filter(x => x !== 'blank'));
+    } else if (gen === 'female') {
+      top.value = pick(CATALOG.top.filter(x => x.startsWith('longHair')));
+      facialHair.value = 'blank';
+    } else {
+      top.value = pick(CATALOG.top);
+      facialHair.value = pick(CATALOG.facialHair);
+    }
+
+    accessories.value = pick(CATALOG.accessories);
+    eyes.value = pick(CATALOG.eyes);
+    mouth.value = pick(CATALOG.mouth);
+    clothing.value = pick(CATALOG.clothing);
+    clothingColor.value = pick(['#e97e2e','#0f172a','#2563eb','#16a34a','#ef4444']);
+    render();
+  });
+
+  btnReset?.addEventListener('click', () => {
+    seed.value = 'usr-193d5885';
+    skinColor.value = '#f2d3b1';
+    hairColor.value = '#2f2f2f';
+    clothingColor.value = '#e97e2e';
+    bgColor.value = '#ffffff';
+    setGenderUI('unisex');
+    applyPreset('unisex');
+  });
+
+  [seed, top, accessories, eyes, mouth, clothing, facialHair, skinColor, hairColor, clothingColor, bgColor].forEach(el => {
+    el?.addEventListener('input', render);
+    el?.addEventListener('change', render);
+  });
+
+  gMale?.addEventListener('change', () => applyPreset('male'));
+  gFemale?.addEventListener('change', () => applyPreset('female'));
+  gUnisex?.addEventListener('change', () => applyPreset('unisex'));
+
+  btnCopySvg?.addEventListener('click', copySvg);
+  btnDlSvg?.addEventListener('click', downloadSvg);
+  btnDlPng?.addEventListener('click', downloadPng);
+
+  btnSaveAvatar?.addEventListener('click', saveAvatar);
+
+  // Render inicial (por si acaso)
+  render();
+</script>

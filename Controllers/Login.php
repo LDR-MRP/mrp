@@ -37,6 +37,7 @@
 						if($arrData['status'] == 1){ 
 							$_SESSION['idUser'] = $arrData['idusuario'];
 							$_SESSION['login'] = true; 
+							$_SESSION['avatar'] = $arrData['avatar'];
 
 							$arrData = $this->model->sessionLogin($_SESSION['idUser']);
 

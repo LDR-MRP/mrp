@@ -15,6 +15,7 @@
 		private $strNit;
 		private $strNomFiscal;
 		private $strDirFiscal;
+		private $strAvatar;
 
 		public function __construct()
 		{
@@ -80,6 +81,22 @@
 			$request = $this->select($sql);
 			return $request;
 		}
+
+				public function getUsuarioDatada(){
+
+				$usuarioId=	$_SESSION['idUser'];
+			// $this->intIdUsuario = $idusuario;
+			$sql = "SELECT p.idusuario,p.nombres,p.apellidos,p.telefono,p.email_user,p.nit,p.nombrefiscal,p.direccionfiscal,r.idrol,r.nombrerol,p.status, avatar_file,avatar_seed,avatar_gender,avatar_options 
+					FROM usuarios p
+					INNER JOIN rol r
+					ON p.rolid = r.idrol
+					WHERE p.idusuario = $usuarioId";
+			$request = $this->select($sql);
+			return $request;
+		}
+
+
+		
 
 		public function updateUsuario(int $idUsuario, string $nombre, string $apellido, int $telefono, string $email, string $password, int $tipoid, int $status){
 
@@ -175,6 +192,45 @@
 			$request = $this->update($sql,$arrData);
 		    return $request;
 		}
+
+		public function updateAvatarUser(int $idUsuario, string $avatar){
+			$this->intIdUsuario = $idUsuario;
+			$this->strAvatar = $avatar;
+			$sql = "UPDATE usuarios SET avatar=?
+						WHERE idusuario = $this->intIdUsuario ";
+			$arrData = array($this->strAvatar);
+			$request = $this->update($sql,$arrData);
+		    return $request;
+
+		}
+
+
+
+		public function getAvatarByUser(int $usuarioid)
+{
+	$this->intIdUsuario = $usuarioid;
+    $sql = "SELECT idusuario, avatar_file, avatar_seed, avatar_gender, avatar_options
+            FROM usuarios
+            WHERE idusuario = $this->intIdUsuario";
+    // return $this->select($sql, [$usuarioid]);
+
+
+				$request = $this->select($sql);
+			return $request;
+}
+
+public function updateAvatarUsuario(int $usuarioid, string $filename, string $seed, string $gender, string $optionsJson)
+{
+    $sql = "UPDATE usuarios
+            SET avatar_file = ?,
+                avatar_seed = ?,
+                avatar_gender = ?,
+                avatar_options = ?,
+                avatar_updated_at = NOW()
+            WHERE idusuario = ?";
+    return $this->update($sql, [$filename, $seed, $gender, $optionsJson, $usuarioid]);
+}
+
 
 	}
  ?>

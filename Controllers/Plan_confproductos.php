@@ -205,11 +205,12 @@ class Plan_confproductos extends Controllers
 				// $btnViewPendiente = '<button class="btn btn-sm btn-soft-info edit-list" title="Ver Producto" ><i class="ri-eye-fill align-bottom text-muted"></i></button>';
 
 				$btnEdit = '<button class="btn btn-sm btn-soft-warning edit-list" title="Editar Producto" onClick="fntEditProducto(' . $arrData[$i]['idproducto'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
+				$btnReporte = '<button class="btn btn-sm btn-soft-danger edit-file" title="Generar reporte" onClick="fntReportProducto(' . $arrData[$i]['idproducto'] . ')"><i class="ri-file-text-line me-1"></i></button>';
+ 
 
-
-
+ 
 				// $arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . '</div>';
-				$arrData[$i]['options'] = '<div class="text-center">'  . $btnEdit . '</div>';
+				$arrData[$i]['options'] = '<div class="text-center">' . $btnReporte .' '  . $btnEdit . '</div>';
 			}
 			echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
 		}
@@ -1338,7 +1339,6 @@ public function getRuta($rutaid)
 
     $arrData = $this->model->selectRutaByProducto($rutaid);
 
-    // Si no hay datos
     if (empty($arrData)) {
         echo json_encode([
             'status' => false,
@@ -1346,11 +1346,33 @@ public function getRuta($rutaid)
         ]);
         die();
     }
-
-    // ✅ Respuesta EXACTA que espera el frontend
     echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
     die();
 }
+
+
+
+	//FUNCIÓN PARA GENERAR EL REPORTE DEL PRODUCTO PDF
+
+	public function getProductoReporte($idproducto)
+	{ 
+		// if($_SESSION['permisosMod']['r']){
+		$intidproducto = intval($idproducto);
+		if ($intidproducto > 0) {
+			$arrData = $this->model->selectProductoReporte($intidproducto);
+			if (empty($arrData)) {
+				$arrResponse = array('status' => false, 'msg' => 'Datos no encontrados.');
+			} else {
+				$arrResponse = array('status' => true, 'data' => $arrData);
+			}
+
+			// dep($arrData);
+			// exit;
+			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+		}
+		// }
+		die();
+	}
 
 
 

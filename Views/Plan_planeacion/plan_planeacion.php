@@ -5,28 +5,37 @@
   /* -----------------------------
      SIDE PANEL (UX PRO)
   ------------------------------*/
-  .side-panel-fixed { min-height: 680px; }
+  .side-panel-fixed {
+    min-height: 680px;
+  }
+
   .side-hero {
-    height: 220px; /* imagen grande fija */
-    border: 1px dashed rgba(0,0,0,.10);
+    height: 220px;
+    /* imagen grande fija */
+    border: 1px dashed rgba(0, 0, 0, .10);
     border-radius: 14px;
-    display:flex; align-items:center; justify-content:center;
-    background: rgba(0,0,0,.015);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, .015);
     overflow: hidden;
   }
-  .side-hero img{
+
+  .side-hero img {
     height: 200px;
     width: 100%;
     object-fit: contain;
   }
+
   .side-divider {
     height: 1px;
-    background: rgba(0,0,0,.08);
+    background: rgba(0, 0, 0, .08);
     margin: 14px 0;
   }
-  .btn-nav.active{
-    box-shadow: 0 0.35rem 1rem rgba(0,0,0,.08);
-    border-color: rgba(0,0,0,.12) !important;
+
+  .btn-nav.active {
+    box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, .08);
+    border-color: rgba(0, 0, 0, .12) !important;
     transform: translateY(-1px);
   }
 
@@ -34,10 +43,10 @@
      TOP HEADER “estado” (listas)
   ------------------------------*/
   .view-header {
-    border: 1px solid rgba(0,0,0,.08);
+    border: 1px solid rgba(0, 0, 0, .08);
     border-radius: 14px;
     padding: 14px 16px;
-    background: rgba(0,0,0,.015);
+    background: rgba(0, 0, 0, .015);
   }
 
   /* -----------------------------
@@ -48,7 +57,7 @@
     bottom: 0;
     z-index: 10;
     background: #fff;
-    border-top: 1px solid rgba(0,0,0,.08);
+    border-top: 1px solid rgba(0, 0, 0, .08);
     padding: 12px 12px;
     border-radius: 0 0 14px 14px;
   }
@@ -165,7 +174,7 @@
         </div>
 
         <!-- Formulario (NO mover contenido) -->
-        <div class="col-12 col-xxl-6">
+        <div class="col-12 col-xxl-4">
           <div class="card h-100">
             <div class="card-body">
               <div class="row g-3">
@@ -173,24 +182,33 @@
                 <!-- Producto -->
                 <div class="col-12">
                   <label class="form-label fw-semibold">Producto</label>
-                  <select class="form-select" id="selectProducto" required>
+                  <select class="form-select" id="selectProducto" name="selectProducto" required>
                     <option value="">-- Selecciona producto --</option>
                   </select>
                   <div class="help mt-1">Al seleccionar, se cargan ruta (estaciones) y operadores disponibles.</div>
+                </div>
+
+
+                                <!-- Num pedido -->
+                <div class="col-12">
+                  <label class="form-label fw-semibold">Número de pedido</label>
+                  <input class="form-control" id="numPedido" 
+                    placeholder="Escribe el número de pedido..." autocomplete="off">
+                  <div class="help mt-1">Ej: “PO-1000200002”.</div>
                 </div>
 
                 <!-- Supervisor -->
                 <div class="col-12">
                   <label class="form-label fw-semibold">Supervisor</label>
                   <input class="form-control" id="inputSupervisor" list="datalistSupervisores"
-                         placeholder="Escribe para buscar supervisor..." autocomplete="off">
+                    placeholder="Escribe para buscar supervisor..." autocomplete="off">
                   <datalist id="datalistSupervisores">
-                    <option value="SUP-001 - Sergio Ramírez"></option>
-                    <option value="SUP-002 - Isaura Hernández"></option>
-                    <option value="SUP-003 - Jorge Martínez"></option>
-                    <option value="SUP-004 - Astrid Gómez"></option>
+                    <option value="Sergio Ramírez"></option>
+                    <option value="Isaura Hernández"></option>
+                    <option value="Jorge Martínez"></option>
+                    <option value="Sofía Gómez"></option>
                   </datalist>
-                  <div class="help mt-1">Ej: “SUP-002 - Isaura Hernández”.</div>
+                  <div class="help mt-1">Ej: “Carlos Cruz Castañeda”.</div>
                 </div>
 
                 <!-- Prioridad -->
@@ -216,7 +234,7 @@
                     </div>
                     <div class="col-12 col-md-4">
                       <label class="form-label fw-semibold">Inicio producción</label>
-                      <input type="date" class="form-control" id="fechaInicio" required>
+                      <input type="datetime-local" class="form-control" id="fechaInicio" required>
                     </div>
                     <div class="col-12 col-md-4">
                       <label class="form-label fw-semibold">Fecha requerida</label>
@@ -233,7 +251,7 @@
                 </div>
 
                 <!-- Recomendación -->
-                <div class="col-12">
+                <!-- <div class="col-12">
                   <div class="alert alert-light border mb-0">
                     <div class="small text-muted mb-1">
                       <i class="ri-information-line me-1"></i> Recomendación automotriz
@@ -243,7 +261,7 @@
                       <b>Lote</b> y <b>Revisión de ingeniería</b>.
                     </div>
                   </div>
-                </div>
+                </div> -->
 
               </div><!-- /row -->
             </div>
@@ -261,7 +279,7 @@
         </div>
 
         <!-- Ruta / Estaciones (NO mover contenido) -->
-        <div class="col-12 col-xxl-6">
+        <div class="col-12 col-xxl-8">
           <div class="card h-100">
             <div class="card-body">
 
@@ -280,6 +298,17 @@
                   <!-- <button class="btn btn-outline-primary btn-sm" id="btnAutoAsignar" type="button">
                     <i class="ri-magic-line me-1"></i> Auto-asignar (demo)
                   </button> -->
+                </div>
+              </div>
+
+              <!-- ALERTA DE BLOQUEO POR MANTENIMIENTO -->
+              <div id="alertMantenimientoBloqueo" class="alert alert-danger d-none mb-3" role="alert">
+                <div class="d-flex align-items-start gap-2">
+                  <i class="ri-error-warning-line fs-4"></i>
+                  <div>
+                    <div class="fw-bold">No podrás guardar esta configuración</div>
+                    <div>Porque al menos una estación se encuentra <b>En proceso</b> de mantenimiento.</div>
+                  </div>
                 </div>
               </div>
 
@@ -311,7 +340,7 @@
           </div>
         </div>
 
-      </div><!-- /viewNueva -->
+      </div>
 
       <!-- =========================
            VISTA: LISTADOS (Full + Filtros + Acciones)
@@ -345,7 +374,8 @@
               <div class="row g-2 align-items-end">
                 <div class="col-12 col-md-4 col-xxl-3">
                   <label class="form-label mb-1 small text-muted">Buscar</label>
-                  <input type="text" class="form-control form-control-sm" id="filterSearch" placeholder="Folio / producto...">
+                  <input type="text" class="form-control form-control-sm" id="filterSearch"
+                    placeholder="Folio / producto...">
                 </div>
                 <div class="col-12 col-md-4 col-xxl-3">
                   <label class="form-label mb-1 small text-muted">Desde</label>
@@ -371,9 +401,7 @@
                   </button>
                 </div>
               </div>
-              <div class="text-muted small mt-2">
-                <i class="ri-lightbulb-line me-1"></i> Estos filtros están listos; luego los conectas a tu AJAX/SQL.
-              </div>
+         
             </div>
           </div>
         </div>
@@ -426,5 +454,179 @@
   </footer>
 </div>
 
-<?php footerAdmin($data); ?>
 
+
+<div class="modal fade" id="modalAddOperador" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0">
+      <div class="modal-header bg-primary-subtle p-3">
+     <h5 class="modal-title" id="titleModal">Agregar operadores</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="close-modal"></button>
+      </div>
+<div class="modal-body">
+
+
+  <div class="alert alert-primary-subtle border mb-3" role="alert">
+    <div class="d-flex gap-2">
+      <i class="ri-mail-send-line fs-4"></i>
+      <div>
+        <div class="fw-bold">Notificación a operadores</div>
+        <div class="text-muted">
+          Al guardar la planeación, los operadores asignados recibirán una notificación por correo con los detalles del pedido
+          (producto, fechas y estación asignada). Verifica la información antes de aplicar la asignación.
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="text-center mb-3">
+    <div class="fw-bold fs-5" id="modalEstacionNombre">—</div>
+    <div class="text-muted" id="modalEstacionProceso">—</div>
+    <input type="text" id="modalEstacionId" value="">
+  </div>
+
+  <div class="row g-3">
+
+    <div class="col-12 col-lg-7">
+      <div class="mb-2">
+
+        <label class="form-label fw-semibold mb-1">Encargado (Supervisor)</label>
+        <select class="form-select" id="listOperadores" name="listOperadores">
+          <option value="" selected>-- Selecciona encargado --</option>
+        </select>
+        <div class="form-text">El encargado siempre será uno.</div>
+      </div>
+
+      <div class="mt-3">
+        <label class="form-label fw-semibold mb-1">Ayudantes (Operadores)</label>
+        <select class="form-select" id="selectAyudantes" multiple size="8" name="selectAyudantes">
+        </select>
+        <div class="form-text">Puedes seleccionar varios (Ctrl o Shift).</div>
+      </div>
+    </div>
+
+
+    <div class="col-12 col-lg-5">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="fw-semibold mb-2">Sugerencias</div>
+          <div class="text-muted mb-2">Buenas prácticas:</div>
+          <ul class="mb-0">
+
+            <li>Evitar sobre-asignación</li>
+            <li>Considerar estaciones críticas</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<div class="modal-footer">
+  <div class="hstack gap-2 justify-content-end w-100">
+    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+    <button type="button" class="btn btn-primary" id="btnAplicarAsignacion">
+      <i class="ri-check-line me-1"></i> Aplicar asignación
+    </button>
+  </div>
+</div>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+<div class="modal fade" id="modalFaltantesInventario" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0">
+      <div class="modal-header bg-danger-subtle p-3">
+        <h5 class="modal-title" id="titleModalFaltantes">Faltantes de inventario</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="text-muted small mb-2" id="subTitleFaltantes">Estación: —</div>
+
+        <div class="table-responsive">
+          <table class="table table-sm table-striped align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Componente</th>
+                <th class="text-end">Requerido</th>
+                <th class="text-end">Existencia</th>
+                <th class="text-end">Faltante</th>
+                <th>Almacén</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyFaltantes">
+              <tr>
+                <td colspan="5" class="text-center text-muted py-3">Sin información</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<div class="modal fade" id="modalFaltantesHerramientas" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0">
+      <div class="modal-header bg-danger-subtle p-3">
+        <h5 class="modal-title" id="titleModalFaltantesHer">Faltantes de herramientas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="text-muted small mb-2" id="subTitleFaltantesHer">Estación: —</div>
+
+        <div class="table-responsive">
+          <table class="table table-sm table-striped align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Herramienta</th>
+                <th class="text-end">Requerido</th>
+                <th class="text-end">Existencia</th>
+                <th class="text-end">Faltante</th>
+                <th>Almacén</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyFaltantesHer">
+              <tr>
+                <td colspan="5" class="text-center text-muted py-3">Sin información</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+<?php footerAdmin($data); ?>

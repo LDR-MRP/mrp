@@ -16,7 +16,7 @@
 		{
 			$this->strUsuario = $usuario;
 			$this->strPassword = $password;
-			$sql = "SELECT idusuario,status FROM usuarios WHERE 
+			$sql = "SELECT idusuario,status,avatar FROM usuarios WHERE 
 					email_user = '$this->strUsuario' and 
 					password = '$this->strPassword' and 
 					status != 0 ";
@@ -36,7 +36,8 @@
 							p.nombrefiscal,
 							p.direccionfiscal,
 							r.idrol,r.nombrerol,
-							p.status 
+							p.status,
+							p.avatar 
 					FROM usuarios p
 					INNER JOIN rol r
 					ON p.rolid = r.idrol

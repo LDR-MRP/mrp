@@ -1260,6 +1260,261 @@ public function softDeleteHerramientasNoIncluidos($idAlmacen, $idProducto, $idEs
 	}
 
 
+	//FUNCIÓN PARA GENERAR EL REPORTE DEL PRODUCTO PDF
+public function selectProductoReporte(int $productoid)
+{
+    $this->intIdProducto = $productoid;
+
+    // ---------------------------------------------------------
+    // PRODUCTO (OBJETO ÚNICO)
+    // ---------------------------------------------------------
+    $sqlProd = "SELECT p.*,l.nombre_linea,pl.nombre_planta
+                FROM mrp_productos p
+				INNER JOIN mrp_linea AS l
+				ON p.lineaproductoid = l.idlinea
+				INNER JOIN mrp_planta AS pl
+				ON l.plantaid = pl.idplanta
+                WHERE p.idproducto = {$this->intIdProducto}
+                LIMIT 1";
+    $producto = $this->select($sqlProd);
+
+    if (empty($producto)) {
+        return [
+            'producto' => false,
+            'msg'      => 'No existe el producto',
+            'documentacion' => [
+                'status' => false,
+                'msg'    => 'No existe ningun registro',
+                'data'   => []
+            ],
+            'descriptiva_tecnica' => [
+                'status' => false,
+                'msg'    => 'No existe información',
+                'data'   => (object)[]
+            ],
+            'producto_configurado' => [
+                'status' => false,
+                'msg'    => 'No existe configuración de ruta',
+                'data'   => (object)[]
+            ],
+        ];
+    }
+
+    // ---------------------------------------------------------
+    // DOCUMENTACIÓN ASOCIADA (LISTA)
+    // ---------------------------------------------------------
+    $sqlDocs = "SELECT *
+                FROM mrp_productos_documentos
+                WHERE productoid = {$this->intIdProducto}
+                  AND estado = 2";
+    $docs = $this->select_all($sqlDocs);
+
+    $documentacion = !empty($docs)
+        ? ['status' => true,  'data' => $docs]
+        : ['status' => false, 'msg'  => 'No existe ningun registro', 'data' => []];
+
+    // ---------------------------------------------------------
+    // DESCRIPTIVA TÉCNICA (OBJETO ÚNICO)
+    // ---------------------------------------------------------
+    $sqlDesc = "SELECT *
+                FROM mrp_productos_descriptiva
+                WHERE productoid = {$this->intIdProducto}
+                  AND estado = 2
+                LIMIT 1";
+    $desc = $this->select($sqlDesc);
+
+    $descriptiva_tecnica = !empty($desc)
+        ? ['status' => true,  'data' => $desc]
+        : ['status' => false, 'msg'  => 'No existe información', 'data' => (object)[]];
+
+    // ---------------------------------------------------------
+    // RUTA CONFIGURADA (OBJETO + ESTACIONES)
+    // ---------------------------------------------------------
+    $sqlRuta = "SELECT *
+                FROM mrp_producto_ruta
+                WHERE productoid = {$this->intIdProducto}
+                  AND estado = 2
+                LIMIT 1";
+    $ruta = $this->select($sqlRuta);
+
+    if (empty($ruta)) {
+        return [
+            'producto'             => $producto,
+            'documentacion'        => $documentacion,
+            'descriptiva_tecnica'  => $descriptiva_tecnica,
+            'producto_configurado' => [
+                'status' => false,
+                'msg'    => 'No existe configuración de ruta',
+                'data'   => (object)[]
+            ]
+        ];
+    }
+
+    // id ruta principal
+    $idruta_producto = (int)($ruta['idruta_producto'] ?? 0);
+
+    // Si por alguna razón no existe el id
+    if ($idruta_producto <= 0) {
+        $ruta['estaciones_registradas'] = [];
+        return [
+            'producto'             => $producto,
+            'documentacion'        => $documentacion,
+            'descriptiva_tecnica'  => $descriptiva_tecnica,
+            'producto_configurado' => [
+                'status' => true,
+                'data'   => $ruta
+            ]
+        ];
+    }
+
+    // ---------------------------------------------------------
+    // ESTACIONES REGISTRADAS (la configuraciuon la hice en unaa sola consulta)
+    // ---------------------------------------------------------
+    $sqlEst = "SELECT
+                    d.iddetalle,
+                    d.ruta_productoid,
+                    d.estacionid,
+                    d.orden,
+                    d.estado AS estado_detalle,
+
+                    e.idestacion        AS est_idestacion,
+                    e.estado            AS est_estado,
+                    e.cve_estacion      AS est_cve_estacion,
+                    e.nombre_estacion   AS est_nombre_estacion
+               FROM mrp_producto_ruta_detalle d
+               INNER JOIN mrp_estacion e ON e.idestacion = d.estacionid
+               WHERE d.ruta_productoid = {$idruta_producto}
+                 AND d.estado = 2
+                 AND e.estado = 2
+               ORDER BY d.orden ASC";
+
+    $estaciones_registradas = $this->select_all($sqlEst);
+    if (!is_array($estaciones_registradas)) $estaciones_registradas = [];
+
+    // Si no hay estaciones, igual regresa ruta con arreglo vacío
+    if (empty($estaciones_registradas)) {
+        $ruta['estaciones_registradas'] = [];
+        return [
+            'producto'             => $producto,
+            'documentacion'        => $documentacion,
+            'descriptiva_tecnica'  => $descriptiva_tecnica,
+            'producto_configurado' => [
+                'status' => true,
+                'data'   => $ruta
+            ]
+        ];
+    }
+
+    // ---------------------------------------------------------
+    // Traer ids de estaciones y consultar en bloque
+    // ---------------------------------------------------------
+    $idsEstaciones = [];
+    foreach ($estaciones_registradas as $r) {
+        $idsEstaciones[] = (int)($r['estacionid'] ?? 0);
+    }
+    $idsEstaciones = array_values(array_unique(array_filter($idsEstaciones)));
+
+    $in = implode(',', $idsEstaciones);
+
+    // -----------------------------
+    // ESPECIFICACIONES 
+    // -----------------------------
+    $sqlEsp = "SELECT *
+               FROM mrp_estacion_especificaciones
+               WHERE productoid = {$this->intIdProducto}
+                 AND estado = 2
+                 AND estacionid IN ({$in})";
+    $rowsEsp = $this->select_all($sqlEsp);
+    if (!is_array($rowsEsp)) $rowsEsp = [];
+
+    // -----------------------------
+    // HERRAMIENTAS
+    // -----------------------------
+    $sqlHer = "SELECT h.*, i.descripcion AS nombre_material 
+               FROM mrp_estacion_herramientas AS h
+			   INNER JOIN wms_inventario AS i
+			   ON h.inventarioid = i.idinventario
+               WHERE productoid = {$this->intIdProducto}
+                 AND h.estado = 2
+                 AND h.estacionid IN ({$in})";
+    $rowsHer = $this->select_all($sqlHer);
+    if (!is_array($rowsHer)) $rowsHer = [];
+
+    // -----------------------------
+    // COMPONENTES 
+    // -----------------------------
+    $sqlComp = "SELECT c.*, i.descripcion AS nombre_componente
+                FROM mrp_estacion_componentes AS c
+				INNER JOIN wms_inventario AS i
+			     ON c.inventarioid = i.idinventario
+                WHERE productoid = {$this->intIdProducto}
+                  AND c.estado = 2
+                  AND c.estacionid IN ({$in})";
+    $rowsComp = $this->select_all($sqlComp);
+    if (!is_array($rowsComp)) $rowsComp = [];
+
+    // ---------------------------------------------------------
+    // Indexar por estacionidf
+    // ---------------------------------------------------------
+    $mapEsp = [];
+    foreach ($rowsEsp as $x) {
+        $eid = (int)($x['estacionid'] ?? 0);
+        if ($eid > 0) $mapEsp[$eid][] = $x;
+    }
+
+    $mapHer = [];
+    foreach ($rowsHer as $x) {
+        $eid = (int)($x['estacionid'] ?? 0);
+        if ($eid > 0) $mapHer[$eid][] = $x;
+    }
+
+    $mapComp = [];
+    foreach ($rowsComp as $x) {
+        $eid = (int)($x['estacionid'] ?? 0);
+        if ($eid > 0) $mapComp[$eid][] = $x;
+    }
+
+    // ---------------------------------------------------------
+    // Adjuntar a cada estación: especificaciones/herramientas/componentes
+    // ---------------------------------------------------------
+    foreach ($estaciones_registradas as $k => $row) {
+        $eid = (int)($row['estacionid'] ?? 0);
+
+        $esp  = $mapEsp[$eid]  ?? [];
+        $her  = $mapHer[$eid]  ?? [];
+        $comp = $mapComp[$eid] ?? [];
+
+        $estaciones_registradas[$k]['especificaciones'] = !empty($esp)
+            ? ['status' => true,  'data' => $esp]
+            : ['status' => false, 'msg' => 'No existe registro', 'data' => []];
+
+        $estaciones_registradas[$k]['herramientas'] = !empty($her)
+            ? ['status' => true,  'data' => $her]
+            : ['status' => false, 'msg' => 'No existe registro', 'data' => []];
+
+        $estaciones_registradas[$k]['componentes'] = !empty($comp)
+            ? ['status' => true,  'data' => $comp]
+            : ['status' => false, 'msg' => 'No existe registro', 'data' => []];
+    }
+
+    // agregar estaciones a ruta
+    $ruta['estaciones_registradas'] = $estaciones_registradas;
+
+    $producto_configurado = [
+        'status' => true,
+        'data'   => $ruta
+    ];
+
+    // ---------------------------------------------------------
+    // RESPUESTA FINAL
+    // ---------------------------------------------------------
+    return [
+        'producto'             => $producto,
+        'documentacion'        => $documentacion,
+        'descriptiva_tecnica'  => $descriptiva_tecnica,
+        'producto_configurado' => $producto_configurado
+    ];
+}
 
 
 

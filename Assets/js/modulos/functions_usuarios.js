@@ -433,3 +433,18 @@ function openModal()
 function openModalPerfil(){
     $('#modalFormPerfil').modal('show');
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
