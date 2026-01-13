@@ -27,13 +27,13 @@
                 <div class="card-header">
                     <ul class="nav nav-tabs-custom card-header-tabs border-bottom-0 " role="tablist" id="nav-tab">
                         <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#listplantas" role="tab">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#listdistribuidores" role="tab">
                                 Lista de distribuidores
                             </a>
                         </li>
                         <?php if ($_SESSION['permisosMod']['w']) { ?>
                             <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#agregarplanta" role="tab">
+                                <a class="nav-link" data-bs-toggle="tab" href="#agregardistribuidores" role="tab">
                                     NUEVO
                                 </a>
                             </li>
@@ -43,7 +43,7 @@
                 <!-- end card header -->
                 <div class="card-body">
                     <div class="tab-content">
-                        <div class="tab-pane active" id="listplantas" role="tabpanel">
+                        <div class="tab-pane active" id="listdistribuidores" role="tabpanel">
 
                             <table id="cli_distribuidores"
                                 class="table table-bordered dt-responsive nowrap table-striped align-middle"
@@ -68,17 +68,17 @@
                         </div>
                         <!-- end tab-pane -->
 
-                        <div class="tab-pane" id="agregarplanta" role="tabpanel">
-                            <form id="formPlantas" autocomplete="off" class="form-steps was-validated" autocomplete="off">
-                                <input type="hidden" id="idplanta" name="idplanta">
+                        <div class="tab-pane" id="agregardistribuidores" role="tabpanel">
+                            <form id="formDistribuidores" autocomplete="off" class="form-steps was-validated" autocomplete="off">
+                                <input type="hidden" id="iddistribuidor" name="iddistribuidor">
                                 <div class="row">
                                     <!-- select grupo_id -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="listGrupos">GRUPOS</label>
+                                            <label class="form-label" for="grupo_id">GRUPOS</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>Gru</span>
-                                                <select class="form-control" id="listGrupos" name="listGrupos" required=""></select>
+                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>GRU</span>
+                                                <select class="form-control" id="grupo_id" name="grupo_id" required=""></select>
                                                 <div class="invalid-feedback">El campo grupo es obligatorio</div>
                                             </div>
                                         </div>
@@ -87,12 +87,12 @@
                                     <!-- campo nombre_comercial -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="nombre_comercial-input">NOMBRE COMERCIAL</label>
+                                            <label class="form-label" for="nombre-distribuidores-input">NOMBRE COMERCIAL</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="nombre_comercial-addon">Nom</span>
+                                                <span class="input-group-text" id="nombre-distribuidores-addon">NOM</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa el nombre comercial" id="nombre_comercial-input" name="nombre_comercial-input"
-                                                    aria-describedby="nombre_comercial-addon" required>
+                                                    placeholder="Ingresa el nombre comercial" id="nombre-distribuidores-input" name="nombre-distribuidores-input"
+                                                    aria-describedby="nombre-distribuidores-addon" required>
                                                 <div class="invalid-feedback">El campo de nombre comercial es obligatorio</div>
                                             </div>
                                         </div>
@@ -101,13 +101,13 @@
                                     <!-- campo razon_social -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="razon_social-input">RAZÓN SOCIAL</label>
+                                            <label class="form-label" for="razon-distribuidores-input">RAZON SOCIAL</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="razon_social-addon">Razón Social</span>
+                                                <span class="input-group-text" id="razon-distribuidores-addon">RAZ</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa la razón social" id="razon_social-input" name="razon_social-input"
-                                                    aria-describedby="razon_social-addon" required>
-                                                <div class="invalid-feedback">El campo de razón social es obligatorio</div>
+                                                    placeholder="Ingresa la razon social" id="razon-distribuidores-input" name="razon-distribuidores-input"
+                                                    aria-describedby="razon-distribuidores-addon" required>
+                                                <div class="invalid-feedback">El campo de razon social es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
@@ -115,13 +115,15 @@
                                     <!-- campo rfc -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="rfc-input">RFC</label>
+                                            <label class="form-label" for="rfc-distribuidores-input">RFC</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="rfc-addon">RFC</span>
+                                                <span class="input-group-text" id="rfc-distribuidores-addon">RFC</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa el RFC" id="rfc-input" name="rfc-input"
-                                                    aria-describedby="rfc-addon" required>
-                                                <div class="invalid-feedback">El campo de RFC es obligatorio</div>
+                                                    placeholder="Ingresa el RFC" id="rfc-distribuidores-input" name="rfc-distribuidores-input"
+                                                    aria-describedby="rfc-distribuidores-addon" maxlength="13" minlength="12" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g,'').toUpperCase(); validarRFC(this);"
+                                                    required>
+                                                <div class=" invalid-feedback">El campo RFC es obligatorio
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -129,38 +131,38 @@
                                     <!-- campo rpve -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="rpve">No. REPUVE</label>
+                                            <label class="form-label" for="repve-distribuidores-input">No. REPUVE</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="rpve-addon">No. REPUVE</span>
+                                                <span class="input-group-text" id="repve-distribuidores-addon">REP</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa el No. REPUVE" id="rpve" name="rpve"
-                                                    aria-describedby="rpve-addon" required>
-                                                <div class="invalid-feedback">El campo No. REPUVE es obligatorio</div>
+                                                    placeholder="Ingresa el RPVE" id="repve-distribuidores-input" name="repve-distribuidores-input"
+                                                    aria-describedby="repve-distribuidores-addon" required>
+                                                <div class="invalid-feedback">El campo REPUVE es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
-
 
                                     <!-- campo plaza -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="plaza-input">PLAZA</label>
+                                            <label class="form-label" for="plaza-distribuidores-input">PLAZA</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="plaza-addon">Plaza</span>
+                                                <span class="input-group-text" id="plaza-distribuidores-addon">PLA</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa la plaza" id="plaza-input" name="plaza-input"
-                                                    aria-describedby="plaza-addon" required>
-                                                <div class="invalid-feedback">El campo de plaza es obligatorio</div>
+                                                    placeholder="Ingresa la plaza" id="plaza-distribuidores-input" name="plaza-distribuidores-input"
+                                                    aria-describedby="plaza-distribuidores-addon" required>
+                                                <div class="invalid-feedback">El campo plaza es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
+
 
                                     <!-- campo estatus 'Activo', 'Desarrollo', 'Inactivo' -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
                                             <label class="form-label" for="estatus-select">ESTATUS</label>
                                             <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="estatus-addon">Est</span>
+                                                <span class="input-group-text" id="estatus-addon">EST</span>
                                                 <select class="form-select" id="estatus-select" name="estatus-select"
                                                     aria-describedby="estatus-addon" required>
                                                     <option value="Activo" selected>Activo</option>
@@ -177,7 +179,7 @@
                                         <div class="mb-3">
                                             <label class="form-label" for="tipo_negocio-select">TIPO DE NEGOCIO</label>
                                             <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="tipo_negocio-addon">Tipo</span>
+                                                <span class="input-group-text" id="tipo_negocio-addon">TIP</span>
                                                 <select class="form-select" id="tipo_negocio-select" name="tipo_negocio-select"
                                                     aria-describedby="tipo_negocio-addon" required>
                                                     <option value="Matriz" selected>Matriz</option>
@@ -191,12 +193,12 @@
                                     <!-- campo telefono -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="telefono-input">TELEFONO</label>
+                                            <label class="form-label" for="telefono-distribuidores-input">TELEFONO</label>
                                             <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="telefono-addon">Tel</span>
+                                                <span class="input-group-text" id="telefono-distribuidores-addon">TEL</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa el telefono" id="telefono-input" name="telefono-input"
-                                                    aria-describedby="telefono-addon" required>
+                                                    placeholder="Ingresa el telefono" id="telefono-distribuidores-input" name="telefono-distribuidores-input" maxlength="10" minlength="10"
+                                                    aria-describedby="telefono-distribuidores-addon" required>
                                                 <div class="invalid-feedback">El campo telefono es obligatorio</div>
                                             </div>
                                         </div>
@@ -207,40 +209,81 @@
                                         <div class="mb-3">
                                             <label class="form-label" for="telefono_alt-input">TELEFONO ALTERNATIVO</label>
                                             <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="telefono_alt-addon">Tel Alt</span>
+                                                <span class="input-group-text" id="telefono_alt-addon">TEL</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa el telefono alternativo" id="telefono_alt-input" name="telefono_alt-input"
+                                                    placeholder="Ingresa el telefono alternativo" id="telefono_alt-input" name="telefono_alt-input" maxlength="10" minlength="10"
                                                     aria-describedby="telefono_alt-addon">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Modelos disponibles</label>
+                                            <ul id="modelosDisponibles" class="list-group modelos-box"></ul>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label class="form-label">Modelos seleccionados</label>
+                                            <ul id="modelosSeleccionados" class="list-group modelos-box"></ul>
+
+                                            <div
+                                                id="modelosHint"
+                                                class="text-muted text-center py-2 small">
+                                                Arrastra modelos aquí
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <div class="input-group mb-3">
+                                                <select class="form-control d-none" id="listModelos" name="listModelos[]" multiple required=""></select>
+                                                <div class="invalid-feedback">El campo modelos es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <hr class="mb-4">
 
+                                    <h5 class="mb-3">Direcciones</h5>
+
+                                    <div class="col-lg-12">
+                                        <div class="form-check mb-3">
+                                            <input class="form-check-input" type="checkbox" id="mismaDireccion" name="mismaDireccion"
+                                                value="1" checked>
+                                            <label class="form-check-label" for="mismaDireccion">
+                                                La dirección fiscal es la misma que la dirección principal
+                                            </label>
+                                        </div>
+                                    </div>
+
+
                                     <!-- campo tipo tipo 'Fiscal', 'Comercial', 'Taller', 'Sucursal' -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="tipo-input">TIPO</label>
-                                            <select class="form-select" id="tipo-input" name="tipo-input" required>
-                                                <option value="" disabled selected>Selecciona un tipo</option>
-                                                <option value="Fiscal">Fiscal</option>
-                                                <option value="Comercial">Comercial</option>
-                                                <option value="Taller">Taller</option>
-                                                <option value="Sucursal">Sucursal</option>
-                                            </select>
-                                            <div class="invalid-feedback">El campo tipo es obligatorio</div>
+                                            <label class="form-label" for="tipo-select">TIPO</label>
+                                            <div class="input-group has-validation mb-3">
+                                                <span class="input-group-text" id="tipo-addon">TIP</span>
+                                                <select class="form-select" id="tipo-select" name="tipo-select" aria-describedby="tipo-addon" required>
+                                                    <option value="Comercial">Comercial</option>
+                                                    <option value="Taller">Taller</option>
+                                                    <option value="Sucursal">Sucursal</option>
+                                                </select>
+                                                <div class="invalid-feedback">El campo tipo es obligatorio</div>
+                                            </div>
                                         </div>
                                     </div>
 
                                     <!-- campo calle -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="calle-input">CALLE</label>
+                                            <label class="form-label" for="calle-distribuidores-input">CALLE</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="calle-addon">Calle</span>
+                                                <span class="input-group-text" id="calle-distribuidores-addon">CAL</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa la calle" id="calle-input" name="calle-input"
-                                                    aria-describedby="calle-addon" required>
+                                                    placeholder="Ingresa la calle" id="calle-distribuidores-input" name="calle-distribuidores-input"
+                                                    aria-describedby="calle-distribuidores-addon" required>
                                                 <div class="invalid-feedback">El campo calle es obligatorio</div>
                                             </div>
                                         </div>
@@ -249,12 +292,12 @@
                                     <!-- campo numero_ext -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="numero_ext-input">NUMERO EXTERIOR</label>
+                                            <label class="form-label" for="numero_ext-distribuidores-input">NUMERO EXTERIOR</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="numero_ext-addon">Número Exterior</span>
+                                                <span class="input-group-text" id="numero_ext-distribuidores-addon">NUM</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa el número exterior" id="numero_ext-input"
-                                                    name="numero_ext-input" aria-describedby="numero_ext-addon">
+                                                    placeholder="Ingresa el número exterior" id="numero_ext-distribuidores-input"
+                                                    name="numero_ext-distribuidores-input" maxlength="5" aria-describedby="numero_ext-distribuidores-addon">
                                             </div>
                                         </div>
                                     </div>
@@ -262,12 +305,12 @@
                                     <!-- campo numero_int -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="numero_int-input">NUMERO INTERIOR</label>
+                                            <label class="form-label" for="numero_int-distribuidores-input">NUMERO INTERIOR</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="numero_int-addon">Número Interior</span>
+                                                <span class="input-group-text" id="numero_int-distribuidores-addon">NUM</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa el número interior" id="numero_int-input"
-                                                    name="numero_int-input" aria-describedby="numero_int-addon">
+                                                    placeholder="Ingresa el número interior" id="numero_int-distribuidores-input"
+                                                    name="numero_int-distribuidores-input" maxlength="5" aria-describedby="numero_int-distribuidores-addon">
                                             </div>
                                         </div>
                                     </div>
@@ -275,12 +318,12 @@
                                     <!-- campo colonia -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="colonia-input">COLONIA</label>
+                                            <label class="form-label" for="colonia-distribuidores-input">COLONIA</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="colonia-addon">Colonia</span>
+                                                <span class="input-group-text" id="colonia-distribuidores-addon">COL</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa la colonia" id="colonia-input" name="colonia-input"
-                                                    aria-describedby="colonia-addon" required>
+                                                    placeholder="Ingresa la colonia" id="colonia-distribuidores-input" name="colonia-distribuidores-input"
+                                                    aria-describedby="colonia-distribuidores-addon" required>
                                                 <div class="invalid-feedback">El campo colonia es obligatorio</div>
                                             </div>
                                         </div>
@@ -289,12 +332,12 @@
                                     <!-- campo codigo_postal -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="codigo_postal-input">CÓDIGO POSTAL</label>
+                                            <label class="form-label" for="codigo_postal-distribuidores-input">CÓDIGO POSTAL</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="codigo_postal-addon">Código Postal</span>
+                                                <span class="input-group-text" id="codigo_postal-distribuidores-addon">CP</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa el código postal" id="codigo_postal-input"
-                                                    name="codigo_postal-input" aria-describedby="codigo_postal-addon">
+                                                    placeholder="Ingresa el código postal" id="codigo_postal-distribuidores-input"
+                                                    name="codigo_postal-distribuidores-input" maxlength="5" minlength="5" aria-describedby="codigo_postal-distribuidores-addon">
                                             </div>
                                         </div>
                                     </div>
@@ -304,7 +347,7 @@
                                         <div class="mb-3">
                                             <label class="form-label" for="listPaises">PAÍS</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>Pai</span>
+                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>PAI</span>
                                                 <select class="form-control" id="listPaises" name="listPaises" required=""></select>
                                                 <div class="invalid-feedback">El campo país es obligatorio</div>
                                             </div>
@@ -316,7 +359,7 @@
                                         <div class="mb-3">
                                             <label class="form-label" for="listEstados">ESTADOS</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>Est</span>
+                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>EST</span>
                                                 <select class="form-control" id="listEstados" name="listEstados" required=""></select>
                                                 <div class="invalid-feedback">El campo estado es obligatorio</div>
                                             </div>
@@ -328,209 +371,465 @@
                                         <div class="mb-3">
                                             <label class="form-label" for="listMunicipios">MUNICIPIOS</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>Mun</span>
+                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>MUN</span>
                                                 <select class="form-control" id="listMunicipios" name="listMunicipios" required=""></select>
                                                 <div class="invalid-feedback">El campo municipio es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- campo latitud  -->
-                                    <div class="col-lg-6">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="latitud">LATITUD</label>
-                                            <input type="text" class="form-control" id="latitud" name="latitud"
-                                                placeholder="Latitud del cliente">
-                                        </div>
-                                    </div>
+                                    <div id="direccionFiscalWrapper" class="d-none">
+                                        <hr class="mb-4">
 
-                                    <!-- campo longitud -->
-                                    <div class="col-lg-6">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="longitud">LONGITUD</label>
-                                            <input type="text" class="form-control" id="longitud" name="longitud"
-                                                placeholder="Longitud del cliente">
-                                        </div>
-                                    </div>
+                                        <h5 class="mb-3">Dirección fiscal</h5>
 
-                                    <!-- campo estado -->
-                                    <div class="col-lg-6 col-sm-6">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="estado-select">ESTADO</label>
-                                            <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="estado-addon">Est</span>
-                                                <select class="form-select" id="estado-select" name="estado-select"
-                                                    aria-describedby="estado-addon" required>
-                                                    <option value="2" selected>Activo</option>
-                                                    <option value="1">inactivo</option>
-                                                </select>
-                                                <div class="invalid-feedback">El campo estado es obligatorio</div>
+                                        <div class="row">
+
+
+                                            <div class="col-lg-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="tipo_fiscal">TIPO</label>
+                                                    <div class="input-group has-validation mb-3">
+                                                        <span class="input-group-text" id="tipo_fiscal-addon">TIP</span>
+                                                        <select class="form-select" id="tipo_fiscal" name="tipo_fiscal" aria-describedby="tipo_fiscal-addon" required>
+                                                            <option value="Fiscal">Fiscal</option>
+                                                        </select>
+                                                        <div class="invalid-feedback">El campo tipo es obligatorio</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- campo calle -->
+                                            <div class="col-lg-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="calle-distribuidores-input">CALLE</label>
+                                                    <div class="input-group mb-3">
+                                                        <span class="input-group-text" id="calle-distribuidores-addon">CAL</span>
+                                                        <input type="text" class="form-control"
+                                                            placeholder="Ingresa la calle" id="calle_fiscal" name="calle_fiscal"
+                                                            aria-describedby="calle-distribuidores-addon" required>
+                                                        <div class="invalid-feedback">El campo calle es obligatorio</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- campo numero_ext -->
+                                            <div class="col-lg-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="numero_ext-distribuidores-input">NUMERO EXTERIOR</label>
+                                                    <div class="input-group mb-3">
+                                                        <span class="input-group-text" id="numero_ext-distribuidores-addon">NUM</span>
+                                                        <input type="text" class="form-control"
+                                                            placeholder="Ingresa el número exterior" id="numero_ext_fiscal"
+                                                            name="numero_ext_fiscal" maxlength="5" aria-describedby="numero_ext-distribuidores-addon">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- campo numero_int -->
+                                            <div class="col-lg-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="numero_int-distribuidores-input">NUMERO INTERIOR</label>
+                                                    <div class="input-group mb-3">
+                                                        <span class="input-group-text" id="numero_int-distribuidores-addon">NUM</span>
+                                                        <input type="text" class="form-control"
+                                                            placeholder="Ingresa el número interior" id="numero_int_fiscal"
+                                                            name="numero_int_fiscal" maxlength="5" aria-describedby="numero_int-distribuidores-addon">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- campo colonia -->
+                                            <div class="col-lg-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="colonia-distribuidores-input">COLONIA</label>
+                                                    <div class="input-group mb-3">
+                                                        <span class="input-group-text" id="colonia-distribuidores-addon">COL</span>
+                                                        <input type="text" class="form-control"
+                                                            placeholder="Ingresa la colonia" id="colonia_fiscal" name="colonia_fiscal"
+                                                            aria-describedby="colonia-distribuidores-addon" required>
+                                                        <div class="invalid-feedback">El campo colonia es obligatorio</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- campo codigo_postal -->
+                                            <div class="col-lg-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="codigo_postal-distribuidores-input">CÓDIGO POSTAL</label>
+                                                    <div class="input-group mb-3">
+                                                        <span class="input-group-text" id="codigo_postal-distribuidores-addon">CP</span>
+                                                        <input type="text" class="form-control"
+                                                            placeholder="Ingresa el código postal" id="codigo_postal_fiscal"
+                                                            name="codigo_postal_fiscal" maxlength="5" minlength="5" aria-describedby="codigo_postal-distribuidores-addon">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- select pais_id -->
+                                            <div class="col-lg-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="listPaisesFiscal">PAÍS</label>
+                                                    <div class="input-group mb-3">
+                                                        <span class="input-group-text" id="nombre-linea-addon" data-choices>PAI</span>
+                                                        <select class="form-control" id="listPaisesFiscal" name="listPaisesFiscal" required=""></select>
+                                                        <div class="invalid-feedback">El campo país es obligatorio</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- select estado_id -->
+                                            <div class="col-lg-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="listEstadosFiscal">ESTADOS</label>
+                                                    <div class="input-group mb-3">
+                                                        <span class="input-group-text" id="nombre-linea-addon" data-choices>EST</span>
+                                                        <select class="form-control" id="listEstadosFiscal" name="listEstadosFiscal" required=""></select>
+                                                        <div class="invalid-feedback">El campo estado es obligatorio</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- select municipio_id -->
+                                            <div class="col-lg-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="listMunicipiosFiscal">MUNICIPIOS</label>
+                                                    <div class="input-group mb-3">
+                                                        <span class="input-group-text" id="nombre-linea-addon" data-choices>MUN</span>
+                                                        <select class="form-control" id="listMunicipiosFiscal" name="listMunicipiosFiscal" required=""></select>
+                                                        <div class="invalid-feedback">El campo municipio es obligatorio</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- campo estado -->
+                                            <div class="col-lg-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="estado-select">ESTADO</label>
+                                                    <div class="input-group has-validation mb-3">
+                                                        <span class="input-group-text" id="estado-addon">EST</span>
+                                                        <select class="form-select" id="estado-select" name="estado-select"
+                                                            aria-describedby="estado-addon" required>
+                                                            <option value="2" selected>Activo</option>
+                                                            <option value="1">inactivo</option>
+                                                        </select>
+                                                        <div class="invalid-feedback">El campo estado es obligatorio</div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-
-                                <!-- end row -->
-
-                                <div class="d-flex align-items-start gap-3 mt-4">
-                                    <button type="submit" id="btnActionForm"
-                                        class="btn btn-success btn-label right ms-auto nexttab nexttab"
-                                        data-nexttab="steparrow-description-info-tab"><i
-                                            class="ri-arrow-right-line label-icon align-middle fs-16 ms-2"></i><span id="btnText">REGISTRAR</span></button>
-                                </div>
-                            </form>
                         </div>
-                        <!-- end tab pane -->
+
+
+                        <!-- end row -->
+
+                        <div class="d-flex align-items-start gap-3 mt-4">
+                            <button type="submit" id="btnActionForm"
+                                class="btn btn-success btn-label right ms-auto nexttab nexttab"
+                                data-nexttab="steparrow-description-info-tab"><i
+                                    class="ri-arrow-right-line label-icon align-middle fs-16 ms-2"></i><span id="btnText">REGISTRAR</span></button>
+                        </div>
+                        </form>
                     </div>
-                    <!-- end tab content -->
+                    <!-- end tab pane -->
                 </div>
-                <!-- end card body -->
+                <!-- end tab content -->
             </div>
-            <!-- end card -->
-            <!--end row-->
+            <!-- end card body -->
         </div>
-        <!-- container-fluid -->
+        <!-- end card -->
+        <!--end row-->
     </div>
-    <!-- End Page-content -->
-    <footer class="footer">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-sm-6">
-                    <script>
-                        document.write(new Date().getFullYear())
-                    </script> © LDR.
-                </div>
-                <div class="col-sm-6">
-                    <div class="text-sm-end d-none d-sm-block">
-                        LDR Solutions · MRP
-                    </div>
+    <!-- container-fluid -->
+</div>
+<!-- End Page-content -->
+<footer class="footer">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-6">
+                <script>
+                    document.write(new Date().getFullYear())
+                </script> © LDR.
+            </div>
+            <div class="col-sm-6">
+                <div class="text-sm-end d-none d-sm-block">
+                    LDR Solutions · MRP
                 </div>
             </div>
         </div>
-    </footer>
+    </div>
+</footer>
 </div>
 
-<div class="modal fade" id="modalViewCliente" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+<div class="modal fade" id="modalViewDistribuidor" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0">
-            <div class="modal-header bg-primary-subtle p-3">
+
+            <div class="modal-header bg-primary-subtle pb-3">
                 <h5 class="modal-title" id="titleModal">Datos del registro</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="close-modal"></button>
             </div>
-            <div class="modal-body">
-                <table class="table table-bordered">
-                    <tbody>
-                        <tr>
-                            <td>ID:</td>
-                            <td id="idcliente">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>GRUPO:</td>
-                            <td id="nombregrupo">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>TIPO DE NEGOCIO:</td>
-                            <td id="tiponegocio">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>NOMBRE COMERCIAL:</td>
-                            <td id="nombrecomercial">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>RAZON SOCIAL:</td>
-                            <td id="razonsocial">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>RFC:</td>
-                            <td id="rfc">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>No. REPUVE:</td>
-                            <td id="repve">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>PLAZA:</td>
-                            <td id="plaza">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>TELÉFONO</td>
-                            <td id="telefono">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>TELÉFONO ALT:</td>
-                            <td id="telefonoalt">654654654</td>
-                        </tr>
 
-                        <tr>
-                            <td>TIPO</td>
-                            <td id="tipo">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>CALLE</td>
-                            <td id="calle">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>NÚMERO EXT</td>
-                            <td id="numero_ext">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>NÚMERO INT</td>
-                            <td id="numero_int">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>COLONIA</td>
-                            <td id="colonia">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>CODIGO POSTAL</td>
-                            <td id="codigo_postal">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>PAÍS</td>
-                            <td id="pais">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>ESTADO</td>
-                            <td id="estado_id">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>MUNICÍPIO</td>
-                            <td id="municipio">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>LATITUD</td>
-                            <td id="latitud_direccion">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>LONGITUD</td>
-                            <td id="longitud_direccion">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>FECHA DE REGISTRO:</td>
-                            <td id="fecharegistro">654654654</td>
-                        </tr>
-                        <tr>
-                            <td>Estado:</td>
-                            <td id="celEstado">654654654</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <!-- NAV TABS -->
+            <ul class="nav nav-tabs px-3" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-general">
+                        General
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-direccion">
+                        Dirección
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-fiscal">
+                        Dirección fiscal
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-contactos">
+                        Contactos
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-modelos">
+                        Modelos
+                    </button>
+                </li>
+            </ul>
+
+            <div class="modal-body">
+                <div class="tab-content">
+                    <!-- TAB GENERAL -->
+                    <div class="tab-pane fade show active" id="tab-general">
+                        <table class="table table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td>ID</td>
+                                    <td id="iddistri"></td>
+                                </tr>
+                                <tr>
+                                    <td>Grupo</td>
+                                    <td id="nombregrupo"></td>
+                                </tr>
+                                <tr>
+                                    <td>Tipo de negocio</td>
+                                    <td id="tiponegocio"></td>
+                                </tr>
+                                <tr>
+                                    <td>Nombre comercial</td>
+                                    <td id="nombrecomercial"></td>
+                                </tr>
+                                <tr>
+                                    <td>Razón social</td>
+                                    <td id="razonsocial"></td>
+                                </tr>
+                                <tr>
+                                    <td>RFC</td>
+                                    <td id="rfc"></td>
+                                </tr>
+                                <tr>
+                                    <td>REPUVE</td>
+                                    <td id="repve"></td>
+                                </tr>
+                                <tr>
+                                    <td>Plaza</td>
+                                    <td id="plaza"></td>
+                                </tr>
+                                <tr>
+                                    <td>Teléfono</td>
+                                    <td id="telefono"></td>
+                                </tr>
+                                <tr>
+                                    <td>Teléfono alternativo</td>
+                                    <td id="telefonoalt"></td>
+                                </tr>
+                                <tr>
+                                    <td>Fecha registro</td>
+                                    <td id="fecharegistro"></td>
+                                </tr>
+                                <tr>
+                                    <td>Estatus</td>
+                                    <td id="celEstado"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- TAB DIRECCIÓN -->
+                    <div class="tab-pane fade" id="tab-direccion">
+                        <table class="table table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td>Tipo</td>
+                                    <td id="tipo"></td>
+                                </tr>
+                                <tr>
+                                    <td>Calle</td>
+                                    <td id="calle"></td>
+                                </tr>
+                                <tr>
+                                    <td>Núm. Ext</td>
+                                    <td id="numero_ext"></td>
+                                </tr>
+                                <tr>
+                                    <td>Núm. Int</td>
+                                    <td id="numero_int"></td>
+                                </tr>
+                                <tr>
+                                    <td>Colonia</td>
+                                    <td id="colonia"></td>
+                                </tr>
+                                <tr>
+                                    <td>C.P.</td>
+                                    <td id="codigo_postal"></td>
+                                </tr>
+                                <tr>
+                                    <td>País</td>
+                                    <td id="pais"></td>
+                                </tr>
+                                <tr>
+                                    <td>Estado</td>
+                                    <td id="estado"></td>
+                                </tr>
+                                <tr>
+                                    <td>Municipio</td>
+                                    <td id="municipio"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- TAB DIRECCIÓN FISCAL -->
+                    <div class="tab-pane fade" id="tab-fiscal">
+                        <table class="table table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td>Tipo</td>
+                                    <td id="tipofiscal"></td>
+                                </tr>
+                                <tr>
+                                    <td>Calle</td>
+                                    <td id="callefiscal"></td>
+                                </tr>
+                                <tr>
+                                    <td>Núm. Ext</td>
+                                    <td id="numeroext_fiscal"></td>
+                                </tr>
+                                <tr>
+                                    <td>Núm. Int</td>
+                                    <td id="numeroint_fiscal"></td>
+                                </tr>
+                                <tr>
+                                    <td>Colonia</td>
+                                    <td id="coloniafiscal"></td>
+                                </tr>
+                                <tr>
+                                    <td>C.P.</td>
+                                    <td id="codigopostal_fiscal"></td>
+                                </tr>
+                                <tr>
+                                    <td>País</td>
+                                    <td id="pais_fiscal"></td>
+                                </tr>
+                                <tr>
+                                    <td>Estado</td>
+                                    <td id="estado_fiscal"></td>
+                                </tr>
+                                <tr>
+                                    <td>Municipio</td>
+                                    <td id="municipio_fiscal"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- TAB CONTACTOS -->
+                    <div class="tab-pane fade" id="tab-contactos">
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-bordered dt-responsive nowrap table-striped align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>PUESTO</th>
+                                        <th>NOMBRE COMERCIAL</th>
+                                        <th>CORREO</th>
+                                        <th>TELÉFONO</th>
+                                        <th>ESTATUS</th>
+                                        <th>FECHA DE REGISTRO</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyContactos">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- TAB MODELOS -->
+                    <div class="tab-pane fade" id="tab-modelos">
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-bordered dt-responsive nowrap table-striped align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>ID LINEA DE PRODUCTO</th>
+                                        <th>CVE LINEA DE PRODUCTO</th>
+                                        <th>DESCRIPCIÓN</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyModelos">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
 
+
             <div class="modal-footer">
-                <div class="hstack gap-2 justify-content-end">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
-                </div>
+                <button class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
+<style>
+    .modelos-box {
+        min-height: 260px;
+        max-height: 260px;
+        overflow-y: auto;
+        border: 1px dashed #ced4da;
+        border-radius: 8px;
+        padding: 10px;
+        background: #f8f9fa;
+    }
 
+    .modelos-box li {
+        cursor: grab;
+        margin-bottom: 6px;
+    }
 
+    .modelos-box li:active {
+        cursor: grabbing;
+    }
 
+    .modelos-box {
+        scrollbar-width: thin;
+        /* Firefox */
+    }
 
+    .modelos-box::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .modelos-box::-webkit-scrollbar-thumb {
+        background: #adb5bd;
+        border-radius: 4px;
+    }
+</style>
 
 <!-- end main content-->
 <?php footerAdmin($data); ?>

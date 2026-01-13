@@ -123,7 +123,7 @@
                                                 <span class="input-group-text" id="correo-contactos-addon">Cor</span>
                                                 <input type="email" class="form-control" placeholder="Ingrese el correo del puesto" id="correo-contactos-input"
                                                     name="correo-contactos-input"
-                                                    aria-describedby="correo-contactos-addon" required>
+                                                    aria-describedby="correo-contactos-addon">
                                                 <div class="invalid-feedback">El campo correo es obligatorio</div>
                                             </div>
                                         </div>
@@ -135,8 +135,8 @@
                                             <label class="form-label" for="telefono-contactos-input">TELÉFONO</label>
                                             <div class="input-group has-validation mb-3">
                                                 <span class="input-group-text" id="telefono-contactos-addon">Tel</span>
-                                                <input type="text" class="form-control" placeholder="Ingrese el teléfono del puesto" id="telefono-contactos-input"
-                                                    name="telefono-contactos-input"
+                                                <input type="number" class="form-control" placeholder="Ingrese el teléfono del puesto" id="telefono-contactos-input"
+                                                    name="telefono-contactos-input" minlength="10"
                                                     aria-describedby="telefono-contactos-addon" required>
                                                 <div class="invalid-feedback">El campo teléfono es obligatorio</div>
                                             </div>

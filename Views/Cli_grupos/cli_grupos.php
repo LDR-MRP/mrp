@@ -178,7 +178,7 @@
 
 
 <div class="modal fade" id="modalViewGrupo" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0">
             <div class="modal-header bg-primary-subtle p-3">
                 <h5 class="modal-title" id="titleModal">Datos del registro</h5>
@@ -211,6 +211,24 @@
                             <td>Estado:</td>
                             <td id="estadoGrupo">Larry</td>
                         </tr>
+                    </tbody>
+                </table>
+
+                <h5 class="mt-4">Distribuidores del grupo</h5>
+
+                <table id="cli_grupos"
+                    class="table table-bordered dt-responsive nowrap table-striped align-middle"
+                    style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>NOMBRE COMERCIAL</th>
+                            <th>RAZÓN SOCIAL</th>
+                            <th>RFC</th>
+                            <th>TELÉFONO</th>
+                            <th>PLAZA</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableDistribuidoresGrupo">
                     </tbody>
                 </table>
             </div>
