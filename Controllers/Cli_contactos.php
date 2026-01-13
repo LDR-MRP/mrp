@@ -61,8 +61,7 @@ class Cli_contactos extends Controllers
     {
         if ($_POST) {
             if (
-                empty($_POST['listDistribuidores']) || empty($_POST['listPuestos']) || empty($_POST['nombre-contactos-input'])
-                || empty($_POST['correo-contactos-input']) || empty($_POST['telefono-contactos-input']) || empty($_POST['estado-select'])
+                empty($_POST['listDistribuidores']) || empty($_POST['listPuestos']) || empty($_POST['nombre-contactos-input']) || empty($_POST['telefono-contactos-input']) || empty($_POST['estado-select'])
             ) {
                 $arrResponse = array("status" => false, "msg" => 'Datos incorrectos .');
             } else {

@@ -305,7 +305,7 @@ function fntViewGrupo(idgrupo) {
       let objData = JSON.parse(request.responseText);
 
       if (objData.status) {
-        let estadoUsuario =
+        let estadoGrupo =
           objData.data.estado == 2
             ? '<span class="badge bg-success">Activo</span>'
             : '<span class="badge bg-danger">Inactivo</span>';
@@ -317,7 +317,35 @@ function fntViewGrupo(idgrupo) {
           objData.data.descripcion;
         document.querySelector("#fechaGrupo").innerHTML =
           objData.data.fecha_registro;
-        document.querySelector("#estadoGrupo").innerHTML = estadoUsuario;
+        document.querySelector("#estadoGrupo").innerHTML = estadoGrupo;
+
+        let htmlDistribuidores = "";
+        let distribuidores = objData.data.distribuidores;
+
+        if (distribuidores.length > 0) {
+          distribuidores.forEach((dist) => {
+            htmlDistribuidores += `
+              <tr>
+                <td>${dist.nombre_comercial}</td>
+                <td>${dist.razon_social}</td>
+                <td>${dist.rfc}</td>
+                <td>${dist.telefono}</td>
+                <td>${dist.plaza}</td>
+              </tr>
+            `;
+          });
+        } else {
+          htmlDistribuidores = `
+            <tr>
+              <td colspan="5" class="text-center text-muted">
+                No hay distribuidores asignados
+              </td>
+            </tr>
+          `;
+        }
+
+        document.querySelector("#tableDistribuidoresGrupo").innerHTML =
+          htmlDistribuidores;
 
         $("#modalViewGrupo").modal("show");
       } else {

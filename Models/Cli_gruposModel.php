@@ -21,13 +21,58 @@
             return $request;
         }
 
-        public function selectGrupo(int $idgrupo)
+        public function selectGrupoo(int $idgrupo)
         {
             $this->intIdgrupo = $idgrupo;
             $sql = "SELECT * FROM cli_grupos WHERE id = $this->intIdgrupo";
             $request = $this->select($sql);
             return $request;
         }
+
+        public function selectGrupo(int $idgrupo)
+        {
+            $this->intIdgrupo = $idgrupo;
+
+            $sqlGrupo = "SELECT 
+                    id,
+                    codigo,
+                    nombre,
+                    descripcion,
+                    fecha_registro,
+                    estado
+                 FROM cli_grupos
+                 WHERE id = {$this->intIdgrupo}
+                 AND estado != 0";
+
+            $grupo = $this->select($sqlGrupo);
+
+            if (empty($grupo)) {
+                return null;
+            }
+
+            $sqlDistribuidores = "SELECT 
+                            c.id,
+                            c.nombre_comercial,
+                            c.razon_social,
+                            c.rfc,
+                            c.repve,
+                            c.plaza,
+                            c.tipo_negocio,
+                            c.telefono,
+                            c.telefono_alt,
+                            c.fecha_registro,
+                            c.estado
+                        FROM cli_distribuidores c
+                        WHERE c.grupo_id = {$this->intIdgrupo}
+                        AND c.estado != 0";
+
+            $distribuidores = $this->select_all($sqlDistribuidores);
+
+            $grupo['distribuidores'] = $distribuidores;
+
+            return $grupo;
+        }
+
 
         public function deleteGrupo(int $idgrupo)
         {
