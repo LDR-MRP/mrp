@@ -29,13 +29,13 @@
                 <div class="card-header">
                     <ul class="nav nav-tabs-custom card-header-tabs border-bottom-0 " role="tablist" id="nav-tab">
                         <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#lisconceptos" role="tab">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#listconceptos" role="tab">
                                 CONCEPTOS
                             </a>
                         </li>
                         <?php if ($_SESSION['permisosMod']['w']) { ?>
                             <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#agregarConcepto" role="tab">
+                                <a class="nav-link" data-bs-toggle="tab" href="#agregarconcepto" role="tab">
                                     NUEVO
                                 </a>
                             </li>
@@ -45,7 +45,7 @@
                 <!-- end card header -->
                 <div class="card-body">
                     <div class="tab-content">
-                        <div class="tab-pane active" id="lisconceptos" role="tabpanel">
+                        <div class="tab-pane active" id="listconceptos" role="tabpanel">
 
                             <table id="tableConceptos"
                                 class="table table-bordered dt-responsive nowrap table-striped align-middle"
@@ -71,8 +71,8 @@
 
 
 
-                        <div class="tab-pane" id="agregarConcepto" role="tabpanel">
-                            <form id="formConceptos" autocomplete="off" class="form-steps was-validated" autocomplete="off">
+                        <div class="tab-pane" id="agregarconcepto" role="tabpanel">
+                            <form id="formConcepto" autocomplete="off" class="form-steps was-validated" autocomplete="off">
                                 <input type="hidden" id="idconcepmov" name="idconcepmov">
                                 <div class="row">
                                     <p class="text-center fw-semibold">Selecciona el tipo de movimiento</p>
@@ -82,8 +82,8 @@
                                         <div class="col-md-6 offset-md-3 form-check d-flex align-items-center">
                                             <label class="form-label fw-semibold" for="entrada">
                                                 <i class="bi bi-arrow-bar-right me-1 text-danger"></i>
-                                                <input class="form-check-input tipo-inventario ms-2" type="checkbox"
-                                                    id="checkEntrada" name="tipo_mov" value="E">
+                                                <input class="form-check-input tipo-inventario ms-2" type="radio"
+                                                    id="tipoE" name="tipo_mov" value="E">
                                                 <span class="ms-2">Entrada</span>
                                             </label>
                                         </div>
@@ -92,8 +92,8 @@
                                         <div class="col-md-6 form-check d-flex align-items-center">
                                             <label class="form-label fw-semibold" for="salida">
                                                 <i class="bi bi-box-arrow-right me-1 text-danger"></i>
-                                                <input class="form-check-input tipo-inventario ms-2" type="checkbox"
-                                                    id="checkSalida" name="tipo_mov" value="S">
+                                                <input class="form-check-input tipo-inventario ms-2" type="radio"
+                                                    id="tipoS" name="tipo_mov" value="S">
                                                 <span class="ms-2">Salida</span>
                                             </label>
                                         </div>
@@ -102,30 +102,30 @@
                                     <!-- CLAVE -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="clave-concepto-movimiento-input">CLAVE</label>
+                                            <label class="form-label" for="clave-concepto-input">CLAVE</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="clave-concepto-movimiento-addon">Cve</span>
+                                                <span class="input-group-text" id="clave-concepto-addon">Clave precio</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa el concepto" id="clave-concepto-movimiento-input" name="clave-concepto-movimiento-input"
-                                                    aria-describedby="clave-concepto-movimiento-addon" required>
-                                                <div class="invalid-feedback">El campo concepto es obligatorio</div>
+                                                    placeholder="Ingresa la clave" id="clave-concepto-input" name="clave-concepto-input"
+                                                    aria-describedby="clave-concepto-addon" required>
+                                                <div class="invalid-feedback">El campo clave es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- ASOCIADO A -->
+                                    <!-- AOCIADO A -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
                                             <label class="form-label" for="asociado-select">ASOCIADO A</label>
                                             <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="asociado-addon">Asociado</span>
+                                                <span class="input-group-text" id="asociado-addon">Est</span>
                                                 <select class="form-select" id="asociado-select" name="asociado-select"
                                                     aria-describedby="asociado-addon" required>
-                                                    <option value="C" selected>Ninguno</option>
-                                                    <option value="P">Cliente</option>
-                                                    <option value="N">Proveedor</option>
+                                                    <option value="C" selected>Cliente</option>
+                                                    <option value="P">Proveedor</option>
+                                                    <option value="N">Ninguno</option>
                                                 </select>
-                                                <div class="invalid-feedback">El campo asociado a es obligatorio</div>
+                                                <div class="invalid-feedback">El campo es asociado a obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
@@ -208,7 +208,7 @@
 
 
 
-<div class="modal fade" id="modalViewConcepto" tabindex="-1">
+<div class="modal fade" id="modalViewPrecio" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0">
             <div class="modal-header bg-primary-subtle p-3">
@@ -228,12 +228,8 @@
                             <td id="celDescripcion"></td>
                         </tr>
                         <tr>
-                            <td>Asociado a</td>
-                            <td id="celAsociado"></td>
-                        </tr>
-                        <tr>
-                            <td>Tipo movimiento</td>
-                            <td id="celMovimiento"></td>
+                            <td>Impuesto</td>
+                            <td id="celImpuesto"></td>
                         </tr>
                         <tr>
                             <td>Fecha creación</td>

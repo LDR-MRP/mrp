@@ -3,22 +3,20 @@ let rowTable = "";
 let divLoading = document.querySelector("#divLoading");
 
 // Inputs del formulario
-const cve_concep_mov = document.querySelector(
-  "#clave-concepto-movimiento-input"
-);
-const asociado = document.querySelector("#asociado-select");
+const cve_concep_mov = document.querySelector("#clave-concepto-input");
 const estado = document.querySelector("#estado-select");
 const descripcion = document.querySelector("#descripcion-concepto-textarea");
+const cpn = document.querySelector("#asociado-select");
 
 // Mis referencias globales
 let primerTab;
 let firstTab;
 let tabNuevo;
 let spanBtnText = null;
-let formConceptos = null;
+let formConcepto = null;
 
 document.addEventListener("DOMContentLoaded", function () {
-  formConceptos = document.querySelector("#formConceptos");
+  formConcepto = document.querySelector("#formConcepto");
   spanBtnText = document.querySelector("#btnText");
 
   tableConceptos = $("#tableConceptos").dataTable({
@@ -45,10 +43,10 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   const primerTabEl = document.querySelector(
-    '#nav-tab a[href="#lisconceptos"]'
+    '#nav-tab a[href="#listconceptos"]'
   );
   const firstTabEl = document.querySelector(
-    '#nav-tab a[href="#agregarConcepto"]'
+    '#nav-tab a[href="#agregarconcepto"]'
   );
 
   if (primerTabEl && firstTabEl && spanBtnText) {
@@ -58,21 +56,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
     tabNuevo.addEventListener("click", () => {
       spanBtnText.textContent = "REGISTRAR";
-      formConceptos.reset();
+      formConcepto.reset();
       document.querySelector("#idconcepmov").value = 0;
     });
   }
 
-  formConceptos.addEventListener("submit", function (e) {
+  formConcepto.addEventListener("submit", function (e) {
     e.preventDefault();
 
-    if (!checkEntrada.checked && !checkSalida.checked) {
-        Swal.fire("Atención", "Debes seleccionar Entrada o Salida", "warning");
-        return;
-    }
-
-    let formData = new FormData(formConceptos);
-    let url = base_url + "/Inv_concepmovinventarios/setConceptomovimiento";
+    let formData = new FormData(formConcepto);
+    let url = base_url + "/Inv_concepmovinventarios/setConcepto";
 
     fetch(url, {
       method: "POST",
@@ -84,44 +77,19 @@ document.addEventListener("DOMContentLoaded", function () {
           $("#tableConceptos").DataTable().ajax.reload();
           primerTab.show();
           Swal.fire("Correcto", objData.msg, "success");
-          formConceptos.reset();
+          formConcepto.reset();
         } else {
           Swal.fire("Error", objData.msg, "error");
         }
       });
   });
-
-  // -------------------------------
-// CONTROL CHECK ENTRADA / SALIDA
-// -------------------------------
-const checkEntrada = document.querySelector('#checkEntrada');
-const checkSalida  = document.querySelector('#checkSalida');
-
-function resetChecks() {
-    checkEntrada.checked = false;
-    checkSalida.checked  = false;
-}
-
-// Solo permitir uno activo
-checkEntrada.addEventListener('change', function () {
-    if (this.checked) {
-        checkSalida.checked = false;
-    }
-});
-
-checkSalida.addEventListener('change', function () {
-    if (this.checked) {
-        checkEntrada.checked = false;
-    }
-});
-
 });
 
 // ----------------------------------------------
 // VER DETALLE
 // ----------------------------------------------
-function fntViewPrecio(id) {
-  fetch(base_url + "/Inv_concepmovinventarios/getPrecio/" + id)
+function fntViewConcepto(id) {
+  fetch(base_url + "/Inv_concepmovinventarios/getConcepto/" + id)
     .then((res) => res.json())
     .then((objData) => {
       if (objData.status) {
@@ -129,14 +97,12 @@ function fntViewPrecio(id) {
           objData.data.cve_concep_mov;
         document.querySelector("#celDescripcion").innerHTML =
           objData.data.descripcion;
-        document.querySelector("#celAsociado").innerHTML =
-          objData.data.impuesto == 2 ? "NO" : "SI";
-        document.querySelector("#celFecha").innerHTML =
-          objData.data.fecha_creacion;
+        document.querySelector("#celcpn").innerHTML =
+          objData.data.cpn == 2 ? "NO" : "SI";
         document.querySelector("#celEstado").innerHTML =
           objData.data.estado == 2 ? "Activo" : "Inactivo";
 
-        $("#modalViewConcepto").modal("show");
+        $("#modalViewPrecio").modal("show");
       }
     });
 }
@@ -144,14 +110,20 @@ function fntViewPrecio(id) {
 // ----------------------------------------------
 // EDITAR
 // ----------------------------------------------
-function fntEditPrecio(id) {
-  fetch(base_url + "/Inv_concepmovinventarios/getPrecio/" + id)
+function fntEditConcepto(id) {
+  fetch(base_url + "/Inv_concepmovinventarios/getConcepto/" + id)
     .then((res) => res.json())
     .then((objData) => {
       if (objData.status) {
         document.querySelector("#idconcepmov").value = objData.data.idconcepmov;
+        if (objData.data.tipo_movimiento === "E") {
+          document.querySelector("#tipoE").checked = true;
+        } else {
+          document.querySelector("#tipoS").checked = true;
+        }
         cve_concep_mov.value = objData.data.cve_concep_mov;
         descripcion.value = objData.data.descripcion;
+        cpn.value = objData.data.cpn;
         estado.value = objData.data.estado;
 
         spanBtnText.textContent = "ACTUALIZAR";
@@ -198,7 +170,7 @@ function fntDelInfo(idconcepmov) {
     let request = window.XMLHttpRequest
       ? new XMLHttpRequest()
       : new ActiveXObject("Microsoft.XMLHTTP");
-    let ajaxUrl = base_url + "/Inv_concepmovinventarios/delPrecio";
+    let ajaxUrl = base_url + "/Inv_concepmovinventarios/delConcepto";
     let strData = "idconcepmov=" + idconcepmov;
 
     request.open("POST", ajaxUrl, true);

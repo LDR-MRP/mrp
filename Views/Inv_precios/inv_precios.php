@@ -20,7 +20,7 @@
                         </div>
 
                     </div>
-                </div> 
+                </div>
             </div>
             <!-- end page title -->
 
@@ -30,16 +30,16 @@
                     <ul class="nav nav-tabs-custom card-header-tabs border-bottom-0 " role="tablist" id="nav-tab">
                         <li class="nav-item">
                             <a class="nav-link active" data-bs-toggle="tab" href="#listprecios" role="tab">
-                               PRECIOS
+                                PRECIOS
                             </a>
                         </li>
-                          <?php if($_SESSION['permisosMod']['w']){ ?>
-                        <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#agregarPrecio" role="tab">
-                                NUEVO
-                            </a>
-                        </li>
-                         <?php } ?>
+                        <?php if ($_SESSION['permisosMod']['w']) { ?>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#agregarPrecio" role="tab">
+                                    NUEVO
+                                </a>
+                            </li>
+                        <?php } ?>
                     </ul>
                 </div>
                 <!-- end card header -->
@@ -72,7 +72,7 @@
 
 
                         <div class="tab-pane" id="agregarPrecio" role="tabpanel">
-                            <form id="formPrecios" autocomplete="off"  class="form-steps was-validated" autocomplete="off">
+                            <form id="formPrecios" autocomplete="off" class="form-steps was-validated" autocomplete="off">
                                 <input type="hidden" id="idprecio" name="idprecio">
                                 <div class="row">
 
@@ -93,11 +93,11 @@
                                     <!-- CON IMPUESTO -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                                  <label class="form-label" for="impuesto-select">IMPUESTO</label>
+                                            <label class="form-label" for="impuesto-select">IMPUESTO</label>
                                             <div class="input-group has-validation mb-3">
                                                 <span class="input-group-text" id="impuesto-addon">Est</span>
                                                 <select class="form-select" id="impuesto-select" name="impuesto-select"
-                                                    aria-describedby="impuesto-addon" required >
+                                                    aria-describedby="impuesto-addon" required>
                                                     <option value="2" selected>Sí</option>
                                                     <option value="1">No</option>
                                                 </select>
@@ -109,11 +109,11 @@
                                     <!-- ESTADO -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                                  <label class="form-label" for="estado-select">ESTADO</label>
+                                            <label class="form-label" for="estado-select">ESTADO</label>
                                             <div class="input-group has-validation mb-3">
                                                 <span class="input-group-text" id="estado-addon">Est</span>
                                                 <select class="form-select" id="estado-select" name="estado-select"
-                                                    aria-describedby="estado-addon" required >
+                                                    aria-describedby="estado-addon" required>
                                                     <option value="2" selected>Activo</option>
                                                     <option value="1">Inactivo</option>
                                                 </select>
@@ -123,14 +123,14 @@
                                     </div>
                                 </div>
                                 <!-- end row -->
-                                 
+
                                 <!-- DESCRIPCIÓN -->
-                                    <div class="mb-3">
+                                <div class="mb-3">
                                     <label class="form-label" for="descripcion-precio-textarea">DESCRIPCIÓN</label>
                                     <div class="input-group mb-3">
                                         <span class="input-group-text" id="descripcion-precio-addon">Desc.</span>
                                         <textarea class="form-control" id="descripcion-precio-textarea" name="descripcion-precio-textarea"
-                                            placeholder="Ingresa una descripción" rows="3" 
+                                            placeholder="Ingresa una descripción" rows="3"
                                             aria-describedby="descripcion-precio-addon"></textarea>
                                     </div>
                                 </div>
@@ -162,7 +162,7 @@
     </div>
     <!-- End Page-content -->
 
- 
+
 
     <footer class="footer">
         <div class="container-fluid">
@@ -185,30 +185,45 @@
 
 
 <div class="modal fade" id="modalViewPrecio" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content border-0">
-      <div class="modal-header bg-primary-subtle p-3">
-        <h5 class="modal-title">Datos del registro</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-primary-subtle p-3">
+                <h5 class="modal-title">Datos del registro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
 
-      <div class="modal-body">
-        <table class="table table-bordered">
-          <tbody>
-            <tr><td>Clave</td><td id="celClave"></td></tr>
-            <tr><td>Descripción</td><td id="celDescripcion"></td></tr>
-            <tr><td>Impuesto</td><td id="celImpuesto"></td></tr>
-            <tr><td>Fecha creación</td><td id="celFecha"></td></tr>
-            <tr><td>Estado</td><td id="celEstado"></td></tr>
-          </tbody>
-        </table>
-      </div>
+            <div class="modal-body">
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr>
+                            <td>Clave</td>
+                            <td id="celClave"></td>
+                        </tr>
+                        <tr>
+                            <td>Descripción</td>
+                            <td id="celDescripcion"></td>
+                        </tr>
+                        <tr>
+                            <td>Impuesto</td>
+                            <td id="celImpuesto"></td>
+                        </tr>
+                        <tr>
+                            <td>Fecha creación</td>
+                            <td id="celFecha"></td>
+                        </tr>
+                        <tr>
+                            <td>Estado</td>
+                            <td id="celEstado"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-      <div class="modal-footer">
-        <button class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
-      </div>
+            <div class="modal-footer">
+                <button class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 

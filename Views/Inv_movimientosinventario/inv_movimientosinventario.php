@@ -29,41 +29,42 @@
                 <div class="card-header">
                     <ul class="nav nav-tabs-custom card-header-tabs border-bottom-0 " role="tablist" id="nav-tab">
                         <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#listprecios" role="tab">
-                               PRECIOS
+                            <a class="nav-link active" data-bs-toggle="tab" href="#listmovimiento" role="tab">
+                                MOVIMIENTOS
                             </a>
                         </li>
-                          <?php if($_SESSION['permisosMod']['w']){ ?>
-                        <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#agregarPrecio" role="tab">
-                                NUEVO
-                            </a>
-                        </li>
-                         <?php } ?>
+                        <?php if ($_SESSION['permisosMod']['w']) { ?>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#agregarMovimiento" role="tab">
+                                    NUEVO
+                                </a>
+                            </li>
+                        <?php } ?>
                     </ul>
                 </div>
                 <!-- end card header -->
                 <div class="card-body">
                     <div class="tab-content">
-                        <div class="tab-pane active" id="listprecios" role="tabpanel">
+                        <div class="tab-pane active" id="listmovimiento" role="tabpanel">
 
-                            <table id="tablePrecios"
+                            <table id="tableMovimientos"
                                 class="table table-bordered dt-responsive nowrap table-striped align-middle"
                                 style="width:100%">
                                 <thead>
                                     <tr>
-                                        <th>CLAVE</th>
-                                        <th>DESCRIPCIÓN</th>
-                                        <th>CON IMPUESTO</th>
-                                        <th>FECHA CREACIÓN</th>
-                                        <th>ESTATUS</th>
-                                        <th>Action</th>
+                                        <th>#</th>
+                                        <th>Producto</th>
+                                        <th>Almacén</th>
+                                        <th>Concepto</th>
+                                        <th>Referencia</th>
+                                        <th>Cantidad</th>
+                                        <th>Existencia</th>
+                                        <th>Fecha</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-
-                                </tbody>
+                                <tbody></tbody>
                             </table>
+
 
                         </div>
                         <!-- end tab-pane -->
@@ -71,77 +72,96 @@
 
 
 
-                        <div class="tab-pane" id="agregarPrecio" role="tabpanel">
-                            <form id="formPrecios" autocomplete="off"  class="form-steps was-validated" autocomplete="off">
-                                <input type="hidden" id="idprecio" name="idprecio">
+                        <div class="tab-pane" id="agregarMovimiento" role="tabpanel">
+                            <form id="formMovimiento" autocomplete="off" class="was-validated">
+
+                                <input type="hidden" name="idmovinventario" value="0">
+
                                 <div class="row">
 
-                                    <!-- CLAVE -->
-                                    <div class="col-lg-6">
+                                    <!-- PRODUCTO -->
+                                    <div class="col-lg-4 col-sm-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="clave-precio-input">CLAVE</label>
+                                            <label class="form-label" for="inventarioid">PRODUCTO</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="clave-precio-addon">Clave precio</span>
+                                                <span class="input-group-text" id="producto-inventario-addon">Prod</span>
+                                                <select class="form-control" id="inventarioid" name="inventarioid" data-choices required=""></select>
+                                                <div class="invalid-feedback">El campo producto es obligatorio</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- ALMACÉN -->
+                                    <div class="col-lg-4 col-sm-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="almacenid">ALMACÉN</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="almacen-addon">Alm</span>
+                                                <select class="form-control" id="almacenid" name="almacenid" data-choices required=""></select>
+                                                <div class="invalid-feedback">El campo almacén es obligatorio</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- CONCEPTO -->
+                                    <div class="col-lg-4 col-sm-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="concepmovid">CONCEPTO MOVIMIENTO</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="concep-mov-addon">Con. mov</span>
+                                                <select class="form-control" id="concepmovid" name="concepmovid" data-choices required=""></select>
+                                                <div class="invalid-feedback">El campo concepto movimiento es obligatorio</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- REFERENCIA -->
+                                    <div class="col-lg-4 col-sm-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="referencia">REFERENCIA</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="referencia-addon">Ref</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa la clave" id="clave-precio-input" name="clave-precio-input"
-                                                    aria-describedby="clave-precio-addon" required>
-                                                <div class="invalid-feedback">El campo clave es obligatorio</div>
+                                                    placeholder="Ingresa la referencia" id="referencia" name="referencia"
+                                                    aria-describedby="referencia-addon" required>
+                                                <div class="invalid-feedback">El campo referencia es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- CON IMPUESTO -->
-                                    <div class="col-lg-6">
+                                    <!-- CANTIDAD -->                                    
+                                    <div class="col-lg-4 col-sm-6">
                                         <div class="mb-3">
-                                                  <label class="form-label" for="impuesto-select">IMPUESTO</label>
-                                            <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="impuesto-addon">Est</span>
-                                                <select class="form-select" id="impuesto-select" name="impuesto-select"
-                                                    aria-describedby="impuesto-addon" required >
-                                                    <option value="2" selected>Sí</option>
-                                                    <option value="1">No</option>
-                                                </select>
-                                                <div class="invalid-feedback">El campo estado es obligatorio</div>
+                                            <label class="form-label" for="cantidad">CANTIDAD</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="cantidad-addon">Cant</span>
+                                                <input type="number" class="form-control"
+                                                    placeholder="Ingresa la cantidad" id="cantidad" name="cantidad"
+                                                    aria-describedby="cantidad-addon" required>
+                                                <div class="invalid-feedback">El campo cantidad es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- ESTADO -->
-                                    <div class="col-lg-6">
+                                    <!-- COSTO DE LA CANTIDAD -->                                    
+                                    <div class="col-lg-4 col-sm-6">
                                         <div class="mb-3">
-                                                  <label class="form-label" for="estado-select">ESTADO</label>
-                                            <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="estado-addon">Est</span>
-                                                <select class="form-select" id="estado-select" name="estado-select"
-                                                    aria-describedby="estado-addon" required >
-                                                    <option value="2" selected>Activo</option>
-                                                    <option value="1">Inactivo</option>
-                                                </select>
-                                                <div class="invalid-feedback">El campo estado es obligatorio</div>
+                                            <label class="form-label" for="costo_cantidad">COSTO DE LA CANTIDAD</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="costo_cantidad-addon">Cos.Cant</span>
+                                                <input type="number" class="form-control"
+                                                    placeholder="Ingresa el costo de la cantidad" id="costo_cantidad" name="costo_cantidad"
+                                                    aria-describedby="costo_cantidad-addon" required>
+                                                <div class="invalid-feedback">El campo costo de la cantidad es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <!-- end row -->
-                                 
-                                <!-- DESCRIPCIÓN -->
-                                    <div class="mb-3">
-                                    <label class="form-label" for="descripcion-precio-textarea">DESCRIPCIÓN</label>
-                                    <div class="input-group mb-3">
-                                        <span class="input-group-text" id="descripcion-precio-addon">Desc.</span>
-                                        <textarea class="form-control" id="descripcion-precio-textarea" name="descripcion-precio-textarea"
-                                            placeholder="Ingresa una descripción" rows="3" 
-                                            aria-describedby="descripcion-precio-addon"></textarea>
-                                    </div>
+
                                 </div>
 
-                                <div class="d-flex align-items-start gap-3 mt-4">
-                                    <button type="submit" id="btnActionForm"
-                                        class="btn btn-success btn-label right ms-auto nexttab nexttab"
-                                        data-nexttab="steparrow-description-info-tab"><i
-                                            class="ri-arrow-right-line label-icon align-middle fs-16 ms-2"></i><span id="btnText">REGISTRAR</span></button>
-                                </div>
-
+                                <button class="btn btn-success" type="submit">
+                                    Registrar movimiento
+                                </button>
 
                             </form>
                         </div>
@@ -162,7 +182,7 @@
     </div>
     <!-- End Page-content -->
 
- 
+
 
     <footer class="footer">
         <div class="container-fluid">
@@ -185,30 +205,45 @@
 
 
 <div class="modal fade" id="modalViewPrecio" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content border-0">
-      <div class="modal-header bg-primary-subtle p-3">
-        <h5 class="modal-title">Datos del registro</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-primary-subtle p-3">
+                <h5 class="modal-title">Datos del registro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
 
-      <div class="modal-body">
-        <table class="table table-bordered">
-          <tbody>
-            <tr><td>Clave</td><td id="celClave"></td></tr>
-            <tr><td>Descripción</td><td id="celDescripcion"></td></tr>
-            <tr><td>Impuesto</td><td id="celImpuesto"></td></tr>
-            <tr><td>Fecha creación</td><td id="celFecha"></td></tr>
-            <tr><td>Estado</td><td id="celEstado"></td></tr>
-          </tbody>
-        </table>
-      </div>
+            <div class="modal-body">
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr>
+                            <td>Clave</td>
+                            <td id="celClave"></td>
+                        </tr>
+                        <tr>
+                            <td>Descripción</td>
+                            <td id="celDescripcion"></td>
+                        </tr>
+                        <tr>
+                            <td>Impuesto</td>
+                            <td id="celImpuesto"></td>
+                        </tr>
+                        <tr>
+                            <td>Fecha creación</td>
+                            <td id="celFecha"></td>
+                        </tr>
+                        <tr>
+                            <td>Estado</td>
+                            <td id="celEstado"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-      <div class="modal-footer">
-        <button class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
-      </div>
+            <div class="modal-footer">
+                <button class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 
