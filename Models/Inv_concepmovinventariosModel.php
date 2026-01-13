@@ -4,11 +4,10 @@ class Inv_concepmovinventariosModel extends Mysql
 {
     public $intidconcepmov;
     public $strClave;
-    public $strCvePrecio;
-    public $strFecha;
+    public $strCveConcepto;
     public $intEstatus;
     public $strDescripcion;
-    public $intImpuesto;
+    public $strcpn;
 
 
     public function __construct()
@@ -18,92 +17,96 @@ class Inv_concepmovinventariosModel extends Mysql
 
 
 
-    public function insertConcepto($clave, $descripcion, $cpn, $tipo, $signo, $estado)
-    {
-        $sql = "SELECT * FROM wms_conceptos_mov WHERE cve_concep_mov = ?";
-        $request = $this->select_all($sql, [$clave]);
 
-        if (empty($request)) {
-            $sql = "INSERT INTO wms_conceptos_mov
-                (cve_concep_mov,descripcion,cpn,tipo_movimiento,signo,estado)
-                VALUES (?,?,?,?,?,?)";
-            return $this->insert($sql, [
-                $clave,
-                $descripcion,
-                $cpn,
-                $tipo,
-                $signo,
-                $estado
-            ]);
-        }
-        return "exist";
+
+    public function insertConcepto(
+        string $cve,
+        string $descripcion,
+        string $cpn,
+        string $tipo_mov,
+        int $estado,
+        int $signo
+    ) {
+        $sql = "INSERT INTO wms_conceptos_mov
+    (cve_concep_mov, descripcion, cpn, tipo_movimiento, estado, signo)
+    VALUES (?,?,?,?,?,?)";
+
+        $arrData = [
+            $cve,
+            $descripcion,
+            $cpn,
+            $tipo_mov,
+            $estado,
+            $signo
+        ];
+
+        return $this->insert($sql, $arrData);
     }
+
+
 
     public function selectConceptos()
     {
-        return $this->select_all("SELECT * FROM wms_conceptos_mov WHERE estado != 0");
-    }
-
-
-
-    public function selectPrecios()
-    {
-        $sql = "SELECT * FROM  wms_precios 
+        $sql = "SELECT * FROM  wms_conceptos_mov 
 					WHERE estado != 0 ";
         $request = $this->select_all($sql);
         return $request;
     }
 
-    public function selectOptionPrecios()
+    public function selectOptionConceptos()
     {
-        $sql = "SELECT * FROM  wms_precios 
+        $sql = "SELECT * FROM  wms_conceptos_mov 
 					WHERE estado = 2";
         $request = $this->select_all($sql);
         return $request;
     }
 
-    public function selectPrecio(int $idconcepmov)
+    public function selectConcepto(int $idconcepmov)
     {
         $this->intidconcepmov = $idconcepmov;
-        $sql = "SELECT * FROM wms_precios
+        $sql = "SELECT * FROM wms_conceptos_mov
 					WHERE idconcepmov = $this->intidconcepmov";
         $request = $this->select($sql);
         return $request;
     }
 
-    public function deletePrecio(int $idconcepmov)
+    public function deleteConcepto(int $idconcepmov)
     {
         $this->intidconcepmov = $idconcepmov;
-        $sql = "UPDATE wms_precios SET estado = ? WHERE idconcepmov = $this->intidconcepmov ";
+        $sql = "UPDATE wms_conceptos_mov SET estado = ? WHERE idconcepmov = $this->intidconcepmov ";
         $arrData = array(0);
         $request = $this->update($sql, $arrData);
         return $request;
     }
 
 
-    public function updatePrecio($idconcepmov, $cve_concep_mov, $descripcion, $impuesto, $estado)
-    {
-        $this->intidconcepmov = $idconcepmov;
-        $this->strCvePrecio = $cve_concep_mov;
-        $this->strDescripcion = $descripcion;
-        $this->intImpuesto = $impuesto;
-        $this->intEstatus = $estado;
+    public function updateConcepto(
+        int $idconcepmov,
+        string $cve,
+        string $descripcion,
+        string $cpn,
+        string $tipo_mov,
+        int $estado,
+        int $signo
+    ) {
+        $sql = "UPDATE wms_conceptos_mov 
+            SET cve_concep_mov = ?, 
+                descripcion = ?, 
+                cpn = ?, 
+                tipo_movimiento = ?, 
+                estado = ?, 
+                signo = ?
+            WHERE idconcepmov = $idconcepmov";
 
-        $sql = "SELECT * FROM wms_precios WHERE cve_concep_mov = '{$this->strCvePrecio}' AND idconcepmov != {$this->intidconcepmov}";
-        $request = $this->select_all($sql);
+        $arrData = [
+            $cve,
+            $descripcion,
+            $cpn,
+            $tipo_mov,
+            $estado,
+            $signo
+        ];
 
-        if (empty($request)) {
-            $sql = "UPDATE wms_precios SET cve_concep_mov = ?, descripcion = ?, con_impuesto = ?, estado = ?  WHERE idconcepmov = $this->intidconcepmov ";
-            $arrData = array(
-                $this->strCvePrecio,
-                $this->strDescripcion,
-                $this->intImpuesto,
-                $this->intEstatus
-            );
-            $request = $this->update($sql, $arrData);
-        } else {
-            $request = "exist";
-        }
-        return $request;
+        return $this->update($sql, $arrData);
     }
 }
