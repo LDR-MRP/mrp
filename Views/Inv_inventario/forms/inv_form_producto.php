@@ -1,7 +1,36 @@
 <form id="formInventarioProducto" autocomplete="off" class="form-steps was-validated" autocomplete="off">
     <input type="hidden" id="idinventario" name="idinventario">
-    <input type="hidden" name="tipo_elemento" value="P">
     <div class="row">
+
+        <div class="container d-flex justify-content-center align-items-center p-3 mb-3 rounded">
+
+            <!-- PRODUCTO -->
+            <div class="col-md-4 form-check d-flex align-items-center">
+                <input class="form-check-input" type="radio"
+                    name="tipo_elemento" id="producto" value="P" checked>
+                <label class="form-label fw-semibold ms-2" for="producto">
+                    Producto
+                </label>
+            </div>
+
+            <!-- COMPONENTE -->
+            <div class="col-md-4 form-check d-flex align-items-center">
+                <input class="form-check-input" type="radio"
+                    name="tipo_elemento" id="componente" value="C">
+                <label class="form-label fw-semibold ms-2" for="componente">
+                    Componente
+                </label>
+            </div>
+
+            <!-- HERRAMIENTA -->
+            <div class="col-md-4 form-check d-flex align-items-center">
+                <input class="form-check-input" type="radio"
+                    name="tipo_elemento" id="herramienta" value="H">
+                <label class="form-label fw-semibold ms-2" for="herramienta">
+                    Herramienta
+                </label>
+            </div>
+        </div>
 
         <!-- CLAVE -->
         <div class="col-lg-4 col-sm-6">
@@ -168,11 +197,11 @@
         <!-- UNIDAD DE EMPAQUE -->
         <div class="col-lg-4 col-sm-6">
             <div class="mb-3">
-                <label class="form-label" for="unidad_empaque-input">UNIDAD DE EMPAQUE</label>
+                <label class="form-label" for="unidad_empaque">UNIDAD DE EMPAQUE</label>
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="unidad_empaque-addon">Unidad</span>
                     <input type="text" class="form-control"
-                        placeholder="Ingresa la unidad de empaque" id="unidad_empaque-input" name="unidad_empaque-input"
+                        placeholder="Ingresa la unidad de empaque" id="unidad_empaque" name="unidad_empaque"
                         aria-describedby="unidad_empaque-addon" required>
                     <div class="invalid-feedback">El campo unidad de empaque es obligatorio</div>
                 </div>
@@ -185,7 +214,7 @@
                 <label class="form-label" for="almacenid">ALMACÉN INICIAL</label>
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="almacen-addon">Alm.</span>
-                    <select class="form-control" id="almacenid" name="almacenid" required></select>
+                    <select class="form-control" id="almacenid" name="almacenid"></select>
                     <div class="invalid-feedback">El campo almacén es obligatorio</div>
                 </div>
             </div>
@@ -199,21 +228,21 @@
                     <span class="input-group-text" id="cantidad_inicial-addon">Can.</span>
                     <input type="number" class="form-control"
                         placeholder="Ingresa la cantidad inicial" id="cantidad_inicial" name="cantidad_inicial"
-                        aria-describedby="cantidad_inicial-addon" required>
+                        aria-describedby="cantidad_inicial-addon">
                     <div class="invalid-feedback">El campo cantidad inicial es obligatorio</div>
                 </div>
             </div>
         </div>
 
         <!-- COSTO UNITARIO -->
-<div class="col-lg-4 col-sm-6">
+        <div class="col-lg-4 col-sm-6">
             <div class="mb-3">
-                <label class="form-label" for="costo-input">COSTO</label>
+                <label class="form-label" for="costo">COSTO</label>
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="costo-addon">Costo</span>
                     <input type="text" class="form-control"
-                        placeholder="Ingresa el costo" id="costo-input" name="costo-input"
-                        aria-describedby="costo-addon" required>
+                        placeholder="Ingresa el costo" id="costo" name="costo"
+                        aria-describedby="costo-addon">
                     <div class="invalid-feedback">El campo costo es obligatorio</div>
                 </div>
             </div>

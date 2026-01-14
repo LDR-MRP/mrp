@@ -1,5 +1,11 @@
 let tableInventarios;
 
+  const rutas = {
+    lineas: base_url + "/Inv_lineasdproducto/getSelectLineasProductos",
+    almacenes: base_url + "/Inv_almacenes/getSelectAlmacenes",
+    save: base_url + "/Inv_inventario/setInventario",
+  };
+
 document.addEventListener("DOMContentLoaded", () => {
   tableInventarios = $("#tableInventarios").DataTable({
     destroy: true,
@@ -23,11 +29,6 @@ document.addEventListener("DOMContentLoaded", () => {
   /* =============================
      CONFIGURACIÓN
   ============================= */
-  const rutas = {
-    lineas: base_url + "/Inv_lineasdproducto/getSelectLineasProductos",
-    almacenes: base_url + "/Inv_almacenes/getSelectAlmacenes",
-    save: base_url + "/Inv_inventario/setInventario",
-  };
 
   const tabsConfig = {
     agregarProducto: {
@@ -163,7 +164,12 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             // 🔹 PRODUCTO / SERVICIO
-            if (res.tipo === "P" || res.tipo === "S") {
+            if (
+              res.tipo === "P" ||
+              res.tipo === "S" ||
+              res.tipo === "C" ||
+              res.tipo === "H"
+            ) {
               // Limpiar formularios
               form.reset();
 
@@ -519,3 +525,160 @@ function fntViewInventario(idinventario) {
     }
   };
 }
+
+function fntEditInventario(idinventario) {
+  const request = new XMLHttpRequest();
+  request.open(
+    "GET",
+    base_url + "/Inv_inventario/getInventario/" + idinventario,
+    true
+  );
+  request.send();
+
+  request.onload = () => {
+    const res = JSON.parse(request.responseText);
+
+    if (!res.status) {
+      Swal.fire("Error", res.msg, "error");
+      return;
+    }
+
+    const data = res.data;
+
+    // 🔹 Mostrar formulario
+    const tabForm = document.querySelector('a[href="#agregarProducto"]');
+    new bootstrap.Tab(tabForm).show();
+
+    // 🔹 Básicos
+    setValue("#idinventario", data.idinventario);
+    setValue("#cve_articulo", data.cve_articulo);
+    setValue("#descripcion", data.descripcion);
+    setValue("#ubicacion", data.control_almacen);
+    setValue("#factor_unidades", data.factor_unidades);
+    setValue("#tiempo_surtido", data.tiempo_surtido);
+    setValue("#peso", data.peso);
+    setValue("#volumen", data.volumen);
+    setValue("#unidad_empaque", data.unidad_empaque);
+    setValue("#estado", data.estado);
+
+    // 🔹 Radios
+    document
+      .querySelectorAll('input[name="tipo_elemento"]')
+      .forEach((radio) => {
+        radio.checked = radio.value === data.tipo_elemento;
+      });
+
+    // 🔹 Selects (CARGAR + SELECCIONAR)
+    cargarLineas("#lineaproductoid_producto", data.lineaproductoid);
+    cargarAlmacenes("#almacenid", data.almacenid);
+
+    // 🔹 Cambiar botón
+    document.querySelector("#btnText").textContent = "ACTUALIZAR";
+  };
+}
+
+function abrirTabEdicion(tipo) {
+  let tabId = null;
+
+  if (tipo === "P" || tipo === "C" || tipo === "H") {
+    tabId = "#agregarProducto";
+  }
+
+  if (tipo === "S") {
+    tabId = "#agregarServicio";
+  }
+
+  if (tipo === "K") {
+    tabId = "#agregarKit";
+  }
+
+  if (tabId) {
+    const tab = document.querySelector(`a[href="${tabId}"]`);
+    if (tab) {
+      new bootstrap.Tab(tab).show();
+    }
+  }
+}
+
+function llenarFormularioInventario(data) {
+  setValue("#idinventario", data.idinventario);
+  setValue("#cve_articulo", data.cve_articulo);
+  setValue("#descripcion", data.descripcion);
+  setValue("#unidad_entrada", data.unidad_entrada);
+  setValue("#unidad_salida", data.unidad_salida);
+  setValue("#factor_unidades", data.factor_unidades);
+  setValue("#ubicacion", data.control_almacen);
+  setValue("#tiempo_surtido", data.tiempo_surtido);
+  setValue("#peso", data.peso);
+  setValue("#volumen", data.volumen);
+  setValue("#estado", data.estado);
+
+  // Tipo
+  document.querySelectorAll('input[name="tipo_elemento"]').forEach((r) => {
+    r.checked = r.value === data.tipo_elemento;
+    if (r.checked) r.dispatchEvent(new Event("change"));
+  });
+
+  // Línea según tipo
+  if (data.tipo_elemento === "P") {
+    cargarLineas("#lineaproductoid_producto", data.lineaproductoid);
+    cargarAlmacenes("#almacenid", data.almacenid);
+  }
+
+  if (data.tipo_elemento === "S") {
+    cargarLineas("#lineaproductoid_servicio", data.lineaproductoid);
+  }
+
+  if (data.tipo_elemento === "K") {
+    cargarLineas("#lineaproductoid_kit", data.lineaproductoid);
+  }
+}
+
+function bloquearTipoElemento() {
+  document.querySelectorAll('input[name="tipo_elemento"]').forEach((radio) => {
+    radio.disabled = true;
+  });
+}
+
+function resetFormularioInventario() {
+  const form = document.querySelector("#formInventarioProducto");
+  if (form) form.reset();
+
+  document.querySelector("#idinventario").value = "";
+
+  document.querySelectorAll('input[name="tipo_elemento"]').forEach((radio) => {
+    radio.disabled = false;
+  });
+
+  const radioProducto = document.querySelector(
+    'input[name="tipo_elemento"][value="P"]'
+  );
+  if (radioProducto) {
+    radioProducto.checked = true;
+    radioProducto.dispatchEvent(new Event("change"));
+  }
+}
+
+function setValue(selector, value) {
+  const el = document.querySelector(selector);
+  if (el !== null && value !== undefined && value !== null) {
+    el.value = value;
+  }
+}
+
+window.cargarLineas = function (selectId, selectedValue = "") {
+  const select = document.querySelector(selectId);
+  if (!select) return;
+
+  const request = new XMLHttpRequest();
+  request.open("GET", rutas.lineas, true);
+  request.send();
+
+  request.onreadystatechange = () => {
+    if (request.readyState === 4 && request.status === 200) {
+      select.innerHTML = request.responseText;
+      if (selectedValue) select.value = selectedValue;
+    }
+  };
+};
+

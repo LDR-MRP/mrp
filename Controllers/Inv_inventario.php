@@ -60,6 +60,7 @@ class Inv_inventario extends Controllers
 			$unidad_entrada   = strClean($_POST['unidad_entrada'] ?? '');
 			$unidad_salida    = strClean($_POST['unidad_salida'] ?? '');
 			$ubicacion        = strClean($_POST['ubicacion'] ?? '');
+			$unidad_empaque = strClean($_POST['unidad_empaque'] ?? '');
 			$factor_unidades  = floatval($_POST['factor_unidades'] ?? 1);
 			$tiempo_surtido = intval($_POST['tiempo_surtido'] ?? 0);
 			$serie            = strClean($_POST['serie'] ?? 'N');
@@ -162,18 +163,18 @@ class Inv_inventario extends Controllers
 						$idinventario,
 						$cve_articulo,
 						$descripcion,
-						$lineaproductoid,
-						$tipo_elemento,
 						$unidad_entrada,
 						$unidad_salida,
-						$ubicacion,
+						$lineaproductoid,
+						$tipo_elemento,
 						$factor_unidades,
+						$ubicacion,
 						$tiempo_surtido,
+						$peso,
+						$volumen,
 						$serie,
 						$lote,
 						$pedimiento,
-						$peso,
-						$volumen,
 						$estado
 					);
 					$option = 2;
@@ -230,6 +231,9 @@ class Inv_inventario extends Controllers
 				if ($arrData[$i]['tipo_elemento'] == 'P') $arrData[$i]['tipo_elemento'] = 'Producto';
 				if ($arrData[$i]['tipo_elemento'] == 'S') $arrData[$i]['tipo_elemento'] = 'Servicio';
 				if ($arrData[$i]['tipo_elemento'] == 'K') $arrData[$i]['tipo_elemento'] = 'Kit';
+				if ($arrData[$i]['tipo_elemento'] == 'C') $arrData[$i]['tipo_elemento'] = 'Componente';
+				if ($arrData[$i]['tipo_elemento'] == 'H') $arrData[$i]['tipo_elemento'] = 'Herramienta';
+
 
 				// Botones
 				$btnView = '';

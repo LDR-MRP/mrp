@@ -216,6 +216,12 @@
                                     </li>
                                       <?php } ?>
 
+                                        <?php if(!empty($_SESSION['permisos'][26]['r'])){ ?>
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/inv_lotespedimentos"  class="nav-link" data-key="t-detached">Moneda</a>
+                                    </li>
+                                      <?php } ?>
+
 
                                   </ul>
                               </div>

@@ -1,5 +1,5 @@
 <?php
-// const BASE_URL = "http://mrp.com";
+//const BASE_URL = "http://mrp.com";
 const BASE_URL ="http://pruebasmrp.ldrhumanresources.com";
 //Zona horaria
 date_default_timezone_set('America/Mexico_City');
@@ -81,6 +81,7 @@ const MIMOVIMIENTOS = 22;
 const MICONCEPTOSMOVIMIENTOS = 23;
 const MIKARDEX = 24;
 const MILOTESPEDIMENTOS = 25;
+const MIMONEDAS = 25;
 
 //Submodulos Capacidad
 

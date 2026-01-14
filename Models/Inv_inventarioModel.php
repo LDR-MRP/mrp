@@ -154,22 +154,22 @@ class Inv_inventarioModel extends Mysql
 
         // ==== UPDATE (CON ?)
         $sql = "UPDATE wms_inventario SET
-                    cve_articulo = ?,
-                    descripcion = ?,
-                    unidad_entrada = ?,
-                    unidad_salida = ?,
-                    lineaproductoid = ?,
-                    tipo_elemento = ?,
-                    factor_unidades = ?,
-                    ubicacion = ?,
-                    tiempo_surtido = ?,
-                    peso = ?,
-                    volumen = ?,
-                    serie = ?,
-                    lote = ?,
-                    pedimiento = ?,
-                    estado = ?
-                WHERE idinventario = ?";
+                            cve_articulo = ?,
+                            descripcion = ?,
+                            unidad_entrada = ?,
+                            unidad_salida = ?,
+                            lineaproductoid = ?,
+                            tipo_elemento = ?,
+                            factor_unidades = ?,
+                            control_almacen = ?,
+                            tiempo_surtido = ?,
+                            peso = ?,
+                            volumen = ?,
+                            serie = ?,
+                            lote = ?,
+                            pedimiento = ?,
+                            estado = ?
+                        WHERE idinventario = ?";
 
         return $this->update($sql, [
             $cve_articulo,
