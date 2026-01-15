@@ -59,7 +59,7 @@ class Inv_inventario extends Controllers
 			$tipo_elemento    = strClean($_POST['tipo_elemento']); // P S K
 			$unidad_entrada   = strClean($_POST['unidad_entrada'] ?? '');
 			$unidad_salida    = strClean($_POST['unidad_salida'] ?? '');
-			$ubicacion        = strClean($_POST['ubicacion'] ?? '');
+			$ubicacion = strClean($_POST['ubicacion'] ?? 'GENERAL');
 			$unidad_empaque = strClean($_POST['unidad_empaque'] ?? '');
 			$factor_unidades  = floatval($_POST['factor_unidades'] ?? 1);
 			$tiempo_surtido = intval($_POST['tiempo_surtido'] ?? 0);
@@ -100,6 +100,7 @@ class Inv_inventario extends Controllers
 						$descripcion,
 						$unidad_entrada,
 						$unidad_salida,
+						$unidad_empaque,
 						$lineaproductoid,
 						$tipo_elemento,
 						$factor_unidades,
@@ -128,32 +129,6 @@ class Inv_inventario extends Controllers
 							$tipo_asignacion
 						);
 					}
-
-					if (
-						$request > 0 &&
-						$tipo_elemento === 'P' &&
-						$almacenid > 0 &&
-						$cantidadInicial > 0
-					) {
-
-						$signo = 1;
-						$existencia = $cantidadInicial;
-						$costoCantidad = $cantidadInicial * $costoUnitario;
-
-						$this->model->insertMovimientoInventario([
-							'inventarioid'     => $request,
-							'almacenid'        => $almacenid,
-							'concepmovid'      => 3, //  Entrada de fabrica
-							'referencia'       => 'Alta de producto',
-							'cantidad'         => $cantidadInicial,
-							'costo_cantidad'   => $costoCantidad,
-							'precio'           => $precioUnitario,
-							'costo'            => $costoUnitario,
-							'existencia'       => $existencia,
-							'signo'            => $signo,
-							'estado'           => 2
-						]);
-					}
 				}
 			} else {
 
@@ -165,7 +140,8 @@ class Inv_inventario extends Controllers
 						$descripcion,
 						$unidad_entrada,
 						$unidad_salida,
-						$lineaproductoid,
+						$unidad_empaque,   // ✅ FALTABA
+						$lineaproductoid,  // ✅ ahora sí es int
 						$tipo_elemento,
 						$factor_unidades,
 						$ubicacion,
@@ -180,6 +156,33 @@ class Inv_inventario extends Controllers
 					$option = 2;
 				}
 			}
+
+			// =========================
+			// INICIALIZAR MULTIALMACÉN CON EXISTENCIA INICIAL
+			// =========================
+			if (
+				$request > 0 &&
+				$option == 1 && // SOLO ALTA NUEVA
+				in_array($tipo_elemento, ['P', 'C', 'H']) &&
+				$almacenid > 0 &&
+				$cantidadInicial > 0 &&
+				$costoUnitario > 0
+			) {
+				require_once 'Models/Inv_movimientosinventarioModel.php';
+
+				$movModel = new Inv_movimientosinventarioModel();
+
+				$movModel->insertMovimiento(
+					(int)$request,          // inventarioid
+					(int)$almacenid,        // almacenid
+					1,                      // concepmovid = INVENTARIO INICIAL
+					'Inventario inicial',
+					(float)$cantidadInicial,
+					(float)$costoUnitario
+				);
+			}
+
+
 
 			// =========================
 			// RESPUESTA

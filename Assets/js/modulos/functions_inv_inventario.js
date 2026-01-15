@@ -1,12 +1,13 @@
 let tableInventarios;
 
-  const rutas = {
-    lineas: base_url + "/Inv_lineasdproducto/getSelectLineasProductos",
-    almacenes: base_url + "/Inv_almacenes/getSelectAlmacenes",
-    save: base_url + "/Inv_inventario/setInventario",
-  };
+const rutas = {
+  lineas: base_url + "/Inv_lineasdproducto/getSelectLineasProductos",
+  almacenes: base_url + "/Inv_almacenes/getSelectAlmacenes",
+  save: base_url + "/Inv_inventario/setInventario",
+};
 
 document.addEventListener("DOMContentLoaded", () => {
+  ocultarMovimientoInicial();
   tableInventarios = $("#tableInventarios").DataTable({
     destroy: true,
     ajax: {
@@ -50,6 +51,17 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   /* =============================
+   NUEVO INVENTARIO
+============================= */
+  document
+    .querySelector('a[href="#agregarProducto"]')
+    ?.addEventListener("click", () => {
+      resetFormularioInventario(); // 🔹 aquí
+      cargarLineas("#lineaproductoid_producto");
+      cargarAlmacenes("#almacenid");
+    });
+
+  /* =============================
      CARGA SELECT LÍNEAS
   ============================= */
   function cargarLineas(selectId, selectedValue = "") {
@@ -67,6 +79,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     };
   }
+
+  // 🔥 ESTA LÍNEA ES LA CLAVE
+  window.cargarLineas = cargarLineas;
 
   /* =============================
      CARGA SELECT ALMACENES
@@ -86,6 +101,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     };
   }
+
+  // 🔹 HACERLA GLOBAL
+  window.cargarAlmacenes = cargarAlmacenes;
 
   /* =============================
      EVENTOS DE TABS
@@ -527,6 +545,9 @@ function fntViewInventario(idinventario) {
 }
 
 function fntEditInventario(idinventario) {
+  // 🔴 OCULTAR movimiento inicial (NO aplica en edición)
+  ocultarMovimientoInicial();
+
   const request = new XMLHttpRequest();
   request.open(
     "GET",
@@ -549,6 +570,9 @@ function fntEditInventario(idinventario) {
     const tabForm = document.querySelector('a[href="#agregarProducto"]');
     new bootstrap.Tab(tabForm).show();
 
+    // 🔥 FORZAR CARGA DE LÍNEAS
+    cargarLineas("#lineaproductoid_producto", data.lineaproductoid);
+
     // 🔹 Básicos
     setValue("#idinventario", data.idinventario);
     setValue("#cve_articulo", data.cve_articulo);
@@ -561,6 +585,11 @@ function fntEditInventario(idinventario) {
     setValue("#unidad_empaque", data.unidad_empaque);
     setValue("#estado", data.estado);
 
+    // 👇 AQUÍ
+    document.getElementById("serie").checked = data.serie === "S";
+    document.getElementById("lote").checked = data.lote === "S";
+    document.getElementById("pedimiento").checked = data.pedimiento === "S";
+
     // 🔹 Radios
     document
       .querySelectorAll('input[name="tipo_elemento"]')
@@ -569,7 +598,6 @@ function fntEditInventario(idinventario) {
       });
 
     // 🔹 Selects (CARGAR + SELECCIONAR)
-    cargarLineas("#lineaproductoid_producto", data.lineaproductoid);
     cargarAlmacenes("#almacenid", data.almacenid);
 
     // 🔹 Cambiar botón
@@ -644,19 +672,37 @@ function resetFormularioInventario() {
   const form = document.querySelector("#formInventarioProducto");
   if (form) form.reset();
 
-  document.querySelector("#idinventario").value = "";
+  // 🔹 Limpiar id (clave de edición)
+  const idInput = document.querySelector("#idinventario");
+  if (idInput) idInput.value = "";
 
-  document.querySelectorAll('input[name="tipo_elemento"]').forEach((radio) => {
-    radio.disabled = false;
+  // 🔹 Reset checkboxes
+  const checkboxes = ["serie", "lote", "pedimiento"];
+  checkboxes.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.checked = false;
   });
 
-  const radioProducto = document.querySelector(
-    'input[name="tipo_elemento"][value="P"]'
-  );
-  if (radioProducto) {
-    radioProducto.checked = true;
-    radioProducto.dispatchEvent(new Event("change"));
-  }
+  // 🔹 Reset selects
+  const selects = ["#lineaproductoid_producto", "#almacenid"];
+  selects.forEach((sel) => {
+    const s = document.querySelector(sel);
+    if (s) s.innerHTML = "";
+  });
+
+  // 🔹 Reset radios tipo elemento
+  document.querySelectorAll('input[name="tipo_elemento"]').forEach((radio) => {
+    radio.disabled = false;
+    radio.checked = radio.value === "P"; // predeterminado a producto
+    if (radio.checked) radio.dispatchEvent(new Event("change"));
+  });
+
+  // 🔹 Cambiar botón a GUARDAR
+  const btnText = document.querySelector("#btnText");
+  if (btnText) btnText.textContent = "GUARDAR";
+
+  // 🔹 Mostrar bloque movimiento inicial
+  mostrarMovimientoInicial();
 }
 
 function setValue(selector, value) {
@@ -666,19 +712,25 @@ function setValue(selector, value) {
   }
 }
 
-window.cargarLineas = function (selectId, selectedValue = "") {
-  const select = document.querySelector(selectId);
-  if (!select) return;
+function ocultarMovimientoInicial() {
+  const bloque = document.getElementById("bloqueMovimientoInicial");
+  if (bloque) bloque.classList.add("d-none");
 
-  const request = new XMLHttpRequest();
-  request.open("GET", rutas.lineas, true);
-  request.send();
-
-  request.onreadystatechange = () => {
-    if (request.readyState === 4 && request.status === 200) {
-      select.innerHTML = request.responseText;
-      if (selectedValue) select.value = selectedValue;
+  ["almacenid", "cantidad_inicial", "costo"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.disabled = true;
+      el.value = "";
     }
-  };
-};
+  });
+}
 
+function mostrarMovimientoInicial() {
+  const bloque = document.getElementById("bloqueMovimientoInicial");
+  if (bloque) bloque.classList.remove("d-none");
+
+  ["almacenid", "cantidad_inicial", "costo"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = false;
+  });
+}

@@ -15,6 +15,7 @@ class Inv_inventarioModel extends Mysql
         string $descripcion,
         string $unidad_entrada,
         string $unidad_salida,
+        string $unidad_empaque, // ✅ NUEVO
         int $lineaproductoid,
         string $tipo_elemento,
         float $factor_unidades,
@@ -43,30 +44,32 @@ class Inv_inventarioModel extends Mysql
 
         // ==== INSERT (CON ?)
         $sql = "INSERT INTO wms_inventario
-        (
-            cve_articulo,
-            descripcion,
-            unidad_entrada,
-            unidad_salida,
-            lineaproductoid,
-            tipo_elemento,
-            factor_unidades,
-            control_almacen,
-            tiempo_surtido,
-            peso,
-            volumen,
-            serie,
-            lote,
-            pedimiento,
-            fecha_creacion,
-            estado
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),?)";
+(
+    cve_articulo,
+    descripcion,
+    unidad_entrada,
+    unidad_salida,
+    unidad_empaque,      -- ✅
+    lineaproductoid,
+    tipo_elemento,
+    factor_unidades,
+    control_almacen,
+    tiempo_surtido,
+    peso,
+    volumen,
+    serie,
+    lote,
+    pedimiento,
+    fecha_creacion,
+    estado
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),?)";
 
         return $this->insert($sql, [
             $cve_articulo,
             $descripcion,
             $unidad_entrada,
             $unidad_salida,
+            $unidad_empaque,   // ✅
             $lineaproductoid,
             $tipo_elemento,
             $factor_unidades,
@@ -80,6 +83,23 @@ class Inv_inventarioModel extends Mysql
             $estado
         ]);
     }
+
+    /* ===============================
+   WMS MULTIALMACÉN
+=============================== */
+    public function inicializarMultiAlmacen(
+        int $inventarioid,
+        int $almacenid,
+        float $cantidadInicial
+    ): bool {
+        $sql = "INSERT INTO wms_multialmacen
+            (inventarioid, almacenid, existencia)
+            VALUES (?, ?, ?)";
+        return $this->insert($sql, [$inventarioid, $almacenid, $cantidadInicial]);
+    }
+
+
+
 
     /* ===============================
        SELECT ALL
@@ -124,6 +144,7 @@ class Inv_inventarioModel extends Mysql
         string $descripcion,
         string $unidad_entrada,
         string $unidad_salida,
+        string $unidad_empaque, // ✅ NUEVO
         int $lineaproductoid,
         string $tipo_elemento,
         float $factor_unidades,
@@ -154,28 +175,31 @@ class Inv_inventarioModel extends Mysql
 
         // ==== UPDATE (CON ?)
         $sql = "UPDATE wms_inventario SET
-                            cve_articulo = ?,
-                            descripcion = ?,
-                            unidad_entrada = ?,
-                            unidad_salida = ?,
-                            lineaproductoid = ?,
-                            tipo_elemento = ?,
-                            factor_unidades = ?,
-                            control_almacen = ?,
-                            tiempo_surtido = ?,
-                            peso = ?,
-                            volumen = ?,
-                            serie = ?,
-                            lote = ?,
-                            pedimiento = ?,
-                            estado = ?
-                        WHERE idinventario = ?";
+    cve_articulo = ?,
+    descripcion = ?,
+    unidad_entrada = ?,
+    unidad_salida = ?,
+    unidad_empaque = ?,      -- ✅
+    lineaproductoid = ?,
+    tipo_elemento = ?,
+    factor_unidades = ?,
+    control_almacen = ?,
+    tiempo_surtido = ?,
+    peso = ?,
+    volumen = ?,
+    serie = ?,
+    lote = ?,
+    pedimiento = ?,
+    estado = ?
+WHERE idinventario = ?";
+
 
         return $this->update($sql, [
             $cve_articulo,
             $descripcion,
             $unidad_entrada,
             $unidad_salida,
+            $unidad_empaque, // ✅
             $lineaproductoid,
             $tipo_elemento,
             $factor_unidades,
@@ -291,39 +315,12 @@ class Inv_inventarioModel extends Mysql
         ]);
     }
 
-    /* ===============================
-       MOVIMIENTOS INVENTARIO
-    =============================== */
-    public function insertMovimientoInventario(array $data)
+    public function selectInventariosPC_H()
     {
-        $sql = "INSERT INTO wms_movimientos_inventario
-        (
-            inventarioid,
-            almacenid,
-            concepmovid,
-            referencia,
-            cantidad,
-            costo_cantidad,
-            precio,
-            costo,
-            existencia,
-            signo,
-            fecha_movimiento,
-            estado
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)";
-
-        return $this->insert($sql, [
-            $data['inventarioid'],
-            $data['almacenid'],
-            $data['concepmovid'],
-            $data['referencia'],
-            $data['cantidad'],
-            $data['costo_cantidad'],
-            $data['precio'],
-            $data['costo'],
-            $data['existencia'],
-            $data['signo'],
-            $data['estado']
-        ]);
+        $sql = "SELECT idinventario, cve_articulo, descripcion 
+            FROM inv_inventario 
+            WHERE tipo_elemento IN ('P','C','H') 
+            AND estado != 0";
+        return $this->select_all($sql);
     }
 }

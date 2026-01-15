@@ -35,7 +35,7 @@
                         <?php if ($_SESSION['permisosMod']['w']) { ?>
                             <li class="nav-item">
                                 <a class="nav-link" data-bs-toggle="tab" href="#agregarProducto" role="tab">
-                                    +PRODUCTO
+                                    +ALTAS
                                 </a>
                             </li>
                             <li class="nav-item">
