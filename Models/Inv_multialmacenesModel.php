@@ -52,7 +52,7 @@ class Inv_multialmacenesModel extends Mysql
     float $nuevaExistencia
 ) {
     $sql = "
-        INSERT INTO wms_multialmacenes (inventarioid, almacenid, existencia)
+        INSERT INTO wms_multialmacen (inventarioid, almacenid, existencia)
         VALUES (?,?,?)
         ON DUPLICATE KEY UPDATE
         existencia = ?

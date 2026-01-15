@@ -87,13 +87,17 @@ class Inv_inventarioModel extends Mysql
     /* ===============================
    WMS MULTIALMACÉN
 =============================== */
-    public function inicializarMultiAlmacen(int $inventarioid, int $almacenid, float $cantidadInicial = 0)
-{
-    $sql = "INSERT INTO wms_multialmacen
-        (inventarioid, almacenid, existencia, stock_minimo, stock_maximo, compras_x_recibir, pendiente_surtir)
-        VALUES (?, ?, ?, 0, 0, 0, 0)";
-    return $this->insert($sql, [$inventarioid, $almacenid, $cantidadInicial]);
-}
+    public function inicializarMultiAlmacen(
+        int $inventarioid,
+        int $almacenid,
+        float $cantidadInicial
+    ): bool {
+        $sql = "INSERT INTO wms_multialmacen
+            (inventarioid, almacenid, existencia)
+            VALUES (?, ?, ?)";
+        return $this->insert($sql, [$inventarioid, $almacenid, $cantidadInicial]);
+    }
+
 
 
 
@@ -312,12 +316,11 @@ WHERE idinventario = ?";
     }
 
     public function selectInventariosPC_H()
-{
-    $sql = "SELECT idinventario, cve_articulo, descripcion 
+    {
+        $sql = "SELECT idinventario, cve_articulo, descripcion 
             FROM inv_inventario 
             WHERE tipo_elemento IN ('P','C','H') 
             AND estado != 0";
-    return $this->select_all($sql);
-}
-
+        return $this->select_all($sql);
+    }
 }

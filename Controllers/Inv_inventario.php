@@ -59,7 +59,7 @@ class Inv_inventario extends Controllers
 			$tipo_elemento    = strClean($_POST['tipo_elemento']); // P S K
 			$unidad_entrada   = strClean($_POST['unidad_entrada'] ?? '');
 			$unidad_salida    = strClean($_POST['unidad_salida'] ?? '');
-			$ubicacion        = strClean($_POST['ubicacion'] ?? '');
+			$ubicacion = strClean($_POST['ubicacion'] ?? 'GENERAL');
 			$unidad_empaque = strClean($_POST['unidad_empaque'] ?? '');
 			$factor_unidades  = floatval($_POST['factor_unidades'] ?? 1);
 			$tiempo_surtido = intval($_POST['tiempo_surtido'] ?? 0);
@@ -160,10 +160,26 @@ class Inv_inventario extends Controllers
 			// =========================
 			// INICIALIZAR MULTIALMACÉN CON EXISTENCIA INICIAL
 			// =========================
-			if ($request > 0 && $almacenid > 0) {
-				// $almacenid viene del formulario, $ubicacion como control_almacen
-				// $cantidadInicial viene del formulario
-				$this->model->inicializarMultiAlmacen($request, $almacenid, $ubicacion, $cantidadInicial);
+			if (
+				$request > 0 &&
+				$option == 1 && // SOLO ALTA NUEVA
+				in_array($tipo_elemento, ['P', 'C', 'H']) &&
+				$almacenid > 0 &&
+				$cantidadInicial > 0 &&
+				$costoUnitario > 0
+			) {
+				require_once 'Models/Inv_movimientosinventarioModel.php';
+
+				$movModel = new Inv_movimientosinventarioModel();
+
+				$movModel->insertMovimiento(
+					(int)$request,          // inventarioid
+					(int)$almacenid,        // almacenid
+					1,                      // concepmovid = INVENTARIO INICIAL
+					'Inventario inicial',
+					(float)$cantidadInicial,
+					(float)$costoUnitario
+				);
 			}
 
 
