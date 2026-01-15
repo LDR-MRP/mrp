@@ -56,10 +56,16 @@ class Inv_movimientosinventario extends Controllers
                     $costo_cantidad
                 );
 
-                if ($request > 0) {
-                    $arrResponse = ['status' => true, 'msg' => 'Movimiento registrado'];
+                if ($request === true) {
+                    $arrResponse = [
+                        'status' => true,
+                        'msg' => 'Movimiento registrado correctamente'
+                    ];
                 } else {
-                    $arrResponse = ['status' => false, 'msg' => 'Error al registrar'];
+                    $arrResponse = [
+                        'status' => false,
+                        'msg' => $request // aquí llega "Stock insuficiente"
+                    ];
                 }
             }
 

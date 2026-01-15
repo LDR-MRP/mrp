@@ -1,36 +1,37 @@
 <form id="formInventarioProducto" autocomplete="off" class="form-steps was-validated" autocomplete="off">
     <input type="hidden" id="idinventario" name="idinventario">
+    <div class="container d-flex justify-content-center align-items-center p-3 mb-3 rounded">
+
+        <!-- PRODUCTO -->
+        <div class="col-md-4 form-check d-flex align-items-center">
+            <input class="form-check-input" type="radio"
+                name="tipo_elemento" id="producto" value="P" checked>
+            <label class="form-label fw-semibold ms-2" for="producto">
+                Producto
+            </label>
+        </div>
+
+        <!-- COMPONENTE -->
+        <div class="col-md-4 form-check d-flex align-items-center">
+            <input class="form-check-input" type="radio"
+                name="tipo_elemento" id="componente" value="C">
+            <label class="form-label fw-semibold ms-2" for="componente">
+                Componente
+            </label>
+        </div>
+
+        <!-- HERRAMIENTA -->
+        <div class="col-md-4 form-check d-flex align-items-center">
+            <input class="form-check-input" type="radio"
+                name="tipo_elemento" id="herramienta" value="H">
+            <label class="form-label fw-semibold ms-2" for="herramienta">
+                Herramienta
+            </label>
+        </div>
+    </div>
+
     <div class="row">
 
-        <div class="container d-flex justify-content-center align-items-center p-3 mb-3 rounded">
-
-            <!-- PRODUCTO -->
-            <div class="col-md-4 form-check d-flex align-items-center">
-                <input class="form-check-input" type="radio"
-                    name="tipo_elemento" id="producto" value="P" checked>
-                <label class="form-label fw-semibold ms-2" for="producto">
-                    Producto
-                </label>
-            </div>
-
-            <!-- COMPONENTE -->
-            <div class="col-md-4 form-check d-flex align-items-center">
-                <input class="form-check-input" type="radio"
-                    name="tipo_elemento" id="componente" value="C">
-                <label class="form-label fw-semibold ms-2" for="componente">
-                    Componente
-                </label>
-            </div>
-
-            <!-- HERRAMIENTA -->
-            <div class="col-md-4 form-check d-flex align-items-center">
-                <input class="form-check-input" type="radio"
-                    name="tipo_elemento" id="herramienta" value="H">
-                <label class="form-label fw-semibold ms-2" for="herramienta">
-                    Herramienta
-                </label>
-            </div>
-        </div>
 
         <!-- CLAVE -->
         <div class="col-lg-4 col-sm-6">
@@ -208,46 +209,6 @@
             </div>
         </div>
 
-        <!-- ALMACEN -->
-        <div class="col-lg-4 col-sm-6">
-            <div class="mb-3">
-                <label class="form-label" for="almacenid">ALMACÉN INICIAL</label>
-                <div class="input-group mb-3">
-                    <span class="input-group-text" id="almacen-addon">Alm.</span>
-                    <select class="form-control" id="almacenid" name="almacenid"></select>
-                    <div class="invalid-feedback">El campo almacén es obligatorio</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- CANTIDAD -->
-        <div class="col-lg-4 col-sm-6">
-            <div class="mb-3">
-                <label class="form-label" for="cantidad_inicial">CANTIDAD INICIAL</label>
-                <div class="input-group mb-3">
-                    <span class="input-group-text" id="cantidad_inicial-addon">Can.</span>
-                    <input type="number" class="form-control"
-                        placeholder="Ingresa la cantidad inicial" id="cantidad_inicial" name="cantidad_inicial"
-                        aria-describedby="cantidad_inicial-addon">
-                    <div class="invalid-feedback">El campo cantidad inicial es obligatorio</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- COSTO UNITARIO -->
-        <div class="col-lg-4 col-sm-6">
-            <div class="mb-3">
-                <label class="form-label" for="costo">COSTO</label>
-                <div class="input-group mb-3">
-                    <span class="input-group-text" id="costo-addon">Costo</span>
-                    <input type="text" class="form-control"
-                        placeholder="Ingresa el costo" id="costo" name="costo"
-                        aria-describedby="costo-addon">
-                    <div class="invalid-feedback">El campo costo es obligatorio</div>
-                </div>
-            </div>
-        </div>
-
         <!-- Estado -->
         <div class="col-lg-4 col-sm-6">
             <div class="mb-3">
@@ -260,6 +221,48 @@
                         <option value="1">Inactivo</option>
                     </select>
                     <div class="invalid-feedback">El campo estado es obligatorio</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row" id="bloqueMovimientoInicial">
+            <!-- ALMACEN -->
+            <div class="col-lg-4 col-sm-6">
+                <div class="mb-3">
+                    <label class="form-label" for="almacenid">ALMACÉN INICIAL</label>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text" id="almacen-addon">Alm.</span>
+                        <select class="form-control" id="almacenid" name="almacenid"></select>
+                        <div class="invalid-feedback">El campo almacén es obligatorio</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CANTIDAD -->
+            <div class="col-lg-4 col-sm-6">
+                <div class="mb-3">
+                    <label class="form-label" for="cantidad_inicial">CANTIDAD INICIAL</label>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text" id="cantidad_inicial-addon">Can.</span>
+                        <input type="number" class="form-control"
+                            placeholder="Ingresa la cantidad inicial" id="cantidad_inicial" name="cantidad_inicial"
+                            aria-describedby="cantidad_inicial-addon">
+                        <div class="invalid-feedback">El campo cantidad inicial es obligatorio</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COSTO UNITARIO -->
+            <div class="col-lg-4 col-sm-6">
+                <div class="mb-3">
+                    <label class="form-label" for="costo">COSTO</label>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text" id="costo-addon">Costo</span>
+                        <input type="text" class="form-control"
+                            placeholder="Ingresa el costo" id="costo" name="costo"
+                            aria-describedby="costo-addon">
+                        <div class="invalid-feedback">El campo costo es obligatorio</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -290,6 +293,7 @@
 
             <!-- CHECK NÚMERO DE SERIE -->
             <div class="col-md-4 form-check d-flex align-items-center">
+                <input type="hidden" name="serie" value="N">
                 <label class="form-label fw-semibold" for="serie">
                     <i class="bi bi-check-circle me-1 text-primary"></i>
                     <input class="form-check-input ms-2" type="checkbox" value="S" id="serie" name="serie">
@@ -299,6 +303,7 @@
 
             <!-- CHECK LOTES -->
             <div class="col-md-4 form-check d-flex align-items-center">
+                <input type="hidden" name="lote" value="N">
                 <label class="form-label fw-semibold" for="lote">
                     <i class="bi bi-check-circle me-1 text-primary"></i>
                     <input class="form-check-input ms-2" type="checkbox" value="S" id="lote" name="lote">
@@ -308,13 +313,16 @@
 
             <!-- CHECK PEDIMENTOS ADUANALES -->
             <div class="col-md-4 form-check d-flex align-items-center">
+                <input type="hidden" name="pedimiento" value="N">
                 <label class="form-label fw-semibold" for="pedimiento">
                     <i class="bi bi-check-circle me-1 text-primary"></i>
                     <input class="form-check-input ms-2" type="checkbox" value="S" id="pedimiento" name="pedimiento">
                     <span class="ms-2">Pedimientos aduanales</span>
                 </label>
             </div>
+
         </div>
+
     </div>
     <!-- end row -->
 

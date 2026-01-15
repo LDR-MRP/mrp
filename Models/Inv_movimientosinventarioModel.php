@@ -28,81 +28,81 @@ class Inv_movimientosinventarioModel extends Mysql
         float $cantidad,
         float $costo_cantidad
     ) {
-        // 1️⃣ Obtener signo del concepto
-        $sqlConcepto = "SELECT signo FROM wms_conceptos_mov 
-                    WHERE idconcepmov = $concepmovid";
-        $concepto = $this->select($sqlConcepto);
+        // 1. Signo
+        $concepmovid = (int)$concepmovid;
+        $concepto = $this->select(
+            "SELECT signo FROM wms_conceptos_mov WHERE idconcepmov = $concepmovid"
+        );
+        if (!$concepto) return "Concepto inválido";
 
-        if (empty($concepto)) return 0;
+        $signo = (int)$concepto['signo'];
 
-        $signo = intval($concepto['signo']);
+        // 2. Stock actual
+        $inventarioid = (int)$inventarioid;
+        $almacenid = (int)$almacenid;
 
-        // 2️⃣ Calcular existencia actual desde movimientos
-        $sqlExistencia = "
-        SELECT IFNULL(SUM(cantidad * signo),0) AS existencia
-        FROM wms_movimientos_inventario
-        WHERE inventarioid = $inventarioid
-        AND almacenid = $almacenid
-        AND estado = 2
-    ";
-        $row = $this->select($sqlExistencia);
-
-        $existencia_actual = floatval($row['existencia']);
-
-        // 3️⃣ Calcular nueva existencia
-        $nueva_existencia = $existencia_actual + ($cantidad * $signo);
-
-        // 4️⃣ Validar salidas sin stock
-        if ($nueva_existencia < 0) {
-            return "stock";
+        $row = $this->select(
+            "SELECT existencia FROM wms_multialmacen
+     WHERE inventarioid = $inventarioid
+       AND almacenid = $almacenid"
+        );
+        // Regla 1: no existe stock y es salida
+        if ($signo < 0 && !$row) {
+            return "No existe stock del producto en este almacén";
         }
-        $sqlNum = "
-    SELECT IFNULL(MAX(numero_movimiento),0)+1 AS num
-    FROM wms_movimientos_inventario
-    WHERE almacenid = $almacenid
-";
-        $rowNum = $this->select($sqlNum);
-        $numero_movimiento = intval($rowNum['num']);
+
+        $existencia_actual = $row ? (float)$row['existencia'] : 0;
+        $nueva_existencia = $existencia_actual + ($cantidad * $signo);
+        
+        // Regla 2: stock insuficiente
+        if ($nueva_existencia < 0) {
+            return "Stock insuficiente";
+        }
+
+        // 3. Número movimiento
+        $numRow = $this->select(
+            "SELECT IFNULL(MAX(numero_movimiento),0)+1 AS num
+     FROM wms_movimientos_inventario
+     WHERE almacenid = $almacenid"
+        );
+        $num = (int)$numRow['num'];
 
 
-        // 5️⃣ Insertar movimiento
-        $sqlInsert = "INSERT INTO wms_movimientos_inventario
-                                (
-                                inventarioid,
-                                almacenid,
-                                numero_movimiento,
-                                concepmovid,
-                                referencia,
-                                cantidad,
-                                costo_cantidad,
-                                existencia,
-                                signo,
-                                fecha_movimiento,
-                                estado
-                                )
-                    VALUES (?,?,?,?,?,?,?,?,?,NOW(),2)";
+        // 4. Insertar movimiento
+        $this->insert(
+            "INSERT INTO wms_movimientos_inventario
+        (inventarioid, almacenid, numero_movimiento, concepmovid,
+         referencia, cantidad, costo_cantidad, existencia, signo,
+         fecha_movimiento, estado)
+        VALUES (?,?,?,?,?,?,?,?,?,NOW(),2)",
+            [
+                $inventarioid,
+                $almacenid,
+                $num,
+                $concepmovid,
+                $referencia,
+                $cantidad,
+                $costo_cantidad,
+                $nueva_existencia,
+                $signo
+            ]
+        );
 
+        // 5. Actualizar multialmacenes
+        $this->insert(
+            "INSERT INTO wms_multialmacen (inventarioid, almacenid, existencia)
+         VALUES (?,?,?)
+         ON DUPLICATE KEY UPDATE existencia=?",
+            [$inventarioid, $almacenid, $nueva_existencia, $nueva_existencia]
+        );
 
-        $arrData = [
-            $inventarioid,
-            $almacenid,
-            $numero_movimiento, 
-            $concepmovid,
-            $referencia,
-            $cantidad,
-            $costo_cantidad,
-            $nueva_existencia,
-            $signo
-        ];
-
-
-        $insert = $this->insert($sqlInsert, $arrData);
-        return $insert; // debe ser > 0 si insertó
+        return true;
     }
 
+
     public function selectMovimientos()
-{
-    $sql = "SELECT 
+    {
+        $sql = "SELECT 
             m.idmovinventario,
             i.descripcion AS producto,
             a.descripcion AS almacen,
@@ -118,8 +118,8 @@ class Inv_movimientosinventarioModel extends Mysql
         WHERE m.estado = 2
         ORDER BY m.idmovinventario DESC
     ";
-    return $this->select_all($sql);
-}
+        return $this->select_all($sql);
+    }
 
 
 

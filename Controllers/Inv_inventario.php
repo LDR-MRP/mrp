@@ -100,6 +100,7 @@ class Inv_inventario extends Controllers
 						$descripcion,
 						$unidad_entrada,
 						$unidad_salida,
+						$unidad_empaque,
 						$lineaproductoid,
 						$tipo_elemento,
 						$factor_unidades,
@@ -128,32 +129,6 @@ class Inv_inventario extends Controllers
 							$tipo_asignacion
 						);
 					}
-
-					if (
-						$request > 0 &&
-						$tipo_elemento === 'P' &&
-						$almacenid > 0 &&
-						$cantidadInicial > 0
-					) {
-
-						$signo = 1;
-						$existencia = $cantidadInicial;
-						$costoCantidad = $cantidadInicial * $costoUnitario;
-
-						$this->model->insertMovimientoInventario([
-							'inventarioid'     => $request,
-							'almacenid'        => $almacenid,
-							'concepmovid'      => 3, //  Entrada de fabrica
-							'referencia'       => 'Alta de producto',
-							'cantidad'         => $cantidadInicial,
-							'costo_cantidad'   => $costoCantidad,
-							'precio'           => $precioUnitario,
-							'costo'            => $costoUnitario,
-							'existencia'       => $existencia,
-							'signo'            => $signo,
-							'estado'           => 2
-						]);
-					}
 				}
 			} else {
 
@@ -165,7 +140,8 @@ class Inv_inventario extends Controllers
 						$descripcion,
 						$unidad_entrada,
 						$unidad_salida,
-						$lineaproductoid,
+						$unidad_empaque,   // ✅ FALTABA
+						$lineaproductoid,  // ✅ ahora sí es int
 						$tipo_elemento,
 						$factor_unidades,
 						$ubicacion,
@@ -180,6 +156,17 @@ class Inv_inventario extends Controllers
 					$option = 2;
 				}
 			}
+
+			// =========================
+			// INICIALIZAR MULTIALMACÉN CON EXISTENCIA INICIAL
+			// =========================
+			if ($request > 0 && $almacenid > 0) {
+				// $almacenid viene del formulario, $ubicacion como control_almacen
+				// $cantidadInicial viene del formulario
+				$this->model->inicializarMultiAlmacen($request, $almacenid, $ubicacion, $cantidadInicial);
+			}
+
+
 
 			// =========================
 			// RESPUESTA
