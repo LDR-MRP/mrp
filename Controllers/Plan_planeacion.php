@@ -84,320 +84,319 @@ class Plan_planeacion extends Controllers
   }
 
 
-  public function setPlaneacion()
-  {
-    header('Content-Type: application/json');
+public function setPlaneacion()
+{
+  header('Content-Type: application/json');
 
-    $fecha_notificacion =date('Y-m-d');
+  $fecha_notificacion = date('Y-m-d');
 
-    $json = file_get_contents('php://input');
-    $data = json_decode($json, true);
+  $json = file_get_contents('php://input');
+  $data = json_decode($json, true);
 
-    if (!is_array($data)) {
-      echo json_encode(['status' => false, 'msg' => 'JSON inválido']);
+  if (!is_array($data)) {
+    echo json_encode(['status' => false, 'msg' => 'JSON inválido']);
+    die();
+  }
+
+  $h = $data['header'] ?? [];
+
+  $productoid       = (int)($h['productoid'] ?? 0);
+  $pedido           = trim((string)($h['pedido'] ?? ''));
+  $supervisor       = trim((string)($h['supervisor'] ?? ''));
+  $prioridad        = trim((string)($h['prioridad'] ?? ''));
+  $cantidad         = (int)($h['cantidad'] ?? 0);
+  $fecha_inicio     = trim((string)($h['fecha_inicio'] ?? ''));
+  $fecha_requerida  = trim((string)($h['fecha_requerida'] ?? ''));
+  $notas            = trim((string)($h['notas'] ?? ''));
+
+  if ($productoid <= 0) {
+    echo json_encode(['status' => false, 'msg' => 'Falta producto']);
+    die();
+  }
+  if ($prioridad === '') {
+    echo json_encode(['status' => false, 'msg' => 'Falta prioridad']);
+    die();
+  }
+  if ($cantidad <= 0) {
+    echo json_encode(['status' => false, 'msg' => 'Cantidad inválida']);
+    die();
+  }
+  if ($fecha_inicio === '' || $fecha_requerida === '') {
+    echo json_encode(['status' => false, 'msg' => 'Faltan fechas']);
+    die();
+  }
+
+  $asignaciones = $data['asignaciones'] ?? [];
+  if (!is_array($asignaciones) || count($asignaciones) === 0) {
+    echo json_encode(['status' => false, 'msg' => 'No hay asignaciones']);
+    die();
+  }
+
+  // ---------------------------------------------------------
+  //  Validación + recopilación de usuarios
+  // ---------------------------------------------------------
+  $idsEncargados = [];
+  $idsAyudantes  = [];
+
+  foreach ($asignaciones as $a) {
+    $estacionid = (int)($a['estacionid'] ?? 0);
+    $orden      = (int)($a['orden'] ?? 0);
+    $encargado  = (int)($a['encargado'] ?? 0);
+    $ayudantes  = $a['ayudantes'] ?? [];
+
+    if ($estacionid <= 0 || $orden <= 0) {
+      echo json_encode(['status' => false, 'msg' => 'Asignación inválida (estacionid/orden)']);
+      die();
+    }
+    if ($encargado <= 0) {
+      echo json_encode(['status' => false, 'msg' => "Falta encargado en estación orden {$orden}"]);
+      die();
+    }
+    if (!is_array($ayudantes) || count($ayudantes) < 1) {
+      echo json_encode(['status' => false, 'msg' => "Faltan ayudantes en estación orden {$orden}"]);
       die();
     }
 
-    $h = $data['header'] ?? [];
+    $idsEncargados[] = $encargado;
 
-    $productoid = (int) ($h['productoid'] ?? 0);
-    $pedido = trim((string) ($h['pedido'] ?? ''));
-    $supervisor = trim((string) ($h['supervisor'] ?? ''));
-    $prioridad = trim((string) ($h['prioridad'] ?? ''));
-    $cantidad = (int) ($h['cantidad'] ?? 0);
-    $fecha_inicio = trim((string) ($h['fecha_inicio'] ?? ''));
-    $fecha_requerida = trim((string) ($h['fecha_requerida'] ?? ''));
-    $notas = trim((string) ($h['notas'] ?? ''));
-
-    if ($productoid <= 0) {
-      echo json_encode(['status' => false, 'msg' => 'Falta producto']);
-      die();
-    }
-    if ($prioridad === '') {
-      echo json_encode(['status' => false, 'msg' => 'Falta prioridad']);
-      die();
-    }
-    if ($cantidad <= 0) {
-      echo json_encode(['status' => false, 'msg' => 'Cantidad inválida']);
-      die();
-    }
-    if ($fecha_inicio === '' || $fecha_requerida === '') {
-      echo json_encode(['status' => false, 'msg' => 'Faltan fechas']);
-      die();
-    }
-
-    $asignaciones = $data['asignaciones'] ?? [];
-    if (!is_array($asignaciones) || count($asignaciones) === 0) {
-      echo json_encode(['status' => false, 'msg' => 'No hay asignaciones']);
-      die();
-    }
-
-    // =====================================================
-    // 1) VALIDAR ASIGNACIONES + ARMAR IDS
-    // =====================================================
-    $idsEncargados = [];
-    $idsAyudantes = [];
-
-    foreach ($asignaciones as $a) {
-      $estacionid = (int) ($a['estacionid'] ?? 0);
-      $orden = (int) ($a['orden'] ?? 0);
-      $encargado = (int) ($a['encargado'] ?? 0);
-      $ayudantes = $a['ayudantes'] ?? [];
-
-      if ($estacionid <= 0 || $orden <= 0) {
-        echo json_encode(['status' => false, 'msg' => 'Asignación inválida (estacionid/orden)']);
-        die();
-      }
-      if ($encargado <= 0) {
-        echo json_encode(['status' => false, 'msg' => "Falta encargado en estación orden {$orden}"]);
-        die();
-      }
-      if (!is_array($ayudantes) || count($ayudantes) < 1) {
-        echo json_encode(['status' => false, 'msg' => "Faltan ayudantes en estación orden {$orden}"]);
-        die();
-      }
-
-      $idsEncargados[] = $encargado;
-
-      foreach ($ayudantes as $uid) {
-        $uid = (int) $uid;
-        if ($uid > 0)
-          $idsAyudantes[] = $uid;
-      }
-    }
-
-    $idsEncargados = array_values(array_unique(array_map('intval', $idsEncargados)));
-    $idsAyudantes = array_values(array_unique(array_map('intval', $idsAyudantes)));
-    // si alguien es encargado y ayudante, lo dejamos como encargado
-    $idsAyudantes = array_values(array_diff($idsAyudantes, $idsEncargados));
-
-    // =====================================================
-    // 2) TRAER DESTINATARIOS CON NOMBRE + EMAIL
-    //    (tu model debe regresar idusuario,nombres,apellidos,email_user)
-    // =====================================================
-    $destEnc = []; // [{idusuario,email,nombre}]
-    $destAy = []; // [{idusuario,email,nombre}]
-
-    if (!empty($idsEncargados)) {
-      $arrEnc = $this->model->getEmailsUsuariosByIds($idsEncargados);
-      foreach ($arrEnc as $u) {
-        $email = trim((string) ($u['email_user'] ?? ''));
-        if ($email === '')
-          continue;
-
-        $nombre = trim((string) ($u['nombres'] ?? ''));
-        if ($nombre === '')
-          $nombre = '—';
-
-        $destEnc[] = [
-          'idusuario' => (int) ($u['idusuario'] ?? 0),
-          'email' => $email,
-          'nombre' => $nombre,
-        ];
-      }
-    }
-
-    if (!empty($idsAyudantes)) {
-      $arrAy = $this->model->getEmailsUsuariosByIds($idsAyudantes);
-      foreach ($arrAy as $u) {
-        $email = trim((string) ($u['email_user'] ?? ''));
-        if ($email === '')
-          continue;
-
-        $nombre = trim((string) ($u['nombres'] ?? ''));
-        if ($nombre === '')
-          $nombre = '—';
-
-        $destAy[] = [
-          'idusuario' => (int) ($u['idusuario'] ?? 0),
-          'email' => $email,
-          'nombre' => $nombre,
-        ];
-      }
-    }
-
-    $emailsEnc = array_values(array_unique(array_column($destEnc, 'email')));
-    $emailsAy = array_values(array_unique(array_column($destAy, 'email')));
-
-    try {
-
-      // =====================================================
-      // 3) GUARDAR CABECERA
-      // =====================================================
-      $num_orden = $this->model->generarNumeroOrden();
-
-      $request_CONFIGURACION = $this->model->insertPlaneacion(
-        $num_orden,
-        $productoid,
-        $pedido,
-        $supervisor,
-        $prioridad,
-        $cantidad,
-        $fecha_inicio,
-        $fecha_requerida,
-        $notas
-      );
-
-      if ((int) $request_CONFIGURACION <= 0) {
-        throw new Exception('No se pudo registrar la planeación (cabecera)');
-      }
-
-      $idplaneacion = (int) $request_CONFIGURACION;
-
-            // =====================================================
-      // TYRAER EL LOS DATOS DEL PRODUCTO PARA MANDARLOS EN EL CORREO
-      // =====================================================
-
-      $cve_producto = '';
-$descripcion  = '';
-
-$request_Producto = $this->model->getProducto($productoid);
-
-if (is_array($request_Producto) && !empty($request_Producto)) {
-  $cve_producto = (string)($request_Producto['cve_producto'] ?? '');
-  $descripcion  = (string)($request_Producto['descripcion'] ?? '');
-}
-
-      // =====================================================
-      // 4) GUARDAR DETALLE (ESTACIONES + OPERADORES)
-      // =====================================================
-      foreach ($asignaciones as $a) {
-        $estacionid = (int) $a['estacionid'];
-        $orden = (int) $a['orden'];
-        $encargado = (int) $a['encargado'];
-        $ayudantes = is_array($a['ayudantes']) ? $a['ayudantes'] : [];
-
-        $id_planeacion_estacion = (int) $this->model->upsertPlaneacionEstacion(
-          $idplaneacion,
-          $estacionid,
-          $orden
-        );
-
-        if ($id_planeacion_estacion <= 0) {
-          throw new Exception("No se pudo guardar estación {$estacionid} en planeación");
-        }
-
-        $this->model->clearOperadoresByPlaneacionEstacion($id_planeacion_estacion);
-
-        // encargado
-        $okEnc = $this->model->insertPlaneacionOperador(
-          $id_planeacion_estacion,
-          $encargado,
-          'ENCARGADO'
-        );
-        if ((int) $okEnc <= 0) {
-          throw new Exception("No se pudo guardar encargado en estación {$estacionid}");
-        }
-
-        // ayudantes (únicos)
-        $setAy = [];
-        foreach ($ayudantes as $uid) {
-          $uid = (int) $uid;
-          if ($uid <= 0)
-            continue;
-          if (isset($setAy[$uid]))
-            continue;
-          $setAy[$uid] = true;
-
-          $okAy = $this->model->insertPlaneacionOperador(
-            $id_planeacion_estacion,
-            $uid,
-            'AYUDANTE'
-          );
-          if ((int) $okAy <= 0) {
-            throw new Exception("No se pudo guardar ayudante {$uid} en estación {$estacionid}");
-          }
-        }
-      }
-
-      // =====================================================
-      // 5) BASE GENERAL PARA CORREOS (SIN NOMBRE, porque cambia por destinatario)
-      // =====================================================
-      $infoBase = [
-        'idplaneacion' => $idplaneacion,
-        'num_orden' => $num_orden,
-        'productoid' => $productoid,
-        'pedido' => $pedido,
-        'prioridad' => $prioridad,
-        'cantidad' => $cantidad,
-        'fecha_inicio' => $fecha_inicio,
-        'fecha_requerida' => $fecha_requerida,
-        'fecha_inicio_txt' => formatFechaLargaEs($fecha_inicio),
-        'fecha_requerida_txt' => formatFechaLargaEs($fecha_requerida),
-        'supervisor' => $supervisor,
-        'notas' => $notas,
-        'cve_producto' => $cve_producto,
-        'descripcion' => $descripcion,
-        'fecha_notificacion' =>formatFechaLargaEs($fecha_notificacion)
-      ];
-
-      // =====================================================
-      // 6) ENVIAR CORREOS (AQUI se inyecta el nombre en $infoBase)
-      // =====================================================
-      $mail = [
-        'encargados' => ['status' => true, 'msg' => 'OK', 'to_count' => count($emailsEnc)],
-        'ayudantes' => ['status' => true, 'msg' => 'OK', 'to_count' => count($emailsAy)],
-      ];
-
-      $cc = 'carlos.cruz@ldrsolutions.com.mx';
-
-      // ENCARGADOS
-      try {
-        if (!empty($destEnc)) {
-          foreach ($destEnc as $dest) {
-
-            // ✅ aquí ya va el nombre dentro de la data del correo
-            $dataMail = $infoBase;
-            $dataMail['nombre'] = $dest['nombre'];   // <- LO QUE QUIERES PARA EL TBODY
-            $dataMail['email'] = $dest['email'];
-            $dataMail['asunto'] = 'OT generada';
-
-            sendMailLocalCron($dataMail, 'email_new_ot_encargado', $cc);
-          }
-        } else {
-          $mail['encargados'] = ['status' => false, 'msg' => 'Sin correos válidos', 'to_count' => 0];
-        }
-      } catch (Exception $e1) {
-        $mail['encargados'] = ['status' => false, 'msg' => $e1->getMessage(), 'to_count' => count($emailsEnc)];
-      }
-
-      // AYUDANTES
-      try {
-        if (!empty($destAy)) {
-          foreach ($destAy as $dest) {
-
-            // ✅ aquí ya va el nombre dentro de la data del correo
-            $dataMail = $infoBase;
-            $dataMail['nombre'] = $dest['nombre'];   // <- LO QUE QUIERES PARA EL TBODY
-            $dataMail['email'] = $dest['email'];
-            $dataMail['asunto'] = 'Asignación de OT';
-
-            sendMailLocalCron($dataMail, 'email_new_ot_ayudante', $cc);
-          }
-        } else {
-          $mail['ayudantes'] = ['status' => false, 'msg' => 'Sin correos válidos', 'to_count' => 0];
-        }
-      } catch (Exception $e2) {
-        $mail['ayudantes'] = ['status' => false, 'msg' => $e2->getMessage(), 'to_count' => count($emailsAy)];
-      }
-
-      echo json_encode([
-        'status' => true,
-        'msg' => 'Planeación guardada correctamente',
-        'idplaneacion' => $idplaneacion,
-        'mail' => $mail
-      ]);
-      die();
-
-    } catch (Exception $e) {
-
-      echo json_encode([
-        'status' => false,
-        'msg' => $e->getMessage()
-      ]);
-      die();
+    foreach ($ayudantes as $uid) {
+      $uid = (int)$uid;
+      if ($uid > 0) $idsAyudantes[] = $uid;
     }
   }
+
+  $idsEncargados = array_values(array_unique(array_map('intval', $idsEncargados)));
+  $idsAyudantes  = array_values(array_unique(array_map('intval', $idsAyudantes)));
+
+  // Evitar que un encargado reciba correo duplicado como ayudante
+  $idsAyudantes = array_values(array_diff($idsAyudantes, $idsEncargados));
+
+  // ---------------------------------------------------------
+  //  Obtener correos
+  // ---------------------------------------------------------
+  $destEnc = [];
+  $destAy  = [];
+
+  if (!empty($idsEncargados)) {
+    $arrEnc = $this->model->getEmailsUsuariosByIds($idsEncargados);
+    foreach ($arrEnc as $u) {
+      $email = trim((string)($u['email_user'] ?? ''));
+      if ($email === '') continue;
+
+      $nombre = trim((string)($u['nombres'] ?? ''));
+      if ($nombre === '') $nombre = '—';
+
+      $destEnc[] = [
+        'idusuario' => (int)($u['idusuario'] ?? 0),
+        'email'     => $email,
+        'nombre'    => $nombre,
+      ];
+    }
+  }
+
+  if (!empty($idsAyudantes)) {
+    $arrAy = $this->model->getEmailsUsuariosByIds($idsAyudantes);
+    foreach ($arrAy as $u) {
+      $email = trim((string)($u['email_user'] ?? ''));
+      if ($email === '') continue;
+
+      $nombre = trim((string)($u['nombres'] ?? ''));
+      if ($nombre === '') $nombre = '—';
+
+      $destAy[] = [
+        'idusuario' => (int)($u['idusuario'] ?? 0),
+        'email'     => $email,
+        'nombre'    => $nombre,
+      ];
+    }
+  }
+
+  $emailsEnc = array_values(array_unique(array_column($destEnc, 'email')));
+  $emailsAy  = array_values(array_unique(array_column($destAy, 'email')));
+
+  try {
+
+    // ---------------------------------------------------------
+    //  CABECERA: generar OT y guardar planeación
+    // ---------------------------------------------------------
+    $num_orden = $this->model->generarNumeroOrden();
+
+    $request_CONFIGURACION = $this->model->insertPlaneacion(
+      $num_orden,
+      $productoid,
+      $pedido,
+      $supervisor,
+      $prioridad,
+      $cantidad,
+      $fecha_inicio,
+      $fecha_requerida,
+      $notas
+    );
+
+    if ((int)$request_CONFIGURACION <= 0) {
+      throw new Exception('No se pudo registrar la planeación (cabecera)');
+    }
+
+    $idplaneacion = (int)$request_CONFIGURACION;
+
+    // ---------------------------------------------------------
+    //  Producto (para correos)
+    // ---------------------------------------------------------
+    $cve_producto = '';
+    $descripcion  = '';
+
+    $request_Producto = $this->model->getProducto($productoid);
+    if (is_array($request_Producto) && !empty($request_Producto)) {
+      $cve_producto = (string)($request_Producto['cve_producto'] ?? '');
+      $descripcion  = (string)($request_Producto['descripcion'] ?? '');
+    }
+
+    // ---------------------------------------------------------
+    //  DETALLE: estaciones y operadores
+    // ---------------------------------------------------------
+    foreach ($asignaciones as $a) {
+      $estacionid = (int)$a['estacionid']; 
+      $orden      = (int)$a['orden'];
+      $encargado  = (int)$a['encargado'];
+      $ayudantes  = is_array($a['ayudantes']) ? $a['ayudantes'] : [];
+
+      $id_planeacion_estacion = (int)$this->model->upsertPlaneacionEstacion(
+        $idplaneacion,
+        $estacionid,
+        $orden
+      );
+
+      if ($id_planeacion_estacion <= 0) {
+        throw new Exception("No se pudo guardar estación {$estacionid} en planeación");
+      }
+
+      for ($s = 1; $s <= $cantidad; $s++) {
+        $num_orden_s = $num_orden . '-S' . str_pad((string)$s, 2, '0', STR_PAD_LEFT);
+
+        $okOrd = $this->model->insertOrdenes($id_planeacion_estacion, $num_orden_s);
+
+        if ((int)$okOrd <= 0) {
+          throw new Exception("No se pudo insertar orden {$num_orden_s} para planeación_estación {$id_planeacion_estacion}");
+        }
+      }
+
+      $this->model->clearOperadoresByPlaneacionEstacion($id_planeacion_estacion);
+
+      // encargado
+      $okEnc = $this->model->insertPlaneacionOperador(
+        $id_planeacion_estacion,
+        $encargado,
+        'ENCARGADO'
+      );
+      if ((int)$okEnc <= 0) {
+        throw new Exception("No se pudo guardar encargado en estación {$estacionid}");
+      }
+
+      // ayudantes (sin duplicados)
+      $setAy = [];
+      foreach ($ayudantes as $uid) {
+        $uid = (int)$uid;
+        if ($uid <= 0) continue;
+        if (isset($setAy[$uid])) continue;
+        $setAy[$uid] = true;
+
+        $okAy = $this->model->insertPlaneacionOperador(
+          $id_planeacion_estacion,
+          $uid,
+          'AYUDANTE'
+        );
+        if ((int)$okAy <= 0) {
+          throw new Exception("No se pudo guardar ayudante {$uid} en estación {$estacionid}");
+        }
+      }
+    }
+
+    // ---------------------------------------------------------
+    //  Base para correo
+    // ---------------------------------------------------------
+    $infoBase = [
+      'idplaneacion'         => $idplaneacion,
+      'num_orden'            => $num_orden,
+      'productoid'           => $productoid,
+      'pedido'               => $pedido,
+      'prioridad'            => $prioridad,
+      'cantidad'             => $cantidad,
+      'fecha_inicio'         => $fecha_inicio,
+      'fecha_requerida'      => $fecha_requerida,
+      'fecha_inicio_txt'     => formatFechaLargaEs($fecha_inicio),
+      'fecha_requerida_txt'  => formatFechaLargaEs($fecha_requerida),
+      'supervisor'           => $supervisor,
+      'notas'                => $notas,
+      'cve_producto'         => $cve_producto,
+      'descripcion'          => $descripcion,
+      'fecha_notificacion'   => formatFechaLargaEs($fecha_notificacion),
+    ];
+
+    $mail = [
+      'encargados' => ['status' => true, 'msg' => 'OK', 'to_count' => count($emailsEnc)],
+      'ayudantes'  => ['status' => true, 'msg' => 'OK', 'to_count' => count($emailsAy)],
+    ];
+
+    $cc = 'carlos.cruz@ldrsolutions.com.mx';
+
+    // ---------------------------------------------------------
+    //  ENCARGADOS
+    // ---------------------------------------------------------
+    try {
+      if (!empty($destEnc)) {
+        foreach ($destEnc as $dest) {
+          $dataMail = $infoBase;
+          $dataMail['nombre'] = $dest['nombre'];
+          $dataMail['email']  = $dest['email'];
+          $dataMail['asunto'] = 'OT generada';
+
+          sendMailLocalCron($dataMail, 'email_new_ot_encargado', $cc);
+        }
+      } else {
+        $mail['encargados'] = ['status' => false, 'msg' => 'Sin correos válidos', 'to_count' => 0];
+      }
+    } catch (Exception $e1) {
+      $mail['encargados'] = ['status' => false, 'msg' => $e1->getMessage(), 'to_count' => count($emailsEnc)];
+    }
+
+    // ---------------------------------------------------------
+    //  AYUDANTES
+    // ---------------------------------------------------------
+    try {
+      if (!empty($destAy)) {
+        foreach ($destAy as $dest) {
+          $dataMail = $infoBase;
+          $dataMail['nombre'] = $dest['nombre'];
+          $dataMail['email']  = $dest['email'];
+          $dataMail['asunto'] = 'Asignación de OT';
+
+          sendMailLocalCron($dataMail, 'email_new_ot_ayudante', $cc);
+        }
+      } else {
+        $mail['ayudantes'] = ['status' => false, 'msg' => 'Sin correos válidos', 'to_count' => 0];
+      }
+    } catch (Exception $e2) {
+      $mail['ayudantes'] = ['status' => false, 'msg' => $e2->getMessage(), 'to_count' => count($emailsAy)];
+    }
+
+    echo json_encode([
+      'status'      => true,
+      'msg'         => 'Planeación guardada correctamente',
+      'idplaneacion'=> $idplaneacion,
+      'mail'        => $mail
+    ]);
+    die();
+
+  } catch (Exception $e) {
+    echo json_encode([
+      'status' => false,
+      'msg'    => $e->getMessage()
+    ]);
+    die();
+  }
+}
+
+
 
 
   // --------------------------------------------------------------------
@@ -530,7 +529,6 @@ if (is_array($request_Producto) && !empty($request_Producto)) {
       die();
     }
 
-    // ✅ AHORA: igual que herramientas -> PLANO
     $errores = [];
 
     foreach ($estaciones as $e) {
@@ -540,10 +538,10 @@ if (is_array($request_Producto) && !empty($request_Producto)) {
 
       $res = $this->model->consultarExistencias($productoid, $estacionid, $cantidad);
 
-      // 👇 tu modelo devuelve status 0 cuando hay faltantes
+
       if (!empty($res) && isset($res['status']) && (int) $res['status'] === 0 && !empty($res['data'])) {
 
-        // ✅ aplanar y agregar un msg por si lo ocupas en el front
+
         foreach ($res['data'] as $row) {
           $row['msg'] = $res['msg'] ?? 'Faltan componentes en inventario';
           $errores[] = $row;
@@ -605,7 +603,7 @@ if (is_array($request_Producto) && !empty($request_Producto)) {
       if ($estacionid <= 0)
         continue;
 
-      // ✅ Modelo herramientas
+
       $res = $this->model->consultarHerramientasExistencias($productoid, $estacionid, $cantidad);
 
       if (isset($res['status']) && ($res['status'] === false || $res['status'] === 0) && !empty($res['data'])) {
@@ -629,48 +627,177 @@ if (is_array($request_Producto) && !empty($request_Producto)) {
     die();
   }
 
-public function getDataPlaneacion($idplaneacion)
-{
-  header('Content-Type: application/json; charset=utf-8');
-  $idplaneacion = (int)$idplaneacion;
-  if ($idplaneacion <= 0) {
-    echo json_encode(['status'=>false,'msg'=>'ID de planeación inválido'], JSON_UNESCAPED_UNICODE);
+  public function getDataPlaneacion($idplaneacion)
+  {
+    header('Content-Type: application/json; charset=utf-8');
+    $idplaneacion = (int) $idplaneacion;
+    if ($idplaneacion <= 0) {
+      echo json_encode(['status' => false, 'msg' => 'ID de planeación inválido'], JSON_UNESCAPED_UNICODE);
+      die();
+    }
+    $request_planeacion = $this->model->obtenerPlaneacion($idplaneacion);
+    $arrResponse = array('status' => true, 'data' => $request_planeacion);
+
+    echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
     die();
   }
-  $request_planeacion = $this->model->obtenerPlaneacion($idplaneacion);
-  $arrResponse = array('status' => true, 'data' => $request_planeacion);
 
-      echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+
+
+  // FUNCIÓN PARA MNADAR A TRAER LA VISTA DE LA ORDEN DE TRABAJO
+  public function orden($num_orden)
+  {
+    $num_orden = trim((string) $num_orden);
+
+    if ($num_orden === '') {
+      header("Location:" . base_url() . '/viaticosgenerales');
+      die();
+    }
+    $data['page_tag'] = $num_orden;
+    $data['page_title'] = "Orden <small>de trabajo</small>";
+    $data['page_name'] = "Orden de trabajo";
+    $data['page_functions_js'] = "functions_orden.js";
+    $data['arrOrdenDetalle'] = $this->model->obtenerPlaneacion($num_orden);
+    if (empty($data['arrOrdenDetalle'])) {
+      header("Location:" . base_url() . '/plan_planeacion');
+      die();
+    }
+
+    $this->views->getView($this, "orden", $data);
+  }
+
+
+
+//FUNCIÓN PARA GUARDAr el co9mentari
+
+public function setCommentario()
+{
+    header('Content-Type: application/json; charset=utf-8');
+
+    $json = file_get_contents('php://input');
+    $data = json_decode($json, true);
+
+    if (!is_array($data)) {
+        echo json_encode(['status' => false, 'msg' => 'JSON inválido']);
+        die();
+    }
+
+
+    $idorden     = isset($data['idorden']) ? trim((string)$data['idorden']) : '';
+    $comentario  = isset($data['comentario']) ? trim((string)$data['comentario']) : '';
+
+    if ($idorden === '') {
+        echo json_encode(['status' => false, 'msg' => 'Falta idorden']);
+        die();
+    }
+
+    $resp = $this->model->updateComentarioOrden($idorden,$comentario);
+
+
+
+    echo json_encode([
+        'status' => true,
+        'msg'    => 'Comentario actualizado'
+    ]);
+    die();
+}
+
+public function startOT()
+{
+  header('Content-Type: application/json');
+
+  $data = json_decode(file_get_contents('php://input'), true);
+  if (!is_array($data)) { echo json_encode(['status'=>false,'msg'=>'JSON inválido']); die(); }
+
+  $idorden      = (int)($data['idorden'] ?? 0);
+  $fecha_inicio = trim((string)($data['fecha_inicio'] ?? ''));
+
+  if ($idorden <= 0) { echo json_encode(['status'=>false,'msg'=>'Falta idorden']); die(); }
+  if ($fecha_inicio === '') { echo json_encode(['status'=>false,'msg'=>'Falta fecha_inicio']); die(); }
+  if (!preg_match('/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/', $fecha_inicio)) {
+    echo json_encode(['status'=>false,'msg'=>'Formato de fecha_inicio inválido']); die();
+  }
+
+  echo json_encode($this->model->startOT($idorden, $fecha_inicio));
+  die();
+}
+
+public function finishOT()
+{
+  header('Content-Type: application/json');
+
+  $data = json_decode(file_get_contents('php://input'), true);
+  if (!is_array($data)) { echo json_encode(['status'=>false,'msg'=>'JSON inválido']); die(); }
+
+  $idorden   = (int)($data['idorden'] ?? 0);
+  $fecha_fin = trim((string)($data['fecha_fin'] ?? ''));
+
+  if ($idorden <= 0) { echo json_encode(['status'=>false,'msg'=>'Falta idorden']); die(); }
+  if ($fecha_fin === '') { echo json_encode(['status'=>false,'msg'=>'Falta fecha_fin']); die(); }
+  if (!preg_match('/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/', $fecha_fin)) {
+    echo json_encode(['status'=>false,'msg'=>'Formato de fecha_fin inválido']); die();
+  }
+
+  echo json_encode($this->model->finishOT($idorden, $fecha_fin));
   die();
 }
 
 
 
-// FUNCIÓN PARA MNADAR A TRAER LA VISTA DE LA ORDEN DE TRABAJO
-public function orden($num_orden)
+
+public function getStatusOT()
 {
-  $num_orden = trim((string)$num_orden);
+  header('Content-Type: application/json');
 
-  if ($num_orden === '') {
-    header("Location:" . base_url() . '/viaticosgenerales');
-    die();
-  }
-  $data['page_tag'] = $num_orden;
-  $data['page_title'] = "Orden <small>de trabajo</small>";
-  $data['page_name'] = "Orden de trabajo";
-      $data['page_functions_js'] = "functions_orden.js";
-  $data['arrOrdenDetalle'] = $this->model->obtenerPlaneacion($num_orden);
-  if (empty($data['arrOrdenDetalle'])) {
-    header("Location:" . base_url() . '/plan_planeacion');
+  $json = file_get_contents('php://input');
+  $req  = json_decode($json, true);
+
+  if (!is_array($req)) {
+    echo json_encode(['status'=>false,'msg'=>'JSON inválido']);
     die();
   }
 
-  $this->views->getView($this, "orden", $data);
+  // Puedes mandar planeacionid o peid (más ligero)
+  $planeacionid = (int)($req['planeacionid'] ?? 0);
+  $peid         = (int)($req['peid'] ?? 0);
+
+  if ($planeacionid <= 0 && $peid <= 0) {
+    echo json_encode(['status'=>false,'msg'=>'Falta planeacionid o peid']);
+    die();
+  }
+
+  // ✅ Si mandas peid: trae solo las sub-OT de esa estación (ideal por monitor)
+  if ($peid > 0) {
+    $rows = $this->model->getStatusOTByPeid($peid);
+
+    echo json_encode([
+      'status' => true,
+      'scope'  => 'peid',
+      'peid'   => $peid,
+      'data'   => $rows
+    ]);
+    die();
+  }
+
+  // ✅ Si mandas planeacionid: trae todas las sub-OT del flujo completo
+  $rows = $this->model->getStatusOTByPlaneacion($planeacionid);
+
+  echo json_encode([
+    'status'      => true,
+    'scope'       => 'planeacionid',
+    'planeacionid'=> $planeacionid,
+    'data'        => $rows
+  ]);
+  die();
 }
 
 
-
-
+public function descargarOrden($num_orden){
+  $num_orden = trim((string) $num_orden);
+   $request= $this->model->obtenerPlaneacion($num_orden);
+   echo json_encode($request, JSON_UNESCAPED_UNICODE);
+        die();
+}
 
 
 

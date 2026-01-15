@@ -613,7 +613,7 @@ public function setRutaProducto()
 
     $data = $arr[0];
 
-    // ✅ FIX: id_ruta_producto viene FUERA del JSON (hidden del form)
+ 
     $idruta = isset($_POST['id_ruta_producto']) ? (int)$_POST['id_ruta_producto'] : 0;
 
     $planta  = (int)($data['listPlantasSelect'] ?? 0);
@@ -626,7 +626,7 @@ public function setRutaProducto()
         exit;
     }
 
-    // ✅ regla: debe existir al menos 1 estación activa (orden > 0)
+
     $tieneActivas = false;
     // foreach ($detalle as $row) {
     //     if ((int)($row['orden'] ?? 0) > 0) { $tieneActivas = true; break; }
@@ -645,9 +645,6 @@ public function setRutaProducto()
 
     try {
 
-        // ==========================================================
-        //  INSERT (idruta=0)
-        // ==========================================================
         if ($idruta <= 0) {
 
             $idruta = $this->model->insertRuta($prod, $planta, $linea, $now);
@@ -759,10 +756,9 @@ $this->model->insertAuditoria(
             }
         }
 
-        // 4) desactiva los detalles ACTUALES de la ruta que NO vinieron en el payload (evita fantasmas)
+    
         $this->model->disableDetallesNoEnPayload($idruta, $idsDetalleVistos);
 
-        // 5) reindex final (deja orden 1..N sin huecos, sólo estado=1)
         $this->model->reindexOrdenRuta($idruta);
 
         echo json_encode([
@@ -1068,14 +1064,13 @@ public function setComponentesEstacion()
 
     $fecha = date('Y-m-d H:i:s');
 
-    //  Traer existentes (incluye estado 0/1)
+
     $existentes = $this->model->selectComponentesEstacionAllEstados($idEstacion, $idProducto, $idAlmacen);
     $existMap = [];
     foreach ($existentes as $row) {
         $existMap[(int)$row['inventarioid']] = (int)$row['idcomponente'];
     }
 
-    // Insert/Update/Reactivar
     foreach ($incoming as $inventarioid => $cantidad) {
         if (isset($existMap[$inventarioid])) {
             $idcomponente = $existMap[$inventarioid];
