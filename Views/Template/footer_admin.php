@@ -813,6 +813,12 @@
     <script src="<?= media(); ?>/minimal/libs/sweetalert2/sweetalert2.min.js"></script>
         <script src="<?= media();?>/js/datepicker/jquery-ui.min.js"></script>
 
+
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+
+
     <!-- Sweet alert init js-->
     <!-- <script src="<?= media(); ?>/minimal/js/pages/sweetalerts.init.js"></script> -->
 

@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  // navegación
+
   if (btnPendientes) btnPendientes.addEventListener('click', () => goListado('PENDIENTE'));
   if (btnFinalizadas) btnFinalizadas.addEventListener('click', () => goListado('FINALIZADA'));
   if (btnCanceladas) btnCanceladas.addEventListener('click', () => goListado('CANCELADA'));
@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // salir de nueva con confirmación
+
   [btnVolverHome1, btnVolverHome2, btnCancelarNueva].filter(Boolean).forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.preventDefault();
@@ -169,6 +169,81 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   goHome();
+
+
+
+
+
+
+
+
+const calendarEl = document.getElementById('calendar');
+
+  if (!calendarEl) return; 
+
+const calendar = new FullCalendar.Calendar(calendarEl, {
+  initialView: 'dayGridMonth',
+  locale: 'es',
+  height: 'auto',
+  expandRows: true,
+
+  headerToolbar: {
+    left: 'prev,next today',
+    center: 'title',
+    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+  },
+
+  buttonText: { today: 'Hoy', month: 'Mes', week: 'Semana', day: 'Día' },
+
+  // ============================
+  // EVENTOS DESDE API
+  // ============================
+  events: async (info, successCallback, failureCallback) => {
+    try {
+      const eventos = await cargarOrdenesParaCalendar();
+      successCallback(eventos);
+    } catch (err) {
+      console.error(err);
+      failureCallback(err);
+    }
+  },
+
+  // ============================
+  //  FORZAR COLOR (anti Velzon)
+  // ============================
+  eventDidMount: function(info) {
+    const bg = info.event.backgroundColor;
+
+    if (bg) {
+      info.el.style.backgroundColor = bg;
+      info.el.style.borderColor = bg;
+      info.el.style.color = '#ffffff';
+    }
+
+   const folio = info.event.extendedProps?.num_orden || info.event.title;
+const label = info.event.extendedProps?.fase_label || 'Sin estatus';
+info.el.setAttribute('title', `${label} • Orden de trabajo #${folio}`);
+
+  },
+
+
+eventClick: (info) => {
+  const folio = info.event.extendedProps?.num_orden || info.event.title;
+  if (!folio) return;
+
+  abrirModalPlaneacionDesdeCalendar({ folio });
+}
+
+
+});
+
+calendar.render();
+
+
+
+
+
+
 });
 
 // =====================================================
@@ -254,6 +329,22 @@ function escapeHtml(str = "") {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+
+function getText(v, fallback = '—') {
+  if (v === null || v === undefined) return fallback;
+  const s = String(v).trim();
+  return s ? s : fallback;
+}
+
+function arrayToNames(arr) {
+  if (!Array.isArray(arr) || !arr.length) return '—';
+
+  return arr.map(x => {
+    if (x && typeof x === 'object') return getText(x.nombre ?? x.name ?? x.usuario ?? x.label ?? x.text, '');
+    return getText(x, '');
+  }).filter(Boolean).join(', ') || '—';
+}
+
 
 function badgePrioridad(p) {
   if (p === 'CRITICA') return '<span class="badge bg-danger-subtle text-danger border">CRÍTICA</span>';
@@ -603,7 +694,7 @@ async function fntEstaciones(idProducto) {
     await validarComponentesEnRuta(detalle);
     await validarHerramientasEnRuta(detalle);
 
-    // pintams tabla
+ 
     renderTbodyEstaciones(detalle);
 
   } catch (error) {
@@ -1245,3 +1336,257 @@ async function confirmarDescartarSiHayBorrador() {
 
   return !!res.isConfirmed;
 }
+
+
+
+
+function toIsoFromMysql(dt) {
+ 
+  if (!dt) return null;
+  return String(dt).replace(' ', 'T');
+}
+
+function colorPorPrioridad(p) {
+  const pr = String(p || '').toUpperCase().trim();
+  if (pr === 'CRITICA') return '#ef4444';
+  if (pr === 'ALTA')    return '#f59e0b';
+  if (pr === 'MEDIA')   return '#3b82f6';
+  if (pr === 'BAJA')    return '#6b7280';
+  return '#00bd9d';
+}
+
+
+
+
+
+function toIsoFromMysql(dt) {
+
+  if (!dt) return null;
+  return String(dt).replace(' ', 'T');
+}
+
+function faseMeta(fase) {
+  const f = Number(fase);
+
+  switch (f) {
+    case 2:
+      return { color: '#f59e0b', label: 'Planeada', badge: 'warning' };
+    case 3:
+      return { color: '#3b82f6', label: 'Programada', badge: 'primary' };
+    case 5:
+      return { color: '#22c55e', label: 'En producción', badge: 'success' };
+    case 6:
+      return { color: '#ef4444', label: 'Detenida', badge: 'danger' };
+    default:
+      return { color: '#6b7280', label: 'Sin estatus', badge: 'secondary' };
+  }
+}
+
+async function cargarOrdenesParaCalendar() {
+  const url = base_url + '/plan_planeacion/getOrdenes';
+
+  const resp = await fetchJson(url);
+
+  const rows = Array.isArray(resp)
+    ? resp
+    : (Array.isArray(resp.data) ? resp.data : (Array.isArray(resp.rows) ? resp.rows : []));
+
+  return rows
+    .filter(r => r.fecha_inicio)
+    .map(r => {
+      const start = toIsoFromMysql(r.fecha_inicio);
+      const meta = faseMeta(r.fase);
+
+      return {
+        id: String(r.idplaneacion ?? ''),
+        title: `#${String(r.num_orden ?? 'OT')}`,
+
+        start: start,
+        allDay: false,
+        backgroundColor: meta.color,
+borderColor: meta.color,
+textColor: '#ffffff',
+        extendedProps: {
+          ...r,
+          fase_label: meta.label,
+          fase_badge: meta.badge
+        }
+      };
+    });
+}
+
+
+
+
+
+function setModalPlaneacionLoading(isLoading) {
+  const loading = document.getElementById('modalPlaneacionLoading');
+  const content = document.getElementById('modalPlaneacionContent');
+  if (loading) loading.classList.toggle('d-none', !isLoading);
+  if (content) content.classList.toggle('d-none', isLoading);
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = (value === null || value === undefined || value === '') ? '—' : String(value);
+}
+
+function joinAyudantes(arr) {
+  if (!Array.isArray(arr) || !arr.length) return '—';
+  return arr.map(x => String(x)).join(', ');
+}
+
+
+async function fetchPlaneacionById(idplaneacion) {
+  const url = base_url + '/plan_planeacion/getPlaneacionById/' + encodeURIComponent(idplaneacion);
+  return await fetchJson(url);
+}
+
+function renderPlaneacionModal(payload) {
+  const data = payload?.data ?? payload ?? {};
+  const h = data.header ?? data.planeacion ?? data ?? {};
+
+  
+  const detalle =
+    (Array.isArray(data.detalle) ? data.detalle : null) ||
+    (Array.isArray(data.estaciones) ? data.estaciones : null) ||
+    (Array.isArray(data.asignaciones) ? data.asignaciones : null) ||
+    [];
+
+  // header
+  setText('mp_num_orden', h.num_orden);
+  setText('mp_num_pedido', h.num_pedido);
+  setText('mp_prioridad', h.prioridad);
+  setText('mp_cantidad', h.cantidad);
+  setText('mp_inicio', h.fecha_inicio);
+  setText('mp_requerida', h.fecha_requerida);
+  setText('mp_supervisor', h.supervisor);
+  setText('mp_notas', h.notas);
+
+  const sub = document.getElementById('subTitleModalPlaneacion');
+  if (sub) sub.textContent = `Planeación ID: ${h.idplaneacion ?? '—'}`;
+
+
+   // ==========================
+  // TABLA: SUB-ORDENES 
+  // ==========================
+  const tbody = document.getElementById('tbodyPlaneacionDetalle');
+  const count = document.getElementById('mp_count_detalle');
+
+  const estaciones = Array.isArray(data.estaciones) ? data.estaciones : [];
+
+
+  const metaPorPlaneacionEst = new Map();
+
+  estaciones.forEach(est => {
+    const peid = Number(est.id_planeacion_estacion || 0);
+    if (!peid) return;
+
+    const estacionNombre = est.nombre_estacion || '—';
+    const estacionOrden  = Number(est.orden || 0);
+
+    const encargado = (Array.isArray(est.encargados) && est.encargados.length)
+      ? (est.encargados[0].nombre_completo || '—')
+      : '—';
+
+    const ayudantes = (Array.isArray(est.ayudantes) ? est.ayudantes : [])
+      .map(a => a?.nombre_completo)
+      .filter(Boolean);
+
+    metaPorPlaneacionEst.set(peid, {
+      estacion: estacionNombre,
+      orden_estacion: estacionOrden,
+      encargado,
+      ayudantes_txt: ayudantes.length ? ayudantes.join(', ') : '—'
+    });
+  });
+
+
+  const subOrdenes = estaciones.flatMap(est => Array.isArray(est.ordenes_trabajo) ? est.ordenes_trabajo : []);
+
+  // ordenar por idorden asc
+  const ordenadas = [...subOrdenes].sort((a, b) => Number(a.idorden || 0) - Number(b.idorden || 0));
+
+  if (count) count.textContent = String(ordenadas.length || 0);
+  if (!tbody) return;
+
+  if (!ordenadas.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Sin sub órdenes</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = ordenadas.map(o => {
+    const idorden = o.idorden ?? '—';
+    const numSub  = o.num_sub_orden ?? '—';
+    const peid    = Number(o.planeacion_estacionid || 0);
+
+    const meta = metaPorPlaneacionEst.get(peid) || {
+      estacion: '—',
+      orden_estacion: 0,
+      encargado: '—',
+      ayudantes_txt: '—'
+    };
+
+    return `
+      <tr>
+        <td class="fw-semibold">${escapeHtml(String(idorden))}</td>
+
+        <td>
+          <span class="badge bg-primary-subtle text-primary border">
+            ${escapeHtml(String(numSub))}
+          </span>
+        </td>
+
+
+        <td>${escapeHtml(String(meta.encargado))}</td>
+        <td>${escapeHtml(String(meta.ayudantes_txt))}</td>
+
+      </tr>
+    `;
+  }).join('');
+}
+
+
+async function abrirModalPlaneacionDesdeCalendar({ folio }) {
+  const modalEl = document.getElementById('modalPlaneacionCalendar');
+  if (!modalEl) {
+    Swal.fire({ icon:'warning', title:'Falta modal', text:'No existe #modalPlaneacionCalendar en la vista.' });
+    return;
+  }
+
+
+  const btnVer = document.getElementById('btnVerMasDetalle');
+  if (btnVer) {
+    btnVer.onclick = () => {
+      window.location.href = base_url + '/plan_planeacion/orden/' + encodeURIComponent(folio);
+    };
+  }
+
+  setModalPlaneacionLoading(true);
+  bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+  try {
+    const payload = await fetchPlaneacionPorFolio(folio);
+    if (payload && payload.status === false) throw new Error(payload.msg || 'No se pudo cargar');
+
+    renderPlaneacionModal(payload); 
+  } catch (err) {
+    console.error(err);
+    Swal.fire({ icon:'error', title:'Error', text: err.message || 'Error al cargar' });
+  } finally {
+    setModalPlaneacionLoading(false);
+  }
+}
+
+
+
+
+async function fetchPlaneacionPorFolio(folio) {
+  const url = base_url + '/plan_planeacion/orden/' + encodeURIComponent(folio) + '?json=1';
+  return await fetchJson(url);
+}
+
+
+
+

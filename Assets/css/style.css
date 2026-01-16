@@ -31,8 +31,8 @@
 
 /* CONTENEDOR DEL SCROLL (franja de tabs) */
 .checkout-tab .step-arrow-nav {
-    overflow-x: auto !important;        /* fuerza scroll horizontal */
-    -webkit-overflow-scrolling: touch;  /* scroll suave */
+    overflow-x: auto !important;        
+    -webkit-overflow-scrolling: touch;  
 }
 
 /* UL de tabs en una sola fila */
@@ -44,12 +44,12 @@
     padding-bottom: 6px;
 }
 
-/* Cada li no se estira, solo ocupa lo que necesita */
+
 .checkout-tab .step-arrow-nav .custom-nav .nav-item {
     flex: 0 0 auto !important;
 }
 
-/* Opcional: estilito de scrollbar, NO afecta colores del tema */
+
 .checkout-tab .step-arrow-nav::-webkit-scrollbar {
     height: 6px;
 }
@@ -68,7 +68,7 @@
 
 
 .tabla-ruta{
-  table-layout: fixed;   /* obliga a respetar los width */
+  table-layout: fixed;   
   width: 100%;
 }
 
@@ -79,7 +79,7 @@
   white-space: nowrap;
 }
 
-/* Solo la columna Estaciones permite salto de línea */
+
 .tabla-ruta td:nth-child(2){
   white-space: normal;
 }
@@ -119,6 +119,39 @@
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
+
+/* estilos de calindaRIO  */
+
+.fc .fc-daygrid-day-frame{
+  min-height: 115px; /* ajusta: 95, 110, 130 */
+  padding: 8px;
+}
+
+
+.fc .fc-daygrid-day-top{
+  padding: 6px 6px 0 6px;
+}
+
+
+.fc .fc-daygrid-day-events{
+  margin-top: 6px;
+}
+
+
+.fc .fc-daygrid-event{
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+
+.fc .fc-scrollgrid, 
+.fc .fc-scrollgrid-section > td{
+  border-color: #eef0f3;
+}
+
+
+/* estilos de calindaRIO  */
 
 
 

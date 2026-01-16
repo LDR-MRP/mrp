@@ -32,12 +32,13 @@
 					$requestUser = $this->model->loginUser($strUsuario, $strPassword);
 					if(empty($requestUser)){
 						$arrResponse = array('status' => false, 'msg' => 'El usuario o la contraseña es incorrecto.' ); 
-					}else{
+					}else{ 
 						$arrData = $requestUser;
 						if($arrData['status'] == 1){ 
 							$_SESSION['idUser'] = $arrData['idusuario'];
 							$_SESSION['login'] = true; 
 							$_SESSION['avatar'] = $arrData['avatar'];
+							$_SESSION['rolid'] = $arrData['rolid'];
 
 							$arrData = $this->model->sessionLogin($_SESSION['idUser']);
 

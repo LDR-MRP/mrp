@@ -61,6 +61,89 @@
     padding: 12px 12px;
     border-radius: 0 0 14px 14px;
   }
+
+
+    /* ===== KPI BAR (PRO) ===== */
+  .kpi-bar{
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 14px;
+    background:#fff;
+    padding: 10px;
+  }
+  .kpi-row{
+    display: grid;
+    grid-template-columns: repeat(4, minmax(220px, 1fr));
+    gap: 10px;
+  }
+  @media (max-width: 1200px){
+    .kpi-row{ grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+  }
+  @media (max-width: 576px){
+    .kpi-row{ grid-template-columns: 1fr; }
+  }
+
+  .kpi-item{
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 14px;
+    padding: 12px 12px;
+    background:#fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 64px;
+  }
+  .kpi-left{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+  }
+  .kpi-icon{
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size: 18px;
+  }
+  .kpi-icon.primary{ background: rgba(13,110,253,.12); color:#0d6efd; }
+  .kpi-icon.warn{ background: rgba(255,193,7,.18); color:#b58100; }
+  .kpi-icon.danger{ background: rgba(220,53,69,.15); color:#dc3545; }
+  .kpi-icon.success{ background: rgba(25,135,84,.14); color:#198754; }
+
+  .kpi-title{ font-size: 12px; color:#6b7280; margin:0; line-height: 1.2; }
+  .kpi-value{ font-size: 20px; font-weight: 800; line-height: 1; margin: 2px 0 0; }
+  .kpi-sub{ font-size: 12px; color:#6b7280; margin-left: 6px; font-weight: 600; }
+
+  .kpi-tag{ font-size: 12px; color:#6b7280; }
+
+  /* ===== Legend + View Buttons ===== */
+  .kpi-bottom{
+    margin-top: 10px;
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .legend{
+    display:flex;
+    align-items:center;
+    gap: 14px;
+    font-size: 12px;
+    color:#6b7280;
+  }
+  .legend span{ display:flex; align-items:center; gap:6px; }
+  .dot{ width:10px; height:10px; border-radius: 50%; display:inline-block; }
+  .dot-pendiente{ background:#f59e0b; }
+  .dot-proceso{ background:#3b82f6; }
+  .dot-final{ background:#10b981; }
+  .dot-cancel{ background:#ef4444; }
+
+  .btn-group-view .btn{
+    border-radius: 10px !important;
+  }
 </style>
 
 <div class="main-content">
@@ -113,13 +196,32 @@
                 <button type="button" class="btn btn-outline-warning w-100 btn-nav" id="btnPendientes">
                   <i class="ri-time-line me-1"></i> Pendientes
                 </button>
+                                <button type="button" class="btn btn-outline-primary w-100 btn-nav" id="btnEnProceso">
+                  <i class="ri-checkbox-circle-line me-1"></i> En proceso
+                </button>
                 <button type="button" class="btn btn-outline-success w-100 btn-nav" id="btnFinalizadas">
                   <i class="ri-checkbox-circle-line me-1"></i> Finalizadas
                 </button>
                 <button type="button" class="btn btn-outline-danger w-100 btn-nav" id="btnCanceladas">
                   <i class="ri-close-circle-line me-1"></i> Canceladas
                 </button>
+
+                                                                  <div class="card">
+                                        <div class="card-body bg-info-subtle">
+                                            <div class="d-flex">
+                                                <div class="flex-shrink-0">
+                                                    <i data-feather="calendar" class="text-info icon-dual-info"></i>
+                                                </div>
+                                                <div class="flex-grow-1 ms-3">
+                                                    <h6 class="fs-15">¡Bienvenido a tu Calendario!</h6>
+                                                    <p class="text-muted mb-0">Aquí podrá consultar y administrar de manera centralizada todas las solicitudes de órdenes de trabajo registradas en el sistema.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
               </div>
+
+
 
               <!-- Imagen fija grande -->
               <div class="mt-auto pt-3">
@@ -135,13 +237,99 @@
         <!-- Bienvenida -->
         <div class="col-12 col-xxl-9">
           <div class="card h-100">
-            <div class="card-body text-center py-5">
-              <i class="ri-layout-2-line fs-1 text-primary"></i>
-              <h5 class="fw-bold mt-2 mb-1">Planeación de Producción</h5>
-              <p class="text-muted mb-0">
-                Presiona <b>Nueva Planeación</b> para capturar una orden o entra a un listado para administrarlas.
-              </p>
+<div class="card-body">
+
+  <!-- ✅ KPI BAR -->
+  <div class="kpi-bar mb-3">
+    <div class="kpi-row">
+
+      <div class="kpi-item">
+        <div class="kpi-left">
+          <div class="kpi-icon primary">
+            <i class="ri-calendar-check-line"></i>
+          </div>
+          <div>
+            <p class="kpi-title">Hoy</p>
+            <div class="d-flex align-items-baseline">
+              <div class="kpi-value" id="kpiHoy">0</div>
+              <span class="kpi-sub">OT's</span>
             </div>
+          </div>
+        </div>
+        <div class="kpi-tag">Día</div>
+      </div>
+
+      <div class="kpi-item">
+        <div class="kpi-left">
+          <div class="kpi-icon warn">
+            <i class="ri-loader-4-line"></i>
+          </div>
+          <div>
+            <p class="kpi-title">En proceso</p>
+            <div class="d-flex align-items-baseline">
+              <div class="kpi-value" id="kpiProceso">0</div>
+              <span class="kpi-sub">OT's</span>
+            </div>
+          </div>
+        </div>
+        <div class="kpi-tag">Activo</div>
+      </div>
+
+      <div class="kpi-item">
+        <div class="kpi-left">
+          <div class="kpi-icon danger">
+            <i class="ri-alarm-warning-line"></i>
+          </div>
+          <div>
+            <p class="kpi-title">Atrasadas</p>
+            <div class="d-flex align-items-baseline">
+              <div class="kpi-value" id="kpiAtrasadas">0</div>
+              <span class="kpi-sub">OT's</span>
+            </div>
+          </div>
+        </div>
+        <div class="kpi-tag">Riesgo</div>
+      </div>
+
+      <div class="kpi-item">
+        <div class="kpi-left">
+          <div class="kpi-icon success">
+            <i class="ri-checkbox-circle-line"></i>
+          </div>
+          <div>
+            <p class="kpi-title">Cumplimiento</p>
+            <div class="d-flex align-items-baseline">
+              <div class="kpi-value" id="kpiCumplimiento">0%</div>
+              <span class="kpi-sub" id="kpiCumplimientoMeta">Mes</span>
+            </div>
+          </div>
+        </div>
+        <div class="kpi-tag">KPI</div>
+      </div>
+
+    </div>
+
+    <div class="kpi-bottom">
+      <div class="legend">
+        <span><i class="dot dot-pendiente"></i>Pendiente</span>
+        <span><i class="dot dot-proceso"></i>En proceso</span>
+        <span><i class="dot dot-final"></i>Finalizada</span>
+        <span><i class="dot dot-cancel"></i>Cancelada</span>
+      </div>
+
+      <div class="btn-group btn-group-sm btn-group-view" role="group">
+        <button type="button" class="btn btn-light" id="btnViewMes">Mes</button>
+        <button type="button" class="btn btn-light" id="btnViewSemana">Semana</button>
+        <button type="button" class="btn btn-light" id="btnViewDia">Día</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ CALENDAR -->
+  <div id="calendar"></div>
+
+</div>
+
           </div>
         </div>
 
@@ -623,6 +811,124 @@
     </div>
   </div>
 </div>
+
+
+
+<div class="modal fade" id="modalPlaneacionCalendar" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title mb-0" id="titleModalPlaneacion">Detalle de planeación</h5>
+          <div class="text-muted small" id="subTitleModalPlaneacion">—</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- hidden para idplaneacion -->
+        <input type="hidden" id="modalPlaneacionId" value="">
+
+        <!-- estado loading -->
+        <div id="modalPlaneacionLoading" class="py-4 text-center text-muted d-none">
+          Cargando información…
+        </div>
+
+        <!-- contenido -->
+        <div id="modalPlaneacionContent">
+
+          <div class="row g-3">
+            <div class="col-md-4">
+              <div class="border rounded p-2">
+                <div class="text-muted small">Orden</div>
+                <div class="fw-semibold" id="mp_num_orden">—</div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="border rounded p-2">
+                <div class="text-muted small">Pedido</div>
+                <div class="fw-semibold" id="mp_num_pedido">—</div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="border rounded p-2">
+                <div class="text-muted small">Prioridad</div>
+                <div class="fw-semibold" id="mp_prioridad">—</div>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="border rounded p-2">
+                <div class="text-muted small">Cantidad</div>
+                <div class="fw-semibold" id="mp_cantidad">—</div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="border rounded p-2">
+                <div class="text-muted small">Inicio</div>
+                <div class="fw-semibold" id="mp_inicio">—</div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="border rounded p-2">
+                <div class="text-muted small">Requerida</div>
+                <div class="fw-semibold" id="mp_requerida">—</div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="border rounded p-2">
+                <div class="text-muted small">Supervisor</div>
+                <div class="fw-semibold" id="mp_supervisor">—</div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="border rounded p-2">
+                <div class="text-muted small">Notas</div>
+                <div class="fw-semibold" id="mp_notas">—</div>
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-3">
+
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="fw-semibold">Detalle (estaciones / asignación)</div>
+            <span class="badge bg-light text-dark border" id="mp_count_detalle">0</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th style="width:80px;">Orden</th>
+                  <th>Estación</th>
+                  <th>Encargado</th>
+                  <th>Ayudantes</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyPlaneacionDetalle">
+                <tr><td colspan="4" class="text-center text-muted py-3">Sin detalle</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <a href="javascript:void(0)" class="btn btn-outline-primary" id="btnVerMasDetalle">
+          <i class="ri-eye-line me-1"></i> Ver más detalle
+        </a>
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 
 
 

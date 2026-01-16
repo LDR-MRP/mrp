@@ -217,52 +217,127 @@ class Plan_planeacionModel extends Mysql
         return $this->insert($sql, [$planeacionEstacionId, $usuarioid, $rol]);
     }
 
+
+
     public function selectPlanPendientes()
-    {
+{
 
-        $sql = "SELECT pla.*,
-		       pla.estado AS estado_planeacion, 
-               pro.cve_producto,
-               pro.descripcion AS descripcion_producto
-        FROM  mrp_planeacion AS pla
-        INNER JOIN mrp_productos AS pro ON pla.productoid = pro.idproducto
-        WHERE pla.fase = 2;";
-        $request = $this->select_all($sql);
-        return $request;
+    $isAdmin   = isset($_SESSION['rolid']) && (int)$_SESSION['rolid'] === 1;
+    $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
 
+    if (!$isAdmin && $userIdSes <= 0) {
+        return [];
     }
 
 
-    public function selectPlanFinalizadas()
-    {
+    $whereUser = "";
+    if (!$isAdmin) {
+        $whereUser = " AND pla.idplaneacion IN (
+                        SELECT DISTINCT pe.planeacionid
+                        FROM mrp_planeacion_estacion pe
+                        INNER JOIN mrp_planeacion_estacion_operador o
+                          ON o.planeacion_estacionid = pe.id_planeacion_estacion
+                        WHERE pe.estado = 2
+                          AND o.estado  = 2
+                          AND o.usuarioid = {$userIdSes}
+                      )";
+    }
 
-        $sql = "SELECT pla.*,
-		       pla.estado AS estado_planeacion, 
-               pro.cve_producto,
-               pro.descripcion AS descripcion_producto
-        FROM  mrp_planeacion AS pla
-        INNER JOIN mrp_productos AS pro ON pla.productoid = pro.idproducto
-        WHERE pla.fase = 5;";
-        $request = $this->select_all($sql);
-        return $request;
+  
+    $sql = "SELECT pla.*,
+                   pla.estado AS estado_planeacion,
+                   pro.cve_producto,
+                   pro.descripcion AS descripcion_producto
+            FROM mrp_planeacion AS pla
+            INNER JOIN mrp_productos AS pro
+              ON pla.productoid = pro.idproducto
+            WHERE pla.fase = 2
+              AND pla.estado != 0
+              {$whereUser};";
 
+    return $this->select_all($sql);
+}
+
+
+public function selectPlanFinalizadas()
+{
+
+    $isAdmin   = isset($_SESSION['rolid']) && (int)$_SESSION['rolid'] === 1;
+    $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
+
+    if (!$isAdmin && $userIdSes <= 0) {
+        return [];
+    }
+
+  
+    $whereUser = "";
+    if (!$isAdmin) {
+        $whereUser = " AND pla.idplaneacion IN (
+                        SELECT DISTINCT pe.planeacionid
+                        FROM mrp_planeacion_estacion pe
+                        INNER JOIN mrp_planeacion_estacion_operador o
+                          ON o.planeacion_estacionid = pe.id_planeacion_estacion
+                        WHERE pe.estado = 2
+                          AND o.estado  = 2
+                          AND o.usuarioid = {$userIdSes}
+                      )";
     }
 
 
-    public function selectPlanCanceladas()
-    {
+    $sql = "SELECT pla.*,
+                   pla.estado AS estado_planeacion,
+                   pro.cve_producto,
+                   pro.descripcion AS descripcion_producto
+            FROM mrp_planeacion AS pla
+            INNER JOIN mrp_productos AS pro
+              ON pla.productoid = pro.idproducto
+            WHERE pla.fase = 5
+              AND pla.estado != 0
+              {$whereUser};";
 
-        $sql = "SELECT pla.*,
-		       pla.estado AS estado_planeacion, 
-               pro.cve_producto,
-               pro.descripcion AS descripcion_producto
-        FROM  mrp_planeacion AS pla
-        INNER JOIN mrp_productos AS pro ON pla.productoid = pro.idproducto
-        WHERE pla.fase = 6;";
-        $request = $this->select_all($sql);
-        return $request;
+    return $this->select_all($sql);
+}
 
+
+public function selectPlanCanceladas()
+{
+
+    $isAdmin   = isset($_SESSION['rolid']) && (int)$_SESSION['rolid'] === 1;
+    $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
+
+    if (!$isAdmin && $userIdSes <= 0) {
+        return [];
     }
+
+  
+    $whereUser = "";
+    if (!$isAdmin) {
+        $whereUser = " AND pla.idplaneacion IN (
+                        SELECT DISTINCT pe.planeacionid
+                        FROM mrp_planeacion_estacion pe
+                        INNER JOIN mrp_planeacion_estacion_operador o
+                          ON o.planeacion_estacionid = pe.id_planeacion_estacion
+                        WHERE pe.estado = 2
+                          AND o.estado  = 2
+                          AND o.usuarioid = {$userIdSes}
+                      )";
+    }
+
+
+    $sql = "SELECT pla.*,
+                   pla.estado AS estado_planeacion,
+                   pro.cve_producto,
+                   pro.descripcion AS descripcion_producto
+            FROM mrp_planeacion AS pla
+            INNER JOIN mrp_productos AS pro
+              ON pla.productoid = pro.idproducto
+            WHERE pla.fase = 6
+              AND pla.estado != 0
+              {$whereUser};";
+
+    return $this->select_all($sql);
+}
+
 
 
 
@@ -609,8 +684,10 @@ class Plan_planeacionModel extends Mysql
         return $this->select_all($sql);
     }
 
-    public function obtenerPlaneacion($num_orden)
+    public function obtenerPlaneacionV($num_orden)
     {
+
+
         $num_orden = trim((string) $num_orden);
         $key = preg_replace('/[^A-Za-z0-9]/', '', $num_orden); // OT260106001
 
@@ -767,6 +844,222 @@ class Plan_planeacionModel extends Mysql
 
 
 
+
+
+//con esta función ya nos muestra las solicitudes que son asignadas a cada operador
+    public function obtenerPlaneacion($num_orden)
+{
+    // =========================================================
+    // 1) Normalizar num_orden (ej: OT260106-001 -> OT260106001)
+    // =========================================================
+    $num_orden = trim((string) $num_orden);
+    $key = preg_replace('/[^A-Za-z0-9]/', '', $num_orden);
+
+    // =========================================================
+    // 2) Traer la planeación (header)
+    // =========================================================
+    $sqlPla = "SELECT pla.*, pr.cve_producto, pr.descripcion
+              FROM mrp_planeacion AS pla
+              INNER JOIN mrp_productos AS pr ON pla.productoid = pr.idproducto
+              WHERE REPLACE(pla.num_orden,'-','') = '{$key}'
+              LIMIT 1";
+
+    $planeacion = $this->select($sqlPla);
+
+    if (empty($planeacion)) {
+        return ['status' => false, 'msg' => 'No existe la planeación', 'data' => []];
+    }
+
+    $planeacionid = (int) ($planeacion['idplaneacion'] ?? 0);
+    if ($planeacionid <= 0) {
+        return ['status' => false, 'msg' => 'Planeación inválida', 'data' => []];
+    }
+
+    // =========================================================
+    // 3) Seguridad por usuario:
+    //    - Admin (rolid=1): ve todo
+    //    - No admin: solo ve estaciones donde esté asignado (operador)
+    // =========================================================
+    $isAdmin   = isset($_SESSION['rolid']) && (int)$_SESSION['rolid'] === 1;
+    $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
+
+    // Si NO es admin y no hay idusuario en sesión, no podemos mostrar nada
+    if (!$isAdmin && $userIdSes <= 0) {
+        return ['status' => false, 'msg' => 'Sesión inválida (sin usuario)', 'data' => []];
+    }
+
+    // =========================================================
+    // 4) Traer estaciones activas (estado=2) PERO:
+    //    - Admin: todas las estaciones activas de esa planeación
+    //    - No admin: solo estaciones donde el usuario esté asignado en
+    //      mrp_planeacion_estacion_operador (estado=2)
+    // =========================================================
+    $whereUserEst = "";
+    if (!$isAdmin) {
+        // Solo estaciones donde el usuario está asignado
+        $whereUserEst = " AND pe.id_planeacion_estacion IN (
+                            SELECT o2.planeacion_estacionid
+                            FROM mrp_planeacion_estacion_operador o2
+                            WHERE o2.estado = 2
+                              AND o2.usuarioid = {$userIdSes}
+                         )";
+    }
+
+    $sqlEst = "SELECT pe.id_planeacion_estacion, pe.planeacionid, pe.estacionid, pe.orden, pe.estado,
+                      est.cve_estacion, est.nombre_estacion, est.proceso
+               FROM mrp_planeacion_estacion pe
+               INNER JOIN mrp_estacion AS est
+                  ON pe.estacionid = est.idestacion
+               WHERE pe.planeacionid = {$planeacionid}
+                 AND pe.estado = 2
+                 {$whereUserEst}
+               ORDER BY pe.orden ASC";
+
+    $estaciones = $this->select_all($sqlEst);
+
+    // Si no hay estaciones visibles para este usuario, regresamos OK pero vacío
+    if (empty($estaciones)) {
+        $planeacion['estaciones'] = [];
+        return ['status' => true, 'msg' => 'OK', 'data' => $planeacion];
+    }
+
+    // =========================================================
+    // 5) Sacar IDs de planeacion_estacion para armar IN(...)
+    // =========================================================
+    $idsPE = array_map(fn($r) => (int)$r['id_planeacion_estacion'], $estaciones);
+    $idsPE = array_values(array_filter($idsPE, fn($v) => $v > 0));
+
+    if (empty($idsPE)) {
+        $planeacion['estaciones'] = [];
+        return ['status' => true, 'msg' => 'OK', 'data' => $planeacion];
+    }
+
+    $in = implode(',', $idsPE);
+
+    // =========================================================
+    // 6) Operadores (encargados/ayudantes) de esas estaciones
+    //    Nota: aquí NO filtramos por userId, porque el usuario
+    //    necesita ver el equipo asignado a la estación (encargados
+    //    y ayudantes), aunque él sea solo uno de ellos.
+    // =========================================================
+    $sqlOp = "SELECT o.planeacion_estacionid,
+                     o.usuarioid,
+                     UPPER(TRIM(o.rol)) AS rol,
+                     o.estado,
+                     CONCAT(TRIM(u.nombres), ' ', TRIM(u.apellidos)) AS nombre_completo
+              FROM mrp_planeacion_estacion_operador o
+              INNER JOIN usuarios u
+                 ON u.idusuario = o.usuarioid
+              WHERE o.estado = 2
+                AND o.planeacion_estacionid IN ({$in})
+              ORDER BY o.planeacion_estacionid ASC";
+
+    $ops = $this->select_all($sqlOp);
+
+    // Indexar operadores por PEID
+    $opsByPE = [];
+    foreach ($ops as $op) {
+        $peid = (int)($op['planeacion_estacionid'] ?? 0);
+        if ($peid <= 0) continue;
+        $opsByPE[$peid][] = $op;
+    }
+
+    // =========================================================
+    // 7) Órdenes de trabajo (subórdenes) SOLO de las estaciones visibles
+    //    - Admin: todas las OT de esas estaciones
+    //    - No admin: aquí realmente NO hace falta filtrar más,
+    //      porque las estaciones ya están filtradas por asignación.
+    // =========================================================
+    $sqlOT = "SELECT ot.idorden,
+                     ot.planeacion_estacionid,
+                     ot.num_sub_orden,
+                     ot.fecha_inicio,
+                     ot.fecha_fin,
+                     ot.comentarios,
+                     ot.estatus,
+                     CAST(SUBSTRING_INDEX(ot.num_sub_orden, 'S', -1) AS UNSIGNED) AS ord_s
+              FROM mrp_ordenes_trabajo ot
+              WHERE ot.planeacion_estacionid IN ({$in})
+              ORDER BY ot.planeacion_estacionid ASC, ord_s ASC";
+
+    $ots = $this->select_all($sqlOT);
+
+    // Indexar OTs por PEID
+    $otsByPE = [];
+    foreach ($ots as $ot) {
+        $peid = (int)($ot['planeacion_estacionid'] ?? 0);
+        if ($peid <= 0) continue;
+        $otsByPE[$peid][] = $ot;
+    }
+
+    // =========================================================
+    // 8) Construcción final del JSON de salida
+    // =========================================================
+    $outEstaciones = [];
+
+    foreach ($estaciones as $e) {
+        $peid = (int)$e['id_planeacion_estacion'];
+
+        $item = [
+            'id_planeacion_estacion' => $peid,
+            'planeacionid'           => (int)$e['planeacionid'],
+            'estacionid'             => (int)$e['estacionid'],
+            'orden'                  => (int)$e['orden'],
+            'estado'                 => (int)$e['estado'],
+            'cve_estacion'           => (string)$e['cve_estacion'],
+            'nombre_estacion'        => (string)$e['nombre_estacion'],
+            'proceso'                => (string)$e['proceso'],
+
+            // Listas de operadores
+            'encargados'             => [],
+            'ayudantes'              => [],
+
+            // Subórdenes (OT)
+            'ordenes_trabajo'        => [],
+        ];
+
+        // -------- Operadores por estación
+        $listaOps = $opsByPE[$peid] ?? [];
+        foreach ($listaOps as $op) {
+            $rol = (string)($op['rol'] ?? '');
+
+            $objOper = [
+                'usuarioid'        => (int)($op['usuarioid'] ?? 0),
+                'rol'              => $rol,
+                'nombre_completo'  => (string)($op['nombre_completo'] ?? ''),
+            ];
+
+            if ($rol === 'ENCARGADO') {
+                $item['encargados'][] = $objOper;
+            } else if ($rol === 'AYUDANTE') {
+                $item['ayudantes'][] = $objOper;
+            }
+        }
+
+        // -------- OTs por estación
+        $listaOT = $otsByPE[$peid] ?? [];
+        foreach ($listaOT as $ot) {
+            $item['ordenes_trabajo'][] = [
+                'idorden'               => (int)($ot['idorden'] ?? 0),
+                'planeacion_estacionid' => (int)($ot['planeacion_estacionid'] ?? 0),
+                'num_sub_orden'         => (string)($ot['num_sub_orden'] ?? ''),
+                'fecha_inicio'          => (string)($ot['fecha_inicio'] ?? ''),
+                'fecha_fin'             => (string)($ot['fecha_fin'] ?? ''),
+                'comentarios'           => (string)($ot['comentarios'] ?? ''),
+                'estatus'               => (string)($ot['estatus'] ?? ''),
+            ];
+        }
+
+        $outEstaciones[] = $item;
+    }
+
+    $planeacion['estaciones'] = $outEstaciones;
+
+    return ['status' => true, 'msg' => 'OK', 'data' => $planeacion];
+}
+
+
+ 
 
     public function insertOrdenes(int $id_planeacion_estacion, string $num_orden_s)
     {
@@ -929,7 +1222,7 @@ public function startOT(int $idorden, string $fecha_inicio)
     }
 
     if ((int)($prevStation['estatus'] ?? 0) !== 3) {
-      return ['status'=>false,'msg'=>'No puedes iniciar: primero finaliza esta Sub-OT en la estación anterior','data'=>[]];
+      return ['status'=>false,'msg'=>'No puedes iniciar este proceso porque aún no está finalizado en la estación anterior.','data'=>[]];
     }
   }
 
@@ -1045,6 +1338,56 @@ public function getStatusOTByPlaneacion(int $planeacionid)
 
   return $this->select_all($sql);
 }
+
+
+
+public function selectOrdenesCalendar()
+{
+  $isAdmin   = isset($_SESSION['rolid']) && (int)$_SESSION['rolid'] === 1;
+  $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
+
+  if (!$isAdmin && $userIdSes <= 0) {
+
+    return [];
+  }
+
+  $whereUser = "";
+  if (!$isAdmin) {
+  
+    $whereUser = " AND pla.idplaneacion IN (
+                    SELECT DISTINCT pe.planeacionid
+                    FROM mrp_planeacion_estacion pe
+                    INNER JOIN mrp_planeacion_estacion_operador o
+                      ON o.planeacion_estacionid = pe.id_planeacion_estacion
+                    WHERE pe.estado = 2
+                      AND o.estado  = 2
+                      AND o.usuarioid = {$userIdSes}
+                  )";
+  }
+
+  $sql = "SELECT 
+            pla.idplaneacion,
+            pla.num_orden,
+            pla.productoid,
+            pla.num_pedido,
+            pla.supervisor,
+            pla.prioridad,
+            pla.cantidad,
+            pla.fecha_requerida,
+            pla.fecha_inicio,
+            pla.notas,
+            pla.estado,
+            pla.fase
+          FROM mrp_planeacion pla
+          WHERE pla.fecha_inicio IS NOT NULL
+            AND pla.estado != 0
+            {$whereUser}
+          ORDER BY pla.fecha_inicio DESC";
+
+  return $this->select_all($sql);
+}
+
+
 
 
 

@@ -645,26 +645,66 @@ public function setPlaneacion()
 
 
   // FUNCIÓN PARA MNADAR A TRAER LA VISTA DE LA ORDEN DE TRABAJO
-  public function orden($num_orden)
-  {
-    $num_orden = trim((string) $num_orden);
+public function orden($num_orden)
+{
+  $num_orden = trim((string)$num_orden);
 
-    if ($num_orden === '') {
-      header("Location:" . base_url() . '/viaticosgenerales');
-      die();
-    }
-    $data['page_tag'] = $num_orden;
-    $data['page_title'] = "Orden <small>de trabajo</small>";
-    $data['page_name'] = "Orden de trabajo";
-    $data['page_functions_js'] = "functions_orden.js";
-    $data['arrOrdenDetalle'] = $this->model->obtenerPlaneacion($num_orden);
-    if (empty($data['arrOrdenDetalle'])) {
-      header("Location:" . base_url() . '/plan_planeacion');
-      die();
-    }
-
-    $this->views->getView($this, "orden", $data);
+  if ($num_orden === '') {
+    header("Location:" . base_url() . '/plan_planeacion');
+    die();
   }
+
+  // ✅ MODO JSON (para fetch del modal)
+  if (isset($_GET['json']) && $_GET['json'] == '1') {
+    header('Content-Type: application/json; charset=utf-8');
+
+    $resp = $this->model->obtenerPlaneacion($num_orden);
+
+    if (empty($resp)) {
+      echo json_encode([
+        'status' => false,
+        'msg'    => 'No se encontró la planeación'
+      ], JSON_UNESCAPED_UNICODE);
+      die();
+    }
+
+    // ✅ Si tu obtenerPlaneacion ya trae {status, data} o directo header,
+    // lo envolvemos de forma estándar para el JS
+    // Ajusta aquí según tu respuesta real:
+    // - Si $resp ya es ['status'=>true,'data'=>...], puedes retornarlo tal cual.
+    // - Si $resp es el header directo, lo envolvemos como header.
+
+    // Caso 1: tu modelo ya devuelve algo tipo ['status'=>true,'data'=>...]
+    if (is_array($resp) && array_key_exists('status', $resp)) {
+      echo json_encode($resp, JSON_UNESCAPED_UNICODE);
+      die();
+    }
+
+    // Caso 2: tu modelo devuelve el header directo
+    echo json_encode([
+      'status' => true,
+      'data'   => [
+        'header' => $resp
+      ]
+    ], JSON_UNESCAPED_UNICODE);
+    die();
+  }
+
+  // ✅ MODO NORMAL (vista HTML)
+  $data['page_tag'] = $num_orden;
+  $data['page_title'] = "Orden <small>de trabajo</small>";
+  $data['page_name'] = "Orden de trabajo";
+  $data['page_functions_js'] = "functions_orden.js";
+  $data['arrOrdenDetalle'] = $this->model->obtenerPlaneacion($num_orden);
+
+  if (empty($data['arrOrdenDetalle'])) {
+    header("Location:" . base_url() . '/plan_planeacion');
+    die();
+  }
+
+  $this->views->getView($this, "orden", $data);
+}
+
 
 
 
@@ -798,6 +838,40 @@ public function descargarOrden($num_orden){
    echo json_encode($request, JSON_UNESCAPED_UNICODE);
         die();
 }
+
+
+public function getOrdenes()
+{
+  header('Content-Type: application/json; charset=utf-8');
+
+  try {
+    // (opcional) si requieres sesión/login
+    // if (empty($_SESSION['login'])) {
+    //   echo json_encode(['status' => false, 'msg' => 'No autorizado']);
+    //   die();
+    // }
+
+    $rows = $this->model->selectOrdenesCalendar();
+
+    echo json_encode([
+      'status' => true,
+      'data'   => $rows
+    ], JSON_UNESCAPED_UNICODE);
+    die();
+
+  } catch (Exception $e) {
+    echo json_encode([
+      'status' => false,
+      'msg' => 'Error al obtener órdenes',
+      'error' => $e->getMessage()
+    ], JSON_UNESCAPED_UNICODE);
+    die();
+  }
+}
+
+
+
+
 
 
 

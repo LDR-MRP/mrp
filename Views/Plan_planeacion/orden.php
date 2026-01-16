@@ -1,4 +1,6 @@
-<?php headerAdmin($data); ?>
+<?php headerAdmin($data);
+// dep($_SESSION);
+?>
 <div id="contentAjax"></div>
 
 <div class="main-content">
@@ -490,7 +492,7 @@ $fmtDT = function($d){
                           $ots = $e['ordenes_trabajo'] ?? [];
                           $peid = (int)($e['id_planeacion_estacion'] ?? 0);
                         ?>
-                        <div class="accordion-item border-0">
+                        <div class="accordion-item border-0" data-est-orden="<?= $estacion['orden']; ?>">
                           <div class="accordion-header" id="<?= $h($headingId) ?>">
                             <a class="accordion-button p-2 shadow-none" data-bs-toggle="collapse"
                                href="#<?= $h($collapseId) ?>" aria-expanded="true" aria-controls="<?= $h($collapseId) ?>">
@@ -629,6 +631,14 @@ $fmtDT = function($d){
                                                       >
                                                         <i class="ri-chat-3-line me-1"></i>Comentarios
                                                       </button>
+
+                                                      <button class="btn btn-soft-primary btnChatOT"
+  data-planeacionid="90"
+  data-subotkey="OT260115-004-S03"
+  data-estacionid="2">
+  <i class="ri-message-3-line me-1"></i>Chat
+</button>
+
                                                     </div>
                                                   </td>
                                                 </tr>
