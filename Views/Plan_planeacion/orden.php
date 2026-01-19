@@ -632,12 +632,31 @@ $fmtDT = function($d){
                                                         <i class="ri-chat-3-line me-1"></i>Comentarios
                                                       </button>
 
-                                                      <button class="btn btn-soft-primary btnChatOT"
+                                                      <!-- <button class="btn btn-soft-primary btnChatOT"
   data-planeacionid="90"
   data-subotkey="OT260115-004-S03"
   data-estacionid="2">
   <i class="ri-message-3-line me-1"></i>Chat
+</button> -->
+
+<!-- <button type="button"
+  class="btn btn-soft-info btnChatOT"
+  data-numorden="OT260116-002"
+  data-subot="OT260116-002-S01"
+  data-productoid="57"
+  data-estacionid="13"
+  data-planeacionid="39">
+  <i class="ri-message-3-line me-1"></i>Chat
+</button> -->
+
+<button type="button"
+  class="btn btn-sm btn-soft-info btnChatOT"
+  data-subot="<?= $otRow['num_sub_orden']; ?>">
+  <i class="ri-message-3-line me-1"></i>Chat
 </button>
+
+
+
 
                                                     </div>
                                                   </td>
@@ -821,6 +840,43 @@ $fmtDT = function($d){
             </div>
           </div>
         </div>
+
+
+
+
+        <!-- ===========================
+  MODAL CHAT OT
+=========================== -->
+<div class="modal fade" id="modalChatOT" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title mb-0">Chat asociado a la orden</h5>
+          <small class="text-muted" id="chatSubotTitle">—</small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body p-0" style="background:#f6f7fb;">
+        <input type="hidden" id="chat_subot" value="">
+        <div id="chatMessages" class="p-3" style="height:65vh; overflow:auto;"></div>
+      </div>
+
+      <div class="modal-footer d-flex gap-2">
+        <input id="chatInput" type="text" class="form-control" placeholder="Escribe un mensaje...">
+        <button id="chatSendBtn" type="button" class="btn btn-primary">
+          <i class="ri-send-plane-2-line me-1"></i>Enviar
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+
 
       <?php endif; ?>
 

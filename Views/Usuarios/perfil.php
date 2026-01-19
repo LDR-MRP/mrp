@@ -1066,12 +1066,12 @@
         url: data.url || (window.MRP_AVATAR_SAVED?.url || '')
       };
 
-      alert('✅ Avatar guardado correctamente');
+    Swal.fire({ icon:'success', title:'¡Operación exitosa!', text:' Avatar guardado correctamente.' });
     } catch (e) {
       console.error(e);
       alert('⚠ Error de red al guardar avatar (endpoint/servidor).');
     }
-  }
+  } 
 
   // =========================================================
   //  INIT DESDE BD (evita que siempre sea usr-193d5885)

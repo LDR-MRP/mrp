@@ -1395,6 +1395,171 @@ public function selectOrdenesCalendar()
 
 
 
+////////////////////////////////////
+
+
+public function selectChatMessages($numorden, $subot, $productoid, $estacionid, $planeacionid, $after_id = 0, $limit = 200)
+{
+  $numorden = addslashes(trim((string)$numorden));
+  $subot    = addslashes(trim((string)$subot));
+
+  $productoid   = (int)$productoid;
+  $estacionid   = (int)$estacionid;
+  $planeacionid = (int)$planeacionid;
+  $after_id     = (int)$after_id;
+
+  $limit = (int)$limit;
+  if ($limit <= 0) $limit = 200;
+  if ($limit > 500) $limit = 500;
+
+  // ✅ REGLA: sin subot no hay chat
+  if ($subot === '') return [];
+
+  // ✅ SIEMPRE por subot (chat aislado)
+  $where = "WHERE c.subot = '{$subot}'";
+
+  // numorden opcional (por si lo quieres reforzar)
+  if ($numorden !== '') $where .= " AND c.numorden = '{$numorden}'";
+
+  if ($productoid > 0)   $where .= " AND c.productoid = {$productoid}";
+  if ($estacionid > 0)   $where .= " AND c.estacionid = {$estacionid}";
+  if ($planeacionid > 0) $where .= " AND c.planeacionid = {$planeacionid}";
+  if ($after_id > 0)     $where .= " AND c.idchat > {$after_id}";
+
+  $sql = "SELECT
+            c.idchat,
+            c.numorden,
+            c.subot,
+            c.productoid,
+            c.estacionid,
+            c.planeacionid,
+            c.user_id,
+            c.user_name,
+            c.message,
+            DATE_FORMAT(c.created_at, '%Y-%m-%d %H:%i:%s') AS created_at
+          FROM mrp_ot_chat c
+          {$where}
+          ORDER BY c.idchat ASC
+          LIMIT {$limit}";
+
+  $rows = $this->select_all($sql);
+  return is_array($rows) ? $rows : [];
+}
+
+
+public function insertChatMessage($numorden, $subot, $productoid, $estacionid, $planeacionid, $userId, $userName, $message)
+{
+//   $numorden   = trim((string)$numorden);
+//   $subot      = trim((string)$subot);
+//   $productoid = (int)$productoid;
+//   $estacionid = (int)$estacionid;
+//   $planeacionid = (int)$planeacionid;
+//   $userId     = (int)$userId;
+
+//   $userName = trim((string)$userName);
+//   $message  = trim((string)$message);
+
+//   if ($subot === '' || $message === '') return false;
+
+//   $sql = "INSERT INTO mrp_ot_chat
+//             (numorden, subot, productoid, estacionid, planeacionid, user_id, user_name, message, created_at)
+//           VALUES
+//             ('{$numorden}', '{$subot}', {$productoid}, {$estacionid}, {$planeacionid}, {$userId}, '{$userName}', '{$message}', NOW())";
+
+//   $request = $this->insert($sql);
+//   return ($request > 0);
+
+
+
+          $sql = "INSERT INTO mrp_ot_chat(numorden, subot, productoid, estacionid, planeacionid, user_id, user_name, message)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+        $arrData = [$numorden, $subot, $productoid, $estacionid, $planeacionid, $userId, $userName, $message];
+
+        return $this->insert($sql, $arrData);
+
+}
+
+
+
+
+
+public function selectChatMessagesBySubOT($subot, $after_id = 0, $limit = 200)
+{
+  $subot = addslashes(trim((string)$subot));
+  $after_id = (int)$after_id;
+
+  $limit = (int)$limit;
+  if ($limit <= 0) $limit = 200;
+  if ($limit > 500) $limit = 500;
+
+  if ($subot === '') return [];
+
+  $where = "WHERE c.subot = '{$subot}'";
+  if ($after_id > 0) {
+    $where .= " AND c.idchat > {$after_id}";
+  }
+
+  $sql = "SELECT
+            c.idchat,
+            c.subot,
+            c.user_id,
+            c.user_name,
+            c.message,
+            c.created_at
+          FROM mrp_ot_chat c
+          {$where}
+          ORDER BY c.idchat ASC
+          LIMIT {$limit}";
+
+  $rows = $this->select_all($sql);
+  return is_array($rows) ? $rows : [];
+}
+
+
+public function insertChatMessageBySubOT($subot, $user_id, $user_name, $message)
+{
+//   $subot = addslashes(trim((string)$subot));
+//   $message = trim((string)$message);
+
+//   $user_id = (int)$user_id;
+//   $user_name = addslashes(trim((string)$user_name));
+//   $message_db = addslashes($message);
+
+//   if ($subot === '' || $message === '') return 0;
+
+//   // Si tu tabla tiene NOT NULL en estos campos, cambia 0/''
+//   $sql = "INSERT INTO mrp_ot_chat
+//           (numorden, subot, productoid, estacionid, planeacionid, user_id, user_name, message, created_at)
+//           VALUES
+//           ('', '{$subot}', 0, 0, 0, {$user_id}, '{$user_name}', '{$message_db}', NOW())";
+
+//   $id = $this->insert($sql);
+//   return (int)$id;
+
+
+          $sql = "INSERT INTO mrp_ot_chat
+          (numorden, subot, productoid, estacionid, planeacionid, user_id, user_name, message, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+
+        $arrData = [$subot, $user_id, $user_name, $message];
+
+        return $this->insert($sql, $arrData);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 }
