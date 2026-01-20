@@ -171,4 +171,32 @@ class Inv_almacenes extends Controllers
 		echo $htmlOptions;
 		die();
 	}
+
+	public function getAlmacenesJson()
+    {
+        header("Content-Type: application/json; charset=UTF-8");
+
+        try {
+            $data = $this->model->selectAlmacenes();
+
+            http_response_code(200);
+            echo json_encode([
+                "status" => true,
+                "msg"    => "Datos obtenidos correctamente",
+                "data"   => $data
+            ], JSON_UNESCAPED_UNICODE);
+
+        } catch (Exception $e) {
+
+            $code = $e->getCode();
+            
+            if ($code < 400 || $code > 599) $code = 500; 
+
+            http_response_code($code);
+            echo json_encode([
+                "status" => false,
+                "msg"    => $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
 }

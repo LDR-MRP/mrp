@@ -112,7 +112,8 @@ class Inv_inventarioModel extends Mysql
                     i.descripcion,
                     lp.descripcion AS linea,
                     i.tipo_elemento,
-                    i.estado
+                    i.estado,
+                    i.ultimo_costo
                 FROM wms_inventario i
                 LEFT JOIN wms_linea_producto lp 
                     ON i.lineaproductoid = lp.idlineaproducto

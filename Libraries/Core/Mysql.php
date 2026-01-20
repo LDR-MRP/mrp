@@ -28,20 +28,20 @@
 	        return $lastInsert; 
 		}
 		//Busca un registro
-		public function select(string $query)
+		public function select(string $query, array $arrValues = [])
 		{
 			$this->strquery = $query;
         	$result = $this->conexion->prepare($this->strquery);
-			$result->execute();
+			$result->execute($arrValues);
         	$data = $result->fetch(PDO::FETCH_ASSOC);
         	return $data;
 		}
 		//Devuelve todos los registros
-		public function select_all(string $query)
+		public function select_all(string $query, array $arrValues = [])
 		{
 			$this->strquery = $query;
         	$result = $this->conexion->prepare($this->strquery);
-			$result->execute();
+			$result->execute($arrValues);
         	$data = $result->fetchall(PDO::FETCH_ASSOC);
         	return $data;
 		}
@@ -62,6 +62,10 @@
 			$del = $result->execute();
         	return $del;
 		}
+
+		public function getConexion() {
+            return $this->conexion;
+        }
 	}
 
 
