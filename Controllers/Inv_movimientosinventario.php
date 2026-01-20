@@ -131,4 +131,13 @@ class Inv_movimientosinventario extends Controllers
         }
         die();
     }
+
+    public function getSelectInventarioJson()
+    {
+        if ($_SESSION['permisosMod']['r']) {
+            $arrData = $this->model->selectInventarioPredictivo();
+            echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        }
+        die();
+    }
 }

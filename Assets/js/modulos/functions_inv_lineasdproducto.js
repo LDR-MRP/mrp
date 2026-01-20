@@ -3,118 +3,129 @@ let rowTable = "";
 let divLoading = document.querySelector("#divLoading");
 
 // Inputs del formulario
-const cve_linea_producto = document.querySelector('#clave-linea-producto-input');
-const estado = document.querySelector('#estado-select');
-const descripcion = document.querySelector('#descripcion-linea-producto-textarea');
+const cve_linea_producto = document.querySelector(
+  "#clave-linea-producto-input",
+);
+const estado = document.querySelector("#estado-select");
+const descripcion = document.querySelector(
+  "#descripcion-linea-producto-textarea",
+);
 
-// Mis referencias globales 
+// Mis referencias globales
 let primerTab;
 let firstTab;
 let tabNuevo;
 let spanBtnText = null;
 let formLineasProducto = null;
 
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener("DOMContentLoaded", function () {
+  formLineasProducto = document.querySelector("#formLineasProducto");
+  spanBtnText = document.querySelector("#btnText");
 
-    formLineasProducto = document.querySelector("#formLineasProducto");
-    spanBtnText = document.querySelector('#btnText');
+  tableLineasProducto = $("#tableLineasProducto").dataTable({
+    aProcessing: true,
+    aServerSide: false,
+    ajax: {
+      url: base_url + "/Inv_lineasdproducto/getLineasProductos",
+      dataSrc: "",
+    },
+    columns: [
+      { data: "cve_linea_producto" },
+      { data: "descripcion" },
+      { data: "fecha_creacion" },
+      { data: "estado" },
+      { data: "options" },
+    ],
+    dom: "lBfrtip",
+    buttons: [],
+    responsive: true,
+    bDestroy: true,
+    iDisplayLength: 10,
+    order: [[0, "desc"]],
+  });
 
-    tableLineasProducto = $('#tableLineasProducto').dataTable({
-        "aProcessing": true,
-        "aServerSide": false,
-        "ajax": {
-            "url": base_url + "/Inv_lineasdproducto/getLineasProductos",
-            "dataSrc": ""
-        },
-        "columns": [
-            { "data": "cve_linea_producto" },
-            { "data": "descripcion" },
-            { "data": "fecha_creacion" },
-            { "data": "estado" },
-            { "data": "options" }
-        ],
-        "dom": "lBfrtip",
-        "buttons": [],
-        "responsive": true,
-        "bDestroy": true,
-        "iDisplayLength": 10,
-        "order": [[0, "desc"]]
+  const primerTabEl = document.querySelector(
+    '#nav-tab a[href="#listlineasproductos"]',
+  );
+  const firstTabEl = document.querySelector(
+    '#nav-tab a[href="#agregarlineasproducto"]',
+  );
+
+  if (primerTabEl && firstTabEl && spanBtnText) {
+    primerTab = new bootstrap.Tab(primerTabEl);
+    firstTab = new bootstrap.Tab(firstTabEl);
+    tabNuevo = firstTabEl;
+
+    tabNuevo.addEventListener("click", () => {
+      spanBtnText.textContent = "REGISTRAR";
+      formLineasProducto.reset();
+      document.querySelector("#idlineaproducto").value = 0;
     });
+  }
 
-    const primerTabEl = document.querySelector('#nav-tab a[href="#listlineasproductos"]');
-    const firstTabEl  = document.querySelector('#nav-tab a[href="#agregarlineasproducto"]');
+  formLineasProducto.addEventListener("submit", function (e) {
+    e.preventDefault();
 
-    if (primerTabEl && firstTabEl && spanBtnText) {
-        primerTab = new bootstrap.Tab(primerTabEl);
-        firstTab  = new bootstrap.Tab(firstTabEl);
-        tabNuevo  = firstTabEl;
+    let formData = new FormData(formLineasProducto);
+    let url = base_url + "/Inv_lineasdproducto/setLineaProducto";
 
-        tabNuevo.addEventListener('click', () => {
-            spanBtnText.textContent = 'REGISTRAR';
-            formLineasProducto.reset();
-            document.querySelector("#idlineaproducto").value = 0;
-        });
-    }
-
-    formLineasProducto.addEventListener('submit', function(e){
-        e.preventDefault();
-
-        let formData = new FormData(formLineasProducto);
-        let url = base_url + "/Inv_lineasdproducto/setLineaProducto";
-
-        fetch(url,{
-            method:"POST",
-            body:formData
-        })
-        .then(res => res.json())
-        .then(objData => {
-            if(objData.status){
-                $('#tableLineasProducto').DataTable().ajax.reload();
-                primerTab.show();
-                Swal.fire("Correcto", objData.msg, "success");
-                formLineasProducto.reset();
-            } else {
-                Swal.fire("Error", objData.msg, "error");
-            }
-        });
-    });
+    fetch(url, {
+      method: "POST",
+      body: formData,
+    })
+      .then((res) => res.json())
+      .then((objData) => {
+        if (objData.status) {
+          $("#tableLineasProducto").DataTable().ajax.reload();
+          primerTab.show();
+          Swal.fire("Correcto", objData.msg, "success");
+          formLineasProducto.reset();
+        } else {
+          Swal.fire("Error", objData.msg, "error");
+        }
+      });
+  });
 });
 
 // ----------------------------------------------
 // VER DETALLE
 // ----------------------------------------------
-function fntViewLineaProducto(id){
-    fetch(base_url + "/Inv_lineasdproducto/getLineaProducto/" + id)
-    .then(res => res.json())
-    .then(objData => {
-        if(objData.status){
-            document.querySelector("#celClave").innerHTML = objData.data.cve_linea_producto;
-            document.querySelector("#celDescripcion").innerHTML = objData.data.descripcion;
-            document.querySelector("#celFecha").innerHTML = objData.data.fecha_creacion;
-            document.querySelector("#celEstado").innerHTML = objData.data.estado == 2 ? "Activo" : "Inactivo";
+function fntViewLineaProducto(id) {
+  fetch(base_url + "/Inv_lineasdproducto/getLineaProducto/" + id)
+    .then((res) => res.json())
+    .then((objData) => {
+      if (objData.status) {
+        document.querySelector("#celClave").innerHTML =
+          objData.data.cve_linea_producto;
+        document.querySelector("#celDescripcion").innerHTML =
+          objData.data.descripcion;
+        document.querySelector("#celFecha").innerHTML =
+          objData.data.fecha_creacion;
+        document.querySelector("#celEstado").innerHTML =
+          objData.data.estado == 2 ? "Activo" : "Inactivo";
 
-            $("#modalViewLineaProducto").modal("show");
-        }
+        $("#modalViewLineaProducto").modal("show");
+      }
     });
 }
 
 // ----------------------------------------------
 // EDITAR
 // ----------------------------------------------
-function fntEditLineaProducto(id){
-    fetch(base_url + "/Inv_lineasdproducto/getLineaProducto/" + id)
-    .then(res => res.json())
-    .then(objData => {
+function fntEditLineaProducto(id) {
+  fetch(base_url + "/Inv_lineasdproducto/getLineaProducto/" + id)
+    .then((res) => res.json())
+    .then((objData) => {
+      if (objData.status) {
+        document.querySelector("#idlineaproducto").value =
+          objData.data.idlineaproducto;
+        cve_linea_producto.value = objData.data.cve_linea_producto;
+        descripcion.value = objData.data.descripcion;
+        estado.value = objData.data.estado;
 
-        if(objData.status){
-            document.querySelector("#idlineaproducto").value = objData.data.idlineaproducto;
-            cve_linea_producto.value = objData.data.cve_linea_producto;
-            descripcion.value = objData.data.descripcion;
-            estado.value = objData.data.estado;
-
-            spanBtnText.textContent = "ACTUALIZAR";
-            firstTab.show();
-        }
+        spanBtnText.textContent = "ACTUALIZAR";
+        firstTab.show();
+      }
     });
 }
 
@@ -122,9 +133,8 @@ function fntEditLineaProducto(id){
 //  ELIMINAR UNA LINEA DE PRODUCTO
 // ------------------------------------------------------------------------
 function fntDelInfo(idlineaproducto) {
-
-    Swal.fire({
-        html: `
+  Swal.fire({
+    html: `
         <div class="mt-3">
             <lord-icon 
                 src="https://cdn.lordicon.com/gsqxdxog.json" 
@@ -142,45 +152,151 @@ function fntDelInfo(idlineaproducto) {
             </div>
         </div>
         `,
-        showCancelButton: true,
-        confirmButtonText: "Sí, eliminar",
-        cancelButtonText: "Cancelar",
-        customClass: {
-            confirmButton: "btn btn-primary w-xs me-2 mb-1",
-            cancelButton: "btn btn-danger w-xs mb-1"
-        },
-        buttonsStyling: false,
-        showCloseButton: true
-    }).then((result) => {
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+    customClass: {
+      confirmButton: "btn btn-primary w-xs me-2 mb-1",
+      cancelButton: "btn btn-danger w-xs mb-1",
+    },
+    buttonsStyling: false,
+    showCloseButton: true,
+  }).then((result) => {
+    if (!result.isConfirmed) return;
 
-        if (!result.isConfirmed) return;
+    let request = window.XMLHttpRequest
+      ? new XMLHttpRequest()
+      : new ActiveXObject("Microsoft.XMLHTTP");
+    let ajaxUrl = base_url + "/Inv_lineasdproducto/delLineaProducto";
+    let strData = "idlineaproducto=" + idlineaproducto;
 
-        let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-        let ajaxUrl = base_url + '/Inv_lineasdproducto/delLineaProducto';
-        let strData = "idlineaproducto=" + idlineaproducto;
+    request.open("POST", ajaxUrl, true);
+    request.setRequestHeader(
+      "Content-type",
+      "application/x-www-form-urlencoded",
+    );
+    request.send(strData);
 
-        request.open("POST", ajaxUrl, true);
-        request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-        request.send(strData);
+    request.onreadystatechange = function () {
+      if (request.readyState === 4 && request.status === 200) {
+        let objData = JSON.parse(request.responseText);
 
-        request.onreadystatechange = function () {
-
-            if (request.readyState === 4 && request.status === 200) {
-
-                let objData = JSON.parse(request.responseText);
-
-                if (objData.status) {
-
-                    Swal.fire("Correcto", objData.msg, "success");
-                    $('#tableLineasProducto').DataTable().ajax.reload();
-
-                } else {
-                    Swal.fire("Error", objData.msg, "error");
-                }
-            }
+        if (objData.status) {
+          Swal.fire("Correcto", objData.msg, "success");
+          $("#tableLineasProducto").DataTable().ajax.reload();
+        } else {
+          Swal.fire("Error", objData.msg, "error");
         }
+      }
+    };
+  });
+}
+
+// ------------------------------------------------------------------------
+//  AGREGAR SUBMODULOS A LA LINEA DE PRODUCTO
+// ------------------------------------------------------------------------
+function fntEstructuraLinea(idLinea) {
+  document.querySelector("#idLineaEstructura").value = idLinea;
+  $("#modalEstructuraLinea").modal("show");
+
+  cargarProductos(idLinea);
+  cargarServicios(idLinea);
+  cargarComponentes(idLinea);
+  cargarHerramientas(idLinea);
+}
+
+function cargarProductos(idLinea) {
+  fetch(base_url + "/Inv_lineasdproducto/getProductos/" + idLinea)
+    .then(res => res.json())
+    .then(data => {
+      let html = "";
+      data.forEach(p => {
+        html += `
+          <tr>
+            <td>${p.clave}</td>
+            <td>${p.nombre}</td>
+            <td>${p.estado}</td>
+            <td>
+              <button class="btn btn-sm btn-warning">✏</button>
+              <button class="btn btn-sm btn-danger">🗑</button>
+            </td>
+          </tr>
+        `;
+      });
+      document.querySelector("#tbodyProductos").innerHTML = html;
     });
 }
+function cargarServicios(idLinea) {
+  fetch(base_url + "/Inv_lineasdproducto/getServicios/" + idLinea)
+    .then(res => res.json())
+    .then(data => {
+      let html = "";
+      data.forEach(p => {
+        html += `
+          <tr>
+            <td>${p.clave}</td>
+            <td>${p.nombre}</td>
+            <td>${p.estado}</td>
+            <td>
+              <button class="btn btn-sm btn-warning">✏</button>
+              <button class="btn btn-sm btn-danger">🗑</button>
+            </td>
+          </tr>
+        `;
+      });
+      document.querySelector("#tbodyServicios").innerHTML = html;
+    });
+}
+function cargarComponentes(idLinea) {
+  fetch(base_url + "/Inv_lineasdproducto/getComponentes/" + idLinea)
+    .then(res => res.json())
+    .then(data => {
+      let html = "";
+      data.forEach(p => {
+        html += `
+          <tr>
+            <td>${p.clave}</td>
+            <td>${p.nombre}</td>
+            <td>${p.estado}</td>
+            <td>
+              <button class="btn btn-sm btn-warning">✏</button>
+              <button class="btn btn-sm btn-danger">🗑</button>
+            </td>
+          </tr>
+        `;
+      });
+      document.querySelector("#tbodyComponentes").innerHTML = html;
+    });
+}
+function cargarHerramientas(idLinea) {
+  fetch(base_url + "/Inv_lineasdproducto/getHerramientas/" + idLinea)
+    .then(res => res.json())
+    .then(data => {
+      let html = "";
+      data.forEach(p => {
+        html += `
+          <tr>
+            <td>${p.clave}</td>
+            <td>${p.nombre}</td>
+            <td>${p.estado}</td>
+            <td>
+              <button class="btn btn-sm btn-warning">✏</button>
+              <button class="btn btn-sm btn-danger">🗑</button>
+            </td>
+          </tr>
+        `;
+      });
+      document.querySelector("#tbodyHerramientas").innerHTML = html;
+    });
+}
+
+function nuevoHijo(tipo) {
+  document.querySelector("#tipoHijo").value = tipo;
+  document.querySelector("#nombreHijo").value = "";
+  $("#modalHijo").modal("show");
+}
+
+
 
 
 

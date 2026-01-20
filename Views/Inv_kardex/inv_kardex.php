@@ -25,14 +25,14 @@
                 </div>
             </div>
             <!-- end page title -->
-             
+
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-8">
                     <label>Producto</label>
-                    <select class="form-control" id="inventarioid">
-                        <option value="">Seleccione un producto</option>
-                    </select>
+                    <input type="text" class="form-control" id="inventarioSearch" placeholder="Buscar por clave o descripción">
+                    <input type="hidden" id="inventarioid">
                 </div>
+
 
                 <div class="col-md-2 align-self-end">
                     <button class="btn btn-primary" id="btnBuscar">
@@ -129,7 +129,7 @@
             </div>
 
 
-   
+
 
 
             <!--end row-->
