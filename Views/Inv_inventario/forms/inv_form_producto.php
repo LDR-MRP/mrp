@@ -71,7 +71,7 @@
                 <select class="form-select" id="tipo_asignacion" name="tipo_asignacion">
                     <option value="">Seleccione...</option>
                     <option value="C">Cliente</option>
-                    <option value="P">Proveedor</option>
+                    <option value="V">Proveedor</option>
                     <option value="I">Interna</option>
                 </select>
             </div>
