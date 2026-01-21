@@ -150,6 +150,10 @@
                             <td id="celClave"></td>
                         </tr>
                         <tr>
+                            <td>Clave alterna:</td>
+                            <td id="celClaveAlterna"></td>
+                        </tr>
+                        <tr>
                             <td>Descripción:</td>
                             <td id="celDescripcion"></td>
                         </tr>

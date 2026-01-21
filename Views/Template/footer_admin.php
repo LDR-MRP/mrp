@@ -14,8 +14,22 @@
         </div>
     </div>
 
+    
+<!-- Este código permite mostrar el panel de personalización del template
+únicamente al iniciar sesión en la plataforma.
+Se utiliza con fines de configuración y ajustes visuales del layout. 
+
+
     <div class="customizer-setting d-none d-md-block">
-        <div class="btn-primary rounded-pill shadow-lg btn btn-icon btn-lg p-2" data-bs-toggle="offcanvas" data-bs-target="#theme-settings-offcanvas" aria-controls="theme-settings-offcanvas">
+        <div class="btn-primary rounded-pill shadow-lg btn btn-icon btn-lg p-2"  data-bs-toggle="offcanvas" data-bs-target="#theme-settings-offcanvas" aria-controls="theme-settings-offcanvas">
+            <i class='mdi mdi-spin mdi-cog-outline fs-22'></i>
+        </div>
+    </div>
+
+-->
+
+    <div class="customizer-setting d-none">
+        <div class="btn-primary rounded-pill shadow-lg btn btn-icon btn-lg p-2"  aria-controls="theme-settings-offcanvas">
             <i class='mdi mdi-spin mdi-cog-outline fs-22'></i>
         </div>
     </div>
@@ -757,9 +771,17 @@
         </div>
     </div>
 
+
+
+
         <script>
         const base_url = "<?= base_url(); ?>";
         const smony = "<?= SMONEY; ?>";
+
+          window.CURRENT_USER_ID = <?= (int)($_SESSION['idUser'] ?? 0) ?>;
+  window.CURRENT_USER_NAME = <?= json_encode($_SESSION['userData']['nombres'] ?? '') ?>;
+  // opcional: si tienes foto
+  window.CURRENT_USER_AVATAR = <?= json_encode($_SESSION['userData']['avatar'] ?? '') ?>;
     </script>
 
       <script src="<?= media(); ?>/js/jquery-3.3.1.min.js"></script>

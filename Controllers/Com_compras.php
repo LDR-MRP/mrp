@@ -1,10 +1,5 @@
 <?php
 
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
-ini_set('display_startup_errors', 0);
-ini_set('html_errors', 0);
-
 class Com_compras extends Controllers
 {
     public function __construct()
@@ -19,7 +14,7 @@ class Com_compras extends Controllers
         getPermisos(COM_COMPRAS);
     }
 
-    public function Com_compras()
+    public function Com_compras(): void
     {
         if (empty($_SESSION['permisosMod']['r'])) {
             header("Location:" . base_url() . '/dashboard');
@@ -32,16 +27,14 @@ class Com_compras extends Controllers
         $this->views->getView($this, "com_compras", $data);
     }
 
-    public function index()
+    public function index(): void
     {
         $arrData = $this->model->selectCompras();
 
         echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
-
-        die();
     }
 
-    public function setCompra()
+    public function setCompra(): void
     {
         try {
             $request = new Com_comprasRequest($_POST);

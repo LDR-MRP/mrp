@@ -1,30 +1,98 @@
+let productosCache = [];
+let tableKardex;
+
 document.addEventListener("DOMContentLoaded", function () {
   cargarProductos();
 
+  tableKardex = $("#tableKardex").DataTable({
+    deferRender: true,
+    pageLength: 25,
+    language: {
+      url: "https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json",
+    },
+    columns: [
+      { data: "numero_movimiento" },
+      { data: "concepto" },
+      { data: "cantidad" },
+      {
+        data: "costo",
+        render: d => parseFloat(d).toFixed(2),
+      },
+      { data: "existencia" },
+      {
+        data: "costo_cantidad",
+        render: (d, t, r) =>
+          r.signo == 1 ? parseFloat(d).toFixed(2) : "0.00",
+      },
+      { data: "fecha_movimiento" },
+    ],
+  });
+
   document.querySelector("#btnBuscar").addEventListener("click", function () {
     let inventarioid = document.querySelector("#inventarioid").value;
-    if (inventarioid === "") {
+
+    if (!inventarioid) {
       alert("Seleccione un producto");
       return;
     }
+
+    cargarInfoProducto(inventarioid);
     cargarKardex(inventarioid);
   });
 });
 
 function cargarProductos() {
   fetch(base_url + "/Inv_kardex/getProductos")
-    .then((res) => res.json())
-    .then((data) => {
-      let select = document.querySelector("#inventarioid");
-      data.forEach((p) => {
-        select.innerHTML += `
-                    <option value="${p.idinventario}">
-                        ${p.cve_articulo} - ${p.descripcion}
-                    </option>`;
-      });
+    .then(res => res.json())
+    .then(data => {
+      productosCache = data;
     });
 }
 
+document.querySelector("#inventarioSearch").addEventListener("input", function () {
+  let val = this.value.toLowerCase();
+  cerrarLista();
+  if (!val) return;
+
+  let lista = document.createElement("div");
+  lista.className = "autocomplete-items list-group position-absolute w-100";
+  this.parentNode.appendChild(lista);
+
+  productosCache
+    .filter(p =>
+      p.cve_articulo.toLowerCase().includes(val) ||
+      p.descripcion.toLowerCase().includes(val)
+    )
+    .slice(0, 10)
+    .forEach(p => {
+      let item = document.createElement("div");
+      item.className = "list-group-item list-group-item-action";
+      item.innerHTML = `<strong>${p.cve_articulo}</strong> - ${p.descripcion}`;
+
+      item.addEventListener("click", function () {
+        document.querySelector("#inventarioSearch").value =
+          p.cve_articulo + " - " + p.descripcion;
+        document.querySelector("#inventarioid").value = p.idinventario;
+        cerrarLista();
+      });
+
+      lista.appendChild(item);
+    });
+});
+
+function cerrarLista() {
+  document.querySelectorAll(".autocomplete-items").forEach(e => e.remove());
+}
+
+function cargarKardex(inventarioid) {
+  fetch(base_url + "/Inv_kardex/getKardex/" + inventarioid)
+    .then(res => res.json())
+    .then(data => {
+      tableKardex.clear();
+      tableKardex.rows.add(data);
+      tableKardex.draw();
+    });
+}
 function cargarInfoProducto(inventarioid) {
   fetch(base_url + "/Inv_kardex/getInfoProducto/" + inventarioid)
     .then((res) => res.json())
@@ -61,38 +129,5 @@ function cargarInfoProducto(inventarioid) {
       document.querySelector("#total_compras").value = parseFloat(
         data.totales.total_compras ?? 0
       ).toFixed(2);
-    });
-}
-
-document.querySelector("#btnBuscar").addEventListener("click", function () {
-  let inventarioid = document.querySelector("#inventarioid").value;
-
-  cargarInfoProducto(inventarioid);
-  cargarKardex(inventarioid);
-});
-
-function cargarKardex(inventarioid) {
-  fetch(base_url + "/Inv_kardex/getKardex/" + inventarioid)
-    .then((res) => res.json())
-    .then((data) => {
-      let tbody = document.querySelector("#tableKardex tbody");
-      tbody.innerHTML = "";
-
-      data.forEach((row) => {
-        let compras =
-          row.signo == 1 ? parseFloat(row.costo_cantidad).toFixed(2) : "0.00";
-
-        tbody.innerHTML += `
-                    <tr>
-                        <td>${row.numero_movimiento}</td>
-                        <td>${row.concepto}</td>
-                        <td>${row.cantidad}</td>
-                        <td>${parseFloat(row.costo).toFixed(2)}</td>
-                        <td>${row.existencia}</td>
-                        <td>${compras}</td>
-                        <td>${row.fecha_movimiento}</td>
-                    </tr>
-                `;
-      });
     });
 }

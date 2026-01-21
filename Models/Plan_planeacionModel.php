@@ -1447,7 +1447,7 @@ public function selectChatMessages($numorden, $subot, $productoid, $estacionid, 
 }
 
 
-public function insertChatMessage($numorden, $subot, $productoid, $estacionid, $planeacionid, $userId, $userName, $message)
+public function insertChatMessagse($numorden, $subot, $productoid, $estacionid, $planeacionid, $userId, $userName, $message)
 {
 //   $numorden   = trim((string)$numorden);
 //   $subot      = trim((string)$subot);
@@ -1484,71 +1484,89 @@ public function insertChatMessage($numorden, $subot, $productoid, $estacionid, $
 
 
 
-public function selectChatMessagesBySubOT($subot, $after_id = 0, $limit = 200)
+public function getChatMessssages($subot, $last_id = 0)
 {
-  $subot = addslashes(trim((string)$subot));
-  $after_id = (int)$after_id;
-
-  $limit = (int)$limit;
-  if ($limit <= 0) $limit = 200;
-  if ($limit > 500) $limit = 500;
-
-  if ($subot === '') return [];
-
-  $where = "WHERE c.subot = '{$subot}'";
-  if ($after_id > 0) {
-    $where .= " AND c.idchat > {$after_id}";
-  }
+//   $subot   = $this->db->real_escape_string($subot);
+//   $last_id = (int)$last_id;
 
   $sql = "SELECT
-            c.idchat,
-            c.subot,
-            c.user_id,
-            c.user_name,
-            c.message,
-            c.created_at
-          FROM mrp_ot_chat c
-          {$where}
-          ORDER BY c.idchat ASC
-          LIMIT {$limit}";
+            idchat,
+            subot,
+            user_name,
+            message,
+            created_at
+          FROM mrp_ot_chat
+          WHERE subot = '$subot'";
 
-  $rows = $this->select_all($sql);
-  return is_array($rows) ? $rows : [];
+  if ($last_id > 0) {
+    $sql .= " AND idchat > $last_id";
+  }
+
+  $sql .= " ORDER BY idchat ASC";
+
+  return $this->select_all($sql);
 }
 
-
-public function insertChatMessageBySubOT($subot, $user_id, $user_name, $message)
+public function insertChatMessasge($subot, $user_id, $user_name, $message)
 {
-//   $subot = addslashes(trim((string)$subot));
-//   $message = trim((string)$message);
 
-//   $user_id = (int)$user_id;
-//   $user_name = addslashes(trim((string)$user_name));
-//   $message_db = addslashes($message);
 
-//   if ($subot === '' || $message === '') return 0;
-
-//   // Si tu tabla tiene NOT NULL en estos campos, cambia 0/''
 //   $sql = "INSERT INTO mrp_ot_chat
-//           (numorden, subot, productoid, estacionid, planeacionid, user_id, user_name, message, created_at)
+//           (subot, user_id, user_name, message, created_at)
 //           VALUES
-//           ('', '{$subot}', 0, 0, 0, {$user_id}, '{$user_name}', '{$message_db}', NOW())";
+//           ('$subot', $user_id, '$user_name', '$message', NOW())";
 
-//   $id = $this->insert($sql);
-//   return (int)$id;
+//   return $this->insert($sql);
+
+   
 
 
-          $sql = "INSERT INTO mrp_ot_chat
-          (numorden, subot, productoid, estacionid, planeacionid, user_id, user_name, message, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        $sql = "INSERT INTO mrp_ot_chat
+          (subot, user_id, user_name, message, created_at)
+            VALUES (?, ?, ?, ?, NOW())";
 
         $arrData = [$subot, $user_id, $user_name, $message];
 
-        return $this->insert($sql, $arrData);
+
+        // return $this->insert($sql, $arrData);
+            $request_insert = $this->insert($sql, $arrData);
+            return $request_insert;
+
 }
 
+//CREAME UN INNER $joinNombres
 
+public function getChatMessages(string $subot, int $lastId = 0)
+{
+  $sql = "SELECT c.idchat, c.user_name, c.message, c.created_at,u.avatar_file as user_avatar
+          FROM mrp_ot_chat AS c
+          INNER JOIN usuarios AS u
+          ON u.idusuario = c.user_id
+          WHERE c.subot = '$subot'";
 
+  if ($lastId > 0) {
+    $sql .= " AND idchat > $lastId";
+  }
+
+  $sql .= " ORDER BY idchat ASC LIMIT 200";
+  return $this->select_all($sql);
+}
+
+public function insertChatMessage(array $d)
+{
+  $sql = "INSERT INTO mrp_ot_chat
+          (subot, estacionid, planeacionid, user_id, user_name, message, created_at)
+          VALUES (?,?,?,?,?,?,NOW())";
+
+  return $this->insert($sql, [
+    $d['subot'],
+    $d['estacionid'],
+    $d['planeacionid'],
+    $_SESSION['idUser'],
+    $_SESSION['userData']['nombres'],
+    $d['message']
+  ]);
+}
 
 
 

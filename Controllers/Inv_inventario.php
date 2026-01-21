@@ -272,22 +272,34 @@ class Inv_inventario extends Controllers
 
 
 	public function getInventario($idinventario)
-	{
-		if ($_SESSION['permisosMod']['r']) {
-			$intidalmacen = intval($idinventario);
-			if ($intidalmacen > 0) {
-				$arrData = $this->model->selectInventario($intidalmacen);
-				if (empty($arrData)) {
-					$arrResponse = array('status' => false, 'msg' => 'Datos no encontrados.');
-				} else {
+{
+    if ($_SESSION['permisosMod']['r']) {
+        $intidalmacen = intval($idinventario);
 
-					$arrResponse = array('status' => true, 'data' => $arrData);
-				}
-				echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-			}
-		}
-		die();
-	}
+        if ($intidalmacen > 0) {
+            $arrData = $this->model->selectInventario($intidalmacen);
+
+            if (empty($arrData)) {
+                $arrResponse = [
+                    'status' => false,
+                    'msg' => 'Datos no encontrados.'
+                ];
+            } else {
+                $principal = $arrData[0];
+                $principal['claves'] = $arrData;
+
+                $arrResponse = [
+                    'status' => true,
+                    'data' => $principal
+                ];
+            }
+
+            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        }
+    }
+    die();
+}
+
 
 	public function getArticulos()
     {

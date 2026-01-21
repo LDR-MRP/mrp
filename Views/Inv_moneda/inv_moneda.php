@@ -29,13 +29,13 @@
                 <div class="card-header">
                     <ul class="nav nav-tabs-custom card-header-tabs border-bottom-0 " role="tablist" id="nav-tab">
                         <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#listlineasproductos" role="tab">
-                                LÍNEAS DE PRODUCTOS
+                            <a class="nav-link active" data-bs-toggle="tab" href="#listmonedas" role="tab">
+                                MONEDAS
                             </a>
                         </li>
                         <?php if ($_SESSION['permisosMod']['w']) { ?>
                             <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#agregarlineasproducto" role="tab">
+                                <a class="nav-link" data-bs-toggle="tab" href="#agregarMoneda" role="tab">
                                     NUEVO
                                 </a>
                             </li>
@@ -45,18 +45,20 @@
                 <!-- end card header -->
                 <div class="card-body">
                     <div class="tab-content">
-                        <div class="tab-pane active" id="listlineasproductos" role="tabpanel">
+                        <div class="tab-pane active" id="listmonedas" role="tabpanel">
 
-                            <table id="tableLineasProducto"
+                            <table id="tableMonedas"
                                 class="table table-bordered dt-responsive nowrap table-striped align-middle"
                                 style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>CLAVE</th>
                                         <th>DESCRIPCIÓN</th>
+                                        <th>SIMBOLO</th>
+                                        <th>TIPO DE CAMBIO</th>
                                         <th>FECHA CREACIÓN</th>
                                         <th>ESTATUS</th>
-                                        <th>ACCIONES</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -70,21 +72,49 @@
 
 
 
-                        <div class="tab-pane" id="agregarlineasproducto" role="tabpanel">
-                            <form id="formLineasProducto" autocomplete="off" class="form-steps was-validated" autocomplete="off">
-                                <input type="hidden" id="idlineaproducto" name="idlineaproducto">
+                        <div class="tab-pane" id="agregarMoneda" role="tabpanel">
+                            <form id="formMonedas" autocomplete="off" class="form-steps was-validated" autocomplete="off">
+                                <input type="hidden" id="idmoneda" name="idmoneda">
                                 <div class="row">
 
                                     <!-- CLAVE -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="clave-linea-producto-input">CLAVE</label>
+                                            <label class="form-label" for="clave-moneda-input">CLAVE</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="clave-linea-producto-addon">Clave Lin. Prod</span>
+                                                <span class="input-group-text" id="clave-moneda-addon">Clave mon.</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa la clave" id="clave-linea-producto-input" name="clave-linea-producto-input"
-                                                    aria-describedby="clave-linea-producto-addon" required>
+                                                    placeholder="Ingresa la clave" id="clave-moneda-input" name="clave-moneda-input"
+                                                    aria-describedby="clave-moneda-addon" required>
                                                 <div class="invalid-feedback">El campo clave es obligatorio</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- TIPO DE CAMBIO -->
+                                    <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="cambio-moneda-input">TIPO DE CAMBIO</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="cambio-moneda-addon">Tip. Camb.</span>
+                                                <input type="text" class="form-control"
+                                                    placeholder="Ingresa el cambio" id="cambio-moneda-input" name="cambio-moneda-input"
+                                                    aria-describedby="cambio-moneda-addon" required>
+                                                <div class="invalid-feedback">El campo tipo de cambio es obligatorio</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SIMBOLO -->
+                                    <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="simbolo-moneda-input">SIMBOLO</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="simbolo-moneda-addon">Sim.</span>
+                                                <input type="text" class="form-control"
+                                                    placeholder="Ingresa el simbolo" id="simbolo-moneda-input" name="simbolo-moneda-input"
+                                                    aria-describedby="simbolo-moneda-addon" required>
+                                                <div class="invalid-feedback">El campo simbolo es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
@@ -109,12 +139,12 @@
 
                                 <!-- DESCRIPCIÓN -->
                                 <div class="mb-3">
-                                    <label class="form-label" for="descripcion-linea-producto-textarea">DESCRIPCIÓN</label>
+                                    <label class="form-label" for="descripcion-moneda-textarea">DESCRIPCIÓN</label>
                                     <div class="input-group mb-3">
-                                        <span class="input-group-text" id="descripcion-linea-producto-addon">Desc.</span>
-                                        <textarea class="form-control" id="descripcion-linea-producto-textarea" name="descripcion-linea-producto-textarea"
+                                        <span class="input-group-text" id="descripcion-moneda-addon">Desc.</span>
+                                        <textarea class="form-control" id="descripcion-moneda-textarea" name="descripcion-moneda-textarea"
                                             placeholder="Ingresa una descripción" rows="3"
-                                            aria-describedby="descripcion-linea-producto-addon"></textarea>
+                                            aria-describedby="descripcion-moneda-addon"></textarea>
                                     </div>
                                 </div>
 
@@ -167,7 +197,7 @@
 
 
 
-<div class="modal fade" id="modalViewLineaProducto" tabindex="-1">
+<div class="modal fade" id="modalViewMoneda" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0">
             <div class="modal-header bg-primary-subtle p-3">
@@ -187,6 +217,14 @@
                             <td id="celDescripcion"></td>
                         </tr>
                         <tr>
+                            <td>Tipo de cambio</td>
+                            <td id="celCambio"></td>
+                        </tr>
+                        <tr>
+                            <td>Simbolo</td>
+                            <td id="celSimbolo"></td>
+                        </tr>
+                        <tr>
                             <td>Fecha creación</td>
                             <td id="celFecha"></td>
                         </tr>
@@ -204,140 +242,6 @@
         </div>
     </div>
 </div>
-
-
-
-<div class="modal fade" id="modalEstructuraLinea" tabindex="-1">
-  <div class="modal-dialog modal-xl">
-    <div class="modal-content">
-
-      <div class="modal-header">
-        <h5 class="modal-title">Estructura de línea</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-
-      <div class="modal-body">
-        <input type="hidden" id="idLineaEstructura">
-
-        <ul class="nav nav-tabs mb-3">
-          <li class="nav-item">
-            <a class="nav-link active" data-bs-toggle="tab" href="#tabProductos">Productos</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" data-bs-toggle="tab" href="#tabServicios">Servicios</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" data-bs-toggle="tab" href="#tabComponentes">Componentes</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" data-bs-toggle="tab" href="#tabHerramientas">Herramientas</a>
-          </li>
-        </ul>
-
-        <div class="tab-content">
-
-          <!-- PRODUCTOS -->
-          <div class="tab-pane fade show active" id="tabProductos">
-            <button class="btn btn-primary mb-2" onclick="nuevoHijo('producto')">+ Nuevo producto</button>
-
-            <table class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Clave</th>
-                  <th>Nombre</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tbodyProductos"></tbody>
-            </table>
-          </div>
-
-          <!-- SERVICIOS -->
-          <div class="tab-pane fade" id="tabServicios">
-            <button class="btn btn-primary mb-2" onclick="nuevoHijo('servicio')">+ Nuevo servicio</button>
-
-            <table class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Clave</th>
-                  <th>Nombre</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tbodyServicios"></tbody>
-            </table>
-          </div>
-
-          <!-- COMPONENTES -->
-          <div class="tab-pane fade" id="tabComponentes">
-            <button class="btn btn-primary mb-2" onclick="nuevoHijo('componente')">+ Nuevo componente</button>
-
-            <table class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Clave</th>
-                  <th>Nombre</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tbodyComponentes"></tbody>
-            </table>
-          </div>
-
-          <!-- HERRAMIENTAS -->
-          <div class="tab-pane fade" id="tabHerramientas">
-            <button class="btn btn-primary mb-2" onclick="nuevoHijo('herramienta')">+ Nueva herramienta</button>
-
-            <table class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Clave</th>
-                  <th>Nombre</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tbodyHerramientas"></tbody>
-            </table>
-          </div>
-
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="modalHijo" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-
-      <div class="modal-header">
-        <h5 class="modal-title">Nuevo elemento</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-
-      <div class="modal-body">
-        <input type="hidden" id="tipoHijo">
-
-        <div class="mb-2">
-          <label>Nombre</label>
-          <input type="text" class="form-control" id="nombreHijo">
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button class="btn btn-primary" onclick="guardarHijo()">Guardar</button>
-      </div>
-
-    </div>
-  </div>
-</div>
-
 
 
 

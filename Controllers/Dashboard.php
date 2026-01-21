@@ -9,7 +9,7 @@
 			if(empty($_SESSION['login']))
 			{
 				header('Location: '.base_url().'/login');
-				die();
+				die(); 
 			}
 			getPermisos(MDASHBOARD);
 		}
@@ -20,7 +20,7 @@
 			$data['page_tag'] = "Dashboard - MRP";
 			$data['page_title'] = "Dashboard - MRP";
 			$data['page_name'] = "dashboard";
-			// $data['page_functions_js'] = "functions_dashboard.js";
+			$data['page_functions_js'] = "functions_dashboard.js";
 
 			$anio = date('Y');
 			$mes = date('m');

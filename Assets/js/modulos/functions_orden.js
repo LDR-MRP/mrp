@@ -1112,3 +1112,289 @@
 })();
 
 
+
+
+
+////////////////////////////////////////
+
+
+
+// =========================================================
+// ====================== CHAT SUB-OT ======================
+// =========================================================
+
+// =========================================================
+// ====================== CHAT SUB-OT ======================
+// =========================================================
+
+const postJsonLocal = async (url, payload) => {
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const raw = await resp.text();
+  try { return JSON.parse(raw); } catch(e) {
+    console.error('Respuesta no JSON:', raw);
+    return { status:false, msg:'Respuesta inválida' };
+  }
+};
+
+let chatPollingTimer = null;
+let chatLastId = 0;
+
+// refs
+const chatModalEl = document.getElementById('modalChatOT');
+const chatModal   = chatModalEl ? new bootstrap.Modal(chatModalEl) : null;
+const chatBox     = document.getElementById('chatMessages');
+const chatInput   = document.getElementById('chatInput');
+const chatSendBtn = document.getElementById('chatSendBtn');
+const chatHint    = document.getElementById('chatStatusHint');
+
+const chatSubotIn       = document.getElementById('chat_subot');
+const chatEstacionIn    = document.createElement('input');
+const chatPlaneacionIn  = document.createElement('input');
+
+chatEstacionIn.type = chatPlaneacionIn.type = 'hidden';
+chatEstacionIn.id = 'chat_estacionid';
+chatPlaneacionIn.id = 'chat_planeacionid';
+
+if (chatModalEl){
+  chatModalEl.appendChild(chatEstacionIn);
+  chatModalEl.appendChild(chatPlaneacionIn);
+}
+
+const setHint = (t) => { if (chatHint) chatHint.textContent = t; };
+
+const escapeHtml = (s) => {
+  return String(s ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+};
+
+const getInitials = (name) => {
+  const n = String(name || '').trim();
+  if (!n) return '?';
+  const parts = n.split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] || '?') + (parts[1]?.[0] || '')).toUpperCase();
+};
+
+const scrollToBottom = () => {
+  if (!chatBox) return;
+  // ✅ doble RAF para modal bootstrap (evita que falle el scroll)
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
+  });
+};
+
+// ---------------------------------------------------------
+// Render (Velzon-like)
+// mode: "replace" (load inicial) | "append" (poll)
+// ---------------------------------------------------------
+const renderMessagesVelzon = (rows, mode = 'append') => {
+  if (!chatBox) return;
+
+  const myId = String(window.CURRENT_USER_ID || '0');
+
+  // Orden por idchat por seguridad
+  const list = (Array.isArray(rows) ? rows : [])
+    .slice()
+    .sort((a,b) => (parseInt(a.idchat,10)||0) - (parseInt(b.idchat,10)||0));
+
+  if (mode === 'replace') {
+    chatBox.innerHTML = '';
+    chatLastId = 0;
+  }
+
+  let added = 0;
+
+  for (const r of list) {
+    const id = parseInt(r.idchat, 10) || 0;
+    if (!id) continue;
+
+    if (mode === 'append' && id <= chatLastId) continue;
+    if (id > chatLastId) chatLastId = id;
+
+    const userId   = String(r.user_id ?? r.iduser ?? r.userid ?? r.idusuario ?? '');
+    const userName = String(r.user_name ?? r.nombre ?? r.usuario ?? 'Usuario');
+    const avatar   = String(r.user_avatar ?? r.avatar ?? '');
+    const msg      = String(r.message ?? r.mensaje ?? '');
+    const created  = String(r.created_at ?? r.fecha ?? '');
+
+    const isMe = (userId && myId && userId === myId);
+
+    const row = document.createElement('div');
+    row.className = `v-msg-row ${isMe ? 'me' : 'other'}`;
+  const base = base_url.replace(/\/$/, '');
+
+const avatarSrc = avatar
+  ? `${base}/Assets/avatars/${encodeURIComponent(avatar)}`
+  : `${base}/Assets/avatars/avatar_default.svg`;
+    // avatar SOLO para other (estilo tipo velzon), si quieres también para me quítale el if
+    if (!isMe) {
+      const av = document.createElement('div');
+      av.className = 'v-avatar';
+      if (avatar) av.innerHTML = `<img  src="${avatarSrc}" alt="avatar">`;
+      else av.textContent = getInitials(userName);
+      row.appendChild(av);
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = `v-bubble ${isMe ? 'me' : 'other'}`;
+    bubble.innerHTML = `
+      <div class="v-meta">
+        <div class="v-name">${escapeHtml(userName)}</div>
+        <div class="v-time">${escapeHtml(created)}</div>
+      </div>
+      <div class="v-text">${escapeHtml(msg)}</div>
+    `;
+
+    row.appendChild(bubble);
+    chatBox.appendChild(row);
+    added++;
+  }
+
+  if (added > 0) scrollToBottom();
+};
+
+// ---------------------------------------------------------
+// API calls
+// ---------------------------------------------------------
+const chatLoad = async () => {
+  const payload = {
+    subot: chatSubotIn?.value || '',
+    estacionid: chatEstacionIn.value || '0',
+    planeacionid: chatPlaneacionIn.value || '0'
+  };
+
+  setHint('Cargando...');
+  const data = await postJsonLocal(base_url + '/plan_planeacion/getChatMessages', payload);
+
+  if (!data?.status) {
+    setHint(data?.msg || 'No se pudieron cargar mensajes');
+    if (chatBox) chatBox.innerHTML = `<div class="text-center text-muted py-4">Sin mensajes</div>`;
+    return;
+  }
+
+  renderMessagesVelzon(data.data || [], 'replace');
+  setHint('Listo');
+};
+
+const chatPoll = async () => {
+  const payload = {
+    subot: chatSubotIn?.value || '',
+    estacionid: chatEstacionIn.value || '0',
+    planeacionid: chatPlaneacionIn.value || '0',
+    last_id: chatLastId
+  };
+
+  try {
+    const data = await postJsonLocal(base_url + '/plan_planeacion/getChatMessages', payload);
+    if (!data?.status) return;
+
+    // poll solo añade
+    renderMessagesVelzon(data.data || [], 'append');
+  } catch (e) {
+    console.warn('chat poll error', e);
+  }
+};
+
+// ---------------------------------------------------------
+// Abrir chat
+// ---------------------------------------------------------
+const chatOpen = (btn) => {
+  if (!btn || !chatModal) return;
+
+  const subot        = btn.dataset.subot || '';
+  const estacionid   = btn.dataset.estacionid || '0';
+  const planeacionid = btn.dataset.planeacionid || '0';
+
+  if (!subot) return;
+
+  // set values
+  if (chatSubotIn) chatSubotIn.value = subot;
+  chatEstacionIn.value = estacionid;
+  chatPlaneacionIn.value = planeacionid;
+
+  const title = document.getElementById('chatSubotTitle');
+  if (title) title.textContent = subot;
+
+  // limpia timers
+  if (chatPollingTimer) clearInterval(chatPollingTimer);
+  chatPollingTimer = null;
+
+  // muestra modal primero (para que el scroll exista)
+  chatModal.show();
+};
+
+// Cuando el modal ya está visible: carga + polling
+chatModalEl?.addEventListener('shown.bs.modal', async () => {
+  await chatLoad();
+
+  if (chatPollingTimer) clearInterval(chatPollingTimer);
+  chatPollingTimer = setInterval(chatPoll, 3000);
+});
+
+// al cerrar: limpia
+chatModalEl?.addEventListener('hidden.bs.modal', () => {
+  if (chatPollingTimer) clearInterval(chatPollingTimer);
+  chatPollingTimer = null;
+  chatLastId = 0;
+
+  if (chatBox) chatBox.innerHTML = '';
+  if (chatInput) chatInput.value = '';
+  setHint('Listo');
+});
+
+// ---------------------------------------------------------
+// Enviar
+// ---------------------------------------------------------
+const sendMessage = async () => {
+  const message = (chatInput?.value || '').trim();
+  const subot = chatSubotIn?.value || '';
+  if (!subot || !message) return;
+
+  chatInput.value = '';
+  setHint('Enviando...');
+
+  const payload = {
+    subot,
+    estacionid: chatEstacionIn.value || '0',
+    planeacionid: chatPlaneacionIn.value || '0',
+    message
+  };
+
+  const data = await postJsonLocal(base_url + '/plan_planeacion/sendChatMessage', payload);
+
+  if (!data?.status) {
+    setHint(data?.msg || 'No se pudo enviar');
+    Swal.fire({ icon:'error', title:'Error', text:data?.msg || 'No se pudo enviar' });
+    return;
+  }
+
+  // recarga (replace) para asegurar orden y scroll
+  await chatLoad();
+  setHint('Listo');
+};
+
+chatSendBtn?.addEventListener('click', sendMessage);
+chatInput?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+// Click delegado
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btnChatOT');
+  if (btn) chatOpen(btn);
+});
+
+
+Vientos 

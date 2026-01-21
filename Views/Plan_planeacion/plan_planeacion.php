@@ -177,6 +177,8 @@
             <div class="card-body d-flex flex-column p-3 side-panel-fixed">
 
               <!-- CTA principal -->
+
+                <?php if($_SESSION['permisosMod']['w']){ ?>
               <button type="button" class="btn btn-primary w-100" id="btnNuevaPlaneacion">
                 <i class="ri-add-circle-line me-1"></i> Nueva Planeación
               </button>
@@ -184,6 +186,8 @@
                 <i class="ri-information-line me-1"></i>
                 Flujo: Producto → Ruta → Operadores → Guardar.
               </div>
+
+               <?php } ?>
 
               <div class="side-divider"></div>
 

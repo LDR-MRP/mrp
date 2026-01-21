@@ -53,7 +53,7 @@ class Inv_movimientosinventarioModel extends Mysql
 
         $existencia_actual = $row ? (float)$row['existencia'] : 0;
         $nueva_existencia = $existencia_actual + ($cantidad * $signo);
-        
+
         // Regla 2: stock insuficiente
         if ($nueva_existencia < 0) {
             return "Stock insuficiente";
@@ -146,6 +146,15 @@ class Inv_movimientosinventarioModel extends Mysql
         return $this->select_all("
         SELECT idconcepmov, descripcion
         FROM wms_conceptos_mov
+        WHERE estado = 2
+    ");
+    }
+
+    public function selectInventarioPredictivo()
+    {
+        return $this->select_all("
+        SELECT idinventario, cve_articulo, descripcion
+        FROM wms_inventario
         WHERE estado = 2
     ");
     }
