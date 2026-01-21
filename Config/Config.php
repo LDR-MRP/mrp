@@ -81,8 +81,6 @@ const MIMOVIMIENTOS = 22;
 const MICONCEPTOSMOVIMIENTOS = 23;
 const MIKARDEX = 24;
 const MILOTESPEDIMENTOS = 25;
-const MIMONEDAS = 25;
-const MIMULTIALMACENES = 26;
 
 //Submodulos Capacidad
 

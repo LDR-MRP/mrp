@@ -153,9 +153,193 @@
 
 /* estilos de calindaRIO  */
 
+  /* ===== Chat Layout ===== */
+  .chat-wrap{
+    height: 65vh;
+    overflow: auto;
+    padding: 18px;
+    background: #f6f7fb;
+  }
+
+  .chat-date{
+    font-size: .75rem;
+    color:#6b7280;
+    text-align:center;
+    margin: 10px 0;
+  }
+
+  .chat-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:12px;
+    align-items:flex-end;
+  }
+
+  .chat-row.is-me{
+    flex-direction: row-reverse;
+  }
+
+  /* Avatar */
+  .chat-avatar{
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    overflow: hidden;
+    flex: 0 0 38px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    font-size:.85rem;
+    color:#fff;
+    user-select:none;
+  }
+  .chat-avatar img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+
+  /* Bubble */
+  .chat-bubble{
+    max-width: min(74%, 760px);
+    border-radius: 16px;
+    padding: 10px 12px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, .06);
+    border: 1px solid rgba(226,232,240,.9);
+    background:#fff;
+  }
+
+  .chat-row.is-me .chat-bubble{
+    background: rgba(59,130,246,.12);      /* azul suave */
+    border-color: rgba(59,130,246,.20);
+  }
+
+  .chat-meta{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:4px;
+  }
+
+  .chat-row.is-me .chat-meta{
+    justify-content:flex-end;
+  }
+
+  .chat-name{
+    font-size: .78rem;
+    font-weight: 700;
+    color:#111827;
+  }
+
+  .chat-row.is-me .chat-name{
+    color:#1d4ed8;
+  }
+
+  .chat-time{
+    font-size: .72rem;
+    color:#6b7280;
+    white-space:nowrap;
+  }
+
+  .chat-text{
+    font-size: .92rem;
+    color:#0f172a;
+    line-height: 1.35rem;
+    word-break: break-word;
+    white-space: pre-wrap; /* respeta saltos de línea */
+  }
+
+  /* Footer input */
+  .chat-footer{
+    background:#fff;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .chat-input{
+    border-radius: 12px;
+  }
+
+  .chat-send-btn{
+    border-radius: 12px;
+  }
 
 
 
+  
+
+
+/* ===== Velzon-like Chat ===== */
+#modalChatOT .modal-content { border-radius: 14px; overflow: hidden; }
+
+.v-chat-wrap{
+  height: 70vh;                 /* ✅ alto del chat */
+  min-height: 520px;
+  display:flex;
+  flex-direction: column;
+  background: #f3f6f9;          /* velzon background */
+}
+
+.v-chat-body{
+  flex: 1 1 auto;
+  overflow-y: auto;             /* ✅ scroll real aquí */
+  padding: 18px 18px 10px 18px;
+}
+
+/* burbujas */
+.v-msg-row{
+  display:flex;
+  gap:10px;
+  margin-bottom: 12px;
+  align-items:flex-end;
+}
+.v-msg-row.me{ justify-content:flex-end; }
+.v-msg-row.other{ justify-content:flex-start; }
+
+.v-avatar{
+  width:34px;height:34px;border-radius:50%;
+  background:#94a3b8;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;color:#fff;font-size:.8rem;
+  flex: 0 0 34px;
+  overflow:hidden;
+}
+.v-avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+.v-bubble{
+  max-width: min(72%, 780px);
+  border-radius: 16px;
+  padding: 10px 12px;
+  box-shadow: 0 2px 10px rgba(15,23,42,.06);
+  border: 1px solid rgba(226,232,240,.9);
+}
+
+.v-bubble.me{
+  background: rgba(59,130,246,.14);     /* azul bajito */
+  border-color: rgba(59,130,246,.20);
+}
+.v-bubble.other{
+  background: rgba(148,163,184,.16);    /* gris bajito */
+  border-color: rgba(148,163,184,.22);
+}
+
+.v-meta{
+  display:flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.v-name{ font-size:.78rem; font-weight:700; color:#111827; }
+.v-time{ font-size:.72rem; color:#6b7280; white-space:nowrap; }
+.v-text{ font-size:.92rem; color:#0f172a; line-height:1.35rem; white-space:pre-wrap; word-break:break-word; }
+
+.v-chat-footer{
+  flex: 0 0 auto;
+  padding: 12px;
+  background:#fff;
+  border-top: 1px solid #e5e7eb;
+}
 
 
 

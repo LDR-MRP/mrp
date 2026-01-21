@@ -1,6 +1,8 @@
 <?php headerAdmin($data);
 // dep($_SESSION);
 ?>
+
+
 <div id="contentAjax"></div>
 
 <div class="main-content">
@@ -30,6 +32,7 @@
 
         $ok   = !empty($resp) && (int)($resp['status'] ?? 0) === 1;
         $ot   = $ok ? ($resp['data'] ?? []) : [];
+        // dep($ot);
         $est  = $ot['estaciones'] ?? [];
 
         $h = function($v){ return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
@@ -475,7 +478,7 @@ $fmtDT = function($d){
                 <?php else: ?>
                   <div class="profile-timeline">
                     <div class="accordion accordion-flush" id="<?= $h($accId) ?>">
-                      <?php foreach($est as $i => $e): ?>
+                      <?php  foreach($est as $i => $e): ?>
                         <?php
                           [$clsAvatar, $badgeE, $icon] = $estStyle($e);
                           $orden = $e['orden'] ?? ($i+1);
@@ -490,6 +493,8 @@ $fmtDT = function($d){
                           $show = ($i === 0) ? 'show' : '';
 
                           $ots = $e['ordenes_trabajo'] ?? [];
+
+                        
                           $peid = (int)($e['id_planeacion_estacion'] ?? 0);
                         ?>
                         <div class="accordion-item border-0" data-est-orden="<?= $estacion['orden']; ?>">
@@ -590,6 +595,8 @@ $fmtDT = function($d){
                                                   data-subot="<?= $h($subot) ?>"
                                                   data-coment="<?= $h($coment) ?>"
                                                   data-estatus="<?= $h($estatus) ?>"
+
+                                                  
                                                 >
                                                   <td class="fw-semibold text-primary"><?= $h($subot) ?></td>
                                                   <td><?= $badgeOT ?></td>
@@ -649,11 +656,25 @@ $fmtDT = function($d){
   <i class="ri-message-3-line me-1"></i>Chat
 </button> -->
 
-<button type="button"
+<!-- <button type="button"
   class="btn btn-sm btn-soft-info btnChatOT"
   data-subot="<?= $otRow['num_sub_orden']; ?>">
   <i class="ri-message-3-line me-1"></i>Chat
+</button> -->
+
+<button type="button"
+  class="btn btn-soft-primary btn-sm btnChatOT"
+
+  data-subot="<?= $otRow['num_sub_orden'] ?>"
+  data-estacionid="<?= $e['estacionid'] ?>"
+  data-planeacionid="<?= $e['planeacionid'] ?>"
+  data-productoid="<?= $ot['productoid'] ?>">
+  <i class="ri-message-3-line me-1"></i> Chat
 </button>
+
+
+
+
 
 
 
@@ -843,37 +864,58 @@ $fmtDT = function($d){
 
 
 
-
-        <!-- ===========================
+<!-- ===========================
   MODAL CHAT OT
 =========================== -->
+<!-- Modal Chat (Velzon style) -->
 <div class="modal fade" id="modalChatOT" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-
-      <div class="modal-header">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0">
+      <div class="modal-header bg-light">
         <div>
-          <h5 class="modal-title mb-0">Chat asociado a la orden</h5>
-          <small class="text-muted" id="chatSubotTitle">—</small>
+          <h5 class="modal-title mb-1">Chat Sub-OT: <span id="chatSubotTitle">—</span></h5>
+          <small class="text-muted">Comunicación por estación / sub-OT</small>
         </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
-      <div class="modal-body p-0" style="background:#f6f7fb;">
-        <input type="hidden" id="chat_subot" value="">
-        <div id="chatMessages" class="p-3" style="height:65vh; overflow:auto;"></div>
-      </div>
+      <!-- ✅ Importante: quitamos padding para que el chat use todo el alto -->
+      <div class="modal-body p-0">
+        <div class="v-chat-wrap">
 
-      <div class="modal-footer d-flex gap-2">
-        <input id="chatInput" type="text" class="form-control" placeholder="Escribe un mensaje...">
-        <button id="chatSendBtn" type="button" class="btn btn-primary">
-          <i class="ri-send-plane-2-line me-1"></i>Enviar
-        </button>
-      </div>
+          <!-- Body -->
+          <div class="v-chat-body" id="chatMessages"   style="
+    background-image: url('<?= media(); ?>/minimal/images/chat-bg-pattern.png');
+    background-repeat: repeat;
+    background-size: auto;
+    background-position: center;
+  ">
+            <!-- mensajes -->
+          </div>
+ 
+          <!-- Footer -->
+          <div class="v-chat-footer">
+            <input type="hidden" id="chat_subot" value="">
 
+            <div class="input-group">
+              <input type="text" class="form-control" id="chatInput" placeholder="Escribe tu mensaje..." autocomplete="off">
+              <button class="btn btn-success" type="button" id="chatSendBtn">
+                <i class="ri-send-plane-2-fill"></i>
+              </button>
+            </div>
+
+            <div class="d-flex justify-content-between mt-2">
+              <!-- <small class="text-muted" id="chatStatusHint">Listo</small> -->
+              <small class="text-muted">Enter para enviar</small>
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
   </div>
 </div>
+
 
 
 

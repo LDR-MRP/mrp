@@ -877,79 +877,43 @@ public function getOrdenes()
 
 /////////////////////////////////////////////////
 
+
 public function getChatMessages()
 {
   header('Content-Type: application/json');
+  $d = json_decode(file_get_contents('php://input'), true);
 
-  $json = file_get_contents('php://input');
-  $data = json_decode($json, true);
-
-  if (!is_array($data)) {
-    echo json_encode(['status'=>false,'msg'=>'JSON inválido','data'=>[]]);
-    die();
-  }
-
-  $subot    = trim((string)($data['subot'] ?? ''));
-  $after_id = (int)($data['after_id'] ?? 0);
-  $limit    = (int)($data['limit'] ?? 200);
-
+  $subot = trim($d['subot'] ?? '');
   if ($subot === '') {
-    echo json_encode(['status'=>false,'msg'=>'Falta subot','data'=>[]]);
-    die();
+    echo json_encode(['status'=>false,'msg'=>'SubOT requerida']); return;
   }
 
-  $rows = $this->model->selectChatMessagesBySubOT($subot, $after_id, $limit);
+  $rows = $this->model->getChatMessages(
+    $subot,
+    (int)($d['last_id'] ?? 0)
+  );
 
-  echo json_encode([
-    'status' => true,
-    'msg'    => 'OK',
-    'data'   => $rows
-  ]);
-  die();
+  echo json_encode(['status'=>true,'data'=>$rows]);
 }
 
-
-
-public function setChatMessage()
+public function sendChatMessage()
 {
   header('Content-Type: application/json');
+  $d = json_decode(file_get_contents('php://input'), true);
 
-  $json = file_get_contents('php://input');
-  $data = json_decode($json, true);
+  $ok = $this->model->insertChatMessage([
+    'subot'         => $d['subot'] ?? '',
+    'estacionid'    => (int)($d['estacionid'] ?? 0),
+    'planeacionid'  => (int)($d['planeacionid'] ?? 0),
+    'message'       => trim($d['message'] ?? '')
+  ]);
 
-  if (!is_array($data)) {
-    echo json_encode(['status'=>false,'msg'=>'JSON inválido']);
-    die();
-  }
-
-  $subot   = trim((string)($data['subot'] ?? ''));
-  $message = trim((string)($data['message'] ?? ''));
-
-  if ($subot === '') {
-    echo json_encode(['status'=>false,'msg'=>'Falta subot']);
-    die();
-  }
-  if ($message === '') {
-    echo json_encode(['status'=>false,'msg'=>'El mensaje es obligatorio']);
-    die();
-  }
-
-  // Ajusta a tu sesión real
-  $user_id   = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
-  $user_name = isset($_SESSION['userData']['nombres']) ? (string)$_SESSION['userData']['nombres'] : 'Usuario';
-
-  $id = $this->model->insertChatMessageBySubOT($subot, $user_id, $user_name, $message);
-
-  if ($id <= 0) {
-    echo json_encode(['status'=>false,'msg'=>'No se pudo guardar el mensaje']);
-    die();
-  }
-
-  echo json_encode(['status'=>true,'msg'=>'Mensaje enviado','idchat'=>$id]);
-  die();
+  echo json_encode($ok
+    ? ['status'=>true]
+    : ['status'=>false,'msg'=>'No se pudo guardar el mensaje']
+  );
 }
 
-//DE ESGTFA PARTE SE ESTA CONFIGURANDO TODA ESYTA PARTE 
 
 
 
