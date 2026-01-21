@@ -83,11 +83,10 @@
                                     <div class="col-lg-4 col-sm-6">
                                         <div class="mb-3">
                                             <label class="form-label" for="inventarioid">PRODUCTO</label>
-                                            <div class="input-group mb-3">
-                                                <span class="input-group-text" id="producto-inventario-addon">Prod</span>
-                                                <select class="form-control" id="inventarioid" name="inventarioid" data-choices required=""></select>
+                                                <input type="text" class="form-control" id="inventarioSearchMov" placeholder="Buscar por clave o descripción" required>
+                                                <input type="hidden" id="inventarioid" name="inventarioid">
                                                 <div class="invalid-feedback">El campo producto es obligatorio</div>
-                                            </div>
+                                            
                                         </div>
                                     </div>
 
@@ -129,7 +128,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- CANTIDAD -->                                    
+                                    <!-- CANTIDAD -->
                                     <div class="col-lg-4 col-sm-6">
                                         <div class="mb-3">
                                             <label class="form-label" for="cantidad">CANTIDAD</label>
@@ -143,7 +142,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- COSTO DE LA CANTIDAD -->                                    
+                                    <!-- COSTO DE LA CANTIDAD -->
                                     <div class="col-lg-4 col-sm-6">
                                         <div class="mb-3">
                                             <label class="form-label" for="costo_cantidad">COSTO DE LA CANTIDAD</label>

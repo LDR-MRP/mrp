@@ -485,11 +485,9 @@ document.addEventListener("DOMContentLoaded", () => {
 //  VER EL DETALLE DEL INVENTARIO
 // ------------------------------------------------------------------------
 function fntViewInventario(idinventario) {
-  let request = window.XMLHttpRequest
-    ? new XMLHttpRequest()
-    : new ActiveXObject("Microsoft.XMLHTTP");
-
+  let request = new XMLHttpRequest();
   let ajaxUrl = base_url + "/Inv_inventario/getInventario/" + idinventario;
+
   request.open("GET", ajaxUrl, true);
   request.send();
 
@@ -500,13 +498,11 @@ function fntViewInventario(idinventario) {
       if (objData.status) {
         const data = objData.data;
 
-        // Estado
         let estadoHtml =
           data.estado == 2
             ? '<span class="badge bg-success">Activo</span>'
             : '<span class="badge bg-danger">Inactivo</span>';
 
-        // Tipo
         let tipoTxt = "N/A";
         if (data.tipo_elemento === "P") tipoTxt = "Producto";
         if (data.tipo_elemento === "S") tipoTxt = "Servicio";
@@ -514,7 +510,6 @@ function fntViewInventario(idinventario) {
         if (data.tipo_elemento === "C") tipoTxt = "Componente";
         if (data.tipo_elemento === "H") tipoTxt = "Herramienta";
 
-        // Pintar datos en modal
         document.querySelector("#celClave").innerHTML = data.cve_articulo;
         document.querySelector("#celDescripcion").innerHTML = data.descripcion;
         document.querySelector("#celTipo").innerHTML = tipoTxt;
@@ -523,7 +518,8 @@ function fntViewInventario(idinventario) {
         document.querySelector("#celUnidadSalida").innerHTML =
           data.unidad_salida;
         document.querySelector("#celFactor").innerHTML = data.factor_unidades;
-        document.querySelector("#celUbicacion").innerHTML = data.ubicacion;
+        document.querySelector("#celUbicacion").innerHTML =
+          data.control_almacen;
         document.querySelector("#celPeso").innerHTML = data.peso;
         document.querySelector("#celVolumen").innerHTML = data.volumen;
         document.querySelector("#celSerie").innerHTML =
@@ -535,7 +531,28 @@ function fntViewInventario(idinventario) {
         document.querySelector("#celFecha").innerHTML = data.fecha_creacion;
         document.querySelector("#celEstado").innerHTML = estadoHtml;
 
-        // Mostrar modal
+        // ✅ CLAVES ALTERNAS
+        let htmlClave = "Sin clave alterna";
+
+        const claves = data.claves || [];
+
+        if (claves.length > 0 && claves[0].cve_alterna) {
+          htmlClave = claves
+            .map((c) => {
+              let tipo = "Interna";
+              if (c.tipo_clave === "C") tipo = "Cliente";
+              if (c.tipo_clave === "V") tipo = "Proveedor";
+              if (c.tipo_clave === "I") tipo = "Interna";
+
+              return `<span class="me-1">
+                ${c.cve_alterna} (${tipo})
+              </span>`;
+            })
+            .join("");
+        }
+
+        document.querySelector("#celClaveAlterna").innerHTML = htmlClave;
+
         $("#modalViewInventario").modal("show");
       } else {
         Swal.fire("Error", objData.msg, "error");

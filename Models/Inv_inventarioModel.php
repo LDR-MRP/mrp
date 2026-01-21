@@ -125,15 +125,20 @@ class Inv_inventarioModel extends Mysql
        SELECT ONE
     =============================== */
     public function selectInventario(int $idinventario)
-    {
-        $idinventario = (int)$idinventario;
+{
+    $idinventario = (int)$idinventario;
 
-        $sql = "SELECT *
-                FROM wms_inventario
-                WHERE idinventario = $idinventario";
+    $sql = "SELECT i.*,
+                   ca.cve_alterna,
+                   ca.tipo AS tipo_clave
+            FROM wms_inventario i
+            LEFT JOIN wms_claves_alternas ca 
+                   ON ca.inventarioid = i.idinventario
+            WHERE i.idinventario = $idinventario";
 
-        return $this->select($sql);
-    }
+    return $this->select_all($sql);
+}
+
 
     /* ===============================
        UPDATE

@@ -151,7 +151,6 @@
 }
 
 
-/* estilos de calindaRIO  */
 
   /* ===== Chat Layout ===== */
   .chat-wrap{
@@ -341,6 +340,14 @@
   border-top: 1px solid #e5e7eb;
 }
 
+/*-----------------------------------------------*/
+/*---------------ESTILOS WMS---------------------*/
+/*-----------------------------------------------*/
+.autocomplete-items {
+  z-index: 9999;
+  max-height: 250px;
+  overflow-y: auto;
+}
 
 
 
