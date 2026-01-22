@@ -100,7 +100,7 @@ public function generarClave()
     if (!empty($result)) {
         $ultimoCodigo = $result['cve_producto'];
 
-        // Extrae solo el consecutivo (0001) antes de -V01
+    
         $ultimoNumero = (int) substr($ultimoCodigo, -8, 4);
         $numero = $ultimoNumero + 1;
     }
@@ -925,7 +925,7 @@ public function selectRutaByProducto(int $rutaid)
 
     $rows = $this->select_all($sql);
 
-    // Si no existe cabecera
+
     if (empty($rows)) return [];
 
   
@@ -1171,9 +1171,7 @@ public function softDeleteHerramientasNoIncluidos($idAlmacen, $idProducto, $idEs
         return $this->select_all($sql, [$ruta_productoid]);
     }
 
-    // ==========================================================
-    //  DESACTIVAR DETALLES QUE NO VINIERON EN PAYLOAD
-    // ==========================================================
+
     public function disableDetallesNoEnPayload(int $idruta, array $idsDetalleVistos)
     {
         $this->intIdRuta = $idruta;
@@ -1192,9 +1190,6 @@ public function softDeleteHerramientasNoIncluidos($idAlmacen, $idProducto, $idEs
         return $request;
     }
 
-    // ==========================================================
-    //  REINDEX ORDEN 
-    // ==========================================================
     public function reindexOrdenRuta(int $idruta)
     {
         $this->intIdRuta = $idruta;
@@ -1265,9 +1260,7 @@ public function selectProductoReporte(int $productoid)
 {
     $this->intIdProducto = $productoid;
 
-    // ---------------------------------------------------------
-    // PRODUCTO (OBJETO ÚNICO)
-    // ---------------------------------------------------------
+
     $sqlProd = "SELECT p.*,l.nombre_linea,pl.nombre_planta
                 FROM mrp_productos p
 				INNER JOIN mrp_linea AS l
@@ -1314,7 +1307,7 @@ public function selectProductoReporte(int $productoid)
         : ['status' => false, 'msg'  => 'No existe ningun registro', 'data' => []];
 
     // ---------------------------------------------------------
-    // DESCRIPTIVA TÉCNICA (OBJETO ÚNICO)
+    // DESCRIPTIVA TÉCNICA
     // ---------------------------------------------------------
     $sqlDesc = "SELECT *
                 FROM mrp_productos_descriptiva
@@ -1327,9 +1320,7 @@ public function selectProductoReporte(int $productoid)
         ? ['status' => true,  'data' => $desc]
         : ['status' => false, 'msg'  => 'No existe información', 'data' => (object)[]];
 
-    // ---------------------------------------------------------
-    // RUTA CONFIGURADA (OBJETO + ESTACIONES)
-    // ---------------------------------------------------------
+
     $sqlRuta = "SELECT *
                 FROM mrp_producto_ruta
                 WHERE productoid = {$this->intIdProducto}
@@ -1350,10 +1341,9 @@ public function selectProductoReporte(int $productoid)
         ];
     }
 
-    // id ruta principal
     $idruta_producto = (int)($ruta['idruta_producto'] ?? 0);
 
-    // Si por alguna razón no existe el id
+
     if ($idruta_producto <= 0) {
         $ruta['estaciones_registradas'] = [];
         return [
@@ -1367,9 +1357,7 @@ public function selectProductoReporte(int $productoid)
         ];
     }
 
-    // ---------------------------------------------------------
-    // ESTACIONES REGISTRADAS (la configuraciuon la hice en unaa sola consulta)
-    // ---------------------------------------------------------
+
     $sqlEst = "SELECT
                     d.iddetalle,
                     d.ruta_productoid,
@@ -1405,9 +1393,7 @@ public function selectProductoReporte(int $productoid)
         ];
     }
 
-    // ---------------------------------------------------------
-    // Traer ids de estaciones y consultar en bloque
-    // ---------------------------------------------------------
+
     $idsEstaciones = [];
     foreach ($estaciones_registradas as $r) {
         $idsEstaciones[] = (int)($r['estacionid'] ?? 0);
@@ -1416,9 +1402,6 @@ public function selectProductoReporte(int $productoid)
 
     $in = implode(',', $idsEstaciones);
 
-    // -----------------------------
-    // ESPECIFICACIONES 
-    // -----------------------------
     $sqlEsp = "SELECT *
                FROM mrp_estacion_especificaciones
                WHERE productoid = {$this->intIdProducto}
@@ -1427,9 +1410,7 @@ public function selectProductoReporte(int $productoid)
     $rowsEsp = $this->select_all($sqlEsp);
     if (!is_array($rowsEsp)) $rowsEsp = [];
 
-    // -----------------------------
-    // HERRAMIENTAS
-    // -----------------------------
+
     $sqlHer = "SELECT h.*, i.descripcion AS nombre_material 
                FROM mrp_estacion_herramientas AS h
 			   INNER JOIN wms_inventario AS i
@@ -1440,9 +1421,7 @@ public function selectProductoReporte(int $productoid)
     $rowsHer = $this->select_all($sqlHer);
     if (!is_array($rowsHer)) $rowsHer = [];
 
-    // -----------------------------
-    // COMPONENTES 
-    // -----------------------------
+
     $sqlComp = "SELECT c.*, i.descripcion AS nombre_componente
                 FROM mrp_estacion_componentes AS c
 				INNER JOIN wms_inventario AS i
@@ -1501,9 +1480,6 @@ public function selectProductoReporte(int $productoid)
         'data'   => $ruta
     ];
 
-    // ---------------------------------------------------------
-    // RESPUESTA FINAL
-    // ---------------------------------------------------------
     return [
         'producto'             => $producto,
         'documentacion'        => $documentacion,

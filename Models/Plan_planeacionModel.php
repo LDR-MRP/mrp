@@ -724,17 +724,13 @@ public function selectPlanCanceladas()
             return ['status' => true, 'msg' => 'OK', 'data' => $planeacion];
         }
 
-        // ---------------------------------------------------------
-        // IDs de planeacion_estacion
-        // ---------------------------------------------------------
+   
         $idsPE = array_map(fn($r) => (int) $r['id_planeacion_estacion'], $estaciones);
         $idsPE = array_values(array_filter($idsPE, fn($v) => $v > 0));
 
         $in = implode(',', $idsPE);
 
-        // ---------------------------------------------------------
-        // Operadores (encargados/ayudantes)
-        // ---------------------------------------------------------
+     
         $sqlOp = "SELECT o.planeacion_estacionid,
                    o.usuarioid,
                    UPPER(TRIM(o.rol)) AS rol,
@@ -779,9 +775,6 @@ public function selectPlanCanceladas()
             $otsByPE[$peid][] = $ot;
         }
 
-        // ---------------------------------------------------------
-        // Construcción de salida
-        // ---------------------------------------------------------
         $outEstaciones = [];
 
         foreach ($estaciones as $e) {
@@ -802,7 +795,7 @@ public function selectPlanCanceladas()
                 'ordenes_trabajo' => [],
             ];
 
-            // operadores
+           
             $lista = $opsByPE[$peid] ?? [];
             foreach ($lista as $op) {
                 $rol = (string) ($op['rol'] ?? '');
@@ -846,18 +839,14 @@ public function selectPlanCanceladas()
 
 
 
-//con esta función ya nos muestra las solicitudes que son asignadas a cada operador
+//con esta función ya nos muestra las solicitudes ue son asignadas a cada operador
     public function obtenerPlaneacion($num_orden)
 {
-    // =========================================================
-    // 1) Normalizar num_orden (ej: OT260106-001 -> OT260106001)
-    // =========================================================
+
     $num_orden = trim((string) $num_orden);
     $key = preg_replace('/[^A-Za-z0-9]/', '', $num_orden);
 
-    // =========================================================
-    // 2) Traer la planeación (header)
-    // =========================================================
+
     $sqlPla = "SELECT pla.*, pr.cve_producto, pr.descripcion
               FROM mrp_planeacion AS pla
               INNER JOIN mrp_productos AS pr ON pla.productoid = pr.idproducto
@@ -875,28 +864,18 @@ public function selectPlanCanceladas()
         return ['status' => false, 'msg' => 'Planeación inválida', 'data' => []];
     }
 
-    // =========================================================
-    // 3) Seguridad por usuario:
-    //    - Admin (rolid=1): ve todo
-    //    - No admin: solo ve estaciones donde esté asignado (operador)
-    // =========================================================
+
     $isAdmin   = isset($_SESSION['rolid']) && (int)$_SESSION['rolid'] === 1;
     $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
 
-    // Si NO es admin y no hay idusuario en sesión, no podemos mostrar nada
+    
     if (!$isAdmin && $userIdSes <= 0) {
         return ['status' => false, 'msg' => 'Sesión inválida (sin usuario)', 'data' => []];
     }
 
-    // =========================================================
-    // 4) Traer estaciones activas (estado=2) PERO:
-    //    - Admin: todas las estaciones activas de esa planeación
-    //    - No admin: solo estaciones donde el usuario esté asignado en
-    //      mrp_planeacion_estacion_operador (estado=2)
-    // =========================================================
     $whereUserEst = "";
     if (!$isAdmin) {
-        // Solo estaciones donde el usuario está asignado
+
         $whereUserEst = " AND pe.id_planeacion_estacion IN (
                             SELECT o2.planeacion_estacionid
                             FROM mrp_planeacion_estacion_operador o2
@@ -917,15 +896,13 @@ public function selectPlanCanceladas()
 
     $estaciones = $this->select_all($sqlEst);
 
-    // Si no hay estaciones visibles para este usuario, regresamos OK pero vacío
+
     if (empty($estaciones)) {
         $planeacion['estaciones'] = [];
         return ['status' => true, 'msg' => 'OK', 'data' => $planeacion];
     }
 
-    // =========================================================
-    // 5) Sacar IDs de planeacion_estacion para armar IN(...)
-    // =========================================================
+
     $idsPE = array_map(fn($r) => (int)$r['id_planeacion_estacion'], $estaciones);
     $idsPE = array_values(array_filter($idsPE, fn($v) => $v > 0));
 
@@ -936,12 +913,6 @@ public function selectPlanCanceladas()
 
     $in = implode(',', $idsPE);
 
-    // =========================================================
-    // 6) Operadores (encargados/ayudantes) de esas estaciones
-    //    Nota: aquí NO filtramos por userId, porque el usuario
-    //    necesita ver el equipo asignado a la estación (encargados
-    //    y ayudantes), aunque él sea solo uno de ellos.
-    // =========================================================
     $sqlOp = "SELECT o.planeacion_estacionid,
                      o.usuarioid,
                      UPPER(TRIM(o.rol)) AS rol,
@@ -956,7 +927,7 @@ public function selectPlanCanceladas()
 
     $ops = $this->select_all($sqlOp);
 
-    // Indexar operadores por PEID
+
     $opsByPE = [];
     foreach ($ops as $op) {
         $peid = (int)($op['planeacion_estacionid'] ?? 0);
@@ -964,12 +935,7 @@ public function selectPlanCanceladas()
         $opsByPE[$peid][] = $op;
     }
 
-    // =========================================================
-    // 7) Órdenes de trabajo (subórdenes) SOLO de las estaciones visibles
-    //    - Admin: todas las OT de esas estaciones
-    //    - No admin: aquí realmente NO hace falta filtrar más,
-    //      porque las estaciones ya están filtradas por asignación.
-    // =========================================================
+
     $sqlOT = "SELECT ot.idorden,
                      ot.planeacion_estacionid,
                      ot.num_sub_orden,
@@ -984,7 +950,7 @@ public function selectPlanCanceladas()
 
     $ots = $this->select_all($sqlOT);
 
-    // Indexar OTs por PEID
+
     $otsByPE = [];
     foreach ($ots as $ot) {
         $peid = (int)($ot['planeacion_estacionid'] ?? 0);
@@ -992,9 +958,7 @@ public function selectPlanCanceladas()
         $otsByPE[$peid][] = $ot;
     }
 
-    // =========================================================
-    // 8) Construcción final del JSON de salida
-    // =========================================================
+
     $outEstaciones = [];
 
     foreach ($estaciones as $e) {
@@ -1018,7 +982,7 @@ public function selectPlanCanceladas()
             'ordenes_trabajo'        => [],
         ];
 
-        // -------- Operadores por estación
+ 
         $listaOps = $opsByPE[$peid] ?? [];
         foreach ($listaOps as $op) {
             $rol = (string)($op['rol'] ?? '');
@@ -1036,7 +1000,7 @@ public function selectPlanCanceladas()
             }
         }
 
-        // -------- OTs por estación
+  
         $listaOT = $otsByPE[$peid] ?? [];
         foreach ($listaOT as $ot) {
             $item['ordenes_trabajo'][] = [
@@ -1093,23 +1057,20 @@ public function startOT(int $idorden, string $fecha_inicio)
 {
   $idorden = (int)$idorden;
 
-  // Si no te mandan fecha (o quieres estandarizar), genera aquí
+
   $fecha_inicio = trim((string)$fecha_inicio);
   if ($fecha_inicio === '') {
     $fecha_inicio = date('Y-m-d H:i:s');
   }
 
-  // ---------------------------------------------------
-  // 1) Traer Sub-OT + datos de planeación estación
-  //    ✅ FIX: incluir pe.planeacionid
-  // ---------------------------------------------------
+
   $sql = "SELECT 
             ot.idorden,
             ot.planeacion_estacionid,
             ot.num_sub_orden,
             ot.estatus,
             pe.id_planeacion_estacion,
-            pe.planeacionid,                 -- ✅ FIX
+            pe.planeacionid,               
             pe.orden AS estacion_orden
           FROM mrp_ordenes_trabajo ot
           INNER JOIN mrp_planeacion_estacion pe
@@ -1130,7 +1091,7 @@ public function startOT(int $idorden, string $fecha_inicio)
     ]];
   }
 
-  // ✅ FIX: planeacionid correcto
+
   $peid   = (int)($cur['planeacion_estacionid'] ?? 0);
   $idpla  = (int)($cur['planeacionid'] ?? 0);
   $estOrd = (int)($cur['estacion_orden'] ?? 0);
@@ -1142,9 +1103,7 @@ public function startOT(int $idorden, string $fecha_inicio)
     ]];
   }
 
-  // ---------------------------------------------------
-  // 2) Detectar Sxx (sub-OT secuencial dentro de estación)
-  // ---------------------------------------------------
+
   $snum = 0;
   if (preg_match('/-S(\d+)\s*$/i', $subot, $m)) {
     $snum = (int)$m[1];
@@ -1156,9 +1115,7 @@ public function startOT(int $idorden, string $fecha_inicio)
   $base = preg_replace('/-S\d+\s*$/i', '', $subot);
   $subotSql = addslashes($subot);
 
-  // ---------------------------------------------------
-  // 3) Regla: no puede haber otra Sub-OT en proceso en la misma estación
-  // ---------------------------------------------------
+
   $sqlBusy = "SELECT COUNT(*) AS c
               FROM mrp_ordenes_trabajo
               WHERE planeacion_estacionid = {$peid}
@@ -1169,9 +1126,6 @@ public function startOT(int $idorden, string $fecha_inicio)
     return ['status'=>false,'msg'=>'Ya existe una Sub-OT en proceso en esta estación','data'=>[]];
   }
 
-  // ---------------------------------------------------
-  // 4) Regla: si Sxx > 1, la anterior en esta MISMA estación debe estar finalizada (estatus=3)
-  // ---------------------------------------------------
   if ($snum > 1) {
     $prevSub = $base . '-S' . str_pad((string)($snum - 1), 2, '0', STR_PAD_LEFT);
     $prevSubSql = addslashes($prevSub);
@@ -1195,10 +1149,7 @@ public function startOT(int $idorden, string $fecha_inicio)
     }
   }
 
-  // ---------------------------------------------------
-  // 5) Regla: si NO es la primera estación, la misma Sub-OT (Sxx) en la estación anterior debe estar finalizada
-  //    ✅ FIX: comparar por pe2.planeacionid (NO por id_planeacion_estacion)
-  // ---------------------------------------------------
+
   if ($estOrd > 1) {
     $prevOrden = $estOrd - 1;
 
@@ -1226,9 +1177,7 @@ public function startOT(int $idorden, string $fecha_inicio)
     }
   }
 
-  // ---------------------------------------------------
-  // 6) Actualizar a En proceso
-  // ---------------------------------------------------
+
   $sqlUpd = "UPDATE mrp_ordenes_trabajo
              SET fecha_inicio = ?, estatus = 2
              WHERE idorden = {$idorden} AND estatus = 1";
@@ -1315,7 +1264,7 @@ public function getStatusOTByPeid(int $peid)
             ON pe.id_planeacion_estacion = ot.planeacion_estacionid
           WHERE ot.planeacion_estacionid = {$peid}";
 
-  return $this->select_all($sql); // usa tu método para traer varios
+  return $this->select_all($sql); 
 }
 
 public function getStatusOTByPlaneacion(int $planeacionid)
@@ -1412,13 +1361,13 @@ public function selectChatMessages($numorden, $subot, $productoid, $estacionid, 
   if ($limit <= 0) $limit = 200;
   if ($limit > 500) $limit = 500;
 
-  // ✅ REGLA: sin subot no hay chat
+
   if ($subot === '') return [];
 
-  // ✅ SIEMPRE por subot (chat aislado)
+
   $where = "WHERE c.subot = '{$subot}'";
 
-  // numorden opcional (por si lo quieres reforzar)
+
   if ($numorden !== '') $where .= " AND c.numorden = '{$numorden}'";
 
   if ($productoid > 0)   $where .= " AND c.productoid = {$productoid}";
@@ -1534,7 +1483,7 @@ public function insertChatMessasge($subot, $user_id, $user_name, $message)
 
 }
 
-//CREAME UN INNER $joinNombres
+
 
 public function getChatMessages(string $subot, int $lastId = 0)
 {
