@@ -65,11 +65,13 @@ class Cli_clientes extends Controllers
 		}
 
 		if (
+			empty($_POST['tipo_persona-select']) ||
+			empty($_POST['rfc-distribuidores-input']) ||
 			empty($_POST['grupo_id']) ||
 			empty($_POST['nombre-distribuidores-input']) ||
-			empty($_POST['razon-distribuidores-input']) ||
-			empty($_POST['rfc-distribuidores-input']) ||
 			empty($_POST['repve-distribuidores-input']) ||
+			empty($_POST['plaza-distribuidores-input']) ||
+			empty($_POST['clasificacion-distribuidores-input']) ||
 			empty($_POST['telefono-distribuidores-input'])
 		) {
 			echo json_encode(['status' => false, 'msg' => 'Datos obligatorios faltantes']);
@@ -78,11 +80,21 @@ class Cli_clientes extends Controllers
 
 		$idDistribuidor = intval($_POST['iddistribuidor']);
 		$grupo_id = intval($_POST['grupo_id']);
-		$nombre_comercial = strClean($_POST['nombre-distribuidores-input']);
+		$tipo_persona = strClean($_POST['tipo_persona-select']);
+		$nombre_fisica = strClean($_POST['nombre_fisica-distribuidores-input']);
+		$apellido_paterno = strClean($_POST['apellido_paterno-distribuidores-input']);
+		$apellido_materno = strClean($_POST['apellido_materno-distribuidores-input']);
+		$fecha_nacimiento = strClean($_POST['fecha_nacimiento-distribuidores-input']);
+		$correo = strClean($_POST['correo-distribuidores-input']);
+		$curp = strClean($_POST['curp-distribuidores-input']);
 		$razon_social = strClean($_POST['razon-distribuidores-input']);
+		$representante_legal = strClean($_POST['representante_legal-distribuidores-input']);
+		$domicilio_fiscal = strClean($_POST['domicilio_fiscal-distribuidores-input']);
 		$rfc = strClean($_POST['rfc-distribuidores-input']);
+		$nombre_comercial = strClean($_POST['nombre-distribuidores-input']);
 		$repve = strClean($_POST['repve-distribuidores-input']);
 		$plaza = strClean($_POST['plaza-distribuidores-input']);
+		$clasificacion = strClean($_POST['clasificacion-distribuidores-input']);
 		$estatus = $_POST['estatus-select'];
 		$tipo_negocio = $_POST['tipo_negocio-select'];
 		$telefono = strClean($_POST['telefono-distribuidores-input']);
@@ -90,18 +102,27 @@ class Cli_clientes extends Controllers
 
 		// INSERT / UPDATE DISTRIBUIDOR
 		if ($idDistribuidor == 0) {
-
 			$idDistribuidor = $this->model->insertDistribuidor(
 				$grupo_id,
-				$nombre_comercial,
+				$tipo_persona,
+				$nombre_fisica,
+				$apellido_paterno,
+				$apellido_materno,
+				$fecha_nacimiento,
+				$correo,
+				$curp,
 				$razon_social,
+				$representante_legal,
+				$domicilio_fiscal,
 				$rfc,
+				$nombre_comercial,
 				$repve,
 				$plaza,
+				$clasificacion,
 				$estatus,
 				$tipo_negocio,
 				$telefono,
-				$telefono_alt,
+				$telefono_alt
 			);
 
 			$option = 'insert';
@@ -110,15 +131,25 @@ class Cli_clientes extends Controllers
 			$this->model->updateDistribuidor(
 				$idDistribuidor,
 				$grupo_id,
-				$nombre_comercial,
+				$tipo_persona,
+				$nombre_fisica,
+				$apellido_paterno,
+				$apellido_materno,
+				$fecha_nacimiento,
+				$correo,
+				$curp,
 				$razon_social,
+				$representante_legal,
+				$domicilio_fiscal,
 				$rfc,
+				$nombre_comercial,
 				$repve,
 				$plaza,
+				$clasificacion,
 				$estatus,
 				$tipo_negocio,
 				$telefono,
-				$telefono_alt,
+				$telefono_alt
 			);
 
 			// LIMPIAR DIRECCIONES
@@ -174,6 +205,25 @@ class Cli_clientes extends Controllers
 				intval($_POST['listMunicipiosFiscal'])
 			);
 		}
+
+		if (empty($_POST['regional_id'])) {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'Debe seleccionar una regional'
+			]);
+			return;
+		}
+
+		$regional_id = intval($_POST['regional_id']);
+
+		if ($option === 'update') {
+			$this->model->deleteDistribuidorRegional($idDistribuidor);
+		}
+
+		$this->model->insertDistribuidorRegional(
+			$regional_id,
+			$idDistribuidor
+		);
 
 		if (!empty($_POST['listModelos']) && is_array($_POST['listModelos'])) {
 
@@ -233,6 +283,21 @@ class Cli_clientes extends Controllers
 		die();
 	}
 
+	public function getSelectRegionales()
+	{
+		$htmlOptions = '<option value="">--Seleccione--</option>';
+		$arrData = $this->model->selectOptionRegionales();
+		if (count($arrData) > 0) {
+			for ($i = 0; $i < count($arrData); $i++) {
+				if ($arrData[$i]['estado'] == 2) {
+					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre']  . ' ' . $arrData[$i]['apellido_paterno'] . ' ' . $arrData[$i]['apellido_materno'] .  '</option>';
+				}
+			}
+		}
+		echo $htmlOptions;
+		die();
+	}
+
 	public function getSelectGrupos()
 	{
 		$htmlOptions = '<option value="">--Seleccione--</option>';
@@ -240,7 +305,7 @@ class Cli_clientes extends Controllers
 		if (count($arrData) > 0) {
 			for ($i = 0; $i < count($arrData); $i++) {
 				if ($arrData[$i]['estado'] == 2) {
-					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre']  . '</option>';
+					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre']   .   '</option>';
 				}
 			}
 		}
@@ -301,6 +366,25 @@ class Cli_clientes extends Controllers
 		}
 
 		echo $htmlOptions;
+		die();
+	}
+
+	public function getRegionByEstado($estado_id)
+	{
+		$estado_id = intval($estado_id);
+
+		$arrData = $this->model->selectRegionByEstado($estado_id);
+
+		if (!empty($arrData)) {
+			echo json_encode([
+				"status" => true,
+				"data" => $arrData
+			]);
+		} else {
+			echo json_encode([
+				"status" => false
+			]);
+		}
 		die();
 	}
 }

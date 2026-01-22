@@ -1,12 +1,15 @@
-let tableDepartamentos;
+let tableRegionales;
 let rowTable = "";
 let divLoading = document.querySelector("#divLoading");
 
 // Inputs del formulario
-const iddepartamento = document.querySelector("#iddepartamento");
-const nombreInput = document.querySelector("#nombre-departamento-input");
-const descripcionInput = document.querySelector(
-  "#descripcion-departamento-input"
+const idregional = document.querySelector("#idregional");
+const nombreInput = document.querySelector("#nombre-regional-input");
+const apellidoPInput = document.querySelector(
+  "#apellido_paterno-regional-input",
+);
+const apellidoMInput = document.querySelector(
+  "#apellido_materno-regional-input",
 );
 const estado = document.querySelector("#estado-select");
 
@@ -15,7 +18,7 @@ let primerTab; // Tab LISTA
 let firstTab; // Tab NUEVO/ACTUALIZAR
 let tabNuevo;
 let spanBtnText = null;
-let formDepartamentos = null;
+let formRegionales = null;
 
 document.addEventListener(
   "DOMContentLoaded",
@@ -23,23 +26,24 @@ document.addEventListener(
     // --------------------------------------------------------------------
     //  REFERENCIAS DEL FORMULARIO
     // --------------------------------------------------------------------
-    formDepartamentos = document.querySelector("#formDepartamentos");
+    formRegionales = document.querySelector("#formRegionales");
     spanBtnText = document.querySelector("#btnText");
 
     // --------------------------------------------------------------------
-    //  DATATABLE DEPARTAMENTOS
+    //  DATATABLE REGIONALES
     // --------------------------------------------------------------------
-    tableDepartamentos = $("#tableDepartamentos").dataTable({
+    tableRegionales = $("#tableRegionales").dataTable({
       aProcessing: true,
       aServerSide: true,
       ajax: {
-        url: " " + base_url + "/cli_departamentos/index",
+        url: " " + base_url + "/cli_regionales/index",
         dataSrc: "",
       },
       columns: [
         { data: "id" },
         { data: "nombre" },
-        { data: "descripcion" },
+        { data: "apellido_paterno" },
+        { data: "apellido_materno" },
         { data: "fecha_registro" },
         { data: "estado" },
         { data: "options" },
@@ -78,10 +82,10 @@ document.addEventListener(
     //  TABS BOOTSTRAP
     // --------------------------------------------------------------------
     const primerTabEl = document.querySelector(
-      '#nav-tab a[href="#listdepartamentos"]'
+      '#nav-tab a[href="#listregionales"]',
     );
     const firstTabEl = document.querySelector(
-      '#nav-tab a[href="#agregardepartamento"]'
+      '#nav-tab a[href="#agregarregionales"]',
     );
 
     if (primerTabEl && firstTabEl && spanBtnText) {
@@ -98,29 +102,29 @@ document.addEventListener(
         spanBtnText.textContent = "REGISTRAR";
 
         // Limpiar formulario
-        formDepartamentos.reset();
-        iddepartamento.value = "";
+        formRegionales.reset();
+        idregional.value = "";
         estado.value = "2";
       });
 
       // ----------------------------------------------------------------
-      // CLICK EN "DEPARTAMENTOS" → RESETEAR NAV A NUEVO
+      // CLICK EN "REGIONALES" → RESETEAR NAV A NUEVO
       // ----------------------------------------------------------------
       primerTabEl.addEventListener("click", () => {
         tabNuevo.textContent = "NUEVO";
         spanBtnText.textContent = "REGISTRAR";
-        iddepartamento.value = "";
+        idregional.value = "";
         estado.value = "2";
-        formDepartamentos.reset();
+        formRegionales.reset();
       });
     } else {
       console.warn("Tabs de lineas no encontrados o btnText faltante.");
     }
 
     // --------------------------------------------------------------------
-    // FORM → CREAR / ACTUALIZAR MARCA
+    // FORM → CREAR / ACTUALIZAR REGIONAL
     // --------------------------------------------------------------------
-    formDepartamentos.addEventListener("submit", function (e) {
+    formRegionales.addEventListener("submit", function (e) {
       e.preventDefault();
 
       divLoading.style.display = "flex";
@@ -128,8 +132,8 @@ document.addEventListener(
       let request = window.XMLHttpRequest
         ? new XMLHttpRequest()
         : new ActiveXObject("Microsoft.XMLHTTP");
-      let ajaxUrl = base_url + "/cli_departamentos/setDepartamento";
-      let formData = new FormData(formDepartamentos);
+      let ajaxUrl = base_url + "/cli_regionales/setRegional";
+      let formData = new FormData(formRegionales);
 
       request.open("POST", ajaxUrl, true);
       request.send(formData);
@@ -143,7 +147,7 @@ document.addEventListener(
           Swal.fire(
             "Error",
             "Ocurrió un error en el servidor. Inténtalo de nuevo.",
-            "error"
+            "error",
           );
           return;
         }
@@ -166,21 +170,21 @@ document.addEventListener(
             }).then((result) => {
               if (result.isConfirmed) {
                 // Seguir en modo NUEVO
-                formDepartamentos.reset();
-                iddepartamento.value = "";
+                formRegionales.reset();
+                idregional.value = "";
                 estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
-                tableDepartamentos.api().ajax.reload();
+                tableRegionales.api().ajax.reload();
               } else {
                 // Regresar al listado
-                formDepartamentos.reset();
-                iddepartamento.value = "";
+                formRegionales.reset();
+                idregional.value = "";
                 estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 primerTab.show();
-                tableDepartamentos.api().ajax.reload();
+                tableRegionales.api().ajax.reload();
               }
             });
           } else {
@@ -193,13 +197,13 @@ document.addEventListener(
               allowEscapeKey: false,
             }).then(() => {
               // Acción final después de OK (opcional)
-              formDepartamentos.reset();
-              iddepartamento.value = "";
+              formRegionales.reset();
+              idregional.value = "";
               estado.value = "2";
               tabNuevo.textContent = "NUEVO";
               spanBtnText.textContent = "REGISTRAR";
               primerTab.show();
-              tableDepartamentos.api().ajax.reload();
+              tableRegionales.api().ajax.reload();
             });
           }
         } else {
@@ -208,13 +212,13 @@ document.addEventListener(
       };
     });
   },
-  false
+  false,
 );
 
 // ------------------------------------------------------------------------
-// FUNCIÓN EDITAR DEPARTAMENTO → MODO ACTUALIZAR
+// FUNCIÓN EDITAR REGIONAL → MODO ACTUALIZAR
 // ------------------------------------------------------------------------
-function fntEditInfo(id_departamento) {
+function fntEditInfo(id_regional) {
   // Cambiar textos a modo ACTUALIZAR
   if (tabNuevo) tabNuevo.textContent = "ACTUALIZAR";
   if (spanBtnText) spanBtnText.textContent = "ACTUALIZAR";
@@ -222,7 +226,7 @@ function fntEditInfo(id_departamento) {
   let request = window.XMLHttpRequest
     ? new XMLHttpRequest()
     : new ActiveXObject("Microsoft.XMLHTTP");
-  let ajaxUrl = base_url + "/cli_departamentos/show/" + id_departamento;
+  let ajaxUrl = base_url + "/cli_regionales/show/" + id_regional;
 
   request.open("GET", ajaxUrl, true);
   request.send();
@@ -232,9 +236,10 @@ function fntEditInfo(id_departamento) {
       let objData = JSON.parse(request.responseText);
 
       if (objData.status) {
-        iddepartamento.value = objData.data.id;
+        idregional.value = objData.data.id;
         nombreInput.value = objData.data.nombre;
-        descripcionInput.value = objData.data.descripcion;
+        apellidoPInput.value = objData.data.apellido_paterno;
+        apellidoMInput.value = objData.data.apellido_materno;
         estado.value = objData.data.estado;
 
         // Cambiar al tab de captura
@@ -249,7 +254,7 @@ function fntEditInfo(id_departamento) {
 // ------------------------------------------------------------------------
 //  ELIMINAR UN REGISTRO DEL LISTADO
 // ------------------------------------------------------------------------
-function fntDelDepartamento(iddepartamento) {
+function fntDelRegional(idregional) {
   Swal.fire({
     html: `
         <div class="mt-3">
@@ -286,13 +291,13 @@ function fntDelDepartamento(iddepartamento) {
     let request = window.XMLHttpRequest
       ? new XMLHttpRequest()
       : new ActiveXObject("Microsoft.XMLHTTP");
-    let ajaxUrl = base_url + "/cli_departamentos/destroy";
-    let strData = "iddepartamento=" + iddepartamento;
+    let ajaxUrl = base_url + "/cli_regionales/destroy";
+    let strData = "idregional=" + idregional;
 
     request.open("POST", ajaxUrl, true);
     request.setRequestHeader(
       "Content-type",
-      "application/x-www-form-urlencoded"
+      "application/x-www-form-urlencoded",
     );
     request.send(strData);
 
@@ -301,7 +306,7 @@ function fntDelDepartamento(iddepartamento) {
         let objData = JSON.parse(request.responseText);
         if (objData.status) {
           Swal.fire("¡Operación exitosa!", objData.msg, "success");
-          tableDepartamentos.api().ajax.reload();
+          tableRegionales.api().ajax.reload();
         } else {
           Swal.fire("Atención!", objData.msg, "error");
         }
@@ -311,13 +316,13 @@ function fntDelDepartamento(iddepartamento) {
 }
 
 // ------------------------------------------------------------------------
-//  VER EL DETALLE DEL DEPARTAMENTO
+//  VER EL DETALLE DE LA REGIONAL
 // ------------------------------------------------------------------------
-function fntViewDepartamento(iddepartamento) {
+function fntViewRegional(idregional) {
   let request = window.XMLHttpRequest
     ? new XMLHttpRequest()
     : new ActiveXObject("Microsoft.XMLHTTP");
-  let ajaxUrl = base_url + "/cli_departamentos/show/" + iddepartamento;
+  let ajaxUrl = base_url + "/cli_regionales/show/" + idregional;
   request.open("GET", ajaxUrl, true);
   request.send();
 
@@ -326,21 +331,23 @@ function fntViewDepartamento(iddepartamento) {
       let objData = JSON.parse(request.responseText);
 
       if (objData.status) {
-        let estadoUsuario =
+        let estadoRegional =
           objData.data.estado == 2
             ? '<span class="badge bg-success">Activo</span>'
             : '<span class="badge bg-danger">Inactivo</span>';
 
-        document.querySelector("#idDepartamento").innerHTML = objData.data.id;
-        document.querySelector("#nombreDepartamento").innerHTML =
+        document.querySelector("#idRegional").innerHTML = objData.data.id;
+        document.querySelector("#nombreRegional").innerHTML =
           objData.data.nombre;
-        document.querySelector("#descripcionDepartamento").innerHTML =
-          objData.data.descripcion;
-        document.querySelector("#fechaDepartamento").innerHTML =
+        document.querySelector("#apellidoPRegional").innerHTML =
+          objData.data.apellido_paterno;
+        document.querySelector("#apellidoMRegional").innerHTML =
+          objData.data.apellido_materno;
+        document.querySelector("#fechaRegional").innerHTML =
           objData.data.fecha_registro;
-        document.querySelector("#estadoDepartamento").innerHTML = estadoUsuario;
+        document.querySelector("#estadoRegional").innerHTML = estadoRegional;
 
-        $("#modalViewDepartamento").modal("show");
+        $("#modalViewRegionales").modal("show");
       } else {
         Swal.fire("Error", objData.msg, "error");
       }

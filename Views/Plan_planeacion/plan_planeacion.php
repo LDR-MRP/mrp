@@ -2,16 +2,14 @@
 <div id="contentAjax"></div>
 
 <style>
-  /* -----------------------------
-     SIDE PANEL (UX PRO)
-  ------------------------------*/
+ 
   .side-panel-fixed {
     min-height: 680px;
   }
 
   .side-hero {
     height: 220px;
-    /* imagen grande fija */
+
     border: 1px dashed rgba(0, 0, 0, .10);
     border-radius: 14px;
     display: flex;
@@ -39,9 +37,7 @@
     transform: translateY(-1px);
   }
 
-  /* -----------------------------
-     TOP HEADER “estado” (listas)
-  ------------------------------*/
+
   .view-header {
     border: 1px solid rgba(0, 0, 0, .08);
     border-radius: 14px;
@@ -49,9 +45,7 @@
     background: rgba(0, 0, 0, .015);
   }
 
-  /* -----------------------------
-     STICKY GUARDAR (Nueva)
-  ------------------------------*/
+
   .sticky-actions {
     position: sticky;
     bottom: 0;
@@ -63,7 +57,7 @@
   }
 
 
-    /* ===== KPI BAR (PRO) ===== */
+
   .kpi-bar{
     border: 1px solid rgba(0,0,0,.08);
     border-radius: 14px;
@@ -118,7 +112,7 @@
 
   .kpi-tag{ font-size: 12px; color:#6b7280; }
 
-  /* ===== Legend + View Buttons ===== */
+
   .kpi-bottom{
     margin-top: 10px;
     display:flex;
@@ -166,9 +160,7 @@
       </div>
       <!-- end page title -->
 
-      <!-- =========================
-           HOME (Panel + Bienvenida)
-      ========================== -->
+
       <div class="row g-3" id="viewHome">
 
         <!-- SIDE PANEL -->
@@ -243,7 +235,7 @@
           <div class="card h-100">
 <div class="card-body">
 
-  <!-- ✅ KPI BAR -->
+
   <div class="kpi-bar mb-3">
     <div class="kpi-row">
 
@@ -329,7 +321,7 @@
     </div>
   </div>
 
-  <!-- ✅ CALENDAR -->
+  <!--  CALENDAR -->
   <!-- <div id="calendar"></div> -->
 
 </div>
@@ -339,10 +331,7 @@
 
       </div><!-- /viewHome -->
 
-      <!-- =========================
-           VISTA: NUEVA PLANEACIÓN
-           (Full + Form + Ruta + Sticky Guardar)
-      ========================== -->
+
       <div class="row g-3 d-none" id="viewNueva">
         <div class="col-12">
           <div class="view-header d-flex flex-wrap align-items-center justify-content-between gap-2">
@@ -458,7 +447,7 @@
               </div><!-- /row -->
             </div>
 
-            <!-- ✅ Sticky acciones (Guardar/Cancelar) -->
+
             <div class="sticky-actions d-flex justify-content-end gap-2">
               <button type="button" class="btn btn-light" id="btnCancelarNueva">
                 <i class="ri-close-line me-1"></i> Cancelar
@@ -470,7 +459,7 @@
           </div>
         </div>
 
-        <!-- Ruta / Estaciones (NO mover contenido) -->
+
         <div class="col-12 col-xxl-8">
           <div class="card h-100">
             <div class="card-body">
@@ -534,9 +523,7 @@
 
       </div>
 
-      <!-- =========================
-           VISTA: LISTADOS (Full + Filtros + Acciones)
-      ========================== -->
+
       <div class="row g-3 d-none" id="viewListado">
         <div class="col-12">
           <div class="view-header d-flex flex-wrap align-items-center justify-content-between gap-2">
@@ -559,7 +546,7 @@
           </div>
         </div>
 
-        <!-- ✅ filtros rápidos (sin backend aún) -->
+
         <div class="col-12">
           <div class="card">
             <div class="card-body">
@@ -675,7 +662,7 @@
   <div class="text-center mb-3">
     <div class="fw-bold fs-5" id="modalEstacionNombre">—</div>
     <div class="text-muted" id="modalEstacionProceso">—</div>
-    <input type="text" id="modalEstacionId" value="">
+    <input type="hidden" id="modalEstacionId" value="">
   </div>
 
   <div class="row g-3">

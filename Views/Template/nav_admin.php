@@ -300,6 +300,12 @@
                                               <a href="<?= base_url(); ?>/cli_marcas" class="nav-link" data-key="t-detached">Marcas</a>
                                           </li>
                                       <?php } ?>
+                                      
+                                      <?php if (!empty($_SESSION['permisos'][45]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/cli_regionales" class="nav-link" data-key="t-detached">Regionales</a>
+                                          </li>
+                                      <?php } ?>
 
                                       <?php if (!empty($_SESSION['permisos'][42]['r'])) { ?>
                                           <li class="nav-item">

@@ -54,7 +54,7 @@
                                     <tr>
                                         <th>ID</th>
                                         <th>NOMBRE</th>
-                                        <th>CODIGO</th>
+                                        <th>CÓDIGO</th>
                                         <th>FECHA</th>
                                         <th>ESTATUS</th>
                                         <th>ACCIÓN</th>
@@ -93,7 +93,7 @@
                                     <!-- campo codigo -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="codigo-marca-input">CODIGO</label>
+                                            <label class="form-label" for="codigo-marca-input">CÓDIGO</label>
                                             <div class="input-group has-validation mb-3">
                                                 <span class="input-group-text" id="codigo-marca-addon">Cod</span>
                                                 <input type="text" class="form-control" placeholder="Ingrese el código de la marca" id="codigo-marca-input"

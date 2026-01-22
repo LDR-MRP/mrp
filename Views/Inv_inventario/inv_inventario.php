@@ -198,6 +198,11 @@
                             <td id="celPedimiento"></td>
                         </tr>
                         <tr>
+                        <tr>
+                            <td>Pedimiento:</td>
+                            <td id="celPedimiento"></td>
+                        </tr>
+                        <tr>
                             <td>Estado:</td>
                             <td id="celEstado"></td>
                         </tr>

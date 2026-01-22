@@ -16,6 +16,7 @@ class Inv_inventarioModel extends Mysql
         string $unidad_entrada,
         string $unidad_salida,
         string $unidad_empaque, // ✅ NUEVO
+        float $ultimo_costo,
         int $lineaproductoid,
         string $tipo_elemento,
         float $factor_unidades,
@@ -50,6 +51,7 @@ class Inv_inventarioModel extends Mysql
     unidad_entrada,
     unidad_salida,
     unidad_empaque,      -- ✅
+    ultimo_costo,
     lineaproductoid,
     tipo_elemento,
     factor_unidades,
@@ -62,7 +64,7 @@ class Inv_inventarioModel extends Mysql
     pedimiento,
     fecha_creacion,
     estado
-) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),?)";
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),?)";
 
         return $this->insert($sql, [
             $cve_articulo,
@@ -70,6 +72,7 @@ class Inv_inventarioModel extends Mysql
             $unidad_entrada,
             $unidad_salida,
             $unidad_empaque,   // ✅
+            $ultimo_costo,
             $lineaproductoid,
             $tipo_elemento,
             $factor_unidades,
@@ -151,6 +154,7 @@ class Inv_inventarioModel extends Mysql
         string $unidad_entrada,
         string $unidad_salida,
         string $unidad_empaque, // ✅ NUEVO
+        float $ultimo_costo,
         int $lineaproductoid,
         string $tipo_elemento,
         float $factor_unidades,
@@ -186,6 +190,7 @@ class Inv_inventarioModel extends Mysql
     unidad_entrada = ?,
     unidad_salida = ?,
     unidad_empaque = ?,      -- ✅
+    ultimo_costo = ?,
     lineaproductoid = ?,
     tipo_elemento = ?,
     factor_unidades = ?,
@@ -206,6 +211,7 @@ WHERE idinventario = ?";
             $unidad_entrada,
             $unidad_salida,
             $unidad_empaque, // ✅
+            $ultimo_costo,
             $lineaproductoid,
             $tipo_elemento,
             $factor_unidades,

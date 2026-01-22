@@ -61,7 +61,7 @@ class Cli_contactos extends Controllers
     {
         if ($_POST) {
             if (
-                empty($_POST['listDistribuidores']) || empty($_POST['listPuestos']) || empty($_POST['nombre-contactos-input']) || empty($_POST['telefono-contactos-input']) || empty($_POST['estado-select'])
+                empty($_POST['listDistribuidores']) || empty($_POST['listPuestos']) || empty($_POST['nombre-contactos-input']) || empty($_POST['extension-contactos-input']) || empty($_POST['telefono-contactos-input']) || empty($_POST['estado-select'])
             ) {
                 $arrResponse = array("status" => false, "msg" => 'Datos incorrectos .');
             } else {
@@ -71,6 +71,7 @@ class Cli_contactos extends Controllers
                 $puesto_id = intval($_POST['listPuestos']);
                 $nombre = strClean($_POST['nombre-contactos-input']);
                 $correo = strClean($_POST['correo-contactos-input']);
+                $extension = strClean($_POST['extension-contactos-input']);
                 $telefono = strClean($_POST['telefono-contactos-input']);
                 $estado = intval($_POST['estado-select']);
 
@@ -78,13 +79,13 @@ class Cli_contactos extends Controllers
 
                     //Crear 
                     if ($_SESSION['permisosMod']['w']) {
-                        $request_contacto = $this->model->insertContacto($distribuidor_id, $puesto_id, $nombre, $correo, $telefono, $estado);
+                        $request_contacto = $this->model->insertContacto($distribuidor_id, $puesto_id, $nombre, $correo, $extension, $telefono, $estado);
                         $option = 1;
                     }
                 } else {
                     //Actualizar
                     if ($_SESSION['permisosMod']['u']) {
-                        $request_contacto = $this->model->updateContacto($intIdcontacto, $distribuidor_id, $puesto_id, $nombre, $correo, $telefono, $estado);
+                        $request_contacto = $this->model->updateContacto($intIdcontacto, $distribuidor_id, $puesto_id, $nombre, $correo, $extension, $telefono, $estado);
                         $option = 2;
                     }
                 }

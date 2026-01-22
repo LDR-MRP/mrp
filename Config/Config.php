@@ -102,6 +102,7 @@ const MCDEPARTAMENTOS = 41;
 const MCLI_GRUPOS = 42;
 const MCLI_PUESTOS = 43;
 const MCLI_CONTACTOS = 44;
+const MCLI_REGIONALES = 45;
 
 //Submodulos Compras
 const MCCLIENTES = 50;

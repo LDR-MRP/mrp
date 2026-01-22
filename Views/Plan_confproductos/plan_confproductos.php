@@ -1731,7 +1731,6 @@
               <small class="mono">Regla: cantidad mínima 1.</small>
             </div>
 
-            <!-- SAVE BAR (solo aparece si hay seleccionados) -->
             <div id="saveBarHerr" class="save-bar">
               <button id="btnGuardarTodoHerramientas" class="btn btn-success btn-save-all">
                 Guardar todo

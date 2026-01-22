@@ -5,15 +5,13 @@ const viewHome = document.getElementById('viewHome');
 const viewNueva = document.getElementById('viewNueva');
 const viewListado = document.getElementById('viewListado');
 
-// --------------------------
-//  BOTONES 
-// --------------------------
+
 const btnNuevaPlaneacion = document.getElementById('btnNuevaPlaneacion');
 const btnPendientes = document.getElementById('btnPendientes');
 const btnFinalizadas = document.getElementById('btnFinalizadas');
 const btnCanceladas = document.getElementById('btnCanceladas');
 
-// volver
+
 const btnVolverHome1 = document.getElementById('btnVolverHome1');
 const btnVolverHome2 = document.getElementById('btnVolverHome2');
 
@@ -83,9 +81,7 @@ async function fetchJson(url, options = {}) {
   }
 }
 
-// =====================================================
-//  INIT
-// =====================================================
+
 document.addEventListener('DOMContentLoaded', function () {
 
   divLoading = document.querySelector("#divLoading");
@@ -208,9 +204,7 @@ const calendar = new FullCalendar.Calendar(calendarEl, {
     }
   },
 
-  // ============================
-  //  FORZAR COLOR (anti Velzon)
-  // ============================
+
   eventDidMount: function(info) {
     const bg = info.event.backgroundColor;
 
@@ -1269,21 +1263,26 @@ async function guardarPlaneacionHandler() {
     const data = await fetchJson(base_url + '/plan_planeacion/setPlaneacion', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload) 
     });
 
     if (!data.status) throw new Error(data.msg || 'Error al guardar');
 
-    Swal.fire({ icon: 'success', title: 'Guardado', text: 'Planeación guardada correctamente.' });
+    Swal.fire({ icon: 'success', title: '¡Operación exitosa!', text: 'Planeación guardada correctamente.' });
 
     localStorage.removeItem(getLSKeyAsignaciones());
     await limpiarNuevaPlaneacion(false);
-    goHome();
+    //redirefccionar al detaslle
+    window.location.href = base_url + '/plan_planeacion/orden/' + data.num_planeacion;
+    // goHome();
 
   } catch (err) {
     console.error(err);
     Swal.fire({ icon: 'error', title: 'Error', text: err.message });
   }
+
+
+
 }
 
 // =====================================================
@@ -1507,7 +1506,7 @@ function renderPlaneacionModal(payload) {
 
   const subOrdenes = estaciones.flatMap(est => Array.isArray(est.ordenes_trabajo) ? est.ordenes_trabajo : []);
 
-  // ordenar por idorden asc
+
   const ordenadas = [...subOrdenes].sort((a, b) => Number(a.idorden || 0) - Number(b.idorden || 0));
 
   if (count) count.textContent = String(ordenadas.length || 0);

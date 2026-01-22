@@ -21,14 +21,6 @@
             return $request;
         }
 
-        public function selectGrupoo(int $idgrupo)
-        {
-            $this->intIdgrupo = $idgrupo;
-            $sql = "SELECT * FROM cli_grupos WHERE id = $this->intIdgrupo";
-            $request = $this->select($sql);
-            return $request;
-        }
-
         public function selectGrupo(int $idgrupo)
         {
             $this->intIdgrupo = $idgrupo;
