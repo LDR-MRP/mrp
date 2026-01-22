@@ -2,6 +2,8 @@
 
 class Com_compras extends Controllers
 {
+    use ApiResponser;
+
     public function __construct()
     {
         parent::__construct();
@@ -34,53 +36,29 @@ class Com_compras extends Controllers
         echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
     }
 
-    public function setCompra(): void
+    public function create(): array
     {
-        try {
+        try{
             $request = new Com_comprasRequest($_POST);
-            
+
             $request->validate();
 
-            $data = $request->all();
+            $comprasService = new Com_comprasService();
 
-            $db = $this->model->getConexion();
+            $comprasService->create($request->all());
 
-            $db->beginTransaction();
+            return $this->successResponse(message: "Compra procesada con éxito.", code: 201);
 
-            $idCompra = $this->model->insertCompra($data);
+        } catch(Throwable $t){
+            $code = $t->getCode();
 
-            if($idCompra <= 0){
-                throw new Exception("Error al registrar la cabecera de la compra.", 500);
-            }
-
-            $detalle = json_decode($data['detalle_partidas'], true);
-            foreach ($detalle as $item) {
-                $this->model->insertDetalle($idCompra, $item);
-            }
-
-            //$model->actualizarFolio($data['serieid'], $data['tipo_documento'], $data['folioid']);
-
-            $db->commit();
-
-            http_response_code(201);
-            echo json_encode(["status" => true, "msg" => "Compra procesada con éxito."]);
-
-        } catch (Exception $e) {
-            if (isset($db)) $db->rollBack();
-
-            $code = $e->getCode();
-            http_response_code(($code >= 400 && $code <= 599) ? $code : 500);
-
-            $message = ($code == 422) ? json_decode($e->getMessage()) : $e->getMessage();
-            
-            echo json_encode([
-                "status" => false, 
-                "msg" => ($code == 422) ? "Errores de validación" : "Error de sistema",
-                "errors" => $message
-            ]);
+            return $this->errorResponse(
+                ($code == 422) ? "Errores de validación" : "Error de sistema",
+                ($code >= 400 && $code <= 599) ? $code : 500,
+                ($code == 422) ? json_decode($t->getMessage()) : $t->getMessage()
+            );
         }
+        
     }
 }
-
-
 ?>

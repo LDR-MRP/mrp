@@ -10,7 +10,8 @@
 
 	$dirs = [
 		'Libraries/Core/',
-		'Requests/'
+		'Requests/',
+		'Services/',
 	];
 
 	foreach ($dirs as $dir) {

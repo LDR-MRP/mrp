@@ -10,7 +10,8 @@ abstract class Requests {
 
     abstract public function rules();
 
-    public function validate() {
+    public function validate(): bool
+    {
         $this->rules();
         if (!empty($this->errors)) {
             throw new Exception(json_encode($this->errors), 422);
@@ -18,11 +19,13 @@ abstract class Requests {
         return true;
     }
 
-    protected function addError(string $field, string $message) {
+    protected function addError(string $field, string $message): array
+    {
         $this->errors[$field] = $message;
     }
 
-    public function all() {
+    public function all(): array
+    {
         return $this->data;
     }
 }
