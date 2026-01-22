@@ -2460,7 +2460,7 @@ function construirPayloadRuta() {
 
 
 
-
+ 
 async function fntReportProducto(idproducto) {
   if (!idproducto) return;
 
@@ -2503,7 +2503,10 @@ async function urlToBase64(url) {
 }
 
 
+
 function buildPdfProductoV1(payload, logoBase64) {
+
+
   // ---------------------------
   // Helpers
   // ---------------------------
@@ -2668,10 +2671,7 @@ safeList(doc).forEach((x, idx) => {
     layout: tableLayout
   });
 
-  // ---------------------------
-  // Descriptiva técnica
-  // (Dos columnas etiqueta/valor)
-  // ---------------------------
+ 
   content.push(sectionBar("DESCRIPTIVA TÉCNICA"));
 
   const descBody = [
@@ -2724,7 +2724,6 @@ safeList(doc).forEach((x, idx) => {
       layout: tableLayout
     });
 
-    // ========== Componentes (TABLA SEPARADA) ==========
     const compList = safeList(e?.componentes?.data);
     const compBody = [
       headerRow(["#", "Componente", "Cantidad", "Fecha / Hora"], "#EEF7F1")
@@ -2749,7 +2748,7 @@ safeList(doc).forEach((x, idx) => {
       margin: [0, 8, 0, 0]
     });
 
-    // ========== Herramientas (TABLA SEPARADA) ==========
+
     const toolList = safeList(e?.herramientas?.data);
     const toolBody = [
       headerRow(["#", "Herramienta", "Cantidad", "Fecha / Hora"], "#F7F2EE")
@@ -2775,9 +2774,7 @@ safeList(doc).forEach((x, idx) => {
     });
   });
 
-  // ---------------------------
-  // Control y aprobación (opcional, estilo auditoría)
-  // ---------------------------
+
   content.push(sectionBar("CONTROL Y APROBACIÓN"));
 
   content.push({

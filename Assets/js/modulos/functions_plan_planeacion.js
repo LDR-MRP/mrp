@@ -5,15 +5,13 @@ const viewHome = document.getElementById('viewHome');
 const viewNueva = document.getElementById('viewNueva');
 const viewListado = document.getElementById('viewListado');
 
-// --------------------------
-//  BOTONES 
-// --------------------------
+
 const btnNuevaPlaneacion = document.getElementById('btnNuevaPlaneacion');
 const btnPendientes = document.getElementById('btnPendientes');
 const btnFinalizadas = document.getElementById('btnFinalizadas');
 const btnCanceladas = document.getElementById('btnCanceladas');
 
-// volver
+
 const btnVolverHome1 = document.getElementById('btnVolverHome1');
 const btnVolverHome2 = document.getElementById('btnVolverHome2');
 
@@ -1265,21 +1263,26 @@ async function guardarPlaneacionHandler() {
     const data = await fetchJson(base_url + '/plan_planeacion/setPlaneacion', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload) 
     });
 
     if (!data.status) throw new Error(data.msg || 'Error al guardar');
 
-    Swal.fire({ icon: 'success', title: 'Guardado', text: 'Planeación guardada correctamente.' });
+    Swal.fire({ icon: 'success', title: '¡Operación exitosa!', text: 'Planeación guardada correctamente.' });
 
     localStorage.removeItem(getLSKeyAsignaciones());
     await limpiarNuevaPlaneacion(false);
-    goHome();
+    //redirefccionar al detaslle
+    window.location.href = base_url + '/plan_planeacion/orden/' + data.num_planeacion;
+    // goHome();
 
   } catch (err) {
     console.error(err);
     Swal.fire({ icon: 'error', title: 'Error', text: err.message });
   }
+
+
+
 }
 
 // =====================================================

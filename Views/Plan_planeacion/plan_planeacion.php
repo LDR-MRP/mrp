@@ -662,7 +662,7 @@
   <div class="text-center mb-3">
     <div class="fw-bold fs-5" id="modalEstacionNombre">—</div>
     <div class="text-muted" id="modalEstacionProceso">—</div>
-    <input type="text" id="modalEstacionId" value="">
+    <input type="hidden" id="modalEstacionId" value="">
   </div>
 
   <div class="row g-3">

@@ -1346,7 +1346,7 @@ public function getRuta($rutaid)
 }
 
 
-
+ 
 	//FUNCIÓN PARA GENERAR EL REPORTE DEL PRODUCTO PDF
 
 	public function getProductoReporte($idproducto)

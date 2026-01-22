@@ -132,9 +132,7 @@ public function setPlaneacion()
     die();
   }
 
-  // ---------------------------------------------------------
-  //  Validación + recopilación de usuarios
-  // ---------------------------------------------------------
+
   $idsEncargados = [];
   $idsAyudantes  = [];
 
@@ -168,12 +166,10 @@ public function setPlaneacion()
   $idsEncargados = array_values(array_unique(array_map('intval', $idsEncargados)));
   $idsAyudantes  = array_values(array_unique(array_map('intval', $idsAyudantes)));
 
-  // Evitar que un encargado reciba correo duplicado como ayudante
+
   $idsAyudantes = array_values(array_diff($idsAyudantes, $idsEncargados));
 
-  // ---------------------------------------------------------
-  //  Obtener correos
-  // ---------------------------------------------------------
+
   $destEnc = [];
   $destAy  = [];
 
@@ -213,12 +209,9 @@ public function setPlaneacion()
 
   $emailsEnc = array_values(array_unique(array_column($destEnc, 'email')));
   $emailsAy  = array_values(array_unique(array_column($destAy, 'email')));
-
+ 
   try {
 
-    // ---------------------------------------------------------
-    //  CABECERA: generar OT y guardar planeación
-    // ---------------------------------------------------------
     $num_orden = $this->model->generarNumeroOrden();
 
     $request_CONFIGURACION = $this->model->insertPlaneacion(
@@ -383,9 +376,10 @@ public function setPlaneacion()
       'status'      => true,
       'msg'         => 'Planeación guardada correctamente',
       'idplaneacion'=> $idplaneacion,
-      'mail'        => $mail
+      'mail'        => $mail,
+      'num_planeacion' => $num_orden
     ]);
-    die();
+    die(); 
 
   } catch (Exception $e) {
     echo json_encode([
