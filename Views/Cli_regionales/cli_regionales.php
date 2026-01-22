@@ -29,13 +29,13 @@
                 <div class="card-header">
                     <ul class="nav nav-tabs-custom card-header-tabs border-bottom-0 " role="tablist" id="nav-tab">
                         <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#listpuestos" role="tab">
-                                Lista de puestos
+                            <a class="nav-link active" data-bs-toggle="tab" href="#listregionales" role="tab">
+                                Lista de regionales
                             </a>
                         </li>
                         <?php if ($_SESSION['permisosMod']['w']) { ?>
                             <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#agregarpuesto" role="tab">
+                                <a class="nav-link" data-bs-toggle="tab" href="#agregarregionales" role="tab">
                                     NUEVO
                                 </a>
                             </li>
@@ -45,17 +45,17 @@
                 <!-- end card header -->
                 <div class="card-body">
                     <div class="tab-content">
-                        <div class="tab-pane active" id="listpuestos" role="tabpanel">
+                        <div class="tab-pane active" id="listregionales" role="tabpanel">
 
-                            <table id="tablePuestos"
+                            <table id="tableRegionales"
                                 class="table table-bordered dt-responsive nowrap table-striped align-middle"
                                 style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
-                                        <th>DEPARTAMENTO</th>
                                         <th>NOMBRE</th>
-                                        <th>DESCRIPCIÓN</th>
+                                        <th>APELLIDO PATERNO</th>
+                                        <th>APELLIDO MATERNO</th>
                                         <th>FECHA</th>
                                         <th>ESTATUS</th>
                                         <th>ACCIÓN</th>
@@ -72,47 +72,48 @@
 
 
 
-                        <div class="tab-pane" id="agregarpuesto" role="tabpanel">
-                            <form id="formPuestos" autocomplete="off" class="form-steps was-validated" autocomplete="off">
-                                <input type="hidden" id="idpuesto" name="idpuesto">
+                        <div class="tab-pane" id="agregarregionales" role="tabpanel">
+                            <form id="formRegionales" autocomplete="off" class="form-steps was-validated" autocomplete="off">
+                                <input type="hidden" id="idregional" name="idregional">
                                 <div class="row">
-
-                                    <!-- DEPARTAMENTO ID -->
-                                    <div class="col-lg-6">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="listPuestos">DEPARTAMENTO</label>
-                                            <div class="input-group mb-3">
-                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>Dep</span>
-                                                <select class="form-control" id="listPuestos" name="listPuestos" required=""></select>
-                                                <div class="invalid-feedback">El campo de departamento es obligatorio</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
                                     <!-- campo nombre -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="nombre-puestos-input">NOMBRE</label>
+                                            <label class="form-label" for="nombre-regional-input">NOMBRE</label>
                                             <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="nombre-puestos-addon">Nom</span>
-                                                <input type="text" class="form-control" placeholder="Ingrese el nombre del puesto" id="nombre-puestos-input"
-                                                    name="nombre-puestos-input"
-                                                    aria-describedby="nombre-puestos-addon" required>
+                                                <span class="input-group-text" id="nombre-regional-addon">Nom</span>
+                                                <input type="text" class="form-control" placeholder="Ingrese el nombre del regional" id="nombre-regional-input"
+                                                    name="nombre-regional-input"
+                                                    aria-describedby="nombre-regional-addon" required>
                                                 <div class="invalid-feedback">El campo nombre es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- campo descripcion -->
+                                    <!-- campo apellido paterno -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="descripcion-puestos-input">DESCRIPCIÓN</label>
+                                            <label class="form-label" for="apellido_paterno-regional-input">APELLIDO PATERNO</label>
                                             <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="descripcion-puestos-addon">Desc</span>
-                                                <input type="text" class="form-control" placeholder="Ingrese la descripción del puesto" id="descripcion-puestos-input"
-                                                    name="descripcion-puestos-input"
-                                                    aria-describedby="descripcion-puestos-addon" required>
-                                                <div class="invalid-feedback">El campo descripción es obligatorio</div>
+                                                <span class="input-group-text" id="apellido_paterno-regional-addon">A.P</span>
+                                                <input type="text" class="form-control" placeholder="Ingrese el apellido paterno del regional" id="apellido_paterno-regional-input"
+                                                    name="apellido_paterno-regional-input"
+                                                    aria-describedby="apellido_paterno-regional-addon" required>
+                                                <div class="invalid-feedback">El campo apellido paterno es obligatorio</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- campo apellido materno -->
+                                    <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="apellido_materno-regional-input">APELLIDO MATERNO</label>
+                                            <div class="input-group has-validation mb-3">
+                                                <span class="input-group-text" id="apellido_materno-regional-addon">A.M</span>
+                                                <input type="text" class="form-control" placeholder="Ingrese el apellido materno del regional" id="apellido_materno-regional-input"
+                                                    name="apellido_materno-regional-input"
+                                                    aria-describedby="apellido_materno-regional-addon" required>
+                                                <div class="invalid-feedback">El campo apellido materno es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
@@ -132,6 +133,8 @@
                                             </div>
                                         </div>
                                     </div>
+
+
                                 </div>
                                 <!-- end row -->
 
@@ -175,7 +178,7 @@
 
 
 
-<div class="modal fade" id="modalViewPuesto" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+<div class="modal fade" id="modalViewRegionales" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0">
             <div class="modal-header bg-primary-subtle p-3">
@@ -187,28 +190,27 @@
                     <tbody>
                         <tr>
                             <td>ID:</td>
-                            <td id="idpuesto">1</td>
-                        </tr>
-                        <tr>
-                            <td>Departamento:</td>
-                            <td id="departamento_id">1</td>
+                            <td id="idRegional">ID</td>
                         </tr>
                         <tr>
                             <td>Nombre:</td>
-                            <td id="nombrePuesto">Larry</td>
+                            <td id="nombreRegional">Nombre</td>
                         </tr>
                         <tr>
-                            <td>Descripción:</td>
-                            <td id="descripcionPuesto">Larry</td>
+                            <td>Apellido paterno:</td>
+                            <td id="apellidoPRegional">Apellido paterno</td>
+                        </tr>
+                        <tr>
+                            <td>Apellido materno:</td>
+                            <td id="apellidoMRegional">Apellido materno</td>
                         </tr>
                         <tr>
                             <td>Fecha de creación:</td>
-                            <td id="fechaPuesto">Larry</td>
+                            <td id="fechaRegional">Fecha de creación</td>
                         </tr>
-
                         <tr>
                             <td>Estado:</td>
-                            <td id="estadoPuesto">Larry</td>
+                            <td id="estadoRegional">Estado</td>
                         </tr>
                     </tbody>
                 </table>

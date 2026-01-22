@@ -7,6 +7,7 @@ class Cli_contactosModel extends Mysql
     public $intPuestoId;
     public $strNombre;
     public $strCorreo;
+    public $strExtension;
     public $strTelefono;
     public $intEstado;
 
@@ -47,6 +48,7 @@ class Cli_contactosModel extends Mysql
                 p.nombre AS nombre_puesto,
                 c.nombre AS nombre_contacto,
                 c.correo,
+                c.extension,
                 c.telefono,
                 c.fecha_registro,
                 c.estado,
@@ -73,12 +75,13 @@ class Cli_contactosModel extends Mysql
         return $request;
     }
 
-    public function insertContacto($distribuidor_id, $puesto_id, $nombre, $correo, $telefono, $estado)
+    public function insertContacto($distribuidor_id, $puesto_id, $nombre, $correo, $extension, $telefono, $estado)
     {
         $this->intDistribuidorId = $distribuidor_id;
         $this->intPuestoId = $puesto_id;
         $this->strNombre = $nombre;
         $this->strCorreo = $correo;
+        $this->strExtension = $extension;
         $this->strTelefono = $telefono;
         $this->intEstado = $estado;
 
@@ -86,12 +89,13 @@ class Cli_contactosModel extends Mysql
         $request = $this->select_all($sql);
 
         if (empty($request)) {
-            $query_insert = "INSERT INTO cli_contactos(distribuidor_id, puesto_id, nombre, correo, telefono, estado) VALUES(?,?,?,?,?,?)";
+            $query_insert = "INSERT INTO cli_contactos(distribuidor_id, puesto_id, nombre, correo, extension, telefono, estado) VALUES(?,?,?,?,?,?,?)";
             $arrData = array(
                 $this->intDistribuidorId,
                 $this->intPuestoId,
                 $this->strNombre,
                 $this->strCorreo,
+                $this->strExtension,
                 $this->strTelefono,
                 $this->intEstado
             );
@@ -102,13 +106,14 @@ class Cli_contactosModel extends Mysql
         }
     }
 
-    public function updateContacto($intIdcontacto, $distribuidor_id, $puesto_id, $nombre, $correo, $telefono, $estado)
+    public function updateContacto($intIdcontacto, $distribuidor_id, $puesto_id, $nombre, $correo, $extension, $telefono, $estado)
     {
         $this->intIdcontacto = $intIdcontacto;
         $this->intDistribuidorId = $distribuidor_id;
         $this->intPuestoId = $puesto_id;
         $this->strNombre = $nombre;
         $this->strCorreo = $correo;
+        $this->strExtension = $extension;
         $this->strTelefono = $telefono;
         $this->intEstado = $estado;
 
@@ -116,12 +121,13 @@ class Cli_contactosModel extends Mysql
         $request = $this->select_all($sql);
 
         if (empty($request)) {
-            $sql = "UPDATE cli_contactos SET distribuidor_id = ?, puesto_id = ?, nombre = ?, correo = ?, telefono = ?, estado = ? WHERE id = $this->intIdcontacto ";
+            $sql = "UPDATE cli_contactos SET distribuidor_id = ?, puesto_id = ?, nombre = ?, correo = ?, extension = ?, telefono = ?, estado = ? WHERE id = $this->intIdcontacto ";
             $arrData = array(
                 $this->intDistribuidorId,
                 $this->intPuestoId,
                 $this->strNombre,
                 $this->strCorreo,
+                $this->strExtension,
                 $this->strTelefono,
                 $this->intEstado
             );

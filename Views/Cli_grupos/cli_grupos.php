@@ -53,9 +53,9 @@
                                 <thead>
                                     <tr>
                                         <th>ID</th>
-                                        <th>CODIGO</th>
+                                        <th>CÓDIGO</th>
                                         <th>NOMBRE</th>
-                                        <th>DESCRIBCCIÓN</th>
+                                        <th>DESCRIPCIÓN</th>
                                         <th>FECHA</th>
                                         <th>ESTATUS</th>
                                         <th>ACCIÓN</th>
@@ -79,7 +79,7 @@
                                     <!-- campo codigo -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="codigo-grupo-input">CODIGO</label>
+                                            <label class="form-label" for="codigo-grupo-input">CÓDIGO</label>
                                             <div class="input-group has-validation mb-3">
                                                 <span class="input-group-text" id="codigo-grupo-addon">Cod</span>
                                                 <input type="text" class="form-control" placeholder="Ingrese el código del grupo" id="codigo-grupo-input"
@@ -189,27 +189,27 @@
                     <tbody>
                         <tr>
                             <td>ID:</td>
-                            <td id="idGrupo">1</td>
+                            <td id="idGrupo">ID</td>
                         </tr>
                         <tr>
                             <td>Código:</td>
-                            <td id="codigoGrupo">Larry</td>
+                            <td id="codigoGrupo">Código</td>
                         </tr>
                         <tr>
                             <td>Nombre:</td>
-                            <td id="nombreGrupo">Larry</td>
+                            <td id="nombreGrupo">Nombre</td>
                         </tr>
                         <tr>
                             <td>Descripción:</td>
-                            <td id="descripcionGrupo">Larry</td>
+                            <td id="descripcionGrupo">Descripción</td>
                         </tr>
                         <tr>
                             <td>Fecha de creación:</td>
-                            <td id="fechaGrupo">Larry</td>
+                            <td id="fechaGrupo">Fecha de creación</td>
                         </tr>
                         <tr>
                             <td>Estado:</td>
-                            <td id="estadoGrupo">Larry</td>
+                            <td id="estadoGrupo">Estado</td>
                         </tr>
                     </tbody>
                 </table>

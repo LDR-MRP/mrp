@@ -18,7 +18,6 @@ let formMarcas = null;
 document.addEventListener(
   "DOMContentLoaded",
   function () {
-    
     // --------------------------------------------------------------------
     //  REFERENCIAS DEL FORMULARIO
     // --------------------------------------------------------------------
@@ -49,16 +48,38 @@ document.addEventListener(
       bDestroy: true,
       iDisplayLength: 10,
       order: [[0, "desc"]],
+
+      language: {
+        processing: "Procesando...",
+        search: "Buscar:",
+        lengthMenu: "Mostrar _MENU_ registros",
+        info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+        infoEmpty: "Mostrando 0 a 0 de 0 registros",
+        infoFiltered: "(filtrado de _MAX_ registros totales)",
+        loadingRecords: "Cargando...",
+        zeroRecords: "No se encontraron resultados",
+        emptyTable: "No hay datos disponibles en la tabla",
+        paginate: {
+          first: "Primero",
+          previous: "Anterior",
+          next: "Siguiente",
+          last: "Último",
+        },
+        aria: {
+          sortAscending: ": activar para ordenar la columna ascendente",
+          sortDescending: ": activar para ordenar la columna descendente",
+        },
+      },
     });
 
     // --------------------------------------------------------------------
     //  TABS BOOTSTRAP
     // --------------------------------------------------------------------
     const primerTabEl = document.querySelector(
-      '#nav-tab a[href="#listmarcas"]'
+      '#nav-tab a[href="#listmarcas"]',
     );
     const firstTabEl = document.querySelector(
-      '#nav-tab a[href="#agregarmarca"]'
+      '#nav-tab a[href="#agregarmarca"]',
     );
 
     if (primerTabEl && firstTabEl && spanBtnText) {
@@ -120,7 +141,7 @@ document.addEventListener(
           Swal.fire(
             "Error",
             "Ocurrió un error en el servidor. Inténtalo de nuevo.",
-            "error"
+            "error",
           );
           return;
         }
@@ -185,7 +206,7 @@ document.addEventListener(
       };
     });
   },
-  false
+  false,
 );
 
 // ------------------------------------------------------------------------
@@ -269,7 +290,7 @@ function fntDelMarca(idmarca) {
     request.open("POST", ajaxUrl, true);
     request.setRequestHeader(
       "Content-type",
-      "application/x-www-form-urlencoded"
+      "application/x-www-form-urlencoded",
     );
     request.send(strData);
 

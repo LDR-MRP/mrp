@@ -8,6 +8,7 @@ const distribuidor_id = document.querySelector("#listDistribuidores");
 const puesto_id = document.querySelector("#listPuestos");
 const nombre = document.querySelector("#nombre-contactos-input");
 const correo = document.querySelector("#correo-contactos-input");
+const extension = document.querySelector("#extension-contactos-input");
 const telefono = document.querySelector("#telefono-contactos-input");
 const estado = document.querySelector("#estado-select");
 
@@ -56,6 +57,28 @@ document.addEventListener(
       bDestroy: true,
       iDisplayLength: 10,
       order: [[0, "desc"]],
+
+      language: {
+        processing: "Procesando...",
+        search: "Buscar:",
+        lengthMenu: "Mostrar _MENU_ registros",
+        info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+        infoEmpty: "Mostrando 0 a 0 de 0 registros",
+        infoFiltered: "(filtrado de _MAX_ registros totales)",
+        loadingRecords: "Cargando...",
+        zeroRecords: "No se encontraron resultados",
+        emptyTable: "No hay datos disponibles en la tabla",
+        paginate: {
+          first: "Primero",
+          previous: "Anterior",
+          next: "Siguiente",
+          last: "Último",
+        },
+        aria: {
+          sortAscending: ": activar para ordenar la columna ascendente",
+          sortDescending: ": activar para ordenar la columna descendente",
+        },
+      },
     });
 
     // --------------------------------------------------------------------
@@ -221,6 +244,7 @@ function fntEditInfo(id_contacto) {
         puesto_id.value = objData.data.puesto_id;
         nombre.value = objData.data.nombre_contacto;
         correo.value = objData.data.correo;
+        extension.value = objData.data.extension;
         telefono.value = objData.data.telefono;
         estado.value = objData.data.estado;
 
@@ -318,7 +342,7 @@ function fntViewContacto(idcontacto) {
             ? '<span class="badge bg-success">Activo</span>'
             : '<span class="badge bg-danger">Inactivo</span>';
 
-        document.querySelector("#idcontacto").innerHTML = objData.data.id;  
+        document.querySelector("#idcontacto").innerHTML = objData.data.id;
         document.querySelector("#nombreDistribuidor").innerHTML =
           objData.data.nombre_distribuidor;
         document.querySelector("#nombrePuesto").innerHTML =
@@ -327,6 +351,8 @@ function fntViewContacto(idcontacto) {
           objData.data.nombre_contacto;
         document.querySelector("#correoContacto").innerHTML =
           objData.data.correo;
+        document.querySelector("#extensionContacto").innerHTML =
+          objData.data.extension;
         document.querySelector("#telefonoContacto").innerHTML =
           objData.data.telefono;
         document.querySelector("#fechaContacto").innerHTML =

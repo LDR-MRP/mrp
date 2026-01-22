@@ -107,7 +107,7 @@
                                             <label class="form-label" for="nombre-contactos-input">NOMBRE</label>
                                             <div class="input-group has-validation mb-3">
                                                 <span class="input-group-text" id="nombre-contactos-addon">Nom</span>
-                                                <input type="text" class="form-control" placeholder="Ingrese el nombre del puesto" id="nombre-contactos-input"
+                                                <input type="text" class="form-control" placeholder="Ingrese el nombre del contacto" id="nombre-contactos-input"
                                                     name="nombre-contactos-input"
                                                     aria-describedby="nombre-contactos-addon" required>
                                                 <div class="invalid-feedback">El campo nombre es obligatorio</div>
@@ -121,10 +121,24 @@
                                             <label class="form-label" for="correo-contactos-input">CORREO</label>
                                             <div class="input-group has-validation mb-3">
                                                 <span class="input-group-text" id="correo-contactos-addon">Cor</span>
-                                                <input type="email" class="form-control" placeholder="Ingrese el correo del puesto" id="correo-contactos-input"
+                                                <input type="email" class="form-control" placeholder="Ingrese el correo del contacto" id="correo-contactos-input"
                                                     name="correo-contactos-input"
                                                     aria-describedby="correo-contactos-addon">
-                                                <div class="invalid-feedback">El campo correo es obligatorio</div>
+                                                <div class="invalid-feedback">Si ingresa un correo, debe ser válido</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- campo extensión -->
+                                    <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="extension-contactos-input">EXTENSIÓN TELÉFONO</label>
+                                            <div class="input-group has-validation mb-3">
+                                                <span class="input-group-text" id="extension-contactos-addon">Ext</span>
+                                                <input type="text" class="form-control" placeholder="Ej. 101" id="extension-contactos-input"
+                                                    name="extension-contactos-input" maxlength="6" inputmode="numeric"
+                                                    aria-describedby="extension-contactos-addon">
+                                                <div class="invalid-feedback">Si ingresa una extensión, debe contener al menos 3 números</div>
                                             </div>
                                         </div>
                                     </div>
@@ -135,10 +149,11 @@
                                             <label class="form-label" for="telefono-contactos-input">TELÉFONO</label>
                                             <div class="input-group has-validation mb-3">
                                                 <span class="input-group-text" id="telefono-contactos-addon">Tel</span>
-                                                <input type="number" class="form-control" placeholder="Ingrese el teléfono del puesto" id="telefono-contactos-input"
-                                                    name="telefono-contactos-input" minlength="10"
-                                                    aria-describedby="telefono-contactos-addon" required>
-                                                <div class="invalid-feedback">El campo teléfono es obligatorio</div>
+                                                <input type="text" class="form-control" placeholder="Ingrese el teléfono del puesto" id="telefono-contactos-input"
+                                                    name="telefono-contactos-input" maxlength="10" inputmode="numeric" pattern="[0-9]{10}"
+                                                    aria-describedby="telefono-contactos-addon">
+                                                <div class="invalid-feedback"> Si ingresa un teléfono, debe contener exactamente 10 números
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -158,6 +173,21 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <!-- campo checkbox -->
+                                    <!-- <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">ENCUESTA</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text">
+                                                    <input class="form-check-input mt-0" type="checkbox"
+                                                        id="encuesta-checkbox" name="encuesta-checkbox" value="1">
+                                                </span>
+                                                <input type="text" class="form-control" readonly
+                                                    value="Desea recibir encuestas de satisfacción por parte de LDR Solutions?">
+                                            </div>
+                                        </div>
+                                    </div> -->
                                 </div>
                                 <!-- end row -->
 
@@ -232,8 +262,12 @@
                             <td id="correoContacto">Correo</td>
                         </tr>
                         <tr>
-                            <td>TELEFONO:</td>
-                            <td id="telefonoContacto">Telefono</td>
+                            <td>EXTENSIÓN:</td>
+                            <td id="extensionContacto">Extensión</td>
+                        </tr>
+                        <tr>
+                            <td>TELÉFONO:</td>
+                            <td id="telefonoContacto">Teléfono</td>
                         </tr>
                         <tr>
                             <td>FECHA DE REGISTRO:</td>
@@ -256,6 +290,31 @@
         </div>
     </div>
 </div>
+
+<script>
+    // teléfono
+    const telefonoInput = document.getElementById('telefono-contactos-input');
+
+    telefonoInput.addEventListener('input', function() {
+        this.value = this.value.replace(/\D/g, '');
+
+        if (this.value.length > 10) {
+            this.value = this.value.slice(0, 10);
+        }
+    });
+
+    // extensión
+    const extensionInput = document.getElementById('extension-contactos-input');
+
+    extensionInput.addEventListener('input', function() {
+        this.value = this.value.replace(/\D/g, '');
+
+        if (this.value.length > 6) {
+            this.value = this.value.slice(0, 6);
+        }
+    });
+</script>
+
 
 
 

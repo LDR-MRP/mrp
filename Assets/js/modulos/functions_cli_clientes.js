@@ -5,11 +5,34 @@ let divLoading = document.querySelector("#divLoading");
 // Inputs del formulario
 const distribuidor = document.querySelector("#iddistribuidor");
 const grupo_id = document.querySelector("#grupo_id");
-const nombre_comercial = document.querySelector("#nombre-distribuidores-input");
+const nombre_fisica = document.querySelector(
+  "#nombre_fisica-distribuidores-input",
+);
+const apelldio_paterno = document.querySelector(
+  "#apellido_paterno-distribuidores-input",
+);
+const apelldio_materno = document.querySelector(
+  "#apellido_materno-distribuidores-input",
+);
+const fecha_nacimiento = document.querySelector(
+  "#fecha_nacimiento-distribuidores-input",
+);
+const curp = document.querySelector("#curp-distribuidores-input");
 const razon_social = document.querySelector("#razon-distribuidores-input");
+const representante_legal = document.querySelector(
+  "#representante_legal-distribuidores-input",
+);
+const domicilio_fiscal = document.querySelector(
+  "#domicilio_fiscal-distribuidores-input",
+);
+const correo = document.querySelector("#correo-distribuidores-input");
 const rfc = document.querySelector("#rfc-distribuidores-input");
+const nombre_comercial = document.querySelector("#nombre-distribuidores-input");
 const repve = document.querySelector("#repve-distribuidores-input");
 const plaza = document.querySelector("#plaza-distribuidores-input");
+const clasificacion = document.querySelector(
+  "#clasificacion-distribuidores-input",
+);
 const estatus = document.querySelector("#estatus-select");
 const tipo_negocio = document.querySelector("#tipo_negocio-select");
 const telefono = document.querySelector("#telefono-distribuidores-input");
@@ -25,10 +48,12 @@ const numero_ext = document.querySelector("#numero_ext-distribuidores-input");
 const numero_int = document.querySelector("#numero_int-distribuidores-input");
 const colonia = document.querySelector("#colonia-distribuidores-input");
 const codigo_postal = document.querySelector(
-  "#codigo_postal-distribuidores-input"
+  "#codigo_postal-distribuidores-input",
 );
 
 const estado = document.querySelector("#estado-select");
+
+const inputRegion = document.querySelector("#region_nombre");
 
 const selectPais = document.querySelector("#listPaises");
 const selectEstado = document.querySelector("#listEstados");
@@ -37,6 +62,10 @@ const selectMunicipio = document.querySelector("#listMunicipios");
 const selectPaisFiscal = document.querySelector("#listPaisesFiscal");
 const selectEstadoFiscal = document.querySelector("#listEstadosFiscal");
 const selectMunicipioFiscal = document.querySelector("#listMunicipiosFiscal");
+
+const tipoPersona = document.querySelector("#tipo_persona-select");
+const personaFisicaWrapper = document.querySelector("#personaFisicaWrapper");
+const personaMoralWrapper = document.querySelector("#personaMoralWrapper");
 
 // Mis referencias globales
 let primerTab; // Tab LISTA
@@ -54,6 +83,7 @@ document.addEventListener(
     formDistribuidores = document.querySelector("#formDistribuidores");
     spanBtnText = document.querySelector("#btnText");
 
+    fntRegionales();
     fntGrupos();
     fntModelos();
     fntPaises(selectPais, selectEstado, selectMunicipio);
@@ -75,6 +105,7 @@ document.addEventListener(
         { data: "tipo_negocio" },
         { data: "nombre_comercial" },
         { data: "razon_social" },
+        { data: "region" },
         { data: "plaza" },
         { data: "estado" },
         { data: "options" },
@@ -85,16 +116,38 @@ document.addEventListener(
       bDestroy: true,
       iDisplayLength: 10,
       order: [[0, "desc"]],
+
+      language: {
+        processing: "Procesando...",
+        search: "Buscar:",
+        lengthMenu: "Mostrar _MENU_ registros",
+        info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+        infoEmpty: "Mostrando 0 a 0 de 0 registros",
+        infoFiltered: "(filtrado de _MAX_ registros totales)",
+        loadingRecords: "Cargando...",
+        zeroRecords: "No se encontraron resultados",
+        emptyTable: "No hay datos disponibles en la tabla",
+        paginate: {
+          first: "Primero",
+          previous: "Anterior",
+          next: "Siguiente",
+          last: "Último",
+        },
+        aria: {
+          sortAscending: ": activar para ordenar la columna ascendente",
+          sortDescending: ": activar para ordenar la columna descendente",
+        },
+      },
     });
 
     // --------------------------------------------------------------------
     //  TABS BOOTSTRAP
     // --------------------------------------------------------------------
     const primerTabEl = document.querySelector(
-      '#nav-tab a[href="#listdistribuidores"]'
+      '#nav-tab a[href="#listdistribuidores"]',
     );
     const firstTabEl = document.querySelector(
-      '#nav-tab a[href="#agregardistribuidores"]'
+      '#nav-tab a[href="#agregardistribuidores"]',
     );
 
     if (primerTabEl && firstTabEl && spanBtnText) {
@@ -160,7 +213,7 @@ document.addEventListener(
           Swal.fire(
             "Error",
             "Ocurrió un error en el servidor. Inténtalo de nuevo.",
-            "error"
+            "error",
           );
           return;
         }
@@ -225,7 +278,7 @@ document.addEventListener(
       };
     });
   },
-  false
+  false,
 );
 
 function fntEditDistribuidor(iddistribuidor) {
@@ -249,14 +302,25 @@ function fntEditDistribuidor(iddistribuidor) {
 
     // DATOS DEL DISTRIBUIDOR
     const data = objData.data;
+    const reg = data.regional;
 
     distribuidor.value = data.id;
+    fntRegionales(reg.regional_id);
     grupo_id.value = data.grupo_id;
-    nombre_comercial.value = data.nombre_comercial;
+    nombre_fisica.value = data.nombre_fisica;
+    apelldio_paterno.value = data.apellido_paterno;
+    apelldio_materno.value = data.apellido_materno;
+    fecha_nacimiento.value = data.fecha_nacimiento;
+    correo.value = data.correo;
+    curp.value = data.curp;
     razon_social.value = data.razon_social;
+    representante_legal.value = data.representante_legal;
+    domicilio_fiscal.value = data.domicilio_fiscal;
     rfc.value = data.rfc;
+    nombre_comercial.value = data.nombre_comercial;
     repve.value = data.repve;
     plaza.value = data.plaza;
+    clasificacion.value = data.clasificacion;
     estatus.value = data.estatus;
     tipo_negocio.value = data.tipo_negocio;
     telefono.value = data.telefono;
@@ -266,6 +330,9 @@ function fntEditDistribuidor(iddistribuidor) {
     modelosDisponibles.innerHTML = "";
     modelosSeleccionados.innerHTML = "";
 
+    tipoPersona.value = data.tipo_persona;
+    toggleTipoPersona();
+
     Array.from(listModelos.options).forEach((opt) => {
       let li = document.createElement("li");
       li.className = "list-group-item";
@@ -273,7 +340,7 @@ function fntEditDistribuidor(iddistribuidor) {
       li.dataset.id = opt.value;
 
       const seleccionado = data.modelos.some(
-        (m) => String(m.idlineaproducto) === opt.value
+        (m) => String(m.idlineaproducto) === opt.value,
       );
 
       if (seleccionado) {
@@ -297,6 +364,7 @@ function fntEditDistribuidor(iddistribuidor) {
     selectPais.value = dir.pais_id;
     fntEstados(dir.pais_id, selectEstado, selectMunicipio, dir.estado_id);
     fntMunicipios(dir.estado_id, selectMunicipio, dir.municipio_id);
+    fntRegionByEstado(dir.estado_id);
 
     // DIRECCION FISCAL
     const dirFiscal = data.direccion_fiscal;
@@ -321,12 +389,12 @@ function fntEditDistribuidor(iddistribuidor) {
         dirFiscal.pais_id,
         selectEstadoFiscal,
         selectMunicipioFiscal,
-        dirFiscal.estado_id
+        dirFiscal.estado_id,
       );
       fntMunicipios(
         dirFiscal.estado_id,
         selectMunicipioFiscal,
-        dirFiscal.municipio_id
+        dirFiscal.municipio_id,
       );
     }
 
@@ -340,23 +408,23 @@ function fntEditDistribuidor(iddistribuidor) {
 function fntDelDistribuidor(iddistribuidor) {
   Swal.fire({
     html: `
-        <div class="mt-3">
-            <lord-icon 
-                src="https://cdn.lordicon.com/gsqxdxog.json" 
-                trigger="loop" 
-                colors="primary:#f7b84b,secondary:#f06548" 
-                style="width:100px;height:100px">
-            </lord-icon>
+          <div class="mt-3">
+              <lord-icon 
+                  src="https://cdn.lordicon.com/gsqxdxog.json" 
+                  trigger="loop" 
+                  colors="primary:#f7b84b,secondary:#f06548" 
+                  style="width:100px;height:100px">
+              </lord-icon>
 
-            <div class="mt-4 pt-2 fs-15 mx-5">
-                <h4>Confirmar eliminación</h4>
-                <p class="text-muted mx-4 mb-0">
-                    ¿Estás seguro de que deseas eliminar este registro? 
-                    Esta acción no se puede deshacer.
-                </p>
-            </div>
-        </div>
-    `,
+              <div class="mt-4 pt-2 fs-15 mx-5">
+                  <h4>Confirmar eliminación</h4>
+                  <p class="text-muted mx-4 mb-0">
+                      ¿Estás seguro de que deseas eliminar este registro? 
+                      Esta acción no se puede deshacer.
+                  </p>
+              </div>
+          </div>
+      `,
     showCancelButton: true,
     confirmButtonText: "Sí, eliminar",
     cancelButtonText: "Cancelar",
@@ -380,7 +448,7 @@ function fntDelDistribuidor(iddistribuidor) {
     request.open("POST", ajaxUrl, true);
     request.setRequestHeader(
       "Content-type",
-      "application/x-www-form-urlencoded"
+      "application/x-www-form-urlencoded",
     );
     request.send(strData);
 
@@ -421,6 +489,49 @@ function fntViewDistribuidor(iddistribuidor) {
             : '<span class="badge bg-danger">Inactivo</span>';
 
         document.querySelector("#iddistri").innerHTML = objData.data.id;
+
+        const tipoPersona = objData.data.tipo_persona;
+
+        document.querySelector("#tipopersona").innerHTML =
+          tipoPersona == 1 ? "FÍSICA" : "MORAL";
+
+        if (tipoPersona == 1) {
+          // PERSONA FÍSICA
+          document
+            .querySelectorAll(".persona-fisica")
+            .forEach((el) => (el.style.display = ""));
+          document
+            .querySelectorAll(".persona-moral")
+            .forEach((el) => (el.style.display = "none"));
+
+          document.querySelector("#nombre_fisica").innerHTML =
+            objData.data.nombre_fisica;
+          document.querySelector("#apellido_paterno").innerHTML =
+            objData.data.apellido_paterno;
+          document.querySelector("#apellido_materno").innerHTML =
+            objData.data.apellido_materno;
+          document.querySelector("#fecha_nacimiento").innerHTML =
+            objData.data.fecha_nacimiento;
+          document.querySelector("#curp").innerHTML = objData.data.curp;
+        } else {
+          // PERSONA MORAL
+          document
+            .querySelectorAll(".persona-moral")
+            .forEach((el) => (el.style.display = ""));
+          document
+            .querySelectorAll(".persona-fisica")
+            .forEach((el) => (el.style.display = "none"));
+
+          document.querySelector("#representante_legal").innerHTML =
+            objData.data.representante_legal;
+          document.querySelector("#domicilio_fiscal").innerHTML =
+            objData.data.domicilio_fiscal;
+        }
+
+        document.querySelector("#correo").innerHTML = objData.data.correo;
+        const reg = objData.data.regional;
+        document.querySelector("#nombreRegional").innerHTML =
+          reg.nombre + " " + reg.apellido_paterno + " " + reg.apellido_materno;
         document.querySelector("#nombregrupo").innerHTML =
           objData.data.nombre_grupo;
         document.querySelector("#tiponegocio").innerHTML =
@@ -430,6 +541,8 @@ function fntViewDistribuidor(iddistribuidor) {
         document.querySelector("#razonsocial").innerHTML =
           objData.data.razon_social;
         document.querySelector("#plaza").innerHTML = objData.data.plaza;
+        document.querySelector("#clasificacion").innerHTML =
+          objData.data.clasificacion;
         document.querySelector("#rfc").innerHTML = objData.data.rfc;
         document.querySelector("#repve").innerHTML = objData.data.repve;
         document.querySelector("#telefono").innerHTML = objData.data.telefono;
@@ -450,6 +563,7 @@ function fntViewDistribuidor(iddistribuidor) {
         document.querySelector("#pais").innerHTML = direccion.pais;
         document.querySelector("#estado").innerHTML = direccion.estado;
         document.querySelector("#municipio").innerHTML = direccion.municipio;
+        document.querySelector("#region").innerHTML = direccion.region;
 
         const direccionFiscal = objData.data.direccion_fiscal;
         document.querySelector("#tipofiscal").innerHTML = direccionFiscal.tipo;
@@ -475,25 +589,25 @@ function fntViewDistribuidor(iddistribuidor) {
         if (contactos.length > 0) {
           contactos.forEach((contacto) => {
             htmlContactos += `
-              <tr>
-                <td>${contacto.puesto} 
-                    <br/>
-                    ${contacto.departamento}
-                </td>
-                <td>${contacto.nombre}</td>
-                <td>${contacto.correo}</td>
-                <td>${contacto.telefono}</td>
-                <td>${contacto.estatus}</td>
-                <td>${contacto.fecha_registro}</td>
-              </tr>
-            `;
+                <tr>
+                  <td>${contacto.puesto} 
+                      <br/>
+                      ${contacto.departamento}
+                  </td>
+                  <td>${contacto.nombre}</td>
+                  <td>${contacto.correo}</td>
+                  <td>${contacto.telefono}</td>
+                  <td>${contacto.estatus}</td>
+                  <td>${contacto.fecha_registro}</td>
+                </tr>
+              `;
           });
         } else {
           htmlContactos = `
-            <tr>
-              <td colspan="7" class="text-center">No hay contactos registrados</td>
-            </tr>
-          `;
+              <tr>
+                <td colspan="7" class="text-center">No hay contactos registrados</td>
+              </tr>
+            `;
         }
 
         document.querySelector("#tbodyContactos").innerHTML = htmlContactos;
@@ -504,19 +618,19 @@ function fntViewDistribuidor(iddistribuidor) {
         if (modelos.length > 0) {
           modelos.forEach((modelo) => {
             htmlModelos += `
-              <tr>
-                <td>${modelo.idlineaproducto}</td>
-                <td>${modelo.cve_linea_producto}</td>
-                <td>${modelo.descripcion}</td>
-              </tr>
-            `;
+                <tr>
+                  <td>${modelo.idlineaproducto}</td>
+                  <td>${modelo.cve_linea_producto}</td>
+                  <td>${modelo.descripcion}</td>
+                </tr>
+              `;
           });
         } else {
           htmlModelos = `
-            <tr>
-              <td colspan="3" class="text-center">No hay modelos registrados</td>
-            </tr>
-          `;
+              <tr>
+                <td colspan="3" class="text-center">No hay modelos registrados</td>
+              </tr>
+            `;
         }
 
         document.querySelector("#tbodyModelos").innerHTML = htmlModelos;
@@ -527,6 +641,29 @@ function fntViewDistribuidor(iddistribuidor) {
       }
     }
   };
+}
+
+// ------------------------------------------------------------------------
+//  VER EL CATALOGO DE REGIONALES
+// ------------------------------------------------------------------------
+function fntRegionales(selectedValue = "") {
+  if (document.querySelector("#regional_id")) {
+    let ajaxUrl = base_url + "/cli_clientes/getSelectRegionales";
+    let request = window.XMLHttpRequest
+      ? new XMLHttpRequest()
+      : new ActiveXObject("Microsoft.XMLHTTP");
+    request.open("GET", ajaxUrl, true);
+    request.send();
+    request.onreadystatechange = function () {
+      if (request.readyState == 4 && request.status == 200) {
+        document.querySelector("#regional_id").innerHTML = request.responseText;
+
+        if (selectedValue !== "") {
+          document.querySelector("#regional_id").value = selectedValue;
+        }
+      }
+    };
+  }
 }
 
 // ------------------------------------------------------------------------
@@ -600,6 +737,7 @@ function fntEstados(pais_id, selectEstado, selectMunicipio, selected = "") {
 
   selectEstado.onchange = function () {
     fntMunicipios(this.value, selectMunicipio);
+    fntRegionByEstado(this.value);
   };
 }
 
@@ -706,4 +844,58 @@ function syncSelectModelos() {
     const opt = listModelos.querySelector(`option[value="${li.dataset.id}"]`);
     if (opt) opt.selected = true;
   });
+}
+
+function toggleTipoPersona() {
+  const tipo = tipoPersona.value;
+
+  const esFisica = tipo === "1";
+  const esMoral = tipo === "2";
+
+  personaFisicaWrapper.classList.toggle("d-none", !esFisica);
+  personaMoralWrapper.classList.toggle("d-none", !esMoral);
+
+  const fisicaInputs = personaFisicaWrapper.querySelectorAll("input, select");
+  const moralInputs = personaMoralWrapper.querySelectorAll("input, select");
+
+  fisicaInputs.forEach((input) => {
+    input.required = esFisica;
+    if (!esFisica) input.value = "";
+  });
+
+  moralInputs.forEach((input) => {
+    input.required = esMoral;
+    if (!esMoral) input.value = "";
+  });
+}
+
+tipoPersona.addEventListener("change", toggleTipoPersona);
+
+document.addEventListener("DOMContentLoaded", () => {
+  toggleTipoPersona();
+});
+
+function fntRegionByEstado(estado_id) {
+  if (!estado_id) {
+    inputRegion.value = "";
+    return;
+  }
+
+  let ajaxUrl = base_url + "/cli_clientes/getRegionByEstado/" + estado_id;
+  let request = new XMLHttpRequest();
+
+  request.open("GET", ajaxUrl, true);
+  request.send();
+
+  request.onreadystatechange = function () {
+    if (request.readyState === 4 && request.status === 200) {
+      let objData = JSON.parse(request.responseText);
+
+      if (objData.status) {
+        inputRegion.value = objData.data.nombre;
+      } else {
+        inputRegion.value = "";
+      }
+    }
+  };
 }
