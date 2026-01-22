@@ -654,7 +654,7 @@ public function orden($num_orden)
     die();
   }
 
-  // ✅ MODO JSON (para fetch del modal)
+
   if (isset($_GET['json']) && $_GET['json'] == '1') {
     header('Content-Type: application/json; charset=utf-8');
 
@@ -668,19 +668,13 @@ public function orden($num_orden)
       die();
     }
 
-    // ✅ Si tu obtenerPlaneacion ya trae {status, data} o directo header,
-    // lo envolvemos de forma estándar para el JS
-    // Ajusta aquí según tu respuesta real:
-    // - Si $resp ya es ['status'=>true,'data'=>...], puedes retornarlo tal cual.
-    // - Si $resp es el header directo, lo envolvemos como header.
 
-    // Caso 1: tu modelo ya devuelve algo tipo ['status'=>true,'data'=>...]
+
     if (is_array($resp) && array_key_exists('status', $resp)) {
       echo json_encode($resp, JSON_UNESCAPED_UNICODE);
       die();
     }
 
-    // Caso 2: tu modelo devuelve el header directo
     echo json_encode([
       'status' => true,
       'data'   => [
@@ -690,7 +684,7 @@ public function orden($num_orden)
     die();
   }
 
-  // ✅ MODO NORMAL (vista HTML)
+
   $data['page_tag'] = $num_orden;
   $data['page_title'] = "Orden <small>de trabajo</small>";
   $data['page_name'] = "Orden de trabajo";
@@ -797,7 +791,7 @@ public function getStatusOT()
     die();
   }
 
-  // Puedes mandar planeacionid o peid (más ligero)
+
   $planeacionid = (int)($req['planeacionid'] ?? 0);
   $peid         = (int)($req['peid'] ?? 0);
 
@@ -806,7 +800,7 @@ public function getStatusOT()
     die();
   }
 
-  // ✅ Si mandas peid: trae solo las sub-OT de esa estación (ideal por monitor)
+
   if ($peid > 0) {
     $rows = $this->model->getStatusOTByPeid($peid);
 
@@ -819,7 +813,7 @@ public function getStatusOT()
     die();
   }
 
-  // ✅ Si mandas planeacionid: trae todas las sub-OT del flujo completo
+
   $rows = $this->model->getStatusOTByPlaneacion($planeacionid);
 
   echo json_encode([

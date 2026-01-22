@@ -1032,7 +1032,7 @@ public function softDeleteHerramientasNoIncluidos($idAlmacen, $idProducto, $idEs
     $idProducto = (int)$idProducto;
     $idEstacion = (int)$idEstacion;
 
-    // si no viene ninguno, apagamos todos
+  
     if (empty($idsIncoming)) {
         $sql = "UPDATE mrp_estacion_herramientas
                 SET estado = 0
@@ -1147,7 +1147,7 @@ public function softDeleteHerramientasNoIncluidos($idAlmacen, $idProducto, $idEs
     }
 
 // ==========================================================
-    //  DELETE LÓGICO (tu estructura)
+    //  DELETE LÓGICO 
     // ==========================================================
     public function deleteRutaDetalleLogico(int $iddetalle)
     {
@@ -1193,7 +1193,7 @@ public function softDeleteHerramientasNoIncluidos($idAlmacen, $idProducto, $idEs
     }
 
     // ==========================================================
-    //  REINDEX ORDEN 1..N (solo estado=2)
+    //  REINDEX ORDEN 
     // ==========================================================
     public function reindexOrdenRuta(int $idruta)
     {
@@ -1301,7 +1301,7 @@ public function selectProductoReporte(int $productoid)
     }
 
     // ---------------------------------------------------------
-    // DOCUMENTACIÓN ASOCIADA (LISTA)
+    // DOCUMENTACIÓN 
     // ---------------------------------------------------------
     $sqlDocs = "SELECT *
                 FROM mrp_productos_documentos
@@ -1391,7 +1391,7 @@ public function selectProductoReporte(int $productoid)
     $estaciones_registradas = $this->select_all($sqlEst);
     if (!is_array($estaciones_registradas)) $estaciones_registradas = [];
 
-    // Si no hay estaciones, igual regresa ruta con arreglo vacío
+
     if (empty($estaciones_registradas)) {
         $ruta['estaciones_registradas'] = [];
         return [
@@ -1453,9 +1453,7 @@ public function selectProductoReporte(int $productoid)
     $rowsComp = $this->select_all($sqlComp);
     if (!is_array($rowsComp)) $rowsComp = [];
 
-    // ---------------------------------------------------------
-    // Indexar por estacionidf
-    // ---------------------------------------------------------
+
     $mapEsp = [];
     foreach ($rowsEsp as $x) {
         $eid = (int)($x['estacionid'] ?? 0);
@@ -1474,9 +1472,7 @@ public function selectProductoReporte(int $productoid)
         if ($eid > 0) $mapComp[$eid][] = $x;
     }
 
-    // ---------------------------------------------------------
-    // Adjuntar a cada estación: especificaciones/herramientas/componentes
-    // ---------------------------------------------------------
+
     foreach ($estaciones_registradas as $k => $row) {
         $eid = (int)($row['estacionid'] ?? 0);
 
@@ -1497,7 +1493,7 @@ public function selectProductoReporte(int $productoid)
             : ['status' => false, 'msg' => 'No existe registro', 'data' => []];
     }
 
-    // agregar estaciones a ruta
+   
     $ruta['estaciones_registradas'] = $estaciones_registradas;
 
     $producto_configurado = [

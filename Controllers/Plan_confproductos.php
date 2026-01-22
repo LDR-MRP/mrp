@@ -669,7 +669,7 @@ $this->model->insertAuditoria(
                 $idestacion = (int)($row['idestacion'] ?? 0);
                 $orden      = (int)($row['orden'] ?? 0);
 
-                // en insert ignoramos orden=0
+               
                 if ($idestacion > 0 && $orden > 0) {
                   $request_detalle =   $this->model->insertRutaDetalle($idruta, $idestacion, $orden, $now);
 
@@ -721,7 +721,7 @@ $this->model->insertAuditoria(
     $detalleAudit
 );
 
-        $idsDetalleVistos = []; // para desactivar los que no vinieron
+        $idsDetalleVistos = []; 
 
         foreach ($detalle as $row) {
 
@@ -729,7 +729,7 @@ $this->model->insertAuditoria(
             $idestacion = (int)($row['idestacion'] ?? 0);
             $orden      = (int)($row['orden'] ?? 0);
 
-            // 1) eliminar lógico si orden=0 y hay iddetalle
+          
             if ($orden === 0) {
                 if ($iddetalle > 0) {
                     $this->model->deleteRutaDetalleLogico($iddetalle);
@@ -742,14 +742,14 @@ $this->model->insertAuditoria(
                 continue;
             }
 
-            // 2) update si ya existe iddetalle
+          
             if ($iddetalle > 0) {
                 $this->model->updateRutaDetalle($iddetalle, $idestacion, $orden);
                 $idsDetalleVistos[] = $iddetalle;
                 continue;
             }
 
-            // 3) insert nuevo si iddetalle=0
+         
             if ($idestacion > 0 && $orden > 0) {
                 $newId = $this->model->insertRutaDetalle($idruta, $idestacion, $orden, $now);
                 if ($newId) $idsDetalleVistos[] = (int)$newId;
@@ -1227,26 +1227,26 @@ public function setHerramientasEstacion()
 
     if (!is_array($detalle)) $detalle = [];
 
-    // normalizar inventarioids entrantes
+
     $incoming = [];
     foreach ($detalle as $it) {
         $inv = (int)($it['inventarioid'] ?? 0);
         $cant = (int)($it['cantidad'] ?? 0);
         if ($inv > 0 && $cant > 0) {
-            $incoming[$inv] = $cant; // evita duplicados
+            $incoming[$inv] = $cant;
         }
     }
 
     $fecha = date('Y-m-d H:i:s');
 
-    // 1) Traer existentes (incluye estado 0/1)
+ 
     $existentes = $this->model->selectHerramientasEstacionAllEstados($idEstacion, $idProducto, $idAlmacen);
     $existMap = [];
     foreach ($existentes as $row) {
         $existMap[(int)$row['inventarioid']] = (int)$row['idherramienta'];
     }
 
-    // 2) Insert/Update/Reactivar
+
     foreach ($incoming as $inventarioid => $cantidad) {
         if (isset($existMap[$inventarioid])) {
             $idcomponente = $existMap[$inventarioid];
@@ -1278,7 +1278,7 @@ public function setHerramientasEstacion()
         }
     }
 
-    // 3) Soft delete: lo que existe en BD pero no viene en incoming
+
     $idsIncoming = array_keys($incoming);
     $this->model->softDeleteHerramientasNoIncluidos($idAlmacen, $idProducto, $idEstacion, $idsIncoming);
 

@@ -37,14 +37,14 @@
 
         $h = function($v){ return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
 
-        // Prioridad badge
+        
         $prioridad = strtoupper((string)($ot['prioridad'] ?? ''));
         $badgePrioridad = 'badge bg-info-subtle text-info';
         if (in_array($prioridad, ['CRITICA','CRÍTICA','ALTA'])) $badgePrioridad = 'badge bg-danger-subtle text-danger';
         else if ($prioridad === 'MEDIA') $badgePrioridad = 'badge bg-warning-subtle text-warning';
         else if ($prioridad === 'BAJA')  $badgePrioridad = 'badge bg-success-subtle text-success';
 
-        // Estado OT badge
+   
         $estado = (int)($ot['estado'] ?? 0);
         $badgeEstado = 'badge bg-secondary-subtle text-secondary';
         $txtEstado   = '—';
@@ -59,26 +59,25 @@
           return $t ? date('d/m/Y', $t) : $d;
         };
 
-        // datetime bonito (y limpia 0000-00-00 00:00:00)
+
 $fmtDT = function($d){
   $d = trim((string)$d);
   if ($d === '' || $d === '0000-00-00 00:00:00' || $d === '0000-00-00') return '—';
 
-  // Si ya viene en formato SQL (YYYY-mm-dd ...)
+
   if (preg_match('/^\d{4}-\d{2}-\d{2}/', $d)) {
     $t = strtotime($d);
     return $t ? date('Y-m-d H:i:s', $t) : $d;
   }
 
-  // Si viene en formato d/m/Y H:i (15/01/2026 12:56)
+
   $dt = DateTime::createFromFormat('d/m/Y H:i', $d);
   if ($dt) return $dt->format('Y-m-d H:i:s');
 
-  // Si viene en formato d/m/Y H:i:s (por si acaso)
   $dt2 = DateTime::createFromFormat('d/m/Y H:i:s', $d);
   if ($dt2) return $dt2->format('Y-m-d H:i:s');
 
-  // Último recurso
+
   $t = strtotime($d);
   return $t ? date('Y-m-d H:i:s', $t) : $d;
 };
@@ -94,7 +93,7 @@ $fmtDT = function($d){
           return empty($names) ? '—' : implode(', ', $names);
         };
 
-        // Estado estación -> colores Velzon
+
         $estStyle = function($e){
           $st = (int)($e['estado'] ?? 0);
 
@@ -119,7 +118,7 @@ $fmtDT = function($d){
           return [$cls,$badge,$icon];
         };
 
-        // badge para estatus sub-OT
+
         $badgeEstatusOT = function($estatus){
           $st = (int)$estatus;
           $cls = 'badge bg-secondary-subtle text-secondary';
@@ -138,35 +137,31 @@ $fmtDT = function($d){
         $fechaInicioISO    = $ot['fecha_inicio'] ?? '';
         $fechaRequeridaISO = $ot['fecha_requerida'] ?? '';
 
-        // ✅ Para tu PDF: ajusta a tu ruta real
+   
         $pdfUrl = base_url() . '/plan_planeacion/descargarOrden/' . urlencode((string)($ot['num_orden'] ?? ''));
       ?>
 
       <style>
-        /* ===========================
-           THEME AWARE (Velzon / BS5)
-        ============================ */
+  
         :root{
           --mrp-surface: var(--vz-card-bg, var(--bs-body-bg));
           --mrp-surface-2: rgba(64,81,137,.06);
           --mrp-border: var(--vz-border-color, rgba(0,0,0,.12));
           --mrp-text: var(--vz-body-color, var(--bs-body-color));
-          /* ✅ FIX: en light debe ser oscuro/muted, no blanco */
+
           --mrp-muted: var(--vz-text-muted, rgba(0,0,0,.55));
-          /* ✅ FIX: color de encabezados de tabla */
+       
           --mrp-head-text: rgba(0,0,0,.65);
         }
 
-        /* Dark detection (cubre Velzon viejo/nuevo) */
+
         html[data-bs-theme="dark"], body[data-layout-mode="dark"]{
           --mrp-surface-2: rgba(255,255,255,.05);
           --mrp-muted: rgba(255,255,255,.65);
           --mrp-head-text: rgba(255,255,255,.72);
         }
 
-        /* ===========================
-           Timeline line
-        ============================ */
+
         .profile-timeline .accordion-item{ position: relative; }
         .profile-timeline .accordion-item:not(:last-child)::after{
           content:"";
@@ -182,9 +177,7 @@ $fmtDT = function($d){
           background: rgba(255,255,255,.12);
         }
 
-        /* ===========================
-           Right sticky
-        ============================ */
+
         @media (min-width: 992px){
           .right-sticky{
             position: sticky;
@@ -192,18 +185,13 @@ $fmtDT = function($d){
           }
         }
 
-        /* ===========================
-           KPI boxes
-        ============================ */
         .kpi-box{
           background: var(--mrp-surface);
           border: 1px solid var(--mrp-border) !important;
           border-radius: .85rem;
         }
 
-        /* ===========================
-           Chat (theme-aware)
-        ============================ */
+  
         .chat-wrap{
           border: 1px solid var(--mrp-border);
           border-radius: .85rem;
@@ -254,9 +242,7 @@ $fmtDT = function($d){
         }
         .chat-foot .form-control{ border-radius: .6rem; }
 
-        /* ===========================
-           Sub-OT table (theme-aware)
-        ============================ */
+
         .subot-table{
           border: 1px solid var(--mrp-border);
           border-radius: .85rem;
@@ -268,7 +254,7 @@ $fmtDT = function($d){
           font-size: .78rem;
           letter-spacing: .02em;
           text-transform: uppercase;
-          /* ✅ FIX: visible in light & dark */
+
           color: var(--mrp-head-text);
           background: var(--mrp-surface-2);
           border-bottom: 1px solid var(--mrp-border);
@@ -288,14 +274,14 @@ $fmtDT = function($d){
           background: rgba(255,255,255,.04);
         }
 
-        /* CTA PDF */
+  
         .btn-pdf-cta{
           border-radius: .75rem;
           padding: .55rem .9rem;
           box-shadow: 0 8px 18px rgba(0,0,0,.12);
         }
 
-        /* ✅ Modal textarea */
+   
         .comment-textarea{
           min-height: 120px;
           resize: vertical;
@@ -453,7 +439,7 @@ $fmtDT = function($d){
           </div>
         </div>
 
-        <!-- ROUTE TIMELINE + RIGHT COLUMN -->
+       
         <div class="row">
           <!-- Timeline -->
           <div class="col-12 col-lg-8">
@@ -583,7 +569,7 @@ $fmtDT = function($d){
                                                   $estatus  = (int)($otRow['estatus'] ?? 0);
                                                   $badgeOT  = $badgeEstatusOT($estatus);
 
-                                                  // ✅ NUEVO: comentario existente
+                                              
                                                   $coment   = (string)($otRow['comentarios'] ?? '');
 
                                                   $disableStart  = ($estatus === 2 || $estatus === 3) ? 'disabled' : '';
@@ -628,7 +614,7 @@ $fmtDT = function($d){
                                                         <i class="ri-checkbox-circle-line me-1"></i>Finalizar
                                                       </button>
 
-                                                      <!-- ✅ NUEVO: Comentarios -->
+                                              
                                                       <button
                                                         type="button"
                                                         class="btn btn-soft-secondary btnCommentOT"
@@ -709,7 +695,7 @@ $fmtDT = function($d){
           <div class="col-12 col-lg-4 no-print">
             <div class="right-sticky">
 
-              <!-- RELOJ / TRACKING -->
+           
               <div class="card mb-4"
                    id="timeTrackerCard"
                    data-fecha-inicio="<?= $h($fechaInicioISO) ?>"
@@ -785,8 +771,7 @@ $fmtDT = function($d){
                       </button>
                     </div>
 
-                    <!-- Si luego activas mensajes, mete aquí tu chat-body -->
-                    <!-- <div class="chat-body" id="chatBody"></div> -->
+               
 
                     <div class="chat-foot">
                       <div class="input-group">
@@ -812,7 +797,7 @@ $fmtDT = function($d){
           </div>
         </div><!-- row -->
 
-        <!-- ✅ MODAL: COMENTARIOS SUB-OT -->
+    
         <div class="modal fade" id="modalOTComment" tabindex="-1" aria-hidden="true">
           <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
@@ -867,7 +852,7 @@ $fmtDT = function($d){
 <!-- ===========================
   MODAL CHAT OT
 =========================== -->
-<!-- Modal Chat (Velzon style) -->
+
 <div class="modal fade" id="modalChatOT" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content border-0">
@@ -879,7 +864,7 @@ $fmtDT = function($d){
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
-      <!-- ✅ Importante: quitamos padding para que el chat use todo el alto -->
+  
       <div class="modal-body p-0">
         <div class="v-chat-wrap">
 

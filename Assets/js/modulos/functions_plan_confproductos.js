@@ -1,8 +1,3 @@
-/*****************************************************************************************
- *  PLAN_CONFPRODUCTOS.JS (COMPLETO + ORDENADO + LOADING GLOBAL)
- *  - Integra LOADING en TODAS las peticiones (fetch + XHR) con wrappers
- *  - Mantiene tu estructura y lógica (tabs, rutas, componentes, herramientas, DTs)
- ******************************************************************************************/
 
 // ---------------------------------------------
 //  GLOBALES
@@ -44,8 +39,8 @@ let btnFinalizado = null;
 
 // RUTA 
 let rutaEstaciones = [];           
-let rutaDetallePendiente = [];     // detalle que viene del backend
-let aplicoRutaPendiente = false;   // evita re-aplicar varias veces
+let rutaDetallePendiente = [];     
+let aplicoRutaPendiente = false;   
 
 let tableEspecifica = null;
 let estacionActual = 0;
@@ -56,13 +51,13 @@ let componentesSeleccionados = []; //
 let dtSelectedHerramientas = null;
 let herramientasSeleccionadas = []; // 
 
-// NUEVOS para control de ruta
-let estacionesOriginales = new Set(); // estaciones que venían de BD
+// NUEVOS 
+let estacionesOriginales = new Set();
 let estacionesEliminadas = [];       
 
 
 // ================================
-// LOADER GLOBAL (UTILS)
+// LOADER GLOBAL 
 // ================================
 function showLoading() {
   if (divLoading) divLoading.style.display = "flex";
@@ -71,7 +66,7 @@ function hideLoading() {
   if (divLoading) divLoading.style.display = "none";
 }
 
-// Wrapper para fetch: siempre apaga loader
+
 async function fetchJSON(url, options = {}, { useLoading = true } = {}) {
   try {
     if (useLoading) showLoading();
@@ -179,7 +174,7 @@ document.addEventListener('DOMContentLoaded', function () {
   refreshLowerTabs();
 
   // --------------------------------------------------------------------
-  //  INIT TAB INFORMACIÓN GENERAL (CARGA SELECTS)
+  //  INIT TAB INFORMACIÓN GENERAL 
   // --------------------------------------------------------------------
   initTabInformacion();
 
@@ -234,9 +229,7 @@ document.addEventListener('DOMContentLoaded', function () {
   prepararEventosCatalogoHerramientas();
   prepararGuardarTodoHerramientas();
 
-  // --------------------------------------------------------------------
-  //  Recargar documentos / cargar descriptiva / cargar procesos
-  // --------------------------------------------------------------------
+
   if (btnDocumentacion) {
     btnDocumentacion.addEventListener('click', function () {
       if (tableDocumentos) tableDocumentos.ajax.reload();
@@ -722,7 +715,7 @@ function initTabInformacion() {
 
 
 // ------------------------------------------------------------------------
-//  CARGAR DESCRIPTIVA TÉCNICA SI YA EXISTE
+//  CARGAR DESCRIPTIVA TÉCNICA 
 // ------------------------------------------------------------------------
 async function loadDescriptivaForProducto() {
   if (!formConfDescriptiva) return;
@@ -806,7 +799,7 @@ async function loadDescriptivaForProducto() {
 
 
 // ------------------------------------------------------------------------
-//  CARGAR RUTA SI YA EXISTE (FIX FINAL) + LOADING
+//  CARGAR RUTA SI YA EXISTE 
 // ------------------------------------------------------------------------
 async function loadProcesoForProducto() {
   if (!formRuta) return;
@@ -1095,9 +1088,7 @@ async function fntEditProducto(idproducto) {
 }
 
 
-// ------------------------------------------------------------------------
-//  PLANTAS / LÍNEAS / ESTACIONES
-// ------------------------------------------------------------------------
+
 async function fntPlantas(selectedValue = "") {
   const selectPlantasLocal = document.querySelector('#listPlantasSelect');
   const selectLineasLocal = document.querySelector('#listLineasSelect');
@@ -1319,7 +1310,7 @@ function resetRutaUI() {
 
 
 // ------------------------------------------------------------------------
-//  AGREGAR ESTACIÓN A LA RUTA (TABLA: <tr>)
+//  AGREGAR ESTACIÓN A LA RUTA
 // ------------------------------------------------------------------------
 function agregarEstacionARuta(est, botonOrigen) {
   const tbody = document.querySelector('#listaRuta');
@@ -1330,7 +1321,7 @@ function agregarEstacionARuta(est, botonOrigen) {
 
   if (rutaEstaciones.includes(idEstacion)) return;
 
-  // si estaba marcada como eliminada, la removemos
+
   estacionesEliminadas = estacionesEliminadas.filter(x => String(x.idestacion) !== idEstacion);
 
   rutaEstaciones.push(idEstacion);
@@ -2112,9 +2103,6 @@ async function cargarComponentesGuardadosEstacion(idestacion) {
 }
 
 
-// ======================================================================
-//  HERRAMIENTAS (MODAL + CARGA + GUARDADO) - CLON DE COMPONENTES
-// ======================================================================
 
 // ABRIR MODAL HERRAMIENTAS
 function abrirHerramientas(idestacion, cve_estacion) {
@@ -2456,8 +2444,8 @@ function construirPayloadRuta() {
   })).filter(x => x.idestacion && x.iddetalle > 0);
 
   const map = new Map();
-  eliminadas.forEach(x => map.set(x.idestacion, x)); // primero 0
-  actuales.forEach(x => map.set(x.idestacion, x));   // luego orden > 0
+  eliminadas.forEach(x => map.set(x.idestacion, x)); 
+  actuales.forEach(x => map.set(x.idestacion, x));   
 
   const detalle_ruta = Array.from(map.values());
 

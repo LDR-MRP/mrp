@@ -83,9 +83,7 @@ async function fetchJson(url, options = {}) {
   }
 }
 
-// =====================================================
-//  INIT
-// =====================================================
+
 document.addEventListener('DOMContentLoaded', function () {
 
   divLoading = document.querySelector("#divLoading");
@@ -208,9 +206,7 @@ const calendar = new FullCalendar.Calendar(calendarEl, {
     }
   },
 
-  // ============================
-  //  FORZAR COLOR (anti Velzon)
-  // ============================
+
   eventDidMount: function(info) {
     const bg = info.event.backgroundColor;
 
@@ -1507,7 +1503,7 @@ function renderPlaneacionModal(payload) {
 
   const subOrdenes = estaciones.flatMap(est => Array.isArray(est.ordenes_trabajo) ? est.ordenes_trabajo : []);
 
-  // ordenar por idorden asc
+
   const ordenadas = [...subOrdenes].sort((a, b) => Number(a.idorden || 0) - Number(b.idorden || 0));
 
   if (count) count.textContent = String(ordenadas.length || 0);
