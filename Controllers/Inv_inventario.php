@@ -61,6 +61,7 @@ class Inv_inventario extends Controllers
 			$unidad_salida    = strClean($_POST['unidad_salida'] ?? '');
 			$ubicacion = strClean($_POST['ubicacion'] ?? 'GENERAL');
 			$unidad_empaque = strClean($_POST['unidad_empaque'] ?? '');
+			$ultimo_costo = floatval($_POST['ultimo_costo'] ?? 0);
 			$factor_unidades  = floatval($_POST['factor_unidades'] ?? 1);
 			$tiempo_surtido = intval($_POST['tiempo_surtido'] ?? 0);
 			$serie            = strClean($_POST['serie'] ?? 'N');
@@ -101,6 +102,7 @@ class Inv_inventario extends Controllers
 						$unidad_entrada,
 						$unidad_salida,
 						$unidad_empaque,
+						$ultimo_costo,
 						$lineaproductoid,
 						$tipo_elemento,
 						$factor_unidades,
@@ -141,6 +143,7 @@ class Inv_inventario extends Controllers
 						$unidad_entrada,
 						$unidad_salida,
 						$unidad_empaque,   // ✅ FALTABA
+						$ultimo_costo,
 						$lineaproductoid,  // ✅ ahora sí es int
 						$tipo_elemento,
 						$factor_unidades,

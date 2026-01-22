@@ -38,7 +38,7 @@ class Inv_kardexModel extends Mysql
         $sql = "SELECT 
                 MAX(CASE WHEN signo = 1 THEN fecha_movimiento END) AS fecha_ultima_compra,
                 SUM(cantidad * signo) AS existencia,
-                AVG(CASE WHEN signo = 1 THEN costo END) AS costo_promedio
+                AVG(CASE WHEN signo = 1 THEN costo_cantidad END) AS costo_promedio
             FROM wms_movimientos_inventario
             WHERE inventarioid = $inventarioid
             AND estado = 2";
@@ -53,7 +53,7 @@ class Inv_kardexModel extends Mysql
         $sql = "SELECT 
                 m.numero_movimiento,
                 m.cantidad,
-                m.costo,
+                m.costo_cantidad,
                 SUM(m.cantidad * m.signo)
                     OVER (ORDER BY m.fecha_movimiento, m.idmovinventario) AS existencia,
                 c.descripcion AS concepto,

@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
       { data: "concepto" },
       { data: "cantidad" },
       {
-        data: "costo",
+        data: "costo_cantidad",
         render: d => parseFloat(d).toFixed(2),
       },
       { data: "existencia" },

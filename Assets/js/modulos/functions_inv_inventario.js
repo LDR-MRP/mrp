@@ -140,7 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // 2️⃣ Detectar tab activo
       if (document.querySelector("#agregarProducto.show")) {
         lineaProducto = document.querySelector(
-          "#lineaproductoid_producto"
+          "#lineaproductoid_producto",
         )?.value;
       }
 
@@ -150,7 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (document.querySelector("#agregarServicio.show")) {
         lineaProducto = document.querySelector(
-          "#lineaproductoid_servicio"
+          "#lineaproductoid_servicio",
         )?.value;
       }
 
@@ -159,7 +159,7 @@ document.addEventListener("DOMContentLoaded", () => {
         Swal.fire(
           "Aviso",
           "Selecciona una línea de producto válida",
-          "warning"
+          "warning",
         );
         return;
       }
@@ -193,7 +193,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
               // 🔁 Volver a la pestaña de tabla
               const tabTabla = document.querySelector(
-                'a[href="#listInventarios"]'
+                'a[href="#listInventarios"]',
               );
               if (tabTabla) {
                 new bootstrap.Tab(tabTabla).show();
@@ -214,6 +214,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 container.scrollIntoView({ behavior: "smooth" });
               }
             }
+          } else {
+            // ✅ AQUÍ VA EL ERROR
+            Swal.fire({
+              icon: "warning",
+              title: "Atención",
+              text: res.msg,
+              confirmButtonColor: "#3085d6",
+            });
+
+            const inputClave = form.querySelector("#cve_articulo");
+            if (inputClave) inputClave.focus();
+
+            return;
           }
 
           console.log(res);
@@ -235,7 +248,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .addEventListener("click", function () {
       const inputClave = document.getElementById("clave_alterna");
       const contenedorTipo = document.getElementById(
-        "tipo_asignacion_container"
+        "tipo_asignacion_container",
       );
 
       inputClave.disabled = false;
@@ -327,7 +340,7 @@ document.addEventListener("DOMContentLoaded", () => {
         base_url +
           "/Inv_inventario/buscarProductoKit?term=" +
           encodeURIComponent(query),
-        true
+        true,
       );
       request.send();
 
@@ -419,7 +432,7 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append("precio", document.getElementById("precio").value || 0);
     formData.append(
       "descripcion",
-      document.getElementById("descripcion_kit").value
+      document.getElementById("descripcion_kit").value,
     );
 
     document
@@ -468,7 +481,7 @@ document.addEventListener("DOMContentLoaded", () => {
           // 🔁 Volver a tabla principal
           setTimeout(() => {
             const tabTabla = document.querySelector(
-              'a[data-bs-toggle="tab"][href="#listInventarios"]'
+              'a[data-bs-toggle="tab"][href="#listInventarios"]',
             );
             if (tabTabla) {
               bootstrap.Tab.getOrCreateInstance(tabTabla).show();
@@ -569,7 +582,7 @@ function fntEditInventario(idinventario) {
   request.open(
     "GET",
     base_url + "/Inv_inventario/getInventario/" + idinventario,
-    true
+    true,
   );
   request.send();
 
@@ -600,6 +613,7 @@ function fntEditInventario(idinventario) {
     setValue("#peso", data.peso);
     setValue("#volumen", data.volumen);
     setValue("#unidad_empaque", data.unidad_empaque);
+    setValue("#ultimo_costo", data.ultimo_costo);
     setValue("#estado", data.estado);
 
     // 👇 AQUÍ
@@ -656,6 +670,8 @@ function llenarFormularioInventario(data) {
   setValue("#tiempo_surtido", data.tiempo_surtido);
   setValue("#peso", data.peso);
   setValue("#volumen", data.volumen);
+  setValue("#unidad_empaque", data.unidad_empaque);
+  setValue("#ultimo_costo", data.ultimo_costo);
   setValue("#estado", data.estado);
 
   // Tipo

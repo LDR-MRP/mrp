@@ -7,7 +7,7 @@
             <input class="form-check-input" type="radio"
                 name="tipo_elemento" id="producto" value="P" checked>
             <label class="form-label fw-semibold ms-2" for="producto">
-                Producto
+                PRODUCTO
             </label>
         </div>
 
@@ -16,7 +16,7 @@
             <input class="form-check-input" type="radio"
                 name="tipo_elemento" id="componente" value="C">
             <label class="form-label fw-semibold ms-2" for="componente">
-                Componente
+                COMPONENTE
             </label>
         </div>
 
@@ -25,7 +25,7 @@
             <input class="form-check-input" type="radio"
                 name="tipo_elemento" id="herramienta" value="H">
             <label class="form-label fw-semibold ms-2" for="herramienta">
-                Herramienta
+                HERRAMIENTA
             </label>
         </div>
     </div>
@@ -89,6 +89,17 @@
             </div>
         </div>
 
+        <!-- DESCRIPCIÓN -->
+        <div class="mb-3">
+            <label class="form-label" for="descripcion">DESCRIPCIÓN</label>
+            <div class="input-group mb-3">
+                <span class="input-group-text" id="descripcion-inventario-addon">Desc.</span>
+                <textarea class="form-control" id="descripcion" name="descripcion"
+                    placeholder="Ingresa una descripción" rows="3"
+                    aria-describedby="descripcion-inventario-addon"></textarea>
+            </div>
+        </div>
+
         <!-- UNIDAD DE ENTRADA -->
         <div class="col-lg-4 col-sm-6">
             <div class="mb-3">
@@ -145,7 +156,7 @@
                 <label class="form-label" for="factor_unidades">FACTOR ENTRE UNIDADES</label>
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="factor-unidades-addon">Fac. Un</span>
-                    <input type="text" class="form-control"
+                    <input type="number" class="form-control"
                         placeholder="Ingresa el factor entre unidades" id="factor_unidades" name="factor_unidades"
                         aria-describedby="factor-unidades-addon" required>
                     <div class="invalid-feedback">El campo factor entre unidades es obligatorio</div>
@@ -159,7 +170,7 @@
                 <label class="form-label" for="tiempo_surtido">TIEMPO DE SURTIDO</label>
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="tiempo-surtido-addon">Tiem. Sur</span>
-                    <input type="text" class="form-control"
+                    <input type="number" class="form-control"
                         placeholder="Ingresa el tiempo de surtido" id="tiempo_surtido" name="tiempo_surtido"
                         aria-describedby="tiempo-surtido-addon" required>
                     <div class="invalid-feedback">El campo tiempo de surtido es obligatorio</div>
@@ -173,7 +184,7 @@
                 <label class="form-label" for="volumen">VOLUMEN</label>
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="volumen-addon">Vol.</span>
-                    <input type="text" class="form-control"
+                    <input type="number" class="form-control"
                         placeholder="Ingresa el volumen" id="volumen" name="volumen"
                         aria-describedby="volumen-addon" required>
                     <div class="invalid-feedback">El campo volumen es obligatorio</div>
@@ -187,7 +198,7 @@
                 <label class="form-label" for="peso">PESO</label>
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="peso-addon">Peso</span>
-                    <input type="text" class="form-control"
+                    <input type="number" class="form-control"
                         placeholder="Ingresa el peso" id="peso" name="peso"
                         aria-describedby="peso-addon" required>
                     <div class="invalid-feedback">El campo peso es obligatorio</div>
@@ -201,10 +212,24 @@
                 <label class="form-label" for="unidad_empaque">UNIDAD DE EMPAQUE</label>
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="unidad_empaque-addon">Unidad</span>
-                    <input type="text" class="form-control"
+                    <input type="number" class="form-control"
                         placeholder="Ingresa la unidad de empaque" id="unidad_empaque" name="unidad_empaque"
                         aria-describedby="unidad_empaque-addon" required>
                     <div class="invalid-feedback">El campo unidad de empaque es obligatorio</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ULTIMO COSTO -->
+        <div class="col-lg-4 col-sm-6">
+            <div class="mb-3">
+                <label class="form-label" for="ultimo_costo">ULTIMO COSTO</label>
+                <div class="input-group mb-3">
+                    <span class="input-group-text" id="ultimo_costo-addon">Costo</span>
+                    <input type="number" class="form-control"
+                        placeholder="Ingresa el ultimo costo" id="ultimo_costo" name="ultimo_costo"
+                        aria-describedby="ultimo_costo-addon" required>
+                    <div class="invalid-feedback">El campo ultimo costo es obligatorio</div>
                 </div>
             </div>
         </div>
@@ -222,6 +247,59 @@
                     </select>
                     <div class="invalid-feedback">El campo estado es obligatorio</div>
                 </div>
+            </div>
+        </div>
+
+        <!-- IMAGEN -->
+        <div class="col-lg-12 col-sm-6">
+            <div class="mb-3">
+                <label class="form-label" for="imagen_producto-input">IMAGEN</label>
+                <div class="input-group mb-3">
+                    <span class="input-group-text" id="imagen_producto-addon">Img</span>
+                    <input type="file" class="form-control" id="imagen_producto-input" name="imagen_producto" accept="image/*">
+                    <div class="invalid-feedback">El campo clave es obligatorio</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container d-flex justify-content-center align-items-center p-3 mb-3 rounded">
+
+            <!-- CHECK NÚMERO DE SERIE -->
+            <div class="col-md-4 form-check d-flex align-items-center">
+                <input type="hidden" name="serie" value="N">
+                <label class="form-label fw-semibold" for="serie">
+                    <i class="bi bi-check-circle me-1 text-primary"></i>
+                    <input class="form-check-input ms-2" type="checkbox" value="S" id="serie" name="serie">
+                    <span class="ms-2">NÚMERO DE SERIE</span>
+                </label>
+            </div>
+
+            <!-- CHECK LOTES -->
+            <div class="col-md-4 form-check d-flex align-items-center">
+                <input type="hidden" name="lote" value="N">
+                <label class="form-label fw-semibold" for="lote">
+                    <i class="bi bi-check-circle me-1 text-primary"></i>
+                    <input class="form-check-input ms-2" type="checkbox" value="S" id="lote" name="lote">
+                    <span class="ms-2">LOTES</span>
+                </label>
+            </div>
+
+            <!-- CHECK PEDIMENTOS ADUANALES -->
+            <div class="col-md-4 form-check d-flex align-items-center">
+                <input type="hidden" name="pedimiento" value="N">
+                <label class="form-label fw-semibold" for="pedimiento">
+                    <i class="bi bi-check-circle me-1 text-primary"></i>
+                    <input class="form-check-input ms-2" type="checkbox" value="S" id="pedimiento" name="pedimiento">
+                    <span class="ms-2">PEDIMENTOS ADUANALES</span>
+                </label>
+            </div>
+
+        </div>
+
+
+        <div class="row mb-3">
+            <div class="col-lg-12 col-sm-12 ">
+                <h5 class="mb-4">¿DESEAS AGREGAR EL PRODUCTO A UN MUTIALMACÉN?</h5>
             </div>
         </div>
 
@@ -252,13 +330,13 @@
                 </div>
             </div>
 
-            <!-- COSTO UNITARIO -->
+            <!-- COSTO CANTIDAD -->
             <div class="col-lg-4 col-sm-6">
                 <div class="mb-3">
-                    <label class="form-label" for="costo">COSTO</label>
+                    <label class="form-label" for="costo">COSTO CANTIDAD</label>
                     <div class="input-group mb-3">
                         <span class="input-group-text" id="costo-addon">Costo</span>
-                        <input type="text" class="form-control"
+                        <input type="number" class="form-control"
                             placeholder="Ingresa el costo" id="costo" name="costo"
                             aria-describedby="costo-addon">
                         <div class="invalid-feedback">El campo costo es obligatorio</div>
@@ -267,67 +345,8 @@
             </div>
         </div>
 
-        <!-- IMAGEN -->
-        <div class="col-lg-12 col-sm-6">
-            <div class="mb-3">
-                <label class="form-label" for="imagen_producto-input">IMAGEN</label>
-                <div class="input-group mb-3">
-                    <span class="input-group-text" id="imagen_producto-addon">Img</span>
-                    <input type="file" class="form-control" id="imagen_producto-input" name="imagen_producto" accept="image/*">
-                    <div class="invalid-feedback">El campo clave es obligatorio</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- DESCRIPCIÓN -->
-        <div class="mb-3">
-            <label class="form-label" for="descripcion">DESCRIPCIÓN</label>
-            <div class="input-group mb-3">
-                <span class="input-group-text" id="descripcion-inventario-addon">Desc.</span>
-                <textarea class="form-control" id="descripcion" name="descripcion"
-                    placeholder="Ingresa una descripción" rows="3"
-                    aria-describedby="descripcion-inventario-addon"></textarea>
-            </div>
-        </div>
-        <div class="container d-flex justify-content-center align-items-center p-3 mb-3 rounded">
-
-            <!-- CHECK NÚMERO DE SERIE -->
-            <div class="col-md-4 form-check d-flex align-items-center">
-                <input type="hidden" name="serie" value="N">
-                <label class="form-label fw-semibold" for="serie">
-                    <i class="bi bi-check-circle me-1 text-primary"></i>
-                    <input class="form-check-input ms-2" type="checkbox" value="S" id="serie" name="serie">
-                    <span class="ms-2">Número de serie</span>
-                </label>
-            </div>
-
-            <!-- CHECK LOTES -->
-            <div class="col-md-4 form-check d-flex align-items-center">
-                <input type="hidden" name="lote" value="N">
-                <label class="form-label fw-semibold" for="lote">
-                    <i class="bi bi-check-circle me-1 text-primary"></i>
-                    <input class="form-check-input ms-2" type="checkbox" value="S" id="lote" name="lote">
-                    <span class="ms-2">Lotes</span>
-                </label>
-            </div>
-
-            <!-- CHECK PEDIMENTOS ADUANALES -->
-            <div class="col-md-4 form-check d-flex align-items-center">
-                <input type="hidden" name="pedimiento" value="N">
-                <label class="form-label fw-semibold" for="pedimiento">
-                    <i class="bi bi-check-circle me-1 text-primary"></i>
-                    <input class="form-check-input ms-2" type="checkbox" value="S" id="pedimiento" name="pedimiento">
-                    <span class="ms-2">Pedimientos aduanales</span>
-                </label>
-            </div>
-
-        </div>
-
     </div>
     <!-- end row -->
-
-
-
 
     <div class="d-flex align-items-start gap-3 mt-4">
         <button type="submit" id="btnActionForm"
