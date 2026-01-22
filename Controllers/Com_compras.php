@@ -4,6 +4,8 @@ class Com_compras extends Controllers
 {
     use ApiResponser;
 
+    private $comprasService;
+
     public function __construct()
     {
         parent::__construct();
@@ -14,6 +16,9 @@ class Com_compras extends Controllers
             die();
         }
         getPermisos(COM_COMPRAS);
+
+        $this->comprasService = new Com_comprasService();
+        $this->comprasService->model = $this->model;
     }
 
     public function Com_compras(): void
@@ -31,34 +36,12 @@ class Com_compras extends Controllers
 
     public function index(): void
     {
-        $arrData = $this->model->selectCompras();
-
-        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        echo json_encode($this->comprasService->index(), JSON_UNESCAPED_UNICODE);
     }
 
     public function create(): array
     {
-        try{
-            $request = new Com_comprasRequest($_POST);
-
-            $request->validate();
-
-            $comprasService = new Com_comprasService();
-
-            $comprasService->create($request->all());
-
-            return $this->successResponse(message: "Compra procesada con éxito.", code: 201);
-
-        } catch(Throwable $t){
-            $code = $t->getCode();
-
-            return $this->errorResponse(
-                ($code == 422) ? "Errores de validación" : "Error de sistema",
-                ($code >= 400 && $code <= 599) ? $code : 500,
-                ($code == 422) ? json_decode($t->getMessage()) : $t->getMessage()
-            );
-        }
-        
+        return $this->apiResponse($this->comprasService->create($_POST));      
     }
 }
 ?>

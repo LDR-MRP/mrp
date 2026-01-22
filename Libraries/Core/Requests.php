@@ -19,7 +19,7 @@ abstract class Requests {
         return true;
     }
 
-    protected function addError(string $field, string $message): array
+    protected function addError(string $field, string $message): void
     {
         $this->errors[$field] = $message;
     }

@@ -1,6 +1,22 @@
 <?php
 trait ApiResponser {
-    public function successResponse(array $data, string $message = "Operación exitosa", int $code = 200) {
+    public function apiResponse(ServiceResponse $response) {
+        if ($response->success) {
+            return $this->successResponse(
+                $response->data, 
+                $response->message, 
+                $response->code
+            );
+        }
+        
+        return $this->errorResponse(
+            $response->message, 
+            $response->code,
+            $response->data
+        );
+    }
+
+    public function successResponse(mixed $data, string $message = "Operación exitosa", int $code = 200) {
         header('Content-Type: application/json');
         http_response_code($code);
         echo json_encode([
@@ -12,15 +28,20 @@ trait ApiResponser {
         exit;
     }
 
-    public function errorResponse(string $message, int $code = 500, mixed $errors = null) {
+    public function errorResponse(string $message, int $code = 500, mixed $data = null) {
         header('Content-Type: application/json');
-        http_response_code($code);
-        echo json_encode([
+        $response = [
             'status'  => 'error',
             'code'    => $code,
             'message' => $message,
-            'errors'  => $errors,
-        ], JSON_UNESCAPED_UNICODE);
+        ];
+
+        if($data) {
+            $response['errors'] = $data;
+        }
+
+        http_response_code($code);
+        echo json_encode($response, JSON_UNESCAPED_UNICODE);
         exit;
     }
 }
