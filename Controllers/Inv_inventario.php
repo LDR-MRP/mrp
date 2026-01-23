@@ -1,6 +1,10 @@
 <?php
 class Inv_inventario extends Controllers
 {
+	use ApiResponser;
+
+	protected $inventarioService;
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -11,6 +15,10 @@ class Inv_inventario extends Controllers
 			die();
 		}
 		getPermisos(MIINVENTARIO);
+
+		$this->inventarioService = new Inv_inventarioService;
+
+		$this->inventarioService->model = $this->model;
 	}
 
 	public function Inv_inventario()
@@ -304,32 +312,9 @@ class Inv_inventario extends Controllers
 }
 
 
-	public function getArticulos()
+	public function showAll()
     {
-        header("Content-Type: application/json; charset=UTF-8");
-
-        try {
-            $data = $this->model->selectInventarios();
-
-            http_response_code(200);
-            echo json_encode([
-                "status" => true,
-                "msg"    => "Datos obtenidos correctamente",
-                "data"   => $data
-            ], JSON_UNESCAPED_UNICODE);
-
-        } catch (Exception $e) {
-
-            $code = $e->getCode();
-            
-            if ($code < 400 || $code > 599) $code = 500; 
-
-            http_response_code($code);
-            echo json_encode([
-                "status" => false,
-                "msg"    => $e->getMessage()
-            ], JSON_UNESCAPED_UNICODE);
-        }
+        return $this->apiResponse($this->inventarioService->showAll());
     }
 
 	public function delInventario()

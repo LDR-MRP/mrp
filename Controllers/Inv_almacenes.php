@@ -1,6 +1,10 @@
 <?php
 class Inv_almacenes extends Controllers
 {
+	use ApiResponser;
+
+	protected $almacenService;
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -11,6 +15,10 @@ class Inv_almacenes extends Controllers
 			die();
 		}
 		getPermisos(MIALMACENES);
+
+		$this->almacenService = new Inv_almacenService;
+
+		$this->almacenService->model = $this->model;
 	}
 
 	public function Inv_almacenes()
@@ -172,31 +180,8 @@ class Inv_almacenes extends Controllers
 		die();
 	}
 
-	public function getAlmacenesJson()
+	public function showAll()
     {
-        header("Content-Type: application/json; charset=UTF-8");
-
-        try {
-            $data = $this->model->selectAlmacenes();
-
-            http_response_code(200);
-            echo json_encode([
-                "status" => true,
-                "msg"    => "Datos obtenidos correctamente",
-                "data"   => $data
-            ], JSON_UNESCAPED_UNICODE);
-
-        } catch (Exception $e) {
-
-            $code = $e->getCode();
-            
-            if ($code < 400 || $code > 599) $code = 500; 
-
-            http_response_code($code);
-            echo json_encode([
-                "status" => false,
-                "msg"    => $e->getMessage()
-            ], JSON_UNESCAPED_UNICODE);
-        }
+        return $this->apiResponse($this->almacenService->showAll());
     }
 }

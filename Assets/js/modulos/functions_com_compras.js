@@ -139,35 +139,12 @@ document.addEventListener(
         }
     })
 
-/**
- * 
- */
-// function fntMostrarDetallePartidas(data) {debugger
-//     return `
-//         <div class="p-3 border-start border-4 border-info bg-light">
-//             <h5>Detalles de Compra: ${data.idcompra}</h5>
-//             <table class="table table-sm mb-0">
-//                 <tr>
-//                     <td><strong>Proveedor ID:</strong></td>
-//                     <td>${data.proveedorid}</td>
-//                     <td><strong>Fecha Elaboración:</strong></td>
-//                     <td>${data.fecha_elaboracion}</td>
-//                 </tr>
-//                 <tr>
-//                     <td><strong>Status:</strong></td>
-//                     <td><span class="badge bg-success">${data.status}</span></td>
-//                     <td><strong>Enlazado:</strong></td>
-//                     <td>${data.enlazado}</td>
-//                 </tr>
-//             </table>
-//         </div>`;
-// }
 
 /**
  * Carga el listado de proveedores en el select del formulario
  */
 function fntGetProveedores() {
-    const ajaxUrl = base_url + "/wms_proveedores/getProveedores";
+    const ajaxUrl = base_url + "/wms_proveedores/showAll";
     const request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
 
     request.open("GET", ajaxUrl, true);
@@ -200,7 +177,7 @@ function fntGetProveedores() {
  * Carga el listado de almacenes en el select del formulario
  */
 function fntGetAlmacenes() {
-    const ajaxUrl = base_url + "/inv_almacenes/getAlmacenesJson";
+    const ajaxUrl = base_url + "/inv_almacenes/showAll";
     const request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
 
     request.open("GET", ajaxUrl, true);
@@ -233,7 +210,7 @@ function fntGetAlmacenes() {
  * Carga el listado de monedas en el select del formulario
  */
 function fntGetMonedas() {
-    const ajaxUrl = base_url + "/wms_monedas/getMonedas";
+    const ajaxUrl = base_url + "/inv_moneda/showAll";
     const request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
 
     request.open("GET", ajaxUrl, true);
@@ -266,7 +243,7 @@ function fntGetMonedas() {
  * Carga el listado de monedas en el select del formulario
  */
 function fntGetArticulos(selectElement) {
-    const ajaxUrl = base_url + "/inv_inventario/getArticulos";
+    const ajaxUrl = base_url + "/inv_inventario/showAll ";
     const request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
 
     request.open("GET", ajaxUrl, true);
