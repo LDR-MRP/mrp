@@ -219,7 +219,8 @@
 
 
 
-              <!-- Imagen fija grande -->
+           
+              
               <div class="mt-auto pt-3">
                 <div class="side-hero">
                   <img src="<?= media(); ?>/minimal/images/task.png" alt="Tarea">
@@ -354,7 +355,8 @@
           </div>
         </div>
 
-        <!-- Formulario (NO mover contenido) -->
+     
+        
         <div class="col-12 col-xxl-4">
           <div class="card h-100">
             <div class="card-body">
@@ -919,10 +921,6 @@
     </div>
   </div>
 </div>
-
-
-
-
 
 
 

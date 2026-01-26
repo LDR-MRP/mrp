@@ -100,6 +100,9 @@ public function setPlaneacion()
 
   $h = $data['header'] ?? [];
 
+  // dep($h);
+  // exit;
+
   $productoid       = (int)($h['productoid'] ?? 0);
   $pedido           = trim((string)($h['pedido'] ?? ''));
   $supervisor       = trim((string)($h['supervisor'] ?? ''));
@@ -523,7 +526,7 @@ public function setPlaneacion()
       die();
     }
 
-    $errores = [];
+    $errores = []; 
 
     foreach ($estaciones as $e) {
       $estacionid = (int) ($e['estacionid'] ?? 0);

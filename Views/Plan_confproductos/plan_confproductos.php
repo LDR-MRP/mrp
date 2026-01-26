@@ -248,15 +248,15 @@
                                     <!-- end pane información general -->
 
                                     <!-- PESTAÑA: DOCUMENTACIÓN -->
-                             <!-- PESTAÑA: DOCUMENTACIÓN -->
+                            
 <div class="tab-pane fade" id="pane-documentacion" role="tabpanel" aria-labelledby="tab-documentacion">
 
     <hr>
 
-<!-- HEADER: DOCUMENTACIÓN (izquierda) + CARRITO/ID (derecha) -->
+
 <div class="row g-3 align-items-center mb-4 px-lg-4">
 
-  <!-- Izquierda: título y descripción -->
+
   <div class="col-lg-8">
     <h5 class="mb-1">Documentación</h5>
     <p class="text-muted mb-0">
@@ -264,7 +264,7 @@
     </p>
   </div>
 
-  <!-- Derecha: icono + ID -->
+
   <div class="col-lg-4 text-lg-end">
     <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-3 border bg-light">
     <lord-icon src="https://cdn.lordicon.com/uetqnvvg.json" trigger="loop" colors="primary:#25a0e2,secondary:#00bd9d" style="width:80px;height:80px"></lord-icon>
@@ -398,12 +398,12 @@
     </div>
 
 </div>
-<!-- end pane documentación -->
+
 
                                   
-                                    <!-- end pane documentación -->
+                                
 
-                                    <!-- PESTAÑA: DESCRIPTIVA TÉCNICA -->
+                                 
                                     <div class="tab-pane fade" id="pane-descriptiva-tecnica" role="tabpanel"
                                         aria-labelledby="tab-descriptiva-tecnica">
                                         <!-- <div>
@@ -416,7 +416,7 @@
                                         <!-- HEADER: DESCRIPTIVA (izquierda) + CARRITO/ID (derecha) -->
 <div class="row g-3 align-items-center mb-4 px-lg-4">
 
-  <!-- Izquierda: título y descripción -->
+
   <div class="col-lg-8">
     <h5 class="mb-1">Descriptiva técnica</h5>
     <p class="text-muted mb-0">
@@ -424,7 +424,7 @@
     </p>
   </div>
 
-  <!-- Derecha: icono + ID -->
+
   <div class="col-lg-4 text-lg-end">
     <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-3 border bg-light">
     <lord-icon src="https://cdn.lordicon.com/uetqnvvg.json" trigger="loop" colors="primary:#25a0e2,secondary:#00bd9d" style="width:80px;height:80px"></lord-icon>
@@ -437,7 +437,7 @@
 
 </div>
 
-                                        <!-- FORMULARIO PARA LA DESCRIPTIVA TÉCNICA -->
+                                   
 
                                         <form id="formConfDescriptiva" name="formConfDescriptiva"
                                             class="form-steps was-validated" autocomplete="off">
@@ -450,7 +450,7 @@
 
                                             <!-- ========= FICHA TÉCNICA ========= -->
 
-                                            <!-- Marca / Modelo / Largo total -->
+                                        
                                             <div class="row">
                                                 <!-- Marca -->
                                                 <div class="col-lg-4 col-sm-6">
@@ -499,9 +499,9 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Distancia entre ejes / Peso bruto vehicular / Motor -->
+                                    
                                             <div class="row">
-                                                <!-- Distancia entre ejes -->
+                                              
                                                 <div class="col-lg-4 col-sm-6">
                                                     <div class="mb-3">
                                                         <label class="form-label" for="txtDistanciaEjes">Distancia entre
@@ -517,7 +517,7 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- Peso bruto vehicular -->
+                                  
                                                 <div class="col-lg-4 col-sm-6">
                                                     <div class="mb-3">
                                                         <label class="form-label" for="txtPesoBruto">Peso bruto
@@ -549,9 +549,9 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Desplazamiento/Cilindros / Desplazamiento / Tipo de combustible -->
+                                          
                                             <div class="row">
-                                                <!-- Desplazamiento / Cilindros -->
+                                               
                                                 <div class="col-lg-4 col-sm-6">
                                                     <div class="mb-3">
                                                         <label class="form-label"
@@ -882,10 +882,10 @@
                                             </p>
                                         </div> -->
 
-                                                                                <!-- HEADER: DESCRIPTIVA (izquierda) + CARRITO/ID (derecha) -->
+                                                                                
 <div class="row g-3 align-items-center mb-4 px-lg-4">
 
-  <!-- Izquierda: título y descripción -->
+
   <div class="col-lg-8">
     <h5 class="mb-1">Procesos</h5>
     <p class="text-muted mb-0">
@@ -893,7 +893,7 @@
     </p>
   </div>
 
-  <!-- Derecha: icono + ID -->
+
   <div class="col-lg-4 text-lg-end">
     <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-3 border bg-light">
     <lord-icon src="https://cdn.lordicon.com/uetqnvvg.json" trigger="loop" colors="primary:#25a0e2,secondary:#00bd9d" style="width:80px;height:80px"></lord-icon>
@@ -913,7 +913,7 @@
                                                  <input type="hidden" id="id_ruta_producto" name="id_ruta_producto">
 
 
-                <!-- Fila de producto / planta / línea -->
+          
                 <div class="row g-3 mb-3">
 
                     <!-- Planta -->
@@ -922,7 +922,7 @@
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-building"></i></span>
                             <select id="listPlantasSelect" name="listPlantasSelect" class="form-select" required>
-                                <!-- Opciones se llenan por JS -->
+                            
                             </select>
                             <div class="invalid-feedback">
                                 Debe seleccionar una planta.
@@ -969,7 +969,7 @@
                     </div>
                 </div>
 
-                <!-- Estaciones disponibles / Ruta del producto -->
+   
                 <div class="row g-4 align-items-stretch">
                     <!-- Estaciones disponibles -->
                     <div class="col-md-5">
@@ -984,7 +984,7 @@
                             </div>
                             <div class="card-body">
                                 <div id="listaEstaciones" class="list-group small">
-                                    <!-- Items se llenan por JS -->
+                              
                                 </div>
                                 <div id="mensajeSinEstaciones" class="text-muted small mt-2 d-none">
                                     No hay estaciones configuradas para la planta y línea seleccionadas.
@@ -993,7 +993,7 @@
                         </div>
                     </div>
 
-                    <!-- Ruta del producto (dropzone) -->
+                
                     <div class="col-md-7">
                         <div class="card h-100 border-0 shadow-sm">
                             <div class="card-header bg-white">
@@ -1537,7 +1537,7 @@
               <small class="mono">Regla: cantidad mínima 1.</small>
             </div>
 
-            <!-- SAVE BAR (solo aparece si hay seleccionados) -->
+          
             <div id="saveBar" class="save-bar">
               <button id="btnGuardarTodo" class="btn btn-success btn-save-all">
                 Guardar todo
