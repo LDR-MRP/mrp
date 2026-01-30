@@ -93,26 +93,60 @@
 
 
 
- function formatFechaLargaEs(string $ymd): string
+function formatFechaLargaEs(string $value, bool $incluirHora = false): string
 {
-  $ymd = trim($ymd);
-  if ($ymd === '') return '';
+    $value = trim($value);
+    if ($value === '') return '';
 
-  // Espera: 2026-01-08
-  $dt = DateTime::createFromFormat('Y-m-d', $ymd);
-  if (!$dt) return $ymd; 
 
-  $meses = [
-    1=>'enero',2=>'febrero',3=>'marzo',4=>'abril',5=>'mayo',6=>'junio',
-    7=>'julio',8=>'agosto',9=>'septiembre',10=>'octubre',11=>'noviembre',12=>'diciembre'
-  ];
+    $formatos = [
+        'Y-m-d H:i:s',
+        'Y-m-d H:i',
+        'Y-m-d\TH:i:s',
+        'Y-m-d\TH:i',
+        'Y-m-d',
+    ];
 
-  $dia = $dt->format('d');
-  $mes = $meses[(int)$dt->format('n')] ?? '';
-  $anio = $dt->format('Y');
+    $dt = null;
+    foreach ($formatos as $fmt) {
+        $dtTry = DateTime::createFromFormat($fmt, $value);
+        if ($dtTry instanceof DateTime) {
+      
+            $errors = DateTime::getLastErrors();
+            if (empty($errors['warning_count']) && empty($errors['error_count'])) {
+                $dt = $dtTry;
+                break;
+            }
+        }
+    }
 
-  return "{$dia} de {$mes} de {$anio}";
+   
+    if (!$dt) {
+        try {
+            $dt = new DateTime($value);
+        } catch (Exception $e) {
+            return $value; 
+        }
+    }
+
+    $meses = [
+        1=>'enero',2=>'febrero',3=>'marzo',4=>'abril',5=>'mayo',6=>'junio',
+        7=>'julio',8=>'agosto',9=>'septiembre',10=>'octubre',11=>'noviembre',12=>'diciembre'
+    ];
+
+    $dia  = $dt->format('d');
+    $mes  = $meses[(int)$dt->format('n')] ?? '';
+    $anio = $dt->format('Y');
+
+    if (!$incluirHora) {
+        return "{$dia} de {$mes} de {$anio}";
+    }
+
+    $hora = $dt->format('H:i');
+    return "{$dia} de {$mes} de {$anio} {$hora}";
 }
+
+
 
 
 function sendMailLocalCron($data, $template, $correos_copia = ''){
@@ -144,7 +178,7 @@ function sendMailLocalCron($data, $template, $correos_copia = ''){
         $mail->isHTML(true);
         $mail->CharSet = 'UTF-8';
         $mail->Encoding = 'base64';
-        $mail->Subject = $data['asunto'] . ' (' . $data['num_orden'] . ')';
+        $mail->Subject = $data['asunto'] . ' | ' . $data['num_orden'] . '';
         $mail->Body    = $mensaje;
 
         $mail->addCustomHeader('X-Mailer', 'PHPMailer');

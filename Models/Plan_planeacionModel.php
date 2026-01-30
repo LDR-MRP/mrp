@@ -51,6 +51,22 @@ class Plan_planeacionModel extends Mysql
         return $request;
     }
 
+    
+
+
+
+    public function selectOptionSupervisores()
+{
+    $sql = "SELECT * 
+            FROM usuarios 
+            WHERE rolid IN (2,4) 
+              AND status = 1";
+
+    return $this->select_all($sql);
+}
+
+
+
     public function selectOptionEstacionesByProducto($idproducto)
     {
         $this->intidProducto = (int) $idproducto;
@@ -153,7 +169,7 @@ class Plan_planeacionModel extends Mysql
 
     public function insertPlaneacion($num_orden, $productoid, $pedido, $supervisor, $prioridad, $cantidad, $fecha_inicio, $fecha_requerida, $notas)
     {
-        $sql = "INSERT INTO mrp_planeacion (num_orden, productoid, num_pedido, supervisor, prioridad, cantidad, fecha_inicio, fecha_requerida, notas, estado)
+        $sql = "INSERT INTO mrp_planeacion (num_orden, productoid, num_pedido, supervisorid, prioridad, cantidad, fecha_inicio, fecha_requerida, notas, estado)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 2)";
 
         $arrData = [$num_orden, $productoid, $pedido, $supervisor, $prioridad, $cantidad, $fecha_inicio, $fecha_requerida, $notas];
@@ -164,9 +180,11 @@ class Plan_planeacionModel extends Mysql
     public function upsertPlaneacionEstacion($planeacionid, $estacionid, $orden)
     {
 
-        $sqlFind = "SELECT id_planeacion_estacion
-              FROM mrp_planeacion_estacion
-              WHERE planeacionid = $planeacionid AND estacionid = $estacionid AND estado = 2
+        $sqlFind = "SELECT pl.id_planeacion_estacion, es.nombre_estacion, es.proceso
+              FROM mrp_planeacion_estacion AS pl
+              INNER JOIN  mrp_estacion AS es 
+              ON pl.estacionid = es.idestacion
+              WHERE pl.planeacionid = $planeacionid AND pl.estacionid = $estacionid AND pl.estado = 2
               LIMIT 1";
         $row = $this->select($sqlFind);
 
@@ -192,6 +210,31 @@ class Plan_planeacionModel extends Mysql
             VALUES (?,?,?,2)";
         return $this->insert($sqlIns, [$planeacionid, $estacionid, $orden]);
     }
+
+    public function getEstacionInfoById($estacionid)
+{
+    $sql = "SELECT es.idestacion, es.nombre_estacion, es.proceso, lin.nombre_linea AS linea
+            FROM mrp_estacion AS es 
+            INNER JOIN  mrp_linea AS lin
+            ON es.lineaid = lin.idlinea
+            WHERE es.idestacion = $estacionid
+            LIMIT 1";
+    return $this->select($sql);
+}
+
+public function getNombresUsuariosByIds(array $ids)
+{
+    $ids = array_values(array_unique(array_map('intval', $ids)));
+    if (empty($ids)) return [];
+
+    $in = implode(',', $ids); 
+    $sql = "SELECT idusuario, nombres, apellidos
+            FROM usuarios
+            WHERE idusuario IN ($in)";
+    return $this->select_all($sql);
+}
+
+
 
 
     public function clearOperadoresByPlaneacionEstacion($planeacionEstacionId)
@@ -219,16 +262,17 @@ class Plan_planeacionModel extends Mysql
 
 
 
-    public function selectPlanPendientes()
+public function selectPlanPendientes()
 {
+    $rolId      = isset($_SESSION['rolid']) ? (int)$_SESSION['rolid'] : 0;
+    $userIdSes  = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
 
-    $isAdmin   = isset($_SESSION['rolid']) && (int)$_SESSION['rolid'] === 1;
-    $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
+    // Admin y rol 5 ven todo
+    $isAdmin = in_array($rolId, [1, 5]);
 
     if (!$isAdmin && $userIdSes <= 0) {
         return [];
     }
-
 
     $whereUser = "";
     if (!$isAdmin) {
@@ -243,7 +287,6 @@ class Plan_planeacionModel extends Mysql
                       )";
     }
 
-  
     $sql = "SELECT pla.*,
                    pla.estado AS estado_planeacion,
                    pro.cve_producto,
@@ -257,6 +300,9 @@ class Plan_planeacionModel extends Mysql
 
     return $this->select_all($sql);
 }
+
+
+
 
 
 public function selectPlanFinalizadas()
@@ -427,7 +473,7 @@ public function selectPlanCanceladas()
 
 
 
-    public function consultarExistencias(int $productoid, int $estacionid, int $cantidadPlaneada)
+    public function consultarExistenciasss(int $productoid, int $estacionid, int $cantidadPlaneada)
     {
         $faltantes = [];
 
@@ -475,6 +521,9 @@ public function selectPlanCanceladas()
                        AND m.almacenid = $almacenid
                      ORDER BY m.fecha_movimiento DESC, m.idmovinventario DESC
                      LIMIT 1";
+
+            $sqlExist ="";
+    
 
             $rowExist = $this->select($sqlExist);
 
@@ -530,6 +579,109 @@ public function selectPlanCanceladas()
             'data' => []
         ];
     }
+
+
+    public function consultarExistencias(int $productoid, int $estacionid, int $cantidadPlaneada)
+{
+    $faltantes = [];
+
+    $sqlComp = "SELECT 
+                    c.idcomponente,
+                    c.almacenid,
+                    c.productoid,
+                    c.estacionid,
+                    c.inventarioid,
+                    c.cantidad AS cantidad_por_unidad
+                FROM mrp_estacion_componentes c
+                WHERE c.estado = 2
+                  AND c.productoid = $productoid
+                  AND c.estacionid = $estacionid";
+
+    $componentes = $this->select_all($sqlComp);
+
+    if (empty($componentes)) {
+        return [
+            'status' => true,
+            'msg'    => 'Sin componentes configurados para validar',
+            'data'   => []
+        ];
+    }
+
+    foreach ($componentes as $c) {
+        $inventarioid   = (int)   ($c['inventarioid'] ?? 0);
+        $almacenid      = (int)   ($c['almacenid'] ?? 0);
+        $cantPorUnidad  = (float) ($c['cantidad_por_unidad'] ?? 0);
+
+
+        $requerido = (float)$cantidadPlaneada * (float)$cantPorUnidad;
+
+
+        $sqlExist = "SELECT 
+                        COALESCE(m.existencia, 0) AS existencia,
+                        inv.descripcion,
+                        al.descripcion AS descripcion_almacen
+                     FROM wms_inventario inv
+                     INNER JOIN wms_almacenes al 
+                        ON al.idalmacen = $almacenid
+                     LEFT JOIN wms_multialmacen m
+                        ON m.inventarioid = inv.idinventario
+                       AND m.almacenid   = al.idalmacen
+                     WHERE inv.idinventario = $inventarioid
+                     LIMIT 1";
+
+        $rowExist = $this->select($sqlExist);
+
+        $existencia          = isset($rowExist['existencia']) ? (float)$rowExist['existencia'] : 0;
+        $descripcion         = isset($rowExist['descripcion']) ? (string)$rowExist['descripcion'] : '';
+        $descripcion_almacen = isset($rowExist['descripcion_almacen']) ? (string)$rowExist['descripcion_almacen'] : '';
+
+      
+        if ($descripcion === '') {
+            $rowInv = $this->select("SELECT descripcion FROM wms_inventario WHERE idinventario = $inventarioid LIMIT 1");
+            $descripcion = isset($rowInv['descripcion']) ? (string)$rowInv['descripcion'] : '';
+        }
+
+        if ($descripcion_almacen === '') {
+            $rowAlm = $this->select("SELECT descripcion FROM wms_almacenes WHERE idalmacen = $almacenid LIMIT 1");
+            $descripcion_almacen = isset($rowAlm['descripcion']) ? (string)$rowAlm['descripcion'] : '';
+        }
+
+
+        if ($requerido > $existencia) {
+            $faltante = $requerido - $existencia;
+
+            $faltantes[] = [
+                'productoid'           => $productoid,
+                'estacionid'           => $estacionid,
+                'almacenid'            => $almacenid,
+                'inventarioid'         => $inventarioid,
+                'descripcion'          => $descripcion,
+                'descripcion_almacen'  => $descripcion_almacen,
+
+                'cantidad_planeada'    => (float)$cantidadPlaneada,
+                'cantidad_por_unidad'  => (float)$cantPorUnidad,
+                'requerido'            => (float)$requerido,
+                'existencia'           => (float)$existencia,
+                'faltante'             => (float)$faltante
+            ];
+        }
+    }
+
+    if (!empty($faltantes)) {
+        return [
+            'status' => 0,
+            'msg'    => 'Faltan componentes en inventario',
+            'data'   => $faltantes
+        ];
+    }
+
+    return [
+        'status' => true,
+        'msg'    => 'Existencias OK',
+        'data'   => []
+    ];
+}
+
 
 
 
@@ -655,6 +807,22 @@ public function selectPlanCanceladas()
 
         return $this->select_all($sql);
     }
+
+
+    public function getSupervisorEmailById(int $idusuario)
+{
+    $sql = "SELECT 
+                idusuario,
+                email_user,
+                nombres,
+                apellidos
+            FROM usuarios
+            WHERE idusuario = $idusuario
+              AND status = 1
+            LIMIT 1";
+
+    return $this->select($sql);
+}
 
     public function getProducto(int $idproducto)
     {
@@ -839,7 +1007,7 @@ public function selectPlanCanceladas()
 
 
 
-//con esta función ya nos muestra las solicitudes ue son asignadas a cada operador
+
     public function obtenerPlaneacion($num_orden)
 {
 
@@ -847,11 +1015,24 @@ public function selectPlanCanceladas()
     $key = preg_replace('/[^A-Za-z0-9]/', '', $num_orden);
 
 
-    $sqlPla = "SELECT pla.*, pr.cve_producto, pr.descripcion
-              FROM mrp_planeacion AS pla
-              INNER JOIN mrp_productos AS pr ON pla.productoid = pr.idproducto
-              WHERE REPLACE(pla.num_orden,'-','') = '{$key}'
-              LIMIT 1";
+    // $sqlPla = "SELECT pla.*, pr.cve_producto, pr.descripcion
+    //           FROM mrp_planeacion AS pla
+    //           INNER JOIN mrp_productos AS pr ON pla.productoid = pr.idproducto
+    //           WHERE REPLACE(pla.num_orden,'-','') = '{$key}'
+    //           LIMIT 1";
+
+              $sqlPla = "SELECT 
+              pla.*,
+              pr.cve_producto,
+              pr.descripcion,
+              CONCAT(us.nombres, ' ', us.apellidos) AS supervisor
+          FROM mrp_planeacion AS pla
+          INNER JOIN mrp_productos AS pr 
+              ON pla.productoid = pr.idproducto
+          INNER JOIN usuarios AS us
+              ON pla.supervisorid = us.idusuario
+          WHERE REPLACE(pla.num_orden,'-','') = '{$key}'
+          LIMIT 1";
 
     $planeacion = $this->select($sqlPla);
 
@@ -864,8 +1045,10 @@ public function selectPlanCanceladas()
         return ['status' => false, 'msg' => 'Planeación inválida', 'data' => []];
     }
 
+    
+//mostramos todas las estacione spara el admin y para los de calidad para que relicdemn sus gestiones
+    $isAdmin = isset($_SESSION['rolid']) && in_array((int)$_SESSION['rolid'], [1, 5]);
 
-    $isAdmin   = isset($_SESSION['rolid']) && (int)$_SESSION['rolid'] === 1;
     $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
 
     
@@ -1021,6 +1204,8 @@ public function selectPlanCanceladas()
 
     return ['status' => true, 'msg' => 'OK', 'data' => $planeacion];
 }
+
+//Y ENTONCES PARA ESTA CONSULTA COMO QUEDAR+IA SI TABIEN QUIERO AGREGAR EL IDROL=5
 
 
  
@@ -1262,7 +1447,8 @@ public function getStatusOTByPeid(int $peid)
           FROM mrp_ordenes_trabajo ot
           INNER JOIN mrp_planeacion_estacion pe
             ON pe.id_planeacion_estacion = ot.planeacion_estacionid
-          WHERE ot.planeacion_estacionid = {$peid}";
+          WHERE ot.planeacion_estacionid = {$peid}
+          ORDER BY pe.orden ASC, ot.num_sub_orden ASC";
 
   return $this->select_all($sql); 
 }
@@ -1283,7 +1469,8 @@ public function getStatusOTByPlaneacion(int $planeacionid)
           FROM mrp_ordenes_trabajo ot
           INNER JOIN mrp_planeacion_estacion pe
             ON pe.id_planeacion_estacion = ot.planeacion_estacionid
-          WHERE pe.planeacionid = {$planeacionid}";
+          WHERE pe.planeacionid = {$planeacionid}
+          ORDER BY ot.num_sub_orden ASC";
 
   return $this->select_all($sql);
 }
@@ -1314,12 +1501,13 @@ public function selectOrdenesCalendar()
                   )";
   }
 
-  $sql = "SELECT 
+          $sql = "SELECT 
             pla.idplaneacion,
             pla.num_orden,
             pla.productoid,
             pla.num_pedido,
-            pla.supervisor,
+            pla.supervisorid,
+            CONCAT(us.nombres, ' ', us.apellidos) AS supervisor,
             pla.prioridad,
             pla.cantidad,
             pla.fecha_requerida,
@@ -1327,11 +1515,16 @@ public function selectOrdenesCalendar()
             pla.notas,
             pla.estado,
             pla.fase
-          FROM mrp_planeacion pla
-          WHERE pla.fecha_inicio IS NOT NULL
-            AND pla.estado != 0
-            {$whereUser}
-          ORDER BY pla.fecha_inicio DESC";
+        FROM mrp_planeacion pla
+        INNER JOIN usuarios AS us
+            ON pla.supervisorid = us.idusuario
+        WHERE pla.fecha_inicio IS NOT NULL
+          AND pla.estado != 0
+          {$whereUser}
+        ORDER BY pla.fecha_inicio DESC";
+
+
+        
 
   return $this->select_all($sql);
 }
@@ -1516,6 +1709,163 @@ public function insertChatMessage(array $d)
     $d['message']
   ]);
 }
+
+
+public function getComponentesByProducto(int $productoid){
+  $sql = "SELECT idcomponente, almacenid, productoid, estacionid, inventarioid, cantidad
+          FROM mrp_estacion_componentes
+          WHERE productoid = $productoid AND estado = 2
+          ORDER BY estacionid ASC, idcomponente ASC";
+
+
+    // $sql = "SELECT * FROM usuarios 
+		// 			WHERE status != 0 AND rolid=2 ";
+        $request = $this->select_all($sql);
+        return $request;
+
+}
+
+public function insertMovimientoInventario(array $m)
+{
+  $sql = "INSERT INTO wms_movimientos_inventario
+    (inventarioid, almacenid, numero_movimiento, concepmovid, referencia, cantidad,
+     costo_cantidad, precio, costo, existencia, signo, fecha_movimiento, estado)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
+
+  $params = [
+    $m['inventarioid'],
+    $m['almacenid'],
+    $m['numero_movimiento'],
+    $m['concepmovid'],
+    $m['referencia'],
+    $m['cantidad'],
+    $m['costo_cantidad'],
+    $m['precio'],
+    $m['costo'],
+    $m['existencia'],
+    $m['signo'],
+    $m['fecha_movimiento'],
+    $m['estado'],
+  ];
+
+  return $this->insert($sql, $params);
+}
+
+
+public function updateExistenciaInventario($inventarioid, $almacenid, $cantidad)
+{
+
+    $row = $this->select("SELECT existencia FROM wms_multialmacen WHERE inventarioid = $inventarioid AND almacenid = $almacenid");
+
+    if (!$row) return false;
+
+    $nuevaExistencia = $row['existencia'] - $cantidad;
+    if ($nuevaExistencia < 0) $nuevaExistencia = 0;
+
+    $sql = "UPDATE wms_multialmacen 
+            SET existencia = ? 
+            WHERE inventarioid = $inventarioid AND almacenid = $almacenid";
+
+    return $this->update($sql, [$nuevaExistencia]);
+
+}
+
+
+
+
+public function selectDescriptivaByProducto(int $productoid): array
+{
+    $sql = "SELECT * FROM mrp_productos_descriptiva
+            WHERE productoid = $productoid
+              AND estado = 2";
+
+    return $this->select_all($sql); 
+}
+
+
+public function selectDocumentacionByProducto(int $productoid): array
+{
+    $sql = "SELECT 
+                iddocumento,
+                productoid,
+                tipo_documento,
+                descripcion,
+                ruta,
+                fecha_creacion
+            FROM mrp_productos_documentos
+            WHERE productoid = $productoid
+              AND estado = 2
+            ORDER BY fecha_creacion DESC";
+
+    return $this->select_all($sql); 
+}
+
+
+public function selectEspecificacionesByProductoEstacion(int $productoid, int $estacionid): array
+{
+    $sql = "SELECT
+              idespecificacion,
+              productoid,
+              estacionid,
+              especificacion,
+              fecha_creacion
+            FROM mrp_estacion_especificaciones
+            WHERE productoid = $productoid
+              AND estacionid = $estacionid
+              AND estado = 2
+            ORDER BY fecha_creacion DESC";
+
+    return $this->select_all($sql);
+}
+
+public function selectComponentesByProductoEstacion(int $productoid, int $estacionid): array
+{
+    $sql = "SELECT
+              c.idcomponente,
+              c.almacenid,
+              c.productoid,
+              c.estacionid,
+              c.inventarioid,
+              c.cantidad,
+              c.estado,
+              c.fecha_creacion,
+              inv.descripcion as componente
+            FROM mrp_estacion_componentes AS c
+            INNER JOIN wms_inventario AS inv
+            ON c.inventarioid = inv.idinventario
+            WHERE c.productoid = $productoid
+              AND c.estacionid = $estacionid
+              AND c.estado = 2
+            ORDER BY c.fecha_creacion DESC";
+
+    return $this->select_all($sql);
+}
+
+
+
+public function selectHerramientasByProductoEstacion(int $productoid, int $estacionid): array
+{
+    $sql = "SELECT
+              h.idherramienta,
+              h.almacenid,
+              h.productoid,
+              h.estacionid,
+              h.inventarioid,
+              h.cantidad,
+              h.estado,
+              h.fecha_creacion,
+              inv.descripcion as herramienta
+            FROM mrp_estacion_herramientas AS h
+            INNER JOIN wms_inventario AS inv
+            ON h.inventarioid = inv.idinventario
+            WHERE h.productoid = $productoid
+              AND h.estacionid = $estacionid
+              AND h.estado = 2
+            ORDER BY h.fecha_creacion DESC";
+
+    return $this->select_all($sql);
+}
+
 
 
 

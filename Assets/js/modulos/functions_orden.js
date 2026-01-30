@@ -1397,4 +1397,480 @@ document.addEventListener('click', (e) => {
 });
 
 
-Vientos 
+
+
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.js-or-descriptiva');
+  if (!btn) return;
+
+  openModalOrdenDescriptiva(
+    btn.dataset.productoid,
+    btn.dataset.descripcion,
+    btn.dataset.cantidad
+  );
+});
+
+
+
+
+async function openModalOrdenDescriptiva(productoid, descripcion, cantidad = 1) {
+  productoid = parseInt(productoid, 10) || 0;
+
+  const modalDes = document.getElementById('modalDescriptiva');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalDes);
+
+  const tbody = document.getElementById('desTableBody'); 
+
+  const title = document.getElementById('titleDes');
+  if (title) title.textContent = descripcion || 'Producto';
+
+  const titleCant = document.getElementById('titleCantidad');
+  if (titleCant) titleCant.textContent = cantidad || '—';
+
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="4" class="text-center py-4">
+        <div class="spinner-border spinner-border-sm"></div>
+        <span class="ms-2 text-muted">Cargando ficha técnica…</span>
+      </td>
+    </tr>
+  `;
+
+  modal.show();
+
+  try {
+    const resp = await fetch(`${base_url}/plan_planeacion/getDescriptiva`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ productoid })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const json = await resp.json();
+    if (!json.status) throw new Error(json.msg || 'Error al cargar');
+
+ 
+    const arr = json.data?.data || [];
+    const info = arr[0] || null;
+
+    if (!info) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No hay ficha técnica registrada</td></tr>`;
+      return;
+    }
+
+    const fields = [
+      ['Marca', 'marca'],
+      ['Modelo', 'modelo'],
+      ['Motor', 'motor'],
+      ['Cilindros', 'cilindros'],
+      ['Desplazamiento', 'desplazamiento_c'],
+      ['Combustible', 'tipo_combustible'],
+      ['Potencia', 'potencia'],
+      ['Torque', 'torque'],
+      ['Transmisión', 'transmision'],
+      ['Dirección', 'direccion'],
+      ['Sistema eléctrico', 'sistema_electrico'],
+      ['Capacidad combustible', 'capacidad_combustible'],
+      ['Largo total', 'largo_total'],
+      ['Distancia entre ejes', 'distancia_ejes'],
+      ['Peso bruto vehicular', 'peso_bruto_vehicular'],
+      ['Llantas', 'llantas'],
+      ['Sistema de frenos', 'sistema_frenos'],
+      ['Eje delantero', 'eje_delantero'],
+      ['Suspensión delantera', 'suspension_delantera'],
+      ['Eje trasero', 'eje_trasero'],
+      ['Suspensión trasera', 'suspension_trasera'],
+      ['Asistencias', 'asistencias'],
+      ['Equipamiento', 'equipamiento'],
+    ];
+
+    
+    const pairs = fields
+      .map(([label, key]) => [label, (info[key] ?? '').toString().trim()])
+      .filter(([_, val]) => val !== '');
+
+
+    let html = '';
+    for (let i = 0; i < pairs.length; i += 2) {
+      const [k1, v1] = pairs[i];
+      const [k2, v2] = pairs[i + 1] || ['', ''];
+
+      html += `
+        <tr>
+          <td class="key-col">${k1}</td>
+          <td class="val-col text-value">${escapeHtml(v1)}</td>
+          <td class="key-col">${k2 || ''}</td>
+          <td class="val-col text-value">${k2 ? escapeHtml(v2) : ''}</td>
+        </tr>
+      `;
+    }
+
+ 
+    if (info.fecha_creacion) {
+      html += `
+        <tr>
+          <td class="key-col">Fecha de registro</td>
+          <td class="val-col text-value">${escapeHtml(info.fecha_creacion)}</td>
+          <td class="key-col"></td>
+          <td class="val-col"></td>
+        </tr>
+      `;
+    }
+
+    tbody.innerHTML = html;
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">${err.message}</td></tr>`;
+  }
+}
+
+
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.js-or-documentacion');
+  if (!btn) return;
+
+  openModalOrdenDocumentacion(
+    btn.dataset.productoid,
+    btn.dataset.descripcion,
+    btn.dataset.cantidad
+  );
+});
+
+
+
+
+async function openModalOrdenDocumentacion(productoid, descripcion, cantidad = 1) {
+  productoid = parseInt(productoid, 10) || 0;
+
+  const modalCom = document.getElementById('modalDocumentacion');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalCom);
+  const tbody = document.getElementById('docTableBody');
+
+  const est = document.getElementById('titleProductoD');
+  if (est) est.textContent = descripcion || 'Producto';
+
+  const proc = document.getElementById('titleCantidadD');
+  if (proc) proc.textContent = cantidad || 'Cantidad';
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="4" class="text-center py-4">
+        <div class="spinner-border spinner-border-sm"></div>
+        <span class="ms-2 text-muted">Cargando documentación…</span>
+      </td>
+    </tr>
+  `;
+
+  modal.show();
+
+  try {
+    const resp = await fetch(`${base_url}/plan_planeacion/getDocumentacion`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ productoid })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    if (!data.status) throw new Error(data.msg || 'Error al cargar');
+
+    // ✅ AQUÍ ESTABA EL ERROR
+    const archivos = data.data?.rows || [];
+
+    if (!archivos.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" class="text-center text-muted py-4">No hay documentación</td>
+        </tr>
+      `;
+      return;
+    }
+
+    const badgeClass = (tipo = '') => {
+      const t = (tipo || '').toLowerCase();
+      if (t.includes('ayuda')) return 'bg-info';
+      if (t.includes('manual')) return 'bg-warning';
+      if (t.includes('plano')) return 'bg-primary';
+      return 'bg-success';
+    };
+
+    tbody.innerHTML = archivos.map(doc => `
+      <tr>
+        <td>
+          <span class="badge ${badgeClass(doc.tipo_documento)}">
+            ${escapeHtml(doc.tipo_documento)}
+          </span>
+        </td>
+        <td class="text-muted">${escapeHtml(doc.descripcion || '-')}</td>
+        <td>${escapeHtml(doc.fecha_creacion || '-')}</td>
+        <td class="text-center">
+          <a href="${base_url}/Assets/uploads/doc_componentes/${encodeURIComponent(doc.ruta)}"
+             target="_blank"
+             class="btn btn-sm btn-outline-primary">
+            <i class="ri-eye-line me-1"></i> Ver
+          </a>
+        </td>
+      </tr>
+    `).join('');
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+
+
+
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.js-esp');
+  if (!btn) return;
+
+  openModalEspecificaciones(
+    btn.dataset.productoid,
+    btn.dataset.estacionid,
+    btn.dataset.estacion,
+    btn.dataset.proceso, 
+    btn.dataset.cantidad
+  );
+});
+
+
+
+
+async function openModalEspecificaciones(productoid, estacionid, nombreEstacion = '', procesoTxt = '', cantidadPedido = 1) {
+  productoid = parseInt(productoid, 10) || 0;
+  estacionid = parseInt(estacionid, 10) || 0;
+  cantidadPedido = parseFloat(cantidadPedido) || 0;
+
+  const modalCom = document.getElementById('modalEspecificaciones');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalCom);
+  const tbody = document.getElementById('specTableBody');
+
+  const est = document.getElementById('titleEstacionEs');
+  if (est) est.textContent = nombreEstacion || 'Estación';
+
+  const proc = document.getElementById('titleProcesoEs');
+  if (proc) proc.textContent = procesoTxt || 'Proceso';
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="4" class="text-center">
+        <div class="spinner-border spinner-border-sm"></div> Cargando...
+      </td>
+    </tr>
+  `;
+
+  modal.show();
+
+  try {
+    const resp = await fetch(`${base_url}/plan_planeacion/getEspecificaciones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ productoid, estacionid })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    if (!data.status) throw new Error(data.msg || 'Error al cargar');
+
+    const rows = data.data?.rows || [];
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No hay especificaciones</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+
+
+      return `
+        <tr>
+      <td>${r.especificacion || '-'}</td>
+      <td>${r.fecha_creacion || '-'}</td>
+
+        </tr>
+      `;
+    }).join('');
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${err.message}</td></tr>`;
+  }
+}
+
+
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.js-comp');
+  if (!btn) return;
+
+  openModalComponentes(
+    btn.dataset.productoid,
+    btn.dataset.estacionid,
+    btn.dataset.estacion,
+    btn.dataset.proceso, 
+    btn.dataset.cantidad
+  );
+});
+
+
+
+
+async function openModalComponentes(productoid, estacionid, nombreEstacion = '', procesoTxt = '', cantidadPedido = 1) {
+  productoid = parseInt(productoid, 10) || 0;
+  estacionid = parseInt(estacionid, 10) || 0;
+  cantidadPedido = parseFloat(cantidadPedido) || 0;
+
+  const modalCom = document.getElementById('modalComponentes');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalCom);
+  const tbody = document.getElementById('compTableBody');
+
+  const est = document.getElementById('titleEstacion');
+  if (est) est.textContent = nombreEstacion || 'Estación';
+
+  const proc = document.getElementById('titleProceso');
+  if (proc) proc.textContent = procesoTxt || 'Proceso';
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="4" class="text-center">
+        <div class="spinner-border spinner-border-sm"></div> Cargando...
+      </td>
+    </tr>
+  `;
+
+  modal.show();
+
+  try {
+    const resp = await fetch(`${base_url}/plan_planeacion/getComponentes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ productoid, estacionid })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    if (!data.status) throw new Error(data.msg || 'Error al cargar');
+
+    const rows = data.data?.rows || [];
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No hay componentes</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+      const reqPorUnidad = parseFloat(r.cantidad) || 0;
+      const totalRequerido = cantidadPedido * reqPorUnidad;
+
+      return `
+        <tr>
+          <td>${r.componente || '-'}</td>
+          <td class="text-center">${reqPorUnidad}</td>
+          <td class="text-center fw-semibold">${totalRequerido}</td>
+
+        </tr>
+      `;
+    }).join('');
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${err.message}</td></tr>`;
+  }
+}
+
+
+
+
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.js-herr');
+  if (!btn) return;
+
+  openModalHerramientas(
+    btn.dataset.productoid,
+    btn.dataset.estacionid,
+    btn.dataset.estacion,
+    btn.dataset.proceso
+  );
+});
+
+
+
+
+async function openModalHerramientas(productoid, estacionid, nombreEstacion = '', procesoTxt = '') {
+  productoid = parseInt(productoid, 10) || 0;
+  estacionid = parseInt(estacionid, 10) || 0;
+
+
+  const modalHerr = document.getElementById('modalHerramientas');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalHerr);
+  const tbody = document.getElementById('herrTableBody');
+
+  const est = document.getElementById('titleEstacionH');
+  if (est) est.textContent = nombreEstacion || 'Estación';
+
+  const proc = document.getElementById('titleProcesoH');
+  if (proc) proc.textContent = procesoTxt || 'Proceso';
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="4" class="text-center">
+        <div class="spinner-border spinner-border-sm"></div> Cargando...
+      </td>
+    </tr>
+  `;
+
+  modal.show();
+
+  try {
+    const resp = await fetch(`${base_url}/plan_planeacion/getHerramientas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ productoid, estacionid })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    if (!data.status) throw new Error(data.msg || 'Error al cargar');
+
+    const rows = data.data?.rows || [];
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No hay herramientas</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+
+      return `
+        <tr>
+          <td>${r.herramienta || '-'}</td>
+          <td class="text-center">${r.cantidad}</td>
+ 
+
+        </tr>
+      `;
+    }).join('');
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${err.message}</td></tr>`;
+  }
+}
+
+
+
+
+

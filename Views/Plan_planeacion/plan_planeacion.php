@@ -383,7 +383,7 @@
                 <!-- Supervisor -->
                 <div class="col-12">
                   <label class="form-label fw-semibold">Supervisor</label>
-                  <input class="form-control" id="inputSupervisor" list="datalistSupervisores"
+                  <!-- <input class="form-control" id="inputSupervisor" list="datalistSupervisores"
                     placeholder="Escribe para buscar supervisor..." autocomplete="off">
                   <datalist id="datalistSupervisores">
                     <option value="Sergio Ramírez"></option>
@@ -391,7 +391,12 @@
                     <option value="Jorge Martínez"></option>
                     <option value="Sofía Gómez"></option>
                   </datalist>
-                  <div class="help mt-1">Ej: “Carlos Cruz Castañeda”.</div>
+                  <div class="help mt-1">Ej: “Carlos Cruz Castañeda”.</div> -->
+
+
+                                    <select class="form-select" id="selectSupervisor" name="selectSupervisor" required>
+                    <option value="">-- Selecciona producto --</option>
+                  </select>
                 </div>
 
                 <!-- Prioridad -->
@@ -421,7 +426,7 @@
                     </div>
                     <div class="col-12 col-md-4">
                       <label class="form-label fw-semibold">Fecha requerida</label>
-                      <input type="date" class="form-control" id="fechaRequerida" required>
+                      <input type="datetime-local" class="form-control" id="fechaRequerida" required>
                     </div>
                   </div>
                 </div>

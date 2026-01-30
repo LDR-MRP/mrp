@@ -2507,9 +2507,7 @@ async function urlToBase64(url) {
 function buildPdfProductoV1(payload, logoBase64) {
 
 
-  // ---------------------------
-  // Helpers
-  // ---------------------------
+
   const p = payload?.producto || {};
   const doc = payload?.documentacion?.data || [];
   const dt = payload?.descriptiva_tecnica?.data || {};
@@ -2622,9 +2620,9 @@ function buildPdfProductoV1(payload, logoBase64) {
     table: {
       widths: ["20%", "30%", "20%", "30%"],
       body: [
-        ["Nombre / Descripción", fmt(p.descripcion), "Planta", fmt(p.nombre_planta)],
-        ["CVE Producto", fmt(p.cve_producto), "Línea Producto", fmt(p.nombre_linea)],
-        ["Fecha / Hora Registro", fmt(p.fecha_creacion), "Avance General", fmt(p.avance_general)]
+        ["Nombre / Descripción", fmt(p.descripcion), "CVE Producto", fmt(p.cve_producto)],
+        ["Línea Producto", fmt(p.nombre_linea), "Fecha / Hora Registro", fmt(p.fecha_creacion)]
+        // ["Fecha / Hora Registro", fmt(p.fecha_creacion), "Avance General", fmt(p.avance_general)]
       ]
     },
     layout: tableLayout
@@ -2667,7 +2665,7 @@ safeList(doc).forEach((x, idx) => {
   }
 
   content.push({
-    table: { widths: [24, 90, "*", 170, 110], body: docBody },
+    table: { widths: [24, 80, "*", 100, 110], body: docBody },
     layout: tableLayout
   });
 
