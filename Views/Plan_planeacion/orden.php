@@ -20,7 +20,7 @@
 
   .text-value {
     color: #6c757d;
-   
+
     font-weight: 500;
   }
 
@@ -100,6 +100,16 @@
         $badgeEstado = 'badge bg-success-subtle text-success';
         $txtEstado = 'Finalizada';
       }
+
+
+
+
+
+
+
+
+
+
 
       $fmtDate = function ($d) {
         if (!$d)
@@ -196,6 +206,40 @@
 
         return '<span class="' . $cls . '">' . $txt . '</span>';
       };
+
+
+      $badgeCalidadOT = function ($estatus) {
+        $st = (int) $estatus;
+        $cls = 'badge bg-secondary-subtle text-secondary';
+        $txt = 'Pendiente de inspección';
+
+        if ($st === 1) {
+          $cls = 'badge bg-secondary-subtle text-secondary';
+          $txt = 'Pendiente de inspección';
+        }
+        if ($st === 2) {
+          $cls = 'badge bg-warning-subtle text-warning';
+          $txt = 'En inspección';
+        }
+        if ($st === 3) {
+          $cls = 'badge bg-warning-subtle text-warning';
+          $txt = 'Con observaciones';
+        }
+        if ($st === 4) {
+          $cls = 'badge bg-danger-subtle text-danger';
+          $txt = 'En pausa';
+        }
+
+        if ($st === 5) {
+          $cls = 'badge bg-success-subtle text-success';
+          $txt = 'Liberado';
+        }
+
+        return '<span class="' . $cls . '">' . $txt . '</span>';
+      };
+
+
+
 
       $accId = 'accOT' . (int) ($ot['idplaneacion'] ?? 0);
 
@@ -679,13 +723,13 @@
                                         data-estacionid="<?= (int) ($e['estacionid'] ?? 0) ?>"
                                         data-estacion="<?= $h($e['nombre_estacion'] ?? '') ?>"
                                         data-proceso="<?= $h($e['proceso'] ?? '') ?>">
-                                        <i class="ri-stack-line me-1"></i> Herramientas
+                                        <i class="ri-tools-line me-1"></i> Herramientas
                                       </button>
 
-                                      <button type="button" class="btn btn-soft-info waves-effect waves-light  btn-sm"
+                                      <!-- <button type="button" class="btn btn-soft-info waves-effect waves-light  btn-sm"
                                         onclick="openModalInspeccion((<?= (int) $ot['productoid'] ?>,<?= $h($e['estacionid'] ?? '0') ?>)">
                                         <i class="ri-shield-check-line me-1"></i> Inspección
-                                      </button>
+                                      </button> -->
 
                                     </div>
                                   </div>
@@ -718,7 +762,11 @@
                                             <thead>
                                               <tr>
                                                 <th style="width:170px;">Sub OT</th>
-                                                <th style="width:120px;">Estatus</th>
+                                                <th style="width:120px;">Estado de ensamble</th>
+
+                                                <th style="width:120px;">Estado de calidad</th>
+
+
                                                 <th style="width:170px;">Inicio</th>
                                                 <th style="width:170px;">Fin</th>
                                                 <th class="text-end" style="width:280px;">Acciones</th>
@@ -732,7 +780,10 @@
                                                 $inicio = $fmtDT($otRow['fecha_inicio'] ?? '');
                                                 $fin = $fmtDT($otRow['fecha_fin'] ?? '');
                                                 $estatus = (int) ($otRow['estatus'] ?? 0);
+                                                $calidad = (int) ($otRow['calidad'] ?? 0);
                                                 $badgeOT = $badgeEstatusOT($estatus);
+                                                $badgeCalidOT = $badgeCalidadOT($calidad);
+
 
 
                                                 $coment = (string) ($otRow['comentarios'] ?? '');
@@ -745,50 +796,94 @@
                                                   data-estatus="<?= $h($estatus) ?>">
                                                   <td class="fw-semibold text-primary"><?= $h($subot) ?></td>
                                                   <td><?= $badgeOT ?></td>
+                                                  <td><?= $badgeCalidOT ?></td>
                                                   <td><span class="text-muted"><?= $h($inicio) ?></span></td>
                                                   <td><span class="text-muted"><?= $h($fin) ?></span></td>
                                                   <td class="text-end subot-actions">
                                                     <div class="btn-group btn-group-sm" role="group">
-<?php if ((int)$_SESSION['rolid'] === 5): ?>
+                                                      <?php if ((int) $_SESSION['rolid'] === 5): ?>
 
-    <!-- BOTÓN SOLO PAARA CALIDAD -->
-<button class="btn btn-outline-danger waves-effect waves-light btnInspeccionOT">
+                                                        <!-- BOTÓN SOLO PAARA CALIDAD -->
+                                                        <!-- <button class="btn btn-outline-danger waves-effect waves-light btnInspeccionOT">
   <i class="ri-shield-check-line me-1"></i> Inspección Calidad
-</button>
+</button> -->
 
 
-<?php else: ?>
+                                                        <?php if ($calidad == 5): ?>
 
-    <!-- BOTONES NORMALES -->
-    <button type="button" class="btn btn-soft-primary btnStartOT"
-        <?= $disableStart ?> data-idorden="<?= $h($idorden) ?>"
-        data-peid="<?= $h($peid) ?>" data-subot="<?= $h($subot) ?>"
-        data-estatus="<?= $h($estatus) ?>" data-est-orden="<?= $h($orden) ?>">
-        <i class="ri-play-circle-line me-1"></i> Iniciar
-    </button>
+                                                          <button type="button"
+                                                            class="btn btn-outline-success waves-effect waves-light btnViewInspeccionCalidad"
+                                                            data-estacionid="<?= (int) ($e['estacionid'] ?? 0) ?>"
+                                                            data-idorden="<?= $h($idorden) ?>"
+                                                            data-estacion="<?= $h($e['nombre_estacion'] ?? '') ?>"
+                                                            data-proceso="<?= $h($e['proceso'] ?? '') ?>"
+                                                            data-numorden="<?= $h($subot) ?>">
+                                                            <i class="ri-eye-line me-1"></i> Ver inspección
+                                                          </button>
 
-    <button type="button" class="btn btn-soft-success btnFinishOT"
-        <?= $disableFinish ?> data-idorden="<?= $h($idorden) ?>"
-        data-peid="<?= $h($peid) ?>" data-subot="<?= $h($subot) ?>">
-        <i class="ri-checkbox-circle-line me-1"></i> Finalizar
-    </button>
 
-    <button type="button" class="btn btn-soft-secondary btnCommentOT"
-        data-idorden="<?= $h($idorden) ?>" 
-        data-peid="<?= $h($peid) ?>"
-        data-subot="<?= $h($subot) ?>">
-        <i class="ri-chat-3-line me-1"></i> Comentarios
-    </button>
+                                                        <?php elseif ($calidad == 4): ?>
 
-                                                          <button type="button" class="btn btn-soft-primary btn-sm btnChatOT"
-                                                        data-subot="<?= $otRow['num_sub_orden'] ?>"
-                                                        data-estacionid="<?= $e['estacionid'] ?>"
-                                                        data-planeacionid="<?= $e['planeacionid'] ?>"
-                                                        data-productoid="<?= $ot['productoid'] ?>">
-                                                        <i class="ri-message-3-line me-1"></i> Chat
-                                                      </button>
+                                                          <button type="button"
+                                                            class="btn btn-outline-danger waves-effect waves-light btnInspeccionCalidad"
+                                                            data-productoid="<?= (int) $ot['productoid'] ?>"
+                                                            data-estacionid="<?= (int) ($e['estacionid'] ?? 0) ?>"
+                                                            data-estacion="<?= $h($e['nombre_estacion'] ?? '') ?>"
+                                                            data-proceso="<?= $h($e['proceso'] ?? '') ?>"
+                                                            data-idorden="<?= $h($idorden) ?>" data-numorden="<?= $h($subot) ?>">
+                                                            <i class="ri-refresh-line me-1"></i> Reinspeccionar
+                                                          </button>
 
-<?php endif; ?>
+                                                        <?php else: ?>
+
+                                                          <button type="button"
+                                                            class="btn btn-outline-primary waves-effect waves-light btnInspeccionCalidad"
+                                                            data-productoid="<?= (int) $ot['productoid'] ?>"
+                                                            data-estacionid="<?= (int) ($e['estacionid'] ?? 0) ?>"
+                                                            data-estacion="<?= $h($e['nombre_estacion'] ?? '') ?>"
+                                                            data-proceso="<?= $h($e['proceso'] ?? '') ?>"
+                                                            data-idorden="<?= $h($idorden) ?>" data-numorden="<?= $h($subot) ?>">
+                                                            <i class="ri-play-circle-line me-1"></i> Iniciar inspección
+                                                          </button>
+
+                                                        <?php endif; ?>
+
+
+
+
+
+
+                                                      <?php else: ?>
+
+                                                        <!-- BOTONES NORMALES -->
+                                                        <button type="button" class="btn btn-soft-primary btnStartOT"
+                                                          <?= $disableStart ?> data-idorden="<?= $h($idorden) ?>"
+                                                          data-peid="<?= $h($peid) ?>" data-subot="<?= $h($subot) ?>"
+                                                          data-estatus="<?= $h($estatus) ?>" data-est-orden="<?= $h($orden) ?>">
+                                                          <i class="ri-play-circle-line me-1"></i> Iniciar
+                                                        </button>
+
+                                                        <button type="button" class="btn btn-soft-success btnFinishOT"
+                                                          <?= $disableFinish ?> data-idorden="<?= $h($idorden) ?>"
+                                                          data-peid="<?= $h($peid) ?>" data-subot="<?= $h($subot) ?>">
+                                                          <i class="ri-checkbox-circle-line me-1"></i> Finalizar
+                                                        </button>
+
+                                                        <button type="button" class="btn btn-soft-secondary btnCommentOT"
+                                                          data-idorden="<?= $h($idorden) ?>" data-peid="<?= $h($peid) ?>"
+                                                          data-subot="<?= $h($subot) ?>">
+                                                          <i class="ri-chat-3-line me-1"></i> Comentarios
+                                                        </button>
+
+                                                        <button type="button" class="btn btn-soft-primary btn-sm btnChatOT"
+                                                          data-subot="<?= $otRow['num_sub_orden'] ?>"
+                                                          data-estacionid="<?= $e['estacionid'] ?>"
+                                                          data-planeacionid="<?= $e['planeacionid'] ?>"
+                                                          data-productoid="<?= $ot['productoid'] ?>">
+                                                          <i class="ri-message-3-line me-1"></i> Chat
+                                                        </button>
+
+                                                      <?php endif; ?>
 
 
 
@@ -863,9 +958,6 @@
                     Recursos de Producción
 
                   </h5>
-
-
-
 
                   <div class="d-grid gap-2">
 
@@ -1368,7 +1460,7 @@
                     <thead class="table-light">
                       <tr>
                         <th>Especificación</th>
-                        <th>Fecha creación</th>
+                        <!-- <th>Fecha creación</th> -->
                       </tr>
                     </thead>
                     <tbody id="specTableBody">
@@ -1577,6 +1669,333 @@
         </div>
 
 
+
+
+
+        <!-- CREAMOS EL MODAL PARA CONSULTAR LAS ESPECIFICACIONES CRITICAS -->
+
+        <!-- MODAL: INSPECCIÓN CALIDAD -->
+        <div id="modalInspeccionCalidad" class="modal fade bs-example-modal-xl" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+
+              <div class="modal-header">
+                <h5 class="modal-title">
+                  <i class="ri-alert-line me-2"></i>
+                  Especificaciones Críticas: <span id="numSubOrdenT">-</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+              </div>
+
+              <div class="modal-body">
+
+                <input type="hidden" id="calidad_idorden" value="0">
+                <input type="hidden" id="calidad_numot" value="">
+
+                <input type="hidden" id="producto_id" value="<?= (int) $ot['productoid'] ?>">
+                <!-- <input type="hidden" id="orden_id" value="<?= $h($idorden) ?>"> -->
+
+                <input type="hidden" id="estacion_id" value="">
+
+                <div class="alert alert-warning d-flex align-items-start gap-2 mb-3" role="alert">
+                  <i class="ri-alert-line fs-18 mt-1"></i>
+                  <div>
+                    <div class="fw-semibold">¡Nota!</div>
+                    <div class="text-muted">
+                      Completa la inspección para liberar la estación. Si seleccionas <b>NO OK</b>, el comentario es
+                      obligatorio.
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                  <div class="col-md-6">
+                    <div class="card border shadow-sm">
+                      <div class="card-body d-flex align-items-center gap-3">
+                        <div
+                          class="avatar-sm bg-soft-primary text-primary rounded-circle d-flex align-items-center justify-content-center">
+                          <i class="ri-map-pin-line fs-18"></i>
+                        </div>
+                        <div>
+                          <div class="text-muted small">Estación de trabajo</div>
+                          <h5 class="mb-0 fw-semibold" id="titleEstacionCal">—</h5>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <div class="card border shadow-sm">
+                      <div class="card-body d-flex align-items-center gap-3">
+                        <div
+                          class="avatar-sm bg-soft-warning text-warning rounded-circle d-flex align-items-center justify-content-center">
+                          <i class="ri-settings-3-line fs-18"></i>
+                        </div>
+                        <div>
+                          <div class="text-muted small">Proceso</div>
+                          <h6 class="mb-0 fw-semibold" id="titleProcesoCal">—</h6>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="table table-bordered table-striped align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th style="width:40%">Especificación</th>
+                        <th style="width:20%">Resultado</th>
+                        <th style="width:25%">Evidencia</th>
+                        <th style="width:15%">Comentario</th>
+                      </tr>
+                    </thead>
+
+                    <tbody id="calidadTableBody">
+                      <tr>
+                        <td colspan="4" class="text-center text-muted">Sin datos…</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
+
+              <div class="modal-footer d-flex justify-content-between">
+
+
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-danger" id="btnPausarCalidad">
+                    <i class="ri-pause-circle-line me-1"></i> Pausar
+                  </button>
+
+                  <button type="button" class="btn btn-success" id="btnLiberarCalidad">
+                    <i class="ri-check-double-line me-1"></i> Liberar
+                  </button>
+
+                  <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+
+
+
+        <div id="modalViewInspeccionCalidad" class="modal fade bs-example-modal-xl" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+
+              <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                  <i class="ri-shield-check-line text-primary fs-20"></i>
+                  <span>Inspección de Calidad</span>
+                  <span class="text-muted fw-normal">·</span>
+                  <span class="fw-semibold" id="numSubOrdenTView">—</span>
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+              </div>
+
+              <div class="modal-body">
+
+
+                <div class="alert alert-success d-flex align-items-start gap-2 mb-3">
+                  <i class="ri-check-double-line fs-18 mt-1"></i>
+                  <div>
+                    <div class="fw-semibold">Inspección finalizada</div>
+                    <div class="text-muted">
+                      Todas las especificaciones fueron evaluadas y la estación fue liberada correctamente.
+                    </div>
+                  </div>
+                </div>
+
+
+                <div class="row g-3 mb-3">
+                  <div class="col-md-6">
+                    <div class="card border shadow-sm">
+                      <div class="card-body d-flex align-items-center gap-3">
+                        <div
+                          class="avatar-sm bg-soft-primary text-primary rounded-circle d-flex align-items-center justify-content-center">
+                          <i class="ri-map-pin-line fs-18"></i>
+                        </div>
+                        <div>
+                          <div class="text-muted small">Estación de trabajo</div>
+                          <h5 class="mb-0 fw-semibold" id="titleEstacionCalView">—</h5>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <div class="card border shadow-sm">
+                      <div class="card-body d-flex align-items-center gap-3">
+                        <div
+                          class="avatar-sm bg-soft-warning text-warning rounded-circle d-flex align-items-center justify-content-center">
+                          <i class="ri-cpu-line fs-18"></i>
+
+
+                        </div>
+                        <div>
+                          <div class="text-muted small">Proceso</div>
+                          <h6 class="mb-0 fw-semibold" id="titleProcesoCalView">—</h6>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+
+                <!-- ✅ NUEVO: Inspector / Fechas / Estado -->
+                <div class="row g-3 mb-3">
+
+                  <div class="col-md-6">
+                    <div class="card border shadow-sm mb-0">
+                      <div class="card-body d-flex align-items-center gap-3">
+                        <div
+                          class="avatar-sm bg-soft-success text-success rounded-circle d-flex align-items-center justify-content-center">
+                          <i class="ri-user-3-line fs-18"></i>
+                        </div>
+                        <div class="w-100">
+                          <div class="text-muted small">Inspector</div>
+                          <div class="fw-semibold" id="viewInspectorNombre">—</div>
+                          <div class="text-muted small" id="viewInspectorEmail">—</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <div class="card border shadow-sm mb-0">
+                      <div class="card-body d-flex align-items-center justify-content-between gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                          <div
+                            class="avatar-sm bg-soft-primary text-primary rounded-circle d-flex align-items-center justify-content-center">
+                            <i class="ri-time-line fs-18"></i>
+                          </div>
+                          <div>
+                            <div class="text-muted small">Fechas</div>
+                            <div class="small">
+                              <span class="text-muted">Inicio:</span> <b id="viewFechaInicio">—</b><br>
+                              <span class="text-muted">Cierre:</span> <b id="viewFechaCierre">—</b>
+                            </div>
+                          </div>
+                        </div>
+
+                        <span class="badge rounded-pill border fs-12" id="viewEstadoBadge">—</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+
+                <div class="card border shadow-sm mb-3">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                      <div class="text-muted small">Resumen de inspección</div>
+
+                      <div class="d-flex gap-2 flex-wrap">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">
+                          <i class="ri-checkbox-circle-line me-1"></i> OK: <b id="viewCountOk">0</b>
+                        </span>
+                        <!-- <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+          <i class="ri-close-circle-line me-1"></i> NO OK: <b id="viewCountNoOk">0</b>
+        </span> -->
+                        <span class="badge bg-info-subtle text-info border border-info-subtle">
+                          <i class="ri-attachment-2 me-1"></i> Evidencias: <b id="viewCountEv">0</b>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="mt-3" id="viewResumenComentarios">
+                      <div class="text-muted small">—</div>
+                    </div>
+                  </div>
+                </div>
+
+
+                <div class="table-responsive">
+                  <table class="table table-bordered table-striped align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th style="width:40%">Especificación</th>
+                        <th style="width:20%">Resultado</th>
+                        <th style="width:25%">Evidencia</th>
+                        <th style="width:15%">Comentario</th>
+                      </tr>
+                    </thead>
+
+                    <tbody id="calidadViewTableBody">
+                      <tr>
+                        <td colspan="4" class="text-center text-muted">Sin datos…</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+
+
+
+        <!-- MODAL CÁMARA (mini) -->
+        <div class="modal fade" id="modalCamCalidad" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">
+                  <i class="ri-camera-line me-2"></i> Tomar foto
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+              </div>
+
+              <div class="modal-body">
+                <div class="ratio ratio-16x9 bg-dark rounded overflow-hidden">
+                  <video id="camVideo" autoplay playsinline class="w-100 h-100"></video>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mt-3 justify-content-between align-items-center">
+                  <div class="text-muted small">
+                    Cámara: <span class="fw-semibold" id="camInfo">trasera</span>
+                  </div>
+
+                  <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-light" id="btnCamSwitch">
+                      <i class="ri-camera-switch-line me-1"></i> Cambiar
+                    </button>
+
+                    <button type="button" class="btn btn-primary" id="btnCamShot">
+                      <i class="ri-camera-3-line me-1"></i> Tomar foto
+                    </button>
+
+                    <button type="button" class="btn btn-success" id="btnCamUse">
+                      <i class="ri-check-line me-1"></i> Usar y cerrar
+                    </button>
+                  </div>
+                </div>
+
+                <!-- canvas oculto para capturar -->
+                <canvas id="camCanvas" class="d-none"></canvas>
+
+                <!-- miniaturas de la sesión -->
+                <div class="mt-3">
+                  <div class="text-muted small mb-2">Fotos capturadas en esta sesión:</div>
+                  <div id="camThumbs" class="d-flex flex-wrap gap-2"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
 
 

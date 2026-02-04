@@ -1045,8 +1045,7 @@ public function selectPlanCanceladas()
         return ['status' => false, 'msg' => 'Planeación inválida', 'data' => []];
     }
 
-    
-//mostramos todas las estacione spara el admin y para los de calidad para que relicdemn sus gestiones
+
     $isAdmin = isset($_SESSION['rolid']) && in_array((int)$_SESSION['rolid'], [1, 5]);
 
     $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
@@ -1126,6 +1125,7 @@ public function selectPlanCanceladas()
                      ot.fecha_fin,
                      ot.comentarios,
                      ot.estatus,
+                     ot.calidad,
                      CAST(SUBSTRING_INDEX(ot.num_sub_orden, 'S', -1) AS UNSIGNED) AS ord_s
               FROM mrp_ordenes_trabajo ot
               WHERE ot.planeacion_estacionid IN ({$in})
@@ -1194,6 +1194,7 @@ public function selectPlanCanceladas()
                 'fecha_fin'             => (string)($ot['fecha_fin'] ?? ''),
                 'comentarios'           => (string)($ot['comentarios'] ?? ''),
                 'estatus'               => (string)($ot['estatus'] ?? ''),
+                'calidad'               => (string)($ot['calidad'] ?? ''),
             ];
         }
 
@@ -1866,6 +1867,535 @@ public function selectHerramientasByProductoEstacion(int $productoid, int $estac
     return $this->select_all($sql);
 }
 
+public function saveInspeccionCalidadv1($h, $detalle, $evidencias)
+{
+  $idorden    = (int)$h['idorden'];
+  $numot      = (string)$h['numot'];
+  $productoid = (int)$h['productoid'];
+  $estacionid = (int)$h['estacionid'];
+  $usuarioid  = (int)$h['usuarioid'];
+  $estado     = (int)$h['estado']; // 1 pausada, 2 liberada
+
+
+  $sqlFind = "SELECT idinspeccion
+              FROM mrp_calidad_inspeccion
+              WHERE idorden = $idorden
+                AND estacionid = $estacionid
+              ORDER BY idinspeccion DESC
+              LIMIT 1";
+  $row = $this->select($sqlFind);
+  $idinspeccion = isset($row['idinspeccion']) ? (int)$row['idinspeccion'] : 0;
+
+  if ($idinspeccion <= 0) {
+    $sqlIns = "INSERT INTO mrp_calidad_inspeccion (idorden, numot, productoid, estacionid, usuarioid, estado)
+               VALUES (?, ?, ?, ?, ?, ?)";
+    $idinspeccion = (int)$this->insert($sqlIns, [$idorden, $numot, $productoid, $estacionid, $usuarioid, $estado]);
+
+    if ($idinspeccion <= 0) {
+      return ['status' => false, 'msg' => 'No se pudo crear la inspección.'];
+    }
+  } else {
+    $sqlUp = "UPDATE mrp_calidad_inspeccion
+              SET estado = ?, usuarioid = ?
+              WHERE idinspeccion = $idinspeccion";
+
+                  $arrData = array($estado,$usuarioid);
+    $this->update($sqlUp,$arrData );
+
+    if ($estado === 2) {
+                 
+ $fecha_hora = date('Y-m-d H:i:s');
+
+$sqlFecha = "UPDATE mrp_calidad_inspeccion
+             SET fecha_cierre = ?
+             WHERE idinspeccion = $idinspeccion";
+
+$arrFecha = array($fecha_hora );
+$this->update($sqlFecha, $arrFecha);
+    }
+
+
+
+  }
+
+
+  foreach ($detalle as $d) {
+    $especificacionid = (int)($d['especificacionid'] ?? 0);
+    $resultado        = (string)($d['resultado'] ?? '');
+    $comentarioUI     = trim((string)($d['comentario'] ?? ''));
+
+    if ($especificacionid <= 0) continue;
+    if ($resultado !== 'OK' && $resultado !== 'NO_OK') continue;
+
+
+    $sqlDetFind = "SELECT iddetalle, comentario_no_ok
+                   FROM mrp_calidad_inspeccion_detalle
+                   WHERE idinspeccion = $idinspeccion
+                     AND especificacionid = $especificacionid
+                   LIMIT 1";
+    $rd = $this->select($sqlDetFind);
+    $iddetalle = isset($rd['iddetalle']) ? (int)$rd['iddetalle'] : 0;
+    $comentarioNoOkPrev = isset($rd['comentario_no_ok']) ? trim((string)$rd['comentario_no_ok']) : '';
+
+    if ($iddetalle <= 0) {
+     
+      $comentario_no_ok   = ($resultado === 'NO_OK') ? $comentarioUI : null;
+      $accion_correctiva  = ($resultado === 'OK') ? $comentarioUI : null; // opcional
+
+      $sqlDetIns = "INSERT INTO mrp_calidad_inspeccion_detalle
+                      (idinspeccion, especificacionid, resultado, comentario_no_ok, accion_correctiva)
+                    VALUES (?, ?, ?, ?, ?)";
+      $iddetalle = (int)$this->insert($sqlDetIns, [
+        $idinspeccion,
+        $especificacionid,
+        $resultado,
+        $comentario_no_ok,
+        $accion_correctiva
+      ]);
+
+    } else {
+ 
+      if ($resultado === 'NO_OK') {
+
+
+        $nuevoMotivo = $comentarioUI;
+
+        if ($comentarioNoOkPrev !== '') {
+
+          $sqlDetUp = "UPDATE mrp_calidad_inspeccion_detalle
+                       SET resultado = ?
+                       WHERE iddetalle = ?";
+          $this->update($sqlDetUp, [$resultado, $iddetalle]);
+        } else {
+ 
+          $sqlDetUp = "UPDATE mrp_calidad_inspeccion_detalle
+                       SET resultado = ?, comentario_no_ok = ?
+                       WHERE iddetalle = ?";
+          $this->update($sqlDetUp, [$resultado, $nuevoMotivo, $iddetalle]);
+        }
+
+      } else {
+
+        if ($comentarioUI !== '') {
+          $sqlDetUp = "UPDATE mrp_calidad_inspeccion_detalle
+                       SET resultado = ?, accion_correctiva = ?
+                       WHERE iddetalle = ?";
+          $this->update($sqlDetUp, [$resultado, $comentarioUI, $iddetalle]);
+        } else {
+          $sqlDetUp = "UPDATE mrp_calidad_inspeccion_detalle
+                       SET resultado = ?
+                       WHERE iddetalle = ?";
+          $this->update($sqlDetUp, [$resultado, $iddetalle]);
+        }
+      }
+    }
+
+    if ($iddetalle <= 0) continue;
+
+  
+    if (!empty($evidencias[$especificacionid]) && is_array($evidencias[$especificacionid])) {
+      foreach ($evidencias[$especificacionid] as $ev) {
+        $sqlEv = "INSERT INTO mrp_calidad_inspeccion_evidencia
+                  (iddetalle, nombre_original, archivo, mime, size_bytes)
+                  VALUES (?, ?, ?, ?, ?)";
+        $this->insert($sqlEv, [
+          $iddetalle,
+          (string)($ev['nombre_original'] ?? ''),
+          (string)($ev['archivo'] ?? ''),
+          (string)($ev['mime'] ?? ''),
+          (int)($ev['size_bytes'] ?? 0)
+        ]);
+      }
+    }
+  }
+
+  return [
+    'status' => true,
+    'msg' => ($estado === 2) ? 'Inspección guardada y estación liberada.' : 'Inspección guardada (pausada).',
+    'data' => [
+      'idinspeccion' => $idinspeccion,
+      'estado' => $estado
+    ]
+  ];
+}
+
+
+
+
+public function saveInspeccionCalidadv2($h, $detalle, $evidencias)
+{
+  $idorden    = (int)$h['idorden'];
+  $numot      = (string)$h['numot'];
+  $productoid = (int)$h['productoid'];
+  $estacionid = (int)$h['estacionid'];
+  $usuarioid  = (int)$h['usuarioid'];
+  $estado     = (int)$h['estado']; // 1 pausada, 2 liberada
+
+
+  $sqlFind = "SELECT idinspeccion
+              FROM mrp_calidad_inspeccion
+              WHERE idorden = $idorden
+                AND estacionid = $estacionid
+              ORDER BY idinspeccion DESC
+              LIMIT 1";
+  $row = $this->select($sqlFind);
+  $idinspeccion = isset($row['idinspeccion']) ? (int)$row['idinspeccion'] : 0;
+
+  if ($idinspeccion <= 0) {
+
+    $sqlIns = "INSERT INTO mrp_calidad_inspeccion (idorden, numot, productoid, estacionid, usuarioid, estado)
+               VALUES (?, ?, ?, ?, ?, ?)";
+    $idinspeccion = (int)$this->insert($sqlIns, [$idorden, $numot, $productoid, $estacionid, $usuarioid, $estado]);
+
+    if ($idinspeccion <= 0) {
+      return ['status' => false, 'msg' => 'No se pudo crear la inspección.'];
+    }
+
+   
+    if ($estado === 1 || $estado === 2) {
+      $calidadOT = ($estado === 1) ? 4 : 5;
+
+      $sqlOtUp = "UPDATE mrp_ordenes_trabajo
+                  SET calidad = ?
+                  WHERE idorden = ?";
+      $this->update($sqlOtUp, [$calidadOT, $idorden]);
+    }
+
+  } else {
+
+    $sqlUp = "UPDATE mrp_calidad_inspeccion
+              SET estado = ?, usuarioid = ?
+              WHERE idinspeccion = $idinspeccion";
+
+    $arrData = array($estado, $usuarioid);
+    $this->update($sqlUp, $arrData);
+
+
+    if ($estado === 1 || $estado === 2) {
+      $calidadOT = ($estado === 1) ? 4 : 5;
+
+      $sqlOtUp = "UPDATE mrp_ordenes_trabajo
+                  SET calidad = ?
+                  WHERE idorden = ?";
+      $this->update($sqlOtUp, [$calidadOT, $idorden]);
+    }
+
+    if ($estado === 2) {
+
+      $fecha_hora = date('Y-m-d H:i:s');
+
+      $sqlFecha = "UPDATE mrp_calidad_inspeccion
+                   SET fecha_cierre = ?
+                   WHERE idinspeccion = $idinspeccion";
+
+      $arrFecha = array($fecha_hora);
+      $this->update($sqlFecha, $arrFecha);
+    }
+  }
+
+
+  foreach ($detalle as $d) {
+    $especificacionid = (int)($d['especificacionid'] ?? 0);
+    $resultado        = (string)($d['resultado'] ?? '');
+    $comentarioUI     = trim((string)($d['comentario'] ?? ''));
+
+    if ($especificacionid <= 0) continue;
+    if ($resultado !== 'OK' && $resultado !== 'NO_OK') continue;
+
+
+    $sqlDetFind = "SELECT iddetalle, comentario_no_ok
+                   FROM mrp_calidad_inspeccion_detalle
+                   WHERE idinspeccion = $idinspeccion
+                     AND especificacionid = $especificacionid
+                   LIMIT 1";
+    $rd = $this->select($sqlDetFind);
+    $iddetalle = isset($rd['iddetalle']) ? (int)$rd['iddetalle'] : 0;
+    $comentarioNoOkPrev = isset($rd['comentario_no_ok']) ? trim((string)$rd['comentario_no_ok']) : '';
+
+    if ($iddetalle <= 0) {
+   
+      $comentario_no_ok   = ($resultado === 'NO_OK') ? $comentarioUI : null;
+      $accion_correctiva  = ($resultado === 'OK') ? $comentarioUI : null; // opcional
+
+      $sqlDetIns = "INSERT INTO mrp_calidad_inspeccion_detalle
+                      (idinspeccion, especificacionid, resultado, comentario_no_ok, accion_correctiva)
+                    VALUES (?, ?, ?, ?, ?)";
+      $iddetalle = (int)$this->insert($sqlDetIns, [
+        $idinspeccion,
+        $especificacionid,
+        $resultado,
+        $comentario_no_ok,
+        $accion_correctiva
+      ]);
+
+    } else {
+     
+      if ($resultado === 'NO_OK') {
+
+       
+        $nuevoMotivo = $comentarioUI;
+
+        if ($comentarioNoOkPrev !== '') {
+        
+          $sqlDetUp = "UPDATE mrp_calidad_inspeccion_detalle
+                       SET resultado = ?
+                       WHERE iddetalle = ?";
+          $this->update($sqlDetUp, [$resultado, $iddetalle]);
+        } else {
+        
+          $sqlDetUp = "UPDATE mrp_calidad_inspeccion_detalle
+                       SET resultado = ?, comentario_no_ok = ?
+                       WHERE iddetalle = ?";
+          $this->update($sqlDetUp, [$resultado, $nuevoMotivo, $iddetalle]);
+        }
+
+      } else {
+
+        if ($comentarioUI !== '') {
+          $sqlDetUp = "UPDATE mrp_calidad_inspeccion_detalle
+                       SET resultado = ?, accion_correctiva = ?
+                       WHERE iddetalle = ?";
+          $this->update($sqlDetUp, [$resultado, $comentarioUI, $iddetalle]);
+        } else {
+          $sqlDetUp = "UPDATE mrp_calidad_inspeccion_detalle
+                       SET resultado = ?
+                       WHERE iddetalle = ?";
+          $this->update($sqlDetUp, [$resultado, $iddetalle]);
+        }
+      }
+    }
+
+    if ($iddetalle <= 0) continue;
+
+  
+    if (!empty($evidencias[$especificacionid]) && is_array($evidencias[$especificacionid])) {
+      foreach ($evidencias[$especificacionid] as $ev) {
+        $sqlEv = "INSERT INTO mrp_calidad_inspeccion_evidencia
+                  (iddetalle, nombre_original, archivo, mime, size_bytes)
+                  VALUES (?, ?, ?, ?, ?)";
+        $this->insert($sqlEv, [
+          $iddetalle,
+          (string)($ev['nombre_original'] ?? ''),
+          (string)($ev['archivo'] ?? ''),
+          (string)($ev['mime'] ?? ''),
+          (int)($ev['size_bytes'] ?? 0)
+        ]);
+      }
+    }
+  }
+
+  return [
+    'status' => true,
+    'msg' => ($estado === 2) ? 'Inspección guardada y estación liberada.' : 'Inspección guardada (pausada).',
+    'data' => [
+      'idinspeccion' => $idinspeccion,
+      'estado' => $estado
+    ]
+  ];
+}
+
+public function saveInspeccionCalidad($h, $detalle, $evidencias)
+{
+  $idorden    = (int)$h['idorden'];
+  $numot      = (string)$h['numot'];
+  $productoid = (int)$h['productoid'];
+  $estacionid = (int)$h['estacionid'];
+  $usuarioid  = (int)$h['usuarioid'];
+  $estado     = (int)$h['estado'];
+
+
+  $sqlFind = "SELECT idinspeccion
+              FROM mrp_calidad_inspeccion
+              WHERE idorden = $idorden
+                AND estacionid = $estacionid
+              ORDER BY idinspeccion DESC
+              LIMIT 1";
+  $row = $this->select($sqlFind);
+  $idinspeccion = isset($row['idinspeccion']) ? (int)$row['idinspeccion'] : 0;
+
+  if ($idinspeccion <= 0) {
+
+    $sqlIns = "INSERT INTO mrp_calidad_inspeccion (idorden, numot, productoid, estacionid, usuarioid, estado)
+               VALUES (?, ?, ?, ?, ?, ?)";
+    $idinspeccion = (int)$this->insert($sqlIns, [$idorden, $numot, $productoid, $estacionid, $usuarioid, $estado]);
+
+    if ($idinspeccion <= 0) {
+      return ['status' => false, 'msg' => 'No se pudo crear la inspección.'];
+    }
+
+
+    if ($estado === 1 || $estado === 2) {
+      $calidadOT = ($estado === 1) ? 4 : 5;
+
+      $sqlOtUp = "UPDATE mrp_ordenes_trabajo
+                  SET calidad = ?
+                  WHERE idorden = ?";
+      $this->update($sqlOtUp, [$calidadOT, $idorden]);
+    }
+
+ 
+    if ($estado === 1) {
+      $sqlOtSecuencia = "UPDATE mrp_ordenes_trabajo
+                         SET calidad = 3
+                         WHERE num_sub_orden = ?
+                           AND idorden > ?";
+      $this->update($sqlOtSecuencia, [$numot, $idorden]);
+    }
+
+    
+    if ($estado === 2) {
+      $sqlOtPend = "UPDATE mrp_ordenes_trabajo
+                    SET calidad = 1
+                    WHERE num_sub_orden = ?
+                      AND idorden > ?";
+      $this->update($sqlOtPend, [$numot, $idorden]);
+    }
+
+  } else {
+
+    $sqlUp = "UPDATE mrp_calidad_inspeccion
+              SET estado = ?, usuarioid = ?
+              WHERE idinspeccion = $idinspeccion";
+
+    $arrData = array($estado, $usuarioid);
+    $this->update($sqlUp, $arrData);
+
+ 
+    if ($estado === 1 || $estado === 2) {
+      $calidadOT = ($estado === 1) ? 4 : 5;
+
+      $sqlOtUp = "UPDATE mrp_ordenes_trabajo
+                  SET calidad = ?
+                  WHERE idorden = ?";
+      $this->update($sqlOtUp, [$calidadOT, $idorden]);
+    }
+
+    
+    if ($estado === 1) {
+      $sqlOtSecuencia = "UPDATE mrp_ordenes_trabajo
+                         SET calidad = 3
+                         WHERE num_sub_orden = ?
+                           AND idorden > ?";
+      $this->update($sqlOtSecuencia, [$numot, $idorden]);
+    }
+
+    if ($estado === 2) {
+
+      $fecha_hora = date('Y-m-d H:i:s');
+
+      $sqlFecha = "UPDATE mrp_calidad_inspeccion
+                   SET fecha_cierre = ?
+                   WHERE idinspeccion = $idinspeccion";
+
+      $arrFecha = array($fecha_hora);
+      $this->update($sqlFecha, $arrFecha);
+
+   
+      $sqlOtPend = "UPDATE mrp_ordenes_trabajo
+                    SET calidad = 1
+                    WHERE num_sub_orden = ?
+                      AND idorden > ?";
+      $this->update($sqlOtPend, [$numot, $idorden]);
+    }
+  }
+
+
+  foreach ($detalle as $d) {
+    $especificacionid = (int)($d['especificacionid'] ?? 0);
+    $resultado        = (string)($d['resultado'] ?? '');
+    $comentarioUI     = trim((string)($d['comentario'] ?? ''));
+
+    if ($especificacionid <= 0) continue;
+    if ($resultado !== 'OK' && $resultado !== 'NO_OK') continue;
+
+
+    $sqlDetFind = "SELECT iddetalle, comentario_no_ok
+                   FROM mrp_calidad_inspeccion_detalle
+                   WHERE idinspeccion = $idinspeccion
+                     AND especificacionid = $especificacionid
+                   LIMIT 1";
+    $rd = $this->select($sqlDetFind);
+    $iddetalle = isset($rd['iddetalle']) ? (int)$rd['iddetalle'] : 0;
+    $comentarioNoOkPrev = isset($rd['comentario_no_ok']) ? trim((string)$rd['comentario_no_ok']) : '';
+
+    if ($iddetalle <= 0) {
+    
+      $comentario_no_ok   = ($resultado === 'NO_OK') ? $comentarioUI : null;
+      $accion_correctiva  = ($resultado === 'OK') ? $comentarioUI : null; // opcional
+
+      $sqlDetIns = "INSERT INTO mrp_calidad_inspeccion_detalle
+                      (idinspeccion, especificacionid, resultado, comentario_no_ok, accion_correctiva)
+                    VALUES (?, ?, ?, ?, ?)";
+      $iddetalle = (int)$this->insert($sqlDetIns, [
+        $idinspeccion,
+        $especificacionid,
+        $resultado,
+        $comentario_no_ok,
+        $accion_correctiva
+      ]);
+
+    } else {
+ 
+      if ($resultado === 'NO_OK') {
+
+        $nuevoMotivo = $comentarioUI;
+
+        if ($comentarioNoOkPrev !== '') {
+          $sqlDetUp = "UPDATE mrp_calidad_inspeccion_detalle
+                       SET resultado = ?
+                       WHERE iddetalle = ?";
+          $this->update($sqlDetUp, [$resultado, $iddetalle]);
+        } else {
+          $sqlDetUp = "UPDATE mrp_calidad_inspeccion_detalle
+                       SET resultado = ?, comentario_no_ok = ?
+                       WHERE iddetalle = ?";
+          $this->update($sqlDetUp, [$resultado, $nuevoMotivo, $iddetalle]);
+        }
+
+      } else {
+
+        if ($comentarioUI !== '') {
+          $sqlDetUp = "UPDATE mrp_calidad_inspeccion_detalle
+                       SET resultado = ?, accion_correctiva = ?
+                       WHERE iddetalle = ?";
+          $this->update($sqlDetUp, [$resultado, $comentarioUI, $iddetalle]);
+        } else {
+          $sqlDetUp = "UPDATE mrp_calidad_inspeccion_detalle
+                       SET resultado = ?
+                       WHERE iddetalle = ?";
+          $this->update($sqlDetUp, [$resultado, $iddetalle]);
+        }
+      }
+    }
+
+    if ($iddetalle <= 0) continue;
+
+    
+    if (!empty($evidencias[$especificacionid]) && is_array($evidencias[$especificacionid])) {
+      foreach ($evidencias[$especificacionid] as $ev) {
+        $sqlEv = "INSERT INTO mrp_calidad_inspeccion_evidencia
+                  (iddetalle, nombre_original, archivo, mime, size_bytes)
+                  VALUES (?, ?, ?, ?, ?)";
+        $this->insert($sqlEv, [
+          $iddetalle,
+          (string)($ev['nombre_original'] ?? ''),
+          (string)($ev['archivo'] ?? ''),
+          (string)($ev['mime'] ?? ''),
+          (int)($ev['size_bytes'] ?? 0)
+        ]);
+      }
+    }
+  }
+
+  return [
+    'status' => true,
+    'msg' => ($estado === 2) ? 'Inspección guardada y estación liberada.' : 'Inspección guardada (pausada).',
+    'data' => [
+      'idinspeccion' => $idinspeccion,
+      'estado' => $estado
+    ]
+  ];
+}
 
 
 
@@ -1874,6 +2404,271 @@ public function selectHerramientasByProductoEstacion(int $productoid, int $estac
 
 
 
+public function getInspeccionCalidad($idorden, $estacionid)
+{
+  $idorden    = (int)$idorden;
+  $estacionid = (int)$estacionid;
+
+
+  $sqlIns = "SELECT idinspeccion, estado, fecha_cierre, usuarioid
+             FROM mrp_calidad_inspeccion
+             WHERE idorden = $idorden
+               AND estacionid = $estacionid
+             ORDER BY idinspeccion DESC
+             LIMIT 1";
+  $ins = $this->select($sqlIns);
+
+  if (empty($ins) || empty($ins['idinspeccion'])) {
+    return [
+      'status' => true,
+      'msg' => 'Sin inspección previa.',
+      'data' => [
+        'idinspeccion' => 0,
+        'estado' => 0,
+        'detalle' => []
+      ]
+    ];
+  }
+
+  $idinspeccion = (int)$ins['idinspeccion'];
+
+
+  $sqlDet = "SELECT iddetalle, especificacionid, resultado,
+                    comentario_no_ok, accion_correctiva
+             FROM mrp_calidad_inspeccion_detalle
+             WHERE idinspeccion = $idinspeccion";
+  $det = $this->select_all($sqlDet);
+
+
+  $sqlEv = "SELECT iddetalle, nombre_original, archivo, mime, size_bytes
+            FROM mrp_calidad_inspeccion_evidencia
+            WHERE iddetalle IN (
+              SELECT iddetalle
+              FROM mrp_calidad_inspeccion_detalle
+              WHERE idinspeccion = $idinspeccion
+            )";
+  $evs = $this->select_all($sqlEv);
+
+
+  $evByDet = [];
+  if (is_array($evs)) {
+    foreach ($evs as $e) {
+      $idd = (int)($e['iddetalle'] ?? 0);
+      if ($idd <= 0) continue;
+      if (!isset($evByDet[$idd])) $evByDet[$idd] = [];
+      $evByDet[$idd][] = [
+        'nombre_original' => (string)($e['nombre_original'] ?? ''),
+        'archivo' => (string)($e['archivo'] ?? ''),
+        'mime' => (string)($e['mime'] ?? ''),
+        'size_bytes' => (int)($e['size_bytes'] ?? 0),
+      ];
+    }
+  }
+
+  $outDet = [];
+  if (is_array($det)) {
+    foreach ($det as $d) {
+      $iddetalle = (int)($d['iddetalle'] ?? 0);
+      $resultado = (string)($d['resultado'] ?? '');
+      $comentario = '';
+
+      if ($resultado === 'NO_OK') {
+        $comentario = trim((string)($d['comentario_no_ok'] ?? ''));
+      } else if ($resultado === 'OK') {
+        $comentario = trim((string)($d['accion_correctiva'] ?? ''));
+      }
+
+      $outDet[] = [
+        'iddetalle' => $iddetalle,
+        'especificacionid' => (int)($d['especificacionid'] ?? 0),
+        'resultado' => $resultado,
+        'comentario' => $comentario,
+        'evidencias' => $evByDet[$iddetalle] ?? []
+      ];
+    }
+  }
+
+  return [
+    'status' => true,
+    'msg' => 'OK',
+    'data' => [
+      'idinspeccion' => $idinspeccion,
+      'estado' => (int)($ins['estado'] ?? 0),
+      'detalle' => $outDet
+    ]
+  ];
+}
+
+public function getViewInspeccionCalidad($idorden, $estacionid)
+{
+  $idorden    = (int)$idorden;
+  $estacionid = (int)$estacionid;
+
+  $sqlIns = "SELECT 
+                ci.idinspeccion,
+                ci.idorden,
+                ci.numot,
+                ci.productoid,
+                ci.estacionid,
+                ci.usuarioid,
+                ci.estado,
+                ci.fecha_creacion,
+                ci.fecha_cierre,
+                us.nombres,
+                us.apellidos,
+                us.email_user
+             FROM mrp_calidad_inspeccion AS ci
+             INNER JOIN usuarios AS us
+               ON ci.usuarioid = us.idusuario
+             WHERE ci.idorden = $idorden
+               AND ci.estacionid = $estacionid
+             ORDER BY ci.idinspeccion DESC
+             LIMIT 1";
+  $ins = $this->select($sqlIns);
+
+  if (empty($ins) || empty($ins['idinspeccion'])) {
+    return [
+      'status' => true,
+      'msg' => 'Sin inspección previa.',
+      'data' => [
+        'header' => [
+          'idinspeccion'   => 0,
+          'idorden'        => $idorden,
+          'numot'          => '',
+          'productoid'     => 0,
+          'estacionid'     => $estacionid,
+          'estado'         => 0,
+          'fecha_creacion' => null,
+          'fecha_cierre'   => null,
+          'usuarioid'      => 0,
+          'nombres'        => '',
+          'apellidos'      => '',
+          'email_user'     => ''
+        ],
+        'detalle' => []
+      ]
+    ];
+  }
+
+  $idinspeccion = (int)$ins['idinspeccion'];
+  $productoid   = (int)($ins['productoid'] ?? 0);
+
+
+  $sqlDet = "SELECT 
+                d.iddetalle,
+                d.especificacionid,
+                e.especificacion,
+                e.fecha_creacion AS fecha_especificacion,
+                d.resultado,
+                d.comentario_no_ok,
+                d.accion_correctiva
+             FROM mrp_calidad_inspeccion_detalle AS d
+             INNER JOIN mrp_estacion_especificaciones AS e
+               ON e.idespecificacion = d.especificacionid
+              AND e.estacionid = $estacionid
+              AND e.productoid = $productoid
+             WHERE d.idinspeccion = $idinspeccion";
+  $det = $this->select_all($sqlDet);
+
+ 
+  $sqlEv = "SELECT 
+              iddetalle, 
+              nombre_original, 
+              archivo, 
+              mime, 
+              size_bytes
+            FROM mrp_calidad_inspeccion_evidencia
+            WHERE iddetalle IN (
+              SELECT iddetalle
+              FROM mrp_calidad_inspeccion_detalle
+              WHERE idinspeccion = $idinspeccion
+            )";
+  $evs = $this->select_all($sqlEv);
+
+
+  $evByDet = [];
+  if (is_array($evs)) {
+    foreach ($evs as $e) {
+      $idd = (int)($e['iddetalle'] ?? 0);
+      if ($idd <= 0) continue;
+
+      if (!isset($evByDet[$idd])) $evByDet[$idd] = [];
+      $evByDet[$idd][] = [
+        'nombre_original' => (string)($e['nombre_original'] ?? ''),
+        'archivo'         => (string)($e['archivo'] ?? ''),
+        'mime'            => (string)($e['mime'] ?? ''),
+        'size_bytes'      => (int)($e['size_bytes'] ?? 0),
+      ];
+    }
+  }
+
+
+  $outDet = [];
+  if (is_array($det)) {
+    foreach ($det as $d) {
+      $iddetalle = (int)($d['iddetalle'] ?? 0);
+      $resultado = (string)($d['resultado'] ?? '');
+
+      $comentarioNoOk = trim((string)($d['comentario_no_ok'] ?? ''));
+      $accionCorr     = trim((string)($d['accion_correctiva'] ?? ''));
+
+     
+      $comentarioUI = '';
+      if ($resultado === 'NO_OK') {
+        $comentarioUI = $comentarioNoOk;
+      } elseif ($resultado === 'OK') {
+        $comentarioUI = $accionCorr;
+      }
+
+      $outDet[] = [
+        'iddetalle'            => $iddetalle,
+        'especificacionid'     => (int)($d['especificacionid'] ?? 0),
+
+     
+        'especificacion'       => (string)($d['especificacion'] ?? ''),
+        'fecha_especificacion' => (string)($d['fecha_especificacion'] ?? ''),
+
+        'resultado'            => $resultado,
+
+
+        'comentario_no_ok'     => $comentarioNoOk,
+        'accion_correctiva'    => $accionCorr,
+
+  
+        'comentario_ui'        => $comentarioUI,
+
+        'evidencias'           => $evByDet[$iddetalle] ?? []
+      ];
+    }
+  }
+
+
+  $header = [
+    'idinspeccion'   => $idinspeccion,
+    'idorden'        => (int)($ins['idorden'] ?? 0),
+    'numot'          => (string)($ins['numot'] ?? ''),
+    'productoid'     => $productoid,
+    'estacionid'     => (int)($ins['estacionid'] ?? 0),
+
+    'estado'         => (int)($ins['estado'] ?? 0),
+    'fecha_creacion' => (string)($ins['fecha_creacion'] ?? ''),
+    'fecha_cierre'   => (string)($ins['fecha_cierre'] ?? ''),
+
+    'usuarioid'      => (int)($ins['usuarioid'] ?? 0),
+    'nombres'        => (string)($ins['nombres'] ?? ''),
+    'apellidos'      => (string)($ins['apellidos'] ?? ''),
+    'email_user'     => (string)($ins['email_user'] ?? ''),
+  ];
+
+  return [
+    'status' => true,
+    'msg' => 'OK',
+    'data' => [
+      'header' => $header,
+      'detalle' => $outDet
+    ]
+  ];
+}
 
 
 

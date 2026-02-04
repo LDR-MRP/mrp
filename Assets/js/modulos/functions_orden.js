@@ -22,7 +22,7 @@
     return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
   };
 
-  // ✅ NUEVO: para filename (YYYYMMDD_HHMMSS)
+
   const ahoraSelloArchivo = () => {
     const d = new Date();
     const yyyy = d.getFullYear();
@@ -91,7 +91,7 @@
   };
 
   const ocultarCargando = () => {
-    try { Swal.close(); } catch (e) {}
+    try { Swal.close(); } catch (e) { }
   };
 
   // =========================================================
@@ -102,7 +102,7 @@
     return m ? parseInt(m[1], 10) : 0;
   };
 
-  // ✅ Botones enable/disable consistente (atributo + clase)
+
   const setBtnEnabled = (btn, enabled) => {
     if (!btn) return;
     btn.disabled = !enabled;
@@ -126,11 +126,7 @@
     return 1;
   };
 
-  // ✅ Orden de estación (MUY IMPORTANTE para vistas parciales)
-  // Prioridad:
-  // 1) data-est-orden en fila o contenedor
-  // 2) parsear "#2" del título de la estación (por ejemplo: "#2 : Inspección Inicial")
-  // 3) fallback 0
+
   const obtenerOrdenEstacion = (tr) => {
     // 1) en la fila
     const v1 = tr?.dataset?.estOrden || tr?.dataset?.est_orden || tr?.dataset?.estorden;
@@ -170,7 +166,7 @@
     return 0;
   };
 
-  // ✅ Comentarios solo si estatus = 2
+  
   const aplicarReglaComentarios = () => {
     document.querySelectorAll('tr[data-idorden]').forEach(tr => {
       const st = obtenerEstatusFila(tr);
@@ -180,11 +176,7 @@
     });
   };
 
-  // =========================================================
-  // ✅ CANDADOS (AJUSTADO PARA:
-  //  - SIEMPRE poder FINALIZAR si está en proceso
-  //  - vistas parciales: si no existe la estación anterior en DOM, NO bloquear por esa dependencia
-  // =========================================================
+
   const aplicarCandados = () => {
     const filas = Array.from(document.querySelectorAll('tr[data-subot]'));
     if (!filas.length) return;
@@ -196,8 +188,7 @@
       setBtnEnabled(btnFinalizar, false);
     });
 
-    // 2) Si hay filas EN PROCESO, SIEMPRE habilita FINALIZAR en esas
-    // (esto evita tu bug de: "En proceso" pero no puedo finalizar)
+
     const enProcesoGlobal = filas.filter(tr => obtenerEstatusFila(tr) === 2);
     if (enProcesoGlobal.length) {
       enProcesoGlobal.forEach(tr => {
@@ -208,10 +199,10 @@
 
       // Comentarios
       aplicarReglaComentarios();
-      return; // ✅ si hay algo en proceso visible, no habilites inicios extra
+      return; 
     }
 
-    // 3) Mapear por estación y Sxx (para habilitar el siguiente INICIO correcto)
+
     const porEstacion = new Map();
     for (const tr of filas) {
       const subot = (tr.dataset.subot || '').trim();
@@ -220,7 +211,7 @@
       const estacion = obtenerOrdenEstacion(tr);   // 1..n (o 0 si no hay)
       const sn = obtenerNumeroSub(subot);
 
-      // Si estación viene 0 (vista incompleta), no entra a reglas por estación
+
       if (!sn || !estacion) continue;
 
       if (!porEstacion.has(estacion)) porEstacion.set(estacion, new Map());
@@ -229,8 +220,7 @@
 
     const estaciones = Array.from(porEstacion.keys()).sort((a, b) => a - b);
 
-    // 4) Fallback si NO se pudo mapear ninguna estación (vista muy parcial):
-    // habilita el primer pendiente por Sxx (solo UI; backend valida real)
+
     if (!estaciones.length) {
       const candidata = filas
         .slice()
@@ -247,10 +237,7 @@
       return;
     }
 
-    // 5) Reglas por estación:
-    // - habilita el primer pendiente que cumpla:
-    //   A) S(n-1) finalizada dentro de la MISMA estación
-    //   B) MISMA Sxx finalizada en estación anterior SOLO si esa estación anterior está en DOM
+
     for (const ordenEstacion of estaciones) {
       const mapaSub = porEstacion.get(ordenEstacion);
       const numsSub = Array.from(mapaSub.keys()).sort((a, b) => a - b);
@@ -270,13 +257,11 @@
           depSubOk = !!prev && obtenerEstatusFila(prev) === 3;
         }
 
-        // Dep B: entre estaciones (SOLO si existe estación anterior en DOM)
         let depEstacionOk = true;
         if (ordenEstacion > 1) {
           const prevStationMap = porEstacion.get(ordenEstacion - 1);
 
-          // ✅ si no existe la estación anterior (vista por rol/asignación),
-          // NO bloquees aquí (backend valida si realmente no se puede)
+
           if (prevStationMap) {
             const prevRow = prevStationMap.get(sn) || null;
             depEstacionOk = !!prevRow && obtenerEstatusFila(prevRow) === 3;
@@ -323,7 +308,7 @@
   };
 
   // =========================
-  // 🔊 SONIDOS (Web Audio API)
+  //  SONIDOS (Web Audio API)
   // =========================
   let __audioCtx = null;
 
@@ -383,7 +368,7 @@
     }
     if (btn.disabled) return;
 
-    // UI optimistic
+
     setBtnEnabled(btn, false);
 
     const fecha_inicio = ahoraSql();
@@ -391,7 +376,7 @@
     ponerBadgeEstatus(tr, 'proceso');
     tr.dataset.estatus = '2';
 
-    // Asegura: si está en proceso, que FINALIZAR se habilite
+
     const { btnFinalizar } = obtenerBotones(tr);
     setBtnEnabled(btnFinalizar, true);
 
@@ -478,7 +463,7 @@
         ponerFechaCelda(tr, 3, '—');
         ponerBadgeEstatus(tr, 'proceso');
         tr.dataset.estatus = '2';
-        setBtnEnabled(btn, true); // volver a permitir finalizar
+        setBtnEnabled(btn, true); 
 
         Swal.fire({ icon: 'error', title: 'Error', text: data?.msg || 'No se pudo finalizar', timer: 5000, showConfirmButton: false, timerProgressBar: true });
         aplicarCandados();
@@ -505,7 +490,7 @@
   };
 
   // =========================================================
-  // ✅ COMENTARIOS SUB-OT (Modal)
+  //  COMENTARIOS SUB-OT (Modal)
   // =========================================================
   const iniciarModalComentarios = () => {
     const modalEl = document.getElementById('modalOTComment');
@@ -580,7 +565,7 @@
             showConfirmButton: false,
             timerProgressBar: true
           });
-          try { modal?.hide(); } catch (e) {}
+          try { modal?.hide(); } catch (e) { }
           return;
         }
 
@@ -636,8 +621,8 @@
 
       // si no cambió nada, no toca
       if ((tr.dataset.estatus || '').trim() === est &&
-          (tr.dataset.fi || '') === (row.fecha_inicio || '') &&
-          (tr.dataset.ff || '') === (row.fecha_fin || '')
+        (tr.dataset.fi || '') === (row.fecha_inicio || '') &&
+        (tr.dataset.ff || '') === (row.fecha_fin || '')
       ) return;
 
       tr.dataset.estatus = est;
@@ -1123,9 +1108,7 @@
 // ====================== CHAT SUB-OT ======================
 // =========================================================
 
-// =========================================================
-// ====================== CHAT SUB-OT ======================
-// =========================================================
+
 
 const postJsonLocal = async (url, payload) => {
   const resp = await fetch(url, {
@@ -1134,9 +1117,9 @@ const postJsonLocal = async (url, payload) => {
     body: JSON.stringify(payload)
   });
   const raw = await resp.text();
-  try { return JSON.parse(raw); } catch(e) {
+  try { return JSON.parse(raw); } catch (e) {
     console.error('Respuesta no JSON:', raw);
-    return { status:false, msg:'Respuesta inválida' };
+    return { status: false, msg: 'Respuesta inválida' };
   }
 };
 
@@ -1145,21 +1128,21 @@ let chatLastId = 0;
 
 // refs
 const chatModalEl = document.getElementById('modalChatOT');
-const chatModal   = chatModalEl ? new bootstrap.Modal(chatModalEl) : null;
-const chatBox     = document.getElementById('chatMessages');
-const chatInput   = document.getElementById('chatInput');
+const chatModal = chatModalEl ? new bootstrap.Modal(chatModalEl) : null;
+const chatBox = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
 const chatSendBtn = document.getElementById('chatSendBtn');
-const chatHint    = document.getElementById('chatStatusHint');
+const chatHint = document.getElementById('chatStatusHint');
 
-const chatSubotIn       = document.getElementById('chat_subot');
-const chatEstacionIn    = document.createElement('input');
-const chatPlaneacionIn  = document.createElement('input');
+const chatSubotIn = document.getElementById('chat_subot');
+const chatEstacionIn = document.createElement('input');
+const chatPlaneacionIn = document.createElement('input');
 
 chatEstacionIn.type = chatPlaneacionIn.type = 'hidden';
 chatEstacionIn.id = 'chat_estacionid';
 chatPlaneacionIn.id = 'chat_planeacionid';
 
-if (chatModalEl){
+if (chatModalEl) {
   chatModalEl.appendChild(chatEstacionIn);
   chatModalEl.appendChild(chatPlaneacionIn);
 }
@@ -1184,7 +1167,7 @@ const getInitials = (name) => {
 
 const scrollToBottom = () => {
   if (!chatBox) return;
-  // ✅ doble RAF para modal bootstrap (evita que falle el scroll)
+
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       chatBox.scrollTop = chatBox.scrollHeight;
@@ -1192,19 +1175,15 @@ const scrollToBottom = () => {
   });
 };
 
-// ---------------------------------------------------------
-// Render (Velzon-like)
-// mode: "replace" (load inicial) | "append" (poll)
-// ---------------------------------------------------------
+
 const renderMessagesVelzon = (rows, mode = 'append') => {
   if (!chatBox) return;
 
   const myId = String(window.CURRENT_USER_ID || '0');
 
-  // Orden por idchat por seguridad
   const list = (Array.isArray(rows) ? rows : [])
     .slice()
-    .sort((a,b) => (parseInt(a.idchat,10)||0) - (parseInt(b.idchat,10)||0));
+    .sort((a, b) => (parseInt(a.idchat, 10) || 0) - (parseInt(b.idchat, 10) || 0));
 
   if (mode === 'replace') {
     chatBox.innerHTML = '';
@@ -1220,22 +1199,22 @@ const renderMessagesVelzon = (rows, mode = 'append') => {
     if (mode === 'append' && id <= chatLastId) continue;
     if (id > chatLastId) chatLastId = id;
 
-    const userId   = String(r.user_id ?? r.iduser ?? r.userid ?? r.idusuario ?? '');
+    const userId = String(r.user_id ?? r.iduser ?? r.userid ?? r.idusuario ?? '');
     const userName = String(r.user_name ?? r.nombre ?? r.usuario ?? 'Usuario');
-    const avatar   = String(r.user_avatar ?? r.avatar ?? '');
-    const msg      = String(r.message ?? r.mensaje ?? '');
-    const created  = String(r.created_at ?? r.fecha ?? '');
+    const avatar = String(r.user_avatar ?? r.avatar ?? '');
+    const msg = String(r.message ?? r.mensaje ?? '');
+    const created = String(r.created_at ?? r.fecha ?? '');
 
     const isMe = (userId && myId && userId === myId);
 
     const row = document.createElement('div');
     row.className = `v-msg-row ${isMe ? 'me' : 'other'}`;
-  const base = base_url.replace(/\/$/, '');
+    const base = base_url.replace(/\/$/, '');
 
-const avatarSrc = avatar
-  ? `${base}/Assets/avatars/${encodeURIComponent(avatar)}`
-  : `${base}/Assets/avatars/avatar_default.svg`;
-    // avatar SOLO para other (estilo tipo velzon), si quieres también para me quítale el if
+    const avatarSrc = avatar
+      ? `${base}/Assets/avatars/${encodeURIComponent(avatar)}`
+      : `${base}/Assets/avatars/avatar_default.svg`;
+
     if (!isMe) {
       const av = document.createElement('div');
       av.className = 'v-avatar';
@@ -1310,8 +1289,8 @@ const chatPoll = async () => {
 const chatOpen = (btn) => {
   if (!btn || !chatModal) return;
 
-  const subot        = btn.dataset.subot || '';
-  const estacionid   = btn.dataset.estacionid || '0';
+  const subot = btn.dataset.subot || '';
+  const estacionid = btn.dataset.estacionid || '0';
   const planeacionid = btn.dataset.planeacionid || '0';
 
   if (!subot) return;
@@ -1373,7 +1352,7 @@ const sendMessage = async () => {
 
   if (!data?.status) {
     setHint(data?.msg || 'No se pudo enviar');
-    Swal.fire({ icon:'error', title:'Error', text:data?.msg || 'No se pudo enviar' });
+    Swal.fire({ icon: 'error', title: 'Error', text: data?.msg || 'No se pudo enviar' });
     return;
   }
 
@@ -1421,7 +1400,7 @@ async function openModalOrdenDescriptiva(productoid, descripcion, cantidad = 1) 
   const modalDes = document.getElementById('modalDescriptiva');
   const modal = bootstrap.Modal.getOrCreateInstance(modalDes);
 
-  const tbody = document.getElementById('desTableBody'); 
+  const tbody = document.getElementById('desTableBody');
 
   const title = document.getElementById('titleDes');
   if (title) title.textContent = descripcion || 'Producto';
@@ -1453,7 +1432,7 @@ async function openModalOrdenDescriptiva(productoid, descripcion, cantidad = 1) 
     const json = await resp.json();
     if (!json.status) throw new Error(json.msg || 'Error al cargar');
 
- 
+
     const arr = json.data?.data || [];
     const info = arr[0] || null;
 
@@ -1488,7 +1467,7 @@ async function openModalOrdenDescriptiva(productoid, descripcion, cantidad = 1) 
       ['Equipamiento', 'equipamiento'],
     ];
 
-    
+
     const pairs = fields
       .map(([label, key]) => [label, (info[key] ?? '').toString().trim()])
       .filter(([_, val]) => val !== '');
@@ -1509,7 +1488,7 @@ async function openModalOrdenDescriptiva(productoid, descripcion, cantidad = 1) 
       `;
     }
 
- 
+
     if (info.fecha_creacion) {
       html += `
         <tr>
@@ -1581,7 +1560,6 @@ async function openModalOrdenDocumentacion(productoid, descripcion, cantidad = 1
     const data = await resp.json();
     if (!data.status) throw new Error(data.msg || 'Error al cargar');
 
-    // ✅ AQUÍ ESTABA EL ERROR
     const archivos = data.data?.rows || [];
 
     if (!archivos.length) {
@@ -1638,7 +1616,7 @@ document.addEventListener('click', (e) => {
     btn.dataset.productoid,
     btn.dataset.estacionid,
     btn.dataset.estacion,
-    btn.dataset.proceso, 
+    btn.dataset.proceso,
     btn.dataset.cantidad
   );
 });
@@ -1696,7 +1674,7 @@ async function openModalEspecificaciones(productoid, estacionid, nombreEstacion 
       return `
         <tr>
       <td>${r.especificacion || '-'}</td>
-      <td>${r.fecha_creacion || '-'}</td>
+     
 
         </tr>
       `;
@@ -1718,7 +1696,7 @@ document.addEventListener('click', (e) => {
     btn.dataset.productoid,
     btn.dataset.estacionid,
     btn.dataset.estacion,
-    btn.dataset.proceso, 
+    btn.dataset.proceso,
     btn.dataset.cantidad
   );
 });
@@ -1871,6 +1849,1192 @@ async function openModalHerramientas(productoid, estacionid, nombreEstacion = ''
 }
 
 
+////////////////////////////////////////////////////
+///// funciones para inspección de calidad ////////
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btnInspeccionCalidad');
+  if (!btn) return;
+
+  openModalInspeccionCalidad(
+    btn.dataset.productoid,
+    btn.dataset.estacionid,
+    btn.dataset.estacion,
+    btn.dataset.proceso,
+    btn.dataset.cantidad,
+    btn.dataset.idorden,
+    btn.dataset.numorden
+  );
+});
+
+// ============================
+// Helpers
+// ============================
+const $ = (id) => document.getElementById(id);
+
+
+function esc(str) {
+  return String(str ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", "&#039;");
+}
+
+function isImageFile(fileNameOrMime = '') {
+  const s = String(fileNameOrMime).toLowerCase();
+  return s.includes('image/') || s.endsWith('.jpg') || s.endsWith('.jpeg') || s.endsWith('.png') || s.endsWith('.webp');
+}
+
+function setButtonsByEstado() {
+  const btnLiberar = $('btnLiberarCalidad');
+  const btnPausar = $('btnPausarCalidad');
+  const tbody = $('calidadTableBody');
+
+  if (!btnLiberar || !btnPausar || !tbody) return;
+
+  const trs = [...tbody.querySelectorAll('tr[data-especificacionid]')];
+
+  if (!trs.length) {
+    btnLiberar.classList.add('d-none');
+    btnPausar.classList.add('d-none');
+    return;
+  }
+
+  let okCount = 0;
+  let noCount = 0;
+  let pending = 0;
+
+  trs.forEach(tr => {
+    const radios = [...tr.querySelectorAll('.resultado-radio')];
+    const selected = radios.find(r => r.checked);
+
+    if (!selected) pending++;
+    else if (selected.value === 'OK') okCount++;
+    else if (selected.value === 'NO_OK') noCount++;
+  });
+
+
+  if (pending > 0) {
+    btnLiberar.classList.add('d-none');
+    btnPausar.classList.add('d-none');
+    return;
+  }
+
+  if (noCount > 0) {
+    btnLiberar.classList.add('d-none');
+    btnPausar.classList.remove('d-none');
+    return;
+  }
+
+
+  btnLiberar.classList.remove('d-none');
+  btnPausar.classList.add('d-none');
+}
+
+
+document.addEventListener('change', (e) => {
+  const radio = e.target.closest('.resultado-radio');
+  if (!radio) return;
+
+  const tr = radio.closest('tr');
+  const comentario = tr.querySelector('.comentario');
+
+  // if (radio.value === 'NO_OK' && radio.checked) {
+  //   comentario.disabled = false;
+  //   comentario.required = true;
+  //   comentario.focus();
+  // }
+
+  // if (radio.value === 'OK' && radio.checked) {
+  //   comentario.value = '';
+  //   comentario.disabled = true;
+  //   comentario.required = false;
+  // }
+
+  
+  comentario.disabled = false;
+
+  if (radio.value === 'NO_OK' && radio.checked) {
+    comentario.required = true;
+    comentario.focus();
+  } else if (radio.value === 'OK' && radio.checked) {
+    comentario.required = false;
+
+   
+  }
 
 
 
+  tr.classList.remove('table-danger');
+  const err = tr.querySelector('.row-error');
+  if (err) err.classList.add('d-none');
+
+
+  setButtonsByEstado();
+});
+
+
+
+
+function renderLocalEvidenceLinks(tr) {
+  const input = tr.querySelector('.evidencia-file');
+  const box = tr.querySelector('.evidencia-links');
+  if (!input || !box) return;
+
+  const especId = parseInt(tr.dataset.especificacionid || 0, 10) || 0;
+
+
+  [...box.querySelectorAll('[data-blob-url]')].forEach(a => {
+    try { URL.revokeObjectURL(a.getAttribute('data-blob-url')); } catch { }
+  });
+
+  let localWrap = box.querySelector('.evidencia-local');
+  if (!localWrap) {
+    localWrap = document.createElement('div');
+    localWrap.className = 'evidencia-local mt-1';
+    box.appendChild(localWrap);
+  }
+  localWrap.innerHTML = '';
+
+  const files = input.files ? [...input.files] : [];
+  if (!files.length) {
+
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'd-flex flex-column gap-1';
+
+  files.forEach((file, index) => {
+    const blobUrl = URL.createObjectURL(file);
+    const isImg = isImageFile(file.type || file.name);
+
+    const row = document.createElement('div');
+    row.className = 'd-flex align-items-center justify-content-between gap-2';
+
+    row.innerHTML = `
+      <div class="d-flex align-items-center gap-2">
+        <a href="javascript:void(0)"
+           class="link-primary text-decoration-underline evidencia-open-blob"
+           data-blob-url="${esc(blobUrl)}"
+           data-especid="${especId}"
+           data-index="${index}">
+           Ver ${isImg ? 'imagen' : 'archivo'}
+        </a>
+   
+      </div>
+
+      <button type="button"
+        class="btn btn-sm btn-outline-danger py-0 px-2 evidencia-remove-local"
+        data-especid="${especId}"
+        data-index="${index}"
+        title="Quitar archivo">
+        <i class="ri-delete-bin-6-line"></i>
+      </button>
+    `;
+    list.appendChild(row);
+  });
+
+  localWrap.appendChild(list);
+}
+
+
+function removeLocalFileFromInput(input, removeIndex) {
+  const dt = new DataTransfer();
+  const files = input.files ? [...input.files] : [];
+  files.forEach((f, idx) => {
+    if (idx !== removeIndex) dt.items.add(f);
+  });
+  input.files = dt.files;
+}
+
+
+document.addEventListener('change', (e) => {
+  const input = e.target.closest('.evidencia-file');
+  if (!input) return;
+  const tr = input.closest('tr[data-especificacionid]');
+  if (!tr) return;
+
+  renderLocalEvidenceLinks(tr);
+});
+
+
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('.evidencia-open-blob');
+  if (!a) return;
+
+  const url = a.getAttribute('data-blob-url');
+  if (!url) return;
+
+  window.open(url, '_blank', 'noopener');
+});
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.evidencia-remove-local');
+  if (!btn) return;
+
+  const tr = btn.closest('tr[data-especificacionid]');
+  if (!tr) return;
+
+  const input = tr.querySelector('.evidencia-file');
+  if (!input) return;
+
+  const idx = parseInt(btn.getAttribute('data-index') || '-1', 10);
+  if (idx < 0) return;
+
+
+  const link = tr.querySelector(`.evidencia-open-blob[data-index="${idx}"]`);
+  if (link) {
+    const blobUrl = link.getAttribute('data-blob-url');
+    if (blobUrl) {
+      try { URL.revokeObjectURL(blobUrl); } catch { }
+    }
+  }
+
+  removeLocalFileFromInput(input, idx);
+  renderLocalEvidenceLinks(tr);
+});
+
+// ============================
+// Abrir modal (modificado: guarda idorden/numot)
+// ============================
+async function openModalInspeccionCalidad(
+  productoid,
+  estacionid,
+  nombreEstacion = '',
+  procesoTxt = '',
+  cantidadPedido = 1,
+  idorden,
+  numot
+) {
+  productoid = parseInt(productoid, 10) || 0;
+  estacionid = parseInt(estacionid, 10) || 0;
+  idorden = parseInt(idorden, 10) || 0;
+
+  const modalCom = $('modalInspeccionCalidad');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalCom);
+  const tbody = $('calidadTableBody');
+
+  $('titleEstacionCal').textContent = nombreEstacion || 'Estación';
+  $('titleProcesoCal').textContent = procesoTxt || 'Proceso';
+  $('numSubOrdenT').textContent = numot || '-';
+
+ 
+  $('calidad_idorden').value = idorden;
+  $('calidad_numot').value = String(numot || '');
+  $('estacion_id').value = estacionid;
+
+
+  const prodHidden = $('producto_id');
+  if (prodHidden) prodHidden.value = productoid;
+
+
+  $('btnLiberarCalidad').classList.add('d-none');
+  $('btnPausarCalidad').classList.add('d-none');
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="4" class="text-center">
+        <div class="spinner-border spinner-border-sm"></div> Cargando...
+      </td>
+    </tr>
+  `;
+
+  modal.show();
+
+  try {
+
+    const resp = await fetch(`${base_url}/plan_planeacion/getEspecificaciones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ productoid, estacionid })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    if (!data.status) throw new Error(data.msg || 'Error al cargar');
+
+    const rows = data.data?.rows || [];
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No hay especificaciones</td></tr>`;
+      setButtonsByEstado();
+      return;
+    }
+
+    // Render tabla
+    tbody.innerHTML = rows.map((r, idx) => {
+      const especTxt = (r.especificacion || '-');
+      const especId = r.idespecificacion || r.especificacionid || (idx + 1);
+      const nameResultado = `res_${especId}`;
+
+      return `
+        <tr data-especificacionid="${especId}">
+          <td>
+            <div class="fw-semibold">${esc(especTxt)}</div>
+            <div class="text-muted small">${esc(r.fecha_creacion || '-')}</div>
+            <div class="text-danger small mt-1 d-none row-error">Revisa esta fila.</div>
+          </td>
+
+<td class="text-center align-middle">
+  <div class="d-flex justify-content-center align-items-center flex-wrap gap-3">
+    <div class="form-check form-check-success">
+      <input class="form-check-input resultado-radio" type="radio"
+             name="${nameResultado}" value="OK" id="${nameResultado}_ok">
+      <label class="form-check-label" for="${nameResultado}_ok">Aprobar</label>
+    </div>
+
+    <div class="form-check form-check-danger">
+      <input class="form-check-input resultado-radio" type="radio"
+             name="${nameResultado}" value="NO_OK" id="${nameResultado}_no">
+      <label class="form-check-label" for="${nameResultado}_no">Pausar</label>
+    </div>
+  </div>
+</td>
+
+
+          <td>
+            <input type="file"
+                   class="form-control form-control-sm evidencia-file"
+                   accept=".jpg,.jpeg,.png,.pdf"
+                   multiple>
+
+                     <button type="button" class="btn btn-sm btn-outline-secondary btnCamTake mt-2">
+    <i class="ri-camera-line me-1"></i> Tomar foto
+  </button>
+
+
+                   
+            <div class="text-muted small mt-1">Foto o PDF (opcional).</div>
+
+  
+            <div class="evidencia-links mt-2 small"></div>
+          </td>
+
+          <td>
+            <textarea class="form-control form-control-sm comentario"
+                      rows="4"
+                      placeholder="Comentario (solo si es Pausar)"
+                      disabled></textarea>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // ==========================
+    // Precargar inspección previa
+    // ==========================
+
+    try {
+      const respPrev = await fetch(`${base_url}/plan_planeacion/getInspeccionCalidad`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ idorden, estacionid })
+      });
+
+      const prev = await respPrev.json().catch(() => null);
+
+      if (respPrev.ok && prev && prev.status) {
+        const detPrev = prev.data?.detalle || [];
+
+
+        const mapPrev = new Map();
+        detPrev.forEach(x => {
+          const eid = parseInt(x.especificacionid, 10) || 0;
+          if (eid > 0) mapPrev.set(eid, x);
+        });
+
+        const trs = [...tbody.querySelectorAll('tr[data-especificacionid]')];
+
+        trs.forEach(tr => {
+          const eid = parseInt(tr.dataset.especificacionid, 10) || 0;
+          const info = mapPrev.get(eid);
+          if (!info) return;
+
+          // -----------------------
+          // Resultado (radios)
+          // -----------------------
+          const radios = [...tr.querySelectorAll('.resultado-radio')];
+          const rOk = radios.find(r => r.value === 'OK');
+          const rNo = radios.find(r => r.value === 'NO_OK');
+
+          if (info.resultado === 'OK' && rOk) rOk.checked = true;
+          if (info.resultado === 'NO_OK' && rNo) rNo.checked = true;
+
+          // -----------------------
+          // Comentario
+          // -----------------------
+          const txt = tr.querySelector('.comentario');
+
+
+        
+          txt.disabled = false;
+
+      
+          if (info.resultado === 'NO_OK') {
+            txt.required = true;
+            txt.value = (info.comentario || '');
+          } else {
+            txt.required = false;
+
+          
+          }
+
+
+          // -----------------------
+          //  Evidencias guardadas 
+          // -----------------------
+          const list = Array.isArray(info.evidencias) ? info.evidencias : [];
+          if (!list.length) return;
+
+          const box = tr.querySelector('.evidencia-links');
+          if (!box) return;
+
+        
+          let savedWrap = box.querySelector('.evidencia-saved');
+          if (!savedWrap) {
+            savedWrap = document.createElement('div');
+            savedWrap.className = 'evidencia-saved';
+            box.appendChild(savedWrap);
+          }
+
+          const UPLOAD_PATH = `${base_url}/Assets/uploads/calidad_evidencias/`;
+
+          savedWrap.innerHTML = `
+        <div class="d-flex flex-column gap-1">
+          ${list.map((ev, idx) => {
+            const name = ev.nombre_original || ev.archivo || `evidencia_${idx + 1}`;
+            const file = ev.archivo || '';
+            const url = file ? (UPLOAD_PATH + encodeURIComponent(file)) : '#';
+            const isImg = (ev.mime && String(ev.mime).startsWith('image/')) || (String(name).toLowerCase().match(/\.(jpg|jpeg|png|webp)$/));
+
+            return `
+              <div class="d-flex align-items-center justify-content-between gap-2">
+                <div class="d-flex align-items-center gap-2">
+           
+
+                  <a class="link-success text-decoration-underline"
+                     href="${url}"
+                     target="_blank" rel="noopener">
+                     Ver ${isImg ? 'imagen' : 'archivo'}
+                  </a>
+ 
+                
+                </div>
+
+                <!-- Solo oculta el link (no borra servidor) -->
+                <button type="button"
+                  class="btn btn-sm btn-outline-info py-0 px-2 evidencia-hide-saved"
+                  title="Ocultar de la vista">
+                  <i class="ri-eye-off-line"></i>
+                </button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+        });
+      }
+    } catch (e) {
+    
+    }
+
+
+ 
+    setButtonsByEstado();
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${err.message}</td></tr>`;
+    setButtonsByEstado();
+  }
+}
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.evidencia-hide-saved');
+  if (!btn) return;
+
+  const row = btn.closest('div.d-flex');
+  if (row) row.remove();
+});
+
+// ============================
+// Validación + payload 
+// ============================
+function buildPayloadCalidad() {
+  const idorden = parseInt($('calidad_idorden')?.value || 0, 10) || 0;
+  const numot = String($('calidad_numot')?.value || '');
+
+  const estacionid = parseInt($('estacion_id')?.value || 0, 10) || 0;
+
+  const tbody = $('calidadTableBody');
+  const trs = [...tbody.querySelectorAll('tr[data-especificacionid]')];
+
+  const detalle = trs.map(tr => {
+    const especificacionid = parseInt(tr.dataset.especificacionid, 10) || 0;
+    const selected = [...tr.querySelectorAll('.resultado-radio')].find(r => r.checked);
+    const resultado = selected ? selected.value : '';
+    const comentario = (tr.querySelector('.comentario')?.value || '').trim();
+
+    return { especificacionid, resultado, comentario };
+  });
+
+  return { idorden, numot, detalle, estacionid };
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#btnLiberarCalidad')) return;
+
+
+  const payload = buildPayloadCalidad();
+  console.log('LIBERAR payload:', payload);
+
+ 
+});
+
+// ==============================
+// Enviar inspección (PAUSAR / LIBERAR)
+// ==============================
+async function enviarInspeccionCalidad(accion = 'PAUSAR') {
+  const idorden = parseInt(document.getElementById('calidad_idorden')?.value || 0, 10) || 0;
+  const numot = String(document.getElementById('calidad_numot')?.value || '');
+  const estacion = document.getElementById('modalInspeccionCalidad');
+  const tbody = document.getElementById('calidadTableBody');
+
+  const productoid = parseInt(document.getElementById('producto_id')?.value || 0, 10) || 0;
+  const estacionid = parseInt(document.getElementById('estacion_id')?.value || 0, 10) || 0;
+
+  const trs = [...tbody.querySelectorAll('tr[data-especificacionid]')];
+
+  if (!trs.length) {
+    alert('No hay especificaciones para enviar.');
+    return;
+  }
+
+  // ----------------------------
+  // Validación según acción
+  // ----------------------------
+  let hasError = false;
+
+  trs.forEach(tr => {
+    tr.classList.remove('table-danger');
+    const err = tr.querySelector('.row-error');
+    if (err) err.classList.add('d-none');
+
+    const especId = parseInt(tr.dataset.especificacionid || 0, 10) || 0;
+    const selected = [...tr.querySelectorAll('.resultado-radio')].find(r => r.checked);
+    const comentario = (tr.querySelector('.comentario')?.value || '').trim();
+    const filesCount = tr.querySelector('.evidencia-file')?.files?.length || 0;
+
+    if (!selected) {
+      hasError = true;
+      tr.classList.add('table-danger');
+      if (err) { err.textContent = 'Selecciona Aprobar o Pausar.'; err.classList.remove('d-none'); }
+      return;
+    }
+
+    if (accion === 'LIBERAR') {
+  
+      if (selected.value !== 'OK') {
+        hasError = true;
+        tr.classList.add('table-danger');
+        if (err) { err.textContent = 'Para liberar, todo debe estar en Aprobar.'; err.classList.remove('d-none'); }
+        return;
+      }
+    }
+
+    if (accion === 'PAUSAR' && selected.value === 'NO_OK') {
+      if (!comentario) {
+        hasError = true;
+        tr.classList.add('table-danger');
+        if (err) { err.textContent = 'Comentario requerido para Pausar.'; err.classList.remove('d-none'); }
+        return;
+      }
+
+      if (filesCount <= 0) {
+        hasError = true;
+        tr.classList.add('table-danger');
+        if (err) { err.textContent = 'Evidencia requerida para Pausar.'; err.classList.remove('d-none'); }
+        return;
+      }
+    }
+  });
+
+  if (hasError) return;
+
+  // ----------------------------
+  // Construir  JSON
+  // ----------------------------
+  const detalle = trs.map(tr => {
+    const especId = parseInt(tr.dataset.especificacionid || 0, 10) || 0;
+    const selected = [...tr.querySelectorAll('.resultado-radio')].find(r => r.checked);
+    return {
+      especificacionid: especId,
+      resultado: selected ? selected.value : '',
+      comentario: (tr.querySelector('.comentario')?.value || '').trim()
+    };
+  });
+
+
+  const fd = new FormData();
+  fd.append('accion', accion);
+  fd.append('idorden', String(idorden));
+  fd.append('numot', numot);
+  fd.append('productoid', String(productoid));
+  fd.append('estacionid', String(estacionid));
+  fd.append('detalle', JSON.stringify(detalle));
+
+  
+  trs.forEach(tr => {
+    const especId = parseInt(tr.dataset.especificacionid || 0, 10) || 0;
+    const input = tr.querySelector('.evidencia-file');
+    const files = input?.files ? [...input.files] : [];
+    files.forEach(file => {
+      fd.append(`evidencia_${especId}[]`, file);
+    });
+  });
+
+  // ----------------------------
+  // Fetch
+  // ----------------------------
+  try {
+    const resp = await fetch(`${base_url}/plan_planeacion/setInspeccionCalidad`, {
+      method: 'POST',
+      body: fd
+    });
+
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok || !data || !data.status) {
+      const msg = (data && data.msg) ? data.msg : `Error HTTP ${resp.status}`;
+      throw new Error(msg);
+    }
+
+    Swal.fire({ icon: 'success', title: 'OK', text: data.msg || 'Guardado' })
+      .then(() => {
+        const modalEl = document.getElementById('modalInspeccionCalidad');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.hide();
+        window.location.reload();
+      });
+
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+// Botones
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#btnLiberarCalidad')) {
+    enviarInspeccionCalidad('LIBERAR');
+  }
+  if (e.target.closest('#btnPausarCalidad')) {
+    enviarInspeccionCalidad('PAUSAR');
+  }
+});
+
+
+// =====================================================
+// FUNCIONNES PARA VER LA INSPEeCCIÓN CAPTURADA POR CALIDADA
+// =====================================================
+
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btnViewInspeccionCalidad');
+  if (!btn) return;
+
+  openModalVerInspeccion(
+    btn.dataset.estacionid,
+    btn.dataset.idorden,
+    btn.dataset.estacion,
+    btn.dataset.proceso,
+    btn.dataset.numorden
+  );
+});
+
+
+
+
+async function openModalVerInspeccion(estacionid, idorden, nombreEstacion = '', nombreProceso = '', numOrden='') {
+  estacionid = parseInt(estacionid, 10) || 0;
+  idorden    = parseInt(idorden, 10) || 0;
+
+  const modalEl = $('modalViewInspeccionCalidad');
+  const modal   = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+ 
+  const tbody = $('calidadViewTableBody');
+
+    const numorden = $('numSubOrdenTView');
+  if (numorden) numorden.textContent = numOrden || '-';
+
+  const est = $('titleEstacionCalView');
+  if (est) est.textContent = nombreEstacion || 'Estación';
+
+  const proc = $('titleProcesoCalView');
+  if (proc) proc.textContent = nombreProceso || 'Proceso';
+
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="4" class="text-center">
+        <div class="spinner-border spinner-border-sm"></div> Cargando...
+      </td>
+    </tr>
+  `;
+
+ 
+  const setText = (id, val) => { const el = $(id); if (el) el.textContent = (val ?? '—'); };
+
+  setText('viewInspectorNombre', '—');
+  setText('viewInspectorEmail', '—');
+  setText('viewFechaInicio', '—');
+  setText('viewFechaCierre', '—');
+
+  const badge = $('viewEstadoBadge');
+  if (badge) {
+    badge.className = 'badge rounded-pill border fs-12';
+    badge.textContent = '—';
+  }
+
+  setText('viewCountOk', 0);
+  setText('viewCountNoOk', 0);
+  setText('viewCountEv', 0);
+
+  const resumenBox = $('viewResumenComentarios');
+  if (resumenBox) resumenBox.innerHTML = `<div class="text-muted small">—</div>`;
+
+  modal.show();
+
+  try {
+    const respPrev = await fetch(`${base_url}/plan_planeacion/getViewInspeccionCalidad`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ idorden, estacionid })
+    });
+
+    const prev = await respPrev.json().catch(() => null);
+
+    if (!respPrev.ok || !prev || !prev.status) {
+      throw new Error(prev?.msg || `Error HTTP ${respPrev.status}`);
+    }
+
+    const header  = prev.data?.header || {};
+    const detalle = prev.data?.detalle || [];
+
+
+    const nombreInspector = `${header.nombres || ''} ${header.apellidos || ''}`.trim() || '—';
+    setText('viewInspectorNombre', nombreInspector);
+    setText('viewInspectorEmail', header.email_user || '—');
+    setText('viewFechaInicio', header.fecha_creacion || '—');
+    setText('viewFechaCierre', header.fecha_cierre || '—');
+
+    if (badge) {
+      if (parseInt(header.estado, 10) === 2) {
+        badge.className = 'badge rounded-pill bg-success-subtle text-success border border-success-subtle fs-12';
+        badge.innerHTML = `<i class="ri-check-double-line me-1"></i> Liberada`;
+      } else if (parseInt(header.estado, 10) === 1) {
+        badge.className = 'badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle fs-12';
+        badge.innerHTML = `<i class="ri-pause-circle-line me-1"></i> Pausada`;
+      } else {
+        badge.className = 'badge rounded-pill bg-secondary-subtle text-secondary border border-secondary-subtle fs-12';
+        badge.innerHTML = `<i class="ri-question-line me-1"></i> Sin estado`;
+      }
+    }
+
+    if (!detalle.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No hay inspección guardada.</td></tr>`;
+      return;
+    }
+
+  
+    const UPLOAD_PATH = `${base_url}/Assets/uploads/calidad_evidencias/`;
+
+    const fmtSize = (n) => {
+      n = parseInt(n || 0, 10) || 0;
+      if (n < 1024) return `${n} B`;
+      if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+      return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    };
+
+    const isImg = (mime, file) => {
+      const m = String(mime || '').toLowerCase();
+      const f = String(file || '').toLowerCase();
+      return m.startsWith('image/') || f.endsWith('.jpg') || f.endsWith('.jpeg') || f.endsWith('.png') || f.endsWith('.webp');
+    };
+
+
+    let countOk = 0, countNo = 0, countEv = 0;
+
+    const noOkResumen = [];
+
+    detalle.forEach(d => {
+      const res = String(d.resultado || '');
+      const evs = Array.isArray(d.evidencias) ? d.evidencias : [];
+      countEv += evs.length;
+
+      if (res === 'OK') countOk++;
+      if (res === 'NO_OK') {
+        countNo++;
+        const motivo = (d.comentario_no_ok || '').trim();
+        const corr   = (d.accion_correctiva || '').trim();
+
+        noOkResumen.push({
+          especificacion: d.especificacion || `Especificación ${d.especificacionid}`,
+          motivo,
+          corr,
+          evidencias: evs.length
+        });
+      }
+    });
+
+    setText('viewCountOk', countOk);
+    setText('viewCountNoOk', countNo);
+    setText('viewCountEv', countEv);
+
+    if (resumenBox) {
+      if (!noOkResumen.length) {
+        resumenBox.innerHTML = `<div class="text-success small"><i class="ri-check-line me-1"></i> No hay NO OK registrados en esta inspección.</div>`;
+      } else {
+        resumenBox.innerHTML = `
+          <div class="text-danger small fw-semibold mb-2">
+            <i class="ri-alarm-warning-line me-1"></i> NO OK registrados:
+          </div>
+          <div class="d-flex flex-column gap-2">
+            ${noOkResumen.map(x => `
+              <div class="p-2 rounded border bg-danger-subtle">
+                <div class="fw-semibold small">${esc(x.especificacion)}</div>
+                <div class="small"><span class="text-danger fw-semibold">Motivo:</span> ${x.motivo ? esc(x.motivo) : '<span class="text-muted">—</span>'}</div>
+                <div class="small"><span class="text-success fw-semibold">Acción correctiva:</span> ${x.corr ? esc(x.corr) : '<span class="text-muted">—</span>'}</div>
+                <div class="small text-muted mt-1">Evidencias: <b>${x.evidencias}</b></div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+    }
+
+ 
+    tbody.innerHTML = detalle.map((d) => {
+      const res  = d.resultado || '';
+      const evs  = Array.isArray(d.evidencias) ? d.evidencias : [];
+
+      const badgeRes = (res === 'NO_OK')
+        ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+             <i class="ri-close-circle-line me-1"></i> NO OK
+           </span>`
+        : `<span class="badge bg-success-subtle text-success border border-success-subtle">
+             <i class="ri-checkbox-circle-line me-1"></i> OK
+           </span>`;
+
+      const evHtml = evs.length
+        ? `
+          <div class="d-flex flex-column gap-1">
+            ${evs.map((ev) => {
+              const file = ev.archivo || '';
+              const url  = file ? (UPLOAD_PATH + encodeURIComponent(file)) : '#';
+              const icon = isImg(ev.mime, file) ? 'ri-image-2-line text-primary' : 'ri-file-pdf-2-line text-danger';
+              const label = isImg(ev.mime, file) ? 'Ver imagen' : 'Ver archivo';
+
+              return `
+                <div class="d-flex align-items-center justify-content-between gap-2">
+                  <a class="link-primary text-decoration-underline"
+                     href="${url}" target="_blank" rel="noopener">
+                    <i class="${icon} me-1"></i> ${label}
+                  </a>
+                  <span class="text-muted small">${fmtSize(ev.size_bytes)}</span>
+                </div>
+                <div class="text-muted small" title="${esc(ev.nombre_original || file)}">
+                  ${esc(ev.nombre_original || file)}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `
+        : `<span class="text-muted">—</span>`;
+
+     
+      const motivo = (d.comentario_no_ok || '').trim();
+      const corr   = (d.accion_correctiva || '').trim();
+
+      const comentariosHtml = `
+        <div class="small">
+          <div><span class="text-danger fw-semibold">Motivo:</span> ${motivo ? esc(motivo) : '<span class="text-muted">—</span>'}</div>
+          <div class="mt-1"><span class="text-success fw-semibold">Correctiva:</span> ${corr ? esc(corr) : '<span class="text-muted">—</span>'}</div>
+        </div>
+      `;
+
+      return `
+        <tr class="${res === 'NO_OK' ? 'table-danger' : ''}">
+          <td>
+            <div class="fw-semibold">${esc(d.especificacion || `Especificación ${d.especificacionid}`)}</div>
+        
+          </td>
+
+          <td class="text-center align-middle">
+            ${badgeRes}
+          </td>
+
+          <td>
+            ${evHtml}
+          </td>
+
+          <td>
+            ${comentariosHtml}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${esc(err.message)}</td></tr>`;
+  }
+}
+
+
+
+
+
+
+
+
+
+// =====================================================
+// FUNCIONNES CÁMARA 
+// =====================================================
+
+
+let __filaObjetivoCamara = null;
+
+
+let __streamCamara = null;
+
+
+let __camaraLado = 'environment';
+
+
+let __archivosSesionCamara = [];
+
+// -----------------------------------------------------
+// Detener cámar
+// -----------------------------------------------------
+function detenerCamara() {
+  if (__streamCamara) {
+    __streamCamara.getTracks().forEach(t => t.stop());
+    __streamCamara = null;
+  }
+}
+
+// -----------------------------------------------------
+// Iniciar cámara
+// -----------------------------------------------------
+async function iniciarCamara(lado = 'environment') {
+  detenerCamara();
+
+  const video = document.getElementById('camVideo');
+  const info = document.getElementById('camInfo');
+
+  const constraints = {
+    video: {
+      facingMode: { ideal: lado },
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    },
+    audio: false
+  };
+
+  __streamCamara = await navigator.mediaDevices.getUserMedia(constraints);
+  video.srcObject = __streamCamara;
+  __camaraLado = lado;
+
+  if (info) {
+    info.textContent = (lado === 'environment') ? 'Cámara trasera' : 'Cámara frontal';
+  }
+}
+
+function agregarArchivosAInput(input, nuevosArchivos) {
+  const dt = new DataTransfer();
+  const existentes = input.files ? [...input.files] : [];
+
+  existentes.forEach(f => dt.items.add(f));
+  nuevosArchivos.forEach(f => dt.items.add(f));
+
+  input.files = dt.files;
+}
+
+// -----------------------------------------------------
+// Crear archivo desde canvas
+// -----------------------------------------------------
+function archivoDesdeCanvas(canvas, nombreArchivo) {
+  return new Promise(resolve => {
+    canvas.toBlob(blob => {
+      resolve(new File([blob], nombreArchivo, { type: 'image/jpeg' }));
+    }, 'image/jpeg', 0.92);
+  });
+}
+
+// -----------------------------------------------------
+// Mostrar miniatuhras de la sesión
+// -----------------------------------------------------
+function renderizarMiniaturasCamara() {
+  const contenedor = document.getElementById('camThumbs');
+  if (!contenedor) return;
+
+  contenedor.innerHTML = '';
+
+  __archivosSesionCamara.forEach((file, index) => {
+    const url = URL.createObjectURL(file);
+
+    const div = document.createElement('div');
+    div.className = 'position-relative';
+    div.style.width = '84px';
+    div.style.height = '84px';
+
+    div.innerHTML = `
+      <img src="${url}" class="rounded border w-100 h-100" style="object-fit:cover"
+           data-thumb-url="${url}">
+      <button type="button"
+        class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-0"
+        style="width:22px;height:22px"
+        data-cam-eliminar="${index}">
+        <i class="ri-close-line"></i>
+      </button>
+    `;
+
+    contenedor.appendChild(div);
+  });
+}
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-cam-eliminar]');
+  if (!btn) return;
+
+  const index = parseInt(btn.dataset.camEliminar, 10);
+  if (index < 0) return;
+
+  __archivosSesionCamara.splice(index, 1);
+
+  document.querySelectorAll('img[data-thumb-url]').forEach(img => {
+    try { URL.revokeObjectURL(img.dataset.thumbUrl); } catch { }
+  });
+
+  renderizarMiniaturasCamara();
+});
+
+// -----------------------------------------------------
+// Abrir cámara
+// -----------------------------------------------------
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.btnCamTake');
+  if (!btn) return;
+
+  const tr = btn.closest('tr[data-especificacionid]');
+  if (!tr) return;
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('La cámara no está disponible. Usa el selector de archivos.');
+    return;
+  }
+
+  __filaObjetivoCamara = tr;
+  __archivosSesionCamara = [];
+
+  const modalEl = document.getElementById('modalCamCalidad');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+
+  try {
+    await iniciarCamara('environment');
+    renderizarMiniaturasCamara();
+  } catch {
+    try {
+      await iniciarCamara('user');
+      renderizarMiniaturasCamara();
+    } catch {
+      alert('No se pudo abrir la cámara. Revisa permisos o HTTPS.');
+      modal.hide();
+    }
+  }
+});
+
+// -----------------------------------------------------
+// Cambiar cámara
+// -----------------------------------------------------
+document.addEventListener('click', async (e) => {
+  if (!e.target.closest('#btnCamSwitch')) return;
+
+  const nuevoLado = (__camaraLado === 'environment') ? 'user' : 'environment';
+  try {
+    await iniciarCamara(nuevoLado);
+  } catch { }
+});
+
+// -----------------------------------------------------
+// Tomar foto
+// -----------------------------------------------------
+document.addEventListener('click', async (e) => {
+  if (!e.target.closest('#btnCamShot')) return;
+
+  const video = document.getElementById('camVideo');
+  const canvas = document.getElementById('camCanvas');
+  if (!video || !canvas) return;
+
+  canvas.width = video.videoWidth || 1280;
+  canvas.height = video.videoHeight || 720;
+
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  const tr = __filaObjetivoCamara;
+  const especId = tr ? parseInt(tr.dataset.especificacionid, 10) : 0;
+
+  const d = new Date();
+  const nombre = `cam_${d.getTime()}_ES${especId}.jpg`;
+
+  const archivo = await archivoDesdeCanvas(canvas, nombre);
+  __archivosSesionCamara.push(archivo);
+
+  renderizarMiniaturasCamara();
+});
+
+// -----------------------------------------------------
+// Usar fotos y cerrrar
+// -----------------------------------------------------
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#btnCamUse')) return;
+  if (!__filaObjetivoCamara) return;
+
+  const input = __filaObjetivoCamara.querySelector('.evidencia-file');
+  if (!input) return;
+
+  if (__archivosSesionCamara.length) {
+    agregarArchivosAInput(input, __archivosSesionCamara);
+
+
+    renderLocalEvidenceLinks(__filaObjetivoCamara);
+  }
+
+  __archivosSesionCamara = [];
+
+  const modalEl = document.getElementById('modalCamCalidad');
+  bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+});
+
+
+document.getElementById('modalCamCalidad')?.addEventListener('hidden.bs.modal', () => {
+  detenerCamara();
+
+  document.querySelectorAll('img[data-thumb-url]').forEach(img => {
+    try { URL.revokeObjectURL(img.dataset.thumbUrl); } catch { }
+  });
+
+  const thumbs = document.getElementById('camThumbs');
+  if (thumbs) thumbs.innerHTML = '';
+
+  __filaObjetivoCamara = null;
+  __archivosSesionCamara = [];
+});

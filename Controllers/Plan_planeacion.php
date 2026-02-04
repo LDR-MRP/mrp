@@ -5,7 +5,7 @@ class Plan_planeacion extends Controllers
   {
     parent::__construct();
     session_start();
-    //session_regenerate_id(true);
+    session_regenerate_id(true);
     if (empty($_SESSION['login'])) {
       header('Location: ' . base_url() . '/login');
       die();
@@ -1822,6 +1822,214 @@ public function getDocumentacion()
 
     }
   }
+
+
+ 
+
+
+public function setInspeccionCalidad()
+{
+  header('Content-Type: application/json');
+
+  if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => false, 'msg' => 'Método no permitido']);
+    die();
+  }
+
+  $accion    = isset($_POST['accion']) ? strtoupper(trim((string)$_POST['accion'])) : 'PAUSAR';
+  $idorden   = isset($_POST['idorden']) ? (int)$_POST['idorden'] : 0;
+  $numot     = isset($_POST['numot']) ? trim((string)$_POST['numot']) : '';
+  $productoid= isset($_POST['productoid']) ? (int)$_POST['productoid'] : 0;
+  $estacionid= isset($_POST['estacionid']) ? (int)$_POST['estacionid'] : 0;
+
+  $usuarioid = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
+
+  $detalleJson = isset($_POST['detalle']) ? (string)$_POST['detalle'] : '[]';
+  $detalle = json_decode($detalleJson, true);
+  if (!is_array($detalle)) $detalle = [];
+
+  if (!in_array($accion, ['PAUSAR', 'LIBERAR'], true)) $accion = 'PAUSAR';
+
+  if ($idorden <= 0 || $productoid <= 0 || $estacionid <= 0 || $usuarioid <= 0) {
+    echo json_encode(['status' => false, 'msg' => 'Datos incompletos (idorden/productoid/estacionid/usuario).']);
+    die();
+  }
+
+  if (!count($detalle)) {
+    echo json_encode(['status' => false, 'msg' => 'No hay detalle de inspección.']);
+    die();
+  }
+
+
+  if ($accion === 'LIBERAR') {
+    foreach ($detalle as $d) {
+      if (($d['resultado'] ?? '') !== 'OK') {
+        echo json_encode(['status' => false, 'msg' => 'Para liberar, todo debe estar en OK.']);
+        die();
+      }
+    }
+  }
+
+
+  if ($accion === 'PAUSAR') {
+    foreach ($detalle as $d) {
+      $res = $d['resultado'] ?? '';
+      $eid = (int)($d['especificacionid'] ?? 0);
+      $com = trim((string)($d['comentario'] ?? ''));
+
+      if ($res === 'NO_OK') {
+        if ($com === '') {
+          echo json_encode(['status' => false, 'msg' => "Falta comentario en especificación {$eid}."]);
+          die();
+        }
+        $key = "evidencia_{$eid}";
+        $hasFiles = isset($_FILES[$key]) && !empty($_FILES[$key]['name'][0]);
+        if (!$hasFiles) {
+          echo json_encode(['status' => false, 'msg' => "Falta evidencia en especificación {$eid}."]);
+          die();
+        }
+      }
+    }
+  }
+
+  // -----------------------
+  // Subida de evidencias
+  // -----------------------
+  $uploadDir = __DIR__ . "/../Assets/uploads/calidad_evidencias/";
+  if (!is_dir($uploadDir)) { @mkdir($uploadDir, 0775, true); }
+
+  $evidencias = [];
+
+  foreach ($detalle as $d) {
+    $especificacionid = (int)($d['especificacionid'] ?? 0);
+    if ($especificacionid <= 0) continue;
+
+    $fileKey = "evidencia_{$especificacionid}";
+    if (!isset($_FILES[$fileKey])) continue;
+
+    $files = $this->normalizeFiles($_FILES[$fileKey]);
+
+    foreach ($files as $f) {
+      if (($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
+
+      $orig = $f['name'] ?? '';
+      $tmp  = $f['tmp_name'] ?? '';
+      $mime = $f['type'] ?? '';
+      $size = (int)($f['size'] ?? 0);
+
+      $ext = strtolower(pathinfo($orig, PATHINFO_EXTENSION));
+      if (!in_array($ext, ['jpg','jpeg','png','pdf'], true)) continue;
+
+      $newName = "cal_" . date('Ymd_His') . "_OT{$idorden}_ES{$especificacionid}_" . bin2hex(random_bytes(4)) . "." . $ext;
+      $dest = rtrim($uploadDir, "/\\") . DIRECTORY_SEPARATOR . $newName;
+
+      if (!move_uploaded_file($tmp, $dest)) continue;
+
+      $evidencias[$especificacionid][] = [
+        'nombre_original' => $orig,
+        'archivo'         => $newName,
+        'mime'            => $mime,
+        'size_bytes'      => $size
+      ];
+    }
+  }
+
+
+  $estado = ($accion === 'LIBERAR') ? 2 : 1;
+
+  // Guardar en modelo
+  $resp = $this->model->saveInspeccionCalidad([
+    'idorden'     => $idorden,
+    'numot'       => $numot,
+    'productoid'  => $productoid,
+    'estacionid'  => $estacionid,
+    'usuarioid'   => $usuarioid,
+    'estado'      => $estado
+  ], $detalle, $evidencias);
+
+  echo json_encode($resp);
+  die();
+}
+
+private function normalizeFiles($file)
+{
+  $out = [];
+  if (!isset($file['name'])) return $out;
+
+  if (!is_array($file['name'])) {
+    $out[] = $file;
+    return $out;
+  }
+
+  $count = count($file['name']);
+  for ($i = 0; $i < $count; $i++) {
+    $out[] = [
+      'name'     => $file['name'][$i] ?? '',
+      'type'     => $file['type'][$i] ?? '',
+      'tmp_name' => $file['tmp_name'][$i] ?? '',
+      'error'    => $file['error'][$i] ?? UPLOAD_ERR_NO_FILE,
+      'size'     => $file['size'][$i] ?? 0,
+    ];
+  }
+  return $out;
+}
+
+
+
+public function getInspeccionCalidad()
+{
+  header('Content-Type: application/json');
+
+  if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => false, 'msg' => 'Método no permitido']);
+    die();
+  }
+
+  $json = file_get_contents('php://input');
+  $data = json_decode($json, true);
+  if (!is_array($data)) $data = [];
+
+  $idorden   = (int)($data['idorden'] ?? 0);
+  $estacionid= (int)($data['estacionid'] ?? 0);
+
+  if ($idorden <= 0 || $estacionid <= 0) {
+    echo json_encode(['status' => false, 'msg' => 'Datos incompletos (idorden/estacionid).']);
+    die();
+  }
+
+  $resp = $this->model->getInspeccionCalidad($idorden, $estacionid);
+  echo json_encode($resp);
+  die();
+}
+
+
+
+public function getViewInspeccionCalidad()
+{
+  header('Content-Type: application/json');
+
+  if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => false, 'msg' => 'Método no permitido']);
+    die();
+  }
+
+  $json = file_get_contents('php://input');
+  $data = json_decode($json, true);
+  if (!is_array($data)) $data = [];
+
+  $idorden   = (int)($data['idorden'] ?? 0);
+  $estacionid= (int)($data['estacionid'] ?? 0);
+
+  if ($idorden <= 0 || $estacionid <= 0) {
+    echo json_encode(['status' => false, 'msg' => 'Datos incompletos (idorden/estacionid).']);
+    die();
+  }
+
+  $resp = $this->model->getViewInspeccionCalidad($idorden, $estacionid);
+  echo json_encode($resp);
+  die();
+}
+
 
 
 

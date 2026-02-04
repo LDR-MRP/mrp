@@ -320,10 +320,10 @@
         <button type="button" class="btn btn-light" id="btnViewDia">Día</button>
       </div>
     </div>
-  </div>
+  </div> 
 
   <!--  CALENDAR -->
-  <!-- <div id="calendar"></div> -->
+  <div id="calendar"></div>
 
 </div>
 
