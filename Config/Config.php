@@ -81,9 +81,10 @@ const MIMOVIMIENTOS = 22;
 const MICONCEPTOSMOVIMIENTOS = 23;
 const MIKARDEX = 24;
 const MILOTESPEDIMENTOS = 25;
+
 const MIMULTIALMACENES = 26;
 const MIMONEDAS = 70;
-const MIASIGNACIONESINV = 71;
+
 
 //Submodulos Capacidad
 
@@ -102,7 +103,6 @@ const MCLI_GRUPOS = 42;
 const MCLI_PUESTOS = 43;
 const MCLI_CONTACTOS = 44;
 const MCLI_REGIONALES = 45;
-const MCLI_TIPOS_CLIENTES = 46;
 
 //Submodulos Compras
 const COM_COMPRAS = 50;

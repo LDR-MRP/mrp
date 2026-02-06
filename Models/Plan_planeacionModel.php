@@ -1795,6 +1795,172 @@ public function insertMovimientoInventario(array $m)
   return $this->insert($sql, $params);
 }
 
+//VAMOS A CREAR UNA FUNCIÓN PARA SABER LOS DÍAS FESTIVOS.
+public function getFestivosBetween(string $fromDate, string $toDate): array
+{
+    // fromDate/toDate en Y-m-d
+    $fromDate = substr(trim($fromDate), 0, 10);
+    $toDate   = substr(trim($toDate), 0, 10);
+
+    $sql = "SELECT fecha
+            FROM mrp_dias_festivos
+            WHERE estado = 2
+              AND fecha BETWEEN $fromDate AND $toDate
+            ORDER BY fecha ASC";
+
+    $rows = $this->select_all($sql);
+
+    $set = [];
+    foreach ($rows as $r) {
+        $d = substr((string)($r['fecha'] ?? ''), 0, 10);
+        if ($d !== '') $set[$d] = true;
+    }
+    return $set; 
+}
+
+public function addWorkingMinutesToDatetimeWithHolidays(
+    string $fecha_inicio,
+    float $minutes,
+    array $workdays = [1,2,3,4,5],      
+    array $festivosSet = []             
+): string {
+    $fecha_inicio = trim($fecha_inicio);
+    if ($fecha_inicio === '') $fecha_inicio = date('Y-m-d H:i:s');
+
+    $remaining = (int) round($minutes);
+    $dt = new DateTime($fecha_inicio);
+
+    $make = function(DateTime $base, string $hhmm): DateTime {
+        $d = clone $base;
+        [$h,$m] = array_map('intval', explode(':', $hhmm));
+        $d->setTime($h, $m, 0);
+        return $d;
+    };
+
+    $isHoliday = function(DateTime $d) use ($festivosSet): bool {
+        $key = $d->format('Y-m-d');
+        return isset($festivosSet[$key]);
+    };
+
+    $getBlocks = function(DateTime $base) use ($make) {
+        $w1s = $make($base, '08:30');
+        $w1e = $make($base, '13:30');
+        $w2s = $make($base, '14:30');
+        $w2e = $make($base, '18:30');
+        return [
+            [$w1s, $w1e],
+            [$w2s, $w2e],
+        ];
+    };
+
+    $moveToNextWorkdayStart = function(DateTime $base) use ($make, $workdays, $isHoliday) {
+        $d = clone $base;
+        do {
+            $d->modify('+1 day');
+        } while (!in_array((int)$d->format('N'), $workdays, true) || $isHoliday($d));
+        return $make($d, '08:30');
+    };
+
+    $normalize = function(DateTime $base) use ($getBlocks, $moveToNextWorkdayStart, $workdays, $make, $isHoliday) {
+        $d = clone $base;
+
+
+        if (!in_array((int)$d->format('N'), $workdays, true) || $isHoliday($d)) {
+            return $moveToNextWorkdayStart($d);
+        }
+
+        $blocks = $getBlocks($d);
+
+        if ($d < $blocks[0][0]) return $blocks[0][0];
+
+        $lunchStart = $make($d, '13:30');
+        $lunchEnd   = $make($d, '14:30');
+        if ($d >= $lunchStart && $d < $lunchEnd) return $lunchEnd;
+
+        if ($d >= $blocks[1][1]) return $moveToNextWorkdayStart($d);
+
+        return $d;
+    };
+
+    $dt = $normalize($dt);
+
+    while ($remaining > 0) {
+        // Si cae en no laborable o festivo, brincar
+        if (!in_array((int)$dt->format('N'), $workdays, true) || $isHoliday($dt)) {
+            $dt = $moveToNextWorkdayStart($dt);
+        }
+
+        $blocks = $getBlocks($dt);
+        $moved = false;
+
+        foreach ($blocks as [$start, $end]) {
+            if ($dt >= $end) continue;
+            if ($dt < $start) $dt = clone $start;
+
+            $avail = (int) floor(($end->getTimestamp() - $dt->getTimestamp()) / 60);
+            if ($avail <= 0) continue;
+
+            if ($remaining <= $avail) {
+                $dt->modify('+' . $remaining . ' minutes');
+                $remaining = 0;
+                $moved = true;
+                break;
+            } else {
+                $dt = clone $end;
+                $remaining -= $avail;
+                $moved = true;
+            }
+        }
+
+        if ($remaining <= 0) break;
+
+        // si se acabó el día, brincar al siguiente laboral 08:30
+        if (!$moved || $dt >= $blocks[1][1]) {
+            $dt = $moveToNextWorkdayStart($dt);
+        } else {
+            $dt = $normalize($dt);
+        }
+    }
+
+    return $dt->format('Y-m-d H:i:s');
+}
+
+
+
+public function getTotalTiempoAjusteByEstaciones(array $estacionIds): float
+{
+    if (empty($estacionIds)) return 0;
+
+    $estacionIds = array_values(array_unique(array_map('intval', $estacionIds)));
+    $estacionIds = array_filter($estacionIds, fn($x) => $x > 0);
+    if (empty($estacionIds)) return 0;
+
+    $in = implode(',', $estacionIds);
+
+    $sql = "SELECT COALESCE(SUM(COALESCE(estandar,0)),0) AS total
+            FROM mrp_estacion
+            WHERE idestacion IN ($in)";
+
+    $row = $this->select($sql);
+    return (float)($row['total'] ?? 0);
+}
+
+public function updateFechaFinPlaneacion(int $idplaneacion, string $fecha_fin): bool
+{
+    $idplaneacion = (int)$idplaneacion;
+    $fecha_fin = trim($fecha_fin);
+
+    $sql = "UPDATE mrp_planeacion
+            SET fecha_fin = ?
+            WHERE idplaneacion = {$idplaneacion}
+            LIMIT 1";
+
+    return (bool)$this->update($sql, [$fecha_fin]);
+}
+
+
+
+
 
 public function updateExistenciaInventario($inventarioid, $almacenid, $cantidad)
 {

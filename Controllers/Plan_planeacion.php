@@ -723,7 +723,7 @@ class Plan_planeacion extends Controllers
       // Producto (para correoss)
       // ---------------------------------------------------------
       $cve_producto = '';
-      $descripcion = '';
+      $descripcion = ''; 
 
       $request_Producto = $this->model->getProducto($productoid);
       if (is_array($request_Producto) && !empty($request_Producto)) {
@@ -829,8 +829,42 @@ class Plan_planeacion extends Controllers
         }
       }
 
+      
+    // =========================================================
+    //  CALCULO AUTOMATICO DE fecha_fin 
+    // =========================================================
+    $estacionIds = [];
+    foreach ($asignaciones as $a) {
+      $eid = (int)($a['estacionid'] ?? 0);
+      if ($eid > 0) $estacionIds[] = $eid;
+    }
+    $estacionIds = array_values(array_unique($estacionIds));
+
+    $totalTiempoAjuste = (float)$this->model->getTotalTiempoAjusteByEstaciones($estacionIds); // minutos
+    $minutosTotales = $totalTiempoAjuste * (float)$cantidad;
+
+
+    $minPorDia = 540;
+    $daysApprox = (int)ceil($minutosTotales / $minPorDia);
+
+    $fromDate = substr($fecha_inicio, 0, 10);
+    $toDateDT = new DateTime($fecha_inicio);
+    $toDateDT->modify('+' . max(10, $daysApprox * 2) . ' days');
+    $toDate = $toDateDT->format('Y-m-d');
+
+    $festivosSet = $this->model->getFestivosBetween($fromDate, $toDate);
+
+    $fecha_fin = $this->model->addWorkingMinutesToDatetimeWithHolidays(
+      $fecha_inicio,
+      $minutosTotales,
+      [1,2,3,4,5], // Lun-Vie
+      $festivosSet
+    );
+
+    $this->model->updateFechaFinPlaneacion($idplaneacion, $fecha_fin);
+
       // =========================================================
-      // URL DETALLE LA TOMAMMOS DEL A CONSTANTE
+      // URL DETALLE 
       // =========================================================
       $url_recovery = base_url() . '/plan_planeacion/orden/' . $num_orden;
 
