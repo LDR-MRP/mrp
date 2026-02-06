@@ -8,7 +8,7 @@
 
 		function __construct()
 		{
-			$this->conexion = new Conexion();
+			$this->conexion = Conexion::getInstance();
 			$this->conexion = $this->conexion->conect();
 		}
 

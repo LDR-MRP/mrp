@@ -334,9 +334,9 @@ class Inv_inventario extends Controllers
 	}
 
 
-	public function showAll()
+	public function index()
     {
-        return $this->apiResponse($this->inventarioService->showAll());
+        return $this->apiResponse($this->inventarioService->items(sanitizeGet()));
     }
 
 	public function delInventario()

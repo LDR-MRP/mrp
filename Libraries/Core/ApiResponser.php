@@ -1,6 +1,7 @@
 <?php
 trait ApiResponser {
     public function apiResponse(ServiceResponse $response) {
+        ob_clean();
         if ($response->success) {
             return $this->successResponse(
                 $response->data, 

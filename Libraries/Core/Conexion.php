@@ -1,5 +1,7 @@
 <?php
 class Conexion{
+	private static $instance = null;
+
 	private $conect;
 
 	public function __construct(){
@@ -12,6 +14,14 @@ class Conexion{
 			$this->conect = 'Error de conexión';
 		    echo "ERROR: " . $e->getMessage();
 		}
+	}
+
+	public static function getInstance()
+	{
+		if (self::$instance === null) {
+            self::$instance = new Conexion();
+        }
+        return self::$instance;
 	}
 
 	public function conect(){

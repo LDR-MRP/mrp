@@ -3,13 +3,8 @@
 class Inv_inventarioService{
     public $model;
 
-    public function show(int $id)
+    public function items(array $filters = []): ServiceResponse
     {
-        return ServiceResponse::success($this->model->selectInventario($id));
-    }
-
-    public function showAll()
-    {
-        return ServiceResponse::success($this->model->selectInventarios());
+        return ServiceResponse::success($this->model->items($filters));
     }
 }

@@ -380,7 +380,13 @@
                                   <ul class="nav nav-sm flex-column">
                                       <?php if (!empty($_SESSION['permisos'][50]['r'])) { ?>
                                           <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/com_compras" class="nav-link" data-key="t-detached">Compras</a>
+                                              <a href="<?= base_url(); ?>/com_requisicion" class="nav-link" data-key="t-detached">Requisiciones</a>
+                                          </li>
+                                      <?php } ?>
+
+                                      <?php if (!empty($_SESSION['permisos'][50]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/com_compra" class="nav-link" data-key="t-detached">Compras</a>
                                           </li>
                                       <?php } ?>
                                   </ul>

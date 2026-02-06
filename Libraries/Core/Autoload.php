@@ -12,6 +12,7 @@
 		'Libraries/Core/',
 		'Requests/',
 		'Services/',
+		'Models/',
 	];
 
 	foreach ($dirs as $dir) {

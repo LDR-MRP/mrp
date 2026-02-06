@@ -14,7 +14,7 @@ abstract class Requests {
     {
         $this->rules();
         if (!empty($this->errors)) {
-            throw new Exception(json_encode($this->errors), 422);
+            throw new InvalidArgumentException(json_encode($this->errors), 422);
         }
         return true;
     }
