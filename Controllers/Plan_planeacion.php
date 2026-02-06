@@ -5,7 +5,7 @@ class Plan_planeacion extends Controllers
   {
     parent::__construct();
     session_start();
-    session_regenerate_id(true);
+    // session_regenerate_id(true);
     if (empty($_SESSION['login'])) {
       header('Location: ' . base_url() . '/login');
       die();
@@ -1476,7 +1476,7 @@ class Plan_planeacion extends Controllers
 
     if ($peid > 0) {
       $rows = $this->model->getStatusOTByPeid($peid);
-
+ 
       echo json_encode([
         'status' => true,
         'scope' => 'peid',
@@ -1673,7 +1673,7 @@ public function getDocumentacion()
 
     $productoid = (int)($data['productoid'] ?? 0);
 
-    // ✅ Validación correcta
+
     if ($productoid <= 0) {
       echo json_encode(['status' => false, 'msg' => 'Parámetros inválidos.'], JSON_UNESCAPED_UNICODE);
       die();

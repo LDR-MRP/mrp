@@ -1238,23 +1238,24 @@ public function selectPlanCanceladas()
 
 
 
-
 public function startOT(int $idorden, string $fecha_inicio)
 {
   $idorden = (int)$idorden;
-
 
   $fecha_inicio = trim((string)$fecha_inicio);
   if ($fecha_inicio === '') {
     $fecha_inicio = date('Y-m-d H:i:s');
   }
 
-
+  // -------------------------------------------------------
+  // 1) Traer Sub-OT actual
+  // -------------------------------------------------------
   $sql = "SELECT 
             ot.idorden,
             ot.planeacion_estacionid,
             ot.num_sub_orden,
             ot.estatus,
+            ot.calidad,                     -- ✅ (se usa para reglas)
             pe.id_planeacion_estacion,
             pe.planeacionid,               
             pe.orden AS estacion_orden
@@ -1277,7 +1278,6 @@ public function startOT(int $idorden, string $fecha_inicio)
     ]];
   }
 
-
   $peid   = (int)($cur['planeacion_estacionid'] ?? 0);
   $idpla  = (int)($cur['planeacionid'] ?? 0);
   $estOrd = (int)($cur['estacion_orden'] ?? 0);
@@ -1289,7 +1289,9 @@ public function startOT(int $idorden, string $fecha_inicio)
     ]];
   }
 
-
+  // -------------------------------------------------------
+  // 2) Parsear Sxx
+  // -------------------------------------------------------
   $snum = 0;
   if (preg_match('/-S(\d+)\s*$/i', $subot, $m)) {
     $snum = (int)$m[1];
@@ -1301,22 +1303,37 @@ public function startOT(int $idorden, string $fecha_inicio)
   $base = preg_replace('/-S\d+\s*$/i', '', $subot);
   $subotSql = addslashes($subot);
 
-
+  // -------------------------------------------------------
+  // 3) REGLA: no permitir si hay otra "en proceso" activa
+  //    PERO: si la que está en proceso tiene calidad=4 (pausada),
+  //    entonces NO bloquea.
+  // -------------------------------------------------------
   $sqlBusy = "SELECT COUNT(*) AS c
               FROM mrp_ordenes_trabajo
               WHERE planeacion_estacionid = {$peid}
-                AND estatus = 2";
+                AND estatus = 2
+                AND (calidad IS NULL OR calidad <> 4)";  // ✅ clave
+
   $busy = $this->select($sqlBusy);
 
   if ((int)($busy['c'] ?? 0) > 0) {
-    return ['status'=>false,'msg'=>'Ya existe una Sub-OT en proceso en esta estación','data'=>[]];
+    return [
+      'status' => false,
+      'msg'    => 'No puedes iniciar: existe una Sub-OT en proceso activa (no pausada por calidad) en esta estación',
+      'data'   => []
+    ];
   }
 
+  // -------------------------------------------------------
+  // 4) REGLA: Sub anterior dentro de la MISMA estación
+  //    - OK si está finalizada (3)
+  //    - OK si está en proceso (2) pero calidad=4 (pausada)
+  // -------------------------------------------------------
   if ($snum > 1) {
     $prevSub = $base . '-S' . str_pad((string)($snum - 1), 2, '0', STR_PAD_LEFT);
     $prevSubSql = addslashes($prevSub);
 
-    $sqlPrev = "SELECT estatus
+    $sqlPrev = "SELECT estatus, calidad
                 FROM mrp_ordenes_trabajo
                 WHERE planeacion_estacionid = {$peid}
                   AND num_sub_orden = '{$prevSubSql}'
@@ -1330,12 +1347,33 @@ public function startOT(int $idorden, string $fecha_inicio)
       ]];
     }
 
-    if ((int)($prev['estatus'] ?? 0) !== 3) {
-      return ['status'=>false,'msg'=>"Primero finaliza {$prevSub} en esta estación",'data'=>[]];
-    }
+$prevEstatus = (int)($prev['estatus'] ?? 0);
+$prevCalidad = (int)($prev['calidad'] ?? 0);
+
+// ✅ NUEVO: también permitir si está pendiente (1) pero calidad en 3 o 4
+$prevOk =
+  ($prevEstatus === 3) ||
+  ($prevEstatus === 2 && $prevCalidad === 4) ||
+  ($prevEstatus === 1 && in_array($prevCalidad, [3, 4], true));
+
+if (!$prevOk) {
+  return [
+    'status'=>false,
+    'msg'=>"Primero finaliza {$prevSub} en esta estación (o debe estar pausada por calidad)",
+    'data'=>[
+      'prevSub'=>$prevSub,
+      'prevEstatus'=>$prevEstatus,
+      'prevCalidad'=>$prevCalidad
+    ]
+  ];
+}
+
   }
 
-
+  // -------------------------------------------------------
+  // 5) REGLA: Estación anterior (si aplica) debe estar finalizada (3)
+  //     (Aquí NO me pediste excepción por calidad, así lo dejo igual)
+  // -------------------------------------------------------
   if ($estOrd > 1) {
     $prevOrden = $estOrd - 1;
 
@@ -1343,7 +1381,7 @@ public function startOT(int $idorden, string $fecha_inicio)
                        FROM mrp_planeacion_estacion pe2
                        INNER JOIN mrp_ordenes_trabajo ot
                          ON ot.planeacion_estacionid = pe2.id_planeacion_estacion
-                       WHERE pe2.planeacionid = {$idpla}   -- ✅ FIX CLAVE
+                       WHERE pe2.planeacionid = {$idpla}
                          AND pe2.orden = {$prevOrden}
                          AND ot.num_sub_orden = '{$subotSql}'
                        LIMIT 1";
@@ -1363,7 +1401,9 @@ public function startOT(int $idorden, string $fecha_inicio)
     }
   }
 
-
+  // -------------------------------------------------------
+  // 6) Actualizar a "en proceso"
+  // -------------------------------------------------------
   $sqlUpd = "UPDATE mrp_ordenes_trabajo
              SET fecha_inicio = ?, estatus = 2
              WHERE idorden = {$idorden} AND estatus = 1";
@@ -1382,6 +1422,7 @@ public function startOT(int $idorden, string $fecha_inicio)
     'estatus'=>2
   ]];
 }
+
 
 
 
@@ -1441,6 +1482,7 @@ public function getStatusOTByPeid(int $peid)
             ot.planeacion_estacionid,
             ot.num_sub_orden,
             ot.estatus,
+            ot.calidad,
             ot.fecha_inicio,
             ot.fecha_fin,
             pe.orden AS estacion_orden,
@@ -1463,6 +1505,7 @@ public function getStatusOTByPlaneacion(int $planeacionid)
             ot.planeacion_estacionid,
             ot.num_sub_orden,
             ot.estatus,
+            ot.calidad,
             ot.fecha_inicio,
             ot.fecha_fin,
             pe.orden AS estacion_orden,

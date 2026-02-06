@@ -593,7 +593,7 @@
 
         <div class="row">
           <!-- Timeline -->
-          <div class="col-12 col-lg-9">
+          <div class="col-12 col-lg-10">
             <div class="card">
               <div class="card-header">
                 <div class="d-sm-flex align-items-center">
@@ -758,6 +758,7 @@
                                     <?php else: ?>
                                       <div class="subot-table">
                                         <div class="table-responsive">
+                                         
                                           <table class="table table-sm align-middle">
                                             <thead>
                                               <tr>
@@ -773,6 +774,8 @@
                                               </tr>
                                             </thead>
                                             <tbody>
+
+                                            <div id="timeTrackerCard" data-planeacion="<?= $h($ot['idplaneacion'] ?? '') ?>"></div>
                                               <?php foreach ($ots as $otRow): ?>
                                                 <?php
                                                 $idorden = (int) ($otRow['idorden'] ?? 0);
@@ -788,12 +791,12 @@
 
                                                 $coment = (string) ($otRow['comentarios'] ?? '');
 
-                                                $disableStart = ($estatus === 2 || $estatus === 3) ? 'disabled' : '';
-                                                $disableFinish = ($estatus === 1 || $estatus === 3) ? 'disabled' : '';
+                                                $disableStart =  '';
+                                                $disableFinish = '';
                                                 ?>
                                                 <tr data-idorden="<?= $h($idorden) ?>" data-peid="<?= $h($peid) ?>"
                                                   data-subot="<?= $h($subot) ?>" data-coment="<?= $h($coment) ?>"
-                                                  data-estatus="<?= $h($estatus) ?>">
+                                                  data-estatus="<?= $h($estatus) ?>" data-calidad="<?= $calidad ?>">
                                                   <td class="fw-semibold text-primary"><?= $h($subot) ?></td>
                                                   <td><?= $badgeOT ?></td>
                                                   <td><?= $badgeCalidOT ?></td>
@@ -837,7 +840,7 @@
                                                         <?php else: ?>
 
                                                           <button type="button"
-                                                            class="btn btn-outline-primary waves-effect waves-light btnInspeccionCalidad"
+                                                            class="btn btn-outline-primary waves-effect waves-light btnStartInspeccion btnInspeccionCalidad"
                                                             data-productoid="<?= (int) $ot['productoid'] ?>"
                                                             data-estacionid="<?= (int) ($e['estacionid'] ?? 0) ?>"
                                                             data-estacion="<?= $h($e['nombre_estacion'] ?? '') ?>"
@@ -883,39 +886,36 @@
                                                           <i class="ri-message-3-line me-1"></i> Chat
                                                         </button>
 
+
+                                                        <?php if ($calidad == 5): ?>
+
+                                                          <button type="button"
+                                                            class="btn btn-outline-success waves-effect waves-light btnLiberado btnViewInspeccionCalidad"
+                                                            data-estacionid="<?= (int) ($e['estacionid'] ?? 0) ?>"
+                                                            data-idorden="<?= $h($idorden) ?>"
+                                                            data-estacion="<?= $h($e['nombre_estacion'] ?? '') ?>"
+                                                            data-proceso="<?= $h($e['proceso'] ?? '') ?>"
+                                                            data-numorden="<?= $h($subot) ?>">
+                                                            <i class="ri-eye-line me-1"></i> Ver inspección
+
+                                                          <?php elseif ($calidad == 4): ?>
+
+                                                          <button type="button"
+                                                            class="btn btn-outline-danger waves-effect waves-light btnRechazado btnInspeccionCalidad"
+                                                            data-productoid="<?= (int) $ot['productoid'] ?>"
+                                                            data-estacionid="<?= (int) ($e['estacionid'] ?? 0) ?>"
+                                                            data-estacion="<?= $h($e['nombre_estacion'] ?? '') ?>"
+                                                            data-proceso="<?= $h($e['proceso'] ?? '') ?>"
+                                                            data-idorden="<?= $h($idorden) ?>" data-numorden="<?= $h($subot) ?>">
+                                                            <i class="ri-eye-line me-1"></i> Ver inspección
+                                                          </button>
+
+                                                               <?php endif; ?>
+
                                                       <?php endif; ?>
 
 
-
-                                                      <!-- <button class="btn btn-soft-primary btnChatOT"
-  data-planeacionid="90"
-  data-subotkey="OT260115-004-S03"
-  data-estacionid="2">
-  <i class="ri-message-3-line me-1"></i>Chat
-</button> -->
-
-                                                      <!-- <button type="button"
-  class="btn btn-soft-info btnChatOT"
-  data-numorden="OT260116-002"
-  data-subot="OT260116-002-S01"
-  data-productoid="57"
-  data-estacionid="13"
-  data-planeacionid="39">
-  <i class="ri-message-3-line me-1"></i>Chat
-</button> -->
-
-                                                      <!-- <button type="button"
-  class="btn btn-sm btn-soft-info btnChatOT"
-  data-subot="<?= $otRow['num_sub_orden']; ?>">
-  <i class="ri-message-3-line me-1"></i>Chat
-</button> -->
-
-
-
-
-
-
-
+                                   
 
 
 
@@ -946,7 +946,7 @@
           </div>
 
           <!-- RIGHT COLUMN -->
-          <div class="col-12 col-lg-3 ">
+          <div class="col-12 col-lg-2 ">
             <div class="right-sticky">
 
 
@@ -1697,6 +1697,8 @@
 
                 <input type="hidden" id="estacion_id" value="">
 
+                               <?php if ((int) $_SESSION['rolid'] === 5) {?>
+
                 <div class="alert alert-warning d-flex align-items-start gap-2 mb-3" role="alert">
                   <i class="ri-alert-line fs-18 mt-1"></i>
                   <div>
@@ -1707,6 +1709,8 @@
                     </div>
                   </div>
                 </div>
+
+                           <?php } ?>
 
                 <div class="row g-3 mb-3">
                   <div class="col-md-6">
@@ -1761,10 +1765,17 @@
 
               </div>
 
-              <div class="modal-footer d-flex justify-content-between">
+              <!-- <div class="modal-footer d-flex justify-content-between">
 
 
                 <div class="d-flex gap-2">
+
+                <div id="botonesCalidad">
+
+                
+                  <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+
+              
                   <button type="button" class="btn btn-danger" id="btnPausarCalidad">
                     <i class="ri-pause-circle-line me-1"></i> Pausar
                   </button>
@@ -1773,8 +1784,24 @@
                     <i class="ri-check-double-line me-1"></i> Liberar
                   </button>
 
-                  <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+                  </div>
+
+                     
+
                 </div>
+              </div> -->
+
+
+
+               <div class="modal-footer">
+                          <button type="button" class="btn btn-danger" id="btnPausarCalidad">
+                    <i class="ri-pause-circle-line me-1"></i> Pausar
+                  </button>
+
+                  <button type="button" class="btn btn-success" id="btnLiberarCalidad">
+                    <i class="ri-check-double-line me-1"></i> Liberar
+                  </button>
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
               </div>
 
             </div>

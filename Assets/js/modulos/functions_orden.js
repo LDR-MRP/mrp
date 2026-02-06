@@ -1,14 +1,20 @@
 (() => {
   'use strict';
 
-  // =========================================================
-  // Config
-  // =========================================================
+
   const LOGO_URL = base_url + '/Assets/images/ldr_logo_color.png';
 
-  // =========================================================
-  // Helpers basicos
-  // =========================================================
+  const ENS_PENDIENTE = 1;
+  const ENS_PROCESO = 2;
+  const ENS_FINAL = 3;
+
+  const CAL_PEND_INSPECCION = 1;
+  const CAL_EN_INSPECCION = 2;
+  const CAL_OBSERVACIONES = 3;
+  const CAL_RECHAZADO = 4;
+  const CAL_LIBERADO = 5;
+
+
   const pad2 = (n) => String(n).padStart(2, '0');
 
   const ahoraSql = () => {
@@ -21,7 +27,6 @@
     const ss = pad2(d.getSeconds());
     return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
   };
-
 
   const ahoraSelloArchivo = () => {
     const d = new Date();
@@ -38,7 +43,7 @@
 
   const obtenerFila = (btn) => btn?.closest('tr') || null;
 
-  // Tabla: 0 SubOT, 1 Estatus, 2 Inicio, 3 Fin, 4 Acciones
+
   const obtenerCelda = (tr, idx) => {
     if (!tr) return null;
     const tds = tr.querySelectorAll('td');
@@ -54,7 +59,8 @@
   const obtenerBotones = (tr) => ({
     btnIniciar: tr?.querySelector('.btnStartOT') || null,
     btnFinalizar: tr?.querySelector('.btnFinishOT') || null,
-    btnComentarios: tr?.querySelector('.btnCommentOT') || null
+    btnComentarios: tr?.querySelector('.btnCommentOT') || null,
+    btnIniciarInspeccion: tr?.querySelector('.btnStartInspeccion') || null,
   });
 
   const ponerBadgeEstatus = (tr, tipo) => {
@@ -78,8 +84,19 @@
     td.innerHTML = `<span class="${cls}">${txt}</span>`;
   };
 
+  const renderBadgeCalidad = (c) => {
+    switch (c) {
+      case 1: return `<span class="badge bg-secondary-subtle text-secondary">Pendiente de inspección</span>`;
+      case 2: return `<span class="badge bg-info-subtle text-info">En inspección</span>`;
+      case 3: return `<span class="badge bg-warning-subtle text-warning">Con observaciones</span>`;
+      case 4: return `<span class="badge bg-danger-subtle text-danger">Rechazado</span>`;
+      case 5: return `<span class="badge bg-success-subtle text-success">Liberado</span>`;
+      default: return `<span class="badge bg-light text-muted">—</span>`;
+    }
+  };
+
   // =========================================================
-  // Loading (SweetAlert)
+  // Swal loading
   // =========================================================
   const mostrarCargando = (textoCarga = 'Procesando...') => {
     Swal.fire({
@@ -94,14 +111,11 @@
     try { Swal.close(); } catch (e) { }
   };
 
-  // =========================================================
-  // Parseadores / reglas (candados)
-  // =========================================================
+
   const obtenerNumeroSub = (subot) => {
     const m = String(subot || '').match(/-S(\d+)\s*$/i);
     return m ? parseInt(m[1], 10) : 0;
   };
-
 
   const setBtnEnabled = (btn, enabled) => {
     if (!btn) return;
@@ -110,7 +124,6 @@
     btn.setAttribute('aria-disabled', String(!enabled));
   };
 
-  // ✅ Estatus desde dataset (preferido) o texto (fallback)
   const obtenerEstatusFila = (tr) => {
     const ds = tr?.dataset?.estatus;
     if (ds !== undefined && ds !== null && String(ds).trim() !== '') {
@@ -120,59 +133,68 @@
 
     const td = obtenerCelda(tr, 1);
     const txt = td ? (td.textContent || '').trim().toLowerCase() : '';
-    if (txt.includes('final')) return 3;
-    if (txt.includes('proceso')) return 2;
-    if (txt.includes('deten')) return 4;
-    return 1;
+    if (txt.includes('final')) return ENS_FINAL;
+    if (txt.includes('proceso')) return ENS_PROCESO;
+    return ENS_PENDIENTE;
   };
 
-
-  const obtenerOrdenEstacion = (tr) => {
-    // 1) en la fila
-    const v1 = tr?.dataset?.estOrden || tr?.dataset?.est_orden || tr?.dataset?.estorden;
-    if (v1 !== undefined && v1 !== null && String(v1).trim() !== '') {
-      const n = parseInt(v1, 10);
-      if (!Number.isNaN(n) && n > 0) return n;
+  const obtenerCalidadFila = (tr) => {
+    const ds = tr?.dataset?.calidad;
+    if (ds !== undefined && ds !== null && String(ds).trim() !== '') {
+      const n = parseInt(ds, 10);
+      if (!Number.isNaN(n)) return n;
     }
 
-    // 2) en contenedor cercano con dataset
-    const cont = tr?.closest('[data-est-orden],[data-est_orden],[data-estorden],[data-estorden]');
-    if (cont) {
-      const v2 = cont.dataset.estOrden || cont.dataset.est_orden || cont.dataset.estorden || cont.getAttribute('data-est-orden');
-      const n = parseInt(String(v2 || '').trim(), 10);
-      if (!Number.isNaN(n) && n > 0) return n;
-    }
+    const td = obtenerCelda(tr, 2);
+    const txt = td ? (td.textContent || '').trim().toLowerCase() : '';
 
-    // 3) parsear desde el título del acordeón/estación
-    const stationItem = tr?.closest('.accordion-item') || tr?.closest('.station-item') || tr?.closest('[data-station]');
-    if (stationItem) {
-      const titleEl =
-        stationItem.querySelector('.accordion-button') ||
-        stationItem.querySelector('.accordion-header') ||
-        stationItem.querySelector('h5, h4, h6, .station-title');
-
-      const rawTitle = (titleEl?.textContent || '').trim();
-      // Ejemplos que soporta:
-      // "#2 : Inspección Inicial" / "#2: Inspección" / "2 - Inspección"
-      let m = rawTitle.match(/#\s*(\d+)/);
-      if (!m) m = rawTitle.match(/\b(\d+)\s*[:\-]/);
-
-      if (m) {
-        const n = parseInt(m[1], 10);
-        if (!Number.isNaN(n) && n > 0) return n;
-      }
-    }
+    if (txt.includes('liberad')) return CAL_LIBERADO;
+    if (txt.includes('rechaz')) return CAL_RECHAZADO;
+    if (txt.includes('observ')) return CAL_OBSERVACIONES;
+    if (txt.includes('en inspe')) return CAL_EN_INSPECCION;
+    if (txt.includes('pendiente')) return CAL_PEND_INSPECCION;
 
     return 0;
   };
 
-  
+  const calidadEnPausa = (tr) => {
+    const c = obtenerCalidadFila(tr);
+    return (c === CAL_OBSERVACIONES || c === CAL_RECHAZADO);
+  };
+
+  const calidadBloqueante = (tr) => {
+    const c = obtenerCalidadFila(tr);
+    return (c === 0 || c === CAL_PEND_INSPECCION || c === CAL_EN_INSPECCION);
+  };
+
+  const calidadLiberada = (tr) => (obtenerCalidadFila(tr) === CAL_LIBERADO);
+
+  const obtenerOrdenEstacion = (tr) => {
+    const btnStart = tr?.querySelector('.btnStartOT');
+    const vBtn = btnStart?.dataset?.estOrden || btnStart?.getAttribute('data-est-orden');
+    if (vBtn !== undefined && vBtn !== null && String(vBtn).trim() !== '') {
+      const n = parseInt(String(vBtn).trim(), 10);
+      if (!Number.isNaN(n) && n > 0) return n;
+    }
+    return 0;
+  };
+
   const aplicarReglaComentarios = () => {
     document.querySelectorAll('tr[data-idorden]').forEach(tr => {
       const st = obtenerEstatusFila(tr);
       const { btnComentarios } = obtenerBotones(tr);
       if (!btnComentarios) return;
-      setBtnEnabled(btnComentarios, st === 2);
+      setBtnEnabled(btnComentarios, st === ENS_PROCESO);
+    });
+  };
+
+
+  const aplicarReglaInspeccion = () => {
+    document.querySelectorAll('tr[data-idorden]').forEach(tr => {
+      const st = obtenerEstatusFila(tr);
+      const { btnIniciarInspeccion } = obtenerBotones(tr);
+      if (!btnIniciarInspeccion) return;
+      setBtnEnabled(btnIniciarInspeccion, st === ENS_PROCESO);
     });
   };
 
@@ -181,36 +203,21 @@
     const filas = Array.from(document.querySelectorAll('tr[data-subot]'));
     if (!filas.length) return;
 
-    // 1) Bloquea todo por defecto (start/finish)
+
     filas.forEach(tr => {
       const { btnIniciar, btnFinalizar } = obtenerBotones(tr);
       setBtnEnabled(btnIniciar, false);
       setBtnEnabled(btnFinalizar, false);
     });
 
-
-    const enProcesoGlobal = filas.filter(tr => obtenerEstatusFila(tr) === 2);
-    if (enProcesoGlobal.length) {
-      enProcesoGlobal.forEach(tr => {
-        const { btnIniciar, btnFinalizar } = obtenerBotones(tr);
-        setBtnEnabled(btnIniciar, false);
-        setBtnEnabled(btnFinalizar, true);
-      });
-
-      // Comentarios
-      aplicarReglaComentarios();
-      return; 
-    }
-
-
     const porEstacion = new Map();
+
     for (const tr of filas) {
       const subot = (tr.dataset.subot || '').trim();
       if (!subot) continue;
 
-      const estacion = obtenerOrdenEstacion(tr);   // 1..n (o 0 si no hay)
+      const estacion = obtenerOrdenEstacion(tr);
       const sn = obtenerNumeroSub(subot);
-
 
       if (!sn || !estacion) continue;
 
@@ -221,76 +228,83 @@
     const estaciones = Array.from(porEstacion.keys()).sort((a, b) => a - b);
 
 
-    if (!estaciones.length) {
-      const candidata = filas
-        .slice()
-        .filter(tr => obtenerEstatusFila(tr) === 1)
-        .sort((a, b) => obtenerNumeroSub(a.dataset.subot) - obtenerNumeroSub(b.dataset.subot))[0];
+    filas.forEach(tr => {
+      if (obtenerEstatusFila(tr) !== ENS_PROCESO) return;
+      const { btnFinalizar } = obtenerBotones(tr);
+      if (!btnFinalizar) return;
 
-      if (candidata) {
-        const { btnIniciar, btnFinalizar } = obtenerBotones(candidata);
-        setBtnEnabled(btnIniciar, true);
-        setBtnEnabled(btnFinalizar, false);
-      }
+      const puede = calidadLiberada(tr);
+      setBtnEnabled(btnFinalizar, puede);
+      btnFinalizar.title = puede
+        ? 'Finalizar orden'
+        : 'No puedes finalizar: Calidad aún no libera (estatus 5).';
+    });
 
-      aplicarReglaComentarios();
-      return;
-    }
 
+    const procesoBloqueanteSn = new Set();
+    filas.forEach(tr => {
+      if (obtenerEstatusFila(tr) !== ENS_PROCESO) return;
+      const sn = obtenerNumeroSub(tr.dataset.subot || '');
+      if (!sn) return;
+      if (calidadBloqueante(tr)) procesoBloqueanteSn.add(sn);
+    });
 
     for (const ordenEstacion of estaciones) {
       const mapaSub = porEstacion.get(ordenEstacion);
       const numsSub = Array.from(mapaSub.keys()).sort((a, b) => a - b);
 
-      let candidata = null;
-
       for (const sn of numsSub) {
         const tr = mapaSub.get(sn);
+        if (!tr) continue;
+
         const st = obtenerEstatusFila(tr);
 
-        if (st !== 1) continue; // solo pendientes
 
-        // Dep A: dentro de estación
+        if (st !== ENS_PENDIENTE) continue;
+
+
+        if (procesoBloqueanteSn.has(sn)) continue;
+
+
         let depSubOk = true;
-        if (sn > 1) {
+        if (ordenEstacion === 1 && sn > 1) {
           const prev = mapaSub.get(sn - 1);
-          depSubOk = !!prev && obtenerEstatusFila(prev) === 3;
+          depSubOk = !!prev && (
+            obtenerEstatusFila(prev) === ENS_FINAL ||
+            calidadEnPausa(prev)
+          );
         }
 
+    
         let depEstacionOk = true;
         if (ordenEstacion > 1) {
           const prevStationMap = porEstacion.get(ordenEstacion - 1);
-
-
           if (prevStationMap) {
             const prevRow = prevStationMap.get(sn) || null;
-            depEstacionOk = !!prevRow && obtenerEstatusFila(prevRow) === 3;
+            depEstacionOk = !!prevRow && (obtenerEstatusFila(prevRow) === ENS_FINAL);
           } else {
             depEstacionOk = true;
           }
         }
 
-        // Estación 1: S01 siempre inicia
         if (ordenEstacion === 1 && sn === 1) {
           depSubOk = true;
           depEstacionOk = true;
         }
 
-        if (depSubOk && depEstacionOk) { candidata = tr; break; }
-      }
-
-      if (candidata) {
-        const { btnIniciar, btnFinalizar } = obtenerBotones(candidata);
-        setBtnEnabled(btnIniciar, true);
-        setBtnEnabled(btnFinalizar, false);
+        if (depSubOk && depEstacionOk) {
+          const { btnIniciar } = obtenerBotones(tr);
+          setBtnEnabled(btnIniciar, true);
+        }
       }
     }
 
     aplicarReglaComentarios();
+    aplicarReglaInspeccion();
   };
 
   // =========================================================
-  // Fetch helper (POST JSON)
+  // Fetch helper 
   // =========================================================
   const postJson = async (url, payload) => {
     const resp = await fetch(url, {
@@ -307,9 +321,7 @@
     return json;
   };
 
-  // =========================
-  //  SONIDOS (Web Audio API)
-  // =========================
+
   let __audioCtx = null;
 
   const asegurarAudio = async () => {
@@ -368,17 +380,15 @@
     }
     if (btn.disabled) return;
 
-
     setBtnEnabled(btn, false);
 
     const fecha_inicio = ahoraSql();
-    ponerFechaCelda(tr, 2, fecha_inicio);
+    ponerFechaCelda(tr, 3, fecha_inicio);
     ponerBadgeEstatus(tr, 'proceso');
-    tr.dataset.estatus = '2';
-
+    tr.dataset.estatus = String(ENS_PROCESO);
 
     const { btnFinalizar } = obtenerBotones(tr);
-    setBtnEnabled(btnFinalizar, true);
+    setBtnEnabled(btnFinalizar, calidadLiberada(tr));
 
     const url = base_url + '/plan_planeacion/startOT';
     const payload = { idorden, peid, subot, fecha_inicio };
@@ -390,18 +400,33 @@
       ocultarCargando();
 
       if (!data || data.status === false) {
-        ponerFechaCelda(tr, 2, '—');
+        ponerFechaCelda(tr, 3, '—');
         ponerBadgeEstatus(tr, 'pendiente');
-        tr.dataset.estatus = '1';
+        tr.dataset.estatus = String(ENS_PENDIENTE);
         setBtnEnabled(btn, true);
         setBtnEnabled(btnFinalizar, false);
 
-        Swal.fire({ icon: 'error', title: 'Error', text: data?.msg || 'No se pudo iniciar', timer: 5000, showConfirmButton: false, timerProgressBar: true });
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: data?.msg || 'No se pudo iniciar',
+          timer: 5000,
+          showConfirmButton: false,
+          timerProgressBar: true
+        });
         aplicarCandados();
         return;
       }
 
-      Swal.fire({ icon: 'success', title: 'Proceso iniciado', text: data?.msg || 'Operación iniciada correctamente', timer: 1400, showConfirmButton: false, timerProgressBar: true });
+      Swal.fire({
+        icon: 'success',
+        title: 'Proceso iniciado',
+        text: data?.msg || 'Operación iniciada correctamente',
+        timer: 1400,
+        showConfirmButton: false,
+        timerProgressBar: true
+      });
+
       await sonidoInicio();
       aplicarCandados();
 
@@ -409,13 +434,21 @@
       console.error(err);
       ocultarCargando();
 
-      ponerFechaCelda(tr, 2, '—');
+      ponerFechaCelda(tr, 3, '—');
       ponerBadgeEstatus(tr, 'pendiente');
-      tr.dataset.estatus = '1';
+      tr.dataset.estatus = String(ENS_PENDIENTE);
       setBtnEnabled(btn, true);
       setBtnEnabled(btnFinalizar, false);
 
-      Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar con el servidor', timer: 5000, showConfirmButton: false, timerProgressBar: true });
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de red',
+        text: 'No se pudo conectar con el servidor',
+        timer: 5000,
+        showConfirmButton: false,
+        timerProgressBar: true
+      });
+
       aplicarCandados();
     }
   };
@@ -437,15 +470,26 @@
     }
     if (btn.disabled) return;
 
-    // UI optimistic
+    if (!calidadLiberada(tr)) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'No se puede finalizar',
+        text: 'Primero debe estar LIBERADA por Calidad (estatus 5) para poder finalizar esta orden.',
+        timer: 3500,
+        showConfirmButton: false,
+        timerProgressBar: true
+      });
+      aplicarCandados();
+      return;
+    }
+
     setBtnEnabled(btn, false);
 
     const fecha_fin = ahoraSql();
-    ponerFechaCelda(tr, 3, fecha_fin);
+    ponerFechaCelda(tr, 4, fecha_fin);
     ponerBadgeEstatus(tr, 'finalizada');
-    tr.dataset.estatus = '3';
+    tr.dataset.estatus = String(ENS_FINAL);
 
-    // En finalizada: iniciar/finish off
     const { btnIniciar } = obtenerBotones(tr);
     setBtnEnabled(btnIniciar, false);
 
@@ -459,18 +503,33 @@
       ocultarCargando();
 
       if (!data || data.status === false) {
-        // revertir UI
-        ponerFechaCelda(tr, 3, '—');
+        ponerFechaCelda(tr, 4, '—');
         ponerBadgeEstatus(tr, 'proceso');
-        tr.dataset.estatus = '2';
-        setBtnEnabled(btn, true); 
+        tr.dataset.estatus = String(ENS_PROCESO);
+        setBtnEnabled(btn, true);
 
-        Swal.fire({ icon: 'error', title: 'Error', text: data?.msg || 'No se pudo finalizar', timer: 5000, showConfirmButton: false, timerProgressBar: true });
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: data?.msg || 'No se pudo finalizar',
+          timer: 5000,
+          showConfirmButton: false,
+          timerProgressBar: true
+        });
+
         aplicarCandados();
         return;
       }
 
-      Swal.fire({ icon: 'success', title: 'Proceso finalizado', text: data?.msg || 'Operación completada correctamente', timer: 1400, showConfirmButton: false, timerProgressBar: true });
+      Swal.fire({
+        icon: 'success',
+        title: 'Proceso finalizado',
+        text: data?.msg || 'Operación completada correctamente',
+        timer: 1400,
+        showConfirmButton: false,
+        timerProgressBar: true
+      });
+
       await sonidoFinalizar();
       aplicarCandados();
 
@@ -478,13 +537,20 @@
       console.error(err);
       ocultarCargando();
 
-      // revertir UI
-      ponerFechaCelda(tr, 3, '—');
+      ponerFechaCelda(tr, 4, '—');
       ponerBadgeEstatus(tr, 'proceso');
-      tr.dataset.estatus = '2';
+      tr.dataset.estatus = String(ENS_PROCESO);
       setBtnEnabled(btn, true);
 
-      Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar con el servidor', timer: 5000, showConfirmButton: false, timerProgressBar: true });
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de red',
+        text: 'No se pudo conectar con el servidor',
+        timer: 5000,
+        showConfirmButton: false,
+        timerProgressBar: true
+      });
+
       aplicarCandados();
     }
   };
@@ -502,7 +568,6 @@
     const $mComentario = document.getElementById('mComentario');
     const $btnSave = document.getElementById('btnSaveOTComment');
 
-    // Abrir modal (SOLO si está en proceso)
     document.body.addEventListener('click', (e) => {
       const btn = e.target.closest('.btnCommentOT');
       if (!btn) return;
@@ -510,11 +575,11 @@
       const tr = btn.closest('tr');
       const st = tr ? obtenerEstatusFila(tr) : 0;
 
-      if (st !== 2) {
+      if (st !== ENS_PROCESO) {
         Swal.fire({
           icon: 'info',
           title: 'Ups',
-          text: 'Finalizaste la orden, ya no puedes cargar comentarios',
+          text: 'Solo puedes cargar comentarios cuando está En proceso.',
           timer: 2600,
           showConfirmButton: false,
           timerProgressBar: true
@@ -537,7 +602,6 @@
       modal.show();
     });
 
-    // Guardar comentario (solo si está en proceso)
     if ($btnSave) {
       $btnSave.addEventListener('click', async () => {
         const idorden = ($mIdOrden?.value || '').trim();
@@ -556,11 +620,12 @@
 
         const tr = document.querySelector(`tr[data-idorden="${CSS.escape(idorden)}"]`);
         const st = tr ? obtenerEstatusFila(tr) : 0;
-        if (st !== 2) {
+
+        if (st !== ENS_PROCESO) {
           Swal.fire({
             icon: 'info',
             title: 'Ups',
-            text: 'Finalizaste la orden, ya no puedes cargar comentarios',
+            text: 'Solo puedes guardar comentarios cuando está En proceso.',
             timer: 2600,
             showConfirmButton: false,
             timerProgressBar: true
@@ -586,13 +651,11 @@
           if (tr) tr.dataset.coment = comentario;
 
           Swal.fire({ icon: 'success', title: 'Guardado', text: data?.msg || 'Comentario actualizado', timer: 2000, showConfirmButton: false, timerProgressBar: true });
-
           modal.hide();
 
         } catch (err) {
           console.error(err);
           ocultarCargando();
-
           Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar con el servidor', timer: 5000, showConfirmButton: false, timerProgressBar: true });
         }
       });
@@ -600,7 +663,7 @@
   };
 
   // =========================================================
-  // ✅ SYNC ASÍNCRONO (polling)
+  //  SYNC ASÍNCRONO (polling)
   // =========================================================
   const iniciarSyncPolling = () => {
     const planeacionid = (document.getElementById('timeTrackerCard')?.dataset?.planeacion || '').trim();
@@ -619,7 +682,13 @@
       const est = String(row.estatus ?? '').trim();
       if (!est) return;
 
-      // si no cambió nada, no toca
+      if (row.calidad !== undefined && row.calidad !== null) {
+        const c = parseInt(row.calidad, 10) || 0;
+        tr.dataset.calidad = String(c);
+        const tdCal = obtenerCelda(tr, 2);
+        if (tdCal) tdCal.innerHTML = renderBadgeCalidad(c);
+      }
+
       if ((tr.dataset.estatus || '').trim() === est &&
         (tr.dataset.fi || '') === (row.fecha_inicio || '') &&
         (tr.dataset.ff || '') === (row.fecha_fin || '')
@@ -629,13 +698,12 @@
       tr.dataset.fi = row.fecha_inicio || '';
       tr.dataset.ff = row.fecha_fin || '';
 
-      if (est === '1') ponerBadgeEstatus(tr, 'pendiente');
-      else if (est === '2') ponerBadgeEstatus(tr, 'proceso');
-      else if (est === '3') ponerBadgeEstatus(tr, 'finalizada');
-      else if (est === '4') ponerBadgeEstatus(tr, 'detenida');
+      if (est === String(ENS_PENDIENTE)) ponerBadgeEstatus(tr, 'pendiente');
+      else if (est === String(ENS_PROCESO)) ponerBadgeEstatus(tr, 'proceso');
+      else if (est === String(ENS_FINAL)) ponerBadgeEstatus(tr, 'finalizada');
 
-      ponerFechaCelda(tr, 2, row.fecha_inicio || '—');
-      ponerFechaCelda(tr, 3, row.fecha_fin || '—');
+      ponerFechaCelda(tr, 3, row.fecha_inicio || '—');
+      ponerFechaCelda(tr, 4, row.fecha_fin || '—');
     };
 
     let sincronizando = false;
@@ -654,7 +722,6 @@
         if (!rows.length) return;
 
         const m = mapearFilas();
-
         for (const r of rows) {
           const tr = m.get(String(r.idorden || '').trim());
           if (!tr) continue;
@@ -673,6 +740,8 @@
     setInterval(sincronizarServidor, 5000);
     sincronizarServidor();
   };
+
+
 
   // =========================================================
   // ====================   PDF SECTION   =====================
@@ -1037,6 +1106,9 @@
     });
   }
 
+
+
+
   async function manejarClickPdf(btn) {
     const numOrden = (btn.dataset.numorden || '').trim();
     if (!numOrden) {
@@ -1082,14 +1154,14 @@
       const btnFinish = e.target.closest('.btnFinishOT');
       if (btnFinish) { manejarClickFinalizar(btnFinish); return; }
 
-      const btnPdf = e.target.closest('.btnPdfOT');
-      if (btnPdf) { manejarClickPdf(btnPdf); return; }
+      const bntPdf = e.target.closest('.btnPdfOT');
+      if (bntPdf) { manejarClickPdf(bntPdf); return; }
     });
 
     iniciarModalComentarios();
     iniciarSyncPolling();
-
     aplicarReglaComentarios();
+    aplicarReglaInspeccion();
   };
 
   document.addEventListener('DOMContentLoaded', iniciar);
@@ -1100,7 +1172,12 @@
 
 
 
-////////////////////////////////////////
+
+
+
+
+
+
 
 
 
@@ -1276,7 +1353,7 @@ const chatPoll = async () => {
     const data = await postJsonLocal(base_url + '/plan_planeacion/getChatMessages', payload);
     if (!data?.status) return;
 
-    // poll solo añade
+
     renderMessagesVelzon(data.data || [], 'append');
   } catch (e) {
     console.warn('chat poll error', e);
@@ -1307,11 +1384,10 @@ const chatOpen = (btn) => {
   if (chatPollingTimer) clearInterval(chatPollingTimer);
   chatPollingTimer = null;
 
-  // muestra modal primero (para que el scroll exista)
   chatModal.show();
 };
 
-// Cuando el modal ya está visible: carga + polling
+
 chatModalEl?.addEventListener('shown.bs.modal', async () => {
   await chatLoad();
 
@@ -1374,9 +1450,6 @@ document.addEventListener('click', (e) => {
   const btn = e.target.closest('.btnChatOT');
   if (btn) chatOpen(btn);
 });
-
-
-
 
 
 
@@ -1499,6 +1572,7 @@ async function openModalOrdenDescriptiva(productoid, descripcion, cantidad = 1) 
         </tr>
       `;
     }
+    
 
     tbody.innerHTML = html;
 
@@ -1954,7 +2028,7 @@ document.addEventListener('change', (e) => {
   //   comentario.required = false;
   // }
 
-  
+
   comentario.disabled = false;
 
   if (radio.value === 'NO_OK' && radio.checked) {
@@ -1963,7 +2037,7 @@ document.addEventListener('change', (e) => {
   } else if (radio.value === 'OK' && radio.checked) {
     comentario.required = false;
 
-   
+
   }
 
 
@@ -2099,9 +2173,7 @@ document.addEventListener('click', (e) => {
   renderLocalEvidenceLinks(tr);
 });
 
-// ============================
-// Abrir modal (modificado: guarda idorden/numot)
-// ============================
+
 async function openModalInspeccionCalidad(
   productoid,
   estacionid,
@@ -2115,6 +2187,19 @@ async function openModalInspeccionCalidad(
   estacionid = parseInt(estacionid, 10) || 0;
   idorden = parseInt(idorden, 10) || 0;
 
+  const myId = String(window.CURRENT_ROL_ID || '0');
+  const isUser5 = parseInt(myId, 10) === 5;
+
+
+  const btnPausarEl = document.getElementById('btnPausarCalidad');
+  const btnLiberarEl = document.getElementById('btnLiberarCalidad');
+
+  if (btnPausarEl) btnPausarEl.style.visibility = isUser5 ? 'visible' : 'hidden';
+  if (btnLiberarEl) btnLiberarEl.style.visibility = isUser5 ? 'visible' : 'hidden';
+
+  // ---------------------------------------------------------
+  // Modal 
+  // ---------------------------------------------------------
   const modalCom = $('modalInspeccionCalidad');
   const modal = bootstrap.Modal.getOrCreateInstance(modalCom);
   const tbody = $('calidadTableBody');
@@ -2123,11 +2208,9 @@ async function openModalInspeccionCalidad(
   $('titleProcesoCal').textContent = procesoTxt || 'Proceso';
   $('numSubOrdenT').textContent = numot || '-';
 
- 
   $('calidad_idorden').value = idorden;
   $('calidad_numot').value = String(numot || '');
   $('estacion_id').value = estacionid;
-
 
   const prodHidden = $('producto_id');
   if (prodHidden) prodHidden.value = productoid;
@@ -2147,7 +2230,6 @@ async function openModalInspeccionCalidad(
   modal.show();
 
   try {
-
     const resp = await fetch(`${base_url}/plan_planeacion/getEspecificaciones`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -2172,6 +2254,25 @@ async function openModalInspeccionCalidad(
       const especId = r.idespecificacion || r.especificacionid || (idx + 1);
       const nameResultado = `res_${especId}`;
 
+      const evidenciaBlock = isUser5
+        ? `
+          <input type="file"
+                 class="form-control form-control-sm evidencia-file"
+                 accept=".jpg,.jpeg,.png,.pdf"
+                 multiple>
+
+          <button type="button" class="btn btn-sm btn-outline-secondary btnCamTake mt-2">
+            <i class="ri-camera-line me-1"></i> Tomar foto
+          </button>
+
+          <div class="text-muted small mt-1">Foto o PDF (opcional).</div>
+          <div class="evidencia-links mt-2 small"></div>
+        `
+        : `
+          <div class="text-muted small">Evidencia: solo disponible para encargados de estaciones.</div>
+          <div class="evidencia-links mt-2 small"></div>
+        `;
+
       return `
         <tr data-especificacionid="${especId}">
           <td>
@@ -2180,39 +2281,24 @@ async function openModalInspeccionCalidad(
             <div class="text-danger small mt-1 d-none row-error">Revisa esta fila.</div>
           </td>
 
-<td class="text-center align-middle">
-  <div class="d-flex justify-content-center align-items-center flex-wrap gap-3">
-    <div class="form-check form-check-success">
-      <input class="form-check-input resultado-radio" type="radio"
-             name="${nameResultado}" value="OK" id="${nameResultado}_ok">
-      <label class="form-check-label" for="${nameResultado}_ok">Aprobar</label>
-    </div>
+          <td class="text-center align-middle">
+            <div class="d-flex justify-content-center align-items-center flex-wrap gap-3">
+              <div class="form-check form-check-success">
+                <input class="form-check-input resultado-radio" type="radio"
+                       name="${nameResultado}" value="OK" id="${nameResultado}_ok">
+                <label class="form-check-label" for="${nameResultado}_ok">Aprobar</label>
+              </div>
 
-    <div class="form-check form-check-danger">
-      <input class="form-check-input resultado-radio" type="radio"
-             name="${nameResultado}" value="NO_OK" id="${nameResultado}_no">
-      <label class="form-check-label" for="${nameResultado}_no">Pausar</label>
-    </div>
-  </div>
-</td>
-
+              <div class="form-check form-check-danger">
+                <input class="form-check-input resultado-radio" type="radio"
+                       name="${nameResultado}" value="NO_OK" id="${nameResultado}_no">
+                <label class="form-check-label" for="${nameResultado}_no">Pausar</label>
+              </div>
+            </div>
+          </td>
 
           <td>
-            <input type="file"
-                   class="form-control form-control-sm evidencia-file"
-                   accept=".jpg,.jpeg,.png,.pdf"
-                   multiple>
-
-                     <button type="button" class="btn btn-sm btn-outline-secondary btnCamTake mt-2">
-    <i class="ri-camera-line me-1"></i> Tomar foto
-  </button>
-
-
-                   
-            <div class="text-muted small mt-1">Foto o PDF (opcional).</div>
-
-  
-            <div class="evidencia-links mt-2 small"></div>
+            ${evidenciaBlock}
           </td>
 
           <td>
@@ -2225,9 +2311,6 @@ async function openModalInspeccionCalidad(
       `;
     }).join('');
 
-    // ==========================
-    // Precargar inspección previa
-    // ==========================
 
     try {
       const respPrev = await fetch(`${base_url}/plan_planeacion/getInspeccionCalidad`, {
@@ -2240,7 +2323,6 @@ async function openModalInspeccionCalidad(
 
       if (respPrev.ok && prev && prev.status) {
         const detPrev = prev.data?.detalle || [];
-
 
         const mapPrev = new Map();
         detPrev.forEach(x => {
@@ -2255,9 +2337,7 @@ async function openModalInspeccionCalidad(
           const info = mapPrev.get(eid);
           if (!info) return;
 
-          // -----------------------
-          // Resultado (radios)
-          // -----------------------
+
           const radios = [...tr.querySelectorAll('.resultado-radio')];
           const rOk = radios.find(r => r.value === 'OK');
           const rNo = radios.find(r => r.value === 'NO_OK');
@@ -2265,36 +2345,26 @@ async function openModalInspeccionCalidad(
           if (info.resultado === 'OK' && rOk) rOk.checked = true;
           if (info.resultado === 'NO_OK' && rNo) rNo.checked = true;
 
-          // -----------------------
           // Comentario
-          // -----------------------
           const txt = tr.querySelector('.comentario');
+          if (txt) {
+            txt.disabled = false;
 
-
-        
-          txt.disabled = false;
-
-      
-          if (info.resultado === 'NO_OK') {
-            txt.required = true;
-            txt.value = (info.comentario || '');
-          } else {
-            txt.required = false;
-
-          
+            if (info.resultado === 'NO_OK') {
+              txt.required = true;
+              txt.value = (info.comentario || '');
+            } else {
+              txt.required = false;
+            }
           }
 
 
-          // -----------------------
-          //  Evidencias guardadas 
-          // -----------------------
           const list = Array.isArray(info.evidencias) ? info.evidencias : [];
           if (!list.length) return;
 
           const box = tr.querySelector('.evidencia-links');
           if (!box) return;
 
-        
           let savedWrap = box.querySelector('.evidencia-saved');
           if (!savedWrap) {
             savedWrap = document.createElement('div');
@@ -2305,53 +2375,50 @@ async function openModalInspeccionCalidad(
           const UPLOAD_PATH = `${base_url}/Assets/uploads/calidad_evidencias/`;
 
           savedWrap.innerHTML = `
-        <div class="d-flex flex-column gap-1">
-          ${list.map((ev, idx) => {
+            <div class="d-flex flex-column gap-1">
+              ${list.map((ev, idx) => {
             const name = ev.nombre_original || ev.archivo || `evidencia_${idx + 1}`;
             const file = ev.archivo || '';
             const url = file ? (UPLOAD_PATH + encodeURIComponent(file)) : '#';
-            const isImg = (ev.mime && String(ev.mime).startsWith('image/')) || (String(name).toLowerCase().match(/\.(jpg|jpeg|png|webp)$/));
+            const isImg = (ev.mime && String(ev.mime).startsWith('image/')) ||
+              (String(name).toLowerCase().match(/\.(jpg|jpeg|png|webp)$/));
 
             return `
-              <div class="d-flex align-items-center justify-content-between gap-2">
-                <div class="d-flex align-items-center gap-2">
-           
+                  <div class="d-flex align-items-center justify-content-between gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                      <a class="link-success text-decoration-underline"
+                         href="${url}"
+                         target="_blank" rel="noopener">
+                        Ver ${isImg ? 'imagen' : 'archivo'}
+                      </a>
+                    </div>
 
-                  <a class="link-success text-decoration-underline"
-                     href="${url}"
-                     target="_blank" rel="noopener">
-                     Ver ${isImg ? 'imagen' : 'archivo'}
-                  </a>
- 
-                
-                </div>
-
-                <!-- Solo oculta el link (no borra servidor) -->
-                <button type="button"
-                  class="btn btn-sm btn-outline-info py-0 px-2 evidencia-hide-saved"
-                  title="Ocultar de la vista">
-                  <i class="ri-eye-off-line"></i>
-                </button>
-              </div>
-            `;
+                    <!-- Solo oculta el link (no borra servidor) -->
+                    <button type="button"
+                      class="btn btn-sm btn-outline-info py-0 px-2 evidencia-hide-saved"
+                      title="Ocultar de la vista">
+                      <i class="ri-eye-off-line"></i>
+                    </button>
+                  </div>
+                `;
           }).join('')}
-        </div>
-      `;
+            </div>
+          `;
         });
       }
     } catch (e) {
-    
+      // silencioso
     }
 
-
- 
     setButtonsByEstado();
-
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${err.message}</td></tr>`;
     setButtonsByEstado();
   }
 }
+
+
+
 
 
 document.addEventListener('click', (e) => {
@@ -2362,9 +2429,7 @@ document.addEventListener('click', (e) => {
   if (row) row.remove();
 });
 
-// ============================
-// Validación + payload 
-// ============================
+
 function buildPayloadCalidad() {
   const idorden = parseInt($('calidad_idorden')?.value || 0, 10) || 0;
   const numot = String($('calidad_numot')?.value || '');
@@ -2393,12 +2458,10 @@ document.addEventListener('click', (e) => {
   const payload = buildPayloadCalidad();
   console.log('LIBERAR payload:', payload);
 
- 
+
 });
 
-// ==============================
-// Enviar inspección (PAUSAR / LIBERAR)
-// ==============================
+
 async function enviarInspeccionCalidad(accion = 'PAUSAR') {
   const idorden = parseInt(document.getElementById('calidad_idorden')?.value || 0, 10) || 0;
   const numot = String(document.getElementById('calidad_numot')?.value || '');
@@ -2438,7 +2501,7 @@ async function enviarInspeccionCalidad(accion = 'PAUSAR') {
     }
 
     if (accion === 'LIBERAR') {
-  
+
       if (selected.value !== 'OK') {
         hasError = true;
         tr.classList.add('table-danger');
@@ -2488,7 +2551,7 @@ async function enviarInspeccionCalidad(accion = 'PAUSAR') {
   fd.append('estacionid', String(estacionid));
   fd.append('detalle', JSON.stringify(detalle));
 
-  
+
   trs.forEach(tr => {
     const especId = parseInt(tr.dataset.especificacionid || 0, 10) || 0;
     const input = tr.querySelector('.evidencia-file');
@@ -2559,17 +2622,17 @@ document.addEventListener('click', (e) => {
 
 
 
-async function openModalVerInspeccion(estacionid, idorden, nombreEstacion = '', nombreProceso = '', numOrden='') {
+async function openModalVerInspeccion(estacionid, idorden, nombreEstacion = '', nombreProceso = '', numOrden = '') {
   estacionid = parseInt(estacionid, 10) || 0;
-  idorden    = parseInt(idorden, 10) || 0;
+  idorden = parseInt(idorden, 10) || 0;
 
   const modalEl = $('modalViewInspeccionCalidad');
-  const modal   = bootstrap.Modal.getOrCreateInstance(modalEl);
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
 
- 
+
   const tbody = $('calidadViewTableBody');
 
-    const numorden = $('numSubOrdenTView');
+  const numorden = $('numSubOrdenTView');
   if (numorden) numorden.textContent = numOrden || '-';
 
   const est = $('titleEstacionCalView');
@@ -2587,7 +2650,7 @@ async function openModalVerInspeccion(estacionid, idorden, nombreEstacion = '', 
     </tr>
   `;
 
- 
+
   const setText = (id, val) => { const el = $(id); if (el) el.textContent = (val ?? '—'); };
 
   setText('viewInspectorNombre', '—');
@@ -2623,7 +2686,7 @@ async function openModalVerInspeccion(estacionid, idorden, nombreEstacion = '', 
       throw new Error(prev?.msg || `Error HTTP ${respPrev.status}`);
     }
 
-    const header  = prev.data?.header || {};
+    const header = prev.data?.header || {};
     const detalle = prev.data?.detalle || [];
 
 
@@ -2651,7 +2714,7 @@ async function openModalVerInspeccion(estacionid, idorden, nombreEstacion = '', 
       return;
     }
 
-  
+
     const UPLOAD_PATH = `${base_url}/Assets/uploads/calidad_evidencias/`;
 
     const fmtSize = (n) => {
@@ -2681,7 +2744,7 @@ async function openModalVerInspeccion(estacionid, idorden, nombreEstacion = '', 
       if (res === 'NO_OK') {
         countNo++;
         const motivo = (d.comentario_no_ok || '').trim();
-        const corr   = (d.accion_correctiva || '').trim();
+        const corr = (d.accion_correctiva || '').trim();
 
         noOkResumen.push({
           especificacion: d.especificacion || `Especificación ${d.especificacionid}`,
@@ -2718,10 +2781,10 @@ async function openModalVerInspeccion(estacionid, idorden, nombreEstacion = '', 
       }
     }
 
- 
+
     tbody.innerHTML = detalle.map((d) => {
-      const res  = d.resultado || '';
-      const evs  = Array.isArray(d.evidencias) ? d.evidencias : [];
+      const res = d.resultado || '';
+      const evs = Array.isArray(d.evidencias) ? d.evidencias : [];
 
       const badgeRes = (res === 'NO_OK')
         ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle">
@@ -2735,12 +2798,12 @@ async function openModalVerInspeccion(estacionid, idorden, nombreEstacion = '', 
         ? `
           <div class="d-flex flex-column gap-1">
             ${evs.map((ev) => {
-              const file = ev.archivo || '';
-              const url  = file ? (UPLOAD_PATH + encodeURIComponent(file)) : '#';
-              const icon = isImg(ev.mime, file) ? 'ri-image-2-line text-primary' : 'ri-file-pdf-2-line text-danger';
-              const label = isImg(ev.mime, file) ? 'Ver imagen' : 'Ver archivo';
+          const file = ev.archivo || '';
+          const url = file ? (UPLOAD_PATH + encodeURIComponent(file)) : '#';
+          const icon = isImg(ev.mime, file) ? 'ri-image-2-line text-primary' : 'ri-file-pdf-2-line text-danger';
+          const label = isImg(ev.mime, file) ? 'Ver imagen' : 'Ver archivo';
 
-              return `
+          return `
                 <div class="d-flex align-items-center justify-content-between gap-2">
                   <a class="link-primary text-decoration-underline"
                      href="${url}" target="_blank" rel="noopener">
@@ -2752,14 +2815,14 @@ async function openModalVerInspeccion(estacionid, idorden, nombreEstacion = '', 
                   ${esc(ev.nombre_original || file)}
                 </div>
               `;
-            }).join('')}
+        }).join('')}
           </div>
         `
         : `<span class="text-muted">—</span>`;
 
-     
+
       const motivo = (d.comentario_no_ok || '').trim();
-      const corr   = (d.accion_correctiva || '').trim();
+      const corr = (d.accion_correctiva || '').trim();
 
       const comentariosHtml = `
         <div class="small">
@@ -2867,7 +2930,7 @@ function agregarArchivosAInput(input, nuevosArchivos) {
 }
 
 // -----------------------------------------------------
-// Crear archivo desde canvas
+// Crear archivo desde canvtas
 // -----------------------------------------------------
 function archivoDesdeCanvas(canvas, nombreArchivo) {
   return new Promise(resolve => {
@@ -2927,7 +2990,7 @@ document.addEventListener('click', (e) => {
 });
 
 // -----------------------------------------------------
-// Abrir cámara
+// Abrir cámarat
 // -----------------------------------------------------
 document.addEventListener('click', async (e) => {
   const btn = e.target.closest('.btnCamTake');
@@ -3038,3 +3101,5 @@ document.getElementById('modalCamCalidad')?.addEventListener('hidden.bs.modal', 
   __filaObjetivoCamara = null;
   __archivosSesionCamara = [];
 });
+
+
