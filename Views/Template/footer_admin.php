@@ -845,7 +845,7 @@ Se utiliza con fines de configuración y ajustes visuales del layout.
     <!-- Sweet alert init js-->
     <!-- <script src="<?= media(); ?>/minimal/js/pages/sweetalerts.init.js"></script> -->
 
-
+    <script src="<?= media(); ?>/js/sys_core.js"></script>
     <script src="<?= media(); ?>/js/modulos/<?= $data['page_functions_js']; ?> "></script>
 
 

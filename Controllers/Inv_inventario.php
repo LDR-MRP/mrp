@@ -1,6 +1,10 @@
 <?php
 class Inv_inventario extends Controllers
 {
+	use ApiResponser;
+
+	protected $inventarioService;
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -11,6 +15,10 @@ class Inv_inventario extends Controllers
 			die();
 		}
 		getPermisos(MIINVENTARIO);
+
+		$this->inventarioService = new Inv_inventarioService;
+
+		$this->inventarioService->model = $this->model;
 	}
 
 	public function Inv_inventario()
@@ -325,6 +333,11 @@ class Inv_inventario extends Controllers
 		die();
 	}
 
+
+	public function index()
+    {
+        return $this->apiResponse($this->inventarioService->items(sanitizeGet()));
+    }
 
 	public function delInventario()
 	{

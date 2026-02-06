@@ -418,6 +418,16 @@ function sendMailLocalCron($data, $template, $correos_copia = ''){
         return $meses;
     }
 
+    
+    function sanitizeGet() {
+        $clean = [];
+        foreach ($_GET as $key => $value) {
+            $clean[$key] = filter_var($value, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        }
+        return $clean;
+    }
+
+
 
 
 

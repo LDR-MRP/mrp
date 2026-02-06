@@ -113,7 +113,8 @@ class Inv_inventarioModel extends Mysql
                     i.descripcion,
                     lp.descripcion AS linea,
                     i.tipo_elemento,
-                    i.estado
+                    i.estado,
+                    i.ultimo_costo
                 FROM wms_inventario i
                 LEFT JOIN wms_linea_producto lp 
                     ON i.lineaproductoid = lp.idlineaproducto
@@ -131,7 +132,8 @@ class Inv_inventarioModel extends Mysql
 
         $sql = "SELECT i.*,
                    ca.cve_alterna,
-                   ca.tipo AS tipo_clave
+                   ca.tipo AS tipo_clave,
+                   i.ultimo_costo
             FROM wms_inventario i
             LEFT JOIN wms_claves_alternas ca 
                    ON ca.inventarioid = i.idinventario
@@ -563,7 +565,40 @@ WHERE idinventario = ?";
             WHERE ii.inventarioid = $idinventario";
 
     return $this->select_all($sql);
-}
+    }
 
+    public function items(array $filters = []): array
+    {
+        $query ="SELECT
+                    -- data inventario 
+                    wms_inventario.idinventario,
+                    wms_inventario.cve_articulo,
+                    wms_inventario.descripcion,
+                    wms_inventario.tipo_elemento,
+                    wms_inventario.estado,
+                    wms_inventario.ultimo_costo,
+                    wms_inventario.unidad_salida,
+                    -- data liea de producto
+                    wms_linea_producto.descripcion AS descripcion_linea
+                FROM wms_inventario
+                LEFT JOIN wms_linea_producto
+                    ON wms_linea_producto.idlineaproducto = wms_inventario.lineaproductoid
+                WHERE true
+            ";
 
+        if(array_key_exists('id', $filters)) {
+            $query .= "AND wms_inventario.idinventario = '{$filters['id']}'";
+        }
+
+        if(array_key_exists('estado', $filters)) {
+            $query .= "AND wms_inventario.estado = '{$filters['estado']}'";
+        }
+
+        if(array_key_exists('sku', $filters)) {
+            $query .= "AND wms_inventario.cve_articulo LIKE '%{$filters['sku']}%'";
+        }
+
+        return $this->select_all($query);
+    }
+    
 }
