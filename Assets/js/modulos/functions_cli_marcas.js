@@ -6,7 +6,6 @@ let divLoading = document.querySelector("#divLoading");
 const idmarca = document.querySelector("#idmarca");
 const nombreInput = document.querySelector("#nombre-marca-input");
 const codigoInput = document.querySelector("#codigo-marca-input");
-const estado = document.querySelector("#estado-select");
 
 // Mis referencias globales
 let primerTab; // Tab LISTA
@@ -98,7 +97,6 @@ document.addEventListener(
         // Limpiar formulario
         formMarcas.reset();
         idmarca.value = "";
-        estado.value = "2";
       });
 
       // ----------------------------------------------------------------
@@ -108,7 +106,6 @@ document.addEventListener(
         tabNuevo.textContent = "NUEVO";
         spanBtnText.textContent = "REGISTRAR";
         idmarca.value = "";
-        estado.value = "2";
         formMarcas.reset();
       });
     } else {
@@ -166,7 +163,6 @@ document.addEventListener(
                 // Seguir en modo NUEVO
                 formMarcas.reset();
                 idmarca.value = "";
-                estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 tableMarcas.api().ajax.reload();
@@ -174,7 +170,6 @@ document.addEventListener(
                 // Regresar al listado
                 formMarcas.reset();
                 idmarca.value = "";
-                estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 primerTab.show();
@@ -193,7 +188,6 @@ document.addEventListener(
               // Acción final después de OK (opcional)
               formMarcas.reset();
               idmarca.value = "";
-              estado.value = "2";
               tabNuevo.textContent = "NUEVO";
               spanBtnText.textContent = "REGISTRAR";
               primerTab.show();
@@ -233,7 +227,6 @@ function fntEditInfo(id_marca) {
         idmarca.value = objData.data.id;
         nombreInput.value = objData.data.nombre;
         codigoInput.value = objData.data.codigo;
-        estado.value = objData.data.estado;
 
         // Cambiar al tab de captura
         if (firstTab) firstTab.show();

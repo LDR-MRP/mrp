@@ -10,7 +10,6 @@ const nombre = document.querySelector("#nombre-contactos-input");
 const correo = document.querySelector("#correo-contactos-input");
 const extension = document.querySelector("#extension-contactos-input");
 const telefono = document.querySelector("#telefono-contactos-input");
-const estado = document.querySelector("#estado-select");
 
 // Mis referencias globales
 let primerTab; // Tab LISTA
@@ -107,7 +106,6 @@ document.addEventListener(
         // Limpiar formulario
         formContactos.reset();
         idcontacto.value = "";
-        estado.value = "2";
       });
 
       // ----------------------------------------------------------------
@@ -117,7 +115,6 @@ document.addEventListener(
         tabNuevo.textContent = "NUEVO";
         spanBtnText.textContent = "REGISTRAR";
         idcontacto.value = "";
-        estado.value = "2";
         formContactos.reset();
       });
     } else {
@@ -175,7 +172,6 @@ document.addEventListener(
                 // Seguir en modo NUEVO
                 formContactos.reset();
                 idcontacto.value = "";
-                estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 tableContactos.api().ajax.reload();
@@ -183,7 +179,6 @@ document.addEventListener(
                 // Regresar al listado
                 formContactos.reset();
                 idcontacto.value = "";
-                estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 primerTab.show();
@@ -202,7 +197,6 @@ document.addEventListener(
               // Acción final después de OK (opcional)
               formContactos.reset();
               idcontacto.value = "";
-              estado.value = "2";
               tabNuevo.textContent = "NUEVO";
               spanBtnText.textContent = "REGISTRAR";
               primerTab.show();
@@ -246,7 +240,6 @@ function fntEditInfo(id_contacto) {
         correo.value = objData.data.correo;
         extension.value = objData.data.extension;
         telefono.value = objData.data.telefono;
-        estado.value = objData.data.estado;
 
         // Cambiar al tab de captura
         if (firstTab) firstTab.show();

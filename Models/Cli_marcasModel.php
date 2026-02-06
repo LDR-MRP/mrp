@@ -5,7 +5,6 @@ class Cli_marcasModel extends Mysql
     public $intIdmarca;
     public $strNombre;
     public $strCodigo;
-    public $intEstado;
 
     public function __construct()
     {
@@ -37,21 +36,19 @@ class Cli_marcasModel extends Mysql
         return $request;
     }
 
-    public function insertMarca($marca, $codigo, $estado)
+    public function insertMarca($marca, $codigo)
     {
         $this->strNombre = $marca;
         $this->strCodigo = $codigo;
-        $this->intEstado = $estado;
 
         $sql = "SELECT * FROM cli_marcas WHERE nombre = '{$this->strNombre}' OR codigo = '{$this->strCodigo}'";
         $request = $this->select_all($sql);
 
         if (empty($request)) {
-            $query_insert = "INSERT INTO cli_marcas(nombre, codigo, estado) VALUES(?,?,?)";
+            $query_insert = "INSERT INTO cli_marcas(nombre, codigo) VALUES(?,?)";
             $arrData = array(
                 $this->strNombre,
                 $this->strCodigo,
-                $this->intEstado
             );
             $request_insert = $this->insert($query_insert, $arrData);
             return $request_insert;
@@ -60,22 +57,26 @@ class Cli_marcasModel extends Mysql
         }
     }
 
-    public function updateMarca($idmarca, $marca, $codigo, $estado)
+    public function updateMarca($idmarca, $marca, $codigo)
     {
         $this->intIdmarca = $idmarca;
         $this->strNombre = $marca;
         $this->strCodigo = $codigo;
-        $this->intEstado = $estado;
 
-        $sql = "SELECT * FROM cli_marcas WHERE (nombre = '$this->strNombre' OR codigo = '$this->strCodigo') AND id != $this->intIdmarca";
+        $sql = "SELECT * FROM cli_marcas 
+        WHERE (nombre = '$this->strNombre' 
+        OR codigo = '$this->strCodigo') 
+        AND id != $this->intIdmarca";
         $request = $this->select_all($sql);
 
         if (empty($request)) {
-            $sql = "UPDATE cli_marcas SET nombre = ?, codigo = ?, estado = ? WHERE id = $this->intIdmarca ";
+            $sql = "UPDATE cli_marcas 
+            SET nombre = ?, 
+                codigo = ? 
+            WHERE id = $this->intIdmarca ";
             $arrData = array(
                 $this->strNombre,
                 $this->strCodigo,
-                $this->intEstado
             );
             $request = $this->update($sql, $arrData);
             return $request;

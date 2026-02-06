@@ -1,19 +1,20 @@
-let tablePuestos;
+let tableTipoCliente;
 let rowTable = "";
 let divLoading = document.querySelector("#divLoading");
 
 // Inputs del formulario
-const idpuesto = document.querySelector("#idpuesto");
-const departamento_id = document.querySelector("#listPuestos");
-const nombreInput = document.querySelector("#nombre-puestos-input");
-const descripcionInput = document.querySelector("#descripcion-puestos-input");
+const idtipocliente = document.querySelector("#idtipocliente");
+const nombreInput = document.querySelector("#nombre-tipocliente-input");
+const descripcionInput = document.querySelector(
+  "#descripcion-tipocliente-input",
+);
 
 // Mis referencias globales
 let primerTab; // Tab LISTA
 let firstTab; // Tab NUEVO/ACTUALIZAR
 let tabNuevo;
 let spanBtnText = null;
-let formPuestos = null;
+let formTipoCliente = null;
 
 document.addEventListener(
   "DOMContentLoaded",
@@ -21,25 +22,22 @@ document.addEventListener(
     // --------------------------------------------------------------------
     //  REFERENCIAS DEL FORMULARIO
     // --------------------------------------------------------------------
-    formPuestos = document.querySelector("#formPuestos");
+    formTipoCliente = document.querySelector("#formTipoCliente");
     spanBtnText = document.querySelector("#btnText");
 
-    fntPuestos();
-
     // --------------------------------------------------------------------
-    //  DATATABLE PUESTOS
+    //  DATATABLE TIPOS DE CLIENTES
     // --------------------------------------------------------------------
-    tablePuestos = $("#tablePuestos").dataTable({
+    tableTipoCliente = $("#tableTipoCliente").dataTable({
       aProcessing: true,
       aServerSide: true,
       ajax: {
-        url: " " + base_url + "/cli_puestos/index",
+        url: " " + base_url + "/cli_tipos_clientes/index",
         dataSrc: "",
       },
       columns: [
         { data: "id" },
-        { data: "nombre_departamento" },
-        { data: "nombre_puesto" },
+        { data: "nombre" },
         { data: "descripcion" },
         { data: "fecha_registro" },
         { data: "estado" },
@@ -79,10 +77,10 @@ document.addEventListener(
     //  TABS BOOTSTRAP
     // --------------------------------------------------------------------
     const primerTabEl = document.querySelector(
-      '#nav-tab a[href="#listpuestos"]'
+      '#nav-tab a[href="#listtipoclientes"]',
     );
     const firstTabEl = document.querySelector(
-      '#nav-tab a[href="#agregarpuesto"]'
+      '#nav-tab a[href="#agregartipocliente"]',
     );
 
     if (primerTabEl && firstTabEl && spanBtnText) {
@@ -99,27 +97,27 @@ document.addEventListener(
         spanBtnText.textContent = "REGISTRAR";
 
         // Limpiar formulario
-        formPuestos.reset();
-        idpuesto.value = "";
+        formTipoCliente.reset();
+        idtipocliente.value = "";
       });
 
       // ----------------------------------------------------------------
-      // CLICK EN "PUESTOS" → RESETEAR NAV A NUEVO
+      // CLICK EN "TIPOS DE CLIENTES" → RESETEAR NAV A NUEVO
       // ----------------------------------------------------------------
       primerTabEl.addEventListener("click", () => {
         tabNuevo.textContent = "NUEVO";
         spanBtnText.textContent = "REGISTRAR";
-        idpuesto.value = "";
-        formPuestos.reset();
+        idtipocliente.value = "";
+        formTipoCliente.reset();
       });
     } else {
       console.warn("Tabs de lineas no encontrados o btnText faltante.");
     }
 
     // --------------------------------------------------------------------
-    // FORM → CREAR / ACTUALIZAR PUESTO
+    // FORM → CREAR / ACTUALIZAR TIPO DE CLIENTE
     // --------------------------------------------------------------------
-    formPuestos.addEventListener("submit", function (e) {
+    formTipoCliente.addEventListener("submit", function (e) {
       e.preventDefault();
 
       divLoading.style.display = "flex";
@@ -127,8 +125,8 @@ document.addEventListener(
       let request = window.XMLHttpRequest
         ? new XMLHttpRequest()
         : new ActiveXObject("Microsoft.XMLHTTP");
-      let ajaxUrl = base_url + "/cli_puestos/setPuesto";
-      let formData = new FormData(formPuestos);
+      let ajaxUrl = base_url + "/cli_tipos_clientes/setTipoCliente";
+      let formData = new FormData(formTipoCliente);
 
       request.open("POST", ajaxUrl, true);
       request.send(formData);
@@ -142,7 +140,7 @@ document.addEventListener(
           Swal.fire(
             "Error",
             "Ocurrió un error en el servidor. Inténtalo de nuevo.",
-            "error"
+            "error",
           );
           return;
         }
@@ -165,19 +163,19 @@ document.addEventListener(
             }).then((result) => {
               if (result.isConfirmed) {
                 // Seguir en modo NUEVO
-                formPuestos.reset();
-                idpuesto.value = "";
+                formTipoCliente.reset();
+                idtipocliente.value = "";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
-                tablePuestos.api().ajax.reload();
+                tableTipoCliente.api().ajax.reload();
               } else {
                 // Regresar al listado
-                formPuestos.reset();
-                idpuesto.value = "";
+                formTipoCliente.reset();
+                idtipocliente.value = "";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 primerTab.show();
-                tablePuestos.api().ajax.reload();
+                tableTipoCliente.api().ajax.reload();
               }
             });
           } else {
@@ -190,12 +188,12 @@ document.addEventListener(
               allowEscapeKey: false,
             }).then(() => {
               // Acción final después de OK (opcional)
-              formPuestos.reset();
-              idpuesto.value = "";
+              formTipoCliente.reset();
+              idtipocliente.value = "";
               tabNuevo.textContent = "NUEVO";
               spanBtnText.textContent = "REGISTRAR";
               primerTab.show();
-              tablePuestos.api().ajax.reload();
+              tableTipoCliente.api().ajax.reload();
             });
           }
         } else {
@@ -204,13 +202,13 @@ document.addEventListener(
       };
     });
   },
-  false
+  false,
 );
 
 // ------------------------------------------------------------------------
-// FUNCIÓN EDITAR PUESTO → MODO ACTUALIZAR
+// FUNCIÓN EDITAR TIPO DE CLIENTE → MODO ACTUALIZAR
 // ------------------------------------------------------------------------
-function fntEditInfo(id_puesto) {
+function fntEditInfo(id_tipocliente) {
   // Cambiar textos a modo ACTUALIZAR
   if (tabNuevo) tabNuevo.textContent = "ACTUALIZAR";
   if (spanBtnText) spanBtnText.textContent = "ACTUALIZAR";
@@ -218,7 +216,7 @@ function fntEditInfo(id_puesto) {
   let request = window.XMLHttpRequest
     ? new XMLHttpRequest()
     : new ActiveXObject("Microsoft.XMLHTTP");
-  let ajaxUrl = base_url + "/cli_puestos/show/" + id_puesto;
+  let ajaxUrl = base_url + "/cli_tipos_clientes/show/" + id_tipocliente;
 
   request.open("GET", ajaxUrl, true);
   request.send();
@@ -228,9 +226,8 @@ function fntEditInfo(id_puesto) {
       let objData = JSON.parse(request.responseText);
 
       if (objData.status) {
-        idpuesto.value = objData.data.id;
-        departamento_id.value = objData.data.departamento_id;
-        nombreInput.value = objData.data.nombre_puesto;
+        idtipocliente.value = objData.data.id;
+        nombreInput.value = objData.data.nombre;
         descripcionInput.value = objData.data.descripcion;
 
         // Cambiar al tab de captura
@@ -245,7 +242,7 @@ function fntEditInfo(id_puesto) {
 // ------------------------------------------------------------------------
 //  ELIMINAR UN REGISTRO DEL LISTADO
 // ------------------------------------------------------------------------
-function fntDelPuesto(idpuesto) {
+function fntDelTipoCliente(idtipocliente) {
   Swal.fire({
     html: `
         <div class="mt-3">
@@ -282,13 +279,13 @@ function fntDelPuesto(idpuesto) {
     let request = window.XMLHttpRequest
       ? new XMLHttpRequest()
       : new ActiveXObject("Microsoft.XMLHTTP");
-    let ajaxUrl = base_url + "/cli_puestos/destroy";
-    let strData = "idpuesto=" + idpuesto;
+    let ajaxUrl = base_url + "/cli_tipos_clientes/destroy";
+    let strData = "idtipocliente=" + idtipocliente;
 
     request.open("POST", ajaxUrl, true);
     request.setRequestHeader(
       "Content-type",
-      "application/x-www-form-urlencoded"
+      "application/x-www-form-urlencoded",
     );
     request.send(strData);
 
@@ -297,7 +294,7 @@ function fntDelPuesto(idpuesto) {
         let objData = JSON.parse(request.responseText);
         if (objData.status) {
           Swal.fire("¡Operación exitosa!", objData.msg, "success");
-          tablePuestos.api().ajax.reload();
+          tableTipoCliente.api().ajax.reload();
         } else {
           Swal.fire("Atención!", objData.msg, "error");
         }
@@ -307,13 +304,13 @@ function fntDelPuesto(idpuesto) {
 }
 
 // ------------------------------------------------------------------------
-//  VER EL DETALLE DEl REGISTRO
+//  VER EL DETALLE DEl TIPO DE CLIENTE
 // ------------------------------------------------------------------------
-function fntViewPuesto(idpuesto) {
+function fntViewTipoCliente(idtipocliente) {
   let request = window.XMLHttpRequest
     ? new XMLHttpRequest()
     : new ActiveXObject("Microsoft.XMLHTTP");
-  let ajaxUrl = base_url + "/cli_puestos/show/" + idpuesto;
+  let ajaxUrl = base_url + "/cli_tipos_clientes/show/" + idtipocliente;
   request.open("GET", ajaxUrl, true);
   request.send();
 
@@ -322,49 +319,25 @@ function fntViewPuesto(idpuesto) {
       let objData = JSON.parse(request.responseText);
 
       if (objData.status) {
-        let estadoUsuario =
+        let estadoTipoCliente =
           objData.data.estado == 2
             ? '<span class="badge bg-success">Activo</span>'
             : '<span class="badge bg-danger">Inactivo</span>';
 
-        document.querySelector("#idpuesto").innerHTML = objData.data.id;
-        document.querySelector("#departamento_id").innerHTML =
-          objData.data.nombre_departamento;
-        document.querySelector("#nombrePuesto").innerHTML =
-          objData.data.nombre_puesto;
-        document.querySelector("#descripcionPuesto").innerHTML =
+        document.querySelector("#idtipodecliente").innerHTML = objData.data.id;
+        document.querySelector("#nombreTipoCliente").innerHTML =
+          objData.data.nombre;
+        document.querySelector("#descripcionTipoCliente").innerHTML =
           objData.data.descripcion;
-        document.querySelector("#fechaPuesto").innerHTML =
+        document.querySelector("#fechaTipoCliente").innerHTML =
           objData.data.fecha_registro;
-        document.querySelector("#estadoPuesto").innerHTML = estadoUsuario;
+        document.querySelector("#estadoTipoCliente").innerHTML =
+          estadoTipoCliente;
 
-        $("#modalViewPuesto").modal("show");
+        $("#modalViewTipoCliente").modal("show");
       } else {
         Swal.fire("Error", objData.msg, "error");
       }
     }
   };
-}
-
-// ------------------------------------------------------------------------
-//  VER EL CATALOGO DE PLANTAS
-// ------------------------------------------------------------------------
-function fntPuestos(selectedValue = "") {
-  if (document.querySelector("#listPuestos")) {
-    let ajaxUrl = base_url + "/cli_puestos/getSelectDepartamentos";
-    let request = window.XMLHttpRequest
-      ? new XMLHttpRequest()
-      : new ActiveXObject("Microsoft.XMLHTTP");
-    request.open("GET", ajaxUrl, true);
-    request.send();
-    request.onreadystatechange = function () {
-      if (request.readyState == 4 && request.status == 200) {
-        document.querySelector("#listPuestos").innerHTML = request.responseText;
-
-        if (selectedValue !== "") {
-          select.value = selectedValue;
-        }
-      }
-    };
-  }
 }

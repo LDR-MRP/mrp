@@ -6,7 +6,6 @@ class Cli_puestosModel extends Mysql
     public $intDepartamentoId;
     public $strNombre;
     public $strDescripcion;
-    public $intEstado;
 
     public function __construct()
     {
@@ -63,23 +62,21 @@ class Cli_puestosModel extends Mysql
         return $request;
     }
 
-    public function insertPuesto($departamento_id, $nombre, $descripcion, $estado)
+    public function insertPuesto($departamento_id, $nombre, $descripcion)
     {
         $this->intDepartamentoId = $departamento_id;
         $this->strNombre = $nombre;
         $this->strDescripcion = $descripcion;
-        $this->intEstado = $estado;
 
         $sql = "SELECT * FROM cli_puestos WHERE nombre = '{$this->strNombre}' OR descripcion = '{$this->strDescripcion}'";
         $request = $this->select_all($sql);
 
         if (empty($request)) {
-            $query_insert = "INSERT INTO cli_puestos(departamento_id, nombre, descripcion, estado) VALUES(?,?,?,?)";
+            $query_insert = "INSERT INTO cli_puestos(departamento_id, nombre, descripcion) VALUES(?,?,?)";
             $arrData = array(
                 $this->intDepartamentoId,
                 $this->strNombre,
-                $this->strDescripcion,
-                $this->intEstado
+                $this->strDescripcion
             );
             $request_insert = $this->insert($query_insert, $arrData);
             return $request_insert;
@@ -88,24 +85,22 @@ class Cli_puestosModel extends Mysql
         }
     }
 
-    public function updatePuesto($idpuesto, $departamento_id, $nombre, $descripcion, $estado)
+    public function updatePuesto($idpuesto, $departamento_id, $nombre, $descripcion)
     {
         $this->intIdpuesto = $idpuesto;
         $this->intDepartamentoId = $departamento_id;
         $this->strNombre = $nombre;
         $this->strDescripcion = $descripcion;
-        $this->intEstado = $estado;
 
         $sql = "SELECT * FROM cli_puestos WHERE (nombre = '$this->strNombre' OR descripcion = '$this->strDescripcion') AND id != $this->intIdpuesto";
         $request = $this->select_all($sql);
 
         if (empty($request)) {
-            $sql = "UPDATE cli_puestos SET departamento_id = ?, nombre = ?, descripcion = ?, estado = ? WHERE id = $this->intIdpuesto ";
+            $sql = "UPDATE cli_puestos SET departamento_id = ?, nombre = ?, descripcion = ? WHERE id = $this->intIdpuesto ";
             $arrData = array(
                 $this->intDepartamentoId,
                 $this->strNombre,
-                $this->strDescripcion,
-                $this->intEstado
+                $this->strDescripcion
             );
             $request = $this->update($sql, $arrData);
             return $request;

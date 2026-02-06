@@ -29,13 +29,13 @@
                 <div class="card-header">
                     <ul class="nav nav-tabs-custom card-header-tabs border-bottom-0 " role="tablist" id="nav-tab">
                         <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#listdepartamentos" role="tab">
-                                Lista de departamentos
+                            <a class="nav-link active" data-bs-toggle="tab" href="#listtipoclientes" role="tab">
+                                Lista de tipos de clientes
                             </a>
                         </li>
                         <?php if ($_SESSION['permisosMod']['w']) { ?>
                             <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#agregardepartamento" role="tab">
+                                <a class="nav-link" data-bs-toggle="tab" href="#agregartipocliente" role="tab">
                                     NUEVO
                                 </a>
                             </li>
@@ -45,15 +45,15 @@
                 <!-- end card header -->
                 <div class="card-body">
                     <div class="tab-content">
-                        <div class="tab-pane active" id="listdepartamentos" role="tabpanel">
+                        <div class="tab-pane active" id="listtipoclientes" role="tabpanel">
 
-                            <table id="tableDepartamentos"
+                            <table id="tableTipoCliente"
                                 class="table table-bordered dt-responsive nowrap table-striped align-middle"
                                 style="width:100%">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
-                                        <th>NOMBRE</th>
+                                        <th>NOMBRE DEL TIPO DE CLIENTE</th>
                                         <th>DESCRIPCIÓN</th>
                                         <th>FECHA</th>
                                         <th>ESTATUS</th>
@@ -71,35 +71,33 @@
 
 
 
-                        <div class="tab-pane" id="agregardepartamento" role="tabpanel">
-                            <form id="formDepartamentos" autocomplete="off" class="form-steps was-validated" autocomplete="off">
-                                <input type="hidden" id="iddepartamento" name="iddepartamento">
+                        <div class="tab-pane" id="agregartipocliente" role="tabpanel">
+                            <form id="formTipoCliente" autocomplete="off" class="form-steps was-validated" autocomplete="off">
+                                <input type="hidden" id="idtipocliente" name="idtipocliente">
                                 <div class="row">
-
                                     <!-- campo nombre -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="nombre-departamento-input">NOMBRE</label>
+                                            <label class="form-label" for="nombre-tipocliente-input">NOMBRE</label>
                                             <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="nombre-departamento-addon">Nom</span>
-                                                <input type="text" class="form-control" placeholder="Ingrese el nombre del departamento" id="nombre-departamento-input"
-                                                    name="nombre-departamento-input"
-                                                    aria-describedby="nombre-departamento-addon" required>
+                                                <span class="input-group-text" id="nombre-tipocliente-addon">Nom</span>
+                                                <input type="text" class="form-control" placeholder="Ingrese el nombre del tipo de cliente" id="nombre-tipocliente-input"
+                                                    name="nombre-tipocliente-input"
+                                                    aria-describedby="nombre-tipocliente-addon" required>
                                                 <div class="invalid-feedback">El campo nombre es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- campo descripcion -->
+                                    <!-- Descripcion -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="descripcion-departamento-input">DESCRIPCIÓN</label>
+                                            <label class="form-label" for="descripcion-tipocliente-input">DESCRIPCIÓN</label>
                                             <div class="input-group has-validation mb-3">
-                                                <span class="input-group-text" id="descripcion-departamento-addon">Des</span>
-                                                <input type="text" class="form-control" placeholder="Ingrese la descripción del departamento" id="descripcion-departamento-input"
-                                                    name="descripcion-departamento-input"
-                                                    aria-describedby="descripcion-departamento-addon" required>
-                                                <div class="invalid-feedback">El campo descripción es obligatorio</div>
+                                                <span class="input-group-text" id="descripcion-tipocliente-addon">Des</span>
+                                                <input type="text" class="form-control" placeholder="Ingrese la descripción del tipo de cliente" id="descripcion-tipocliente-input"
+                                                    name="descripcion-tipocliente-input"
+                                                    aria-describedby="descripcion-tipocliente-addon">
                                             </div>
                                         </div>
                                     </div>
@@ -119,6 +117,8 @@
                                             </div>
                                         </div>
                                     </div> -->
+
+
                                 </div>
                                 <!-- end row -->
 
@@ -162,8 +162,8 @@
 
 
 
-<div class="modal fade" id="modalViewDepartamento" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+<div class="modal fade" id="modalViewTipoCliente" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0">
             <div class="modal-header bg-primary-subtle p-3">
                 <h5 class="modal-title" id="titleModal">Datos del registro</h5>
@@ -174,23 +174,23 @@
                     <tbody>
                         <tr>
                             <td>ID:</td>
-                            <td id="idDepartamento">1</td>
+                            <td id="idtipodecliente">ID</td>
                         </tr>
                         <tr>
-                            <td>Nombre:</td>
-                            <td id="nombreDepartamento">Larry</td>
+                            <td>Nombre del tipo de cliente:</td>
+                            <td id="nombreTipoCliente">Nombre</td>
                         </tr>
                         <tr>
                             <td>Descripción:</td>
-                            <td id="descripcionDepartamento">Larry</td>
+                            <td id="descripcionTipoCliente">Descripción</td>
                         </tr>
                         <tr>
                             <td>Fecha de creación:</td>
-                            <td id="fechaDepartamento">Larry</td>
+                            <td id="fechaTipoCliente">Fecha de creación</td>
                         </tr>
                         <tr>
                             <td>Estado:</td>
-                            <td id="estadoDepartamento">Larry</td>
+                            <td id="estadoTipoCliente">Estado</td>
                         </tr>
                     </tbody>
                 </table>

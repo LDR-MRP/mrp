@@ -6,7 +6,6 @@
         public $strNombre;
         public $strApellido_paterno;
         public $strApellido_materno;
-        public $intEstado;
 
         public function __construct()
         {
@@ -38,12 +37,11 @@
             return $request;
         }
 
-        public function insertRegional($nombre, $apellido_paterno, $apellido_materno, $estado)
+        public function insertRegional($nombre, $apellido_paterno, $apellido_materno)
         {
             $this->strNombre = $nombre;
             $this->strApellido_paterno = $apellido_paterno;
             $this->strApellido_materno = $apellido_materno;
-            $this->intEstado = $estado;
 
             $sql = "SELECT * FROM cli_regionales 
             WHERE nombre = '{$this->strNombre}' 
@@ -52,13 +50,12 @@
             $request = $this->select_all($sql);
 
             if (empty($request)) {
-                $query_insert = "INSERT INTO cli_regionales(nombre, apellido_paterno, apellido_materno, estado) 
-                         VALUES(?,?,?,?)";
+                $query_insert = "INSERT INTO cli_regionales(nombre, apellido_paterno, apellido_materno) 
+                         VALUES(?,?,?)";
                 $arrData = array(
                     $this->strNombre,
                     $this->strApellido_paterno,
                     $this->strApellido_materno,
-                    $this->intEstado
                 );
                 $request_insert = $this->insert($query_insert, $arrData);
                 return $request_insert;
@@ -67,13 +64,12 @@
             }
         }
 
-        public function updateRegional($intIdregional, $nombre, $apellido_paterno, $apellido_materno, $estado)
+        public function updateRegional($intIdregional, $nombre, $apellido_paterno, $apellido_materno)
         {
             $this->intIdregional = $intIdregional;
             $this->strNombre = $nombre;
             $this->strApellido_paterno = $apellido_paterno;
             $this->strApellido_materno = $apellido_materno;
-            $this->intEstado = $estado;
 
             $sql = "SELECT * FROM cli_regionales 
             WHERE (nombre = '{$this->strNombre}' 
@@ -86,14 +82,12 @@
                 $sql = "UPDATE cli_regionales 
                 SET nombre = ?, 
                     apellido_paterno = ?, 
-                    apellido_materno = ?, 
-                    estado = ? 
+                    apellido_materno = ?
                 WHERE id = $this->intIdregional";
                 $arrData = array(
                     $this->strNombre,
                     $this->strApellido_paterno,
                     $this->strApellido_materno,
-                    $this->intEstado
                 );
                 $request = $this->update($sql, $arrData);
                 return $request;

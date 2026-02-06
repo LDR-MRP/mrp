@@ -47,6 +47,7 @@ class Cli_clientesModel extends Mysql
             c.id,
             c.grupo_id,
             g.nombre AS nombre_grupo,
+            c.regimen_fiscal_id,
             c.tipo_persona,
             c.nombre_fisica,
             c.apellido_paterno,
@@ -64,16 +65,45 @@ class Cli_clientesModel extends Mysql
             c.clasificacion,
 			c.estatus,
             c.tipo_negocio,
+            c.tipo_cliente_id,
+            c.matriz_id,
             c.telefono,
             c.telefono_alt,
             c.fecha_registro,
-            c.estado
+            c.estado,
+
+            -- DATOS DE LA MATRIZ
+            m.nombre_comercial AS matriz_nombre_comercial,
+            m.razon_social AS matriz_razon_social,
+
+            -- DATOS DEL TIPO DE NEGÓCIO
+            t.nombre AS nombre_tipo_negocio
+
         FROM cli_distribuidores c
         INNER JOIN cli_grupos g ON c.grupo_id = g.id
+        LEFT JOIN cli_distribuidores m ON m.id = c.matriz_id
+        LEFT JOIN cli_tipos_cliente t ON t.id = c.tipo_cliente_id
         WHERE c.id = {$this->intIddistribuidor}
         AND c.estado != 0";
 
         $distribuidor = $this->select($sqlDistribuidor);
+
+        if ($distribuidor['tipo_negocio'] === 'Matriz') {
+            $sqlSucursales = "SELECT
+                s.id,
+                s.nombre_comercial,
+                s.razon_social,
+                s.plaza,
+                s.clasificacion,
+                s.telefono,
+                s.estado
+            FROM cli_distribuidores s
+            WHERE s.matriz_id = {$this->intIddistribuidor}
+            AND s.estado != 0";
+            $distribuidor['sucursales'] = $this->select_all($sqlSucursales) ?? [];
+        } else {
+            $distribuidor['sucursales'] = [];
+        }
 
         if (empty($distribuidor)) {
             return null;
@@ -131,23 +161,46 @@ class Cli_clientesModel extends Mysql
         $distribuidor['direccion_fiscal'] = $this->select($sqlDireccionFiscal) ?? [];
 
         // CONTACTOS
-        $sqlContactos = "SELECT
-            c.id,
-            c.nombre,
-            c.correo,
-            c.telefono,
-            c.estatus,
-            c.fecha_registro,
+        if ($distribuidor['tipo_negocio'] === 'Matriz') {
 
-            p.id AS puesto_id,
-            p.nombre AS puesto,
-
-            d.id AS departamento_id,
-            d.nombre AS departamento
-        FROM cli_contactos c
-        INNER JOIN cli_puestos p ON p.id = c.puesto_id
-        INNER JOIN cli_departamentos d ON d.id = p.departamento_id
-        WHERE c.distribuidor_id = {$this->intIddistribuidor}";
+            // Matriz → contactos propios + contactos de sucursales
+            $sqlContactos = "SELECT
+                c.id,
+                c.nombre,
+                c.correo,
+                c.telefono,
+                c.estatus,
+                c.fecha_registro,
+                p.id AS puesto_id,
+                p.nombre AS puesto,
+                d.id AS departamento_id,
+                d.nombre AS departamento,
+                dist.nombre_comercial AS distribuidor
+            FROM cli_contactos c
+            INNER JOIN cli_puestos p ON p.id = c.puesto_id
+            INNER JOIN cli_departamentos d ON d.id = p.departamento_id
+            INNER JOIN cli_distribuidores dist ON dist.id = c.distribuidor_id
+            WHERE
+                c.distribuidor_id = {$this->intIddistribuidor}
+                OR dist.matriz_id = {$this->intIddistribuidor}";
+        } else {
+            // Sucursal → solo sus contactos
+            $sqlContactos = "SELECT
+                c.id,
+                c.nombre,
+                c.correo,
+                c.telefono,
+                c.estatus,
+                c.fecha_registro,
+                p.id AS puesto_id,
+                p.nombre AS puesto,
+                d.id AS departamento_id,
+                d.nombre AS departamento
+            FROM cli_contactos c
+            INNER JOIN cli_puestos p ON p.id = c.puesto_id
+            INNER JOIN cli_departamentos d ON d.id = p.departamento_id
+            WHERE c.distribuidor_id = {$this->intIddistribuidor}";
+        }
 
         $distribuidor['contactos'] = $this->select_all($sqlContactos) ?? [];
 
@@ -162,26 +215,26 @@ class Cli_clientesModel extends Mysql
 
         $distribuidor['modelos'] = $this->select_all($sqlModelos);
 
-        $sqlRegional = "SELECT
-            r.id AS regional_id,
+        // REGIONALES
+        $sqlRegionales = "SELECT
+            r.id,
             r.nombre,
             r.apellido_paterno,
             r.apellido_materno
         FROM cli_regional_distribuidor crd
         INNER JOIN cli_regionales r ON r.id = crd.regional_id
-        WHERE crd.distribuidor_id = {$this->intIddistribuidor}
-        LIMIT 1";
+        WHERE crd.distribuidor_id = {$this->intIddistribuidor}";
 
-        $regional = $this->select($sqlRegional);
-
-        $distribuidor['regional'] = $regional ?: null;
+        $distribuidor['regionales'] = $this->select_all($sqlRegionales);
 
         return $distribuidor;
     }
 
     public function insertDistribuidor(
         int $grupo_id,
+        string $regimen_fiscal_id,
         string $tipo_persona,
+        string $tipo_cliente_id,
         string $nombre_fisica,
         string $apellido_paterno,
         string $apellido_materno,
@@ -198,15 +251,18 @@ class Cli_clientesModel extends Mysql
         string $clasificacion,
         string $estatus,
         string $tipo_negocio,
+        ?int $matriz_id,
         string $telefono,
         string $telefono_alt
     ) {
         $sql = "INSERT INTO cli_distribuidores 
-        (grupo_id, tipo_persona, nombre_fisica, apellido_paterno, apellido_materno, fecha_nacimiento, correo, curp, razon_social, representante_legal, domicilio_fiscal, rfc , nombre_comercial, repve, plaza, clasificacion, estatus, tipo_negocio, telefono, telefono_alt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        (grupo_id, regimen_fiscal_id, tipo_persona, tipo_cliente_id, nombre_fisica, apellido_paterno, apellido_materno, fecha_nacimiento, correo, curp, razon_social, representante_legal, domicilio_fiscal, rfc , nombre_comercial, repve, plaza, clasificacion, estatus, tipo_negocio, matriz_id, telefono, telefono_alt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $arrData = [
             $grupo_id,
+            $regimen_fiscal_id,
             $tipo_persona,
+            $tipo_cliente_id,
             $nombre_fisica,
             $apellido_paterno,
             $apellido_materno,
@@ -223,6 +279,7 @@ class Cli_clientesModel extends Mysql
             $clasificacion,
             $estatus,
             $tipo_negocio,
+            $matriz_id,
             $telefono,
             $telefono_alt
         ];
@@ -242,7 +299,9 @@ class Cli_clientesModel extends Mysql
     public function updateDistribuidor(
         int $id,
         int $grupo_id,
+        string $regimen_fiscal_id,
         string $tipo_persona,
+        string $tipo_cliente_id,
         string $nombre_fisica,
         string $apellido_paterno,
         string $apellido_materno,
@@ -259,12 +318,15 @@ class Cli_clientesModel extends Mysql
         string $clasificacion,
         string $estatus,
         string $tipo_negocio,
+        ?int $matriz_id,
         string $telefono,
         string $telefono_alt
     ) {
         $sql = "UPDATE cli_distribuidores SET
         grupo_id = ?,
+        regimen_fiscal_id = ?,
         tipo_persona = ?,
+        tipo_cliente_id = ?,
         nombre_fisica = ?,
         apellido_paterno = ?,
         apellido_materno = ?,
@@ -281,13 +343,16 @@ class Cli_clientesModel extends Mysql
         clasificacion = ?,
         estatus = ?,
         tipo_negocio = ?,
+        matriz_id = ?,
         telefono = ?,
         telefono_alt = ?
         WHERE id = ?";
 
         $arrData = [
             $grupo_id,
+            $regimen_fiscal_id,
             $tipo_persona,
+            $tipo_cliente_id,
             $nombre_fisica,
             $apellido_paterno,
             $apellido_materno,
@@ -304,6 +369,7 @@ class Cli_clientesModel extends Mysql
             $clasificacion,
             $estatus,
             $tipo_negocio,
+            $matriz_id,
             $telefono,
             $telefono_alt,
             $id
@@ -316,7 +382,13 @@ class Cli_clientesModel extends Mysql
     {
         $sql = "INSERT INTO cli_regional_distribuidor (regional_id, distribuidor_id)
             VALUES (?, ?)";
-        return $this->insert($sql, [$regional_id, $distribuidor_id]);
+
+        $arrData = [
+            $regional_id,
+            $distribuidor_id
+        ];
+
+        return $this->insert($sql, $arrData);
     }
 
     public function deleteDistribuidorRegional(int $distribuidor_id)
@@ -352,7 +424,6 @@ class Cli_clientesModel extends Mysql
 
         return $this->delete($sql);
     }
-
 
     public function insertDireccion(
         int $distribuidor_id,
@@ -454,12 +525,42 @@ class Cli_clientesModel extends Mysql
         return $request;
     }
 
+    public function selectOptionMatrizDistribuidores()
+    {
+        $sql = "SELECT * FROM  cli_distribuidores
+                    WHERE estado = 2  AND tipo_negocio = 'Matriz' ";
+        $request = $this->select_all($sql);
+        return $request;
+    }
+
+    public function selectOptionTipoClientes()
+    {
+        $sql = "SELECT * FROM  cli_tipos_cliente
+                    WHERE estado = 2";
+        $request = $this->select_all($sql);
+        return $request;
+    }
+
     public function selectOptionGrupos()
     {
         $sql = "SELECT * FROM  cli_grupos 
                     WHERE estado = 2";
         $request = $this->select_all($sql);
         return $request;
+    }
+    
+    public function selectOptionRegimenFiscal($tipoPersona = null)
+    {
+        $where = "estado = 2";
+
+        if ($tipoPersona == "1") { // Física
+            $where .= " AND persona_fisica = 'Sí'";
+        } elseif ($tipoPersona == "2") { // Moral
+            $where .= " AND persona_moral = 'Sí'";
+        }
+
+        $sql = "SELECT * FROM cli_regimenes_fiscales WHERE $where ORDER BY c_regimen_fiscal";
+        return $this->select_all($sql);
     }
 
     public function selectOptionModelos()

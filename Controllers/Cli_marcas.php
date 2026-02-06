@@ -61,8 +61,8 @@ class Cli_marcas extends Controllers
     {
         if ($_POST) {
             if (
-                empty($_POST['nombre-marca-input']) || empty($_POST['codigo-marca-input']) ||
-                empty($_POST['estado-select'])
+                empty($_POST['nombre-marca-input']) ||
+                empty($_POST['codigo-marca-input'])
             ) {
                 $arrResponse = array("status" => false, "msg" => 'Datos incorrectos .');
             } else {
@@ -70,19 +70,30 @@ class Cli_marcas extends Controllers
                 $intIdmarca = intval($_POST['idmarca']);
                 $marca = strClean($_POST['nombre-marca-input']);
                 $codigo = strClean($_POST['codigo-marca-input']);
-                $estado = intval($_POST['estado-select']);
+
+                if (strlen($marca) < 3) {
+                    $arrResponse = ["status" => false, "msg" => "El nombre debe tener al menos 3 caracteres"];
+                    echo json_encode($arrResponse);
+                    die();
+                }
+
+                if (!preg_match('/^[A-Z0-9_-]+$/i', $codigo)) {
+                    $arrResponse = ["status" => false, "msg" => "El código tiene caracteres no válidos"];
+                    echo json_encode($arrResponse);
+                    die();
+                }
 
                 if ($intIdmarca == 0) {
 
                     //Crear 
                     if ($_SESSION['permisosMod']['w']) {
-                        $request_marca = $this->model->insertMarca($marca, $codigo, $estado);
+                        $request_marca = $this->model->insertMarca($marca, $codigo);
                         $option = 1;
                     }
                 } else {
                     //Actualizar
                     if ($_SESSION['permisosMod']['u']) {
-                        $request_marca = $this->model->updateMarca($intIdmarca, $marca, $codigo, $estado);
+                        $request_marca = $this->model->updateMarca($intIdmarca, $marca, $codigo);
                         $option = 2;
                     }
                 }
@@ -97,7 +108,6 @@ class Cli_marcas extends Controllers
                 } else {
                     $arrResponse = array("status" => false, "msg" => 'No es posible almacenar los datos.');
                 }
-
                 echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
             }
         }
