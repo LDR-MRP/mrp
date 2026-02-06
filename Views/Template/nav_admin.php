@@ -162,7 +162,7 @@
                                               <a href="<?= base_url(); ?>/inv_almacenes" class="nav-link" data-key="t-detached">Almacenes</a>
                                           </li>
                                       <?php } ?>
-                                      
+
                                       <?php if (!empty($_SESSION['permisos'][18]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_inventario" class="nav-link" data-key="t-detached">Alta de inventario</a>
@@ -239,6 +239,7 @@
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_multialmacenes" class="nav-link" data-key="t-detached">Multialmacenes</a>
                                           </li>
+                                      <?php } ?>
                                       <?php if (!empty($_SESSION['permisos'][26]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_multialmacenes" class="nav-link" data-key="t-detached">Multialmacenes</a>
