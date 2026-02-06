@@ -31,48 +31,44 @@ class Inv_movimientosinventario extends Controllers
         if ($_POST) {
 
             if (
-                empty($_POST['inventarioid']) ||
+                empty($_POST['inventarioid'][0]) ||
                 empty($_POST['almacenid']) ||
                 empty($_POST['concepmovid']) ||
-                empty($_POST['cantidad']) ||
+                empty($_POST['cantidad'][0]) ||
                 empty($_POST['costo_cantidad'])
             ) {
-                $arrResponse = ['status' => false, 'msg' => 'Datos incompletos'];
+                echo json_encode(['status' => false, 'msg' => 'Datos incompletos'], JSON_UNESCAPED_UNICODE);
+                die();
+            }
+
+            $almacenid   = intval($_POST['almacenid']);
+            $concepmovid = intval($_POST['concepmovid']);
+            $referencia  = strClean($_POST['referencia']);
+
+            $inventarios = $_POST['inventarioid'];
+            $cantidades  = $_POST['cantidad'];
+            $costos      = $_POST['costo_cantidad'];
+
+            $request = $this->model->insertMovimientoMasivo(
+                $almacenid,
+                $concepmovid,
+                $referencia,
+                $inventarios,
+                $cantidades,
+                $costos
+            );
+
+            if ($request === true) {
+                $arrResponse = ['status' => true, 'msg' => 'Movimiento registrado correctamente'];
             } else {
-
-                $inventarioid = intval($_POST['inventarioid']);
-                $almacenid    = intval($_POST['almacenid']);
-                $concepmovid  = intval($_POST['concepmovid']);
-                $referencia   = strClean($_POST['referencia']);
-                $cantidad     = floatval($_POST['cantidad']);
-                $costo_cantidad = floatval($_POST['costo_cantidad']);
-
-                $request = $this->model->insertMovimiento(
-                    $inventarioid,
-                    $almacenid,
-                    $concepmovid,
-                    $referencia,
-                    $cantidad,
-                    $costo_cantidad
-                );
-
-                if ($request === true) {
-                    $arrResponse = [
-                        'status' => true,
-                        'msg' => 'Movimiento registrado correctamente'
-                    ];
-                } else {
-                    $arrResponse = [
-                        'status' => false,
-                        'msg' => $request // aquí llega "Stock insuficiente"
-                    ];
-                }
+                $arrResponse = ['status' => false, 'msg' => $request];
             }
 
             echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+            die();
         }
-        die();
     }
+
 
     public function getSelectAlmacenes()
     {
@@ -140,4 +136,12 @@ class Inv_movimientosinventario extends Controllers
         }
         die();
     }
+
+    public function getConceptoInfo($id)
+{
+    $arrData = $this->model->selectConceptoInfo($id);
+    echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+    die();
+}
+
 }

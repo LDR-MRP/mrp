@@ -55,10 +55,13 @@ class Inv_monedaModel extends Mysql
 
 
     public function selectMonedas()
-    {
-        $sql = "SELECT * FROM wms_moneda WHERE estado != 0";
-        return $this->select_all($sql);
-    }
+{
+    $sql = "SELECT idmoneda, descripcion, simbolo, estado 
+            FROM wms_moneda 
+            ORDER BY descripcion";
+    return $this->select_all($sql);
+}
+
 
 
     public function selectOptionPrecios()
@@ -119,5 +122,7 @@ class Inv_monedaModel extends Mysql
 
     return "exist";
 }
+
+
 
 }

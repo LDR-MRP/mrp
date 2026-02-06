@@ -105,7 +105,7 @@ class Inv_lotespedimentosModel extends Mysql
             $data['almacenid'],
             $data['pedimento'],
             $data['pedimento_SAT'],
-            $data['fecha_produccion'],
+            $data['fecha_produccion_lote'],
             $data['fecha_caducidad'],
             $data['fecha_aduana'],
             $data['nombre_aduana'],
@@ -219,4 +219,32 @@ class Inv_lotespedimentosModel extends Mysql
 
         return $this->update($sql, $arrData);
     }
+
+public function getLtpdAsignados($idinventario)
+{
+    $idinventario = intval($idinventario);
+
+    $sql = "
+        SELECT 
+            CASE 
+                WHEN l.lote IS NOT NULL AND l.lote <> '' THEN 'L'
+                ELSE 'P'
+            END AS tipo,
+            a.descripcion AS almacen,
+            COALESCE(l.lote, l.pedimento) AS clave,
+            l.cantidad,
+            l.fecha_produccion_lote,
+            l.fecha_caducidad,
+            l.estado
+        FROM wms_ltpd l
+        INNER JOIN wms_almacenes a ON a.idalmacen = l.almacenid
+        WHERE l.inventarioid = $idinventario
+        ORDER BY l.id_ltpd DESC
+    ";
+
+    return $this->select_all($sql);
+}
+
+
+
 }

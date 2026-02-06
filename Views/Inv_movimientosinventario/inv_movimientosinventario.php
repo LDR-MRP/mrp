@@ -77,91 +77,92 @@
 
                                 <input type="hidden" name="idmovinventario" value="0">
 
-                                <div class="row">
+                                <div class="row g-3 mb-3">
 
-                                    <!-- PRODUCTO -->
-                                    <div class="col-lg-4 col-sm-6">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="inventarioid">PRODUCTO</label>
-                                                <input type="text" class="form-control" id="inventarioSearchMov" placeholder="Buscar por clave o descripción" required>
-                                                <input type="hidden" id="inventarioid" name="inventarioid">
-                                                <div class="invalid-feedback">El campo producto es obligatorio</div>
-                                            
-                                        </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Concepto movimiento</label>
+                                        <select class="form-control" id="concepmovid" name="concepmovid" required></select>
                                     </div>
 
-                                    <!-- ALMACÉN -->
-                                    <div class="col-lg-4 col-sm-6">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="almacenid">ALMACÉN</label>
-                                            <div class="input-group mb-3">
-                                                <span class="input-group-text" id="almacen-addon">Alm</span>
-                                                <select class="form-control" id="almacenid" name="almacenid" data-choices required=""></select>
-                                                <div class="invalid-feedback">El campo almacén es obligatorio</div>
-                                            </div>
-                                        </div>
+                                    <div class="col-md-4" id="bloqueCPN" style="display:none;">
+                                        <label class="form-label" id="labelCPN">Tipo</label>
+                                        <input
+                                            type="text"
+                                            class="form-control"
+                                            id="cpnValor"
+                                            disabled
+                                            readonly>
                                     </div>
 
-                                    <!-- CONCEPTO -->
-                                    <div class="col-lg-4 col-sm-6">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="concepmovid">CONCEPTO MOVIMIENTO</label>
-                                            <div class="input-group mb-3">
-                                                <span class="input-group-text" id="concep-mov-addon">Con. mov</span>
-                                                <select class="form-control" id="concepmovid" name="concepmovid" data-choices required=""></select>
-                                                <div class="invalid-feedback">El campo concepto movimiento es obligatorio</div>
-                                            </div>
-                                        </div>
+
+                                    <div class="col-md-4">
+                                        <label class="form-label">Almacén</label>
+                                        <select class="form-control" id="almacenid" name="almacenid" required></select>
                                     </div>
 
-                                    <!-- REFERENCIA -->
-                                    <div class="col-lg-4 col-sm-6">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="referencia">REFERENCIA</label>
-                                            <div class="input-group mb-3">
-                                                <span class="input-group-text" id="referencia-addon">Ref</span>
-                                                <input type="text" class="form-control"
-                                                    placeholder="Ingresa la referencia" id="referencia" name="referencia"
-                                                    aria-describedby="referencia-addon" required>
-                                                <div class="invalid-feedback">El campo referencia es obligatorio</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- CANTIDAD -->
-                                    <div class="col-lg-4 col-sm-6">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="cantidad">CANTIDAD</label>
-                                            <div class="input-group mb-3">
-                                                <span class="input-group-text" id="cantidad-addon">Cant</span>
-                                                <input type="number" class="form-control"
-                                                    placeholder="Ingresa la cantidad" id="cantidad" name="cantidad"
-                                                    aria-describedby="cantidad-addon" required>
-                                                <div class="invalid-feedback">El campo cantidad es obligatorio</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- COSTO DE LA CANTIDAD -->
-                                    <div class="col-lg-4 col-sm-6">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="costo_cantidad">COSTO DE LA CANTIDAD</label>
-                                            <div class="input-group mb-3">
-                                                <span class="input-group-text" id="costo_cantidad-addon">Cos.Cant</span>
-                                                <input type="number" class="form-control"
-                                                    placeholder="Ingresa el costo de la cantidad" id="costo_cantidad" name="costo_cantidad"
-                                                    aria-describedby="costo_cantidad-addon" required>
-                                                <div class="invalid-feedback">El campo costo de la cantidad es obligatorio</div>
-                                            </div>
-                                        </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Referencia</label>
+                                        <input type="text" class="form-control" id="referencia" name="referencia" required>
                                     </div>
 
                                 </div>
 
-                                <button class="btn btn-success" type="submit">
-                                    Registrar movimiento
-                                </button>
 
+                                <div class="card mt-3 shadow-sm">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <span class="fw-semibold">Detalle del movimiento</span>
+                                        <button type="button" class="btn btn-sm btn-primary" id="btnAddRow">
+                                            + Agregar partida
+                                        </button>
+                                    </div>
+
+                                    <div class="card-body p-2">
+
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover align-middle mb-0" id="tablaPartidas">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th width="90">Cantidad</th>
+                                                        <th>Producto</th>
+                                                        <th width="120">Costo por unidad</th>
+                                                        <th width="120">Total</th>
+                                                        <th width="50"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td><input name="cantidad[]" type="number" class="form-control cantidad"></td>
+                                                        <td>
+                                                            <input type="text" class="form-control invSearch">
+                                                            <input type="hidden" name="inventarioid[]">
+                                                        </td>
+                                                        <td><input name="costo_cantidad[]" type="number" class="form-control costo"></td>
+                                                        <td><input name="total[]" type="number" class="form-control total" readonly></td>
+                                                        <td><button type="button" class="btn btn-danger btn-sm btnDel">X</button></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                    </div>
+                                </div>
+                                <div class="row mt-3 align-items-center">
+                                    <div class="col-md-6"></div>
+
+                                    <div class="col-md-3 text-end fw-semibold">
+                                        Total movimiento:
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <input type="text" class="form-control text-end" id="granTotal" readonly value="0.00">
+                                    </div>
+                                </div>
+
+                                <div class="text-end mt-4">
+                                    <button class="btn btn-success px-4" type="submit">
+                                        Registrar movimiento
+                                    </button>
+                                </div>
                             </form>
                         </div>
 

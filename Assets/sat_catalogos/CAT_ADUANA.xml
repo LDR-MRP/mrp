@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Catalogo>
+  <row c_Aduana="01" Descripcion="ACAPULCO, ACAPULCO DE JUAREZ, GU"/>
+  <row c_Aduana="02" Descripcion="AGUA PRIETA, AGUA PRIETA, SONORA"/>
+  <row c_Aduana="05" Descripcion="SUBTENIENTE LOPEZ, SUBTENIENTE L"/>
+  <row c_Aduana="06" Descripcion="CIUDAD DEL CARMEN, CIUDAD DEL CA"/>
+  <row c_Aduana="07" Descripcion="CIUDAD JUAREZ, CIUDAD JUAREZ, CH"/>
+  <row c_Aduana="08" Descripcion="COATZACOALCOS, COATZACOALCOS, VE"/>
+  <row c_Aduana="11" Descripcion="ENSENADA, ENSENADA, BAJA CALIFOR"/>
+  <row c_Aduana="12" Descripcion="GUAYMAS, GUAYMAS, SONORA."/>
+  <row c_Aduana="14" Descripcion="LA PAZ, LA PAZ, BAJA CALIFORNIA"/>
+  <row c_Aduana="16" Descripcion="MANZANILLO, MANZANILLO, COLIMA."/>
+  <row c_Aduana="17" Descripcion="MATAMOROS, MATAMOROS, TAMAULIPAS"/>
+  <row c_Aduana="18" Descripcion="MAZATLAN, MAZATLAN, SINALOA."/>
+  <row c_Aduana="19" Descripcion="MEXICALI, MEXICALI, BAJA CALIFOR"/>
+  <row c_Aduana="20" Descripcion="MEXICO, DISTRITO FEDERAL."/>
+  <row c_Aduana="22" Descripcion="NACO, NACO, SONORA."/>
+  <row c_Aduana="23" Descripcion="NOGALES, NOGALES, SONORA."/>
+  <row c_Aduana="24" Descripcion="NUEVO LAREDO, NUEVO LAREDO, TAMA"/>
+  <row c_Aduana="25" Descripcion="OJINAGA, OJINAGA, CHIHUAHUA."/>
+  <row c_Aduana="26" Descripcion="PUERTO PALOMAS, PUERTO PALOMAS,"/>
+  <row c_Aduana="27" Descripcion="PIEDRAS NEGRAS, PIEDRAS NEGRAS,"/>
+  <row c_Aduana="28" Descripcion="PROGRESO, PROGRESO, YUCATAN."/>
+  <row c_Aduana="30" Descripcion="CIUDAD REYNOSA, CIUDAD REYNOSA,"/>
+  <row c_Aduana="31" Descripcion="SALINA CRUZ, SALINA CRUZ, OAXACA"/>
+  <row c_Aduana="33" Descripcion="SAN LUIS RIO COLORADO, SAN LUIS"/>
+  <row c_Aduana="34" Descripcion="CIUDAD MIGUEL ALEMAN, CIUDAD MIG"/>
+  <row c_Aduana="37" Descripcion="CIUDAD HIDALGO, CIUDAD HIDALGO,"/>
+  <row c_Aduana="38" Descripcion="TAMPICO, TAMPICO, TAMAULIPAS."/>
+  <row c_Aduana="39" Descripcion="TECATE, TECATE, BAJA CALIFORNIA."/>
+  <row c_Aduana="40" Descripcion="TIJUANA, TIJUANA, BAJA CALIFORNI"/>
+  <row c_Aduana="42" Descripcion="TUXPAN, TUXPAN DE RODRIGUEZ CANO"/>
+  <row c_Aduana="43" Descripcion="VERACRUZ, VERACRUZ, VERACRUZ."/>
+  <row c_Aduana="44" Descripcion="CIUDAD ACUÑA, CIUDAD ACUÑA, COAH"/>
+  <row c_Aduana="46" Descripcion="TORREON, TORREON, COAHUILA."/>
+  <row c_Aduana="47" Descripcion="AEROPUERTO INTERNACIONAL DE LA C"/>
+  <row c_Aduana="48" Descripcion="GUADALAJARA, TLACOMULCO DE ZUÑIG"/>
+  <row c_Aduana="50" Descripcion="SONOYTA, SONOYTA, SONORA."/>
+  <row c_Aduana="51" Descripcion="LAZARO CARDENAS, LAZARO CARDENAS"/>
+  <row c_Aduana="52" Descripcion="MONTERREY, GENERAL MARIANO ESCOB"/>
+  <row c_Aduana="53" Descripcion="CANCUN, CANCUN, QUINTANA ROO."/>
+  <row c_Aduana="64" Descripcion="QUERÉTARO, EL MARQUÉS Y COLON, Q"/>
+  <row c_Aduana="65" Descripcion="TOLUCA, TOLUCA, ESTADO DE MEXICO"/>
+  <row c_Aduana="67" Descripcion="CHIHUAHUA, CHIHUAHUA, CHIHUAHUA."/>
+  <row c_Aduana="73" Descripcion="AGUASCALIENTES, AGUASCALIENTES,"/>
+  <row c_Aduana="75" Descripcion="PUEBLA, HEROICA PUEBLA DE ZARAGO"/>
+  <row c_Aduana="80" Descripcion="COLOMBIA, COLOMBIA, NUEVO LEON."/>
+  <row c_Aduana="81" Descripcion="ALTAMIRA, ALTAMIRA, TAMAULIPAS."/>
+  <row c_Aduana="82" Descripcion="CIUDAD CAMARGO, CIUDAD CAMARGO,"/>
+  <row c_Aduana="83" Descripcion="DOS BOCAS, PARAISO, TABASCO."/>
+  <row c_Aduana="84" Descripcion="GUANAJUATO, SILAO, GUANAJUATO."/>
+</Catalogo>

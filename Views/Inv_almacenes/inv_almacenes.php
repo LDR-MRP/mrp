@@ -230,10 +230,12 @@
 <div class="modal fade" id="modalViewAlmacen" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0">
+
             <div class="modal-header bg-primary-subtle p-3">
                 <h5 class="modal-title" id="titleModal">Datos del registro</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="close-modal"></button>
             </div>
+            
             <div class="modal-body">
                 <table class="table table-bordered">
                     <tbody>

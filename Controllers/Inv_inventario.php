@@ -39,7 +39,7 @@ class Inv_inventario extends Controllers
 				empty($_POST['cve_articulo']) ||
 				empty($_POST['descripcion']) ||
 				empty($_POST['tipo_elemento']) ||
-				empty($_POST['estado'])
+				empty($_POST['tipo_elemento'])
 			) {
 				$arrResponse = [
 					'status' => false,
@@ -69,13 +69,16 @@ class Inv_inventario extends Controllers
 			$pedimiento       = strClean($_POST['pedimiento'] ?? 'N');
 			$peso             = floatval($_POST['peso'] ?? 0);
 			$volumen          = floatval($_POST['volumen'] ?? 0);
-			$estado           = intval($_POST['estado']);
 			$clave_alterna   = strClean($_POST['clave_alterna'] ?? '');
 			$tipo_asignacion = strClean($_POST['tipo_asignacion'] ?? '');
 			$almacenid        = intval($_POST['almacenid'] ?? 0);
 			$cantidadInicial  = floatval($_POST['cantidad_inicial'] ?? 0);
 			$costoUnitario    = floatval($_POST['costo'] ?? 0);
 			$precioUnitario   = floatval($_POST['precio'] ?? 0);
+			$idimpuesto = intval($_POST['idimpuesto'] ?? 1);
+
+
+
 
 
 
@@ -112,10 +115,18 @@ class Inv_inventario extends Controllers
 						$volumen,
 						$serie,
 						$lote,
-						$pedimiento,
-						$estado
+						$pedimiento
 					);
 					$option = 1;
+
+					// =========================
+					// INSERTAR IMPUESTO
+					// =========================
+
+					if ($request > 0) {
+						$this->model->insertInventarioImpuesto($request, $idimpuesto);
+					}
+
 
 					// =========================
 					// INSERTAR CLAVE ALTERNA
@@ -153,8 +164,7 @@ class Inv_inventario extends Controllers
 						$volumen,
 						$serie,
 						$lote,
-						$pedimiento,
-						$estado
+						$pedimiento
 					);
 					$option = 2;
 				}
@@ -233,6 +243,8 @@ class Inv_inventario extends Controllers
 					? '<span class="badge bg-success">Activo</span>'
 					: '<span class="badge bg-danger">Inactivo</span>';
 
+				$tipoRaw = $arrData[$i]['tipo_elemento'];
+
 				// Tipo
 				if ($arrData[$i]['tipo_elemento'] == 'P') $arrData[$i]['tipo_elemento'] = 'Producto';
 				if ($arrData[$i]['tipo_elemento'] == 'S') $arrData[$i]['tipo_elemento'] = 'Servicio';
@@ -245,6 +257,7 @@ class Inv_inventario extends Controllers
 				$btnView = '';
 				$btnEdit = '';
 				$btnDelete = '';
+				$btnConfig = '';
 
 				if ($_SESSION['permisosMod']['r']) {
 					$btnView = '<button class="btn btn-sm btn-soft-info" onClick="fntViewInventario(' . $arrData[$i]['idinventario'] . ')">
@@ -263,8 +276,17 @@ class Inv_inventario extends Controllers
                                 <i class="ri-delete-bin-5-fill"></i>
                             </button>';
 				}
+				if (in_array($tipoRaw, ['P', 'C', 'H'])) {
+					$btnConfig = '<button class="btn btn-sm btn-soft-primary" title="Configurar" onClick="fntConfigInventario(' . $arrData[$i]['idinventario'] . ')"><i class="ri-settings-3-fill"></i></button>';
+				}
 
-				$arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . '</div>';
+
+
+				$arrData[$i]['options'] = '<div class="text-center">'
+					. $btnView . ' '
+					. $btnEdit . ' '
+					. $btnConfig .
+					'</div>';
 			}
 
 			echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
@@ -275,33 +297,33 @@ class Inv_inventario extends Controllers
 
 
 	public function getInventario($idinventario)
-{
-    if ($_SESSION['permisosMod']['r']) {
-        $intidalmacen = intval($idinventario);
+	{
+		if ($_SESSION['permisosMod']['r']) {
+			$intidalmacen = intval($idinventario);
 
-        if ($intidalmacen > 0) {
-            $arrData = $this->model->selectInventario($intidalmacen);
+			if ($intidalmacen > 0) {
+				$arrData = $this->model->selectInventario($intidalmacen);
 
-            if (empty($arrData)) {
-                $arrResponse = [
-                    'status' => false,
-                    'msg' => 'Datos no encontrados.'
-                ];
-            } else {
-                $principal = $arrData[0];
-                $principal['claves'] = $arrData;
+				if (empty($arrData)) {
+					$arrResponse = [
+						'status' => false,
+						'msg' => 'Datos no encontrados.'
+					];
+				} else {
+					$principal = $arrData[0];
+					$principal['claves'] = $arrData;
 
-                $arrResponse = [
-                    'status' => true,
-                    'data' => $principal
-                ];
-            }
+					$arrResponse = [
+						'status' => true,
+						'data' => $principal
+					];
+				}
 
-            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-        }
-    }
-    die();
-}
+				echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+			}
+		}
+		die();
+	}
 
 
 	public function delInventario()
@@ -462,4 +484,486 @@ class Inv_inventario extends Controllers
 		}
 		die();
 	}
+
+	//----------------------------------------------------------------------IMPUESTOS
+	public function getSelectImpuestos()
+	{
+		$data = $this->model->selectImpuestos();
+
+		$html = '<option value="">Seleccione impuesto</option>';
+
+		foreach ($data as $row) {
+			$selected = ($row['idimpuesto'] == 1) ? 'selected' : '';
+			$html .= '<option value="' . $row['idimpuesto'] . '" ' . $selected . '>'
+				. $row['cve_impuesto'] . ' - ' . $row['descripcion'] .
+				'</option>';
+		}
+
+		echo $html;
+		die();
+	}
+
+	//----------------------------------------------------------------------MONEDAS
+	public function getSelectMonedas()
+	{
+		$html = '<option value="">--Seleccione--</option>';
+		$arrData = $this->model->selectMonedas();
+
+		foreach ($arrData as $row) {
+			if ($row['estado'] == 2) {
+				$html .= '<option value="' . $row['idmoneda'] . '">' . $row['descripcion'] . '</option>';
+			}
+		}
+
+		echo $html;
+		die();
+	}
+
+	public function getSelectLineas()
+	{
+		$html = '<option value="">--Seleccione--</option>';
+		$arrData = $this->model->selectLineas();
+
+		foreach ($arrData as $row) {
+			if ($row['estado'] == 2) {
+				$html .= '<option value="' . $row['idlinea'] . '">' . $row['descripcion'] . '</option>';
+			}
+		}
+
+		echo $html;
+		die();
+	}
+
+	//----------------------------------------------------------------------MONEDAS INVENTARIO
+	public function setMoneda()
+	{
+		if (!$_SESSION['permisosMod']['w']) {
+			echo json_encode(['status' => false, 'msg' => 'Sin permisos']);
+			die();
+		}
+
+		if ($_POST) {
+
+			if (empty($_POST['inventarioid']) || empty($_POST['idmoneda'])) {
+				echo json_encode(['status' => false, 'msg' => 'Datos obligatorios']);
+				die();
+			}
+
+			$inventarioid = intval($_POST['inventarioid']);
+			$idmoneda = intval($_POST['idmoneda']);
+			$tipo_cambio = $_POST['tipo_cambio'] ?? null;
+			$estado = 2;
+			$fecha = date('Y-m-d H:i:s');
+
+			$request = $this->model->insertInventarioMoneda(
+				$inventarioid,
+				$idmoneda,
+				$tipo_cambio,
+				$fecha,
+				$estado
+			);
+
+			if ($request > 0) {
+				$arrResponse = ['status' => true, 'msg' => 'Moneda asignada correctamente'];
+			} else {
+				$arrResponse = ['status' => false, 'msg' => 'Error al guardar moneda'];
+			}
+
+			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+		}
+
+		die();
+	}
+	//MONEDAS ASIGNADAS
+	public function getMonedasAsignadas($idinventario)
+	{
+		$monedas = $this->model->getMonedasAsignadas($idinventario);
+
+		echo json_encode([
+			'status' => true,
+			'data' => $monedas
+		], JSON_UNESCAPED_UNICODE);
+
+		die();
+	}
+
+
+
+	//---------------------------------------------------------------------- LINEAS INVENTARIO
+	public function setLinea()
+	{
+		if (!$_SESSION['permisosMod']['w']) {
+			echo json_encode(['status' => false, 'msg' => 'Sin permisos']);
+			die();
+		}
+
+		if ($_POST) {
+
+			if (empty($_POST['inventarioid']) || empty($_POST['idlineaproducto'])) {
+				echo json_encode(['status' => false, 'msg' => 'Datos obligatorios']);
+				die();
+			}
+
+			$inventarioid = intval($_POST['inventarioid']);
+			$idlineaproducto = intval($_POST['idlineaproducto']);
+			$estado = 2;
+			$fecha = date('Y-m-d H:i:s');
+
+			$request = $this->model->insertInventarioLinea(
+				$inventarioid,
+				$idlineaproducto,
+				$fecha,
+				$estado
+			);
+
+			if ($request > 0) {
+				$arrResponse = ['status' => true, 'msg' => 'Línea asignada correctamente'];
+			} else {
+				$arrResponse = ['status' => false, 'msg' => 'Error al guardar línea'];
+			}
+
+			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+		}
+
+		die();
+	}
+	public function getLineasAsignadas($idinventario)
+	{
+		// Usar el modelo principal del controlador
+		$lineas = $this->model->getLineasAsignadas($idinventario);
+
+		echo json_encode([
+			'status' => true,
+			'data' => $lineas
+		]);
+	}
+
+	//----------------------------------------------------Datos fiscales SAT
+	//**************************** CLAVE SAT ****************************/
+	public function searchSAT()
+	{
+		$term = strClean($_GET['term'] ?? '');
+		if (strlen($term) < 2) {
+			echo json_encode([]);
+			die();
+		}
+		$path = $_SERVER['DOCUMENT_ROOT'] . '/mrp/Assets/sat_catalogos/CAT_PROD_SERV.xml';
+		if (!file_exists($path)) {
+			echo json_encode([]);
+			die();
+		}
+		$xml = simplexml_load_file($path);
+		$rows = $xml->xpath('//row');
+		$term = mb_strtolower($term);
+		$grupos = [];
+		foreach ($rows as $row) {
+			$a = $row->attributes();
+			$clave = (string)$a['c_ClaveProdServ'];
+			$desc  = (string)$a['Descripcion'];
+			$nivel = (string)$a['Nivel'];
+			$agr   = (string)$a['Agrupador'];
+			$hay = mb_strtolower($clave . ' ' . $desc . ' ' . $agr);
+			if (strpos($hay, $term) !== false) {
+				if (!isset($grupos[$agr])) {
+					$grupos[$agr] = [
+						'clase' => $agr,
+						'items' => []
+					];
+				}
+				if ($nivel == 'Subclase') {
+					$grupos[$agr]['items'][] = [
+						'clave' => $clave,
+						'descripcion' => $desc
+					];
+				}
+			}
+		}
+		echo json_encode(array_values($grupos), JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	//**************************** CLAVE UNIDADSAT ****************************/
+	public function searchUNIDADSAT()
+	{
+		$term = strClean($_GET['term'] ?? '');
+
+		if (strlen($term) < 2) {
+			echo json_encode([]);
+			die();
+		}
+
+		$path = $_SERVER['DOCUMENT_ROOT'] . '/mrp/Assets/sat_catalogos/CAT_CLAVE_UNI.xml';
+
+		if (!file_exists($path)) {
+			echo json_encode([]);
+			die();
+		}
+
+		$xml = simplexml_load_file($path);
+		$rows = $xml->xpath('//row');
+
+		$term = mb_strtolower($term);
+		$res = [];
+
+		foreach ($rows as $row) {
+
+			$a = $row->attributes();
+
+			$clave = (string)$a['c_ClaveUnidad'];
+			$nombre = (string)$a['Nombre'];
+			$desc  = (string)$a['Descripcion'];
+
+			$hay = mb_strtolower($clave . ' ' . $nombre . ' ' . $desc);
+
+			if (strpos($hay, $term) !== false) {
+				$res[] = [
+					'clave' => $clave,
+					'descripcion' => $nombre . ' - ' . $desc
+				];
+			}
+
+			if (count($res) >= 30) break;
+		}
+
+		echo json_encode($res, JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	//**************************** GRACCION ARANCELARIA ****************************/
+	public function searchFRACCIONSAT()
+	{
+		$term = strClean($_GET['term'] ?? '');
+
+		if (strlen($term) < 2) {
+			echo json_encode([]);
+			die();
+		}
+
+		$path = $_SERVER['DOCUMENT_ROOT'] . '/mrp/Assets/sat_catalogos/CAT_FRACC_ARANC.xml';
+
+		if (!file_exists($path)) {
+			echo json_encode([]);
+			die();
+		}
+
+		$xml = simplexml_load_file($path);
+		$rows = $xml->xpath('//row');
+
+		$term = mb_strtolower($term);
+		$res = [];
+
+		foreach ($rows as $row) {
+
+			$a = $row->attributes();
+
+			$clave = (string)$a['Clave'];
+			$desc  = (string)$a['Descripcion'];
+
+			$hay = mb_strtolower($clave . ' ' .  $desc);
+
+			if (strpos($hay, $term) !== false) {
+				$res[] = [
+					'clave' => $clave,
+					'descripcion' => $desc
+				];
+			}
+
+			if (count($res) >= 30) break;
+		}
+
+		echo json_encode($res, JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	//**************************** UNIDAD ADUANA SAT ****************************/
+	public function searchADUANASAT()
+	{
+		$term = strClean($_GET['term'] ?? '');
+
+		if (strlen($term) < 2) {
+			echo json_encode([]);
+			die();
+		}
+
+		$path = $_SERVER['DOCUMENT_ROOT'] . '/mrp/Assets/sat_catalogos/CAT_ADUANA.xml';
+
+		if (!file_exists($path)) {
+			echo json_encode([]);
+			die();
+		}
+
+		$xml = simplexml_load_file($path);
+		$rows = $xml->xpath('//row');
+
+		$term = mb_strtolower($term);
+		$res = [];
+
+		foreach ($rows as $row) {
+
+			$a = $row->attributes();
+
+			$clave = (string)$a['c_Aduana'];
+			$desc  = (string)$a['Descripcion'];
+
+			$hay = mb_strtolower($clave . ' ' . $desc);
+
+			if (strpos($hay, $term) !== false) {
+				$res[] = [
+					'clave' => $clave,
+					'descripcion' => $desc
+				];
+			}
+
+			if (count($res) >= 30) break;
+		}
+
+		echo json_encode($res, JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	//**************************** guardar datos fiscales del producto ****************************/
+	public function setFiscal()
+	{
+		$inventarioid = intval($_POST['inventarioid'] ?? 0);
+		$grupo = $_POST['grupo'] ?? '';
+
+
+
+		if ($inventarioid <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Inventario inválido']);
+			die();
+		}
+
+		$data = [
+			'inventarioid'        => $inventarioid,
+			'clave_sat'          => strClean($_POST['clave_sat'] ?? ''),
+			'desc_sat'           => strClean($_POST['desc_sat'] ?? ''),
+			'clave_unidad_sat'   => strClean($_POST['clave_unidad_sat'] ?? ''),
+			'desc_unidad_sat'    => strClean($_POST['desc_clave_unidad_sat'] ?? ''),
+			'clave_fraccion_sat' => strClean($_POST['clave_fraccion_sat'] ?? ''),
+			'desc_fraccion_sat'  => strClean($_POST['desc_clave_fraccion_sat'] ?? ''),
+			'clave_aduana_sat'   => strClean($_POST['clave_aduana_sat'] ?? ''),
+			'desc_aduana_sat'    => strClean($_POST['desc_clave_aduana_sat'] ?? '')
+		];
+
+		$update = [];
+
+		if ($grupo == 'sat') {
+			$update['clave_sat'] = strClean($_POST['clave_sat'] ?? '');
+			$update['desc_sat']  = strClean($_POST['desc_sat'] ?? '');
+		}
+
+		if ($grupo == 'unidad') {
+			$update['clave_unidad_sat'] = strClean($_POST['clave_unidad_sat'] ?? '');
+			$update['desc_unidad_sat']  = strClean($_POST['desc_clave_unidad_sat'] ?? '');
+		}
+
+		if ($grupo == 'fraccion') {
+			$update['clave_fraccion_sat'] = strClean($_POST['clave_fraccion_sat'] ?? '');
+			$update['desc_fraccion_sat']  = strClean($_POST['desc_clave_fraccion_sat'] ?? '');
+		}
+
+		if ($grupo == 'aduana') {
+			$update['clave_aduana_sat'] = strClean($_POST['clave_aduana_sat'] ?? '');
+			$update['desc_aduana_sat']  = strClean($_POST['desc_clave_aduana_sat'] ?? '');
+		}
+
+
+		$existe = $this->model->getFiscalByInventario($inventarioid);
+
+		if (empty($existe)) {
+			$resp = $this->model->insertFiscal($data);
+		} else {
+			$resp = $this->model->updateFiscalParcial($existe['idfiscal'], $update);
+		}
+
+		if (!empty($existe) && empty($update)) {
+			echo json_encode(['status' => false, 'msg' => 'Nada que actualizar']);
+			die();
+		}
+
+
+		echo json_encode([
+			'status' => $resp ? true : false,
+			'msg'    => $resp ? 'Fiscal guardado' : 'Error al guardar fiscal'
+		]);
+
+		die();
+	}
+
+	public function getFiscalByInventario($idinventario)
+	{
+		$data = $this->model->getFiscalByInventario((int)$idinventario);
+
+		if (empty($data)) {
+			echo json_encode(['status' => false]);
+		} else {
+			echo json_encode(['status' => true, 'data' => $data]);
+		}
+		die();
+	}
+
+
+	// ================= IMPUESTOS =================
+
+	public function getSelectImpuestosCfg()
+	{
+		$data = $this->model->selectImpuestosCfg();
+
+		$html = '<option value="">Seleccione un impuesto</option>';
+		foreach ($data as $row) {
+			$html .= '<option value="' . $row['idimpuesto'] . '">' . $row['descripcion'] . '</option>';
+		}
+
+		echo $html;
+		die();
+	}
+
+	public function setImpuesto()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		if (empty($_POST['inventarioid']) || empty($_POST['idimpuesto'])) {
+			echo json_encode(['status' => false, 'msg' => 'Datos incompletos']);
+			die();
+		}
+
+		$inventarioid = intval($_POST['inventarioid']);
+		$idimpuesto   = intval($_POST['idimpuesto']);
+
+		$resp = $this->model->insertInventarioImpuestoform($inventarioid, $idimpuesto, 2);
+
+		if ($resp === "exist") {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'Este impuesto ya está asignado al producto'
+			]);
+		} elseif ($resp > 0) {
+			echo json_encode([
+				'status' => true,
+				'msg' => 'Impuesto asignado correctamente'
+			]);
+		} else {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'Error al asignar impuesto'
+			]);
+		}
+
+		die();
+	}
+
+
+	public function getImpuestosAsignados($idinventario)
+{
+    $data = $this->model->getImpuestosAsignados($idinventario);
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'status' => true,
+        'data' => $data
+    ]);
+    die();
+}
+
 }

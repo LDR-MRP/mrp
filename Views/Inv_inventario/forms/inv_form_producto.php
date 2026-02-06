@@ -83,8 +83,7 @@
                 <label class="form-label" for="lineaproductoid_producto">LÍNEA DE PRODUCTO</label>
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="nombre-linea-addon">Lín. Prod.</span>
-                    <select class="form-control" id="lineaproductoid_producto" name="lineaproductoid" required></select>
-                    <div class="invalid-feedback">El campo de línea de producto es obligatorio</div>
+                    <select class="form-control" id="lineaproductoid_producto" name="lineaproductoid"></select>
                 </div>
             </div>
         </div>
@@ -96,7 +95,9 @@
                 <span class="input-group-text" id="descripcion-inventario-addon">Desc.</span>
                 <textarea class="form-control" id="descripcion" name="descripcion"
                     placeholder="Ingresa una descripción" rows="3"
-                    aria-describedby="descripcion-inventario-addon"></textarea>
+                    aria-describedby="descripcion-inventario-addon" required></textarea>
+                <div class="invalid-feedback">El campo descripción es obligatorio</div>
+
             </div>
         </div>
 
@@ -234,21 +235,18 @@
             </div>
         </div>
 
-        <!-- Estado -->
+        <!-- SELECT IMPUESTO -->
         <div class="col-lg-4 col-sm-6">
             <div class="mb-3">
-                <label class="form-label" for="estado">ESTADO</label>
-                <div class="input-group has-validation mb-3">
-                    <span class="input-group-text" id="estado-addon">Est</span>
-                    <select class="form-select" id="estado" name="estado"
-                        aria-describedby="estado-addon" required>
-                        <option value="2" selected>Activo</option>
-                        <option value="1">Inactivo</option>
-                    </select>
-                    <div class="invalid-feedback">El campo estado es obligatorio</div>
+                <label class="form-label" for="impuesto">IMPUESTO</label>
+                <div class="input-group mb-3">
+                    <span class="input-group-text" id="nombre-linea-addon">Imp.</span>
+                    <select class="form-control" id="idimpuesto" name="idimpuesto"></select>
                 </div>
             </div>
         </div>
+
+
 
         <!-- IMAGEN -->
         <div class="col-lg-12 col-sm-6">
@@ -299,7 +297,7 @@
 
         <div class="row mb-3">
             <div class="col-lg-12 col-sm-12 ">
-                <h5 class="mb-4">¿DESEAS AGREGAR EL PRODUCTO A UN MUTIALMACÉN?</h5>
+                <h5 class="mb-4">¿DESEAS AGREGAR EL PRODUCTO A UN ALMACÉN?</h5>
             </div>
         </div>
 

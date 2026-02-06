@@ -152,19 +152,26 @@ class Inv_moneda extends Controllers{
 
 
 
-    		public function getSelectMonedas(){
-		$htmlOptions = '<option value="" selected>--Seleccione--</option>';
-			$arrData = $this->model->selectOptionPrecios();
-			if(count($arrData) > 0 ){ 
-				for ($i=0; $i < count($arrData); $i++) { 
-					if($arrData[$i]['estado'] == 2 ){
-					$htmlOptions .= '<option value="'.$arrData[$i]['idmoneda'].'">'.$arrData[$i]['cve_moneda'].'</option>';
-					}
-				}
-			}
-			echo $htmlOptions;
-			die();	
-		}
+    		public function getSelectMonedas()
+{
+    $htmlOptions = '<option value="">-- Seleccione moneda --</option>';
+    $arrData = $this->model->selectMonedas();
+
+    if (!empty($arrData)) {
+        for ($i = 0; $i < count($arrData); $i++) {
+            if ($arrData[$i]['estado'] == 2) {
+                $htmlOptions .= '<option value="'.$arrData[$i]['idmoneda'].'">'.
+                                $arrData[$i]['descripcion'].' ('.$arrData[$i]['simbolo'].')'.
+                                '</option>';
+            }
+        }
+    }
+
+    echo $htmlOptions;
+    die();
+}
+
+
 
 
 }
