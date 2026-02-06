@@ -33,6 +33,13 @@
                                 MULTIALMACENES
                             </a>
                         </li>
+                        <?php if ($_SESSION['permisosMod']['w']) { ?>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#agregarMultialmacen" role="tab">
+                                    NUEVO
+                                </a>
+                            </li>
+                        <?php } ?>
                     </ul>
                 </div>
                 <!-- end card header -->
@@ -71,10 +78,16 @@
                                     <div class="col-lg-6 col-sm-6">
                                         <div class="mb-3">
                                             <label class="form-label" for="listInventario">INVENTARIO</label>
-                                            <div class="input-group mb-3">
-                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>Inv</span>
-                                                <select class="form-control" id="listInventario" name="listInventario" required=""></select>
-                                                <div class="invalid-feedback">El campo de precios es obligatorio</div>
+                                            <input type="hidden" id="listInventario" name="listInventario">
+
+                                            <div class="position-relative">
+                                                <input
+                                                    type="text"
+                                                    id="inventarioSearch"
+                                                    class="form-control"
+                                                    placeholder="Buscar inventario..."
+                                                    autocomplete="off" required/>
+                                                    <div class="invalid-feedback">El campo de inventario es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
@@ -82,7 +95,7 @@
                                     <!-- LISTA DE ALMACENES -->
                                     <div class="col-lg-6 col-sm-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="listAlmacenes">ALMACENES</label>
+                                            <label class="form-label" for="listAlmacenes">ALMACÉN</label>
                                             <div class="input-group mb-3">
                                                 <span class="input-group-text" id="nombre-linea-addon" data-choices>Alm</span>
                                                 <select class="form-control" id="listAlmacenes" name="listAlmacenes" required=""></select>
@@ -92,8 +105,45 @@
                                     </div>
 
                                     <!-- EXISTENCIA -->
-                                    <input type="hidden" value="0" id="existencia-input" name="existencia-input"
-                                        aria-describedby="existencia-addon">
+                                    <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="existencia-input">EXISTENCIA</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="simbolo-moneda-addon">Exis.</span>
+                                                <input type="number" class="form-control"
+                                                    placeholder="Ingresa la existencia" id="existencia-input" name="existencia-input"
+                                                    aria-describedby="simbolo-moneda-addon">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- STOCK MINIMO -->
+                                    <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="stockminimo-input">STOCK MINIMO</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="simbolo-moneda-addon">Exis.</span>
+                                                <input type="number" class="form-control"
+                                                    placeholder="Ingresa la existencia" id="stockminimo-input" name="stockminimo-input"
+                                                    aria-describedby="simbolo-moneda-addon">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- STOCK MAXIMO -->
+                                    <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="stockmaximo-input">STOCK MAXIMO</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="simbolo-moneda-addon">Exis.</span>
+                                                <input type="number" class="form-control"
+                                                    placeholder="Ingresa la existencia" id="stockmaximo-input" name="stockmaximo-input"
+                                                    aria-describedby="simbolo-moneda-addon">
+                                            </div>
+                                        </div>
+                                    </div>
+
+
                                 </div>
                                 <!-- end row -->
 

@@ -772,15 +772,16 @@ Se utiliza con fines de configuración y ajustes visuales del layout.
     </div>
 
 
-
+ 
 
         <script>
         const base_url = "<?= base_url(); ?>";
         const smony = "<?= SMONEY; ?>";
 
           window.CURRENT_USER_ID = <?= (int)($_SESSION['idUser'] ?? 0) ?>;
+          window.CURRENT_ROL_ID = <?= (int)($_SESSION['rolid'] ?? 0) ?>;
   window.CURRENT_USER_NAME = <?= json_encode($_SESSION['userData']['nombres'] ?? '') ?>;
-  // opcional: si tienes foto
+
   window.CURRENT_USER_AVATAR = <?= json_encode($_SESSION['userData']['avatar'] ?? '') ?>;
     </script>
 

@@ -42,6 +42,12 @@ const listModelos = document.querySelector("#listModelos");
 const modelosDisponibles = document.querySelector("#modelosDisponibles");
 const modelosSeleccionados = document.querySelector("#modelosSeleccionados");
 
+const regional_id = document.querySelector("#regional_id");
+const regionalesDisponibles = document.querySelector("#regionalesDisponibles");
+const regionalesSeleccionados = document.querySelector(
+  "#regionalesSeleccionados",
+);
+
 const tipo = document.querySelector("#tipo-select");
 const calle = document.querySelector("#calle-distribuidores-input");
 const numero_ext = document.querySelector("#numero_ext-distribuidores-input");
@@ -50,8 +56,6 @@ const colonia = document.querySelector("#colonia-distribuidores-input");
 const codigo_postal = document.querySelector(
   "#codigo_postal-distribuidores-input",
 );
-
-const estado = document.querySelector("#estado-select");
 
 const inputRegion = document.querySelector("#region_nombre");
 
@@ -86,6 +90,9 @@ document.addEventListener(
     fntRegionales();
     fntGrupos();
     fntModelos();
+    fntTipoClientes();
+    fntMatrizDistribuidores();
+    fntReigenFiscal();
     fntPaises(selectPais, selectEstado, selectMunicipio);
     fntPaises(selectPaisFiscal, selectEstadoFiscal, selectMunicipioFiscal);
 
@@ -166,7 +173,6 @@ document.addEventListener(
         // Limpiar formulario
         formDistribuidores.reset();
         distribuidor.value = "";
-        estado.value = "2";
       });
 
       // ----------------------------------------------------------------
@@ -176,7 +182,6 @@ document.addEventListener(
         tabNuevo.textContent = "NUEVO";
         spanBtnText.textContent = "REGISTRAR";
         distribuidor.value = "";
-        estado.value = "2";
         formDistribuidores.reset();
       });
     } else {
@@ -189,6 +194,10 @@ document.addEventListener(
     formDistribuidores.addEventListener("submit", function (e) {
       if (modelosSeleccionados.children.length === 0) {
         Swal.fire("Atención", "Selecciona al menos un modelo", "warning");
+        return;
+      }
+      if (regionalesSeleccionados.children.length === 0) {
+        Swal.fire("Atención", "Selecciona al menos una regional", "warning");
         return;
       }
       e.preventDefault();
@@ -238,7 +247,6 @@ document.addEventListener(
                 // Seguir en modo NUEVO
                 formDistribuidores.reset();
                 distribuidor.value = "";
-                estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 tableDistibuidores.api().ajax.reload();
@@ -246,7 +254,6 @@ document.addEventListener(
                 // Regresar al listado
                 formDistribuidores.reset();
                 distribuidor.value = "";
-                estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 primerTab.show();
@@ -265,7 +272,6 @@ document.addEventListener(
               // Acción final después de OK (opcional)
               formDistribuidores.reset();
               distribuidor.value = "";
-              estado.value = "2";
               tabNuevo.textContent = "NUEVO";
               spanBtnText.textContent = "REGISTRAR";
               primerTab.show();
@@ -305,7 +311,6 @@ function fntEditDistribuidor(iddistribuidor) {
     const reg = data.regional;
 
     distribuidor.value = data.id;
-    fntRegionales(reg.regional_id);
     grupo_id.value = data.grupo_id;
     nombre_fisica.value = data.nombre_fisica;
     apelldio_paterno.value = data.apellido_paterno;
@@ -323,15 +328,21 @@ function fntEditDistribuidor(iddistribuidor) {
     clasificacion.value = data.clasificacion;
     estatus.value = data.estatus;
     tipo_negocio.value = data.tipo_negocio;
+    matriz_id.value = data.matriz_id;
+    tipo_cliente_id.value = data.tipo_cliente_id;
     telefono.value = data.telefono;
     telefono_alt.value = data.telefono_alt;
-    estado.value = data.estado;
 
     modelosDisponibles.innerHTML = "";
     modelosSeleccionados.innerHTML = "";
 
+    regionalesDisponibles.innerHTML = "";
+    regionalesSeleccionados.innerHTML = "";
+
+    regimen_fiscal_id.value = data.regimen_fiscal_id;
     tipoPersona.value = data.tipo_persona;
     toggleTipoPersona();
+    toggleTipoNegocio();
 
     Array.from(listModelos.options).forEach((opt) => {
       let li = document.createElement("li");
@@ -348,6 +359,24 @@ function fntEditDistribuidor(iddistribuidor) {
         opt.selected = true;
       } else {
         modelosDisponibles.appendChild(li);
+      }
+    });
+
+    Array.from(regional_id.options).forEach((opt) => {
+      let li = document.createElement("li");
+      li.className = "list-group-item";
+      li.textContent = opt.text;
+      li.dataset.id = opt.value;
+
+      const seleccionado = data.regionales.some(
+        (r) => String(r.id) === opt.value,
+      );
+
+      if (seleccionado) {
+        regionalesSeleccionados.appendChild(li);
+        opt.selected = true;
+      } else {
+        regionalesDisponibles.appendChild(li);
       }
     });
 
@@ -529,11 +558,10 @@ function fntViewDistribuidor(iddistribuidor) {
         }
 
         document.querySelector("#correo").innerHTML = objData.data.correo;
-        const reg = objData.data.regional;
-        document.querySelector("#nombreRegional").innerHTML =
-          reg.nombre + " " + reg.apellido_paterno + " " + reg.apellido_materno;
         document.querySelector("#nombregrupo").innerHTML =
           objData.data.nombre_grupo;
+        document.querySelector("#nombre_tipo_negocio").innerHTML =
+          objData.data.nombre_tipo_negocio;
         document.querySelector("#tiponegocio").innerHTML =
           objData.data.tipo_negocio;
         document.querySelector("#nombrecomercial").innerHTML =
@@ -583,6 +611,16 @@ function fntViewDistribuidor(iddistribuidor) {
         document.querySelector("#municipio_fiscal").innerHTML =
           direccionFiscal.municipio;
 
+        if (objData.data.matriz_id) {
+          document.querySelector("#matriz").innerHTML =
+            objData.data.matriz_nombre_comercial +
+            " (" +
+            objData.data.matriz_razon_social +
+            ")";
+        } else {
+          document.querySelector("#matriz").innerHTML = "Es matriz";
+        }
+
         let htmlContactos = "";
         let contactos = objData.data.contactos;
 
@@ -594,7 +632,15 @@ function fntViewDistribuidor(iddistribuidor) {
                       <br/>
                       ${contacto.departamento}
                   </td>
-                  <td>${contacto.nombre}</td>
+                  <td>
+                    ${contacto.nombre}
+                    ${
+                      contacto.distribuidor
+                        ? `<br><small class="text-muted">${contacto.distribuidor}</small>`
+                        : ""
+                    }
+                  </td>
+
                   <td>${contacto.correo}</td>
                   <td>${contacto.telefono}</td>
                   <td>${contacto.estatus}</td>
@@ -635,6 +681,58 @@ function fntViewDistribuidor(iddistribuidor) {
 
         document.querySelector("#tbodyModelos").innerHTML = htmlModelos;
 
+        let htmlRegionales = "";
+        let regionales = objData.data.regionales;
+
+        if (regionales.length > 0) {
+          regionales.forEach((r) => {
+            htmlRegionales += `
+                <tr>
+                  <td>${r.id}</td>
+                  <td>${r.nombre}</td>
+                  <td>${r.apellido_paterno}</td>
+                  <td>${r.apellido_materno}</td>
+                </tr>
+              `;
+          });
+        } else {
+          htmlRegionales = `
+              <tr>
+                <td colspan="4" class="text-center">
+                  No tiene regionales registrados
+                </td>
+              </tr> 
+            `;
+        }
+
+        document.querySelector("#tbodyRegionales").innerHTML = htmlRegionales;
+
+        let htmlSucursales = "";
+        let sucursales = objData.data.sucursales;
+
+        if (sucursales.length > 0) {
+          sucursales.forEach((s) => {
+            htmlSucursales += `
+                <tr>
+                  <td>${s.nombre_comercial}</td>
+                  <td>${s.razon_social}</td>
+                  <td>${s.plaza}</td>
+                  <td>${s.telefono}</td>
+                </tr>
+              `;
+          });
+        } else {
+          htmlSucursales = `
+              <tr>
+                <td colspan="4" class="text-center">
+                  No tiene sucursales registradas
+                </td>
+              </tr>
+            `;
+        }
+
+        document.querySelector("#tbodySucursales").innerHTML = htmlSucursales;
+
         $("#modalViewDistribuidor").modal("show");
       } else {
         Swal.fire("Error", objData.msg, "error");
@@ -646,9 +744,78 @@ function fntViewDistribuidor(iddistribuidor) {
 // ------------------------------------------------------------------------
 //  VER EL CATALOGO DE REGIONALES
 // ------------------------------------------------------------------------
-function fntRegionales(selectedValue = "") {
-  if (document.querySelector("#regional_id")) {
-    let ajaxUrl = base_url + "/cli_clientes/getSelectRegionales";
+function initDragRegionales() {
+  Sortable.create(regionalesDisponibles, {
+    group: "regionales",
+    animation: 150,
+  });
+
+  Sortable.create(regionalesSeleccionados, {
+    group: "regionales",
+    animation: 150,
+    onAdd: syncSelectRegionales,
+    onRemove: syncSelectRegionales,
+    onSort: syncSelectRegionales,
+  });
+}
+function fntRegionales() {
+  let ajaxUrl = base_url + "/cli_clientes/getSelectRegionales";
+  let request = new XMLHttpRequest();
+
+  request.open("GET", ajaxUrl, true);
+  request.send();
+
+  request.onreadystatechange = function () {
+    if (request.readyState === 4 && request.status === 200) {
+      regional_id.innerHTML = request.responseText;
+
+      regionalesDisponibles.innerHTML = "";
+      regionalesSeleccionados.innerHTML = "";
+
+      Array.from(regional_id.options).forEach((opt) => {
+        let li = document.createElement("li");
+        li.className = "list-group-item";
+        li.textContent = opt.text;
+        li.dataset.id = opt.value;
+
+        regionalesDisponibles.appendChild(li);
+      });
+
+      initDragRegionales();
+    }
+  };
+}
+
+function initDragRegionales() {
+  Sortable.create(regionalesDisponibles, {
+    group: "regionales",
+    animation: 150,
+  });
+
+  Sortable.create(regionalesSeleccionados, {
+    group: "regionales",
+    animation: 150,
+    onAdd: syncSelectRegionales,
+    onRemove: syncSelectRegionales,
+    onSort: syncSelectRegionales,
+  });
+}
+
+function syncSelectRegionales() {
+  Array.from(regional_id.options).forEach((o) => (o.selected = false));
+
+  Array.from(regionalesSeleccionados.children).forEach((li) => {
+    const opt = regional_id.querySelector(`option[value="${li.dataset.id}"]`);
+    if (opt) opt.selected = true;
+  });
+}
+
+// ------------------------------------------------------------------------
+//  VER EL CATALOGO DE DISTRIBUIDORES
+// ------------------------------------------------------------------------
+function fntMatrizDistribuidores(selectedValue = "") {
+  if (document.querySelector("#matriz_id")) {
+    let ajaxUrl = base_url + "/cli_clientes/getSelectMatrizDistribuidores";
     let request = window.XMLHttpRequest
       ? new XMLHttpRequest()
       : new ActiveXObject("Microsoft.XMLHTTP");
@@ -656,10 +823,34 @@ function fntRegionales(selectedValue = "") {
     request.send();
     request.onreadystatechange = function () {
       if (request.readyState == 4 && request.status == 200) {
-        document.querySelector("#regional_id").innerHTML = request.responseText;
+        document.querySelector("#matriz_id").innerHTML = request.responseText;
 
         if (selectedValue !== "") {
-          document.querySelector("#regional_id").value = selectedValue;
+          document.querySelector("#matriz_id").value = selectedValue;
+        }
+      }
+    };
+  }
+}
+
+// ------------------------------------------------------------------------
+//  VER EL CATALOGO DE TIPOS DE CLIENTES
+// ------------------------------------------------------------------------
+function fntTipoClientes(selectedValue = "") {
+  if (document.querySelector("#tipo_cliente_id")) {
+    let ajaxUrl = base_url + "/cli_clientes/getSelectTipoClientes";
+    let request = window.XMLHttpRequest
+      ? new XMLHttpRequest()
+      : new ActiveXObject("Microsoft.XMLHTTP");
+    request.open("GET", ajaxUrl, true);
+    request.send();
+    request.onreadystatechange = function () {
+      if (request.readyState == 4 && request.status == 200) {
+        document.querySelector("#tipo_cliente_id").innerHTML =
+          request.responseText;
+
+        if (selectedValue !== "") {
+          document.querySelector("#tipo_cliente_id").value = selectedValue;
         }
       }
     };
@@ -687,6 +878,22 @@ function fntGrupos(selectedValue = "") {
       }
     };
   }
+}
+
+function fntReigenFiscal(tipoPersona = "") {
+  let ajaxUrl =
+    base_url + "/cli_clientes/getSelectRegimenFiscal/" + tipoPersona;
+  let request = new XMLHttpRequest();
+
+  request.open("GET", ajaxUrl, true);
+  request.send();
+
+  request.onreadystatechange = function () {
+    if (request.readyState === 4 && request.status === 200) {
+      document.querySelector("#regimen_fiscal_id").innerHTML =
+        request.responseText;
+    }
+  };
 }
 
 // ------------------------------------------------------------------------
@@ -794,6 +1001,21 @@ document.addEventListener("DOMContentLoaded", toggleDireccionFiscal);
 // ------------------------------------------------------------------------
 //  VER EL CATALOGO DE MODELOS
 // ------------------------------------------------------------------------
+function initDragModelos() {
+  Sortable.create(modelosDisponibles, {
+    group: "modelos",
+    animation: 150,
+  });
+
+  Sortable.create(modelosSeleccionados, {
+    group: "modelos",
+    animation: 150,
+    onAdd: syncSelectModelos,
+    onRemove: syncSelectModelos,
+    onSort: syncSelectModelos,
+  });
+}
+
 function fntModelos() {
   let ajaxUrl = base_url + "/cli_clientes/getSelectModelos";
   let request = new XMLHttpRequest();
@@ -871,6 +1093,10 @@ function toggleTipoPersona() {
 
 tipoPersona.addEventListener("change", toggleTipoPersona);
 
+tipoPersona.addEventListener("change", function () {
+  fntReigenFiscal(this.value);
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   toggleTipoPersona();
 });
@@ -899,3 +1125,21 @@ function fntRegionByEstado(estado_id) {
     }
   };
 }
+
+const wrapperMatriz = document.querySelector("#wrapperMatriz");
+const selectMatriz = document.querySelector("#matriz_id");
+
+function toggleTipoNegocio() {
+  if (tipo_negocio.value === "Sucursal") {
+    wrapperMatriz.classList.remove("d-none");
+    selectMatriz.required = true;
+  } else {
+    wrapperMatriz.classList.add("d-none");
+    selectMatriz.required = false;
+    selectMatriz.value = "";
+  }
+}
+
+tipo_negocio.addEventListener("change", toggleTipoNegocio);
+
+document.addEventListener("DOMContentLoaded", toggleTipoNegocio);

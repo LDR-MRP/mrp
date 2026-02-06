@@ -7,7 +7,6 @@ const idgrupo = document.querySelector("#idgrupo");
 const codigoInput = document.querySelector("#codigo-grupo-input");
 const nombreInput = document.querySelector("#nombre-grupo-input");
 const descripcionInput = document.querySelector("#descripcion-grupo-input");
-const estado = document.querySelector("#estado-select");
 
 // Mis referencias globales
 let primerTab; // Tab LISTA
@@ -100,7 +99,6 @@ document.addEventListener(
         // Limpiar formulario
         formGrupos.reset();
         idgrupo.value = "";
-        estado.value = "2";
       });
 
       // ----------------------------------------------------------------
@@ -110,7 +108,6 @@ document.addEventListener(
         tabNuevo.textContent = "NUEVO";
         spanBtnText.textContent = "REGISTRAR";
         idgrupo.value = "";
-        estado.value = "2";
         formGrupos.reset();
       });
     } else {
@@ -168,7 +165,6 @@ document.addEventListener(
                 // Seguir en modo NUEVO
                 formGrupos.reset();
                 idgrupo.value = "";
-                estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 tableGrupos.api().ajax.reload();
@@ -176,7 +172,6 @@ document.addEventListener(
                 // Regresar al listado
                 formGrupos.reset();
                 idgrupo.value = "";
-                estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 primerTab.show();
@@ -195,7 +190,6 @@ document.addEventListener(
               // Acción final después de OK (opcional)
               formGrupos.reset();
               idgrupo.value = "";
-              estado.value = "2";
               tabNuevo.textContent = "NUEVO";
               spanBtnText.textContent = "REGISTRAR";
               primerTab.show();
@@ -236,7 +230,6 @@ function fntEditInfo(id_grupo) {
         codigoInput.value = objData.data.codigo;
         nombreInput.value = objData.data.nombre;
         descripcionInput.value = objData.data.descripcion;
-        estado.value = objData.data.estado;
 
         // Cambiar al tab de captura
         if (firstTab) firstTab.show();

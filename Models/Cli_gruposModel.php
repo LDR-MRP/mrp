@@ -6,7 +6,6 @@
         public $strCodigo;
         public $strNombre;
         public $strDescripcion;
-        public $intEstado;
 
         public function __construct()
         {
@@ -75,13 +74,11 @@
             return $request;
         }
 
-
-        public function insertGrupo($codigo, $nombre, $descripcion, $estado)
+        public function insertGrupo($codigo, $nombre, $descripcion)
         {
             $this->strCodigo = $codigo;
             $this->strNombre = $nombre;
             $this->strDescripcion = $descripcion;
-            $this->intEstado = $estado;
 
             $sql = "SELECT * FROM cli_grupos 
             WHERE nombre = '{$this->strNombre}' 
@@ -89,13 +86,12 @@
             $request = $this->select_all($sql);
 
             if (empty($request)) {
-                $query_insert = "INSERT INTO cli_grupos(nombre, codigo, descripcion, estado) 
-                         VALUES(?,?,?,?)";
+                $query_insert = "INSERT INTO cli_grupos(nombre, codigo, descripcion) 
+                         VALUES(?,?,?)";
                 $arrData = array(
                     $this->strNombre,
                     $this->strCodigo,
                     $this->strDescripcion,
-                    $this->intEstado
                 );
                 $request_insert = $this->insert($query_insert, $arrData);
                 return $request_insert;
@@ -104,14 +100,12 @@
             }
         }
 
-
-        public function updateGrupo($intIdgrupo, $codigo, $nombre, $descripcion, $estado)
+        public function updateGrupo($intIdgrupo, $codigo, $nombre, $descripcion)
         {
             $this->intIdgrupo = $intIdgrupo;
             $this->strCodigo = $codigo;
             $this->strNombre = $nombre;
             $this->strDescripcion = $descripcion;
-            $this->intEstado = $estado;
 
             $sql = "SELECT * FROM cli_grupos 
             WHERE (nombre = '{$this->strNombre}' 
@@ -123,14 +117,12 @@
                 $sql = "UPDATE cli_grupos 
                 SET nombre = ?, 
                     codigo = ?, 
-                    descripcion = ?, 
-                    estado = ? 
+                    descripcion = ?
                 WHERE id = $this->intIdgrupo";
                 $arrData = array(
                     $this->strNombre,
                     $this->strCodigo,
                     $this->strDescripcion,
-                    $this->intEstado
                 );
                 $request = $this->update($sql, $arrData);
                 return $request;

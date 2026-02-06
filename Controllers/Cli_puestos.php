@@ -61,9 +61,9 @@ class Cli_puestos extends Controllers
     {
         if ($_POST) {
             if (
-                empty($_POST['listPuestos']) || empty($_POST['nombre-puestos-input']) ||
-                empty($_POST['descripcion-puestos-input']) ||
-                empty($_POST['estado-select'])
+                empty($_POST['listPuestos']) ||
+                empty($_POST['nombre-puestos-input']) ||
+                empty($_POST['descripcion-puestos-input'])
             ) {
                 $arrResponse = array("status" => false, "msg" => 'Datos incorrectos .');
             } else {
@@ -72,19 +72,30 @@ class Cli_puestos extends Controllers
                 $departamento_id = intval($_POST['listPuestos']);
                 $nombre = strClean($_POST['nombre-puestos-input']);
                 $descripcion = strClean($_POST['descripcion-puestos-input']);
-                $estado = intval($_POST['estado-select']);
+
+                if (strlen($nombre) < 3) {
+                    $arrResponse = ["status" => false, "msg" => "El nombre debe tener al menos 3 caracteres"];
+                    echo json_encode($arrResponse);
+                    die();
+                }
+
+                if (strlen($descripcion) < 3) {
+                    $arrResponse = ["status" => false, "msg" => "La descripcion debe tener al menos 3 caracteres"];
+                    echo json_encode($arrResponse);
+                    die();
+                }
 
                 if ($intIdpuesto == 0) {
 
                     //Crear 
                     if ($_SESSION['permisosMod']['w']) {
-                        $request_puesto = $this->model->insertPuesto($departamento_id, $nombre, $descripcion, $estado);
+                        $request_puesto = $this->model->insertPuesto($departamento_id, $nombre, $descripcion);
                         $option = 1;
                     }
                 } else {
                     //Actualizar
                     if ($_SESSION['permisosMod']['u']) {
-                        $request_puesto = $this->model->updatePuesto($intIdpuesto, $departamento_id, $nombre, $descripcion, $estado);
+                        $request_puesto = $this->model->updatePuesto($intIdpuesto, $departamento_id, $nombre, $descripcion);
                         $option = 2;
                     }
                 }

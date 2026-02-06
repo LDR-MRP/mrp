@@ -16,10 +16,6 @@ class Inv_movimientosinventarioModel extends Mysql
         parent::__construct();
     }
 
-
-
-
-
     public function insertMovimiento(
         int $inventarioid,
         int $almacenid,
@@ -158,4 +154,108 @@ class Inv_movimientosinventarioModel extends Mysql
         WHERE estado = 2
     ");
     }
+
+    public function insertMovimientoMasivo(
+    int $almacenid,
+    int $concepmovid,
+    string $referencia,
+    array $inventarios,
+    array $cantidades,
+    array $costos
+){
+    $concepto = $this->select("SELECT signo FROM wms_conceptos_mov WHERE idconcepmov = $concepmovid");
+    if(!$concepto) return "Concepto inválido";
+
+    $signo = (int)$concepto['signo'];
+
+
+    try {
+
+        $numRow = $this->select("
+            SELECT IFNULL(MAX(numero_movimiento),0)+1 AS num
+            FROM wms_movimientos_inventario
+            WHERE almacenid = $almacenid
+        ");
+        $num = (int)$numRow['num'];
+
+        $insertados = 0;
+
+        foreach($inventarios as $i => $inventarioid){
+
+            if(empty($inventarioid) || empty($cantidades[$i])) continue;
+
+            $cantidad = (float)$cantidades[$i];
+            $costo    = (float)$costos[$i];
+
+            $row = $this->select("
+                SELECT existencia 
+                FROM wms_multialmacen
+                WHERE inventarioid = $inventarioid 
+                  AND almacenid = $almacenid
+            ");
+
+            $existencia_actual = $row ? (float)$row['existencia'] : 0;
+            $nueva_existencia  = $existencia_actual + ($cantidad * $signo);
+
+            if($nueva_existencia < 0){
+                throw new Exception("Stock insuficiente en producto ID $inventarioid");
+            }
+
+            // insertar movimiento
+            $this->insert("
+                INSERT INTO wms_movimientos_inventario
+                (inventarioid, almacenid, numero_movimiento, concepmovid,
+                 referencia, cantidad, costo_cantidad, existencia, signo,
+                 fecha_movimiento, estado)
+                VALUES (?,?,?,?,?,?,?,?,?,NOW(),2)
+            ",[
+                $inventarioid,
+                $almacenid,
+                $num,
+                $concepmovid,
+                $referencia,
+                $cantidad,
+                $costo,
+                $nueva_existencia,
+                $signo
+            ]);
+
+            // actualizar stock
+            $this->insert("
+                INSERT INTO wms_multialmacen (inventarioid, almacenid, existencia)
+                VALUES (?,?,?)
+                ON DUPLICATE KEY UPDATE existencia=?
+            ",[
+                $inventarioid,
+                $almacenid,
+                $nueva_existencia,
+                $nueva_existencia
+            ]);
+
+            $insertados++;
+        }
+
+        if($insertados == 0){
+            throw new Exception("No se insertó ninguna partida válida");
+        }
+
+        return true;
+
+    } catch(Exception $e){
+        return $e->getMessage();
+    }
+}
+
+
+
+
+public function selectConceptoInfo($id)
+{
+    return $this->select("SELECT cpn 
+        FROM wms_conceptos_mov 
+        WHERE idconcepmov = $id
+    ");
+}
+
+    
 }

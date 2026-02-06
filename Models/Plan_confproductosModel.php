@@ -702,7 +702,7 @@ public function selectOptionEstacionesByLinea($idlinea)
 		return $request;
 	}
 
-public function selectHerramientas(int $idalmacen)
+    public function selectHerramientasv1(int $idalmacen)
 {
     $this->intIdalmacen = (int)$idalmacen;
     $sql = "SELECT
@@ -727,7 +727,31 @@ public function selectHerramientas(int $idalmacen)
     return $this->select_all($sql) ?: [];
 }
 
-public function selectComponentes(int $idalmacen)
+public function selectHerramientas(int $idalmacen)
+{
+    $this->intIdalmacen = (int)$idalmacen;
+    $sql = "SELECT
+            mov.idmultialmacen,
+            mov.inventarioid,
+            mov.almacenid,
+            -- mov.cantidad,
+            -- mov.fecha_movimiento,
+            mov.existencia,
+            inv.cve_articulo,
+            inv.descripcion AS descripcion_articulo,
+            inv.unidad_salida,
+            inv.ultimo_costo,
+			inv.tipo_elemento
+        FROM wms_multialmacen mov
+        INNER JOIN wms_inventario inv ON inv.idinventario = mov.inventarioid
+        WHERE  mov.almacenid = {$this->intIdalmacen}
+		  AND inv.tipo_elemento='H'
+    ";
+
+    return $this->select_all($sql) ?: [];
+}
+
+public function selectComponentesv1(int $idalmacen)
 {
     $this->intIdalmacen = (int)$idalmacen;
     $sql = "SELECT
@@ -747,6 +771,30 @@ public function selectComponentes(int $idalmacen)
         INNER JOIN wms_inventario inv ON inv.idinventario = mov.inventarioid
         WHERE mov.estado = 2
           AND mov.almacenid = {$this->intIdalmacen}
+		  AND inv.tipo_elemento='C'
+    ";
+
+    return $this->select_all($sql) ?: [];
+}
+
+public function selectComponentes(int $idalmacen)
+{
+    $this->intIdalmacen = (int)$idalmacen;
+    $sql = "SELECT
+            mov.idmultialmacen,
+            mov.inventarioid,
+            mov.almacenid,
+            -- mov.cantidad,
+            -- mov.fecha_movimiento,
+			mov.existencia,
+            inv.cve_articulo,
+            inv.descripcion AS descripcion_articulo,
+            inv.unidad_salida,
+            inv.ultimo_costo,
+			inv.tipo_elemento
+        FROM wms_multialmacen mov
+        INNER JOIN wms_inventario inv ON inv.idinventario = mov.inventarioid
+        WHERE mov.almacenid = {$this->intIdalmacen}
 		  AND inv.tipo_elemento='C'
     ";
 
@@ -1261,12 +1309,12 @@ public function selectProductoReporte(int $productoid)
     $this->intIdProducto = $productoid;
 
 
-    $sqlProd = "SELECT p.*,l.nombre_linea,pl.nombre_planta
+    $sqlProd = "SELECT p.*,l.descripcion as nombre_linea
                 FROM mrp_productos p
-				INNER JOIN mrp_linea AS l
-				ON p.lineaproductoid = l.idlinea
-				INNER JOIN mrp_planta AS pl
-				ON l.plantaid = pl.idplanta
+				INNER JOIN wms_linea_producto AS l
+				ON p.lineaproductoid = l.idlineaproducto 
+				-- INNER JOIN mrp_planta AS pl
+				-- ON l.plantaid = pl.idplanta
                 WHERE p.idproducto = {$this->intIdProducto}
                 LIMIT 1";
     $producto = $this->select($sqlProd);

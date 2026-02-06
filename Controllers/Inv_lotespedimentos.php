@@ -89,7 +89,7 @@ class Inv_lotespedimentos extends Controllers
                 die();
             }
 
-            $id = intval($_POST['id_ltpd']);
+            $id = isset($_POST['id_ltpd']) ? intval($_POST['id_ltpd']) : 0;
 
             $data = [
                 'inventarioid' => $_POST['inventarioid'],
@@ -111,9 +111,6 @@ class Inv_lotespedimentos extends Controllers
                 $request = $this->model->updateLotePedimento($id, $data);
                 $msg = 'Lote actualizado correctamente';
             }
-
-
-            $request = $this->model->insertLote($data);
 
             if ($request > 0) {
                 $arrResponse = ['status' => true, 'msg' => 'Lote registrado correctamente'];
@@ -147,7 +144,7 @@ class Inv_lotespedimentos extends Controllers
                 die();
             }
 
-            $id = intval($_POST['id_ltpd']);
+            $id = isset($_POST['id_ltpd']) ? intval($_POST['id_ltpd']) : 0;
 
             $data = [
                 'inventarioid'    => $_POST['inventarioid'],
@@ -245,4 +242,25 @@ class Inv_lotespedimentos extends Controllers
         }
         die();
     }
+
+    //configuracion de lotes y pedimentos desde modal inventario
+    public function getLtpdAsignados($idinventario)
+{
+    $idinventario = intval($idinventario);
+
+    if ($idinventario <= 0) {
+        echo json_encode(["status"=>true,"data"=>[]]);
+        die();
+    }
+
+    $data = $this->model->getLtpdAsignados($idinventario);
+
+    echo json_encode([
+        "status" => true,
+        "data" => $data
+    ]);
+    die();
+}
+
+
 }

@@ -1284,8 +1284,8 @@ public function setHerramientasEstacion()
 
     echo json_encode(['status'=>true,'msg'=>'Componentes sincronizados correctamente'], JSON_UNESCAPED_UNICODE);
     exit;
-}
-
+} 
+ 
 		// --------------------------------------------------------------------
 	// FUNCIÓN PARA MOSTRAR TODOS LOS COMPONENTES
 	// --------------------------------------------------------------------
@@ -1339,7 +1339,7 @@ public function getRuta($rutaid)
             'status' => false,
             'msg'    => 'No se encontró la ruta'
         ]);
-        die();
+        die(); 
     }
     echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
     die();
@@ -1351,7 +1351,7 @@ public function getRuta($rutaid)
 
 	public function getProductoReporte($idproducto)
 	{ 
-		// if($_SESSION['permisosMod']['r']){
+		// if($_SESSION['permisosMod']['r']){ 
 		$intidproducto = intval($idproducto);
 		if ($intidproducto > 0) {
 			$arrData = $this->model->selectProductoReporte($intidproducto);

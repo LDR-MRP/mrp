@@ -61,8 +61,8 @@ class Cli_departamentos extends Controllers
     {
         if ($_POST) {
             if (
-                empty($_POST['nombre-departamento-input']) || empty($_POST['descripcion-departamento-input']) ||
-                empty($_POST['estado-select'])
+                empty($_POST['nombre-departamento-input']) ||
+                empty($_POST['descripcion-departamento-input'])
             ) {
                 $arrResponse = array("status" => false, "msg" => 'Datos incorrectos .');
             } else {
@@ -70,19 +70,30 @@ class Cli_departamentos extends Controllers
                 $intiddepartamento = intval($_POST['iddepartamento']);
                 $nombre = strClean($_POST['nombre-departamento-input']);
                 $descripcion = strClean($_POST['descripcion-departamento-input']);
-                $estado = intval($_POST['estado-select']);
+
+                if (strlen($nombre) < 3) {
+                    $arrResponse = ["status" => false, "msg" => "El nombre debe tener al menos 3 caracteres"];
+                    echo json_encode($arrResponse);
+                    die();
+                }
+
+                if (strlen($descripcion) < 3) {
+                    $arrResponse = ["status" => false, "msg" => "La descripcion debe tener al menos 3 caracteres"];
+                    echo json_encode($arrResponse);
+                    die();
+                }
 
                 if ($intiddepartamento == 0) {
 
                     //Crear departamento
                     if ($_SESSION['permisosMod']['w']) {
-                        $request_departamento = $this->model->insertDepartamento($nombre, $descripcion, $estado);
+                        $request_departamento = $this->model->insertDepartamento($nombre, $descripcion);
                         $option = 1;
                     }
                 } else {
                     //Actualizar departamento   
                     if ($_SESSION['permisosMod']['u']) {
-                        $request_departamento = $this->model->updateDepartamento($intiddepartamento, $nombre, $descripcion, $estado);
+                        $request_departamento = $this->model->updateDepartamento($intiddepartamento, $nombre, $descripcion);
                         $option = 2;
                     }
                 }

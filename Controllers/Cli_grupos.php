@@ -63,9 +63,7 @@ class Cli_grupos extends Controllers
 
             if (
                 empty($_POST['codigo-grupo-input']) ||
-                empty($_POST['nombre-grupo-input']) ||
-                empty($_POST['descripcion-grupo-input']) ||
-                empty($_POST['estado-select'])
+                empty($_POST['nombre-grupo-input'])
             ) {
                 $arrResponse = array(
                     "status" => false,
@@ -77,7 +75,18 @@ class Cli_grupos extends Controllers
                 $codigo = strClean($_POST['codigo-grupo-input']);
                 $nombre = strClean($_POST['nombre-grupo-input']);
                 $descripcion = strClean($_POST['descripcion-grupo-input']);
-                $estado = intval($_POST['estado-select']);
+
+                if (!preg_match('/^[A-Z0-9_-]+$/i', $codigo)) {
+                    $arrResponse = ["status" => false, "msg" => "El código tiene caracteres no válidos"];
+                    echo json_encode($arrResponse);
+                    die();
+                }
+
+                if (strlen($nombre) < 3) {
+                    $arrResponse = ["status" => false, "msg" => "El nombre debe tener al menos 3 caracteres"];
+                    echo json_encode($arrResponse);
+                    die();
+                }
 
                 if ($intIdgrupo == 0) {
                     // INSERT
@@ -86,7 +95,6 @@ class Cli_grupos extends Controllers
                             $codigo,
                             $nombre,
                             $descripcion,
-                            $estado
                         );
                         $option = 1;
                     }
@@ -98,7 +106,6 @@ class Cli_grupos extends Controllers
                             $codigo,
                             $nombre,
                             $descripcion,
-                            $estado
                         );
                         $option = 2;
                     }
@@ -118,7 +125,7 @@ class Cli_grupos extends Controllers
                             'tipo' => 'update'
                         );
                     }
-                } elseif ($request_grupo === "exist") {
+                } else if ($request_grupo === "exist") {
                     $arrResponse = array(
                         'status' => false,
                         'msg' => '¡Atención! El grupo ya existe.'
@@ -129,10 +136,8 @@ class Cli_grupos extends Controllers
                         'msg' => 'No es posible almacenar los datos.'
                     );
                 }
+                echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
             }
-
-            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-            die();
         }
     }
 

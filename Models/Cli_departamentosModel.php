@@ -5,7 +5,6 @@ class Cli_departamentosModel extends Mysql
     public $intIddepartamento;
     public $strNombre;
     public $strDescripcion;
-    public $intEstado;
 
     public function __construct()
     {
@@ -37,22 +36,20 @@ class Cli_departamentosModel extends Mysql
         return $request;
     }
 
-    public function insertDepartamento($nombre, $descripcion, $estado)
+    public function insertDepartamento($nombre, $descripcion)
     {
         $this->strNombre = $nombre;
         $this->strDescripcion = $descripcion;
-        $this->intEstado = $estado;
 
         $sql = "SELECT * FROM cli_departamentos WHERE nombre = '{$this->strNombre}' OR descripcion = '{$this->strDescripcion}'";
         $request = $this->select_all($sql);
 
         if (empty($request)) {
 
-            $query_insert = "INSERT INTO cli_departamentos(nombre, descripcion, estado) VALUES(?,?,?)";
+            $query_insert = "INSERT INTO cli_departamentos(nombre, descripcion) VALUES(?,?)";
             $arrData = array(
                 $this->strNombre,
                 $this->strDescripcion,
-                $this->intEstado
             );
             $request_insert = $this->insert($query_insert, $arrData);
             return $request_insert;
@@ -61,21 +58,19 @@ class Cli_departamentosModel extends Mysql
         }
     }
 
-    public function updateDepartamento($iddepartamento, $nombre, $descripcion, $estado)
+    public function updateDepartamento($iddepartamento, $nombre, $descripcion)
     {
         $this->intIddepartamento = $iddepartamento;
         $this->strNombre = $nombre;
         $this->strDescripcion = $descripcion;
-        $this->intEstado = $estado;
 
         $sql = "SELECT * FROM cli_departamentos WHERE (nombre = '$this->strNombre' OR descripcion = '$this->strDescripcion') AND id != $this->intIddepartamento";
         $request = $this->select_all($sql);
         if (empty($request)) {
-            $sql = "UPDATE cli_departamentos SET nombre = ?, descripcion = ?, estado = ? WHERE id = $this->intIddepartamento ";
+            $sql = "UPDATE cli_departamentos SET nombre = ?, descripcion = ? WHERE id = $this->intIddepartamento ";
             $arrData = array(
                 $this->strNombre,
                 $this->strDescripcion,
-                $this->intEstado
             );
             $request = $this->update($sql, $arrData);
             return $request;
@@ -83,6 +78,4 @@ class Cli_departamentosModel extends Mysql
             return "exist";
         }
     }
-    
-
 }
