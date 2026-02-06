@@ -366,6 +366,24 @@
   border-radius: 18px;
   box-shadow: 0 2px 10px rgba(15,23,42,.06);
   border: 1px solid rgba(226,232,240,.9);
+}/*modal para vizualisar la informacion del xml catalogos de productos y servicios*/
+.modalSAT{
+  background-color: #d3ebf8a6;
+}
+.modalUNIDSAT{
+  background-color: #d3ebf8a6;
+}
+.modalFRACCIONSAT{
+  background-color: #d3ebf8a6;
+}
+.modalADUANASAT{
+  background-color: #d3ebf8a6;
+}
+.informacionmodalproducto{
+  background-color: #b7e9dca6;
+  border-radius: 18px;
+  box-shadow: 0 2px 10px rgba(15,23,42,.06);
+  border: 1px solid rgba(226,232,240,.9);
 }
 
 

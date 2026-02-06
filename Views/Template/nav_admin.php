@@ -183,6 +183,24 @@
 
                                       <?php if (!empty($_SESSION['permisos'][21]['r'])) { ?>
                                           <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/inv_inventario" class="nav-link" data-key="t-detached">Alta de inventario</a>
+                                          </li>
+                                      <?php } ?>
+
+                                      <?php if (!empty($_SESSION['permisos'][71]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/inv_asignacionesinventario" class="nav-link" data-key="t-detached">Asignaciones de inventario</a>
+                                          </li>
+                                      <?php } ?>
+
+                                      <?php if (!empty($_SESSION['permisos'][23]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/inv_concepmovinventarios" class="nav-link" data-key="t-detached">Conceptos de movimientos</a>
+                                          </li>
+                                      <?php } ?>
+
+                                      <?php if (!empty($_SESSION['permisos'][21]['r'])) { ?>
+                                          <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_esquemaimpuestos" class="nav-link" data-key="t-detached">Impuestos</a>
                                           </li>
                                       <?php } ?>
