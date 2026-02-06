@@ -239,6 +239,10 @@
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_multialmacenes" class="nav-link" data-key="t-detached">Multialmacenes</a>
                                           </li>
+                                      <?php if (!empty($_SESSION['permisos'][26]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/inv_multialmacenes" class="nav-link" data-key="t-detached">Multialmacenes</a>
+                                          </li>
                                       <?php } ?>
 
                                       <?php if (!empty($_SESSION['permisos'][17]['r'])) { ?>
@@ -310,13 +314,19 @@
                       <?php if (!empty($_SESSION['permisos'][39]['r']) || !empty($_SESSION['permisos'][40]['r'])) { ?>
                           <li class="nav-item">
                               <a class="nav-link menu-link" href="#sidebarMateriales" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarMateriales">
-                                  <i data-feather="layout" class="icon-dual"></i> <span data-key="t-layouts">Distribuidores</span>
+                                  <i data-feather="layout" class="icon-dual"></i> <span data-key="t-layouts">Clientes</span>
                               </a>
                               <div class="collapse menu-dropdown" id="sidebarMateriales">
                                   <ul class="nav nav-sm flex-column">
-                                      <?php if (!empty($_SESSION['permisos'][40]['r'])) { ?>
+                                      <?php if (!empty($_SESSION['permisos'][39]['r'])) { ?>
                                           <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/cli_marcas" class="nav-link" data-key="t-detached">Marcas</a>
+                                              <a href="<?= base_url(); ?>/cli_clientes" class="nav-link" data-key="t-horizontal">Clientes</a>
+                                          </li>
+                                      <?php } ?>
+
+                                      <?php if (!empty($_SESSION['permisos'][46]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/cli_tipos_clientes" class="nav-link" data-key="t-detached">Tipo de clientes</a>
                                           </li>
                                       <?php } ?>
 
@@ -329,12 +339,6 @@
                                       <?php if (!empty($_SESSION['permisos'][42]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/cli_grupos" class="nav-link" data-key="t-detached">Grupos</a>
-                                          </li>
-                                      <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][39]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/cli_clientes" class="nav-link" data-key="t-horizontal">Distribuidores</a>
                                           </li>
                                       <?php } ?>
 
@@ -353,6 +357,12 @@
                                       <?php if (!empty($_SESSION['permisos'][41]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/cli_departamentos" class="nav-link" data-key="t-detached">Departamentos</a>
+                                          </li>
+                                      <?php } ?>
+
+                                      <?php if (!empty($_SESSION['permisos'][40]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/cli_marcas" class="nav-link" data-key="t-detached">Marcas</a>
                                           </li>
                                       <?php } ?>
                                   </ul>

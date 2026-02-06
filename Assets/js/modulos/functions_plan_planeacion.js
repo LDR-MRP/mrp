@@ -1,25 +1,21 @@
-// --------------------------
-//  VISTAS
-// --------------------------
+
 const viewHome = document.getElementById('viewHome');
 const viewNueva = document.getElementById('viewNueva');
 const viewListado = document.getElementById('viewListado');
-
 
 const btnNuevaPlaneacion = document.getElementById('btnNuevaPlaneacion');
 const btnPendientes = document.getElementById('btnPendientes');
 const btnFinalizadas = document.getElementById('btnFinalizadas');
 const btnCanceladas = document.getElementById('btnCanceladas');
 
-
 const btnVolverHome1 = document.getElementById('btnVolverHome1');
 const btnVolverHome2 = document.getElementById('btnVolverHome2');
 
-// nueva acciones
+
 const btnCancelarNueva = document.getElementById('btnCancelarNueva');
 const btnGuardarPlaneacion = document.getElementById('btnGuardarPlaneacion');
 
-// listado
+
 const badgeListado = document.getElementById('badgeListado');
 const breadcrumbListado = document.getElementById('breadcrumbListado');
 const listadoTitulo = document.getElementById('listadoTitulo');
@@ -27,7 +23,7 @@ const listadoSubtitulo = document.getElementById('listadoSubtitulo');
 const tbodyListados = document.getElementById('tbodyListados');
 const btnRefrescarListado = document.getElementById('btnRefrescarListado');
 
-// filtros
+
 const filterSearch = document.getElementById('filterSearch');
 const filterDesde = document.getElementById('filterDesde');
 const filterHasta = document.getElementById('filterHasta');
@@ -35,14 +31,12 @@ const filterPrioridad = document.getElementById('filterPrioridad');
 
 let currentListado = null;
 
-// =====================================================
-//  FALTANTES (COMPONENTES / HERRAMIENTAS)
-// =====================================================
-let estacionesSinComponentes = new Set();        
-let estacionesSinHerramientas = new Set();        
 
-let faltantesComponentesMap = {};                
-let faltantesHerramientasMap = {};               
+let estacionesSinComponentes = new Set();
+let estacionesSinHerramientas = new Set();
+
+let faltantesComponentesMap = {};
+let faltantesHerramientasMap = {};
 
 function limpiarFaltantesUI() {
   estacionesSinComponentes = new Set();
@@ -52,9 +46,6 @@ function limpiarFaltantesUI() {
 }
 
 
-// =====================================================
-//  LOADING
-// =====================================================
 let divLoading = null;
 
 function showLoading() { if (divLoading) divLoading.style.display = "flex"; }
@@ -71,7 +62,7 @@ async function fetchJson(url, options = {}) {
       data = text ? JSON.parse(text) : {};
     } catch (e) {
       console.error("RESPUESTA NO JSON:", text);
-      throw new Error("El servidor no devolvió elñb JSON");
+      throw new Error("El servidor no devolvió el JSON");
     }
 
     if (!res.ok) throw new Error(data?.msg || `HTTP ${res.status}`);
@@ -82,17 +73,85 @@ async function fetchJson(url, options = {}) {
 }
 
 
-document.addEventListener('DOMContentLoaded', function () {
+function pad2(n) { return String(n).padStart(2, '0'); }
+function todayYYYYMMDD() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
 
+function setMinFechaInicioHoy() {
+  const fi = document.querySelector('#fechaInicio');
+  if (!fi) return;
+
+  const hoy = todayYYYYMMDD();
+  fi.setAttribute('min', hoy);
+
+
+  if (fi.value && fi.value < hoy) fi.value = hoy;
+}
+
+function setMinFechaRequeridaFromInicio() {
+  const fi = document.querySelector('#fechaInicio');
+  const fr = document.querySelector('#fechaRequerida');
+  if (!fi || !fr) return;
+
+  const hoy = todayYYYYMMDD();
+  const inicio = fi.value || hoy;
+
+
+  fr.setAttribute('min', inicio);
+
+
+  if (fr.value && fr.value < inicio) fr.value = inicio;
+}
+
+function initValidacionFechas() {
+  const fi = document.querySelector('#fechaInicio');
+  const fr = document.querySelector('#fechaRequerida');
+
+  setMinFechaInicioHoy();
+  setMinFechaRequeridaFromInicio();
+
+  if (fi) {
+    fi.addEventListener('change', () => {
+      setMinFechaInicioHoy();
+      setMinFechaRequeridaFromInicio();
+    });
+    fi.addEventListener('input', () => {
+      setMinFechaInicioHoy();
+      setMinFechaRequeridaFromInicio();
+    });
+  }
+
+  if (fr) {
+    fr.addEventListener('change', () => {
+      setMinFechaRequeridaFromInicio();
+    });
+    fr.addEventListener('input', () => {
+      setMinFechaRequeridaFromInicio();
+    });
+  }
+}
+
+// =====================================================
+//  INIT
+// =====================================================
+document.addEventListener('DOMContentLoaded', function () {
   divLoading = document.querySelector("#divLoading");
   hideLoading();
 
+
+  initValidacionFechas();
+
   fntProductos();
+
+  fntSupervisores();
 
   const btnAplicar = document.querySelector('#btnAplicarAsignacion');
   if (btnAplicar) btnAplicar.addEventListener('click', onAplicarAsignacion);
 
   if (btnGuardarPlaneacion) btnGuardarPlaneacion.addEventListener('click', guardarPlaneacionHandler);
+
 
   const selAy = document.querySelector('#selectAyudantes');
   if (selAy) {
@@ -103,15 +162,24 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  const selEnc = document.querySelector('#listOperadores');
+  if (selEnc) {
+    selEnc.addEventListener('change', () => {
+      const estacionid = document.querySelector('#modalEstacionId')?.value || "";
+      if (!estacionid) return;
+      aplicarBloqueoEncargados(estacionid);
+    });
+  }
+
 
   document.addEventListener('click', (e) => {
-  const btnComp = e.target.closest('[data-action="ver-faltantes-comp"]');
-  if (btnComp) {
-    const estacionid = Number(btnComp.getAttribute('data-estacionid') || 0);
-    const nombre = btnComp.getAttribute('data-estacion-nombre') || '';
-    abrirModalFaltantesComponentes(estacionid, nombre);
-    return;
-  }
+    const btnComp = e.target.closest('[data-action="ver-faltantes-comp"]');
+    if (btnComp) {
+      const estacionid = Number(btnComp.getAttribute('data-estacionid') || 0);
+      const nombre = btnComp.getAttribute('data-estacion-nombre') || '';
+      abrirModalFaltantesComponentes(estacionid, nombre);
+      return;
+    }
 
     const btnHer = e.target.closest('[data-action="ver-faltantes-her"]');
     if (btnHer) {
@@ -122,11 +190,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-
   if (btnPendientes) btnPendientes.addEventListener('click', () => goListado('PENDIENTE'));
   if (btnFinalizadas) btnFinalizadas.addEventListener('click', () => goListado('FINALIZADA'));
   if (btnCanceladas) btnCanceladas.addEventListener('click', () => goListado('CANCELADA'));
-
 
   if (btnNuevaPlaneacion) {
     btnNuevaPlaneacion.addEventListener('click', async () => {
@@ -134,7 +200,6 @@ document.addEventListener('DOMContentLoaded', function () {
       goNueva();
     });
   }
-
 
   [btnVolverHome1, btnVolverHome2, btnCancelarNueva].filter(Boolean).forEach(btn => {
     btn.addEventListener('click', async (e) => {
@@ -166,78 +231,59 @@ document.addEventListener('DOMContentLoaded', function () {
 
   goHome();
 
+  // =====================================================
+  //  CALENDS
+  // =====================================================
+  const calendarEl = document.getElementById('calendar');
+  if (!calendarEl) return;
 
+  const calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'dayGridMonth',
+    locale: 'es',
+    height: 'auto',
+    expandRows: true,
 
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,timeGridDay'
+    },
 
+    buttonText: { today: 'Hoy', month: 'Mes', week: 'Semana', day: 'Día' },
 
+    events: async (info, successCallback, failureCallback) => {
+      try {
+        const eventos = await cargarOrdenesParaCalendar();
+        successCallback(eventos);
+      } catch (err) {
+        console.error(err);
+        failureCallback(err);
+      }
+    },
 
+    eventDidMount: function (info) {
+      const bg = info.event.backgroundColor;
 
+      if (bg) {
+        info.el.style.backgroundColor = bg;
+        info.el.style.borderColor = bg;
+        info.el.style.color = '#ffffff';
+      }
 
-const calendarEl = document.getElementById('calendar');
+      const folio = info.event.extendedProps?.num_orden || info.event.title;
+      const label = info.event.extendedProps?.fase_label || 'Sin estatus';
+      info.el.setAttribute('title', `${label} • Orden de trabajo #${folio}`);
+    },
 
-  if (!calendarEl) return; 
+    eventClick: (info) => {
+      const folio = info.event.extendedProps?.num_orden || info.event.title;
+      if (!folio) return;
 
-const calendar = new FullCalendar.Calendar(calendarEl, {
-  initialView: 'dayGridMonth',
-  locale: 'es',
-  height: 'auto',
-  expandRows: true,
-
-  headerToolbar: {
-    left: 'prev,next today',
-    center: 'title',
-    right: 'dayGridMonth,timeGridWeek,timeGridDay'
-  },
-
-  buttonText: { today: 'Hoy', month: 'Mes', week: 'Semana', day: 'Día' },
-
-  // ============================
-  // EVENTOS DESDE API
-  // ============================
-  events: async (info, successCallback, failureCallback) => {
-    try {
-      const eventos = await cargarOrdenesParaCalendar();
-      successCallback(eventos);
-    } catch (err) {
-      console.error(err);
-      failureCallback(err);
+      abrirModalPlaneacionDesdeCalendar({ folio });
     }
-  },
+  });
 
-
-  eventDidMount: function(info) {
-    const bg = info.event.backgroundColor;
-
-    if (bg) {
-      info.el.style.backgroundColor = bg;
-      info.el.style.borderColor = bg;
-      info.el.style.color = '#ffffff';
-    }
-
-   const folio = info.event.extendedProps?.num_orden || info.event.title;
-const label = info.event.extendedProps?.fase_label || 'Sin estatus';
-info.el.setAttribute('title', `${label} • Orden de trabajo #${folio}`);
-
-  },
-
-
-eventClick: (info) => {
-  const folio = info.event.extendedProps?.num_orden || info.event.title;
-  if (!folio) return;
-
-  abrirModalPlaneacionDesdeCalendar({ folio });
-}
-
-
-});
-
-calendar.render();
-
-
-
-
-
-
+  calendar.render();
 });
 
 // =====================================================
@@ -299,10 +345,8 @@ async function goListado(tipo) {
   await renderListado(tipo);
 }
 
-
-
 // =====================================================
-//  LISTADO 
+//  LISTADO
 // =====================================================
 function getListadoEndpoint(tipo) {
   if (tipo === 'PENDIENTE') return base_url + '/plan_planeacion/getPendientes';
@@ -325,22 +369,6 @@ function escapeHtml(str = "") {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
-
-function getText(v, fallback = '—') {
-  if (v === null || v === undefined) return fallback;
-  const s = String(v).trim();
-  return s ? s : fallback;
-}
-
-function arrayToNames(arr) {
-  if (!Array.isArray(arr) || !arr.length) return '—';
-
-  return arr.map(x => {
-    if (x && typeof x === 'object') return getText(x.nombre ?? x.name ?? x.usuario ?? x.label ?? x.text, '');
-    return getText(x, '');
-  }).filter(Boolean).join(', ') || '—';
-}
-
 
 function badgePrioridad(p) {
   if (p === 'CRITICA') return '<span class="badge bg-danger-subtle text-danger border">CRÍTICA</span>';
@@ -383,8 +411,7 @@ function applyClientFilters(rows) {
 async function renderListado(tipo) {
   if (!tbodyListados) return;
 
-  tbodyListados.innerHTML = `
-    <tr><td colspan="8" class="text-center text-muted py-4">Cargando listado…</td></tr>`;
+  tbodyListados.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Cargando listado…</td></tr>`;
 
   try {
     const url = getListadoEndpoint(tipo);
@@ -424,11 +451,11 @@ async function renderListado(tipo) {
         <td>${escapeHtml(String(r.requerida || ''))}</td>
         <td>${badgeEstatus(String(r.estatus || tipo).trim())}</td>
         <td class="text-end">
-  <a class="btn btn-outline-primary btn-sm me-1"
-     href="${base_url}/plan_planeacion/orden/${encodeURIComponent(r.folio)}">
-    <i class="ri-eye-line"></i>
-    <span class="d-none d-md-inline">Ver</span>
-  </a>
+          <a class="btn btn-outline-primary btn-sm me-1"
+             href="${base_url}/plan_planeacion/orden/${encodeURIComponent(r.folio)}">
+            <i class="ri-eye-line"></i>
+            <span class="d-none d-md-inline">Ver</span>
+          </a>
 
           <button type="button" class="btn btn-outline-danger btn-sm" data-action="Cancelar" data-id="${escapeHtml(idRow)}">
             <i class="ri-delete-bin-6-line"></i> <span class="d-none d-md-inline">Cancelar</span>
@@ -447,23 +474,13 @@ async function renderListado(tipo) {
   }
 }
 
-
-
 function detalleOrden(numOrden) {
-
   const url = base_url + '/plan_planeacion/orden/' + encodeURIComponent(numOrden);
   window.location.href = url;
 }
 
-
-
-
-
-
-
-
 // =====================================================
-//  MANTENIMIENTO UI 
+//  MANTENIMIENTO UI
 // =====================================================
 function mantenimientoUI(mantTexto = "") {
   const t = String(mantTexto || "").toLowerCase();
@@ -558,7 +575,7 @@ function renderTbodyEstaciones(detalle = []) {
     const mantHtml = mantenimientoUI(mantTxt);
 
     const sinComp = estacionesSinComponentes.has(estacionid);
-    const sinHer  = estacionesSinHerramientas.has(estacionid);
+    const sinHer = estacionesSinHerramientas.has(estacionid);
 
     const compHtml = sinComp ? `
       <div class="mt-1">
@@ -625,7 +642,7 @@ function renderTbodyEstaciones(detalle = []) {
 }
 
 // =====================================================
-//  API PRODUCTOSd / ESTACIONES
+//  API PRODUCTOS / ESTACIONES
 // =====================================================
 async function fntProductos(selectedValue = "") {
   const selectLocal = document.querySelector('#selectProducto');
@@ -656,12 +673,57 @@ async function fntProductos(selectedValue = "") {
         limpiarFaltantesUI();
         renderEmptyTbody();
 
-        try { localStorage.removeItem(getLSKeyAsignaciones()); } catch (e) {}
+        try { localStorage.removeItem(getLSKeyAsignaciones()); } catch (e) { }
 
         await fntEstaciones(this.value || "");
       };
     } else {
       console.error("Error cargando productos", request.status);
+    }
+  };
+}
+
+
+
+
+// =====================================================
+//  api para obtener os supervispres
+// =====================================================
+async function fntSupervisores(selectedValue = "") {
+  const selectLocalS = document.querySelector('#selectSupervisor');
+  if (!selectLocalS) return;
+
+  const ajaxUrl = base_url + '/plan_planeacion/getSelectSupervisor';
+
+  showLoading();
+
+  const request = (window.XMLHttpRequest)
+    ? new XMLHttpRequest()
+    : new ActiveXObject('Microsoft.XMLHTTP');
+
+  request.open("GET", ajaxUrl, true);
+  request.send();
+
+  request.onreadystatechange = function () {
+    if (request.readyState !== 4) return;
+
+    hideLoading();
+
+    if (request.status === 200) {
+      selectLocalS.innerHTML = request.responseText;
+
+      if (selectedValue !== "") selectLocalS.value = selectedValue;
+
+      // selectLocalS.onchange = async function () {
+      //   limpiarFaltantesUI();
+      //   renderEmptyTbody();
+
+      //   try { localStorage.removeItem(getLSKeyAsignaciones()); } catch (e) { }
+
+      //   await fntEstaciones(this.value || "");
+      // };
+    } else {
+      console.error("Error cargando supervisores", request.status);
     }
   };
 }
@@ -672,7 +734,7 @@ async function fntEstaciones(idProducto) {
     return;
   }
 
-  limpiarFaltantesUI(); 
+  limpiarFaltantesUI();
 
   try {
     const ajaxUrl = base_url + "/Plan_planeacion/getSelectEstaciones/" + encodeURIComponent(idProducto);
@@ -686,11 +748,9 @@ async function fntEstaciones(idProducto) {
     const ruta = rutas[0] || {};
     const detalle = Array.isArray(ruta.detalle) ? ruta.detalle : [];
 
-    // validar componentes y herramientas para marcar estaciones
     await validarComponentesEnRuta(detalle);
-    await validarHerramientasEnRuta(detalle);
+    // await validarHerramientasEnRuta(detalle);
 
- 
     renderTbodyEstaciones(detalle);
 
   } catch (error) {
@@ -701,7 +761,7 @@ async function fntEstaciones(idProducto) {
 }
 
 // =====================================================
-//  VALIDAR COMPONENTES / HERRAMIENTAS 
+//  VALIDAR COMPONENTES / HERRAMIENTAS
 // =====================================================
 function buildPayloadValidacion(detalle = []) {
   const productoid = Number(document.querySelector('#selectProducto')?.value || 0);
@@ -732,7 +792,6 @@ async function validarComponentesEnRuta(detalle) {
       body: JSON.stringify(payload)
     });
 
-
     if (resp && resp.status === false) {
       const errores = normalizarErrores(resp);
 
@@ -750,7 +809,6 @@ async function validarComponentesEnRuta(detalle) {
     console.error("Error validarComponentesEnRuta:", e);
   }
 }
-
 
 async function validarHerramientasEnRuta(detalle) {
   const payload = buildPayloadValidacion(detalle);
@@ -805,25 +863,23 @@ async function validarHerramientasAntesDeGuardar(payloadPlaneacion) {
 }
 
 // =====================================================
-//  MODALES FALTANTES (COMP / HER)
+//  MODALES FALTANTES
 // =====================================================
 function abrirModalFaltantesComponentes(estacionid, nombreEstacion = '') {
   const modalEl = document.getElementById('modalFaltantesInventario');
   if (!modalEl) {
-    Swal.fire({ icon:'warning', title:'Falta modal', text:'No existe el modal de faltantes de componentes.' });
+    Swal.fire({ icon: 'warning', title: 'Falta modal', text: 'No existe el modal de faltantes de componentes.' });
     return;
   }
 
   const title = modalEl.querySelector('#titleModalFaltantes');
-  const subt  = modalEl.querySelector('#subTitleFaltantes');
+  const subt = modalEl.querySelector('#subTitleFaltantes');
   const tbody = modalEl.querySelector('#tbodyFaltantes');
 
   if (title) title.textContent = 'Faltantes de componentes';
-  if (subt)  subt.textContent  = `Estación: ${nombreEstacion || ('ID ' + estacionid)}`;
+  if (subt) subt.textContent = `Estación: ${nombreEstacion || ('ID ' + estacionid)}`;
 
   const items = faltantesComponentesMap[estacionid] || [];
-
-  console.log(items);
 
   if (tbody) {
     tbody.innerHTML = !items.length
@@ -842,29 +898,21 @@ function abrirModalFaltantesComponentes(estacionid, nombreEstacion = '') {
   bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
-
-
-
-
 function abrirModalFaltantesHerramientas(estacionid, nombreEstacion = '') {
   const modalEl = document.getElementById('modalFaltantesHerramientas');
   if (!modalEl) {
-    Swal.fire({ icon:'warning', title:'Falta modal', text:'No existe el modal de faltantes de herramientas.' });
+    Swal.fire({ icon: 'warning', title: 'Falta modal', text: 'No existe el modal de faltantes de herramientas.' });
     return;
   }
 
   const title = modalEl.querySelector('#titleModalFaltantesHer');
-  const subt  = modalEl.querySelector('#subTitleFaltantesHer');
+  const subt = modalEl.querySelector('#subTitleFaltantesHer');
   const tbody = modalEl.querySelector('#tbodyFaltantesHer');
 
   if (title) title.textContent = 'Faltantes de herramientas';
-  if (subt)  subt.textContent  = `Estación: ${nombreEstacion || ('ID ' + estacionid)}`;
+  if (subt) subt.textContent = `Estación: ${nombreEstacion || ('ID ' + estacionid)}`;
 
   const items = faltantesHerramientasMap[estacionid] || [];
-
-   console.log(items);
-
-
 
   if (tbody) {
     tbody.innerHTML = !items.length ? `
@@ -883,15 +931,13 @@ function abrirModalFaltantesHerramientas(estacionid, nombreEstacion = '') {
   bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
-
 function formatNumber(value) {
   if (value === null || value === undefined || value === '') return '';
-  return Number(value).toLocaleString('es-MX'); 
-
+  return Number(value).toLocaleString('es-MX');
 }
 
 // =====================================================
-//  MODAL ASIGNACIÓN OPERADORES (IGUAL)
+//  MODAL ASIGNACIÓN OPERADORES
 // =====================================================
 function abrirModalOperadores(estacionid, nombreEstacion, proceso) {
   cargarOperadoresDisponibles();
@@ -914,7 +960,10 @@ function abrirModalOperadores(estacionid, nombreEstacion, proceso) {
 
   setTimeout(() => {
     cargarAsignacionEnModal(estacionid);
+
+   
     aplicarBloqueoAyudantes(estacionid);
+    aplicarBloqueoEncargados(estacionid);
   }, 300);
 }
 
@@ -934,6 +983,11 @@ function cargarOperadoresDisponibles() {
     hideLoading();
     if (request.status === 200) {
       sel.innerHTML = `<option value="" selected>-- Selecciona encargado --</option>` + request.responseText;
+
+     
+      const estacionid = document.querySelector('#modalEstacionId')?.value || "";
+      if (estacionid) aplicarBloqueoEncargados(estacionid);
+
     } else {
       console.error("Error cargando encargados", request.status);
     }
@@ -956,12 +1010,20 @@ function cargarOperadoresAyudantes() {
     hideLoading();
     if (request.status === 200) {
       sel.innerHTML = request.responseText;
+
+     
+      const estacionid = document.querySelector('#modalEstacionId')?.value || "";
+      if (estacionid) aplicarBloqueoAyudantes(estacionid);
+
     } else {
       console.error("Error cargando ayudantes", request.status);
     }
   };
 }
 
+// =====================================================
+//  LOCAL STORAGE (ASIGNACIONES)
+// =====================================================
 function getLSKeyAsignaciones() {
   const prod = document.querySelector('#selectProducto')?.value || '0';
   return `plan_asignaciones_prod_${prod}`;
@@ -1075,7 +1137,7 @@ function restaurarAsignacionesEnTabla() {
 }
 
 // =====================================================
-//  BLOQUEO AYUDANTES 
+//  BLOQUEO AYUDANTES
 // =====================================================
 function getAyudantesUsados(exceptEstacionId = null) {
   const asignaciones = getAsignacionesLS();
@@ -1106,13 +1168,45 @@ function aplicarBloqueoAyudantes(estacionidActual) {
 }
 
 // =====================================================
-//  PAYLOAD / VALIDACIONES 
+//  BLOQUEO ENCARGADOS
+// =====================================================
+function getEncargadosUsados(exceptEstacionId = null) {
+  const asignaciones = getAsignacionesLS();
+  const usados = new Set();
+
+  Object.keys(asignaciones).forEach((estId) => {
+    if (exceptEstacionId && String(estId) === String(exceptEstacionId)) return;
+    const enc = asignaciones[estId]?.encargado ?? null;
+    if (enc) usados.add(String(enc));
+  });
+
+  return usados;
+}
+
+function aplicarBloqueoEncargados(estacionidActual) {
+  const sel = document.querySelector('#listOperadores');
+  if (!sel) return;
+
+  const usados = getEncargadosUsados(estacionidActual);
+  const asignaciones = getAsignacionesLS();
+  const currentEnc = asignaciones[String(estacionidActual)]?.encargado ?? null;
+  const current = currentEnc ? String(currentEnc) : null;
+
+  Array.from(sel.options).forEach(opt => {
+    const id = String(opt.value || "");
+    if (!id) return;
+    opt.disabled = usados.has(id) && id !== current;
+  });
+}
+
+// =====================================================
+//   VALIDACIONES
 // =====================================================
 function getHeaderPlaneacion() {
   return {
     productoid: Number(document.querySelector('#selectProducto')?.value || 0),
     pedido: document.querySelector('#numPedido')?.value || "",
-    supervisor: (document.querySelector('#inputSupervisor')?.value || "").trim(),
+    supervisor: (document.querySelector('#selectSupervisor')?.value || "").trim(),
     prioridad: (document.querySelector('#selectPrioridad')?.value || "").trim(),
     cantidad: Number(document.querySelector('#txtCantidad')?.value || 0),
     fecha_inicio: (document.querySelector('#fechaInicio')?.value || "").trim(),
@@ -1187,9 +1281,13 @@ function resaltarFilasIncompletas(faltantes) {
 }
 
 // =====================================================
-//  GUARDAR PLANEACIÓN 
+//  GUARDAR PLANEACIÓN
 // =====================================================
 async function guardarPlaneacionHandler() {
+ 
+  setMinFechaInicioHoy();
+  setMinFechaRequeridaFromInicio();
+
   const payload = buildPayloadPlaneacion();
 
   if (!payload.header.productoid) {
@@ -1209,17 +1307,28 @@ async function guardarPlaneacionHandler() {
     return;
   }
 
-  //  VALIDAR COMPONENTES
+
+  const hoy = todayYYYYMMDD();
+  if (payload.header.fecha_inicio < hoy) {
+    Swal.fire({ icon: 'warning', title: 'Fecha inicio inválida', text: 'La fecha de inicio no puede ser anterior a hoy.' });
+    return;
+  }
+  if (payload.header.fecha_requerida < payload.header.fecha_inicio) {
+    Swal.fire({ icon: 'warning', title: 'Fecha requerida inválida', text: 'La fecha requerida no puede ser anterior a la fecha de inicio.' });
+    return;
+  }
+
+  // VALIDAR COMPONENTES
   try {
     const valComp = await validarComponentesAntesDeGuardar(payload);
     if (valComp && valComp.status === false) {
-      Swal.fire({ icon:'warning', title:'Sin existencias', text: valComp.msg || 'Faltan componentes.' });
+      Swal.fire({ icon: 'warning', title: 'Sin existencias', text: valComp.msg || 'Faltan componentes.' });
       await fntEstaciones(String(payload.header.productoid));
       return;
     }
   } catch (e) {
     console.error(e);
-    Swal.fire({ icon:'error', title:'Error', text:'No se pudo validar componentes.' });
+    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo validar componentes.' });
     return;
   }
 
@@ -1227,13 +1336,13 @@ async function guardarPlaneacionHandler() {
   try {
     const valHer = await validarHerramientasAntesDeGuardar(payload);
     if (valHer && valHer.status === false) {
-      Swal.fire({ icon:'warning', title:'Sin existencias', text: valHer.msg || 'Faltan herramientas.' });
+      Swal.fire({ icon: 'warning', title: 'Sin existencias', text: valHer.msg || 'Faltan herramientas.' });
       await fntEstaciones(String(payload.header.productoid));
       return;
     }
   } catch (e) {
     console.error(e);
-    Swal.fire({ icon:'error', title:'Error', text:'No se pudo validar herramientas.' });
+    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo validar herramientas.' });
     return;
   }
 
@@ -1258,12 +1367,12 @@ async function guardarPlaneacionHandler() {
     return;
   }
 
-  //  GUARDARS
+  // GUARDAR
   try {
     const data = await fetchJson(base_url + '/plan_planeacion/setPlaneacion', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload) 
+      body: JSON.stringify(payload)
     });
 
     if (!data.status) throw new Error(data.msg || 'Error al guardar');
@@ -1272,25 +1381,22 @@ async function guardarPlaneacionHandler() {
 
     localStorage.removeItem(getLSKeyAsignaciones());
     await limpiarNuevaPlaneacion(false);
-    //redirefccionar al detaslle
+
+
     window.location.href = base_url + '/plan_planeacion/orden/' + data.num_planeacion;
-    // goHome();
 
   } catch (err) {
     console.error(err);
     Swal.fire({ icon: 'error', title: 'Error', text: err.message });
   }
-
-
-
 }
 
 // =====================================================
-//  LIMPIEZA MÁS CONFIRMACIONES 
+//  LIMPIEZA + CONFIRMACIONES
 // =====================================================
 async function limpiarNuevaPlaneacion(limpiarLS = true) {
   const selProd = document.querySelector('#selectProducto');
-  const sup = document.querySelector('#inputSupervisor');
+  const sup = document.querySelector('#selectSupervisor');
   const pri = document.querySelector('#selectPrioridad');
   const cant = document.querySelector('#txtCantidad');
   const ped = document.querySelector('#numPedido');
@@ -1299,7 +1405,7 @@ async function limpiarNuevaPlaneacion(limpiarLS = true) {
   const notas = document.querySelector('#txtNotas');
 
   if (selProd) selProd.value = "";
-   if (ped) ped.value = "";
+  if (ped) ped.value = "";
   if (sup) sup.value = "";
   if (pri) pri.value = "";
   if (cant) cant.value = 1;
@@ -1307,12 +1413,16 @@ async function limpiarNuevaPlaneacion(limpiarLS = true) {
   if (fr) fr.value = "";
   if (notas) notas.value = "";
 
+
+  setMinFechaInicioHoy();
+  setMinFechaRequeridaFromInicio();
+
   renderEmptyTbody();
   document.querySelectorAll('#tbodyEstaciones tr').forEach(tr => tr.classList.remove('table-danger'));
   setBloqueoGuardarPorMantenimiento(false);
 
   if (limpiarLS) {
-    try { localStorage.removeItem(getLSKeyAsignaciones()); } catch (e) {}
+    try { localStorage.removeItem(getLSKeyAsignaciones()); } catch (e) { }
   }
 
   const enc = document.querySelector('#listOperadores');
@@ -1338,30 +1448,10 @@ async function confirmarDescartarSiHayBorrador() {
   return !!res.isConfirmed;
 }
 
-
-
-
+// =====================================================
+//  CALEFNDAR HELPER
+// =====================================================
 function toIsoFromMysql(dt) {
- 
-  if (!dt) return null;
-  return String(dt).replace(' ', 'T');
-}
-
-function colorPorPrioridad(p) {
-  const pr = String(p || '').toUpperCase().trim();
-  if (pr === 'CRITICA') return '#ef4444';
-  if (pr === 'ALTA')    return '#f59e0b';
-  if (pr === 'MEDIA')   return '#3b82f6';
-  if (pr === 'BAJA')    return '#6b7280';
-  return '#00bd9d';
-}
-
-
-
-
-
-function toIsoFromMysql(dt) {
-
   if (!dt) return null;
   return String(dt).replace(' ', 'T');
 }
@@ -1370,22 +1460,16 @@ function faseMeta(fase) {
   const f = Number(fase);
 
   switch (f) {
-    case 2:
-      return { color: '#f59e0b', label: 'Planeada', badge: 'warning' };
-    case 3:
-      return { color: '#3b82f6', label: 'Programada', badge: 'primary' };
-    case 5:
-      return { color: '#22c55e', label: 'En producción', badge: 'success' };
-    case 6:
-      return { color: '#ef4444', label: 'Detenida', badge: 'danger' };
-    default:
-      return { color: '#6b7280', label: 'Sin estatus', badge: 'secondary' };
+    case 2: return { color: '#f59e0b', label: 'Planeada', badge: 'warning' };
+    case 3: return { color: '#3b82f6', label: 'Programada', badge: 'primary' };
+    case 5: return { color: '#22c55e', label: 'En producción', badge: 'success' };
+    case 6: return { color: '#ef4444', label: 'Detenida', badge: 'danger' };
+    default: return { color: '#6b7280', label: 'Sin estatus', badge: 'secondary' };
   }
 }
 
 async function cargarOrdenesParaCalendar() {
   const url = base_url + '/plan_planeacion/getOrdenes';
-
   const resp = await fetchJson(url);
 
   const rows = Array.isArray(resp)
@@ -1401,12 +1485,11 @@ async function cargarOrdenesParaCalendar() {
       return {
         id: String(r.idplaneacion ?? ''),
         title: `#${String(r.num_orden ?? 'OT')}`,
-
         start: start,
         allDay: false,
         backgroundColor: meta.color,
-borderColor: meta.color,
-textColor: '#ffffff',
+        borderColor: meta.color,
+        textColor: '#ffffff',
         extendedProps: {
           ...r,
           fase_label: meta.label,
@@ -1416,10 +1499,9 @@ textColor: '#ffffff',
     });
 }
 
-
-
-
-
+// =====================================================
+//  MODAL PLANEACIÓN 
+// =====================================================
 function setModalPlaneacionLoading(isLoading) {
   const loading = document.getElementById('modalPlaneacionLoading');
   const content = document.getElementById('modalPlaneacionContent');
@@ -1433,12 +1515,6 @@ function setText(id, value) {
   el.textContent = (value === null || value === undefined || value === '') ? '—' : String(value);
 }
 
-function joinAyudantes(arr) {
-  if (!Array.isArray(arr) || !arr.length) return '—';
-  return arr.map(x => String(x)).join(', ');
-}
-
-
 async function fetchPlaneacionById(idplaneacion) {
   const url = base_url + '/plan_planeacion/getPlaneacionById/' + encodeURIComponent(idplaneacion);
   return await fetchJson(url);
@@ -1448,14 +1524,12 @@ function renderPlaneacionModal(payload) {
   const data = payload?.data ?? payload ?? {};
   const h = data.header ?? data.planeacion ?? data ?? {};
 
-  
   const detalle =
     (Array.isArray(data.detalle) ? data.detalle : null) ||
     (Array.isArray(data.estaciones) ? data.estaciones : null) ||
     (Array.isArray(data.asignaciones) ? data.asignaciones : null) ||
     [];
 
-  // header
   setText('mp_num_orden', h.num_orden);
   setText('mp_num_pedido', h.num_pedido);
   setText('mp_prioridad', h.prioridad);
@@ -1468,16 +1542,10 @@ function renderPlaneacionModal(payload) {
   const sub = document.getElementById('subTitleModalPlaneacion');
   if (sub) sub.textContent = `Planeación ID: ${h.idplaneacion ?? '—'}`;
 
-
-   // ==========================
-  // TABLA: SUB-ORDENES 
-  // ==========================
   const tbody = document.getElementById('tbodyPlaneacionDetalle');
   const count = document.getElementById('mp_count_detalle');
 
   const estaciones = Array.isArray(data.estaciones) ? data.estaciones : [];
-
-
   const metaPorPlaneacionEst = new Map();
 
   estaciones.forEach(est => {
@@ -1485,7 +1553,7 @@ function renderPlaneacionModal(payload) {
     if (!peid) return;
 
     const estacionNombre = est.nombre_estacion || '—';
-    const estacionOrden  = Number(est.orden || 0);
+    const estacionOrden = Number(est.orden || 0);
 
     const encargado = (Array.isArray(est.encargados) && est.encargados.length)
       ? (est.encargados[0].nombre_completo || '—')
@@ -1503,10 +1571,7 @@ function renderPlaneacionModal(payload) {
     });
   });
 
-
   const subOrdenes = estaciones.flatMap(est => Array.isArray(est.ordenes_trabajo) ? est.ordenes_trabajo : []);
-
-
   const ordenadas = [...subOrdenes].sort((a, b) => Number(a.idorden || 0) - Number(b.idorden || 0));
 
   if (count) count.textContent = String(ordenadas.length || 0);
@@ -1519,8 +1584,8 @@ function renderPlaneacionModal(payload) {
 
   tbody.innerHTML = ordenadas.map(o => {
     const idorden = o.idorden ?? '—';
-    const numSub  = o.num_sub_orden ?? '—';
-    const peid    = Number(o.planeacion_estacionid || 0);
+    const numSub = o.num_sub_orden ?? '—';
+    const peid = Number(o.planeacion_estacionid || 0);
 
     const meta = metaPorPlaneacionEst.get(peid) || {
       estacion: '—',
@@ -1532,30 +1597,24 @@ function renderPlaneacionModal(payload) {
     return `
       <tr>
         <td class="fw-semibold">${escapeHtml(String(idorden))}</td>
-
         <td>
           <span class="badge bg-primary-subtle text-primary border">
             ${escapeHtml(String(numSub))}
           </span>
         </td>
-
-
         <td>${escapeHtml(String(meta.encargado))}</td>
         <td>${escapeHtml(String(meta.ayudantes_txt))}</td>
-
       </tr>
     `;
   }).join('');
 }
 
-
 async function abrirModalPlaneacionDesdeCalendar({ folio }) {
   const modalEl = document.getElementById('modalPlaneacionCalendar');
   if (!modalEl) {
-    Swal.fire({ icon:'warning', title:'Falta modal', text:'No existe #modalPlaneacionCalendar en la vista.' });
+    Swal.fire({ icon: 'warning', title: 'Falta modal', text: 'No existe #modalPlaneacionCalendar en la vista.' });
     return;
   }
-
 
   const btnVer = document.getElementById('btnVerMasDetalle');
   if (btnVer) {
@@ -1571,23 +1630,16 @@ async function abrirModalPlaneacionDesdeCalendar({ folio }) {
     const payload = await fetchPlaneacionPorFolio(folio);
     if (payload && payload.status === false) throw new Error(payload.msg || 'No se pudo cargar');
 
-    renderPlaneacionModal(payload); 
+    renderPlaneacionModal(payload);
   } catch (err) {
     console.error(err);
-    Swal.fire({ icon:'error', title:'Error', text: err.message || 'Error al cargar' });
+    Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Error al cargar' });
   } finally {
     setModalPlaneacionLoading(false);
   }
 }
 
-
-
-
 async function fetchPlaneacionPorFolio(folio) {
   const url = base_url + '/plan_planeacion/orden/' + encodeURIComponent(folio) + '?json=1';
   return await fetchJson(url);
 }
-
-
-
-

@@ -123,7 +123,7 @@
                                                 <span class="input-group-text" id="correo-contactos-addon">Cor</span>
                                                 <input type="email" class="form-control" placeholder="Ingrese el correo del contacto" id="correo-contactos-input"
                                                     name="correo-contactos-input"
-                                                    aria-describedby="correo-contactos-addon">
+                                                    aria-describedby="correo-contactos-addon" required>
                                                 <div class="invalid-feedback">Si ingresa un correo, debe ser válido</div>
                                             </div>
                                         </div>
@@ -137,7 +137,7 @@
                                                 <span class="input-group-text" id="extension-contactos-addon">Ext</span>
                                                 <input type="text" class="form-control" placeholder="Ej. 101" id="extension-contactos-input"
                                                     name="extension-contactos-input" maxlength="6" inputmode="numeric"
-                                                    aria-describedby="extension-contactos-addon">
+                                                    aria-describedby="extension-contactos-addon" required>
                                                 <div class="invalid-feedback">Si ingresa una extensión, debe contener al menos 3 números</div>
                                             </div>
                                         </div>
@@ -151,7 +151,7 @@
                                                 <span class="input-group-text" id="telefono-contactos-addon">Tel</span>
                                                 <input type="text" class="form-control" placeholder="Ingrese el teléfono del puesto" id="telefono-contactos-input"
                                                     name="telefono-contactos-input" maxlength="10" inputmode="numeric" pattern="[0-9]{10}"
-                                                    aria-describedby="telefono-contactos-addon">
+                                                    aria-describedby="telefono-contactos-addon" required>
                                                 <div class="invalid-feedback"> Si ingresa un teléfono, debe contener exactamente 10 números
                                                 </div>
                                             </div>
@@ -159,7 +159,7 @@
                                     </div>
 
                                     <!-- ESTADO -->
-                                    <div class="col-lg-6">
+                                    <!-- <div class="col-lg-6">
                                         <div class="mb-3">
                                             <label class="form-label" for="estado-select">ESTADO</label>
                                             <div class="input-group has-validation mb-3">
@@ -172,7 +172,7 @@
                                                 <div class="invalid-feedback">El campo estado es obligatorio</div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </div> -->
 
                                     <!-- campo checkbox -->
                                     <!-- <div class="col-lg-6">

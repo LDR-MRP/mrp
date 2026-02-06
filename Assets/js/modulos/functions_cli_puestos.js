@@ -7,7 +7,6 @@ const idpuesto = document.querySelector("#idpuesto");
 const departamento_id = document.querySelector("#listPuestos");
 const nombreInput = document.querySelector("#nombre-puestos-input");
 const descripcionInput = document.querySelector("#descripcion-puestos-input");
-const estado = document.querySelector("#estado-select");
 
 // Mis referencias globales
 let primerTab; // Tab LISTA
@@ -102,7 +101,6 @@ document.addEventListener(
         // Limpiar formulario
         formPuestos.reset();
         idpuesto.value = "";
-        estado.value = "2";
       });
 
       // ----------------------------------------------------------------
@@ -112,7 +110,6 @@ document.addEventListener(
         tabNuevo.textContent = "NUEVO";
         spanBtnText.textContent = "REGISTRAR";
         idpuesto.value = "";
-        estado.value = "2";
         formPuestos.reset();
       });
     } else {
@@ -170,7 +167,6 @@ document.addEventListener(
                 // Seguir en modo NUEVO
                 formPuestos.reset();
                 idpuesto.value = "";
-                estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 tablePuestos.api().ajax.reload();
@@ -178,7 +174,6 @@ document.addEventListener(
                 // Regresar al listado
                 formPuestos.reset();
                 idpuesto.value = "";
-                estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 primerTab.show();
@@ -197,7 +192,6 @@ document.addEventListener(
               // Acción final después de OK (opcional)
               formPuestos.reset();
               idpuesto.value = "";
-              estado.value = "2";
               tabNuevo.textContent = "NUEVO";
               spanBtnText.textContent = "REGISTRAR";
               primerTab.show();
@@ -238,7 +232,6 @@ function fntEditInfo(id_puesto) {
         departamento_id.value = objData.data.departamento_id;
         nombreInput.value = objData.data.nombre_puesto;
         descripcionInput.value = objData.data.descripcion;
-        estado.value = objData.data.estado;
 
         // Cambiar al tab de captura
         if (firstTab) firstTab.show();

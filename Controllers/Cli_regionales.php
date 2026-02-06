@@ -64,8 +64,7 @@ class Cli_regionales extends Controllers
             if (
                 empty($_POST['nombre-regional-input']) ||
                 empty($_POST['apellido_paterno-regional-input']) ||
-                empty($_POST['apellido_materno-regional-input']) ||
-                empty($_POST['estado-select'])
+                empty($_POST['apellido_materno-regional-input'])
             ) {
                 $arrResponse = array(
                     "status" => false,
@@ -76,7 +75,33 @@ class Cli_regionales extends Controllers
                 $nombre = strClean($_POST['nombre-regional-input']);
                 $apellido_paterno = strClean($_POST['apellido_paterno-regional-input']);
                 $apellido_materno = strClean($_POST['apellido_materno-regional-input']);
-                $estado = intval($_POST['estado-select']);
+
+                if (strlen($nombre) < 3) {
+                    $arrResponse = [
+                        "status" => false,
+                        "msg" => "El nombre debe tener al menos 3 caracteres."
+                    ];
+                    echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+                    die();
+                }
+
+                if (strlen($apellido_paterno) < 3) {
+                    $arrResponse = [
+                        "status" => false,
+                        "msg" => "El apellido paterno debe tener al menos 3 caracteres."
+                    ];
+                    echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+                    die();
+                }
+
+                if (strlen($apellido_materno) < 3) {
+                    $arrResponse = [
+                        "status" => false,
+                        "msg" => "El apellido materno debe tener al menos 3 caracteres."
+                    ];
+                    echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+                    die();
+                }
 
                 if ($intidregional == 0) {
                     // INSERT
@@ -85,7 +110,6 @@ class Cli_regionales extends Controllers
                             $nombre,
                             $apellido_paterno,
                             $apellido_materno,
-                            $estado
                         );
                         $option = 1;
                     }
@@ -97,7 +121,6 @@ class Cli_regionales extends Controllers
                             $nombre,
                             $apellido_paterno,
                             $apellido_materno,
-                            $estado
                         );
                         $option = 2;
                     }

@@ -1,14 +1,20 @@
 (() => {
   'use strict';
 
-  // =========================================================
-  // Config
-  // =========================================================
+
   const LOGO_URL = base_url + '/Assets/images/ldr_logo_color.png';
 
-  // =========================================================
-  // Helpers basicos
-  // =========================================================
+  const ENS_PENDIENTE = 1;
+  const ENS_PROCESO = 2;
+  const ENS_FINAL = 3;
+
+  const CAL_PEND_INSPECCION = 1;
+  const CAL_EN_INSPECCION = 2;
+  const CAL_OBSERVACIONES = 3;
+  const CAL_RECHAZADO = 4;
+  const CAL_LIBERADO = 5;
+
+
   const pad2 = (n) => String(n).padStart(2, '0');
 
   const ahoraSql = () => {
@@ -22,7 +28,6 @@
     return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
   };
 
-  // ✅ NUEVO: para filename (YYYYMMDD_HHMMSS)
   const ahoraSelloArchivo = () => {
     const d = new Date();
     const yyyy = d.getFullYear();
@@ -38,7 +43,7 @@
 
   const obtenerFila = (btn) => btn?.closest('tr') || null;
 
-  // Tabla: 0 SubOT, 1 Estatus, 2 Inicio, 3 Fin, 4 Acciones
+
   const obtenerCelda = (tr, idx) => {
     if (!tr) return null;
     const tds = tr.querySelectorAll('td');
@@ -54,7 +59,8 @@
   const obtenerBotones = (tr) => ({
     btnIniciar: tr?.querySelector('.btnStartOT') || null,
     btnFinalizar: tr?.querySelector('.btnFinishOT') || null,
-    btnComentarios: tr?.querySelector('.btnCommentOT') || null
+    btnComentarios: tr?.querySelector('.btnCommentOT') || null,
+    btnIniciarInspeccion: tr?.querySelector('.btnStartInspeccion') || null,
   });
 
   const ponerBadgeEstatus = (tr, tipo) => {
@@ -78,8 +84,19 @@
     td.innerHTML = `<span class="${cls}">${txt}</span>`;
   };
 
+  const renderBadgeCalidad = (c) => {
+    switch (c) {
+      case 1: return `<span class="badge bg-secondary-subtle text-secondary">Pendiente de inspección</span>`;
+      case 2: return `<span class="badge bg-info-subtle text-info">En inspección</span>`;
+      case 3: return `<span class="badge bg-warning-subtle text-warning">Con observaciones</span>`;
+      case 4: return `<span class="badge bg-danger-subtle text-danger">Rechazado</span>`;
+      case 5: return `<span class="badge bg-success-subtle text-success">Liberado</span>`;
+      default: return `<span class="badge bg-light text-muted">—</span>`;
+    }
+  };
+
   // =========================================================
-  // Loading (SweetAlert)
+  // Swal loading
   // =========================================================
   const mostrarCargando = (textoCarga = 'Procesando...') => {
     Swal.fire({
@@ -91,18 +108,15 @@
   };
 
   const ocultarCargando = () => {
-    try { Swal.close(); } catch (e) {}
+    try { Swal.close(); } catch (e) { }
   };
 
-  // =========================================================
-  // Parseadores / reglas (candados)
-  // =========================================================
+
   const obtenerNumeroSub = (subot) => {
     const m = String(subot || '').match(/-S(\d+)\s*$/i);
     return m ? parseInt(m[1], 10) : 0;
   };
 
-  // ✅ Botones enable/disable consistente (atributo + clase)
   const setBtnEnabled = (btn, enabled) => {
     if (!btn) return;
     btn.disabled = !enabled;
@@ -110,7 +124,6 @@
     btn.setAttribute('aria-disabled', String(!enabled));
   };
 
-  // ✅ Estatus desde dataset (preferido) o texto (fallback)
   const obtenerEstatusFila = (tr) => {
     const ds = tr?.dataset?.estatus;
     if (ds !== undefined && ds !== null && String(ds).trim() !== '') {
@@ -120,107 +133,92 @@
 
     const td = obtenerCelda(tr, 1);
     const txt = td ? (td.textContent || '').trim().toLowerCase() : '';
-    if (txt.includes('final')) return 3;
-    if (txt.includes('proceso')) return 2;
-    if (txt.includes('deten')) return 4;
-    return 1;
+    if (txt.includes('final')) return ENS_FINAL;
+    if (txt.includes('proceso')) return ENS_PROCESO;
+    return ENS_PENDIENTE;
   };
 
-  // ✅ Orden de estación (MUY IMPORTANTE para vistas parciales)
-  // Prioridad:
-  // 1) data-est-orden en fila o contenedor
-  // 2) parsear "#2" del título de la estación (por ejemplo: "#2 : Inspección Inicial")
-  // 3) fallback 0
-  const obtenerOrdenEstacion = (tr) => {
-    // 1) en la fila
-    const v1 = tr?.dataset?.estOrden || tr?.dataset?.est_orden || tr?.dataset?.estorden;
-    if (v1 !== undefined && v1 !== null && String(v1).trim() !== '') {
-      const n = parseInt(v1, 10);
-      if (!Number.isNaN(n) && n > 0) return n;
+  const obtenerCalidadFila = (tr) => {
+    const ds = tr?.dataset?.calidad;
+    if (ds !== undefined && ds !== null && String(ds).trim() !== '') {
+      const n = parseInt(ds, 10);
+      if (!Number.isNaN(n)) return n;
     }
 
-    // 2) en contenedor cercano con dataset
-    const cont = tr?.closest('[data-est-orden],[data-est_orden],[data-estorden],[data-estorden]');
-    if (cont) {
-      const v2 = cont.dataset.estOrden || cont.dataset.est_orden || cont.dataset.estorden || cont.getAttribute('data-est-orden');
-      const n = parseInt(String(v2 || '').trim(), 10);
-      if (!Number.isNaN(n) && n > 0) return n;
-    }
+    const td = obtenerCelda(tr, 2);
+    const txt = td ? (td.textContent || '').trim().toLowerCase() : '';
 
-    // 3) parsear desde el título del acordeón/estación
-    const stationItem = tr?.closest('.accordion-item') || tr?.closest('.station-item') || tr?.closest('[data-station]');
-    if (stationItem) {
-      const titleEl =
-        stationItem.querySelector('.accordion-button') ||
-        stationItem.querySelector('.accordion-header') ||
-        stationItem.querySelector('h5, h4, h6, .station-title');
-
-      const rawTitle = (titleEl?.textContent || '').trim();
-      // Ejemplos que soporta:
-      // "#2 : Inspección Inicial" / "#2: Inspección" / "2 - Inspección"
-      let m = rawTitle.match(/#\s*(\d+)/);
-      if (!m) m = rawTitle.match(/\b(\d+)\s*[:\-]/);
-
-      if (m) {
-        const n = parseInt(m[1], 10);
-        if (!Number.isNaN(n) && n > 0) return n;
-      }
-    }
+    if (txt.includes('liberad')) return CAL_LIBERADO;
+    if (txt.includes('rechaz')) return CAL_RECHAZADO;
+    if (txt.includes('observ')) return CAL_OBSERVACIONES;
+    if (txt.includes('en inspe')) return CAL_EN_INSPECCION;
+    if (txt.includes('pendiente')) return CAL_PEND_INSPECCION;
 
     return 0;
   };
 
-  // ✅ Comentarios solo si estatus = 2
+  const calidadEnPausa = (tr) => {
+    const c = obtenerCalidadFila(tr);
+    return (c === CAL_OBSERVACIONES || c === CAL_RECHAZADO);
+  };
+
+  const calidadBloqueante = (tr) => {
+    const c = obtenerCalidadFila(tr);
+    return (c === 0 || c === CAL_PEND_INSPECCION || c === CAL_EN_INSPECCION);
+  };
+
+  const calidadLiberada = (tr) => (obtenerCalidadFila(tr) === CAL_LIBERADO);
+
+  const obtenerOrdenEstacion = (tr) => {
+    const btnStart = tr?.querySelector('.btnStartOT');
+    const vBtn = btnStart?.dataset?.estOrden || btnStart?.getAttribute('data-est-orden');
+    if (vBtn !== undefined && vBtn !== null && String(vBtn).trim() !== '') {
+      const n = parseInt(String(vBtn).trim(), 10);
+      if (!Number.isNaN(n) && n > 0) return n;
+    }
+    return 0;
+  };
+
   const aplicarReglaComentarios = () => {
     document.querySelectorAll('tr[data-idorden]').forEach(tr => {
       const st = obtenerEstatusFila(tr);
       const { btnComentarios } = obtenerBotones(tr);
       if (!btnComentarios) return;
-      setBtnEnabled(btnComentarios, st === 2);
+      setBtnEnabled(btnComentarios, st === ENS_PROCESO);
     });
   };
 
-  // =========================================================
-  // ✅ CANDADOS (AJUSTADO PARA:
-  //  - SIEMPRE poder FINALIZAR si está en proceso
-  //  - vistas parciales: si no existe la estación anterior en DOM, NO bloquear por esa dependencia
-  // =========================================================
+
+  const aplicarReglaInspeccion = () => {
+    document.querySelectorAll('tr[data-idorden]').forEach(tr => {
+      const st = obtenerEstatusFila(tr);
+      const { btnIniciarInspeccion } = obtenerBotones(tr);
+      if (!btnIniciarInspeccion) return;
+      setBtnEnabled(btnIniciarInspeccion, st === ENS_PROCESO);
+    });
+  };
+
+
   const aplicarCandados = () => {
     const filas = Array.from(document.querySelectorAll('tr[data-subot]'));
     if (!filas.length) return;
 
-    // 1) Bloquea todo por defecto (start/finish)
+
     filas.forEach(tr => {
       const { btnIniciar, btnFinalizar } = obtenerBotones(tr);
       setBtnEnabled(btnIniciar, false);
       setBtnEnabled(btnFinalizar, false);
     });
 
-    // 2) Si hay filas EN PROCESO, SIEMPRE habilita FINALIZAR en esas
-    // (esto evita tu bug de: "En proceso" pero no puedo finalizar)
-    const enProcesoGlobal = filas.filter(tr => obtenerEstatusFila(tr) === 2);
-    if (enProcesoGlobal.length) {
-      enProcesoGlobal.forEach(tr => {
-        const { btnIniciar, btnFinalizar } = obtenerBotones(tr);
-        setBtnEnabled(btnIniciar, false);
-        setBtnEnabled(btnFinalizar, true);
-      });
-
-      // Comentarios
-      aplicarReglaComentarios();
-      return; // ✅ si hay algo en proceso visible, no habilites inicios extra
-    }
-
-    // 3) Mapear por estación y Sxx (para habilitar el siguiente INICIO correcto)
     const porEstacion = new Map();
+
     for (const tr of filas) {
       const subot = (tr.dataset.subot || '').trim();
       if (!subot) continue;
 
-      const estacion = obtenerOrdenEstacion(tr);   // 1..n (o 0 si no hay)
+      const estacion = obtenerOrdenEstacion(tr);
       const sn = obtenerNumeroSub(subot);
 
-      // Si estación viene 0 (vista incompleta), no entra a reglas por estación
       if (!sn || !estacion) continue;
 
       if (!porEstacion.has(estacion)) porEstacion.set(estacion, new Map());
@@ -229,83 +227,84 @@
 
     const estaciones = Array.from(porEstacion.keys()).sort((a, b) => a - b);
 
-    // 4) Fallback si NO se pudo mapear ninguna estación (vista muy parcial):
-    // habilita el primer pendiente por Sxx (solo UI; backend valida real)
-    if (!estaciones.length) {
-      const candidata = filas
-        .slice()
-        .filter(tr => obtenerEstatusFila(tr) === 1)
-        .sort((a, b) => obtenerNumeroSub(a.dataset.subot) - obtenerNumeroSub(b.dataset.subot))[0];
 
-      if (candidata) {
-        const { btnIniciar, btnFinalizar } = obtenerBotones(candidata);
-        setBtnEnabled(btnIniciar, true);
-        setBtnEnabled(btnFinalizar, false);
-      }
+    filas.forEach(tr => {
+      if (obtenerEstatusFila(tr) !== ENS_PROCESO) return;
+      const { btnFinalizar } = obtenerBotones(tr);
+      if (!btnFinalizar) return;
 
-      aplicarReglaComentarios();
-      return;
-    }
+      const puede = calidadLiberada(tr);
+      setBtnEnabled(btnFinalizar, puede);
+      btnFinalizar.title = puede
+        ? 'Finalizar orden'
+        : 'No puedes finalizar: Calidad aún no libera (estatus 5).';
+    });
 
-    // 5) Reglas por estación:
-    // - habilita el primer pendiente que cumpla:
-    //   A) S(n-1) finalizada dentro de la MISMA estación
-    //   B) MISMA Sxx finalizada en estación anterior SOLO si esa estación anterior está en DOM
+
+    const procesoBloqueanteSn = new Set();
+    filas.forEach(tr => {
+      if (obtenerEstatusFila(tr) !== ENS_PROCESO) return;
+      const sn = obtenerNumeroSub(tr.dataset.subot || '');
+      if (!sn) return;
+      if (calidadBloqueante(tr)) procesoBloqueanteSn.add(sn);
+    });
+
     for (const ordenEstacion of estaciones) {
       const mapaSub = porEstacion.get(ordenEstacion);
       const numsSub = Array.from(mapaSub.keys()).sort((a, b) => a - b);
 
-      let candidata = null;
-
       for (const sn of numsSub) {
         const tr = mapaSub.get(sn);
+        if (!tr) continue;
+
         const st = obtenerEstatusFila(tr);
 
-        if (st !== 1) continue; // solo pendientes
 
-        // Dep A: dentro de estación
+        if (st !== ENS_PENDIENTE) continue;
+
+
+        if (procesoBloqueanteSn.has(sn)) continue;
+
+
         let depSubOk = true;
-        if (sn > 1) {
+        if (ordenEstacion === 1 && sn > 1) {
           const prev = mapaSub.get(sn - 1);
-          depSubOk = !!prev && obtenerEstatusFila(prev) === 3;
+          depSubOk = !!prev && (
+            obtenerEstatusFila(prev) === ENS_FINAL ||
+            calidadEnPausa(prev)
+          );
         }
 
-        // Dep B: entre estaciones (SOLO si existe estación anterior en DOM)
+    
         let depEstacionOk = true;
         if (ordenEstacion > 1) {
           const prevStationMap = porEstacion.get(ordenEstacion - 1);
-
-          // ✅ si no existe la estación anterior (vista por rol/asignación),
-          // NO bloquees aquí (backend valida si realmente no se puede)
           if (prevStationMap) {
             const prevRow = prevStationMap.get(sn) || null;
-            depEstacionOk = !!prevRow && obtenerEstatusFila(prevRow) === 3;
+            depEstacionOk = !!prevRow && (obtenerEstatusFila(prevRow) === ENS_FINAL);
           } else {
             depEstacionOk = true;
           }
         }
 
-        // Estación 1: S01 siempre inicia
         if (ordenEstacion === 1 && sn === 1) {
           depSubOk = true;
           depEstacionOk = true;
         }
 
-        if (depSubOk && depEstacionOk) { candidata = tr; break; }
-      }
-
-      if (candidata) {
-        const { btnIniciar, btnFinalizar } = obtenerBotones(candidata);
-        setBtnEnabled(btnIniciar, true);
-        setBtnEnabled(btnFinalizar, false);
+        if (depSubOk && depEstacionOk) {
+          const { btnIniciar } = obtenerBotones(tr);
+          setBtnEnabled(btnIniciar, true);
+        }
       }
     }
 
     aplicarReglaComentarios();
+    aplicarReglaInspeccion();
   };
 
   // =========================================================
-  // Fetch helper (POST JSON)
+  // Fetch helper 
   // =========================================================
   const postJson = async (url, payload) => {
     const resp = await fetch(url, {
@@ -322,9 +321,7 @@
     return json;
   };
 
-  // =========================
-  // 🔊 SONIDOS (Web Audio API)
-  // =========================
+
   let __audioCtx = null;
 
   const asegurarAudio = async () => {
@@ -383,17 +380,15 @@
     }
     if (btn.disabled) return;
 
-    // UI optimistic
     setBtnEnabled(btn, false);
 
     const fecha_inicio = ahoraSql();
-    ponerFechaCelda(tr, 2, fecha_inicio);
+    ponerFechaCelda(tr, 3, fecha_inicio);
     ponerBadgeEstatus(tr, 'proceso');
-    tr.dataset.estatus = '2';
+    tr.dataset.estatus = String(ENS_PROCESO);
 
-    // Asegura: si está en proceso, que FINALIZAR se habilite
     const { btnFinalizar } = obtenerBotones(tr);
-    setBtnEnabled(btnFinalizar, true);
+    setBtnEnabled(btnFinalizar, calidadLiberada(tr));
 
     const url = base_url + '/plan_planeacion/startOT';
     const payload = { idorden, peid, subot, fecha_inicio };
@@ -405,18 +400,33 @@
       ocultarCargando();
 
       if (!data || data.status === false) {
-        ponerFechaCelda(tr, 2, '—');
+        ponerFechaCelda(tr, 3, '—');
         ponerBadgeEstatus(tr, 'pendiente');
-        tr.dataset.estatus = '1';
+        tr.dataset.estatus = String(ENS_PENDIENTE);
         setBtnEnabled(btn, true);
         setBtnEnabled(btnFinalizar, false);
 
-        Swal.fire({ icon: 'error', title: 'Error', text: data?.msg || 'No se pudo iniciar', timer: 5000, showConfirmButton: false, timerProgressBar: true });
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: data?.msg || 'No se pudo iniciar',
+          timer: 5000,
+          showConfirmButton: false,
+          timerProgressBar: true
+        });
         aplicarCandados();
         return;
       }
 
-      Swal.fire({ icon: 'success', title: 'Proceso iniciado', text: data?.msg || 'Operación iniciada correctamente', timer: 1400, showConfirmButton: false, timerProgressBar: true });
+      Swal.fire({
+        icon: 'success',
+        title: 'Proceso iniciado',
+        text: data?.msg || 'Operación iniciada correctamente',
+        timer: 1400,
+        showConfirmButton: false,
+        timerProgressBar: true
+      });
+
       await sonidoInicio();
       aplicarCandados();
 
@@ -424,13 +434,21 @@
       console.error(err);
       ocultarCargando();
 
-      ponerFechaCelda(tr, 2, '—');
+      ponerFechaCelda(tr, 3, '—');
       ponerBadgeEstatus(tr, 'pendiente');
-      tr.dataset.estatus = '1';
+      tr.dataset.estatus = String(ENS_PENDIENTE);
       setBtnEnabled(btn, true);
       setBtnEnabled(btnFinalizar, false);
 
-      Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar con el servidor', timer: 5000, showConfirmButton: false, timerProgressBar: true });
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de red',
+        text: 'No se pudo conectar con el servidor',
+        timer: 5000,
+        showConfirmButton: false,
+        timerProgressBar: true
+      });
+
       aplicarCandados();
     }
   };
@@ -452,15 +470,26 @@
     }
     if (btn.disabled) return;
 
-    // UI optimistic
+    if (!calidadLiberada(tr)) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'No se puede finalizar',
+        text: 'Primero debe estar LIBERADA por Calidad (estatus 5) para poder finalizar esta orden.',
+        timer: 3500,
+        showConfirmButton: false,
+        timerProgressBar: true
+      });
+      aplicarCandados();
+      return;
+    }
+
     setBtnEnabled(btn, false);
 
     const fecha_fin = ahoraSql();
-    ponerFechaCelda(tr, 3, fecha_fin);
+    ponerFechaCelda(tr, 4, fecha_fin);
     ponerBadgeEstatus(tr, 'finalizada');
-    tr.dataset.estatus = '3';
+    tr.dataset.estatus = String(ENS_FINAL);
 
-    // En finalizada: iniciar/finish off
     const { btnIniciar } = obtenerBotones(tr);
     setBtnEnabled(btnIniciar, false);
 
@@ -474,18 +503,33 @@
       ocultarCargando();
 
       if (!data || data.status === false) {
-        // revertir UI
-        ponerFechaCelda(tr, 3, '—');
+        ponerFechaCelda(tr, 4, '—');
         ponerBadgeEstatus(tr, 'proceso');
-        tr.dataset.estatus = '2';
-        setBtnEnabled(btn, true); // volver a permitir finalizar
+        tr.dataset.estatus = String(ENS_PROCESO);
+        setBtnEnabled(btn, true);
 
-        Swal.fire({ icon: 'error', title: 'Error', text: data?.msg || 'No se pudo finalizar', timer: 5000, showConfirmButton: false, timerProgressBar: true });
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: data?.msg || 'No se pudo finalizar',
+          timer: 5000,
+          showConfirmButton: false,
+          timerProgressBar: true
+        });
+
         aplicarCandados();
         return;
       }
 
-      Swal.fire({ icon: 'success', title: 'Proceso finalizado', text: data?.msg || 'Operación completada correctamente', timer: 1400, showConfirmButton: false, timerProgressBar: true });
+      Swal.fire({
+        icon: 'success',
+        title: 'Proceso finalizado',
+        text: data?.msg || 'Operación completada correctamente',
+        timer: 1400,
+        showConfirmButton: false,
+        timerProgressBar: true
+      });
+
       await sonidoFinalizar();
       aplicarCandados();
 
@@ -493,19 +537,26 @@
       console.error(err);
       ocultarCargando();
 
-      // revertir UI
-      ponerFechaCelda(tr, 3, '—');
+      ponerFechaCelda(tr, 4, '—');
       ponerBadgeEstatus(tr, 'proceso');
-      tr.dataset.estatus = '2';
+      tr.dataset.estatus = String(ENS_PROCESO);
       setBtnEnabled(btn, true);
 
-      Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar con el servidor', timer: 5000, showConfirmButton: false, timerProgressBar: true });
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de red',
+        text: 'No se pudo conectar con el servidor',
+        timer: 5000,
+        showConfirmButton: false,
+        timerProgressBar: true
+      });
+
       aplicarCandados();
     }
   };
 
   // =========================================================
-  // ✅ COMENTARIOS SUB-OT (Modal)
+  //  COMENTARIOS SUB-OT (Modal)
   // =========================================================
   const iniciarModalComentarios = () => {
     const modalEl = document.getElementById('modalOTComment');
@@ -517,7 +568,6 @@
     const $mComentario = document.getElementById('mComentario');
     const $btnSave = document.getElementById('btnSaveOTComment');
 
-    // Abrir modal (SOLO si está en proceso)
     document.body.addEventListener('click', (e) => {
       const btn = e.target.closest('.btnCommentOT');
       if (!btn) return;
@@ -525,11 +575,11 @@
       const tr = btn.closest('tr');
       const st = tr ? obtenerEstatusFila(tr) : 0;
 
-      if (st !== 2) {
+      if (st !== ENS_PROCESO) {
         Swal.fire({
           icon: 'info',
           title: 'Ups',
-          text: 'Finalizaste la orden, ya no puedes cargar comentarios',
+          text: 'Solo puedes cargar comentarios cuando está En proceso.',
           timer: 2600,
           showConfirmButton: false,
           timerProgressBar: true
@@ -552,7 +602,6 @@
       modal.show();
     });
 
-    // Guardar comentario (solo si está en proceso)
     if ($btnSave) {
       $btnSave.addEventListener('click', async () => {
         const idorden = ($mIdOrden?.value || '').trim();
@@ -571,16 +620,17 @@
 
         const tr = document.querySelector(`tr[data-idorden="${CSS.escape(idorden)}"]`);
         const st = tr ? obtenerEstatusFila(tr) : 0;
-        if (st !== 2) {
+
+        if (st !== ENS_PROCESO) {
           Swal.fire({
             icon: 'info',
             title: 'Ups',
-            text: 'Finalizaste la orden, ya no puedes cargar comentarios',
+            text: 'Solo puedes guardar comentarios cuando está En proceso.',
             timer: 2600,
             showConfirmButton: false,
             timerProgressBar: true
           });
-          try { modal?.hide(); } catch (e) {}
+          try { modal?.hide(); } catch (e) { }
           return;
         }
 
@@ -601,13 +651,11 @@
           if (tr) tr.dataset.coment = comentario;
 
           Swal.fire({ icon: 'success', title: 'Guardado', text: data?.msg || 'Comentario actualizado', timer: 2000, showConfirmButton: false, timerProgressBar: true });
-
           modal.hide();
 
         } catch (err) {
           console.error(err);
           ocultarCargando();
-
           Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar con el servidor', timer: 5000, showConfirmButton: false, timerProgressBar: true });
         }
       });
@@ -615,7 +663,7 @@
   };
 
   // =========================================================
-  // ✅ SYNC ASÍNCRONO (polling)
+  //  SYNC ASÍNCRONO (polling)
   // =========================================================
   const iniciarSyncPolling = () => {
     const planeacionid = (document.getElementById('timeTrackerCard')?.dataset?.planeacion || '').trim();
@@ -634,23 +682,28 @@
       const est = String(row.estatus ?? '').trim();
       if (!est) return;
 
-      // si no cambió nada, no toca
+      if (row.calidad !== undefined && row.calidad !== null) {
+        const c = parseInt(row.calidad, 10) || 0;
+        tr.dataset.calidad = String(c);
+        const tdCal = obtenerCelda(tr, 2);
+        if (tdCal) tdCal.innerHTML = renderBadgeCalidad(c);
+      }
+
       if ((tr.dataset.estatus || '').trim() === est &&
-          (tr.dataset.fi || '') === (row.fecha_inicio || '') &&
-          (tr.dataset.ff || '') === (row.fecha_fin || '')
+        (tr.dataset.fi || '') === (row.fecha_inicio || '') &&
+        (tr.dataset.ff || '') === (row.fecha_fin || '')
       ) return;
 
       tr.dataset.estatus = est;
       tr.dataset.fi = row.fecha_inicio || '';
       tr.dataset.ff = row.fecha_fin || '';
 
-      if (est === '1') ponerBadgeEstatus(tr, 'pendiente');
-      else if (est === '2') ponerBadgeEstatus(tr, 'proceso');
-      else if (est === '3') ponerBadgeEstatus(tr, 'finalizada');
-      else if (est === '4') ponerBadgeEstatus(tr, 'detenida');
+      if (est === String(ENS_PENDIENTE)) ponerBadgeEstatus(tr, 'pendiente');
+      else if (est === String(ENS_PROCESO)) ponerBadgeEstatus(tr, 'proceso');
+      else if (est === String(ENS_FINAL)) ponerBadgeEstatus(tr, 'finalizada');
 
-      ponerFechaCelda(tr, 2, row.fecha_inicio || '—');
-      ponerFechaCelda(tr, 3, row.fecha_fin || '—');
+      ponerFechaCelda(tr, 3, row.fecha_inicio || '—');
+      ponerFechaCelda(tr, 4, row.fecha_fin || '—');
     };
 
     let sincronizando = false;
@@ -669,7 +722,6 @@
         if (!rows.length) return;
 
         const m = mapearFilas();
-
         for (const r of rows) {
           const tr = m.get(String(r.idorden || '').trim());
           if (!tr) continue;
@@ -688,6 +740,8 @@
     setInterval(sincronizarServidor, 5000);
     sincronizarServidor();
   };
+
+
 
   // =========================================================
   // ====================   PDF SECTION   =====================
@@ -1052,6 +1106,9 @@
     });
   }
 
+
+
+
   async function manejarClickPdf(btn) {
     const numOrden = (btn.dataset.numorden || '').trim();
     if (!numOrden) {
@@ -1097,14 +1154,14 @@
       const btnFinish = e.target.closest('.btnFinishOT');
       if (btnFinish) { manejarClickFinalizar(btnFinish); return; }
 
-      const btnPdf = e.target.closest('.btnPdfOT');
-      if (btnPdf) { manejarClickPdf(btnPdf); return; }
+      const bntPdf = e.target.closest('.btnPdfOT');
+      if (bntPdf) { manejarClickPdf(bntPdf); return; }
     });
 
     iniciarModalComentarios();
     iniciarSyncPolling();
-
     aplicarReglaComentarios();
+    aplicarReglaInspeccion();
   };
 
   document.addEventListener('DOMContentLoaded', iniciar);
@@ -1115,7 +1172,12 @@
 
 
 
-////////////////////////////////////////
+
+
+
+
+
+
 
 
 
@@ -1123,9 +1185,7 @@
 // ====================== CHAT SUB-OT ======================
 // =========================================================
 
-// =========================================================
-// ====================== CHAT SUB-OT ======================
-// =========================================================
+
 
 const postJsonLocal = async (url, payload) => {
   const resp = await fetch(url, {
@@ -1134,9 +1194,9 @@ const postJsonLocal = async (url, payload) => {
     body: JSON.stringify(payload)
   });
   const raw = await resp.text();
-  try { return JSON.parse(raw); } catch(e) {
+  try { return JSON.parse(raw); } catch (e) {
     console.error('Respuesta no JSON:', raw);
-    return { status:false, msg:'Respuesta inválida' };
+    return { status: false, msg: 'Respuesta inválida' };
   }
 };
 
@@ -1145,21 +1205,21 @@ let chatLastId = 0;
 
 // refs
 const chatModalEl = document.getElementById('modalChatOT');
-const chatModal   = chatModalEl ? new bootstrap.Modal(chatModalEl) : null;
-const chatBox     = document.getElementById('chatMessages');
-const chatInput   = document.getElementById('chatInput');
+const chatModal = chatModalEl ? new bootstrap.Modal(chatModalEl) : null;
+const chatBox = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
 const chatSendBtn = document.getElementById('chatSendBtn');
-const chatHint    = document.getElementById('chatStatusHint');
+const chatHint = document.getElementById('chatStatusHint');
 
-const chatSubotIn       = document.getElementById('chat_subot');
-const chatEstacionIn    = document.createElement('input');
-const chatPlaneacionIn  = document.createElement('input');
+const chatSubotIn = document.getElementById('chat_subot');
+const chatEstacionIn = document.createElement('input');
+const chatPlaneacionIn = document.createElement('input');
 
 chatEstacionIn.type = chatPlaneacionIn.type = 'hidden';
 chatEstacionIn.id = 'chat_estacionid';
 chatPlaneacionIn.id = 'chat_planeacionid';
 
-if (chatModalEl){
+if (chatModalEl) {
   chatModalEl.appendChild(chatEstacionIn);
   chatModalEl.appendChild(chatPlaneacionIn);
 }
@@ -1184,7 +1244,7 @@ const getInitials = (name) => {
 
 const scrollToBottom = () => {
   if (!chatBox) return;
-  // ✅ doble RAF para modal bootstrap (evita que falle el scroll)
+
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       chatBox.scrollTop = chatBox.scrollHeight;
@@ -1192,19 +1252,15 @@ const scrollToBottom = () => {
   });
 };
 
-// ---------------------------------------------------------
-// Render (Velzon-like)
-// mode: "replace" (load inicial) | "append" (poll)
-// ---------------------------------------------------------
+
 const renderMessagesVelzon = (rows, mode = 'append') => {
   if (!chatBox) return;
 
   const myId = String(window.CURRENT_USER_ID || '0');
 
-  // Orden por idchat por seguridad
   const list = (Array.isArray(rows) ? rows : [])
     .slice()
-    .sort((a,b) => (parseInt(a.idchat,10)||0) - (parseInt(b.idchat,10)||0));
+    .sort((a, b) => (parseInt(a.idchat, 10) || 0) - (parseInt(b.idchat, 10) || 0));
 
   if (mode === 'replace') {
     chatBox.innerHTML = '';
@@ -1220,22 +1276,22 @@ const renderMessagesVelzon = (rows, mode = 'append') => {
     if (mode === 'append' && id <= chatLastId) continue;
     if (id > chatLastId) chatLastId = id;
 
-    const userId   = String(r.user_id ?? r.iduser ?? r.userid ?? r.idusuario ?? '');
+    const userId = String(r.user_id ?? r.iduser ?? r.userid ?? r.idusuario ?? '');
     const userName = String(r.user_name ?? r.nombre ?? r.usuario ?? 'Usuario');
-    const avatar   = String(r.user_avatar ?? r.avatar ?? '');
-    const msg      = String(r.message ?? r.mensaje ?? '');
-    const created  = String(r.created_at ?? r.fecha ?? '');
+    const avatar = String(r.user_avatar ?? r.avatar ?? '');
+    const msg = String(r.message ?? r.mensaje ?? '');
+    const created = String(r.created_at ?? r.fecha ?? '');
 
     const isMe = (userId && myId && userId === myId);
 
     const row = document.createElement('div');
     row.className = `v-msg-row ${isMe ? 'me' : 'other'}`;
-  const base = base_url.replace(/\/$/, '');
+    const base = base_url.replace(/\/$/, '');
 
-const avatarSrc = avatar
-  ? `${base}/Assets/avatars/${encodeURIComponent(avatar)}`
-  : `${base}/Assets/avatars/avatar_default.svg`;
-    // avatar SOLO para other (estilo tipo velzon), si quieres también para me quítale el if
+    const avatarSrc = avatar
+      ? `${base}/Assets/avatars/${encodeURIComponent(avatar)}`
+      : `${base}/Assets/avatars/avatar_default.svg`;
+
     if (!isMe) {
       const av = document.createElement('div');
       av.className = 'v-avatar';
@@ -1297,7 +1353,7 @@ const chatPoll = async () => {
     const data = await postJsonLocal(base_url + '/plan_planeacion/getChatMessages', payload);
     if (!data?.status) return;
 
-    // poll solo añade
+
     renderMessagesVelzon(data.data || [], 'append');
   } catch (e) {
     console.warn('chat poll error', e);
@@ -1310,8 +1366,8 @@ const chatPoll = async () => {
 const chatOpen = (btn) => {
   if (!btn || !chatModal) return;
 
-  const subot        = btn.dataset.subot || '';
-  const estacionid   = btn.dataset.estacionid || '0';
+  const subot = btn.dataset.subot || '';
+  const estacionid = btn.dataset.estacionid || '0';
   const planeacionid = btn.dataset.planeacionid || '0';
 
   if (!subot) return;
@@ -1328,11 +1384,10 @@ const chatOpen = (btn) => {
   if (chatPollingTimer) clearInterval(chatPollingTimer);
   chatPollingTimer = null;
 
-  // muestra modal primero (para que el scroll exista)
   chatModal.show();
 };
 
-// Cuando el modal ya está visible: carga + polling
+
 chatModalEl?.addEventListener('shown.bs.modal', async () => {
   await chatLoad();
 
@@ -1373,7 +1428,7 @@ const sendMessage = async () => {
 
   if (!data?.status) {
     setHint(data?.msg || 'No se pudo enviar');
-    Swal.fire({ icon:'error', title:'Error', text:data?.msg || 'No se pudo enviar' });
+    Swal.fire({ icon: 'error', title: 'Error', text: data?.msg || 'No se pudo enviar' });
     return;
   }
 
@@ -1397,4 +1452,1654 @@ document.addEventListener('click', (e) => {
 });
 
 
-Vientos 
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.js-or-descriptiva');
+  if (!btn) return;
+
+  openModalOrdenDescriptiva(
+    btn.dataset.productoid,
+    btn.dataset.descripcion,
+    btn.dataset.cantidad
+  );
+});
+
+
+
+
+async function openModalOrdenDescriptiva(productoid, descripcion, cantidad = 1) {
+  productoid = parseInt(productoid, 10) || 0;
+
+  const modalDes = document.getElementById('modalDescriptiva');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalDes);
+
+  const tbody = document.getElementById('desTableBody');
+
+  const title = document.getElementById('titleDes');
+  if (title) title.textContent = descripcion || 'Producto';
+
+  const titleCant = document.getElementById('titleCantidad');
+  if (titleCant) titleCant.textContent = cantidad || '—';
+
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="4" class="text-center py-4">
+        <div class="spinner-border spinner-border-sm"></div>
+        <span class="ms-2 text-muted">Cargando ficha técnica…</span>
+      </td>
+    </tr>
+  `;
+
+  modal.show();
+
+  try {
+    const resp = await fetch(`${base_url}/plan_planeacion/getDescriptiva`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ productoid })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const json = await resp.json();
+    if (!json.status) throw new Error(json.msg || 'Error al cargar');
+
+
+    const arr = json.data?.data || [];
+    const info = arr[0] || null;
+
+    if (!info) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No hay ficha técnica registrada</td></tr>`;
+      return;
+    }
+
+    const fields = [
+      ['Marca', 'marca'],
+      ['Modelo', 'modelo'],
+      ['Motor', 'motor'],
+      ['Cilindros', 'cilindros'],
+      ['Desplazamiento', 'desplazamiento_c'],
+      ['Combustible', 'tipo_combustible'],
+      ['Potencia', 'potencia'],
+      ['Torque', 'torque'],
+      ['Transmisión', 'transmision'],
+      ['Dirección', 'direccion'],
+      ['Sistema eléctrico', 'sistema_electrico'],
+      ['Capacidad combustible', 'capacidad_combustible'],
+      ['Largo total', 'largo_total'],
+      ['Distancia entre ejes', 'distancia_ejes'],
+      ['Peso bruto vehicular', 'peso_bruto_vehicular'],
+      ['Llantas', 'llantas'],
+      ['Sistema de frenos', 'sistema_frenos'],
+      ['Eje delantero', 'eje_delantero'],
+      ['Suspensión delantera', 'suspension_delantera'],
+      ['Eje trasero', 'eje_trasero'],
+      ['Suspensión trasera', 'suspension_trasera'],
+      ['Asistencias', 'asistencias'],
+      ['Equipamiento', 'equipamiento'],
+    ];
+
+
+    const pairs = fields
+      .map(([label, key]) => [label, (info[key] ?? '').toString().trim()])
+      .filter(([_, val]) => val !== '');
+
+
+    let html = '';
+    for (let i = 0; i < pairs.length; i += 2) {
+      const [k1, v1] = pairs[i];
+      const [k2, v2] = pairs[i + 1] || ['', ''];
+
+      html += `
+        <tr>
+          <td class="key-col">${k1}</td>
+          <td class="val-col text-value">${escapeHtml(v1)}</td>
+          <td class="key-col">${k2 || ''}</td>
+          <td class="val-col text-value">${k2 ? escapeHtml(v2) : ''}</td>
+        </tr>
+      `;
+    }
+
+
+    if (info.fecha_creacion) {
+      html += `
+        <tr>
+          <td class="key-col">Fecha de registro</td>
+          <td class="val-col text-value">${escapeHtml(info.fecha_creacion)}</td>
+          <td class="key-col"></td>
+          <td class="val-col"></td>
+        </tr>
+      `;
+    }
+    
+
+    tbody.innerHTML = html;
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">${err.message}</td></tr>`;
+  }
+}
+
+
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.js-or-documentacion');
+  if (!btn) return;
+
+  openModalOrdenDocumentacion(
+    btn.dataset.productoid,
+    btn.dataset.descripcion,
+    btn.dataset.cantidad
+  );
+});
+
+
+
+
+async function openModalOrdenDocumentacion(productoid, descripcion, cantidad = 1) {
+  productoid = parseInt(productoid, 10) || 0;
+
+  const modalCom = document.getElementById('modalDocumentacion');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalCom);
+  const tbody = document.getElementById('docTableBody');
+
+  const est = document.getElementById('titleProductoD');
+  if (est) est.textContent = descripcion || 'Producto';
+
+  const proc = document.getElementById('titleCantidadD');
+  if (proc) proc.textContent = cantidad || 'Cantidad';
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="4" class="text-center py-4">
+        <div class="spinner-border spinner-border-sm"></div>
+        <span class="ms-2 text-muted">Cargando documentación…</span>
+      </td>
+    </tr>
+  `;
+
+  modal.show();
+
+  try {
+    const resp = await fetch(`${base_url}/plan_planeacion/getDocumentacion`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ productoid })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    if (!data.status) throw new Error(data.msg || 'Error al cargar');
+
+    const archivos = data.data?.rows || [];
+
+    if (!archivos.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" class="text-center text-muted py-4">No hay documentación</td>
+        </tr>
+      `;
+      return;
+    }
+
+    const badgeClass = (tipo = '') => {
+      const t = (tipo || '').toLowerCase();
+      if (t.includes('ayuda')) return 'bg-info';
+      if (t.includes('manual')) return 'bg-warning';
+      if (t.includes('plano')) return 'bg-primary';
+      return 'bg-success';
+    };
+
+    tbody.innerHTML = archivos.map(doc => `
+      <tr>
+        <td>
+          <span class="badge ${badgeClass(doc.tipo_documento)}">
+            ${escapeHtml(doc.tipo_documento)}
+          </span>
+        </td>
+        <td class="text-muted">${escapeHtml(doc.descripcion || '-')}</td>
+        <td>${escapeHtml(doc.fecha_creacion || '-')}</td>
+        <td class="text-center">
+          <a href="${base_url}/Assets/uploads/doc_componentes/${encodeURIComponent(doc.ruta)}"
+             target="_blank"
+             class="btn btn-sm btn-outline-primary">
+            <i class="ri-eye-line me-1"></i> Ver
+          </a>
+        </td>
+      </tr>
+    `).join('');
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+
+
+
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.js-esp');
+  if (!btn) return;
+
+  openModalEspecificaciones(
+    btn.dataset.productoid,
+    btn.dataset.estacionid,
+    btn.dataset.estacion,
+    btn.dataset.proceso,
+    btn.dataset.cantidad
+  );
+});
+
+
+
+
+async function openModalEspecificaciones(productoid, estacionid, nombreEstacion = '', procesoTxt = '', cantidadPedido = 1) {
+  productoid = parseInt(productoid, 10) || 0;
+  estacionid = parseInt(estacionid, 10) || 0;
+  cantidadPedido = parseFloat(cantidadPedido) || 0;
+
+  const modalCom = document.getElementById('modalEspecificaciones');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalCom);
+  const tbody = document.getElementById('specTableBody');
+
+  const est = document.getElementById('titleEstacionEs');
+  if (est) est.textContent = nombreEstacion || 'Estación';
+
+  const proc = document.getElementById('titleProcesoEs');
+  if (proc) proc.textContent = procesoTxt || 'Proceso';
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="4" class="text-center">
+        <div class="spinner-border spinner-border-sm"></div> Cargando...
+      </td>
+    </tr>
+  `;
+
+  modal.show();
+
+  try {
+    const resp = await fetch(`${base_url}/plan_planeacion/getEspecificaciones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ productoid, estacionid })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    if (!data.status) throw new Error(data.msg || 'Error al cargar');
+
+    const rows = data.data?.rows || [];
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No hay especificaciones</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+
+
+      return `
+        <tr>
+      <td>${r.especificacion || '-'}</td>
+     
+
+        </tr>
+      `;
+    }).join('');
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${err.message}</td></tr>`;
+  }
+}
+
+
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.js-comp');
+  if (!btn) return;
+
+  openModalComponentes(
+    btn.dataset.productoid,
+    btn.dataset.estacionid,
+    btn.dataset.estacion,
+    btn.dataset.proceso,
+    btn.dataset.cantidad
+  );
+});
+
+
+
+
+async function openModalComponentes(productoid, estacionid, nombreEstacion = '', procesoTxt = '', cantidadPedido = 1) {
+  productoid = parseInt(productoid, 10) || 0;
+  estacionid = parseInt(estacionid, 10) || 0;
+  cantidadPedido = parseFloat(cantidadPedido) || 0;
+
+  const modalCom = document.getElementById('modalComponentes');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalCom);
+  const tbody = document.getElementById('compTableBody');
+
+  const est = document.getElementById('titleEstacion');
+  if (est) est.textContent = nombreEstacion || 'Estación';
+
+  const proc = document.getElementById('titleProceso');
+  if (proc) proc.textContent = procesoTxt || 'Proceso';
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="4" class="text-center">
+        <div class="spinner-border spinner-border-sm"></div> Cargando...
+      </td>
+    </tr>
+  `;
+
+  modal.show();
+
+  try {
+    const resp = await fetch(`${base_url}/plan_planeacion/getComponentes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ productoid, estacionid })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    if (!data.status) throw new Error(data.msg || 'Error al cargar');
+
+    const rows = data.data?.rows || [];
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No hay componentes</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+      const reqPorUnidad = parseFloat(r.cantidad) || 0;
+      const totalRequerido = cantidadPedido * reqPorUnidad;
+
+      return `
+        <tr>
+          <td>${r.componente || '-'}</td>
+          <td class="text-center">${reqPorUnidad}</td>
+          <td class="text-center fw-semibold">${totalRequerido}</td>
+
+        </tr>
+      `;
+    }).join('');
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${err.message}</td></tr>`;
+  }
+}
+
+
+
+
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.js-herr');
+  if (!btn) return;
+
+  openModalHerramientas(
+    btn.dataset.productoid,
+    btn.dataset.estacionid,
+    btn.dataset.estacion,
+    btn.dataset.proceso
+  );
+});
+
+
+
+
+async function openModalHerramientas(productoid, estacionid, nombreEstacion = '', procesoTxt = '') {
+  productoid = parseInt(productoid, 10) || 0;
+  estacionid = parseInt(estacionid, 10) || 0;
+
+
+  const modalHerr = document.getElementById('modalHerramientas');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalHerr);
+  const tbody = document.getElementById('herrTableBody');
+
+  const est = document.getElementById('titleEstacionH');
+  if (est) est.textContent = nombreEstacion || 'Estación';
+
+  const proc = document.getElementById('titleProcesoH');
+  if (proc) proc.textContent = procesoTxt || 'Proceso';
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="4" class="text-center">
+        <div class="spinner-border spinner-border-sm"></div> Cargando...
+      </td>
+    </tr>
+  `;
+
+  modal.show();
+
+  try {
+    const resp = await fetch(`${base_url}/plan_planeacion/getHerramientas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ productoid, estacionid })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    if (!data.status) throw new Error(data.msg || 'Error al cargar');
+
+    const rows = data.data?.rows || [];
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No hay herramientas</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+
+      return `
+        <tr>
+          <td>${r.herramienta || '-'}</td>
+          <td class="text-center">${r.cantidad}</td>
+ 
+
+        </tr>
+      `;
+    }).join('');
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${err.message}</td></tr>`;
+  }
+}
+
+
+////////////////////////////////////////////////////
+///// funciones para inspección de calidad ////////
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btnInspeccionCalidad');
+  if (!btn) return;
+
+  openModalInspeccionCalidad(
+    btn.dataset.productoid,
+    btn.dataset.estacionid,
+    btn.dataset.estacion,
+    btn.dataset.proceso,
+    btn.dataset.cantidad,
+    btn.dataset.idorden,
+    btn.dataset.numorden
+  );
+});
+
+// ============================
+// Helpers
+// ============================
+const $ = (id) => document.getElementById(id);
+
+
+function esc(str) {
+  return String(str ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", "&#039;");
+}
+
+function isImageFile(fileNameOrMime = '') {
+  const s = String(fileNameOrMime).toLowerCase();
+  return s.includes('image/') || s.endsWith('.jpg') || s.endsWith('.jpeg') || s.endsWith('.png') || s.endsWith('.webp');
+}
+
+function setButtonsByEstado() {
+  const btnLiberar = $('btnLiberarCalidad');
+  const btnPausar = $('btnPausarCalidad');
+  const tbody = $('calidadTableBody');
+
+  if (!btnLiberar || !btnPausar || !tbody) return;
+
+  const trs = [...tbody.querySelectorAll('tr[data-especificacionid]')];
+
+  if (!trs.length) {
+    btnLiberar.classList.add('d-none');
+    btnPausar.classList.add('d-none');
+    return;
+  }
+
+  let okCount = 0;
+  let noCount = 0;
+  let pending = 0;
+
+  trs.forEach(tr => {
+    const radios = [...tr.querySelectorAll('.resultado-radio')];
+    const selected = radios.find(r => r.checked);
+
+    if (!selected) pending++;
+    else if (selected.value === 'OK') okCount++;
+    else if (selected.value === 'NO_OK') noCount++;
+  });
+
+
+  if (pending > 0) {
+    btnLiberar.classList.add('d-none');
+    btnPausar.classList.add('d-none');
+    return;
+  }
+
+  if (noCount > 0) {
+    btnLiberar.classList.add('d-none');
+    btnPausar.classList.remove('d-none');
+    return;
+  }
+
+
+  btnLiberar.classList.remove('d-none');
+  btnPausar.classList.add('d-none');
+}
+
+
+document.addEventListener('change', (e) => {
+  const radio = e.target.closest('.resultado-radio');
+  if (!radio) return;
+
+  const tr = radio.closest('tr');
+  const comentario = tr.querySelector('.comentario');
+
+  // if (radio.value === 'NO_OK' && radio.checked) {
+  //   comentario.disabled = false;
+  //   comentario.required = true;
+  //   comentario.focus();
+  // }
+
+  // if (radio.value === 'OK' && radio.checked) {
+  //   comentario.value = '';
+  //   comentario.disabled = true;
+  //   comentario.required = false;
+  // }
+
+
+  comentario.disabled = false;
+
+  if (radio.value === 'NO_OK' && radio.checked) {
+    comentario.required = true;
+    comentario.focus();
+  } else if (radio.value === 'OK' && radio.checked) {
+    comentario.required = false;
+
+
+  }
+
+
+
+  tr.classList.remove('table-danger');
+  const err = tr.querySelector('.row-error');
+  if (err) err.classList.add('d-none');
+
+
+  setButtonsByEstado();
+});
+
+
+
+
+function renderLocalEvidenceLinks(tr) {
+  const input = tr.querySelector('.evidencia-file');
+  const box = tr.querySelector('.evidencia-links');
+  if (!input || !box) return;
+
+  const especId = parseInt(tr.dataset.especificacionid || 0, 10) || 0;
+
+
+  [...box.querySelectorAll('[data-blob-url]')].forEach(a => {
+    try { URL.revokeObjectURL(a.getAttribute('data-blob-url')); } catch { }
+  });
+
+  let localWrap = box.querySelector('.evidencia-local');
+  if (!localWrap) {
+    localWrap = document.createElement('div');
+    localWrap.className = 'evidencia-local mt-1';
+    box.appendChild(localWrap);
+  }
+  localWrap.innerHTML = '';
+
+  const files = input.files ? [...input.files] : [];
+  if (!files.length) {
+
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'd-flex flex-column gap-1';
+
+  files.forEach((file, index) => {
+    const blobUrl = URL.createObjectURL(file);
+    const isImg = isImageFile(file.type || file.name);
+
+    const row = document.createElement('div');
+    row.className = 'd-flex align-items-center justify-content-between gap-2';
+
+    row.innerHTML = `
+      <div class="d-flex align-items-center gap-2">
+        <a href="javascript:void(0)"
+           class="link-primary text-decoration-underline evidencia-open-blob"
+           data-blob-url="${esc(blobUrl)}"
+           data-especid="${especId}"
+           data-index="${index}">
+           Ver ${isImg ? 'imagen' : 'archivo'}
+        </a>
+   
+      </div>
+
+      <button type="button"
+        class="btn btn-sm btn-outline-danger py-0 px-2 evidencia-remove-local"
+        data-especid="${especId}"
+        data-index="${index}"
+        title="Quitar archivo">
+        <i class="ri-delete-bin-6-line"></i>
+      </button>
+    `;
+    list.appendChild(row);
+  });
+
+  localWrap.appendChild(list);
+}
+
+
+function removeLocalFileFromInput(input, removeIndex) {
+  const dt = new DataTransfer();
+  const files = input.files ? [...input.files] : [];
+  files.forEach((f, idx) => {
+    if (idx !== removeIndex) dt.items.add(f);
+  });
+  input.files = dt.files;
+}
+
+
+document.addEventListener('change', (e) => {
+  const input = e.target.closest('.evidencia-file');
+  if (!input) return;
+  const tr = input.closest('tr[data-especificacionid]');
+  if (!tr) return;
+
+  renderLocalEvidenceLinks(tr);
+});
+
+
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('.evidencia-open-blob');
+  if (!a) return;
+
+  const url = a.getAttribute('data-blob-url');
+  if (!url) return;
+
+  window.open(url, '_blank', 'noopener');
+});
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.evidencia-remove-local');
+  if (!btn) return;
+
+  const tr = btn.closest('tr[data-especificacionid]');
+  if (!tr) return;
+
+  const input = tr.querySelector('.evidencia-file');
+  if (!input) return;
+
+  const idx = parseInt(btn.getAttribute('data-index') || '-1', 10);
+  if (idx < 0) return;
+
+
+  const link = tr.querySelector(`.evidencia-open-blob[data-index="${idx}"]`);
+  if (link) {
+    const blobUrl = link.getAttribute('data-blob-url');
+    if (blobUrl) {
+      try { URL.revokeObjectURL(blobUrl); } catch { }
+    }
+  }
+
+  removeLocalFileFromInput(input, idx);
+  renderLocalEvidenceLinks(tr);
+});
+
+
+async function openModalInspeccionCalidad(
+  productoid,
+  estacionid,
+  nombreEstacion = '',
+  procesoTxt = '',
+  cantidadPedido = 1,
+  idorden,
+  numot
+) {
+  productoid = parseInt(productoid, 10) || 0;
+  estacionid = parseInt(estacionid, 10) || 0;
+  idorden = parseInt(idorden, 10) || 0;
+
+  const myId = String(window.CURRENT_ROL_ID || '0');
+  const isUser5 = parseInt(myId, 10) === 5;
+
+
+  const btnPausarEl = document.getElementById('btnPausarCalidad');
+  const btnLiberarEl = document.getElementById('btnLiberarCalidad');
+
+  if (btnPausarEl) btnPausarEl.style.visibility = isUser5 ? 'visible' : 'hidden';
+  if (btnLiberarEl) btnLiberarEl.style.visibility = isUser5 ? 'visible' : 'hidden';
+
+  // ---------------------------------------------------------
+  // Modal 
+  // ---------------------------------------------------------
+  const modalCom = $('modalInspeccionCalidad');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalCom);
+  const tbody = $('calidadTableBody');
+
+  $('titleEstacionCal').textContent = nombreEstacion || 'Estación';
+  $('titleProcesoCal').textContent = procesoTxt || 'Proceso';
+  $('numSubOrdenT').textContent = numot || '-';
+
+  $('calidad_idorden').value = idorden;
+  $('calidad_numot').value = String(numot || '');
+  $('estacion_id').value = estacionid;
+
+  const prodHidden = $('producto_id');
+  if (prodHidden) prodHidden.value = productoid;
+
+
+  $('btnLiberarCalidad').classList.add('d-none');
+  $('btnPausarCalidad').classList.add('d-none');
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="4" class="text-center">
+        <div class="spinner-border spinner-border-sm"></div> Cargando...
+      </td>
+    </tr>
+  `;
+
+  modal.show();
+
+  try {
+    const resp = await fetch(`${base_url}/plan_planeacion/getEspecificaciones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ productoid, estacionid })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    if (!data.status) throw new Error(data.msg || 'Error al cargar');
+
+    const rows = data.data?.rows || [];
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No hay especificaciones</td></tr>`;
+      setButtonsByEstado();
+      return;
+    }
+
+    // Render tabla
+    tbody.innerHTML = rows.map((r, idx) => {
+      const especTxt = (r.especificacion || '-');
+      const especId = r.idespecificacion || r.especificacionid || (idx + 1);
+      const nameResultado = `res_${especId}`;
+
+      const evidenciaBlock = isUser5
+        ? `
+          <input type="file"
+                 class="form-control form-control-sm evidencia-file"
+                 accept=".jpg,.jpeg,.png,.pdf"
+                 multiple>
+
+          <button type="button" class="btn btn-sm btn-outline-secondary btnCamTake mt-2 d-none">
+            <i class="ri-camera-line me-1"></i> Tomar foto
+          </button>
+
+          <div class="text-muted small mt-1">Foto o PDF (opcional).</div>
+          <div class="evidencia-links mt-2 small"></div>
+        `
+        : `
+          <div class="text-muted small">Evidencia: solo disponible para encargados de estaciones.</div>
+          <div class="evidencia-links mt-2 small"></div>
+        `;
+
+      return `
+        <tr data-especificacionid="${especId}">
+          <td>
+            <div class="fw-semibold">${esc(especTxt)}</div>
+            <div class="text-muted small">${esc(r.fecha_creacion || '-')}</div>
+            <div class="text-danger small mt-1 d-none row-error">Revisa esta fila.</div>
+          </td>
+
+          <td class="text-center align-middle">
+            <div class="d-flex justify-content-center align-items-center flex-wrap gap-3">
+              <div class="form-check form-check-success">
+                <input class="form-check-input resultado-radio" type="radio"
+                       name="${nameResultado}" value="OK" id="${nameResultado}_ok">
+                <label class="form-check-label" for="${nameResultado}_ok">Aprobar</label>
+              </div>
+
+              <div class="form-check form-check-danger">
+                <input class="form-check-input resultado-radio" type="radio"
+                       name="${nameResultado}" value="NO_OK" id="${nameResultado}_no">
+                <label class="form-check-label" for="${nameResultado}_no">Pausar</label>
+              </div>
+            </div>
+          </td>
+
+          <td>
+            ${evidenciaBlock}
+          </td>
+
+          <td>
+            <textarea class="form-control form-control-sm comentario"
+                      rows="4"
+                      placeholder="Comentario (solo si es Pausar)"
+                      disabled></textarea>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+
+    try {
+      const respPrev = await fetch(`${base_url}/plan_planeacion/getInspeccionCalidad`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ idorden, estacionid })
+      });
+
+      const prev = await respPrev.json().catch(() => null);
+
+      if (respPrev.ok && prev && prev.status) {
+        const detPrev = prev.data?.detalle || [];
+
+        const mapPrev = new Map();
+        detPrev.forEach(x => {
+          const eid = parseInt(x.especificacionid, 10) || 0;
+          if (eid > 0) mapPrev.set(eid, x);
+        });
+
+        const trs = [...tbody.querySelectorAll('tr[data-especificacionid]')];
+
+        trs.forEach(tr => {
+          const eid = parseInt(tr.dataset.especificacionid, 10) || 0;
+          const info = mapPrev.get(eid);
+          if (!info) return;
+
+
+          const radios = [...tr.querySelectorAll('.resultado-radio')];
+          const rOk = radios.find(r => r.value === 'OK');
+          const rNo = radios.find(r => r.value === 'NO_OK');
+
+          if (info.resultado === 'OK' && rOk) rOk.checked = true;
+          if (info.resultado === 'NO_OK' && rNo) rNo.checked = true;
+
+          // Comentario
+          const txt = tr.querySelector('.comentario');
+          if (txt) {
+            txt.disabled = false;
+
+            if (info.resultado === 'NO_OK') {
+              txt.required = true;
+              txt.value = (info.comentario || '');
+            } else {
+              txt.required = false;
+            }
+          }
+
+
+          const list = Array.isArray(info.evidencias) ? info.evidencias : [];
+          if (!list.length) return;
+
+          const box = tr.querySelector('.evidencia-links');
+          if (!box) return;
+
+          let savedWrap = box.querySelector('.evidencia-saved');
+          if (!savedWrap) {
+            savedWrap = document.createElement('div');
+            savedWrap.className = 'evidencia-saved';
+            box.appendChild(savedWrap);
+          }
+
+          const UPLOAD_PATH = `${base_url}/Assets/uploads/calidad_evidencias/`;
+
+          savedWrap.innerHTML = `
+            <div class="d-flex flex-column gap-1">
+              ${list.map((ev, idx) => {
+            const name = ev.nombre_original || ev.archivo || `evidencia_${idx + 1}`;
+            const file = ev.archivo || '';
+            const url = file ? (UPLOAD_PATH + encodeURIComponent(file)) : '#';
+            const isImg = (ev.mime && String(ev.mime).startsWith('image/')) ||
+              (String(name).toLowerCase().match(/\.(jpg|jpeg|png|webp)$/));
+
+            return `
+                  <div class="d-flex align-items-center justify-content-between gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                      <a class="link-success text-decoration-underline"
+                         href="${url}"
+                         target="_blank" rel="noopener">
+                        Ver ${isImg ? 'imagen' : 'archivo'}
+                      </a>
+                    </div>
+
+                    <!-- Solo oculta el link (no borra servidor) -->
+                    <button type="button"
+                      class="btn btn-sm btn-outline-info py-0 px-2 evidencia-hide-saved"
+                      title="Ocultar de la vista">
+                      <i class="ri-eye-off-line"></i>
+                    </button>
+                  </div>
+                `;
+          }).join('')}
+            </div>
+          `;
+        });
+      }
+    } catch (e) {
+      // silencioso
+    }
+
+    setButtonsByEstado();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${err.message}</td></tr>`;
+    setButtonsByEstado();
+  }
+}
+
+
+
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.evidencia-hide-saved');
+  if (!btn) return;
+
+  const row = btn.closest('div.d-flex');
+  if (row) row.remove();
+});
+
+
+function buildPayloadCalidad() {
+  const idorden = parseInt($('calidad_idorden')?.value || 0, 10) || 0;
+  const numot = String($('calidad_numot')?.value || '');
+
+  const estacionid = parseInt($('estacion_id')?.value || 0, 10) || 0;
+
+  const tbody = $('calidadTableBody');
+  const trs = [...tbody.querySelectorAll('tr[data-especificacionid]')];
+
+  const detalle = trs.map(tr => {
+    const especificacionid = parseInt(tr.dataset.especificacionid, 10) || 0;
+    const selected = [...tr.querySelectorAll('.resultado-radio')].find(r => r.checked);
+    const resultado = selected ? selected.value : '';
+    const comentario = (tr.querySelector('.comentario')?.value || '').trim();
+
+    return { especificacionid, resultado, comentario };
+  });
+
+  return { idorden, numot, detalle, estacionid };
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#btnLiberarCalidad')) return;
+
+
+  const payload = buildPayloadCalidad();
+  console.log('LIBERAR payload:', payload);
+
+
+});
+
+
+async function enviarInspeccionCalidad(accion = 'PAUSAR') {
+  const idorden = parseInt(document.getElementById('calidad_idorden')?.value || 0, 10) || 0;
+  const numot = String(document.getElementById('calidad_numot')?.value || '');
+  const estacion = document.getElementById('modalInspeccionCalidad');
+  const tbody = document.getElementById('calidadTableBody');
+
+  const productoid = parseInt(document.getElementById('producto_id')?.value || 0, 10) || 0;
+  const estacionid = parseInt(document.getElementById('estacion_id')?.value || 0, 10) || 0;
+
+  const trs = [...tbody.querySelectorAll('tr[data-especificacionid]')];
+
+  if (!trs.length) {
+    alert('No hay especificaciones para enviar.');
+    return;
+  }
+
+  // ----------------------------
+  // Validación según acción
+  // ----------------------------
+  let hasError = false;
+
+  trs.forEach(tr => {
+    tr.classList.remove('table-danger');
+    const err = tr.querySelector('.row-error');
+    if (err) err.classList.add('d-none');
+
+    const especId = parseInt(tr.dataset.especificacionid || 0, 10) || 0;
+    const selected = [...tr.querySelectorAll('.resultado-radio')].find(r => r.checked);
+    const comentario = (tr.querySelector('.comentario')?.value || '').trim();
+    const filesCount = tr.querySelector('.evidencia-file')?.files?.length || 0;
+
+    if (!selected) {
+      hasError = true;
+      tr.classList.add('table-danger');
+      if (err) { err.textContent = 'Selecciona Aprobar o Pausar.'; err.classList.remove('d-none'); }
+      return;
+    }
+
+    if (accion === 'LIBERAR') {
+
+      if (selected.value !== 'OK') {
+        hasError = true;
+        tr.classList.add('table-danger');
+        if (err) { err.textContent = 'Para liberar, todo debe estar en Aprobar.'; err.classList.remove('d-none'); }
+        return;
+      }
+    }
+
+    if (accion === 'PAUSAR' && selected.value === 'NO_OK') {
+      if (!comentario) {
+        hasError = true;
+        tr.classList.add('table-danger');
+        if (err) { err.textContent = 'Comentario requerido para Pausar.'; err.classList.remove('d-none'); }
+        return;
+      }
+
+      if (filesCount <= 0) {
+        hasError = true;
+        tr.classList.add('table-danger');
+        if (err) { err.textContent = 'Evidencia requerida para Pausar.'; err.classList.remove('d-none'); }
+        return;
+      }
+    }
+  });
+
+  if (hasError) return;
+
+  // ----------------------------
+  // Construir  JSON
+  // ----------------------------
+  const detalle = trs.map(tr => {
+    const especId = parseInt(tr.dataset.especificacionid || 0, 10) || 0;
+    const selected = [...tr.querySelectorAll('.resultado-radio')].find(r => r.checked);
+    return {
+      especificacionid: especId,
+      resultado: selected ? selected.value : '',
+      comentario: (tr.querySelector('.comentario')?.value || '').trim()
+    };
+  });
+
+
+  const fd = new FormData();
+  fd.append('accion', accion);
+  fd.append('idorden', String(idorden));
+  fd.append('numot', numot);
+  fd.append('productoid', String(productoid));
+  fd.append('estacionid', String(estacionid));
+  fd.append('detalle', JSON.stringify(detalle));
+
+
+  trs.forEach(tr => {
+    const especId = parseInt(tr.dataset.especificacionid || 0, 10) || 0;
+    const input = tr.querySelector('.evidencia-file');
+    const files = input?.files ? [...input.files] : [];
+    files.forEach(file => {
+      fd.append(`evidencia_${especId}[]`, file);
+    });
+  });
+
+  // ----------------------------
+  // Fetch
+  // ----------------------------
+  try {
+    const resp = await fetch(`${base_url}/plan_planeacion/setInspeccionCalidad`, {
+      method: 'POST',
+      body: fd
+    });
+
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok || !data || !data.status) {
+      const msg = (data && data.msg) ? data.msg : `Error HTTP ${resp.status}`;
+      throw new Error(msg);
+    }
+
+    Swal.fire({ icon: 'success', title: 'OK', text: data.msg || 'Guardado' })
+      .then(() => {
+        const modalEl = document.getElementById('modalInspeccionCalidad');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.hide();
+        window.location.reload();
+      });
+
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+// Botones
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#btnLiberarCalidad')) {
+    enviarInspeccionCalidad('LIBERAR');
+  }
+  if (e.target.closest('#btnPausarCalidad')) {
+    enviarInspeccionCalidad('PAUSAR');
+  }
+});
+
+
+// =====================================================
+// FUNCIONNES PARA VER LA INSPEeCCIÓN CAPTURADA POR CALIDADA
+// =====================================================
+
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btnViewInspeccionCalidad');
+  if (!btn) return;
+
+  openModalVerInspeccion(
+    btn.dataset.estacionid,
+    btn.dataset.idorden,
+    btn.dataset.estacion,
+    btn.dataset.proceso,
+    btn.dataset.numorden
+  );
+});
+
+
+
+
+async function openModalVerInspeccion(estacionid, idorden, nombreEstacion = '', nombreProceso = '', numOrden = '') {
+  estacionid = parseInt(estacionid, 10) || 0;
+  idorden = parseInt(idorden, 10) || 0;
+
+  const modalEl = $('modalViewInspeccionCalidad');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+
+  const tbody = $('calidadViewTableBody');
+
+  const numorden = $('numSubOrdenTView');
+  if (numorden) numorden.textContent = numOrden || '-';
+
+  const est = $('titleEstacionCalView');
+  if (est) est.textContent = nombreEstacion || 'Estación';
+
+  const proc = $('titleProcesoCalView');
+  if (proc) proc.textContent = nombreProceso || 'Proceso';
+
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="4" class="text-center">
+        <div class="spinner-border spinner-border-sm"></div> Cargando...
+      </td>
+    </tr>
+  `;
+
+
+  const setText = (id, val) => { const el = $(id); if (el) el.textContent = (val ?? '—'); };
+
+  setText('viewInspectorNombre', '—');
+  setText('viewInspectorEmail', '—');
+  setText('viewFechaInicio', '—');
+  setText('viewFechaCierre', '—');
+
+  const badge = $('viewEstadoBadge');
+  if (badge) {
+    badge.className = 'badge rounded-pill border fs-12';
+    badge.textContent = '—';
+  }
+
+  setText('viewCountOk', 0);
+  setText('viewCountNoOk', 0);
+  setText('viewCountEv', 0);
+
+  const resumenBox = $('viewResumenComentarios');
+  if (resumenBox) resumenBox.innerHTML = `<div class="text-muted small">—</div>`;
+
+  modal.show();
+
+  try {
+    const respPrev = await fetch(`${base_url}/plan_planeacion/getViewInspeccionCalidad`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ idorden, estacionid })
+    });
+
+    const prev = await respPrev.json().catch(() => null);
+
+    if (!respPrev.ok || !prev || !prev.status) {
+      throw new Error(prev?.msg || `Error HTTP ${respPrev.status}`);
+    }
+
+    const header = prev.data?.header || {};
+    const detalle = prev.data?.detalle || [];
+
+
+    const nombreInspector = `${header.nombres || ''} ${header.apellidos || ''}`.trim() || '—';
+    setText('viewInspectorNombre', nombreInspector);
+    setText('viewInspectorEmail', header.email_user || '—');
+    setText('viewFechaInicio', header.fecha_creacion || '—');
+    setText('viewFechaCierre', header.fecha_cierre || '—');
+
+    if (badge) {
+      if (parseInt(header.estado, 10) === 2) {
+        badge.className = 'badge rounded-pill bg-success-subtle text-success border border-success-subtle fs-12';
+        badge.innerHTML = `<i class="ri-check-double-line me-1"></i> Liberada`;
+      } else if (parseInt(header.estado, 10) === 1) {
+        badge.className = 'badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle fs-12';
+        badge.innerHTML = `<i class="ri-pause-circle-line me-1"></i> Pausada`;
+      } else {
+        badge.className = 'badge rounded-pill bg-secondary-subtle text-secondary border border-secondary-subtle fs-12';
+        badge.innerHTML = `<i class="ri-question-line me-1"></i> Sin estado`;
+      }
+    }
+
+    if (!detalle.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No hay inspección guardada.</td></tr>`;
+      return;
+    }
+
+
+    const UPLOAD_PATH = `${base_url}/Assets/uploads/calidad_evidencias/`;
+
+    const fmtSize = (n) => {
+      n = parseInt(n || 0, 10) || 0;
+      if (n < 1024) return `${n} B`;
+      if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+      return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    };
+
+    const isImg = (mime, file) => {
+      const m = String(mime || '').toLowerCase();
+      const f = String(file || '').toLowerCase();
+      return m.startsWith('image/') || f.endsWith('.jpg') || f.endsWith('.jpeg') || f.endsWith('.png') || f.endsWith('.webp');
+    };
+
+
+    let countOk = 0, countNo = 0, countEv = 0;
+
+    const noOkResumen = [];
+
+    detalle.forEach(d => {
+      const res = String(d.resultado || '');
+      const evs = Array.isArray(d.evidencias) ? d.evidencias : [];
+      countEv += evs.length;
+
+      if (res === 'OK') countOk++;
+      if (res === 'NO_OK') {
+        countNo++;
+        const motivo = (d.comentario_no_ok || '').trim();
+        const corr = (d.accion_correctiva || '').trim();
+
+        noOkResumen.push({
+          especificacion: d.especificacion || `Especificación ${d.especificacionid}`,
+          motivo,
+          corr,
+          evidencias: evs.length
+        });
+      }
+    });
+
+    setText('viewCountOk', countOk);
+    setText('viewCountNoOk', countNo);
+    setText('viewCountEv', countEv);
+
+    if (resumenBox) {
+      if (!noOkResumen.length) {
+        resumenBox.innerHTML = `<div class="text-success small"><i class="ri-check-line me-1"></i> No hay NO OK registrados en esta inspección.</div>`;
+      } else {
+        resumenBox.innerHTML = `
+          <div class="text-danger small fw-semibold mb-2">
+            <i class="ri-alarm-warning-line me-1"></i> NO OK registrados:
+          </div>
+          <div class="d-flex flex-column gap-2">
+            ${noOkResumen.map(x => `
+              <div class="p-2 rounded border bg-danger-subtle">
+                <div class="fw-semibold small">${esc(x.especificacion)}</div>
+                <div class="small"><span class="text-danger fw-semibold">Motivo:</span> ${x.motivo ? esc(x.motivo) : '<span class="text-muted">—</span>'}</div>
+                <div class="small"><span class="text-success fw-semibold">Acción correctiva:</span> ${x.corr ? esc(x.corr) : '<span class="text-muted">—</span>'}</div>
+                <div class="small text-muted mt-1">Evidencias: <b>${x.evidencias}</b></div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+    }
+
+
+    tbody.innerHTML = detalle.map((d) => {
+      const res = d.resultado || '';
+      const evs = Array.isArray(d.evidencias) ? d.evidencias : [];
+
+      const badgeRes = (res === 'NO_OK')
+        ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+             <i class="ri-close-circle-line me-1"></i> NO OK
+           </span>`
+        : `<span class="badge bg-success-subtle text-success border border-success-subtle">
+             <i class="ri-checkbox-circle-line me-1"></i> OK
+           </span>`;
+
+      const evHtml = evs.length
+        ? `
+          <div class="d-flex flex-column gap-1">
+            ${evs.map((ev) => {
+          const file = ev.archivo || '';
+          const url = file ? (UPLOAD_PATH + encodeURIComponent(file)) : '#';
+          const icon = isImg(ev.mime, file) ? 'ri-image-2-line text-primary' : 'ri-file-pdf-2-line text-danger';
+          const label = isImg(ev.mime, file) ? 'Ver imagen' : 'Ver archivo';
+
+          return `
+                <div class="d-flex align-items-center justify-content-between gap-2">
+                  <a class="link-primary text-decoration-underline"
+                     href="${url}" target="_blank" rel="noopener">
+                    <i class="${icon} me-1"></i> ${label}
+                  </a>
+                  <span class="text-muted small">${fmtSize(ev.size_bytes)}</span>
+                </div>
+                <div class="text-muted small" title="${esc(ev.nombre_original || file)}">
+                  ${esc(ev.nombre_original || file)}
+                </div>
+              `;
+        }).join('')}
+          </div>
+        `
+        : `<span class="text-muted">—</span>`;
+
+
+      const motivo = (d.comentario_no_ok || '').trim();
+      const corr = (d.accion_correctiva || '').trim();
+
+      const comentariosHtml = `
+        <div class="small">
+          <div><span class="text-danger fw-semibold">Motivo:</span> ${motivo ? esc(motivo) : '<span class="text-muted">—</span>'}</div>
+          <div class="mt-1"><span class="text-success fw-semibold">Correctiva:</span> ${corr ? esc(corr) : '<span class="text-muted">—</span>'}</div>
+        </div>
+      `;
+
+      return `
+        <tr class="${res === 'NO_OK' ? 'table-danger' : ''}">
+          <td>
+            <div class="fw-semibold">${esc(d.especificacion || `Especificación ${d.especificacionid}`)}</div>
+        
+          </td>
+
+          <td class="text-center align-middle">
+            ${badgeRes}
+          </td>
+
+          <td>
+            ${evHtml}
+          </td>
+
+          <td>
+            ${comentariosHtml}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${esc(err.message)}</td></tr>`;
+  }
+}
+
+
+
+
+
+
+
+
+
+// =====================================================
+// FUNCIONNES CÁMARA 
+// =====================================================
+
+
+let __filaObjetivoCamara = null;
+
+
+let __streamCamara = null;
+
+
+let __camaraLado = 'environment';
+
+
+let __archivosSesionCamara = [];
+
+// -----------------------------------------------------
+// Detener cámar
+// -----------------------------------------------------
+function detenerCamara() {
+  if (__streamCamara) {
+    __streamCamara.getTracks().forEach(t => t.stop());
+    __streamCamara = null;
+  }
+}
+
+// -----------------------------------------------------
+// Iniciar cámara
+// -----------------------------------------------------
+async function iniciarCamara(lado = 'environment') {
+  detenerCamara();
+
+  const video = document.getElementById('camVideo');
+  const info = document.getElementById('camInfo');
+
+  const constraints = {
+    video: {
+      facingMode: { ideal: lado },
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    },
+    audio: false
+  };
+
+  __streamCamara = await navigator.mediaDevices.getUserMedia(constraints);
+  video.srcObject = __streamCamara;
+  __camaraLado = lado;
+
+  if (info) {
+    info.textContent = (lado === 'environment') ? 'Cámara trasera' : 'Cámara frontal';
+  }
+}
+
+function agregarArchivosAInput(input, nuevosArchivos) {
+  const dt = new DataTransfer();
+  const existentes = input.files ? [...input.files] : [];
+
+  existentes.forEach(f => dt.items.add(f));
+  nuevosArchivos.forEach(f => dt.items.add(f));
+
+  input.files = dt.files;
+}
+
+// -----------------------------------------------------
+// Crear archivo desde canvtas
+// -----------------------------------------------------
+function archivoDesdeCanvas(canvas, nombreArchivo) {
+  return new Promise(resolve => {
+    canvas.toBlob(blob => {
+      resolve(new File([blob], nombreArchivo, { type: 'image/jpeg' }));
+    }, 'image/jpeg', 0.92);
+  });
+}
+
+// -----------------------------------------------------
+// Mostrar miniatuhras de la sesión
+// -----------------------------------------------------
+function renderizarMiniaturasCamara() {
+  const contenedor = document.getElementById('camThumbs');
+  if (!contenedor) return;
+
+  contenedor.innerHTML = '';
+
+  __archivosSesionCamara.forEach((file, index) => {
+    const url = URL.createObjectURL(file);
+
+    const div = document.createElement('div');
+    div.className = 'position-relative';
+    div.style.width = '84px';
+    div.style.height = '84px';
+
+    div.innerHTML = `
+      <img src="${url}" class="rounded border w-100 h-100" style="object-fit:cover"
+           data-thumb-url="${url}">
+      <button type="button"
+        class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-0"
+        style="width:22px;height:22px"
+        data-cam-eliminar="${index}">
+        <i class="ri-close-line"></i>
+      </button>
+    `;
+
+    contenedor.appendChild(div);
+  });
+}
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-cam-eliminar]');
+  if (!btn) return;
+
+  const index = parseInt(btn.dataset.camEliminar, 10);
+  if (index < 0) return;
+
+  __archivosSesionCamara.splice(index, 1);
+
+  document.querySelectorAll('img[data-thumb-url]').forEach(img => {
+    try { URL.revokeObjectURL(img.dataset.thumbUrl); } catch { }
+  });
+
+  renderizarMiniaturasCamara();
+});
+
+// -----------------------------------------------------
+// Abrir cámarat
+// -----------------------------------------------------
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.btnCamTake');
+  if (!btn) return;
+
+  const tr = btn.closest('tr[data-especificacionid]');
+  if (!tr) return;
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('La cámara no está disponible. Usa el selector de archivos.');
+    return;
+  }
+
+  __filaObjetivoCamara = tr;
+  __archivosSesionCamara = [];
+
+  const modalEl = document.getElementById('modalCamCalidad');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  modal.show();
+
+  try {
+    await iniciarCamara('environment');
+    renderizarMiniaturasCamara();
+  } catch {
+    try {
+      await iniciarCamara('user');
+      renderizarMiniaturasCamara();
+    } catch {
+      alert('No se pudo abrir la cámara. Revisa permisos o HTTPS.');
+      modal.hide();
+    }
+  }
+});
+
+// -----------------------------------------------------
+// Cambiar cámara
+// -----------------------------------------------------
+document.addEventListener('click', async (e) => {
+  if (!e.target.closest('#btnCamSwitch')) return;
+
+  const nuevoLado = (__camaraLado === 'environment') ? 'user' : 'environment';
+  try {
+    await iniciarCamara(nuevoLado);
+  } catch { }
+});
+
+// -----------------------------------------------------
+// Tomar foto
+// -----------------------------------------------------
+document.addEventListener('click', async (e) => {
+  if (!e.target.closest('#btnCamShot')) return;
+
+  const video = document.getElementById('camVideo');
+  const canvas = document.getElementById('camCanvas');
+  if (!video || !canvas) return;
+
+  canvas.width = video.videoWidth || 1280;
+  canvas.height = video.videoHeight || 720;
+
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  const tr = __filaObjetivoCamara;
+  const especId = tr ? parseInt(tr.dataset.especificacionid, 10) : 0;
+
+  const d = new Date();
+  const nombre = `cam_${d.getTime()}_ES${especId}.jpg`;
+
+  const archivo = await archivoDesdeCanvas(canvas, nombre);
+  __archivosSesionCamara.push(archivo);
+
+  renderizarMiniaturasCamara();
+});
+
+// -----------------------------------------------------
+// Usar fotos y cerrrar
+// -----------------------------------------------------
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#btnCamUse')) return;
+  if (!__filaObjetivoCamara) return;
+
+  const input = __filaObjetivoCamara.querySelector('.evidencia-file');
+  if (!input) return;
+
+  if (__archivosSesionCamara.length) {
+    agregarArchivosAInput(input, __archivosSesionCamara);
+
+
+    renderLocalEvidenceLinks(__filaObjetivoCamara);
+  }
+
+  __archivosSesionCamara = [];
+
+  const modalEl = document.getElementById('modalCamCalidad');
+  bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+});
+
+
+document.getElementById('modalCamCalidad')?.addEventListener('hidden.bs.modal', () => {
+  detenerCamara();
+
+  document.querySelectorAll('img[data-thumb-url]').forEach(img => {
+    try { URL.revokeObjectURL(img.dataset.thumbUrl); } catch { }
+  });
+
+  const thumbs = document.getElementById('camThumbs');
+  if (thumbs) thumbs.innerHTML = '';
+
+  __filaObjetivoCamara = null;
+  __archivosSesionCamara = [];
+});
+
+

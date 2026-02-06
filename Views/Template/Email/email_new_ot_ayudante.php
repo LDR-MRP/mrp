@@ -103,7 +103,7 @@
                   </td>
                 </tr>
 
-                <!-- RESUMEN (PRIORIDAD / SUPERVISOR) -->
+
                 <tr>
                   <td style="padding: 8px 22px 10px;">
                     <table role="presentation" width="100%" style="border:1px solid #e5e7eb; border-radius:12px;">
@@ -123,19 +123,28 @@
 
 
                                 <!-- DETALLE DE RESPONSABILIDAD -->
-                <!-- <tr>
+                <tr>
                   <td style="padding: 10px 22px 6px;">
                     <div style="font-size:14px; color:#111827; font-weight:800; margin-bottom:10px;">
                       Estación asignada (Responsabilidad)
                     </div>
 
                     <table role="presentation" width="100%" style="border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;">
+
+                                          <!-- <tr>
+                        <td style="background:#f9fafb; padding:12px 14px; border-bottom:1px solid #e5e7eb; font-size:12px; color:#6b7280; width:42%;">
+                          Encargado
+                        </td>
+                        <td style="background:#ffffff; padding:12px 14px; border-bottom:1px solid #e5e7eb; font-size:13px; color:#111827; font-weight:800;">
+                             <?= $data['estacion_asignada']['encargado_nombre'] ?? '—' ?>
+                        </td>
+                      </tr> -->
                       <tr>
                         <td style="background:#f9fafb; padding:12px 14px; border-bottom:1px solid #e5e7eb; font-size:12px; color:#6b7280; width:42%;">
                           Estación
                         </td>
                         <td style="background:#ffffff; padding:12px 14px; border-bottom:1px solid #e5e7eb; font-size:13px; color:#111827; font-weight:800;">
-                      
+                             <?= $data['estacion_asignada']['nombre_estacion'] ?? '—' ?>
                         </td>
                       </tr>
 
@@ -144,13 +153,13 @@
                           Proceso
                         </td>
                         <td style="background:#ffffff; padding:12px 14px; border-bottom:1px solid #e5e7eb; font-size:13px; color:#111827; font-weight:800;">
-                   
+                         <?= $data['estacion_asignada']['proceso'] ?? '—' ?>
                         </td>
                       </tr>
 
                     </table>
                   </td>
-                </tr> -->
+                </tr>
 
                 <!-- DETALLE -->
                 <tr>
@@ -174,7 +183,9 @@
                           Producto
                         </td>
                         <td style="background:#ffffff; padding:12px 14px; border-bottom:1px solid #e5e7eb; font-size:13px; color:#111827;">
-                          <strong><?= $data['cve_producto'] ?? '' ?></strong> — <?= $data['descripcion'] ?? '' ?>
+                          <!-- <strong><?= $data['cve_producto'] ?? '' ?>
+                        </strong> —  -->
+                        <?= $data['descripcion'] ?? '' ?>
                         </td>
                       </tr>
 
@@ -221,7 +232,7 @@
                           <a href="https://mrp.ldrsolutions.com/ordenes/OT-2026-00087"
                              target="_blank"
                              style="font-size:14px; font-weight:800; color:#ffffff; padding:12px 18px; display:inline-block;">
-                            Consultar detalle de la orden
+                            Consultar
                           </a>
                         </td>
                       </tr>

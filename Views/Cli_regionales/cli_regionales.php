@@ -119,7 +119,7 @@
                                     </div>
 
                                     <!-- ESTADO -->
-                                    <div class="col-lg-6">
+                                    <!-- <div class="col-lg-6">
                                         <div class="mb-3">
                                             <label class="form-label" for="estado-select">ESTADO</label>
                                             <div class="input-group has-validation mb-3">
@@ -132,7 +132,7 @@
                                                 <div class="invalid-feedback">El campo estado es obligatorio</div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </div> -->
 
 
                                 </div>

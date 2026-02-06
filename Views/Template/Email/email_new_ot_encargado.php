@@ -103,7 +103,7 @@
                       Hola, <strong><?= $data['nombre'] ?? '' ?></strong>,
                       <br><br>
                       Se te asignó la responsabilidad de seguimiento como <strong>Encargado de Estación</strong> para una orden de trabajo.
-                      Por favor valida el detalle, confirma preparación de estación (herramientas/componentes) y coordina el arranque conforme a la fecha programada.
+                      Por favor valida el detalle, confirma preparación de estación (herramientas/componentes).
                     </div>
                   </td>
                 </tr>
@@ -128,7 +128,7 @@
                         <td style="padding: 12px 14px;">
                           <div style="font-size:12px; color:#6b7280;">Línea</div>
                           <div style="font-size:14px; color:#111827; font-weight:800; margin-top:4px;">
-                            <?= $data['linea'] ?? 'LIN-07 · AXL' ?>
+                             <?= $data['estacion_asignada']['linea'] ?? '—' ?>
                           </div>
                         </td>
                       </tr>
@@ -149,7 +149,7 @@
                           Estación
                         </td>
                         <td style="background:#ffffff; padding:12px 14px; border-bottom:1px solid #e5e7eb; font-size:13px; color:#111827; font-weight:800;">
-                          <?= $data['estacion'] ?? 'ES-09 · Torque Final' ?>
+                          <?= $data['estacion_asignada']['nombre_estacion'] ?? '—' ?>
                         </td>
                       </tr>
 
@@ -158,7 +158,7 @@
                           Proceso
                         </td>
                         <td style="background:#ffffff; padding:12px 14px; border-bottom:1px solid #e5e7eb; font-size:13px; color:#111827; font-weight:800;">
-                          <?= $data['proceso'] ?? 'ES-09 · Torque Final' ?>
+                         <?= $data['estacion_asignada']['proceso'] ?? '—' ?>
                         </td>
                       </tr>
                       <tr>
@@ -166,7 +166,8 @@
                           Ayudante asignado
                         </td>
                         <td style="background:#ffffff; padding:12px 14px; border-bottom:1px solid #e5e7eb; font-size:13px; color:#111827;">
-                          <?= $data['ayudante'] ?? '—' ?>
+                        <?= $data['ayudantes_nombres'] ?? '—' ?>
+
                         </td>
                       </tr>
 
@@ -181,6 +182,8 @@
                     </table>
                   </td>
                 </tr>
+
+
 
   
 
@@ -206,8 +209,10 @@
                           Producto
                         </td>
                         <td style="background:#ffffff; padding:12px 14px; border-bottom:1px solid #e5e7eb; font-size:13px; color:#111827;">
-                          <strong><?= $data['cve_producto'] ?? '' ?></strong>
-                          — <?= $data['descripcion'] ?? '' ?>
+                          <!-- <strong><?= $data['cve_producto'] ?? '' ?>
+                        </strong>
+                          —  -->
+                          <?= $data['descripcion'] ?? '' ?>
                         </td>
                       </tr>
 
@@ -251,10 +256,10 @@
                     <table role="presentation" class="btn" style="margin:0 auto;">
                       <tr>
                         <td align="center" bgcolor="#111827" style="border-radius:12px;">
-                          <a href="<?= $data['url_detalle'] ?? 'https://mrp.ldrsolutions.com/ordenes/OT-2026-00087' ?>"
+                          <a href="<?= $data['url_detalle'] ?? 'https://mrp.ldrsolutions.com/' ?>"
                              target="_blank"
                              style="font-size:14px; font-weight:800; color:#ffffff; padding:12px 18px; display:inline-block;">
-                            Consultar / Confirmar estación
+                            Consultar
                           </a>
                         </td>
                       </tr>
@@ -262,7 +267,7 @@
 
                     <div style="font-size:12px; color:#9ca3af; margin-top:12px;">
                       Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
-                      <span style="word-break:break-all;"><?= $data['url_detalle'] ?? 'https://mrp.ldrsolutions.com/ordenes/OT-2026-00087' ?></span>
+                      <span style="word-break:break-all;"><?= $data['url_detalle'] ?? 'https://mrp.ldrsolutions.com/' ?></span>
                     </div>
                   </td>
                 </tr>

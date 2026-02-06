@@ -28,7 +28,7 @@
                     <ul class="nav nav-tabs-custom card-header-tabs border-bottom-0 " role="tablist" id="nav-tab">
                         <li class="nav-item">
                             <a class="nav-link active" data-bs-toggle="tab" href="#listdistribuidores" role="tab">
-                                Lista de distribuidores
+                                Lista de clientes
                             </a>
                         </li>
                         <?php if ($_SESSION['permisosMod']['w']) { ?>
@@ -73,6 +73,18 @@
                             <form id="formDistribuidores" autocomplete="off" class="form-steps was-validated" autocomplete="off">
                                 <input type="hidden" id="iddistribuidor" name="iddistribuidor">
                                 <div class="row">
+
+                                    <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="tipo_cliente_id">TIPO DE CLIENTE</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>TDC</span>
+                                                <select class="form-control" id="tipo_cliente_id" name="tipo_cliente_id" required=""></select>
+                                                <div class="invalid-feedback">Es obligatorio seleccionar un tipo de cliente</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- select persona Física o Moral   -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
@@ -90,6 +102,18 @@
                                         </div>
                                     </div>
 
+                                    <!-- select regimen fiscal -->
+                                    <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="regimen_fiscal_id">REGIMEN FISCAL</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>RF</span>
+                                                <select class="form-control" id="regimen_fiscal_id" name="regimen_fiscal_id" required=""></select>
+                                                <div class="invalid-feedback">El campo regimen fiscal es obligatorio</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div id="personaFisicaWrapper" class="row">
                                         <!-- campo nombrefisica -->
                                         <div class="col-lg-6">
@@ -99,8 +123,8 @@
                                                     <span class="input-group-text" id="nombre_fisica-distribuidores-addon">NOM</span>
                                                     <input type="text" class="form-control"
                                                         placeholder="Ingresa el nombre" id="nombre_fisica-distribuidores-input" name="nombre_fisica-distribuidores-input"
-                                                        aria-describedby="nombre_fisica-distribuidores-addon" required>
-                                                    <div class="invalid-feedback">El campo de nombre es obligatorio</div>
+                                                        aria-describedby="nombre_fisica-distribuidores-addon" required maxlength="50">
+                                                    <div class="invalid-feedback">El campo nombre es obligatorio</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -114,8 +138,8 @@
                                                     <input type="text" class="form-control"
                                                         placeholder="Ingresa el apellido paterno" id="apellido_paterno-distribuidores-input"
                                                         name="apellido_paterno-distribuidores-input" aria-describedby="apellido_paterno-distribuidores-addon"
-                                                        required>
-                                                    <div class="invalid-feedback">El campo de apellido paterno es obligatorio</div>
+                                                        required maxlength="50">
+                                                    <div class="invalid-feedback">El campo apellido paterno es obligatorio</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -129,8 +153,8 @@
                                                     <input type="text" class="form-control"
                                                         placeholder="Ingresa el apellido materno" id="apellido_materno-distribuidores-input"
                                                         name="apellido_materno-distribuidores-input" aria-describedby="apellido_materno-distribuidores-addon"
-                                                        required>
-                                                    <div class="invalid-feedback">El campo de apellido materno es obligatorio</div>
+                                                        required maxlength="50">
+                                                    <div class="invalid-feedback">El campo apellido materno es obligatorio</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -158,8 +182,8 @@
                                                     <span class="input-group-text" id="curp-distribuidores-addon">CURP</span>
                                                     <input type="text" class="form-control"
                                                         placeholder="Ingresa la CURP" id="curp-distribuidores-input" name="curp-distribuidores-input"
-                                                        aria-describedby="curp-distribuidores-addon" required>
-                                                    <div class="invalid-feedback">El campo CURP es obligatorio</div>
+                                                        maxlength="18" required oninput="this.value = this.value.replace(/[^A-Za-z0-9]/g,'').toUpperCase()">
+                                                    <div class="invalid-feedback">CURP inválida</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -175,8 +199,8 @@
                                                     <input type="text" class="form-control"
                                                         placeholder="Ingresa el representante legal" id="representante_legal-distribuidores-input"
                                                         name="representante_legal-distribuidores-input" aria-describedby="representante_legal-distribuidores-addon"
-                                                        required>
-                                                    <div class="invalid-feedback">El campo de representante legal es obligatorio</div>
+                                                        required maxlength="100">
+                                                    <div class="invalid-feedback">El campo representante legal es obligatorio</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -189,8 +213,8 @@
                                                     <input type="text" class="form-control"
                                                         placeholder="Ingresa el domicilio fiscal" id="domicilio_fiscal-distribuidores-input"
                                                         name="domicilio_fiscal-distribuidores-input" aria-describedby="domicilio_fiscal-distribuidores-addon"
-                                                        required>
-                                                    <div class="invalid-feedback">El campo de domicilio fiscal es obligatorio</div>
+                                                        required maxlength="100">
+                                                    <div class="invalid-feedback">El campo domicilio fiscal es obligatorio</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -204,20 +228,8 @@
                                                 <span class="input-group-text" id="correo-distribuidores-addon">COR</span>
                                                 <input type="email" class="form-control"
                                                     placeholder="Ingresa el correo electrónico" id="correo-distribuidores-input"
-                                                    name="correo-distribuidores-input" aria-describedby="correo-distribuidores-addon">
-                                                <div class="invalid-feedback">El campo de correo electrónico es obligatorio</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- select regional_id -->
-                                    <div class="col-lg-6">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="regional_id">REGIONALES</label>
-                                            <div class="input-group mb-3">
-                                                <span class="input-group-text" id="nombre-linea-addon" data-choices>REG</span>
-                                                <select class="form-control" id="regional_id" name="regional_id" required=""></select>
-                                                <div class="invalid-feedback">El campo regional es obligatorio</div>
+                                                    name="correo-distribuidores-input" aria-describedby="correo-distribuidores-addon" required>
+                                                <div class="invalid-feedback">El campo correo electrónico es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
@@ -242,7 +254,7 @@
                                                 <span class="input-group-text" id="nombre-distribuidores-addon">NOM</span>
                                                 <input type="text" class="form-control"
                                                     placeholder="Ingresa el nombre comercial" id="nombre-distribuidores-input" name="nombre-distribuidores-input"
-                                                    aria-describedby="nombre-distribuidores-addon" required>
+                                                    aria-describedby="nombre-distribuidores-addon" maxlength="100" required>
                                                 <div class="invalid-feedback">El campo de nombre comercial es obligatorio</div>
                                             </div>
                                         </div>
@@ -256,7 +268,7 @@
                                                 <span class="input-group-text" id="razon-distribuidores-addon">RAZ</span>
                                                 <input type="text" class="form-control"
                                                     placeholder="Ingresa la razón social" id="razon-distribuidores-input" name="razon-distribuidores-input"
-                                                    aria-describedby="razon-distribuidores-addon" required>
+                                                    aria-describedby="razon-distribuidores-addon" maxlength="100" required>
                                                 <div class="invalid-feedback">El campo de razón social es obligatorio</div>
                                             </div>
                                         </div>
@@ -270,10 +282,10 @@
                                                 <span class="input-group-text" id="rfc-distribuidores-addon">RFC</span>
                                                 <input type="text" class="form-control"
                                                     placeholder="Ingresa el RFC" id="rfc-distribuidores-input" name="rfc-distribuidores-input"
-                                                    aria-describedby="rfc-distribuidores-addon" maxlength="13" minlength="12" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g,'').toUpperCase(); validarRFC(this);"
-                                                    required>
-                                                <div class="invalid-feedback">El campo RFC es obligatorio
-                                                </div>
+                                                    minlength="12" maxlength="13"
+                                                    required
+                                                    oninput="this.value = this.value.replace(/[^A-Za-z0-9]/g,'').toUpperCase()">
+                                                <div class="invalid-feedback">RFC inválido</div>
                                             </div>
                                         </div>
                                     </div>
@@ -281,12 +293,12 @@
                                     <!-- campo rpve -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="repve-distribuidores-input">No. REPUVE</label>
+                                            <label class="form-label" for="repve-distribuidores-input">NO. REPUVE</label>
                                             <div class="input-group mb-3">
                                                 <span class="input-group-text" id="repve-distribuidores-addon">REP</span>
                                                 <input type="text" class="form-control"
                                                     placeholder="Ingresa el No. REPUVE" id="repve-distribuidores-input" name="repve-distribuidores-input"
-                                                    aria-describedby="repve-distribuidores-addon" required>
+                                                    aria-describedby="repve-distribuidores-addon" maxlength="25" required>
                                                 <div class="invalid-feedback">El campo REPUVE es obligatorio</div>
                                             </div>
                                         </div>
@@ -300,7 +312,7 @@
                                                 <span class="input-group-text" id="plaza-distribuidores-addon">PLA</span>
                                                 <input type="text" class="form-control"
                                                     placeholder="Ingresa la plaza" id="plaza-distribuidores-input" name="plaza-distribuidores-input"
-                                                    aria-describedby="plaza-distribuidores-addon" required>
+                                                    aria-describedby="plaza-distribuidores-addon" maxlength="50" required>
                                                 <div class="invalid-feedback">El campo plaza es obligatorio</div>
                                             </div>
                                         </div>
@@ -315,7 +327,7 @@
                                                 <input type="text" class="form-control"
                                                     placeholder="Ingresa la clasificación" id="clasificacion-distribuidores-input"
                                                     name="clasificacion-distribuidores-input" aria-describedby="clasificacion-distribuidores-addon"
-                                                    required>
+                                                    required maxlength="10">
                                                 <div class="invalid-feedback">El campo clasificación es obligatorio</div>
                                             </div>
                                         </div>
@@ -354,6 +366,20 @@
                                         </div>
                                     </div>
 
+                                    <div class="col-lg-6 d-none" id="wrapperMatriz">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="matriz_id">
+                                                ¿A QUÉ MATRIZ PERTENECE LA SUCURSAL?
+                                            </label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text">MAT</span>
+                                                <select class="form-control" id="matriz_id" name="matriz_id"></select>
+                                                <div class="invalid-feedback">Este campo es obligatorio</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
                                     <!-- campo telefono -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
@@ -363,7 +389,7 @@
                                                 <input type="text" class="form-control"
                                                     placeholder="Ingresa el teléfono" id="telefono-distribuidores-input" name="telefono-distribuidores-input" maxlength="10" inputmode="numeric"
                                                     pattern="[0-9]{10}"
-                                                    aria-describedby="telefono-distribuidores-addon">
+                                                    aria-describedby="telefono-distribuidores-addon" required>
                                                 <div class="invalid-feedback">
                                                     Si ingresa un teléfono, debe contener exactamente 10 números
                                                 </div>
@@ -390,12 +416,12 @@
 
                                     <div class="row">
                                         <div class="col-md-6">
-                                            <label class="form-label">Modelos disponibles</label>
+                                            <label class="form-label">MODELOS DISPONIBLES</label>
                                             <ul id="modelosDisponibles" class="list-group modelos-box"></ul>
                                         </div>
 
                                         <div class="col-md-6">
-                                            <label class="form-label">Modelos seleccionados</label>
+                                            <label class="form-label">MODELOS SELECCIONADOS</label>
                                             <ul id="modelosSeleccionados" class="list-group modelos-box"></ul>
 
                                             <div
@@ -415,6 +441,34 @@
                                         </div>
                                     </div>
 
+                                    <!-- select regional_id -->
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label class="form-label">REGIONALES DISPONIBLES</label>
+                                            <ul id="regionalesDisponibles" class="list-group modelos-box"></ul>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label class="form-label">REGIONALES SELECCIONADOS</label>
+                                            <ul id="regionalesSeleccionados" class="list-group modelos-box"></ul>
+
+                                            <div
+                                                id="modelosHint"
+                                                class="text-muted text-center py-2 small">
+                                                Arrastra regionales aquí
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-lg-6">
+                                        <div class="mb-3">
+                                            <div class="input-group mb-3">
+                                                <select class="form-control d-none" id="regional_id" name="regional_id[]" multiple required=""></select>
+                                                <div class="invalid-feedback">El campo regional es obligatorio</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <hr class="mb-4">
 
                                     <h5 class="mb-3">Direcciones</h5>
@@ -422,9 +476,9 @@
                                     <div class="col-lg-12">
                                         <div class="form-check mb-3">
                                             <input class="form-check-input" type="checkbox" id="mismaDireccion" name="mismaDireccion"
-                                                value="1" checked>
+                                                value="1">
                                             <label class="form-check-label" for="mismaDireccion">
-                                                La dirección fiscal es la misma que la dirección principal
+                                                ¿La dirección fiscal es la misma que la dirección principal?
                                             </label>
                                         </div>
                                     </div>
@@ -452,7 +506,7 @@
                                             <div class="input-group mb-3">
                                                 <span class="input-group-text" id="calle-distribuidores-addon">CAL</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa la calle" id="calle-distribuidores-input" name="calle-distribuidores-input"
+                                                    placeholder="Ingresa la calle" id="calle-distribuidores-input" name="calle-distribuidores-input" maxlength="100"
                                                     aria-describedby="calle-distribuidores-addon" required>
                                                 <div class="invalid-feedback">El campo calle es obligatorio</div>
                                             </div>
@@ -465,9 +519,10 @@
                                             <label class="form-label" for="numero_ext-distribuidores-input">NÚMERO EXTERIOR</label>
                                             <div class="input-group mb-3">
                                                 <span class="input-group-text" id="numero_ext-distribuidores-addon">NUM</span>
-                                                <input type="text" class="form-control"
+                                                <input type="text" class="form-control solo-numeros-5"
                                                     placeholder="Ingresa el número exterior" id="numero_ext-distribuidores-input"
-                                                    name="numero_ext-distribuidores-input" maxlength="5" aria-describedby="numero_ext-distribuidores-addon">
+                                                    name="numero_ext-distribuidores-input" aria-describedby="numero_ext-distribuidores-addon" required>
+                                                <div class="invalid-feedback">El campo número exterior es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
@@ -478,9 +533,10 @@
                                             <label class="form-label" for="numero_int-distribuidores-input">NÚMERO INTERIOR</label>
                                             <div class="input-group mb-3">
                                                 <span class="input-group-text" id="numero_int-distribuidores-addon">NUM</span>
-                                                <input type="text" class="form-control"
+                                                <input type="text" class="form-control solo-numeros-5"
                                                     placeholder="Ingresa el número interior" id="numero_int-distribuidores-input"
-                                                    name="numero_int-distribuidores-input" maxlength="5" aria-describedby="numero_int-distribuidores-addon">
+                                                    name="numero_int-distribuidores-input" aria-describedby="numero_int-distribuidores-addon" required>
+                                                <div class="invalid-feedback">El campo número interior es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
@@ -492,7 +548,7 @@
                                             <div class="input-group mb-3">
                                                 <span class="input-group-text" id="colonia-distribuidores-addon">COL</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa la colonia" id="colonia-distribuidores-input" name="colonia-distribuidores-input"
+                                                    placeholder="Ingresa la colonia" id="colonia-distribuidores-input" name="colonia-distribuidores-input" maxlength="100"
                                                     aria-describedby="colonia-distribuidores-addon" required>
                                                 <div class="invalid-feedback">El campo colonia es obligatorio</div>
                                             </div>
@@ -505,9 +561,10 @@
                                             <label class="form-label" for="codigo_postal-distribuidores-input">CÓDIGO POSTAL</label>
                                             <div class="input-group mb-3">
                                                 <span class="input-group-text" id="codigo_postal-distribuidores-addon">CP</span>
-                                                <input type="text" class="form-control"
+                                                <input type="text" class="form-control solo-numeros-5"
                                                     placeholder="Ingresa el código postal" id="codigo_postal-distribuidores-input"
-                                                    name="codigo_postal-distribuidores-input" maxlength="5" minlength="5" aria-describedby="codigo_postal-distribuidores-addon">
+                                                    name="codigo_postal-distribuidores-input" aria-describedby="codigo_postal-distribuidores-addon" required>
+                                                <div class="invalid-feedback">El campo código postal es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
@@ -574,9 +631,9 @@
 
                                             <div class="col-lg-6">
                                                 <div class="mb-3">
-                                                    <label class="form-label" for="tipo_fiscal">TIPO</label>
+                                                    <label class="form-label" for="tipo_fiscal">TIPO DE PERSONA</label>
                                                     <div class="input-group has-validation mb-3">
-                                                        <span class="input-group-text" id="tipo_fiscal-addon">TIP</span>
+                                                        <span class="input-group-text" id="tipo_fiscal-addon">TDC</span>
                                                         <select class="form-select" id="tipo_fiscal" name="tipo_fiscal" aria-describedby="tipo_fiscal-addon" required>
                                                             <option value="Fiscal">Fiscal</option>
                                                         </select>
@@ -592,7 +649,7 @@
                                                     <div class="input-group mb-3">
                                                         <span class="input-group-text" id="calle-distribuidores-addon">CAL</span>
                                                         <input type="text" class="form-control"
-                                                            placeholder="Ingresa la calle" id="calle_fiscal" name="calle_fiscal"
+                                                            placeholder="Ingresa la calle" id="calle_fiscal" name="calle_fiscal" maxlength="100"
                                                             aria-describedby="calle-distribuidores-addon" required>
                                                         <div class="invalid-feedback">El campo calle es obligatorio</div>
                                                     </div>
@@ -605,9 +662,10 @@
                                                     <label class="form-label" for="numero_ext-distribuidores-input">NÚMERO EXTERIOR</label>
                                                     <div class="input-group mb-3">
                                                         <span class="input-group-text" id="numero_ext-distribuidores-addon">NUM</span>
-                                                        <input type="text" class="form-control"
-                                                            placeholder="Ingresa el número exterior" id="numero_ext_fiscal"
-                                                            name="numero_ext_fiscal" maxlength="5" aria-describedby="numero_ext-distribuidores-addon">
+                                                        <input type="text" class="form-control solo-numeros-5"
+                                                            placeholder="Ingresa el número exterior " id="numero_ext_fiscal"
+                                                            name="numero_ext_fiscal" aria-describedby="numero_ext-distribuidores-addon">
+                                                        <div class="invalid-feedback">El campo número exterior es obligatorio</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -618,9 +676,10 @@
                                                     <label class="form-label" for="numero_int-distribuidores-input">NÚMERO INTERIOR</label>
                                                     <div class="input-group mb-3">
                                                         <span class="input-group-text" id="numero_int-distribuidores-addon">NUM</span>
-                                                        <input type="text" class="form-control"
+                                                        <input type="text" class="form-control solo-numeros-5"
                                                             placeholder="Ingresa el número interior" id="numero_int_fiscal"
-                                                            name="numero_int_fiscal" maxlength="5" aria-describedby="numero_int-distribuidores-addon">
+                                                            name="numero_int_fiscal" aria-describedby="numero_int-distribuidores-addon">
+                                                        <div class="invalid-feedback">El campo número interior es obligatorio</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -632,7 +691,7 @@
                                                     <div class="input-group mb-3">
                                                         <span class="input-group-text" id="colonia-distribuidores-addon">COL</span>
                                                         <input type="text" class="form-control"
-                                                            placeholder="Ingresa la colonia" id="colonia_fiscal" name="colonia_fiscal"
+                                                            placeholder="Ingresa la colonia" id="colonia_fiscal" name="colonia_fiscal" maxlength="100"
                                                             aria-describedby="colonia-distribuidores-addon" required>
                                                         <div class="invalid-feedback">El campo colonia es obligatorio</div>
                                                     </div>
@@ -645,9 +704,10 @@
                                                     <label class="form-label" for="codigo_postal-distribuidores-input">CÓDIGO POSTAL</label>
                                                     <div class="input-group mb-3">
                                                         <span class="input-group-text" id="codigo_postal-distribuidores-addon">CP</span>
-                                                        <input type="text" class="form-control"
+                                                        <input type="text" class="form-control solo-numeros-5"
                                                             placeholder="Ingresa el código postal" id="codigo_postal_fiscal"
-                                                            name="codigo_postal_fiscal" maxlength="5" minlength="5" aria-describedby="codigo_postal-distribuidores-addon">
+                                                            name="codigo_postal_fiscal" aria-describedby="codigo_postal-distribuidores-addon" required>
+                                                        <div class="invalid-feedback">El campo código postal es obligatorio</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -689,7 +749,7 @@
                                             </div>
 
                                             <!-- campo estado -->
-                                            <div class="col-lg-6">
+                                            <!-- <div class="col-lg-6">
                                                 <div class="mb-3">
                                                     <label class="form-label" for="estado-select">ESTADO</label>
                                                     <div class="input-group has-validation mb-3">
@@ -702,7 +762,7 @@
                                                         <div class="invalid-feedback">El campo estado es obligatorio</div>
                                                     </div>
                                                 </div>
-                                            </div>
+                                            </div> -->
                                         </div>
                                     </div>
                                 </div>
@@ -782,6 +842,11 @@
                         Modelos
                     </button>
                 </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-regionales">
+                        Regionales
+                    </button>
+                </li>
             </ul>
 
             <div class="modal-body">
@@ -793,6 +858,10 @@
                                 <tr>
                                     <td>ID</td>
                                     <td id="iddistri"></td>
+                                </tr>
+                                <tr>
+                                    <td>Tipo de cliente</td>
+                                    <td id="nombre_tipo_negocio"></td>
                                 </tr>
                                 <tr>
                                     <td>Tipo de persona</td>
@@ -831,10 +900,6 @@
                                     <td id="correo"></td>
                                 </tr>
                                 <tr>
-                                    <td>Regional:</td>
-                                    <td id="nombreRegional"></td>
-                                </tr>
-                                <tr>
                                     <td>Grupo</td>
                                     <td id="nombregrupo"></td>
                                 </tr>
@@ -867,6 +932,10 @@
                                     <td id="tiponegocio"></td>
                                 </tr>
                                 <tr>
+                                    <td>Matriz</td>
+                                    <td id="matriz"></td>
+                                </tr>
+                                <tr>
                                     <td>Teléfono</td>
                                     <td id="telefono"></td>
                                 </tr>
@@ -884,6 +953,18 @@
                                 </tr>
                             </tbody>
                         </table>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre comercial</th>
+                                    <th>Razón social</th>
+                                    <th>Plaza</th>
+                                    <th>Teléfono</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodySucursales"></tbody>
+                        </table>
+
                     </div>
 
                     <!-- TAB DIRECCIÓN -->
@@ -953,7 +1034,7 @@
                                 <tr>
                                     <td>Núm. Int</td>
                                     <td id="numeroint_fiscal"></td>
-                                </tr>
+                                </tr>t
                                 <tr>
                                     <td>Colonia</td>
                                     <td id="coloniafiscal"></td>
@@ -1010,6 +1091,24 @@
                                     </tr>
                                 </thead>
                                 <tbody id="tbodyModelos">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- TAB REGIONALES -->
+                    <div class="tab-pane fade" id="tab-regionales">
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-bordered dt-responsive nowrap table-striped align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>ID REGIONAL</th>
+                                        <th>NOMBRE REGIONAL</th>
+                                        <th>APELLIDO PATERNO</th>
+                                        <th>APELLIDO MATERNO</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyRegionales">
                                 </tbody>
                             </table>
                         </div>
@@ -1075,7 +1174,18 @@
         .forEach(input => {
             input.addEventListener('input', () => validarTelefono(input));
         });
+
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('solo-numeros-5')) {
+            e.target.value = e.target.value.replace(/\D/g, '');
+
+            if (e.target.value.length > 5) {
+                e.target.value = e.target.value.slice(0, 5);
+            }
+        }
+    });
 </script>
+
 
 
 <!-- end main content-->

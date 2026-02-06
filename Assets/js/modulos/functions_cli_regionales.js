@@ -11,7 +11,6 @@ const apellidoPInput = document.querySelector(
 const apellidoMInput = document.querySelector(
   "#apellido_materno-regional-input",
 );
-const estado = document.querySelector("#estado-select");
 
 // Mis referencias globales
 let primerTab; // Tab LISTA
@@ -104,7 +103,6 @@ document.addEventListener(
         // Limpiar formulario
         formRegionales.reset();
         idregional.value = "";
-        estado.value = "2";
       });
 
       // ----------------------------------------------------------------
@@ -114,7 +112,6 @@ document.addEventListener(
         tabNuevo.textContent = "NUEVO";
         spanBtnText.textContent = "REGISTRAR";
         idregional.value = "";
-        estado.value = "2";
         formRegionales.reset();
       });
     } else {
@@ -172,7 +169,6 @@ document.addEventListener(
                 // Seguir en modo NUEVO
                 formRegionales.reset();
                 idregional.value = "";
-                estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 tableRegionales.api().ajax.reload();
@@ -180,7 +176,6 @@ document.addEventListener(
                 // Regresar al listado
                 formRegionales.reset();
                 idregional.value = "";
-                estado.value = "2";
                 tabNuevo.textContent = "NUEVO";
                 spanBtnText.textContent = "REGISTRAR";
                 primerTab.show();
@@ -199,7 +194,6 @@ document.addEventListener(
               // Acción final después de OK (opcional)
               formRegionales.reset();
               idregional.value = "";
-              estado.value = "2";
               tabNuevo.textContent = "NUEVO";
               spanBtnText.textContent = "REGISTRAR";
               primerTab.show();
@@ -240,7 +234,6 @@ function fntEditInfo(id_regional) {
         nombreInput.value = objData.data.nombre;
         apellidoPInput.value = objData.data.apellido_paterno;
         apellidoMInput.value = objData.data.apellido_materno;
-        estado.value = objData.data.estado;
 
         // Cambiar al tab de captura
         if (firstTab) firstTab.show();
