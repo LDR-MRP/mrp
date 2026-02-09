@@ -345,7 +345,7 @@ public function selectPlanFinalizadas()
 }
 
 
-public function selectPlanCanceladas()
+public function selectPlanEnProceso()
 {
 
     $isAdmin   = isset($_SESSION['rolid']) && (int)$_SESSION['rolid'] === 1;
@@ -377,7 +377,7 @@ public function selectPlanCanceladas()
             FROM mrp_planeacion AS pla
             INNER JOIN mrp_productos AS pro
               ON pla.productoid = pro.idproducto
-            WHERE pla.fase = 6
+            WHERE pla.fase = 3
               AND pla.estado != 0
               {$whereUser};";
 
@@ -1521,20 +1521,20 @@ public function getStatusOTByPlaneacion(int $planeacionid)
 
 
 
-public function selectOrdenesCalendar()
-{
-  $isAdmin   = isset($_SESSION['rolid']) && (int)$_SESSION['rolid'] === 1;
-  $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
+  public function selectOrdenesCalendar()
+  {
+    $isAdmin = isset($_SESSION['rolid']) && (int) $_SESSION['rolid'] === 1;
+    $userIdSes = isset($_SESSION['idUser']) ? (int) $_SESSION['idUser'] : 0;
 
-  if (!$isAdmin && $userIdSes <= 0) {
+    if (!$isAdmin && $userIdSes <= 0) {
 
-    return [];
-  }
+      return [];
+    }
 
-  $whereUser = "";
-  if (!$isAdmin) {
-  
-    $whereUser = " AND pla.idplaneacion IN (
+    $whereUser = "";
+    if (!$isAdmin) {
+
+      $whereUser = " AND pla.idplaneacion IN (
                     SELECT DISTINCT pe.planeacionid
                     FROM mrp_planeacion_estacion pe
                     INNER JOIN mrp_planeacion_estacion_operador o
@@ -1543,9 +1543,9 @@ public function selectOrdenesCalendar()
                       AND o.estado  = 2
                       AND o.usuarioid = {$userIdSes}
                   )";
-  }
+    }
 
-          $sql = "SELECT 
+    $sql = "SELECT 
             pla.idplaneacion,
             pla.num_orden,
             pla.productoid,
@@ -1556,6 +1556,7 @@ public function selectOrdenesCalendar()
             pla.cantidad,
             pla.fecha_requerida,
             pla.fecha_inicio,
+            pla.fecha_fin,
             pla.notas,
             pla.estado,
             pla.fase
@@ -1567,13 +1568,11 @@ public function selectOrdenesCalendar()
           {$whereUser}
         ORDER BY pla.fecha_inicio DESC";
 
+    return $this->select_all($sql);
+  }
 
-        
-
-  return $this->select_all($sql);
-}
-
-
+  //TENGO ESTA FUNCIÓN EN MI CONTROLADOR EN DONDE YA ESTOY COLOCANDO LA FECHA INICIO Y FECHA FIN, PUEDE SER EL TIPO DE FORMATO PARA AMBOS ES ASI
+  //2026-02-13 09:00:00 ENTONCES NECESITO QUE EN MI CAELNDARIO ME EXPANDAS DE ACUERDO A ESE RANFGO DE FECHA Y HORARIO DONDE MODIFICAR ESTA PARTE  
 
 
 
@@ -1581,7 +1580,9 @@ public function selectOrdenesCalendar()
 
 
 
-////////////////////////////////////
+
+
+  ////////////////////////////////////
 
 
 public function selectChatMessages($numorden, $subot, $productoid, $estacionid, $planeacionid, $after_id = 0, $limit = 200)
@@ -2877,6 +2878,12 @@ public function getViewInspeccionCalidad($idorden, $estacionid)
       'detalle' => $outDet
     ]
   ];
+}
+
+public function selectDatesDisponibles(){
+          $sql = "SELECT * FROM  mrp_planeacion";
+        $request = $this->select_all($sql);
+        return $request;
 }
 
 

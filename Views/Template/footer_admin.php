@@ -805,6 +805,12 @@ Se utiliza con fines de configuración y ajustes visuales del layout.
     <!--Swiper slider js-->
     <script src="<?= media(); ?>/minimal/libs/swiper/swiper-bundle.min.js"></script>
 
+        <!-- Modern colorpicker bundle -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
+
     <!-- Dashboard init -->
     <!-- <script src="<?= media(); ?>/minimal/js/pages/dashboard-ecommerce.init.js"></script> -->
       
@@ -835,6 +841,8 @@ Se utiliza con fines de configuración y ajustes visuales del layout.
 
     <script src="<?= media(); ?>/minimal/libs/sweetalert2/sweetalert2.min.js"></script>
         <script src="<?= media();?>/js/datepicker/jquery-ui.min.js"></script>
+
+        
 
 
 

@@ -6,7 +6,7 @@ const viewListado = document.getElementById('viewListado');
 const btnNuevaPlaneacion = document.getElementById('btnNuevaPlaneacion');
 const btnPendientes = document.getElementById('btnPendientes');
 const btnFinalizadas = document.getElementById('btnFinalizadas');
-const btnCanceladas = document.getElementById('btnCanceladas');
+const btnProceso = document.getElementById('btnProceso');
 
 const btnVolverHome1 = document.getElementById('btnVolverHome1');
 const btnVolverHome2 = document.getElementById('btnVolverHome2');
@@ -192,12 +192,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (btnPendientes) btnPendientes.addEventListener('click', () => goListado('PENDIENTE'));
   if (btnFinalizadas) btnFinalizadas.addEventListener('click', () => goListado('FINALIZADA'));
-  if (btnCanceladas) btnCanceladas.addEventListener('click', () => goListado('CANCELADA'));
+  if (btnProceso) btnProceso.addEventListener('click', () => goListado('PROCESO'));
 
   if (btnNuevaPlaneacion) {
     btnNuevaPlaneacion.addEventListener('click', async () => {
       await limpiarNuevaPlaneacion(true);
       goNueva();
+          // await initFechaInicioPicker();
     });
   }
 
@@ -296,7 +297,7 @@ function hideAll() {
 }
 
 function setActiveNav(activeBtn) {
-  [btnPendientes, btnFinalizadas, btnCanceladas].filter(Boolean).forEach(b => b.classList.remove('active'));
+  [btnPendientes, btnFinalizadas, btnProceso].filter(Boolean).forEach(b => b.classList.remove('active'));
   if (activeBtn) activeBtn.classList.add('active');
 }
 
@@ -310,6 +311,7 @@ function goNueva() {
   hideAll();
   setActiveNav(null);
   if (viewNueva) viewNueva.classList.remove('d-none');
+ 
 }
 
 async function goListado(tipo) {
@@ -335,11 +337,11 @@ async function goListado(tipo) {
     setActiveNav(btnFinalizadas);
   } else {
     badgeListado.className = 'badge bg-danger-subtle text-danger border';
-    badgeListado.innerHTML = '<i class="ri-close-circle-line me-1"></i> Canceladas';
-    breadcrumbListado.textContent = 'Inicio → Planeación → Canceladas';
-    listadoTitulo.textContent = 'Planeaciones Canceladas';
-    listadoSubtitulo.textContent = 'Órdenes canceladas. Revisión de motivo y control.';
-    setActiveNav(btnCanceladas);
+    badgeListado.innerHTML = '<i class="ri-close-circle-line me-1"></i> En proceso';
+    breadcrumbListado.textContent = 'Inicio → Planeación → En proceso';
+    listadoTitulo.textContent = 'Planeaciones en proceso';
+    listadoSubtitulo.textContent = 'Órdenes en proceso. Revisión de motivo y control.';
+    setActiveNav(btnProceso);
   }
 
   await renderListado(tipo);
@@ -351,7 +353,7 @@ async function goListado(tipo) {
 function getListadoEndpoint(tipo) {
   if (tipo === 'PENDIENTE') return base_url + '/plan_planeacion/getPendientes';
   if (tipo === 'FINALIZADA') return base_url + '/plan_planeacion/getFinalizadas';
-  return base_url + '/plan_planeacion/getCanceladas';
+  return base_url + '/plan_planeacion/getEnProceso';
 }
 
 function normalizeListadoResponse(payload) {
@@ -406,6 +408,23 @@ function applyClientFilters(rows) {
     if (d2 && inicio && inicio > d2) return false;
     return true;
   });
+}
+
+function verificarFechasDisponibles(){
+    let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+
+      const ajaxUrl = base_url + '/plan_planeacion/getSelectDates';
+
+
+
+    request.open("GET", ajaxUrl, true);
+    request.send();
+    request.onreadystatechange = function () {
+        if (request.readyState == 4 && request.status == 200) {
+            let objData = JSON.parse(request.responseText);
+
+        }
+    }
 }
 
 async function renderListado(tipo) {
@@ -1467,7 +1486,7 @@ function faseMeta(fase) {
     default: return { color: '#6b7280', label: 'Sin estatus', badge: 'secondary' };
   }
 }
-
+ 
 async function cargarOrdenesParaCalendar() {
   const url = base_url + '/plan_planeacion/getOrdenes';
   const resp = await fetchJson(url);
@@ -1477,15 +1496,24 @@ async function cargarOrdenesParaCalendar() {
     : (Array.isArray(resp.data) ? resp.data : (Array.isArray(resp.rows) ? resp.rows : []));
 
   return rows
-    .filter(r => r.fecha_inicio)
+    .filter(r => r.fecha_inicio) 
     .map(r => {
       const start = toIsoFromMysql(r.fecha_inicio);
+
+      let end = r.fecha_fin ? toIsoFromMysql(r.fecha_fin) : undefined;
+
+
+      if (end && new Date(end).getTime() <= new Date(start).getTime()) {
+        end = new Date(new Date(start).getTime() + 60_000).toISOString(); 
+      }
+
       const meta = faseMeta(r.fase);
 
       return {
         id: String(r.idplaneacion ?? ''),
         title: `#${String(r.num_orden ?? 'OT')}`,
-        start: start,
+        start,
+        end,              
         allDay: false,
         backgroundColor: meta.color,
         borderColor: meta.color,
@@ -1498,6 +1526,10 @@ async function cargarOrdenesParaCalendar() {
       };
     });
 }
+
+
+
+
 
 // =====================================================
 //  MODAL PLANEACIÓN 
@@ -1642,4 +1674,60 @@ async function abrirModalPlaneacionDesdeCalendar({ folio }) {
 async function fetchPlaneacionPorFolio(folio) {
   const url = base_url + '/plan_planeacion/orden/' + encodeURIComponent(folio) + '?json=1';
   return await fetchJson(url);
+}
+
+
+
+let fpInicio = null;
+
+function mysqlToFp(dt) {
+  // "YYYY-MM-DD HH:MM:SS" -> "YYYY-MM-DD HH:MM"
+  if (!dt) return null;
+  const [d, t] = String(dt).trim().split(' ');
+  const [hh, mm] = (t || '00:00:00').split(':');
+  return `${d} ${hh}:${mm}`;
+}
+
+async function getRangosOcupados() {
+  const url = base_url + '/plan_planeacion/getSelectDates';
+  const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+  const rows = await resp.json();
+
+  // Flatpickr disable acepta {from, to}
+  return (Array.isArray(rows) ? rows : [])
+    .filter(r => r.fecha_inicio && r.fecha_fin)
+    .map(r => ({
+      from: mysqlToFp(r.fecha_inicio),
+      to:   mysqlToFp(r.fecha_fin)
+    }));
+}
+
+async function initFechaInicioPicker() {
+  const input = document.getElementById('fechaInicio');
+  if (!input) return;
+
+  const disableRanges = await getRangosOcupados();
+
+  // Si ya existe, destruye y recrea (por si cambió disponibilidad)
+  if (fpInicio) fpInicio.destroy();
+
+  fpInicio = flatpickr(input, {
+    locale: 'es',
+    enableTime: true,
+    time_24hr: true,
+    dateFormat: 'Y-m-d H:i',      // lo que ve el usuario
+    // (opcional) formato para backend
+    // altInput: true,
+    // altFormat: 'd/m/Y H:i',
+
+    minuteIncrement: 5,            // o 15 si quieres
+    disable: disableRanges,        // ✅ aquí se bloquean rangos ocupados
+    minDate: 'today',              // opcional: no fechas pasadas
+
+    onOpen: async () => {
+      // refrescar al abrir por si se agregaron planeaciones
+      const fresh = await getRangosOcupados();
+      fpInicio.set('disable', fresh);
+    }
+  });
 }

@@ -192,15 +192,17 @@
                 <button type="button" class="btn btn-outline-warning w-100 btn-nav" id="btnPendientes">
                   <i class="ri-time-line me-1"></i> Pendientes
                 </button>
-                                <button type="button" class="btn btn-outline-primary w-100 btn-nav" id="btnEnProceso">
+                                <!-- <button type="button" class="btn btn-outline-primary w-100 btn-nav" id="btnEnProceso">
                   <i class="ri-checkbox-circle-line me-1"></i> En proceso
-                </button>
+                </button> -->
+
+                          <button type="button" class="btn btn-outline-primary w-100 btn-nav" id="btnProceso">
+                  <i class="ri-checkbox-circle-line me-1"></i> En proceso
+                </button> 
                 <button type="button" class="btn btn-outline-success w-100 btn-nav" id="btnFinalizadas">
                   <i class="ri-checkbox-circle-line me-1"></i> Finalizadas
                 </button>
-                <button type="button" class="btn btn-outline-danger w-100 btn-nav" id="btnCanceladas">
-                  <i class="ri-close-circle-line me-1"></i> Canceladas
-                </button>
+      
 
                                                                   <div class="card">
                                         <div class="card-body bg-info-subtle">
@@ -221,7 +223,8 @@
 
            
               
-              <div class="mt-auto pt-3">
+              <!-- <div class="mt-auto pt-3"> -->
+                 <div class="pt-3">
                 <div class="side-hero">
                   <img src="<?= media(); ?>/minimal/images/task.png" alt="Tarea">
                 </div>
@@ -311,7 +314,7 @@
         <span><i class="dot dot-pendiente"></i>Pendiente</span>
         <span><i class="dot dot-proceso"></i>En proceso</span>
         <span><i class="dot dot-final"></i>Finalizada</span>
-        <span><i class="dot dot-cancel"></i>Cancelada</span>
+        <!-- <span><i class="dot dot-cancel"></i>Cancelada</span> -->
       </div>
 
       <div class="btn-group btn-group-sm btn-group-view" role="group">
@@ -323,7 +326,7 @@
   </div> 
 
   <!--  CALENDAR -->
-  <!-- <div id="calendar"></div> -->
+  <div id="calendar"></div>
 
 </div>
 
@@ -422,7 +425,8 @@
                     </div>
                     <div class="col-12 col-md-4">
                       <label class="form-label fw-semibold">Inicio producción</label>
-                      <input type="datetime-local" class="form-control" id="fechaInicio" required>
+                      <input type="datetime-local" class="form-control" id="fechaInicio" required >
+   <!-- <input type="text" class="form-control" data-provider="flatpickr" id="fechaInicio" data-date-format="d.m.y" data-enable-time> -->
                     </div>
                     <div class="col-12 col-md-4">
                       <label class="form-label fw-semibold">Fecha requerida</label>

@@ -1158,10 +1158,10 @@ class Plan_planeacion extends Controllers
   // --------------------------------------------------------------------
   // FUNCIÓN PARA LISTAR TODAS LAS PLANEACIONES CANCELADAS
   // --------------------------------------------------------------------
-  public function getCanceladas()
+  public function getEnProceso()
   {
 
-    $arrData = $this->model->selectPlanCanceladas();
+    $arrData = $this->model->selectPlanEnProceso();
     for ($i = 0; $i < count($arrData); $i++) {
       $btnView = '';
       $btnEdit = '';
@@ -1551,7 +1551,7 @@ class Plan_planeacion extends Controllers
       // if (empty($_SESSION['login'])) {
       //   echo json_encode(['status' => false, 'msg' => 'No autorizado']);
       //   die();
-      // }
+      // } 
 
       $rows = $this->model->selectOrdenesCalendar();
 
@@ -2067,7 +2067,11 @@ public function getViewInspeccionCalidad()
 
 
 
-
+public function getSelectDates(){
+      $arrData = $this->model->selectDatesDisponibles();
+    echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+    die();
+}
 
 
 
