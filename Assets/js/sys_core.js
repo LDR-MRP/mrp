@@ -204,5 +204,32 @@ const Sys_Core = {
                 Sys_Core.UI.alert('Error de Sistema', `El servidor respondió con código ${xhr.status}`, 'error');
             }
         }
+    },
+
+    /**
+     * @namespace Navigation
+     * @description Utilidades para el control de flujo y redireccionamiento.
+     */
+    Navigation: {
+        /**
+         * Redirige a una ruta interna del sistema utilizando la baseUrl.
+         * @param {string} path - Ruta relativa (ej: 'com_requisicion/nueva')
+         */
+        to: function(path) {
+            if (!path) return;
+            // Limpiar slashes duplicados si el path trae uno al inicio
+            const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+            window.location.href = `${Sys_Core.Config.baseUrl}/${cleanPath}`;
+        }
     }
 };
+
+/**
+ * Event Listeners Globales
+ * Manejo de eventos delegados para atributos de datos Sys_Core.
+ */
+$(document).on('click', '[data-redirect]', function(e) {
+    e.preventDefault();
+    const target = $(this).data('redirect');
+    Sys_Core.Navigation.to(target);
+});

@@ -1,6 +1,6 @@
 <?php
 
-class Com_requisicionAprobarRequest extends Requests
+class Com_requisicionStatusRequest extends Requests
 {
     public $model;
 
