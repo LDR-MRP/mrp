@@ -241,7 +241,10 @@
 
 
   <div class="kpi-bar mb-3">
-    <div class="kpi-row">
+    <!-- <div class="kpi-row">
+
+
+
 
       <div class="kpi-item">
         <div class="kpi-left">
@@ -307,7 +310,7 @@
         <div class="kpi-tag">KPI</div>
       </div>
 
-    </div>
+    </div> -->
 
     <div class="kpi-bottom">
       <div class="legend">
@@ -419,18 +422,20 @@
                 <!-- Cantidad / Inicio / Requerida -->
                 <div class="col-12">
                   <div class="row g-3">
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-2">
                       <label class="form-label fw-semibold">Cantidad</label>
                       <input type="number" class="form-control" id="txtCantidad" min="1" value="1" required>
                     </div>
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-5">
                       <label class="form-label fw-semibold">Inicio producción</label>
-                      <input type="datetime-local" class="form-control" id="fechaInicio" required >
-   <!-- <input type="text" class="form-control" data-provider="flatpickr" id="fechaInicio" data-date-format="d.m.y" data-enable-time> -->
+                      <!-- <input type="datetime-local" class="form-control" id="fechaInicio" required > -->
+   <input type="text" class="form-control" data-provider="flatpickr" id="fechaInicio" data-date-format="d.m.y" data-enable-time>
                     </div>
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-5">
                       <label class="form-label fw-semibold">Fecha requerida</label>
-                      <input type="datetime-local" class="form-control" id="fechaRequerida" required>
+                      <!-- <input type="datetime-local" class="form-control" id="fechaRequerida" required> -->
+
+                         <input type="text" class="form-control" data-provider="flatpickr" id="fechaRequerida" data-date-format="d.m.y" data-enable-time>
                     </div>
                   </div>
                 </div>
@@ -860,19 +865,25 @@
               </div>
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-3">
               <div class="border rounded p-2">
                 <div class="text-muted small">Cantidad</div>
                 <div class="fw-semibold" id="mp_cantidad">—</div>
               </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
               <div class="border rounded p-2">
-                <div class="text-muted small">Inicio</div>
+                <div class="text-muted small">Produción Inicio</div>
                 <div class="fw-semibold" id="mp_inicio">—</div>
               </div>
             </div>
-            <div class="col-md-4">
+              <div class="col-md-3">
+              <div class="border rounded p-2">
+                <div class="text-muted small">Producción Fin</div>
+                <div class="fw-semibold" id="mp_fin">—</div>
+              </div>
+            </div>
+            <div class="col-md-3">
               <div class="border rounded p-2">
                 <div class="text-muted small">Requerida</div>
                 <div class="fw-semibold" id="mp_requerida">—</div>

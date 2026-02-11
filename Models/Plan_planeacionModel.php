@@ -276,15 +276,18 @@ public function selectPlanPendientes()
 
     $whereUser = "";
     if (!$isAdmin) {
-        $whereUser = " AND pla.idplaneacion IN (
-                        SELECT DISTINCT pe.planeacionid
-                        FROM mrp_planeacion_estacion pe
-                        INNER JOIN mrp_planeacion_estacion_operador o
-                          ON o.planeacion_estacionid = pe.id_planeacion_estacion
-                        WHERE pe.estado = 2
-                          AND o.estado  = 2
-                          AND o.usuarioid = {$userIdSes}
-                      )";
+        $whereUser = " AND (
+            pla.supervisorid = {$userIdSes}
+            OR pla.idplaneacion IN (
+                SELECT DISTINCT pe.planeacionid
+                FROM mrp_planeacion_estacion pe
+                INNER JOIN mrp_planeacion_estacion_operador o
+                  ON o.planeacion_estacionid = pe.id_planeacion_estacion
+                WHERE pe.estado = 2
+                  AND o.estado  = 2
+                  AND o.usuarioid = {$userIdSes}
+            )
+        )";
     }
 
     $sql = "SELECT pla.*,
@@ -307,7 +310,6 @@ public function selectPlanPendientes()
 
 public function selectPlanFinalizadas()
 {
-
     $isAdmin   = isset($_SESSION['rolid']) && (int)$_SESSION['rolid'] === 1;
     $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
 
@@ -315,20 +317,21 @@ public function selectPlanFinalizadas()
         return [];
     }
 
-  
     $whereUser = "";
     if (!$isAdmin) {
-        $whereUser = " AND pla.idplaneacion IN (
-                        SELECT DISTINCT pe.planeacionid
-                        FROM mrp_planeacion_estacion pe
-                        INNER JOIN mrp_planeacion_estacion_operador o
-                          ON o.planeacion_estacionid = pe.id_planeacion_estacion
-                        WHERE pe.estado = 2
-                          AND o.estado  = 2
-                          AND o.usuarioid = {$userIdSes}
-                      )";
+        $whereUser = " AND (
+            pla.supervisorid = {$userIdSes}
+            OR pla.idplaneacion IN (
+                SELECT DISTINCT pe.planeacionid
+                FROM mrp_planeacion_estacion pe
+                INNER JOIN mrp_planeacion_estacion_operador o
+                  ON o.planeacion_estacionid = pe.id_planeacion_estacion
+                WHERE pe.estado = 2
+                  AND o.estado  = 2
+                  AND o.usuarioid = {$userIdSes}
+            )
+        )";
     }
-
 
     $sql = "SELECT pla.*,
                    pla.estado AS estado_planeacion,
@@ -347,7 +350,6 @@ public function selectPlanFinalizadas()
 
 public function selectPlanEnProceso()
 {
-
     $isAdmin   = isset($_SESSION['rolid']) && (int)$_SESSION['rolid'] === 1;
     $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
 
@@ -355,20 +357,21 @@ public function selectPlanEnProceso()
         return [];
     }
 
-  
     $whereUser = "";
     if (!$isAdmin) {
-        $whereUser = " AND pla.idplaneacion IN (
-                        SELECT DISTINCT pe.planeacionid
-                        FROM mrp_planeacion_estacion pe
-                        INNER JOIN mrp_planeacion_estacion_operador o
-                          ON o.planeacion_estacionid = pe.id_planeacion_estacion
-                        WHERE pe.estado = 2
-                          AND o.estado  = 2
-                          AND o.usuarioid = {$userIdSes}
-                      )";
+        $whereUser = " AND (
+            pla.supervisorid = {$userIdSes}
+            OR pla.idplaneacion IN (
+                SELECT DISTINCT pe.planeacionid
+                FROM mrp_planeacion_estacion pe
+                INNER JOIN mrp_planeacion_estacion_operador o
+                  ON o.planeacion_estacionid = pe.id_planeacion_estacion
+                WHERE pe.estado = 2
+                  AND o.estado  = 2
+                  AND o.usuarioid = {$userIdSes}
+            )
+        )";
     }
-
 
     $sql = "SELECT pla.*,
                    pla.estado AS estado_planeacion,
@@ -1046,7 +1049,7 @@ public function selectPlanEnProceso()
     }
 
 
-    $isAdmin = isset($_SESSION['rolid']) && in_array((int)$_SESSION['rolid'], [1, 5]);
+    $isAdmin = isset($_SESSION['rolid']) && in_array((int)$_SESSION['rolid'], [1, 5, 4]);
 
     $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
 
@@ -1521,31 +1524,33 @@ public function getStatusOTByPlaneacion(int $planeacionid)
 
 
 
-  public function selectOrdenesCalendar()
-  {
-    $isAdmin = isset($_SESSION['rolid']) && (int) $_SESSION['rolid'] === 1;
-    $userIdSes = isset($_SESSION['idUser']) ? (int) $_SESSION['idUser'] : 0;
+public function selectOrdenesCalendar()
+{
+  $isAdmin   = isset($_SESSION['rolid']) && (int)$_SESSION['rolid'] === 1;
+  $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
 
-    if (!$isAdmin && $userIdSes <= 0) {
+  if (!$isAdmin && $userIdSes <= 0) {
+    return [];
+  }
 
-      return [];
-    }
+  $whereUser = "";
+  if (!$isAdmin) {
 
-    $whereUser = "";
-    if (!$isAdmin) {
+    $whereUser = " AND (
+        pla.supervisorid = {$userIdSes}
+        OR pla.idplaneacion IN (
+            SELECT DISTINCT pe.planeacionid
+            FROM mrp_planeacion_estacion pe
+            INNER JOIN mrp_planeacion_estacion_operador o
+              ON o.planeacion_estacionid = pe.id_planeacion_estacion
+            WHERE pe.estado = 2
+              AND o.estado  = 2
+              AND o.usuarioid = {$userIdSes}
+        )
+    )";
+  }
 
-      $whereUser = " AND pla.idplaneacion IN (
-                    SELECT DISTINCT pe.planeacionid
-                    FROM mrp_planeacion_estacion pe
-                    INNER JOIN mrp_planeacion_estacion_operador o
-                      ON o.planeacion_estacionid = pe.id_planeacion_estacion
-                    WHERE pe.estado = 2
-                      AND o.estado  = 2
-                      AND o.usuarioid = {$userIdSes}
-                  )";
-    }
-
-    $sql = "SELECT 
+  $sql = "SELECT 
             pla.idplaneacion,
             pla.num_orden,
             pla.productoid,
@@ -1560,29 +1565,20 @@ public function getStatusOTByPlaneacion(int $planeacionid)
             pla.notas,
             pla.estado,
             pla.fase
-        FROM mrp_planeacion pla
-        INNER JOIN usuarios AS us
+          FROM mrp_planeacion pla
+          INNER JOIN usuarios AS us
             ON pla.supervisorid = us.idusuario
-        WHERE pla.fecha_inicio IS NOT NULL
-          AND pla.estado != 0
-          {$whereUser}
-        ORDER BY pla.fecha_inicio DESC";
+          WHERE pla.fecha_inicio IS NOT NULL
+            AND pla.estado != 0
+            {$whereUser}
+          ORDER BY pla.fecha_inicio DESC";
 
-    return $this->select_all($sql);
-  }
-
-  //TENGO ESTA FUNCIÓN EN MI CONTROLADOR EN DONDE YA ESTOY COLOCANDO LA FECHA INICIO Y FECHA FIN, PUEDE SER EL TIPO DE FORMATO PARA AMBOS ES ASI
-  //2026-02-13 09:00:00 ENTONCES NECESITO QUE EN MI CAELNDARIO ME EXPANDAS DE ACUERDO A ESE RANFGO DE FECHA Y HORARIO DONDE MODIFICAR ESTA PARTE  
-
-
-
-
-
-
-
+  return $this->select_all($sql);
+}
 
 
   ////////////////////////////////////
+
 
 
 public function selectChatMessages($numorden, $subot, $productoid, $estacionid, $planeacionid, $after_id = 0, $limit = 200)
@@ -2885,6 +2881,80 @@ public function selectDatesDisponibles(){
         $request = $this->select_all($sql);
         return $request;
 }
+
+
+public function iniciarPlaneacionModel(int $idplaneacion, int $usuarioid)
+{
+
+  $ESTADO_EN_PRODUCCION = 3;
+
+
+  $sqlCheck = "SELECT idplaneacion, fase
+               FROM mrp_planeacion
+               WHERE idplaneacion = ?
+               LIMIT 1";
+  $row = $this->select($sqlCheck, [$idplaneacion]);
+
+  if (empty($row)) return false;
+
+  if ((int)$row['fase'] == $ESTADO_EN_PRODUCCION) {
+    return false;
+  }
+
+
+  $sqlUp = "UPDATE mrp_planeacion
+            SET fase = ?,
+                fecha_inicio_real = NOW(),
+                usuario_inicio = ?
+            WHERE idplaneacion = ?
+            LIMIT 1";
+
+  $res = $this->update($sqlUp, [$ESTADO_EN_PRODUCCION, $usuarioid, $idplaneacion]);
+
+  return ($res !== false);
+}
+
+
+public function finalizarPlaneacionModel(int $idplaneacion, int $usuarioid)
+{
+
+  $ESTADO_EN_PRODUCCION = 3;
+  $ESTADO_FINALIZADA    = 5;
+
+
+  $sqlCheck = "SELECT idplaneacion, fase
+               FROM mrp_planeacion
+               WHERE idplaneacion = ?
+               LIMIT 1";
+  $row = $this->select($sqlCheck, [$idplaneacion]);
+
+  if (empty($row)) return false;
+
+  if ((int)$row['fase'] !== $ESTADO_EN_PRODUCCION) {
+ 
+    return false;
+  }
+
+
+  $sqlUp = "UPDATE mrp_planeacion
+            SET fase = ?,
+                fecha_fin_real = NOW(),
+                usuario_fin = ?
+            WHERE idplaneacion = ?
+              AND fase = ?
+            LIMIT 1";
+
+  $res = $this->update($sqlUp, [
+    $ESTADO_FINALIZADA,
+    $usuarioid,
+    $idplaneacion,
+    $ESTADO_EN_PRODUCCION
+  ]);
+
+  return ($res !== false);
+}
+
+
 
 
 

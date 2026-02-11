@@ -3103,3 +3103,132 @@ document.getElementById('modalCamCalidad')?.addEventListener('hidden.bs.modal', 
 });
 
 
+
+
+
+
+
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.js-or-iniciar');
+  if (!btn) return;
+
+  const idplaneacion = parseInt(btn.dataset.idplaneacion, 10) || 0;
+  if (!idplaneacion) return;
+
+  const res = await Swal.fire({
+    title: '¿Iniciar producción?',
+    text: 'Se marcará la orden como EN PRODUCCIÓN y quedará en ejecución.',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, iniciar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true
+  });
+
+  if (!res.isConfirmed) return;
+
+  // UI: bloqueo para evitar doble click
+  btn.disabled = true;
+
+  try {
+    await iniciarPlaneacion(idplaneacion);
+
+    await Swal.fire({
+      title: 'Producción iniciada',
+      text: 'La planeación fue marcada como EN PRODUCCIÓN.',
+      icon: 'success',
+      timer: 1400,
+      showConfirmButton: false
+    });
+
+        window.location.reload();
+
+  } catch (err) {
+    await Swal.fire({
+      title: 'No se pudo iniciar',
+      text: err?.message || 'Ocurrió un error inesperado.',
+      icon: 'error'
+    });
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+
+async function iniciarPlaneacion(idplaneacion) {
+  idplaneacion = parseInt(idplaneacion, 10) || 0;
+  if (!idplaneacion) throw new Error('ID inválido.');
+
+  const resp = await fetch(`${base_url}/plan_planeacion/iniciarPlaneacion`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ idplaneacion })
+  });
+
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+  const data = await resp.json();
+  if (!data.status) throw new Error(data.msg || 'Error al iniciar producción');
+
+  return data;
+}
+
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.js-or-finalizar');
+  if (!btn) return;
+
+  const idplaneacion = parseInt(btn.dataset.idplaneacion, 10) || 0;
+  if (!idplaneacion) return;
+
+  const res = await Swal.fire({
+    title: '¿Finalizar producción?',
+    text: 'Se marcará la orden como FINALIZADA y se cerrará la ejecución.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, finalizar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true
+  });
+
+  if (!res.isConfirmed) return;
+
+  btn.disabled = true;
+
+  try {
+    const resp = await fetch(`${base_url}/plan_planeacion/finalizarPlaneacion`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ idplaneacion })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    if (!data.status) throw new Error(data.msg || 'Error al finalizar');
+
+    await Swal.fire({
+      title: 'Producción finalizada',
+      text: 'La planeación fue cerrada correctamente.',
+      icon: 'success',
+      timer: 1300,
+      showConfirmButton: false
+    });
+
+    window.location.reload();
+
+  } catch (err) {
+    await Swal.fire({
+      title: 'No se pudo finalizar',
+      text: err?.message || 'Ocurrió un error inesperado.',
+      icon: 'error'
+    });
+    btn.disabled = false;
+  }
+});
+
+
+
+
