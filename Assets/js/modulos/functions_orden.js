@@ -2261,7 +2261,7 @@ async function openModalInspeccionCalidad(
                  accept=".jpg,.jpeg,.png,.pdf"
                  multiple>
 
-          <button type="button" class="btn btn-sm btn-outline-secondary btnCamTake mt-2 d-none">
+          <button type="button" class="btn btn-sm btn-outline-secondary btnCamTake mt-2">
             <i class="ri-camera-line me-1"></i> Tomar foto
           </button>
 
