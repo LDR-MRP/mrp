@@ -8,14 +8,17 @@ class Com_requisicionService
 
     protected $requisitionDetailModel;
 
-    protected $requisitionRequest;
+    protected $logAuditModel;
 
-    protected $requisitionApproveRequest;
+    protected $requisitionStoreRequest;
+
+    protected $requisitionStatusRequest;
 
     public function __construct()
     {
         $this->stockModel = new Inv_inventarioModel;
         $this->requisitionDetailModel = new Com_requisicionDetalleModel;
+        $this->logAuditModel = new LogAuditModel;
     }
 
     public function index(array $filters = [])
@@ -40,6 +43,7 @@ class Com_requisicionService
     {
         $requisition = $this->model->requisition($id);
         $partidas = $this->requisitionDetailModel->details($id);
+        $bitacora = $this->logAuditModel->list(['nombre_tabla' => $this->model->getTableName(), 'resource_id' => $id]);
 
         // cálculos
         $requisition['partidas'] = array_map(function ($item) {
@@ -49,6 +53,8 @@ class Com_requisicionService
         }, $partidas);
 
         $requisition['monto_total'] = array_sum(array_column($requisition['partidas'], 'total'));
+
+        $requisition['bitacora'] = $bitacora;
 
         return ServiceResponse::success(
             $requisition,
@@ -66,13 +72,11 @@ class Com_requisicionService
                 throw new Exception('El cuerpo de la petición no es un JSON válido.', 400);
             }
 
-            $this->requisitionRequest = new Com_requisicionRequest($data);
+            $this->requisitionStoreRequest = new Com_requisicionStoreRequest($data);
 
-            $this->requisitionRequest->model = $this->model;
+            $this->requisitionStoreRequest->validate();
 
-            $this->requisitionRequest->validate();
-
-            $validated = $this->requisitionRequest->all();
+            $validated = $this->requisitionStoreRequest->all();
 
             $db = $this->model->getConexion();
 
@@ -118,22 +122,34 @@ class Com_requisicionService
         }
     }
 
-    public function approve(array $data)
+    public function changeStatus(array $data, string $status)
     {
+        $db = $this->model->getConexion();
+        $db->beginTransaction();
+
         try {
-            $this->requisitionApproveRequest = new Com_requisicionAprobarRequest($data);
+            if(!($userId = $_SESSION['idUser'])) {
+                throw new \Exception("No hay una sesión de usuario activa.");
+            }
 
-            $this->requisitionApproveRequest->model = $this->model;
+            $this->requisitionStatusRequest = new Com_requisicionStatusRequest($data);
+            $this->requisitionStatusRequest->model = $this->model;
+            $this->requisitionStatusRequest->validate();
+            $validated = $this->requisitionStatusRequest->all();
 
-            $this->requisitionApproveRequest->validate();
+            $processor = Com_requisicionFactory::make($status);
+            $requisition = $processor->execute(
+                $this->model,
+                $requisitionId = $validated['idrequisicion'],
+                $status,
+                $userId
+            );
 
-            $validated = $this->requisitionApproveRequest->all();
+            if (!$requisition) {
+                throw new \Exception("La operación de {$processor->getLogAction()} falló en el modelo.");
+            }
 
-            $db = $this->model->getConexion();
-
-            $db->beginTransaction();
-
-            $this->model->approve($requisitionId = (int) $validated['idrequisicion'], $this->model::ESTATUS_APROBADA, $_SESSION['idUser']);
+            $this->model->logAudit($requisitionId, $processor->getLogAction(), $validated['comentario'], $userId);
 
             $db->commit();
 
@@ -144,54 +160,17 @@ class Com_requisicionService
                 'Requisición procesada. Nuevo estado: '.strtoupper($this->model::ESTATUS_APROBADA),
                 200
             );
+        } catch (InvalidArgumentException $e) {
+            return ServiceResponse::validation($e->getMessage());
         } catch (Exception $e) {
             if (isset($db)) {
                 $db->rollBack();
             }
 
             return ServiceResponse::error(
-                code: ! is_int($e->getCode()) ? 500 : $e->getCode(),
-                data: $e->getMessage()
+                message: $e->getMessage(),
+                code: is_int($e->getCode()) ? $e->getCode() : 500
             );
-        }
-    }
-
-    public function reject(array $data)
-    {
-        $this->model->reject($requisitionId = (int) $_POST['idrequisicion'], $this->model::ESTATUS_RECHAZADA, $_SESSION['idUser']);
-
-        return ServiceResponse::success(
-            [
-                'requisicion_id' => $requisitionId,
-            ],
-            'Requisición procesada. Nuevo estado: '.strtoupper($this->model::ESTATUS_RECHAZADA),
-            200
-        );
-    }
-
-    public function cancel(array $data)
-    {
-        $this->model->cancel($requisitionId = (int) $_POST['idrequisicion'], $this->model::ESTATUS_CANCELADA, $_SESSION['idUser']);
-
-        return ServiceResponse::success(
-            [
-                'requisicion_id' => $requisitionId,
-            ],
-            'Requisición procesada. Nuevo estado: '.strtoupper($this->model::ESTATUS_CANCELADA),
-            200
-        );
-    }
-
-    public function destroy(array $data)
-    {
-        $requisition = $this->model->destroy($requisitionId = (int) $_POST['idrequisicion'], $this->model::ESTATUS_ELIMINADA, $_SESSION['idUser']);
-
-        return ServiceResponse::success(
-            [
-                'requisicion_id' => $requisitionId,
-            ],
-            'Requisición procesada. Nuevo estado: '.strtoupper($this->model::ESTATUS_ELIMINADA),
-            200
-        );
+        }        
     }
 }

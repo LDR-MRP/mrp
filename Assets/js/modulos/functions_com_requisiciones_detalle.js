@@ -136,8 +136,8 @@ $(document).ready(function () {
                 <tr>
                     <td width="200" class="pl-4 py-3">${log.created_at}</td>
                     <td class="py-3 text-dark">
-                        <strong>${log.user_name}</strong> ${log.action}.
-                        ${log.comment ? `<br><small class="text-muted italic">"${log.comment}"</small>` : ''}
+                        <strong>${log.usuario}</strong> ${log.accion}.
+                        ${log.comentario ? `<br><small class="text-muted italic">"${log.comentario}"</small>` : ''}
                     </td>
                 </tr>
             `);

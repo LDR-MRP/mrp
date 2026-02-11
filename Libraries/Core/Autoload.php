@@ -13,6 +13,10 @@
 		'Requests/',
 		'Services/',
 		'Models/',
+		'Factories/',
+		'Interfaces/',
+		'Enums/',
+		'Processors/',
 	];
 
 	foreach ($dirs as $dir) {

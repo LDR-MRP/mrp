@@ -1,6 +1,10 @@
 <?php
 class Cli_departamentos extends Controllers
 {
+    use ApiResponser;
+
+    protected $departamentoService;
+
     public function __construct()
     {
         parent::__construct();
@@ -11,6 +15,8 @@ class Cli_departamentos extends Controllers
             die();
         }
         getPermisos(MCDEPARTAMENTOS);
+
+        $this->departamentoService = new Cli_departamentoService($this->model);
     }
 
     public function Cli_departamentos()
@@ -148,5 +154,13 @@ class Cli_departamentos extends Controllers
             }
         }
         die();
+    }
+
+    /* ======================================================
+     * API (JSON): listar, mostrar, crear, aprobar, rechazar, cancelar, eliminar
+     * ====================================================== */
+    public function indexapi()
+    {
+        return $this->apiResponse($this->departamentoService->index($filters = sanitizeGet()));
     }
 }
