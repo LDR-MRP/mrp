@@ -322,7 +322,7 @@
                                                   <ul class="nav nav-sm flex-column">
                                                       <?php if (!empty($_SESSION['permisos'][46]['r'])) { ?>
                                                           <li class="nav-item">
-                                                              <a href="<?= base_url(); ?>/cli_tipos_clientes" class="nav-link">Tipo de clientes</a>
+                                                              <a href="<?= base_url(); ?>/cli_tipos_clientes" class="nav-link">Tipo de cliente</a>
                                                           </li>
                                                       <?php } ?>
                                                       <?php if (!empty($_SESSION['permisos'][42]['r'])) { ?>

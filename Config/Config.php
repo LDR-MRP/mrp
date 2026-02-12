@@ -104,6 +104,8 @@ const MCLI_CONTACTOS = 44;
 const MCLI_REGIONALES = 45;
 const MCLI_TIPOS_CLIENTES = 46;
 
+//Submodulos Compras
+const COM_COMPRAS = 50;
 
 const PERROR = 9;
 
