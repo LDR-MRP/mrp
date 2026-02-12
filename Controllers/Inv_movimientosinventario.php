@@ -58,11 +58,17 @@ class Inv_movimientosinventario extends Controllers
                 $costos
             );
 
-            if ($request === true) {
-                $arrResponse = ['status' => true, 'msg' => 'Movimiento registrado correctamente'];
+            if (is_array($request)) {
+                $arrResponse = [
+                    'status' => true,
+                    'msg' => 'Movimiento registrado correctamente',
+                    'numero_movimiento' => $request['numero_movimiento'],
+                    'almacenid' => $request['almacenid']
+                ];
             } else {
                 $arrResponse = ['status' => false, 'msg' => $request];
             }
+
 
             echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
             die();
@@ -138,10 +144,44 @@ class Inv_movimientosinventario extends Controllers
     }
 
     public function getConceptoInfo($id)
-{
-    $arrData = $this->model->selectConceptoInfo($id);
-    echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
-    die();
-}
+    {
+        $arrData = $this->model->selectConceptoInfo($id);
+        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        die();
+    }
 
+    public function reporte($params)
+{
+    ob_start();
+
+    $arr = explode(',', $params);
+
+    $numero    = intval($arr[0] ?? 0);
+    $almacenid = intval($arr[1] ?? 0);
+
+    if (!$numero || !$almacenid) {
+        exit;
+    }
+
+    $data['movimiento'] = $this->model->getMovimientoReporte($numero, $almacenid);
+    $data['detalle']    = $this->model->getDetalleMovimientoReporte($numero, $almacenid);
+
+    // Generar HTML
+    ob_start();
+    $this->views->getView($this, "reporte_movimiento", $data);
+    $html = ob_get_clean();
+
+    // Limpiar cualquier salida previa
+    if (ob_get_length()) {
+        ob_end_clean();
+    }
+
+    require_once("Libraries/html2pdf/vendor/autoload.php");
+
+    $pdf = new \Spipu\Html2Pdf\Html2Pdf('P','A4','es','true','UTF-8');
+    $pdf->writeHTML($html);
+    $pdf->output("Movimiento_$numero.pdf","I");
+
+    exit;
+}
 }

@@ -1,10 +1,6 @@
 <?php
 class Inv_almacenes extends Controllers
 {
-	use ApiResponser;
-
-	protected $almacenService;
-
 	public function __construct()
 	{
 		parent::__construct();
@@ -15,10 +11,6 @@ class Inv_almacenes extends Controllers
 			die();
 		}
 		getPermisos(MIALMACENES);
-
-		$this->almacenService = new Inv_almacenService;
-
-		$this->almacenService->model = $this->model;
 	}
 
 	public function Inv_almacenes()
@@ -179,9 +171,4 @@ class Inv_almacenes extends Controllers
 		echo $htmlOptions;
 		die();
 	}
-
-	public function showAll()
-    {
-        return $this->apiResponse($this->almacenService->showAll());
-    }
 }

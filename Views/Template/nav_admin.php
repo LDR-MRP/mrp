@@ -139,7 +139,7 @@
                           </li> <!-- end plan maestro Menu -->
                       <?php } ?>
 
-                      <?php if (!empty($_SESSION['permisos'][16]['r']) || !empty($_SESSION['permisos'][17]['r']) || !empty($_SESSION['permisos'][18]['r']) || !empty($_SESSION['permisos'][19]['r']) || !empty($_SESSION['permisos'][20]['r']) || !empty($_SESSION['permisos'][21]['r']) || !empty($_SESSION['permisos'][22]['r']) || !empty($_SESSION['permisos'][23]['r']) || !empty($_SESSION['permisos'][24]['r']) || !empty($_SESSION['permisos'][25]['r']) || !empty($_SESSION['permisos'][26]['r']) || !empty($_SESSION['permisos'][70]['r'])) { ?>
+                       <?php if (!empty($_SESSION['permisos'][16]['r']) || !empty($_SESSION['permisos'][17]['r']) || !empty($_SESSION['permisos'][18]['r']) || !empty($_SESSION['permisos'][19]['r']) || !empty($_SESSION['permisos'][20]['r']) || !empty($_SESSION['permisos'][21]['r']) || !empty($_SESSION['permisos'][22]['r']) || !empty($_SESSION['permisos'][23]['r']) || !empty($_SESSION['permisos'][24]['r']) || !empty($_SESSION['permisos'][25]['r']) || !empty($_SESSION['permisos'][26]['r']) || !empty($_SESSION['permisos'][70]['r'])) { ?>
                           <li class="nav-item">
                               <a class="nav-link menu-link" href="#sidebarRequerimientos" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarRequerimientos">
                                   <i data-feather="layout" class="icon-dual"></i> <span data-key="t-layouts">Inventario</span>
@@ -183,24 +183,6 @@
 
                                       <?php if (!empty($_SESSION['permisos'][21]['r'])) { ?>
                                           <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/inv_inventario" class="nav-link" data-key="t-detached">Alta de inventario</a>
-                                          </li>
-                                      <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][71]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/inv_asignacionesinventario" class="nav-link" data-key="t-detached">Asignaciones de inventario</a>
-                                          </li>
-                                      <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][23]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/inv_concepmovinventarios" class="nav-link" data-key="t-detached">Conceptos de movimientos</a>
-                                          </li>
-                                      <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][21]['r'])) { ?>
-                                          <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_esquemaimpuestos" class="nav-link" data-key="t-detached">Impuestos</a>
                                           </li>
                                       <?php } ?>
@@ -216,12 +198,12 @@
                                               <a href="<?= base_url(); ?>/inv_lineasdproducto" class="nav-link" data-key="t-detached">Líneas de producto</a>
                                           </li>
                                       <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][25]['r'])) { ?>
+                                        
+                                      <?php /* if (!empty($_SESSION['permisos'][25]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_lotespedimentos" class="nav-link" data-key="t-detached">Lotes y pedimentos</a>
                                           </li>
-                                      <?php } ?>
+                                      <?php } */?>
 
                                       <?php if (!empty($_SESSION['permisos'][70]['r'])) { ?>
                                           <li class="nav-item">
@@ -240,11 +222,6 @@
                                               <a href="<?= base_url(); ?>/inv_multialmacenes" class="nav-link" data-key="t-detached">Multialmacenes</a>
                                           </li>
                                       <?php } ?>
-                                      <?php if (!empty($_SESSION['permisos'][26]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/inv_multialmacenes" class="nav-link" data-key="t-detached">Multialmacenes</a>
-                                          </li>
-                                      <?php } ?>
 
                                       <?php if (!empty($_SESSION['permisos'][17]['r'])) { ?>
                                           <li class="nav-item">
@@ -256,7 +233,6 @@
                               </div>
                           </li> <!-- end plan maestro Menu -->
                       <?php } ?>
-
 
                       <?php if (!empty($_SESSION['permisos'][27]['r']) || !empty($_SESSION['permisos'][28]['r']) || !empty($_SESSION['permisos'][29]['r'])) { ?>
                           <li class="nav-item">
