@@ -30,7 +30,7 @@ $(document).ready(function () {
                 
             if (res.status && res.data) {
                 res.data.forEach(dept => {
-                    $select.append(`<option value="${dept.iddepartamento}">${dept.nombre}</option>`);
+                    $select.append(`<option value="${dept.id}">${dept.nombre}</option>`);
                 });
             }
         });

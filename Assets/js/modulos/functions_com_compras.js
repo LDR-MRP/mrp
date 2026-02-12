@@ -32,7 +32,7 @@ $(document).ready(function () {
                 "className": "text-end",
                 "render": (data, type, r) => `
                     <div class="btn-group" role="group">
-                        <button class="btn btn-success btn-sm px-4 shadow-sm  action-generaroc" data-id="${r.idrequisicion}">
+                        <button class="btn btn-success btn-sm px-4 shadow-sm  action-nueva" data-id="${r.idrequisicion}">
                             Generar OC <i class="ri-arrow-right-line ml-1"></i>
                         </button>
                     </div>`

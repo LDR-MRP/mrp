@@ -66,6 +66,10 @@ class Com_requisicionService
     public function store(string $data): ServiceResponse
     {
         try {
+            if(!($userId = $_SESSION['idUser'])) {
+                throw new \Exception("No hay una sesión de usuario activa.");
+            }
+
             $data = json_decode($data, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
@@ -97,6 +101,8 @@ class Com_requisicionService
 
                 $this->requisitionDetailModel->detailCreate($requisitionId, $item);
             }
+            
+            $this->model->logAudit($requisitionId, 'creación', $validated['comentarios'], $userId);
 
             $db->commit();
 

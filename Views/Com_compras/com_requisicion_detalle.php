@@ -43,7 +43,7 @@
                         <!-- <button id="btn-export-pdf" class="btn btn-outline-danger shadow-sm ml-2">
                             <i class="ri-file-pdf-line"></i> Exportar
                         </button> -->
-                        <button type="button" class="btn btn-light border mr-2" data-redirect="com_requisicion">Cancelar</button>
+                        <button type="button" class="btn btn-light border mr-2" data-redirect="com_requisicion">Regresar</button>
                         <button id="btn-edit-draft" class="btn btn-warning shadow-sm px-4 ml-2">Editar Borrador</button>
                     </div>
                 </div>
