@@ -1,6 +1,6 @@
 <?php
 
-class Com_requisicionRequest extends Requests {
+class Com_requisicionStoreRequest extends Requests {
     
     public function rules() {
         // 1. Validar Cabecera        

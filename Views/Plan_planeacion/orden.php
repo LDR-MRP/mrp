@@ -81,12 +81,12 @@
         $badgePrioridad = 'badge bg-success-subtle text-success';
 
 
-      $estado = (int) ($ot['estado'] ?? 0);
+      $estado = (int) ($ot['fase'] ?? 0);
       $badgeEstado = 'badge bg-secondary-subtle text-secondary';
       $txtEstado = '—';
       if ($estado === 1) {
-        $badgeEstado = 'badge bg-success-subtle text-success';
-        $txtEstado = 'Activa';
+        $badgeEstado = 'badge bg-secondary-subtle text-secondary';
+        $txtEstado = 'Pendiente';
       }
       if ($estado === 2) {
         $badgeEstado = 'badge bg-warning-subtle text-warning';
@@ -465,7 +465,7 @@
                 </div>
 
                 <div class="d-flex align-items-center flex-wrap gap-2">
-                  <span class="<?= $badgeEstado ?>"><?= $h($txtEstado) ?></span>
+                  <!-- <span class="<?= $badgeEstado ?>"><?= $h($txtEstado) ?></span> -->
                   <span class="<?= $badgePrioridad ?>">Prioridad: <?= $h($prioridad ?: '—') ?></span>
 
 
@@ -542,7 +542,7 @@
                     </div>
                   </div>
 
-                  <div class="col-12 col-md-6 col-lg-3">
+                  <div class="col-12 col-md-6 col-lg-2">
                     <div class="kpi-box p-3 h-100 d-flex gap-3 align-items-start">
                       <div class="avatar-sm flex-shrink-0">
                         <span class="avatar-title bg-primary-subtle rounded fs-4">
@@ -556,7 +556,22 @@
                     </div>
                   </div>
 
-                  <div class="col-12 col-md-6 col-lg-3">
+                                    <div class="col-12 col-md-6 col-lg-2">
+                    <div class="kpi-box p-3 h-100 d-flex gap-3 align-items-start">
+                      <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title bg-primary-subtle rounded fs-4">
+                          <i class="ri-calendar-check-line text-primary"></i>
+                        </span>
+                      </div>
+                      <div>
+                        <div class="text-muted small">Fin producción</div>
+                        <div class="fw-semibold"><?= $h($fmtDate($ot['fecha_fin'] ?? '')) ?></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+
+                  <div class="col-12 col-md-6 col-lg-2">
                     <div class="kpi-box p-3 h-100 d-flex gap-3 align-items-start">
                       <div class="avatar-sm flex-shrink-0">
                         <span class="avatar-title bg-danger-subtle rounded fs-4">
@@ -758,7 +773,7 @@
                                     <?php else: ?>
                                       <div class="subot-table">
                                         <div class="table-responsive">
-                                         
+
                                           <table class="table table-sm align-middle">
                                             <thead>
                                               <tr>
@@ -775,7 +790,8 @@
                                             </thead>
                                             <tbody>
 
-                                            <div id="timeTrackerCard" data-planeacion="<?= $h($ot['idplaneacion'] ?? '') ?>"></div>
+                                              <div id="timeTrackerCard" data-planeacion="<?= $h($ot['idplaneacion'] ?? '') ?>">
+                                              </div>
                                               <?php foreach ($ots as $otRow): ?>
                                                 <?php
                                                 $idorden = (int) ($otRow['idorden'] ?? 0);
@@ -791,7 +807,7 @@
 
                                                 $coment = (string) ($otRow['comentarios'] ?? '');
 
-                                                $disableStart =  '';
+                                                $disableStart = '';
                                                 $disableFinish = '';
                                                 ?>
                                                 <tr data-idorden="<?= $h($idorden) ?>" data-peid="<?= $h($peid) ?>"
@@ -900,22 +916,22 @@
 
                                                           <?php elseif ($calidad == 4): ?>
 
-                                                          <button type="button"
-                                                            class="btn btn-outline-danger waves-effect waves-light btnRechazado btnInspeccionCalidad"
-                                                            data-productoid="<?= (int) $ot['productoid'] ?>"
-                                                            data-estacionid="<?= (int) ($e['estacionid'] ?? 0) ?>"
-                                                            data-estacion="<?= $h($e['nombre_estacion'] ?? '') ?>"
-                                                            data-proceso="<?= $h($e['proceso'] ?? '') ?>"
-                                                            data-idorden="<?= $h($idorden) ?>" data-numorden="<?= $h($subot) ?>">
-                                                            <i class="ri-eye-line me-1"></i> Ver inspección
-                                                          </button>
+                                                            <button type="button"
+                                                              class="btn btn-outline-danger waves-effect waves-light btnRechazado btnInspeccionCalidad"
+                                                              data-productoid="<?= (int) $ot['productoid'] ?>"
+                                                              data-estacionid="<?= (int) ($e['estacionid'] ?? 0) ?>"
+                                                              data-estacion="<?= $h($e['nombre_estacion'] ?? '') ?>"
+                                                              data-proceso="<?= $h($e['proceso'] ?? '') ?>"
+                                                              data-idorden="<?= $h($idorden) ?>" data-numorden="<?= $h($subot) ?>">
+                                                              <i class="ri-eye-line me-1"></i> Ver inspección
+                                                            </button>
 
-                                                               <?php endif; ?>
+                                                          <?php endif; ?>
 
-                                                      <?php endif; ?>
+                                                        <?php endif; ?>
 
 
-                                   
+
 
 
 
@@ -950,53 +966,115 @@
             <div class="right-sticky">
 
 
+             <?php
+            if ((int) $_SESSION['rolid'] === 4){ 
+                $fase = (int) ($ot['fase'] ?? 0);
+             if($fase!=5) {  ?>
+
+<div class="card mb-4 shadow-sm border-0">
+  <div class="card-body text-center">
+
+    <h5 class="card-title mb-3 fw-semibold d-flex justify-content-center align-items-center gap-2">
+      <i class="ri-settings-3-line text-primary"></i>
+      Control de Producción
+    </h5>
+
+    <p class="text-muted small mb-3">
+      Inicia o finaliza el proceso de ensamblado de la orden de trabajo
+    </p>
+
+    <div class="d-grid gap-2">
+
+    <?php if($fase==2){ ?>
+
+      <!-- INICIAR PRODUCCIÓN -->
+      <button type="button"
+        class="btn btn-outline-primary btn-sm fw-semibold js-or-iniciar"
+        data-idplaneacion="<?= (int) $ot['idplaneacion'] ?>">
+        
+        <i class="ri-play-circle-line me-1"></i>
+        Iniciar Producción
+      </button>
+
+      
+    <?php } ?>
+
+
+    
+      <!-- FINALIZAR PRODUCCIÓN -->
+      <button type="button"
+        class="btn btn-outline-success btn-sm fw-semibold js-or-finalizar"
+        data-idplaneacion="<?= (int) $ot['idplaneacion'] ?>">
+        
+        <i class="ri-stop-circle-line me-1"></i>
+        Finalizar Producción
+      </button>
+
+
+
+    </div>
+
+  </div>
+</div>
+
+   <?php }} ?>
+
+
+
+
+<div class="card mb-4 shadow-sm border-0">
+  <div class="card-body text-center">
+
+    <h5 class="card-title mb-3 fw-semibold d-flex justify-content-center align-items-center gap-2">
+      <i class="ri-file-list-3-line text-primary"></i>
+      Documentación de Producción
+    </h5>
+
+    <p class="text-muted small mb-3">
+      Consulta la información técnica y documentos asociados a la orden de trabajo
+    </p>
+
+    <div class="d-grid gap-2">
+
+      <!-- DESCRIPTIVA TÉCNICA -->
+      <button type="button"
+        class="btn btn-outline-primary btn-sm fw-semibold js-or-descriptiva"
+        data-productoid="<?= (int) $ot['productoid'] ?>"
+        data-descripcion="<?= (string) ($ot['descripcion'] ?? '') ?>"
+        data-cantidad="<?= (int) ($ot['cantidad'] ?? 0) ?>">
+        
+        <i class="ri-article-line me-1"></i>
+        Descriptiva Técnica
+      </button>
+
+      <!-- DOCUMENTACIÓN -->
+      <button type="button"
+        class="btn btn-outline-success btn-sm fw-semibold js-or-documentacion"
+        data-productoid="<?= (int) $ot['productoid'] ?>"
+        data-descripcion="<?= (string) ($ot['descripcion'] ?? '') ?>"
+        data-cantidad="<?= (int) ($ot['cantidad'] ?? 0) ?>">
+        
+        <i class="ri-folder-open-line me-1"></i>
+        Documentación de Soporte
+      </button>
+
+    </div>
+
+  </div>
+</div>
+
+
+
 
               <div class="card mb-4 shadow-sm border-0">
-                <div class="card-body text-center">
+                <div class="card-body text-center" style="display:flex; justify-content:center; align-items:center;">
 
-                  <h5 class="card-title  mb-3 flex-grow-1 mb-0">
-                    Recursos de Producción
-
-                  </h5>
-
-                  <div class="d-grid gap-2">
-
-                    <!-- <button class="btn btn-outline-primary btn-sm  fw-semibold" data-bs-toggle="modal"
-                      data-bs-target="#zoomInModal">
-                      <i class="ri-file-text-line me-1"></i> Descriptiva técnica
-                    </button> -->
-
-
-                    <button type="button" class="btn btn-outline-primary btn-sm  fw-semibold js-or-descriptiva"
-                      data-productoid="<?= (int) $ot['productoid'] ?>"
-                      data-descripcion="<?= (string) ($ot['descripcion'] ?? '') ?>"
-                      data-cantidad="<?= (int) ($ot['cantidad'] ?? 0) ?>">
-                      <i class="ri-file-text-line me-1"></i> Descriptiva técnica
-                    </button>
-
-
-
-
-
-                    <!-- <button class="btn btn-outline-success btn-sm fw-semibold"
-                      onclick="openDocumentacion(<?= (int) $ot['productoid'] ?>)">
-                      <i class="ri-folder-open-line me-1"></i> Documentación
-                    </button> -->
-
-
-                    <button type="button" class="btn btn-outline-success btn-sm js-or-documentacion"
-                      data-productoid="<?= (int) $ot['productoid'] ?>"
-                      data-descripcion="<?= (string) ($ot['descripcion'] ?? '') ?>"
-                      data-cantidad="<?= (int) ($ot['cantidad'] ?? 0) ?>">
-                      <i class="ri-file-text-line me-1"></i> Documentación
-                    </button>
-
-
-
-                  </div>
+                  <img src="<?= media(); ?>/minimal/images/planeacion_v1.png" alt="Tarea"
+                    style="max-width:100%; height:auto;">
 
                 </div>
               </div>
+
 
               <!-- CHAT -->
               <!-- <div class="card">
@@ -1073,8 +1151,8 @@
               </div>
 
               <div class="modal-body">
-                <input type="text" id="mIdOrden" value="">
-                <input type="text" id="mPeid" value="">
+                <input type="hidden" id="mIdOrden" value="">
+                <input type="hidden" id="mPeid" value="">
 
                 <div class="alert alert-info py-2 mb-3">
                   <div class="small mb-0">
@@ -1697,20 +1775,20 @@
 
                 <input type="hidden" id="estacion_id" value="">
 
-                               <?php if ((int) $_SESSION['rolid'] === 5) {?>
+                <?php if ((int) $_SESSION['rolid'] === 5) { ?>
 
-                <div class="alert alert-warning d-flex align-items-start gap-2 mb-3" role="alert">
-                  <i class="ri-alert-line fs-18 mt-1"></i>
-                  <div>
-                    <div class="fw-semibold">¡Nota!</div>
-                    <div class="text-muted">
-                      Completa la inspección para liberar la estación. Si seleccionas <b>NO OK</b>, el comentario es
-                      obligatorio.
+                  <div class="alert alert-warning d-flex align-items-start gap-2 mb-3" role="alert">
+                    <i class="ri-alert-line fs-18 mt-1"></i>
+                    <div>
+                      <div class="fw-semibold">¡Nota!</div>
+                      <div class="text-muted">
+                        Completa la inspección para liberar la estación. Si seleccionas <b>NO OK</b>, el comentario es
+                        obligatorio.
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                           <?php } ?>
+                <?php } ?>
 
                 <div class="row g-3 mb-3">
                   <div class="col-md-6">
@@ -1793,14 +1871,14 @@
 
 
 
-               <div class="modal-footer">
-                          <button type="button" class="btn btn-danger" id="btnPausarCalidad">
-                    <i class="ri-pause-circle-line me-1"></i> Pausar
-                  </button>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="btnPausarCalidad">
+                  <i class="ri-pause-circle-line me-1"></i> Pausar
+                </button>
 
-                  <button type="button" class="btn btn-success" id="btnLiberarCalidad">
-                    <i class="ri-check-double-line me-1"></i> Liberar
-                  </button>
+                <button type="button" class="btn btn-success" id="btnLiberarCalidad">
+                  <i class="ri-check-double-line me-1"></i> Liberar
+                </button>
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
               </div>
 

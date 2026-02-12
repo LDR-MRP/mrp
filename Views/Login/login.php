@@ -203,7 +203,7 @@
           <button class="btn btn-primary-custom w-100 mb-1" type="submit">Iniciar sesión</button>
 
           <div class="small-footer">
-            © 2025 LDR Solutions · MRP
+             © <?= date('Y') ?> LDR Solutions · MRP
           </div>
   </form>
         </div>

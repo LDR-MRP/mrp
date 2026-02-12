@@ -46,7 +46,7 @@ class Com_requisicion extends Controllers
         );
     }
 
-    public function detalle(int $id) {
+    public function detalle(mixed $id) {
         $this->views->getView(
             $this,
             "../Com_compras/com_requisicion_detalle",
@@ -84,21 +84,21 @@ class Com_requisicion extends Controllers
 
     public function approve()
     {
-        return $this->apiResponse($this->requisitionService->approve($_POST));
+        return $this->apiResponse($this->requisitionService->changeStatus($_POST, Com_requisicionModel::ESTATUS_APROBADA));
     }
 
     public function reject()
     {
-        return $this->apiResponse($this->requisitionService->reject($_POST));
+        return $this->apiResponse($this->requisitionService->changeStatus($_POST, Com_requisicionModel::ESTATUS_RECHAZADA));
     }
 
     public function cancel()
     {
-        return $this->apiResponse($this->requisitionService->cancel($_POST));
+        return $this->apiResponse($this->requisitionService->changeStatus($_POST, Com_requisicionModel::ESTATUS_CANCELADA));
     }
 
     public function destroy()
     {
-        return $this->apiResponse($this->requisitionService->destroy($_POST));
+        return $this->apiResponse($this->requisitionService->changeStatus($_POST, Com_requisicionModel::ESTATUS_ELIMINADA));
     }
 }

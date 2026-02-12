@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
       abrirModalFaltantesHerramientas(estacionid, nombre);
       return;
     }
-  });
+  }); 
 
   if (btnPendientes) btnPendientes.addEventListener('click', () => goListado('PENDIENTE'));
   if (btnFinalizadas) btnFinalizadas.addEventListener('click', () => goListado('FINALIZADA'));
@@ -198,7 +198,8 @@ document.addEventListener('DOMContentLoaded', function () {
     btnNuevaPlaneacion.addEventListener('click', async () => {
       await limpiarNuevaPlaneacion(true);
       goNueva();
-          // await initFechaInicioPicker();
+           await initFechaInicioPicker();
+           initFechaRequeridaPicker();
     });
   }
 
@@ -1303,7 +1304,7 @@ function resaltarFilasIncompletas(faltantes) {
 //  GUARDAR PLANEACIÓN
 // =====================================================
 async function guardarPlaneacionHandler() {
- 
+
   setMinFechaInicioHoy();
   setMinFechaRequeridaFromInicio();
 
@@ -1325,7 +1326,6 @@ async function guardarPlaneacionHandler() {
     Swal.fire({ icon: 'warning', title: 'Faltan fechas', text: 'Selecciona fecha de inicio y requerida.' });
     return;
   }
-
 
   const hoy = todayYYYYMMDD();
   if (payload.header.fecha_inicio < hoy) {
@@ -1386,6 +1386,30 @@ async function guardarPlaneacionHandler() {
     return;
   }
 
+  // ✅ CONFIRMACIÓN ANTES DE GUARDAR
+  const confirm = await Swal.fire({
+    icon: 'question',
+    title: 'Confirmar guardado',
+    html: `<div class="text-start">
+            <div class="mb-2">Estás a punto de <b>guardar</b> esta orden de trabajo / planeación.</div>
+            <div class="text-muted">Verifica que el producto, cantidad, prioridad, fechas y asignaciones sean correctas. Al confirmar, se registrará la información en el sistema.</div>
+          </div>`,
+    showCancelButton: true,
+    confirmButtonText: 'Sí, guardar',
+    cancelButtonText: 'No, cancelar',
+    reverseButtons: true,
+    allowOutsideClick: false
+  });
+
+  if (!confirm.isConfirmed) {
+    Swal.fire({
+      icon: 'info',
+      title: 'Operación cancelada',
+      text: 'No se realizaron cambios.'
+    });
+    return;
+  }
+
   // GUARDAR
   try {
     const data = await fetchJson(base_url + '/plan_planeacion/setPlaneacion', {
@@ -1401,7 +1425,6 @@ async function guardarPlaneacionHandler() {
     localStorage.removeItem(getLSKeyAsignaciones());
     await limpiarNuevaPlaneacion(false);
 
-
     window.location.href = base_url + '/plan_planeacion/orden/' + data.num_planeacion;
 
   } catch (err) {
@@ -1409,6 +1432,7 @@ async function guardarPlaneacionHandler() {
     Swal.fire({ icon: 'error', title: 'Error', text: err.message });
   }
 }
+
 
 // =====================================================
 //  LIMPIEZA + CONFIRMACIONES
@@ -1567,6 +1591,7 @@ function renderPlaneacionModal(payload) {
   setText('mp_prioridad', h.prioridad);
   setText('mp_cantidad', h.cantidad);
   setText('mp_inicio', h.fecha_inicio);
+    setText('mp_fin', h.fecha_fin);
   setText('mp_requerida', h.fecha_requerida);
   setText('mp_supervisor', h.supervisor);
   setText('mp_notas', h.notas);
@@ -1678,56 +1703,300 @@ async function fetchPlaneacionPorFolio(folio) {
 
 
 
+
+
+// =========================================================
+//  Planeación - Flatpickr COMPLETO 
+// =========================================================
+
 let fpInicio = null;
+let fpRequerida = null;
 
-function mysqlToFp(dt) {
-  // "YYYY-MM-DD HH:MM:SS" -> "YYYY-MM-DD HH:MM"
-  if (!dt) return null;
-  const [d, t] = String(dt).trim().split(' ');
-  const [hh, mm] = (t || '00:00:00').split(':');
-  return `${d} ${hh}:${mm}`;
+
+if (window.flatpickr && flatpickr.l10ns && flatpickr.l10ns.es) {
+  flatpickr.localize(flatpickr.l10ns.es);
 }
 
-async function getRangosOcupados() {
-  const url = base_url + '/plan_planeacion/getSelectDates';
-  const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
-  const rows = await resp.json();
-
-  // Flatpickr disable acepta {from, to}
-  return (Array.isArray(rows) ? rows : [])
-    .filter(r => r.fecha_inicio && r.fecha_fin)
-    .map(r => ({
-      from: mysqlToFp(r.fecha_inicio),
-      to:   mysqlToFp(r.fecha_fin)
-    }));
-}
-
-async function initFechaInicioPicker() {
-  const input = document.getElementById('fechaInicio');
+// =======================
+// Helpers
+// =======================
+function prepareInputForManualFlatpickr(input) {
   if (!input) return;
 
-  const disableRanges = await getRangosOcupados();
+  // Evitar init automático del template
+  input.removeAttribute("data-provider");
+  input.removeAttribute("data-date-format");
+  input.removeAttribute("data-enable-time");
 
-  // Si ya existe, destruye y recrea (por si cambió disponibilidad)
+
+  if (input._flatpickr) {
+    input._flatpickr.destroy();
+  }
+}
+
+function mysqlToDate(dt) {
+  if (!dt) return null;
+  const [d, t = "00:00:00"] = String(dt).trim().split(" ");
+  const [Y, M, D] = d.split("-").map(Number);
+  const [hh, mm, ss] = t.split(":").map(Number);
+  return new Date(Y, (M - 1), D, hh || 0, mm || 0, ss || 0);
+}
+
+function addMinutes(date, minutes) {
+  return new Date(date.getTime() + minutes * 60000);
+}
+
+function isWeekend(date) {
+  const d = date.getDay();
+  return d === 0 || d === 6;
+}
+
+function findCollision(date, ranges) {
+  const t = date.getTime();
+  for (const r of ranges) {
+    if (!r?.from || !r?.to) continue;
+    if (t >= r.from.getTime() && t <= r.to.getTime()) return r;
+  }
+  return null;
+}
+
+function nextAvailable(date, ranges, toleranceMin = 15) {
+  let d = new Date(date.getTime());
+  while (true) {
+    const col = findCollision(d, ranges);
+    if (!col) return d;
+    d = addMinutes(col.to, toleranceMin);
+  }
+}
+
+function startOfDay(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+}
+
+// =======================
+// Rangos ocupados 
+// =======================
+async function getRangosOcupados() {
+  const url = base_url + "/plan_planeacion/getSelectDates";
+  const resp = await fetch(url, { headers: { Accept: "application/json" } });
+  const json = await resp.json();
+
+  const rows = Array.isArray(json) ? json : (Array.isArray(json?.data) ? json.data : []);
+  const TOL = 15;
+
+  return rows
+    .filter(r => r.fecha_inicio && r.fecha_fin)
+    .map(r => {
+      const from = mysqlToDate(r.fecha_inicio);
+      let to = mysqlToDate(r.fecha_fin);
+
+  
+      if (from && to && to.getTime() <= from.getTime()) {
+        to = addMinutes(from, 5);
+      }
+
+
+      if (to) to = addMinutes(to, TOL);
+
+      return { from, to };
+    })
+    .filter(x => x.from && x.to);
+}
+
+// =======================
+// Bloqueo día 100% ocupado
+// =======================
+function dayIsFullyBlocked(day, ranges) {
+  const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0);
+  const end   = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59);
+  return ranges.some(r => start >= r.from && end <= r.to);
+}
+
+// =========================================================
+// REQUERIDA
+// =========================================================
+function updateRequeridaMinByDay() {
+  if (!fpRequerida) return;
+
+  const ini = fpInicio?.selectedDates?.[0];
+  if (!ini) {
+    fpRequerida.set("minDate", "today");
+    fpRequerida.set("disable", []);
+    return;
+  }
+
+  const minDay = startOfDay(ini);
+
+
+  fpRequerida.set("minDate", minDay);
+  fpRequerida.set("disable", [
+    (date) => startOfDay(date).getTime() < minDay.getTime()
+  ]);
+
+
+  const req = fpRequerida.selectedDates?.[0];
+  if (req && startOfDay(req).getTime() < minDay.getTime()) {
+    fpRequerida.clear();
+  }
+}
+
+// =========================================================
+// INIT INICIO PRODUCCIÓN 
+// =========================================================
+async function initFechaInicioPicker() {
+  const input = document.getElementById("fechaInicio");
+  if (!input) return;
+
+  prepareInputForManualFlatpickr(input);
   if (fpInicio) fpInicio.destroy();
 
+  let ranges = await getRangosOcupados();
+  console.log("Rangos ocupados:", ranges);
+
+  let _ajustando = false;
+
   fpInicio = flatpickr(input, {
-    locale: 'es',
+    locale: "es",
     enableTime: true,
     time_24hr: true,
-    dateFormat: 'Y-m-d H:i',      // lo que ve el usuario
-    // (opcional) formato para backend
-    // altInput: true,
-    // altFormat: 'd/m/Y H:i',
+    minuteIncrement: 5,
+    minDate: "today",
+    defaultHour: 9,
+    defaultMinute: 0,
 
-    minuteIncrement: 5,            // o 15 si quieres
-    disable: disableRanges,        // ✅ aquí se bloquean rangos ocupados
-    minDate: 'today',              // opcional: no fechas pasadas
+   
+    altInput: true,
+    altFormat: "d.m.Y H:i",
 
-    onOpen: async () => {
-      // refrescar al abrir por si se agregaron planeaciones
-      const fresh = await getRangosOcupados();
-      fpInicio.set('disable', fresh);
+    dateFormat: "Y-m-d H:i",
+
+
+    disable: [
+      (date) => isWeekend(date) || dayIsFullyBlocked(date, ranges)
+    ],
+
+    onOpen: async (selectedDates, dateStr, instance) => {
+      ranges = await getRangosOcupados();
+      instance.set("disable", [
+        (date) => isWeekend(date) || dayIsFullyBlocked(date, ranges)
+      ]);
+    },
+
+    onChange: (selectedDates, dateStr, instance) => {
+      if (_ajustando) return;
+      if (!selectedDates?.length) return;
+
+      const picked = selectedDates[0];
+
+
+      const soloDia = (picked.getHours() === 12 && picked.getMinutes() === 0);
+
+      let candidate = picked;
+      if (soloDia) {
+        candidate = new Date(
+          picked.getFullYear(),
+          picked.getMonth(),
+          picked.getDate(),
+          9, 0, 0
+        );
+      }
+
+
+      const col = findCollision(candidate, ranges);
+      if (col) {
+        const next = nextAvailable(candidate, ranges, 15);
+
+        _ajustando = true;
+        instance.setDate(next, true); 
+        _ajustando = false;
+
+        if (window.Swal) {
+          Swal.fire({
+            toast: true,
+            position: "top-end",
+            icon: "info",
+            title: "Horario ocupado",
+            text: "Se ajustó automáticamente al siguiente horario disponible (+15 min).",
+            showConfirmButton: false,
+            timer: 2200
+          });
+        }
+      } else if (soloDia) {
+     
+        if (picked.getHours() !== 9 || picked.getMinutes() !== 0) {
+          _ajustando = true;
+          instance.setDate(candidate, true);
+          _ajustando = false;
+        }
+      }
+
+
+      updateRequeridaMinByDay();
     }
   });
+
+
+  updateRequeridaMinByDay();
 }
+
+
+function initFechaRequeridaPicker() {
+  const inputReq = document.getElementById("fechaRequerida");
+  if (!inputReq) return;
+
+  prepareInputForManualFlatpickr(inputReq);
+  if (fpRequerida) fpRequerida.destroy();
+
+  fpRequerida = flatpickr(inputReq, {
+    locale: "es",
+    enableTime: true,
+    time_24hr: true,
+    minuteIncrement: 5,
+    defaultHour: 9,
+    defaultMinute: 0,
+
+
+    altInput: true,
+    altFormat: "d.m.Y H:i",
+
+
+    dateFormat: "Y-m-d H:i",
+
+    minDate: "today",
+
+    onOpen: () => {
+      updateRequeridaMinByDay();
+    },
+
+    onChange: (selectedDates, dateStr, instance) => {
+      if (!selectedDates?.length) return;
+
+      const ini = fpInicio?.selectedDates?.[0];
+      if (!ini) return;
+
+   
+      const minDay = startOfDay(ini);
+      const reqDay = startOfDay(selectedDates[0]);
+
+      if (reqDay.getTime() < minDay.getTime()) {
+        instance.clear();
+
+        if (window.Swal) {
+          Swal.fire({
+            toast: true,
+            position: "top-end",
+            icon: "warning",
+            title: "Fecha inválida",
+            text: "La fecha requerida no puede ser anterior al día de inicio.",
+            showConfirmButton: false,
+            timer: 2500
+          });
+        }
+      }
+    }
+  });
+
+  updateRequeridaMinByDay();
+}
+
+

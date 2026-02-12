@@ -2073,6 +2073,96 @@ public function getSelectDates(){
     die();
 }
 
+public function iniciarPlaneacion()
+{
+  header('Content-Type: application/json');
+
+
+  if (!isset($_SESSION['idUser']) || (int)$_SESSION['idUser'] <= 0) {
+    echo json_encode(["status" => false, "msg" => "Sesión no válida."]);
+    die();
+  }
+ 
+  $raw = file_get_contents("php://input");
+  $json = json_decode($raw, true);
+
+  $idplaneacion = isset($json['idplaneacion']) ? (int)$json['idplaneacion'] : 0;
+  if ($idplaneacion <= 0) {
+    echo json_encode(["status" => false, "msg" => "ID de planeación inválido."]);
+    die();
+  }
+
+  $userId = (int)$_SESSION['idUser'];
+
+  try {
+    $ok = $this->model->iniciarPlaneacionModel($idplaneacion, $userId);
+
+    if (!$ok) {
+      echo json_encode(["status" => false, "msg" => "No fue posible iniciar la producción (ya iniciada o no existe)."]);
+      die();
+    }
+
+    echo json_encode([
+      "status" => true,
+      "msg" => "Producción iniciada correctamente.",
+      "data" => [
+        "idplaneacion" => $idplaneacion
+      ]
+    ]);
+    die();
+
+  } catch (Exception $e) {
+    echo json_encode(["status" => false, "msg" => "Error: " . $e->getMessage()]);
+    die();
+  }
+}
+
+public function finalizarPlaneacion()
+{
+  header('Content-Type: application/json');
+
+  if (!isset($_SESSION['idUser']) || (int)$_SESSION['idUser'] <= 0) {
+    echo json_encode(["status" => false, "msg" => "Sesión no válida."]);
+    die();
+  }
+
+  $raw = file_get_contents("php://input");
+  $json = json_decode($raw, true);
+
+  $idplaneacion = isset($json['idplaneacion']) ? (int)$json['idplaneacion'] : 0;
+  if ($idplaneacion <= 0) {
+    echo json_encode(["status" => false, "msg" => "ID de planeación inválido."]);
+    die();
+  }
+
+  $userId = (int)$_SESSION['idUser'];
+
+  try {
+    $ok = $this->model->finalizarPlaneacionModel($idplaneacion, $userId);
+
+    if (!$ok) {
+      echo json_encode([
+        "status" => false,
+        "msg" => "No fue posible finalizar (no existe o no está en producción)."
+      ]);
+      die();
+    }
+
+    echo json_encode([
+      "status" => true,
+      "msg" => "Producción finalizada correctamente.",
+      "data" => ["idplaneacion" => $idplaneacion]
+    ]);
+    die();
+
+  } catch (Exception $e) {
+    echo json_encode(["status" => false, "msg" => "Error: " . $e->getMessage()]);
+    die();
+  }
+}
+
+
+
 
 
 
