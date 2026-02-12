@@ -58,8 +58,8 @@
                                         <th>Concepto</th>
                                         <th>Referencia</th>
                                         <th>Cantidad</th>
-                                        <th>Existencia</th>
                                         <th>Fecha</th>
+                                        <th>Reporte</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>

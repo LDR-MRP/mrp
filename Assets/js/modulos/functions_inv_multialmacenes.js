@@ -1,4 +1,13 @@
 document.addEventListener("DOMContentLoaded", function () {
+  const modalExistenciasEl = document.getElementById("modalExistencias");
+
+  if (modalExistenciasEl) {
+    modalExistenciasEl.addEventListener("hidden.bs.modal", function () {
+      document.getElementById("bodyExistencias").innerHTML = "";
+      document.getElementById("totalExistencias").innerText = "0";
+    });
+  }
+
   const form = document.querySelector("#formMultialmacenes");
   const selectInv = document.querySelector("#listInventario");
   const selectAlm = document.querySelector("#listAlmacenes");
@@ -104,24 +113,145 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".autocomplete-items").forEach((e) => e.remove());
   }
   // Cerrar autocomplete al hacer click fuera
-document.addEventListener("click", function (e) {
-  const input = document.querySelector("#inventarioSearch");
-  const lista = document.querySelector(".autocomplete-items");
+  document.addEventListener("click", function (e) {
+    const input = document.querySelector("#inventarioSearch");
+    const lista = document.querySelector(".autocomplete-items");
 
-  if (!input) return;
+    if (!input) return;
 
-  if (
-    e.target !== input &&
-    !input.contains(e.target) &&
-    (!lista || !lista.contains(e.target))
-  ) {
-    cerrarListaInv();
-  }
-});
-document.addEventListener("keydown", function (e) {
-  if (e.key === "Escape") {
-    cerrarListaInv();
-  }
+    if (
+      e.target !== input &&
+      !input.contains(e.target) &&
+      (!lista || !lista.contains(e.target))
+    ) {
+      cerrarListaInv();
+    }
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      cerrarListaInv();
+    }
+  });
+
+  // BOTON EXISTENCIAS
+  document
+    .getElementById("btnExistencias")
+    .addEventListener("click", function () {
+      const modal = new bootstrap.Modal(
+        document.getElementById("modalExistencias"),
+      );
+      modal.show();
+      document.getElementById("bodyExistencias").innerHTML = "";
+    });
+  const modalExistencias = new bootstrap.Modal(
+    document.getElementById("modalExistencias"),
+  );
+  const modalBuscar = new bootstrap.Modal(
+    document.getElementById("modalBuscarArticulo"),
+  );
+
+  document.getElementById("btnAbrirBusqueda").addEventListener("click", () => {
+    document.getElementById("inputBuscarArticulo").value = "";
+    document.getElementById("bodyBuscarArticulo").innerHTML = "";
+    modalBuscar.show();
+  });
 });
 
-});
+document
+  .getElementById("inputBuscarArticulo")
+  .addEventListener("keyup", function () {
+    const q = this.value;
+
+    if (q.length < 2) {
+      document.getElementById("bodyBuscarArticulo").innerHTML = "";
+      return;
+    }
+
+    fetch(base_url + "/Inv_multialmacenes/buscarArticulos?q=" + q)
+      .then((r) => r.json())
+      .then((data) => {
+        let html = "";
+
+        data.forEach((row) => {
+          html += `
+            <tr>
+              <td>${row.cve_articulo}</td>
+              <td>${row.descripcion}</td>
+              <td>
+                <button class="btn btn-sm btn-primary"
+                  onclick="seleccionarArticulo('${row.cve_articulo}')">
+                  Seleccionar
+                </button>
+              </td>
+            </tr>
+          `;
+        });
+
+        document.getElementById("bodyBuscarArticulo").innerHTML = html;
+      });
+  });
+
+function seleccionarArticulo(clave) {
+  const modalBuscarEl = document.getElementById("modalBuscarArticulo");
+  const instance = bootstrap.Modal.getInstance(modalBuscarEl);
+
+  if (instance) instance.hide();
+
+  cargarExistencias(clave);
+  document.getElementById("inputBuscarArticulo").value = "";
+document.getElementById("bodyBuscarArticulo").innerHTML = "";
+
+}
+
+function cargarExistencias(clave) {
+  fetch(base_url + "/Inv_multialmacenes/buscarExistencias?q=" + clave)
+    .then((r) => r.json())
+    .then((data) => {
+      let html = "";
+      let totalGeneral = 0;
+
+      data.forEach((row) => {
+        totalGeneral += parseFloat(row.existencia);
+
+        html += `
+          <tr>
+            <td>${row.cve_articulo}</td>
+            <td>${row.descripcion}</td>
+            <td>${row.almacen}</td>
+            <td>${row.existencia}</td>
+            <td><input type="number" class="form-control form-control-sm" value="${row.stock_minimo}"></td>
+            <td><input type="number" class="form-control form-control-sm" value="${row.stock_maximo}"></td>
+            <td>
+              <button class="btn btn-sm btn-success"
+                onclick="guardarStock(${row.idmultialmacen}, this)">
+                Guardar
+              </button>
+            </td>
+          </tr>`;
+      });
+
+      document.getElementById("bodyExistencias").innerHTML = html;
+      document.getElementById("totalExistencias").innerText =
+        totalGeneral.toFixed(2);
+    });
+}
+
+function guardarStock(id, btn) {
+  let row = btn.closest("tr");
+  let min = row.querySelectorAll("input")[0].value;
+  let max = row.querySelectorAll("input")[1].value;
+
+  let fd = new FormData();
+  fd.append("id", id);
+  fd.append("stock_min", min);
+  fd.append("stock_max", max);
+
+  fetch(base_url + "/Inv_multialmacenes/updateStock", {
+    method: "POST",
+    body: fd,
+  })
+    .then((r) => r.json())
+    .then((resp) => {
+      Swal.fire(resp.msg, "", resp.status ? "success" : "error");
+    });
+}

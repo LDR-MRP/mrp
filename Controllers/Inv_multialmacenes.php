@@ -188,4 +188,43 @@ class Inv_multialmacenes extends Controllers
         echo $htmlOptions;
         die();
     }
+
+    public function buscarExistencias()
+{
+    $q = $_GET['q'] ?? '';
+    $arrData = $this->model->buscarExistencias($q);
+    echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+    die();
+}
+
+public function updateStock()
+{
+    $id = intval($_POST['id']);
+    $min = floatval($_POST['stock_min']);
+    $max = floatval($_POST['stock_max']);
+
+    $resp = $this->model->updateStockMinMax($id, $min, $max);
+
+    echo json_encode([
+        "status" => $resp,
+        "msg" => $resp ? "Stock actualizado" : "Error al guardar"
+    ], JSON_UNESCAPED_UNICODE);
+    die();
+}
+
+public function buscarArticulos()
+{
+    $q = $_GET['q'] ?? '';
+
+    if ($q == '') {
+        echo json_encode([]);
+        die();
+    }
+
+    $arrData = $this->model->searchInventarios($q);
+    echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+    die();
+}
+
+
 }
