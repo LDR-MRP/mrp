@@ -122,7 +122,7 @@ class Com_requisicionModel extends Mysql
     {
         return $this->update("UPDATE com_requisiciones
             SET estatus = ?,
-                modified_by = ?,
+                modified_by = ?
             WHERE idrequisicion = ?;
             ",
             [
@@ -137,7 +137,7 @@ class Com_requisicionModel extends Mysql
     {
         return $this->update("UPDATE com_requisiciones
             SET estatus = ?,
-                modified_by = ?,
+                modified_by = ?
             WHERE idrequisicion = ?;
             ",
             [

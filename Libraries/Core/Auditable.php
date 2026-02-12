@@ -14,7 +14,7 @@ trait Auditable
      * @param int $userId Sesión de usuario activa.
      * @return bool
      */
-    public function logAudit(int $resourceId, string $action, string $comment, int $userId): bool
+    public function logAudit(int $resourceId, string $action, string $comment = 'Sin comentarios', int $userId): bool
     {
         $auditModel = new LogAuditModel();
         return $auditModel->register(
