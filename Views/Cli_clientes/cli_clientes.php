@@ -1034,7 +1034,7 @@
                                 <tr>
                                     <td>Núm. Int</td>
                                     <td id="numeroint_fiscal"></td>
-                                </tr>t
+                                </tr>
                                 <tr>
                                     <td>Colonia</td>
                                     <td id="coloniafiscal"></td>

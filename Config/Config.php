@@ -103,6 +103,7 @@ const MCLI_GRUPOS = 42;
 const MCLI_PUESTOS = 43;
 const MCLI_CONTACTOS = 44;
 const MCLI_REGIONALES = 45;
+const MCLI_TIPOS_CLIENTES = 46;
 
 
 const PERROR = 9;
