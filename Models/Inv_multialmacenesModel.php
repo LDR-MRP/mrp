@@ -121,4 +121,34 @@ class Inv_multialmacenesModel extends Mysql
             LIMIT 10";
         return $this->select_all($sql);
     }
+
+    public function buscarExistencias($q)
+{
+    $sql = "SELECT 
+              m.idmultialmacen,
+              i.cve_articulo,
+              i.descripcion,
+              a.descripcion AS almacen,
+              m.existencia,
+              m.stock_minimo,
+              m.stock_maximo
+            FROM wms_multialmacen m
+            INNER JOIN wms_inventario i ON m.inventarioid = i.idinventario
+            INNER JOIN wms_almacenes a ON m.almacenid = a.idalmacen
+            WHERE i.cve_articulo LIKE '%{$q}%'
+               OR i.descripcion LIKE '%{$q}%'
+            LIMIT 50";
+
+    return $this->select_all($sql);
+}
+
+public function updateStockMinMax($id, $min, $max)
+{
+    $sql = "UPDATE wms_multialmacen 
+            SET stock_minimo = ?, stock_maximo = ?
+            WHERE idmultialmacen = ?";
+
+    return $this->update($sql, [$min, $max, $id]);
+}
+
 }

@@ -1,10 +1,6 @@
 <?php
 class Inv_inventario extends Controllers
 {
-	use ApiResponser;
-
-	protected $inventarioService;
-
 	public function __construct()
 	{
 		parent::__construct();
@@ -15,10 +11,6 @@ class Inv_inventario extends Controllers
 			die();
 		}
 		getPermisos(MIINVENTARIO);
-
-		$this->inventarioService = new Inv_inventarioService;
-
-		$this->inventarioService->model = $this->model;
 	}
 
 	public function Inv_inventario()
@@ -155,15 +147,17 @@ class Inv_inventario extends Controllers
 
 				if ($_SESSION['permisosMod']['u']) {
 
+					$estado = 2; // activo por defecto
+
 					$request = $this->model->updateInventario(
 						$idinventario,
 						$cve_articulo,
 						$descripcion,
 						$unidad_entrada,
 						$unidad_salida,
-						$unidad_empaque,   // ✅ FALTABA
+						$unidad_empaque,
 						$ultimo_costo,
-						$lineaproductoid,  // ✅ ahora sí es int
+						$lineaproductoid,
 						$tipo_elemento,
 						$factor_unidades,
 						$ubicacion,
@@ -172,7 +166,8 @@ class Inv_inventario extends Controllers
 						$volumen,
 						$serie,
 						$lote,
-						$pedimiento
+						$pedimiento,
+						$estado           // ✅ PARAMETRO QUE FALTABA
 					);
 					$option = 2;
 				}
@@ -333,11 +328,6 @@ class Inv_inventario extends Controllers
 		die();
 	}
 
-
-	public function index()
-    {
-        return $this->apiResponse($this->inventarioService->items(sanitizeGet()));
-    }
 
 	public function delInventario()
 	{
@@ -660,7 +650,7 @@ class Inv_inventario extends Controllers
 			echo json_encode([]);
 			die();
 		}
-		$path = $_SERVER['DOCUMENT_ROOT'] . '/mrp/Assets/sat_catalogos/CAT_PROD_SERV.xml';
+		$path = realpath(__DIR__ . '/../Assets/sat_catalogos/CAT_PROD_SERV.xml');
 		if (!file_exists($path)) {
 			echo json_encode([]);
 			die();
@@ -705,7 +695,8 @@ class Inv_inventario extends Controllers
 			die();
 		}
 
-		$path = $_SERVER['DOCUMENT_ROOT'] . '/mrp/Assets/sat_catalogos/CAT_CLAVE_UNI.xml';
+		$path = realpath(__DIR__ . '/../Assets/sat_catalogos/CAT_CLAVE_UNI.xml');
+
 
 		if (!file_exists($path)) {
 			echo json_encode([]);
@@ -752,7 +743,8 @@ class Inv_inventario extends Controllers
 			die();
 		}
 
-		$path = $_SERVER['DOCUMENT_ROOT'] . '/mrp/Assets/sat_catalogos/CAT_FRACC_ARANC.xml';
+		$path = realpath(__DIR__ . '/../Assets/sat_catalogos/CAT_FRACC_ARANC.xml');
+
 
 		if (!file_exists($path)) {
 			echo json_encode([]);
@@ -798,7 +790,8 @@ class Inv_inventario extends Controllers
 			die();
 		}
 
-		$path = $_SERVER['DOCUMENT_ROOT'] . '/mrp/Assets/sat_catalogos/CAT_ADUANA.xml';
+		$path = realpath(__DIR__ . '/../Assets/sat_catalogos/CAT_ADUANA.xml');
+
 
 		if (!file_exists($path)) {
 			echo json_encode([]);
@@ -968,15 +961,14 @@ class Inv_inventario extends Controllers
 
 
 	public function getImpuestosAsignados($idinventario)
-{
-    $data = $this->model->getImpuestosAsignados($idinventario);
+	{
+		$data = $this->model->getImpuestosAsignados($idinventario);
 
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode([
-        'status' => true,
-        'data' => $data
-    ]);
-    die();
-}
-
+		header('Content-Type: application/json; charset=utf-8');
+		echo json_encode([
+			'status' => true,
+			'data' => $data
+		]);
+		die();
+	}
 }

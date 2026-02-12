@@ -1,9 +1,5 @@
 <?php
 class Inv_moneda extends Controllers{
-    use ApiResponser;
-
-    protected $monedaService;
-
     public function __construct()
     {
         parent::__construct();
@@ -14,10 +10,6 @@ class Inv_moneda extends Controllers{
             die();
         }
         getPermisos(MIMONEDAS);
-
-        $this->monedaService = new Inv_monedaService;
-
-        $this->monedaService->model = $this->model;
     }
 
     public function Inv_moneda()
@@ -182,15 +174,6 @@ class Inv_moneda extends Controllers{
 
 
 
-    public function show($id)
-    {
-        return $this->apiResponse($this->monedaService->show($id));
-    }
-
-    public function showAll()
-    {
-        return $this->apiResponse($this->monedaService->showAll());
-    }
 }
 
 

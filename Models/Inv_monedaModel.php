@@ -55,13 +55,19 @@ class Inv_monedaModel extends Mysql
 
 
     public function selectMonedas()
-{
-    $sql = "SELECT idmoneda, descripcion, simbolo, estado 
-            FROM wms_moneda 
+    {
+        $sql = "SELECT 
+                idmoneda,
+                cve_moneda,
+                descripcion,
+                simbolo,
+                tipo_cambio,
+                fecha_creacion,
+                estado
+            FROM wms_moneda
             ORDER BY descripcion";
-    return $this->select_all($sql);
-}
-
+        return $this->select_all($sql);
+    }
 
 
     public function selectOptionPrecios()
@@ -90,39 +96,36 @@ class Inv_monedaModel extends Mysql
 
 
     public function updateMoneda($idmoneda, $cve_moneda, $descripcion, $simbolo, $cambio_moneda, $estado)
-{
-    $this->intidmoneda = $idmoneda;
-    $this->strCvePrecio = $cve_moneda;
-    $this->strDescripcion = $descripcion;
-    $this->strSimbolo = $simbolo;
-    $this->strtipoCambio = $cambio_moneda;
-    $this->intEstatus = $estado;
+    {
+        $this->intidmoneda = $idmoneda;
+        $this->strCvePrecio = $cve_moneda;
+        $this->strDescripcion = $descripcion;
+        $this->strSimbolo = $simbolo;
+        $this->strtipoCambio = $cambio_moneda;
+        $this->intEstatus = $estado;
 
-    $sql = "SELECT * FROM wms_moneda 
+        $sql = "SELECT * FROM wms_moneda 
             WHERE cve_moneda = '{$this->strCvePrecio}' 
             AND idmoneda != {$this->intidmoneda}";
-    $request = $this->select_all($sql);
+        $request = $this->select_all($sql);
 
-    if (empty($request)) {
+        if (empty($request)) {
 
-        $sql = "UPDATE wms_moneda 
+            $sql = "UPDATE wms_moneda 
                 SET cve_moneda=?, descripcion=?, simbolo=?, tipo_cambio=?, estado=? 
                 WHERE idmoneda = $this->intidmoneda";
 
-        $arrData = array(
-            $this->strCvePrecio,
-            $this->strDescripcion,
-            $this->strSimbolo,
-            $this->strtipoCambio,
-            $this->intEstatus
-        );
+            $arrData = array(
+                $this->strCvePrecio,
+                $this->strDescripcion,
+                $this->strSimbolo,
+                $this->strtipoCambio,
+                $this->intEstatus
+            );
 
-        return $this->update($sql, $arrData);
+            return $this->update($sql, $arrData);
+        }
+
+        return "exist";
     }
-
-    return "exist";
-}
-
-
-
 }

@@ -19,24 +19,39 @@ let formPrecios = null;
 document.addEventListener("DOMContentLoaded", function () {
 
   tableMovimientos = $("#tableMovimientos").DataTable({
-    processing: true,
-    ajax: {
-      url: base_url + "/Inv_movimientosinventario/getMovimientos",
-      dataSrc: "",
+  processing: true,
+  ajax: {
+    url: base_url + "/Inv_movimientosinventario/getMovimientos",
+    dataSrc: "",
+  },
+  columns: [
+    { data: "idmovinventario" },
+    { data: "producto" },
+    { data: "almacen" },
+    { data: "concepto" },
+    { data: "referencia" },
+    { data: "cantidad" },
+    { data: "fecha_movimiento" },
+    {
+      data: null,
+      className: "text-center",
+      render: function (data) {
+        return `
+          <button 
+            class="btn btn-sm btn-danger btnReporteMov"
+            data-numero="${data.numero_movimiento}"
+            data-almacen="${data.almacenid}"
+            title="Ver reporte">
+            <i class="fa fa-file-pdf"> Reporte</i>
+          </button>
+        `;
+      },
     },
-    columns: [
-      { data: "idmovinventario" },
-      { data: "producto" },
-      { data: "almacen" },
-      { data: "concepto" },
-      { data: "referencia" },
-      { data: "cantidad" },
-      { data: "existencia" },
-      { data: "fecha_movimiento" },
-    ],
-    order: [[0, "desc"]],
-    destroy: true,
-  });
+  ],
+  order: [[0, "desc"]],
+  destroy: true,
+});
+
 
   const primerTabEl = document.querySelector(
     '#nav-tab a[href="#listmovimiento"]',
@@ -82,10 +97,30 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((res) => res.json())
       .then((obj) => {
         if (obj.status) {
-          Swal.fire("Correcto", obj.msg, "success");
-          formMovimiento.reset();
-          $("#tableMovimientos").DataTable().ajax.reload();
-        } else {
+  Swal.fire({
+    title: "Movimiento registrado",
+    text: obj.msg,
+    icon: "success",
+    showCancelButton: true,
+    confirmButtonText: "📄 Ver reporte",
+    cancelButtonText: "Cerrar",
+  }).then((result) => {
+    if (result.isConfirmed) {
+      window.open(
+        base_url +
+          "/Inv_movimientosinventario/reporte/" +
+          obj.numero_movimiento +
+          "," +
+          obj.almacenid,
+        "_blank"
+      );
+    }
+  });
+
+  formMovimiento.reset();
+  $("#tableMovimientos").DataTable().ajax.reload();
+}
+else {
           Swal.fire("Error", obj.msg, "error");
         }
       });
@@ -270,4 +305,21 @@ document.querySelector("#concepmovid").addEventListener("change", function () {
         input.value = "Ninguno";
       }
     });
+});
+
+document.addEventListener("click", function (e) {
+  const btn = e.target.closest(".btnReporteMov");
+  if (!btn) return;
+
+  const numero = btn.dataset.numero;
+  const almacen = btn.dataset.almacen;
+
+  window.open(
+    base_url +
+      "/Inv_movimientosinventario/reporte/" +
+      numero +
+      "," +
+      almacen,
+    "_blank"
+  );
 });
