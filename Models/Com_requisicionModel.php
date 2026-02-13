@@ -14,6 +14,8 @@ class Com_requisicionModel extends Mysql
 
     public const ESTATUS_ELIMINADA = "ELIMINADA";
 
+    public const ESTATUS_EN_COMPRA = "EN_COMPRA";
+
     public function __construct()
     {
         parent::__construct();
@@ -55,6 +57,7 @@ class Com_requisicionModel extends Mysql
                 prioridad,
                 estatus,
                 comentarios,
+                monto_estimado,
                 modified_by,
                 modified_at,
                 date(created_at) as fecha,
@@ -154,6 +157,21 @@ class Com_requisicionModel extends Mysql
             SET estatus = ?,
                 modified_by = ?,
                 deleted_at = current_timestamp()
+            WHERE idrequisicion = ?;
+            ",
+            [
+                $status,
+                $userId,
+                $requisitionId,
+            ]
+        );
+    }
+
+    public function changeStatus(int $requisitionId, string $status, int $userId)
+    {
+        return $this->update("UPDATE com_requisiciones
+            SET estatus = ?,
+                modified_by = ?
             WHERE idrequisicion = ?;
             ",
             [

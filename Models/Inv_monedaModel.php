@@ -128,4 +128,19 @@ class Inv_monedaModel extends Mysql
 
         return "exist";
     }
+
+    public function all(array $filters = [])
+    {
+        $query ="SELECT
+                    wms_moneda.*
+                FROM wms_moneda
+            WHERE true
+            ";
+
+        if(array_key_exists('idmoneda', $filters)) {
+            $query .= "AND wms_moneda.idmoneda = '{$filters['idmoneda']}'";
+        }
+
+        return $this->select_all($query);
+    }
 }

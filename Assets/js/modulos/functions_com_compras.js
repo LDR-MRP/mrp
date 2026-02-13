@@ -75,7 +75,7 @@ $(document).ready(function () {
     const tbl = $('#tblReqs');
 
     // Botón principal "Generar OC"
-    tbl.on('click', '.action-generaroc', function() {
+    tbl.on('click', '.action-nueva', function() {
         window.location.href = `${base_url}/com_compra/generar/${$(this).data('id')}`;
     });
 
