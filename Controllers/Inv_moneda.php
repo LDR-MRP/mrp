@@ -179,18 +179,14 @@ class Inv_moneda extends Controllers{
     die();
 }
 
-
-
-
-    public function show($id)
+    public function index()
     {
-        return $this->apiResponse($this->monedaService->show($id));
+        return $this->apiResponse($this->monedaService->index(sanitizeGet()));
     }
 
-    public function showAll()
-    {
-        return $this->apiResponse($this->monedaService->showAll());
-    }
+
+
+
 }
 
 

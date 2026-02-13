@@ -139,7 +139,7 @@
                           </li> <!-- end plan maestro Menu -->
                       <?php } ?>
 
-                      <?php if (!empty($_SESSION['permisos'][16]['r']) || !empty($_SESSION['permisos'][17]['r']) || !empty($_SESSION['permisos'][18]['r']) || !empty($_SESSION['permisos'][19]['r']) || !empty($_SESSION['permisos'][20]['r']) || !empty($_SESSION['permisos'][21]['r']) || !empty($_SESSION['permisos'][22]['r']) || !empty($_SESSION['permisos'][23]['r']) || !empty($_SESSION['permisos'][24]['r']) || !empty($_SESSION['permisos'][25]['r']) || !empty($_SESSION['permisos'][26]['r']) || !empty($_SESSION['permisos'][70]['r'])) { ?>
+                       <?php if (!empty($_SESSION['permisos'][16]['r']) || !empty($_SESSION['permisos'][17]['r']) || !empty($_SESSION['permisos'][18]['r']) || !empty($_SESSION['permisos'][19]['r']) || !empty($_SESSION['permisos'][20]['r']) || !empty($_SESSION['permisos'][21]['r']) || !empty($_SESSION['permisos'][22]['r']) || !empty($_SESSION['permisos'][23]['r']) || !empty($_SESSION['permisos'][24]['r']) || !empty($_SESSION['permisos'][25]['r']) || !empty($_SESSION['permisos'][26]['r']) || !empty($_SESSION['permisos'][70]['r'])) { ?>
                           <li class="nav-item">
                               <a class="nav-link menu-link" href="#sidebarRequerimientos" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarRequerimientos">
                                   <i data-feather="layout" class="icon-dual"></i> <span data-key="t-layouts">Inventario</span>
@@ -183,24 +183,6 @@
 
                                       <?php if (!empty($_SESSION['permisos'][21]['r'])) { ?>
                                           <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/inv_inventario" class="nav-link" data-key="t-detached">Alta de inventario</a>
-                                          </li>
-                                      <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][71]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/inv_asignacionesinventario" class="nav-link" data-key="t-detached">Asignaciones de inventario</a>
-                                          </li>
-                                      <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][23]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/inv_concepmovinventarios" class="nav-link" data-key="t-detached">Conceptos de movimientos</a>
-                                          </li>
-                                      <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][21]['r'])) { ?>
-                                          <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_esquemaimpuestos" class="nav-link" data-key="t-detached">Impuestos</a>
                                           </li>
                                       <?php } ?>
@@ -216,12 +198,12 @@
                                               <a href="<?= base_url(); ?>/inv_lineasdproducto" class="nav-link" data-key="t-detached">Líneas de producto</a>
                                           </li>
                                       <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][25]['r'])) { ?>
+                                        
+                                      <?php /* if (!empty($_SESSION['permisos'][25]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_lotespedimentos" class="nav-link" data-key="t-detached">Lotes y pedimentos</a>
                                           </li>
-                                      <?php } ?>
+                                      <?php } */?>
 
                                       <?php if (!empty($_SESSION['permisos'][70]['r'])) { ?>
                                           <li class="nav-item">
@@ -240,11 +222,6 @@
                                               <a href="<?= base_url(); ?>/inv_multialmacenes" class="nav-link" data-key="t-detached">Multialmacenes</a>
                                           </li>
                                       <?php } ?>
-                                      <?php if (!empty($_SESSION['permisos'][26]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/inv_multialmacenes" class="nav-link" data-key="t-detached">Multialmacenes</a>
-                                          </li>
-                                      <?php } ?>
 
                                       <?php if (!empty($_SESSION['permisos'][17]['r'])) { ?>
                                           <li class="nav-item">
@@ -256,7 +233,6 @@
                               </div>
                           </li> <!-- end plan maestro Menu -->
                       <?php } ?>
-
 
                       <?php if (!empty($_SESSION['permisos'][27]['r']) || !empty($_SESSION['permisos'][28]['r']) || !empty($_SESSION['permisos'][29]['r'])) { ?>
                           <li class="nav-item">
@@ -314,56 +290,89 @@
                       <?php } ?>
                       <?php if (!empty($_SESSION['permisos'][39]['r']) || !empty($_SESSION['permisos'][40]['r'])) { ?>
                           <li class="nav-item">
-                              <a class="nav-link menu-link" href="#sidebarMateriales" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarMateriales">
-                                  <i data-feather="layout" class="icon-dual"></i> <span data-key="t-layouts">Clientes</span>
+                              <a class="nav-link menu-link" href="#sidebarMateriales" data-bs-toggle="collapse"
+                                  role="button" aria-expanded="false" aria-controls="sidebarMateriales">
+                                  <i data-feather="layout" class="icon-dual"></i>
+                                  <span>Clientes</span>
                               </a>
                               <div class="collapse menu-dropdown" id="sidebarMateriales">
                                   <ul class="nav nav-sm flex-column">
+                                      <?php if (!empty($_SESSION['permisos'][40]['r'])) { ?>
+                                          <li class="nav-itemQ">
+                                              <a href="<?= base_url(); ?>/cli_marcas" class="nav-link">Marcas</a>
+                                          </li>
+                                      <?php } ?>
+
                                       <?php if (!empty($_SESSION['permisos'][39]['r'])) { ?>
                                           <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/cli_clientes" class="nav-link" data-key="t-horizontal">Clientes</a>
-                                          </li>
-                                      <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][46]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/cli_tipos_clientes" class="nav-link" data-key="t-detached">Tipo de clientes</a>
-                                          </li>
-                                      <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][45]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/cli_regionales" class="nav-link" data-key="t-detached">Regionales</a>
-                                          </li>
-                                      <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][42]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/cli_grupos" class="nav-link" data-key="t-detached">Grupos</a>
+                                              <div class="d-flex align-items-center justify-content-between">
+                                                  <a href="<?= base_url(); ?>/cli_clientes"
+                                                      class="nav-link flex-grow-1">
+                                                      Clientes
+                                                  </a>
+                                                  <a href="javascript:void(0)"
+                                                      class="nav-link px-2"
+                                                      data-bs-toggle="collapse"
+                                                      data-bs-target="#subClientes"
+                                                      aria-expanded="false"
+                                                      aria-controls="subClientes">
+                                                  </a>
+                                              </div>
+                                              <div class="collapse ms-3" id="subClientes">
+                                                  <ul class="nav nav-sm flex-column">
+                                                      <?php if (!empty($_SESSION['permisos'][46]['r'])) { ?>
+                                                          <li class="nav-item">
+                                                              <a href="<?= base_url(); ?>/cli_tipos_clientes" class="nav-link">Tipo de cliente</a>
+                                                          </li>
+                                                      <?php } ?>
+                                                      <?php if (!empty($_SESSION['permisos'][42]['r'])) { ?>
+                                                          <li class="nav-item">
+                                                              <a href="<?= base_url(); ?>/cli_grupos" class="nav-link">Grupos</a>
+                                                          </li>
+                                                      <?php } ?>
+                                                      <?php if (!empty($_SESSION['permisos'][45]['r'])) { ?>
+                                                          <li class="nav-item">
+                                                              <a href="<?= base_url(); ?>/cli_regionales" class="nav-link">Regionales</a>
+                                                          </li>
+                                                      <?php } ?>
+                                                  </ul>
+                                              </div>
                                           </li>
                                       <?php } ?>
 
                                       <?php if (!empty($_SESSION['permisos'][44]['r'])) { ?>
                                           <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/cli_contactos" class="nav-link" data-key="t-detached">Contactos</a>
-                                          </li>
-                                      <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][43]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/cli_puestos" class="nav-link" data-key="t-detached">Puestos</a>
-                                          </li>
-                                      <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][41]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/cli_departamentos" class="nav-link" data-key="t-detached">Departamentos</a>
-                                          </li>
-                                      <?php } ?>
-
-                                      <?php if (!empty($_SESSION['permisos'][40]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/cli_marcas" class="nav-link" data-key="t-detached">Marcas</a>
+                                              <div class="d-flex align-items-center justify-content-between">
+                                                  <a href="<?= base_url(); ?>/cli_contactos"
+                                                      class="nav-link flex-grow-1">
+                                                      Contactos
+                                                  </a>
+                                                  <a href="javascript:void(0)"
+                                                      class="nav-link px-2"
+                                                      data-bs-toggle="collapse"
+                                                      data-bs-target="#subContactos"
+                                                      aria-expanded="false"
+                                                      aria-controls="subContactos">
+                                                  </a>
+                                              </div>
+                                              <div class="collapse ms-3" id="subContactos">
+                                                  <ul class="nav nav-sm flex-column">
+                                                      <?php if (!empty($_SESSION['permisos'][43]['r'])) { ?>
+                                                          <li class="nav-item">
+                                                              <a href="<?= base_url(); ?>/cli_puestos" class="nav-link">
+                                                                  Puestos
+                                                              </a>
+                                                          </li>
+                                                      <?php } ?>
+                                                      <?php if (!empty($_SESSION['permisos'][41]['r'])) { ?>
+                                                          <li class="nav-item">
+                                                              <a href="<?= base_url(); ?>/cli_departamentos" class="nav-link">
+                                                                  Departamentos
+                                                              </a>
+                                                          </li>
+                                                      <?php } ?>
+                                                  </ul>
+                                              </div>
                                           </li>
                                       <?php } ?>
                                   </ul>
@@ -373,25 +382,39 @@
 
                       <?php if (!empty($_SESSION['permisos'][50]['r'])) { ?>
                           <li class="nav-item">
-                              <a class="nav-link menu-link" href="#sidebarCompras" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarCompras">
-                                  <i data-feather="layout" class="icon-dual"></i> <span data-key="t-layouts">Compras</span>
-                              </a>
-                              <div class="collapse menu-dropdown" id="sidebarCompras">
-                                  <ul class="nav nav-sm flex-column">
-                                      <?php if (!empty($_SESSION['permisos'][50]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/com_requisicion" class="nav-link" data-key="t-detached">Requisiciones</a>
-                                          </li>
-                                      <?php } ?>
+                            <a class="nav-link menu-link" href="#sidebarCompras" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarCompras">
+                                <i class="ri-shopping-cart-2-line icon-dual"></i> <span data-key="t-layouts">Compras</span>
+                            </a>
+                            <div class="collapse menu-dropdown" id="sidebarCompras">
+                                <ul class="nav nav-sm flex-column">
+                                    
+                                    <?php if (!empty($_SESSION['permisos'][50]['r'])) { ?>
+                                        <li class="nav-item">
+                                            <a href="<?= base_url(); ?>/com_requisicion" class="nav-link" data-key="t-detached">
+                                                <i class="ri-file-list-3-line align-bottom me-1"></i> Requisiciones
+                                            </a>
+                                        </li>
+                                    <?php } ?>
 
-                                      <?php if (!empty($_SESSION['permisos'][50]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/com_compra" class="nav-link" data-key="t-detached">Compras</a>
-                                          </li>
-                                      <?php } ?>
-                                  </ul>
-                              </div>
-                          </li> <!-- end compras Menu -->
+                                    <?php if (!empty($_SESSION['permisos'][50]['r'])) { ?>
+                                        <li class="nav-item">
+                                            <a href="<?= base_url(); ?>/com_compra" class="nav-link" data-key="t-detached">
+                                                <i class="ri-shopping-bag-3-line align-bottom me-1"></i> Mesa de Compras
+                                            </a>
+                                        </li>   
+                                    <?php } ?>
+
+                                    <?php if (!empty($_SESSION['permisos'][50]['r'])) { ?>
+                                        <li class="nav-item">
+                                            <a href="<?= base_url(); ?>/com_compra" class="nav-link" data-key="t-detached">
+                                                <i class="ri-file-shield-2-line align-bottom me-1"></i> Órdenes de Compra
+                                            </a>
+                                        </li>
+                                    <?php } ?>
+                                    
+                                </ul>
+                            </div>
+                        </li>
                       <?php } ?>
 
 

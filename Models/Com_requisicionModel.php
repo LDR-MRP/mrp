@@ -1,6 +1,8 @@
 <?php
 
-class Com_requisicionModel extends Mysql{
+class Com_requisicionModel extends Mysql
+{
+    use Auditable;
 
     public const ESTATUS_PENDIENTE = "PENDIENTE";
 
@@ -12,9 +14,16 @@ class Com_requisicionModel extends Mysql{
 
     public const ESTATUS_ELIMINADA = "ELIMINADA";
 
+    public const ESTATUS_EN_COMPRA = "EN_COMPRA";
+
     public function __construct()
     {
         parent::__construct();
+    }
+
+    public function getTableName(): string 
+    {
+        return "com_requisiciones";
     }
 
     public function create(array $data, int $createdBy)
@@ -48,8 +57,9 @@ class Com_requisicionModel extends Mysql{
                 prioridad,
                 estatus,
                 comentarios,
-                aprobado_por,
-                fecha_aprobacion,
+                monto_estimado,
+                modified_by,
+                modified_at,
                 date(created_at) as fecha,
                 CONCAT(usuarios.nombres,' ',usuarios.apellidos) as solicitante
             FROM com_requisiciones
@@ -72,8 +82,8 @@ class Com_requisicionModel extends Mysql{
                 estatus,
                 comentarios,
                 monto_estimado,
-                aprobado_por,
-                fecha_aprobacion,
+                modified_by,
+                modified_at,
                 date(created_at) as fecha,
                 -- data usuarios
                 CONCAT(usuarios.nombres,' ',usuarios.apellidos) as solicitante,
@@ -95,57 +105,78 @@ class Com_requisicionModel extends Mysql{
         return $this->select_all($query);
     }
 
-    public function approve(int $requisitionId, string $status, int $approvedBy)
+    public function approve(int $requisitionId, string $status, int $userId): int
     {
         return $this->update("UPDATE com_requisiciones
             SET estatus = ?,
-                aprobado_por = ?,
-                fecha_aprobacion = current_timestamp()
+                modified_by = ?,
+                modified_at = current_timestamp()
             WHERE idrequisicion = ?;
             ",
             [
                 $status,
-                $approvedBy,
+                $userId,
                 $requisitionId,
             ]
         );
     }
 
-    public function reject(int $requisitionId, string $status, int $approvedBy)
-    {
-        return $this->update("UPDATE com_requisiciones
-            SET estatus = ?
-            WHERE idrequisicion = ?;
-            ",
-            [
-                $status,
-                $requisitionId,
-            ]
-        );
-    }
-
-    public function cancel(int $requisitionId, string $status, int $approvedBy)
-    {
-        return $this->update("UPDATE com_requisiciones
-            SET estatus = ?
-            WHERE idrequisicion = ?;
-            ",
-            [
-                $status,
-                $requisitionId,
-            ]
-        );
-    }
-
-    public function destroy(int $requisitionId, string $status, int $approvedBy)
+    public function reject(int $requisitionId, string $status, int $userId): int
     {
         return $this->update("UPDATE com_requisiciones
             SET estatus = ?,
+                modified_by = ?
+            WHERE idrequisicion = ?;
+            ",
+            [
+                $status,
+                $userId,
+                $requisitionId,
+            ]
+        );
+    }
+
+    public function cancel(int $requisitionId, string $status, int $userId)
+    {
+        return $this->update("UPDATE com_requisiciones
+            SET estatus = ?,
+                modified_by = ?
+            WHERE idrequisicion = ?;
+            ",
+            [
+                $status,
+                $userId,
+                $requisitionId,
+            ]
+        );
+    }
+
+    public function destroy(int $requisitionId, string $status, int $userId)
+    {
+        return $this->update("UPDATE com_requisiciones
+            SET estatus = ?,
+                modified_by = ?,
                 deleted_at = current_timestamp()
             WHERE idrequisicion = ?;
             ",
             [
                 $status,
+                $userId,
+                $requisitionId,
+            ]
+        );
+    }
+
+    public function changeStatus(int $requisitionId, string $status, int $userId)
+    {
+        return $this->update("UPDATE com_requisiciones
+            SET estatus = ?,
+                modified_by = ?
+            WHERE idrequisicion = ?;
+            ",
+            [
+                $status,
+                $userId,
                 $requisitionId,
             ]
         );

@@ -40,9 +40,10 @@
                         <span id="req-status-badge" class="badge px-4 py-2">---</span>
                     </div>
                     <div class="col-md-6 d-flex justify-content-md-end justify-content-start">
-                        <button id="btn-export-pdf" class="btn btn-outline-danger shadow-sm ml-2">
+                        <!-- <button id="btn-export-pdf" class="btn btn-outline-danger shadow-sm ml-2">
                             <i class="ri-file-pdf-line"></i> Exportar
-                        </button>
+                        </button> -->
+                        <button type="button" class="btn btn-light border mr-2" data-redirect="com_requisicion">Regresar</button>
                         <button id="btn-edit-draft" class="btn btn-warning shadow-sm px-4 ml-2">Editar Borrador</button>
                     </div>
                 </div>

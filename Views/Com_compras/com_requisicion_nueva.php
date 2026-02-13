@@ -33,7 +33,7 @@
                         </div>
 
                         <div class="col-md-6 d-flex justify-content-md-end justify-content-start">
-                            <button type="button" class="btn btn-light border mr-2">Cancelar</button>
+                            <button type="button" class="btn btn-light border mr-2" data-redirect="com_requisicion">Cancelar</button>
                             <button type="submit" class="btn btn-primary shadow-sm px-4">
                                 <i class="ri-save-3-line"></i> Guardar Requisición
                             </button>
@@ -47,8 +47,8 @@
                                 <div class="card-body">
                                     <div class="row p-3 bg-light rounded mb-4">
                                         <div class="col-md-2">
-                                            <label class="small font-weight-bold text-uppercase">SKU</label>
-                                            <input id="sku" name="sku" type="text" class="form-control" placeholder="Buscar por SKU...">
+                                            <label class="small font-weight-bold text-uppercase">CLAVE</label>
+                                            <input id="sku" name="sku" type="text" class="form-control" placeholder="Buscar por Clave...">
                                             <div id="sku-feedback" class="small text-muted mt-1"></div>
                                         </div>
                                         <div class="col-md-5">

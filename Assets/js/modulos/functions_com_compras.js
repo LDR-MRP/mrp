@@ -32,7 +32,7 @@ $(document).ready(function () {
                 "className": "text-end",
                 "render": (data, type, r) => `
                     <div class="btn-group" role="group">
-                        <button class="btn btn-success btn-sm px-4 shadow-sm  action-generaroc" data-id="${r.idrequisicion}">
+                        <button class="btn btn-success btn-sm px-4 shadow-sm  action-nueva" data-id="${r.idrequisicion}">
                             Generar OC <i class="ri-arrow-right-line ml-1"></i>
                         </button>
                     </div>`
@@ -75,7 +75,7 @@ $(document).ready(function () {
     const tbl = $('#tblReqs');
 
     // Botón principal "Generar OC"
-    tbl.on('click', '.action-generaroc', function() {
+    tbl.on('click', '.action-nueva', function() {
         window.location.href = `${base_url}/com_compra/generar/${$(this).data('id')}`;
     });
 

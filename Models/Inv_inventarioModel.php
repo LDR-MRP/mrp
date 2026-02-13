@@ -565,7 +565,7 @@ WHERE idinventario = ?";
             WHERE ii.inventarioid = $idinventario";
 
     return $this->select_all($sql);
-    }
+}
 
     public function items(array $filters = []): array
     {
@@ -600,5 +600,6 @@ WHERE idinventario = ?";
 
         return $this->select_all($query);
     }
-    
+
+
 }

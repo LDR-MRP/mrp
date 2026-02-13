@@ -24,6 +24,7 @@
                 .section-separator { border-top: 2px dashed #cbd5e0; margin: 4rem 0; position: relative; }
                 .section-separator::after { content: 'SIGUIENTE VISTA'; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #cbd5e0; padding: 2px 15px; font-size: 10px; border-radius: 10px; color: white; }
             </style>
+            <form id="formCompra">
             <section id="view-generate-oc" class="pb-5">
                 <div class="row align-items-center mb-4">
                     <div class="col-md-6">
@@ -31,73 +32,89 @@
                         <p class="text-muted">Conversión de Requisición #1020 a compromiso de compra..</p>
                     </div>
                     <div class="col-md-6 d-flex justify-content-md-end justify-content-start">
-                        <button class="btn btn-primary shadow-sm px-4" id="btnNueva">
+                        <button type="submit" class="btn btn-primary shadow-sm px-4">
                             Generar OC Final
                         </button>
                     </div>
                 </div>
-
-                <div class="card bg-dark-ldr mb-4">
+            
+                <div class="card mb-4">
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-6 border-right border-secondary">
+                            <div class="col-md-5 border-right border-secondary">
                                 <label class="small font-weight-bold">Proveedor Adjudicado</label>
-                                <select class="form-control form-control-sm bg-dark text-white border-0">
-                                    <option>Seleccionar Proveedor del Catálogo LDR...</option>
-                                    <option>Llantas y Neumáticos S.A.</option>
+                                <select class="form-control form-control-sm" name="proveedor">
+                                    
                                 </select>
                             </div>
                             <div class="col-md-3 border-right border-secondary pl-4">
                                 <label class="small font-weight-bold">Moneda</label>
-                                <select class="form-control form-control-sm bg-dark text-white border-0"><option>MXN - Pesos</option></select>
+                                <select class="form-control form-control-sm" name="moneda">
+                                    
+                                </select>
                             </div>
-                            <div class="col-md-3 pl-4">
+                            <div class="col-md-2 pl-4">
                                 <label class="small font-weight-bold">Términos</label>
-                                <select class="form-control form-control-sm bg-dark text-white border-0"><option>Crédito 30 Días</option></select>
+                                <select class="form-control form-control-sm" name="termino">
+                                    <option>Seleccione...</option>
+                                    <option value="1">Contado</option>
+                                    <option value="2">Crédito 30 Días</option>
+                                    <option value="3">Crédito 60 Días</option>
+                                    <option value="4">Crédito 90 Días</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 pl-4">
+                                <label class="small font-weight-bold">IVA</label>
+                                <select class="form-control form-control-sm" name="iva">
+                                    <option>Seleccione...</option>
+                                    <option value="1">Sí</option>
+                                    <option value="0">No</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12 border-right border-secondary">
+                                <label class="small font-weight-bold">Almacén Destino</label>
+                                <select class="form-control form-control-sm" name="almacen">
+                                    
+                                </select>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="card shadow">
-                    <div class="card-header">Ajuste de Precios Reales</div>
+                    <div class="card-header">Precios Finales</div>
                     <div class="table-responsive">
-                        <table class="table align-middle">
+                        <table id="table-items" class="table align-middle">
                             <thead class="bg-light">
                                 <tr>
-                                    <th class="pl-4">Producto</th>
-                                    <th width="100">Cant.</th>
-                                    <th width="150">P. Estimado</th>
-                                    <th width="200" class="text-primary font-weight-bold">PRECIO REAL</th>
-                                    <th width="150">Ahorro</th>
-                                    <th width="150" class="pr-4">Subtotal Real</th>
+                                    <th class="pl-4">ID</th>
+                                    <th>Producto</th>
+                                    <th>Cant.</th>
+                                    <th class="text-primary font-weight-bold">P. Estimado</th>
+                                    <th class="pr-4">Subtotal Real</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td class="pl-4 font-weight-bold">Neumático Delantero Camión 12R22.5</td>
-                                    <td class="text-center">4</td>
-                                    <td class="text-muted">$6,125.00</td>
-                                    <td>
-                                        <div class="input-group">
-                                            <div class="input-group-prepend"><span class="input-group-text">$</span></div>
-                                            <input type="number" class="form-control input-real-price" value="5900.00">
-                                        </div>
-                                    </td>
-                                    <td class="text-success font-weight-bold">-$900.00</td>
-                                    <td class="font-weight-bold pr-4 text-right">$23,600.00</td>
-                                </tr>
+                                
                             </tbody>
                             <tfoot class="bg-light">
                                 <tr class="h5">
-                                    <td colspan="5" class="text-right border-0 pl-4 font-weight-bold">Monto Total de la OC:</td>
-                                    <td class="text-right border-0 pr-4 text-success font-weight-bold">$23,600.00</td>
+                                    <td colspan="4" class="text-right border-0 pl-4 font-weight-bold">Monto Total de la OC:</td>
+                                    <td id="req-total-amount" class="text-right border-0 pr-4 text-success font-weight-bold">---</td>
                                 </tr>
                             </tfoot>
                         </table>
                     </div>
                 </div>
             </section>
+            </form>
         </div>
         <!-- container-fluid -->
     </div>

@@ -40,6 +40,11 @@
                                 </a>
                             </li>
                         <?php } ?>
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-outline-success" id="btnExistencias">
+                                <i class="ri-eye-line me-1"></i> EXISTENCIAS
+                            </button>
+                        </div>
                     </ul>
                 </div>
                 <!-- end card header -->
@@ -86,8 +91,8 @@
                                                     id="inventarioSearch"
                                                     class="form-control"
                                                     placeholder="Buscar inventario..."
-                                                    autocomplete="off" required/>
-                                                    <div class="invalid-feedback">El campo de inventario es obligatorio</div>
+                                                    autocomplete="off" required />
+                                                <div class="invalid-feedback">El campo de inventario es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
@@ -236,6 +241,81 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalExistencias" tabindex="-1"
+     data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary-subtle p-3">
+                <h5 class="modal-title">Consulta de Existencias</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="d-flex mb-3">
+                    <button class="btn btn-primary" id="btnAbrirBusqueda" type="button">
+                        🔍 Buscar artículo
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Clave</th>
+                                <th>Descripción</th>
+                                <th>Almacén</th>
+                                <th>Existencia</th>
+                                <th>Min</th>
+                                <th>Max</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="bodyExistencias"></tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3 text-end fw-bold">
+                    Total: <span id="totalExistencias">0</span>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalBuscarArticulo" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Buscar artículo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <input type="text" id="inputBuscarArticulo" class="form-control mb-3" placeholder="Clave o descripción">
+
+                <table class="table table-hover table-sm">
+                    <thead>
+                        <tr>
+                            <th>Clave</th>
+                            <th>Descripción</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="bodyBuscarArticulo"></tbody>
+                </table>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
 
 <!-- end main content-->
 <?php footerAdmin($data); ?>

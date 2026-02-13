@@ -8,6 +8,35 @@
 $(document).ready(function () {
 
     /**
+     * @description Inicializa los componentes de la interfaz.
+     */
+    function _init() {
+        _loadDepartments();
+    }
+
+    /**
+     * @description Pobla el select de departamentos desde el endpoint.
+     * @private
+     */
+    function _loadDepartments() {
+        const $select = $('select[name="departamentoid"]');
+
+        $.ajax({
+                "url": `${Sys_Core.Config.baseUrl}/cli_departamentos/indexapi`,
+                "method": "GET",
+                "timeout": 0,
+        }).done(function (res) {
+            $select.empty().append('<option value="" selected disabled>Seleccione Departamento...</option>');
+                
+            if (res.status && res.data) {
+                res.data.forEach(dept => {
+                    $select.append(`<option value="${dept.id}">${dept.nombre}</option>`);
+                });
+            }
+        });
+    }
+
+    /**
      * @description Buscador de SKU con técnica debounce para optimizar peticiones.
      */
     $(document).on('input keyup change', '#sku', function () {
@@ -232,4 +261,6 @@ $(document).ready(function () {
         $('#unidad_salida').val('');
         $('#sku-feedback').text('');
     }
+
+    _init();
 });
