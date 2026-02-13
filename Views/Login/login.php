@@ -22,8 +22,8 @@
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: flex-start;   /* 🔥 SUBE el formulario */
-  padding-top: 30px;         /* 🔥 Ajusta distancia desde arriba */
+  align-items: flex-start;   
+  padding-top: 30px;        
   padding-bottom: 40px;
 }
 

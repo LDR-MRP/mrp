@@ -1447,7 +1447,7 @@ class Plan_planeacion extends Controllers
     if (!preg_match('/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/', $fecha_inicio)) {
       echo json_encode(['status' => false, 'msg' => 'Formato de fecha_inicio inválido']);
       die();
-    }
+    } 
 
     echo json_encode($this->model->startOT($idorden, $fecha_inicio));
     die();
@@ -1477,9 +1477,19 @@ class Plan_planeacion extends Controllers
     if (!preg_match('/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/', $fecha_fin)) {
       echo json_encode(['status' => false, 'msg' => 'Formato de fecha_fin inválido']);
       die();
+    } 
+
+
+      $inventarioid = (int) ($data['inventarioid'] ?? 0);
+          if ($inventarioid <= 0) {
+      echo json_encode(['status' => false, 'msg' => 'Falta inventario id']);
+      die();
     }
 
-    echo json_encode($this->model->finishOT($idorden, $fecha_fin));
+    // dep($data);
+    // exit;
+
+    echo json_encode($this->model->finishOT($idorden, $fecha_fin, $inventarioid));
     die();
   }
 
