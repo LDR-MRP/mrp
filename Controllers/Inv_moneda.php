@@ -1,5 +1,9 @@
 <?php
 class Inv_moneda extends Controllers{
+    use ApiResponser;
+
+    protected $monedaService;
+
     public function __construct()
     {
         parent::__construct();
@@ -10,6 +14,10 @@ class Inv_moneda extends Controllers{
             die();
         }
         getPermisos(MIMONEDAS);
+
+        $this->monedaService = new Inv_monedaService;
+
+        $this->monedaService->model = $this->model;
     }
 
     public function Inv_moneda()
@@ -170,6 +178,11 @@ class Inv_moneda extends Controllers{
     echo $htmlOptions;
     die();
 }
+
+    public function index()
+    {
+        return $this->apiResponse($this->monedaService->index(sanitizeGet()));
+    }
 
 
 

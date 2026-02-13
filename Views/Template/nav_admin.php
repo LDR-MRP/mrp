@@ -399,7 +399,15 @@
                                     <?php if (!empty($_SESSION['permisos'][50]['r'])) { ?>
                                         <li class="nav-item">
                                             <a href="<?= base_url(); ?>/com_compra" class="nav-link" data-key="t-detached">
-                                                <i class="ri-shopping-bag-3-line align-bottom me-1"></i> Compras
+                                                <i class="ri-shopping-bag-3-line align-bottom me-1"></i> Mesa de Compras
+                                            </a>
+                                        </li>   
+                                    <?php } ?>
+
+                                    <?php if (!empty($_SESSION['permisos'][50]['r'])) { ?>
+                                        <li class="nav-item">
+                                            <a href="<?= base_url(); ?>/com_compra" class="nav-link" data-key="t-detached">
+                                                <i class="ri-file-shield-2-line align-bottom me-1"></i> Órdenes de Compra
                                             </a>
                                         </li>
                                     <?php } ?>
