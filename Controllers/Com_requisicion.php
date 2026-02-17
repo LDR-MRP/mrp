@@ -6,6 +6,8 @@ class Com_requisicion extends Controllers
 
     protected $requisitionService;
 
+    protected $usuariosModel;
+
     public function __construct()
     {
         parent::__construct();
@@ -14,8 +16,8 @@ class Com_requisicion extends Controllers
         getPermisos(COM_COMPRAS);
 
         $this->requisitionService = new Com_requisicionService;
-
         $this->requisitionService->model = $this->model;
+        $this->usuariosModel = new UsuariosModel;
     }
 
     public function Com_requisicion() {
@@ -32,16 +34,18 @@ class Com_requisicion extends Controllers
         );
     }
 
-    public function nueva() {
+    public function create() {
         $this->views->getView(
             $this,
-            "../Com_compras/com_requisicion_nueva",
+            "../Com_compras/com_requisicion_create",
             [
                 'page_tag' => "Nueva Requisición",
                 'page_title' => "Nueva Requisición",
                 'page_name' => "Nueva Requisición",
-                'page_functions_js' => "functions_com_requisiciones_nueva.js",
-
+                'page_functions_js' => "functions_com_requisiciones_create.js",
+                'page_user' => "{$_SESSION['userData']['nombres']} {$_SESSION['userData']['apellidos']}",
+                'page_user_rol' => $this->usuariosModel->selectUsuario($_SESSION['rolid'])['nombrerol'],
+                'page_user_avatar' => $this->usuariosModel->getAvatarByUser($_SESSION['idUser'])['avatar_file'],
             ]
         );
     }
@@ -100,5 +104,10 @@ class Com_requisicion extends Controllers
     public function destroy()
     {
         return $this->apiResponse($this->requisitionService->changeStatus($_POST, Com_requisicionModel::ESTATUS_ELIMINADA));
+    }
+
+    public function getKpi()
+    {
+        return $this->apiResponse($this->requisitionService->getKpi());        
     }
 }

@@ -4,17 +4,17 @@ class Com_requisicionModel extends Mysql
 {
     use Auditable;
 
-    public const ESTATUS_PENDIENTE = "PENDIENTE";
+    public const ESTATUS_PENDIENTE = "pendiente";
 
-    public const ESTATUS_APROBADA = "APROBADA";
+    public const ESTATUS_APROBADA = "aprobada";
 
-    public const ESTATUS_RECHAZADA = "RECHAZADA";
+    public const ESTATUS_RECHAZADA = "rechazada";
 
-    public const ESTATUS_CANCELADA = "CANCELADA";
+    public const ESTATUS_CANCELADA = "cancelada";
 
-    public const ESTATUS_ELIMINADA = "ELIMINADA";
+    public const ESTATUS_ELIMINADA = "eliminada";
 
-    public const ESTATUS_EN_COMPRA = "EN_COMPRA";
+    public const ESTATUS_EN_COMPRA = "en compra";
 
     public function __construct()
     {
@@ -31,18 +31,24 @@ class Com_requisicionModel extends Mysql
         return $this->insert(
             "INSERT INTO com_requisiciones
             (usuarioid,
+            titulo,
             departamentoid,
+            fecha_requerida,
+            monto_estimado,
             prioridad,
-            comentarios,
-            monto_estimado)
+            estatus,
+            justificacion)
             VALUES
-            (?,?,?,?,?)",
+            (?,?,?,?,?,?,?,?)",
             [
                 $createdBy,
+                $data['titulo'],
                 $data['departamentoid'],
-                $data['prioridad'] ?? 'media',
-                $data['comentarios'] ?? '',
+                $data['fecha_requerida'],
                 $data['monto_estimado'],
+                mb_strtolower($data['prioridad'], 'UTF-8') ?? 'media',
+                mb_strtolower($data['estatus'], 'UTF-8') ?? 'pendiente',
+                $data['justificacion'] ?? '',
             ]
         );
     }
@@ -56,7 +62,7 @@ class Com_requisicionModel extends Mysql
                 departamentoid,
                 prioridad,
                 estatus,
-                comentarios,
+                justificacion,
                 monto_estimado,
                 modified_by,
                 modified_at,
@@ -80,7 +86,7 @@ class Com_requisicionModel extends Mysql
                 idrequisicion,
                 prioridad,
                 estatus,
-                comentarios,
+                justificacion,
                 monto_estimado,
                 modified_by,
                 modified_at,
@@ -102,6 +108,10 @@ class Com_requisicionModel extends Mysql
             $query .= "AND com_requisiciones.estatus = '{$filters['estatus']}'";
         }
 
+        if(array_key_exists('usuarioid', $filters)) {
+            $query .= "AND com_requisiciones.usuarioid = '{$filters['usuarioid']}'";
+        }
+
         return $this->select_all($query);
     }
 
@@ -114,7 +124,7 @@ class Com_requisicionModel extends Mysql
             WHERE idrequisicion = ?;
             ",
             [
-                $status,
+                mb_strtolower($status, 'UTF-8'),
                 $userId,
                 $requisitionId,
             ]
@@ -129,7 +139,7 @@ class Com_requisicionModel extends Mysql
             WHERE idrequisicion = ?;
             ",
             [
-                $status,
+                mb_strtolower($status, 'UTF-8'),
                 $userId,
                 $requisitionId,
             ]
@@ -144,7 +154,7 @@ class Com_requisicionModel extends Mysql
             WHERE idrequisicion = ?;
             ",
             [
-                $status,
+                mb_strtolower($status, 'UTF-8'),
                 $userId,
                 $requisitionId,
             ]
@@ -160,7 +170,7 @@ class Com_requisicionModel extends Mysql
             WHERE idrequisicion = ?;
             ",
             [
-                $status,
+                mb_strtolower($status, 'UTF-8'),
                 $userId,
                 $requisitionId,
             ]
@@ -175,10 +185,24 @@ class Com_requisicionModel extends Mysql
             WHERE idrequisicion = ?;
             ",
             [
-                $status,
+                mb_strtolower($status, 'UTF-8'),
                 $userId,
                 $requisitionId,
             ]
+        );
+    }
+
+    public function getKpi()
+    {
+        return $this->select_all(
+            "SELECT 
+                estatus,
+                count(idrequisicion) as cantidad
+            FROM com_requisiciones
+            WHERE (estatus != 'finalizada')
+            or (estatus = 'finalizada' AND MONTH(fecha_requerida) = MONTH(current_date) AND YEAR(fecha_requerida) = YEAR(current_date))
+            GROUP BY estatus;
+            "
         );
     }
 }

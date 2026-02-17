@@ -21,6 +21,7 @@ $(document).ready(function () {
             { "data": "idrequisicion", "render": (data) => `<span class="fw-bold">#${data}</span>` },
             { "data": "fecha" },
             { "data": "solicitante" },
+            { "data": "departamento_descripcion" },
             {
                 "data": "estatus", "render": function (data) {
                     const clases = {
@@ -28,7 +29,7 @@ $(document).ready(function () {
                         'pendiente': 'badge-review',
                         'aprobada': 'badge-approved',
                         'rechazada': 'badge-rejected',
-                        'en_compra': 'badge-purchasing',
+                        'en compra': 'badge-purchasing',
                         'finalizada': 'badge-closed',
                         'cancelada': 'badge-closed',
                         'eliminada': 'badge-closed'
@@ -40,21 +41,44 @@ $(document).ready(function () {
                 "data": null,
                 "orderable": false,
                 "className": "text-end",
-                "render": (data, type, r) => `
-                    <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-outline-secondary btn-sm action-ver" data-id="${r.idrequisicion}">
-                            <i class="ri-eye-line"></i> Ver
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"></button>
-                        <ul class="dropdown-menu dropdown-menu-end">
+                render: function(data, type, r) {
+                    let buttons = `
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-redirect="com_requisicion/detalle/${r.idrequisicion}">
+                                <i class="ri-eye-line"></i> Ver
+                            </button>
+                    `;
+
+                    if (Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'u') || Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'd')) {
+                        buttons += `
+                            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"></button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                        `;
+                    }
+
+                    if (Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'u')) {
+                        buttons += `
                             <li><button class="dropdown-item action-inline" data-id="${r.idrequisicion}" data-accion="approve"><i class="ri-check-line"></i> Aprobar</button></li>
                             <li><button class="dropdown-item action-inline" data-id="${r.idrequisicion}" data-accion="reject"><i class="ri-close-circle-line"></i> Rechazar</button></li>
+                        `;
+                    }
+
+                    if (Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'd')) {
+                        buttons += `
                             <li><hr class="dropdown-divider"></li>
                             <li><button class="dropdown-item action-inline" data-id="${r.idrequisicion}" data-accion="cancel"><i class="ri-close-line"></i> Cancelar</button></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><button class="dropdown-item text-danger action-inline" data-id="${r.idrequisicion}" data-accion="destroy"><i class="ri-delete-bin-6-line"></i> Eliminar</button></li>
-                        </ul>
-                    </div>`
+                        `;
+                    }
+            
+                    buttons += `
+                            </ul>
+                        </div>
+                    `;
+
+                    return buttons;
+                }
             }
         ],
         dom: "<'d-flex justify-content-between align-items-center mb-2'lfB>t<'d-flex justify-content-between mt-2'ip>",
@@ -76,13 +100,6 @@ $(document).ready(function () {
         ],
         responsive: true,
         autoWidth: false,
-    });
-
-    /**
-     * @description Redirección al detalle de la requisición.
-     */
-    $('#tblReqs').on('click', '.action-ver', function () {
-        window.location.href = `${Sys_Core.Config.baseUrl}/com_requisicion/detalle/${$(this).data('id')}`;
     });
 
     /**
@@ -136,7 +153,7 @@ $(document).ready(function () {
         const accion = $(this).data('accion');
         const comentario = $(`#comentario_${idrequisicion}`).val();
 
-        Sys_Core.Net.ajaxRequest({
+        Sys_Core.Net.post({
             url: `${Sys_Core.Config.baseUrl}/com_requisicion/${accion}`,
             payload: $.param({ idrequisicion, comentario, accion }),
             successMsg: `Acción ${accion} procesada correctamente.`,
@@ -152,10 +169,18 @@ $(document).ready(function () {
      */
     $(document).on('click', '.btn-cancelar-inline', () => $('.fila-accion-inline').remove());
 
-    /**
-     * @description Navegación hacia la interfaz de nueva requisición.
-     */
-    $('#btnNueva').on('click', function () {
-        window.location.href = `${Sys_Core.Config.baseUrl}/com_requisicion/nueva`;
-    });
+    // Definimos qué estatus de la DB va a qué ID de HTML
+    const requisicionesMap = {
+        'pendiente': 'kpi-pendientes',
+        'aprobada': 'kpi-aprobadas',
+        'finalizada': 'kpi-finalizadas'
+    };
+
+    // Lanzamos la actualización recurrente cada 30 segundos
+    Sys_Core.UI.Dashboard.refreshKPIs(
+        Sys_Core.Config.baseUrl + '/com_requisicion/getKpi', 
+        requisicionesMap, 
+        true
+    );
+
 });

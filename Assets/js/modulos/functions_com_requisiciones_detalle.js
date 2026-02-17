@@ -105,7 +105,7 @@ $(document).ready(function () {
                     <td class="pl-4">${index + 1}</td>
                     <td>
                         <div class="fw-bold text-dark">${item.cve_articulo} - ${item.descripcion}</div>
-                        <small class="text-muted italic">${item.notas || 'No additional notes'}</small>
+                        <small class="text-muted italic">${item.notas || 'Sin notas adicionales'}</small>
                     </td>
                     <td class="text-center">${item.cantidad} ${item.unidad_entrada}</td>
                     <td class="text-right">${Sys_Core.Format.toCurrency(item.precio_unitario_estimado)}</td>

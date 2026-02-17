@@ -21,8 +21,18 @@ class Com_requisicionService
         $this->logAuditModel = new LogAuditModel;
     }
 
-    public function index(array $filters = [])
+    /**
+     * Obtiene el listado de requisiciones aplicando el alcance (scope) del rol.
+     * * @param array $filters Filtros adicionales enviados desde el cliente.
+     * @return ServiceResponse
+     */
+public function index(array $filters = [])
     {
+        if(!hasPermissions(COM_COMPRAS, 'r'))
+        {
+            $filters['usuarioid'] = $_SESSION['idUser'];
+        }
+
         return ServiceResponse::success(
             $this->model->requisitions($filters),
             'Datos obtenidos correctamente.',
@@ -102,7 +112,7 @@ class Com_requisicionService
                 $this->requisitionDetailModel->detailCreate($requisitionId, $item);
             }
             
-            $this->model->logAudit($requisitionId, 'creación', $validated['comentarios'], $userId);
+            $this->model->logAudit($requisitionId, 'creación', $validated['justificacion'], $userId);
 
             $db->commit();
 
@@ -178,5 +188,14 @@ class Com_requisicionService
                 code: is_int($e->getCode()) ? $e->getCode() : 500
             );
         }        
+    }
+
+    public function getKpi(array $filters = [])
+    {
+        return ServiceResponse::success(
+            $this->model->getKpi($filters),
+            'Datos obtenidos correctamente.',
+            200
+        );
     }
 }

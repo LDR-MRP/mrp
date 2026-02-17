@@ -144,7 +144,7 @@ $(document).ready(function () {
                         ${Sys_Core.Format.toCurrency(cant * precio)}
                     </td>
                     <td>
-                        <input type="text" class="form-control form-control-sm input-notas-tabla" placeholder="...">
+                        <input type="text" class="form-control form-control-sm input-notas-tabla" placeholder="Observaciones">
                     </td>
                     <td class="text-center">
                         <button type="button" class="btn btn-link btn-sm text-danger p-0 btn-eliminar">
@@ -188,7 +188,7 @@ $(document).ready(function () {
     /**
      * @description Procesa el envío del formulario estructurando el payload para la API.
      */
-    $('#formRequisicion').on('submit', function (e) {
+    $('.btn-guardar').on('click', function (e) {
         e.preventDefault();
 
         if ($('.partida-row').length === 0) {
@@ -197,10 +197,13 @@ $(document).ready(function () {
         }
 
         const payload = {
+            titulo: $('input[name="titulo"]').val(),
+            fecha_requerida: $('input[name="fecha_requerida"]').val(),
             departamentoid: $('select[name="departamentoid"]').val(),
-            monto_estimado: $('#monto_estimado').val(),
-            comentarios: $('textarea[name="comentarios"]').val(),
+            monto_estimado: $('input[name="monto_estimado"]').val(),
+            justificacion: $('textarea[name="justificacion"]').val(),
             prioridad: $('select[name="prioridad"]').val(),
+            estatus: $(this).data('estatus'),
             articulos: []
         };
 
@@ -213,7 +216,7 @@ $(document).ready(function () {
             });
         });
 
-        Sys_Core.Net.ajaxRequest({
+        Sys_Core.Net.post({
             url: `${Sys_Core.Config.baseUrl}/com_requisicion/store`,
             payload: payload,
             successMsg: '¡Requisición enviada correctamente!',

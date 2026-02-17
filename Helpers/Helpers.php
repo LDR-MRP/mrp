@@ -418,13 +418,26 @@ function sendMailLocalCron($data, $template, $correos_copia = ''){
         return $meses;
     }
 
-    
+    /**
+     * Sanitiza GET
+     * @return array    
+     */
     function sanitizeGet() {
         $clean = [];
         foreach ($_GET as $key => $value) {
             $clean[$key] = filter_var($value, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
         }
         return $clean;
+    }
+
+    /**
+     * Verifica permisos usando las constantes de Config.php
+     * @param int $moduleId - La constante (ej: COM_COMPRAS)
+     * @param string $action - 'r', 'w', 'u', 'd'
+     * @return bool
+     */
+    function hasPermissions($moduleId, $action = 'r') {
+        return !empty($_SESSION['permisos'][$moduleId][$action]) && $_SESSION['permisos'][$moduleId][$action] == 1;
     }
 
 

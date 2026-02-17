@@ -14,16 +14,16 @@ trait Auditable
      * @param int $userId Sesión de usuario activa.
      * @return bool
      */
-    public function logAudit(int $resourceId, string $action, string $comment = 'Sin comentarios', int $userId): bool
+    public function logAudit(int $resourceId, string $action, ?string $comment = 'Sin comentarios', int $userId): bool
     {
         $auditModel = new LogAuditModel();
         return $auditModel->register(
             [
                 'resource_id' => $resourceId,
                 'user_id' => $userId ?? 0,
-                'table_name' => $this->getTableName(),
-                'action' => $action,
-                'comment' => $comment,
+                'table_name' => mb_strtolower($this->getTableName(), 'UTF-8'),
+                'action' => mb_strtolower($action, 'UTF-8'),
+                'comment' => mb_strtolower($comment, 'UTF-8'),
             ]
         );
     }
