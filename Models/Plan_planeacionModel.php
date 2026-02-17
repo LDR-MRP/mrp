@@ -1011,18 +1011,12 @@ public function selectPlanEnProceso()
 
 
 
-    public function obtenerPlaneacion($num_orden)
+    public function obtenerPlaneacionOLD($num_orden)
 {
 
     $num_orden = trim((string) $num_orden);
     $key = preg_replace('/[^A-Za-z0-9]/', '', $num_orden);
 
-
-    // $sqlPla = "SELECT pla.*, pr.cve_producto, pr.descripcion
-    //           FROM mrp_planeacion AS pla
-    //           INNER JOIN mrp_productos AS pr ON pla.productoid = pr.idproducto
-    //           WHERE REPLACE(pla.num_orden,'-','') = '{$key}'
-    //           LIMIT 1";
 
               $sqlPla = "SELECT 
               pla.*,
@@ -1208,8 +1202,188 @@ public function selectPlanEnProceso()
 
     return ['status' => true, 'msg' => 'OK', 'data' => $planeacion];
 }
+public function obtenerPlaneacion($num_orden)
+{
+    $num_orden = trim((string) $num_orden);
+    $key = preg_replace('/[^A-Za-z0-9]/', '', $num_orden);
 
-//Y ENTONCES PARA ESTA CONSULTA COMO QUEDAR+IA SI TABIEN QUIERO AGREGAR EL IDROL=5
+    $sqlPla = "SELECT 
+              pr.inventarioid AS inventarioid,
+              pla.*,
+              pr.cve_producto,
+              pr.descripcion,
+              CONCAT(us.nombres, ' ', us.apellidos) AS supervisor
+          FROM mrp_planeacion AS pla
+          INNER JOIN mrp_productos AS pr 
+              ON pla.productoid = pr.idproducto
+          INNER JOIN usuarios AS us
+              ON pla.supervisorid = us.idusuario
+          WHERE REPLACE(pla.num_orden,'-','') = '{$key}'
+          LIMIT 1";
+
+    $planeacion = $this->select($sqlPla);
+
+    if (empty($planeacion)) {
+        return ['status' => false, 'msg' => 'No existe la planeación', 'data' => []];
+    }
+
+    $planeacionid = (int) ($planeacion['idplaneacion'] ?? 0);
+    if ($planeacionid <= 0) {
+        return ['status' => false, 'msg' => 'Planeación inválida', 'data' => []];
+    }
+
+    $isAdmin = isset($_SESSION['rolid']) && in_array((int)$_SESSION['rolid'], [1, 5, 4]);
+
+    $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
+
+    if (!$isAdmin && $userIdSes <= 0) {
+        return ['status' => false, 'msg' => 'Sesión inválida (sin usuario)', 'data' => []];
+    }
+
+    $whereUserEst = "";
+    if (!$isAdmin) {
+        $whereUserEst = " AND pe.id_planeacion_estacion IN (
+                            SELECT o2.planeacion_estacionid
+                            FROM mrp_planeacion_estacion_operador o2
+                            WHERE o2.estado = 2
+                              AND o2.usuarioid = {$userIdSes}
+                         )";
+    }
+
+    $sqlEst = "SELECT pe.id_planeacion_estacion, pe.planeacionid, pe.estacionid, pe.orden, pe.estado,
+                      est.cve_estacion, est.nombre_estacion, est.proceso
+               FROM mrp_planeacion_estacion pe
+               INNER JOIN mrp_estacion AS est
+                  ON pe.estacionid = est.idestacion
+               WHERE pe.planeacionid = {$planeacionid}
+                 AND pe.estado = 2
+                 {$whereUserEst}
+               ORDER BY pe.orden ASC";
+
+    $estaciones = $this->select_all($sqlEst);
+
+    if (empty($estaciones)) {
+        $planeacion['estaciones'] = [];
+        return ['status' => true, 'msg' => 'OK', 'data' => $planeacion];
+    }
+
+    $idsPE = array_map(fn($r) => (int)$r['id_planeacion_estacion'], $estaciones);
+    $idsPE = array_values(array_filter($idsPE, fn($v) => $v > 0));
+
+    if (empty($idsPE)) {
+        $planeacion['estaciones'] = [];
+        return ['status' => true, 'msg' => 'OK', 'data' => $planeacion];
+    }
+
+    $in = implode(',', $idsPE);
+
+    $sqlOp = "SELECT o.planeacion_estacionid,
+                     o.usuarioid,
+                     UPPER(TRIM(o.rol)) AS rol,
+                     o.estado,
+                     CONCAT(TRIM(u.nombres), ' ', TRIM(u.apellidos)) AS nombre_completo
+              FROM mrp_planeacion_estacion_operador o
+              INNER JOIN usuarios u
+                 ON u.idusuario = o.usuarioid
+              WHERE o.estado = 2
+                AND o.planeacion_estacionid IN ({$in})
+              ORDER BY o.planeacion_estacionid ASC";
+
+    $ops = $this->select_all($sqlOp);
+
+    $opsByPE = [];
+    foreach ($ops as $op) {
+        $peid = (int)($op['planeacion_estacionid'] ?? 0);
+        if ($peid <= 0) continue;
+        $opsByPE[$peid][] = $op;
+    }
+
+    $sqlOT = "SELECT ot.idorden,
+                     ot.planeacion_estacionid,
+                     ot.num_sub_orden,
+                     ot.fecha_inicio,
+                     ot.fecha_fin,
+                     ot.comentarios,
+                     ot.estatus,
+                     ot.calidad,
+                     CAST(SUBSTRING_INDEX(ot.num_sub_orden, 'S', -1) AS UNSIGNED) AS ord_s
+              FROM mrp_ordenes_trabajo ot
+              WHERE ot.planeacion_estacionid IN ({$in})
+              ORDER BY ot.planeacion_estacionid ASC, ord_s ASC";
+
+    $ots = $this->select_all($sqlOT);
+
+    $otsByPE = [];
+    foreach ($ots as $ot) {
+        $peid = (int)($ot['planeacion_estacionid'] ?? 0);
+        if ($peid <= 0) continue;
+        $otsByPE[$peid][] = $ot;
+    }
+
+    $outEstaciones = [];
+
+    foreach ($estaciones as $e) {
+        $peid = (int)$e['id_planeacion_estacion'];
+
+        $item = [
+            'id_planeacion_estacion' => $peid,
+            'planeacionid'           => (int)$e['planeacionid'],
+            'estacionid'             => (int)$e['estacionid'],
+            'orden'                  => (int)$e['orden'],
+            'estado'                 => (int)$e['estado'],
+            'cve_estacion'           => (string)$e['cve_estacion'],
+            'nombre_estacion'        => (string)$e['nombre_estacion'],
+            'proceso'                => (string)$e['proceso'],
+
+            // Listas de operadores
+            'encargados'             => [],
+            'ayudantes'              => [],
+
+            // Subórdenes (OT)
+            'ordenes_trabajo'        => [],
+        ];
+
+        $listaOps = $opsByPE[$peid] ?? [];
+        foreach ($listaOps as $op) {
+            $rol = (string)($op['rol'] ?? '');
+
+            $objOper = [
+                'usuarioid'        => (int)($op['usuarioid'] ?? 0),
+                'rol'              => $rol,
+                'nombre_completo'  => (string)($op['nombre_completo'] ?? ''),
+            ];
+
+            if ($rol === 'ENCARGADO') {
+                $item['encargados'][] = $objOper;
+            } else if ($rol === 'AYUDANTE') {
+                $item['ayudantes'][] = $objOper;
+            }
+        }
+
+        $listaOT = $otsByPE[$peid] ?? [];
+        foreach ($listaOT as $ot) {
+            $item['ordenes_trabajo'][] = [
+                'idorden'               => (int)($ot['idorden'] ?? 0),
+                'planeacion_estacionid' => (int)($ot['planeacion_estacionid'] ?? 0),
+                'num_sub_orden'         => (string)($ot['num_sub_orden'] ?? ''),
+                'fecha_inicio'          => (string)($ot['fecha_inicio'] ?? ''),
+                'fecha_fin'             => (string)($ot['fecha_fin'] ?? ''),
+                'comentarios'           => (string)($ot['comentarios'] ?? ''),
+                'estatus'               => (string)($ot['estatus'] ?? ''),
+                'calidad'               => (string)($ot['calidad'] ?? ''),
+            ];
+        }
+
+        $outEstaciones[] = $item;
+    }
+
+    $planeacion['estaciones'] = $outEstaciones;
+
+    return ['status' => true, 'msg' => 'OK', 'data' => $planeacion];
+}
+
+
+
 
 
  
@@ -1431,7 +1605,7 @@ if (!$prevOk) {
 
 
 
-public function finishOT(int $idorden, string $fecha_fin)
+public function finishOTOld(int $idorden, string $fecha_fin)
 {
   $idorden = (int)$idorden;
 
@@ -1470,6 +1644,188 @@ public function finishOT(int $idorden, string $fecha_fin)
     'estatus'=>3
   ]];
 }
+
+
+public function finishOT(int $idorden, string $fecha_fin, int $idinventario)
+{
+  $idorden = (int)$idorden;
+
+  $CONCEPMOVID = 3;
+
+  $inventarioid = $idinventario;
+  $almacenid = 6;
+
+  $sql = "SELECT idorden, estatus, num_sub_orden
+          FROM mrp_ordenes_trabajo
+          WHERE idorden = {$idorden}
+          LIMIT 1"; 
+  $cur = $this->select($sql);
+
+  if (empty($cur)) {
+    return ['status'=>false,'msg'=>'No existe la Sub-OT','data'=>[]];
+  }
+
+  $estatus = (int)($cur['estatus'] ?? 0);
+  if ($estatus !== 2) {
+    return ['status'=>false,'msg'=>'No puedes finalizar: la Sub-OT no está en proceso','data'=>[
+      'estatus_actual'=>$estatus
+    ]];
+  }
+
+  $subot = trim((string)($cur['num_sub_orden'] ?? ''));
+  if ($subot === '') {
+    return ['status'=>false,'msg'=>'La Sub-OT no tiene num_sub_orden','data'=>[]];
+  }
+
+
+  $numero_movimiento = preg_replace('/-S\d+$/', '', $subot);
+
+  $sqlUpd = "UPDATE mrp_ordenes_trabajo
+             SET fecha_fin = ?, estatus = 3
+             WHERE idorden = {$idorden} AND estatus = 2";
+  $ok = $this->update($sqlUpd, [$fecha_fin]);
+
+  if (!$ok) {
+    return ['status'=>false,'msg'=>'No se pudo finalizar','data'=>[]];
+  }
+
+
+  $sqlPend = "SELECT COUNT(*) AS pendientes
+              FROM mrp_ordenes_trabajo
+              WHERE num_sub_orden = ?
+                AND estatus <> 3";
+  $rowPend = $this->select($sqlPend, [$subot]);
+  $pendientes = (int)($rowPend['pendientes'] ?? 0);
+
+  $movimiento_insertado = false;
+  $multialmacen_insertado = false;
+
+  if ($pendientes === 0) {
+
+
+    $sqlYa = "SELECT COUNT(*) AS ya
+              FROM wms_movimientos_inventario
+              WHERE numero_movimiento = ?
+                AND referencia = ?
+              LIMIT 1";
+    $rowYa = $this->select($sqlYa, [$numero_movimiento, $subot]);
+    $ya = (int)($rowYa['ya'] ?? 0);
+
+    if ($ya === 0) {
+
+      $sqlIns = "INSERT INTO wms_movimientos_inventario
+        (inventarioid, almacenid, numero_movimiento, concepmovid, referencia,
+         cantidad, costo_cantidad, precio, costo, existencia, signo, fecha_movimiento, estado)
+        VALUES
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)";
+
+      $arrIns = [
+        $inventarioid,       
+        $almacenid,          
+        $numero_movimiento, 
+        $CONCEPMOVID,        
+        $subot,             
+        1,                   
+        0,                 
+        0,                  
+        0,                   
+        1,                 
+        1,                   
+        2                   
+      ];
+
+      if (method_exists($this, 'insert')) {
+        $okIns = $this->insert($sqlIns, $arrIns);
+      } else {
+        $okIns = $this->update($sqlIns, $arrIns);
+      }
+
+      if (!$okIns) {
+        return ['status'=>true,'msg'=>'Proceso finalizado, pero NO se pudo insertar movimiento de inventario','data'=>[
+          'idorden'=>$idorden,
+          'fecha_fin'=>$fecha_fin,
+          'estatus'=>3,
+          'subot'=>$subot,
+          'numero_movimiento'=>$numero_movimiento,
+          'pendientes_misma_subot'=>$pendientes,
+          'movimiento_insertado'=>false,
+          'multialmacen_insertado'=>false
+        ]];
+      }
+
+      $movimiento_insertado = true;
+    }
+
+
+    $sqlEx = "SELECT idmultialmacen, existencia
+              FROM wms_multialmacen
+              WHERE inventarioid = ? AND almacenid = ?
+              LIMIT 1";
+    $rowEx = $this->select($sqlEx, [$inventarioid, $almacenid]);
+
+    if (!empty($rowEx)) {
+
+      $idmultialmacen = (int)($rowEx['idmultialmacen'] ?? 0);
+
+      if ($idmultialmacen > 0) {
+        $sqlUpdMA = "UPDATE wms_multialmacen
+                     SET existencia = existencia + 1
+                     WHERE idmultialmacen = {$idmultialmacen}
+                     LIMIT 1";
+        $okMA = $this->update($sqlUpdMA, []);
+
+        if ($okMA) {
+          $multialmacen_insertado = true; 
+        }
+      }
+    } else {
+
+      $sqlInsMA = "INSERT INTO wms_multialmacen
+        (inventarioid, almacenid, control_almacen, existencia, stock_minimo, stock_maximo, compras_x_recibir, pendiente_surtir)
+        VALUES
+        (?, ?, ?, ?, ?, ?, ?, ?)";
+
+      $arrMA = [
+        $inventarioid,  
+        $almacenid,     
+        '',              
+        1,             
+        0,            
+        0,             
+        0,            
+        0             
+      ];
+
+      if (method_exists($this, 'insert')) {
+        $okInsMA = $this->insert($sqlInsMA, $arrMA);
+      } else {
+        $okInsMA = $this->update($sqlInsMA, $arrMA);
+      }
+
+      if ($okInsMA) {
+        $multialmacen_insertado = true;
+      }
+    }
+  }
+
+  return ['status'=>true,'msg'=>'Proceso finalizado','data'=>[
+    'idorden'=>$idorden,
+    'fecha_fin'=>$fecha_fin,
+    'estatus'=>3,
+    'subot'=>$subot,
+    'numero_movimiento'=>$numero_movimiento,
+    'pendientes_misma_subot'=>$pendientes,
+    'movimiento_insertado'=>$movimiento_insertado,
+    'multialmacen_insertado'=>$multialmacen_insertado
+  ]];
+}
+
+
+
+
+
+
+
 
 
 

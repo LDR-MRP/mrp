@@ -463,6 +463,7 @@
     const idorden = (btn.dataset.idorden || '').trim();
     const peid = (btn.dataset.peid || '').trim();
     const subot = (btn.dataset.subot || '').trim();
+    const inventarioid = (btn.dataset.inventarioid || '').trim();
 
     if (!idorden) {
       Swal.fire({ icon: 'warning', title: 'Atención', text: 'Falta data-idorden', timer: 3000, showConfirmButton: false });
@@ -484,7 +485,7 @@
     }
 
     setBtnEnabled(btn, false);
-
+ 
     const fecha_fin = ahoraSql();
     ponerFechaCelda(tr, 4, fecha_fin);
     ponerBadgeEstatus(tr, 'finalizada');
@@ -494,7 +495,7 @@
     setBtnEnabled(btnIniciar, false);
 
     const url = base_url + '/plan_planeacion/finishOT';
-    const payload = { idorden, peid, subot, fecha_fin };
+    const payload = { idorden, peid, subot, fecha_fin, inventarioid }; 
 
     mostrarCargando('Finalizando proceso...');
 

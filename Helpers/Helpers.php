@@ -428,6 +428,14 @@ function sendMailLocalCron($data, $template, $correos_copia = ''){
     }
 
 
+ function looksLikeBase64(string $s): bool
+{
+    if ($s === '' || strlen($s) < 8) return false;
+    // base64 típico: A-Z a-z 0-9 + / =
+    return (bool)preg_match('/^[A-Za-z0-9+\/=]+$/', $s);
+}
+
+
 
 
 

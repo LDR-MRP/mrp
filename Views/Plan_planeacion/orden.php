@@ -884,7 +884,7 @@
 
                                                         <button type="button" class="btn btn-soft-success btnFinishOT"
                                                           <?= $disableFinish ?> data-idorden="<?= $h($idorden) ?>"
-                                                          data-peid="<?= $h($peid) ?>" data-subot="<?= $h($subot) ?>">
+                                                          data-peid="<?= $h($peid) ?>" data-subot="<?= $h($subot) ?>" data-inventarioid="<?= $h(($ot['inventarioid'] ?? '') ?: '') ?>">
                                                           <i class="ri-checkbox-circle-line me-1"></i> Finalizar
                                                         </button>
 
