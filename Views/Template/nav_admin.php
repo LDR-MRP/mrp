@@ -136,7 +136,7 @@
                                       <?php } ?> -->
 
 
-                                         <li class="nav-item">
+                                         <!-- <li class="nav-item">
                                         <a href="#sidebarTickets" class="nav-link" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarTickets" data-key="t-supprt-tickets"> Reportes
                                         </a>
                                         <div class="collapse menu-dropdown" id="sidebarTickets">
@@ -144,12 +144,10 @@
                                                 <li class="nav-item">
                                                     <a href="<?= base_url(); ?>/rpt_mrp_planeacion" class="nav-link" data-key="t-list-view"> Planeación </a>
                                                 </li>
-                                                <!-- <li class="nav-item">
-                                                    <a href="#" class="nav-link" data-key="t-ticket-details"> Tickets de soporte </a>
-                                                </li> -->
+                                     
                                             </ul>
                                         </div>
-                                    </li>
+                                    </li> -->
                                   </ul>
                               </div>
                           </li> <!-- end plan maestro Menu -->
