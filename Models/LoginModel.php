@@ -91,5 +91,23 @@
 			$request = $this->update($sql,$arrData);
 			return $request;
 		}
+
+
+		public function loginByNumColaborador(string $numcolaborador)
+{
+    $this->strUsuario = $numcolaborador;
+
+    $sql = "SELECT idusuario, status, avatar_file, rolid
+            FROM usuarios
+            WHERE numcolaborador = ?
+              AND status != 0
+            LIMIT 1";
+
+    return $this->select($sql, [$this->strUsuario]);
+}
+
+
+
+
 	}
  ?>

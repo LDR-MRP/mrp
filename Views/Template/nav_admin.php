@@ -113,7 +113,7 @@
                                               <a href="<?= base_url(); ?>/plan_confproductos" class="nav-link" data-key="t-horizontal">Configuración de productos</a>
                                           </li>
                                       <?php } ?>
-                                      <?php if (!empty($_SESSION['permisos'][7]['r'])) { ?>
+                                      <!-- <?php if (!empty($_SESSION['permisos'][7]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/pbom" class="nav-link" data-key="t-horizontal">BOM - Control</a>
                                           </li>
@@ -122,18 +122,34 @@
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/pla_productos" class="nav-link" data-key="t-detached">Productos Terminados - PT</a>
                                           </li>
-                                      <?php } ?>
+                                      <?php } ?> -->
                                       <?php if (!empty($_SESSION['permisos'][9]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/plan_planeacion" class="nav-link" data-key="t-two-column">Plan de producción</a>
 
                                           </li>
                                       <?php } ?>
-                                      <?php if (!empty($_SESSION['permisos'][10]['r'])) { ?>
+                                      <!-- <?php if (!empty($_SESSION['permisos'][10]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/pordenes" class="nav-link" data-key="t-hovered">Ordenes</a>
                                           </li>
-                                      <?php } ?>
+                                      <?php } ?> -->
+
+
+                                         <li class="nav-item">
+                                        <a href="#sidebarTickets" class="nav-link" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarTickets" data-key="t-supprt-tickets"> Reportes
+                                        </a>
+                                        <div class="collapse menu-dropdown" id="sidebarTickets">
+                                            <ul class="nav nav-sm flex-column">
+                                                <li class="nav-item">
+                                                    <a href="<?= base_url(); ?>/rpt_mrp_planeacion" class="nav-link" data-key="t-list-view"> Planeación </a>
+                                                </li>
+                                                <!-- <li class="nav-item">
+                                                    <a href="#" class="nav-link" data-key="t-ticket-details"> Tickets de soporte </a>
+                                                </li> -->
+                                            </ul>
+                                        </div>
+                                    </li>
                                   </ul>
                               </div>
                           </li> <!-- end plan maestro Menu -->

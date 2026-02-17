@@ -785,6 +785,12 @@ Se utiliza con fines de configuración y ajustes visuales del layout.
   window.CURRENT_USER_AVATAR = <?= json_encode($_SESSION['userData']['avatar'] ?? '') ?>;
     </script>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  console.log("ChartJS:", window.Chart ? "OK " : "NO CARGÓ ❌");
+</script>
+
+
       <script src="<?= media(); ?>/js/jquery-3.3.1.min.js"></script>
 
     <!-- JAVASCRIPT -->

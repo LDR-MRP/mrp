@@ -1,26 +1,101 @@
 <?php 
 
 	class Login extends Controllers{
-		public function __construct()
-		{
-			session_start();
-			if(isset($_SESSION['login']))
-			{
-				header('Location: '.base_url().'/dashboard');
-				die();
-			}
-			parent::__construct();
-		}
+		// public function __construct()
+		// {
+		// 	session_start();
+		// 	if(isset($_SESSION['login']))
+		// 	{
+		// 		header('Location: '.base_url().'/dashboard');
+		// 		die();
+		// 	}
+		// 	parent::__construct();
+		// }
 
-		public function login()
+public function __construct()
+{
+    session_start();
+    $raw = $_GET['numerocolaborador'] ?? '';
+    $raw = trim((string)$raw);
+
+    if (isset($_SESSION['login']) && $raw === '') {
+        header('Location: '.base_url().'/dashboard');
+        die();
+    }
+    parent::__construct();
+}
+
+
+
+		public function loginold()
 		{
-			$data['page_tag'] = "Login - Tienda Virtual";
-			$data['page_title'] = "Tienda Virtual";
+			$data['page_tag'] = "Login - MRP";
+			$data['page_title'] = "MRP";
 			$data['page_name'] = "login";
 			$data['page_functions_js'] = "functions_login.js";
+			dep($data);
 			$this->views->getView($this,"login",$data);
+
+			
 		}
- 
+
+public function login()
+{
+    $data['page_tag'] = "Login - MRP";
+    $data['page_title'] = "MRP";
+    $data['page_name'] = "login";
+    $data['page_functions_js'] = "functions_login.js";
+
+
+    $raw = $_GET['numerocolaborador'] ?? '';
+    $raw = trim((string)$raw);
+
+    if ($raw !== '') {
+        $raw = urldecode($raw);
+        $raw = trim($raw, " \t\n\r\0\x0B'\"");
+
+        if (preg_match('/^[A-Za-z0-9+\/=]+$/', $raw)) {
+            $decoded = base64_decode($raw, true);
+            if ($decoded !== false) $raw = trim($decoded);
+        }
+
+        if (preg_match('/^\d{1,20}$/', $raw)) {
+            $requestUser = $this->model->loginByNumColaborador($raw);
+
+            if (!empty($requestUser) && (int)$requestUser['status'] === 1) {
+
+                $_SESSION['idUser'] = $requestUser['idusuario'];
+                $_SESSION['login'] = true;
+                $_SESSION['avatar_file'] = $requestUser['avatar_file'];
+                $_SESSION['rolid'] = $requestUser['rolid'];
+
+                $this->model->sessionLogin($_SESSION['idUser']);
+
+                $evento = 'Inicio de Sesión (SSO)';
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+                $detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                $fecha_creacion = date('Y-m-d H:i:s');
+                $this->model->registrarAcceso($_SESSION['idUser'], $evento, $ip, $detalle, $fecha_creacion);
+
+                sessionUser($_SESSION['idUser']);
+
+                header("Location: " . base_url() . "/dashboard");
+                die();
+            } else {
+                $data['error_sso'] = "No se pudo validar el acceso automático.";
+            }
+        } else {
+            $data['error_sso'] = "Parámetro numerocolaborador inválido.";
+        }
+    }
+
+
+    $this->views->getView($this, "login", $data);
+}
+
+
+
+
 		public function loginUser(){
 			//dep($_POST);
 			if($_POST){
@@ -36,7 +111,7 @@
 						$arrData = $requestUser;
 						if($arrData['status'] == 1){ 
 							$_SESSION['idUser'] = $arrData['idusuario'];
-							$_SESSION['login'] = true; 
+							$_SESSION['login'] = true;  
 							$_SESSION['avatar_file'] = $arrData['avatar_file'];
 							$_SESSION['rolid'] = $arrData['rolid'];
 
@@ -109,6 +184,7 @@
 			die();
 		}
 
+
 		public function confirmUser(string $params){
 
 			if(empty($params)){
@@ -172,6 +248,13 @@
 			echo json_encode($arrResponse,JSON_UNESCAPED_UNICODE);
 			die();
 		}
+ 
+
+
+
+
+
+
 
 	}
  ?>
