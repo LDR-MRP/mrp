@@ -9,7 +9,7 @@ class Prv_proveedorModel extends Mysql
         return "prv_proveedores";
     }
 
-    public function suppliers(array $filters)
+    public function findByCriteria(array $filters)
     {
         $sql = "SELECT
                 idproveedor,
@@ -27,7 +27,7 @@ class Prv_proveedorModel extends Mysql
                 idmoneda_predeterminada,
                 fecha_registro,
                 estado
-            FROM wms_proveedores
+            FROM prv_proveedores
             WHERE true";
 
         if(array_key_exists('clv_proveedor', $filters)){ $sql .= "AND clv_proveedor = '{$filters['clv_proveedor']}'"; }
@@ -48,7 +48,7 @@ class Prv_proveedorModel extends Mysql
                         limite_credito = ?, dias_credito = ?, metodo_pago_predeterminado = ?, 
                         idmoneda_predeterminada = ? 
                     WHERE idproveedor = ?";
-            $params = [...array_values($data), $id];
+            $params = [array_values($data), $id];
             return $this->update($sql, $params);
         } else {
             $sql = "INSERT INTO prv_proveedores (
@@ -56,7 +56,23 @@ class Prv_proveedorModel extends Mysql
                         correo_electronico, telefono, direccion_fiscal, limite_credito, 
                         dias_credito, metodo_pago_predeterminado, idmoneda_predeterminada
                     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
-            return $this->insert($sql, array_values($data));
+
+            $params = [
+                $data['clv_proveedor'],
+                $data['rfc'],
+                $data['razon_social'],
+                $data['nombre_comercial'],
+                $data['contacto'],
+                $data['correo_electronico'],
+                $data['telefono'],
+                $data['direccion_fiscal'],
+                $data['limite_credito'],
+                $data['dias_credito'],
+                $data['metodo_pago_predeterminado'],
+                $data['idmoneda_predeterminada'],
+            ];
+
+            return $this->insert($sql, $params);
         }
     }
 

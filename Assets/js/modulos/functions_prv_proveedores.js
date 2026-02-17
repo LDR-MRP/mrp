@@ -12,37 +12,22 @@ $(document).ready(function () {
      */
     const tabla = $('#tblVendors').DataTable({
         "ajax": {
-            "url": `${Sys_Core.Config.baseUrl}/com_proveedor/index`,
+            "url": `${Sys_Core.Config.baseUrl}/prv_proveedor/index`,
             "dataSrc": "data",
             "beforeSend": () => Sys_Core.UI.toggleLoader('#tblVendors', true),
             "complete": () => Sys_Core.UI.toggleLoader('#tblVendors', false)
         },
         "columns": [
             { "data": "idproveedor", "render": (data) => `<span class="fw-bold">#${data}</span>` },
-            { "data": "fecha" },
-            { "data": "solicitante" },
-            {
-                "data": "estatus", "render": function (data) {
-                    const clases = {
-                        'borrador': 'badge-draft',
-                        'pendiente': 'badge-review',
-                        'aprobada': 'badge-approved',
-                        'rechazada': 'badge-rejected',
-                        'en_compra': 'badge-purchasing',
-                        'finalizada': 'badge-closed',
-                        'cancelada': 'badge-closed',
-                        'eliminada': 'badge-closed'
-                    };
-                    return `<span class="badge ${clases[data.toLowerCase()] || 'bg-secondary'} px-3 py-2 text-capitalize">${data}</span>`;
-                }
-            },
+            { "data": "clv_proveedor" },
+            { "data": "nombre_comercial" },
             {
                 "data": null,
                 "orderable": false,
                 "className": "text-end",
                 "render": (data, type, r) => `
                     <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-outline-secondary btn-sm action-ver" data-id="${r.idproveedor}">
+                        <button type="button" class="btn btn-outline-secondary btn-sm action-ver" data-id="${r.idproveedor}" data-redirect="prv_proveedor/nuevo">
                             <i class="ri-eye-line"></i> Ver
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"></button>
@@ -79,83 +64,19 @@ $(document).ready(function () {
     });
 
     /**
-     * @description Redirección al detalle de la requisición.
+     * @description Redirección al detalle del proveedor.
      */
     $('#tblVendors').on('click', '.action-ver', function () {
-        window.location.href = `${Sys_Core.Config.baseUrl}/com_requisicion/detalle/${$(this).data('id')}`;
+        window.location.href = `${Sys_Core.Config.baseUrl}/prv_proveedor/detalle/${$(this).data('id')}`;
     });
 
-    /**
-     * @description Inyecta una fila de acción rápida (inline) para procesamiento con comentarios.
-     */
-    $('#tblVendors').on('click', '.action-inline', function () {
-        const btn = $(this);
-        const id = btn.data('id');
-        const accion = btn.data('accion');
-        const filaPadre = btn.closest('tr');
+ 
 
-        $('.fila-accion-inline').remove();
-
-        const config = {
-            'approve': { titulo: 'Aprobar', clase: 'success' },
-            'reject': { titulo: 'Rechazar', clase: 'danger' },
-            'cancel': { titulo: 'Cancelar', clase: 'secondary' },
-            'destroy': { titulo: 'Eliminar', clase: 'danger' }
-        };
-        const c = config[accion];
-
-        const htmlInline = `
-            <tr class="fila-accion-inline bg-light">
-                <td colspan="100%" class="p-3">
-                    <div class="d-flex align-items-center">
-                        <div class="me-3">
-                            <i class="ri-chat-voice-line text-${c.clase} fs-3"></i>
-                        </div>
-                        <div class="flex-grow-1 me-3">
-                            <input type="text" id="comentario_${id}" class="form-control form-control-sm border-${c.clase}" 
-                                   placeholder="Comentario para ${c.titulo} de #${id}..." autofocus>
-                        </div>
-                        <div class="d-flex">
-                            <button class="btn btn-sm btn-${c.clase} px-4 me-2 btn-confirmar-inline" 
-                                    data-idproveedor="${id}" 
-                                    data-accion="${accion}">Confirmar</button>
-                            <button class="btn btn-sm btn-light border btn-cancelar-inline"><i class="ri-close-line"></i></button>
-                        </div>
-                    </div>
-                </td>
-            </tr>`;
-
-        filaPadre.after(htmlInline);
-    });
 
     /**
-     * @description Procesa la confirmación de la acción inline usando el motor Sys_Core.Net.
-     */
-    $(document).on('click', '.btn-confirmar-inline', function () {
-        const idproveedor = $(this).data('idproveedor');
-        const accion = $(this).data('accion');
-        const comentario = $(`#comentario_${idproveedor}`).val();
-
-        Sys_Core.Net.ajaxRequest({
-            url: `${Sys_Core.Config.baseUrl}/com_requisicion/${accion}`,
-            payload: $.param({ idproveedor, comentario, accion }),
-            successMsg: `Acción ${accion} procesada correctamente.`,
-            onDone: () => {
-                $('.fila-accion-inline').remove();
-                tabla.ajax.reload(null, false);
-            }
-        });
-    });
-
-    /**
-     * @description Remueve la fila de acción rápida sin procesar datos.
-     */
-    $(document).on('click', '.btn-cancelar-inline', () => $('.fila-accion-inline').remove());
-
-    /**
-     * @description Navegación hacia la interfaz de nueva requisición.
+     * @description Navegación hacia la interfaz de nuevo proveedor.
      */
     $('#btnNueva').on('click', function () {
-        window.location.href = `${Sys_Core.Config.baseUrl}/com_proveedor/nueva`;
+        window.location.href = `${Sys_Core.Config.baseUrl}/prv_proveedor/nuevo`;
     });
 });

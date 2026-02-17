@@ -27,7 +27,7 @@ class Com_requisicionStatusRequest extends Requests
 
         $estatusActual = strtoupper($requisition['estatus']);
 
-        if ($estatusActual !== Com_requisicionModel::ESTATUS_PENDIENTE) {
+        if (mb_strtolower($estatusActual, 'UTF-8') !== mb_strtolower(Com_requisicionModel::ESTATUS_PENDIENTE, 'UTF-8')) {
             $this->addError('idrequisicion', "Esta requisición ya ha sido procesada anteriormente (Estado: {$estatusActual}).");
         }
     }

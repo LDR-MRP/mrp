@@ -777,6 +777,8 @@ Se utiliza con fines de configuración y ajustes visuales del layout.
         <script>
         const base_url = "<?= base_url(); ?>";
         const smony = "<?= SMONEY; ?>";
+        const MODS = <?= json_encode(get_defined_constants(true)['user'] ?? []); ?>;
+        const USER_PERMS = <?= json_encode($_SESSION['permisos'] ?? []); ?>;
 
           window.CURRENT_USER_ID = <?= (int)($_SESSION['idUser'] ?? 0) ?>;
           window.CURRENT_ROL_ID = <?= (int)($_SESSION['rolid'] ?? 0) ?>;

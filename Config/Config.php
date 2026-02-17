@@ -106,6 +106,9 @@ const MCLI_TIPOS_CLIENTES = 46;
 
 //Submodulos Compras
 const COM_COMPRAS = 50;
+const COM_REQUISICIONES = 51;
+const COM_ORDENES = 52;
+const PRV_PROVEEDORES = 53;
 
 const PERROR = 9;
 

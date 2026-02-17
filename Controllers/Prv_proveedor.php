@@ -14,9 +14,7 @@ class Prv_proveedor  extends Controllers{
 
         getPermisos(COM_PROVEEDORES);
 
-        $this->supplierService = new Prv_proveedorService;
-
-        $this->supplierService->model = $this->model;
+        $this->supplierService = new Prv_proveedorService($this->model);
     }
 
     public function Prv_proveedor() {
@@ -32,16 +30,29 @@ class Prv_proveedor  extends Controllers{
         );
     }
 
+    public function create() {
+        $this->views->getView(
+            $this,
+            "../Prv_proveedor/prv_proveedor_create",
+            [
+                'page_tag' => "Nuevo",
+                'page_title' => "Nuevo",
+                'page_name' => "Nuevo",
+                'page_functions_js' => "functions_prv_proveedores_create.js",
+            ]
+        );
+    }
+
     /* ======================================================
      * API (JSON): listar, mostrar, crear, eliminar
      * ====================================================== */
     public function index()
     {
-        return $this->apiResponse($this->supplierService->index($filters = sanitizeGet()));
+        return $this->apiResponse($this->supplierService->findByCriteria($filters = sanitizeGet()));
     }
 
-    public function show()
+    public function store()
     {
-        return $this->apiResponse($this->supplierService->index($filters = sanitizeGet()));
+        return $this->apiResponse($this->supplierService->store($_POST));
     }
 }

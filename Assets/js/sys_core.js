@@ -12,6 +12,39 @@ const Sys_Core = {
     },
 
     /**
+     * @namespace Auth
+     * @description Gestión de seguridad y validación de permisos por rol/módulo.
+     */
+    Auth: {
+        /**
+         * Consulta si el usuario cuenta con un permiso específico.
+         * @param {number} moduleId - ID del módulo (ej: MODS.COM_REQUISICIONES)
+         * @param {string} action - 'r', 'w', 'u', 'd', 'a'
+         * @returns {boolean}
+         */
+        hasPermissions: function(moduleId, action = 'r') {
+            if (typeof USER_PERMS === 'undefined' || !USER_PERMS[moduleId]) return false;
+            return !!(USER_PERMS[moduleId][action] == 1);
+        },
+
+        /**
+         * Proceso automático de limpieza de la interfaz.
+         * Escanea el DOM y elimina elementos basados en atributos data-permiso.
+         */
+        applyUIPermissions: function() {
+            $('[data-permiso]').each(function() {
+                const [modKey, action] = $(this).data('permiso').split('|');
+                const moduleId = MODS[modKey];
+
+                // Usamos el nuevo nombre de la función internamente
+                if (!Sys_Core.Auth.hasPermissions(moduleId, action)) {
+                    $(this).remove(); 
+                }
+            });
+        }
+    },
+
+    /**
      * @namespace Format
      * @description Utilidades para la transformación de datos y strings.
      */
@@ -108,6 +141,51 @@ const Sys_Core = {
         },
 
         /**
+         * @namespace Dashboard
+         * @description Gestión de indicadores y widgets visuales.
+         */
+        Dashboard: {
+            /**
+             * Anima un contador numérico de 0 a X.
+             * @param {string} id - ID del elemento HTML.
+             * @param {number} value - Valor final.
+             */
+            animateCounter: function(id, value) {
+                const $el = $(`#${id}`);
+                const startValue = parseInt($el.text()) || 0;
+                if (startValue === value) return;
+
+                $({ countNum: startValue }).animate({ countNum: value }, {
+                    duration: 1000,
+                    easing: 'swing',
+                    step: function() { $el.text(Math.ceil(this.countNum)); },
+                    complete: function() { $el.text(this.countNum); }
+                });
+            },
+
+            /**
+             * Actualiza un set de KPIs basado en un mapeo de estatus.
+             * @param {string} url - Endpoint de datos.
+             * @param {Object} mapping - Relación {'estatus_db': 'id_html'}.
+             * @param {boolean} [recurrent=false] - Si debe repetirse.
+             */
+            refreshKPIs: function(url, mapping, recurrent = false) {
+                Sys_Core.Net.get({
+                    url: url,
+                    recurrent: recurrent,
+                    silent: true,
+                    onSuccess: (res) => {
+                        Object.keys(mapping).forEach(key => {
+                            const row = res.data.find(item => item.estatus.toLowerCase() === key.toLowerCase());
+                            const finalValue = row ? row.cantidad : 0;
+                            Sys_Core.UI.Dashboard.animateCounter(mapping[key], finalValue);
+                        });
+                    }
+                });
+            }
+        },
+
+        /**
          * @param {jQuery} $btn 
          * @param {string} originalHtml 
          */
@@ -135,6 +213,33 @@ const Sys_Core = {
      */
     Net: {
         /**
+         * Petición GET con soporte para recursividad.
+         * @param {Object} options 
+         * @param {string} options.url
+         * @param {function} options.onSuccess
+         * @param {boolean} [options.recurrent=false]
+         * @param {number} [options.interval=30000]
+         * @param {boolean} [options.silent=false]
+         */
+        get: function(options) {
+            const { url, onSuccess, recurrent, interval = 30000, silent } = options;
+            
+            const execute = () => {
+                $.ajax({
+                    url: url,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: (res) => { if (onSuccess) onSuccess(res); },
+                    error: (xhr) => { if (!silent) Sys_Core.Net.handleError(xhr); },
+                    complete: () => {
+                        if (recurrent) setTimeout(execute, interval);
+                    }
+                });
+            };
+            execute();
+        },
+
+        /**
          * @param {Object} options 
          * @param {string} options.url
          * @param {any} options.payload
@@ -143,7 +248,7 @@ const Sys_Core = {
          * @param {string} [options.contentType]
          * @param {boolean} [options.processData]
          */
-        ajaxRequest: function(options) {
+        post: function(options) {
             const { url, payload, successMsg, onDone } = options;
             const $btn = $('button[type="submit"]:focus').length ? $('button[type="submit"]:focus') : $('button[type="submit"]');
             const originalHtml = $btn.html();

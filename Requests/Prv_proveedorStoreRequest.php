@@ -1,6 +1,6 @@
 <?php
 
-class Prv_proveedorSaveRequest extends Requests
+class Prv_proveedorStoreRequest extends Requests
 {
     public function rules(): void
     {
