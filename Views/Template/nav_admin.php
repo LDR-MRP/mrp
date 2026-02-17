@@ -183,11 +183,11 @@
                                           </li>
                                       <?php } ?>
 
-                                      <?php if (!empty($_SESSION['permisos'][71]['r'])) { ?>
+                                      <?php /* if (!empty($_SESSION['permisos'][71]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_asignacionesinventario" class="nav-link" data-key="t-detached">Asignaciones de inventario</a>
                                           </li>
-                                      <?php } ?>
+                                      <?php } */?>
 
                                       <?php if (!empty($_SESSION['permisos'][23]['r'])) { ?>
                                           <li class="nav-item">
@@ -240,6 +240,12 @@
                                       <?php if (!empty($_SESSION['permisos'][17]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_precios" class="nav-link" data-key="t-detached">Precios</a>
+                                          </li>
+                                      <?php } ?>
+
+                                      <?php if (!empty($_SESSION['permisos'][71]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/inv_series" class="nav-link" data-key="t-detached">Series</a>
                                           </li>
                                       <?php } ?>
 
