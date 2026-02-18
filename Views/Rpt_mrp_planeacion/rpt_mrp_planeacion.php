@@ -29,7 +29,7 @@
         <small class="text-muted">Detalle por Sub-OT / Estación, estándar vs real, eficiencia, en-tiempo, calidad.</small>
       </div>
 
-      <div class="d-flex flex-wrap gap-2">
+      <!-- <div class="d-flex flex-wrap gap-2">
 
         <button class="btn btn-soft-primary" id="btnVerConfigProducto" type="button">
           <i class="ri-settings-3-line me-1"></i> Ver configuración de producto
@@ -39,11 +39,7 @@
           <i class="ri-file-pdf-2-line me-1"></i> Ver planeación terminada (PDF)
         </button>
 
-
-
-
-
-      </div>
+      </div> -->
     </div>
   </div>
 </div>
@@ -83,9 +79,18 @@
           <button class="btn btn-soft-secondary" id="btnLimpiar">
             <i class="ri-eraser-line me-1"></i> Limpiar
           </button>
-          <button class="btn btn-soft-success" id="btnExportar">
+          <!-- <button class="btn btn-soft-success" id="btnExportar">
             <i class="ri-file-excel-2-line me-1"></i> Exportar (después)
-          </button>
+          </button> -->
+
+          <button id="btnExcel" class="btn btn-success">
+  <i class="ri-file-excel-2-line me-1"></i> Excel
+</button>
+
+<button id="btnPdf" class="btn btn-danger">
+  <i class="ri-file-pdf-2-line me-1"></i> PDF
+</button>
+
         </div>
       </div>
 

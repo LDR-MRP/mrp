@@ -514,6 +514,40 @@ public function getCostosDetalle($f): array
 
 
 
+    public function getReporteCompleto($f){
+ 
+        $info = $this->getInfoPlaneacion($f['planeacionid']);
+
+        return [
+            'info'          => $info,
+            'kpis'          => $this->getKpis($f),
+            'detalle'       => $this->getDetalle($f),
+            'resumen'       => $this->getResumenSubOt($f),
+            'encargados'    => $this->getEncargados($f),
+            'calidad'       => $this->getCalidadEstacion($f),
+            'costo_total'   => $this->getCostoTotalPlaneacion($f),
+            'costos_estacion'=> $this->getCostosEstacion($f),
+            'costos_detalle'=> $this->getCostosDetalle($f),
+            'filtros'       => $f
+        ];
+    }
+
+    private function getInfoPlaneacion($planeacionid){
+        $planeacionid = (int)$planeacionid;
+        $sql = "SELECT 
+                    p.idplaneacion AS planeacionid,
+                    p.num_orden,
+                    pr.descripcion AS producto,
+                    CONCAT(u.nombres,' ',u.apellidos) AS supervisor
+                FROM mrp_planeacion p
+                INNER JOIN mrp_productos pr ON pr.idproducto = p.productoid
+                INNER JOIN usuarios u ON u.idusuario = p.supervisorid
+                WHERE p.idplaneacion = {$planeacionid}
+                LIMIT 1";
+        return $this->select($sql);
+    }
+
+
 
 	}
  ?>

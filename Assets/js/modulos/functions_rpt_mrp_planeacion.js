@@ -94,6 +94,7 @@
     return j.data;
   }
 
+
   function buildParams(){
     const params = new URLSearchParams();
     if($('planeacionid')?.value) params.set('planeacionid', $('planeacionid').value);
@@ -102,6 +103,86 @@
     if($('q')?.value?.trim()) params.set('q', $('q').value.trim());
     return params.toString();
   }
+
+  function requirePlaneacion(){
+  const val = $('planeacionid')?.value?.trim();
+  if(!val){
+    Swal.fire({
+      icon: 'warning',
+      title: 'Falta planeación',
+      text: 'Tienes que seleccionar una planeación para generar un reporte.',
+      confirmButtonText: 'Entendido',
+    });
+    return false;
+  }
+  return true;
+}
+
+let __loadingTimer = null;
+
+function showLoading(titulo = 'Generando reporte...'){
+  if(!window.Swal) return;
+
+  Swal.fire({
+    title: titulo,
+    html: 'Por favor espera un momento.',
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    didOpen: () => {
+      Swal.showLoading();
+    }
+  });
+
+ 
+  clearTimeout(__loadingTimer);
+  __loadingTimer = setTimeout(() => {
+    hideLoading();
+  }, 2500);
+}
+
+function hideLoading(){
+  clearTimeout(__loadingTimer);
+  __loadingTimer = null;
+  if(window.Swal && Swal.isVisible()) Swal.close();
+}
+
+
+function downloadFile(path){
+  if(!requirePlaneacion()) return;
+
+  const qs = buildParams();
+  const url = `${baseUrl}/rpt_mrp_planeacion/${path}${qs ? `?${qs}` : ''}`;
+
+  const title = (path === 'exportExcel') ? 'Generando Excel...' : 'Generando PDF...';
+  showLoading(title);
+
+
+  const w = window.open(url, '_blank');
+  if(!w){
+    hideLoading();
+    Swal.fire({
+      icon: 'error',
+      title: 'Popup bloqueado',
+      text: 'Tu navegador bloqueó la descarga. Permite ventanas emergentes para este sitio e inténtalo de nuevo.',
+    });
+    return;
+  }
+
+
+  const onFocusBack = () => {
+    hideLoading();
+    window.removeEventListener('focus', onFocusBack);
+  };
+  window.addEventListener('focus', onFocusBack);
+
+
+  setTimeout(() => hideLoading(), 2000);
+}
+
+
+$('btnExcel')?.addEventListener('click', () => downloadFile('exportExcel'));
+$('btnPdf')?.addEventListener('click', () => downloadFile('exportPdf'));
+
 
   async function loadPlaneaciones(){
     const data = await fetchJSON(`${baseUrl}/rpt_mrp_planeacion/getPlaneaciones`);
@@ -114,7 +195,7 @@
 
 async function loadCostoTotalPlaneacion(){
   const qs = buildParams();
-  // para total SÍ necesitas planeacionid, si no hay, limpia
+
   if(!$('planeacionid')?.value){
     $('kpi_costo_total').textContent = '$—';
     return;

@@ -5,6 +5,14 @@
     require 'Libraries/phpmailer/PHPMailer.php';
     require 'Libraries/phpmailer/SMTP.php';
 
+      require "Libraries/vendor/autoload.php";
+
+    //   require_once dirname(__DIR__) . '/Libraries/vendor/autoload.php';
+
+    // require_once __DIR__ . '/../Libraries/vendor/autoload.php';
+    use PhpOffice\PhpSpreadsheet\Spreadsheet;
+    use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
 	//Retorla la url del proyecto
 	function base_url()
 	{
