@@ -768,6 +768,7 @@ async function loadDescriptivaForProducto() {
   const inputSistemaElectrico = formConfDescriptiva.querySelector('#txtSistemaElectrico');
   const inputCapCombustible = formConfDescriptiva.querySelector('#txtCapacidadCombustible');
   const inputDireccion = formConfDescriptiva.querySelector('#txtDireccion');
+    const inputNorma = formConfDescriptiva.querySelector('#txtNorma');
   const inputEquipamiento = formConfDescriptiva.querySelector('#txtEquipamiento');
 
   if (inputMarca) inputMarca.value = d.marca ?? '';
@@ -792,6 +793,7 @@ async function loadDescriptivaForProducto() {
   if (inputSistemaElectrico) inputSistemaElectrico.value = d.sistema_electrico ?? '';
   if (inputCapCombustible) inputCapCombustible.value = d.capacidad_combustible ?? '';
   if (inputDireccion) inputDireccion.value = d.direccion ?? '';
+    if (inputNorma) inputNorma.value = d.norma ?? '';
   if (inputEquipamiento) inputEquipamiento.value = d.equipamiento ?? '';
 
   if (btnSubmitDes) btnSubmitDes.textContent = 'ACTUALIZAR';

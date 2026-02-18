@@ -69,6 +69,7 @@ const MPBOMCONTROL = 7;
 const MPPRODUCTOSTERMINADOS = 8;
 const MPPLANPRODUCCION = 9;
 const MPORDENES = 10;
+const MPINDICADORESOT = 11;
 
 //Submodulos inventario
 const MILPRODUCTO = 16;

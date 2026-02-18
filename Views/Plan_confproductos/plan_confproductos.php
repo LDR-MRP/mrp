@@ -573,11 +573,11 @@
                                                 <div class="col-lg-4 col-sm-6">
                                                     <div class="mb-3">
                                                         <label class="form-label"
-                                                            for="txtDesplazamiento">Desplazamiento</label>
+                                                            for="txtDesplazamiento">Peso chasis cabina</label>
                                                         <div class="input-group mb-3">
-                                                            <span class="input-group-text">Des</span>
+                                                            <span class="input-group-text">Peso</span>
                                                             <input type="text" class="form-control"
-                                                                placeholder="Ej: 1.6L" id="txtDesplazamiento"
+                                                                placeholder="Ej: 2,400 kgs" id="txtDesplazamiento"
                                                                 name="txtDesplazamiento" required>
                                                             <div class="invalid-feedback">El desplazamiento es
                                                                 obligatorio</div>
@@ -807,8 +807,25 @@
 
                                             <!-- Dirección / Equipamiento -->
                                             <div class="row">
+
+                                                                                        <!-- Dirección -->
+                                                <div class="col-lg-3"> 
+                                                    <div class="mb-3">
+                                                        <label class="form-label" for="txtNorma">Norma de emisiones</label>
+                                                        <div class="input-group mb-3">
+                                                            <span class="input-group-text">Dir</span>
+                                                            <input type="text" class="form-control"
+                                                                placeholder="Ej: Euro6" id="txtNorma"
+                                                                name="txtNorma" required>
+                                                            <div class="invalid-feedback">La norma de emisiones es obligatorio
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+
                                                 <!-- Dirección -->
-                                                <div class="col-lg-6">
+                                                <div class="col-lg-3">
                                                     <div class="mb-3">
                                                         <label class="form-label" for="txtDireccion">Dirección</label>
                                                         <div class="input-group mb-3">

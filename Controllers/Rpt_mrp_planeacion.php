@@ -17,7 +17,11 @@ class Rpt_mrp_planeacion extends Controllers
       header('Location: ' . base_url() . '/login');
       die();
     }
+
+     getPermisos(MPINDICADORESOT);
   }
+
+  
 
   public function Rpt_mrp_planeacion()
   {

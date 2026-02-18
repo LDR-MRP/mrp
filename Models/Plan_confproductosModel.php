@@ -24,6 +24,7 @@ class Plan_confproductosModel extends Mysql
 	public $strfecha_creacion;
 	public $strip;
 	public $strDetalle;
+    public $strNorma;
 
 	//////////////////////
 	//DESRIPTIVA
@@ -357,6 +358,7 @@ public function selectProducto(int $productoid)
 		$asistencias,
 		$sistema_electrico,
 		$capacidad_combustible,
+        $norma,
 		$direccion,
 		$equipamiento,
 		$fecha_creacion
@@ -387,6 +389,7 @@ public function selectProducto(int $productoid)
 		$this->strAsistencias = $asistencias;
 		$this->strSistemaElectrico = $sistema_electrico;
 		$this->strCapacidadCombustible = $capacidad_combustible;
+        $this->strNorma = $norma;
 		$this->strDireccion = $direccion;
 		$this->strEquipamiento = $equipamiento;
 		$this->strFecha = $fecha_creacion;
@@ -396,8 +399,8 @@ public function selectProducto(int $productoid)
         productoid, marca, modelo, largo_total, distancia_ejes, peso_bruto_vehicular,
         motor, cilindros, desplazamiento_c, tipo_combustible, potencia, torque, transmision,
         eje_delantero, suspension_delantera, eje_trasero, suspension_trasera, llantas, sistema_frenos,
-        asistencias, sistema_electrico, capacidad_combustible, direccion, equipamiento, fecha_creacion
-    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        asistencias, sistema_electrico, capacidad_combustible, norma, direccion, equipamiento, fecha_creacion
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
 
 		$arrData = array(
@@ -423,6 +426,7 @@ public function selectProducto(int $productoid)
 			$this->strAsistencias,
 			$this->strSistemaElectrico,
 			$this->strCapacidadCombustible,
+            $this->strNorma,
 			$this->strDireccion,
 			$this->strEquipamiento,
 			$this->strFecha
@@ -460,6 +464,7 @@ public function selectProducto(int $productoid)
 		$asistencias,
 		$sistema_electrico,
 		$capacidad_combustible,
+        $norma,
 		$direccion,
 		$equipamiento
 	) {
@@ -485,13 +490,14 @@ public function selectProducto(int $productoid)
 		$this->strAsistencias = $asistencias;
 		$this->strSistemaElectrico = $sistema_electrico;
 		$this->strCapacidadCombustible = $capacidad_combustible;
+        $this->strNorma = $norma;
 		$this->strDireccion = $direccion;
 		$this->strEquipamiento = $equipamiento;
 
 		$sql = "UPDATE mrp_productos_descriptiva SET marca=?, modelo=?, largo_total=?, distancia_ejes=?, peso_bruto_vehicular=?,
         motor=?, cilindros=?, desplazamiento_c=?, tipo_combustible=?, potencia=?, torque=?, transmision=?,
         eje_delantero=?, suspension_delantera=?, eje_trasero=?, suspension_trasera=?, llantas=?, sistema_frenos=?,
-        asistencias=?, sistema_electrico=?, capacidad_combustible=?, direccion=?, equipamiento=? WHERE iddescriptiva = $this->intDescriptiva";
+        asistencias=?, sistema_electrico=?, capacidad_combustible=?, norma=?, direccion=?, equipamiento=? WHERE iddescriptiva = $this->intDescriptiva";
 
 		$arrData = array(
 			$this->strMarca,
@@ -515,6 +521,7 @@ public function selectProducto(int $productoid)
 			$this->strAsistencias,
 			$this->strSistemaElectrico,
 			$this->strCapacidadCombustible,
+            $this->strNorma,
 			$this->strDireccion,
 			$this->strEquipamiento
 		);

@@ -442,6 +442,7 @@ class Plan_confproductos extends Controllers
 				$asistencias = strClean($_POST['txtAsistencias']);
 				$sistema_electrico = strClean($_POST['txtSistemaElectrico']);
 				$capacidad_combustible = strClean($_POST['txtCapacidadCombustible']);
+				$norma = strClean($_POST['txtNorma']);
 				$direccion = strClean($_POST['txtDireccion']);
 				$equipamiento = strClean($_POST['txtEquipamiento']);
 
@@ -476,6 +477,7 @@ class Plan_confproductos extends Controllers
 						$asistencias,
 						$sistema_electrico,
 						$capacidad_combustible,
+						$norma,
 						$direccion,
 						$equipamiento,
 						$fecha_creacion
@@ -510,6 +512,7 @@ class Plan_confproductos extends Controllers
 						$asistencias,
 						$sistema_electrico,
 						$capacidad_combustible,
+						$norma,
 						$direccion,
 						$equipamiento,
 					 );

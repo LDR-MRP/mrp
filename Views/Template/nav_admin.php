@@ -135,19 +135,24 @@
                                           </li>
                                       <?php } ?> -->
 
+                                      <?php if (!empty($_SESSION['permisos'][11]['r']) ) { ?>
 
-                                         <!-- <li class="nav-item">
+                                        <li class="nav-item">
                                         <a href="#sidebarTickets" class="nav-link" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarTickets" data-key="t-supprt-tickets"> Reportes
                                         </a>
                                         <div class="collapse menu-dropdown" id="sidebarTickets">
                                             <ul class="nav nav-sm flex-column">
+
+                                             <?php if (!empty($_SESSION['permisos'][11]['r'])) { ?>
                                                 <li class="nav-item">
-                                                    <a href="<?= base_url(); ?>/rpt_mrp_planeacion" class="nav-link" data-key="t-list-view"> Planeación </a>
+                                                    <a href="<?= base_url(); ?>/rpt_mrp_planeacion" class="nav-link" data-key="t-list-view"> Indicadores OT </a>
                                                 </li>
-                                     
+                                             <?php } ?> 
                                             </ul>
                                         </div>
-                                    </li> -->
+                                    </li>
+
+                                       <?php } ?> 
                                   </ul>
                               </div>
                           </li> <!-- end plan maestro Menu -->
