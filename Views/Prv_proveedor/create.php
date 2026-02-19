@@ -1,4 +1,8 @@
-<?php headerAdmin($data); ?>
+<?php
+    headerAdmin($data);
+    $isEdit = !empty($data['supplier']);
+    $p = $isEdit ? $data['supplier'] : [];
+?>
 
 <div class="main-content">
     <div class="page-content">
@@ -23,13 +27,13 @@
                     <div class="col-12">
                         <div class="d-flex align-items-center">
                             <div class="avatar-md me-3">
-                                <span class="avatar-title bg-primary text-white rounded-circle fs-3 shadow-lg">
-                                    <i class="ri-user-add-line"></i>
+                                <span class="avatar-title <?= $isEdit ? 'bg-warning' : 'bg-primary' ?> text-white rounded-circle fs-3 shadow-lg">
+                                    <i class="<?= $data['page_icon'] ?>"></i>
                                 </span>
                             </div>
                             <div>
-                                <h4 class="mb-1 text-dark fw-bold ls-05">Nuevo Proveedor</h4>
-                                <p class="text-muted mb-0 fs-13">Complete la información fiscal y comercial para dar de alta al socio.</p>
+                                <h4 class="mb-1 text-dark fw-bold ls-05"><?= $data['page_action'] ?></h4>
+                                <p class="text-muted mb-0 fs-13"><?= $data['page_description'] ?></p>
                             </div>
                         </div>
                     </div>
@@ -49,30 +53,44 @@
                                         <div class="col-12">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Razón Social / Nombre Legal <span class="text-danger">*</span></label>
                                             <input type="text" name="razon_social" class="form-control form-control-lg bg-light border-0"
-                                                placeholder="Ej. Distribuidora de Insumos del Norte S.A. de C.V.">
+                                                placeholder="Ej. Distribuidora de Insumos del Norte S.A. de C.V."
+                                                value="<?= $isEdit ? $p['razon_social'] : '' ?>">
                                         </div>
 
-                                        <div class="col-md-6">
+                                        <div class="col-md-4">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">RFC <span class="text-danger">*</span></label>
                                             <div class="input-group">
                                                 <span class="input-group-text bg-white border-end-0 text-muted"><i class="ri-barcode-line"></i></span>
-                                                <input type="text" name="rfc" class="form-control border-start-0 ps-0" placeholder="XAXX010101000" maxlength="13" style="text-transform: uppercase;">
+                                                <input type="text" name="rfc" class="form-control border-start-0 ps-0"
+                                                placeholder="XAXX010101000" maxlength="13" style="text-transform: uppercase;"
+                                                value="<?= $isEdit ? $p['rfc'] : '' ?>" <?= $isEdit ? 'readonly' : '' ?>>
                                             </div>
                                         </div>
 
-                                        <div class="col-md-6">
+                                        <div class="col-md-4">
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Tipo de Persona <span class="text-danger">*</span></label>
+                                            <select name="tipo_persona" id="tipo_persona" class="form-select mb-3">
+                                                <option value="1" <?= ($isEdit && $p['tipo_persona'] == '1') ? 'selected' : '' ?>>Física</option>
+                                                <option value="2" <?= ($isEdit && $p['tipo_persona'] == '2') ? 'selected' : '' ?>>Moral</option>
+                                                <option value="3" <?= ($isEdit && $p['tipo_persona'] == '3') ? 'selected' : '' ?>>Física con Actividad Empresarial</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="col-md-4">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Clave Interna <span class="text-danger">*</span></label>
                                             <div class="input-group">
                                                 <span class="input-group-text bg-white border-end-0 text-muted"><i class="ri-key-2-line"></i></span>
-                                                <input type="text" name="clv_proveedor" class="form-control border-start-0 ps-0" placeholder="Auto o Manual (Ej: PRV-001)">
+                                                <input type="text" name="clv_proveedor" class="form-control border-start-0 ps-0" 
+                                                       value="<?= $isEdit ? $p['clv_proveedor'] : '' ?>">
                                             </div>
                                         </div>
 
                                         <div class="col-12">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Nombre Comercial (Marca)</label>
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Nombre Comercial (Marca) <span class="text-danger">*</span></label>
                                             <div class="input-group">
                                                 <span class="input-group-text bg-white border-end-0 text-muted"><i class="ri-store-2-line"></i></span>
-                                                <input type="text" name="nombre_comercial" class="form-control border-start-0 ps-0" placeholder="¿Cómo se conoce en el mercado?">
+                                                <input type="text" name="nombre_comercial" class="form-control border-start-0 ps-0" 
+                                                       value="<?= $isEdit ? $p['nombre_comercial'] : '' ?>">
                                             </div>
                                         </div>
                                     </div>
@@ -87,29 +105,34 @@
 
                                     <div class="row g-4">
                                         <div class="col-md-6">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Persona de Contacto</label>
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Persona de Contacto <span class="text-danger">*</span></label>
                                             <div class="input-group">
                                                 <span class="input-group-text bg-white border-end-0 text-muted"><i class="ri-user-star-line"></i></span>
-                                                <input type="text" name="contacto" class="form-control border-start-0 ps-0" placeholder="Nombre del representante">
+                                                <input type="text" name="contacto" class="form-control" value="<?= $isEdit ? $p['contacto'] : '' ?>">
                                             </div>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Teléfono</label>
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Teléfono <span class="text-danger">*</span></label>
                                             <div class="input-group">
                                                 <span class="input-group-text bg-white border-end-0 text-muted"><i class="ri-phone-line"></i></span>
-                                                <input type="text" name="telefono" class="form-control border-start-0 ps-0" placeholder="(000) 000-0000">
+                                                <input type="text" name="telefono" id="telefono" class="form-control" value="<?= $isEdit ? $p['telefono'] : '' ?>">
                                             </div>
                                         </div>
                                         <div class="col-md-12">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Correo Electrónico</label>
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Correo Electrónico <span class="text-danger">*</span></label>
                                             <div class="input-group">
                                                 <span class="input-group-text bg-white border-end-0 text-muted"><i class="ri-mail-send-line"></i></span>
-                                                <input type="email" name="correo_electronico" class="form-control border-start-0 ps-0" placeholder="facturacion@empresa.com">
+                                                <input type="email" name="correo_electronico" class="form-control border-start-0 ps-0"
+                                                placeholder="facturacion@empresa.com"
+                                                value="<?= $isEdit ? $p['correo_electronico'] : '' ?>">
                                             </div>
                                         </div>
                                         <div class="col-md-12">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Dirección Fiscal Completa</label>
-                                            <textarea name="direccion_fiscal" class="form-control" rows="3" placeholder="Calle, Número, Colonia, Ciudad, Estado, CP" style="resize: none;"></textarea>
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Dirección Fiscal Completa <span class="text-danger">*</span></label>
+                                            <textarea name="direccion_fiscal" class="form-control" rows="3"
+                                                placeholder="Calle, Número, Colonia, Ciudad, Estado, CP" style="resize: none;">
+                                                <?= $isEdit ? $p['direccion_fiscal'] : '' ?>
+                                            </textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -123,7 +146,7 @@
 
                                     <div class="row g-4">
                                         <div class="col-md-4">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Moneda Default</label>
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Moneda Default <span class="text-danger">*</span></label>
                                             <select name="idmoneda_predeterminada" class="form-select mb-3">
                                                 <option value="1">MXN - Peso Mexicano</option>
                                                 <option value="2">USD - Dólar Americano</option>
@@ -131,22 +154,25 @@
                                             </select>
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Límite de Crédito</label>
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Límite de Crédito <span class="text-danger">*</span></label>
                                             <div class="input-group">
                                                 <span class="input-group-text bg-light fw-bold">$</span>
-                                                <input type="number" step="0.01" name="limite_credito" class="form-control text-end fw-bold" value="0.00">
+                                                <input type="number" step="0.01" name="limite_credito" class="form-control text-end fw-bold"
+                                                value="<?= $isEdit ? $p['limite_credito'] : '0.00' ?>">
                                             </div>
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Días Crédito</label>
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Días Crédito <span class="text-danger">*</span></label>
                                             <div class="input-group">
-                                                <input type="number" name="dias_credito" class="form-control text-center" value="0">
+                                                <input type="number" name="dias_credito" class="form-control text-center"
+                                                value="<?= $isEdit ? $p['dias_credito'] : '0' ?>">
                                                 <span class="input-group-text bg-light fs-12">Días</span>
                                             </div>
                                         </div>
                                         <div class="col-12">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Método de Pago Preferido</label>
-                                            <input type="text" name="metodo_pago_predeterminado" class="form-control" placeholder="Ej: Transferencia Electrónica (PPD)">
+                                            <input type="text" name="metodo_pago_predeterminado" class="form-control" placeholder="Ej: Transferencia Electrónica (PPD)"
+                                            value="<?= $isEdit ? $p['metodo_pago_predeterminado'] : '' ?>">
                                         </div>
                                     </div>
                                 </div>
@@ -162,7 +188,8 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="form-check form-switch form-switch-lg mb-3" dir="ltr">
-                                        <input type="checkbox" class="form-check-input" id="customSwitchsizelg" checked="">
+                                        <input type="checkbox" class="form-check-input" name="estatus" id="estatus_switch" 
+                                               <?= (!$isEdit || $p['estatus'] == '2') ? 'checked' : '' ?>>
                                         <label class="form-check-label fw-medium" for="customSwitchsizelg">Proveedor Activo</label>
                                         <p class="text-muted fs-11 mb-0">Desactivar para bloquear compras.</p>
                                     </div>
@@ -173,7 +200,7 @@
                                         <button type="submit" class="btn btn-primary btn-lg shadow-sm waves-effect waves-light">
                                             <i class="ri-save-line align-middle me-1"></i> Guardar Cambios
                                         </button>
-                                        <button type="button" class="btn btn-light btn-label waves-effect waves-light" data-redirect="prv_proveedores">
+                                        <button type="button" class="btn btn-light btn-label waves-effect waves-light" data-redirect="prv_proveedor">
                                             <i class="ri-arrow-go-back-line label-icon align-middle fs-16 me-2"></i> Cancelar y Volver
                                         </button>
                                     </div>
@@ -216,145 +243,11 @@
 
                         </div>
                     </div>
+                    <?php if($isEdit): ?>
+                        <input type="hidden" name="idproveedor" value="<?= $p['idproveedor'] ?>">
+                    <?php endif; ?>
                 </form>
             </section>
-            <div class="row">
-                <div class="col-12">
-                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0 text-uppercase"><i class="ri-user-add-line align-bottom"></i> Nuevo Proveedor
-                        </h4>
-                        <div class="page-title-right">
-                            <ol class="breadcrumb m-0">
-                                <li class="breadcrumb-item"><a href="<?= base_url(); ?>/prv_proveedores">Proveedores</a>
-                                </li>
-                                <li class="breadcrumb-item active">Nuevo</li>
-                            </ol>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-lg-12">
-                    <form id="formProveedor" autocomplete="off">
-                        <div class="card shadow-sm border-0">
-                            <div class="card-header border-bottom-dashed">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-grow-1">
-                                        <h5 class="card-title mb-0 text-primary">
-                                            <i class="ri- Government-line me-1"></i> Información Fiscal y General
-                                        </h5>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="row g-3">
-                                    <div class="col-md-3">
-                                        <label class="form-label fw-bold">Clave Proveedor <span
-                                                class="text-danger">*</span></label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="ri-key-2-line"></i></span>
-                                            <input type="text" name="clv_proveedor" class="form-control"
-                                                placeholder="Ej: PROV-001">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label fw-bold">RFC <span class="text-danger">*</span></label>
-                                        <input type="text" name="rfc" class="form-control"
-                                            placeholder="RFC de 12 o 13 dígitos" maxlength="13">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-bold">Razón Social <span
-                                                class="text-danger">*</span></label>
-                                        <input type="text" name="razon_social" class="form-control"
-                                            placeholder="Nombre legal completo">
-                                    </div>
-
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-bold">Nombre Comercial</label>
-                                        <input type="text" name="nombre_comercial" class="form-control"
-                                            placeholder="Nombre de marca">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-bold">Contacto (Atención a)</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="ri-user-star-line"></i></span>
-                                            <input type="text" name="contacto" class="form-control"
-                                                placeholder="Nombre de la persona">
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-4">
-                                        <label class="form-label fw-bold">Correo Electrónico</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="ri-mail-line"></i></span>
-                                            <input type="email" name="correo_electronico" class="form-control"
-                                                placeholder="ejemplo@proveedor.com">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label fw-bold">Teléfono</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="ri-phone-line"></i></span>
-                                            <input type="text" name="telefono" class="form-control"
-                                                placeholder="Número de contacto">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-12">
-                                        <label class="form-label fw-bold text-muted">Dirección Fiscal</label>
-                                        <textarea name="direccion_fiscal" class="form-control" rows="2"
-                                            placeholder="Calle, número, colonia, CP..."></textarea>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card shadow-sm border-0 mt-3">
-                            <div class="card-header border-bottom-dashed">
-                                <h5 class="card-title mb-0 text-success">
-                                    <i class="ri-bank-card-line me-1"></i> Condiciones Comerciales
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row g-3">
-                                    <div class="col-md-3">
-                                        <label class="form-label fw-bold">Límite de Crédito</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text">$</span>
-                                            <input type="number" step="0.01" name="limite_credito" class="form-control"
-                                                value="0.00">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label fw-bold">Días de Crédito</label>
-                                        <input type="number" name="dias_credito" class="form-control" value="0">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label fw-bold">Moneda Predeterminada</label>
-                                        <select name="idmoneda_predeterminada" class="form-select">
-                                            <option value="1">MXN - Peso Mexicano</option>
-                                            <option value="2">USD - Dólar Americano</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label fw-bold">Método de Pago</label>
-                                        <input type="text" name="metodo_pago_predeterminado" class="form-control"
-                                            placeholder="Transferencia, PPD, etc.">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-footer bg-light d-flex justify-content-end p-3">
-                                <button type="button" class="btn btn-light border me-2" data-redirect="prv_proveedores">
-                                    <i class="ri-close-line"></i> Cancelar
-                                </button>
-                                <button type="submit" class="btn btn-primary px-4">
-                                    <i class="ri-save-3-line"></i> Guardar Proveedor
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
         </div>
         <!-- container-fluid -->
     </div>

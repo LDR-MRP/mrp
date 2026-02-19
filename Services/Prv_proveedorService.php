@@ -19,17 +19,20 @@ class Prv_proveedorService
         $db->beginTransaction();
 
         try {
-
             $proveedorStoreRequest = new Prv_proveedorStoreRequest($data);
             $proveedorStoreRequest->validate();
             $validated = $proveedorStoreRequest->all();
 
+            if ($validated['idproveedor']) {
+                $this->model->updateData($validated);
+                $this->model->logAudit($validated['idproveedor'], 'ACTUALIZACIÓN', "Se actualizó el proveedor con RFC: {$data['rfc']}", $_SESSION['idUser']);
+                $db->commit();
+                return ServiceResponse::success(data: ['id' => $validated['idproveedor']], message: "Proveedor actualizado con éxito.");
+            }
+
             $id = $this->model->save($validated);
             if (!$id) throw new \Exception("No se pudo registrar el proveedor.");
-
-            // Auditoría automática
-            // $this->model->logAudit($id, 'CREACIÓN', "Se registró el proveedor con RFC: {$data['rfc']}");
-
+            $this->model->logAudit($id, 'CREACIÓN', "Se registró el proveedor con RFC: {$data['rfc']}", $_SESSION['idUser']);
             $db->commit();
             return ServiceResponse::success(data: ['id' => $id], message: "Proveedor creado con éxito.");
         } catch (\InvalidArgumentException $e) {
@@ -41,19 +44,8 @@ class Prv_proveedorService
         }
     }
 
-    public function changeState(int $id, int $newState, string $reason): ServiceResponse
+    public function getKpi()
     {
-        DB::beginTransaction();
-        try {
-            $actions = [0 => 'ELIMINACIÓN', 1 => 'DESACTIVACIÓN', 2 => 'ACTIVACIÓN'];
-            $this->model->updateStatus($id, $newState);
-            $this->model->logAudit($id, $actions[$newState], $reason);
-
-            DB::commit();
-            return ServiceResponse::success(message: "Estado actualizado.");
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return ServiceResponse::error(message: $e->getMessage());
-        }
+        return ServiceResponse::success($this->model->getKpi());
     }
 }

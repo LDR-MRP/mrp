@@ -16,19 +16,18 @@ class Com_requisicion extends Controllers
         getPermisos(COM_COMPRAS);
 
         $this->requisitionService = new Com_requisicionService;
-        $this->requisitionService->model = $this->model;
         $this->usuariosModel = new UsuariosModel;
     }
 
     public function Com_requisicion() {
         $this->views->getView(
             $this,
-            "../Com_compras/com_requisicion",
+            "../Com_requisiciones/index",
             [
-                'page_tag' => "Requisiciones",
-                'page_title' => "Requisiciones",
-                'page_name' => "Requisiciones",
-                'page_functions_js' => "functions_com_requisiciones.js",
+                'page_tag' => "Bandeja de Requisiciones",
+                'page_title' => "Bandeja de Requisiciones",
+                'page_name' => "Bandeja de Requisiciones",
+                'page_functions_js' => "functions_com_requisiciones_index.js",
 
             ]
         );
@@ -37,7 +36,7 @@ class Com_requisicion extends Controllers
     public function create() {
         $this->views->getView(
             $this,
-            "../Com_compras/com_requisicion_create",
+            "../Com_requisiciones/create",
             [
                 'page_tag' => "Nueva Requisición",
                 'page_title' => "Nueva Requisición",
@@ -50,15 +49,15 @@ class Com_requisicion extends Controllers
         );
     }
 
-    public function detalle(mixed $id) {
+    public function read(mixed $id) {
         $this->views->getView(
             $this,
-            "../Com_compras/com_requisicion_detalle",
+            "../Com_requisiciones/read",
             [
                 'page_tag' => "Detalle de Requisición",
                 'page_title' => "Detalle de Requisición",
                 'page_name' => "Detalle de Requisición",
-                'page_functions_js' => "functions_com_requisiciones_detalle.js",
+                'page_functions_js' => "functions_com_requisiciones_read.js",
             ]
         );
     }

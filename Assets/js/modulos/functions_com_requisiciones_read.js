@@ -167,7 +167,7 @@ $(document).ready(function () {
      */
     function _getRequisitionId() {
         const segments = location.pathname.split('/').filter(Boolean);
-        const detailIndex = segments.indexOf('detalle');
+        const detailIndex = segments.indexOf('read');
         return detailIndex !== -1 && segments[detailIndex + 1] ? segments[detailIndex + 1] : null;
     }
 

@@ -2,11 +2,9 @@
 
 class Com_requisicionService
 {
-    public $model;
+    public $requisitionModel;
 
     protected $stockModel;
-
-    protected $requisitionDetailModel;
 
     protected $logAuditModel;
 
@@ -17,7 +15,7 @@ class Com_requisicionService
     public function __construct()
     {
         $this->stockModel = new Inv_inventarioModel;
-        $this->requisitionDetailModel = new Com_requisicionDetalleModel;
+        $this->requisitionModel = new Com_requisicionModel;
         $this->logAuditModel = new LogAuditModel;
     }
 
@@ -34,7 +32,7 @@ public function index(array $filters = [])
         }
 
         return ServiceResponse::success(
-            $this->model->requisitions($filters),
+            $this->requisitionModel->requisitions($filters),
             'Datos obtenidos correctamente.',
             200
         );
@@ -43,7 +41,7 @@ public function index(array $filters = [])
     public function requisition(int $id)
     {
         return ServiceResponse::success(
-            $this->model->requisition($id),
+            $this->requisitionModel->requisition($id),
             'Datos obtenidos correctamente.',
             200
         );
@@ -51,9 +49,9 @@ public function index(array $filters = [])
 
     public function detail(int $id)
     {
-        $requisition = $this->model->requisition($id);
-        $partidas = $this->requisitionDetailModel->details($id);
-        $bitacora = $this->logAuditModel->list(['nombre_tabla' => $this->model->getTableName(), 'resource_id' => $id]);
+        $requisition = $this->requisitionModel->requisition($id);
+        $partidas = $this->requisitionModel->details($id);
+        $bitacora = $this->logAuditModel->list(['nombre_tabla' => $this->requisitionModel->getTableName(), 'resource_id' => $id]);
 
         // cálculos
         $requisition['partidas'] = array_map(function ($item) {
@@ -92,11 +90,11 @@ public function index(array $filters = [])
 
             $validated = $this->requisitionStoreRequest->all();
 
-            $db = $this->model->getConexion();
+            $db = $this->requisitionModel->getConexion();
 
             $db->beginTransaction();
 
-            $requisitionId = $this->model->create($validated, $_SESSION['idUser']);
+            $requisitionId = $this->requisitionModel->create($validated, $_SESSION['idUser']);
 
             if ($requisitionId <= 0) {
                 throw new Exception('Error al registrar la cabecera de la requisición.', 500);
@@ -109,10 +107,10 @@ public function index(array $filters = [])
 
                 $item['precio_unitario_estimado'] = $stockItem['ultimo_costo'];
 
-                $this->requisitionDetailModel->detailCreate($requisitionId, $item);
+                $this->requisitionModel->detailCreate($requisitionId, $item);
             }
             
-            $this->model->logAudit($requisitionId, 'creación', $validated['justificacion'], $userId);
+            $this->requisitionModel->logAudit($requisitionId, 'creación', $validated['justificacion'], $userId);
 
             $db->commit();
 
@@ -140,7 +138,7 @@ public function index(array $filters = [])
 
     public function changeStatus(array $data, string $status)
     {
-        $db = $this->model->getConexion();
+        $db = $this->requisitionModel->getConexion();
         $db->beginTransaction();
 
         try {
@@ -149,13 +147,13 @@ public function index(array $filters = [])
             }
 
             $this->requisitionStatusRequest = new Com_requisicionStatusRequest($data);
-            $this->requisitionStatusRequest->model = $this->model;
+            $this->requisitionStatusRequest->model = $this->requisitionModel;
             $this->requisitionStatusRequest->validate();
             $validated = $this->requisitionStatusRequest->all();
 
             $processor = Com_requisicionFactory::make($status);
             $requisition = $processor->execute(
-                $this->model,
+                $this->requisitionModel,
                 $requisitionId = $validated['idrequisicion'],
                 $status,
                 $userId
@@ -165,7 +163,7 @@ public function index(array $filters = [])
                 throw new \Exception("La operación de {$processor->getLogAction()} falló en el modelo.");
             }
 
-            $this->model->logAudit($requisitionId, $processor->getLogAction(), $validated['comentario'], $userId);
+            $this->requisitionModel->logAudit($requisitionId, $processor->getLogAction(), $validated['comentario'], $userId);
 
             $db->commit();
 
@@ -173,7 +171,7 @@ public function index(array $filters = [])
                 [
                     'requisicion_id' => $requisitionId,
                 ],
-                'Requisición procesada. Nuevo estado: '.strtoupper($this->model::ESTATUS_APROBADA),
+                'Requisición procesada. Nuevo estado: '.strtoupper($this->requisitionModel::ESTATUS_APROBADA),
                 200
             );
         } catch (InvalidArgumentException $e) {
@@ -193,7 +191,7 @@ public function index(array $filters = [])
     public function getKpi(array $filters = [])
     {
         return ServiceResponse::success(
-            $this->model->getKpi($filters),
+            $this->requisitionModel->getKpi($filters),
             'Datos obtenidos correctamente.',
             200
         );
