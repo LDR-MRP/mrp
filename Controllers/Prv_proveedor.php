@@ -82,4 +82,9 @@ class Prv_proveedor  extends Controllers{
     {
         return $this->apiResponse($this->supplierService->getKpi());
     }
+
+    public function delete()
+    {
+        return $this->apiResponse($this->supplierService->delete($_POST));
+    }           
 }

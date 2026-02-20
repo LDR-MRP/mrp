@@ -35,12 +35,12 @@
                     </div>
                     <div class="col-md-5 d-flex justify-content-md-end justify-content-start mt-4 mt-md-0">
                         <!-- Attention! -->
-                        <?php if (true) { //if (!empty($_SESSION['permisos'][51]['w'])) { ?>
+                        <?php if (hasPermissions(PRV_PROVEEDORES, 'w')): ?>
                             <button type="button" class="btn btn-primary btn-lg btn-label waves-effect waves-light shadow-md"
                                 data-redirect="prv_proveedor/create">
                                 <i class="ri-add-line label-icon align-middle fs-18 me-2"></i> Nuevo Proveedor
                             </button>
-                        <?php } ?>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -129,7 +129,7 @@
                                         <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Contacto</th>
                                         <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Crédito (MXN)</th>
                                         <th width="10%" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado</th>
-                                        <th width="5%" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
+                                        <th width="10%" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody class="border-top-0">

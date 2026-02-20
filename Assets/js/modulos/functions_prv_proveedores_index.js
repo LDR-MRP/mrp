@@ -36,12 +36,29 @@ $(document).ready(function () {
                 "data": null,
                 "orderable": false,
                 "className": "text-end",
-                "render": (data, type, r) => `
-                    <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" data-redirect="prv_proveedor/edit?id=${r.idproveedor}">
+                "render": function (data, type, r){ 
+                    let buttons = `
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-redirect="prv_proveedor/edit?id=${r.idproveedor}">
                             <i class="ri-eye-line"></i> Ver
                         </button>
-                    </div>`
+                    `;
+
+                    if (Sys_Core.Auth.hasPermissions(MODS.PRV_PROVEEDORES, 'd')) {
+                        buttons += `
+                            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"></button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><button class="dropdown-item text-danger btn-delete" data-id="${r.idproveedor}" data-rf="${r.rfc}" data-action="delete"><i class="ri-delete-bin-6-line"></i> Eliminar</button></li>
+                            </ul>
+                        `;
+                    }
+            
+                    buttons += `
+                        </div>
+                    `;
+
+                    return buttons;
+                }
             }
         ],
         dom: "<'d-flex justify-content-between align-items-center mb-2'lfB>t<'d-flex justify-content-between mt-2'ip>",
@@ -63,6 +80,30 @@ $(document).ready(function () {
         ],
         responsive: true,
         autoWidth: false,
+    });
+
+    /**
+     * @description Eliminación de proveedores con confirmación centralizada.
+     */
+    $('#tblProveedores').on('click', '.btn-delete', function () {
+        const idproveedor = $(this).data('id');
+        const rfc = $(this).data('rfc');
+        Sys_Core.UI.confirm({
+            title: '¿Quitar artículo?',
+            text: 'El proveedor será eliminado de la lista.',
+            confirmText: 'Sí, quitar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Sys_Core.Net.post({
+                    url: `${Sys_Core.Config.baseUrl}/prv_proveedor/delete`,
+                    payload: $.param({ idproveedor, rfc }),
+                    successMsg: `Removido correctamente.`,
+                    onDone: () => {
+                        tabla.ajax.reload(null, false);
+                    }
+                })
+            }
+        });
     });
 
     // Definimos qué estatus de la DB va a qué ID de HTML

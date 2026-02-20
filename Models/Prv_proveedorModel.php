@@ -27,7 +27,8 @@ class Prv_proveedorModel extends Mysql
                 metodo_pago_predeterminado,
                 idmoneda_predeterminada,
                 created_at,
-                estatus
+                estatus,
+                logo
             FROM prv_proveedores
             WHERE true\n";
 
@@ -47,6 +48,7 @@ class Prv_proveedorModel extends Mysql
                     clv_proveedor,
                     rfc,
                     razon_social,
+                    tipo_persona,
                     nombre_comercial,
                     contacto, 
                     correo_electronico,
@@ -56,13 +58,15 @@ class Prv_proveedorModel extends Mysql
                     dias_credito,
                     metodo_pago_predeterminado,
                     idmoneda_predeterminada,
-                    estatus
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                    estatus,
+                    logo
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         $params = [
             $data['clv_proveedor'],
             $data['rfc'],
             $data['razon_social'],
+            $data['tipo_persona'],
             $data['nombre_comercial'],
             $data['contacto'],
             $data['correo_electronico'],
@@ -72,7 +76,8 @@ class Prv_proveedorModel extends Mysql
             $data['dias_credito'],
             $data['metodo_pago_predeterminado'],
             $data['idmoneda_predeterminada'],
-            $data['estatus'] ?? 1,
+            $data['estatus'] ? 2 : 1,
+            $data['logo'],
         ];
 
         return $this->insert($sql, $params);
@@ -94,7 +99,8 @@ class Prv_proveedorModel extends Mysql
                     limite_credito = ?,
                     dias_credito = ?,
                     metodo_pago_predeterminado = ?, 
-                    estatus = ?
+                    estatus = ?,
+                    logo = ?
                 WHERE idproveedor = ?";
         $params = [
             $data['razon_social'],
@@ -110,6 +116,7 @@ class Prv_proveedorModel extends Mysql
             $data['dias_credito'],
             $data['metodo_pago_predeterminado'],
             $data['estatus'] == 'on' ? 2 : 1,
+            $data['logo'],
             $data['idproveedor'],
         ];
         return $this->update($sql, $params);
@@ -125,5 +132,14 @@ class Prv_proveedorModel extends Mysql
             GROUP BY estatus WITH ROLLUP;
             "
         );
+    }
+
+    public function destroy(int $idproveedor)
+    {
+        $query = sprintf(
+            "UPDATE prv_proveedores SET estatus = 0, deleted_at = NOW() WHERE idproveedor = %d;",
+            $idproveedor
+        );
+        return $this->delete($query);
     }
 }

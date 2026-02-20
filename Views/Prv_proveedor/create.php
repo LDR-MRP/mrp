@@ -39,7 +39,7 @@
                     </div>
                 </div>
 
-                <form id="formProveedor" autocomplete="off">
+                <form id="formProveedor" autocomplete="off" enctype="multipart/form-data">
                     <div class="row">
                         <div class="col-lg-8">
 
@@ -197,9 +197,26 @@
                                     <hr class="border-dashed my-3">
 
                                     <div class="d-grid gap-2">
+                                        <?php if (hasPermissions(PRV_PROVEEDORES, 'w')): ?>
                                         <button type="submit" class="btn btn-primary btn-lg shadow-sm waves-effect waves-light">
                                             <i class="ri-save-line align-middle me-1"></i> Guardar Cambios
                                         </button>
+                                        <?php endif; ?>
+                                        <?php if (!hasPermissions(PRV_PROVEEDORES, 'w')): ?>
+                                        <div class="card bg-danger border-0 shadow-lg" style="border-radius: 10px;">
+                                            <div class="card-body">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="flex-grow-1">
+                                                        <h5 class="card-title text-white fs-14 fw-bold mb-1">No tienes permisos para realizar cambios</h5>
+                                                        <p class="text-white-50 fs-12 mb-0">Contacta a soporte si necesitas ayuda.</p>
+                                                    </div>
+                                                    <div class="flex-shrink-0">
+                                                        <i class="ri-customer-service-2-line text-white-50 fs-24"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <?php endif; ?>
                                         <button type="button" class="btn btn-light btn-label waves-effect waves-light" data-redirect="prv_proveedor">
                                             <i class="ri-arrow-go-back-line label-icon align-middle fs-16 me-2"></i> Cancelar y Volver
                                         </button>
@@ -212,10 +229,10 @@
                                     <h6 class="text-uppercase fw-bold text-muted fs-11 ls-1 mb-3">Logotipo de Empresa</h6>
                                     <div class="profile-user position-relative d-inline-block mx-auto mb-3">
                                         <div class="avatar-lg p-1 bg-light rounded-circle shadow-sm">
-                                            <img src="<?= base_url(); ?>/assets/images/users/multi-user.jpg" class="img-fluid rounded-circle" alt="user-profile-image">
+                                            <img src="<?= $isEdit ? $p['logo'] : '' ?>" class="img-fluid rounded-circle" alt="user-profile-image">
                                         </div>
                                         <div class="avatar-xs p-0 rounded-circle profile-photo-edit position-absolute end-0 bottom-0">
-                                            <input id="profile-img-file-input" type="file" class="profile-img-file-input">
+                                            <input id="profile-img-file-input" type="file" class="profile-img-file-input" accept="image/png, image/jpeg, image/jpg" name="logo">
                                             <label for="profile-img-file-input" class="profile-photo-edit avatar-xs">
                                                 <span class="avatar-title rounded-circle bg-light text-body shadow-sm">
                                                     <i class="ri-camera-fill"></i>

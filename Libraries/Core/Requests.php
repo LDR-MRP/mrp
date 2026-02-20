@@ -28,4 +28,9 @@ abstract class Requests {
     {
         return $this->data;
     }
+
+    public function files(): array
+    {
+        return $_FILES;
+    }
 }

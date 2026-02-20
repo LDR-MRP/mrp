@@ -52,14 +52,23 @@ class Prv_proveedorStoreRequest extends Requests
         }
 
         if (!empty($this->data['telefono'])) {
-        $phone = preg_replace('/\D/', '', $this->data['telefono']);
-        $regexMexicoPhone = '/^[2-9][0-9]{9}$/';
+            $phone = preg_replace('/\D/', '', $this->data['telefono']);
+            $regexMexicoPhone = '/^[2-9][0-9]{9}$/';
 
-        if (strlen($phone) !== 10) {
-            $this->addError('telefono', 'El teléfono debe tener exactamente 10 dígitos.');
-        } elseif (!preg_match($regexMexicoPhone, $phone)) {
-            $this->addError('telefono', 'El formato del teléfono es inválido (debe ser un número de 10 dígitos).');
+            if (strlen($phone) !== 10) {
+                $this->addError('telefono', 'El teléfono debe tener exactamente 10 dígitos.');
+            } elseif (!preg_match($regexMexicoPhone, $phone)) {
+                $this->addError('telefono', 'El formato del teléfono es inválido (debe ser un número de 10 dígitos).');
+            }
         }
-    }
+
+        $files = $this->files();
+
+        if (!empty($logo = $files['logo']) && !empty($logo['tmp_name'])) {
+            
+            if ($logo['type'] !== 'image/jpeg' && $logo['type'] !== 'image/png') {
+                $this->addError('logo', 'El logo debe ser de tipo JPEG o PNG.');
+            }
+        }
     }
 }
