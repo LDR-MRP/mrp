@@ -862,7 +862,7 @@ Se utiliza con fines de configuración y ajustes visuales del layout.
     <!-- <script src="<?= media(); ?>/minimal/js/pages/sweetalerts.init.js"></script> -->
 
     <script src="<?= media(); ?>/js/sys_core.js"></script>
-    <script src="<?= media(); ?>/js/modulos/<?= $data['page_functions_js']; ?> "></script>
+    <script src="<?= media(); ?>/js/modulos/<?= $data['page_functions_js']; ?>?v=1.0.0"></script>
 
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>

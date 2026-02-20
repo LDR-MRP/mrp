@@ -1,33 +1,24 @@
 <?php
 
 class Com_compraService{
-
-    public $model;
+    protected $compraModel;
 
     protected $compraStoreRequest;
 
     protected $requisitionModel;
 
-    protected $requisitionDetailModel;
-
     protected $currencyModel;
-
-    protected $requisitionService;
 
     public function __construct()
     {
         $this->requisitionModel = new Com_requisicionModel;
+        $this->compraModel = new Com_compraModel;
         $this->currencyModel = new Inv_monedaModel;
-    }
-
-    public function index(): array
-    {
-        return $this->model->selectCompras();
     }
 
     public function store(string $data): ServiceResponse
     {
-        $db = $this->model->getConexion();
+        $db = $this->compraModel->getConexion();
         $db->beginTransaction();
 
         try {
@@ -58,7 +49,7 @@ class Com_compraService{
             $requisition['total'] = $iva ? $requisition['monto_estimado'] + ($requisition['monto_estimado'] * $iva) : $requisition['monto_estimado'];
 
             // data insert
-            $POId = $this->model->create(
+            $POId = $this->compraModel->create(
                 array_merge($validated, $requisition, $currency),
                 $userId
             );
@@ -96,6 +87,6 @@ class Com_compraService{
 
     public function suppliers()
     {
-        return ServiceResponse::success($this->model->suppliers());
+        return ServiceResponse::success($this->compraModel->suppliers());
     }
 }

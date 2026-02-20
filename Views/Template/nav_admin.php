@@ -294,10 +294,10 @@
 
                       <?php if (hasPermissions(COM_COMPRAS, 'r') || hasPermissions(COM_REQUISICIONES, 'r') || hasPermissions(PRV_PROVEEDORES, 'r')): ?>
                           <li class="nav-item">
-                              <a class="nav-link menu-link" href="#" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarProveedores">
+                              <a class="nav-link menu-link" href="#sidebarCompras" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarCompras">
                                   <i class="ri-shopping-cart-2-line icon-dual"></i> <span data-key="t-layouts">Compras</span>
                               </a>
-                              <div class="collapse menu-dropdown" id="sidebarProveedores">
+                              <div class="collapse menu-dropdown" id="sidebarCompras">
                                   <ul class="nav nav-sm flex-column">
                                     <?php if (hasPermissions(COM_REQUISICIONES, 'r')): ?>
                                       <li class="nav-item">

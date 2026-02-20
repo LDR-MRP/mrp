@@ -14,6 +14,7 @@ class Prv_proveedorModel extends Mysql
         $sql = "SELECT
                 idproveedor,
                 clv_proveedor,
+                tipo_persona,
                 rfc,
                 razon_social,
                 nombre_comercial,
@@ -25,11 +26,13 @@ class Prv_proveedorModel extends Mysql
                 dias_credito,
                 metodo_pago_predeterminado,
                 idmoneda_predeterminada,
-                fecha_registro,
-                estado
+                created_at,
+                estatus,
+                logo
             FROM prv_proveedores
-            WHERE true";
+            WHERE true\n";
 
+        if(array_key_exists('idproveedor', $filters)){ $sql .= "AND idproveedor = '{$filters['idproveedor']}'"; }
         if(array_key_exists('clv_proveedor', $filters)){ $sql .= "AND clv_proveedor = '{$filters['clv_proveedor']}'"; }
         if(array_key_exists('estado', $filters)){ $sql .= "AND estado = '{$filters['estado']}'"; }
 
@@ -39,46 +42,104 @@ class Prv_proveedorModel extends Mysql
     /**
      * Guarda o actualiza un proveedor.
      */
-    public function save(array $data, int $id = null): int|bool
+    public function save(array $data): int
     {
-        if ($id) {
-            $sql = "UPDATE prv_proveedores SET 
-                        clv_proveedor = ?, rfc = ?, razon_social = ?, nombre_comercial = ?, 
-                        contacto = ?, correo_electronico = ?, telefono = ?, direccion_fiscal = ?, 
-                        limite_credito = ?, dias_credito = ?, metodo_pago_predeterminado = ?, 
-                        idmoneda_predeterminada = ? 
-                    WHERE idproveedor = ?";
-            $params = [array_values($data), $id];
-            return $this->update($sql, $params);
-        } else {
-            $sql = "INSERT INTO prv_proveedores (
-                        clv_proveedor, rfc, razon_social, nombre_comercial, contacto, 
-                        correo_electronico, telefono, direccion_fiscal, limite_credito, 
-                        dias_credito, metodo_pago_predeterminado, idmoneda_predeterminada
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
+        $sql = "INSERT INTO prv_proveedores (
+                    clv_proveedor,
+                    rfc,
+                    razon_social,
+                    tipo_persona,
+                    nombre_comercial,
+                    contacto, 
+                    correo_electronico,
+                    telefono,
+                    direccion_fiscal,
+                    limite_credito, 
+                    dias_credito,
+                    metodo_pago_predeterminado,
+                    idmoneda_predeterminada,
+                    estatus,
+                    logo
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
-            $params = [
-                $data['clv_proveedor'],
-                $data['rfc'],
-                $data['razon_social'],
-                $data['nombre_comercial'],
-                $data['contacto'],
-                $data['correo_electronico'],
-                $data['telefono'],
-                $data['direccion_fiscal'],
-                $data['limite_credito'],
-                $data['dias_credito'],
-                $data['metodo_pago_predeterminado'],
-                $data['idmoneda_predeterminada'],
-            ];
+        $params = [
+            $data['clv_proveedor'],
+            $data['rfc'],
+            $data['razon_social'],
+            $data['tipo_persona'],
+            $data['nombre_comercial'],
+            $data['contacto'],
+            $data['correo_electronico'],
+            $data['telefono'],
+            trim($data['direccion_fiscal']),
+            $data['limite_credito'],
+            $data['dias_credito'],
+            $data['metodo_pago_predeterminado'],
+            $data['idmoneda_predeterminada'],
+            $data['estatus'] ? 2 : 1,
+            $data['logo'],
+        ];
 
-            return $this->insert($sql, $params);
-        }
+        return $this->insert($sql, $params);
     }
 
-    public function updateStatus(int $id, int $status): bool
+    public function updateData(array $data)
     {
-        $sql = "UPDATE prv_proveedores SET estado = ? WHERE idproveedor = ?";
-        return $this->update($sql, [$status, $id]);
+        $sql = "UPDATE prv_proveedores
+                SET 
+                    razon_social = ?,
+                    tipo_persona = ?,
+                    clv_proveedor = ?,
+                    nombre_comercial = ?, 
+                    contacto = ?,
+                    telefono = ?,
+                    correo_electronico = ?,
+                    direccion_fiscal = ?, 
+                    idmoneda_predeterminada = ?,
+                    limite_credito = ?,
+                    dias_credito = ?,
+                    metodo_pago_predeterminado = ?, 
+                    estatus = ?,
+                    logo = ?
+                WHERE idproveedor = ?";
+        $params = [
+            $data['razon_social'],
+            $data['tipo_persona'],
+            $data['clv_proveedor'],
+            $data['nombre_comercial'],
+            $data['contacto'],
+            $data['telefono'],
+            $data['correo_electronico'],
+            trim($data['direccion_fiscal']),
+            $data['idmoneda_predeterminada'],
+            $data['limite_credito'],
+            $data['dias_credito'],
+            $data['metodo_pago_predeterminado'],
+            $data['estatus'] == 'on' ? 2 : 1,
+            $data['logo'],
+            $data['idproveedor'],
+        ];
+        return $this->update($sql, $params);
+    }
+
+    public function getKpi()
+    {
+        return $this->select_all(
+            "SELECT 
+                IFNULL(estatus, 'total') AS estatus,
+                COUNT(idproveedor) AS cantidad
+            FROM prv_proveedores
+            GROUP BY estatus WITH ROLLUP;
+            "
+        );
+    }
+
+    public function destroy(int $idproveedor)
+    {
+        $query = sprintf(
+            "UPDATE prv_proveedores SET estatus = 0, deleted_at = NOW() WHERE idproveedor = %d;",
+            $idproveedor
+        );
+        return $this->delete($query);
     }
 }

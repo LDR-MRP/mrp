@@ -19,17 +19,27 @@ class Prv_proveedorService
         $db->beginTransaction();
 
         try {
-
             $proveedorStoreRequest = new Prv_proveedorStoreRequest($data);
             $proveedorStoreRequest->validate();
             $validated = $proveedorStoreRequest->all();
+            $file = $proveedorStoreRequest->files()['logo'];
+
+            if(!empty($file) && !empty($file['tmp_name'])) {
+                $validated['logo'] = 'data:'.$file['type'].';base64,'.base64_encode(file_get_contents($file['tmp_name']));
+            } else {
+                $validated['logo'] = current($this->model->findByCriteria(['idproveedor' => $validated['idproveedor']]))['logo'];
+            }
+
+            if ($validated['idproveedor']) {
+                $this->model->updateData($validated);
+                $this->model->logAudit($validated['idproveedor'], 'ACTUALIZACIÓN', "Se actualizó el proveedor con RFC: {$data['rfc']}", $_SESSION['idUser']);
+                $db->commit();
+                return ServiceResponse::success(data: ['id' => $validated['idproveedor']], message: "Proveedor actualizado con éxito.");
+            }
 
             $id = $this->model->save($validated);
             if (!$id) throw new \Exception("No se pudo registrar el proveedor.");
-
-            // Auditoría automática
-            // $this->model->logAudit($id, 'CREACIÓN', "Se registró el proveedor con RFC: {$data['rfc']}");
-
+            $this->model->logAudit($id, 'CREACIÓN', "Se registró/actualizó el proveedor con RFC: {$data['rfc']}", $_SESSION['idUser']);
             $db->commit();
             return ServiceResponse::success(data: ['id' => $id], message: "Proveedor creado con éxito.");
         } catch (\InvalidArgumentException $e) {
@@ -41,19 +51,25 @@ class Prv_proveedorService
         }
     }
 
-    public function changeState(int $id, int $newState, string $reason): ServiceResponse
+    public function getKpi()
     {
-        DB::beginTransaction();
-        try {
-            $actions = [0 => 'ELIMINACIÓN', 1 => 'DESACTIVACIÓN', 2 => 'ACTIVACIÓN'];
-            $this->model->updateStatus($id, $newState);
-            $this->model->logAudit($id, $actions[$newState], $reason);
+        return ServiceResponse::success($this->model->getKpi());
+    }
 
-            DB::commit();
-            return ServiceResponse::success(message: "Estado actualizado.");
+    public function delete(array $data): ServiceResponse
+    {
+        $db = $this->model->getConexion();
+        $db->beginTransaction();
+
+        try {
+            $this->model->destroy($data['idproveedor']);
+            $this->model->logAudit($data['idproveedor'], 'ELIMINACIÓN', "Se elimino el proveedor con ID: {$data['rfc']}", $_SESSION['idUser']);
+            $db->commit();
+            return ServiceResponse::success(data: ['rfc' => $data['rfc']], message: "Proveedor eliminado con éxito.");
         } catch (\Exception $e) {
-            DB::rollBack();
+            $db->rollBack();
             return ServiceResponse::error(message: $e->getMessage());
         }
+        
     }
 }
