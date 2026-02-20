@@ -59,7 +59,7 @@ class Plan_planeacionModel extends Mysql
 {
     $sql = "SELECT * 
             FROM usuarios 
-            WHERE rolid IN (2,4) 
+            WHERE rolid IN (4) 
               AND status = 1";
 
     return $this->select_all($sql);
@@ -209,7 +209,7 @@ class Plan_planeacionModel extends Mysql
               (planeacionid, estacionid, orden, estado)
             VALUES (?,?,?,2)";
         return $this->insert($sqlIns, [$planeacionid, $estacionid, $orden]);
-    }
+    } 
 
     public function getEstacionInfoById($estacionid)
 {
@@ -1880,9 +1880,12 @@ public function getStatusOTByPlaneacion(int $planeacionid)
 
 
 
+
+
 public function selectOrdenesCalendar()
 {
-  $isAdmin   = isset($_SESSION['rolid']) && (int)$_SESSION['rolid'] === 1;
+  $rolId     = isset($_SESSION['rolid']) ? (int)$_SESSION['rolid'] : 0;
+  $isAdmin   = in_array($rolId, [1, 5]); // 👈 ahora 1 y 5 ven todo
   $userIdSes = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
 
   if (!$isAdmin && $userIdSes <= 0) {

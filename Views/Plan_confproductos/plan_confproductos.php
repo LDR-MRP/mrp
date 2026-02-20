@@ -13,7 +13,7 @@
 
                     <div class="page-title-right">
                         <ol class="breadcrumb m-0">
-                            <li class="breadcrumb-item"><a href="javascript: void(0);">MRP - test carlos cruuuz</a></li>
+                            <li class="breadcrumb-item"><a href="javascript: void(0);">MRP </a></li>
                             <li class="breadcrumb-item active"><?= $data['page_tag'] ?></li>
                         </ol>
                     </div>
@@ -809,11 +809,11 @@
                                             <div class="row">
 
                                                                                         <!-- Dirección -->
-                                                <div class="col-lg-3"> 
+                                                <div class="col-lg-4 col-sm-6"> 
                                                     <div class="mb-3">
                                                         <label class="form-label" for="txtNorma">Norma de emisiones</label>
                                                         <div class="input-group mb-3">
-                                                            <span class="input-group-text">Dir</span>
+                                                            <span class="input-group-text">Nor</span>
                                                             <input type="text" class="form-control"
                                                                 placeholder="Ej: Euro6" id="txtNorma"
                                                                 name="txtNorma" required>
@@ -825,7 +825,7 @@
 
 
                                                 <!-- Dirección -->
-                                                <div class="col-lg-3">
+                                                <div class="col-lg-4 col-sm-6">
                                                     <div class="mb-3">
                                                         <label class="form-label" for="txtDireccion">Dirección</label>
                                                         <div class="input-group mb-3">
@@ -840,7 +840,7 @@
                                                 </div>
 
                                                 <!-- Equipamiento -->
-                                                <div class="col-lg-6">
+                                                <div class="col-lg-4 col-sm-6">
                                                     <div class="mb-3">
                                                         <label class="form-label"
                                                             for="txtEquipamiento">Equipamiento</label>
