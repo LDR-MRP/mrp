@@ -9,7 +9,7 @@ class Prv_proveedorModel extends Mysql
         return "prv_proveedores";
     }
 
-    public function findByCriteria(array $filters)
+    public function findByCriteria(array $filters = [])
     {
         $sql = "SELECT
                 idproveedor,

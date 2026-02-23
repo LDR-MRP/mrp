@@ -72,4 +72,9 @@ class Prv_proveedorService
         }
         
     }
+
+    public function suppliers()
+    {
+        return ServiceResponse::success($this->model->findByCriteria());
+    }
 }

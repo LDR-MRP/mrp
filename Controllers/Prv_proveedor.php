@@ -86,5 +86,10 @@ class Prv_proveedor  extends Controllers{
     public function delete()
     {
         return $this->apiResponse($this->supplierService->delete($_POST));
-    }           
+    }
+    
+    public function suppliers()
+    {
+        return $this->apiResponse($this->supplierService->suppliers($filters = sanitizeGet()));
+    }
 }

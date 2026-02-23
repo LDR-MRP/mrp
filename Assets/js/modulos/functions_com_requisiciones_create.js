@@ -222,7 +222,7 @@ $(document).ready(function () {
             successMsg: '¡Requisición enviada correctamente!',
             onDone: (res) => {
                 setTimeout(() => {
-                    window.location.href = `${Sys_Core.Config.baseUrl}/com_requisicion/detalle/${res.data.requisicion_id}`;
+                    window.location.href = `${Sys_Core.Config.baseUrl}/com_requisicion/read/${res.data.requisicion_id}`;
                 }, 1500);
             }
         });

@@ -39,15 +39,20 @@ class Com_compraModel extends Mysql
         );
     }
 
-
-
-    public function suppliers()
+    public function findByCriteria(int $id)
     {
-        return $this->select_all(
-            "SELECT
-                *
-            FROM prv_proveedores
-            ;"
+        return $this->select(
+            "SELECT *
+            FROM com_compras
+            LEFT JOIN com_requisiciones
+            ON com_requisiciones.idrequisicion = com_compras.requisicionid
+            LEFT JOIN prv_proveedores
+            ON prv_proveedores.idproveedor = com_compras.proveedorid
+            LEFT JOIN wms_almacenes
+            ON wms_almacenes.idalmacen = com_compras.almacenid
+            LEFT JOIN usuarios
+            ON usuarios.idusuario = com_compras.usuarioid = ?",
+            [$id]
         );
     }
 }

@@ -85,8 +85,64 @@ class Com_compraService{
         }
     }
 
-    public function suppliers()
+    /**
+     * Generates a Premium PDF for the Purchase Order
+     * @param int $idPurchase
+     * @param string $outputMode 'stream' (download) or 'string' (raw data for saving)
+     * @return mixed
+     * @throws Exception
+     */
+    public function generatePremiumOCPDF(int $idPurchase, string $outputMode = 'stream')
     {
-        return ServiceResponse::success($this->compraModel->suppliers());
+        // 1.Increase memory limit for PDF generation (heavy process)
+        ini_set('memory_limit', '256M');
+        set_time_limit(60);
+
+        // 2. Fetch all necessary data
+        $data['oc'] = $this->compraModel->findByCriteria($idPurchase);
+        $data['items'] = $this->requisitionModel->details($idPurchase);
+
+        if (!$data['oc']) {
+            throw new Exception("Purchase Order #$idPurchase not found.");
+        }
+
+        // 3. Get Corporate Data (Crucial for the logo)
+        // You need a method in a general model to get company config
+        // Make sure getCompanyLogoAsBase64() returns something like "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+        //$data['empresa']['logo_base64'] = $this->generalModel->getCompanyLogoAsBase64() ?? null;
+
+        // 4. Configure Dompdf for premium rendering
+        $options = new \Dompdf\Options();
+        $options->set('isHtml5ParserEnabled', true); // Better HTML compliance
+        $options->set('isPhpEnabled', false); // Security best practice
+        $options->set('defaultFont', 'Helvetica'); // Clean, professional font
+        $options->set('dpi', 120); // Sharper images and text
+        // isRemoteEnabled allows loading images from URLs, but Base64 is safer.
+        // $options->set('isRemoteEnabled', true);
+
+        $dompdf = new \Dompdf\Dompdf($options);
+
+        // 5. Load View into Buffer
+        ob_start();
+        // Adjust the path to where you saved the premium template
+        require_once(__DIR__."/../Views/Com_compras/purchase_order.php");
+        $html = ob_get_clean();
+
+        // 6. Render PDF
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        // 7. Output
+        $filename = "OC_" . $data['oc']['codigo_oc'] . "_" . date('Ymd') . ".pdf";
+
+        if ($outputMode === 'stream') {
+            // Force download in the browser
+            $dompdf->stream($filename, ["Attachment" => true]);
+            exit; // Stop script execution after streaming
+        } else {
+            // Return raw PDF data (e.g., to save it to disk or email attachment)
+            return $dompdf->output();
+        }
     }
 }

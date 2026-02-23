@@ -85,7 +85,7 @@ $(document).ready(function () {
         const $select = $('select[name="proveedor"]');
 
         $.ajax({
-                "url": `${Sys_Core.Config.baseUrl}/com_compra/suppliers`,
+                "url": `${Sys_Core.Config.baseUrl}/prv_proveedor/suppliers`,
                 "method": "GET",
                 "timeout": 0,
         }).done(function (res) {
@@ -164,7 +164,7 @@ $(document).ready(function () {
             successMsg: '¡Requisición enviada correctamente!',
             onDone: (res) => {
                 setTimeout(() => {
-                    window.location.href = `${Sys_Core.Config.baseUrl}/com_requisicion/detalle/${res.data.requisicionid}`;
+                    window.location.href = `${Sys_Core.Config.baseUrl}/com_requisicion/read/${res.data.requisicionid}`;
                 }, 1500);
             }
         });
@@ -177,7 +177,7 @@ $(document).ready(function () {
      */
     function _getRequisitionId() {
         const segments = location.pathname.split('/').filter(Boolean);
-        const detailIndex = segments.indexOf('generar');
+        const detailIndex = segments.indexOf('creates');
         return detailIndex !== -1 && segments[detailIndex + 1] ? segments[detailIndex + 1] : null;
     }
 
