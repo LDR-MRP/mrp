@@ -130,9 +130,8 @@
                                         <div class="col-md-12">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Dirección Fiscal Completa <span class="text-danger">*</span></label>
                                             <textarea name="direccion_fiscal" class="form-control" rows="3"
-                                                placeholder="Calle, Número, Colonia, Ciudad, Estado, CP" style="resize: none;">
-                                                <?= $isEdit ? $p['direccion_fiscal'] : '' ?>
-                                            </textarea>
+                                                placeholder="Calle, Número, Colonia, Ciudad, Estado, CP"
+                                                style="resize: none;"><?= $isEdit ? $p['direccion_fiscal'] : '' ?></textarea>
                                         </div>
                                     </div>
                                 </div>

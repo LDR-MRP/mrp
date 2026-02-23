@@ -104,8 +104,12 @@ class Com_requisicionModel extends Mysql
             WHERE true
             ";
 
-        if(array_key_exists('estatus', $filters)) {
+        if(array_key_exists('estatus', $filters) && !is_array($filters['estatus'])) {
             $query .= "AND com_requisiciones.estatus = '{$filters['estatus']}'";
+        }
+
+        if(array_key_exists('estatus', $filters) && is_array($filters['estatus'])) {
+            $query .= "AND com_requisiciones.estatus IN ('".implode("','", $filters['estatus'])."')";
         }
 
         if(array_key_exists('usuarioid', $filters)) {

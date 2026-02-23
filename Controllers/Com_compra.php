@@ -32,11 +32,11 @@ class Com_compra extends Controllers
         );
     }
 
-    public function generar()
+    public function creates()
     {
         $this->views->getView(
             $this,
-            "../Com_compras/com_compra_create",
+            "../Com_compras/create",
             [
                 'page_tag' => "Generar Órden de Compra",
                 'page_title' => "Generar Órden de Compra",
@@ -47,22 +47,17 @@ class Com_compra extends Controllers
         );
     }
 
+    public function exportPDF(int $id)
+    {
+        return $this->compraService->generatePremiumOCPDF($id);
+    }
+
     /* ======================================================
      * API (JSON): listar, mostrar, crear, aprobar, rechazar, cancelar, eliminar
      * ====================================================== */
-    public function suppliers()
-    {
-        return $this->apiResponse($this->compraService->suppliers($filters = sanitizeGet()));
-    }
-
     public function store()
     {
         return $this->apiResponse($this->compraService->store(file_get_contents('php://input')));
-    }
-
-    public function create(): array
-    {
-        return $this->apiResponse($this->compraService->create($_POST));      
     }
 
     /**
@@ -72,8 +67,7 @@ class Com_compra extends Controllers
      */
     public function getReqs(): array
     {
-        return $this->apiResponse($this->requisitionService->index(sanitizeGet()));
+        return $this->apiResponse($this->requisitionService->index($_GET));
     }
-
 }
 ?>
