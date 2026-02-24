@@ -35,6 +35,7 @@ class Prv_proveedorModel extends Mysql
         if(array_key_exists('idproveedor', $filters)){ $sql .= "AND idproveedor = '{$filters['idproveedor']}'"; }
         if(array_key_exists('clv_proveedor', $filters)){ $sql .= "AND clv_proveedor = '{$filters['clv_proveedor']}'"; }
         if(array_key_exists('estado', $filters)){ $sql .= "AND estado = '{$filters['estado']}'"; }
+        if(array_key_exists('rfc', $filters)){ $sql .= "AND rfc = '{$filters['rfc']}'"; }
 
         return $this->select_all($sql);
     }

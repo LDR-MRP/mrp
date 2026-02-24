@@ -16,6 +16,13 @@ class Prv_proveedorStoreRequest extends Requests
             'idmoneda_predeterminada'    => 'La moneda predeterminada es obligatoria.'
         ];
 
+        $supplierModel = new Prv_proveedorModel;
+        $supplier = $supplierModel->findByCriteria(['rfc' => $this->data['rfc']]);
+
+        if(!empty($supplier)) {
+            $this->addError('rfc', 'Ya existe un proveedor con el RFC proporcionado.');
+        }
+
         foreach ($requiredFields as $field => $message) {
             if (empty($this->data[$field])) {
                 $this->addError($field, $message);
