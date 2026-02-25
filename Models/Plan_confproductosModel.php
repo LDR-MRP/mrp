@@ -77,6 +77,7 @@ public $intInventario;
 public $intCantidad;
 public $intIdDetalle;
 public $intIdRuta;
+public $intIdProductoProceso;
 
 	public function __construct()
 	{
@@ -624,12 +625,27 @@ public function selectOptionEstacionesByLinea($idlinea)
 
 	
 
-	public function EspecificacionesByEstacion($idestacion){
+	public function EspecificacionesByEstacionold($idestacion){
 				$this->intIdEstacion = $idestacion;
 		$sql = "SELECT * FROM mrp_estacion_especificaciones WHERE estacionid = $this->intIdEstacion AND estado !=0";
 		$request = $this->select_all($sql);
 		return $request;
 	}
+
+    public function EspecificacionesByEstacion($idestacion, $idproducto_proceso)
+{
+    $this->intIdEstacion = intval($idestacion);
+    $this->intIdProductoProceso = intval($idproducto_proceso);
+
+    $sql = "SELECT * 
+            FROM mrp_estacion_especificaciones 
+            WHERE estacionid = $this->intIdEstacion
+              AND productoid = $this->intIdProductoProceso
+              AND estado != 0";
+
+    $request = $this->select_all($sql);
+    return $request;
+}
 
 	public function insertEspecificacion($intIdproducto, $intEstacionId, $descripcion, $fecha_creacion)
 	{

@@ -874,7 +874,7 @@ $this->model->insertAuditoria(
 
 
 
-	public function getEspecificaciones($idestacion){
+	public function getEspecificacionesold($idestacion){
         // if ($_SESSION['permisosMod']['r']) {
         $intIdestacion = intval($idestacion);
         if ($intIdestacion > 0) {
@@ -906,6 +906,32 @@ $this->model->insertAuditoria(
         // }
         die();
 
+}
+
+public function getEspecificaciones($idestacion, $idproducto_proceso = 0)
+{
+    // Si llega como "17,62" en $idestacion, lo separamos
+    if (is_string($idestacion) && strpos($idestacion, ',') !== false) {
+        [$idestacion, $idproducto_proceso] = array_pad(explode(',', $idestacion), 2, 0);
+    }
+
+    $intIdestacion = intval($idestacion);
+    $intIdProductoProceso = intval($idproducto_proceso);
+
+    $arrData = $this->model->EspecificacionesByEstacion($intIdestacion, $intIdProductoProceso);
+
+            for ($i = 0; $i < count($arrData); $i++) {
+
+                $btnEdit = '<button type="button" class="btn btn-sm btn-soft-warning edit-list" title="Editar especificación" onClick="fntEditEspecificacion(' . $arrData[$i]['idespecificacion'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
+
+                $btnDelete = '<button class="btn btn-sm btn-soft-danger remove-list" title="Eliminar especificación" onClick="fntDelEspecificacion(' . $arrData[$i]['idespecificacion'] . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
+
+                $arrData[$i]['options'] = '<div class="text-center">' . $btnEdit . ' ' . $btnDelete . '</div>';
+            }
+
+            $arrResponse = array('status' => true, 'data' => $arrData);
+
+			 echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 }
 
 

@@ -95,7 +95,7 @@ const MCPLANTAS = 29;
 //Submodulos Proveedores
 const MPPROVEEDORES = 35;
 
-//Submodulos Clientes
+//Submodulos Clientes 
 const MCCLIENTES = 39;
 const MCMARCAS = 40;
 const MCDEPARTAMENTOS = 41;

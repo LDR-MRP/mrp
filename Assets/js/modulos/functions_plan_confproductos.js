@@ -1573,6 +1573,44 @@ function abrirEspecificaciones(idestacion, cve_estacion) {
 }
 
 function cargarEspecificaciones(idEstacion) {
+
+  const idProductoProceso = parseInt(document.getElementById('idproducto_proceso')?.value || 0);
+  estacionActual = parseInt(idEstacion || 0);
+
+  if (!estacionActual || !idProductoProceso) {
+    console.log("Falta estacionActual o idProductoProceso", { estacionActual, idProductoProceso });
+    return;
+  }
+
+  const url = base_url + '/Plan_confproductos/getEspecificaciones/' + estacionActual + '/' + idProductoProceso;
+
+  if (tableEspecifica) {
+    tableEspecifica.ajax.url(url).load();
+    return;
+  }
+
+  tableEspecifica = $('#tableEspecificaciones').DataTable({
+    responsive: true,
+    processing: true,
+    serverSide: false,
+    destroy: true,
+    ajax: {
+      url: url,
+      dataSrc: function (json) {
+        return (json && json.status && Array.isArray(json.data)) ? json.data : [];
+      }
+    },
+    columns: [
+      { data: 'idespecificacion' },
+      { data: 'especificacion' },
+      { data: 'fecha_creacion' },
+      { data: 'options', orderable: false, searchable: false }
+    ],
+    order: [[1, 'desc']]
+  });
+}
+
+function cargarEspecificacionesOLD(idEstacion) {
   estacionActual = parseInt(idEstacion || 0);
   if (!estacionActual) return;
 

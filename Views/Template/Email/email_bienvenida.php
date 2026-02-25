@@ -66,7 +66,7 @@
       <p>Hola <?= $data['nombreUsuario']; ?>,</p>
 
       <p>
-        Su cuenta en el sistema <strong>EMR/MRP</strong> ha sido creada correctamente.
+        Su cuenta en el sistema <strong>MRP/WMS</strong> ha sido creada correctamente.
       </p>
 
       <p>
