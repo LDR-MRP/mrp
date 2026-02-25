@@ -72,7 +72,7 @@
 								'asunto' => 'Bienvenido a MRP'
 							);
 
-							$correos_copia="carlos.cruz@ldrsolutions.com.mx";
+							$correos_copia="carlos.cruz@ldrsolutions.com.mx,alejandro.hernandez@ldrsolutions.com.mx";
 
 							sendMailLocal($dataUsuario,'email_bienvenida',$correos_copia);
 
@@ -398,16 +398,12 @@ public function setAvatar()
         exit;
     }
 
-    // ✅ Base path real (en hostinger normalmente es /home/.../public_html)
+
     $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/');
 
-    // Prueba 1: Assets/avatars
+
     $dir = $docRoot . '/Assets/avatars';
 
-    // Si tu carpeta realmente es assets/avatars (minúsculas), descomenta:
-    // $dir = $docRoot . '/assets/avatars';
-
-    // Debug de ruta (si falla, te lo va a devolver)
     $debug = [
         'document_root' => $docRoot,
         'target_dir'    => $dir,
@@ -438,7 +434,7 @@ public function setAvatar()
     $fileName = "avatar_{$usuarioid}_{$ts}_{$rand}.svg";
     $fullPath = $dir . '/' . $fileName;
 
-    // ✅ Crear archivo (no mover)
+
     $bytes = file_put_contents($fullPath, $svg, LOCK_EX);
 
     if ($bytes === false || $bytes <= 0) {
@@ -452,7 +448,7 @@ public function setAvatar()
         exit;
     }
 
-    // Guardar en BD (tu modelo)
+
     $optionsJson = json_encode($options, JSON_UNESCAPED_UNICODE);
 
     $ok = $this->model->updateAvatarUsuario($usuarioid, $fileName, $seed, $gender, $optionsJson);

@@ -141,7 +141,7 @@ public function login()
 			// 	dep($_POST);
 			// exit; 
 			error_reporting(0);
-			$correos_copias = "carlos.cruz@ldrsolutions.com.mx,alejandro.hernandez@ldrsolutions.com.mx";
+			$correos_copias = "carlos.cruz@ldrsolutions.com.mx";
 
 				if(empty($_POST['txtEmailReset'])){
 					$arrResponse = array('status' => false, 'msg' => 'Error de datos' );
