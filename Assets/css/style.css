@@ -385,6 +385,14 @@
   box-shadow: 0 2px 10px rgba(15,23,42,.06);
   border: 1px solid rgba(226,232,240,.9);
 }
+/*submenu de reportes*/
+.dropdown-submenu {
+    position: relative;
+}
 
-
+.dropdown-submenu .dropdown-menu {
+    top: 0;
+    left: 100%;
+    margin-top: -1px;
+}
 

@@ -30,14 +30,14 @@
                 <div class="col-xl-12">
                     <div class="card">
                         <div class="card-header">
-                            <h5>Generación de Números de Serie</h5>
+                            <h5>Generación de números de VIN</h5>
                         </div>
                         <div class="card">
                             <div class="card-header">
                                 <ul class="nav nav-tabs-custom card-header-tabs border-bottom-0" role="tablist" id="nav-tab">
                                     <li class="nav-item">
                                         <a class="nav-link active" data-bs-toggle="tab" href="#listSeries" role="tab">
-                                            SERIES
+                                            VINES
                                         </a>
                                     </li>
                                     <?php if ($_SESSION['permisosMod']['w']) { ?>
@@ -63,16 +63,14 @@
                                                 <tr>
                                                     <th>PRODUCTO</th>
                                                     <th>ALMACÉN</th>
-                                                    <th>NÚMERO SERIE</th>
-                                                    <th>REFERENCIA</th>
-                                                    <th>COSTO</th>
+                                                    <th>NÚMERO VIN</th>
+                                                    <th>ORDEN DE TRABAJO</th>
                                                     <th>FECHA</th>
                                                     <th>ESTADO</th>
                                                     <th>PDF</th>
                                                 </tr>
                                             </thead>
                                         </table>
-
                                     </div>
 
                                     <!-- TAB GENERAR -->
@@ -82,44 +80,58 @@
 
                                             <div class="row">
 
-                                                <div class="col-lg-6">
-                                                    <input type="hidden" name="inventarioid" id="inventarioid">
+                                                <div class="col-lg-6 mt-3">
+                                                    <label>Orden de trabajo</label>
 
-                                                    <label>Producto</label>
+                                                    <input type="hidden" name="inventarioid" id="inventarioid">
+                                                    <input type="hidden" name="referencia" id="referencia">
+
                                                     <input type="text"
-                                                        class="form-control invSearchSerie"
-                                                        id="productoSearch"
-                                                        placeholder="Buscar producto..."
+                                                        class="form-control ordenSearch"
+                                                        id="ordenSearch"
+                                                        placeholder="Buscar orden de trabajo..."
                                                         autocomplete="off"
                                                         required>
 
-                                                    <div id="listaProductos" class="list-group"></div>
+                                                    <div id="listaOrdenes" class="list-group"></div>
                                                 </div>
 
-                                                <div class="col-lg-6">
+                                                <div class="col-lg-6 mt-3">
+                                                    <label>Producto</label>
+                                                    <input type="text"
+                                                        class="form-control"
+                                                        id="productoNombre"
+                                                        readonly>
+                                                </div>
+
+
+                                                <div class="col-lg-6 mt-3">
                                                     <label>Almacén</label>
                                                     <select class="form-select" name="almacenid" id="almacenid" required></select>
                                                 </div>
 
-                                                <div class="col-lg-4 mt-3">
-                                                    <label>Prefijo</label>
-                                                    <input type="text" class="form-control" name="prefijo" required>
+                                                <div class="col-lg-6 mt-3">
+                                                    <label>Prefijo (VIN)</label>
+                                                    <input type="text"
+                                                        class="form-control"
+                                                        name="prefijo"
+                                                        maxlength="17"
+                                                        required>
+
+                                                    <small id="vinCounter" class="text-muted">
+                                                        0 / 17 caracteres
+                                                    </small>
                                                 </div>
 
                                                 <div class="col-lg-4 mt-3">
                                                     <label>Cantidad</label>
-                                                    <input type="number" class="form-control" name="cantidad" min="1" required>
+                                                    <input type="number" class="form-control" name="cantidad" min="11" required>
                                                 </div>
 
-                                                <div class="col-lg-4 mt-3">
+                                                <!--<div class="col-lg-4 mt-3">
                                                     <label>Costo</label>
                                                     <input type="number" step="0.01" class="form-control" name="costo">
-                                                </div>
-
-                                                <div class="col-lg-6 mt-3">
-                                                    <label>Referencia</label>
-                                                    <input type="text" class="form-control" name="referencia">
-                                                </div>
+                                                </div>-->
 
                                             </div>
 

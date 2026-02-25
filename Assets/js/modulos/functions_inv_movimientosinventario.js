@@ -17,41 +17,128 @@ let spanBtnText = null;
 let formPrecios = null;
 
 document.addEventListener("DOMContentLoaded", function () {
-
+  let hoy = new Date().toISOString().split('T')[0];
   tableMovimientos = $("#tableMovimientos").DataTable({
-  processing: true,
-  ajax: {
-    url: base_url + "/Inv_movimientosinventario/getMovimientos",
-    dataSrc: "",
-  },
-  columns: [
-    { data: "idmovinventario" },
-    { data: "producto" },
-    { data: "almacen" },
-    { data: "concepto" },
-    { data: "referencia" },
-    { data: "cantidad" },
-    { data: "fecha_movimiento" },
-    {
-      data: null,
-      className: "text-center",
-      render: function (data) {
-        return `
+    processing: true,
+    responsive: true,
+    destroy: true,
+
+    ajax: {
+      url: base_url + "/Inv_movimientosinventario/getMovimientos",
+      type: "GET",
+      data: function (d) {
+        d.almacen = document.querySelector("#filtroAlmacen").value;
+        d.concepto = document.querySelector("#filtroConcepto").value;
+        d.fechaInicio = document.querySelector("#filtroFechaInicio").value;
+        d.fechaFin = document.querySelector("#filtroFechaFin").value;
+      },
+      dataSrc: "",
+    },
+
+    // 🔥 ACTIVAR BOTONES
+    dom: '<"row mb-2"<"col-md-6"B><"col-md-6 text-end"f>>rtip',
+    buttons: [
+      {
+        extend: "csvHtml5",
+        text: '<i class="fa fa-download me-1"></i> Exportar CSV',
+        className: "btn btn-outline-success btn-sm shadow-sm rounded-pill px-3",
+        title: "Movimientos_Inventario_" + hoy,
+
+        exportOptions: {
+          columns: ":visible:not(:last-child)",
+        },
+      },
+      {
+        extend: "pdfHtml5",
+        text: '<i class="fa fa-file-pdf me-1"></i> Exportar PDF',
+        className: "btn btn-outline-danger btn-sm shadow-sm rounded-pill px-3",
+        title: "Movimientos de Inventario",
+        orientation: "landscape",
+        pageSize: "A4",
+        exportOptions: {
+          columns: ":visible:not(:last-child)",
+        },
+        customize: function (doc) {
+          doc.defaultStyle.fontSize = 8;
+          doc.styles.tableHeader.fontSize = 9;
+          doc.styles.title = {
+            fontSize: 14,
+            bold: true,
+            alignment: "center",
+          };
+        },
+      },
+    ],
+    columns: [
+      {
+        data: "idmovinventario",
+        visible: false,
+        searchable: false,
+      },
+      { data: "clave" },
+      { data: "producto" },
+      { data: "almacen" },
+      { data: "concepto" },
+      { data: "referencia" },
+      { data: "cantidad" },
+      { data: "fecha_movimiento" },
+      {
+        data: null,
+        className: "text-center",
+        render: function (data) {
+          return `
           <button 
             class="btn btn-sm btn-danger btnReporteMov"
             data-numero="${data.numero_movimiento}"
-            data-almacen="${data.almacenid}"
-            title="Ver reporte">
-            <i class="fa fa-file-pdf"> Reporte</i>
+            data-almacen="${data.almacenid}">
+            <i class="fa fa-file-pdf">Reporte</i>
           </button>
         `;
+        },
+        orderable: false,
       },
-    },
-  ],
-  order: [[0, "desc"]],
-  destroy: true,
-});
+    ],
 
+    order: [[0, "desc"]],
+  });
+
+  const btnFiltrar = document.querySelector("#btnFiltrar");
+  if (btnFiltrar) {
+    btnFiltrar.addEventListener("click", function () {
+      tableMovimientos.ajax.reload();
+    });
+  }
+
+  const btnLimpiar = document.querySelector("#btnLimpiar");
+  if (btnLimpiar) {
+    btnLimpiar.addEventListener("click", function () {
+      const almacen = document.querySelector("#filtroAlmacen");
+      const concepto = document.querySelector("#filtroConcepto");
+      const fechaInicio = document.querySelector("#filtroFechaInicio");
+      const fechaFin = document.querySelector("#filtroFechaFin");
+
+      if (almacen) almacen.value = "";
+      if (concepto) concepto.value = "";
+      if (fechaInicio) fechaInicio.value = "";
+      if (fechaFin) fechaFin.value = "";
+
+      tableMovimientos.ajax.reload();
+    });
+  }
+
+  // Cargar almacenes en filtro
+  fetch(base_url + "/Inv_movimientosinventario/getSelectAlmacenes")
+    .then((res) => res.text())
+    .then((html) => {
+      document.querySelector("#filtroAlmacen").innerHTML = html;
+    });
+
+  // Cargar conceptos en filtro
+  fetch(base_url + "/Inv_movimientosinventario/getSelectConceptos")
+    .then((res) => res.text())
+    .then((html) => {
+      document.querySelector("#filtroConcepto").innerHTML = html;
+    });
 
   const primerTabEl = document.querySelector(
     '#nav-tab a[href="#listmovimiento"]',
@@ -64,7 +151,6 @@ document.addEventListener("DOMContentLoaded", function () {
     primerTab = new bootstrap.Tab(primerTabEl);
     firstTab = new bootstrap.Tab(firstTabEl);
     tabNuevo = firstTabEl;
-
   }
 
   const formMovimiento = document.querySelector("#formMovimiento");
@@ -97,30 +183,29 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((res) => res.json())
       .then((obj) => {
         if (obj.status) {
-  Swal.fire({
-    title: "Movimiento registrado",
-    text: obj.msg,
-    icon: "success",
-    showCancelButton: true,
-    confirmButtonText: "📄 Ver reporte",
-    cancelButtonText: "Cerrar",
-  }).then((result) => {
-    if (result.isConfirmed) {
-      window.open(
-        base_url +
-          "/Inv_movimientosinventario/reporte/" +
-          obj.numero_movimiento +
-          "," +
-          obj.almacenid,
-        "_blank"
-      );
-    }
-  });
+          Swal.fire({
+            title: "Movimiento registrado",
+            text: obj.msg,
+            icon: "success",
+            showCancelButton: true,
+            confirmButtonText: "📄 Ver reporte",
+            cancelButtonText: "Cerrar",
+          }).then((result) => {
+            if (result.isConfirmed) {
+              window.open(
+                base_url +
+                  "/Inv_movimientosinventario/reporte/" +
+                  obj.numero_movimiento +
+                  "," +
+                  obj.almacenid,
+                "_blank",
+              );
+            }
+          });
 
-  formMovimiento.reset();
-  $("#tableMovimientos").DataTable().ajax.reload();
-}
-else {
+          formMovimiento.reset();
+          $("#tableMovimientos").DataTable().ajax.reload();
+        } else {
           Swal.fire("Error", obj.msg, "error");
         }
       });
@@ -187,23 +272,26 @@ function cerrarListaMov() {
 }
 
 const tbody = document.querySelector("#tablaPartidas tbody");
+const btnAddRow = document.querySelector("#btnAddRow");
 
-document.querySelector("#btnAddRow").addEventListener("click", () => {
-  const tr = document.createElement("tr");
+if (tbody && btnAddRow) {
+  btnAddRow.addEventListener("click", () => {
+    const tr = document.createElement("tr");
 
-  tr.innerHTML = `
-    <td><input name="cantidad[]" type="number" class="form-control cantidad"></td>
-    <td>
-      <input type="text" class="form-control invSearch">
-      <input type="hidden" name="inventarioid[]">
-    </td>
-    <td><input name="costo_cantidad[]" type="number" class="form-control costo"></td>
-    <td><input name="total[]" type="number" class="form-control total" readonly></td>
-    <td><button type="button" class="btn btn-danger btn-sm btnDel">X</button></td>
-  `;
+    tr.innerHTML = `
+      <td><input name="cantidad[]" type="number" class="form-control cantidad"></td>
+      <td>
+        <input type="text" class="form-control invSearch">
+        <input type="hidden" name="inventarioid[]">
+      </td>
+      <td><input name="costo_cantidad[]" type="number" class="form-control costo"></td>
+      <td><input name="total[]" type="number" class="form-control total" readonly></td>
+      <td><button type="button" class="btn btn-danger btn-sm btnDel">X</button></td>
+    `;
 
-  tbody.appendChild(tr);
-});
+    tbody.appendChild(tr);
+  });
+}
 
 document.addEventListener("click", (e) => {
   if (e.target.classList.contains("btnDel")) {
@@ -315,11 +403,7 @@ document.addEventListener("click", function (e) {
   const almacen = btn.dataset.almacen;
 
   window.open(
-    base_url +
-      "/Inv_movimientosinventario/reporte/" +
-      numero +
-      "," +
-      almacen,
-    "_blank"
+    base_url + "/Inv_movimientosinventario/reporte/" + numero + "," + almacen,
+    "_blank",
   );
 });

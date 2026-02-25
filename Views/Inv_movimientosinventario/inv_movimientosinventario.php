@@ -46,6 +46,45 @@
                 <div class="card-body">
                     <div class="tab-content">
                         <div class="tab-pane active" id="listmovimiento" role="tabpanel">
+                            <div class="row g-3 mb-3">
+
+                                <div class="col-md-3">
+                                    <label class="form-label">Almacén</label>
+                                    <select id="filtroAlmacen" class="form-control">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label">Concepto</label>
+                                    <select id="filtroConcepto" class="form-control">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-2">
+                                    <label class="form-label">Fecha inicio</label>
+                                    <input type="date" id="filtroFechaInicio" class="form-control">
+                                </div>
+
+                                <div class="col-md-2">
+                                    <label class="form-label">Fecha fin</label>
+                                    <input type="date" id="filtroFechaFin" class="form-control">
+                                </div>
+
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <div class="w-100 d-flex gap-2">
+                                        <button id="btnFiltrar" class="btn btn-primary w-50">
+                                            Filtrar
+                                        </button>
+                                        <button id="btnLimpiar" class="btn btn-secondary w-50">
+                                            Limpiar
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </div>
+
 
                             <table id="tableMovimientos"
                                 class="table table-bordered dt-responsive nowrap table-striped align-middle"
@@ -53,6 +92,7 @@
                                 <thead>
                                     <tr>
                                         <th>#</th>
+                                        <th>Clave</th>
                                         <th>Producto</th>
                                         <th>Almacén</th>
                                         <th>Concepto</th>

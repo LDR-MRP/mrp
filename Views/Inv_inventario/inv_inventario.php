@@ -264,6 +264,9 @@
                         <a class="nav-link active" data-bs-toggle="tab" href="#tabMoneda">Moneda</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#tabPrecio">Precio</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" href="#tabFiscal">Fiscal</a>
                     </li>
                     <li class="nav-item">
@@ -284,6 +287,12 @@
                     <div class="tab-pane fade show active" id="tabMoneda">
                         <!-- Contenedor dinámico solo para select y botón -->
                         <div id="contentMoneda"></div>
+                    </div>
+
+                    <!--tab de la precios-->
+                    <div class="tab-pane fade" id="tabPrecio">
+                        <!-- Contenedor dinámico solo para select y botón -->
+                        <div id="contentPrecio"></div>
                     </div>
 
 
@@ -514,6 +523,7 @@
                                             <th>Línea de producto</th>
                                             <th>Fecha asignación</th>
                                             <th>Estado</th>
+                                            <th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tbodyLineasAsignadas">

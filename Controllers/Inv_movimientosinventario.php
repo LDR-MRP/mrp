@@ -128,11 +128,19 @@ class Inv_movimientosinventario extends Controllers
     public function getMovimientos()
     {
         if ($_SESSION['permisosMod']['r']) {
-            $arrData = $this->model->selectMovimientos();
+
+            $almacen     = isset($_GET['almacen']) ? intval($_GET['almacen']) : 0;
+            $concepto    = isset($_GET['concepto']) ? intval($_GET['concepto']) : 0;
+            $fechaInicio = $_GET['fechaInicio'] ?? '';
+            $fechaFin    = $_GET['fechaFin'] ?? '';
+
+            $arrData = $this->model->selectMovimientos($almacen, $concepto, $fechaInicio, $fechaFin);
+
             echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
         }
         die();
     }
+
 
     public function getSelectInventarioJson()
     {
@@ -151,37 +159,37 @@ class Inv_movimientosinventario extends Controllers
     }
 
     public function reporte($params)
-{
-    ob_start();
+    {
+        ob_start();
 
-    $arr = explode(',', $params);
+        $arr = explode(',', $params);
 
-    $numero    = intval($arr[0] ?? 0);
-    $almacenid = intval($arr[1] ?? 0);
+        $numero    = $arr[0] ?? '';
+        $almacenid = intval($arr[1] ?? 0);
 
-    if (!$numero || !$almacenid) {
+        if (empty($numero) || !$almacenid) {
+            exit;
+        }
+
+        $data['movimiento'] = $this->model->getMovimientoReporte($numero, $almacenid);
+        $data['detalle']    = $this->model->getDetalleMovimientoReporte($numero, $almacenid);
+
+        // Generar HTML
+        ob_start();
+        $this->views->getView($this, "reporte_movimiento", $data);
+        $html = ob_get_clean();
+
+        // Limpiar cualquier salida previa
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+
+        require_once("Libraries/html2pdf/vendor/autoload.php");
+
+        $pdf = new \Spipu\Html2Pdf\Html2Pdf('P', 'A4', 'es', 'true', 'UTF-8');
+        $pdf->writeHTML($html);
+        $pdf->output("Movimiento_$numero.pdf", "I");
+
         exit;
     }
-
-    $data['movimiento'] = $this->model->getMovimientoReporte($numero, $almacenid);
-    $data['detalle']    = $this->model->getDetalleMovimientoReporte($numero, $almacenid);
-
-    // Generar HTML
-    ob_start();
-    $this->views->getView($this, "reporte_movimiento", $data);
-    $html = ob_get_clean();
-
-    // Limpiar cualquier salida previa
-    if (ob_get_length()) {
-        ob_end_clean();
-    }
-
-    require_once("Libraries/html2pdf/vendor/autoload.php");
-
-    $pdf = new \Spipu\Html2Pdf\Html2Pdf('P','A4','es','true','UTF-8');
-    $pdf->writeHTML($html);
-    $pdf->output("Movimiento_$numero.pdf","I");
-
-    exit;
-}
 }
