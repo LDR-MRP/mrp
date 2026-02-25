@@ -96,10 +96,7 @@
                                             <label class="form-label" for="impuesto-select">IMPUESTO</label>
                                             <div class="input-group has-validation mb-3">
                                                 <span class="input-group-text" id="impuesto-addon">Est</span>
-                                                <select class="form-select" id="impuesto-select" name="impuesto-select"
-                                                    aria-describedby="impuesto-addon" required>
-                                                    <option value="2" selected>Sí</option>
-                                                    <option value="1">No</option>
+                                                <select class="form-select" id="impuesto-select" name="impuesto-select" required>
                                                 </select>
                                                 <div class="invalid-feedback">El campo estado es obligatorio</div>
                                             </div>

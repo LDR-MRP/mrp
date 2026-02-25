@@ -1,73 +1,156 @@
 let tableSeries;
-let productosSerieCache = [];
+let ordenesCache = [];
+let collapsedGroups = {};
 
 document.addEventListener("DOMContentLoaded", function () {
-  const hiddenInventario = document.querySelector("#inventarioid");
+  // 🔹 FORZAR MAYÚSCULAS EN PREFIJO
+  const vinInput = document.querySelector("input[name='prefijo']");
+  const vinCounter = document.getElementById("vinCounter");
+
+  vinInput.addEventListener("input", function () {
+    // 🔹 Convertir a mayúsculas
+    let value = this.value.toUpperCase();
+
+    // 🔒 Eliminar letras prohibidas
+    value = value.replace(/[IOQÑ]/g, "");
+
+    // 🔒 Permitir solo alfanumérico
+    value = value.replace(/[^A-Z0-9]/g, "");
+
+    // 🔒 Limitar a 17 caracteres
+    value = value.substring(0, 17);
+
+    this.value = value;
+
+    let length = value.length;
+
+    vinCounter.textContent = `${length} / 17 caracteres`;
+
+    vinCounter.classList.remove(
+      "text-muted",
+      "text-danger",
+      "text-warning",
+      "text-success",
+    );
+
+    vinInput.classList.remove("is-invalid", "is-valid");
+
+    if (length < 11) {
+      vinCounter.classList.add("text-danger");
+      vinInput.classList.add("is-invalid");
+    } else if (length < 17) {
+      vinCounter.classList.add("text-warning");
+    } else if (length === 17) {
+      vinCounter.classList.add("text-success");
+      vinInput.classList.add("is-valid");
+    }
+  });
 
   // 🔹 DATATABLE
-tableSeries = $("#tableSeries").DataTable({
-  ajax: {
-    url: base_url + "/Inv_series/getSeries",
-    dataSrc: "",
-  },
-  columns: [
-    { data: "producto" },
-    { data: "almacen" },
-    { data: "numero_serie" },
-    { data: "referencia" },
-    { data: "costo" },
-    { data: "fecha" },
-    { data: "estado" },
-    {
-  data: null,
-  render: function (data) {
-    return `
-      <a href="${base_url}/Inv_series/generarCodigoPDF/${data.numero_serie}" 
-         target="_blank"
-         class="btn btn-sm btn-dark">
-         Código
-      </a>
+  let collapsedGroups = {};
 
-      <!--
-      <a href="${base_url}/Inv_series/generarQrPDF/${data.numero_serie}" 
-         target="_blank"
-         class="btn btn-sm btn-primary">
-         QR
-      </a>
-      -->
-    `;
-  }
-}
-  ],
-  bDestroy: true,
-  iDisplayLength: 10,
-  order: [[5, "desc"]],
-});
+  tableSeries = $("#tableSeries").DataTable({
+    ajax: {
+      url: base_url + "/Inv_series/getSeries",
+      dataSrc: "",
+    },
 
-  
+    paging: false, //  QUITA PAGINACIÓN
+    info: false, // opcional (quita "Showing 1 to X")
+    lengthChange: false, // opcional (quita selector 10,25,50)
 
-  // 🔹 CARGAR PRODUCTOS EN CACHE
-  fetch(base_url + "/Inv_series/getProductos?term=")
+    columns: [
+      { data: "producto" },
+      { data: "almacen" },
+      { data: "numero_serie" },
+      { data: "referencia" },
+      { data: "fecha" },
+      { data: "estado" },
+      {
+        data: null,
+        render: function (data) {
+          return `
+          <a href="${base_url}/Inv_series/generarCodigoPDF/${data.numero_serie}" 
+             target="_blank"
+             class="btn btn-sm btn-dark">
+             Código
+          </a>
+        `;
+        },
+      },
+    ],
+
+    order: [[4, "desc"]],
+
+    rowGroup: {
+      dataSrc: "referencia",
+      startRender: function (rows, group) {
+        if (collapsedGroups[group] === undefined) {
+          collapsedGroups[group] = true;
+        }
+
+        let collapsed = !!collapsedGroups[group];
+
+        rows.nodes().each(function (r) {
+          r.style.display = collapsed ? "none" : "";
+        });
+
+        return $("<tr/>")
+          .addClass("group-header")
+          .attr("data-name", group)
+          .append(
+            `
+    <td colspan="7" class="fw-bold" style="cursor:pointer;">
+            ${collapsed ? "▶" : "▼"} 
+            ORDEN DE TRABAJO: ${group}
+            <span class="badge bg-secondary ms-2">
+              ${rows.count()} Series
+            </span>
+          </td>
+        `,
+          )
+          .toggleClass("collapsed", collapsed);
+      },
+    },
+
+    columnDefs: [{ targets: 3, visible: false }],
+
+    bDestroy: true,
+  });
+
+  $("#tableSeries tbody").on("click", "tr.group-header", function () {
+    let name = $(this).data("name");
+    collapsedGroups[name] = !collapsedGroups[name];
+    tableSeries.draw(false);
+  });
+
+  // 🔹 CARGAR ORDENES EN CACHE
+  fetch(base_url + "/Inv_series/getOrdenesTrabajo")
     .then((res) => res.json())
     .then((data) => {
-      productosSerieCache = data;
+      ordenesCache = data;
     });
-    
-    document.querySelector("#formSeries").addEventListener("submit", function(e){
-    e.preventDefault();
-});
 
+  // 🔹 PREVENIR SUBMIT NORMAL
+  document
+    .querySelector("#formSeries")
+    .addEventListener("submit", function (e) {
+      e.preventDefault();
+    });
 
-  // 🔹 AUTOCOMPLETE ESTILO MOVIMIENTOS
+  // 🔹 AUTOCOMPLETE ORDEN DE TRABAJO
   document.addEventListener("input", function (e) {
-    if (!e.target.classList.contains("invSearchSerie")) return;
+    if (!e.target.classList.contains("ordenSearch")) return;
 
-    const input = e.target;
-    const hidden = document.querySelector("#inventarioid");
-
+    let input = e.target;
     let val = input.value.toLowerCase();
-    cerrarListaSerie();
-    hidden.value = ""; // 🔥 limpiar si escriben
+
+    cerrarListaOrden();
+
+    // limpiar campos ocultos si escriben
+    document.querySelector("#inventarioid").value = "";
+    document.querySelector("#referencia").value = "";
+    document.querySelector("#productoNombre").value = "";
 
     if (!val) return;
 
@@ -75,51 +158,40 @@ tableSeries = $("#tableSeries").DataTable({
     lista.className = "autocomplete-items list-group position-absolute w-100";
     input.parentNode.appendChild(lista);
 
-    productosSerieCache
-      .filter(
-        (p) =>
-          (p.cve_articulo && p.cve_articulo.toLowerCase().includes(val)) ||
-          (p.descripcion && p.descripcion.toLowerCase().includes(val)),
-      )
+    ordenesCache
+      .filter((o) => o.num_orden.toLowerCase().includes(val))
       .slice(0, 10)
-      .forEach((p) => {
+      .forEach((o) => {
         let item = document.createElement("div");
         item.className = "list-group-item list-group-item-action";
-        item.innerHTML = `<strong>${p.cve_articulo}</strong> - ${p.descripcion}`;
+        item.innerHTML = `<strong>${o.num_orden}</strong> - ${o.producto}`;
 
         item.addEventListener("click", function () {
-          if (p.serie === "N") {
-            Swal.fire(
-              "Producto sin control de serie",
-              "Este artículo no permite números de serie. Debe editar el producto y activar control de serie.",
-              "warning",
-            );
-            cerrarListaSerie();
-            return;
-          }
+          document.querySelector("#ordenSearch").value = o.num_orden;
+          document.querySelector("#referencia").value = o.num_orden;
+          document.querySelector("#inventarioid").value = o.idinventario;
+          document.querySelector("#productoNombre").value = o.producto;
 
-          input.value = `${p.cve_articulo} - ${p.descripcion}`;
-          hidden.value = p.idinventario;
-          cerrarListaSerie();
+          cerrarListaOrden();
         });
 
         lista.appendChild(item);
       });
   });
 
-  // 🔹 CERRAR LISTA
-  function cerrarListaSerie() {
+  function cerrarListaOrden() {
     document
       .querySelectorAll(".autocomplete-items")
       .forEach((el) => el.remove());
   }
 
   document.addEventListener("click", function (e) {
-    if (!e.target.classList.contains("invSearchSerie")) {
-      cerrarListaSerie();
+    if (!e.target.classList.contains("ordenSearch")) {
+      cerrarListaOrden();
     }
   });
 
+  // 🔹 CARGAR ALMACENES
   fetch(base_url + "/Inv_series/getAlmacenes")
     .then((res) => res.json())
     .then((data) => {
@@ -135,11 +207,24 @@ tableSeries = $("#tableSeries").DataTable({
       });
     });
 
+  // 🔹 PREVIEW VIN
   document.querySelector("#btnPreview").addEventListener("click", function () {
+    let inventarioid = document.querySelector("#inventarioid").value;
+
+    if (!inventarioid) {
+      Swal.fire(
+        "Error",
+        "Debe seleccionar una orden de trabajo válida",
+        "error",
+      );
+      return;
+    }
+
     let baseVin = document
       .querySelector("input[name='prefijo']")
       .value.trim()
       .toUpperCase();
+
     let cantidad = parseInt(
       document.querySelector("input[name='cantidad']").value,
     );
@@ -149,8 +234,24 @@ tableSeries = $("#tableSeries").DataTable({
       return;
     }
 
+    // mínimo 11 obligatorios
+    if (baseVin.length < 11) {
+      return;
+    }
+
+    // máximo 17
     if (baseVin.length > 17) {
       Swal.fire("Error", "El VIN no puede exceder 17 caracteres", "error");
+      return;
+    }
+
+    //  caracteres inválidos
+    if (/[IOQÑ]/.test(baseVin)) {
+      Swal.fire(
+        "Error",
+        "El VIN no puede contener las letras I, O, Ñ o Q",
+        "error",
+      );
       return;
     }
 
@@ -158,7 +259,6 @@ tableSeries = $("#tableSeries").DataTable({
     let contador = 1;
     let longitudNumerica;
 
-    // 🔥 SOLO usar contador automático si ya tiene 17
     if (baseVin.length === 17) {
       let match = baseVin.match(/(\d+)$/);
 
@@ -180,15 +280,25 @@ tableSeries = $("#tableSeries").DataTable({
 
     for (let i = 0; i < cantidad; i++) {
       let nuevoNumero = String(contador + i).padStart(longitudNumerica, "0");
+
       let vinFinal = parteFija + nuevoNumero;
+
+      if (vinFinal.length !== 17) {
+        Swal.fire(
+          "Error",
+          "Error interno: el VIN generado no tiene 17 caracteres",
+          "error",
+        );
+        return;
+      }
 
       let div = document.createElement("div");
       div.className = "col-md-3 mb-2";
       div.innerHTML = `
-            <div class="border p-2 text-center bg-light">
-                ${vinFinal}
-            </div>
-        `;
+        <div class="border p-2 text-center bg-light">
+            ${vinFinal}
+        </div>
+      `;
 
       container.appendChild(div);
     }
@@ -199,6 +309,7 @@ tableSeries = $("#tableSeries").DataTable({
     modal.show();
   });
 
+  // 🔹 CONFIRMAR INSERT
   document.addEventListener("click", function (e) {
     if (e.target && e.target.id === "btnConfirmSeries") {
       let form = document.querySelector("#formSeries");
@@ -218,28 +329,23 @@ tableSeries = $("#tableSeries").DataTable({
           let repetidos = obj.repetidos;
           let disponibles = obj.disponibles;
 
-          // 🔥 CASO 1: ninguno repetido
           if (repetidos.length === 0) {
             insertarSeries(disponibles);
-          }
-          // 🔥 CASO 2: todos repetidos
-          else if (disponibles.length === 0) {
+          } else if (disponibles.length === 0) {
             Swal.fire({
               icon: "error",
               title: "Todos los VIN están ocupados",
               html: repetidos.join("<br>"),
             });
-          }
-          // 🔥 CASO 3: algunos repetidos
-          else {
+          } else {
             Swal.fire({
               icon: "warning",
               title: "VIN repetidos detectados",
               html: `
-                        <b>Repetidos:</b><br>${repetidos.join("<br>")}
-                        <br><br>
-                        <b>Disponibles:</b> ${disponibles.length}
-                    `,
+                <b>Repetidos:</b><br>${repetidos.join("<br>")}
+                <br><br>
+                <b>Disponibles:</b> ${disponibles.length}
+              `,
               showCancelButton: true,
               confirmButtonText: "Insertar disponibles",
               cancelButtonText: "Cancelar",
@@ -254,6 +360,7 @@ tableSeries = $("#tableSeries").DataTable({
   });
 });
 
+// 🔹 INSERTAR SERIES
 function insertarSeries(lista) {
   fetch(base_url + "/Inv_series/setSeriesConfirmadas", {
     method: "POST",
@@ -264,8 +371,10 @@ function insertarSeries(lista) {
       lista: lista,
       inventarioid: document.querySelector("#inventarioid").value,
       almacenid: document.querySelector("#almacenid").value,
-      referencia: document.querySelector("input[name='referencia']").value,
-      costo: document.querySelector("input[name='costo']").value,
+      referencia: document.querySelector("#referencia").value,
+      costo: document.querySelector("input[name='costo']")
+        ? document.querySelector("input[name='costo']").value
+        : 0,
     }),
   })
     .then((res) => res.json())
@@ -273,8 +382,12 @@ function insertarSeries(lista) {
       if (obj.status) {
         Swal.fire("Correcto", obj.msg, "success");
         tableSeries.ajax.reload();
+
         document.querySelector("#formSeries").reset();
         document.querySelector("#inventarioid").value = "";
+        document.querySelector("#referencia").value = "";
+        document.querySelector("#productoNombre").value = "";
+
         bootstrap.Modal.getInstance(
           document.getElementById("modalPreviewSeries"),
         ).hide();

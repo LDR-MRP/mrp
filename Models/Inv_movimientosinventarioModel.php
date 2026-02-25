@@ -56,13 +56,7 @@ class Inv_movimientosinventarioModel extends Mysql
         }
 
         // 3. Número movimiento
-        $numRow = $this->select(
-            "SELECT IFNULL(MAX(numero_movimiento),0)+1 AS num
-     FROM wms_movimientos_inventario
-     WHERE almacenid = $almacenid"
-        );
-        $num = (int)$numRow['num'];
-
+        $numero_movimiento = 'MOV-' . date('YmdHis') . '-' . rand(100,999);
 
         // 4. Insertar movimiento
         $this->insert(
@@ -74,7 +68,7 @@ class Inv_movimientosinventarioModel extends Mysql
             [
                 $inventarioid,
                 $almacenid,
-                $num,
+                $numero_movimiento,
                 $concepmovid,
                 $referencia,
                 $cantidad,
@@ -96,30 +90,47 @@ class Inv_movimientosinventarioModel extends Mysql
     }
 
 
-    public function selectMovimientos()
+    public function selectMovimientos($almacen = 0, $concepto = 0, $fechaInicio = '', $fechaFin = '')
 {
+    $where = "WHERE m.estado = 2";
+
+    if ($almacen > 0) {
+        $where .= " AND m.almacenid = $almacen";
+    }
+
+    if ($concepto > 0) {
+        $where .= " AND m.concepmovid = $concepto";
+    }
+
+    if (!empty($fechaInicio)) {
+        $where .= " AND DATE(m.fecha_movimiento) >= '$fechaInicio'";
+    }
+
+    if (!empty($fechaFin)) {
+        $where .= " AND DATE(m.fecha_movimiento) <= '$fechaFin'";
+    }
+
     $sql = "SELECT 
         m.idmovinventario,
         m.numero_movimiento,
         m.almacenid,
+        i.cve_articulo AS clave,
         i.descripcion AS producto,
         a.descripcion AS almacen,
         c.descripcion AS concepto,
         m.referencia,
-        CONCAT(m.signo * m.cantidad) AS cantidad,
+        (m.signo * m.cantidad) AS cantidad,
         m.existencia,
         m.fecha_movimiento
     FROM wms_movimientos_inventario m
     INNER JOIN wms_inventario i ON i.idinventario = m.inventarioid
     INNER JOIN wms_almacenes a ON a.idalmacen = m.almacenid
     INNER JOIN wms_conceptos_mov c ON c.idconcepmov = m.concepmovid
-    WHERE m.estado = 2
+    $where
     ORDER BY m.idmovinventario DESC";
-    
+
     return $this->select_all($sql);
 }
-
-
 
 
     public function selectAlmacenes()
@@ -174,12 +185,7 @@ class Inv_movimientosinventarioModel extends Mysql
 
         try {
 
-            $numRow = $this->select("
-            SELECT IFNULL(MAX(numero_movimiento),0)+1 AS num
-            FROM wms_movimientos_inventario
-            WHERE almacenid = $almacenid
-        ");
-            $num = (int)$numRow['num'];
+            $numero_movimiento = 'MOV-' . date('YmdHis') . '-' . rand(100,999);
 
             $insertados = 0;
 
@@ -214,7 +220,7 @@ class Inv_movimientosinventarioModel extends Mysql
             ", [
                     $inventarioid,
                     $almacenid,
-                    $num,
+                    $numero_movimiento,
                     $concepmovid,
                     $referencia,
                     $cantidad,
@@ -243,7 +249,7 @@ class Inv_movimientosinventarioModel extends Mysql
             }
 
             return [
-                'numero_movimiento' => $num,
+                'numero_movimiento' => $numero_movimiento,
                 'almacenid' => $almacenid
             ];
         } catch (Exception $e) {
@@ -274,7 +280,7 @@ class Inv_movimientosinventarioModel extends Mysql
         FROM wms_movimientos_inventario m
         INNER JOIN wms_almacenes a ON a.idalmacen = m.almacenid
         INNER JOIN wms_conceptos_mov c ON c.idconcepmov = m.concepmovid
-        WHERE m.numero_movimiento = $numero
+        WHERE m.numero_movimiento = '$numero'
           AND m.almacenid = $almacenid
         LIMIT 1
     ");
@@ -291,7 +297,7 @@ public function getDetalleMovimientoReporte($numero, $almacenid)
             (m.cantidad * m.signo * m.costo_cantidad) AS total
         FROM wms_movimientos_inventario m
         INNER JOIN wms_inventario i ON i.idinventario = m.inventarioid
-        WHERE m.numero_movimiento = $numero
+        WHERE m.numero_movimiento = '$numero'
           AND m.almacenid = $almacenid
     ");
 }

@@ -385,6 +385,50 @@ WHERE idinventario = ?";
         return $this->select_all($sql);
     }
 
+    //--------------------------------------------INVENTARIO PRECIOS
+    public function setPrecioInventario(int $inventarioid, int $idprecio)
+    {
+        $sql = "INSERT INTO wms_inventario_precios (inventarioid,idprecio,estado) 
+            VALUES (?,?,2)";
+
+        return $this->insert($sql, [$inventarioid, $idprecio]);
+    }
+
+    public function insertInventarioPrecio($inventarioid, $idprecio, $fecha, $estado)
+    {
+        // evitar duplicados
+        $sql = "SELECT * FROM wms_inventario_precios
+            WHERE inventarioid = $inventarioid
+            AND idprecio = $idprecio";
+        $existe = $this->select($sql);
+
+        if (!empty($existe)) {
+            return "exist";
+        }
+
+        $sql = "INSERT INTO wms_inventario_precios
+            (inventarioid, idprecio, fecha_creacion, estado)
+            VALUES (?,?,?,?)";
+
+        return $this->insert($sql, [$inventarioid, $idprecio, $fecha, $estado]);
+    }
+
+    public function getPreciosAsignados($idinventario)
+    {
+        $idinventario = intval($idinventario);
+
+        $sql = "SELECT ip.idprecio,
+                   p.cve_precio,
+                   p.descripcion,
+                   ip.estado
+            FROM wms_inventario_precios ip
+            INNER JOIN wms_precios p ON p.idprecio = ip.idprecio
+            WHERE ip.inventarioid = $idinventario";
+
+        return $this->select_all($sql);
+    }
+
+
 
 
 
@@ -392,24 +436,42 @@ WHERE idinventario = ?";
     //-------------------------------------------- INVENTARIO LINEA
     public function insertInventarioLinea($inventarioid, $idlineaproducto, $fecha, $estado)
     {
-        // Convertimos a enteros los valores numéricos para seguridad
         $inventarioid = intval($inventarioid);
         $idlineaproducto = intval($idlineaproducto);
         $estado = intval($estado);
 
-        // Escapamos solo el string de fecha manualmente
-        $fecha = addslashes($fecha); // evita errores de comillas simples
-
-        // Verificar si ya existe
+        // 🔹 VALIDAR SI YA EXISTE UNA ACTIVA
         $exist = $this->select(
-            "SELECT * FROM wms_inventario_linea WHERE inventarioid = $inventarioid AND estado = $estado"
+            "SELECT id_inv_linea 
+         FROM wms_inventario_linea 
+         WHERE inventarioid = $inventarioid 
+         AND estado = 2"
         );
 
-        // INSERT concatenando valores
-        $sql = "INSERT INTO wms_inventario_linea (inventarioid, idlineaproducto, fecha_creacion, estado) 
+        if (!empty($exist)) {
+            return "exist";
+        }
+
+        $sql = "INSERT INTO wms_inventario_linea 
+            (inventarioid, idlineaproducto, fecha_creacion, estado) 
             VALUES ($inventarioid, $idlineaproducto, '$fecha', $estado)";
-        return $this->insert($sql, []); // tu core espera 2 parámetros
+
+        return $this->insert($sql, []);
     }
+
+    public function updateInventarioLinea($id_inv_linea, $idlineaproducto)
+    {
+        $id_inv_linea = intval($id_inv_linea);
+        $idlineaproducto = intval($idlineaproducto);
+
+        $sql = "UPDATE wms_inventario_linea 
+            SET idlineaproducto = $idlineaproducto
+            WHERE id_inv_linea = $id_inv_linea";
+
+        return $this->update($sql, []);
+    }
+
+
 
     public function selectLineas()
     {
@@ -422,13 +484,21 @@ WHERE idinventario = ?";
     {
         $idinventario = intval($idinventario);
 
-        $sql = "SELECT l.idlineaproducto AS idlinea, l.descripcion, il.fecha_creacion, il.estado
-            FROM wms_linea_producto l
-            INNER JOIN wms_inventario_linea il ON l.idlineaproducto = il.idlineaproducto
-            WHERE il.inventarioid = $idinventario";
-
+        $sql = "SELECT 
+            il.id_inv_linea,
+            l.idlineaproducto AS idlinea, 
+            l.descripcion, 
+            il.fecha_creacion, 
+            il.estado
+        FROM wms_linea_producto l
+        INNER JOIN wms_inventario_linea il 
+            ON l.idlineaproducto = il.idlineaproducto
+        WHERE il.inventarioid = $idinventario";
         return $this->select_all($sql);
     }
+
+
+
 
 
     //-------------------------------------------------Datos fiscales SAT
@@ -523,40 +593,40 @@ WHERE idinventario = ?";
     }
 
     public function insertInventarioImpuestoform($inventarioid, $idimpuesto, $estado)
-{
-    $inventarioid = intval($inventarioid);
-    $idimpuesto   = intval($idimpuesto);
+    {
+        $inventarioid = intval($inventarioid);
+        $idimpuesto   = intval($idimpuesto);
 
-    // ✅ verificar si ya existe
-    $sqlCheck = "SELECT idinvimpuesto 
+        // ✅ verificar si ya existe
+        $sqlCheck = "SELECT idinvimpuesto 
                  FROM wms_inventario_impuestos 
                  WHERE inventarioid = $inventarioid 
                    AND idimpuesto = $idimpuesto";
 
-    $exist = $this->select($sqlCheck);
+        $exist = $this->select($sqlCheck);
 
-    if (!empty($exist)) {
-        return "exist";
-    }
+        if (!empty($exist)) {
+            return "exist";
+        }
 
-    // ✅ insertar
-    $sql = "INSERT INTO wms_inventario_impuestos
+        // ✅ insertar
+        $sql = "INSERT INTO wms_inventario_impuestos
             (inventarioid,idimpuesto,estado)
             VALUES (?,?,?)";
 
-    return $this->insert($sql, [
-        $inventarioid,
-        $idimpuesto,
-        $estado
-    ]);
-}
+        return $this->insert($sql, [
+            $inventarioid,
+            $idimpuesto,
+            $estado
+        ]);
+    }
 
 
     public function getImpuestosAsignados($idinventario)
-{
-    $idinventario = intval($idinventario);
+    {
+        $idinventario = intval($idinventario);
 
-    $sql = "SELECT i.idimpuesto,
+        $sql = "SELECT i.idimpuesto,
                    i.descripcion,
                    ii.estado
             FROM wms_impuestos i
@@ -564,12 +634,12 @@ WHERE idinventario = ?";
               ON i.idimpuesto = ii.idimpuesto
             WHERE ii.inventarioid = $idinventario";
 
-    return $this->select_all($sql);
-}
+        return $this->select_all($sql);
+    }
 
     public function items(array $filters = []): array
     {
-        $query ="SELECT
+        $query = "SELECT
                     -- data inventario 
                     wms_inventario.idinventario,
                     wms_inventario.cve_articulo,
@@ -586,20 +656,18 @@ WHERE idinventario = ?";
                 WHERE true
             ";
 
-        if(array_key_exists('id', $filters)) {
+        if (array_key_exists('id', $filters)) {
             $query .= "AND wms_inventario.idinventario = '{$filters['id']}'";
         }
 
-        if(array_key_exists('estado', $filters)) {
+        if (array_key_exists('estado', $filters)) {
             $query .= "AND wms_inventario.estado = '{$filters['estado']}'";
         }
 
-        if(array_key_exists('sku', $filters)) {
+        if (array_key_exists('sku', $filters)) {
             $query .= "AND wms_inventario.cve_articulo LIKE '%{$filters['sku']}%'";
         }
 
         return $this->select_all($query);
     }
-
-
 }

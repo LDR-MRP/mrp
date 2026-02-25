@@ -85,6 +85,8 @@ const MILOTESPEDIMENTOS = 25;
 const MIMULTIALMACENES = 26;
 const MIMONEDAS = 70;
 const MIASIGNACIONESINV = 71;
+const MIREPORTES = 72;
+const MIMOVIMIENTOSALMACEN = 73;
 
 //Submodulos Capacidad
 

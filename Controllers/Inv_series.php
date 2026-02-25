@@ -18,9 +18,9 @@ class Inv_series extends Controllers
         if (empty($_SESSION['permisosMod']['r'])) {
             header("Location:" . base_url() . '/dashboard');
         }
-        $data['page_tag'] = "Series";
-        $data['page_title'] = "Series";
-        $data['page_name'] = "series";
+        $data['page_tag'] = "VIN";
+        $data['page_title'] = "VIN";
+        $data['page_name'] = "VIN";
         $data['page_functions_js'] = "functions_inv_series.js";
         $this->views->getView($this, "inv_series", $data);
     }
@@ -43,62 +43,6 @@ class Inv_series extends Controllers
             echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
         }
         die();
-    }
-
-    public function setSeries()
-    {
-        if ($_POST) {
-
-            if (empty($_POST['inventarioid']) || empty($_POST['almacenid']) || empty($_POST['prefijo']) || empty($_POST['cantidad'])) {
-                $arrResponse = array("status" => false, "msg" => "Datos incorrectos");
-            } else {
-
-                $inventarioid = intval($_POST['inventarioid']);
-                $almacenid    = intval($_POST['almacenid']);
-                $prefijo      = strClean($_POST['prefijo']);
-                $cantidad     = intval($_POST['cantidad']);
-                $costo        = floatval($_POST['costo']);
-                $referencia   = strClean($_POST['referencia']);
-
-                $request = $this->model->generarSeries(
-                    $inventarioid,
-                    $almacenid,
-                    $prefijo,
-                    $cantidad,
-                    $costo,
-                    $referencia
-                );
-
-                if ($request["status"] === false) {
-
-                    $arrResponse = array(
-                        "status" => false,
-                        "msg" => $request["msg"]
-                    );
-                } else {
-
-                    $insertados = $request["insertados"];
-                    $duplicados = count($request["duplicados"]);
-
-                    if ($duplicados > 0) {
-
-                        $arrResponse = array(
-                            "status" => true,
-                            "msg" => "Insertados: $insertados | Duplicados: $duplicados"
-                        );
-                    } else {
-
-                        $arrResponse = array(
-                            "status" => true,
-                            "msg" => "Series generadas correctamente ($insertados registros)"
-                        );
-                    }
-                }
-            }
-
-            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-            die();
-        }
     }
 
     public function getProductos()
@@ -127,6 +71,7 @@ class Inv_series extends Controllers
 
     public function validarSeries()
     {
+        
         $inventarioid = intval($_POST['inventarioid']);
         $almacenid = intval($_POST['almacenid']);
         $prefijo = $_POST['prefijo'];
@@ -143,6 +88,16 @@ class Inv_series extends Controllers
         die();
     }
 
+    public function getOrdenesTrabajo()
+    {
+        if ($_SESSION['permisosMod']['r']) {
+            $arrData = $this->model->searchOrdenesTrabajo();
+            echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        }
+        die();
+    }
+
+
     public function setSeriesConfirmadas()
     {
         $data = json_decode(file_get_contents("php://input"), true);
@@ -152,6 +107,20 @@ class Inv_series extends Controllers
         $almacenid = $data['almacenid'];
         $referencia = $data['referencia'];
         $costo = $data['costo'];
+
+        // 🔒 Validar que tenga orden de trabajo
+
+        $orden = $this->model->validarOrdenTrabajoPorOrden($referencia);
+
+        if (empty($orden)) {
+            echo json_encode([
+                "status" => false,
+                "msg" => "Orden de trabajo inválida."
+            ]);
+            die();
+        }
+
+
 
         $request = $this->model->insertarSeriesConfirmadas(
             $lista,
@@ -166,87 +135,87 @@ class Inv_series extends Controllers
     }
 
     public function generarCodigoPDF($vin)
-{
-    $vin = strClean($vin);
-    $data = $this->model->getSerieByVin($vin);
+    {
+        $vin = strClean($vin);
+        $data = $this->model->getSerieByVin($vin);
 
-    if (empty($data)) {
-        die("VIN no encontrado");
+        if (empty($data)) {
+            die("VIN no encontrado");
+        }
+
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+
+        require_once(__DIR__ . '/../Libraries/tcpdf/tcpdf.php');
+
+        $pdf = new TCPDF('L', 'mm', [60, 90], true, 'UTF-8', false);
+        $pdf->SetMargins(6, 6, 6);
+        $pdf->SetAutoPageBreak(false);
+        $pdf->AddPage();
+
+        $pageWidth  = $pdf->getPageWidth();
+        $pageHeight = $pdf->getPageHeight();
+
+        // Marco
+        $pdf->Rect(4, 4, $pageWidth - 8, $pageHeight - 8);
+
+        // ------------------ TÍTULO
+        $pdf->SetFont('helvetica', 'B', 12);
+        $pdf->Cell(0, 6, 'IDENTIFICACION DE VIN', 0, 1, 'L');
+        $pdf->Ln(2);
+
+        // ------------------ PRODUCTO
+        $pdf->SetFont('helvetica', '', 9);
+        $pdf->Cell(0, 5, 'Producto: ' . $data['producto'], 0, 1, 'L');
+        $pdf->Cell(0, 5, 'Referencia: ' . $data['referencia'], 0, 1, 'L');
+        $pdf->Ln(3);
+
+        // ------------------ VIN SUPERIOR
+        $pdf->SetFont('helvetica', 'B', 13);
+        $pdf->Cell(0, 6, 'VIN: ' . $data['numero_serie'], 0, 1, 'L');
+        $pdf->Ln(2);
+
+        // Guardar Y actual
+        $yStartBarcode = $pdf->GetY();
+
+        // ------------------ BARCODE
+        $barcodeWidth  = $pageWidth - 28;
+        $barcodeHeight = 12;
+        $barcodeX      = ($pageWidth - $barcodeWidth) / 2;
+
+        $style = [
+            'align' => 'C',
+            'text'  => false
+        ];
+
+        $pdf->write1DBarcode(
+            $data['numero_serie'],
+            'C128',
+            $barcodeX,
+            $yStartBarcode,
+            $barcodeWidth,
+            $barcodeHeight,
+            0.4,
+            $style,
+            'N'
+        );
+
+        // ------------------ VIN INFERIOR
+        $yVinInferior = $yStartBarcode + $barcodeHeight + 3;
+
+        // Verificación de seguridad para que no se salga
+        if ($yVinInferior + 6 > $pageHeight - 6) {
+            $yVinInferior = $pageHeight - 12;
+        }
+
+        $pdf->SetY($yVinInferior);
+        $pdf->SetFont('helvetica', 'B', 12);
+        $pdf->Cell(0, 6, $data['numero_serie'], 0, 1, 'C');
+
+        $pdf->Output('Codigo_' . $vin . '.pdf', 'I');
+        exit;
     }
-
-    if (ob_get_length()) {
-        ob_end_clean();
-    }
-
-    require_once(__DIR__ . '/../Libraries/tcpdf/tcpdf.php');
-
-    $pdf = new TCPDF('L', 'mm', [60, 90], true, 'UTF-8', false);
-    $pdf->SetMargins(6, 6, 6);
-    $pdf->SetAutoPageBreak(false);
-    $pdf->AddPage();
-
-    $pageWidth  = $pdf->getPageWidth();
-    $pageHeight = $pdf->getPageHeight();
-
-    // Marco
-    $pdf->Rect(4, 4, $pageWidth - 8, $pageHeight - 8);
-
-    // ------------------ TÍTULO
-    $pdf->SetFont('helvetica', 'B', 12);
-    $pdf->Cell(0, 6, 'IDENTIFICACION DE SERIE', 0, 1, 'L');
-    $pdf->Ln(2);
-
-    // ------------------ PRODUCTO
-    $pdf->SetFont('helvetica', '', 9);
-    $pdf->Cell(0, 5, 'Producto: ' . $data['producto'], 0, 1, 'L');
-    $pdf->Cell(0, 5, 'Referencia: ' . $data['referencia'], 0, 1, 'L');
-    $pdf->Ln(3);
-
-    // ------------------ VIN SUPERIOR
-    $pdf->SetFont('helvetica', 'B', 13);
-    $pdf->Cell(0, 6, 'VIN: ' . $data['numero_serie'], 0, 1, 'L');
-    $pdf->Ln(2);
-
-    // Guardar Y actual
-    $yStartBarcode = $pdf->GetY();
-
-    // ------------------ BARCODE
-    $barcodeWidth  = $pageWidth - 28;
-    $barcodeHeight = 12;
-    $barcodeX      = ($pageWidth - $barcodeWidth) / 2;
-
-    $style = [
-        'align' => 'C',
-        'text'  => false
-    ];
-
-    $pdf->write1DBarcode(
-        $data['numero_serie'],
-        'C128',
-        $barcodeX,
-        $yStartBarcode,
-        $barcodeWidth,
-        $barcodeHeight,
-        0.4,
-        $style,
-        'N'
-    );
-
-    // ------------------ VIN INFERIOR
-    $yVinInferior = $yStartBarcode + $barcodeHeight + 3;
-
-    // Verificación de seguridad para que no se salga
-    if ($yVinInferior + 6 > $pageHeight - 6) {
-        $yVinInferior = $pageHeight - 12;
-    }
-
-    $pdf->SetY($yVinInferior);
-    $pdf->SetFont('helvetica', 'B', 12);
-    $pdf->Cell(0, 6, $data['numero_serie'], 0, 1, 'C');
-
-    $pdf->Output('Codigo_' . $vin . '.pdf', 'I');
-    exit;
-}
 
 
 

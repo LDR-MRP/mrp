@@ -1,5 +1,7 @@
 let tableInventarios;
 let currentInventarioId = null;
+let modoEdicion = false;
+let idLineaEditando = null;
 
 const rutas = {
   lineas: base_url + "/Inv_lineasdproducto/getSelectLineasProductos",
@@ -11,12 +13,11 @@ const rutas = {
 document.addEventListener("DOMContentLoaded", () => {
   const modalInv = document.getElementById("modalConfigInventario");
 
-if (modalInv) {
-  modalInv.addEventListener("hidden.bs.modal", function () {
-    limpiarModalInventario();
-  });
-}
-
+  if (modalInv) {
+    modalInv.addEventListener("hidden.bs.modal", function () {
+      limpiarModalInventario();
+    });
+  }
 
   ocultarMovimientoInicial();
   tableInventarios = $("#tableInventarios").DataTable({
@@ -40,93 +41,92 @@ if (modalInv) {
 
   //limpiar modal
   function limpiarModalInventario() {
-  console.log("Limpiando modalConfigInventario...");
+    console.log("Limpiando modalConfigInventario...");
 
-  // ---------- HIDDEN ----------
-  const hidImp = document.getElementById("imp_inventarioid");
-  if (hidImp) hidImp.value = "";
+    // ---------- HIDDEN ----------
+    const hidImp = document.getElementById("imp_inventarioid");
+    if (hidImp) hidImp.value = "";
 
-  // ---------- SELECTS ----------
-  const selImp = document.getElementById("cfg_impuesto");
-  if (selImp) {
-    selImp.innerHTML = `<option value="">Seleccione un impuesto</option>`;
-    selImp.value = "";
+    // ---------- SELECTS ----------
+    const selImp = document.getElementById("cfg_impuesto");
+    if (selImp) {
+      selImp.innerHTML = `<option value="">Seleccione un impuesto</option>`;
+      selImp.value = "";
+    }
+
+    // ---------- TABLAS ----------
+    const t1 = document.getElementById("tbodyImpuestosCfg");
+    if (t1) t1.innerHTML = "";
+
+    const t2 = document.getElementById("tbodyFiscal");
+    if (t2) t2.innerHTML = "";
+
+    const t3 = document.getElementById("tbodyMonedas");
+    if (t3) t3.innerHTML = "";
+
+    const t4 = document.getElementById("tbodyLineasAsignadas");
+    if (t4) t4.innerHTML = "";
+
+    const t5 = document.getElementById("tbodyLtpd");
+    if (t5) t5.innerHTML = "";
+
+    // ---------- FORMS ----------
+    document
+      .querySelectorAll("#modalConfigInventario form")
+      .forEach((f) => f.reset());
+
+    // =====================================================
+    // LIMPIEZA TAB FISCAL
+    // =====================================================
+
+    const sat = document.querySelector(".satSearch");
+    if (sat) sat.value = "";
+
+    const unidad = document.querySelector(".unidadSatInput");
+    if (unidad) unidad.value = "";
+
+    const fraccion = document.querySelector(".fraccionInput");
+    if (fraccion) fraccion.value = "";
+
+    const aduana = document.querySelector(".aduanaInput");
+    if (aduana) aduana.value = "";
+
+    const c1 = document.querySelector('[name="clave_sat"]');
+    if (c1) c1.value = "";
+
+    const d1 = document.querySelector('[name="desc_sat"]');
+    if (d1) d1.value = "";
+
+    const c2 = document.querySelector('[name="clave_unidad_sat"]');
+    if (c2) c2.value = "";
+
+    const d2 = document.querySelector('[name="desc_clave_unidad_sat"]');
+    if (d2) d2.value = "";
+
+    const c3 = document.querySelector('[name="clave_fraccion_sat"]');
+    if (c3) c3.value = "";
+
+    const d3 = document.querySelector('[name="desc_clave_fraccion_sat"]');
+    if (d3) d3.value = "";
+
+    const c4 = document.querySelector('[name="clave_aduana_sat"]');
+    if (c4) c4.value = "";
+
+    const d4 = document.querySelector('[name="desc_clave_aduana_sat"]');
+    if (d4) d4.value = "";
+
+    const bloque = document.getElementById("bloqueFiscalTabla");
+    if (bloque) bloque.classList.add("d-none");
+
+    // ---------- VOLVER A PRIMER TAB ----------
+    const firstTab = document.querySelector("#modalConfigInventario .nav-link");
+    if (firstTab) {
+      new bootstrap.Tab(firstTab).show();
+    }
+
+    // ---------- RESET ID GLOBAL ----------
+    currentInventarioId = null;
   }
-
-  // ---------- TABLAS ----------
-  const t1 = document.getElementById("tbodyImpuestosCfg");
-  if (t1) t1.innerHTML = "";
-
-  const t2 = document.getElementById("tbodyFiscal");
-  if (t2) t2.innerHTML = "";
-
-  const t3 = document.getElementById("tbodyMonedas");
-  if (t3) t3.innerHTML = "";
-
-  const t4 = document.getElementById("tbodyLineasAsignadas");
-  if (t4) t4.innerHTML = "";
-
-  const t5 = document.getElementById("tbodyLtpd");
-  if (t5) t5.innerHTML = "";
-
-  // ---------- FORMS ----------
-  document
-    .querySelectorAll("#modalConfigInventario form")
-    .forEach(f => f.reset());
-
-  // =====================================================
-  // LIMPIEZA TAB FISCAL
-  // =====================================================
-
-  const sat = document.querySelector(".satSearch");
-  if (sat) sat.value = "";
-
-  const unidad = document.querySelector(".unidadSatInput");
-  if (unidad) unidad.value = "";
-
-  const fraccion = document.querySelector(".fraccionInput");
-  if (fraccion) fraccion.value = "";
-
-  const aduana = document.querySelector(".aduanaInput");
-  if (aduana) aduana.value = "";
-
-  const c1 = document.querySelector('[name="clave_sat"]');
-  if (c1) c1.value = "";
-
-  const d1 = document.querySelector('[name="desc_sat"]');
-  if (d1) d1.value = "";
-
-  const c2 = document.querySelector('[name="clave_unidad_sat"]');
-  if (c2) c2.value = "";
-
-  const d2 = document.querySelector('[name="desc_clave_unidad_sat"]');
-  if (d2) d2.value = "";
-
-  const c3 = document.querySelector('[name="clave_fraccion_sat"]');
-  if (c3) c3.value = "";
-
-  const d3 = document.querySelector('[name="desc_clave_fraccion_sat"]');
-  if (d3) d3.value = "";
-
-  const c4 = document.querySelector('[name="clave_aduana_sat"]');
-  if (c4) c4.value = "";
-
-  const d4 = document.querySelector('[name="desc_clave_aduana_sat"]');
-  if (d4) d4.value = "";
-
-  const bloque = document.getElementById("bloqueFiscalTabla");
-  if (bloque) bloque.classList.add("d-none");
-
-  // ---------- VOLVER A PRIMER TAB ----------
-  const firstTab = document.querySelector("#modalConfigInventario .nav-link");
-  if (firstTab) {
-    new bootstrap.Tab(firstTab).show();
-  }
-
-  // ---------- RESET ID GLOBAL ----------
-  currentInventarioId = null;
-}
-
 
   /* =============================
      CONFIGURACIÓN
@@ -155,13 +155,13 @@ if (modalInv) {
    NUEVO INVENTARIO
 ============================= */
   document
-  .querySelector('a[href="#agregarProducto"]')
-  ?.addEventListener("click", () => {
-    resetFormularioInventario();
-    cargarLineas("#lineaproductoid_producto");
-    cargarAlmacenes("#almacenid");
-    cargarImpuestos("#idimpuesto"); // ✅ NUEVO
-  });
+    .querySelector('a[href="#agregarProducto"]')
+    ?.addEventListener("click", () => {
+      resetFormularioInventario();
+      cargarLineas("#lineaproductoid_producto");
+      cargarAlmacenes("#almacenid");
+      cargarImpuestos("#idimpuesto"); // ✅ NUEVO
+    });
 
   /* =============================
      CARGA SELECT LÍNEAS
@@ -923,6 +923,7 @@ function fntConfigInventario(idinventario) {
 
       setTimeout(() => {
         cargarTabMoneda(idinventario);
+        cargartabPrecio(idinventario);
         cargarTabLineas(idinventario);
         refrescarFiscal(idinventario);
         cargarTabImpuestos(idinventario);
@@ -986,6 +987,115 @@ function cargarTabMoneda(idinventario) {
 }
 
 //-----------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------Precios----------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------
+function cargartabPrecio(idinventario) {
+  fetch(base_url + "/Inv_precios/getSelectPrecios")
+    .then((res) => res.text())
+    .then((html) => {
+      const cont = document.getElementById("contentPrecio");
+      if (!cont) return;
+
+      cont.innerHTML = `
+        <div class="row g-3 mb-3">
+
+          <div class="col-md-10">
+            <label class="form-label">Precio</label>
+            <select id="cfg_precio" class="form-select">
+              ${html}
+            </select>
+          </div>
+
+          <div class="col-md-2 align-self-end">
+            <button class="btn btn-primary w-100"
+              onclick="guardarPrecio(${idinventario})">
+              Guardar
+            </button>
+          </div>
+
+        </div>
+
+        <div class="mt-2">
+          <h6>Precios asignados</h6>
+          <table class="table table-striped table-bordered">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Clave</th>
+                <th>Descripción</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyPrecios"></tbody>
+          </table>
+        </div>
+      `;
+
+      refrescarTablaPrecios(idinventario);
+    });
+}
+function guardarPrecio(idinventario) {
+  let select = document.getElementById("cfg_precio");
+  let idprecio = select.value;
+
+  if (!idprecio) {
+    Swal.fire("Atención", "Seleccione un precio", "warning");
+    return;
+  }
+
+  let formData = new FormData();
+  formData.append("inventarioid", idinventario);
+  formData.append("idprecio", idprecio);
+
+  fetch(base_url + "/Inv_inventario/setPrecioInventario", {
+    method: "POST",
+    body: formData,
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.status) {
+        Swal.fire("Correcto", data.msg, "success");
+
+        // ✅ LIMPIAR SELECT
+        select.selectedIndex = 0;
+
+        // O también puedes usar:
+        // select.value = "";
+
+        refrescarTablaPrecios(idinventario);
+      } else {
+        Swal.fire("Error", data.msg, "error");
+      }
+    });
+}
+
+function refrescarTablaPrecios(idinventario) {
+  fetch(base_url + "/Inv_inventario/getPreciosAsignados/" + idinventario)
+    .then((res) => res.json())
+    .then((data) => {
+      let tbody = document.getElementById("tbodyPrecios");
+      if (!tbody) return;
+
+      tbody.innerHTML = "";
+
+      if (data.status && data.data.length > 0) {
+        data.data.forEach((item) => {
+          tbody.innerHTML += `
+            <tr>
+              <td>${item.idprecio}</td>
+              <td>${item.cve_precio}</td>
+              <td>${item.descripcion}</td>
+              <td>${item.estado == 2 ? "Activo" : "Inactivo"}</td>
+            </tr>
+          `;
+        });
+      } else {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center">Sin precios asignados</td></tr>`;
+      }
+    });
+}
+
+//-----------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------LINEAS----------------------------------------------------
 //-----------------------------------------------------------------------------------------------------------------
 function cargarTabLineas(idinventario) {
@@ -1038,19 +1148,22 @@ function refrescarTablaLineas(idinventario) {
   fetch(base_url + "/Inv_inventario/getLineasAsignadas/" + idinventario)
     .then((res) => res.json())
     .then((data) => {
-      const tbody = document.getElementById("tbodyLineasAsignadas"); // ID coincide con HTML
-      if (!tbody) return;
-
+      const tbody = document.getElementById("tbodyLineasAsignadas");
       tbody.innerHTML = "";
 
       data.data.forEach((linea) => {
-        // <--- ojo: tu JSON viene con {status, data}
         tbody.innerHTML += `
           <tr>
-            <td>${linea.idlinea}</td>
+            <td>${linea.id_inv_linea}</td>
             <td>${linea.descripcion}</td>
             <td>${linea.fecha_creacion}</td>
             <td>${linea.estado == 2 ? "Activo" : "Inactivo"}</td>
+            <td>
+              <button class="btn btn-sm btn-warning"
+                onclick="editarLinea(${linea.id_inv_linea}, ${linea.idlinea})">
+                Editar
+              </button>
+            </td>
           </tr>
         `;
       });
@@ -1059,6 +1172,7 @@ function refrescarTablaLineas(idinventario) {
 
 function guardarLinea(idinventario) {
   const select = document.getElementById("cfg_linea");
+  const btn = document.querySelector("#contentLinea button");
   const linea = select.value;
 
   if (!linea) {
@@ -1067,29 +1181,71 @@ function guardarLinea(idinventario) {
   }
 
   const fd = new FormData();
-  fd.append("inventarioid", idinventario);
-  fd.append("idlineaproducto", linea);
 
-  fetch(base_url + "/Inv_inventario/setLinea", {
-    method: "POST",
-    body: fd,
-  })
-    .then((r) => r.json())
-    .then((res) => {
-      if (res.status) {
-        Swal.fire("OK", res.msg, "success");
+  if (modoEdicion) {
+    // 🔹 UPDATE
+    fd.append("id_inv_linea", idLineaEditando);
+    fd.append("idlineaproducto", linea);
 
-        // Limpiar select
-        select.selectedIndex = 0;
-        select.value = "";
-        select.blur();
+    fetch(base_url + "/Inv_inventario/updateLinea", {
+      method: "POST",
+      body: fd,
+    })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.status) {
+          Swal.fire("Actualizado", res.msg, "success");
 
-        // 🔹 REFRESCAR TABLA DESPUÉS DE INSERTAR
-        refrescarTablaLineas(idinventario);
-      } else {
-        Swal.fire("Error", res.msg, "error");
-      }
-    });
+          modoEdicion = false;
+          idLineaEditando = null;
+
+          btn.textContent = "Guardar";
+          btn.classList.remove("btn-warning");
+          btn.classList.add("btn-primary");
+
+          select.selectedIndex = 0;
+
+          refrescarTablaLineas(idinventario);
+        } else {
+          Swal.fire("Error", res.msg, "error");
+        }
+      });
+  } else {
+    // 🔹 INSERT
+    fd.append("inventarioid", idinventario);
+    fd.append("idlineaproducto", linea);
+
+    fetch(base_url + "/Inv_inventario/setLinea", {
+      method: "POST",
+      body: fd,
+    })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.status) {
+          Swal.fire("OK", res.msg, "success");
+          select.selectedIndex = 0;
+          refrescarTablaLineas(idinventario);
+        } else {
+          Swal.fire("Error", res.msg, "error");
+        }
+      });
+  }
+}
+
+function editarLinea(id_inv_linea, idlineaproducto) {
+  const select = document.getElementById("cfg_linea");
+  const btn = document.querySelector("#contentLinea button");
+
+  select.value = idlineaproducto;
+
+  modoEdicion = true;
+  idLineaEditando = id_inv_linea;
+
+  btn.textContent = "Actualizar Línea";
+  btn.classList.remove("btn-primary");
+  btn.classList.add("btn-warning");
+
+  select.focus();
 }
 
 //-----------------------------------------------------------------------------------------------------------------
@@ -1900,13 +2056,14 @@ document.addEventListener("shown.bs.tab", function (e) {
 //-----------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------IMPUESTOS-------------------------------------------------
 //-----------------------------------------------------------------------------------------------------------------
-document.getElementById("formImpuestoInventario").addEventListener("submit", function(e){
-  e.preventDefault();
+document
+  .getElementById("formImpuestoInventario")
+  .addEventListener("submit", function (e) {
+    e.preventDefault();
 
-  const idinv = document.getElementById("imp_inventarioid").value;
-  guardarImpuesto(idinv);
-});
-
+    const idinv = document.getElementById("imp_inventarioid").value;
+    guardarImpuesto(idinv);
+  });
 
 function cargarTabImpuestos(idinventario) {
   // setear hidden
@@ -1914,8 +2071,8 @@ function cargarTabImpuestos(idinventario) {
   if (hid) hid.value = idinventario;
 
   fetch(base_url + "/Inv_inventario/getSelectImpuestosCfg")
-    .then(r => r.text())
-    .then(html => {
+    .then((r) => r.text())
+    .then((html) => {
       document.getElementById("cfg_impuesto").innerHTML = html;
       refrescarTablaImpuestos(idinventario);
     });
@@ -1953,8 +2110,8 @@ function guardarImpuesto(idinventario) {
 }
 function refrescarTablaImpuestos(idinventario) {
   fetch(base_url + "/Inv_inventario/getImpuestosAsignados/" + idinventario)
-    .then(r => r.json())
-    .then(res => {
+    .then((r) => r.json())
+    .then((res) => {
       console.log("Respuesta impuestos:", res);
 
       const tbody = document.getElementById("tbodyImpuestosCfg");
@@ -1975,18 +2132,13 @@ function refrescarTablaImpuestos(idinventario) {
         return;
       }
 
-      res.data.forEach(i => {
+      res.data.forEach((i) => {
         tbody.innerHTML += `
           <tr>
             <td>${i.descripcion}</td>
-            <td>${i.estado == 2 ? 'Activo' : 'Inactivo'}</td>
+            <td>${i.estado == 2 ? "Activo" : "Inactivo"}</td>
           </tr>
         `;
       });
     });
 }
-
-
-
-
-

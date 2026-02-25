@@ -4,7 +4,7 @@ class Inv_inventario extends Controllers
 	use ApiResponser;
 
 	protected $inventarioService;
-	
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -598,6 +598,58 @@ class Inv_inventario extends Controllers
 		die();
 	}
 
+	//---------------------------------------------------------------------- PRECIOS
+	// GUARDAR PRECIO
+	public function setPrecioInventario()
+	{
+		if (!$_SESSION['permisosMod']['w']) {
+			echo json_encode(['status' => false, 'msg' => 'Sin permisos']);
+			die();
+		}
+
+		if ($_POST) {
+
+			if (empty($_POST['inventarioid']) || empty($_POST['idprecio'])) {
+				echo json_encode(['status' => false, 'msg' => 'Datos obligatorios']);
+				die();
+			}
+
+			$inventarioid = intval($_POST['inventarioid']);
+			$idprecio = intval($_POST['idprecio']);
+			$fecha = date('Y-m-d H:i:s');
+			$estado = 2;
+
+			$request = $this->model->insertInventarioPrecio(
+				$inventarioid,
+				$idprecio,
+				$fecha,
+				$estado
+			);
+
+			if ($request > 0) {
+				$arrResponse = ['status' => true, 'msg' => 'Precio asignado correctamente'];
+			} else {
+				$arrResponse = ['status' => false, 'msg' => 'Error al guardar precio'];
+			}
+
+			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+		}
+
+		die();
+	}
+	//PRECIOS ASIGNADOS
+	public function getPreciosAsignados($idinventario)
+	{
+		$monedas = $this->model->getPreciosAsignados($idinventario);
+
+		echo json_encode([
+			'status' => true,
+			'data' => $monedas
+		], JSON_UNESCAPED_UNICODE);
+
+		die();
+	}
+
 
 
 	//---------------------------------------------------------------------- LINEAS INVENTARIO
@@ -627,17 +679,61 @@ class Inv_inventario extends Controllers
 				$estado
 			);
 
-			if ($request > 0) {
-				$arrResponse = ['status' => true, 'msg' => 'Línea asignada correctamente'];
-			} else {
-				$arrResponse = ['status' => false, 'msg' => 'Error al guardar línea'];
-			}
+			if ($request === "exist") {
 
+				$arrResponse = [
+					'status' => false,
+					'msg' => 'Este producto ya tiene una línea asignada'
+				];
+			} elseif ($request > 0) {
+
+				$arrResponse = [
+					'status' => true,
+					'msg' => 'Línea asignada correctamente'
+				];
+			} else {
+
+				$arrResponse = [
+					'status' => false,
+					'msg' => 'Error al guardar línea'
+				];
+			}
 			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 		}
 
 		die();
 	}
+
+	public function updateLinea()
+	{
+		if ($_POST) {
+
+			$id_inv_linea = intval($_POST['id_inv_linea']);
+			$idlineaproducto = intval($_POST['idlineaproducto']);
+
+			$request = $this->model->updateInventarioLinea(
+				$id_inv_linea,
+				$idlineaproducto
+			);
+
+			if ($request) {
+				$arrResponse = [
+					'status' => true,
+					'msg' => 'Línea actualizada correctamente'
+				];
+			} else {
+				$arrResponse = [
+					'status' => false,
+					'msg' => 'Error al actualizar'
+				];
+			}
+
+			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+			die();
+		}
+	}
+
+
 	public function getLineasAsignadas($idinventario)
 	{
 		// Usar el modelo principal del controlador
@@ -981,7 +1077,7 @@ class Inv_inventario extends Controllers
 	}
 
 	public function index()
-    {
-        return $this->apiResponse($this->inventarioService->items(sanitizeGet()));
-    }
+	{
+		return $this->apiResponse($this->inventarioService->items(sanitizeGet()));
+	}
 }
