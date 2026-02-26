@@ -29,3 +29,13 @@ mrp/
 ├── Services/           # Capa de Lógica de Negocio (Cálculos, Reglas MRP)
 ├── Views/              # Interfaz de usuario (Plantillas y Modales)
 └── index.php           # Punto de entrada único del sistema
+
+```
+## Taxonomía de Tablas
+|Prefijo|Tipo de Tabla|Descripción|Ejemplo|
+|:--|:--|:--|:--|
+|`{$parent}_cat_`|Catálogo (Master)|Datos maestros de larga duración (estáticos).|`wms_cat_monedas`|
+|`{$parent}_tra_`|Transaccional|Registros de eventos que ocurren en el tiempo.|`com_tra_compras, wms_tra_movimientos`|
+|`{$parent}_rel_`|Relacional (Pivot)|Tablas para relaciones Muchos a Muchos (N:N).|`prv_rel_proveedor_marcas`|
+|`log_`|Bitácora/Auditoría|Registros de eventos del sistema (Inmutable).|`log_audit, log_accesos`|
+|`{$parent}_det_`|Detalle|Extensiones de una transaccional (1:N).|`com_det_compra_partidas`|
