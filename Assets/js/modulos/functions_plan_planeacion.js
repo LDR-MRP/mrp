@@ -588,6 +588,8 @@ function renderTbodyEstaciones(detalle = []) {
     const orden = Number(st.orden || 0);
     const estacionid = Number(st.estacionid || 0);
 
+    const estampado = Number(st.estampado || 0);
+
     const nombreRaw = (st.nombre_estacion || "");
     const nombre = escapeHtml(nombreRaw);
     const proceso = escapeHtml(st.proceso || "");
@@ -622,7 +624,7 @@ function renderTbodyEstaciones(detalle = []) {
     ` : '';
 
     return `
-      <tr data-estacionid="${estacionid}" data-orden="${orden}">
+      <tr data-estacionid="${estacionid}" data-orden="${orden}" data-estampado="${estampado}">
         <td class="fw-semibold">${orden}</td>
 
         <td>
@@ -1222,7 +1224,7 @@ function aplicarBloqueoEncargados(estacionidActual) {
 // =====================================================
 //   VALIDACIONES
 // =====================================================
-function getHeaderPlaneacion() {
+function getHeaderPlaneacion() { 
   return {
     productoid: Number(document.querySelector('#selectProducto')?.value || 0),
     pedido: document.querySelector('#numPedido')?.value || "",
@@ -1237,10 +1239,14 @@ function getHeaderPlaneacion() {
 
 function getEstacionesDeTabla() {
   const rows = Array.from(document.querySelectorAll('#tbodyEstaciones tr[data-estacionid]'));
+    console.log(rows);
   return rows.map(tr => ({
     estacionid: Number(tr.dataset.estacionid || 0),
-    orden: Number(tr.dataset.orden || 0)
+    orden: Number(tr.dataset.orden || 0),
+    estampado: Number(tr.dataset.estampado || 0)
   })).filter(x => x.estacionid > 0);
+
+
 }
 
 function getAsignacionesParaGuardar() {
@@ -1252,6 +1258,7 @@ function getAsignacionesParaGuardar() {
     return {
       estacionid: s.estacionid,
       orden: s.orden,
+      estampado: s.estampado,
       encargado: a?.encargado ?? null,
       ayudantes: Array.isArray(a?.ayudantes) ? a.ayudantes : []
     };

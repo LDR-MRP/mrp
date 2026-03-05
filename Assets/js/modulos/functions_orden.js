@@ -679,7 +679,26 @@
       return m;
     };
 
+    const aplicarVinUI = (tr, estampadoVal) => {
+  const est = parseInt(estampadoVal, 10) || 0;
+  tr.dataset.estampado = String(est);
+
+
+
+  // Puede existir o no dependiendo del rol / rama del PHP
+  const btnAsignar = tr.querySelector('.btnIdentificacionUnidad');
+  const btnVer = tr.querySelector('.btnVerVinUnidad');
+
+  // Regla: si estampado == 3 => VIN asignado => mostrar Ver VIN y ocultar Asignar VIN
+  if (est === 3) {
+    // if (btnAsignar) btnAsignar.classList.add('d-none');
+    if (btnVer) btnVer.classList.remove('d-none');
+  } 
+};
+
+
     const aplicarEstatusFila = (tr, row) => {
+      // console.log(row);
       const est = String(row.estatus ?? '').trim();
       if (!est) return;
 
@@ -689,6 +708,11 @@
         const tdCal = obtenerCelda(tr, 2);
         if (tdCal) tdCal.innerHTML = renderBadgeCalidad(c);
       }
+
+        if (row.estampado !== undefined && row.estampado !== null) {
+    aplicarVinUI(tr, row.estampado);
+  }
+
 
       if ((tr.dataset.estatus || '').trim() === est &&
         (tr.dataset.fi || '') === (row.fecha_inicio || '') &&
@@ -720,6 +744,7 @@
         if (!data || data.status === false) return;
 
         const rows = Array.isArray(data.data) ? data.data : [];
+  
         if (!rows.length) return;
 
         const m = mapearFilas();
@@ -3230,6 +3255,359 @@ document.addEventListener('click', async (e) => {
   }
 });
 
+////////////////////////////////////////////////////
+///// funciones para asignar VIN ////////
+////////////////////////////////////////////////////
 
 
 
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btnIdentificacionUnidad');
+  if (!btn) return;
+
+  openModalIdentificacion(
+    btn.dataset.productoid,
+    btn.dataset.estacionid,
+    btn.dataset.estacion,
+    btn.dataset.proceso,
+    btn.dataset.cantidad,
+    btn.dataset.idorden,
+    btn.dataset.numorden,
+    btn.dataset.numbase
+  );
+});
+
+async function openModalIdentificacion(
+  productoid,
+  estacionid,
+  nombreEstacion = '',
+  procesoTxt = '',
+  cantidadPedido = 1,
+  idorden,
+  numot,
+  numbase
+) {
+  productoid = parseInt(productoid, 10) || 0;
+  estacionid = parseInt(estacionid, 10) || 0;
+  idorden = parseInt(idorden, 10) || 0;
+
+  const modalIdentiEl = $('modalIdentificacion');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalIdentiEl);
+
+  $('titleEstacionIdenti').textContent = nombreEstacion || 'Estación';
+  $('titleProcesoIdenti').textContent = procesoTxt || 'Proceso';
+  $('numSubOrdenIdenti').textContent = numot || '-';
+
+  if ($('calidad_idorden')) $('calidad_idorden').value = idorden;
+  if ($('calidad_numot')) $('calidad_numot').value = String(numot || '');
+  if ($('estacion_id')) $('estacion_id').value = estacionid;
+
+
+  if ($('ordenid')) {
+    $('ordenid').value = String(idorden);
+  }
+
+  setModalModoLectura(false);
+
+
+const box = document.getElementById('boxInfoVinAsignado');
+if (box) {
+  box.classList.add('d-none');
+  box.innerHTML = '';
+}
+
+
+  $('selectVinIdenti').innerHTML = `<option value="" selected disabled>— Selecciona —</option>`;
+  $('inputMotorIdenti').value = '';
+
+ 
+  await cargarVinesDisponibles(numbase);
+
+  modal.show();
+}
+
+async function cargarVinesDisponibles(numbase) {
+  try {
+    numbase = String(numbase || '').trim();
+
+    const sel = $('selectVinIdenti');
+    sel.innerHTML = `<option value="" selected disabled>— Selecciona —</option>`;
+
+    if (!numbase) return;
+
+    const url = `${base_url}/plan_planeacion/getVinesDisponibles/${encodeURIComponent(numbase)}`;
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+
+    const json = await res.json();
+
+    if (!json.status) return;
+
+    const vines = Array.isArray(json.data) ? json.data : [];
+
+    if (vines.length === 0) {
+      sel.innerHTML = `<option value="" selected disabled>— Sin VIN disponibles —</option>`;
+      return;
+    }
+
+    for (const v of vines) {
+      const opt = document.createElement('option');
+      opt.value = v.vin;         
+      opt.textContent = v.vin;
+      opt.dataset.id = v.id;             
+      sel.appendChild(opt);
+    }
+
+  } catch (err) {
+    console.error(err);
+    Swal.fire('Error', 'No se pudieron cargar los VIN disponibles.', 'error');
+  }
+}
+
+////////////////////////////////////////////////////
+///// Guardar asignación VIN ////////
+////////////////////////////////////////////////////
+
+
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('#btnGuardarIdenti');
+  if (!btn) return;
+
+  await guardarAsignacionVin();
+});
+
+async function guardarAsignacionVin() {
+  try {
+    const ordenId = parseInt($('ordenid')?.value || '0', 10) || 0;
+    const sel = $('selectVinIdenti');
+    const vin = (sel?.value || '').trim();
+    const numeroMotor = ($('inputMotorIdenti')?.value || '').trim();
+
+    const selectedOpt = sel?.options?.[sel.selectedIndex];
+    const numeroSerieId = parseInt(selectedOpt?.dataset?.id || '0', 10) || 0;
+
+
+    if (!ordenId) {
+      Swal.fire('Atención', 'No se detectó la Orden de Trabajo.', 'warning');
+      return;
+    }
+
+    if (!vin) {
+      Swal.fire('Atención', 'Selecciona un VIN para poder asignar.', 'warning');
+      sel?.focus();
+      return;
+    }
+
+    if (!numeroMotor) {
+      Swal.fire('Atención', 'Ingresa el número de motor.', 'warning');
+      $('inputMotorIdenti')?.focus();
+      return;
+    }
+
+    if (!numeroSerieId) {
+      Swal.fire('Atención', 'El VIN seleccionado no contiene el ID de serie (dataset.id).', 'warning');
+      return;
+    }
+
+    const btn = $('btnGuardarIdenti');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<i class="ri-loader-4-line ri-spin me-1"></i> Guardando...`;
+    }
+
+    const url = `${base_url}/plan_planeacion/setVinAsignacion`;
+
+    const fd = new FormData();
+    fd.append('orden_trabajo_id', String(ordenId));
+    fd.append('vin', vin);
+    fd.append('numero_serie_id', String(numeroSerieId));
+    fd.append('numero_motor', numeroMotor);
+
+    const res = await fetch(url, {
+      method: 'POST',
+      body: fd,
+      headers: { 'Accept': 'application/json' }
+    });
+
+    const json = await res.json();
+
+    if (!json.status) {
+      Swal.fire('Atención', json.msg || 'No se pudo asignar el VIN.', 'warning');
+      return;
+    }
+
+    Swal.fire('Listo', json.msg || 'VIN asignado correctamente.', 'success');
+
+
+if (ordenId) {
+  const btnAsignar = document.querySelector(`.btnIdentificacionUnidad[data-idorden="${ordenId}"]`);
+  const btnVer = document.querySelector(`.btnVerVinUnidad[data-idorden="${ordenId}"]`);
+
+  if (btnAsignar) btnAsignar.classList.add('d-none');
+
+
+  if (btnVer) btnVer.classList.remove('d-none');
+}
+
+ 
+    const modalEl = $('modalIdentificacion');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal?.hide();
+
+
+  } catch (err) {
+    console.error(err);
+    Swal.fire('Error', 'Ocurrió un error al guardar la asignación.', 'error');
+  } finally {
+    const btn = $('btnGuardarIdenti');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `Guardar`;
+    }
+  }
+}
+
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btnVerVinUnidad');
+  if (!btn) return;
+
+  openModalVerVin(
+    btn.dataset.productoid,
+    btn.dataset.estacionid,
+    btn.dataset.estacion,
+    btn.dataset.proceso,
+    btn.dataset.idorden,
+    btn.dataset.numorden,
+    btn.dataset.numbase
+  );
+});
+
+async function openModalVerVin(
+  productoid,
+  estacionid,
+  nombreEstacion = '',
+  procesoTxt = '',
+  idorden,
+  numot,
+  numbase
+) {
+  idorden = parseInt(idorden, 10) || 0;
+
+  const modalIdentiEl = document.getElementById('modalIdentificacion');
+  const modal = bootstrap.Modal.getOrCreateInstance(modalIdentiEl);
+
+  document.getElementById('titleEstacionIdenti').textContent = nombreEstacion || 'Estación';
+  document.getElementById('titleProcesoIdenti').textContent = procesoTxt || 'Proceso';
+  document.getElementById('numSubOrdenIdenti').textContent = numot || '-';
+
+
+  const ordenInput = document.getElementById('ordenid');
+  if (ordenInput) ordenInput.value = String(idorden);
+
+
+  setModalModoLectura(true);
+
+
+  const sel = document.getElementById('selectVinIdenti');
+  sel.innerHTML = `<option value="" selected disabled>Cargando...</option>`;
+  document.getElementById('inputMotorIdenti').value = '';
+
+  // cargar info
+  await cargarVinAsignado(idorden);
+
+  modal.show();
+}
+
+async function cargarVinAsignado(idorden) {
+  try {
+    const url = `${base_url}/plan_planeacion/getVinAsignado/${encodeURIComponent(idorden)}`;
+
+    const res = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
+    const json = await res.json();
+
+    if (!json.status) {
+      Swal.fire('Atención', json.msg || 'No se encontró asignación.', 'warning');
+      return;
+    }
+
+    const d = json.data || {};
+    const sel = document.getElementById('selectVinIdenti');
+    const motor = document.getElementById('inputMotorIdenti');
+
+    // pintar VIN
+    sel.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = d.vin || '';
+    opt.textContent = d.vin || '—';
+    opt.selected = true;
+    sel.appendChild(opt);
+
+
+    motor.value = d.numero_motor || '';
+
+
+    pintarInfoAsignacion(d);
+
+  } catch (err) {
+    console.error(err);
+    Swal.fire('Error', 'No se pudo cargar la asignación de VIN.', 'error');
+  }
+}
+
+
+function setModalModoLectura(isReadOnly) {
+  const sel = document.getElementById('selectVinIdenti');
+  const motor = document.getElementById('inputMotorIdenti');
+  const btnGuardar = document.getElementById('btnGuardarIdenti');
+
+  if (sel) sel.disabled = !!isReadOnly;
+  if (motor) motor.disabled = !!isReadOnly;
+
+  if (btnGuardar) {
+    btnGuardar.classList.toggle('d-none', !!isReadOnly);
+  }
+}
+
+function pintarInfoAsignacion(d) {
+  const box = document.getElementById('boxInfoVinAsignado');
+  if (!box) return;
+
+  const subot = d.num_sub_orden || '-';
+  const usuario = d.usuario_asigno || '-';
+  const fecha = d.fecha_asignacion || '-';
+
+  box.innerHTML = `
+    <div class="fw-semibold mb-1"><i class="ri-truck-line me-1"></i> Unidad / Sub-OT: <span class="text-dark">${subot}</span></div>
+    <div class="mb-1"><i class="ri-user-3-line me-1"></i> Asignó: <span class="text-dark">${usuario}</span></div>
+    <div><i class="ri-calendar-line me-1"></i> Fecha asignación: <span class="text-dark">${fecha}</span></div>
+  `;
+  box.classList.remove('d-none');
+}
+
+
+
+document.getElementById('modalIdentificacion')?.addEventListener('hidden.bs.modal', () => {
+  setModalModoLectura(false);
+
+  const box = document.getElementById('boxInfoVinAsignado');
+  if (box) {
+    box.classList.add('d-none');
+    box.innerHTML = '';
+  }
+
+  const sel = document.getElementById('selectVinIdenti');
+  const motor = document.getElementById('inputMotorIdenti');
+
+  if (sel) {
+    sel.disabled = false;
+    sel.innerHTML = `<option value="" selected disabled>— Selecciona —</option>`;
+  }
+  if (motor) {
+    motor.disabled = false;
+    motor.value = '';
+  }
+});

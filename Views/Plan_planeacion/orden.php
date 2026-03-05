@@ -556,7 +556,7 @@
                     </div>
                   </div>
 
-                                    <div class="col-12 col-md-6 col-lg-2">
+                  <div class="col-12 col-md-6 col-lg-2">
                     <div class="kpi-box p-3 h-100 d-flex gap-3 align-items-start">
                       <div class="avatar-sm flex-shrink-0">
                         <span class="avatar-title bg-primary-subtle rounded fs-4">
@@ -569,7 +569,7 @@
                       </div>
                     </div>
                   </div>
-                  
+
 
                   <div class="col-12 col-md-6 col-lg-2">
                     <div class="kpi-box p-3 h-100 d-flex gap-3 align-items-start">
@@ -616,12 +616,12 @@
                     Ruta / Estado del proceso
                     <span class="badge bg-primary-subtle text-primary ms-2"><?= count($est) ?> estaciones</span>
                   </h5>
-                  <div class="flex-shrink-0 mt-2 mt-sm-0">
+                  <!-- <div class="flex-shrink-0 mt-2 mt-sm-0">
                     <a href="javascript:void(0);" class="btn btn-soft-secondary btn-sm mt-2 mt-sm-0"
                       onclick="window.print()">
                       <i class="ri-printer-line align-middle me-1"></i> Imprimir
                     </a>
-                  </div>
+                  </div> -->
                 </div>
               </div>
 
@@ -669,7 +669,7 @@
                                     <i class="ri-settings-3-line me-1"></i><?= $h($e['proceso'] ?? '—') ?>
                                   </div>
                                 </div>
-                                <div class="ms-auto"><?= $badgeE ?></div>
+
                               </div>
                             </a>
                           </div>
@@ -796,6 +796,15 @@
                                                 <?php
                                                 $idorden = (int) ($otRow['idorden'] ?? 0);
                                                 $subot = (string) ($otRow['num_sub_orden'] ?? '');
+
+
+                                                $parts = explode('-', $subot);
+
+                                                $ordenBase = '';
+                                                if (count($parts) >= 2) {
+                                                  $ordenBase = $parts[0] . '-' . $parts[1];
+                                                }
+
                                                 $inicio = $fmtDT($otRow['fecha_inicio'] ?? '');
                                                 $fin = $fmtDT($otRow['fecha_fin'] ?? '');
                                                 $estatus = (int) ($otRow['estatus'] ?? 0);
@@ -803,6 +812,8 @@
                                                 $badgeOT = $badgeEstatusOT($estatus);
                                                 $badgeCalidOT = $badgeCalidadOT($calidad);
 
+                                                $estampado = (int) ($otRow['estampado'] ?? 0);
+                                                echo $estampado;
 
 
                                                 $coment = (string) ($otRow['comentarios'] ?? '');
@@ -812,7 +823,7 @@
                                                 ?>
                                                 <tr data-idorden="<?= $h($idorden) ?>" data-peid="<?= $h($peid) ?>"
                                                   data-subot="<?= $h($subot) ?>" data-coment="<?= $h($coment) ?>"
-                                                  data-estatus="<?= $h($estatus) ?>" data-calidad="<?= $calidad ?>">
+                                                  data-estatus="<?= $h($estatus) ?>" data-calidad="<?= $calidad ?>" data-estampado="<?= $estampado ?>">
                                                   <td class="fw-semibold text-primary"><?= $h($subot) ?></td>
                                                   <td><?= $badgeOT ?></td>
                                                   <td><?= $badgeCalidOT ?></td>
@@ -853,6 +864,8 @@
                                                             <i class="ri-refresh-line me-1"></i> Reinspeccionar
                                                           </button>
 
+                                                          
+
                                                         <?php else: ?>
 
                                                           <button type="button"
@@ -865,7 +878,25 @@
                                                             <i class="ri-play-circle-line me-1"></i> Iniciar inspección
                                                           </button>
 
+                                                      
+
                                                         <?php endif; ?>
+
+
+                                                            <?php if (in_array($estampado, [1,3])): ?>
+                                                            <button type="button"
+    class="btn btn-info btn-sm btnVerVinUnidad <?= ($estampado==3 ? '' : 'd-none') ?>"
+    data-idorden="<?= (int)$idorden ?>"
+    data-productoid="<?= (int) $ot['productoid'] ?>"
+    data-estacionid="<?= (int) ($e['estacionid'] ?? 0) ?>"
+    data-estacion="<?= $h($e['nombre_estacion'] ?? '') ?>"
+    data-proceso="<?= $h($e['proceso'] ?? '') ?>"
+    data-numorden="<?= $h($subot) ?>"
+    data-numbase="<?= $ordenBase ?>">
+    <i class="ri-eye-line me-1"></i> Ver VIN
+  </button> 
+
+    <?php endif; ?>
 
 
 
@@ -884,7 +915,8 @@
 
                                                         <button type="button" class="btn btn-soft-success btnFinishOT"
                                                           <?= $disableFinish ?> data-idorden="<?= $h($idorden) ?>"
-                                                          data-peid="<?= $h($peid) ?>" data-subot="<?= $h($subot) ?>" data-inventarioid="<?= $h(($ot['inventarioid'] ?? '') ?: '') ?>">
+                                                          data-peid="<?= $h($peid) ?>" data-subot="<?= $h($subot) ?>"
+                                                          data-inventarioid="<?= $h(($ot['inventarioid'] ?? '') ?: '') ?>">
                                                           <i class="ri-checkbox-circle-line me-1"></i> Finalizar
                                                         </button>
 
@@ -894,6 +926,7 @@
                                                           <i class="ri-chat-3-line me-1"></i> Comentarios
                                                         </button>
 
+                                                        
                                                         <button type="button" class="btn btn-soft-primary btn-sm btnChatOT"
                                                           data-subot="<?= $otRow['num_sub_orden'] ?>"
                                                           data-estacionid="<?= $e['estacionid'] ?>"
@@ -901,6 +934,10 @@
                                                           data-productoid="<?= $ot['productoid'] ?>">
                                                           <i class="ri-message-3-line me-1"></i> Chat
                                                         </button>
+
+
+
+
 
 
                                                         <?php if ($calidad == 5): ?>
@@ -913,22 +950,60 @@
                                                             data-proceso="<?= $h($e['proceso'] ?? '') ?>"
                                                             data-numorden="<?= $h($subot) ?>">
                                                             <i class="ri-eye-line me-1"></i> Ver inspección
+                                                          </button>
 
-                                                          <?php elseif ($calidad == 4): ?>
 
-                                                            <button type="button"
-                                                              class="btn btn-outline-danger waves-effect waves-light btnRechazado btnInspeccionCalidad"
-                                                              data-productoid="<?= (int) $ot['productoid'] ?>"
-                                                              data-estacionid="<?= (int) ($e['estacionid'] ?? 0) ?>"
-                                                              data-estacion="<?= $h($e['nombre_estacion'] ?? '') ?>"
-                                                              data-proceso="<?= $h($e['proceso'] ?? '') ?>"
-                                                              data-idorden="<?= $h($idorden) ?>" data-numorden="<?= $h($subot) ?>">
-                                                              <i class="ri-eye-line me-1"></i> Ver inspección
-                                                            </button>
 
-                                                          <?php endif; ?>
+
+                                                        <?php elseif ($calidad == 4): ?>
+
+                                                          <button type="button"
+                                                            class="btn btn-outline-danger waves-effect waves-light btnRechazado btnInspeccionCalidad"
+                                                            data-productoid="<?= (int) $ot['productoid'] ?>"
+                                                            data-estacionid="<?= (int) ($e['estacionid'] ?? 0) ?>"
+                                                            data-estacion="<?= $h($e['nombre_estacion'] ?? '') ?>"
+                                                            data-proceso="<?= $h($e['proceso'] ?? '') ?>"
+                                                            data-idorden="<?= $h($idorden) ?>" data-numorden="<?= $h($subot) ?>">
+                                                            <i class="ri-eye-line me-1"></i> Ver inspección
+                                                          </button>
 
                                                         <?php endif; ?>
+
+<?php if (in_array($estampado, [1,3])): ?>
+
+<div class="btn-group">
+  <!-- Asignar VIN: visible si NO está asignado -->
+  <button type="button"
+    class="btn btn-warning btn-sm btnIdentificacionUnidad <?= ($estampado==3 ? 'd-none' : '') ?>"
+    data-idorden="<?= (int)$idorden ?>"
+    data-productoid="<?= (int) $ot['productoid'] ?>"
+    data-estacionid="<?= (int) ($e['estacionid'] ?? 0) ?>"
+    data-estacion="<?= $h($e['nombre_estacion'] ?? '') ?>"
+    data-proceso="<?= $h($e['proceso'] ?? '') ?>"
+    data-numorden="<?= $h($subot) ?>"
+    data-numbase="<?= $ordenBase ?>">
+    <i class="ri-barcode-line me-1"></i> Asignar VIN
+  </button>
+
+  <!-- Ver VIN: siempre existe, solo se oculta si no está asignado -->
+  <button type="button"
+    class="btn btn-info btn-sm btnVerVinUnidad <?= ($estampado==3 ? '' : 'd-none') ?>"
+    data-idorden="<?= (int)$idorden ?>"
+    data-productoid="<?= (int) $ot['productoid'] ?>"
+    data-estacionid="<?= (int) ($e['estacionid'] ?? 0) ?>"
+    data-estacion="<?= $h($e['nombre_estacion'] ?? '') ?>"
+    data-proceso="<?= $h($e['proceso'] ?? '') ?>"
+    data-numorden="<?= $h($subot) ?>"
+    data-numbase="<?= $ordenBase ?>">
+    <i class="ri-eye-line me-1"></i> Ver VIN
+  </button>
+</div>
+
+       <?php endif; ?>
+
+                                 
+
+                                                      <?php endif; ?>
 
 
 
@@ -966,102 +1041,99 @@
             <div class="right-sticky">
 
 
-             <?php
-            if ((int) $_SESSION['rolid'] === 4){ 
+              <?php
+              if ((int) $_SESSION['rolid'] === 4) {
                 $fase = (int) ($ot['fase'] ?? 0);
-             if($fase!=5) {  ?>
+                if ($fase != 5) { ?>
 
-<div class="card mb-4 shadow-sm border-0">
-  <div class="card-body text-center">
+                  <div class="card mb-4 shadow-sm border-0">
+                    <div class="card-body text-center">
 
-    <h5 class="card-title mb-3 fw-semibold d-flex justify-content-center align-items-center gap-2">
-      <i class="ri-settings-3-line text-primary"></i>
-      Control de Producción
-    </h5>
+                      <h5 class="card-title mb-3 fw-semibold d-flex justify-content-center align-items-center gap-2">
+                        <i class="ri-settings-3-line text-primary"></i>
+                        Control de Producción
+                      </h5>
 
-    <p class="text-muted small mb-3">
-      Inicia o finaliza el proceso de ensamblado de la orden de trabajo
-    </p>
+                      <p class="text-muted small mb-3">
+                        Inicia o finaliza el proceso de ensamblado de la orden de trabajo
+                      </p>
 
-    <div class="d-grid gap-2">
+                      <div class="d-grid gap-2">
 
-    <?php if($fase==2){ ?>
+                        <?php if ($fase == 2) { ?>
 
-      <!-- INICIAR PRODUCCIÓN -->
-      <button type="button"
-        class="btn btn-outline-primary btn-sm fw-semibold js-or-iniciar"
-        data-idplaneacion="<?= (int) $ot['idplaneacion'] ?>">
-        
-        <i class="ri-play-circle-line me-1"></i>
-        Iniciar Producción
-      </button>
+                          <!-- INICIAR PRODUCCIÓN -->
+                          <button type="button" class="btn btn-outline-primary btn-sm fw-semibold js-or-iniciar"
+                            data-idplaneacion="<?= (int) $ot['idplaneacion'] ?>">
 
-      
-    <?php } ?>
+                            <i class="ri-play-circle-line me-1"></i>
+                            Iniciar Producción
+                          </button>
 
 
-    
-      <!-- FINALIZAR PRODUCCIÓN -->
-      <button type="button"
-        class="btn btn-outline-success btn-sm fw-semibold js-or-finalizar"
-        data-idplaneacion="<?= (int) $ot['idplaneacion'] ?>">
-        
-        <i class="ri-stop-circle-line me-1"></i>
-        Finalizar Producción
-      </button>
+                        <?php } ?>
 
 
 
-    </div>
+                        <!-- FINALIZAR PRODUCCIÓN -->
+                        <button type="button" class="btn btn-outline-success btn-sm fw-semibold js-or-finalizar"
+                          data-idplaneacion="<?= (int) $ot['idplaneacion'] ?>">
 
-  </div>
-</div>
-
-   <?php }} ?>
-
+                          <i class="ri-stop-circle-line me-1"></i>
+                          Finalizar Producción
+                        </button>
 
 
 
-<div class="card mb-4 shadow-sm border-0">
-  <div class="card-body text-center">
+                      </div>
 
-    <h5 class="card-title mb-3 fw-semibold d-flex justify-content-center align-items-center gap-2">
-      <i class="ri-file-list-3-line text-primary"></i>
-      Documentación de Producción
-    </h5>
+                    </div>
+                  </div>
 
-    <p class="text-muted small mb-3">
-      Consulta la información técnica y documentos asociados a la orden de trabajo
-    </p>
+                <?php }
+              } ?>
 
-    <div class="d-grid gap-2">
 
-      <!-- DESCRIPTIVA TÉCNICA -->
-      <button type="button"
-        class="btn btn-outline-primary btn-sm fw-semibold js-or-descriptiva"
-        data-productoid="<?= (int) $ot['productoid'] ?>"
-        data-descripcion="<?= (string) ($ot['descripcion'] ?? '') ?>"
-        data-cantidad="<?= (int) ($ot['cantidad'] ?? 0) ?>">
-        
-        <i class="ri-article-line me-1"></i>
-        Descriptiva Técnica
-      </button>
 
-      <!-- DOCUMENTACIÓN -->
-      <button type="button"
-        class="btn btn-outline-success btn-sm fw-semibold js-or-documentacion"
-        data-productoid="<?= (int) $ot['productoid'] ?>"
-        data-descripcion="<?= (string) ($ot['descripcion'] ?? '') ?>"
-        data-cantidad="<?= (int) ($ot['cantidad'] ?? 0) ?>">
-        
-        <i class="ri-folder-open-line me-1"></i>
-        Documentación de Soporte
-      </button>
 
-    </div>
+              <div class="card mb-4 shadow-sm border-0">
+                <div class="card-body text-center">
 
-  </div>
-</div>
+                  <h5 class="card-title mb-3 fw-semibold d-flex justify-content-center align-items-center gap-2">
+                    <i class="ri-file-list-3-line text-primary"></i>
+                    Documentación de Producción
+                  </h5>
+
+                  <p class="text-muted small mb-3">
+                    Consulta la información técnica y documentos asociados a la orden de trabajo
+                  </p>
+
+                  <div class="d-grid gap-2">
+
+                    <!-- DESCRIPTIVA TÉCNICA -->
+                    <button type="button" class="btn btn-outline-primary btn-sm fw-semibold js-or-descriptiva"
+                      data-productoid="<?= (int) $ot['productoid'] ?>"
+                      data-descripcion="<?= (string) ($ot['descripcion'] ?? '') ?>"
+                      data-cantidad="<?= (int) ($ot['cantidad'] ?? 0) ?>">
+
+                      <i class="ri-article-line me-1"></i>
+                      Descriptiva Técnica
+                    </button>
+
+                    <!-- DOCUMENTACIÓN -->
+                    <button type="button" class="btn btn-outline-success btn-sm fw-semibold js-or-documentacion"
+                      data-productoid="<?= (int) $ot['productoid'] ?>"
+                      data-descripcion="<?= (string) ($ot['descripcion'] ?? '') ?>"
+                      data-cantidad="<?= (int) ($ot['cantidad'] ?? 0) ?>">
+
+                      <i class="ri-folder-open-line me-1"></i>
+                      Documentación de Soporte
+                    </button>
+
+                  </div>
+
+                </div>
+              </div>
 
 
 
@@ -2104,6 +2176,120 @@
 
 
 
+        <!-- MODAL: INSPECCIÓN CALIDAD -->
+    <!-- MODAL: Identificación de Unidad (Asignar / Ver VIN) -->
+<div class="modal fade" id="modalIdentificacion" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+
+      <!-- Header -->
+      <div class="modal-header bg-soft-warning">
+        <div>
+          <h5 class="modal-title mb-0">
+            <i class="ri-barcode-line me-1"></i>
+            Identificación de unidad
+          </h5>
+          <div class="small text-muted mt-1">
+            <span class="me-2"><i class="ri-map-pin-line me-1"></i><span id="titleEstacionIdenti">Estación</span></span>
+            <span class="me-2"><i class="ri-settings-3-line me-1"></i><span id="titleProcesoIdenti">Proceso</span></span>
+            <span class="badge rounded-pill bg-warning text-dark">
+              <i class="ri-hashtag me-1"></i>Sub-OT: <span id="numSubOrdenIdenti">-</span>
+            </span>
+          </div>
+        </div>
+
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body">
+
+        <!-- INFO EXTRA (solo lectura cuando es Ver VIN) -->
+        <div id="boxInfoVinAsignado" class="alert alert-info d-none mb-3">
+          <!-- Se llena por JS -->
+        </div>
+
+        <!-- FORM -->
+        <form id="formIdentificacionUnidad" class="form-identificacion-unidad" autocomplete="off">
+
+          <!-- idorden hidden -->
+          <input type="hidden" id="ordenid" name="orden_trabajo_id">
+
+          <div class="row g-3">
+
+            <!-- SELECT VIN -->
+            <div class="col-12 col-md-6">
+              <label for="selectVinIdenti" class="form-label fw-semibold">
+                <i class="ri-barcode-line me-1"></i> Selecciona el VIN
+              </label>
+
+              <div class="input-group">
+                <span class="input-group-text bg-soft-primary text-primary">
+                  <i class="ri-qr-scan-2-line"></i>
+                </span>
+                <select class="form-select" id="selectVinIdenti" name="vin" required>
+                  <option value="" selected disabled>— Selecciona —</option>
+                  <!-- Opciones dinámicas -->
+                </select>
+              </div>
+
+              <div class="form-text">
+                Asegúrate de que el VIN corresponda a la unidad y a la sub-OT seleccionada.
+              </div>
+            </div>
+
+            <!-- INPUT MOTOR -->
+            <div class="col-12 col-md-6">
+              <label for="inputMotorIdenti" class="form-label fw-semibold">
+                <i class="ri-engine-line me-1"></i> Ingresa el número de motor
+              </label>
+
+              <div class="input-group">
+                <span class="input-group-text bg-soft-warning text-warning">
+                  <i class="ri-settings-3-line"></i>
+                </span>
+                <input type="text"
+                  class="form-control"
+                  id="inputMotorIdenti"
+                  name="numero_motor"
+                  placeholder="Ej: ENG-AX12-99831"
+                  maxlength="60"
+                  required>
+              </div>
+
+              <div class="form-text">
+                Captura el número exactamente como aparece en la unidad (sin omitir caracteres).
+              </div>
+            </div>
+
+          </div>
+
+        </form>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer d-flex justify-content-between">
+        <!-- <div class="small text-muted">
+          <i class="ri-information-line me-1"></i>
+          Si es “Ver VIN”, los campos estarán bloqueados.
+        </div> -->
+
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-soft-secondary" data-bs-dismiss="modal">
+            <i class="ri-close-line me-1"></i> Cerrar
+          </button>
+
+          <!-- Botón guardar (se oculta en modo Ver VIN con JS) -->
+          <button type="button" class="btn btn-warning" id="btnGuardarIdenti">
+            <i class="ri-save-3-line me-1"></i> Guardar asignación
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
 
 
 

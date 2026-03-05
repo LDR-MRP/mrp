@@ -1040,6 +1040,7 @@
         <th style="width: 150px;">Especificaciones</th>
         <th style="width: 130px;">Componentes</th>
         <th style="width: 130px;">Herramientas</th>
+        <th style="width: 130px;">Estampado VIN</th>
         <th class="text-end" style="width: 160px;">Opciones</th>
       </tr>
     </thead>
@@ -1060,9 +1061,9 @@
 
                 <!-- Botones -->
                 <div class="d-flex justify-content-end gap-2 mt-4">
-                    <button type="reset" class="btn btn-outline-secondary" onclick="resetFormulario()">
+                    <!-- <button type="reset" class="btn btn-outline-secondary" onclick="resetFormulario()">
                         <i class="bi bi-x-circle me-1"></i> Limpiar
-                    </button>
+                    </button> -->
                     <button type="submit" class="btn btn-success">
                         <i class="bi bi-check2-circle me-1"></i> Guardar configuración
                     </button>
@@ -1497,7 +1498,7 @@
                   <tr class="text-muted">
                     <th>#</th>
                     <th>Componente</th>
-                     <th>En stock</th>
+                     <!-- <th>En stock</th> -->
                     <th>Tipo</th>
                     <th>Unidad</th>
                     <th class="text-end">Acción</th>

@@ -521,6 +521,14 @@ class Plan_planeacion extends Controllers
   {
     header('Content-Type: application/json');
 
+    	// --------------------------------------------------------------------
+				//  Datos de auditoría
+				// --------------------------------------------------------------------
+				$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+				$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+				$fechaEvento = date('Y-m-d H:i:s');
+
     $fecha_notificacion = date('Y-m-d');
 
     $json = file_get_contents('php://input');
@@ -532,6 +540,7 @@ class Plan_planeacion extends Controllers
     }
 
     $h = $data['header'] ?? [];
+
 
     $productoid = (int) ($h['productoid'] ?? 0);
     $pedido = trim((string) ($h['pedido'] ?? ''));
@@ -594,12 +603,17 @@ class Plan_planeacion extends Controllers
 
 
     $idsEncargados = [];
-    $idsAyudantes = [];
+    $idsAyudantes = []; 
+
+
+    // dep($asignaciones);
+    // exit;
 
     foreach ($asignaciones as $a) {
       $estacionid = (int) ($a['estacionid'] ?? 0);
       $orden = (int) ($a['orden'] ?? 0);
       $encargado = (int) ($a['encargado'] ?? 0);
+      $estampado = (int) $a['estampado'];
       $ayudantes = $a['ayudantes'] ?? [];
 
       if ($estacionid <= 0 || $orden <= 0) {
@@ -713,11 +727,24 @@ class Plan_planeacion extends Controllers
         $notas
       );
 
+      
+
       if ((int) $request_CONFIGURACION <= 0) {
         throw new Exception('No se pudo registrar la planeación (cabecera)');
       }
 
       $idplaneacion = (int) $request_CONFIGURACION;
+
+      			 $this->model->insertAuditoria(
+							MPPLANPRODUCCION,
+							1,
+							$idusuario,
+							'mrp_planeacion',
+							$idplaneacion,
+							$fechaEvento,
+							$ip,
+							$detalle
+						);
 
       // ---------------------------------------------------------
       // Producto (para correoss)
@@ -738,19 +765,21 @@ class Plan_planeacion extends Controllers
         $estacionid = (int) $a['estacionid'];
         $orden = (int) $a['orden'];
         $encargado = (int) $a['encargado'];
+        $estampado = (int) $a['estampado'];
         $ayudantes = is_array($a['ayudantes']) ? $a['ayudantes'] : [];
 
         $id_planeacion_estacion = (int) $this->model->upsertPlaneacionEstacion(
           $idplaneacion,
           $estacionid,
-          $orden
+          $orden,
+          $estampado
         );
 
         if ($id_planeacion_estacion <= 0) {
           throw new Exception("No se pudo guardar estación {$estacionid} en planeación");
         }
 
-
+   
 
         $infoEst = $this->model->getEstacionInfoById($estacionid);
         $nombre_estacion = trim((string) ($infoEst['nombre_estacion'] ?? ''));
@@ -789,7 +818,8 @@ class Plan_planeacion extends Controllers
         for ($s = 1; $s <= $cantidad; $s++) {
           $num_orden_s = $num_orden . '-S' . str_pad((string) $s, 2, '0', STR_PAD_LEFT);
 
-          $okOrd = $this->model->insertOrdenes($id_planeacion_estacion, $num_orden_s);
+          // old $okOrd = $this->model->insertOrdenes($id_planeacion_estacion, $num_orden_s);
+          $okOrd = $this->model->insertOrdenes($id_planeacion_estacion, $num_orden_s, $estampado);
 
           if ((int) $okOrd <= 0) {
             throw new Exception("No se pudo insertar orden {$num_orden_s} para planeación_estación {$id_planeacion_estacion}");
@@ -823,6 +853,7 @@ class Plan_planeacion extends Controllers
             $uid,
             'AYUDANTE'
           );
+          
           if ((int) $okAy <= 0) {
             throw new Exception("No se pudo guardar ayudante {$uid} en estación {$estacionid}");
           }
@@ -1338,9 +1369,9 @@ class Plan_planeacion extends Controllers
 
     if ($num_orden === '') {
       header("Location:" . base_url() . '/plan_planeacion');
-      die();
+      die(); 
     }
-
+ 
 
     if (isset($_GET['json']) && $_GET['json'] == '1') {
       header('Content-Type: application/json; charset=utf-8');
@@ -1394,6 +1425,13 @@ class Plan_planeacion extends Controllers
   public function setCommentario()
   {
     header('Content-Type: application/json; charset=utf-8');
+        	// --------------------------------------------------------------------
+				//  Datos de auditoría
+				// --------------------------------------------------------------------
+				$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+				$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+				$fechaEvento = date('Y-m-d H:i:s');
 
     $json = file_get_contents('php://input');
     $data = json_decode($json, true);
@@ -1414,8 +1452,19 @@ class Plan_planeacion extends Controllers
 
     $resp = $this->model->updateComentarioOrden($idorden, $comentario);
 
+    
+      			 $this->model->insertAuditoria(
+							MPPLANPRODUCCION,
+							2,
+							$idusuario,
+							'mrp_ordenes_trabajo',
+							$resp,
+							$fechaEvento,
+							$ip,
+							$detalle
+						);
 
-
+  
     echo json_encode([
       'status' => true,
       'msg' => 'Comentario actualizado'
@@ -1426,6 +1475,10 @@ class Plan_planeacion extends Controllers
   public function startOT()
   {
     header('Content-Type: application/json');
+    				$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+				$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+				$fechaEvento = date('Y-m-d H:i:s');
 
     $data = json_decode(file_get_contents('php://input'), true);
     if (!is_array($data)) {
@@ -1450,12 +1503,30 @@ class Plan_planeacion extends Controllers
     } 
 
     echo json_encode($this->model->startOT($idorden, $fecha_inicio));
+
+          			 $this->model->insertAuditoria(
+							MPPLANPRODUCCION,
+							5,
+							$idusuario,
+							'mrp_ordenes_trabajo',
+							$idorden,
+							$fechaEvento,
+							$ip,
+							$detalle
+						);
+
+
+
     die();
   }
 
   public function finishOT()
   {
     header('Content-Type: application/json');
+        				$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+				$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+				$fechaEvento = date('Y-m-d H:i:s');
 
     $data = json_decode(file_get_contents('php://input'), true);
     if (!is_array($data)) {
@@ -1490,6 +1561,16 @@ class Plan_planeacion extends Controllers
     // exit;
 
     echo json_encode($this->model->finishOT($idorden, $fecha_fin, $inventarioid));
+              			 $this->model->insertAuditoria(
+							MPPLANPRODUCCION,
+							6,
+							$idusuario,
+							'mrp_ordenes_trabajo',
+							$idorden,
+							$fechaEvento,
+							$ip,
+							$detalle
+						);
     die();
   }
 
@@ -1612,6 +1693,11 @@ class Plan_planeacion extends Controllers
   public function sendChatMessage()
   {
     header('Content-Type: application/json');
+
+    $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    $detalleserver = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $fechaEvento = date('Y-m-d H:i:s');
     $d = json_decode(file_get_contents('php://input'), true);
 
     $ok = $this->model->insertChatMessage([
@@ -1620,6 +1706,17 @@ class Plan_planeacion extends Controllers
       'planeacionid' => (int) ($d['planeacionid'] ?? 0),
       'message' => trim($d['message'] ?? '')
     ]);
+
+    $this->model->insertAuditoria(
+      MPPLANPRODUCCION,
+      1,
+      $idusuario,
+      'mrp_ot_chat',
+      $ok,
+      $fechaEvento,
+      $ip,
+      $detalleserver
+    );
 
     echo json_encode(
       $ok
@@ -1874,6 +1971,10 @@ public function getDocumentacion()
 public function setInspeccionCalidad()
 {
   header('Content-Type: application/json');
+  			$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+				$detalleserver = $_SERVER['HTTP_USER_AGENT'] ?? '';
+				$fechaEvento = date('Y-m-d H:i:s');
 
   if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['status' => false, 'msg' => 'Método no permitido']);
@@ -1991,6 +2092,23 @@ public function setInspeccionCalidad()
     'estado'      => $estado
   ], $detalle, $evidencias);
 
+   $idinspeccion = (int)($resp['data']['idinspeccion'] ?? 0);
+
+  if (!empty($resp['status']) && $idinspeccion > 0 && $idusuario > 0) {
+
+    $this->model->insertAuditoria(
+      MPPLANPRODUCCION,
+      1,
+      $idusuario,
+      'mrp_calidad_inspeccion',
+      $idinspeccion,
+      $fechaEvento,
+      $ip,
+      $detalleserver
+    );
+  }
+
+
   echo json_encode($resp);
   die();
 }
@@ -2086,6 +2204,10 @@ public function getSelectDates(){
 public function iniciarPlaneacion()
 {
   header('Content-Type: application/json');
+                        $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $fechaEvento = date('Y-m-d H:i:s');
 
 
   if (!isset($_SESSION['idUser']) || (int)$_SESSION['idUser'] <= 0) {
@@ -2106,6 +2228,17 @@ public function iniciarPlaneacion()
 
   try {
     $ok = $this->model->iniciarPlaneacionModel($idplaneacion, $userId);
+
+                   $this->model->insertAuditoria(
+              MPPLANPRODUCCION,
+              7,
+              $idusuario,
+              'mrp_planeacion',
+              $idplaneacion,
+              $fechaEvento,
+              $ip,
+              $detalle
+            );
 
     if (!$ok) {
       echo json_encode(["status" => false, "msg" => "No fue posible iniciar la producción (ya iniciada o no existe)."]);
@@ -2130,6 +2263,10 @@ public function iniciarPlaneacion()
 public function finalizarPlaneacion()
 {
   header('Content-Type: application/json');
+                        $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $fechaEvento = date('Y-m-d H:i:s');
 
   if (!isset($_SESSION['idUser']) || (int)$_SESSION['idUser'] <= 0) {
     echo json_encode(["status" => false, "msg" => "Sesión no válida."]);
@@ -2149,6 +2286,17 @@ public function finalizarPlaneacion()
 
   try {
     $ok = $this->model->finalizarPlaneacionModel($idplaneacion, $userId);
+
+                       $this->model->insertAuditoria(
+              MPPLANPRODUCCION,
+              8,
+              $idusuario,
+              'mrp_planeacion',
+              $idplaneacion,
+              $fechaEvento,
+              $ip,
+              $detalle
+            );
 
     if (!$ok) {
       echo json_encode([
@@ -2171,6 +2319,184 @@ public function finalizarPlaneacion()
   }
 }
 
+public function getVinesDisponibles($referencia = '')
+{
+  header('Content-Type: application/json');
+
+  $referencia = trim((string)$referencia);
+  if ($referencia === '') {
+    echo json_encode(['status' => false, 'msg' => 'Falta referencia', 'data' => []]);
+    die();
+  }
+
+  try {
+    $rows = $this->model->getVinesDisponiblesByReferencia($referencia);
+
+    $data = [];
+    if (!empty($rows)) {
+      foreach ($rows as $r) {
+        $data[] = [
+          'id'  => (int)($r['id_numeros_serie'] ?? 0),
+          'vin' => (string)($r['numero_serie'] ?? ''),
+        ];
+      }
+    }
+
+    echo json_encode([
+      'status' => true,
+      'msg' => 'OK',
+      'data' => $data
+    ]);
+    die();
+
+  } catch (Exception $e) {
+    echo json_encode(['status' => false, 'msg' => $e->getMessage(), 'data' => []]);
+    die();
+  }
+}
+
+
+public function setVinAsignacion()
+{
+    header('Content-Type: application/json; charset=utf-8');
+                          $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $fechaEvento = date('Y-m-d H:i:s');
+
+    try {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['status' => false, 'msg' => 'Método no permitido']);
+            die();
+        }
+
+        $ordenId = isset($_POST['orden_trabajo_id']) ? intval($_POST['orden_trabajo_id']) : 0;
+        $numeroSerieId = isset($_POST['numero_serie_id']) ? intval($_POST['numero_serie_id']) : 0;
+        $numeroMotor = isset($_POST['numero_motor']) ? trim($_POST['numero_motor']) : '';
+
+        if ($ordenId <= 0) {
+            echo json_encode(['status' => false, 'msg' => 'Orden de trabajo inválida']);
+            die();
+        }
+
+        if ($numeroSerieId <= 0) {
+            echo json_encode(['status' => false, 'msg' => 'Número de serie inválido']);
+            die();
+        }
+
+        if ($numeroMotor === '' || strlen($numeroMotor) < 3) {
+            echo json_encode(['status' => false, 'msg' => 'Número de motor obligatorio']);
+            die();
+        }
+
+        if (strlen($numeroMotor) > 60) {
+            echo json_encode(['status' => false, 'msg' => 'Número de motor demasiado largo']);
+            die();
+        }
+
+        $usuarioId = intval($_SESSION['userData']['idusuario'] ?? 0);
+        if ($usuarioId <= 0) {
+            echo json_encode(['status' => false, 'msg' => 'Sesión no válida. Inicia sesión nuevamente.']);
+            die();
+        }
+
+        $fecha = date('Y-m-d');
+
+  
+        if (method_exists($this->model, 'existeAsignacionActiva') && $this->model->existeAsignacionActiva($ordenId)) {
+            echo json_encode(['status' => false, 'msg' => 'Esta OT ya tiene un VIN asignado.']);
+            die();
+        }
+
+      
+        $insertId = $this->model->insertVinAsignacion(
+            $ordenId,
+            $numeroSerieId,
+            $numeroMotor,
+            $usuarioId,
+            $fecha
+        );
+
+              $this->model->insertAuditoria(
+              MPPLANPRODUCCION,
+              1,
+              $idusuario,
+              'mrp_vin_asignaciones',
+              $insertId,
+              $fechaEvento,
+              $ip,
+              $detalle
+            );
+
+        if ($insertId <= 0) {
+            echo json_encode(['status' => false, 'msg' => 'No se pudo guardar la asignación.']);
+            die();
+        }
+
+
+        $okOT = $this->model->setEstatusEstampadoVin($ordenId, 3);
+        if (!$okOT) {
+            echo json_encode(['status' => false, 'msg' => 'Se asignó el VIN, pero no se pudo actualizar la OT.']);
+            die();
+        }
+
+  
+        $okSerie = $this->model->setEstadoNumeroSerie($numeroSerieId, 2);
+        if (!$okSerie) {
+            echo json_encode(['status' => false, 'msg' => 'Se asignó el VIN, pero no se pudo actualizar el estado del número de serie.']);
+            die();
+        }
+
+        echo json_encode([
+            'status' => true,
+            'msg' => 'VIN asignado correctamente.',
+            'data' => [
+                'idasignacion' => $insertId,
+                'orden_trabajo_id' => $ordenId,
+                'numero_serie_id' => $numeroSerieId,
+                'numero_motor' => $numeroMotor,
+                'usuario_id' => $usuarioId,
+                'fecha_asignacion' => $fecha,
+                'estado' => 1,
+                'estampado' => 3,
+                'numero_serie_estado' => 2
+            ]
+        ]);
+        die();
+
+    } catch (Exception $e) {
+        echo json_encode(['status' => false, 'msg' => 'Error: ' . $e->getMessage()]);
+        die();
+    }
+}
+
+public function getVinAsignado($idorden = 0)
+{
+    header('Content-Type: application/json; charset=utf-8');
+
+    try {
+        $idorden = intval($idorden);
+
+        if ($idorden <= 0) {
+            echo json_encode(['status' => false, 'msg' => 'OT inválida']);
+            die();
+        }
+
+        $row = $this->model->getVinAsignadoPorOrden($idorden);
+
+        if (empty($row)) {
+            echo json_encode(['status' => false, 'msg' => 'No existe asignación de VIN para esta OT']);
+            die();
+        }
+
+        echo json_encode(['status' => true, 'data' => $row]);
+        die();
+
+    } catch (Exception $e) {
+        echo json_encode(['status' => false, 'msg' => 'Error: ' . $e->getMessage()]);
+        die();
+    }
+}
 
 
 

@@ -495,6 +495,18 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
+      // ✅ Validar que exista EXACTAMENTE 1 estación con estampado=1
+const estampadas = (d.detalle_ruta || []).filter(x => Number(x.estampado || 0) === 1);
+
+if (estampadas.length !== 1) {
+  Swal.fire(
+    "Atención",
+    "Debes marcar EXACTAMENTE 1 estación con “Estampar VIN” para poder guardar la ruta.",
+    "warning"
+  );
+  return;
+}
+
       const formData = new FormData(formRuta);
       formData.append('ruta', JSON.stringify(payload));
 
@@ -594,6 +606,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
           if (tableEspecifica) tableEspecifica.ajax.reload(null, false);
           refreshLowerTabs();
+          marcarEstacionConDatosUI(estacionActual);
+          
 
           Swal.fire({
             title: '¡Operación exitosa!',
@@ -622,6 +636,8 @@ document.addEventListener('DOMContentLoaded', function () {
           const btnTextEsp = document.querySelector('#btnTextEspecificacion');
           if (btnTextEsp) btnTextEsp.innerHTML = "Registrar";
         }
+
+        await refrescarEstadoEstacion(estacionActual);
 
       } else {
         Swal.fire("Error", objData.msg, "error");
@@ -682,7 +698,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <small class="text-muted mono">CVE: ${row.cve || ''}</small>
         `
       },
-      { data: 'stock' },
+      // { data: 'stock' },
       { data: 'type' },
       { data: 'unit' },
       {
@@ -700,6 +716,41 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     ]
   });
+
+
+
+
+
+// ✅ SOLO 1 estación puede tener VIN
+const listaRutaEl = document.querySelector('#listaRuta');
+if (listaRutaEl && !listaRutaEl.dataset.boundEstampadoOne) {
+
+  listaRutaEl.addEventListener('change', function (e) {
+    const chk = e.target.closest('.chk-estampado');
+    if (!chk) return;
+
+    const trActual = chk.closest('tr');
+    if (!trActual) return;
+
+    // Si lo están activando, apaga todos los demás
+    if (chk.checked) {
+      document.querySelectorAll('#listaRuta .chk-estampado').forEach(other => {
+        if (other !== chk) other.checked = false;
+      });
+
+      // data-estampado = 1 solo en el actual, 0 en el resto
+      document.querySelectorAll('#listaRuta tr[data-idestacion]').forEach(tr => {
+        tr.setAttribute('data-estampado', tr === trActual ? '1' : '0');
+      });
+    } else {
+      // Si lo apagan, queda ninguno seleccionado
+      trActual.setAttribute('data-estampado', '0');
+    }
+  });
+
+  listaRutaEl.dataset.boundEstampadoOne = '1';
+}
+
 
 }, false);
 
@@ -856,6 +907,22 @@ async function loadProcesoForProducto() {
   if (btnSubmit) btnSubmit.textContent = 'ACTUALIZAR';
 }
 
+
+
+function requireRutaProductoOrWarn() {
+  const idRuta = (document.querySelector('#id_ruta_producto')?.value || '').trim();
+
+  if (idRuta === '' || idRuta === '0') {
+    Swal.fire(
+      "Atención",
+      "Primero guarda la RUTA del producto para poder capturar especificaciones, componentes o herramientas.",
+      "warning"
+    );
+    return false;
+  }
+
+  return true;
+}
 
 // ------------------------------------------------------------------------
 //  RESET COMPLETO DE RUTA 
@@ -1281,18 +1348,29 @@ function aplicarRutaPendienteSiExiste() {
       const btnOrigen = lista.querySelector(`button[data-idestacion="${CSS.escape(idEst)}"]`);
       if (!btnOrigen) return;
 
-      const est = {
-        idestacion: idEst,
-        cve_estacion: btnOrigen.getAttribute('data-cve') || '',
-        nombre_estacion: btnOrigen.getAttribute('data-nombre') || '',
-        herramientas: Number(btnOrigen.getAttribute('data-herramientas') || 0),
-        iddetalle: Number(item.iddetalle || 0)
-      };
+const est = {
+  idestacion: idEst,
+  cve_estacion: btnOrigen.getAttribute('data-cve') || '',
+  nombre_estacion: btnOrigen.getAttribute('data-nombre') || '',
+  herramientas: Number(btnOrigen.getAttribute('data-herramientas') || 0),
+  iddetalle: Number(item.iddetalle || 0),
+  // ✅ NUEVO: lo que venga del backend
+  estampado: Number(item.estampado || 0),
+};
 
       agregarEstacionARuta(est, btnOrigen);
     });
 
   aplicoRutaPendiente = true;
+
+  // ✅ después de aplicar la ruta, pinta estados por estación
+setTimeout(() => {
+  const filas = Array.from(document.querySelectorAll('#listaRuta tr[data-idestacion]'));
+  filas.forEach(tr => {
+    const idest = tr.getAttribute('data-idestacion');
+    refrescarEstadoEstacion(idest);
+  });
+}, 150);
 }
 
 
@@ -1320,9 +1398,7 @@ function agregarEstacionARuta(est, botonOrigen) {
 
   const idEstacion = String(est.idestacion).trim();
   if (!idEstacion) return;
-
   if (rutaEstaciones.includes(idEstacion)) return;
-
 
   estacionesEliminadas = estacionesEliminadas.filter(x => String(x.idestacion) !== idEstacion);
 
@@ -1331,6 +1407,10 @@ function agregarEstacionARuta(est, botonOrigen) {
   const tr = document.createElement('tr');
   tr.setAttribute('data-idestacion', idEstacion);
   tr.setAttribute('data-iddetalle', String(Number(est.iddetalle || 0)));
+
+  // ✅ NUEVO: estampado por estación (default 0)
+  const estampadoVal = Number(est.estampado || 0);
+  tr.setAttribute('data-estampado', String(estampadoVal));
 
   const btnHerramientas = (Number(est.herramientas) === 1)
     ? `
@@ -1352,7 +1432,7 @@ function agregarEstacionARuta(est, botonOrigen) {
       <small class="text-muted">${est.nombre_estacion || ''}</small>
     </td>
 
-    <td style="width: 150px!important;">
+    <td style="width:150px!important;">
       <button type="button" class="btn btn-outline-info btn-sm"
         onclick="abrirEspecificaciones(${idEstacion},'${est.cve_estacion}')" title="Asignar especificaciones">
         <i class="ri-settings-3-line"></i>
@@ -1369,6 +1449,19 @@ function agregarEstacionARuta(est, botonOrigen) {
     </td>
 
     <td>${btnHerramientas}</td>
+
+    <!-- ✅ NUEVO: CHECK ESTAMPAR VIN -->
+    <td style="width:170px!important;">
+      <div class="form-check form-switch m-0">
+        <input class="form-check-input chk-estampado"
+               type="checkbox"
+               ${estampadoVal === 1 ? 'checked' : ''}
+               data-idestacion="${idEstacion}">
+        <label class="form-check-label small">Estampar VIN</label>
+      </div>
+    </td>
+
+    
 
     <td class="text-end">
       <div class="btn-group btn-group-sm">
@@ -1446,6 +1539,64 @@ function actualizarCountRuta() {
   if (!tbody || !countRuta) return;
 
   countRuta.textContent = String(tbody.querySelectorAll('tr').length);
+}
+
+function marcarEstacionConDatosUI(idestacion) {
+  const tr = document.querySelector(`#listaRuta tr[data-idestacion="${CSS.escape(String(idestacion))}"]`);
+  if (!tr) return;
+
+  // tr.classList.add('table-warning'); 
+}
+
+async function refrescarEstadoEstacion(idestacion) {
+  const idProductoProceso = parseInt(document.getElementById('idproducto_proceso')?.value || 0);
+  if (!idestacion || !idProductoProceso) return;
+
+  const tr = document.querySelector(`#listaRuta tr[data-idestacion="${CSS.escape(String(idestacion))}"]`);
+  if (!tr) return;
+
+  // botones dentro de esa fila (según tu HTML)
+  const btnEsp  = tr.querySelector('button[title="Asignar especificaciones"]');
+  const btnComp = tr.querySelector('button[title="Asignar componentes"]');
+  const btnHerr = tr.querySelector('button[title="Asignar herramientas"]');
+
+  // 1) Especificaciones: usa tu mismo endpoint (debe responder {status:true,data:[...]} )
+  const urlEsp = base_url + '/Plan_confproductos/getEspecificaciones/' + idestacion + '/' + idProductoProceso;
+  const resEsp = await fetchJSON(urlEsp, { method: 'GET' }, { useLoading: false });
+  const tieneEsp = !!(resEsp && resEsp.status && Array.isArray(resEsp.data) && resEsp.data.length > 0);
+
+  // 2) Componentes guardados
+  const urlComp = base_url + '/Plan_confproductos/getComponentesEstacion/' + idestacion + '?idproducto=' + encodeURIComponent(idProductoProceso);
+  const resComp = await fetchJSON(urlComp, { method: 'GET' }, { useLoading: false });
+  const tieneComp = !!(resComp && resComp.status && Array.isArray(resComp.data) && resComp.data.length > 0);
+
+  // 3) Herramientas guardadas
+  const urlHerr = base_url + '/Plan_confproductos/getHerramientasEstacion/' + idestacion + '?idproducto=' + encodeURIComponent(idProductoProceso);
+  const resHerr = await fetchJSON(urlHerr, { method: 'GET' }, { useLoading: false });
+  const tieneHerr = !!(resHerr && resHerr.status && Array.isArray(resHerr.data) && resHerr.data.length > 0);
+
+  // Pintar botones (verde si ya hay datos)
+pintarBotonEstado(btnEsp,  tieneEsp,  'info');     // Especificaciones
+pintarBotonEstado(btnComp, tieneComp, 'primary');  // Componentes
+pintarBotonEstado(btnHerr, tieneHerr, 'success');  // Herramientas
+
+  // Pintar fila si hay algo
+  // tr.classList.toggle('table-success', (tieneEsp || tieneComp || tieneHerr));
+}
+
+function pintarBotonEstado(btn, tiene, color) {
+  if (!btn) return;
+
+  // Limpia clases posibles
+  btn.classList.remove(
+    'btn-info','btn-primary','btn-success',
+    'btn-outline-info','btn-outline-primary','btn-outline-success'
+  );
+
+  const outline = `btn-outline-${color}`;
+  const filled  = `btn-${color}`;
+
+  btn.classList.add(tiene ? filled : outline);
 }
 
 function actualizarInputHiddenRuta() {
@@ -1564,6 +1715,8 @@ function dropOnRuta(ev) {
 //  ESPECIFICACIONES (MODAL + DATATABLE)
 // ======================================================================
 function abrirEspecificaciones(idestacion, cve_estacion) {
+
+  if (!requireRutaProductoOrWarn()) return;
   const modal = document.getElementById('modalEspecificaciones');
   const inputIdEstacion = modal ? modal.querySelector('#idestacion') : null;
   if (inputIdEstacion) inputIdEstacion.value = idestacion || '';
@@ -1712,6 +1865,8 @@ async function fntEditEspecificacion(idespecificacion) {
 //  COMPONENTES (MODAL + CARGA + GUARDADO)
 // ======================================================================
 function abrirComponentes(idestacion, cve_estacion) {
+
+  if (!requireRutaProductoOrWarn()) return;
 
   const inputEstacion = document.querySelector('#estacion_id');
   if (inputEstacion) inputEstacion.value = idestacion;
@@ -1923,8 +2078,7 @@ function initTablaSeleccionadosComponentes() {
   });
 
   prepararEventosSeleccionadosComponentes();
-}
-
+} 
 function prepararEventosCatalogoComponentes() {
   const tabla = document.querySelector('#tblCatalogComponentes');
   if (!tabla || tabla.dataset.boundAdd) return;
@@ -2016,6 +2170,8 @@ function prepararEventosSeleccionadosComponentes() {
   tabla.dataset.boundSel = '1';
 }
 
+
+
 function eliminarComponenteSeleccionado(inventarioid) {
   componentesSeleccionados = componentesSeleccionados.filter(x => String(x.inventarioid) !== String(inventarioid));
   deshabilitarBotonAgregarCatalogo(inventarioid, false);
@@ -2058,13 +2214,17 @@ function prepararGuardarTodoComponentes() {
       cantidad: x.cantidad
     }));
 
-    const payload = [{
-      idalmacen: idAlmacen,
-      idproducto: idProducto,
-      idestacion: idEstacion,
-      sync: 1,
-      detalle_componentes: lista
-    }];
+    const idRutaProducto = (document.querySelector('#id_ruta_producto')?.value || '').trim();
+
+
+const payload = [{
+  idalmacen: idAlmacen,
+  idproducto: idProducto,
+  idestacion: idEstacion,
+  idruta_producto: idRutaProducto, // ✅ NUEVO
+  sync: 1,
+  detalle_componentes: lista
+}];
 
     const formData = new FormData();
     formData.append('componentes', JSON.stringify(payload));
@@ -2076,6 +2236,13 @@ function prepararGuardarTodoComponentes() {
 
     if (res.status) {
       Swal.fire("¡Operación exitosa!", res.msg || "Guardado correctamente", "success");
+
+ await cargarComponentesGuardadosEstacion(idEstacion);
+  await refrescarEstadoEstacion(idEstacion);
+
+
+
+
       $('#modalComponentes').modal('hide');
     } else {
       Swal.fire("Error", res.msg || "No se pudo guardar", "error");
@@ -2140,12 +2307,16 @@ async function cargarComponentesGuardadosEstacion(idestacion) {
 
   const btnGuardar = document.querySelector('#btnGuardarTodo');
   if (btnGuardar) btnGuardar.textContent = 'Actualizar todo';
+
+  setTimeout(() => refrescarEstadoEstacion(idestacion), 120);
 }
 
 
 
 // ABRIR MODAL HERRAMIENTAS
 function abrirHerramientas(idestacion, cve_estacion) {
+
+  if (!requireRutaProductoOrWarn()) return;
 
   const inputEstacion = document.querySelector('#estacion_id_herr');
   if (inputEstacion) inputEstacion.value = idestacion || '';
@@ -2373,13 +2544,16 @@ function prepararGuardarTodoHerramientas() {
       cantidad: x.cantidad
     }));
 
-    const payload = [{
-      idalmacen: idAlmacen,
-      idproducto: idProducto,
-      idestacion: idEstacion,
-      sync: 1,
-      detalle_herramientas: lista
-    }];
+const idRutaProducto = (document.querySelector('#id_ruta_producto')?.value || '').trim();
+
+const payload = [{
+  idalmacen: idAlmacen,
+  idproducto: idProducto,
+  idestacion: idEstacion,
+  idruta_producto: idRutaProducto, // ✅ NUEVO
+  sync: 1,
+  detalle_herramientas: lista
+}];
 
     const formData = new FormData();
     formData.append('herramientas', JSON.stringify(payload));
@@ -2391,6 +2565,8 @@ function prepararGuardarTodoHerramientas() {
 
     if (res.status) {
       Swal.fire("¡Operación exitosa!", res.msg || "Guardado correctamente", "success");
+  await cargarHerramientasGuardadasEstacion(idEstacion);
+  await refrescarEstadoEstacion(idEstacion);
       $('#modalHerramientas').modal('hide');
     } else {
       Swal.fire("Error", res.msg || "No se pudo guardar", "error");
@@ -2471,11 +2647,13 @@ function construirPayloadRuta() {
 
   const filas = tbodyRuta ? Array.from(tbodyRuta.querySelectorAll('tr[data-idestacion]')) : [];
 
-  const actuales = filas.map((tr, idx) => ({
-    iddetalle: Number(tr.getAttribute('data-iddetalle') || 0),
-    idestacion: String(tr.getAttribute('data-idestacion') || '').trim(),
-    orden: idx + 1
-  })).filter(x => x.idestacion);
+const actuales = filas.map((tr, idx) => ({
+  iddetalle: Number(tr.getAttribute('data-iddetalle') || 0),
+  idestacion: String(tr.getAttribute('data-idestacion') || '').trim(),
+  orden: idx + 1,
+  // ✅ NUEVO
+  estampado: Number(tr.getAttribute('data-estampado') || 0),
+})).filter(x => x.idestacion);
 
   const eliminadas = estacionesEliminadas.map(x => ({
     iddetalle: Number(x.iddetalle || 0),

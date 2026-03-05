@@ -78,6 +78,7 @@ public $intCantidad;
 public $intIdDetalle;
 public $intIdRuta;
 public $intIdProductoProceso;
+public $intEstampado;
 
 	public function __construct()
 	{
@@ -121,7 +122,7 @@ public function generarClave()
 		$this->intIdUsuario = $id_usuario;
 		$this->strTabla = $tabla;
 		$this->intIdregistro = $idregistro;
-		$this->strfecha_creacion = $fecha_creacion;
+		$this->strfecha_creacion = $fecha_creacion; 
 		$this->strip = $ip;
 		$this->strDetalle = $detalle;
 
@@ -582,19 +583,21 @@ public function selectOptionEstacionesByLinea($idlinea)
 
 	}
 
-	public function insertRutaDetalle($idruta, $idestacion, $orden, $fecha_creacion_ruta_detalle)
+	public function insertRutaDetalle($idruta, $idestacion, $orden, $fecha_creacion_ruta_detalle, $estampado)
 	{
 		$this->intRutaid = $idruta;
 		$this->intEstacionid = $idestacion;
 		$this->intOrden = $orden;
 		$this->strfecha_creacion = $fecha_creacion_ruta_detalle;
+        $this->intEstampado = $estampado;
 
-		$query_insert = "INSERT INTO mrp_producto_ruta_detalle(ruta_productoid,estacionid,orden,fecha_creacion) VALUES(?,?,?,?)";
+		$query_insert = "INSERT INTO mrp_producto_ruta_detalle(ruta_productoid,estacionid,orden,fecha_creacion,estampado) VALUES(?,?,?,?,?)";
 		$arrData = array(
 			$this->intRutaid,
 			$this->intEstacionid,
 			$this->intOrden,
-			$this->strfecha_creacion
+			$this->strfecha_creacion,
+             $this->intEstampado
 		);
 		$request_insert = $this->insert($query_insert, $arrData);
 		$return = $request_insert;
@@ -609,6 +612,7 @@ public function selectOptionEstacionesByLinea($idlinea)
 
 		$this->intIdEspecificacion = $intEspecificacionid;
 		$this->strDescripcion = $descripcion;
+        
 
 
 
@@ -985,7 +989,8 @@ public function selectRutaByProducto(int $rutaid)
                 r.lineaid,
                 d.estacionid,
                 d.orden,
-				d.iddetalle 
+				d.iddetalle,
+                d.estampado 
             FROM mrp_producto_ruta r
             LEFT JOIN mrp_producto_ruta_detalle d
                    ON d.ruta_productoid = r.idruta_producto
@@ -1014,7 +1019,8 @@ public function selectRutaByProducto(int $rutaid)
         $payload["detalle_ruta"][] = [
 			"iddetalle" => (string)$r['iddetalle'],
             "idestacion" => (string)$r['estacionid'],
-            "orden"      => (int)$r['orden']
+            "orden"      => (int)$r['orden'],
+            "estampado"      => (int)$r['estampado']
         ];
     }
 
@@ -1204,15 +1210,16 @@ public function softDeleteHerramientasNoIncluidos($idAlmacen, $idProducto, $idEs
         return $this->update($sql, [$orden, $iddetalle]);
     }
 
-    public function updateRutaDetalle(int $iddetalle, int $idestacion, int $orden)
+    public function updateRutaDetalle(int $iddetalle, int $idestacion, int $orden, $estampado)
     {
         $this->intIdDetalle = $iddetalle;
+        // $this->intEstampado = $estampado;
 
         $sql = "UPDATE mrp_producto_ruta_detalle
-                SET estacionid = ?, orden = ?, estado = ?
+                SET estacionid = ?, orden = ?, estado = ?, estampado=?
                 WHERE iddetalle = $this->intIdDetalle";
 
-        $arrData = array($idestacion, $orden, 2);
+        $arrData = array($idestacion, $orden, 2, $estampado);
         $request = $this->update($sql, $arrData);
         return $request;
     }
