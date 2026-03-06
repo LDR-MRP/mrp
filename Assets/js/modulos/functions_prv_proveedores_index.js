@@ -18,18 +18,26 @@ $(document).ready(function () {
             "complete": () => Sys_Core.UI.toggleLoader('#tblVendors', false)
         },
         "columns": [
-            { "data": "idproveedor", "render": (data) => `<span class="fw-bold">#${data}</span>` },
-            { "data": "clv_proveedor" },
+            { "data": "created_at", "render": (data) => `<span class="fw-bold">${data}</span>` },
+            { "data": "nombre_comercial" },
+            { "data": "razon_social" },
+            { "data": "id_cuenta_contable" },
             { "data": "rfc" },
-            { "data": "contacto" },
+            { "data": "origen" },
+            { "data": "telefono" },
+            { "data": "descripcion" },
+            { "data": "ciudad" },
+            { "data": "estado" },
+            { "data": "tasa_iva_default" },
+            { "data": "created_by" },
             { "data": "limite_credito", render: (data) => Sys_Core.Format.toCurrency(data) },
             { 
-                "data": "estatus", "render": function (data) {
+                "data": "estatus_operativo", "render": function (data) {
                     const clases = {
-                        '2': 'text-success',
-                        '1': 'text-danger'
+                        '1': 'text-success',
+                        '0': 'text-danger'
                     };
-                    return `<span class="text-uppercase font-weight-bold ${clases[data] || 'text-muted'} px-2 py-1">${data == '2' ? 'Activo' : 'Inactivo'}</span>`;
+                    return `<span class="text-uppercase font-weight-bold ${clases[data] || 'text-muted'} px-2 py-1">${data == '1' ? 'Activo' : 'Inactivo'}</span>`;
                 }
             },
             {
@@ -109,8 +117,8 @@ $(document).ready(function () {
     // Definimos qué estatus de la DB va a qué ID de HTML
     const requisicionesMap = {
         'total': 'kpi-total',
-        '2': 'kpi-activos',
-        '1': 'kpi-inactivos'
+        '1': 'kpi-activos',
+        '0': 'kpi-inactivos'
     };
 
     // Lanzamos la actualización recurrente cada 30 segundos

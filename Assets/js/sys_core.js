@@ -204,7 +204,35 @@ const Sys_Core = {
             $form[0].reset();
             $form.find('select').val('').trigger('change');
             $form.find('.is-invalid').removeClass('is-invalid');
-        }
+        },
+        
+        /**
+         * 
+         * @param {*} selector 
+         * @param {*} data 
+         * @param {*} options 
+         */
+        fillSelect: function(selector, data, options = {}) {
+            const { 
+                valueField = 'id', 
+                textField = 'nombre', 
+                placeholder = 'Seleccione una opción...',
+                selectedValue = null 
+            } = options;
+            
+            const $select = $(selector);
+            $select.empty().append(`<option value="">${placeholder}</option>`);
+            
+            if (Array.isArray(data)) {
+                data.forEach(item => {
+                    const selected = (selectedValue && item[valueField] == selectedValue) ? 'selected' : '';
+                    $select.append(`<option value="${item[valueField]}" ${selected}>${item[textField]}</option>`);
+                });
+            }
+            $select.trigger('change');
+        },
+
+
     },
 
     /**

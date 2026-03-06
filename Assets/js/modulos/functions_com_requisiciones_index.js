@@ -49,21 +49,21 @@ $(document).ready(function () {
                             </button>
                     `;
 
-                    if (Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'u') || Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'd')) {
+                    if ((Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'u') || Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'd')) && r.estatus === 'pendiente') {
                         buttons += `
                             <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"></button>
                             <ul class="dropdown-menu dropdown-menu-end">
                         `;
                     }
 
-                    if (Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'u')) {
+                    if (Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'u') && Sys_Core.Auth.hasPermissions(MODS.COM_COMPRAS, 'r') && r.estatus === 'pendiente') {
                         buttons += `
                             <li><button class="dropdown-item action-inline" data-id="${r.idrequisicion}" data-accion="approve"><i class="ri-check-line"></i> Aprobar</button></li>
                             <li><button class="dropdown-item action-inline" data-id="${r.idrequisicion}" data-accion="reject"><i class="ri-close-circle-line"></i> Rechazar</button></li>
                         `;
                     }
 
-                    if (Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'd')) {
+                    if (Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'd') && r.estatus === 'pendiente') {
                         buttons += `
                             <li><hr class="dropdown-divider"></li>
                             <li><button class="dropdown-item action-inline" data-id="${r.idrequisicion}" data-accion="cancel"><i class="ri-close-line"></i> Cancelar</button></li>
@@ -71,9 +71,14 @@ $(document).ready(function () {
                             <li><button class="dropdown-item text-danger action-inline" data-id="${r.idrequisicion}" data-accion="destroy"><i class="ri-delete-bin-6-line"></i> Eliminar</button></li>
                         `;
                     }
+
+                    if ((Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'u') || Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'd')) && r.estatus == 'pendiente') {
+                        buttons += `
+                            </ul>
+                        `;
+                    }
             
                     buttons += `
-                            </ul>
                         </div>
                     `;
 

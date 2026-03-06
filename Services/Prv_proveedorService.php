@@ -77,4 +77,61 @@ class Prv_proveedorService
     {
         return ServiceResponse::success($this->model->findByCriteria());
     }
+
+    public function registrarProveedor(mixed $data)
+    {
+        $db = $this->model->getConexion();
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db->beginTransaction();
+
+        try {
+            if(!($userId = $_SESSION['idUser'])) {
+                throw new \Exception("No hay una sesión de usuario activa.");
+            }
+
+            $data = json_decode($data, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new Exception('El cuerpo de la petición no es un JSON válido.');
+            }
+
+            $proveedorStoreRequest = new Prv_proveedorStoreRequest($data);
+            $proveedorStoreRequest->validate();
+            $validated = $proveedorStoreRequest->all();
+
+            $idProveedor = $this->model->insertProveedor($validated);
+            if ($idProveedor <= 0) throw new \Exception("Error al crear el maestro del proveedor.");
+
+            $resDir = $this->model->insertDireccion($validated, $idProveedor);
+            if (!$resDir) throw new \Exception("Error al registrar la dirección fiscal.");
+
+            $resFin = $this->model->insertConfigFinanciera($validated, $idProveedor);
+            if (!$resFin) throw new \Exception("Error al registrar la configuración financiera.");
+
+            $resCont = $this->model->insertContacto($validated, $idProveedor);
+            if (!$resCont) throw new \Exception("Error al registrar el contacto.");
+
+            $resOnb = $this->model->insertOnboarding($idProveedor, $idProveedor);
+            if (!$resOnb) throw new \Exception("Error al iniciar flujo de onboarding.");
+
+            $db->commit();
+            return ServiceResponse::success(data: ['id' => $idProveedor], code: 201);
+        } catch (\PDOException $e) {
+            $db->rollBack();
+
+            if ($e->getCode() == 23000 || str_contains($e->getMessage(), '1062')) {
+                return ServiceResponse::validation(errors: [
+                    'db' => "El RFC o la Razón Social ya se encuentran registrados en el sistema."
+                ]);
+            }
+
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+        } catch (\InvalidArgumentException $e) {
+            $db->rollBack();
+            return ServiceResponse::validation(errors: $e->getMessage());
+        } catch (\Exception $e) {
+            $db->rollBack();
+            return ServiceResponse::error(message: $e->getMessage());
+        }
+    }
 }

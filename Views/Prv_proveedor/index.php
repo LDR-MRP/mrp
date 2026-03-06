@@ -123,10 +123,18 @@
                             <table id="tblProveedores" class="table table-hover table-lg align-middle mb-0" style="width:100% !important;">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th width="5%" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3 ps-4">ID</th>
-                                        <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Clave</th>
-                                        <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Razón Social / RFC</th>
-                                        <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Contacto</th>
+                                        <th width="5%" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3 ps-4">Fecha Alta</th>
+                                        <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Nombre Comercial</th>
+                                        <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Razón Social</th>
+                                        <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Cuenta Contable</th>
+                                        <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">RFC</th>
+                                        <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Origen</th>
+                                        <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Teléfono</th>
+                                        <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Plazo de Crédito</th>
+                                        <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Ciudad</th>
+                                        <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado</th>
+                                        <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">IVA</th>
+                                        <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Creado Por</th>
                                         <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Crédito (MXN)</th>
                                         <th width="10%" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado</th>
                                         <th width="10%" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
