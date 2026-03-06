@@ -454,34 +454,35 @@
         <div class="row">
           <div class="col-12">
             <div class="card">
-              <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <div>
-                  <h5 class="card-title mb-0">
-                    Orden de Trabajo: <span class="text-primary"><?= $h($ot['num_orden'] ?? '') ?></span>
-                  </h5>
-                  <div class="text-muted">
-                    Producto: <span class="fw-semibold"><?= $h($ot['cve_producto'] ?? '') ?></span>
-                  </div>
-                </div>
+<div class="card-header ot-hero-header-pro d-flex align-items-center justify-content-between flex-wrap gap-3">
+  <div class="ot-hero-content">
+    <h5 class="card-title mb-1">
+      Orden de Trabajo:
+      <span class="ot-folio"><?= $h($ot['num_orden'] ?? '') ?></span>
+    </h5>
 
-                <div class="d-flex align-items-center flex-wrap gap-2">
-                  <!-- <span class="<?= $badgeEstado ?>"><?= $h($txtEstado) ?></span> -->
-                  <span class="<?= $badgePrioridad ?>">Prioridad: <?= $h($prioridad ?: '—') ?></span>
+    <div class="ot-hero-subtitle">
+      Producto:
+      <span class="fw-semibold"><?= $h($ot['cve_producto'] ?? '') ?></span>
+    </div>
+  </div>
 
+  <div class="ot-hero-actions d-flex align-items-center flex-wrap gap-2">
+    <span class="<?= $badgePrioridad ?> ot-priority-badge">
+      Prioridad: <?= $h($prioridad ?: '—') ?>
+    </span>
 
-                  <div class="vr d-none d-md-block"></div>
+    <button type="button" class="btn btn-light btn-sm ot-btn-light" onclick="history.back()">
+      <i class="ri-arrow-left-line me-1"></i>Volver
+    </button>
 
-                  <button type="button" class="btn btn-soft-secondary btn-sm" onclick="history.back()">
-                    <i class="ri-arrow-left-line me-1"></i>Volver
-                  </button>
-
-                  <button type="button" class="btn btn-danger btn-sm btn-pdf-cta btnPdfOT"
-                    data-numorden="<?= $h($ot['num_orden'] ?? '') ?>">
-                    <i class="ri-file-pdf-2-line me-1"></i>Ver OT en PDF
-                  </button>
-
-                </div>
-              </div>
+    <button type="button"
+      class="btn btn-danger btn-sm btnPdfOT ot-btn-pdf"
+      data-numorden="<?= $h($ot['num_orden'] ?? '') ?>">
+      <i class="ri-file-pdf-2-line me-1"></i>Ver OT en PDF
+    </button>
+  </div>
+</div>
 
               <div class="card-body">
                 <div class="row g-3">
