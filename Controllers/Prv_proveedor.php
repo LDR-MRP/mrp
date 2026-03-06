@@ -60,7 +60,7 @@ class Prv_proveedor  extends Controllers{
                 'page_action_type' => "Editar Proveedor",
                 'page_description' => "Complete la información fiscal y comercial para editar al socio.",
                 'page_functions_js' => "functions_prv_proveedores_create.js",
-                'supplier' => current($this->supplierService->findByCriteria(['idproveedor' =>$_GET['id']])->data),
+                'supplier' => current($this->supplierService->findByCriteria(['id_proveedor' =>$_GET['id']])->data),
             ]
         );
     }
@@ -91,5 +91,10 @@ class Prv_proveedor  extends Controllers{
     public function suppliers()
     {
         return $this->apiResponse($this->supplierService->suppliers($filters = sanitizeGet()));
+    }
+
+    public function registrarProveedor()
+    {
+        return $this->apiResponse($this->supplierService->registrarProveedor(file_get_contents('php://input')));
     }
 }
