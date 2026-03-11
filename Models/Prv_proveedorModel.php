@@ -13,7 +13,7 @@ class Prv_proveedorModel extends Mysql
     {
         $sql = "SELECT
                 -- Master
-                `prv_cat_proveedores`.`id_proveedor`,
+                `prv_cat_proveedores`.`id_proveedor` AS id,
                 `prv_cat_proveedores`.`id_empresa`,
                 `prv_cat_proveedores`.`rfc`,
                 `prv_cat_proveedores`.`razon_social`,
@@ -80,9 +80,9 @@ class Prv_proveedorModel extends Mysql
                 ON `prv_tra_onboarding`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
             WHERE true\n";
 
-        if(array_key_exists('id_proveedor', $filters)){ $sql .= "AND id_proveedor = '{$filters['id_proveedor']}'"; }
-        if(array_key_exists('estado', $filters)){ $sql .= "AND estado = '{$filters['estado']}'"; }
-        if(array_key_exists('rfc', $filters)){ $sql .= "AND rfc = '{$filters['rfc']}'"; }
+        if(array_key_exists('id_proveedor', $filters)){ $sql .= "AND `prv_cat_proveedores`.`id_proveedor` = '{$filters['id_proveedor']}'"; }
+        if(array_key_exists('estado', $filters)){ $sql .= "AND ``estado` = '{$filters['estado']}'"; }
+        if(array_key_exists('rfc', $filters)){ $sql .= "AND `rfc` = '{$filters['rfc']}'"; }
 
         return $this->select_all($sql);
     }

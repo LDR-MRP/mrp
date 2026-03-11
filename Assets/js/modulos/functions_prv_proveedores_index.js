@@ -47,7 +47,7 @@ $(document).ready(function () {
                 "render": function (data, type, r){ 
                     let buttons = `
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" data-redirect="prv_proveedor/edit?id=${r.idproveedor}">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-redirect="prv_proveedor/edit?id=${r.id}">
                             <i class="ri-eye-line"></i> Ver
                         </button>
                     `;
@@ -56,7 +56,7 @@ $(document).ready(function () {
                         buttons += `
                             <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"></button>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><button class="dropdown-item text-danger btn-delete" data-id="${r.idproveedor}" data-rf="${r.rfc}" data-action="delete"><i class="ri-delete-bin-6-line"></i> Eliminar</button></li>
+                                <li><button class="dropdown-item text-danger btn-delete" data-id="${r.id}" data-rf="${r.rfc}" data-action="delete"><i class="ri-delete-bin-6-line"></i> Eliminar</button></li>
                             </ul>
                         `;
                     }
