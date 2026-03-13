@@ -1,8 +1,5 @@
 <?php
     headerAdmin($data);
-    $isEdit = !empty($data['supplier']);
-    $p = $isEdit ? $data['supplier']['data'] : [];
-    $d = $data['supplier']['required_documents'];
 ?>
 
 <div class="main-content">
@@ -111,13 +108,13 @@
                     <div class="col-12">
                         <div class="d-flex align-items-center">
                             <div class="avatar-md me-3">
-                                <span class="avatar-title <?= $isEdit ? 'bg-warning' : 'bg-primary' ?> text-white rounded-circle fs-3 shadow-lg">
-                                    <i class="<?= $data['page_icon'] ?>"></i>
+                                <span id="page-icon-container" class="avatar-title bg-primary text-white rounded-circle fs-3 shadow-lg">
+                                    <i id="page-icon" class="ri-add-line"></i>
                                 </span>
                             </div>
                             <div>
-                                <h4 class="mb-1 text-dark fw-bold ls-05"><?= $data['page_action'] ?></h4>
-                                <p class="text-muted mb-0 fs-13"><?= $data['page_description'] ?></p>
+                                <h4 id="page-title" class="mb-1 text-dark fw-bold ls-05">Nuevo Proveedor</h4>
+                                <p id="page-description" class="text-muted mb-0 fs-13">Complete la información para dar de alta un nuevo socio.</p>
                             </div>
                         </div>
                     </div>
@@ -131,18 +128,16 @@
                             <i class="ri-building-line me-1"></i> Perfil del Proveedor
                         </a>
                     </li>
-                    <?php if($isEdit): ?>
-                    <li class="nav-item">
+                    <li class="nav-item edit-only-tab d-none">
                         <a class="nav-link" data-bs-toggle="tab" href="#tab-expediente" role="tab">
                             <i class="ri-folder-open-line me-1"></i> Expediente Digital
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item edit-only-tab d-none">
                         <a class="nav-link" data-bs-toggle="tab" href="#tab-onboarding" role="tab">
                             <i class="ri-shield-check-line me-1"></i> Onboarding & Auditoría
                         </a>
                     </li>
-                    <?php endif; ?>
                 </ul>
                 <!-- End Tabs Section -->
 
@@ -164,14 +159,14 @@
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">ID Empresa <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
                                                         <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-building-line"></i></span>
-                                                        <input type="text" name="id_empresa" class="form-control border-0" value="<?= $isEdit ? $p['id_empresa'] : '1' ?>">
+                                                        <input type="text" name="id_empresa" class="form-control border-0">
                                                     </div>
                                                 </div>
                                                 <div class="col-md-4">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">RFC <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
                                                         <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-barcode-box-line"></i></span>
-                                                        <input type="text" name="rfc" class="form-control border-0" maxlength="13" placeholder="ABCD123456EFG" style="text-transform: uppercase;" value="<?= $isEdit ? $p['rfc'] : '' ?>">
+                                                        <input type="text" name="rfc" class="form-control border-0" maxlength="13" placeholder="ABCD123456EFG" style="text-transform: uppercase;">
                                                     </div>
                                                 </div>
                                                 <div class="col-md-4">
@@ -179,20 +174,20 @@
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
                                                         <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-earth-line"></i></span>
                                                         <select name="origen" class="form-select border-0">
-                                                            <option value="Nacional" <?= ($isEdit && $p['origen'] == 'Nacional') ? 'selected' : '' ?>>Nacional</option>
-                                                            <option value="Extranjero" <?= ($isEdit && $p['origen'] == 'Extranjero') ? 'selected' : '' ?>>Extranjero</option>
+                                                            <option value="Nacional">Nacional</option>
+                                                            <option value="Extranjero">Extranjero</option>
                                                         </select>
                                                     </div>
                                                 </div>
                                                 <div class="col-12">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Razón Social <span class="text-danger-asterisk">*</span></label>
-                                                    <input type="text" name="razon_social" class="form-control form-control-lg bg-light border-0 fw-bold" value="<?= $isEdit ? $p['razon_social'] : '' ?>">
+                                                    <input type="text" name="razon_social" class="form-control form-control-lg bg-light border-0 fw-bold">
                                                 </div>
                                                 <div class="col-md-12">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Nombre Comercial <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group rounded-3 overflow-hidden shadow-none">
                                                         <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-store-2-line"></i></span>
-                                                        <input type="text" name="nombre_comercial" class="form-control border-top-0 border-start-0 border-end-0 rounded-0 ps-0" value="<?= $isEdit ? $p['nombre_comercial'] : '' ?>">
+                                                        <input type="text" name="nombre_comercial" class="form-control border-top-0 border-start-0 border-end-0 rounded-0 ps-0">
                                                     </div>
                                                 </div>
                                                 <div class="col-md-6">
@@ -228,29 +223,29 @@
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Código Postal <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border border-info rounded">
                                                         <span class="input-group-text bg-white border-0"><i class="ri-map-pin-user-line text-info"></i></span>
-                                                        <input type="text" name="cp" id="cp" class="form-control border-0 fw-bold fs-15 text-info" placeholder="00000" maxlength="5" value="<?= $isEdit ? $p['cp'] : '' ?>">
+                                                        <input type="text" name="cp" id="cp" class="form-control border-0 fw-bold fs-15 text-info" placeholder="00000" maxlength="5">
                                                     </div>
                                                 </div>
                                                 <div class="col-md-4">
                                                     <label class="form-label text-uppercase fs-11 fw-semibold text-muted d-block">¿Es Principal?</label>
                                                     <div class="btn-group w-100" role="group">
-                                                        <input type="radio" class="btn-check" name="es_principal" id="principal_si" value="1" <?= (!$isEdit || $p['es_principal'] == 1) ? 'checked' : '' ?>>
+                                                        <input type="radio" class="btn-check" name="es_principal" id="principal_si" value="1">
                                                         <label class="btn btn-outline-light-subtle border fs-12 py-2" for="principal_si text-dark">SÍ</label>
-                                                        <input type="radio" class="btn-check" name="es_principal" id="principal_no" value="0" <?= ($isEdit && $p['es_principal'] == 0) ? 'checked' : '' ?>>
+                                                        <input type="radio" class="btn-check" name="es_principal" id="principal_no" value="0">
                                                         <label class="btn btn-outline-light-subtle border fs-12 py-2" for="principal_no text-dark">NO</label>
                                                     </div>
                                                 </div>
                                                 <div class="col-md-8">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Calle <span class="text-danger-asterisk">*</span></label>
-                                                    <input type="text" name="calle" class="form-control" placeholder="Nombre de la vialidad" value="<?= $isEdit ? $p['calle'] : '' ?>">
+                                                    <input type="text" name="calle" class="form-control" placeholder="Nombre de la vialidad">
                                                 </div>
                                                 <div class="col-md-2">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Ext <span class="text-danger-asterisk">*</span></label>
-                                                    <input type="text" name="num_ext" class="form-control" placeholder="SN" value="<?= $isEdit ? $p['num_ext'] : '' ?>">
+                                                    <input type="text" name="num_ext" class="form-control" placeholder="SN">
                                                 </div>
                                                 <div class="col-md-2">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Int</label>
-                                                    <input type="text" name="num_int" class="form-control" placeholder="N/A" value="<?= $isEdit ? $p['num_int'] : 'N/A' ?>">
+                                                    <input type="text" name="num_int" class="form-control" placeholder="N/A">
                                                 </div>
 
                                                 <div class="col-md-12">
@@ -291,27 +286,27 @@
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Nombre Completo <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
                                                         <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-user-3-line"></i></span>
-                                                        <input type="text" name="nombre" class="form-control border-0 fs-16" value="<?= $isEdit ? $p['nombre'] : '' ?>">
+                                                        <input type="text" name="nombre" class="form-control border-0 fs-16">
                                                     </div>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted fw-bold">Puesto <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
-                                                        <input type="text" name="puesto" class="form-control border-0 fs-16" value="<?= $isEdit ? $p['puesto'] : '' ?>">
+                                                        <input type="text" name="puesto" class="form-control border-0 fs-16">
                                                     </div>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Email <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
                                                         <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-mail-line"></i></span>
-                                                        <input type="email" name="email" class="form-control border-0 fs-16" placeholder="ejemplo@correo.com" value="<?= $isEdit ? $p['email'] : '' ?>">
+                                                        <input type="email" name="email" class="form-control border-0 fs-16" placeholder="ejemplo@correo.com">
                                                     </div>
                                                 </div>
                                                 <div class="col-md-4">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Teléfono <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
                                                         <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-phone-line"></i></span>
-                                                        <input type="text" name="telefono" id="telefono" class="form-control border-0 fs-16" placeholder="(00) 0000-0000" value="<?= $isEdit ? $p['telefono'] : '' ?>">
+                                                        <input type="text" name="telefono" id="telefono" class="form-control border-0 fs-16" placeholder="(00) 0000-0000">
                                                     </div>
                                                 </div>
                                                 <div class="col-md-2 d-flex align-items-end justify-content-center pb-2">
@@ -364,7 +359,6 @@
                                                     </div>
                                                     <input type="range" name="tasa_iva_default" class="form-range custom-range" 
                                                         min="0" max="16" step="1" 
-                                                        value="<?= $isEdit ? $p['tasa_iva_default'] : '16' ?>" 
                                                         oninput="document.getElementById('iva-label').innerText = this.value + '.00%'">
                                                     <div class="d-flex justify-content-between mt-1 px-1">
                                                         <span class="fs-10 text-muted">0%</span>
@@ -378,7 +372,7 @@
                                                 <label class="form-label text-uppercase fs-11 fw-semibold text-muted">Crédito Autorizado</label>
                                                 <div class="input-group border rounded-3 overflow-hidden shadow-none">
                                                     <span class="input-group-text bg-white border-0 text-muted fw-bold">$</span>
-                                                    <input type="number" step="0.01" name="limite_credito" class="form-control border-0 text-end fw-bold fs-16" value="<?= $isEdit ? $p['limite_credito'] : '0.00' ?>">
+                                                    <input type="number" step="0.01" name="limite_credito" class="form-control border-0 text-end fw-bold fs-16">
                                                 </div>
                                             </div>
 
@@ -386,11 +380,11 @@
                                                 <label class="form-label text-uppercase fs-11 fw-semibold text-muted">Moneda</label>
                                                 <div class="d-flex gap-2">
                                                     <div class="flex-grow-1">
-                                                        <input type="radio" class="btn-check" name="id_moneda_defecto" id="mxn" value="MXN" <?= (!$isEdit || $p['id_moneda_defecto'] == 'MXN') ? 'checked' : '' ?>>
+                                                        <input type="radio" class="btn-check" name="id_moneda_defecto" id="mxn" value="MXN">
                                                         <label class="btn btn-outline-light w-100 border text-dark fs-12" for="mxn">MXN</label>
                                                     </div>
                                                     <div class="flex-grow-1">
-                                                        <input type="radio" class="btn-check" name="id_moneda_defecto" id="usd" value="USD" <?= ($isEdit && $p['id_moneda_defecto'] == 'USD') ? 'checked' : '' ?>>
+                                                        <input type="radio" class="btn-check" name="id_moneda_defecto" id="usd" value="USD">
                                                         <label class="btn btn-outline-light w-100 border text-dark fs-12" for="usd">USD</label>
                                                     </div>
                                                 </div>
@@ -447,8 +441,7 @@
                     <!-- End Master Data -->
 
                     <!-- File Section -->
-                    <?php if($isEdit): ?>
-                    <section class="tab-pane mt-4" id="tab-expediente" role="tabpanel">
+                    <section class="tab-pane mt-4 edit-only-tab d-none" id="tab-expediente" role="tabpanel">
                         <div class="row">
                             <div class="col-12 mb-4">
                                 <div class="card bg-light-subtle shadow-none border">
@@ -459,59 +452,27 @@
                                                 <p class="text-muted mb-0">Completa los  documentos obligatorios para avanzar al siguiente nivel.</p>
                                             </div>
                                             <div class="flex-shrink-0">
-                                                <h4 class="text-success mb-0">20%</h4>
+                                                <h4 id="global-progress-text" class="text-success mb-0">0%</h4>
                                             </div>
                                         </div>
                                         <div class="progress animated-progress progress-sm mt-3">
-                                            <div class="progress-bar bg-success" role="progressbar" style="width: 20%" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100"></div>
+                                            <div id="global-progress-bar" class="progress-bar bg-success" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <?php foreach($d AS $doc):?>
-                            
-                            <div class="col-xl-4 col-md-6">
-                                <div class="card border shadow-none mb-3">
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-center mb-3">
-                                            <div class="avatar-sm flex-shrink-0">
-                                                <div class="avatar-title bg-primary-subtle text-primary rounded fs-22">
-                                                    <i class="ri-file-text-line"></i>
-                                                </div>
-                                            </div>
-                                            <div class="flex-grow-1 ms-3">
-                                                <h6 class="fs-14 mb-0 fw-bold"><?php echo $doc['name']; ?></h6>
-                                                <small class="text-muted"><?php echo $doc['required'] ? 'Obligatorio' : 'Opcional'; ?> - <?php echo strtoupper($doc['ext']); ?></small>
-                                            </div>
-                                        </div>
-
-                                        <div class="dropzone-premium border-dashed rounded-3 p-4 text-center bg-light" 
-                                            style="cursor: pointer; border: 2px dashed #d1d5db;">
-                                            <i class="ri-upload-2-line fs-24 text-primary mb-2 d-block"></i>
-                                            <p class="fs-13 fw-medium mb-1">Arrastra tu archivo aquí</p>
-                                            <p class="text-muted fs-11">O haz clic para explorar en tu equipo</p>
-                                        </div>
-                                        
-                                        <div class="mt-2 d-flex align-items-center text-success fs-12 d-none" id="success-csf">
-                                            <i class="ri-checkbox-circle-fill me-1"></i> Archivo listo para revisión
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
-
+                            </div>                            
+                            <div id="document-cards-container" class="row w-100 m-0">
+                             </div>
                         </div>
                     </section>
                     <!-- End File Section -->
 
                     <!-- Onboarding Section -->
-                    <section class="tab-pane mt-4" id="tab-onboarding" role="tabpanel">
+                    <section class="tab-pane mt-4 edit-only-tab d-none" id="tab-onboarding" role="tabpanel">
                         <div class="row">
                             <div class="col-12">
                                 <div class="card shadow-none border mb-0">
-                                    <div class="card-body p-5">
-                                        
+                                    <div class="card-body p-5">                                        
                                         <div class="text-center mb-5">
                                             <div class="avatar-md mx-auto mb-3">
                                                 <div class="avatar-title bg-warning-subtle text-warning display-5 rounded-circle shadow">
@@ -524,54 +485,52 @@
                                                 <strong>Expediente Digital</strong> para avanzar a la fase de validación.
                                             </p>
                                         </div>
-
                                         <div class="custom-timeline-container py-4">
-    <ul class="custom-timeline-list">
-        <li class="timeline-item completed">
-            <div class="timeline-icon bg-success">
-                <i class="ri-check-line text-white"></i>
-            </div>
-            <div class="timeline-content">
-                <h6 class="fs-14 fw-bold mb-1">Registro Inicial</h6>
-                <p class="text-muted fs-12 mb-0">06 Mar, 2026</p>
-            </div>
-        </li>
+                                            <ul class="custom-timeline-list">
+                                                <li class="timeline-item completed">
+                                                    <div class="timeline-icon bg-success">
+                                                        <i class="ri-check-line text-white"></i>
+                                                    </div>
+                                                    <div class="timeline-content">
+                                                        <h6 class="fs-14 fw-bold mb-1">Registro Inicial</h6>
+                                                        <p class="text-muted fs-12 mb-0">06 Mar, 2026</p>
+                                                    </div>
+                                                </li>
 
-        <li class="timeline-item active">
-            <div class="timeline-icon bg-warning">
-                <i class="ri-folder-open-line text-white"></i>
-            </div>
-            <div class="timeline-content active-card">
-                <h6 class="fs-14 fw-bold mb-1 text-warning">Expediente Digital</h6>
-                <span class="badge bg-warning text-white">Esperando Archivos</span>
-            </div>
-        </li>
+                                                <li class="timeline-item active">
+                                                    <div class="timeline-icon bg-warning">
+                                                        <i class="ri-folder-open-line text-white"></i>
+                                                    </div>
+                                                    <div class="timeline-content active-card">
+                                                        <h6 class="fs-14 fw-bold mb-1 text-warning">Expediente Digital</h6>
+                                                        <span class="badge bg-warning text-white">Esperando Archivos</span>
+                                                    </div>
+                                                </li>
 
-        <li class="timeline-item">
-            <div class="timeline-icon bg-light">
-                <i class="ri-shield-check-line text-muted"></i>
-            </div>
-            <div class="timeline-content">
-                <h6 class="fs-14 fw-bold mb-1 text-muted">Validación</h6>
-            </div>
-        </li>
+                                                <li class="timeline-item">
+                                                    <div class="timeline-icon bg-light">
+                                                        <i class="ri-shield-check-line text-muted"></i>
+                                                    </div>
+                                                    <div class="timeline-content">
+                                                        <h6 class="fs-14 fw-bold mb-1 text-muted">Validación</h6>
+                                                    </div>
+                                                </li>
 
-        <li class="timeline-item">
-            <div class="timeline-icon bg-light">
-                <i class="ri-bank-card-2-line text-muted"></i>
-            </div>
-            <div class="timeline-content">
-                <h6 class="fs-14 fw-bold mb-1 text-muted">Alta en ERP</h6>
-            </div>
-        </li>
-    </ul>
-</div>
+                                                <li class="timeline-item">
+                                                    <div class="timeline-icon bg-light">
+                                                        <i class="ri-bank-card-2-line text-muted"></i>
+                                                    </div>
+                                                    <div class="timeline-content">
+                                                        <h6 class="fs-14 fw-bold mb-1 text-muted">Alta en ERP</h6>
+                                                    </div>
+                                                </li>
+                                            </ul>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </section>
-                    <?php endif; ?>
                     <!-- End Onboarding Section -->
                 </div>
                 <!-- End Tabs Content Section -->

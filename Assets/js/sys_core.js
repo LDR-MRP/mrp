@@ -232,7 +232,28 @@ const Sys_Core = {
             $select.trigger('change');
         },
 
+        /**
+         * Rellena automáticamente un formulario a partir de un objeto JSON.
+         * @param {string} formSelector - El ID o clase del formulario (ej: '#formProveedor')
+         * @param {Object} data - El objeto JSON con los datos
+         */
+        fillForm: function(formSelector, data) {
+            const $form = $(formSelector);
+            if (!$form.length || !data) return;
 
+            Object.entries(data).forEach(([key, value]) => {
+                const $el = $form.find(`[name="${key}"]`);
+                if ($el.length) {
+                    if ($el.is(':radio') || $el.is(':checkbox')) {
+                        // Marca el radio/checkbox si coincide el valor
+                        $el.filter(`[value="${value}"]`).prop('checked', true);
+                    } else {
+                        // Rellena inputs y selects, y dispara change para plugins
+                        $el.val(value).trigger('change');
+                    }
+                }
+            });
+        },
     },
 
     /**

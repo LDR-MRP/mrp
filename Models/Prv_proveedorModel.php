@@ -72,10 +72,7 @@ class Prv_proveedorModel extends Mysql
             -- Banking Information JOIN
             LEFT JOIN `prv_det_cuentas_bancarias`
                 ON `prv_det_cuentas_bancarias`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
-            -- File JOIN
-            LEFT JOIN `prv_det_expediente`
-                ON `prv_det_expediente`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
-            -- Onboarding JOIN
+            -- Onboarding Information JOIN
             LEFT JOIN `prv_tra_onboarding`
                 ON `prv_tra_onboarding`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
             WHERE true\n";
