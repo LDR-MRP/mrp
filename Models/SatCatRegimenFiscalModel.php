@@ -30,4 +30,20 @@ class SatCatRegimenFiscalModel extends Mysql
             WHERE aplica_moral = 1;"
         );
     }
+
+    public function byId(int $id)
+    {
+        return $this->select_all(
+            query:
+                "SELECT
+                    *,
+                    id_regimen_fiscal AS id,
+                    descripcion AS nombre
+                FROM sat_cat_regimen_fiscal
+                WHERE id_regimen_fiscal = ?;",
+            arrValues: [
+                $id
+            ]
+        );
+    }
 }

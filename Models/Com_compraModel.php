@@ -46,8 +46,8 @@ class Com_compraModel extends Mysql
             FROM com_compras
             LEFT JOIN com_requisiciones
             ON com_requisiciones.idrequisicion = com_compras.requisicionid
-            LEFT JOIN prv_proveedores
-            ON prv_proveedores.idproveedor = com_compras.proveedorid
+            LEFT JOIN prv_cat_proveedores
+            ON prv_cat_proveedores.id_proveedor = com_compras.proveedorid
             LEFT JOIN wms_almacenes
             ON wms_almacenes.idalmacen = com_compras.almacenid
             LEFT JOIN usuarios

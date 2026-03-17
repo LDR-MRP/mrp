@@ -11,13 +11,13 @@ class SatCatalogoService
         $this->satCatTipoPersonaModel = new SatCatTipoPersonaModel;
         $this->satCatRegimenFiscalModel = new SatCatRegimenFiscalModel;
     }
-
-    public function tiposPersonas()
+    
+    public function tiposPersonas(): ServiceResponse
     {
         return ServiceResponse::success($this->satCatTipoPersonaModel->all());
     }
 
-    public function regimenesFiscales($tipoPersona)
+    public function regimenesFiscales($tipoPersona): ServiceResponse
     {
         $regimenes = [];
         
@@ -29,5 +29,10 @@ class SatCatalogoService
         }        
 
         return ServiceResponse::success($regimenes);
+    }
+
+    public function regimenFiscal(int $id): ServiceResponse
+    {
+        return ServiceResponse::success($this->satCatRegimenFiscalModel->byId($id));
     }
 }

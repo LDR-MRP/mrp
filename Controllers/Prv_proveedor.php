@@ -106,4 +106,9 @@ class Prv_proveedor  extends Controllers{
     {
         return $this->apiResponse($this->supplierService->documents($supplierId));
     }
+
+    public function auditDocument()
+    {
+        return $this->apiResponse($this->supplierService->auditDocument($_POST));
+    }
 }
