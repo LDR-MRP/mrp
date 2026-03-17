@@ -246,7 +246,7 @@ const Sys_Core = {
                 if ($el.length) {
                     if ($el.is(':radio') || $el.is(':checkbox')) {
                         // Marca el radio/checkbox si coincide el valor
-                        $el.filter(`[value="${value}"]`).prop('checked', true);
+                        $el.filter(`[value="${String(value)}"]`).prop('checked', true).trigger('change');
                     } else {
                         // Rellena inputs y selects, y dispara change para plugins
                         $el.val(value).trigger('change');

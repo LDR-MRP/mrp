@@ -4,9 +4,11 @@ class Prv_proveedorModel extends Mysql
 {
     use Auditable;
 
+    protected $table = 'prv_cat_proveedores';
+
     public function getTableName(): string 
     {
-        return "prv_proveedores";
+        return $this->table;
     }
 
     public function findByCriteria(array $filters = [])
@@ -15,6 +17,8 @@ class Prv_proveedorModel extends Mysql
                 -- Master
                 `prv_cat_proveedores`.`id_proveedor` AS id,
                 `prv_cat_proveedores`.`id_empresa`,
+                `prv_cat_proveedores`.`id_tipo_persona`,
+                `prv_cat_proveedores`.`id_regimen_fiscal`,
                 `prv_cat_proveedores`.`rfc`,
                 `prv_cat_proveedores`.`razon_social`,
                 `prv_cat_proveedores`.`nombre_comercial`,
@@ -99,7 +103,7 @@ class Prv_proveedorModel extends Mysql
     public function destroy(int $idproveedor)
     {
         $query = sprintf(
-            "UPDATE prv_proveedores SET estatus = 0, deleted_at = NOW() WHERE idproveedor = %d;",
+            "UPDATE prv_cat_proveedores SET estatus = 0, deleted_at = NOW() WHERE idproveedor = %d;",
             $idproveedor
         );
         return $this->delete($query);

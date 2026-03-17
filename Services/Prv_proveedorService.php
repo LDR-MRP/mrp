@@ -191,4 +191,15 @@ class Prv_proveedorService
             ]
         );
     }
+
+    public function auditDocument(array $inputData): ServiceResponse
+    {
+        $outputData = [];
+
+        if(!$this->prvDetExpedienteModel->auditDocument(values: $inputData)){
+            throw new \Exception("No se pudo procesar tu solicitud.");            
+        }
+
+        return ServiceResponse::success($outputData);
+    }
 }

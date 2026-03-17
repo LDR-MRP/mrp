@@ -192,7 +192,7 @@
                                                 </div>
                                                 <div class="col-md-6">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Tipo de Persona <span class="text-danger-asterisk">*</span></label>
-                                                    <select name="id_tipo_persona" class="form-select border-dashed">
+                                                    <select name="id_tipo_persona" id="id_tipo_persona" class="form-select border-dashed">
                                                         <option>Selecciona una opción...</option>
                                                     </select>
                                                 </div>

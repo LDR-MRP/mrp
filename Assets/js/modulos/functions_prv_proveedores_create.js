@@ -4,13 +4,10 @@
 const proveedorManager = {
     init: function() {
         const idProveedor = new URLSearchParams(window.location.search).get('id');
-
-        // 1. Aplicamos el estado visual de la página (Textos y Tabs)
+        
         this.applyViewState(idProveedor);
         
-        // 2. Cargar catálogos base usando Promesas para evitar condiciones de carrera
         this.loadCatalogs().then(() => {
-            // Si estamos en edición, cargamos el perfil DESPUÉS de los catálogos
             if (idProveedor) {
                 this.loadProfile(idProveedor);
             }
@@ -43,24 +40,17 @@ const proveedorManager = {
      */
     applyViewState: function(isEdit) {
         if (isEdit) {
-            // Textos e Iconos para EDICIÓN
             $('#page-title').text('Edición de Registro');
-            $('#page-description').text('Complete la información fiscal y comercial para editar al socio.');
-            
-            // Cambiamos el color e icono del avatar (como en tu PHP original)
+            $('#page-description').text('Complete la información fiscal y comercial para editar al socio.');            
             $('#page-icon-container').removeClass('bg-primary').addClass('bg-warning');
             $('#page-icon').removeClass('ri-add-line').addClass('ri-edit-2-line');
             
             
         } else {
-            // Textos e Iconos para CREACIÓN (Ya están por defecto, pero asegura el estado)
             $('#page-title').text('Nuevo Proveedor');
-            $('#page-description').text('Complete la información para dar de alta un nuevo socio.');
-            
+            $('#page-description').text('Complete la información para dar de alta un nuevo socio.');            
             $('#page-icon-container').removeClass('bg-warning').addClass('bg-primary');
             $('#page-icon').removeClass('ri-edit-2-line').addClass('ri-add-line');
-            
-            // Ocultamos las pestañas exclusivas de edición
             $('.edit-only-tab').addClass('d-none');
         }
 
@@ -68,7 +58,6 @@ const proveedorManager = {
             (Sys_Core.Auth.hasPermissions(MODS.PRV_PROVEEDORES, 'u') ||
             Sys_Core.Auth.hasPermissions(MODS.PRV_PROVEEDORES, 'r'))
         ) {
-            // Mostramos las pestañas exclusivas de edición para roles con permiso de edición
             $('.edit-only-tab').removeClass('d-none');
         }
     },
@@ -84,7 +73,6 @@ const proveedorManager = {
             { url: 'SatCatalogo/tipos_personas', selector: '[name="id_tipo_persona"]' }
         ];
 
-        // Mapeamos las peticiones a Promesas
         const promises = catalogos.map(cat => {
             return new Promise((resolve) => {
                 Sys_Core.Net.get({
@@ -113,15 +101,22 @@ const proveedorManager = {
             silent: true,
             onSuccess: (res) => {
                 if (res.status && res.data) {
-                    const data = res.data;
-                    
-                    // Magia: Rellenamos todo el formulario de golpe
-                    Sys_Core.UI.fillForm('#formProveedor', data[0]);
+                    const data = res.data[0];
+                
+                    // 1. Llenamos el formulario de golpe
+                    Sys_Core.UI.fillForm('#formProveedor', data);
 
-                    // Si trae CP, disparamos la cascada y al terminar, seteamos la colonia
+                    // 2. Cargamos Régimen Fiscal y al terminar, seleccionamos (Igual que el CP)
+                    if (data.id_tipo_persona) {
+                        cascadeCatalogs.searchRegime(data.id_tipo_persona, () => {
+                            $('[name="id_regimen_fiscal"]').val(data.id_regimen_fiscal).trigger('change');
+                        });
+                    }
+
+                    // 3. Cargamos Colonias y al terminar, seleccionamos
                     if (data.cp) {
-                        cascadeCatalogs.buscarCP(data.cp, () => {
-                            $('[name="colonia"]').val(data.colonia);
+                        cascadeCatalogs.searchCP(data.cp, () => {
+                            $('[name="colonia"]').val(data.colonia).trigger('change');
                         });
                     }
                 }
@@ -140,17 +135,19 @@ const cascadeCatalogs = {
         $('#cp').on('keyup', function() {
             const cp = $(this).val();
             if (cp.length === 5) {
-                cascadeCatalogs.buscarCP(cp);
+                cascadeCatalogs.searchCP(cp);
             }
         });
-        
-        $('select[name="id_tipo_persona"]').on('change', function() {
-            const tipoPersona = $(this).val();
-            cascadeCatalogs.buscarRegimen(tipoPersona);
-        })
+
+        $('select[name="id_tipo_persona"]').on('change', function(e) {
+            if (e.originalEvent) {
+                const tipoPersona = $(this).val();
+                cascadeCatalogs.searchRegime(tipoPersona);
+            }
+        });
     },
 
-    buscarCP: function(cp, callback = null) {
+    searchCP: function(cp, callback = null) {
         Sys_Core.Net.get({
             url: `${base_url}/catalogo/codigos_postales/${cp}`,
             silent: false,
@@ -163,44 +160,39 @@ const cascadeCatalogs = {
                     Sys_Core.UI.fillSelect('#colonia', res.data.colonias, {
                         valueField: 'asentamiento',
                         textField: 'asentamiento',
-                        placeholder: 'Seleccione colonia...'
+                        placeholder: 'Selecciona colonia...'
                     });
                     
-                    Sys_Core.UI.notify('Ubicación localizada', 'success');
-                } else {
-                    Sys_Core.UI.notify('Código Postal no encontrado', 'warning');
+                    if (callback) callback();
                 }
             }
         });
     },
 
-    buscarRegimen: function(tipoPersona) {
+    searchRegime: function(tipoPersona, callback = null) {
         Sys_Core.Net.get({
             url: `${base_url}/SatCatalogo/regimenes_fiscales/${tipoPersona}`,
             silent: false,
             onSuccess: (res) => {
                 if (res.status) {
-
                     Sys_Core.UI.fillSelect('#id_regimen_fiscal', res.data, {
                         valueField: 'id',
                         textField: 'nombre',
-                        placeholder: 'Seleccione régimen...'
+                        placeholder: 'Selecciona régimen...'
                     });
                     
-                    Sys_Core.UI.notify('Régimen localizado', 'success');
-                } else {
-                    Sys_Core.UI.notify('Régimen no encontrado', 'warning');
+                    if (callback) callback();
                 }
             }
         })
-    }
+    },
 };
 
 /**
  * Lógica para la gestión de Expediente Digital (Uploads)
  */
 const files = {
-    isLoaded: false, // Bandera para no cargar 2 veces
+    isLoaded: false,
 
     init: function() {
         this.events();
@@ -208,6 +200,7 @@ const files = {
 
     events: function() {
         const self = this;
+        const $container = $('#document-cards-container');
 
         // --- LAZY LOADING DEL EXPEDIENTE ---
         // Se ejecuta SOLO cuando la pestaña se hace visible (Evento de Bootstrap)
@@ -219,7 +212,10 @@ const files = {
         });
 
         $(document).on('click', '.dropzone-premium', function(e) {
-            $(this).find('.file-input').trigger('click');
+            const $input = $(this).find('.file-input');
+            if (!$input.prop('disabled')) {
+                $input.trigger('click');
+            }
         });
 
         $(document).on('click', '.file-input', function(e) {
@@ -241,13 +237,62 @@ const files = {
             $(this).removeClass('bg-primary-subtle border-primary');
             
             if (e.type === 'drop') {
+                const $input = $(this).find('.file-input');
+                
+                if ($input.prop('disabled')) return;
+
                 const files = e.originalEvent.dataTransfer.files;
                 const docType = $(this).data('type');
-                const input = $(this).find('.file-input')[0];
                 
-                input.files = files;
-                self.upload(input, docType);
+                $input[0].files = files;
+                self.upload($input[0], docType);
             }
+        });
+
+        $container.on('click', '.btn-replace', function(e) {
+            e.stopPropagation();
+            const docType = $(this).data('type');
+            $(`#file-${docType}`).prop('disabled', false).trigger('click');
+        });
+
+        $container.on('click', '.btn-approve', function(e) {
+            e.stopPropagation();
+            const idDoc = $(this).data('doc-id');
+            
+            Sys_Core.UI.confirm({
+                title: '¿Aprobar documento?',
+                text: 'Este documento será marcado como válido y verificado.',
+                icon: 'question',
+                confirmText: 'Sí, aprobar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    self.auditDocument(idDoc, 1);
+                }
+            });
+        });
+
+        $container.on('click', '.btn-reject', function(e) {
+            e.stopPropagation();
+            const idDoc = $(this).data('doc-id');
+            
+            Swal.fire({
+                title: 'Devolver Documento',
+                input: 'textarea',
+                inputLabel: 'Motivo del rechazo / devolución',
+                inputPlaceholder: 'Ej. El documento no es legible o está caducado...',
+                inputAttributes: { 'aria-label': 'Motivo del rechazo' },
+                showCancelButton: true,
+                confirmButtonColor: '#f06548',
+                confirmButtonText: 'Devolver Documento',
+                cancelButtonText: 'Cancelar',
+                inputValidator: (value) => {
+                    if (!value) return 'Debes ingresar un motivo para devolver el documento.';
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    self.auditDocument(idDoc, 2, result.value);
+                }
+            });
         });
     },
 
@@ -274,18 +319,15 @@ const files = {
     renderStatus: function(data) {
         const { progress, documents } = data;
 
-        // 1. Pintamos la barra general que devuelve el backend
         $('#global-progress-bar').css('width', `${progress}%`).attr('aria-valuenow', progress);
         $('#global-progress-text').text(`${progress}%`);
 
-        // 2. Limpiamos el contenedor
         const $container = $('#document-cards-container');
         $container.empty();
 
-        // 3. Iteramos los documentos y construimos el HTML
         Object.entries(documents).forEach(([key, doc]) => {
             const isUploaded = doc.uploaded;
-            const fileData = doc.file_data; // Objeto directo de tu tabla prv_det_expediente
+            const fileData = doc.file_data;
             const estado = parseInt(fileData?.estatus_validacion, 10) || 0;
             let dropzoneClass = 'bg-light';
             let iconClass = 'text-primary';
@@ -413,7 +455,41 @@ const files = {
                 $(input).val('');
             }
         });
-    }
+    },
+
+    /**
+     * Envía el dictamen al backend
+     * @param {number} idDoc - ID del documento en la tabla prv_det_expediente
+     * @param {number} action - 1 (Aprobado), 2 (Rechazado)
+     * @param {string} motivo - Texto del motivo (solo aplica en rechazo)
+     */
+    auditDocument: function(idDoc, action, motivo = '') {
+        const idProveedor = new URLSearchParams(window.location.search).get('id');
+        
+        Sys_Core.Net.post({
+            url: `${Sys_Core.Config.baseUrl}/prv_proveedor/auditDocument`,
+            payload: $.param({ 
+                id_documento: idDoc, 
+                estatus_validacion: action, 
+                motivo_rechazo: motivo,
+                id_proveedor: idProveedor
+            }),
+            successMsg: action === 1 ? 'Documento aprobado exitosamente.' : 'Documento devuelto al proveedor.',
+            onDone: (res) => {
+                this.loadStatus(idProveedor);
+                
+                // Opcional: Si el backend nos responde que ya se alcanzó el 100% aprobado
+                if (res.data && res.data.proveedor_activado) {
+                    Sys_Core.UI.alert(
+                        '¡Proveedor Activo!', 
+                        'Todos los documentos han sido aprobados. El proveedor ya puede operar en el sistema.', 
+                        'success'
+                    );
+                    // TODO: Aquí recargar el tab de Onboarding para que muestre el 100%
+                }
+            }
+        });
+    },
 };
 
 $(document).ready(() => {

@@ -2,6 +2,8 @@
 
 class Prv_detExpedienteModel extends Mysql
 {
+    protected $table = 'prv_det_expediente';
+
     public const DOCUMENTOS_REQUERIDOS = [
         'CONSTITUTIVA' => ['name' => 'Acta Constitutiva', 'required' => true, 'ext' => 'pdf'],
         'CSF' => ['name' => 'Constancia de Situación Fiscal', 'required' => true, 'ext' => 'pdf'],
@@ -10,19 +12,20 @@ class Prv_detExpedienteModel extends Mysql
         'DOMICILIO' => ['name' => 'Comprobante de Domicilio', 'required' => true, 'ext' => 'pdf'], 
     ];
 
-    public function __construct()
+    public function getTableName(): string 
     {
-        parent::__construct();
+        return $this->table;
     }
 
-    public function saveDocument(array $data)
+    public function saveDocument(array $data): int
     {
         return $this->insert(
-            "INSERT INTO `prv_det_expediente`
-            (
-                id_proveedor, tipo_documento, url_archivo, created_by
-            ) VALUES (?, ?, ?, ?)",
-            [
+            query:
+                "INSERT INTO `{$this->table}`
+                (
+                    id_proveedor, tipo_documento, url_archivo, created_by
+                ) VALUES (?, ?, ?, ?)",
+            arrValues: [
                 $data['id_proveedor'],
                 $data['tipo_documento'],
                 $data['url_archivo'],
@@ -31,13 +34,46 @@ class Prv_detExpedienteModel extends Mysql
         );
     }
 
-    public function uploadedDocuments(int $id_proveedor)
+    public function uploadedDocuments(int $id_proveedor): array
     {
         return $this->select_all(
-            "SELECT id_documento, id_proveedor, tipo_documento, url_archivo, vencimiento, estatus_validacion, created_by, updated_by, created_at, updated_at, deleted_at
-            FROM `prv_det_expediente`
-            WHERE id_proveedor = ?",
-            [$id_proveedor]
+            query:
+                "SELECT
+                    id_documento,
+                    id_proveedor,
+                    tipo_documento,
+                    url_archivo,
+                    vencimiento,
+                    estatus_validacion,
+                    motivo_rechazo,
+                    created_by,
+                    updated_by,
+                    created_at,
+                    updated_at,
+                    deleted_at
+                FROM `{$this->table}`
+                WHERE id_proveedor = ?;",
+            arrValues: [
+                $id_proveedor
+            ]
+        );
+    }
+
+    public function auditDocument(array $values): bool
+    {
+        return $this->update(
+            query: 
+                "UPDATE {$this->table}
+                SET estatus_validacion = ?,
+                    motivo_rechazo = ?,
+                    updated_by = ?
+                WHERE id_documento = ?;",
+            arrValues: [
+                $values['estatus_validacion'],
+                $values['motivo_rechazo'],
+                $_SESSION['idUser'],
+                $values['id_documento'],
+            ]
         );
     }
 }
