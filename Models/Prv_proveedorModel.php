@@ -6,6 +6,73 @@ class Prv_proveedorModel extends Mysql
 
     protected $table = 'prv_cat_proveedores';
 
+    const SCHEMA = [
+        'prv_cat_proveedores' => [
+            'id_proveedor',
+            'id_empresa',
+            'rfc',
+            'razon_social',
+            'nombre_comercial',
+            'id_tipo_persona',
+            'id_regimen_fiscal',
+            'origen',
+            'estatus_onboarding',
+            'estatus_operativo',
+            'created_by',
+            'updated_by',
+            'created_at',
+            'updated_at',
+            'deleted_at',
+        ],
+        'prv_det_direcciones' => [
+            'id_direccion',
+            'id_proveedor',
+            'tipo',
+            'calle',
+            'num_ext',
+            'num_int',
+            'colonia',
+            'cp',
+            'municipio',
+            'ciudad',
+            'estado',
+            'es_principal',
+            'created_by',
+            'updated_by',
+            'created_at',
+            'updated_at',
+            'deleted_at',
+        ],
+        'prv_det_config_financiera' => [
+            'id_config_financiera',
+            'id_proveedor',
+            'id_condicion_pago',
+            'id_cuenta_contable',
+            'limite_credito',
+            'id_moneda_defecto',
+            'tasa_iva_default',
+            'created_by',
+            'updated_by',
+            'created_at',
+            'updated_at',
+            'deleted_at',
+        ],
+        'prv_det_contactos' => [
+            'id_contacto',
+            'id_proveedor',
+            'nombre',
+            'puesto',
+            'email',
+            'telefono',
+            'notificar_compras',
+            'created_by',
+            'updated_by',
+            'created_at',
+            'updated_at',
+            'deleted_at',
+        ]
+    ];
+
     public function getTableName(): string 
     {
         return $this->table;
@@ -69,8 +136,10 @@ class Prv_proveedorModel extends Mysql
             -- Financial Config JOIN
             LEFT JOIN `prv_det_config_financiera`
                 ON `prv_det_config_financiera`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
+            -- Financial Config JOIN
             LEFT JOIN `cat_cuentas_contables`
                 ON `cat_cuentas_contables`.`id_cuenta_contable` = `prv_det_config_financiera`.`id_cuenta_contable`
+            -- Financial Config JOIN
             LEFT JOIN `cat_condiciones_pago`
                 ON `cat_condiciones_pago`.`id_condicion` = `prv_det_config_financiera`.`id_condicion_pago`
             -- Banking Information JOIN
@@ -100,16 +169,17 @@ class Prv_proveedorModel extends Mysql
         );
     }
 
-    public function destroy(int $idproveedor)
+    public function destroy(int $supplierId)
     {
         $query = sprintf(
             "UPDATE prv_cat_proveedores SET estatus = 0, deleted_at = NOW() WHERE idproveedor = %d;",
-            $idproveedor
+            $supplierId
         );
         return $this->delete($query);
     }
 
-    public function insertProveedor(array $h): int {
+    public function insertSupplier(array $h, int $userId): int
+    {
         return $this->insert(
             "INSERT INTO prv_cat_proveedores (
                 id_empresa,
@@ -129,12 +199,13 @@ class Prv_proveedorModel extends Mysql
                 $h['id_tipo_persona'], 
                 $h['id_regimen_fiscal'],
                 $h['origen'],
-                $_SESSION['idUser'],
+                $userId,
             ]
         );
     }
 
-    public function insertDireccion(array $d, int $idProveedor): int {
+    public function insertAddress(array $d, int $supplierId, int $userId): int
+    {
         return $this->insert(
             "INSERT INTO prv_det_direcciones (
                 id_proveedor,tipo,
@@ -150,7 +221,7 @@ class Prv_proveedorModel extends Mysql
                 created_by
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
-                $idProveedor,
+                $supplierId,
                 $d['tipo'],
                 $d['calle'],
                 $d['num_ext'], 
@@ -161,12 +232,13 @@ class Prv_proveedorModel extends Mysql
                 $d['ciudad'], 
                 $d['estado'], 
                 $d['es_principal'],
-                $_SESSION['idUser'],
+                $userId,
             ]
         );
     }
 
-    public function insertConfigFinanciera(array $f, int $idProveedor): int {
+    public function insertFinancialConfig(array $f, int $supplierId, int $userId): int
+    {
         return $this->insert(
             "INSERT INTO prv_det_config_financiera (
                     id_proveedor,
@@ -179,18 +251,19 @@ class Prv_proveedorModel extends Mysql
                 ) 
                 VALUES (?, ?, ?, ?, ?, ?, ?)",
                 [
-                    $idProveedor,
+                    $supplierId,
                     $f['id_condicion_pago'],
                     $f['id_cuenta_contable'], 
                     $f['limite_credito'],
                     $f['id_moneda_defecto'],
                     $f['tasa_iva_default'],
-                    $_SESSION['idUser'],
+                    $userId,
                 ]
             );
     }
 
-    public function insertContacto(array $c, int $idProveedor): int {
+    public function insertContact(array $c, int $supplierId, int $userId): int
+    {
         return $this->insert(
             "INSERT INTO prv_det_contactos (
                 id_proveedor,
@@ -202,18 +275,19 @@ class Prv_proveedorModel extends Mysql
                 created_by
             ) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [
-                $idProveedor,
+                $supplierId,
                 $c['nombre'],
                 $c['puesto'], 
                 $c['email'],
                 $c['telefono'],
                 $c['notificar_compras'],
-                $_SESSION['idUser'],
+                $userId,
             ]
         );
     }
 
-    public function insertOnboarding(int $idProveedor): int {
+    public function insertOnboarding(int $supplierId, int $userId): int
+    {
         return $this->insert(
             "INSERT INTO prv_tra_onboarding (
                 id_proveedor,
@@ -221,9 +295,20 @@ class Prv_proveedorModel extends Mysql
                 created_by
             ) VALUES (?, 1, ?)",
             [
-                $idProveedor,
-                $_SESSION['idUser'],
+                $supplierId,
+                $userId,
             ]
+        );
+    }
+
+    public function updateDynamic($table, $cols, $values)
+    {        
+        return $this->update(
+            query: 
+                "UPDATE {$table}
+                SET {$cols}
+                WHERE id_proveedor = ?;",
+            arrValues: $values
         );
     }
 }

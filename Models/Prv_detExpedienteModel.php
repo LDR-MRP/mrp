@@ -2,10 +2,15 @@
 
 class Prv_detExpedienteModel extends Mysql
 {
+    use Auditable;
+
+    const SUPPLIER_RECORD_PATH = 'Assets/uploads/expedientes';
+
     protected $table = 'prv_det_expediente';
 
-    public const DOCUMENTOS_REQUERIDOS = [
+    public const REQUIRED_DOCUMENTS = [
         'CONSTITUTIVA' => ['name' => 'Acta Constitutiva', 'required' => true, 'ext' => 'pdf'],
+        'PODER' => ['name' => 'Poder Notarial', 'required' => true, 'ext' => 'pdf'], 
         'CSF' => ['name' => 'Constancia de Situación Fiscal', 'required' => true, 'ext' => 'pdf'],
         'RFC' => ['name' => 'Registro Federal de Contribuyentes', 'required' => true, 'ext' => 'pdf'],
         'ID' => ['name' => 'Identificación Oficial', 'required' => true, 'ext' => 'pdf'],
@@ -15,6 +20,38 @@ class Prv_detExpedienteModel extends Mysql
     public function getTableName(): string 
     {
         return $this->table;
+    }
+
+    public function findByCriteria(array $filters): array
+    {
+        $sql = 
+            "SELECT
+                id_documento,
+                id_proveedor,
+                tipo_documento,
+                url_archivo,
+                vencimiento,
+                estatus_validacion,
+                motivo_rechazo,
+                created_by,
+                updated_by,
+                created_at,
+                updated_at,
+                deleted_at
+            FROM {$this->table}
+            WHERE 1=1";
+
+        if(array_key_exists('id_proveedor', $filters)){
+            $idProveedor = (int) $filters['id_proveedor'];
+            $sql .= " AND `{$this->table}`.`id_proveedor` = '{$idProveedor}'";
+        }
+
+        if(array_key_exists('tipo_documento', $filters)){
+            $docType = $this->getConexion()->real_escape_string($filters['tipo_documento']);
+            $sql .= " AND `{$this->table}`.`tipo_documento` = '{$docType}'";
+        }
+
+        return $this->select_all($sql);
     }
 
     public function saveDocument(array $data): int
@@ -59,7 +96,7 @@ class Prv_detExpedienteModel extends Mysql
         );
     }
 
-    public function auditDocument(array $values): bool
+    public function auditDocument(array $values, int $userId): bool
     {
         return $this->update(
             query: 
@@ -71,7 +108,7 @@ class Prv_detExpedienteModel extends Mysql
             arrValues: [
                 $values['estatus_validacion'],
                 $values['motivo_rechazo'],
-                $_SESSION['idUser'],
+                $userId,
                 $values['id_documento'],
             ]
         );

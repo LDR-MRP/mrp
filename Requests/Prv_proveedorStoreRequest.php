@@ -2,7 +2,29 @@
 
 class Prv_proveedorStoreRequest extends Requests
 {
+    private $prvProveedorModel;
+    private $currentSupplier = null;
+
+    public function __construct(array $data) {
+        parent::__construct($data);
+        $this->prvProveedorModel = new Prv_proveedorModel();
+    }
+
     public function rules(): void
+    {
+        // 1. TUS VALIDACIONES BÁSICAS ACTUALES (Sintaxis y Formato)
+        $this->validateBasicRules(); 
+        
+        // Si fallan las reglas básicas, no tiene caso golpear la BD
+        if (!empty($this->errors)) { 
+            return;
+        }
+
+        // 2. VALIDACIONES DE NEGOCIO AVANZADAS (Base de Datos)
+        $this->validateBusinessRules();
+    }
+
+    private function validateBasicRules():void
     {
         $requiredFields = [
             // Datos Maestros (prv_cat_proveedores)
@@ -21,7 +43,6 @@ class Prv_proveedorStoreRequest extends Requests
             'num_int'           => 'Indique el número interior (use N/A si no aplica).',
             'colonia'           => 'La colonia debe coincidir con el Código Postal.',
             'cp'                => 'El Código Postal es obligatorio para la geolocalización.',
-            'es_principal'      => 'Indique si esta es la dirección principal del proveedor.',
 
             // Finanzas (prv_det_config_financiera)
             'id_condicion_pago' => 'Debe asignar una condición de pago predeterminada.',
@@ -37,15 +58,8 @@ class Prv_proveedorStoreRequest extends Requests
             'telefono'          => 'El número telefónico es obligatorio para seguimiento.',
         ];
 
-        $supplierModel = new Prv_proveedorModel;
-        $supplier = $supplierModel->findByCriteria(['rfc' => $this->data['rfc']]);
-
-        if(!empty($supplier)) {
-            $this->addError('rfc', 'Ya existe un proveedor con el RFC proporcionado.');
-        }
-
         foreach ($requiredFields as $field => $message) {
-            if (empty($this->data[$field])) {
+            if (empty(trim($this->data[$field]))) {
                 $this->addError($field, $message);
             }
         }
@@ -89,14 +103,34 @@ class Prv_proveedorStoreRequest extends Requests
                 $this->addError('telefono', 'El formato del teléfono es inválido (debe ser un número de 10 dígitos).');
             }
         }
+    }
 
-        $files = $this->files();
+    private function validateBusinessRules(): void
+    {
+        $supplierId = $this->data['id'] ?? null;
 
-        if (!empty($logo = $files['logo']) && !empty($logo['tmp_name'])) {
+        if (!empty($supplierId)) {
+            // Regla: Si es edición, el proveedor DEBE existir
+            // Traemos el registro y lo guardamos en caché de clase para que el Servicio lo pueda usar después
+            $this->currentSupplier = current($this->prvProveedorModel->findByCriteria(['id_proveedor' => $supplierId]));
             
-            if ($logo['type'] !== 'image/jpeg' && $logo['type'] !== 'image/png') {
-                $this->addError('logo', 'El logo debe ser de tipo JPEG o PNG.');
+            if (!$this->currentSupplier) {
+                $this->addError('id_proveedor', 'El proveedor que intentas actualizar no existe en el sistema.');
+                return; // Detenemos validaciones posteriores
+            }
+
+            // Regla: Bloqueo de RFC para proveedores activos
+            if (
+                isset($this->data['rfc']) && 
+                $this->currentSupplier['estatus_operativo'] == 1 &&
+                $this->currentSupplier['rfc'] !== $this->data['rfc']
+            ) {
+                $this->addError('rfc', "Intento de cambio de RFC bloqueado para el proveedor ID: {$supplierId}");
             }
         }
+    }
+
+    public function getCurrentSupplier() {
+        return $this->currentSupplier;
     }
 }

@@ -2,14 +2,18 @@
  * Orquestador Principal del Proveedor
  */
 const proveedorManager = {
+
+    currentId: null,
+
     init: function() {
-        const idProveedor = new URLSearchParams(window.location.search).get('id');
+
+        this.currentId = Sys_Core.URL.getParam('id');
         
-        this.applyViewState(idProveedor);
+        this.applyViewState(this.currentId);
         
         this.loadCatalogs().then(() => {
-            if (idProveedor) {
-                this.loadProfile(idProveedor);
+            if (this.currentId) {
+                this.loadProfile(this.currentId);
             }
         });
 
@@ -17,14 +21,17 @@ const proveedorManager = {
     },
 
     events: function() {
+
+        const self = this;
+
         $('#formProveedor').on('submit', function(e) {
             e.preventDefault();
             const data = new FormData(this);
             const payload = Object.fromEntries(data.entries());
-            payload.notificar_compras = $('#notificar_compras').is(':checked') ? 1 : 0;
+            payload.id = self.currentId || null;
             
             Sys_Core.Net.post({
-                url: `${Sys_Core.Config.baseUrl}/prv_proveedor/registrarProveedor`,
+                url: `${Sys_Core.Config.baseUrl}/prv_proveedor/storeSupplier`,
                 payload: payload,
                 successMsg: 'El proveedor ha sido registrado y/o actualizado correctamente.',
                 onDone: () => {
@@ -205,7 +212,7 @@ const files = {
         // --- LAZY LOADING DEL EXPEDIENTE ---
         // Se ejecuta SOLO cuando la pestaña se hace visible (Evento de Bootstrap)
         $('button[data-bs-target="#tab-expediente"], a[href="#tab-expediente"]').on('shown.bs.tab', function () {
-            const idProveedor = new URLSearchParams(window.location.search).get('id');
+            const idProveedor = Sys_Core.URL.getParam('id');
             if (idProveedor && !self.isLoaded) {
                 self.loadStatus(idProveedor);
             }
@@ -433,7 +440,7 @@ const files = {
         const file = input.files[0];
         if (!file) return;
 
-        const idProveedor = new URLSearchParams(window.location.search).get('id');
+        const idProveedor = Sys_Core.URL.getParam('id');
         const formData = new FormData();
         formData.append('archivo', file);
         formData.append('tipo_documento', docType);
@@ -441,7 +448,6 @@ const files = {
 
         const $progress = $(`#progress-${docType}`);
         const $success = $(`#success-${docType}`);
-        const $dropzone = $(`#dropzone-${docType}`);
 
         $progress.removeClass('d-none');
         $success.addClass('d-none');

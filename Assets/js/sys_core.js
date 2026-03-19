@@ -327,7 +327,7 @@ const Sys_Core = {
                 },
                 success: function(res) {
                     if (res.status === 'success' || res.status === true) {
-                        Sys_Core.UI.notify(successMsg, 'success');
+                        Sys_Core.UI.notify(res.message, 'success');
                         if (onDone) onDone(res);
                         Sys_Core.UI.resetState($btn, originalHtml);
                     } else {
@@ -357,6 +357,15 @@ const Sys_Core = {
             } else {
                 Sys_Core.UI.alert('Error de Sistema', `El servidor respondió con código ${xhr.status}`, 'error');
             }
+        }
+    },
+
+    /**
+     * Gestión de URLs y Navegación local
+     */
+    URL: {
+        getParam: function(param) {
+            return new URLSearchParams(window.location.search).get(param);
         }
     },
 

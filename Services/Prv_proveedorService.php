@@ -2,33 +2,36 @@
 
 class Prv_proveedorService
 {
-    private $model;
+    private $prvProveedorModel;
 
     private $prvDetExpedienteModel;
 
+    protected $userId;
+
     public function __construct() {
-        $this->model = new Prv_proveedorModel();
+        $this->prvProveedorModel = new Prv_proveedorModel();
         $this->prvDetExpedienteModel = new Prv_detExpedienteModel();
+        $this->userId = $_SESSION['idUser'] ?? 1;
     }
 
     public function findByCriteria(array $filters = []): ServiceResponse
     {
-        return ServiceResponse::success($this->model->findByCriteria($filters));
+        return ServiceResponse::success($this->prvProveedorModel->findByCriteria($filters));
     }
 
     public function getKpi(): ServiceResponse
     {
-        return ServiceResponse::success($this->model->getKpi());
+        return ServiceResponse::success($this->prvProveedorModel->getKpi());
     }
 
     public function delete(array $data): ServiceResponse
     {
-        $db = $this->model->getConexion();
+        $db = $this->prvProveedorModel->getConexion();
         $db->beginTransaction();
 
         try {
-            $this->model->destroy($data['idproveedor']);
-            $this->model->logAudit($data['idproveedor'], 'ELIMINACIÓN', "Se elimino el proveedor con ID: {$data['rfc']}", $_SESSION['idUser']);
+            $this->prvProveedorModel->destroy($data['idproveedor']);
+            $this->prvProveedorModel->logAudit($data['idproveedor'], 'ELIMINACIÓN', "Se elimino el proveedor con ID: {$data['rfc']}", $_SESSION['idUser']);
             $db->commit();
             return ServiceResponse::success(data: ['rfc' => $data['rfc']], message: "Proveedor eliminado con éxito.");
         } catch (\Exception $e) {
@@ -39,19 +42,16 @@ class Prv_proveedorService
     }
     public function suppliers(): ServiceResponse
     {
-        return ServiceResponse::success($this->model->findByCriteria());
+        return ServiceResponse::success($this->prvProveedorModel->findByCriteria());
     }
 
-    public function registrarProveedor(mixed $data): ServiceResponse
+    public function storeSupplier(mixed $data): ServiceResponse
     {
-        $db = $this->model->getConexion();
+        $db = $this->prvProveedorModel->getConexion();
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $db->beginTransaction();
 
         try {
-            if(!($userId = $_SESSION['idUser'])) {
-                throw new \Exception("No hay una sesión de usuario activa.");
-            }
 
             $data = json_decode($data, true);
 
@@ -63,23 +63,74 @@ class Prv_proveedorService
             $proveedorStoreRequest->validate();
             $validated = $proveedorStoreRequest->all();
 
-            $idProveedor = $this->model->insertProveedor($validated);
-            if ($idProveedor <= 0) throw new \Exception("Error al crear el maestro del proveedor.");
+            if(!empty($supplierId = $validated['id'])):
+                // RUTA A: ACTUALIZACIÓN INTELIGENTE (Solo campos modificados)
+                $currentSupplier = $proveedorStoreRequest->getCurrentSupplier();
 
-            $resDir = $this->model->insertDireccion($validated, $idProveedor);
-            if (!$resDir) throw new \Exception("Error al registrar la dirección fiscal.");
+                $dirtyData = [];
 
-            $resFin = $this->model->insertConfigFinanciera($validated, $idProveedor);
-            if (!$resFin) throw new \Exception("Error al registrar la configuración financiera.");
+                foreach ($validated as $column => $newValue) {
+                    if (array_key_exists($column, $currentSupplier) && $currentSupplier[$column] != $newValue) {
+                        $dirtyData[$column] = $newValue;
+                    }
+                }
 
-            $resCont = $this->model->insertContacto($validated, $idProveedor);
-            if (!$resCont) throw new \Exception("Error al registrar el contacto.");
+                if (!empty($dirtyData)) {
+                    $buckets = [];
 
-            $resOnb = $this->model->insertOnboarding($idProveedor, $idProveedor);
-            if (!$resOnb) throw new \Exception("Error al iniciar flujo de onboarding.");
+                    foreach ($this->prvProveedorModel::SCHEMA as $table => $allowedColumns) {
+                        $tableData = array_intersect_key($dirtyData, array_flip($allowedColumns));
+                        
+                        if (!empty($tableData)) {
+                            $buckets[$table] = $tableData;
+                        }
+                    }
+
+                    foreach ($buckets as $table => $dataToUpdate) {
+                        if (empty($dataToUpdate)) continue;
+                        $cols = implode(', ', array_map(fn($col) => "{$col} = ?", array_keys($dataToUpdate)));
+                        $values = array_merge(array_values($dataToUpdate), [(int) $supplierId]);
+                        $this->prvProveedorModel->updateDynamic($table, $cols, $values);
+                    }
+
+                    $message = 'Proveedor actualizado correctamente (solo campos modificados).';
+                } else {
+                    $message = 'No se detectaron cambios en la información del proveedor.';
+                }
+
+                $code = 200;
+                
+            else:
+                // RUTA B: CREACIÓN DEL REGISTRO
+                $supplierId = $this->prvProveedorModel->insertSupplier($validated, $this->userId);
+                if ($supplierId <= 0) throw new \Exception("Error al crear el maestro del proveedor.");
+
+                $resDir = $this->prvProveedorModel->insertAddress($validated, $supplierId, $this->userId);
+                if (!$resDir) throw new \Exception("Error al registrar la dirección fiscal.");
+
+                $resFin = $this->prvProveedorModel->insertFinancialConfig($validated, $supplierId, $this->userId);
+                if (!$resFin) throw new \Exception("Error al registrar la configuración financiera.");
+
+                $resCont = $this->prvProveedorModel->insertContact($validated, $supplierId, $this->userId);
+                if (!$resCont) throw new \Exception("Error al registrar el contacto.");
+
+                $resOnb = $this->prvProveedorModel->insertOnboarding($supplierId, $this->userId);
+                if (!$resOnb) throw new \Exception("Error al iniciar flujo de onboarding.");
+
+                $message = 'Proveedor creado correctamente.';
+
+                $code = 201;
+
+            endif;
 
             $db->commit();
-            return ServiceResponse::success(data: ['id' => $idProveedor], code: 201);
+
+            return ServiceResponse::success(
+                data: ['id' => $supplierId],
+                message: $message,
+                code: $code
+            );
+
         } catch (\PDOException $e) {
             $db->rollBack();
 
@@ -93,52 +144,53 @@ class Prv_proveedorService
         } catch (\InvalidArgumentException $e) {
             $db->rollBack();
             return ServiceResponse::validation(errors: $e->getMessage());
+
         } catch (\Exception $e) {
             $db->rollBack();
             return ServiceResponse::error(message: $e->getMessage());
+
         }
     }
 
     public function uploadDocument(array $data, array $files): ServiceResponse
     {
-        $db = $this->model->getConexion();
+        $db = $this->prvProveedorModel->getConexion();
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $db->beginTransaction();
-
+        
         try {
-            if(!($userId = $_SESSION['idUser'])) {
-                throw new \Exception("No hay una sesión de usuario activa.");
-            }
+            $db->beginTransaction();
 
             $uploadDocumentRequest = new Prv_uploadExpedienteRequest(array_merge($data, $files));
             $uploadDocumentRequest->validate();
             $validated = $uploadDocumentRequest->all();
 
-            $idProveedor = intval($_POST['id_proveedor']);
-            $tipoDoc     = $validated['tipo_documento'];
-            $archivo     = $validated['archivo'];
+            $supplierId = intval($validated['id_proveedor']);
+            $docType = $validated['tipo_documento'];
+            $file = $validated['archivo'];
 
-            $docConfig = $this->prvDetExpedienteModel::DOCUMENTOS_REQUERIDOS[$tipoDoc];
-            $extension = strtolower(pathinfo($archivo['name'], PATHINFO_EXTENSION));
+            $existingDoc = $this->prvDetExpedienteModel->findByCriteria($validated);
+
+            $docConfig = $this->prvDetExpedienteModel::REQUIRED_DOCUMENTS[$docType];
+            $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
             // 1. Gestión de almacenamiento
-            $dirPath = "Assets/uploads/expedientes/prov_{$idProveedor}/";
+            $dirPath = $this->prvDetExpedienteModel::SUPPLIER_RECORD_PATH . "'/prov_{$supplierId}/";
             if (!is_dir($dirPath)) mkdir($dirPath, 0777, true);
 
-            $fileName = "{$tipoDoc}_{$idProveedor}_" . date('Ymd_His') . ".{$extension}";
+            $fileName = "{$docType}_{$supplierId}_" . date('Ymd_His') . ".{$extension}";
             $fullPath = $dirPath . $fileName;
 
-            if (!move_uploaded_file($archivo['tmp_name'], $fullPath)) {
+            if (!move_uploaded_file($file['tmp_name'], $fullPath)) {
                 throw new \Exception("Error al mover el archivo al servidor.");
             }
 
             // 2. Persistencia
             $dbData = [
-                'id_proveedor'    => $idProveedor,
-                'tipo_documento'  => $tipoDoc,
+                'id_proveedor'    => $supplierId,
+                'tipo_documento'  => $docType,
                 'url_archivo'    => $fullPath,
-                'nombre_original' => $archivo['name'],
-                'created_by'      => $_SESSION['idUser'] ?? 1
+                'nombre_original' => $file['name'],
+                'created_by'      => $this->userId,
             ];
 
             if (!$this->prvDetExpedienteModel->saveDocument($dbData)) {
@@ -147,6 +199,10 @@ class Prv_proveedorService
             }
 
             $db->commit();
+
+            if ($existingDoc && file_exists($existingDoc['url_archivo'])) {
+                unlink($existingDoc['url_archivo']);
+            }
 
             return ServiceResponse::success(
                 message: "{$docConfig['name']} actualizado correctamente.",
@@ -166,7 +222,7 @@ class Prv_proveedorService
 
     public function documents(int $supplierId): ServiceResponse
     {
-        $config = $this->prvDetExpedienteModel::DOCUMENTOS_REQUERIDOS;
+        $config = $this->prvDetExpedienteModel::REQUIRED_DOCUMENTS;
         $uploaded = $this->prvDetExpedienteModel->uploadedDocuments($supplierId);        
         $uploadedIndexed = array_column($uploaded, null, 'tipo_documento');
 
@@ -196,9 +252,11 @@ class Prv_proveedorService
     {
         $outputData = [];
 
-        if(!$this->prvDetExpedienteModel->auditDocument(values: $inputData)){
+        if(!$this->prvDetExpedienteModel->auditDocument(values: $inputData, userId: $this->userId)){
             throw new \Exception("No se pudo procesar tu solicitud.");            
         }
+
+        $this->prvDetExpedienteModel->logAudit($requisitionId, 'creación', $inputData['motivo_rechazo'], $this->userId);
 
         return ServiceResponse::success($outputData);
     }

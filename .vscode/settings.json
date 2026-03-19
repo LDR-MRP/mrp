@@ -1,0 +1,132 @@
+{
+    "favorites.resources": [
+        {
+            "filePath": "Requests/Com_mesaControlStoreRequest.php",
+            "group": "Default"
+        },
+        {
+            "filePath": "Requests",
+            "group": "Default"
+        },
+        {
+            "filePath": "Processors",
+            "group": "Default"
+        },
+        {
+            "filePath": "Models/Com_comprasModel.php",
+            "group": "Default"
+        },
+        {
+            "filePath": "Models/Prv_proveedorModel.php",
+            "group": "Default"
+        },
+        {
+            "filePath": "Interfaces",
+            "group": "Default"
+        },
+        {
+            "filePath": "Factories",
+            "group": "Default"
+        },
+        {
+            "filePath": "Assets/js/sys_core.js",
+            "group": "Default"
+        },
+        {
+            "filePath": "Assets/js/modulos/functions_com_requisiciones.js",
+            "group": "Default"
+        },
+        {
+            "filePath": "Assets/js/modulos/functions_prv_proveedores.js",
+            "group": "Default"
+        },
+        {
+            "filePath": "Assets/js/modulos/functions_com_compras_nueva.js",
+            "group": "Default"
+        },
+        {
+            "filePath": "Assets/js/modulos/functions_com_compras.js",
+            "group": "Default"
+        },
+        {
+            "filePath": "Assets/js/modulos/functions_com_requisiciones_create.js",
+            "group": "Default"
+        },
+        {
+            "filePath": "Assets/js/modulos/functions_com_requisiciones_detalle.js",
+            "group": "Default"
+        },
+        {
+            "filePath": "Controllers/Com_mesaControl.php",
+            "group": "Default"
+        },
+        {
+            "filePath": "Controllers/Com_requisicion.php",
+            "group": "Default"
+        },
+        {
+            "filePath": "Controllers/Prv_proveedor.php",
+            "group": "Default"
+        },
+        {
+            "filePath": "Controllers/Com_compra.php",
+            "group": "Default"
+        },
+        {
+            "filePath": "Models/Com_requisicionModel.php",
+            "group": "Default"
+        },
+        {
+            "filePath": "Models/Com_partidasModel.php",
+            "group": "Default"
+        },
+        {
+            "filePath": "Models/Com_compraModel.php",
+            "group": "Default"
+        },
+        {
+            "filePath": "Services",
+            "group": "Default"
+        },
+        {
+            "filePath": "Views/Com_compras",
+            "group": "Default"
+        },
+        {
+            "filePath": "Views/Com_requisiciones",
+            "group": "Default"
+        },
+        {
+            "filePath": "Assets/js/modulos/functions_com_requisiciones_read.js",
+            "group": "Default"
+        },
+        {
+            "filePath": "Assets/js/modulos/functions_com_requisiciones_index.js",
+            "group": "Default"
+        },
+        {
+            "filePath": "Assets/js/modulos/functions_com_compras_create.js",
+            "group": "Default"
+        },
+        {
+            "filePath": "Assets/js/modulos/functions_com_compras_index.js",
+            "group": "Default"
+        },
+        {
+            "filePath": "Views/Prv_proveedor",
+            "group": "Default"
+        },
+        {
+            "filePath": "Assets/js/modulos/functions_prv_proveedores_create.js",
+            "group": "Default"
+        },
+        {
+            "filePath": "Assets/js/modulos/functions_prv_proveedores_index.js",
+            "group": "Default"
+        },
+        {
+            "filePath": "Views/Com_compras/purchase_order.php",
+            "group": "Default"
+        }
+    ]
+}

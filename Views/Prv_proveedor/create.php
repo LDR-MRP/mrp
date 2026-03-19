@@ -228,11 +228,11 @@
                                                 </div>
                                                 <div class="col-md-4">
                                                     <label class="form-label text-uppercase fs-11 fw-semibold text-muted d-block">¿Es Principal?</label>
-                                                    <div class="btn-group w-100" role="group">
+                                                    <div class="btn-group w-100">
                                                         <input type="radio" class="btn-check" name="es_principal" id="principal_si" value="1">
-                                                        <label class="btn btn-outline-light-subtle border fs-12 py-2" for="principal_si text-dark">SÍ</label>
+                                                        <label class="btn btn-outline-light w-100 border text-dark fs-12" for="principal_si">SÍ</label>
                                                         <input type="radio" class="btn-check" name="es_principal" id="principal_no" value="0">
-                                                        <label class="btn btn-outline-light-subtle border fs-12 py-2" for="principal_no text-dark">NO</label>
+                                                        <label class="btn btn-outline-light w-100 border text-dark fs-12" for="principal_no">NO</label>
                                                     </div>
                                                 </div>
                                                 <div class="col-md-8">
@@ -309,10 +309,13 @@
                                                         <input type="text" name="telefono" id="telefono" class="form-control border-0 fs-16" placeholder="(00) 0000-0000">
                                                     </div>
                                                 </div>
-                                                <div class="col-md-2 d-flex align-items-end justify-content-center pb-2">
-                                                    <div class="form-check form-switch form-switch-md">
-                                                        <input class="form-check-input" type="checkbox" name="notificar_compras" value="1" checked>
-                                                        <label class="form-check-label fs-11 fw-bold text-muted text-uppercase">OC</label>
+                                                <div class="col-md-2">
+                                                    <label class="form-label text-uppercase fs-11 fw-semibold text-muted d-block">¿Notificar Compras?</label>
+                                                    <div class="btn-group w-100">
+                                                        <input type="radio" class="btn-check" name="notificar_compras" id="notificar_si" value="1">
+                                                        <label class="btn btn-outline-light w-100 border text-dark fs-12" for="notificar_si">SÍ</label>
+                                                        <input type="radio" class="btn-check" name="notificar_compras" id="notificar_no" value="0">
+                                                        <label class="btn btn-outline-light w-100 border text-dark fs-12" for="notificar_no">NO</label>
                                                     </div>
                                                 </div>
                                             </div>

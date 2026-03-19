@@ -4,6 +4,6 @@ class Prv_uploadExpedienteRequest extends Requests
 {
     public function rules(): void
     {
-        $docsPermitidos = implode(',', array_keys(Prv_detExpedienteModel::DOCUMENTOS_REQUERIDOS));
+        $docsPermitidos = implode(',', array_keys(Prv_detExpedienteModel::REQUIRED_DOCUMENTS));
     }
 }

@@ -92,9 +92,9 @@ class Prv_proveedor  extends Controllers{
         return $this->apiResponse($this->supplierService->suppliers($filters = sanitizeGet()));
     }
 
-    public function registrarProveedor()
+    public function storeSupplier()
     {
-        return $this->apiResponse($this->supplierService->registrarProveedor(file_get_contents('php://input')));
+        return $this->apiResponse($this->supplierService->storeSupplier(file_get_contents('php://input')));
     }
 
     public function uploadDocument()
