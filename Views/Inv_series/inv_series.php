@@ -52,10 +52,8 @@
 
                             <div class="card-body">
                                 <div class="tab-content">
-
                                     <!-- TAB LISTADO -->
                                     <div class="tab-pane active" id="listSeries" role="tabpanel">
-
                                         <table id="tableSeries"
                                             class="table table-bordered dt-responsive nowrap table-striped align-middle"
                                             style="width:100%">
@@ -123,9 +121,11 @@
                                                     </small>
                                                 </div>
 
-                                                <div class="col-lg-4 mt-3">
-                                                    <label>Cantidad</label>
-                                                    <input type="number" class="form-control" name="cantidad" min="11" required>
+                                                <input type="hidden" id="cantidadOrden" name="cantidad">
+
+                                                <div class="col-lg-6 mt-3">
+                                                    <label>Cantidad a generar</label>
+                                                    <input type="text" id="cantidadPreview" class="form-control" readonly>
                                                 </div>
 
                                                 <!--<div class="col-lg-4 mt-3">

@@ -236,4 +236,18 @@ class Inv_seriesModel extends Mysql
 
         return $this->select($sql, array($num_orden));
     }
+
+    public function getSeriesByOrden($orden)
+{
+    $sql = "SELECT s.numero_serie,
+                   s.referencia,
+                   i.descripcion AS producto
+            FROM wms_numeros_series s
+            INNER JOIN wms_inventario i 
+                ON s.inventarioid = i.idinventario
+            WHERE s.referencia = ?
+            ORDER BY s.numero_serie ASC";
+
+    return $this->select_all($sql, array($orden));
+}
 }
