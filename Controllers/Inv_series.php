@@ -71,7 +71,7 @@ class Inv_series extends Controllers
 
     public function validarSeries()
     {
-        
+
         $inventarioid = intval($_POST['inventarioid']);
         $almacenid = intval($_POST['almacenid']);
         $prefijo = $_POST['prefijo'];
@@ -277,6 +277,90 @@ class Inv_series extends Controllers
         $pdf->Cell(0, 4, 'Escanee para consultar la informacion del producto', 0, 1, 'C');
 
         $pdf->Output('QR_' . $vin . '.pdf', 'I');
+        exit;
+    }
+
+    public function generarOrdenPDF($orden)
+    {
+        $orden = strClean($orden);
+
+        $series = $this->model->getSeriesByOrden($orden);
+
+        if (empty($series)) {
+            die("No existen VIN para esta orden");
+        }
+
+        // 🔹 limpiar buffer antes del PDF
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+
+        require_once(__DIR__ . '/../Libraries/tcpdf/tcpdf.php');
+
+        $pdf = new TCPDF('L', 'mm', [60, 90], true, 'UTF-8', false);
+        $pdf->SetMargins(6, 6, 6);
+        $pdf->SetAutoPageBreak(false);
+
+        foreach ($series as $data) {
+
+            $pdf->AddPage();
+
+            $pageWidth  = $pdf->getPageWidth();
+            $pageHeight = $pdf->getPageHeight();
+
+            // marco
+            $pdf->Rect(4, 4, $pageWidth - 8, $pageHeight - 8);
+
+            // título
+            $pdf->SetFont('helvetica', 'B', 12);
+            $pdf->Cell(0, 6, 'IDENTIFICACION DE VIN', 0, 1, 'L');
+
+            $pdf->Ln(2);
+
+            // producto
+            $pdf->SetFont('helvetica', '', 9);
+            $pdf->Cell(0, 5, 'Producto: ' . $data['producto'], 0, 1, 'L');
+            $pdf->Cell(0, 5, 'Referencia: ' . $data['referencia'], 0, 1, 'L');
+
+            $pdf->Ln(3);
+
+            // VIN
+            $pdf->SetFont('helvetica', 'B', 13);
+            $pdf->Cell(0, 6, 'VIN: ' . $data['numero_serie'], 0, 1, 'L');
+
+            $pdf->Ln(2);
+
+            $yStartBarcode = $pdf->GetY();
+
+            $barcodeWidth  = $pageWidth - 28;
+            $barcodeHeight = 12;
+            $barcodeX      = ($pageWidth - $barcodeWidth) / 2;
+
+            $style = [
+                'align' => 'C',
+                'text'  => false
+            ];
+
+            $pdf->write1DBarcode(
+                $data['numero_serie'],
+                'C128',
+                $barcodeX,
+                $yStartBarcode,
+                $barcodeWidth,
+                $barcodeHeight,
+                0.4,
+                $style,
+                'N'
+            );
+
+            $yVinInferior = $yStartBarcode + $barcodeHeight + 3;
+
+            $pdf->SetY($yVinInferior);
+            $pdf->SetFont('helvetica', 'B', 12);
+            $pdf->Cell(0, 6, $data['numero_serie'], 0, 1, 'C');
+        }
+
+        $pdf->Output('VIN_ORDEN_' . $orden . '.pdf', 'I');
         exit;
     }
 }

@@ -49,74 +49,101 @@ document.addEventListener("DOMContentLoaded", function () {
   // 🔹 DATATABLE
   let collapsedGroups = {};
 
-  tableSeries = $("#tableSeries").DataTable({
-    ajax: {
-      url: base_url + "/Inv_series/getSeries",
-      dataSrc: "",
-    },
+  // 🔹 DATATABLE
+tableSeries = $("#tableSeries").DataTable({
+  ajax: {
+    url: base_url + "/Inv_series/getSeries",
+    dataSrc: "",
+  },
 
-    paging: false, //  QUITA PAGINACIÓN
-    info: false, // opcional (quita "Showing 1 to X")
-    lengthChange: false, // opcional (quita selector 10,25,50)
+  paging: false,
+  info: false,
+  lengthChange: false,
 
-    columns: [
-      { data: "producto" },
-      { data: "almacen" },
-      { data: "numero_serie" },
-      { data: "referencia" },
-      { data: "fecha" },
-      { data: "estado" },
-      {
-        data: null,
-        render: function (data) {
-          return `
+  // ⭐ ARREGLOS DE LAYOUT
+  responsive: false,
+  autoWidth: false,
+  scrollX: true,
+
+  columns: [
+    { data: "producto" },
+    { data: "almacen" },
+    { data: "numero_serie" },
+    { data: "referencia" },
+    { data: "fecha" },
+    { data: "estado" },
+    {
+      data: null,
+      orderable: false,
+      render: function (data) {
+        return `
           <a href="${base_url}/Inv_series/generarCodigoPDF/${data.numero_serie}" 
-             target="_blank"
-             class="btn btn-sm btn-dark">
-             Código
+            target="_blank"
+            class="btn btn-sm btn-dark">
+            Código
           </a>
         `;
-        },
-      },
-    ],
-
-    order: [[4, "desc"]],
-
-    rowGroup: {
-      dataSrc: "referencia",
-      startRender: function (rows, group) {
-        if (collapsedGroups[group] === undefined) {
-          collapsedGroups[group] = true;
-        }
-
-        let collapsed = !!collapsedGroups[group];
-
-        rows.nodes().each(function (r) {
-          r.style.display = collapsed ? "none" : "";
-        });
-
-        return $("<tr/>")
-          .addClass("group-header")
-          .attr("data-name", group)
-          .append(
-            `
-    <td colspan="7" class="fw-bold" style="cursor:pointer;">
-            ${collapsed ? "▶" : "▼"} 
-            ORDEN DE TRABAJO: ${group}
-            <span class="badge bg-secondary ms-2">
-              ${rows.count()} Series
-            </span>
-          </td>
-        `,
-          )
-          .toggleClass("collapsed", collapsed);
       },
     },
+  ],
 
-    columnDefs: [{ targets: 3, visible: false }],
+  order: [[4, "desc"]],
 
-    bDestroy: true,
-  });
+  // ⭐ CONTROL DE ANCHOS
+  columnDefs: [
+    { targets: 3, visible: false },
+    { width: "25%", targets: 0 },
+    { width: "25%", targets: 1 },
+    { width: "20%", targets: 2 },
+    { width: "15%", targets: 4 },
+    { width: "10%", targets: 5 },
+    { width: "10%", targets: 6 },
+  ],
+
+  rowGroup: {
+    dataSrc: "referencia",
+    startRender: function (rows, group) {
+
+      if (collapsedGroups[group] === undefined) {
+        collapsedGroups[group] = true;
+      }
+
+      let collapsed = !!collapsedGroups[group];
+
+      rows.nodes().each(function (r) {
+        r.style.display = collapsed ? "none" : "";
+      });
+
+      return $("<tr/>")
+        .addClass("group-header")
+        .attr("data-name", group)
+        .append(`
+          <td colspan="7" class="fw-bold d-flex justify-content-between align-items-center">
+
+            <div>
+              ${collapsed ? "▶" : "▼"} 
+              ORDEN DE TRABAJO: ${group}
+              <span class="badge bg-secondary ms-2">
+                ${rows.count()} Series
+              </span>
+            </div>
+
+            <div>
+              <a href="${base_url}/Inv_series/generarOrdenPDF/${group}" 
+                target="_blank"
+                class="btn btn-sm btn-primary">
+                Imprimir Orden
+              </a>
+            </div>
+
+          </td>
+        `)
+        .toggleClass("collapsed", collapsed);
+    },
+  },
+
+  bDestroy: true,
+});
 
   $("#tableSeries tbody").on("click", "tr.group-header", function () {
     let name = $(this).data("name");
@@ -130,6 +157,21 @@ document.addEventListener("DOMContentLoaded", function () {
     .then((data) => {
       ordenesCache = data;
     });
+
+  let btnImprimir = document.querySelector("#btnImprimirOrden");
+
+  if (btnImprimir) {
+    btnImprimir.addEventListener("click", function () {
+      let orden = document.querySelector("#inventarioid").value;
+
+      if (!orden) {
+        Swal.fire("Error", "Debe seleccionar una orden", "error");
+        return;
+      }
+
+      window.open(base_url + "/Inv_series/generarOrdenPDF/" + orden, "_blank");
+    });
+  }
 
   // 🔹 PREVENIR SUBMIT NORMAL
   document
@@ -171,6 +213,10 @@ document.addEventListener("DOMContentLoaded", function () {
           document.querySelector("#referencia").value = o.num_orden;
           document.querySelector("#inventarioid").value = o.idinventario;
           document.querySelector("#productoNombre").value = o.producto;
+
+          // 🔹 cantidad desde MRP
+          document.querySelector("#cantidadOrden").value = o.cantidad;
+          document.querySelector("#cantidadPreview").value = o.cantidad;
 
           cerrarListaOrden();
         });
@@ -225,12 +271,20 @@ document.addEventListener("DOMContentLoaded", function () {
       .value.trim()
       .toUpperCase();
 
-    let cantidad = parseInt(
-      document.querySelector("input[name='cantidad']").value,
-    );
+    let cantidad = parseInt(document.querySelector("#cantidadOrden").value);
 
-    if (!baseVin || !cantidad) {
-      Swal.fire("Error", "Prefijo y cantidad son obligatorios", "error");
+    // 🔴 VALIDACIÓN CORRECTA
+    if (!cantidad || cantidad <= 0) {
+      Swal.fire(
+        "Error",
+        "La orden de trabajo no tiene cantidad definida",
+        "error",
+      );
+      return;
+    }
+
+    if (!baseVin) {
+      Swal.fire("Error", "Debe ingresar el prefijo VIN", "error");
       return;
     }
 
