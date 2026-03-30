@@ -84,6 +84,8 @@ class Com_requisicionModel extends Mysql
         $query ="SELECT 
                 -- data requisición
                 idrequisicion,
+                id_empresa,
+                fecha_requerida,
                 prioridad,
                 estatus,
                 justificacion,
@@ -92,28 +94,31 @@ class Com_requisicionModel extends Mysql
                 modified_at,
                 date(created_at) as fecha,
                 -- data usuarios
-                CONCAT(usuarios.nombres,' ',usuarios.apellidos) as solicitante,
+                CONCAT(u_creator.nombres,' ',u_creator.apellidos) as solicitante,
+                CONCAT(u_modifier.nombres,' ',u_modifier.apellidos) as aprobador,
                 -- data departamentos
-                cli_departamentos.nombre as departamento,
-                cli_departamentos.descripcion as departamento_descripcion
-            FROM com_requisiciones
-            LEFT JOIN usuarios
-                ON usuarios.idusuario = com_requisiciones.usuarioid
-            LEFT JOIN cli_departamentos
-                ON cli_departamentos.id = com_requisiciones.departamentoid
+                d.nombre as departamento,
+                d.descripcion as departamento_descripcion
+            FROM com_requisiciones AS r
+            LEFT JOIN usuarios AS u_creator
+                ON u_creator.idusuario = r.usuarioid
+			LEFT JOIN usuarios AS u_modifier
+                ON u_modifier.idusuario = r.modified_by
+            LEFT JOIN cli_departamentos AS d
+                ON d.id = r.departamentoid
             WHERE true
             ";
 
         if(array_key_exists('estatus', $filters) && !is_array($filters['estatus'])) {
-            $query .= "AND com_requisiciones.estatus = '{$filters['estatus']}'";
+            $query .= "AND r.estatus = '{$filters['estatus']}'";
         }
 
         if(array_key_exists('estatus', $filters) && is_array($filters['estatus'])) {
-            $query .= "AND com_requisiciones.estatus IN ('".implode("','", $filters['estatus'])."')";
+            $query .= "AND r.estatus IN ('".implode("','", $filters['estatus'])."')";
         }
 
         if(array_key_exists('usuarioid', $filters)) {
-            $query .= "AND com_requisiciones.usuarioid = '{$filters['usuarioid']}'";
+            $query .= "AND r.usuarioid = '{$filters['usuarioid']}'";
         }
 
         return $this->select_all($query);

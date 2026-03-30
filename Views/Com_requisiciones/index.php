@@ -171,9 +171,13 @@
                                 <thead class="bg-light">
                                     <tr>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3 ps-4">Folio</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Fecha Solicitud</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Solicitante</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Fecha de Elaboración</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Fecha de Recepción de Requisición</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Empresa</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Solicitó</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Autorizó</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Departamento</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Centro de Costo</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado Actual</th>
                                         <th scope="col" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
                                     </tr>

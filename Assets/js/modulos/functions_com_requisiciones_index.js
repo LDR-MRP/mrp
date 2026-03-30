@@ -20,8 +20,15 @@ $(document).ready(function () {
         "columns": [
             { "data": "idrequisicion", "render": (data) => `<span class="fw-bold">#${data}</span>` },
             { "data": "fecha" },
+            { "data": "fecha_requerida" },
+            { "data": "id_empresa" },
             { "data": "solicitante" },
+            { "data": "aprobador" },
             { "data": "departamento_descripcion" },
+            { 
+                "data": null,
+                render: () => "NA"
+            },
             {
                 "data": "estatus", "render": function (data) {
                     const clases = {
@@ -65,8 +72,6 @@ $(document).ready(function () {
 
                     if (Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'd') && r.estatus === 'pendiente') {
                         buttons += `
-                            <li><hr class="dropdown-divider"></li>
-                            <li><button class="dropdown-item action-inline" data-id="${r.idrequisicion}" data-accion="cancel"><i class="ri-close-line"></i> Cancelar</button></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><button class="dropdown-item text-danger action-inline" data-id="${r.idrequisicion}" data-accion="destroy"><i class="ri-delete-bin-6-line"></i> Eliminar</button></li>
                         `;

@@ -19,6 +19,26 @@ $(document).ready(function () {
         },
         "columns": [
             { "data": "created_at", "render": (data) => `<span class="fw-bold">${data}</span>` },
+            { 
+                "data": "estatus_onboarding", "render": function (data) {
+                    const clases = {
+                        'Prospecto': 'text-warning',
+                        'En Revision': 'text-info',
+                        'Aprobado': 'text-success',
+                        'Rechazado': 'text-danger'
+                    };
+                    return `<span class="text-uppercase font-weight-bold ${clases[data] || 'text-muted'} px-2 py-1">${data}</span>`;
+                }
+            },
+            { 
+                "data": "estatus_operativo", "render": function (data) {
+                    const clases = {
+                        '1': 'text-success',
+                        '0': 'text-danger'
+                    };
+                    return `<span class="text-uppercase font-weight-bold ${clases[data] || 'text-muted'} px-2 py-1">${data == '1' ? 'Activo' : 'Inactivo'}</span>`;
+                }
+            },
             { "data": "nombre_comercial" },
             { "data": "razon_social" },
             { "data": "id_cuenta_contable" },
@@ -31,15 +51,6 @@ $(document).ready(function () {
             { "data": "tasa_iva_default" },
             { "data": "created_by" },
             { "data": "limite_credito", render: (data) => Sys_Core.Format.toCurrency(data) },
-            { 
-                "data": "estatus_operativo", "render": function (data) {
-                    const clases = {
-                        '1': 'text-success',
-                        '0': 'text-danger'
-                    };
-                    return `<span class="text-uppercase font-weight-bold ${clases[data] || 'text-muted'} px-2 py-1">${data == '1' ? 'Activo' : 'Inactivo'}</span>`;
-                }
-            },
             {
                 "data": null,
                 "orderable": false,

@@ -153,6 +153,22 @@
                                                 <input type="date" name="fecha_requerida" class="form-control border-start-0 ps-0">
                                             </div>
                                         </div>
+
+                                        <div class="col-md-6">
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Departamento de Cargo</label>
+                                            <select name="id_centro_costo" class="form-select">
+                                                <option value="0">Selecciona CC</option>
+                                                <option value="0001">0001</option>
+                                                <option value="0002">0002</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Fecha Requerida <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="ri-calendar-event-line"></i></span>
+                                                <input type="text" name="dirigido_a" class="form-control border-start-0 ps-0">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

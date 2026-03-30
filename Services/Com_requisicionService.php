@@ -181,7 +181,7 @@ public function index(array $filters = [])
                 $db->rollBack();
             }
 
-            return ServiceResponse::error(
+                return ServiceResponse::error(
                 message: $e->getMessage(),
                 code: is_int($e->getCode()) ? $e->getCode() : 500
             );

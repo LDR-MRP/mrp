@@ -111,4 +111,9 @@ class Prv_proveedor  extends Controllers{
     {
         return $this->apiResponse($this->supplierService->auditDocument($_POST));
     }
+
+    public function getOnboarding(int $supplierId)
+    {
+        return $this->apiResponse($this->supplierService->getOnboardingStatus($supplierId));
+    }
 }

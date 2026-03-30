@@ -93,7 +93,7 @@ $(document).ready(function () {
                 
             if (res.status && res.data) {
                 res.data.forEach(supplier => {
-                    $select.append(`<option value="${supplier.idproveedor}">${supplier.nombre_comercial}</option>`);
+                    $select.append(`<option value="${supplier.id_proveedor}">${supplier.nombre_comercial}</option>`);
                 });
             }
         });

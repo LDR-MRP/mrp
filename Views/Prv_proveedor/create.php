@@ -134,6 +134,11 @@
                         </a>
                     </li>
                     <li class="nav-item edit-only-tab d-none">
+                        <a class="nav-link" data-bs-toggle="tab" href="#tab-banking" role="tab">
+                            <i class="ri-folder-open-line me-1"></i> Datos Bancarios
+                        </a>
+                    </li>
+                    <li class="nav-item edit-only-tab d-none">
                         <a class="nav-link" data-bs-toggle="tab" href="#tab-onboarding" role="tab">
                             <i class="ri-shield-check-line me-1"></i> Onboarding & Auditoría
                         </a>
@@ -398,13 +403,6 @@
                                                 <select name="id_condicion_pago" class="form-select border-light-subtle bg-light-subtle">
                                                 </select>
                                             </div>
-
-                                                
-
-
-
-
-
                                         </div>
                                     </div>
 
@@ -470,13 +468,24 @@
                     </section>
                     <!-- End File Section -->
 
+                    <!-- Banking Data Section -->
+                    <section class="tab-pane mt-4 edit-only-tab d-none" id="tab-banking" role="tabpanel">
+                        <div class="row">
+                            <div class="col-12">
+                                <h3>Banking Data Section</h3>
+                            </div>
+                        </div>
+                    </section>
+                    <!-- End Banking Data Section -->
+
                     <!-- Onboarding Section -->
                     <section class="tab-pane mt-4 edit-only-tab d-none" id="tab-onboarding" role="tabpanel">
                         <div class="row">
                             <div class="col-12">
                                 <div class="card shadow-none border mb-0">
                                     <div class="card-body p-5">                                        
-                                        <div class="text-center mb-5">
+                                        <div cl
+                                        ass="text-center mb-5">
                                             <div class="avatar-md mx-auto mb-3">
                                                 <div class="avatar-title bg-warning-subtle text-warning display-5 rounded-circle shadow">
                                                     <i class="ri-loader-4-line ri-spin"></i>
@@ -490,12 +499,15 @@
                                         </div>
                                         <div class="custom-timeline-container py-4">
                                             <ul class="custom-timeline-list">
+                                                
+                                            
                                                 <li class="timeline-item completed">
                                                     <div class="timeline-icon bg-success">
                                                         <i class="ri-check-line text-white"></i>
                                                     </div>
                                                     <div class="timeline-content">
                                                         <h6 class="fs-14 fw-bold mb-1">Registro Inicial</h6>
+                                                        <span class="badge bg-warning text-white">Esperando Archivos</span>
                                                         <p class="text-muted fs-12 mb-0">06 Mar, 2026</p>
                                                     </div>
                                                 </li>
@@ -507,8 +519,11 @@
                                                     <div class="timeline-content active-card">
                                                         <h6 class="fs-14 fw-bold mb-1 text-warning">Expediente Digital</h6>
                                                         <span class="badge bg-warning text-white">Esperando Archivos</span>
+                                                        <p class="text-muted fs-12 mb-0">07 Mar, 2026</p>
                                                     </div>
                                                 </li>
+
+
 
                                                 <li class="timeline-item">
                                                     <div class="timeline-icon bg-light">
@@ -516,8 +531,12 @@
                                                     </div>
                                                     <div class="timeline-content">
                                                         <h6 class="fs-14 fw-bold mb-1 text-muted">Validación</h6>
+                                                        <span class="badge bg-warning text-white">Esperando Aprobación</span>
+                                                        <p class="text-muted fs-12 mb-0">08 Mar, 2026</p>
                                                     </div>
                                                 </li>
+
+
 
                                                 <li class="timeline-item">
                                                     <div class="timeline-icon bg-light">
@@ -525,6 +544,8 @@
                                                     </div>
                                                     <div class="timeline-content">
                                                         <h6 class="fs-14 fw-bold mb-1 text-muted">Alta en ERP</h6>
+                                                        <span class="badge bg-warning text-white">Esperando Alta</span>
+                                                        <p class="text-muted fs-12 mb-0">09 Mar, 2026</p>
                                                     </div>
                                                 </li>
                                             </ul>

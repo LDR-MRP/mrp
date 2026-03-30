@@ -52,7 +52,7 @@ class Prv_proveedorService
         $db->beginTransaction();
 
         try {
-
+            $action = null;
             $data = json_decode($data, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
@@ -93,13 +93,13 @@ class Prv_proveedorService
                         $this->prvProveedorModel->updateDynamic($table, $cols, $values);
                     }
 
-                    $message = 'Proveedor actualizado correctamente (solo campos modificados).';
+                    $message = "Se actualizó el proveedor con RFC: {$currentSupplier['rfc']}";
+                    $action = 'actualización';
                 } else {
                     $message = 'No se detectaron cambios en la información del proveedor.';
                 }
 
-                $code = 200;
-                
+                $code = 200;                
             else:
                 // RUTA B: CREACIÓN DEL REGISTRO
                 $supplierId = $this->prvProveedorModel->insertSupplier($validated, $this->userId);
@@ -117,12 +117,12 @@ class Prv_proveedorService
                 $resOnb = $this->prvProveedorModel->insertOnboarding($supplierId, $this->userId);
                 if (!$resOnb) throw new \Exception("Error al iniciar flujo de onboarding.");
 
-                $message = 'Proveedor creado correctamente.';
-
+                $message = "Se creó el proveedor con RFC: {$validated['rfc']}";
                 $code = 201;
-
+                $action = 'creación';
             endif;
-
+            
+            $this->prvProveedorModel->logAudit($supplierId, $action, $message, $this->userId);
             $db->commit();
 
             return ServiceResponse::success(
@@ -158,8 +158,6 @@ class Prv_proveedorService
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
         try {
-            $db->beginTransaction();
-
             $uploadDocumentRequest = new Prv_uploadExpedienteRequest(array_merge($data, $files));
             $uploadDocumentRequest->validate();
             $validated = $uploadDocumentRequest->all();
@@ -168,23 +166,24 @@ class Prv_proveedorService
             $docType = $validated['tipo_documento'];
             $file = $validated['archivo'];
 
-            $existingDoc = $this->prvDetExpedienteModel->findByCriteria($validated);
+            $existingDoc = current($this->prvDetExpedienteModel->findByCriteria($validated));
+            $oldFilePath = $existingDoc['url_archivo'] ?? null;
 
             $docConfig = $this->prvDetExpedienteModel::REQUIRED_DOCUMENTS[$docType];
             $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
-            // 1. Gestión de almacenamiento
-            $dirPath = $this->prvDetExpedienteModel::SUPPLIER_RECORD_PATH . "'/prov_{$supplierId}/";
+            $dirPath = $this->prvDetExpedienteModel::SUPPLIER_RECORD_PATH . "prov_{$supplierId}/";
             if (!is_dir($dirPath)) mkdir($dirPath, 0777, true);
 
             $fileName = "{$docType}_{$supplierId}_" . date('Ymd_His') . ".{$extension}";
             $fullPath = $dirPath . $fileName;
 
+            $db->beginTransaction();
+
             if (!move_uploaded_file($file['tmp_name'], $fullPath)) {
                 throw new \Exception("Error al mover el archivo al servidor.");
             }
 
-            // 2. Persistencia
             $dbData = [
                 'id_proveedor'    => $supplierId,
                 'tipo_documento'  => $docType,
@@ -193,14 +192,14 @@ class Prv_proveedorService
                 'created_by'      => $this->userId,
             ];
 
-            if (!$this->prvDetExpedienteModel->saveDocument($dbData)) {
-                if (file_exists($fullPath)) unlink($fullPath);
+            if (!$this->prvDetExpedienteModel->upsertDocument($dbData)) {
                 throw new \Exception("Error al registrar en base de datos.");
             }
 
+            $this->prvDetExpedienteModel->logAudit($supplierId, $existingDoc ? 'actualización' : 'creación', "{$docConfig['name']} procesado correctamente.", $this->userId);
             $db->commit();
 
-            if ($existingDoc && file_exists($existingDoc['url_archivo'])) {
+            if ($oldFilePath && file_exists($oldFilePath)) {
                 unlink($existingDoc['url_archivo']);
             }
 
@@ -226,6 +225,10 @@ class Prv_proveedorService
         $uploaded = $this->prvDetExpedienteModel->uploadedDocuments($supplierId);        
         $uploadedIndexed = array_column($uploaded, null, 'tipo_documento');
 
+        $approvedDocuments = array_filter($uploaded, function($doc) {
+            return isset($doc['estatus_validacion']) && (int)$doc['estatus_validacion'] === 1;
+        });
+
         $validated = array_combine(
             array_keys($config),
             array_map(function($key, $value) use ($uploadedIndexed) {
@@ -238,7 +241,7 @@ class Prv_proveedorService
             }, array_keys($config), $config)
         );
 
-        $progressPercentage = round((count($uploaded) / count($config)) * 100) ?? 0;
+        $progressPercentage = round((count($approvedDocuments) / count($config)) * 100) ?? 0;
         
         return ServiceResponse::success(
             [
@@ -256,8 +259,19 @@ class Prv_proveedorService
             throw new \Exception("No se pudo procesar tu solicitud.");            
         }
 
-        $this->prvDetExpedienteModel->logAudit($requisitionId, 'creación', $inputData['motivo_rechazo'], $this->userId);
+        $this->prvDetExpedienteModel->logAudit($inputData['id_documento'], $inputData['motivo_rechazo'] ? 'rechazo' : 'aprobación', $inputData['motivo_rechazo'], $this->userId);
 
         return ServiceResponse::success($outputData);
+    }
+
+    public function getOnboardingStatus(int $supplierId): ServiceResponse
+    {
+        $supplier = $this->prvProveedorModel->findByCriteria(['id_proveedor' => $supplierId]);
+        if (!$supplier) {
+            return ServiceResponse::error("Proveedor no encontrado.", 404);
+        }
+
+
+            return ServiceResponse::success([]);
     }
 }

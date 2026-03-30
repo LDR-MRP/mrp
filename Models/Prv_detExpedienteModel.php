@@ -4,7 +4,7 @@ class Prv_detExpedienteModel extends Mysql
 {
     use Auditable;
 
-    const SUPPLIER_RECORD_PATH = 'Assets/uploads/expedientes';
+    const SUPPLIER_RECORD_PATH = 'Assets/uploads/expedientes/';
 
     protected $table = 'prv_det_expediente';
 
@@ -47,13 +47,21 @@ class Prv_detExpedienteModel extends Mysql
         }
 
         if(array_key_exists('tipo_documento', $filters)){
-            $docType = $this->getConexion()->real_escape_string($filters['tipo_documento']);
+            $docType = (string) $filters['tipo_documento'];
             $sql .= " AND `{$this->table}`.`tipo_documento` = '{$docType}'";
         }
 
         return $this->select_all($sql);
     }
 
+    /**
+     * Saves a document to the database.
+     *
+     * @param array $data The document data.
+     * @return int The ID of the saved document.
+     *
+     * @deprecated since version 1.1. Use upsertDocument() instead.
+     */
     public function saveDocument(array $data): int
     {
         return $this->insert(
@@ -69,6 +77,35 @@ class Prv_detExpedienteModel extends Mysql
                 $data['created_by'],
             ]
         );
+    }
+
+    /**
+     * Saves or updates a document to the database.
+     *
+     * @param array $data The document data.
+     * @return bool True on success.
+     */
+    public function upsertDocument(array $data): bool
+    {
+        $rowCount = $this->insert(
+            query:
+                "INSERT INTO `{$this->table}`
+                (
+                    id_proveedor, tipo_documento, url_archivo, created_by
+                ) VALUES (?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    url_archivo = VALUES(url_archivo),
+                    created_by = VALUES(created_by),
+                    updated_at = CURRENT_TIMESTAMP",
+            arrValues: [
+                $data['id_proveedor'],
+                $data['tipo_documento'],
+                $data['url_archivo'],
+                $data['created_by'],
+            ]
+        );
+
+        return $rowCount >= 1;
     }
 
     public function uploadedDocuments(int $id_proveedor): array
