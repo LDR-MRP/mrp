@@ -12,15 +12,15 @@ class Prv_proveedorStoreRequest extends Requests
 
     public function rules(): void
     {
-        // 1. TUS VALIDACIONES BÁSICAS ACTUALES (Sintaxis y Formato)
+        // Validaciones básicas (Sintaxis y Formato)
         $this->validateBasicRules(); 
         
-        // Si fallan las reglas básicas, no tiene caso golpear la BD
+        // Fail-fast: Si fallan las reglas básicas, no tiene caso golpear la BD
         if (!empty($this->errors)) { 
             return;
         }
 
-        // 2. VALIDACIONES DE NEGOCIO AVANZADAS (Base de Datos)
+        // Validaciones de Negocio (Base de Datos)
         $this->validateBusinessRules();
     }
 

@@ -14,17 +14,27 @@ trait Auditable
      * @param int $userId Sesión de usuario activa.
      * @return bool
      */
-    public function logAudit(int $resourceId, string $action, ?string $comment = 'Sin comentarios', int $userId): bool
+    public function logAudit(
+        int $resourceId,
+        AuditAction $action,
+        ?string $comment = 'Sin comentarios',
+        ?int $userId = null): bool
     {
         $auditModel = new LogAuditModel();
+        
         return $auditModel->register(
             [
                 'resource_id' => $resourceId,
-                'user_id' => $userId ?? 0,
-                'table_name' => mb_strtolower($this->getTableName(), 'UTF-8'),
-                'action' => mb_strtolower($action, 'UTF-8'),
-                'comment' => mb_strtolower($comment, 'UTF-8'),
+                'user_id'     => $userId ?? 0,
+                'table_name'  => mb_strtolower($this->getTableName(), 'UTF-8'),
+                'action'      => $action->value, 
+                'comment'     => htmlspecialchars(trim($comment ?? ''), ENT_QUOTES, 'UTF-8'),
             ]
         );
     }
+
+    /**
+     * Firma abstracta: Obliga a la clase que use este Trait a tener este método.
+     */
+    abstract public function getTableName(): string;
 }

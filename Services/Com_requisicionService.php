@@ -110,7 +110,7 @@ public function index(array $filters = [])
                 $this->requisitionModel->detailCreate($requisitionId, $item);
             }
             
-            $this->requisitionModel->logAudit($requisitionId, 'creación', $validated['justificacion'], $userId);
+            $this->requisitionModel->logAudit($requisitionId, AuditAction::CREATED, $validated['justificacion'], $userId);
 
             $db->commit();
 

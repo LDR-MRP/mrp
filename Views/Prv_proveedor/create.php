@@ -470,11 +470,182 @@
 
                     <!-- Banking Data Section -->
                     <section class="tab-pane mt-4 edit-only-tab d-none" id="tab-banking" role="tabpanel">
-                        <div class="row">
-                            <div class="col-12">
-                                <h3>Banking Data Section</h3>
+                        <form id="formDatosBancarios" autocomplete="off">
+                            <div class="row">
+                                <div class="col-lg-8">
+                                    
+                                    <!-- Formulario de Alta de Cuenta -->
+                                    <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px; border-top: 4px solid #0ab39c;">
+                                        <div class="card-body p-4 text-start">
+                                            <h5 class="card-title mb-4 text-uppercase fw-bold text-muted fs-12 ls-1">
+                                                <i class="ri-bank-card-line text-success me-1 fs-14 align-middle"></i> Nueva Cuenta Bancaria
+                                            </h5>
+
+                                            <div class="row g-3">
+                                                <!-- Banco -->
+                                                <div class="col-md-8">
+                                                    <label class="form-label text-uppercase fs-11 fw-bold text-muted">Institución Bancaria <span class="text-danger-asterisk">*</span></label>
+                                                    <select name="id_banco" id="id_banco" class="form-select border-dashed">
+                                                        <option value="">Selecciona un banco...</option>
+                                                        <!-- Opciones cargadas por JS desde cat_bancos -->
+                                                    </select>
+                                                </div>
+
+                                                <!-- Moneda -->
+                                                <div class="col-md-4">
+                                                    <label class="form-label text-uppercase fs-11 fw-bold text-muted">Moneda <span class="text-danger-asterisk">*</span></label>
+                                                    <select name="id_moneda_banco" id="id_moneda_banco" class="form-select border-dashed bg-light">
+                                                        <option value="MXN" selected>MXN - Peso Mexicano</option>
+                                                        <option value="USD">USD - Dólar</option>
+                                                        <option value="EUR">EUR - Euro</option>
+                                                    </select>
+                                                </div>
+
+                                                <!-- CLABE -->
+                                                <div class="col-md-12">
+                                                    <label class="form-label text-uppercase fs-11 fw-bold text-muted">CLABE Interbancaria (Nacional) <span class="text-danger-asterisk">*</span></label>
+                                                    <div class="input-group border rounded-3 overflow-hidden shadow-none">
+                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-numbers-line"></i></span>
+                                                        <input type="text" name="clabe" class="form-control border-0 fs-16 fw-medium" maxlength="18" placeholder="18 dígitos">
+                                                    </div>
+                                                </div>
+
+                                                <!-- Cuenta -->
+                                                <div class="col-md-6">
+                                                    <label class="form-label text-uppercase fs-11 fw-bold text-muted">Número de Cuenta</label>
+                                                    <div class="input-group border rounded-3 overflow-hidden shadow-none">
+                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-bank-line"></i></span>
+                                                        <input type="text" name="cuenta" class="form-control border-0 fs-15" maxlength="20" placeholder="Ej. 0123456789">
+                                                    </div>
+                                                </div>
+
+                                                <!-- Es Principal -->
+                                                <div class="col-md-6">
+                                                    <label class="form-label text-uppercase fs-11 fw-semibold text-muted d-block">¿Es Cuenta Principal?</label>
+                                                    <div class="btn-group w-100">
+                                                        <input type="radio" class="btn-check" name="banco_es_principal" id="banco_principal_si" value="1">
+                                                        <label class="btn btn-outline-light w-100 border text-dark fs-12" for="banco_principal_si">SÍ</label>
+                                                        <input type="radio" class="btn-check" name="banco_es_principal" id="banco_principal_no" value="0" checked>
+                                                        <label class="btn btn-outline-light w-100 border text-dark fs-12" for="banco_principal_no">NO</label>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Divisor: Transferencias Internacionales -->
+                                                <div class="col-12 mt-4">
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <div class="flex-grow-1 border-top border-dashed"></div>
+                                                        <div class="px-3 fs-11 text-muted text-uppercase fw-bold"><i class="ri-earth-line me-1 text-info"></i> Transferencias Internacionales</div>
+                                                        <div class="flex-grow-1 border-top border-dashed"></div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- SWIFT/BIC -->
+                                                <div class="col-md-6">
+                                                    <label class="form-label text-uppercase fs-11 fw-bold text-muted">SWIFT / BIC</label>
+                                                    <div class="input-group border rounded-3 overflow-hidden shadow-none">
+                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-global-line"></i></span>
+                                                        <input type="text" name="swift_bic" class="form-control border-0 fs-15" maxlength="15" placeholder="Código SWIFT">
+                                                    </div>
+                                                </div>
+
+                                                <!-- IBAN -->
+                                                <div class="col-md-6">
+                                                    <label class="form-label text-uppercase fs-11 fw-bold text-muted">IBAN</label>
+                                                    <div class="input-group border rounded-3 overflow-hidden shadow-none">
+                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-money-euro-circle-line"></i></span>
+                                                        <input type="text" name="iban" class="form-control border-0 fs-15" maxlength="34" placeholder="Código IBAN">
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Lista de Cuentas Registradas -->
+                                    <div class="card border-0 shadow-sm mt-4">
+                                        <div class="card-header bg-transparent border-bottom border-light pt-3 pb-2">
+                                            <h5 class="card-title mb-0 text-uppercase fw-bold text-muted fs-12 ls-1">
+                                                <i class="ri-list-check text-primary me-1 fs-14 align-middle"></i> Cuentas Registradas
+                                            </h5>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <div class="table-responsive">
+                                                <table class="table table-hover align-middle mb-0">
+                                                    <thead class="table-light text-muted fs-11 text-uppercase">
+                                                        <tr>
+                                                            <th>Banco</th>
+                                                            <th>CLABE / Cuenta</th>
+                                                            <th>Moneda</th>
+                                                            <th>Estatus</th>
+                                                            <th class="text-end">Acciones</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="lista-cuentas-bancarias">
+                                                        <!-- Placeholder state -->
+                                                        <tr>
+                                                            <td colspan="5" class="text-center py-5 text-muted">
+                                                                <i class="ri-bank-card-line fs-24 d-block mb-2 text-light"></i>
+                                                                Aún no hay cuentas bancarias registradas.
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-4">
+                                    
+                                    <!-- Botón de Acción -->
+                                    <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
+                                        <div class="card-body p-4 text-start">
+                                            <div class="d-grid gap-2">
+                                                <button type="button" id="btnGuardarCuenta" class="btn btn-success btn-lg shadow-sm">
+                                                    <i class="ri-add-line align-middle me-1"></i> Agregar Cuenta
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tarjeta de Seguridad y Compliance -->
+                                    <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px; border-top: 4px solid #f06548;">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex align-items-center mb-3">
+                                                <div class="flex-shrink-0">
+                                                    <i class="ri-shield-keyhole-line text-danger fs-24"></i>
+                                                </div>
+                                                <div class="flex-grow-1 ms-3">
+                                                    <h5 class="card-title text-uppercase fw-bold text-danger mb-0 fs-12 ls-1">Aprobación Requerida</h5>
+                                                </div>
+                                            </div>
+                                            <p class="text-muted fs-12 mb-0">
+                                                Por seguridad contra fraude, toda nueva cuenta bancaria pasará a estatus <span class="badge bg-warning text-white">PENDIENTE</span>. 
+                                                Finanzas (Nivel 2) deberá cruzar esta información con la Carátula Bancaria del Expediente antes de autorizar pagos.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tooltip Card -->
+                                    <div class="card border-0 shadow-sm" style="background-color: #e1ebfd;">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex">
+                                                <div class="flex-shrink-0">
+                                                    <i class="ri-information-fill text-primary fs-20"></i>
+                                                </div>
+                                                <div class="flex-grow-1 ms-2">
+                                                    <p class="mb-0 fs-12 text-primary-emphasis fw-medium">
+                                                        Para nacionales, la <strong>CLABE (18 dígitos)</strong> es indispensable. <br><br>
+                                                        Para extranjeros, requiere <strong>SWIFT/BIC</strong> o <strong>IBAN</strong> según el banco destino.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
                             </div>
-                        </div>
+                        </form>
                     </section>
                     <!-- End Banking Data Section -->
 

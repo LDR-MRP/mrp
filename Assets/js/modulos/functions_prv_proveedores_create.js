@@ -77,7 +77,8 @@ const proveedorManager = {
         const catalogos = [
             { url: 'Catalogo/condiciones_pago', selector: '[name="id_condicion_pago"]' },
             { url: 'Catalogo/cuentas_contables', selector: '[name="id_cuenta_contable"]' },
-            { url: 'SatCatalogo/tipos_personas', selector: '[name="id_tipo_persona"]' }
+            { url: 'SatCatalogo/tipos_personas', selector: '[name="id_tipo_persona"]' },
+            { url: 'inv_moneda/index', selector: '[name="id_moneda_banco"]' }
         ];
 
         const promises = catalogos.map(cat => {
@@ -498,8 +499,169 @@ const files = {
     },
 };
 
+/**
+ * Lógica para la gestión de Datos Bancarios (1:N)
+ */
+const bankingManager = {
+    isLoaded: false,
+
+    init: function() {
+        this.events();
+    },
+
+    events: function() {
+        const self = this;
+
+        // --- LAZY LOADING DE DATOS BANCARIOS ---
+        $('button[data-bs-target="#tab-banking"], a[href="#tab-banking"]').on('shown.bs.tab', function () {
+            const idProveedor = Sys_Core.URL.getParam('id');
+            if (idProveedor && !self.isLoaded) {
+                self.loadCatalogs();
+                self.loadAccounts(idProveedor);
+            }
+        });
+
+        // Guardar nueva cuenta (Independiente del formulario maestro)
+        $('#btnGuardarCuenta').on('click', function(e) {
+            e.preventDefault();
+            self.storeAccount();
+        });
+
+        // --- EVENT DELEGATION PARA LA TABLA ---
+        $('#lista-cuentas-bancarias').on('click', '.btn-delete-bank', function() {
+            const idCuenta = $(this).data('id'); // Inyección de estado temporal
+            Sys_Core.UI.confirm({
+                title: '¿Eliminar Cuenta?',
+                text: 'La cuenta será dada de baja. Esta acción auditará el movimiento.',
+                icon: 'warning',
+                confirmText: 'Sí, eliminar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    self.deleteAccount(idCuenta);
+                }
+            });
+        });
+    },
+
+    loadCatalogs: function() {
+        Sys_Core.Net.get({
+            url: `${Sys_Core.Config.baseUrl}/Catalogo/bancos`,
+            silent: true,
+            onSuccess: (res) => {
+                Sys_Core.UI.fillSelect('#id_banco', res.data, {
+                    valueField: 'id_banco',
+                    textField: 'nombre_corto',
+                    placeholder: 'Selecciona un banco...'
+                });
+            }
+        });
+    },
+
+    loadAccounts: function(idProveedor) {
+        Sys_Core.UI.toggleLoader('#tab-banking', true);
+
+        Sys_Core.Net.get({
+            url: `${Sys_Core.Config.baseUrl}/prv_proveedor/banks/${idProveedor}`,
+            silent: false,
+            onSuccess: (res) => {
+                this.renderTable(res.data);
+                this.isLoaded = true;
+                Sys_Core.UI.toggleLoader('#tab-banking', false);
+            }
+        });
+    },
+
+    renderTable: function(cuentas) {
+        const $tbody = $('#lista-cuentas-bancarias');
+        $tbody.empty();
+
+        if (!cuentas || cuentas.length === 0) {
+            $tbody.html(`
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">
+                        <i class="ri-bank-card-line fs-24 d-block mb-2 text-light"></i>
+                        Aún no hay cuentas bancarias registradas.
+                    </td>
+                </tr>
+            `);
+            return;
+        }
+
+        let html = '';
+        cuentas.forEach(c => {
+            // Badges de Estatus (Compliance L2)
+            let badgeEstatus = `<span class="badge bg-warning text-white">Pendiente</span>`;
+            if (c.estatus_aprobacion === 'APROBADO') badgeEstatus = `<span class="badge bg-success">Aprobado</span>`;
+            if (c.estatus_aprobacion === 'RECHAZADO') badgeEstatus = `<span class="badge bg-danger">Rechazado</span>`;
+
+            // Badge si es Principal
+            const badgePrincipal = c.es_principal == 1 ? `<span class="badge bg-info-subtle text-info ms-1 border border-info">Principal</span>` : '';
+
+            // Lógica de visualización: Nacional vs Extranjero
+            const identificador = c.clabe ? c.clabe : (c.swift_bic ? `SWIFT: ${c.swift_bic}` : `IBAN: ${c.iban}`);
+
+            html += `
+                <tr>
+                    <td>
+                        <div class="fw-bold text-dark">${c.id_banco ?? 'N/A'}</div>
+                        <div class="text-muted fs-11">Cuenta: ${c.cuenta ?? '---'}</div>
+                    </td>
+                    <td>
+                        <span class="font-monospace fs-12">${identificador}</span> ${badgePrincipal}
+                    </td>
+                    <td class="fw-medium">${c.id_moneda}</td>
+                    <td>${badgeEstatus}</td>
+                    <td class="text-end">
+                        <button type="button" class="btn btn-sm btn-soft-danger btn-delete-bank" data-id="${c.id_cuenta_bancaria}">
+                            <i class="ri-delete-bin-line"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        $tbody.html(html);
+    },
+
+    storeAccount: function() {
+        const idProveedor = Sys_Core.URL.getParam('id');
+        if (!idProveedor) {
+            Sys_Core.UI.notify('Debes guardar los Datos Maestros primero.', 'warning');
+            return;
+        }
+
+        const form = document.getElementById('formDatosBancarios');
+        const payload = new FormData(form);
+        payload.append('id_proveedor', idProveedor);
+
+        Sys_Core.Net.post({
+            url: `${Sys_Core.Config.baseUrl}/prv_proveedor/storeBank`,
+            payload: payload,
+            successMsg: 'Cuenta bancaria agregada y enviada a revisión.',
+            onDone: () => {
+                Sys_Core.UI.clearForm('#formDatosBancarios');
+                $('#banco_principal_no').prop('checked', true);
+                this.loadAccounts(idProveedor);
+            }
+        });
+    },
+
+    deleteAccount: function(idCuenta) {
+        Sys_Core.Net.post({
+            url: `${Sys_Core.Config.baseUrl}/prv_proveedor/deleteBank`,
+            payload: { id_cuenta_bancaria: idCuenta },
+            successMsg: 'Cuenta eliminada del registro.',
+            onDone: () => {
+                const idProveedor = Sys_Core.URL.getParam('id');
+                this.loadAccounts(idProveedor);
+            }
+        });
+    }
+};
+
 $(document).ready(() => {
     cascadeCatalogs.init();
     proveedorManager.init();
     files.init();
+    bankingManager.init();
 });

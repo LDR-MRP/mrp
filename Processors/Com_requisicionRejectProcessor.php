@@ -6,5 +6,5 @@ class Com_requisicionRejectProcessor implements Com_requisicionProcessorInterfac
         return $model->reject($requisitionId, $status, $userId);
     }
 
-    public function getLogAction() { return Com_requisicionModel::ESTATUS_RECHAZADA; }
+    public function getLogAction() { return AuditAction::REJECTED; }
 }

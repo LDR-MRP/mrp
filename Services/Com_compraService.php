@@ -56,7 +56,7 @@ class Com_compraService{
 
             $this->requisitionModel->changeStatus($reqId, strtolower(Com_requisicionModel::ESTATUS_EN_COMPRA), $userId);
        
-            $this->requisitionModel->logAudit($reqId, Com_requisicionModel::ESTATUS_EN_COMPRA, 'La PO se ha generado exitosamente', $userId);
+            $this->requisitionModel->logAudit($reqId, AuditAction::CREATED, AuditAction::CREATED->label(), $userId);
 
             $db->commit();
 

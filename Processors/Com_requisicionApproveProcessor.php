@@ -6,5 +6,5 @@ class Com_requisicionApproveProcessor implements Com_requisicionProcessorInterfa
         return $model->approve($requisitionId, $status, $userId);
     }
 
-    public function getLogAction() { return Com_requisicionModel::ESTATUS_APROBADA; }
+    public function getLogAction() { return AuditAction::APPROVE_L1; }
 }

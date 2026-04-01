@@ -116,4 +116,14 @@ class Prv_proveedor  extends Controllers{
     {
         return $this->apiResponse($this->supplierService->getOnboardingStatus($supplierId));
     }
+
+    public function storeBank()
+    {
+        return $this->apiResponse($this->supplierService->storeBank($_POST));
+    }
+
+    public function banks(int $supplierId)
+    {
+        return $this->apiResponse($this->supplierService->banks($supplierId));
+    }
 }

@@ -6,5 +6,5 @@ class Com_requisicionCancelProcessor implements Com_requisicionProcessorInterfac
         return $model->cancel($requisitionId, $status, $userId);
     }
 
-    public function getLogAction() { return Com_requisicionModel::ESTATUS_CANCELADA; }
+    public function getLogAction() { return AuditAction::CANCELED; }
 }

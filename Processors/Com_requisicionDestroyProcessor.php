@@ -6,5 +6,5 @@ class Com_requisicionDestroyProcessor implements Com_requisicionProcessorInterfa
         return $model->destroy($requisitionId, $status, $userId);
     }
 
-    public function getLogAction() { return Com_requisicionModel::ESTATUS_ELIMINADA; }
+    public function getLogAction() { return AuditAction::DELETED; }
 }

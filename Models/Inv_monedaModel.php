@@ -132,7 +132,9 @@ class Inv_monedaModel extends Mysql
     public function all(array $filters = [])
     {
         $query ="SELECT
-                    wms_moneda.*
+                    wms_moneda.*,
+                    wms_moneda.simbolo AS id,
+                    CONCAT(wms_moneda.simbolo, ' - ', wms_moneda.descripcion) AS nombre
                 FROM wms_moneda
             WHERE true
             ";

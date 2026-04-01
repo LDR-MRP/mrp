@@ -2,15 +2,18 @@
 
 class Prv_proveedorService
 {
-    private $prvProveedorModel;
+    private Prv_proveedorModel $prvProveedorModel;
 
-    private $prvDetExpedienteModel;
+    private Prv_detExpedienteModel $prvDetExpedienteModel;
+
+    private Prv_detCuentaBancariaModel $prvDetCuentaBancariaModel;
 
     protected $userId;
 
     public function __construct() {
         $this->prvProveedorModel = new Prv_proveedorModel();
         $this->prvDetExpedienteModel = new Prv_detExpedienteModel();
+        $this->prvDetCuentaBancariaModel = new Prv_detCuentaBancariaModel();
         $this->userId = $_SESSION['idUser'] ?? 1;
     }
 
@@ -31,7 +34,7 @@ class Prv_proveedorService
 
         try {
             $this->prvProveedorModel->destroy($data['idproveedor']);
-            $this->prvProveedorModel->logAudit($data['idproveedor'], 'ELIMINACIÓN', "Se elimino el proveedor con ID: {$data['rfc']}", $_SESSION['idUser']);
+            $this->prvProveedorModel->logAudit($data['idproveedor'], AuditAction::DELETED, "Se elimino el proveedor con ID: {$data['rfc']}", $_SESSION['idUser']);
             $db->commit();
             return ServiceResponse::success(data: ['rfc' => $data['rfc']], message: "Proveedor eliminado con éxito.");
         } catch (\Exception $e) {
@@ -94,7 +97,7 @@ class Prv_proveedorService
                     }
 
                     $message = "Se actualizó el proveedor con RFC: {$currentSupplier['rfc']}";
-                    $action = 'actualización';
+                    $action = AuditAction::UPDATED;
                 } else {
                     $message = 'No se detectaron cambios en la información del proveedor.';
                 }
@@ -119,7 +122,7 @@ class Prv_proveedorService
 
                 $message = "Se creó el proveedor con RFC: {$validated['rfc']}";
                 $code = 201;
-                $action = 'creación';
+                $action = AuditAction::CREATED;
             endif;
             
             $this->prvProveedorModel->logAudit($supplierId, $action, $message, $this->userId);
@@ -196,7 +199,7 @@ class Prv_proveedorService
                 throw new \Exception("Error al registrar en base de datos.");
             }
 
-            $this->prvDetExpedienteModel->logAudit($supplierId, $existingDoc ? 'actualización' : 'creación', "{$docConfig['name']} procesado correctamente.", $this->userId);
+            $this->prvDetExpedienteModel->logAudit($supplierId, $existingDoc ? AuditAction::UPDATED : AuditAction::CREATED, "{$docConfig['name']} procesado correctamente.", $this->userId);
             $db->commit();
 
             if ($oldFilePath && file_exists($oldFilePath)) {
@@ -259,7 +262,7 @@ class Prv_proveedorService
             throw new \Exception("No se pudo procesar tu solicitud.");            
         }
 
-        $this->prvDetExpedienteModel->logAudit($inputData['id_documento'], $inputData['motivo_rechazo'] ? 'rechazo' : 'aprobación', $inputData['motivo_rechazo'], $this->userId);
+        $this->prvDetExpedienteModel->logAudit($inputData['id_documento'], $inputData['motivo_rechazo'] ? AuditAction::REJECTED : AuditAction::APPROVE_L1, $inputData['motivo_rechazo'], $this->userId);
 
         return ServiceResponse::success($outputData);
     }
@@ -269,9 +272,55 @@ class Prv_proveedorService
         $supplier = $this->prvProveedorModel->findByCriteria(['id_proveedor' => $supplierId]);
         if (!$supplier) {
             return ServiceResponse::error("Proveedor no encontrado.", 404);
+        }        
+        return ServiceResponse::success([]);
+    }
+
+    
+    public function storeBank(array $data): ServiceResponse
+    {
+        $db = $this->prvProveedorModel->getConexion();
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        try{
+            $request = new Prv_StoreBankAccountRequest($data);
+            $request->validate();
+            $validated = $request->all();
+
+            $db->beginTransaction();
+
+            $id = $this->prvDetCuentaBancariaModel->save($validated);
+
+            $this->prvDetCuentaBancariaModel->logAudit($id, AuditAction::CREATED, AuditAction::CREATED->label(), $this->userId);
+
+            $db->commit();
+
+
+            return ServiceResponse::success(
+                data: ['id' => $id],
+                code: 201,
+            );
+        } catch(\InvalidArgumentException $args) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            return ServiceResponse::validation(errors: $args->getMessage());
+        } catch(\Exception $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            return ServiceResponse::error(message: $e->getMessage());
+        } catch(\PDOException $pdo) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
         }
+    }
 
-
-            return ServiceResponse::success([]);
+    public function banks(int $supplierId): ServiceResponse
+    {
+        $data = $this->prvDetCuentaBancariaModel->findBySupplierId($supplierId);
+        return ServiceResponse::success($data);
     }
 }
