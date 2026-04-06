@@ -2,6 +2,8 @@
 
 class Prv_proveedorService
 {
+    use Loggable;
+
     private Prv_proveedorModel $prvProveedorModel;
 
     private Prv_detExpedienteModel $prvDetExpedienteModel;
@@ -293,27 +295,49 @@ class Prv_proveedorService
 
             $this->prvDetCuentaBancariaModel->logAudit($id, AuditAction::CREATED, AuditAction::CREATED->label(), $this->userId);
 
-            $db->commit();
+            $this->logMessage(AuditAction::CREATED->label(), LogLevel::INFO,[
+                'id_proveedor' => $validated['id_proveedor']
+            ]);
 
+            $db->commit();
 
             return ServiceResponse::success(
                 data: ['id' => $id],
                 code: 201,
             );
-        } catch(\InvalidArgumentException $args) {
+        }
+        catch(\InvalidArgumentException $args)
+        {
             if ($db->inTransaction()) {
                 $db->rollBack();
             }
+
             return ServiceResponse::validation(errors: $args->getMessage());
-        } catch(\Exception $e) {
+        }
+        catch(\Exception $e)
+        {
             if ($db->inTransaction()) {
                 $db->rollBack();
             }
+
+            $this->logMessage($e, LogLevel::WARNING,[
+                'id_proveedor' => $validated['id_proveedor']
+            ]);
+
             return ServiceResponse::error(message: $e->getMessage());
-        } catch(\PDOException $pdo) {
+        }
+        catch(\PDOException $pdo)
+        {
             if ($db->inTransaction()) {
                 $db->rollBack();
             }
+
+            $this->logMessage($pdo, LogLevel::CRITICAL,[
+                'action' => 'storeBank',
+                'id_proveedor' => $validated['id_proveedor'],
+                'id_user' => $this->userId
+            ]);
+            
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
         }
     }
