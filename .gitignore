@@ -2,3 +2,9 @@
 Assets/uploads/
 
 # Plantillas locales
+
+# Dependencies
+vendor/
+
+# Storage
+Logs/
