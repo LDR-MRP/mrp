@@ -61,6 +61,19 @@ const Sys_Core = {
         },
 
         /**
+         * Convierte "$ 1,234,567.89" a 1234567.89 (Float nativo)
+         * @param {string|number} formattedString 
+         * @returns {number}
+         */
+        toNumber: function(formattedString) {
+            if (!formattedString) return 0;
+            if (typeof formattedString === 'number') return formattedString;
+            // Quita todo lo que no sea número, punto o signo negativo
+            const cleaned = formattedString.toString().replace(/[^0-9.-]+/g, "");
+            return parseFloat(cleaned) || 0;
+        },
+
+        /**
          * @param {string} dateString 
          * @returns {string}
          */

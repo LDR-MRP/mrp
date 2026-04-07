@@ -1,7 +1,7 @@
 /**
  * Orquestador Principal del Proveedor
  */
-const proveedorManager = {
+const supplierManager = {
 
     currentId: null,
 
@@ -38,6 +38,20 @@ const proveedorManager = {
                     setTimeout(() => Sys_Core.Navigation.to('prv_proveedor'), 1500);
                 }
             });
+        });
+
+        $('input[name="limite_credito"]').on('blur', function() {
+            const rawValue = Sys_Core.Format.toNumber($(this).val());
+            if (rawValue > 0) {
+                $(this).val(Sys_Core.Format.toCurrency(rawValue));
+            } else {
+                $(this).val('');
+            }
+        }).on('focus', function() {
+            const rawValue = Sys_Core.Format.toNumber($(this).val());
+            if (rawValue > 0) {
+                $(this).val(rawValue); 
+            }
         });
     },
 
@@ -661,7 +675,7 @@ const bankingManager = {
 
 $(document).ready(() => {
     cascadeCatalogs.init();
-    proveedorManager.init();
+    supplierManager.init();
     files.init();
     bankingManager.init();
 });

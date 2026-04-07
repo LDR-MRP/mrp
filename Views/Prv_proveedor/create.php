@@ -379,8 +379,8 @@
                                             <div class="mb-3">
                                                 <label class="form-label text-uppercase fs-11 fw-semibold text-muted">Crédito Autorizado</label>
                                                 <div class="input-group border rounded-3 overflow-hidden shadow-none">
-                                                    <span class="input-group-text bg-white border-0 text-muted fw-bold">$</span>
-                                                    <input type="number" step="0.01" name="limite_credito" class="form-control border-0 text-end fw-bold fs-16">
+                                                    <span class="input-group-text bg-white border-0 text-muted fw-bold"></span>
+                                                    <input type="text" step="1" name="limite_credito" placeholder="$0.00" class="form-control border-0 text-end fw-bold fs-16">
                                                 </div>
                                             </div>
 
