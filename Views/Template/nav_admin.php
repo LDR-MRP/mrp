@@ -161,7 +161,7 @@
                       <?php if (
                             !empty($_SESSION['permisos'][16]['r']) || !empty($_SESSION['permisos'][17]['r']) || !empty($_SESSION['permisos'][18]['r']) || !empty($_SESSION['permisos'][19]['r']) || !empty($_SESSION['permisos'][20]['r']) || !empty($_SESSION['permisos'][21]['r'])
                             || !empty($_SESSION['permisos'][22]['r']) || !empty($_SESSION['permisos'][23]['r']) || !empty($_SESSION['permisos'][24]['r']) || !empty($_SESSION['permisos'][25]['r']) || !empty($_SESSION['permisos'][26]['r']) || !empty($_SESSION['permisos'][70]['r'])
-                            || !empty($_SESSION['permisos'][71]['r']) || !empty($_SESSION['permisos'][72]['r']) || !empty($_SESSION['permisos'][73]['r'])
+                            || !empty($_SESSION['permisos'][71]['r']) || !empty($_SESSION['permisos'][72]['r']) || !empty($_SESSION['permisos'][73]['r']) || !empty($_SESSION['permisos'][67]['r']) || !empty($_SESSION['permisos'][68]['r']) || !empty($_SESSION['permisos'][69]['r'])
                         ) { ?>
                           <li class="nav-item">
                               <a class="nav-link menu-link" href="#sidebarRequerimientos" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarRequerimientos">
@@ -233,6 +233,36 @@
                                           </li>
                                       <?php } ?>
 
+                                      <?php if (!empty($_SESSION['permisos'][67]['r']) || !empty($_SESSION['permisos'][68]['r']) || !empty($_SESSION['permisos'][69]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="javascript:void(0)" class="nav-link flex-grow-1" data-key="t-detached" data-bs-toggle="collapse" data-bs-target="#subControlAlmacen" aria-expanded="false" aria-controls="subControlAlmacen">
+                                                  Control almacén
+                                              </a>
+                                              <div class="collapse ms-3" id="subControlAlmacen">
+                                                  <ul class="nav nav-sm flex-column">
+                                                      <?php if (!empty($_SESSION['permisos'][67]['r'])) { ?>
+                                                          <li class="nav-item">
+                                                              <a href="<?= base_url(); ?>/inv_sedes" class="nav-link" data-key="t-detached">Sedes</a>
+                                                          </li>
+                                                      <?php } ?>
+
+                                                      <?php if (!empty($_SESSION['permisos'][68]['r'])) { ?>
+                                                          <li class="nav-item">
+                                                              <a href="<?= base_url(); ?>/inv_zonas" class="nav-link" data-key="t-detached">Zonas</a>
+                                                          </li>
+                                                      <?php } ?>
+
+                                                      <?php if (!empty($_SESSION['permisos'][69]['r'])) { ?>
+                                                          <li class="nav-item">
+                                                              <a href="<?= base_url(); ?>/inv_ubicaciones" class="nav-link" data-key="t-detached">Ubicaciones</a>
+                                                          </li>
+                                                      <?php } ?>
+
+                                                  </ul>
+                                              </div>
+                                          </li>
+                                      <?php } ?>
+
                                       <?php /* if (!empty($_SESSION['permisos'][71]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_asignacionesinventario" class="nav-link" data-key="t-detached">Asignaciones de inventario</a>
@@ -276,6 +306,12 @@
                                       <?php if (!empty($_SESSION['permisos'][26]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_multialmacenes" class="nav-link" data-key="t-detached">Multialmacenes</a>
+                                          </li>
+                                      <?php } ?>
+
+                                      <?php if (!empty($_SESSION['permisos'][74]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/inv_picking" class="nav-link" data-key="t-detached">Picking</a>
                                           </li>
                                       <?php } ?>
 

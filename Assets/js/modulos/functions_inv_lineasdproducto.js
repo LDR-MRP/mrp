@@ -198,105 +198,153 @@ function fntDelInfo(idlineaproducto) {
 function fntEstructuraLinea(idLinea) {
   document.querySelector("#idLineaEstructura").value = idLinea;
   $("#modalEstructuraLinea").modal("show");
-
-  cargarProductos(idLinea);
-  cargarServicios(idLinea);
-  cargarComponentes(idLinea);
-  cargarHerramientas(idLinea);
+  cargarSublineas(idLinea);
 }
 
-function cargarProductos(idLinea) {
-  fetch(base_url + "/Inv_lineasdproducto/getProductos/" + idLinea)
-    .then(res => res.json())
-    .then(data => {
+function cargarSublineas(idLinea) {
+  fetch(base_url + "/Inv_lineasdproducto/getSublineas/" + idLinea)
+    .then((res) => res.json())
+    .then((data) => {
       let html = "";
-      data.forEach(p => {
+
+      data.forEach((s) => {
         html += `
           <tr>
-            <td>${p.clave}</td>
-            <td>${p.nombre}</td>
-            <td>${p.estado}</td>
+            <td>${s.cve_sublinea_producto}</td>
+            <td>${s.descripcion}</td>
+            <td>${s.estado == 2 ? "Activo" : "Inactivo"}</td>
             <td>
-              <button class="btn btn-sm btn-warning">✏</button>
-              <button class="btn btn-sm btn-danger">🗑</button>
+              <button class="btn btn-sm btn-warning" onclick="editarSublinea(${s.idsublineaproducto})">✏</button>
+              <button class="btn btn-sm btn-danger" onclick="eliminarSublinea(${s.idsublineaproducto})">🗑</button>
             </td>
           </tr>
         `;
       });
-      document.querySelector("#tbodyProductos").innerHTML = html;
+
+      document.querySelector("#tbodySublineas").innerHTML = html;
     });
 }
-function cargarServicios(idLinea) {
-  fetch(base_url + "/Inv_lineasdproducto/getServicios/" + idLinea)
-    .then(res => res.json())
-    .then(data => {
-      let html = "";
-      data.forEach(p => {
-        html += `
-          <tr>
-            <td>${p.clave}</td>
-            <td>${p.nombre}</td>
-            <td>${p.estado}</td>
-            <td>
-              <button class="btn btn-sm btn-warning">✏</button>
-              <button class="btn btn-sm btn-danger">🗑</button>
-            </td>
-          </tr>
-        `;
+
+function nuevoSublinea() {
+  document.querySelector("#formSublineaContainer").classList.remove("d-none");
+
+  document.querySelector("#sub_cve").value = "";
+  document.querySelector("#sub_desc").value = "";
+}
+
+function guardarSublinea() {
+  let cve = document.querySelector("#sub_cve").value.trim();
+  let desc = document.querySelector("#sub_desc").value.trim();
+  let idLinea = document.querySelector("#idLineaEstructura").value;
+
+  if (cve === "" || desc === "") {
+    Swal.fire("Atención", "Todos los campos son obligatorios", "warning");
+    return;
+  }
+
+  fetch(base_url + "/Inv_lineasdproducto/setSublinea", {
+    method: "POST",
+    body: new URLSearchParams({
+      lineaproductoid: idLinea,
+      cve: cve,
+      descripcion: desc,
+    }),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.status) {
+        Swal.fire("Correcto", data.msg, "success");
+
+        // refrescar tabla
+        cargarSublineas(idLinea);
+
+        // ocultar form
+        document
+          .querySelector("#formSublineaContainer")
+          .classList.add("d-none");
+      } else {
+        Swal.fire("Error", data.msg, "error");
+      }
+    });
+}
+
+function editarSublinea(id) {
+  let fila = event.target.closest("tr");
+
+  let cve = fila.children[0].innerText;
+  let desc = fila.children[1].innerText;
+
+  fila.innerHTML = `
+    <td><input class="form-control form-control-sm" id="edit_cve_${id}" value="${cve}"></td>
+    <td><input class="form-control form-control-sm" id="edit_desc_${id}" value="${desc}"></td>
+    <td>EDITANDO</td>
+    <td>
+      <button class="btn btn-sm btn-success" onclick="actualizarSublinea(${id})">💾</button>
+      <button class="btn btn-sm btn-secondary" onclick="recargarSublineas()">❌</button>
+    </td>
+  `;
+}
+
+function actualizarSublinea(id) {
+  let cve = document.querySelector(`#edit_cve_${id}`).value.trim();
+  let desc = document.querySelector(`#edit_desc_${id}`).value.trim();
+  let idLinea = document.querySelector("#idLineaEstructura").value;
+
+  if (cve === "" || desc === "") {
+    Swal.fire("Atención", "Campos obligatorios", "warning");
+    return;
+  }
+
+  fetch(base_url + "/Inv_lineasdproducto/updateSublinea", {
+    method: "POST",
+    body: new URLSearchParams({
+      idsublinea: id,
+      cve: cve,
+      descripcion: desc,
+    }),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.status) {
+        Swal.fire("Correcto", data.msg, "success");
+        cargarSublineas(idLinea);
+      } else {
+        Swal.fire("Error", data.msg, "error");
+      }
+    });
+}
+
+function recargarSublineas() {
+  let idLinea = document.querySelector("#idLineaEstructura").value;
+  cargarSublineas(idLinea);
+}
+
+function eliminarSublinea(id) {
+  Swal.fire({
+    title: "¿Eliminar?",
+    text: "Se desactivará la sublínea",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar"
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+
+    fetch(base_url + "/Inv_lineasdproducto/deleteSublinea", {
+      method: "POST",
+      body: new URLSearchParams({
+        idsublinea: id
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        let idLinea = document.querySelector("#idLineaEstructura").value;
+
+        if (data.status) {
+          Swal.fire("Correcto", data.msg, "success");
+          cargarSublineas(idLinea);
+        } else {
+          Swal.fire("Error", data.msg, "error");
+        }
       });
-      document.querySelector("#tbodyServicios").innerHTML = html;
-    });
+  });
 }
-function cargarComponentes(idLinea) {
-  fetch(base_url + "/Inv_lineasdproducto/getComponentes/" + idLinea)
-    .then(res => res.json())
-    .then(data => {
-      let html = "";
-      data.forEach(p => {
-        html += `
-          <tr>
-            <td>${p.clave}</td>
-            <td>${p.nombre}</td>
-            <td>${p.estado}</td>
-            <td>
-              <button class="btn btn-sm btn-warning">✏</button>
-              <button class="btn btn-sm btn-danger">🗑</button>
-            </td>
-          </tr>
-        `;
-      });
-      document.querySelector("#tbodyComponentes").innerHTML = html;
-    });
-}
-function cargarHerramientas(idLinea) {
-  fetch(base_url + "/Inv_lineasdproducto/getHerramientas/" + idLinea)
-    .then(res => res.json())
-    .then(data => {
-      let html = "";
-      data.forEach(p => {
-        html += `
-          <tr>
-            <td>${p.clave}</td>
-            <td>${p.nombre}</td>
-            <td>${p.estado}</td>
-            <td>
-              <button class="btn btn-sm btn-warning">✏</button>
-              <button class="btn btn-sm btn-danger">🗑</button>
-            </td>
-          </tr>
-        `;
-      });
-      document.querySelector("#tbodyHerramientas").innerHTML = html;
-    });
-}
-
-function nuevoHijo(tipo) {
-  document.querySelector("#tipoHijo").value = tipo;
-  document.querySelector("#nombreHijo").value = "";
-  $("#modalHijo").modal("show");
-}
-
-
-
-
-
