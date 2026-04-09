@@ -87,6 +87,10 @@ const MIMONEDAS = 70;
 const MIASIGNACIONESINV = 71;
 const MIREPORTES = 72;
 const MIMOVIMIENTOSALMACEN = 73;
+const MISEDES = 67;
+const MIZONAS = 68;
+const MIUBICACIONES = 69;
+const MIPICKING = 74;
 
 //Submodulos Capacidad
 
@@ -97,7 +101,7 @@ const MCPLANTAS = 29;
 //Submodulos Proveedores
 const MPPROVEEDORES = 35;
 
-//Submodulos Clientes 
+//Submodulos Clientes
 const MCCLIENTES = 39;
 const MCMARCAS = 40;
 const MCDEPARTAMENTOS = 41;
