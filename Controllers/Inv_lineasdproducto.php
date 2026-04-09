@@ -101,7 +101,7 @@ class Inv_lineasdproducto extends Controllers
                 }
                 if ($_SESSION['permisosMod']['u']) {
 
-                    $btnTree = '<button class="btn btn-sm btn-soft-secondary edit-list" title="Estructura" onClick="fntEstructuraLinea(' . $arrData[$i]['idlineaproducto'] . ')"><i class="ri-node-tree"></i></button>';
+                    $btnTree = '<button class="btn btn-sm btn-soft-secondary edit-list" title="Agregar sublíneas" onClick="fntEstructuraLinea(' . $arrData[$i]['idlineaproducto'] . ')"><i class="ri-node-tree"></i></button>';
                 }
                 $arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . ' ' . $btnTree . '</div>';
             }
@@ -163,6 +163,71 @@ class Inv_lineasdproducto extends Controllers
         die();
     }
 
+    public function getSublineas($idLinea)
+    {
+        $arrData = $this->model->selectSublineas($idLinea);
+        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    public function setSublinea()
+    {
+        if ($_POST) {
+            $linea = intval($_POST['lineaproductoid']);
+            $cve = strClean($_POST['cve']);
+            $desc = strClean($_POST['descripcion']);
+            $fecha = date('Y-m-d H:i:s');
+
+            $request = $this->model->insertSublinea($linea, $cve, $desc, $fecha, 2);
+
+            if ($request > 0) {
+                $arrResponse = ['status' => true, 'msg' => 'Sublínea creada'];
+            } else if ($request == 'exist') {
+                $arrResponse = ['status' => false, 'msg' => 'Ya existe'];
+            } else {
+                $arrResponse = ['status' => false, 'msg' => 'Error'];
+            }
+
+            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        }
+        die();
+    }
+
+    public function updateSublinea()
+    {
+        if ($_POST) {
+            $id = intval($_POST['idsublinea']);
+            $cve = strClean($_POST['cve']);
+            $desc = strClean($_POST['descripcion']);
+
+            $request = $this->model->updateSublinea($id, $cve, $desc, 2);
+
+            if ($request) {
+                $arrResponse = ['status' => true, 'msg' => 'Actualizado correctamente'];
+            } else {
+                $arrResponse = ['status' => false, 'msg' => 'Error al actualizar'];
+            }
+
+            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        }
+        die();
+    }
+
+    public function deleteSublinea()
+    {
+        if ($_POST) {
+            $id = intval($_POST['idsublinea']);
+
+            $request = $this->model->deleteSublinea($id);
+
+            if ($request) {
+                $arrResponse = ['status' => true, 'msg' => 'Sublínea eliminada'];
+            } else {
+                $arrResponse = ['status' => false, 'msg' => 'Error al eliminar'];
+            }
+
+            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        }
+        die();
+    }
 }
-
-

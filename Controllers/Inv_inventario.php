@@ -131,7 +131,7 @@ class Inv_inventario extends Controllers
 					// INSERTAR IMPUESTO
 					// =========================
 
-					if ($request > 0) {
+					if (is_numeric($request) && $request > 0) {
 						$this->model->insertInventarioImpuesto($request, $idimpuesto);
 					}
 
@@ -182,6 +182,52 @@ class Inv_inventario extends Controllers
 			}
 
 			// =========================
+			// 🔥 AQUÍ VA LO DE IMÁGENES
+			// =========================
+			$idFinal = ($option == 1) ? $request : $idinventario;
+
+			if ($idFinal > 0) {
+
+				if (!empty($_FILES['imagenes']['name'][0])) {
+
+					$ruta = __DIR__ . "/../Assets/uploads/inventario_imagenes/";
+
+					// if (!file_exists($ruta)) {
+					// 	mkdir($ruta, 0777, true);
+					// }
+
+					// [DevSecOps] Permisos 0750: Solo el owner (www-data) y el grupo pueden leer/escribir.
+					if (!is_dir($ruta) && !mkdir($ruta, 0750, true) && !is_dir($ruta)) {
+						// Falla silenciosa o manejo de error a nivel de OS si no se puede crear el directorio
+						return;
+					}
+
+					$clave = preg_replace('/[^A-Za-z0-9_\-]/', '', $cve_articulo);
+
+					foreach ($_FILES['imagenes']['tmp_name'] as $key => $tmp) {
+
+						if ($_FILES['imagenes']['error'][$key] === 0) {
+
+							$ext = pathinfo($_FILES['imagenes']['name'][$key], PATHINFO_EXTENSION);
+							$fecha = date("Ymd_His") . "_" . substr(microtime(), 2, 3);
+							$nombre = $clave . "_" . $fecha . "." . $ext;
+
+							$destino = $ruta . $nombre;
+
+							if (move_uploaded_file($tmp, $destino)) {
+
+								// 🔥 AQUI EL CAMBIO IMPORTANTE
+								$this->model->insertImagenInventario($idFinal, $nombre);
+							} else {
+								error_log("❌ Error al mover archivo: " . $tmp);
+							}
+						}
+					}
+				}
+			}
+
+
+			// =========================
 			// INICIALIZAR MULTIALMACÉN CON EXISTENCIA INICIAL
 			// =========================
 			if (
@@ -217,7 +263,10 @@ class Inv_inventario extends Controllers
 					'status' => false,
 					'msg' => 'La clave del artículo ya existe'
 				];
-			} elseif ($request > 0) {
+			} elseif (
+				($option == 1 && is_numeric($request) && $request > 0) ||  // INSERT
+				($option == 2 && $request)                                 // UPDATE
+			) {
 
 				$arrResponse = [
 					'status' => true,
@@ -287,7 +336,7 @@ class Inv_inventario extends Controllers
                                 <i class="ri-delete-bin-5-fill"></i>
                             </button>';
 				}
-				if (in_array($tipoRaw, ['P', 'C', 'H'])) {
+				if (in_array($tipoRaw, ['P', 'C', 'H', 'K'])) {
 					$btnConfig = '<button class="btn btn-sm btn-soft-primary" title="Configurar" onClick="fntConfigInventario(' . $arrData[$i]['idinventario'] . ')"><i class="ri-settings-3-fill"></i></button>';
 				}
 
@@ -310,19 +359,27 @@ class Inv_inventario extends Controllers
 	public function getInventario($idinventario)
 	{
 		if ($_SESSION['permisosMod']['r']) {
+
 			$intidalmacen = intval($idinventario);
 
 			if ($intidalmacen > 0) {
+
 				$arrData = $this->model->selectInventario($intidalmacen);
 
 				if (empty($arrData)) {
+
 					$arrResponse = [
 						'status' => false,
 						'msg' => 'Datos no encontrados.'
 					];
 				} else {
+
 					$principal = $arrData[0];
 					$principal['claves'] = $arrData;
+
+					// 🔥 NUEVO: TRAER IMÁGENES
+					$imagenes = $this->model->selectImagenesInventario($intidalmacen);
+					$principal['imagenes'] = $imagenes;
 
 					$arrResponse = [
 						'status' => true,
@@ -442,6 +499,7 @@ class Inv_inventario extends Controllers
 		if ($_POST) {
 
 			$inventarioid = intval($_POST['inventarioid'] ?? 0);
+			$kitid = intval($_POST['kitid'] ?? 0);
 			$precio = floatval($_POST['precio'] ?? 0);
 			$descripcion = strClean($_POST['descripcion'] ?? '');
 			$componentes = $_POST['componentes'] ?? [];
@@ -454,34 +512,44 @@ class Inv_inventario extends Controllers
 				die();
 			}
 
-			// 🔹 INSERT HEADER
-			$kitConfigId = $this->model->insertKitConfig(
-				$inventarioid,
-				$precio,
-				$descripcion
-			);
+			// 🔍 BUSCAR SI YA EXISTE CONFIG
+			$existing = $this->model->selectKitConfigByInventario($inventarioid);
 
-			if ($kitConfigId <= 0) {
-				echo json_encode([
-					'status' => false,
-					'msg' => 'No se pudo guardar la configuración del kit'
-				]);
-				die();
+			if (!empty($existing)) {
+
+				// 🔥 YA EXISTE → USAR ESE ID
+				$kitid = $existing['idkitconfig'];
+
+				$this->model->updateKitConfig($kitid, $precio, $descripcion);
+			} else {
+
+				// 🔥 NO EXISTE → CREAR NUEVO
+				$kitid = $this->model->insertKitConfig(
+					$inventarioid,
+					$precio,
+					$descripcion
+				);
 			}
 
-			// 🔹 INSERT DETALLE
+			$ids = [];
+
+			foreach ($componentes as $item) {
+				$ids[] = intval($item['idinventario']);
+			}
+
+			$this->model->deleteKitDetalleExcepto($kitid, $ids);
+
+			// 🔥 INSERTAR NUEVO DETALLE
 			foreach ($componentes as $item) {
 
 				$productoId = intval($item['idinventario'] ?? 0);
 				$cantidad   = floatval($item['cantidad'] ?? 0);
 				$porcentaje = floatval($item['porcentaje'] ?? 0);
 
-				if ($productoId <= 0 || $cantidad <= 0) {
-					continue;
-				}
+				if ($productoId <= 0 || $cantidad <= 0) continue;
 
 				$this->model->insertKitDetalle(
-					$kitConfigId,
+					$kitid,
 					$productoId,
 					$cantidad,
 					$porcentaje
@@ -490,8 +558,30 @@ class Inv_inventario extends Controllers
 
 			echo json_encode([
 				'status' => true,
-				'msg' => 'Configuración del kit guardada correctamente'
+				'msg' => 'Kit actualizado correctamente'
 			]);
+		}
+		die();
+	}
+
+	public function getKitCompleto($idinventario)
+	{
+		if ($_SESSION['permisosMod']['r']) {
+
+			$data = $this->model->selectKitCompleto((int)$idinventario);
+
+			if (empty($data)) {
+				echo json_encode([
+					"status" => false,
+					"msg" => "Kit sin configuración"
+				]);
+				die();
+			}
+
+			echo json_encode([
+				"status" => true,
+				"data" => $data
+			], JSON_UNESCAPED_UNICODE);
 		}
 		die();
 	}
@@ -574,7 +664,7 @@ class Inv_inventario extends Controllers
 				$estado
 			);
 
-			if ($request > 0) {
+			if (is_numeric($request) && $request > 0) {
 				$arrResponse = ['status' => true, 'msg' => 'Moneda asignada correctamente'];
 			} else {
 				$arrResponse = ['status' => false, 'msg' => 'Error al guardar moneda'];
@@ -626,7 +716,7 @@ class Inv_inventario extends Controllers
 				$estado
 			);
 
-			if ($request > 0) {
+			if (is_numeric($request) && $request > 0) {
 				$arrResponse = ['status' => true, 'msg' => 'Precio asignado correctamente'];
 			} else {
 				$arrResponse = ['status' => false, 'msg' => 'Error al guardar precio'];
@@ -662,19 +752,19 @@ class Inv_inventario extends Controllers
 
 		if ($_POST) {
 
-			if (empty($_POST['inventarioid']) || empty($_POST['idlineaproducto'])) {
+			if (empty($_POST['inventarioid']) || empty($_POST['sublineaproductoid'])) {
 				echo json_encode(['status' => false, 'msg' => 'Datos obligatorios']);
 				die();
 			}
 
 			$inventarioid = intval($_POST['inventarioid']);
-			$idlineaproducto = intval($_POST['idlineaproducto']);
+			$sublinea = intval($_POST['sublineaproductoid']);
 			$estado = 2;
 			$fecha = date('Y-m-d H:i:s');
 
 			$request = $this->model->insertInventarioLinea(
 				$inventarioid,
-				$idlineaproducto,
+				$sublinea,
 				$fecha,
 				$estado
 			);
@@ -685,7 +775,7 @@ class Inv_inventario extends Controllers
 					'status' => false,
 					'msg' => 'Este producto ya tiene una línea asignada'
 				];
-			} elseif ($request > 0) {
+			} elseif (is_numeric($request) && $request > 0) {
 
 				$arrResponse = [
 					'status' => true,
@@ -709,11 +799,11 @@ class Inv_inventario extends Controllers
 		if ($_POST) {
 
 			$id_inv_linea = intval($_POST['id_inv_linea']);
-			$idlineaproducto = intval($_POST['idlineaproducto']);
+			$sublinea = intval($_POST['sublineaproductoid']);
 
 			$request = $this->model->updateInventarioLinea(
 				$id_inv_linea,
-				$idlineaproducto
+				$sublinea
 			);
 
 			if ($request) {
@@ -731,6 +821,22 @@ class Inv_inventario extends Controllers
 			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 			die();
 		}
+	}
+
+	public function getSelectSublineas()
+	{
+		$arrData = $this->model->selectSublineas();
+
+		$html = '<option value="">Seleccione</option>';
+
+		foreach ($arrData as $row) {
+			$html .= '<option value="' . $row['idsublineaproducto'] . '">'
+				. $row['linea'] . ' - ' . $row['sublinea'] .
+				'</option>';
+		}
+
+		echo $html;
+		die();
 	}
 
 
@@ -1073,6 +1179,84 @@ class Inv_inventario extends Controllers
 			'status' => true,
 			'data' => $data
 		]);
+		die();
+	}
+
+	// ================= ubicaciones  =================
+	//----------------------------- SELECT
+	public function getSelectUbicaciones()
+	{
+		$data = $this->model->selectUbicacionesFull();
+
+		$html = '<option value="">Seleccione ubicación</option>';
+
+		foreach ($data as $row) {
+			$html .= '<option value="' . $row['idubicaciones'] . '">'
+				. $row['nombre'] . '</option>';
+		}
+
+		echo $html;
+		die();
+	}
+
+
+	//----------------------------- INSERT
+	public function setUbicacion()
+	{
+		header('Content-Type: application/json');
+
+		if (empty($_POST['inventarioid']) || empty($_POST['ubicacionid'])) {
+			echo json_encode(['status' => false, 'msg' => 'Datos incompletos']);
+			die();
+		}
+
+		$inventarioid = intval($_POST['inventarioid']);
+		$ubicacionid = intval($_POST['ubicacionid']);
+		$fecha = date('Y-m-d H:i:s');
+
+		$resp = $this->model->insertInventarioUbicacion(
+			$inventarioid,
+			$ubicacionid,
+			$fecha,
+			2
+		);
+
+		if ($resp === "exist") {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'Esta ubicación ya está asignada'
+			]);
+		} elseif ($resp > 0) {
+			echo json_encode([
+				'status' => true,
+				'msg' => 'Ubicación asignada correctamente'
+			]);
+		} elseif ($resp === "ocupada") {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'La ubicación ya está ocupada'
+			]);
+		} else {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'Error al guardar'
+			]);
+		}
+
+		die();
+	}
+
+
+	//----------------------------- TABLA
+	public function getUbicacionesAsignadas($idinventario)
+	{
+		$data = $this->model->getUbicacionesAsignadas($idinventario);
+
+		echo json_encode([
+			'status' => true,
+			'data' => $data
+		]);
+
 		die();
 	}
 

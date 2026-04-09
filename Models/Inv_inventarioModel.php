@@ -313,22 +313,25 @@ WHERE idinventario = ?";
        KIT
     =============================== */
     public function insertKitDetalle(
-        int $kitid,
-        int $productoId,
-        float $cantidad,
-        float $porcentaje
-    ) {
-        $sql = "INSERT INTO wms_kit_detalle
-                (idkitconfig, producto_id, cantidad, porcentaje)
-                VALUES (?, ?, ?, ?)";
+    int $kitid,
+    int $productoId,
+    float $cantidad,
+    float $porcentaje
+) {
+    $sql = "INSERT INTO wms_kit_detalle
+        (idkitconfig, producto_id, cantidad, porcentaje)
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            cantidad = VALUES(cantidad),
+            porcentaje = VALUES(porcentaje)";
 
-        return $this->insert($sql, [
-            $kitid,
-            $productoId,
-            $cantidad,
-            $porcentaje
-        ]);
-    }
+    return $this->insert($sql, [
+        $kitid,
+        $productoId,
+        $cantidad,
+        $porcentaje
+    ]);
+}
 
     public function insertKitConfig(
         int $inventarioid,
@@ -349,11 +352,95 @@ WHERE idinventario = ?";
     public function selectInventariosPC_H()
     {
         $sql = "SELECT idinventario, cve_articulo, descripcion 
-            FROM inv_inventario 
+            FROM wms_inventario
             WHERE tipo_elemento IN ('P','C','H') 
             AND estado != 0";
         return $this->select_all($sql);
     }
+
+    public function selectKitCompleto(int $inventarioid)
+    {
+        $sql = "SELECT kc.idkitconfig, kc.precio, kc.descripcion
+            FROM wms_kit_config kc
+            WHERE kc.inventarioid = $inventarioid
+            AND kc.estado = 2
+            LIMIT 1";
+
+        $config = $this->select($sql);
+
+        if (empty($config)) return [];
+
+        $kitid = $config['idkitconfig'];
+
+        $sqlDetalle = "SELECT kd.producto_id, kd.cantidad, kd.porcentaje,
+                          i.cve_articulo, i.descripcion
+                   FROM wms_kit_detalle kd
+                   INNER JOIN wms_inventario i 
+                        ON i.idinventario = kd.producto_id
+                   WHERE kd.idkitconfig = $kitid";
+
+        $detalle = $this->select_all($sqlDetalle);
+
+        return [
+            "config" => $config,
+            "detalle" => $detalle
+        ];
+    }
+
+
+    public function updateKitConfig(int $kitid, float $precio, string $descripcion)
+    {
+        $sql = "UPDATE wms_kit_config 
+            SET precio = ?, descripcion = ?
+            WHERE idkitconfig = ?";
+        return $this->update($sql, [$precio, $descripcion, $kitid]);
+    }
+
+    public function deleteKitDetalleExcepto(int $kitid, array $ids)
+{
+    $kitid = (int)$kitid;
+
+    if (empty($ids)) {
+        return $this->delete("DELETE FROM wms_kit_detalle WHERE idkitconfig = $kitid");
+    }
+
+    $ids = array_map('intval', $ids);
+    $idsStr = implode(',', $ids);
+
+    $sql = "DELETE FROM wms_kit_detalle
+            WHERE idkitconfig = $kitid
+            AND producto_id NOT IN ($idsStr)";
+
+    return $this->delete($sql);
+}
+
+public function selectKitConfigByInventario(int $inventarioid)
+{
+    $sql = "SELECT idkitconfig
+            FROM wms_kit_config
+            WHERE inventarioid = $inventarioid
+            AND estado = 2
+            LIMIT 1";
+
+    return $this->select($sql);
+}
+
+public function insertImagenInventario($inventarioid, $nombre)
+{
+    $sql = "INSERT INTO wms_fotos_inventario (inventarioid, foto) VALUES (?, ?)";
+    $arrData = array($inventarioid, $nombre);
+    return $this->insert($sql, $arrData);
+}
+
+public function selectImagenesInventario(int $inventarioid)
+{
+    $sql = "SELECT foto 
+            FROM wms_fotos_inventario 
+            WHERE inventarioid = $inventarioid";
+
+    return $this->select_all($sql);
+}
+
 
     //--------------------------------------------INVENTARIO MONEDAS
     public function setMonedaInventario(int $inventarioid, int $idmoneda)
@@ -434,39 +521,34 @@ WHERE idinventario = ?";
 
 
     //-------------------------------------------- INVENTARIO LINEA
-    public function insertInventarioLinea($inventarioid, $idlineaproducto, $fecha, $estado)
+    public function insertInventarioLinea($inventarioid, $sublineaproductoid, $fecha, $estado)
     {
         $inventarioid = intval($inventarioid);
-        $idlineaproducto = intval($idlineaproducto);
-        $estado = intval($estado);
+        $sublineaproductoid = intval($sublineaproductoid);
 
-        // 🔹 VALIDAR SI YA EXISTE UNA ACTIVA
-        $exist = $this->select(
-            "SELECT id_inv_linea 
-         FROM wms_inventario_linea 
-         WHERE inventarioid = $inventarioid 
-         AND estado = 2"
-        );
+        $exist = $this->select("
+        SELECT id_inv_linea 
+        FROM wms_inventario_linea 
+        WHERE inventarioid = $inventarioid 
+        AND estado = 2
+    ");
 
         if (!empty($exist)) {
             return "exist";
         }
 
         $sql = "INSERT INTO wms_inventario_linea 
-            (inventarioid, idlineaproducto, fecha_creacion, estado) 
-            VALUES ($inventarioid, $idlineaproducto, '$fecha', $estado)";
+        (inventarioid, sublineaproductoid, fecha_creacion, estado) 
+        VALUES ($inventarioid, $sublineaproductoid, '$fecha', $estado)";
 
         return $this->insert($sql, []);
     }
 
-    public function updateInventarioLinea($id_inv_linea, $idlineaproducto)
+    public function updateInventarioLinea($id_inv_linea, $sublineaproductoid)
     {
-        $id_inv_linea = intval($id_inv_linea);
-        $idlineaproducto = intval($idlineaproducto);
-
         $sql = "UPDATE wms_inventario_linea 
-            SET idlineaproducto = $idlineaproducto
-            WHERE id_inv_linea = $id_inv_linea";
+        SET sublineaproductoid = $sublineaproductoid
+        WHERE id_inv_linea = $id_inv_linea";
 
         return $this->update($sql, []);
     }
@@ -480,20 +562,37 @@ WHERE idinventario = ?";
         return $this->select_all($sql);
     }
 
+    public function selectSublineas()
+    {
+        $sql = "SELECT 
+        sl.idsublineaproducto,
+        sl.descripcion AS sublinea,
+        lp.descripcion AS linea
+    FROM wms_sublinea_producto sl
+    INNER JOIN wms_linea_producto lp 
+        ON sl.lineaproductoid = lp.idlineaproducto
+    WHERE sl.estado = 2";
+
+        return $this->select_all($sql);
+    }
+
     public function getLineasAsignadas($idinventario)
     {
-        $idinventario = intval($idinventario);
-
         $sql = "SELECT 
-            il.id_inv_linea,
-            l.idlineaproducto AS idlinea, 
-            l.descripcion, 
-            il.fecha_creacion, 
-            il.estado
-        FROM wms_linea_producto l
-        INNER JOIN wms_inventario_linea il 
-            ON l.idlineaproducto = il.idlineaproducto
-        WHERE il.inventarioid = $idinventario";
+        il.id_inv_linea,
+        sl.idsublineaproducto,
+        sl.lineaproductoid AS idlinea, -- 🔥 AGREGA ESTO
+        sl.descripcion AS sublinea,
+        lp.descripcion AS linea,
+        il.fecha_creacion,
+        il.estado
+    FROM wms_inventario_linea il
+    INNER JOIN wms_sublinea_producto sl 
+        ON il.sublineaproductoid = sl.idsublineaproducto
+    INNER JOIN wms_linea_producto lp 
+        ON sl.lineaproductoid = lp.idlineaproducto
+    WHERE il.inventarioid = $idinventario";
+
         return $this->select_all($sql);
     }
 
@@ -669,5 +768,100 @@ WHERE idinventario = ?";
         }
 
         return $this->select_all($query);
+    }
+
+    //----------------------------- UBICACIONES INVENTARIO
+
+    public function insertInventarioUbicacion($inventarioid, $ubicacionid, $fecha, $estado)
+    {
+        $inventarioid = intval($inventarioid);
+        $ubicacionid = intval($ubicacionid);
+
+        // 🔹 VALIDAR DUPLICADO
+        $exist = $this->select("
+        SELECT idubicacionasignada 
+        FROM wms_ubicaciones_asignadas
+        WHERE inventarioid = $inventarioid 
+        AND ubicacionesid = $ubicacionid
+    ");
+
+        if (!empty($exist)) {
+            return "exist";
+        }
+
+        // 🔹 VALIDAR SI ESTÁ OCUPADA
+        $ubicacion = $this->select("
+        SELECT estado 
+        FROM wms_ubicaciones 
+        WHERE idubicaciones = $ubicacionid
+    ");
+
+        if (!empty($ubicacion) && $ubicacion['estado'] != 2) {
+            return "ocupada";
+        }
+
+        // 🔹 INSERT
+        $sql = "INSERT INTO wms_ubicaciones_asignadas 
+        (inventarioid, ubicacionesid, fecha_creacion) 
+        VALUES ($inventarioid, $ubicacionid, '$fecha')";
+
+        $insert = $this->insert($sql, []);
+
+        if ($insert > 0) {
+
+            // 🔥 CAMBIAR A OCUPADA
+            $sqlUpdate = "UPDATE wms_ubicaciones 
+                      SET estado = 1 
+                      WHERE idubicaciones = $ubicacionid";
+
+            $this->update($sqlUpdate, []);
+
+            return $insert;
+        }
+
+        return 0;
+    }
+
+
+    // 🔹 SELECT PARA DROPDOWN (TEXTO COMPLETO)
+    public function selectUbicacionesFull()
+    {
+        $sql = "SELECT 
+        u.idubicaciones,
+        CONCAT(
+            s.descripcion, ' - ',
+            z.descripcion, ' - ',
+            'P', u.pasillo, ' N', u.nivel, ' ', u.lugar
+        ) AS nombre
+    FROM wms_ubicaciones u
+    INNER JOIN wms_zonas z ON u.zonaid = z.idzona
+    INNER JOIN wms_sedes s ON z.sedeid = s.idsede
+    WHERE u.estado = 2
+    ORDER BY s.descripcion, z.descripcion";
+
+        return $this->select_all($sql);
+    }
+
+
+    // 🔹 TABLA
+    public function getUbicacionesAsignadas($idinventario)
+    {
+        $idinventario = intval($idinventario);
+
+        $sql = "SELECT 
+        ua.idubicacionasignada,
+        CONCAT(
+            s.descripcion, ' - ',
+            z.descripcion, ' - ',
+            'P', u.pasillo, ' N', u.nivel, ' ', u.lugar
+        ) AS ubicacion,
+        ua.fecha_creacion
+    FROM wms_ubicaciones_asignadas ua
+    INNER JOIN wms_ubicaciones u ON ua.ubicacionesid = u.idubicaciones
+    INNER JOIN wms_zonas z ON u.zonaid = z.idzona
+    INNER JOIN wms_sedes s ON z.sedeid = s.idsede
+    WHERE ua.inventarioid = $idinventario";
+
+        return $this->select_all($sql);
     }
 }

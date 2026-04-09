@@ -29,13 +29,13 @@
                 <div class="card-header">
                     <ul class="nav nav-tabs-custom card-header-tabs border-bottom-0 " role="tablist" id="nav-tab">
                         <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#listlineasproductos" role="tab">
-                                LÍNEAS DE PRODUCTOS
+                            <a class="nav-link active" data-bs-toggle="tab" href="#listsedes" role="tab">
+                                SEDES
                             </a>
                         </li>
                         <?php if ($_SESSION['permisosMod']['w']) { ?>
                             <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#agregarlineasproducto" role="tab">
+                                <a class="nav-link" data-bs-toggle="tab" href="#agregarSede" role="tab">
                                     NUEVO
                                 </a>
                             </li>
@@ -45,9 +45,9 @@
                 <!-- end card header -->
                 <div class="card-body">
                     <div class="tab-content">
-                        <div class="tab-pane active" id="listlineasproductos" role="tabpanel">
+                        <div class="tab-pane active" id="listsedes" role="tabpanel">
 
-                            <table id="tableLineasProducto"
+                            <table id="tableSedes"
                                 class="table table-bordered dt-responsive nowrap table-striped align-middle"
                                 style="width:100%">
                                 <thead>
@@ -56,7 +56,7 @@
                                         <th>DESCRIPCIÓN</th>
                                         <th>FECHA CREACIÓN</th>
                                         <th>ESTATUS</th>
-                                        <th>ACCIONES</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -70,20 +70,20 @@
 
 
 
-                        <div class="tab-pane" id="agregarlineasproducto" role="tabpanel">
-                            <form id="formLineasProducto" autocomplete="off" class="form-steps was-validated" autocomplete="off">
-                                <input type="hidden" id="idlineaproducto" name="idlineaproducto">
+                        <div class="tab-pane" id="agregarSede" role="tabpanel">
+                            <form id="formSedes" autocomplete="off" class="form-steps was-validated" autocomplete="off">
+                                <input type="hidden" id="idsede" name="idsede">
                                 <div class="row">
 
                                     <!-- CLAVE -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="clave-linea-producto-input">CLAVE</label>
+                                            <label class="form-label" for="clave-sede-input">CLAVE</label>
                                             <div class="input-group mb-3">
-                                                <span class="input-group-text" id="clave-linea-producto-addon">Clave Lin. Prod</span>
+                                                <span class="input-group-text" id="clave-sede-addon">Clave sed.</span>
                                                 <input type="text" class="form-control"
-                                                    placeholder="Ingresa la clave" id="clave-linea-producto-input" name="clave-linea-producto-input"
-                                                    aria-describedby="clave-linea-producto-addon" required>
+                                                    placeholder="Ingresa la clave" id="clave-sede-input" name="clave-sede-input"
+                                                    aria-describedby="clave-sede-addon" required>
                                                 <div class="invalid-feedback">El campo clave es obligatorio</div>
                                             </div>
                                         </div>
@@ -104,19 +104,21 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <!-- DESCRIPCIÓN -->
+                                    <div class="mb-3">
+                                        <label class="form-label" for="descripcion-sede-textarea">DESCRIPCIÓN</label>
+                                        <div class="input-group mb-3">
+                                            <span class="input-group-text" id="descripcion-sede-addon">Desc.</span>
+                                            <textarea class="form-control" id="descripcion-sede-textarea" name="descripcion-sede-textarea"
+                                                placeholder="Ingresa una descripción" rows="3"
+                                                aria-describedby="descripcion-sede-addon" required></textarea>
+                                                <div class="invalid-feedback">El campo descripción es obligatorio</div>
+                                        </div>
+                                    </div>
+
                                 </div>
                                 <!-- end row -->
-
-                                <!-- DESCRIPCIÓN -->
-                                <div class="mb-3">
-                                    <label class="form-label" for="descripcion-linea-producto-textarea">DESCRIPCIÓN</label>
-                                    <div class="input-group mb-3">
-                                        <span class="input-group-text" id="descripcion-linea-producto-addon">Desc.</span>
-                                        <textarea class="form-control" id="descripcion-linea-producto-textarea" name="descripcion-linea-producto-textarea"
-                                            placeholder="Ingresa una descripción" rows="3"
-                                            aria-describedby="descripcion-linea-producto-addon"></textarea>
-                                    </div>
-                                </div>
 
                                 <div class="d-flex align-items-start gap-3 mt-4">
                                     <button type="submit" id="btnActionForm"
@@ -167,7 +169,7 @@
 
 
 
-<div class="modal fade" id="modalViewLineaProducto" tabindex="-1">
+<div class="modal fade" id="modalViewSede" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0">
             <div class="modal-header bg-primary-subtle p-3">
@@ -207,99 +209,8 @@
 
 
 
-<div class="modal fade" id="modalEstructuraLinea" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
 
-            <div class="modal-header">
-                <h5 class="modal-title">Estructura de línea</h5>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
 
-            <div class="modal-body">
-                <input type="hidden" id="idLineaEstructura">
-
-                <div id="formSublineaContainer" class="card mb-3 d-none">
-                    <div class="card-body">
-
-                        <div class="row">
-                            <div class="col-md-4">
-                                <label>Clave</label>
-                                <input type="text" id="sub_cve" class="form-control">
-                            </div>
-
-                            <div class="col-md-6">
-                                <label>Descripción</label>
-                                <input type="text" id="sub_desc" class="form-control">
-                            </div>
-
-                            <div class="col-md-2 d-flex align-items-end">
-                                <button class="btn btn-success w-100" onclick="guardarSublinea()">Guardar</button>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-
-                <ul class="nav nav-tabs mb-3">
-                    <li class="nav-item">
-                        <a class="nav-link active" data-bs-toggle="tab" href="#tabSublineas">Sublíneas</a>
-                    </li>
-                </ul>
-
-                <div class="tab-content">
-
-                    <div class="tab-pane fade show active" id="tabSublineas">
-
-                        <button class="btn btn-success mb-2" onclick="nuevoSublinea()">+ Nueva sublínea</button>
-
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Clave</th>
-                                    <th>Descripción</th>
-                                    <th>Estado</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbodySublineas"></tbody>
-                        </table>
-
-                    </div>
-
-                </div>
-            </div>
-
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="modalHijo" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-
-            <div class="modal-header">
-                <h5 class="modal-title">Nuevo elemento</h5>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-
-            <div class="modal-body">
-                <input type="hidden" id="tipoHijo">
-
-                <div class="mb-2">
-                    <label>Nombre</label>
-                    <input type="text" class="form-control" id="nombreHijo">
-                </div>
-            </div>
-
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button class="btn btn-primary" onclick="guardarHijo()">Guardar</button>
-            </div>
-
-        </div>
-    </div>
-</div>
 
 
 
