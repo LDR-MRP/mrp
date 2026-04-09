@@ -2,6 +2,8 @@ let tableInventarios;
 let currentInventarioId = null;
 let modoEdicion = false;
 let idLineaEditando = null;
+let inventarioActual = null;
+let inventarioIdReal = null;
 
 const rutas = {
   lineas: base_url + "/Inv_lineasdproducto/getSelectLineasProductos",
@@ -37,6 +39,48 @@ document.addEventListener("DOMContentLoaded", () => {
     language: {
       url: "https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json",
     },
+  });
+
+  //imagenes
+  const contenedor = document.getElementById("contenedorImagenes");
+  const btnAgregar = document.getElementById("btnAgregarImagen");
+
+  let maxImagenes = 3;
+
+  // 🔹 AGREGAR NUEVA IMAGEN
+  btnAgregar.addEventListener("click", () => {
+    const total = contenedor.querySelectorAll(".input-imagen").length;
+
+    if (total >= maxImagenes) {
+      Swal.fire(
+        "Límite alcanzado",
+        "Solo puedes subir máximo 3 imágenes",
+        "warning",
+      );
+      return;
+    }
+
+    const div = document.createElement("div");
+    div.classList.add("input-group", "mb-2");
+
+    div.innerHTML = `
+      <input type="file" name="imagenes[]" 
+        class="form-control input-imagen"
+        accept="image/*" capture="environment">
+
+      <button class="btn btn-danger btnEliminarImagen" type="button">
+        <i class="bi bi-trash"></i>
+      </button>
+    `;
+
+    contenedor.appendChild(div);
+  });
+
+  // 🔹 ELIMINAR IMAGEN
+  contenedor.addEventListener("click", (e) => {
+    if (e.target.closest(".btnEliminarImagen")) {
+      e.target.closest(".input-group").remove();
+    }
   });
 
   //limpiar modal
@@ -231,13 +275,36 @@ document.addEventListener("DOMContentLoaded", () => {
     tab.addEventListener("shown.bs.tab", (e) => {
       const targetId = e.target.getAttribute("href").replace("#", "");
       const config = tabsConfig[targetId];
+
+      // 🔥 SI CAMBIAS DE TAB → SIEMPRE LIMPIA
+      resetFormularioInventario();
+
+      // 🔥 SI CAMBIAS DE TAB → OCULTAR KIT SI NO ES KIT
+      if (targetId !== "agregarKit") {
+        const kitContainer = document.getElementById("kit_config_container");
+        if (kitContainer) {
+          kitContainer.style.display = "none";
+        }
+      }
+
+      // 🔥 CARGAS NORMALES
       if (config) {
         cargarLineas(config.selectLinea);
-        // 🔹 SOLO PRODUCTOS tienen almacén
+
         if (config.selectAlmacen) {
           cargarAlmacenes(config.selectAlmacen);
         }
-        cargarImpuestos("#idimpuesto"); // ✅
+
+        cargarImpuestos("#idimpuesto");
+      }
+
+      // 🔥 CONTROL DEL BOTÓN
+      const btnText = document.querySelector("#btnText");
+
+      if (modoEdicion) {
+        btnText.textContent = "ACTUALIZAR";
+      } else {
+        btnText.textContent = "GUARDAR";
       }
     });
   });
@@ -322,15 +389,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 🔹 KIT
             if (res.tipo === "K") {
-              // Mostrar contenedor de configuración
+              inventarioIdReal = res.id; // 🔥 GUARDAR ID REAL
+
               const container = document.getElementById("kit_config_container");
               const inputKitId = document.getElementById("kitid");
 
               if (container && inputKitId) {
-                inputKitId.value = res.id;
+                inputKitId.value = "";
                 container.style.display = "block";
-
-                // Scroll suave
                 container.scrollIntoView({ behavior: "smooth" });
               }
             }
@@ -361,6 +427,14 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     });
   });
+
+  const form = document.getElementById("formUbicacionInventario");
+
+  if (form) {
+    form.addEventListener("submit", guardarUbicacion);
+  } else {
+    console.warn("No se encontró el formulario de ubicaciones");
+  }
 
   // HABILITAR CLAVE ALTERNA
   document
@@ -503,52 +577,20 @@ document.addEventListener("DOMContentLoaded", () => {
     tbody.addEventListener("input", actualizarTotales);
   }
 
-  function actualizarTotales() {
-    let totalCantidad = 0;
-    let partidas = 0;
-
-    const filas = document.querySelectorAll("#tabla_componentes tbody tr");
-
-    // 🔹 Sumar cantidades
-    filas.forEach((tr) => {
-      const cantidad = parseFloat(tr.querySelector(".cantidad")?.value || 0);
-      if (cantidad > 0) {
-        totalCantidad += cantidad;
-        partidas++;
-      }
-    });
-
-    // 🔹 Calcular porcentajes
-    filas.forEach((tr) => {
-      const cantidad = parseFloat(tr.querySelector(".cantidad")?.value || 0);
-      const porcentajeInput = tr.querySelector(".porcentaje");
-
-      if (cantidad > 0 && totalCantidad > 0) {
-        const porcentaje = (cantidad / totalCantidad) * 100;
-        porcentajeInput.value = porcentaje.toFixed(2);
-      } else {
-        porcentajeInput.value = "0.00";
-      }
-    });
-
-    // 🔹 Mostrar totales
-    document.getElementById("total_partidas").textContent = partidas;
-    document.getElementById("total_kit").textContent = totalCantidad.toFixed(2);
-  }
-
   /* =============================
      GUARDAR CONFIGURACIÓN KIT
   ============================= */
   document.getElementById("btnGuardarKit").addEventListener("click", () => {
-    const kitid = document.getElementById("kitid").value;
-
-    if (!kitid) {
-      Swal.fire("Error", "Kit inválido", "error");
-      return;
-    }
+    const kitid = document.getElementById("kitid").value || null;
 
     const formData = new FormData();
-    formData.append("inventarioid", kitid);
+    const kitConfigId = document.getElementById("kitid").value;
+
+    if (kitConfigId) {
+      formData.append("kitid", kitConfigId);
+    }
+
+    formData.append("inventarioid", inventarioIdReal);
     formData.append("precio", document.getElementById("precio").value || 0);
     formData.append(
       "descripcion",
@@ -569,18 +611,37 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
 
-    fetch(base_url + "/Inv_inventario/setKitConfig", {
+    // 🔥 decidir si es editar o nuevo
+    const url = "/Inv_inventario/setKitConfig";
+
+    console.log("inventarioIdReal:", inventarioIdReal);
+    console.log("kitid:", document.getElementById("kitid").value);
+
+    fetch(base_url + url, {
       method: "POST",
       body: formData,
     })
-      .then((res) => res.json())
-      .then((res) => {
+      .then((res) => res.text()) // 🔥 CAMBIO IMPORTANTE
+      .then((text) => {
+        console.log("RESPUESTA DEL SERVIDOR:", text); // 🔥 VER ERROR REAL
+
+        let res;
+        try {
+          res = JSON.parse(text);
+        } catch (e) {
+          Swal.fire(
+            "Error",
+            "El servidor devolvió un error (no es JSON)",
+            "error",
+          );
+          return;
+        }
         if (res.status) {
           Swal.fire("Correcto", res.msg, "success");
 
           // 🔹 Limpiar formulario kit
           document.getElementById("precio").value = "";
-          document.getElementById("descripcion").value = "";
+          document.getElementById("descripcion_kit").value = "";
 
           // 🔹 Limpiar tabla de componentes
           const tbody = document.querySelector("#tabla_componentes tbody");
@@ -613,6 +674,39 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   });
 });
+
+function actualizarTotales() {
+  let totalCantidad = 0;
+  let partidas = 0;
+
+  const filas = document.querySelectorAll("#tabla_componentes tbody tr");
+
+  // 🔹 Sumar cantidades
+  filas.forEach((tr) => {
+    const cantidad = parseFloat(tr.querySelector(".cantidad")?.value || 0);
+    if (cantidad > 0) {
+      totalCantidad += cantidad;
+      partidas++;
+    }
+  });
+
+  // 🔹 Calcular porcentajes
+  filas.forEach((tr) => {
+    const cantidad = parseFloat(tr.querySelector(".cantidad")?.value || 0);
+    const porcentajeInput = tr.querySelector(".porcentaje");
+
+    if (cantidad > 0 && totalCantidad > 0) {
+      const porcentaje = (cantidad / totalCantidad) * 100;
+      porcentajeInput.value = porcentaje.toFixed(2);
+    } else {
+      porcentajeInput.value = "0.00";
+    }
+  });
+
+  // 🔹 Mostrar totales
+  document.getElementById("total_partidas").textContent = partidas;
+  document.getElementById("total_kit").textContent = totalCantidad.toFixed(2);
+}
 
 // ------------------------------------------------------------------------
 //  VER EL DETALLE DEL INVENTARIO
@@ -686,6 +780,48 @@ function fntViewInventario(idinventario) {
 
         document.querySelector("#celClaveAlterna").innerHTML = htmlClave;
 
+        // 🔥 IMÁGENES (YA CORRECTO)
+        const contenedor = document.querySelector("#contenedorImagenesView");
+        contenedor.innerHTML = "";
+
+        // 🔹 contenedor tipo grid
+        contenedor.classList.add("d-flex", "flex-wrap", "gap-2");
+
+        if (data.imagenes && data.imagenes.length > 0) {
+          data.imagenes.forEach((img) => {
+            const ruta =
+              base_url + "/Assets/uploads/inventario_imagenes/" + img.foto;
+
+            const wrapper = document.createElement("div");
+            wrapper.style.cursor = "pointer";
+
+            const image = document.createElement("img");
+            image.src = ruta;
+            image.style.width = "120px";
+            image.style.height = "120px";
+            image.style.objectFit = "cover";
+            image.classList.add("rounded", "shadow-sm", "border");
+
+            // 🔥 hover effect
+            image.onmouseover = () => {
+              image.style.transform = "scale(1.05)";
+              image.style.transition = "0.2s";
+            };
+
+            image.onmouseout = () => {
+              image.style.transform = "scale(1)";
+            };
+
+            // 🔥 click para ver grande
+            image.onclick = () => abrirImagenGrande(ruta);
+
+            wrapper.appendChild(image);
+            contenedor.appendChild(wrapper);
+          });
+        } else {
+          contenedor.innerHTML = "<span class='text-muted'>Sin imágenes</span>";
+        }
+
         $("#modalViewInventario").modal("show");
       } else {
         Swal.fire("Error", objData.msg, "error");
@@ -694,8 +830,21 @@ function fntViewInventario(idinventario) {
   };
 }
 
+function abrirImagenGrande(ruta) {
+  const img = document.getElementById("imgGrande");
+  img.src = ruta;
+
+  const modal = new bootstrap.Modal(
+    document.getElementById("modalImagenGrande")
+  );
+
+  modal.show();
+}
+
 function fntEditInventario(idinventario) {
-  // 🔴 OCULTAR movimiento inicial (NO aplica en edición)
+  modoEdicion = true; // 🔥 ACTIVAR MODO EDICIÓN
+
+  bloquearTipoElemento();
   ocultarMovimientoInicial();
 
   const request = new XMLHttpRequest();
@@ -716,44 +865,83 @@ function fntEditInventario(idinventario) {
 
     const data = res.data;
 
-    // 🔹 Mostrar formulario
-    const tabForm = document.querySelector('a[href="#agregarProducto"]');
-    new bootstrap.Tab(tabForm).show();
+    abrirTabEdicion(data.tipo_elemento);
+    llenarFormularioInventario(data);
 
-    // 🔥 FORZAR CARGA DE LÍNEAS
-    cargarLineas("#lineaproductoid_producto", data.lineaproductoid);
+    if (data.tipo_elemento === "K") {
+      cargarKitParaEdicion(data.idinventario);
+    }
 
-    // 🔹 Básicos
-    setValue("#idinventario", data.idinventario);
-    setValue("#cve_articulo", data.cve_articulo);
-    setValue("#descripcion", data.descripcion);
-    setValue("#ubicacion", data.control_almacen);
-    setValue("#factor_unidades", data.factor_unidades);
-    setValue("#tiempo_surtido", data.tiempo_surtido);
-    setValue("#peso", data.peso);
-    setValue("#volumen", data.volumen);
-    setValue("#unidad_empaque", data.unidad_empaque);
-    setValue("#ultimo_costo", data.ultimo_costo);
-    setValue("#estado", data.estado);
-
-    // 👇 AQUÍ
-    document.getElementById("serie").checked = data.serie === "S";
-    document.getElementById("lote").checked = data.lote === "S";
-    document.getElementById("pedimiento").checked = data.pedimiento === "S";
-
-    // 🔹 Radios
-    document
-      .querySelectorAll('input[name="tipo_elemento"]')
-      .forEach((radio) => {
-        radio.checked = radio.value === data.tipo_elemento;
-      });
-
-    // 🔹 Selects (CARGAR + SELECCIONAR)
-    cargarAlmacenes("#almacenid", data.almacenid);
-
-    // 🔹 Cambiar botón
+    // 🔥 FORZAR BOTÓN
     document.querySelector("#btnText").textContent = "ACTUALIZAR";
   };
+}
+
+function cargarKitParaEdicion(idinventario) {
+  inventarioIdReal = idinventario; // 🔥 IMPORTANTE
+  // 🔥 CAMBIAR BOTÓN
+  const btnText = document.querySelector("#btnText");
+  if (btnText) btnText.textContent = "ACTUALIZAR";
+  fetch(base_url + "/Inv_inventario/getKitCompleto/" + idinventario)
+    .then((res) => res.json())
+    .then((res) => {
+      if (!res.status) {
+        Swal.fire("Aviso", res.msg, "warning");
+        return;
+      }
+
+      const { config, detalle } = res.data;
+
+      // 🔹 Mostrar contenedor
+      const container = document.getElementById("kit_config_container");
+      container.style.display = "block";
+
+      // 🔹 Set header
+      document.getElementById("kitid").value = config.idkitconfig;
+      document.getElementById("precio").value = config.precio;
+      document.getElementById("descripcion_kit").value = config.descripcion;
+
+      const tbody = document.querySelector("#tabla_componentes tbody");
+      tbody.innerHTML = "";
+
+      let index = 0;
+
+      detalle.forEach((item) => {
+        index++;
+
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>
+            <input type="number" class="form-control form-control-sm cantidad"
+              value="${item.cantidad}">
+          </td>
+
+          <td>
+            <input type="text" class="form-control form-control-sm"
+              value="${item.cve_articulo} - ${item.descripcion}" readonly>
+
+            <input type="hidden" class="producto_id"
+              value="${item.producto_id}">
+          </td>
+
+          <td>
+            <input type="number" class="form-control form-control-sm porcentaje"
+              value="${item.porcentaje}" readonly>
+          </td>
+
+          <td class="text-center">
+            <button type="button" class="btn btn-sm btn-danger btnEliminar">
+              🗑
+            </button>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      actualizarTotales();
+    });
 }
 
 function abrirTabEdicion(tipo) {
@@ -780,30 +968,64 @@ function abrirTabEdicion(tipo) {
 }
 
 function llenarFormularioInventario(data) {
-  setValue("#idinventario", data.idinventario);
-  setValue("#cve_articulo", data.cve_articulo);
-  setValue("#descripcion", data.descripcion);
-  setValue("#unidad_entrada", data.unidad_entrada);
-  setValue("#unidad_salida", data.unidad_salida);
-  setValue("#factor_unidades", data.factor_unidades);
-  setValue("#ubicacion", data.control_almacen);
-  setValue("#tiempo_surtido", data.tiempo_surtido);
-  setValue("#peso", data.peso);
-  setValue("#volumen", data.volumen);
-  setValue("#unidad_empaque", data.unidad_empaque);
-  setValue("#ultimo_costo", data.ultimo_costo);
-  setValue("#estado", data.estado);
+  let form = null;
 
-  // Tipo
-  document.querySelectorAll('input[name="tipo_elemento"]').forEach((r) => {
+  // 🔹 marcar tipo_elemento (radio)
+  const radios = document.querySelectorAll('input[name="tipo_elemento"]');
+
+  radios.forEach((r) => {
     r.checked = r.value === data.tipo_elemento;
-    if (r.checked) r.dispatchEvent(new Event("change"));
   });
 
-  // Línea según tipo
-  if (data.tipo_elemento === "P") {
+  // 🔹 detectar formulario activo
+  if (
+    data.tipo_elemento === "P" ||
+    data.tipo_elemento === "C" ||
+    data.tipo_elemento === "H"
+  ) {
+    form = document.querySelector("#formInventarioProducto");
+  }
+
+  if (data.tipo_elemento === "S") {
+    form = document.querySelector("#formInventarioServicio");
+  }
+
+  if (data.tipo_elemento === "K") {
+    form = document.querySelector("#formInventarioKit");
+  }
+
+  if (!form) return;
+
+  // 🔹 helper local
+  const set = (selector, value) => {
+    const el = form.querySelector(selector);
+    if (el && value !== undefined && value !== null) {
+      el.value = value;
+    }
+  };
+
+  // 🔹 llenar campos
+  set('[name="idinventario"]', data.idinventario);
+  set('[name="cve_articulo"]', data.cve_articulo);
+  set('[name="descripcion"]', data.descripcion);
+  set('[name="unidad_entrada"]', data.unidad_entrada);
+  set('[name="unidad_salida"]', data.unidad_salida);
+  set('[name="factor_unidades"]', data.factor_unidades);
+  set('[name="ubicacion"]', data.control_almacen);
+  set('[name="tiempo_surtido"]', data.tiempo_surtido);
+  set('[name="peso"]', data.peso);
+  set('[name="volumen"]', data.volumen);
+  set('[name="unidad_empaque"]', data.unidad_empaque);
+  set('[name="ultimo_costo"]', data.ultimo_costo);
+  set('[name="estado"]', data.estado);
+
+  // 🔹 línea
+  if (
+    data.tipo_elemento === "P" ||
+    data.tipo_elemento === "C" ||
+    data.tipo_elemento === "H"
+  ) {
     cargarLineas("#lineaproductoid_producto", data.lineaproductoid);
-    cargarAlmacenes("#almacenid", data.almacenid);
   }
 
   if (data.tipo_elemento === "S") {
@@ -816,46 +1038,57 @@ function llenarFormularioInventario(data) {
 }
 
 function bloquearTipoElemento() {
-  document.querySelectorAll('input[name="tipo_elemento"]').forEach((radio) => {
-    radio.disabled = true;
-  });
+  document
+    .querySelectorAll('input[name="tipo_elemento"]')
+    .forEach((radio) => {});
 }
 
 function resetFormularioInventario() {
-  const form = document.querySelector("#formInventarioProducto");
-  if (form) form.reset();
+  // 🔹 Reset TODOS los forms
+  document
+    .querySelectorAll(
+      `
+    #formInventarioProducto,
+    #formInventarioServicio,
+    #formInventarioKit
+  `,
+    )
+    .forEach((form) => form.reset());
 
-  // 🔹 Limpiar id (clave de edición)
-  const idInput = document.querySelector("#idinventario");
-  if (idInput) idInput.value = "";
-
-  // 🔹 Reset checkboxes
-  const checkboxes = ["serie", "lote", "pedimiento"];
-  checkboxes.forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.checked = false;
-  });
+  // 🔹 Limpiar IDs (modo edición)
+  document
+    .querySelectorAll('[name="idinventario"]')
+    .forEach((el) => (el.value = ""));
 
   // 🔹 Reset selects
-  const selects = ["#lineaproductoid_producto", "#almacenid"];
-  selects.forEach((sel) => {
+  [
+    "#lineaproductoid_producto",
+    "#lineaproductoid_servicio",
+    "#lineaproductoid_kit",
+    "#almacenid",
+  ].forEach((sel) => {
     const s = document.querySelector(sel);
     if (s) s.innerHTML = "";
   });
 
-  // 🔹 Reset radios tipo elemento
-  document.querySelectorAll('input[name="tipo_elemento"]').forEach((radio) => {
-    radio.disabled = false;
-    radio.checked = radio.value === "P"; // predeterminado a producto
-    if (radio.checked) radio.dispatchEvent(new Event("change"));
-  });
-
-  // 🔹 Cambiar botón a GUARDAR
+  // 🔹 Reset botón
   const btnText = document.querySelector("#btnText");
   if (btnText) btnText.textContent = "GUARDAR";
 
-  // 🔹 Mostrar bloque movimiento inicial
-  mostrarMovimientoInicial();
+  // 🔹 Quitar modo edición
+  modoEdicion = false;
+
+  // 🔹 Ocultar kit
+  const kitContainer = document.getElementById("kit_config_container");
+  if (kitContainer) kitContainer.style.display = "none";
+
+  // 🔹 Limpiar tabla kit
+  const tbody = document.querySelector("#tabla_componentes tbody");
+  if (tbody) tbody.innerHTML = "";
+
+  // 🔹 Limpiar kitid
+  const kitid = document.getElementById("kitid");
+  if (kitid) kitid.value = "";
 }
 
 function setValue(selector, value) {
@@ -927,6 +1160,7 @@ function fntConfigInventario(idinventario) {
         cargarTabLineas(idinventario);
         refrescarFiscal(idinventario);
         cargarTabImpuestos(idinventario);
+        cargarTabUbicaciones(idinventario);
       }, 150);
     });
 }
@@ -1101,49 +1335,79 @@ function refrescarTablaPrecios(idinventario) {
 function cargarTabLineas(idinventario) {
   fetch(base_url + "/Inv_inventario/getSelectLineas")
     .then((res) => res.text())
-    .then((html) => {
+    .then((htmlLineas) => {
       const cont = document.getElementById("contentLinea");
-      if (!cont) return;
 
       cont.innerHTML = `
         <div class="row g-3 mb-3">
+
+          <!-- LINEA -->
           <div class="col-md-6">
-            <label class="form-label">Línea de producto</label>
+            <label class="form-label">Línea</label>
             <select id="cfg_linea" class="form-select">
-              ${html}
+              ${htmlLineas}
             </select>
           </div>
 
-          <div class="col-md-3 align-self-end">
+          <!-- SUBLINEA -->
+          <div class="col-md-6">
+            <label class="form-label">Sublínea</label>
+            <select id="cfg_sublinea" class="form-select">
+              <option value="">Seleccione una sublínea</option>
+            </select>
+          </div>
+
+          <div class="col-md-12">
             <button class="btn btn-primary w-100" onclick="guardarLinea(${idinventario})">
               Guardar
             </button>
           </div>
         </div>
 
-        <!-- TABLA DE LÍNEAS ASIGNADAS -->
         <div class="mt-2">
           <h6>Líneas asignadas</h6>
-          <table class="table table-striped table-bordered" id="tablaLineasAsignadas">
+          <table class="table table-striped table-bordered">
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Línea de producto</th>
-                <th>Fecha asignación</th>
+                <th>Línea</th>
+                <th>Sublínea</th>
+                <th>Fecha</th>
                 <th>Estado</th>
               </tr>
             </thead>
-            <tbody id="tbodyLineasAsignadas">
-              <!-- Se llenará dinámicamente -->
-            </tbody>
+            <tbody id="tbodyLineasAsignadas"></tbody>
           </table>
         </div>
       `;
 
-      // Cargar la tabla de líneas asignadas al abrir la pestaña
+      // 🔥 evento cambio línea
+      document
+        .getElementById("cfg_linea")
+        .addEventListener("change", function () {
+          cargarSublineasPorLinea(this.value);
+        });
+
       refrescarTablaLineas(idinventario);
     });
 }
+
+function cargarSublineasPorLinea(idLinea) {
+  return fetch(base_url + "/Inv_lineasdproducto/getSublineas/" + idLinea)
+    .then((res) => res.json())
+    .then((data) => {
+      let options = `<option value="">Seleccione sublínea</option>`;
+
+      data.forEach((s) => {
+        options += `<option value="${s.idsublineaproducto}">
+          ${s.cve_sublinea_producto} - ${s.descripcion}
+        </option>`;
+      });
+
+      document.getElementById("cfg_sublinea").innerHTML = options;
+    });
+}
+
 function refrescarTablaLineas(idinventario) {
   fetch(base_url + "/Inv_inventario/getLineasAsignadas/" + idinventario)
     .then((res) => res.json())
@@ -1155,12 +1419,13 @@ function refrescarTablaLineas(idinventario) {
         tbody.innerHTML += `
           <tr>
             <td>${linea.id_inv_linea}</td>
-            <td>${linea.descripcion}</td>
+            <td>${linea.linea}</td>
+            <td>${linea.sublinea}</td>
             <td>${linea.fecha_creacion}</td>
             <td>${linea.estado == 2 ? "Activo" : "Inactivo"}</td>
             <td>
               <button class="btn btn-sm btn-warning"
-                onclick="editarLinea(${linea.id_inv_linea}, ${linea.idlinea})">
+                onclick="editarLinea(${linea.id_inv_linea}, ${linea.idsublineaproducto}, ${linea.idlinea})">
                 Editar
               </button>
             </td>
@@ -1171,21 +1436,18 @@ function refrescarTablaLineas(idinventario) {
 }
 
 function guardarLinea(idinventario) {
-  const select = document.getElementById("cfg_linea");
-  const btn = document.querySelector("#contentLinea button");
-  const linea = select.value;
+  const sublinea = document.getElementById("cfg_sublinea").value;
 
-  if (!linea) {
-    Swal.fire("Aviso", "Selecciona una línea", "warning");
+  if (!sublinea) {
+    Swal.fire("Aviso", "Selecciona una sublínea", "warning");
     return;
   }
 
   const fd = new FormData();
 
   if (modoEdicion) {
-    // 🔹 UPDATE
     fd.append("id_inv_linea", idLineaEditando);
-    fd.append("idlineaproducto", linea);
+    fd.append("sublineaproductoid", sublinea);
 
     fetch(base_url + "/Inv_inventario/updateLinea", {
       method: "POST",
@@ -1195,25 +1457,15 @@ function guardarLinea(idinventario) {
       .then((res) => {
         if (res.status) {
           Swal.fire("Actualizado", res.msg, "success");
-
-          modoEdicion = false;
-          idLineaEditando = null;
-
-          btn.textContent = "Guardar";
-          btn.classList.remove("btn-warning");
-          btn.classList.add("btn-primary");
-
-          select.selectedIndex = 0;
-
+          limpiarFormularioLinea();
           refrescarTablaLineas(idinventario);
         } else {
-          Swal.fire("Error", res.msg, "error");
+          Swal.fire("Error", res.msg, "warning"); // 🔥 IMPORTANTE
         }
       });
   } else {
-    // 🔹 INSERT
     fd.append("inventarioid", idinventario);
-    fd.append("idlineaproducto", linea);
+    fd.append("sublineaproductoid", sublinea);
 
     fetch(base_url + "/Inv_inventario/setLinea", {
       method: "POST",
@@ -1223,29 +1475,52 @@ function guardarLinea(idinventario) {
       .then((res) => {
         if (res.status) {
           Swal.fire("OK", res.msg, "success");
-          select.selectedIndex = 0;
+          limpiarFormularioLinea();
           refrescarTablaLineas(idinventario);
         } else {
-          Swal.fire("Error", res.msg, "error");
+          Swal.fire("Error", res.msg, "warning"); // 🔥 ESTA LÍNEA FALTABA
         }
       });
   }
 }
 
-function editarLinea(id_inv_linea, idlineaproducto) {
-  const select = document.getElementById("cfg_linea");
+function editarLinea(id_inv_linea, idsublinea, idlinea) {
+  const selectLinea = document.getElementById("cfg_linea");
+  const selectSublinea = document.getElementById("cfg_sublinea");
   const btn = document.querySelector("#contentLinea button");
 
-  select.value = idlineaproducto;
+  // 🔹 seleccionar línea
+  selectLinea.value = idlinea;
 
+  // 🔹 cargar sublíneas y luego seleccionar la correcta
+  cargarSublineasPorLinea(idlinea).then(() => {
+    selectSublinea.value = idsublinea;
+  });
+
+  // 🔹 activar modo edición
   modoEdicion = true;
   idLineaEditando = id_inv_linea;
 
   btn.textContent = "Actualizar Línea";
   btn.classList.remove("btn-primary");
   btn.classList.add("btn-warning");
+}
 
-  select.focus();
+function limpiarFormularioLinea() {
+  document.getElementById("cfg_linea").selectedIndex = 0;
+
+  document.getElementById("cfg_sublinea").innerHTML =
+    '<option value="">Seleccione una sublínea</option>';
+
+  // 🔥 RESET MODO EDICIÓN
+  modoEdicion = false;
+  idLineaEditando = null;
+
+  // 🔥 RESET BOTÓN
+  const btn = document.querySelector("#contentLinea button");
+  btn.textContent = "Guardar";
+  btn.classList.remove("btn-warning");
+  btn.classList.add("btn-primary");
 }
 
 //-----------------------------------------------------------------------------------------------------------------
@@ -2140,5 +2415,99 @@ function refrescarTablaImpuestos(idinventario) {
           </tr>
         `;
       });
+    });
+}
+
+//-----------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------ubicaciones-------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------
+//----------------------------- CARGAR TAB
+document
+  .querySelector('a[href="#tabUbicaciones"]')
+  .addEventListener("shown.bs.tab", function () {
+    if (!inventarioActual) {
+      console.warn("No hay inventario seleccionado");
+      return;
+    }
+
+    cargarTabUbicaciones(inventarioActual);
+  });
+
+function cargarTabUbicaciones(idinventario) {
+  // 🔹 GUARDAR ID
+  document.getElementById("inv_id").value = idinventario;
+
+  // 🔹 CARGAR SELECT
+  cargarSelectUbicaciones();
+
+  // 🔹 CARGAR TABLA
+  refrescarTablaUbicaciones(idinventario);
+}
+
+function cargarSelectUbicaciones() {
+  fetch(base_url + "/Inv_inventario/getSelectUbicaciones")
+    .then((res) => res.text())
+    .then((html) => {
+      document.getElementById("ubicacion_id").innerHTML = html;
+    })
+    .catch((err) => console.error("Error cargando ubicaciones:", err));
+}
+
+//----------------------------- REFRESCAR TABLA
+function refrescarTablaUbicaciones(idinventario) {
+  fetch(base_url + "/Inv_inventario/getUbicacionesAsignadas/" + idinventario)
+    .then((res) => res.json())
+    .then((data) => {
+      const tbody = document.getElementById("tbodyUbicaciones");
+      tbody.innerHTML = "";
+
+      data.data.forEach((u) => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${u.idubicacionasignada}</td>
+            <td>${u.ubicacion}</td>
+            <td>${u.fecha_creacion}</td>
+          </tr>
+        `;
+      });
+    });
+}
+
+//----------------------------- GUARDAR
+function guardarUbicacion(e) {
+  e.preventDefault();
+
+  const inventarioid = document.getElementById("inv_id").value;
+  const ubicacion = document.getElementById("ubicacion_id").value;
+  const cantidad = document.getElementById("cantidad").value;
+
+  if (!inventarioid) {
+    Swal.fire("Error", "No hay inventario seleccionado", "error");
+    return;
+  }
+
+  if (!ubicacion) {
+    Swal.fire("Aviso", "Selecciona una ubicación", "warning");
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("inventarioid", inventarioid);
+  fd.append("ubicacionid", ubicacion);
+  fd.append("cantidad", cantidad);
+
+  fetch(base_url + "/Inv_inventario/setUbicacion", {
+    method: "POST",
+    body: fd,
+  })
+    .then((res) => res.json())
+    .then((res) => {
+      if (res.status) {
+        Swal.fire("OK", res.msg, "success");
+        document.getElementById("formUbicacionInventario").reset();
+        refrescarTablaUbicaciones(inventarioid);
+      } else {
+        Swal.fire("Error", res.msg, "error");
+      }
     });
 }

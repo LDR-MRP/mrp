@@ -17,10 +17,6 @@ class Inv_monedaModel extends Mysql
         parent::__construct();
     }
 
-
-
-
-
     public function inserMoneda($cve_moneda, $descripcion, $simbolo, $cambio_moneda, $fecha_creacion, $intEstatus)
     {
         $this->strCvePrecio = $cve_moneda;

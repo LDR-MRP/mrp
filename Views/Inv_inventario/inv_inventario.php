@@ -210,6 +210,13 @@
                     </tbody>
 
                 </table>
+
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <label><strong>Imágenes:</strong></label>
+                        <div id="contenedorImagenesView" class="d-flex gap-2 flex-wrap"></div>
+                    </div>
+                </div>
             </div>
 
             <div class="modal-footer">
@@ -221,6 +228,18 @@
                 </div>
 
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalImagenGrande" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark border-0">
+
+            <div class="modal-body text-center">
+                <img id="imgGrande" src="" class="img-fluid rounded">
+            </div>
+
         </div>
     </div>
 </div>
@@ -279,6 +298,11 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" href="#tabLinea">Línea</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#tabUbicaciones">
+                            Ubicaciones
+                        </a>
                     </li>
                 </ul>
 
@@ -533,6 +557,43 @@
                             </div>
 
                         </div>
+                    </div>
+
+                    <!--tab de las ubicaciones-->
+                    <div class="tab-pane fade" id="tabUbicaciones">
+
+                        <form id="formUbicacionInventario">
+                            <input type="hidden" id="inv_id" name="inventarioid">
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label>Ubicación</label>
+                                    <select id="ubicacion_id" name="ubicacionid" class="form-select"></select>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label>Cantidad</label>
+                                    <input type="number" id="cantidad" name="cantidad" class="form-control">
+                                </div>
+
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button class="btn btn-success w-100">
+                                        Asignar
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <table class="table mt-3">
+                            <thead>
+                                <tr>
+                                    <th>Ubicación</th>
+                                    <th>Cantidad</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyUbicaciones"></tbody>
+                        </table>
+
                     </div>
 
                 </div>
