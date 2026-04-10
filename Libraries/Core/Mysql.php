@@ -16,9 +16,9 @@
 		public function insert(string $query, array $arrValues)
 		{
 			$this->strquery = $query;
-			$this->arrVAlues = $arrValues;
+			$this->arrValues = $arrValues;
         	$insert = $this->conexion->prepare($this->strquery);
-        	$resInsert = $insert->execute($this->arrVAlues);
+        	$resInsert = $insert->execute($this->arrValues);
         	if($resInsert)
 	        {
 	        	$lastInsert = $this->conexion->lastInsertId();
@@ -49,9 +49,9 @@
 		public function update(string $query, array $arrValues)
 		{
 			$this->strquery = $query;
-			$this->arrVAlues = $arrValues;
+			$this->arrValues = $arrValues;
 			$update = $this->conexion->prepare($this->strquery);
-			$resExecute = $update->execute($this->arrVAlues);
+			$resExecute = $update->execute($this->arrValues);
 	        return $resExecute;
 		}
 		//Eliminar un registros
