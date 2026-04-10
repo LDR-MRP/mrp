@@ -48,15 +48,20 @@ class Inv_movimientosalmacenes extends Controllers
                 $costos
             );
 
-            if ($request) {
+            if (is_string($request) && str_starts_with($request, 'TRF-')) {
+
                 $arrResponse = [
                     'status' => true,
                     'msg' => 'Transferencia realizada correctamente',
                     'folio' => $request,
-                    'almacenid' => $almacen_origenid   // 🔥 AGREGA ESTO
+                    'almacenid' => $almacen_origenid
                 ];
             } else {
-                $arrResponse = ['status' => false, 'msg' => $request];
+
+                $arrResponse = [
+                    'status' => false,
+                    'msg' => $request
+                ];
             }
 
             echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
@@ -99,31 +104,16 @@ class Inv_movimientosalmacenes extends Controllers
         die();
     }
 
-
-    public function getSelectConceptos()
-    {
-        $htmlOptions = '<option value="">-- Seleccione concepto --</option>';
-        $arrData = $this->model->selectConceptos();
-
-        foreach ($arrData as $row) {
-            $htmlOptions .= '<option value="' . $row['idconcepmov'] . '">'
-                . $row['descripcion'] .
-                '</option>';
-        }
-        echo $htmlOptions;
-        die();
-    }
-
     public function getMovimientos()
     {
         if ($_SESSION['permisosMod']['r']) {
 
-            $almacen     = isset($_GET['almacen']) ? intval($_GET['almacen']) : 0;
-            $concepto    = isset($_GET['concepto']) ? intval($_GET['concepto']) : 0;
+            $origen  = isset($_GET['origen']) ? intval($_GET['origen']) : 0;
+            $destino = isset($_GET['destino']) ? intval($_GET['destino']) : 0;
             $fechaInicio = $_GET['fechaInicio'] ?? '';
             $fechaFin    = $_GET['fechaFin'] ?? '';
 
-            $arrData = $this->model->selectMovimientos($almacen, $concepto, $fechaInicio, $fechaFin);
+            $arrData = $this->model->selectTransferencias($origen, $destino, $fechaInicio, $fechaFin);
 
             echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
         }
@@ -180,5 +170,32 @@ class Inv_movimientosalmacenes extends Controllers
         $pdf->output("Movimiento_$numero.pdf", "I");
 
         exit;
+    }
+
+    public function getTransferencias()
+{
+    if ($_SESSION['permisosMod']['r']) {
+
+        $origen  = isset($_GET['origen']) ? intval($_GET['origen']) : 0;
+        $destino = isset($_GET['destino']) ? intval($_GET['destino']) : 0;
+        $fechaInicio = $_GET['fechaInicio'] ?? '';
+        $fechaFin    = $_GET['fechaFin'] ?? '';
+
+        $arrData = $this->model->selectTransferencias($origen, $destino, $fechaInicio, $fechaFin);
+
+        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+    }
+    die();
+}
+
+    public function getDetalle($id)
+    {
+        if ($_SESSION['permisosMod']['r']) {
+
+            $arrData = $this->model->getDetalleTraspaso(intval($id));
+
+            echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        }
+        die();
     }
 }

@@ -87,11 +87,46 @@
 
             <div class="row">
                 <div class="col-12">
+
+                    <div class="row g-3 mb-3">
+
+                        <div class="col-md-3">
+                            <label>Almacén</label>
+                            <select id="filtroAlmacen" class="form-control">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label>Concepto</label>
+                            <select id="filtroConcepto" class="form-control">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label>Fecha inicio</label>
+                            <input type="date" id="filtroFechaInicio" class="form-control">
+                        </div>
+
+                        <div class="col-md-2">
+                            <label>Fecha fin</label>
+                            <input type="date" id="filtroFechaFin" class="form-control">
+                        </div>
+
+                        <div class="col-md-2 align-self-end">
+                            <button class="btn btn-success w-100" id="btnFiltrar">
+                                Filtrar
+                            </button>
+                        </div>
+
+                    </div>
                     <table class="table table-bordered table-striped" id="tableKardex">
                         <thead>
                             <tr>
                                 <th>DOCUMENTO</th>
                                 <th>DESCRIPCIÓN</th>
+                                <th>ALMACÉN</th>
                                 <th>CANTIDAD</th>
                                 <th>COSTO</th>
                                 <th>EXISTENCIA</th>

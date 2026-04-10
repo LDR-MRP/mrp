@@ -93,7 +93,7 @@ class Inv_movimientosalmacenesModel extends Mysql
 
     public function selectMovimientos($almacen = 0, $concepto = 0, $fechaInicio = '', $fechaFin = '')
     {
-        $where = "WHERE m.estado = 2 AND m.concepmovid IN (16,17)";
+        $where = "WHERE m.estado = 2 AND m.concepmovid IN (15,7)";
 
         if ($almacen > 0) {
             $where .= " AND m.almacenid = $almacen";
@@ -158,7 +158,7 @@ class Inv_movimientosalmacenesModel extends Mysql
         SELECT idconcepmov, descripcion
         FROM wms_conceptos_mov
         WHERE estado = 2
-        AND idconcepmov IN (16,17)
+        AND idconcepmov IN (15,7)
     ");
     }
 
@@ -313,25 +313,15 @@ class Inv_movimientosalmacenesModel extends Mysql
         array $costos
     ) {
 
-        // 🔥 GENERAR FOLIO STRING
         $folio = 'TRF-' . date('YmdHis') . '-' . rand(100, 999);
 
-        // Insertar encabezado
-        $movimientoid = $this->insert(
-            "INSERT INTO wms_movimientos_almacenes
-        (folio, almacen_origenid, almacen_destinoid, referencia, fecha, estado)
-        VALUES (?,?,?,?,NOW(),2)",
-            [$folio, $almacen_origenid, $almacen_destinoid, $referencia]
-        );
-
+        // 🔥 1. VALIDAR TODO ANTES
         foreach ($inventarios as $i => $inventarioid) {
 
             if (empty($inventarioid) || empty($cantidades[$i])) continue;
 
             $cantidad = (float)$cantidades[$i];
-            $costo    = (float)$costos[$i];
 
-            // STOCK ORIGEN
             $rowOrigen = $this->select("
             SELECT existencia 
             FROM wms_multialmacen
@@ -339,13 +329,42 @@ class Inv_movimientosalmacenesModel extends Mysql
             AND almacenid = $almacen_origenid
         ");
 
-            if (!$rowOrigen || $rowOrigen['existencia'] < $cantidad) {
-                return "Stock insuficiente en almacén origen";
+            if (!$rowOrigen) {
+                return "No existe stock del producto en almacén origen";
             }
+
+            if ($rowOrigen['existencia'] < $cantidad) {
+                return "Stock insuficiente para producto ID $inventarioid";
+            }
+        }
+
+        // 🔥 2. INSERTAR ENCABEZADO
+        $movimientoid = $this->insert(
+            "INSERT INTO wms_movimientos_almacenes
+        (folio, almacen_origenid, almacen_destinoid, referencia, fecha, estado)
+        VALUES (?,?,?,?,NOW(),2)",
+            [$folio, $almacen_origenid, $almacen_destinoid, $referencia]
+        );
+
+        // 🔥 3. PROCESAR TODO
+        foreach ($inventarios as $i => $inventarioid) {
+
+            if (empty($inventarioid) || empty($cantidades[$i])) continue;
+
+            $cantidad = (float)$cantidades[$i];
+            $costo    = (float)$costos[$i];
+
+            // ORIGEN
+            $rowOrigen = $this->select("
+            SELECT existencia 
+            FROM wms_multialmacen
+            WHERE inventarioid = $inventarioid
+            AND almacenid = $almacen_origenid
+        ");
 
             $nuevoOrigen = $rowOrigen['existencia'] - $cantidad;
 
-            // STOCK DESTINO
+            // DESTINO
             $rowDestino = $this->select("
             SELECT existencia 
             FROM wms_multialmacen
@@ -356,27 +375,28 @@ class Inv_movimientosalmacenesModel extends Mysql
             $existDestino = $rowDestino ? $rowDestino['existencia'] : 0;
             $nuevoDestino = $existDestino + $cantidad;
 
-            // Insertar detalle
+            // DETALLE
             $this->insert("
             INSERT INTO wms_movimientos_almacenes_detalle
             (movimientoalmacenid, inventarioid, cantidad, costo_unitario)
             VALUES (?,?,?,?)
         ", [$movimientoid, $inventarioid, $cantidad, $costo]);
 
-            // Actualizar stocks
+            // STOCK ORIGEN
             $this->insert("
             INSERT INTO wms_multialmacen (inventarioid, almacenid, existencia)
             VALUES (?,?,?)
             ON DUPLICATE KEY UPDATE existencia=?
         ", [$inventarioid, $almacen_origenid, $nuevoOrigen, $nuevoOrigen]);
 
+            // STOCK DESTINO
             $this->insert("
             INSERT INTO wms_multialmacen (inventarioid, almacenid, existencia)
             VALUES (?,?,?)
             ON DUPLICATE KEY UPDATE existencia=?
         ", [$inventarioid, $almacen_destinoid, $nuevoDestino, $nuevoDestino]);
 
-            // SALIDA (16)
+            // SALIDA (15)
             $this->insert("
             INSERT INTO wms_movimientos_inventario
             (inventarioid, almacenid, numero_movimiento, concepmovid,
@@ -387,7 +407,7 @@ class Inv_movimientosalmacenesModel extends Mysql
                 $inventarioid,
                 $almacen_origenid,
                 $folio,
-                16,
+                15,
                 $referencia,
                 $cantidad,
                 $costo,
@@ -395,7 +415,7 @@ class Inv_movimientosalmacenesModel extends Mysql
                 -1
             ]);
 
-            // ENTRADA (17)
+            // ENTRADA (7)
             $this->insert("
             INSERT INTO wms_movimientos_inventario
             (inventarioid, almacenid, numero_movimiento, concepmovid,
@@ -406,7 +426,7 @@ class Inv_movimientosalmacenesModel extends Mysql
                 $inventarioid,
                 $almacen_destinoid,
                 $folio,
-                17,
+                7,
                 $referencia,
                 $cantidad,
                 $costo,
@@ -416,5 +436,104 @@ class Inv_movimientosalmacenesModel extends Mysql
         }
 
         return $folio;
+    }
+
+    public function selectTransferencias($origen = 0, $destino = 0, $fechaInicio = '', $fechaFin = '')
+    {
+        $where = "WHERE m.estado = 2";
+
+        if ($origen > 0) {
+            $where .= " AND m.almacen_origenid = $origen";
+        }
+
+        if ($destino > 0) {
+            $where .= " AND m.almacen_destinoid = $destino";
+        }
+
+        if (!empty($fechaInicio)) {
+            $where .= " AND DATE(m.fecha) >= '$fechaInicio'";
+        }
+
+        if (!empty($fechaFin)) {
+            $where .= " AND DATE(m.fecha) <= '$fechaFin'";
+        }
+
+        $sql = "SELECT 
+        m.idmovimientoalmacen,
+        m.folio,
+        ao.descripcion AS almacen_origen,
+        ad.descripcion AS almacen_destino,
+        m.referencia,
+        m.fecha
+    FROM wms_movimientos_almacenes m
+    INNER JOIN wms_almacenes ao ON ao.idalmacen = m.almacen_origenid
+    INNER JOIN wms_almacenes ad ON ad.idalmacen = m.almacen_destinoid
+    $where
+    ORDER BY m.idmovimientoalmacen DESC";
+
+        return $this->select_all($sql);
+    }
+
+    public function getDetalleTransferencia($id)
+    {
+        return $this->select_all("
+        SELECT 
+            i.descripcion,
+            d.cantidad,
+            d.costo_unitario,
+            (d.cantidad * d.costo_unitario) AS total
+        FROM wms_movimientos_almacenes_detalle d
+        INNER JOIN wms_inventario i ON i.idinventario = d.inventarioid
+        WHERE d.movimientoalmacenid = $id
+    ");
+    }
+
+    public function getDetalleTraspaso($id)
+    {
+        return $this->select_all("
+        SELECT 
+            d.iddetalle,
+            i.cve_articulo,
+            i.descripcion,
+            d.cantidad,
+            d.costo_unitario,
+            (d.cantidad * d.costo_unitario) AS total
+        FROM wms_movimientos_almacenes_detalle d
+        INNER JOIN wms_inventario i 
+            ON i.idinventario = d.inventarioid
+        WHERE d.movimientoalmacenid = $id
+    ");
+    }
+
+    public function selectTraspasos($almacen = 0, $fechaInicio = '', $fechaFin = '')
+    {
+        $where = "WHERE m.estado = 2";
+
+        if ($almacen > 0) {
+            $where .= " AND (m.almacen_origenid = $almacen OR m.almacen_destinoid = $almacen)";
+        }
+
+        if (!empty($fechaInicio)) {
+            $where .= " AND DATE(m.fecha) >= '$fechaInicio'";
+        }
+
+        if (!empty($fechaFin)) {
+            $where .= " AND DATE(m.fecha) <= '$fechaFin'";
+        }
+
+        $sql = "SELECT 
+        m.idmovimientoalmacen,
+        m.folio,
+        ao.descripcion AS almacen_origen,
+        ad.descripcion AS almacen_destino,
+        m.referencia,
+        m.fecha
+    FROM wms_movimientos_almacenes m
+    INNER JOIN wms_almacenes ao ON ao.idalmacen = m.almacen_origenid
+    INNER JOIN wms_almacenes ad ON ad.idalmacen = m.almacen_destinoid
+    $where
+    ORDER BY m.idmovimientoalmacen DESC";
+
+        return $this->select_all($sql);
     }
 }

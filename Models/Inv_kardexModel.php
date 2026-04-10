@@ -48,31 +48,68 @@ class Inv_kardexModel extends Mysql
 
 
 
-    public function selectKardex(int $inventarioid)
-    {
+    public function selectKardex(
+        int $inventarioid,
+        int $almacen = 0,
+        int $concepto = 0,
+        string $fechaInicio = '',
+        string $fechaFin = ''
+    ) {
+
+        $where = "WHERE m.inventarioid = $inventarioid AND m.estado = 2";
+
+        if ($almacen > 0) {
+            $where .= " AND m.almacenid = $almacen";
+        }
+
+        if ($concepto > 0) {
+            $where .= " AND m.concepmovid = $concepto";
+        }
+
+        if (!empty($fechaInicio)) {
+            $where .= " AND DATE(m.fecha_movimiento) >= '$fechaInicio'";
+        }
+
+        if (!empty($fechaFin)) {
+            $where .= " AND DATE(m.fecha_movimiento) <= '$fechaFin'";
+        }
+
         $sql = "SELECT 
-                m.numero_movimiento,
-                m.cantidad,
-                m.costo_cantidad,
-                SUM(m.cantidad * m.signo)
-                    OVER (ORDER BY m.fecha_movimiento, m.idmovinventario) AS existencia,
-                c.descripcion AS concepto,
-                m.costo_cantidad,
-                m.signo,
-                m.fecha_movimiento
-            FROM wms_movimientos_inventario m
-            INNER JOIN wms_conceptos_mov c 
-                ON c.idconcepmov = m.concepmovid
-            WHERE m.inventarioid = $inventarioid
-            AND m.estado = 2
-            ORDER BY m.fecha_movimiento, m.idmovinventario";
+        m.numero_movimiento,
+        m.cantidad,
+        m.costo_cantidad,
+        SUM(m.cantidad * m.signo)
+            OVER (ORDER BY m.fecha_movimiento, m.idmovinventario) AS existencia,
+        c.descripcion AS concepto,
+        a.descripcion AS almacen,
+        m.signo,
+        m.fecha_movimiento
+    FROM wms_movimientos_inventario m
+    INNER JOIN wms_conceptos_mov c 
+        ON c.idconcepmov = m.concepmovid
+    INNER JOIN wms_almacenes a
+        ON a.idalmacen = m.almacenid
+    $where
+    ORDER BY m.fecha_movimiento, m.idmovinventario";
 
         return $this->select_all($sql);
     }
 
+    public function selectAlmacenes()
+    {
+        $sql = "SELECT idalmacen, descripcion FROM wms_almacenes WHERE estado = 2";
+        return $this->select_all($sql);
+    }
+
+    public function selectConceptos()
+    {
+        $sql = "SELECT idconcepmov, descripcion FROM wms_conceptos_mov WHERE estado = 2";
+        return $this->select_all($sql);
+    }
+
     public function selectTotalesKardex(int $inventarioid)
-{
-    $sql = "SELECT
+    {
+        $sql = "SELECT
                 SUM(cantidad * signo) AS total_existencia,
                 SUM(CASE WHEN signo = 1 THEN cantidad ELSE 0 END) AS total_entradas,
                 SUM(CASE WHEN signo = -1 THEN cantidad ELSE 0 END) AS total_salidas,
@@ -81,7 +118,6 @@ class Inv_kardexModel extends Mysql
             WHERE inventarioid = $inventarioid
             AND estado = 2";
 
-    return $this->select($sql);
-}
-
+        return $this->select($sql);
+    }
 }
