@@ -24,18 +24,18 @@ document.addEventListener("DOMContentLoaded", function () {
     destroy: true,
 
     ajax: {
-      url: base_url + "/Inv_movimientosalmacenes/getMovimientos",
+      url: base_url + "/Inv_movimientosalmacenes/getTransferencias",
       type: "GET",
       data: function (d) {
-        d.almacen = document.querySelector("#filtroAlmacen").value;
-        d.concepto = document.querySelector("#filtroConcepto").value;
+        d.origen = document.querySelector("#filtroOrigen").value;
+        d.destino = document.querySelector("#filtroDestino").value;
         d.fechaInicio = document.querySelector("#filtroFechaInicio").value;
         d.fechaFin = document.querySelector("#filtroFechaFin").value;
       },
       dataSrc: "",
     },
 
-    // 🔥 ACTIVAR BOTONES
+    //  ACTIVAR BOTONES
     dom: '<"row mb-2"<"col-md-6"B><"col-md-6 text-end"f>>rtip',
     buttons: [
       {
@@ -70,32 +70,20 @@ document.addEventListener("DOMContentLoaded", function () {
       },
     ],
     columns: [
-      {
-        data: "idmovinventario",
-        visible: false,
-        searchable: false,
-      },
-      { data: "clave" },
-      { data: "producto" },
-      { data: "almacen" },
-      { data: "concepto" },
+      { data: "folio" },
+      { data: "almacen_origen" },
+      { data: "almacen_destino" },
       { data: "referencia" },
-      { data: "cantidad" },
-      { data: "fecha_movimiento" },
+      { data: "fecha" },
       {
-        data: null,
-        className: "text-center",
+        data: "idmovimientoalmacen",
         render: function (data) {
           return `
-    <button 
-      class="btn btn-sm btn-danger btnReporteMov"
-      data-numero="${data.numero_movimiento}"
-      data-almacen="${data.almacenid}">
-      <i class="fa fa-file-pdf"></i> Reporte
-    </button>
-  `;
+      <button class="btn btn-info btn-sm" onclick="verDetalle(${data})">
+        Ver
+      </button>
+    `;
         },
-        orderable: false,
       },
     ],
 
@@ -112,15 +100,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const btnLimpiar = document.querySelector("#btnLimpiar");
   if (btnLimpiar) {
     btnLimpiar.addEventListener("click", function () {
-      const almacen = document.querySelector("#filtroAlmacen");
-      const concepto = document.querySelector("#filtroConcepto");
-      const fechaInicio = document.querySelector("#filtroFechaInicio");
-      const fechaFin = document.querySelector("#filtroFechaFin");
-
-      if (almacen) almacen.value = "";
-      if (concepto) concepto.value = "";
-      if (fechaInicio) fechaInicio.value = "";
-      if (fechaFin) fechaFin.value = "";
+      document.querySelector("#filtroOrigen").value = "";
+      document.querySelector("#filtroDestino").value = "";
+      document.querySelector("#filtroFechaInicio").value = "";
+      document.querySelector("#filtroFechaFin").value = "";
 
       tableMovimientos.ajax.reload();
     });
@@ -130,14 +113,8 @@ document.addEventListener("DOMContentLoaded", function () {
   fetch(base_url + "/Inv_movimientosalmacenes/getSelectAlmacenes")
     .then((res) => res.text())
     .then((html) => {
-      document.querySelector("#filtroAlmacen").innerHTML = html;
-    });
-
-  // Cargar conceptos en filtro
-  fetch(base_url + "/Inv_movimientosalmacenes/getSelectConceptos")
-    .then((res) => res.text())
-    .then((html) => {
-      document.querySelector("#filtroConcepto").innerHTML = html;
+      document.querySelector("#filtroOrigen").innerHTML = html;
+      document.querySelector("#filtroDestino").innerHTML = html;
     });
 
   const primerTabEl = document.querySelector(
@@ -367,3 +344,35 @@ document.addEventListener("click", function (e) {
     "_blank",
   );
 });
+
+function verDetalle(id) {
+  let request = new XMLHttpRequest();
+  let url = base_url + "/Inv_movimientosalmacenes/getDetalle/" + id;
+
+  request.open("GET", url, true);
+  request.send();
+
+  request.onreadystatechange = function () {
+    if (request.readyState == 4 && request.status == 200) {
+      let data = JSON.parse(request.responseText);
+
+      let tbody = document.getElementById("tbodyDetalle");
+      tbody.innerHTML = "";
+
+      data.forEach((item) => {
+        let fila = `
+          <tr>
+            <td>${item.cve_articulo}</td>
+            <td>${item.descripcion}</td>
+            <td>${item.cantidad}</td>
+          </tr>
+        `;
+
+        tbody.innerHTML += fila;
+      });
+
+      let modal = new bootstrap.Modal(document.getElementById("modalDetalle"));
+      modal.show();
+    }
+  };
+}

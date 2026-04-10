@@ -32,15 +32,54 @@ class Inv_kardex extends Controllers
         die();
     }
 
-    public function getKardex(int $inventarioid)
+    public function getKardex()
     {
+        $inventarioid = intval($_GET['inventarioid'] ?? 0);
+        $almacen      = intval($_GET['almacen'] ?? 0);
+        $concepto     = intval($_GET['concepto'] ?? 0);
+        $fechaInicio  = $_GET['fechaInicio'] ?? '';
+        $fechaFin     = $_GET['fechaFin'] ?? '';
+
         if ($inventarioid <= 0) {
             echo json_encode([]);
             die();
         }
 
-        $data = $this->model->selectKardex($inventarioid);
+        $data = $this->model->selectKardex(
+            $inventarioid,
+            $almacen,
+            $concepto,
+            $fechaInicio,
+            $fechaFin
+        );
+
         echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    public function getSelectAlmacenes()
+    {
+        $html = '<option value="">Todos</option>';
+        $data = $this->model->selectAlmacenes();
+
+        foreach ($data as $row) {
+            $html .= '<option value="' . $row['idalmacen'] . '">' . $row['descripcion'] . '</option>';
+        }
+
+        echo $html;
+        die();
+    }
+
+    public function getSelectConceptos()
+    {
+        $html = '<option value="">Todos</option>';
+        $data = $this->model->selectConceptos();
+
+        foreach ($data as $row) {
+            $html .= '<option value="' . $row['idconcepmov'] . '">' . $row['descripcion'] . '</option>';
+        }
+
+        echo $html;
         die();
     }
 

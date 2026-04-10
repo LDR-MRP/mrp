@@ -1,4 +1,4 @@
-<form id="formInventarioProducto" autocomplete="off" class="form-steps was-validated" autocomplete="off">
+<form id="formInventarioProducto" autocomplete="off" class="form-steps was-validated" autocomplete="off" method="POST" enctype="multipart/form-data">
     <input type="hidden" id="idinventario" name="idinventario">
     <div class="container d-flex justify-content-center align-items-center p-3 mb-3 rounded">
 
@@ -248,15 +248,24 @@
 
 
 
-        <!-- IMAGEN -->
-        <div class="col-lg-12 col-sm-6">
+        <!-- IMÁGENES -->
+        <div class="col-lg-12">
             <div class="mb-3">
-                <label class="form-label" for="imagen_producto-input">IMAGEN</label>
-                <div class="input-group mb-3">
-                    <span class="input-group-text" id="imagen_producto-addon">Img</span>
-                    <input type="file" class="form-control" id="imagen_producto-input" name="imagen_producto" accept="image/*">
-                    <div class="invalid-feedback">El campo clave es obligatorio</div>
+                <label class="form-label">IMÁGENES (Máx. 3)</label>
+
+                <div id="contenedorImagenes">
+                    <div class="input-group mb-2">
+                        <input type="file" name="imagenes[]" class="form-control input-imagen" accept="image/*" capture="environment">
+                    </div>
                 </div>
+
+                <button type="button" class="btn btn-primary btn-sm" id="btnAgregarImagen">
+                    <i class="bi bi-plus-circle"></i> Agregar otra imagen
+                </button>
+
+                <small class="text-muted d-block mt-1">
+                    Puedes tomar foto o subir desde tu dispositivo (máximo 3)
+                </small>
             </div>
         </div>
 
@@ -297,7 +306,7 @@
 
         <div class="row mb-3">
             <div class="col-lg-12 col-sm-12 ">
-                <h5 class="mb-4">¿DESEAS AGREGAR EL PRODUCTO A UN ALMACÉN?</h5>
+                <h5 class="mb-4"></h5>
             </div>
         </div>
 
