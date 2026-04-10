@@ -49,15 +49,15 @@
                             <div class="row g-3 mb-3">
 
                                 <div class="col-md-3">
-                                    <label class="form-label">Almacén</label>
-                                    <select id="filtroAlmacen" class="form-control">
+                                    <label class="form-label">Almacén origen</label>
+                                    <select id="filtroOrigen" class="form-control">
                                         <option value="">Todos</option>
                                     </select>
                                 </div>
 
                                 <div class="col-md-3">
-                                    <label class="form-label">Concepto</label>
-                                    <select id="filtroConcepto" class="form-control">
+                                    <label class="form-label">Almacén destino</label>
+                                    <select id="filtroDestino" class="form-control">
                                         <option value="">Todos</option>
                                     </select>
                                 </div>
@@ -91,15 +91,12 @@
                                 style="width:100%">
                                 <thead>
                                     <tr>
-                                        <th>#</th>
-                                        <th>Clave</th>
-                                        <th>Producto</th>
-                                        <th>Almacén</th>
-                                        <th>Concepto</th>
+                                        <th>Folio</th>
+                                        <th>Almacén origen</th>
+                                        <th>Almacén destino</th>
                                         <th>Referencia</th>
-                                        <th>Cantidad</th>
                                         <th>Fecha</th>
-                                        <th>Reporte</th>
+                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -165,7 +162,7 @@
                                                             <input type="text" class="form-control invSearch">
                                                             <input type="hidden" name="inventarioid[]">
                                                         </td>
-                                                        <td><input name="costo_cantidad[]" type="number" class="form-control costo"></td>
+                                                        <td><input name="costo_cantidad[]" type="number" class="form-control costo" value="0" readonly></td>
                                                         <td><input name="total[]" type="number" class="form-control total" readonly></td>
                                                         <td><button type="button" class="btn btn-danger btn-sm btnDel">X</button></td>
                                                     </tr>
@@ -202,6 +199,37 @@
                 <!-- end card body -->
             </div>
             <!-- end card -->
+
+            <div class="modal fade" id="modalDetalle" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <div class="modal-content border-0">
+
+                        <div class="modal-header bg-primary-subtle p-3">
+                            <h5 class="modal-title" id="titleModal">Detalle del traspaso</h5>
+                        </div>
+
+                        <div class="modal-body">
+
+                            <table class="table table-bordered table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Clave</th>
+                                        <th>Producto</th>
+                                        <th>Cantidad</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyDetalle"></tbody>
+                            </table>
+
+                        </div>
+
+                        <div class="modal-footer bg-primary-subtle">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
 
 
             <!--end row-->
