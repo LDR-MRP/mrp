@@ -1,7 +1,17 @@
 <?php 
 	require_once("Config/Config.php");
 	require_once("Helpers/Helpers.php");
+	require_once("Libraries/Core/Autoload.php");
 	$url = !empty($_GET['url']) ? $_GET['url'] : 'home/home';
+	$url = ltrim($url, '/');
+
+	// --- BIFURCACIÓN HACIA ENRUTAMIENTO API ---
+	if (str_starts_with(strtolower($url), 'api/')) {
+		\Libraries\Core\ApiRouter::dispatch($url);
+		exit; 
+	}
+	// --- FIN BIFURCACIÓN ---
+
 	$arrUrl = explode("/", $url);
 	$controller = $arrUrl[0];
 	$method = $arrUrl[0];
@@ -26,7 +36,7 @@
 			$params = trim($params,',');
 		}
 	}
-	require_once("Libraries/Core/Autoload.php");
+	
 	require_once("Libraries/Core/Load.php");
 
  ?>
