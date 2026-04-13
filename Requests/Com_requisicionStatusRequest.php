@@ -4,7 +4,7 @@ class Com_requisicionStatusRequest extends Requests
 {
     public $model;
 
-    public function rules()
+    public function rules(): void
     {
         $idRequisicion = $this->data['idrequisicion'] ?? null;
         $comentario = $this->data['comentario'] ?? null;

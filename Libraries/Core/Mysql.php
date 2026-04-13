@@ -10,6 +10,7 @@
 		{
 			$this->conexion = Conexion::getInstance();
 			$this->conexion = $this->conexion->conect();
+			$this->conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		}
 
 		//Insertar un registro

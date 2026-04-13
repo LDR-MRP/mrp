@@ -5,7 +5,7 @@ class Com_compraStoreRequest extends Requests {
     public $requisitionModel;
     public $currencyModel;
     
-    public function rules() {
+    public function rules(): void {
 
         if (empty($this->data['requisicionid'])) {
             $this->addError('proveedor', 'La requisición no es válida.');
