@@ -288,9 +288,9 @@
                                         <button type="button" class="btn btn-success btn-lg shadow-md waves-effect waves-light btn-guardar" data-estatus="pendiente">
                                             <i class="ri-send-plane-fill align-middle me-1"></i> Enviar a Aprobación
                                         </button>
-                                        <?php if(false): ?><button type="button" class="btn btn-light waves-effect waves-light text-muted btn-guardar" data-estatus="borrador">
+                                        <button type="button" class="btn btn-light waves-effect waves-light text-muted btn-guardar" data-estatus="borrador">
                                             <i class="ri-save-3-line align-middle me-1"></i> Guardar Borrador
-                                        </button><?php endif; ?>
+                                        </button>
                                         <button type="button" class="btn btn-light btn-label waves-effect waves-light" data-redirect="com_requisicion">
                                             <i class="ri-arrow-go-back-line label-icon align-middle fs-16 me-2"></i> Cancelar y Volver
                                         </button>

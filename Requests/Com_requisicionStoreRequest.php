@@ -2,7 +2,7 @@
 
 class Com_requisicionStoreRequest extends Requests {
     
-    public function rules() {
+    public function rules(): void {
 
         if (empty($this->data['titulo'])) {
             $this->addError('titulo', 'El título de la requisición es obligatorio.');
