@@ -4,6 +4,10 @@ class Com_requisicionModel extends Mysql
 {
     use Auditable;
 
+    protected $table = 'com_requisiciones';
+
+    public const ESTATUS_BORRADOR = "borrador";
+
     public const ESTATUS_PENDIENTE = "pendiente";
 
     public const ESTATUS_APROBADA = "aprobada";
@@ -23,9 +27,170 @@ class Com_requisicionModel extends Mysql
 
     public function getTableName(): string 
     {
-        return "com_requisiciones";
+        return $this->table;
     }
 
+    public function getRequisition(int $id): array|bool
+    {
+        return $this->select(
+            "SELECT
+                idrequisicion,
+                id_empresa,
+                usuarioid,
+                departamentoid,
+                id_centro_costo,
+                titulo,
+                fecha_requerida,
+                prioridad,
+                estatus,
+                monto_estimado,
+                justificacion
+            FROM {$this->table}
+            WHERE idrequisicion = ?",
+            [
+                $id
+            ]
+        );
+    }
+
+    public function createHeader(array $data): ?int
+    {
+        return $this->insert(
+            "INSERT INTO com_requisiciones
+            (
+                usuarioid
+                ,estatus
+                ,titulo
+                ,departamentoid
+                ,fecha_requerida
+                ,monto_estimado
+                ,prioridad
+                ,justificacion
+            )
+            VALUES
+            (
+                :usuarioid
+                ,:estatus
+                ,:titulo
+                ,:departamentoid
+                ,:fecha_requerida
+                ,:monto_estimado
+                ,:prioridad
+                ,:justificacion
+            )",
+            [
+                ':usuarioid' => $data['user_id'],
+                ':estatus' => !empty($data['estatus']) ? mb_strtolower($data['estatus'], 'UTF-8') : 'borrador',
+                ':titulo' => $data['titulo'],
+                ':departamentoid' => $data['departamentoid'],
+                ':fecha_requerida' => $data['fecha_requerida'],
+                ':monto_estimado' => $data['monto_estimado'] ?: 0.000000,
+                ':prioridad' => !empty($data['prioridad']) ? mb_strtolower($data['prioridad'], 'UTF-8') : 'media',
+                ':justificacion' => $data['justificacion'] ?? '',
+            ]
+        ) ?? 0;
+    }
+
+    public function createDetail(int $requisitionId, array $item): ?bool
+    {
+        return $this->insert(
+            "INSERT INTO com_requisiciones_detalle
+            (requisicionid,
+            inventarioid,
+            cantidad,
+            precio_unitario_estimado,
+            notas)
+            VALUES
+            (?,?,?,?,?)",
+            [
+                $requisitionId,
+                $item['inventarioid'],
+                $item['cantidad'],
+                $item['precio_unitario_estimado'],
+                $item['notas'] ?? '',
+            ]
+        );
+    }
+
+    public function getItemQty(int $idrequisicionarticulo): ?float {
+        $query = "SELECT cantidad FROM com_requisiciones_detalle WHERE idrequisicionarticulo = ? LIMIT 1;";
+        $result = $this->select($query, [$idrequisicionarticulo]);
+        return $result ? (float) $result['cantidad'] : null;
+    }
+
+    public function deleteItemFromRequisition(int $idrequisicionarticulo): bool {
+        $query = "DELETE FROM com_requisiciones_detalle WHERE idrequisicionarticulo = ?;";
+        return $this->update($query, [$idrequisicionarticulo]);
+    }
+
+    public function reduceItemQty(int $idrequisicionarticulo, float $quantityToReduce): bool {
+        $query = "UPDATE com_requisiciones_detalle SET cantidad = cantidad - ? WHERE idrequisicionarticulo = ?;";
+        return $this->update($query, [$quantityToReduce, $idrequisicionarticulo]);
+    }
+    
+    public function getItemDetails(int $requisicionId, int $idrequisicionarticulo): ?array {
+        $query = "SELECT inventarioid, cantidad, precio_unitario_estimado, notas 
+                  FROM com_requisiciones_detalle 
+                  WHERE requisicionid = ? AND idrequisicionarticulo = ? LIMIT 1;";
+        $result = $this->select($query, [$requisicionId, $idrequisicionarticulo]);
+        return $result ?: null;
+    }
+
+    public function findItemByInventarioId(int $requisicionid, int $inventarioid): ?int {
+        $query = "SELECT idrequisicionarticulo FROM com_requisiciones_detalle 
+                  WHERE requisicionid = ? AND inventarioid = ? LIMIT 1;";
+        $result = $this->select($query, [$requisicionid, $inventarioid]);
+        return $result ? (int) $result['idrequisicionarticulo'] : null;
+    }
+
+    public function increaseItemQty(int $idrequisicionarticulo, float $quantityToAdd): bool {
+        $query = "UPDATE com_requisiciones_detalle SET cantidad = cantidad + ? WHERE idrequisicionarticulo = ?;";
+        return $this->update($query, [$quantityToAdd, $idrequisicionarticulo]);
+    }
+
+    /**
+     * Recalcula y actualiza el monto estimado de la cabecera 
+     * basado en la suma de sus partidas actuales.
+     */
+    public function updateEstimatedAmount(int $requisicionId): bool {
+        $query = "UPDATE com_requisiciones cr
+                  SET cr.monto_estimado = IFNULL((
+                      SELECT SUM(cantidad * precio_unitario_estimado)
+                      FROM com_requisiciones_detalle
+                      WHERE requisicionid = cr.idrequisicion
+                  ), 0.000000)
+                  WHERE cr.idrequisicion = ?;";
+                  
+        return $this->update($query, [$requisicionId]);
+    }
+
+    /**
+     * @deprecated since api-driven, use createDetail() instead.
+     */
+    public function detailCreate(int $requisitionId, array $item)
+    {
+         return $this->insert(
+            "INSERT INTO com_requisiciones_detalle
+            (requisicionid,
+            inventarioid,
+            cantidad,
+            precio_unitario_estimado,
+            notas)
+            VALUES
+            (?,?,?,?,?)",
+            [
+                $requisitionId,
+                $item['inventarioid'],
+                $item['cantidad'],
+                $item['precio_unitario_estimado'],
+                $item['notas'] ?? '',
+            ]
+        );
+    }
+
+    /**
+     * @deprecated since api-driven, use createHeader() instead.
+     */
     public function create(array $data, int $createdBy)
     {
         return $this->insert(
@@ -110,15 +275,19 @@ class Com_requisicionModel extends Mysql
             ";
 
         if(array_key_exists('estatus', $filters) && !is_array($filters['estatus'])) {
-            $query .= "AND r.estatus = '{$filters['estatus']}'";
+            $query .= " AND r.estatus = '{$filters['estatus']}'";
         }
 
         if(array_key_exists('estatus', $filters) && is_array($filters['estatus'])) {
-            $query .= "AND r.estatus IN ('".implode("','", $filters['estatus'])."')";
+            $query .= " AND r.estatus IN ('".implode("','", $filters['estatus'])."')";
         }
 
         if(array_key_exists('usuarioid', $filters)) {
-            $query .= "AND r.usuarioid = '{$filters['usuarioid']}'";
+            $query .= " AND r.usuarioid = '{$filters['usuarioid']}'";
+        }
+
+        if(array_key_exists('id_requisicion', $filters)) {
+            $query .= " AND r.idrequisicion = '{$filters['id_requisicion']}'";
         }
 
         return $this->select_all($query);
@@ -215,26 +384,7 @@ class Com_requisicionModel extends Mysql
         );
     }
 
-    public function detailCreate(int $requisitionId, array $item)
-    {
-         return $this->insert(
-            "INSERT INTO com_requisiciones_detalle
-            (requisicionid,
-            inventarioid,
-            cantidad,
-            precio_unitario_estimado,
-            notas)
-            VALUES
-            (?,?,?,?,?)",
-            [
-                $requisitionId,
-                $item['inventarioid'],
-                $item['cantidad'],
-                $item['precio_unitario_estimado'],
-                $item['notas'] ?? '',
-            ]
-        );
-    }
+    
 
     public function details(?int $requisitionId = null)
     {

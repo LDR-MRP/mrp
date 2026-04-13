@@ -1,7 +1,11 @@
 <?php
+use Services\BaseService;
+use InvalidArgumentException;
 
-class Com_requisicionService
+class Com_requisicionService extends BaseService
 {
+    use Loggable;
+
     public $requisitionModel;
 
     protected $stockModel;
@@ -17,6 +21,8 @@ class Com_requisicionService
         $this->stockModel = new Inv_inventarioModel;
         $this->requisitionModel = new Com_requisicionModel;
         $this->logAuditModel = new LogAuditModel;
+
+        parent::__construct($this->requisitionModel->getConexion());
     }
 
     /**
@@ -24,13 +30,8 @@ class Com_requisicionService
      * * @param array $filters Filtros adicionales enviados desde el cliente.
      * @return ServiceResponse
      */
-public function index(array $filters = [])
+    public function index(array $filters = [])
     {
-        if(!hasPermissions(COM_COMPRAS, 'r'))
-        {
-            $filters['usuarioid'] = $_SESSION['idUser'];
-        }
-
         return ServiceResponse::success(
             $this->requisitionModel->requisitions($filters),
             'Datos obtenidos correctamente.',
