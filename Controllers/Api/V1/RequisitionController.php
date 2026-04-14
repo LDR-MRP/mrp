@@ -1,6 +1,7 @@
 <?php
 namespace Controllers\Api\V1;
 
+use ServiceResponse;
 use Services\RequisitionService;
 
 class RequisitionController
@@ -14,8 +15,29 @@ class RequisitionController
         $this->requisitionService = new \RequisitionService;
     }
 
+    public function index()
+    {
+        return $this->apiResponse($this->requisitionService->index());
+    }
+
+    public function show(int $id)
+    {
+        // TODO: En un futuro, esto vendrá del AuthMiddleware
+        $userId = 19;
+        return $this->apiResponse($this->requisitionService->getRequisitionWithDetails((int)$id, $userId));
+    }
+
     public function moveItems(int $id)
     {
-        return $this->apiResponse($this->requisitionService->moveItems($id, $userId = 19));
+        // TODO: En un futuro, esto vendrá del AuthMiddleware
+        $userId = 19;
+        return $this->apiResponse($this->requisitionService->moveItems((int)$id, $userId));
+    }
+
+    public function deleteItem(int $id, int $itemId)
+    {
+        // TODO: En un futuro, esto vendrá del AuthMiddleware
+        $userId = 19;
+        return $this->apiResponse($this->requisitionService->deleteItem((int)$id, (int)$itemId, (int)$userId));
     }
 }

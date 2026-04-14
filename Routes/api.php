@@ -20,12 +20,22 @@ Route::post('api/v1/supplier', [SupplierController::class, 'store'])
 Route::get('api/v1/requisitions', [RequisitionController::class, 'index'])
     //->middleware([AuthMiddleware::class])
     ;
-
 Route::get('api/v1/requisitions/{id}', [RequisitionController::class, 'show'])
     //->middleware([AuthMiddleware::class])
     ;
-
+Route::put('api/v1/requisitions/{id}', [RequisitionController::class, 'update'])
+    //->middleware([AuthMiddleware::class])
+    ;
+Route::post('api/v1/requisitions/{id}/items', [RequisitionController::class, 'createItem'])
+    //->middleware([AuthMiddleware::class])
+    ;
+Route::delete('api/v1/requisitions/{id}/items/{item_id}', [RequisitionController::class, 'deleteItem'])
+    //->middleware([AuthMiddleware::class])
+    ;
 Route::post('api/v1/requisitions/{id}/items/move', [RequisitionController::class, 'moveItems'])
+    //->middleware([AuthMiddleware::class])
+    ;
+Route::post('api/v1/requisitions/{id}/submit', [RequisitionController::class, 'submit'])
     //->middleware([AuthMiddleware::class])
     ;
 ?>

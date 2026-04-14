@@ -51,7 +51,7 @@ $(document).ready(function () {
                 render: function(data, type, r) {
                     let buttons = `
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" data-redirect="com_requisicion/read/${r.idrequisicion}">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-redirect="com_requisicion/create/${r.idrequisicion}">
                                 <i class="ri-eye-line"></i> Ver
                             </button>
                     `;

@@ -6,6 +6,8 @@ class Com_requisicionModel extends Mysql
 
     protected $table = 'com_requisiciones';
 
+    protected $detailTable = 'com_requisiciones_detalle';
+
     public const ESTATUS_BORRADOR = "borrador";
 
     public const ESTATUS_PENDIENTE = "pendiente";
@@ -53,10 +55,54 @@ class Com_requisicionModel extends Mysql
         );
     }
 
+    public function getAllRequisitions(): array|bool
+    {
+        return $this->select(
+            "SELECT
+                idrequisicion,
+                id_empresa,
+                usuarioid,
+                departamentoid,
+                id_centro_costo,
+                titulo,
+                fecha_requerida,
+                prioridad,
+                estatus,
+                monto_estimado,
+                justificacion
+            FROM {$this->table}
+            "
+        );
+    }
+
+    /**
+     * Obtiene todas las partidas (detalles) asociadas a una requisición.
+     * Devuelve un array vacío si no tiene partidas.
+     */
+    public function getRequisitionItems(int $requisicionId): array
+    {
+        $query = "SELECT 
+                    idrequisicionarticulo,
+                    inventarioid,
+                    cantidad,
+                    precio_unitario_estimado,
+                    notas,
+                    (cantidad * precio_unitario_estimado) as subtotal,
+                    i.cve_articulo,
+                    i.descripcion,
+                    i.unidad_salida
+                  FROM com_requisiciones_detalle r
+                  INNER JOIN wms_inventario i
+                  ON i.idinventario = r.inventarioid
+                  WHERE requisicionid = ?";
+        $result = $this->select_all($query, [$requisicionId]);
+        return $result ?: [];
+    }
+
     public function createHeader(array $data): ?int
     {
         return $this->insert(
-            "INSERT INTO com_requisiciones
+            "INSERT INTO {$this->table}
             (
                 usuarioid
                 ,estatus
@@ -94,7 +140,7 @@ class Com_requisicionModel extends Mysql
     public function createDetail(int $requisitionId, array $item): ?bool
     {
         return $this->insert(
-            "INSERT INTO com_requisiciones_detalle
+            "INSERT INTO {$this->detailTable}
             (requisicionid,
             inventarioid,
             cantidad,
@@ -113,38 +159,38 @@ class Com_requisicionModel extends Mysql
     }
 
     public function getItemQty(int $idrequisicionarticulo): ?float {
-        $query = "SELECT cantidad FROM com_requisiciones_detalle WHERE idrequisicionarticulo = ? LIMIT 1;";
+        $query = "SELECT cantidad FROM {$this->detailTable} WHERE idrequisicionarticulo = ? LIMIT 1;";
         $result = $this->select($query, [$idrequisicionarticulo]);
         return $result ? (float) $result['cantidad'] : null;
     }
 
     public function deleteItemFromRequisition(int $idrequisicionarticulo): bool {
-        $query = "DELETE FROM com_requisiciones_detalle WHERE idrequisicionarticulo = ?;";
+        $query = "DELETE FROM {$this->detailTable} WHERE idrequisicionarticulo = ?;";
         return $this->update($query, [$idrequisicionarticulo]);
     }
 
     public function reduceItemQty(int $idrequisicionarticulo, float $quantityToReduce): bool {
-        $query = "UPDATE com_requisiciones_detalle SET cantidad = cantidad - ? WHERE idrequisicionarticulo = ?;";
+        $query = "UPDATE {$this->detailTable} SET cantidad = cantidad - ? WHERE idrequisicionarticulo = ?;";
         return $this->update($query, [$quantityToReduce, $idrequisicionarticulo]);
     }
     
     public function getItemDetails(int $requisicionId, int $idrequisicionarticulo): ?array {
         $query = "SELECT inventarioid, cantidad, precio_unitario_estimado, notas 
-                  FROM com_requisiciones_detalle 
+                  FROM {$this->detailTable} 
                   WHERE requisicionid = ? AND idrequisicionarticulo = ? LIMIT 1;";
         $result = $this->select($query, [$requisicionId, $idrequisicionarticulo]);
         return $result ?: null;
     }
 
     public function findItemByInventarioId(int $requisicionid, int $inventarioid): ?int {
-        $query = "SELECT idrequisicionarticulo FROM com_requisiciones_detalle 
+        $query = "SELECT idrequisicionarticulo FROM {$this->detailTable} 
                   WHERE requisicionid = ? AND inventarioid = ? LIMIT 1;";
         $result = $this->select($query, [$requisicionid, $inventarioid]);
         return $result ? (int) $result['idrequisicionarticulo'] : null;
     }
 
     public function increaseItemQty(int $idrequisicionarticulo, float $quantityToAdd): bool {
-        $query = "UPDATE com_requisiciones_detalle SET cantidad = cantidad + ? WHERE idrequisicionarticulo = ?;";
+        $query = "UPDATE {$this->detailTable} SET cantidad = cantidad + ? WHERE idrequisicionarticulo = ?;";
         return $this->update($query, [$quantityToAdd, $idrequisicionarticulo]);
     }
 
@@ -153,10 +199,10 @@ class Com_requisicionModel extends Mysql
      * basado en la suma de sus partidas actuales.
      */
     public function updateEstimatedAmount(int $requisicionId): bool {
-        $query = "UPDATE com_requisiciones cr
+        $query = "UPDATE {$this->table} cr
                   SET cr.monto_estimado = IFNULL((
                       SELECT SUM(cantidad * precio_unitario_estimado)
-                      FROM com_requisiciones_detalle
+                      FROM {$this->detailTable}
                       WHERE requisicionid = cr.idrequisicion
                   ), 0.000000)
                   WHERE cr.idrequisicion = ?;";
@@ -218,6 +264,9 @@ class Com_requisicionModel extends Mysql
         );
     }
 
+    /**
+     * @deprecated since api-driven, use getRequisition() instead.
+     */
     public function requisition(int $id)
     {
         return $this->select(
@@ -244,6 +293,9 @@ class Com_requisicionModel extends Mysql
         );
     }
 
+    /**
+     * @deprecated since api-driven, use getAllRequisitions() instead.
+     */
     public function requisitions(array $filters = [])
     {
         $query ="SELECT 

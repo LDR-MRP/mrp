@@ -19,6 +19,56 @@ class RequisitionService
         $this->db = $this->requisicionModel->getConexion();
     }
 
+    public function index(): ServiceResponse
+    {
+        return ServiceResponse::success($this->requisicionModel->getAllRequisitions());
+    }
+
+    /**
+     * Obtiene la requisición completa (cabecera + partidas) para pintar la UI.
+     */
+    public function getRequisitionWithDetails(int $requisitionId, int $userId): ServiceResponse
+    {
+        try {
+            // 1. Obtener la cabecera
+            $requisition = $this->requisicionModel->getRequisition($requisitionId);
+
+            // 2. Validación de Existencia
+            if (!$requisition) {
+                throw new \Exception("La requisición #{$requisitionId} no existe.", 404);
+            }
+
+            // 3. Validación de Seguridad (IDOR de Lectura)
+            // Evita que el Usuario A lea por URL la requisición del Usuario B
+            if ((int)$requisition['usuarioid'] !== $userId) {
+                throw new \Exception("Security Error: No tienes permisos para ver esta requisición.", 403);
+            }
+
+            // 4. Obtener las partidas
+            $items = $this->requisicionModel->getRequisitionItems($requisitionId);
+
+            // 5. Ensamblar la respuesta para el Frontend
+            // Anidamos las partidas dentro del objeto principal
+            $requisition['items'] = $items;
+
+            return ServiceResponse::success(
+                $requisition,
+                "Requisición recuperada exitosamente.",
+                200
+            );
+
+        } catch (\Exception $e) {
+            $this->logMessage($e, \LogLevel::WARNING, [
+                'action' => 'getRequisitionWithDetails',
+                'requisition_id' => $requisitionId,
+                'user_id' => $userId
+            ]);
+
+            $code = $e->getCode() !== 0 ? $e->getCode() : 500;
+            return ServiceResponse::error(message: $e->getMessage(), code: $code);
+        }
+    }
+
     public function moveItems(int $sourceRequisitionId, int $userId): ServiceResponse
     {
         $request = new MoveRequisitionItemsRequest();
@@ -143,6 +193,83 @@ class RequisitionService
             return ServiceResponse::error(message: $e->getMessage(), code: $code);
         }
 
+    }
+
+    /**
+     * @param int $requisitionId
+     * @param int $itemId
+     * @param int $userId
+     * @return ServiceResponse
+     */
+    public function deleteItem(int $requisitionId, int $itemId, int $userId): ServiceResponse
+    {
+        try {
+            $this->db->beginTransaction();
+
+            // 1. VALIDACIÓN DE COMPLIANCE Y SEGURIDAD (IDOR Cabecera)
+            $requisition = $this->requisicionModel->getRequisition($requisitionId);
+            
+            if (!$requisition) {
+                throw new \Exception("La requisición #{$requisitionId} no existe.", 404);
+            }
+            if ($requisition['estatus'] !== 'borrador') {
+                throw new \Exception("Compliance Error: Solo se pueden eliminar partidas de una requisición en estado DRAFT.", 403);
+            }
+            if ($requisition['usuarioid'] !== $userId) {
+                throw new \Exception("Security Error: No tienes permisos para modificar esta requisición.", 403);
+            }
+
+            // 2. VALIDACIÓN DE EXISTENCIA DE LA PARTIDA (Previene IDOR Partida)
+            // Aseguramos que la partida realmente pertenezca a ESTA requisición
+            $itemDetails = $this->requisicionModel->getItemDetails($requisitionId, $itemId);
+            
+            if (!$itemDetails) {
+                throw new \Exception("La partida #{$itemId} no existe o no pertenece a esta requisición.", 404);
+            }
+
+            // 3. EJECUTAR EL BORRADO
+            $deleted = $this->requisicionModel->deleteItemFromRequisition($itemId);
+
+            if (!$deleted) {
+                throw new \Exception("Error interno: No se pudo eliminar la partida.", 500);
+            }
+
+            // 4. RECALCULAR MONTO ESTIMADO (Consistencia Financiera)
+            // Como borramos un item, el total de la cabecera debe disminuir
+            $this->requisicionModel->updateEstimatedAmount($requisitionId);
+
+            $this->db->commit();
+
+            return ServiceResponse::success(
+                ["deleted_item_id" => $itemId],
+                "Partida eliminada exitosamente.",
+                200
+            );
+
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'deleteItem',
+                'requisition_id' => $requisitionId,
+                'item_id' => $itemId,
+                'id_user' => $userId
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            
+        } catch (\Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($e, \LogLevel::WARNING, [
+                'action' => 'deleteItem',
+                'requisition_id' => $requisitionId,
+                'item_id' => $itemId
+            ]);
+            $code = $e->getCode() !== 0 ? $e->getCode() : 500;
+            return ServiceResponse::error(message: $e->getMessage(), code: $code);
+        }
     }
 
     /**
