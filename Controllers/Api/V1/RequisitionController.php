@@ -1,7 +1,6 @@
 <?php
 namespace Controllers\Api\V1;
 
-use ServiceResponse;
 use Services\RequisitionService;
 
 class RequisitionController
@@ -93,6 +92,16 @@ class RequisitionController
     {
         $authenticatedUserId = 19; // TODO: JWT
         $serviceResponse = $this->requisitionService->destroy((int)$id, $authenticatedUserId);
+        return $this->apiResponse($serviceResponse);
+    }
+
+    // GET /api/v1/requisitions/{id}/pending-items
+    public function getPendingItems(string $id)
+    {
+        $authenticatedUserId = 1; // TODO: Extraer del Middleware JWT
+
+        $serviceResponse = $this->requisitionService->getPendingItemsToPurchase((int)$id, $authenticatedUserId);
+        
         return $this->apiResponse($serviceResponse);
     }
 

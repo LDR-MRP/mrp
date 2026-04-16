@@ -288,7 +288,56 @@ class Com_requisicionModel extends Mysql
         $params = array_merge([$requisicionId], $keepItemIds);
         
         return $this->update($query, $params);
-    }   
+    }
+    
+    /**
+     * Calcula y retorna las partidas de una requisición que aún no han sido compradas en su totalidad.
+     *
+     * @param int $requisicionId
+     * @return array Lista de partidas con su saldo pendiente.
+     */
+    public function calculatePendingItems(int $requisicionId): array
+    {
+        // La consulta maestra de saldos
+        $query = "
+            SELECT 
+                rd.idrequisicionarticulo,
+                rd.inventarioid,
+                rd.notas,
+                -- Datos originales solicitados
+                rd.cantidad AS cantidad_solicitada,
+                rd.precio_unitario_estimado,
+                
+                -- Sumamos lo que ya se compró en todas las OCs (si no hay OCs, es 0)
+                IFNULL(oc_comprado.total_comprado, 0) AS cantidad_ya_comprada,
+                
+                -- La resta matemática: Lo que falta por comprar
+                (rd.cantidad - IFNULL(oc_comprado.total_comprado, 0)) AS cantidad_pendiente
+                
+            FROM com_requisiciones_detalle rd
+            
+            -- Subconsulta: Agrupamos todas las OCs previas por partida de requisición
+            LEFT JOIN (
+                SELECT 
+                    ocd.idrequisicionarticulo, 
+                    SUM(ocd.cantidad) AS total_comprado
+                FROM com_ordenes_compra_detalle ocd
+                INNER JOIN com_ordenes_compra oc ON ocd.compraid = oc.idcompra
+                -- Opcional: Solo sumar OCs que no estén canceladas
+                WHERE oc.estatus != 'cancelada'
+                GROUP BY ocd.idrequisicionarticulo
+            ) AS oc_comprado ON rd.idrequisicionarticulo = oc_comprado.idrequisicionarticulo
+            
+            WHERE rd.requisicionid = ?
+            
+            -- EL FILTRO CRÍTICO: Solo devolver partidas donde aún falte comprar algo
+            HAVING cantidad_pendiente > 0;
+        ";
+
+        $result = $this->select_all($query, [$requisicionId]);
+        
+        return $result ?: [];
+    }
 
     /**
      * 

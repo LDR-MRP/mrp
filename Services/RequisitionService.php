@@ -661,6 +661,56 @@ class RequisitionService
     }
 
     /**
+     * Obtiene las partidas de una requisición que aún tienen saldo pendiente por comprar.
+     *
+     * @param int $requisitionId
+     * @param int $userId
+     * @return ServiceResponse
+     */
+    public function getPendingItemsToPurchase(int $requisitionId, int $userId): ServiceResponse
+    {
+        try {
+            // 1. Validar existencia y seguridad (IDOR)
+            $requisition = $this->requisicionModel->getRequisition($requisitionId);
+
+            if (!$requisition) {
+                throw new \Exception("La requisición #{$requisitionId} no existe.", 404);
+            }
+
+            // Opcional: Si solo ciertos roles (ej. Compradores) pueden ver esto, valídalo aquí.
+            // if (!$this->userHasRole($userId, 'comprador')) throw new \Exception("No tienes permisos de compras.", 403);
+
+            // 2. Validar Máquina de Estados
+            // Solo se puede comprar si ya fue aprobada, o si ya está en proceso de compra (cumplimiento parcial)
+            if (!in_array($requisition['estatus'], ['aprobada', 'en compra'])) {
+                throw new \Exception("No se pueden generar órdenes de compra para una requisición en estado '{$requisition['estatus']}'.", 403);
+            }
+
+            // 3. Obtener los saldos pendientes desde la Base de Datos
+            $pendingItems = $this->requisicionModel->calculatePendingItems($requisitionId);
+
+            // 4. Retornar la data
+            return ServiceResponse::success(
+                [
+                    'requisicion' => $requisition, // Mandamos la cabecera por si el frontend la necesita
+                    'items_pendientes' => $pendingItems
+                ],
+                "Partidas pendientes calculadas exitosamente.",
+                200
+            );
+
+        } catch (\Exception $e) {
+            $this->logMessage($e, \LogLevel::WARNING, [
+                'action' => 'getPendingItemsToPurchase',
+                'requisition_id' => $requisitionId,
+                'id_user' => $userId
+            ]);
+            $code = $e->getCode() !== 0 ? $e->getCode() : 500;
+            return ServiceResponse::error(message: $e->getMessage(), code: $code);
+        }
+    }
+
+    /**
      * 
      */
     public function getKpis(int $userId): ServiceResponse

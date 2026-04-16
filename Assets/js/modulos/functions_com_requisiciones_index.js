@@ -172,7 +172,7 @@ const RequisitionIndex = {
             case 'aprobada':
                 // Si está aprobada, el siguiente paso es generar la OC (gestionado en otro módulo o aquí)
                 if (canApprove) { // O el permiso que corresponda a "Crear OC"
-                    menuItems.push(`<li><button class="dropdown-item text-primary" data-redirect="com_ordenes/create?req_id=${row.idrequisicion}"><i class="ri-file-list-3-line"></i> Generar Orden de Compra</button></li>`);
+                    menuItems.push(`<li><button class="dropdown-item text-primary" data-redirect="com_orden/create?req_id=${row.idrequisicion}"><i class="ri-file-list-3-line"></i> Generar Orden de Compra</button></li>`);
                 }
                 if (canDelete) { // Solo un admin debería poder cancelar algo ya aprobado
                     menuItems.push('divider');
