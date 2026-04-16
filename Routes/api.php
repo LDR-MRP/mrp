@@ -33,5 +33,5 @@ Route::post('api/v1/requisitions/{id}/return-to-draft', [RequisitionController::
 // Ruta de eliminación
 Route::delete('api/v1/requisitions/{id}', [RequisitionController::class, 'destroy']);
 // Ruta de PDF
-Route::get('api/v1/requisitions/{id}/pdf', [\Controllers\Api\V1\Requisition::class, 'generatePdf']);
+Route::get('api/v1/requisitions/{id}/pdf', [RequisitionController::class, 'generatePdf']);
 ?>

@@ -54,9 +54,10 @@ class RequisitionService
 
             // 3. Validación de Seguridad (IDOR de Lectura)
             // Evita que el Usuario A lea por URL la requisición del Usuario B
-            if ((int)$requisition['usuarioid'] !== $userId) {
-                throw new \Exception("Security Error: No tienes permisos para ver esta requisición.", 403);
-            }
+            // TODO: JWT
+            // if ((int)$requisition['usuarioid'] !== $userId) {
+            //     throw new \Exception("Security Error: No tienes permisos para ver esta requisición.", 403);
+            // }
 
             // 4. Obtener las partidas
             $items = $this->requisicionModel->getRequisitionItems($requisitionId);
@@ -211,9 +212,10 @@ class RequisitionService
             if ($existingReq['estatus'] !== 'borrador') {
                 throw new \Exception("Compliance Error: No se puede editar una requisición que ya no es un borrador.", 403);
             }
-            if ($existingReq['usuarioid'] !== $userId) {
-                throw new \Exception("Security Error: No tienes permisos para editar esta requisición.", 403);
-            }
+            // TODO: JWT
+            // if ($existingReq['usuarioid'] !== $userId) {
+            //     throw new \Exception("Security Error: No tienes permisos para editar esta requisición.", 403);
+            // }
 
             // 2. DETERMINAR EL NUEVO ESTATUS FINAL
             $isSubmit = ($payload['action'] === 'submit_approval');
@@ -326,9 +328,10 @@ class RequisitionService
             if ($sourceReq['estatus'] !== 'borrador') {
                 throw new \Exception("Compliance Error: Solo se pueden mover partidas de una requisición en estado DRAFT.", 403);
             }
-            if ($sourceReq['usuarioid'] !== $userId) {
-                throw new \Exception("Security Error: No tienes permisos sobre este DRAFT.", 403); // Prevención IDOR
-            }
+            // TODO: JWT
+            // if ($sourceReq['usuarioid'] !== $userId) {
+            //     throw new \Exception("Security Error: No tienes permisos sobre este DRAFT.", 403); // Prevención IDOR
+            // }
 
             // 2. RESOLVER EL DESTINO (Split o Merge)
             $targetReqId = null;
@@ -453,9 +456,10 @@ class RequisitionService
             if ($requisition['estatus'] !== 'borrador') {
                 throw new \Exception("Compliance Error: Solo se pueden eliminar partidas de una requisición en estado DRAFT.", 403);
             }
-            if ($requisition['usuarioid'] !== $userId) {
-                throw new \Exception("Security Error: No tienes permisos para modificar esta requisición.", 403);
-            }
+            // TODO: JWT
+            // if ($requisition['usuarioid'] !== $userId) {
+            //     throw new \Exception("Security Error: No tienes permisos para modificar esta requisición.", 403);
+            // }
 
             // 2. VALIDACIÓN DE EXISTENCIA DE LA PARTIDA (Previene IDOR Partida)
             // Aseguramos que la partida realmente pertenezca a ESTA requisición
@@ -596,9 +600,10 @@ class RequisitionService
             }
 
             // 2. VALIDAR SEGURIDAD (IDOR)
-            if ((int)$requisition['usuarioid'] !== $userId) {
-                throw new \Exception("Security Error: No tienes permisos para eliminar esta solicitud.", 403);
-            }
+            // TODO: JWT
+            // if ((int)$requisition['usuarioid'] !== $userId) {
+            //     throw new \Exception("Security Error: No tienes permisos para eliminar esta solicitud.", 403);
+            // }
 
             // 3. VALIDAR MÁQUINA DE ESTADOS (Business Rules)
             // Una vez aprobada o en compras, no se puede borrar (afectaría auditorías contables).
