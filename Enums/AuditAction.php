@@ -10,11 +10,12 @@ enum AuditAction: string
     case DELETED = 'eliminacion_logica';
     case RESTORED = 'restauracion';
     case CANCELED = 'cancelacion';
+    case REJECTED = 'rechazo';
     
     // Flujos de Aprobación ERP (State Machine)
+    case APPROVED = 'aprobacion';
     case APPROVE_L1 = 'aprobacion_l1';
     case APPROVE_L2 = 'aprobacion_l2';
-    case REJECTED = 'rechazo';
     
     // Acciones específicas de DevSecOps
     case UPLOAD_FILE = 'carga_documento';

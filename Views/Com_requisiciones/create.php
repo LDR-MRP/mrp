@@ -102,8 +102,8 @@
                         <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-white">
                             <div class="page-title-right">
                                 <ol class="breadcrumb m-0">
-                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
-                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/com_requisiciones">Requisiciones</a></li>
+                                    <li class="breadcrumb-item"><a href=": TODO/dashboard">Dashboard</a></li>
+                                    <li class="breadcrumb-item"><a href=": TODO/com_requisiciones">Requisiciones</a></li>
                                     <li class="breadcrumb-item active">Nueva Solicitud</li>
                                 </ol>
                             </div>
@@ -314,17 +314,29 @@
                                 </div>
                             </div>
 
+                            <!-- Tarjeta: Solicitante y Creación -->
                             <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
                                 <div class="card-body">
                                     <h6 class="text-uppercase fw-bold text-muted fs-11 ls-1 mb-3">Solicitante</h6>
-                                    <div class="d-flex align-items-center">
+                                    <div class="d-flex align-items-center mb-4">
                                         <div class="me-3">
-                                            <img src="<?= base_url(); ?>/Assets/avatars/<?= $data['page_user_avatar']; ?>" class="rounded-circle avatar-xs shadow-sm" alt="user">
+                                            <div class="avatar-sm">
+                                                <span class="avatar-title bg-soft-info text-info rounded-circle fs-4 shadow-sm">
+                                                    <i class="ri-user-line"></i>
+                                                </span>
+                                            </div>
                                         </div>
                                         <div>
-                                            <h6 class="mb-0 fs-13 fw-bold"><?= $data['page_user']; ?></h6>
-                                            <p class="text-muted fs-11 mb-0"><?= $data['page_user_rol']; ?></p>
+                                            <h6 class="mb-0 fs-14 fw-bold" id="lbl-solicitante">...</h6>
+                                            <p class="text-muted fs-11 mb-0">Usuario del Sistema</p>
                                         </div>
+                                    </div>
+                                    
+                                    <hr class="border-dashed mb-3 mt-0">
+                                    
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted fs-12 fw-medium"><i class="ri-time-line me-1"></i> Creado el:</span>
+                                        <span class="text-dark fw-bold fs-12" id="lbl-fecha-creacion">...</span>
                                     </div>
                                 </div>
                             </div>

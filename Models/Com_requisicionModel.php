@@ -46,7 +46,8 @@ class Com_requisicionModel extends Mysql
                 prioridad,
                 estatus,
                 monto_estimado,
-                justificacion
+                justificacion,
+                created_at AS fecha
             FROM {$this->table}
             WHERE idrequisicion = ?",
             [
@@ -57,7 +58,7 @@ class Com_requisicionModel extends Mysql
 
     public function getAllRequisitions(): array|bool
     {
-        return $this->select(
+        return $this->select_all(
             "SELECT
                 idrequisicion,
                 id_empresa,
@@ -69,8 +70,21 @@ class Com_requisicionModel extends Mysql
                 prioridad,
                 estatus,
                 monto_estimado,
-                justificacion
-            FROM {$this->table}
+                justificacion,
+                created_at AS fecha,
+                -- data usuarios
+                CONCAT(u_creator.nombres,' ',u_creator.apellidos) as solicitante,
+                CONCAT(u_modifier.nombres,' ',u_modifier.apellidos) as aprobador,
+                -- data departamentos
+                d.nombre AS departamento,
+                d.descripcion AS departamento_descripcion
+            FROM {$this->table} AS r
+            LEFT JOIN usuarios AS u_creator
+                ON u_creator.idusuario = r.usuarioid
+			LEFT JOIN usuarios AS u_modifier
+                ON u_modifier.idusuario = r.modified_by
+            LEFT JOIN cli_departamentos AS d
+                ON d.id = r.departamentoid
             "
         );
     }
@@ -211,57 +225,108 @@ class Com_requisicionModel extends Mysql
     }
 
     /**
-     * @deprecated since api-driven, use createDetail() instead.
+     * Actualiza los datos principales de la cabecera.
      */
-    public function detailCreate(int $requisitionId, array $item)
+    public function updateHeader(int $requisicionId, array $data): bool {
+        $query = "UPDATE com_requisiciones SET 
+                    estatus = ?, titulo = ?, departamentoid = ?, 
+                    fecha_requerida = ?, prioridad = ?, justificacion = ?
+                  WHERE idrequisicion = ?";
+        
+        $params = [
+            $data['estatus'],
+            $data['titulo'],
+            $data['departamentoid'],
+            $data['fecha_requerida'],
+            $data['prioridad'],
+            $data['justificacion'],
+            $requisicionId
+        ];
+        
+        return $this->update($query, $params);
+    }
+
+    /**
+     * Actualiza una partida existente.
+     */
+    public function updateDetail(int $idrequisicionarticulo, array $itemData): bool {
+        $query = "UPDATE com_requisiciones_detalle SET 
+                    inventarioid = ?, cantidad = ?, precio_unitario_estimado = ?, notas = ?
+                  WHERE idrequisicionarticulo = ?";
+                  
+        $params = [
+            $itemData['inventarioid'],
+            $itemData['cantidad'],
+            $itemData['precio_unitario_estimado'],
+            $itemData['notas'],
+            $idrequisicionarticulo
+        ];
+        
+        return $this->update($query, $params);
+    }
+
+    /**
+     * Elimina todas las partidas de una requisición.
+     */
+    public function deleteAllItems(int $requisicionId): bool {
+        $query = "DELETE FROM com_requisiciones_detalle WHERE requisicionid = ?";
+        return $this->update($query, [$requisicionId]);
+    }
+
+     /**
+     * Elimina las partidas de una requisición que NO estén en la lista de IDs proveída.
+     * Útil para sincronizar la BD con lo que el frontend manda.
+     */
+    public function deleteMissingItems(int $requisicionId, array $keepItemIds): bool {
+        // Creamos los placeholders (?, ?, ?) dinámicamente según la cantidad de IDs
+        $placeholders = implode(',', array_fill(0, count($keepItemIds), '?'));
+        
+        $query = "DELETE FROM com_requisiciones_detalle 
+                  WHERE requisicionid = ? AND idrequisicionarticulo NOT IN ($placeholders)";
+        
+        // Unimos el ID de la requisición con el array de IDs a mantener
+        $params = array_merge([$requisicionId], $keepItemIds);
+        
+        return $this->update($query, $params);
+    }   
+
+    /**
+     * 
+     */
+    public function getKpi()
     {
-         return $this->insert(
-            "INSERT INTO com_requisiciones_detalle
-            (requisicionid,
-            inventarioid,
-            cantidad,
-            precio_unitario_estimado,
-            notas)
-            VALUES
-            (?,?,?,?,?)",
-            [
-                $requisitionId,
-                $item['inventarioid'],
-                $item['cantidad'],
-                $item['precio_unitario_estimado'],
-                $item['notas'] ?? '',
-            ]
+        return $this->select_all(
+            "SELECT 
+                estatus,
+                count(idrequisicion) as cantidad
+            FROM com_requisiciones
+            WHERE (estatus != 'finalizada')
+            or (estatus = 'finalizada' AND MONTH(fecha_requerida) = MONTH(current_date) AND YEAR(fecha_requerida) = YEAR(current_date))
+            GROUP BY estatus;
+            "
         );
     }
 
     /**
-     * @deprecated since api-driven, use createHeader() instead.
+     * Actualiza el estado de una requisición y registra quién lo modificó.
      */
-    public function create(array $data, int $createdBy)
-    {
-        return $this->insert(
-            "INSERT INTO com_requisiciones
-            (usuarioid,
-            titulo,
-            departamentoid,
-            fecha_requerida,
-            monto_estimado,
-            prioridad,
-            estatus,
-            justificacion)
-            VALUES
-            (?,?,?,?,?,?,?,?)",
-            [
-                $createdBy,
-                $data['titulo'],
-                $data['departamentoid'],
-                $data['fecha_requerida'],
-                $data['monto_estimado'],
-                mb_strtolower($data['prioridad'], 'UTF-8') ?? 'media',
-                mb_strtolower($data['estatus'], 'UTF-8') ?? 'pendiente',
-                $data['justificacion'] ?? '',
-            ]
-        );
+    public function updateStatus(int $requisicionId, string $newStatus, int $modifiedByUserId): bool {
+        $query = "UPDATE com_requisiciones 
+                  SET estatus = ?, modified_by = ?, modified_at = NOW() 
+                  WHERE idrequisicion = ?";
+        
+        return $this->update($query, [$newStatus, $modifiedByUserId, $requisicionId]);
+    }
+
+    /**
+     * Realiza un borrado lógico (Soft Delete).
+     */
+    public function softDelete(int $requisicionId): bool {
+        // En lugar de DELETE, cambiamos el estatus y ponemos fecha de borrado
+        $query = "UPDATE com_requisiciones 
+                  SET estatus = 'eliminada', deleted_at = NOW() 
+                  WHERE idrequisicion = ?";
+        return $this->update($query, [$requisicionId]);
     }
 
     /**
@@ -290,164 +355,6 @@ class Com_requisicionModel extends Mysql
             WHERE idrequisicion = ?;
             ",
             [$id]
-        );
-    }
-
-    /**
-     * @deprecated since api-driven, use getAllRequisitions() instead.
-     */
-    public function requisitions(array $filters = [])
-    {
-        $query ="SELECT 
-                -- data requisición
-                idrequisicion,
-                id_empresa,
-                fecha_requerida,
-                prioridad,
-                estatus,
-                justificacion,
-                monto_estimado,
-                modified_by,
-                modified_at,
-                date(created_at) as fecha,
-                -- data usuarios
-                CONCAT(u_creator.nombres,' ',u_creator.apellidos) as solicitante,
-                CONCAT(u_modifier.nombres,' ',u_modifier.apellidos) as aprobador,
-                -- data departamentos
-                d.nombre as departamento,
-                d.descripcion as departamento_descripcion
-            FROM com_requisiciones AS r
-            LEFT JOIN usuarios AS u_creator
-                ON u_creator.idusuario = r.usuarioid
-			LEFT JOIN usuarios AS u_modifier
-                ON u_modifier.idusuario = r.modified_by
-            LEFT JOIN cli_departamentos AS d
-                ON d.id = r.departamentoid
-            WHERE true
-            ";
-
-        if(array_key_exists('estatus', $filters) && !is_array($filters['estatus'])) {
-            $query .= " AND r.estatus = '{$filters['estatus']}'";
-        }
-
-        if(array_key_exists('estatus', $filters) && is_array($filters['estatus'])) {
-            $query .= " AND r.estatus IN ('".implode("','", $filters['estatus'])."')";
-        }
-
-        if(array_key_exists('usuarioid', $filters)) {
-            $query .= " AND r.usuarioid = '{$filters['usuarioid']}'";
-        }
-
-        if(array_key_exists('id_requisicion', $filters)) {
-            $query .= " AND r.idrequisicion = '{$filters['id_requisicion']}'";
-        }
-
-        return $this->select_all($query);
-    }
-
-    public function approve(int $requisitionId, string $status, int $userId): int
-    {
-        return $this->update("UPDATE com_requisiciones
-            SET estatus = ?,
-                modified_by = ?,
-                modified_at = current_timestamp()
-            WHERE idrequisicion = ?;
-            ",
-            [
-                mb_strtolower($status, 'UTF-8'),
-                $userId,
-                $requisitionId,
-            ]
-        );
-    }
-
-    public function reject(int $requisitionId, string $status, int $userId): int
-    {
-        return $this->update("UPDATE com_requisiciones
-            SET estatus = ?,
-                modified_by = ?
-            WHERE idrequisicion = ?;
-            ",
-            [
-                mb_strtolower($status, 'UTF-8'),
-                $userId,
-                $requisitionId,
-            ]
-        );
-    }
-
-    public function cancel(int $requisitionId, string $status, int $userId)
-    {
-        return $this->update("UPDATE com_requisiciones
-            SET estatus = ?,
-                modified_by = ?
-            WHERE idrequisicion = ?;
-            ",
-            [
-                mb_strtolower($status, 'UTF-8'),
-                $userId,
-                $requisitionId,
-            ]
-        );
-    }
-
-    public function destroy(int $requisitionId, string $status, int $userId)
-    {
-        return $this->update("UPDATE com_requisiciones
-            SET estatus = ?,
-                modified_by = ?,
-                deleted_at = current_timestamp()
-            WHERE idrequisicion = ?;
-            ",
-            [
-                mb_strtolower($status, 'UTF-8'),
-                $userId,
-                $requisitionId,
-            ]
-        );
-    }
-
-    public function changeStatus(int $requisitionId, string $status, int $userId)
-    {
-        return $this->update("UPDATE com_requisiciones
-            SET estatus = ?,
-                modified_by = ?
-            WHERE idrequisicion = ?;
-            ",
-            [
-                mb_strtolower($status, 'UTF-8'),
-                $userId,
-                $requisitionId,
-            ]
-        );
-    }
-
-    public function getKpi()
-    {
-        return $this->select_all(
-            "SELECT 
-                estatus,
-                count(idrequisicion) as cantidad
-            FROM com_requisiciones
-            WHERE (estatus != 'finalizada')
-            or (estatus = 'finalizada' AND MONTH(fecha_requerida) = MONTH(current_date) AND YEAR(fecha_requerida) = YEAR(current_date))
-            GROUP BY estatus;
-            "
-        );
-    }
-
-    
-
-    public function details(?int $requisitionId = null)
-    {
-         return $this->select_all(
-            "SELECT * FROM com_requisiciones_detalle
-            LEFT JOIN wms_inventario
-            ON wms_inventario.idinventario = com_requisiciones_detalle.inventarioid
-            WHERE requisicionid = ?;",
-            [
-                $requisitionId,
-            ]
         );
     }
 }

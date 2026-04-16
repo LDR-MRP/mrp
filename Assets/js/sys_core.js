@@ -305,19 +305,31 @@ const Sys_Core = {
          * @param {Object} options 
          * @param {string} options.url
          * @param {any} options.payload
-         * @param {string} options.successMsg
+         * @param {string} [options.method='POST'] - Verbo HTTP (POST, PUT, DELETE, PATCH)
+         * @param {jQuery} [options.$btn] - Botón que disparó la acción (para el spinner)
+         * @param {string} [options.successMsg]
          * @param {function} [options.onDone]
          * @param {string} [options.contentType]
          * @param {boolean} [options.processData]
          */
         post: function(options) {
             const { url, payload, successMsg, onDone } = options;
-            const $btn = $('button[type="submit"]:focus').length ? $('button[type="submit"]:focus') : $('button[type="submit"]');
-            const originalHtml = $btn.html();
+            
+            // 1. SOPORTE RESTful: Si no mandan method, asumimos POST por retrocompatibilidad
+            const httpMethod = (options.method || 'POST').toUpperCase();
+
+            // 2. MEJORA UI: Permitimos pasar el botón exacto. Si no, usamos el activeElement o submit.
+            let $btn = options.$btn;
+            if (!$btn || !$btn.length) {
+                const $active = $(document.activeElement);
+                $btn = $active.is('button') ? $active : $('button[type="submit"]:focus');
+            }
+            
+            const originalHtml = $btn.length ? $btn.html() : '';
 
             let config = {
                 url: url,
-                method: 'POST',
+                method: httpMethod, // Inyectamos POST, PUT o DELETE
                 data: payload,
                 contentType: options.contentType,
                 processData: options.processData ?? true
@@ -336,39 +348,99 @@ const Sys_Core = {
                 dataType: 'json',
                 beforeSend: function() {
                     Sys_Core.UI.toggleLoader('.page-content', true);
-                    $btn.prop('disabled', true).html('<i class="ri-loader-4-line ri-spin"></i>');
+                    if ($btn.length) $btn.prop('disabled', true).html('<i class="ri-loader-4-line ri-spin"></i> Procesando...');
                 },
                 success: function(res) {
                     if (res.status === 'success' || res.status === true) {
-                        Sys_Core.UI.notify(res.message, 'success');
+                        // Usamos el successMsg de la BD si viene, si no, el del frontend
+                        Sys_Core.UI.notify(res.message || successMsg || 'Operación exitosa', 'success');
                         if (onDone) onDone(res);
-                        Sys_Core.UI.resetState($btn, originalHtml);
                     } else {
                         Sys_Core.UI.alert('Operación Fallida', res.message, 'warning');
-                        Sys_Core.UI.resetState($btn, originalHtml);
                     }
                 },
                 error: function(xhr) {
                     Sys_Core.Net.handleError(xhr);
-                    Sys_Core.UI.resetState($btn, originalHtml);
+                },
+                complete: function() {
+                    Sys_Core.UI.toggleLoader('.page-content', false);
+                    if ($btn.length) $btn.prop('disabled', false).html(originalHtml);
                 }
             });
         },
 
         /**
-         * @param {Object} xhr 
+         * Manejador global de errores AJAX. 
+         * Diseñado para atrapar la estructura anidada de "ServiceResponse" y "FormRequest".
+         * 
+         * @param {Object} xhr El objeto XMLHttpRequest devuelto por jQuery.
          */
         handleError: function(xhr) {
+            // Analizar la respuesta JSON si existe
+            let res = null;
+            try {
+                res = xhr.responseJSON || JSON.parse(xhr.responseText);
+            } catch (e) {
+                res = {}; // Fallback si no es JSON válido
+            }
+
             if (xhr.status === 422) {
-                const res = xhr.responseJSON;
-                let html = `<div class="text-left small"><p>${res.message || 'Errores detectados:'}</p><ul>`;
+                // Extracción de Errores de Validación (HTTP 422)
+                let mainMessage = res.message || 'Se encontraron datos inválidos:';
+                let html = `<div class="text-start small"><p class="fw-bold text-danger mb-2">${mainMessage}</p><ul class="mb-0">`;
+                
+                let errorList = null;
+
+                // --- NAVEGADOR INTELIGENTE DE ESTRUCTURA ---
                 if (res.errors) {
-                    $.each(res.errors, (key, msg) => html += `<li>${msg}</li>`);
+                    if (res.errors.errors && typeof res.errors.errors === 'object') {
+                        // Caso: { "errors": { "status": false, "errors": { "campo": "msg" } } }
+                        errorList = res.errors.errors;
+                    } else if (typeof res.errors === 'object' && !res.errors.status) {
+                        // Estructura plana: { "errors": { "campo": "msg" } }
+                        errorList = res.errors;
+                    } else if (typeof res.errors === 'string') {
+                        // Doble codificación JSON (a veces pasa en los traits)
+                        try {
+                            const decoded = JSON.parse(res.errors);
+                            errorList = decoded.errors || decoded;
+                        } catch(e) {}
+                    }
                 }
+
+                // Generar el HTML iterando sobre los mensajes encontrados
+                if (errorList && Object.keys(errorList).length > 0) {
+                    $.each(errorList, (campo, mensaje) => {
+                        // Asegurarnos de imprimir solo strings, no objetos internos raros
+                        if (typeof mensaje === 'string') {
+                            html += `<li><b>${campo}:</b> ${mensaje}</li>`;
+                        } else if (Array.isArray(mensaje)) {
+                            // Si Laravel/Framework manda un array de mensajes por campo
+                            mensaje.forEach(m => html += `<li><b>${campo}:</b> ${m}</li>`);
+                        }
+                    });
+                } else {
+                    // Fallback visual si el buscador falla pero sabemos que es un 422
+                    html += `<li>Por favor, revise los campos del formulario. Verifique la consola (F12) para más detalles.</li>`;
+                    console.warn("Estructura de error 422 desconocida:", res);
+                }
+
                 html += '</ul></div>';
+                
+                // Mostrar el popup
                 Sys_Core.UI.alert('Datos Inválidos', html, 'error');
+                
             } else {
-                Sys_Core.UI.alert('Error de Sistema', `El servidor respondió con código ${xhr.status}`, 'error');
+                // Manejo de Errores Genéricos (500, 404, 403, 401)
+                let errorMsg = `El servidor respondió con código ${xhr.status}.`;
+                
+                if (res && res.message) {
+                    errorMsg = res.message;
+                } else if (res && res.error) {
+                    errorMsg = res.error;
+                }
+
+                Sys_Core.UI.alert(`Error de Sistema (${xhr.status})`, errorMsg, 'error');
             }
         }
     },

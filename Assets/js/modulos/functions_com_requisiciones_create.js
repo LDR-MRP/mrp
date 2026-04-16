@@ -40,7 +40,7 @@ const RequisitionForm = {
     },
 
     checkMode: function () {
-        // Obtenemos el ID de la URL. Ej: /com_requisiciones/edit/8 -> id = 8
+        // Obtenemos el ID de la URL. Ej: /requisiciones/create/8 -> id = 8
         const pathSegments = window.location.pathname.split('/');
         const possibleId = pathSegments[pathSegments.length - 1];
         
@@ -78,7 +78,11 @@ const RequisitionForm = {
             $radioDestino: $('input[name="optDestinoMover"]'),
             $collapseExistente: $('#collapseDraftsExistentes'),
             $selectDrafts: $('#selectDraftDestino'),
-            $btnConfirmarMover: $('#btn-confirmar-mover')
+            $btnConfirmarMover: $('#btn-confirmar-mover'),
+            $solicitanteContainer: $('#user-avatar-container'),
+            $lblSolicitante: $('#lbl-solicitante'),
+            $lblSolicitanteRol: $('#lbl-solicitante-rol'),
+            $lblFechaCreacion: $('#lbl-fecha-creacion')
         };
     },
 
@@ -156,7 +160,7 @@ const RequisitionForm = {
     loadRequisitionData: function () {
         Sys_Core.UI.toggleLoader('.page-content', true);
 
-        // Llamamos al endpoint GET /api/v1/requisitions/{id} que diseñamos
+        // Llamamos al endpoint GET /api/v1/requisitions/{id}
         $.ajax({
             url: `${this.config.apiBase}/${this.state.id}`,
             method: 'GET'
@@ -165,7 +169,7 @@ const RequisitionForm = {
                 this.populateUI(res.data);
             } else {
                 Sys_Core.UI.alert('Error', 'No se pudo cargar la requisición.', 'error');
-                Sys_Core.Navigation.to('com_requisiciones');
+                Sys_Core.Navigation.to('requisiciones');
             }
         }).always(() => {
             Sys_Core.UI.toggleLoader('.page-content', false);
@@ -200,6 +204,10 @@ const RequisitionForm = {
         } else {
             this.renderEmptyState();
         }
+
+        this.dom.$lblSolicitante.text(data.solicitante || 'Usuario del Sistema');
+        this.dom.$lblSolicitanteRol.text(data.rol_solicitante || 'Rol no especificado');
+        this.dom.$lblFechaCreacion.text(Sys_Core.Format.toDate(data.fecha));
 
         this.calculateGrandTotal();
     },
@@ -425,7 +433,7 @@ const RequisitionForm = {
     // 6. SUBMIT & API COMMUNICATION
     saveRequisition: function (action) {
         if ($('.partida-row').length === 0) {
-            Sys_Core.UI.alert('Tabla Vacía', 'Debe agregar al menos un artículo.', 'warning');
+            Sys_Core.UI.alert('Tabla Vacía', 'Debe agregar al menos un artículo antes de enviar.', 'warning');
             return;
         }
 
@@ -454,35 +462,23 @@ const RequisitionForm = {
             });
         });
 
-        // Determinar Verbo HTTP y URL basados en el modo
+        // 1. RESTful: Determinar Verbo HTTP y URL basados en el modo del estado
         const isUpdate = this.state.isEditMode;
-        const method = isUpdate ? 'PUT' : 'POST';
+        const httpMethod = isUpdate ? 'PUT' : 'POST';
         const targetUrl = isUpdate ? `${this.config.apiBase}/${this.state.id}` : this.config.apiBase;
 
-        // Ejecutar petición Ajax
-        const $btn = $(document.activeElement);
-        const originalHtml = $btn.html();
-
-        $.ajax({
+        // 2. Ejecutar petición usando el Sys_Core mejorado
+        Sys_Core.Net.post({
             url: targetUrl,
-            method: method, // POST para crear, PUT para actualizar
-            contentType: 'application/json',
-            data: JSON.stringify(payload),
-            beforeSend: () => {
-                Sys_Core.UI.toggleLoader('.page-content', true);
-                $btn.prop('disabled', true).html('<i class="ri-loader-4-line ri-spin"></i>');
-            },
-            success: (res) => {
-                Sys_Core.UI.notify(res.message, 'success');
+            method: httpMethod, // Pasamos explícitamente POST o PUT
+            payload: payload,
+            $btn: $(document.activeElement), // Pasamos el botón que el usuario acaba de presionar
+            onDone: (res) => {
                 setTimeout(() => {
                     // Redirigir al modo vista (Show) tras guardar
                     const redirId = isUpdate ? this.state.id : res.data.requisicion_id;
-                    window.location.href = `${Sys_Core.Config.baseUrl}/com_requisiciones/read/${redirId}`;
+                    window.location.href = `${Sys_Core.Config.baseUrl}/com_requisicion/read/${redirId}`;
                 }, 1500);
-            },
-            error: (xhr) => {
-                Sys_Core.Net.handleError(xhr);
-                Sys_Core.UI.resetState($btn, originalHtml);
             }
         });
     },
