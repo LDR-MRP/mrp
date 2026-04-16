@@ -4,6 +4,7 @@
 use Libraries\Core\Route;
 use Controllers\Api\V1\SupplierController;
 use Controllers\Api\V1\RequisitionController;
+use Controllers\Api\V1\PurchaseOrderController;
 use Middlewares\AuthMiddleware;
 
 // Rutas Públicas
@@ -34,4 +35,9 @@ Route::post('api/v1/requisitions/{id}/return-to-draft', [RequisitionController::
 Route::delete('api/v1/requisitions/{id}', [RequisitionController::class, 'destroy']);
 // Ruta de PDF
 Route::get('api/v1/requisitions/{id}/pdf', [RequisitionController::class, 'generatePdf']);
+// Obtener las partidas pendientes de compra de una requisición
+Route::get('api/v1/requisitions/{id}/pending-items', [RequisitionController::class, 'getPendingItems']);
+// Crear Orden de Compra (a partir de una requisición)
+Route::post('api/v1/purchase-orders', [PurchaseOrderController::class, 'store']);
+
 ?>
