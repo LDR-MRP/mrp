@@ -102,8 +102,8 @@
                         <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-white">
                             <div class="page-title-right">
                                 <ol class="breadcrumb m-0">
-                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
-                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/com_requisiciones">Requisiciones</a></li>
+                                    <li class="breadcrumb-item"><a href=": TODO/dashboard">Dashboard</a></li>
+                                    <li class="breadcrumb-item"><a href=": TODO/com_requisiciones">Requisiciones</a></li>
                                     <li class="breadcrumb-item active">Nueva Solicitud</li>
                                 </ol>
                             </div>
@@ -151,22 +151,6 @@
                                             <div class="input-group">
                                                 <span class="input-group-text bg-white border-end-0 text-muted"><i class="ri-calendar-event-line"></i></span>
                                                 <input type="date" name="fecha_requerida" class="form-control border-start-0 ps-0">
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Departamento de Cargo</label>
-                                            <select name="id_centro_costo" class="form-select">
-                                                <option value="0">Selecciona CC</option>
-                                                <option value="0001">0001</option>
-                                                <option value="0002">0002</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Fecha Requerida <span class="text-danger">*</span></label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="ri-calendar-event-line"></i></span>
-                                                <input type="text" name="dirigido_a" class="form-control border-start-0 ps-0">
                                             </div>
                                         </div>
                                     </div>
@@ -220,6 +204,12 @@
                                             </button>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="card-header border-bottom border-light d-flex justify-content-between align-items-center container-acciones-edicion" style="display: none !important;">
+                                    <h5 class="card-title mb-0 text-muted fs-12 ls-1"><i class="ri-shopping-basket-line me-1"></i> Artículos agregados</h5>
+                                    <button type="button" id="btn-modal-mover" class="btn btn-sm btn-outline-primary" disabled>
+                                        <i class="ri-arrow-left-right-line align-middle"></i> Mover Partidas Seleccionadas (<span id="count-mover">0</span>)
+                                    </button>
                                 </div>
                                 <div class="card-body p-0">
                                     <div class="table-responsive">
@@ -307,7 +297,6 @@
                                             </h6>
 
                                             <h4 class="text-white mb-0 d-flex align-items-center">
-                                                <span>$</span>
                                                 <input type="text"
                                                     readonly
                                                     name="monto_estimado"
@@ -325,17 +314,29 @@
                                 </div>
                             </div>
 
+                            <!-- Tarjeta: Solicitante y Creación -->
                             <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
                                 <div class="card-body">
                                     <h6 class="text-uppercase fw-bold text-muted fs-11 ls-1 mb-3">Solicitante</h6>
-                                    <div class="d-flex align-items-center">
+                                    <div class="d-flex align-items-center mb-4">
                                         <div class="me-3">
-                                            <img src="<?= base_url(); ?>/Assets/avatars/<?= $data['page_user_avatar']; ?>" class="rounded-circle avatar-xs shadow-sm" alt="user">
+                                            <div class="avatar-sm">
+                                                <span class="avatar-title bg-soft-info text-info rounded-circle fs-4 shadow-sm">
+                                                    <i class="ri-user-line"></i>
+                                                </span>
+                                            </div>
                                         </div>
                                         <div>
-                                            <h6 class="mb-0 fs-13 fw-bold"><?= $data['page_user']; ?></h6>
-                                            <p class="text-muted fs-11 mb-0"><?= $data['page_user_rol']; ?></p>
+                                            <h6 class="mb-0 fs-14 fw-bold" id="lbl-solicitante">...</h6>
+                                            <p class="text-muted fs-11 mb-0">Usuario del Sistema</p>
                                         </div>
+                                    </div>
+                                    
+                                    <hr class="border-dashed mb-3 mt-0">
+                                    
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-muted fs-12 fw-medium"><i class="ri-time-line me-1"></i> Creado el:</span>
+                                        <span class="text-dark fw-bold fs-12" id="lbl-fecha-creacion">...</span>
                                     </div>
                                 </div>
                             </div>
@@ -365,6 +366,45 @@
             </div>
         </div>
     </footer>
+
+    <div class="modal fade" id="modalMoverPartidas" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 10px;">
+                <div class="modal-header bg-soft-primary border-bottom-0">
+                    <h5 class="modal-title text-primary fw-bold"><i class="ri-arrow-left-right-line me-2"></i>Mover Partidas</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted mb-4">Selecciona el destino para las <b><span id="lbl-modal-count">0</span></b> partidas seleccionadas. Serán removidas de la solicitud actual.</p>
+                    
+                    <div class="form-check mb-3 custom-radio">
+                        <input class="form-check-input" type="radio" name="optDestinoMover" id="optDestinoNuevo" value="nuevo" checked>
+                        <label class="form-check-label fw-bold" for="optDestinoNuevo">
+                            Crear como una Nueva Solicitud (Borrador)
+                        </label>
+                    </div>
+                    
+                    <div class="form-check custom-radio mb-2">
+                        <input class="form-check-input" type="radio" name="optDestinoMover" id="optDestinoExistente" value="existente">
+                        <label class="form-check-label fw-bold" for="optDestinoExistente">
+                            Mover a un Borrador Existente
+                        </label>
+                    </div>
+                    
+                    <!-- Select que aparece solo si elige "Existente" -->
+                    <div class="collapse mt-2" id="collapseDraftsExistentes">
+                        <select id="selectDraftDestino" class="form-select bg-light border-0">
+                            <option value="">Cargando borradores...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 bg-light">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" id="btn-confirmar-mover" class="btn btn-primary px-4 shadow-sm">Confirmar y Mover</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php footerAdmin($data); ?>

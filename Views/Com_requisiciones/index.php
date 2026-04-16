@@ -171,6 +171,7 @@
                                 <thead class="bg-light">
                                     <tr>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3 ps-4">Folio</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Título</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Fecha de Elaboración</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Fecha de Recepción de Requisición</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Empresa</th>

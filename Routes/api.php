@@ -17,15 +17,21 @@ Route::post('api/v1/supplier', [SupplierController::class, 'store'])
     ;
 
 // --- REQUISITIONS ---
-Route::get('api/v1/requisitions', [RequisitionController::class, 'index'])
-    //->middleware([AuthMiddleware::class])
-    ;
-
-Route::get('api/v1/requisitions/{id}', [RequisitionController::class, 'show'])
-    //->middleware([AuthMiddleware::class])
-    ;
-
-Route::post('api/v1/requisitions/{id}/items/move', [RequisitionController::class, 'moveItems'])
-    //->middleware([AuthMiddleware::class])
-    ;
+Route::get('api/v1/requisitions', [RequisitionController::class, 'index']);
+Route::get('api/v1/requisitions/kpis', [RequisitionController::class, 'kpis']);
+Route::get('api/v1/requisitions/{id}', [RequisitionController::class, 'show']);
+Route::post('api/v1/requisitions', [RequisitionController::class, 'store']);
+Route::put('api/v1/requisitions/{id}', [RequisitionController::class, 'update']);
+Route::post('api/v1/requisitions/{id}/items', [RequisitionController::class, 'createItem']);
+Route::delete('api/v1/requisitions/{id}/items/{item_id}', [RequisitionController::class, 'deleteItem']);
+Route::post('api/v1/requisitions/{id}/items/move', [RequisitionController::class, 'moveItems']);
+Route::post('api/v1/requisitions/{id}/submit', [RequisitionController::class, 'submit']);
+// Rutas de cambio de estado (Máquina de Estados)
+Route::post('api/v1/requisitions/{id}/approve', [RequisitionController::class, 'approve']);
+Route::post('api/v1/requisitions/{id}/reject', [RequisitionController::class, 'reject']);
+Route::post('api/v1/requisitions/{id}/return-to-draft', [RequisitionController::class, 'returnToDraft']);
+// Ruta de eliminación
+Route::delete('api/v1/requisitions/{id}', [RequisitionController::class, 'destroy']);
+// Ruta de PDF
+Route::get('api/v1/requisitions/{id}/pdf', [\Controllers\Api\V1\Requisition::class, 'generatePdf']);
 ?>
