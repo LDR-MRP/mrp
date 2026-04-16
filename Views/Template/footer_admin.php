@@ -862,7 +862,7 @@ Se utiliza con fines de configuración y ajustes visuales del layout.
     <!-- Sweet alert init js-->
     <!-- <script src="<?= media(); ?>/minimal/js/pages/sweetalerts.init.js"></script> -->
 
-    <script src="<?= media(); ?>/js/sys_core.js?v=1.0.1"></script>
+    <script src="<?= media(); ?>/js/sys_core.js?v=1.0.2"></script>
     <script src="<?= media(); ?>/js/modulos/<?= $data['page_functions_js']; ?>?v=1.0.0.2"></script>
 
 
