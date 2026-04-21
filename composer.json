@@ -1,0 +1,11 @@
+{
+    "require": {
+        "firebase/php-jwt": "*"
+    },
+    "autoload": {
+        "classmap": [
+            "Controllers/",
+            "Libraries/Core/"
+        ]
+    }
+}
