@@ -1,6 +1,9 @@
 <?php 
 	require_once("Config/Config.php");
 	require_once("Helpers/Helpers.php");
+	if (file_exists('vendor/autoload.php')) {
+		require_once 'vendor/autoload.php';
+	}
 	require_once("Libraries/Core/Autoload.php");
 	$url = !empty($_GET['url']) ? $_GET['url'] : 'home/home';
 	$url = ltrim($url, '/');
