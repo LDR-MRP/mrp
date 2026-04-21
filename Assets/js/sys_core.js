@@ -285,12 +285,17 @@ const Sys_Core = {
          */
         get: function(options) {
             const { url, onSuccess, recurrent, interval = 30000, silent } = options;
+            const token = localStorage.getItem('mrp_token');
             
             const execute = () => {
                 $.ajax({
                     url: url,
                     method: 'GET',
                     dataType: 'json',
+                    headers: {
+                        // --- INYECCIÓN AUTOMÁTICA DEL TOKEN ---
+                        'Authorization': token ? `Bearer ${token}` : ''
+                    },
                     success: (res) => { if (onSuccess) onSuccess(res); },
                     error: (xhr) => { if (!silent) Sys_Core.Net.handleError(xhr); },
                     complete: () => {
@@ -314,6 +319,7 @@ const Sys_Core = {
          */
         post: function(options) {
             const { url, payload, successMsg, onDone } = options;
+            const token = localStorage.getItem('mrp_token');
             
             // 1. SOPORTE RESTful: Si no mandan method, asumimos POST por retrocompatibilidad
             const httpMethod = (options.method || 'POST').toUpperCase();
@@ -331,6 +337,9 @@ const Sys_Core = {
                 url: url,
                 method: httpMethod, // Inyectamos POST, PUT o DELETE
                 data: payload,
+                headers: {
+                    'Authorization': token ? `Bearer ${token}` : ''
+                },
                 contentType: options.contentType,
                 processData: options.processData ?? true
             };

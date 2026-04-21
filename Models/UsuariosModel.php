@@ -231,6 +231,30 @@ public function updateAvatarUsuario(int $usuarioid, string $filename, string $se
     return $this->update($sql, [$filename, $seed, $gender, $optionsJson, $usuarioid]);
 }
 
+	/**
+     * Valida las credenciales contra la base de datos usando SHA256.
+     */
+    public function loginUser(string $usuario, string $password): ?array {
+        $query = "SELECT 
+                    u.idusuario, u.status, u.rolid, u.avatar_file, 
+                    u.nombres, u.apellidos, r.nombrerol as rol_nombre
+                  FROM usuarios u
+                  INNER JOIN rol r ON u.rolid = r.idrol
+                  WHERE u.email_user = ? AND u.password = ? AND u.status != 0 
+                  LIMIT 1";
+        
+        $result = $this->select($query, [$usuario, $password]);
+        return $result ?: null;
+    }
+
+    /**
+     * Registra el acceso en la tabla de auditoría.
+     */
+    public function registrarAcceso(int $id, string $evento, string $ip, string $detalle): void {
+        $query = "INSERT INTO login_logs (idusuario, evento, ip, detalle, fecha) VALUES (?,?,?,?, NOW())";
+        $this->insert($query, [$id, $evento, $ip, $detalle]);
+    }
+
 
 	}
  ?>

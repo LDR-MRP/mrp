@@ -30,8 +30,38 @@ document.addEventListener('DOMContentLoaded', function(){
 						var objData = JSON.parse(request.responseText);
 						if(objData.status)
 						{
-							//window.location = base_url+'/dashboard';
-							window.location.reload(false);
+							// --- PETICIÓN 2: API-DRIVEN (JWT) ---
+							var requestApi = new XMLHttpRequest();
+							var ajaxUrlApi = base_url + '/api/v1/login'; // Nuevo endpoint REST
+
+							requestApi.open("POST", ajaxUrlApi, true);
+							// Importante: La API espera JSON
+							requestApi.setRequestHeader("Content-Type", "application/json");
+							
+							requestApi.send(JSON.stringify({
+								txtEmail: strEmail,
+								txtPassword: strPassword
+							}));
+
+							requestApi.onreadystatechange = function() {
+								if(requestApi.readyState != 4) return;
+
+								if(requestApi.status == 200 || requestApi.status == 201) {
+									var objDataApi = JSON.parse(requestApi.responseText);
+									
+									// Guardamos el token en localStorage para Sys_Core.js
+									localStorage.setItem('mrp_token', objDataApi.data.access_token);
+									localStorage.setItem('mrp_user', JSON.stringify(objDataApi.data.user));
+
+									// ¡AMBAS EXITOSAS! Recargamos
+									window.location.reload(false);
+								} else {
+									// Si la API falla pero el legacy entró, avisamos pero dejamos pasar? 
+									// Mejor forzar error para mantener sincronía.
+									swal("Error de Sincronía", "Error al generar token de acceso API.", "error");
+									divLoading.style.display = "none";
+								}
+							}
 						}else{
 							swal("Atención", objData.msg, "error");
 							document.querySelector('#txtPassword').value = "";
