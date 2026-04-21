@@ -382,7 +382,7 @@
                                       <?php endif; ?>
                                       <?php if (hasPermissions(COM_COMPRAS, 'r')): ?>
                                           <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/com_compra" class="nav-link" data-key="t-ordenes">
+                                              <a href="<?= base_url(); ?>/com_orden" class="nav-link" data-key="t-ordenes">
                                                   <i class="ri-shopping-bag-3-line align-bottom me-1"></i> Órdenes de Compra
                                               </a>
                                           </li>

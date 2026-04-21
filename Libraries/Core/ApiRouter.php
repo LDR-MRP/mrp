@@ -49,7 +49,7 @@ class ApiRouter {
                 };
 
                 // Ejecutamos Pipeline (También cargado por Autoload)
-                Pipeline::process(null, $middlewares, $coreAction);
+                Pipeline::process([], $middlewares, $coreAction);
                 return;
             }
         }

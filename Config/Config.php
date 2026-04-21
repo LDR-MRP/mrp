@@ -23,6 +23,10 @@ const DB_CHARSET = "utf8";
 //Configuración Email local
 const ENVIRONMENT = 0;
 
+// API MRP / ERP / WMS
+const API_URL = "/api/v1";
+const JWT_SECRET = "kgIO9A1mT1CZU+QTKjLjFXrYE2wuogGEHyqoK0Z/t/8=";
+
 
 const SPD = ".";
 const SPM = ",";

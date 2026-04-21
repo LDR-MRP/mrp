@@ -2,12 +2,15 @@
 // Routes/api.php
 
 use Libraries\Core\Route;
+use Controllers\Api\V1\AuthController;
 use Controllers\Api\V1\SupplierController;
 use Controllers\Api\V1\RequisitionController;
 use Controllers\Api\V1\PurchaseOrderController;
 use Middlewares\AuthMiddleware;
 
 // Rutas Públicas
+// Endpoint público para obtener el token
+Route::post('api/v1/login', [AuthController::class, 'login']);
 Route::get('api/v1/suppliers', [SupplierController::class, 'index']);
 Route::get('api/v1/suppliers/{id}', [SupplierController::class, 'show']);
 
@@ -18,7 +21,8 @@ Route::post('api/v1/supplier', [SupplierController::class, 'store'])
     ;
 
 // --- REQUISITIONS ---
-Route::get('api/v1/requisitions', [RequisitionController::class, 'index']);
+Route::get('api/v1/requisitions', [RequisitionController::class, 'index'])
+    ->middleware([AuthMiddleware::class]);
 Route::get('api/v1/requisitions/kpis', [RequisitionController::class, 'kpis']);
 Route::get('api/v1/requisitions/{id}', [RequisitionController::class, 'show']);
 Route::post('api/v1/requisitions', [RequisitionController::class, 'store']);
@@ -39,5 +43,8 @@ Route::get('api/v1/requisitions/{id}/pdf', [RequisitionController::class, 'gener
 Route::get('api/v1/requisitions/{id}/pending-items', [RequisitionController::class, 'getPendingItems']);
 // Crear Orden de Compra (a partir de una requisición)
 Route::post('api/v1/purchase-orders', [PurchaseOrderController::class, 'store']);
-
+// Obtener detalle de una OC específica
+Route::get('api/v1/purchase-orders/{id}', [PurchaseOrderController::class, 'show']);
+// Listado de Órdenes de Compra con filtros
+Route::get('api/v1/purchase-orders', [PurchaseOrderController::class, 'index']);
 ?>
