@@ -437,6 +437,8 @@ const RequisitionForm = {
             return;
         }
 
+        $('.btn-guardar').prop('disabled', true); 
+
         // Construir el payload
         const payload = {
             action: action, // 'save_draft' o 'submit_approval'
