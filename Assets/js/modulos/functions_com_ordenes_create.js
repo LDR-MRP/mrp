@@ -235,7 +235,7 @@ const PurchaseOrderForm = {
             onDone: (res) => {
                 setTimeout(() => {
                     // Redirigir a la vista de la OC generada (o de vuelta a requisiciones)
-                    Sys_Core.Navigation.to(`com_ordenes/read/${res.data.orden_compra_id}`);
+                    Sys_Core.Navigation.to(`com_orden/read/${res.data.orden_compra_id}`);
                 }, 1500);
             }
         });

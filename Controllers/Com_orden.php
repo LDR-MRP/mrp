@@ -30,6 +30,36 @@ class Com_orden extends Controllers
         );
     }
 
+    public function read()
+    {
+        $this->views->getView(
+            $this,
+            "../Com_ordenes/read",
+            [
+                'page_tag' => "Órden de Compra",
+                'page_title' => "Órden de Compra",
+                'page_name' => "Órden de Compra",
+                'page_functions_js' => "functions_com_ordenes_read.js",
+
+            ]
+        );
+    }
+
+    public function Com_orden()
+    {
+        $this->views->getView(
+            $this,
+            "../Com_ordenes/index",
+            [
+                'page_tag' => "Órdenes de Compra",
+                'page_title' => "Órdenes de Compra",
+                'page_name' => "Órdenes de Compra",
+                'page_functions_js' => "functions_com_ordenes_index.js",
+
+            ]
+        );
+    }
+
     public function exportPDF(int $id)
     {
         return $this->compraService->generatePremiumOCPDF($id);

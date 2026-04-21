@@ -19,6 +19,15 @@ class PurchaseOrderService
         $this->db = $this->ordenCompraModel->getConexion();
     }
 
+    public function index(array $filters): \ServiceResponse {
+        try {
+            $data = $this->ordenCompraModel->getAll($filters);
+            return \ServiceResponse::success($data, "Listado de Órdenes de Compra recuperado.");
+        } catch (\Exception $e) {
+            return \ServiceResponse::error("Error al obtener el listado: " . $e->getMessage());
+        }
+    }
+
     public function store(int $userId): \ServiceResponse
     {
         $request = new StorePurchaseOrderRequest();
@@ -54,12 +63,11 @@ class PurchaseOrderService
                 'requisicionid' => $reqId,
                 'proveedorid'   => $payload['proveedorid'],
                 'almacenid'     => $payload['almacenid'],
-                'usuarioid'     => $userId, // El comprador
                 'estatus'       => 'emitida',
                 'moneda'        => $payload['moneda'] ?? 'MXN',
                 'tipo_cambio'   => $payload['tipo_cambio'] ?? 1.000000,
                 'observaciones' => $payload['observaciones'] ?? '',
-                'created_by'    => $userId
+                'created_by'    => $userId // El comprador que genera la OC
             ];
 
             $ocId = $this->ordenCompraModel->createHeader($ocHeaderData);
@@ -143,6 +151,20 @@ class PurchaseOrderService
             $this->logMessage($e, \LogLevel::WARNING, ['action' => 'storePurchaseOrder', 'payload' => $payload ?? []]);
             $code = $e->getCode() !== 0 ? $e->getCode() : 500;
             return \ServiceResponse::error(message: $e->getMessage(), code: $code);
+        }
+    }
+
+    public function getWithDetails(int $ocId, int $userId): \ServiceResponse {
+        try {
+            $oc = $this->ordenCompraModel->getById($ocId);
+            if (!$oc) throw new \Exception("Orden de Compra no encontrada.", 404);
+
+            $oc['items'] = $this->ordenCompraModel->getDetails($ocId);
+            $oc['related_pos'] = $this->ordenCompraModel->getRelatedPOs((int)$oc['requisicionid'], $ocId);
+
+            return \ServiceResponse::success($oc);
+        } catch (\Exception $e) {
+            return \ServiceResponse::error($e->getMessage(), $e->getCode() ?: 500);
         }
     }
 }
