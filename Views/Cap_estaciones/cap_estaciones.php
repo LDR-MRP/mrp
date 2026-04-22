@@ -48,17 +48,18 @@
                             <table id="tableEstaciones"
                                 class="table table-bordered dt-responsive nowrap table-striped align-middle"
                                 style="width:100%">
-                                <thead>
-                                    <tr>
-                                        <th>CLAVE</th>
-                                        <th>NOMBRE ESTACIÓN</th>
-                                        <th>LÍNEA ASIGNADA</th>
-                                        <th>FECHA REGISTRO</th>
-                                        <th>MANTENIMIENTO</th>
-                                        <th>ESTATUS</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
+       <thead>
+            <tr>
+                <th>CLAVE</th>
+                <th>NOMBRE ESTACIÓN</th>
+                <th>SUB-ENSAMBLE</th>
+                <th>LÍNEA ASIGNADA</th>
+                <th>FECHA REGISTRO</th>
+                <th>MANTENIMIENTO</th>
+                <th>ESTATUS</th>
+                <th>ACCIONES</th>
+            </tr>
+        </thead>
                                 <tbody>
 
                                 </tbody>
@@ -341,11 +342,147 @@
                                         </div>
                                     </div>
 
-
-
-
                                 </div>
                                 <!-- end row -->
+
+
+                                <!-- PREGUNTA SUB-ENSAMBLE -->
+<div class="row">
+    <div class="col-lg-12">
+        <div class="mb-3">
+            <label class="form-label d-block">
+                ¿Deseas agregar una estación de sub-ensamble en este registro?
+            </label>
+
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio"
+                    name="agregar_subensamble" id="agregar-subensamble-si" value="1">
+                <label class="form-check-label" for="agregar-subensamble-si">Sí</label>
+            </div>
+
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio"
+                    name="agregar_subensamble" id="agregar-subensamble-no" value="0" checked>
+                <label class="form-check-label" for="agregar-subensamble-no">No</label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BLOQUE SUB-ENSAMBLE -->
+<div id="bloqueSubensamble" class="d-none">
+    <div class="card border border-info border-opacity-25 bg-light-subtle">
+        <div class="card-header bg-info-subtle">
+            <h6 class="mb-0">Datos de la estación de sub-ensamble</h6>
+        </div>
+
+        <div class="card-body">
+            <div class="row">
+                <!-- NOMBRE SUB -->
+                <div class="col-lg-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="sub-nombre-estacion-input">NOMBRE</label>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text">Nom</span>
+                            <input type="text" class="form-control"
+                                placeholder="Ingresa el nombre de la estación de sub-ensamble"
+                                id="sub-nombre-estacion-input"
+                                name="sub_nombre_estacion_input">
+                            <div class="invalid-feedback">
+                                El nombre de la estación de sub-ensamble es obligatorio.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PROCESO SUB -->
+                <div class="col-lg-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="sub-proceso-estacion-input">PROCESO</label>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text">Proc</span>
+                            <input type="text" class="form-control"
+                                placeholder="Ingresa el proceso del sub-ensamble"
+                                id="sub-proceso-estacion-input"
+                                name="sub_proceso_estacion_input">
+                            <div class="invalid-feedback">
+                                El proceso del sub-ensamble es obligatorio.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- ESTANDAR SUB -->
+                <div class="col-lg-4 col-sm-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="sub-estandar-input">ESTÁNDAR</label>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text">Std</span>
+                            <input type="text" class="form-control"
+                                id="sub-estandar-input"
+                                name="sub_estandar_input"
+                                placeholder="Ingresa el estándar del sub-ensamble">
+                            <div class="invalid-feedback">
+                                El estándar del sub-ensamble es obligatorio.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TIEMPO AJUSTE SUB -->
+                <div class="col-lg-4 col-sm-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="sub-tiempo-ajuste-input">TIEMPO DE AJUSTE</label>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text">min</span>
+                            <input type="text" class="form-control"
+                                id="sub-tiempo-ajuste-input"
+                                name="sub_tiempo_ajuste_input"
+                                placeholder="hh:mm:ss">
+                            <div class="invalid-feedback">
+                                El tiempo de ajuste del sub-ensamble es obligatorio.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- REQUIERE HERRAMIENTAS SUB -->
+                <div class="col-lg-4 col-sm-12">
+                    <div class="mb-3">
+                        <label class="form-label d-block">¿Requiere herramientas?</label>
+
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input sub-requiere-herramientas"
+                                type="radio"
+                                name="sub_requiere_herramientas"
+                                value="1">
+                            <label class="form-check-label">Sí</label>
+                        </div>
+
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input sub-requiere-herramientas"
+                                type="radio"
+                                name="sub_requiere_herramientas"
+                                value="0">
+                            <label class="form-check-label">No</label>
+                        </div>
+
+                        <div id="subHerramientasFeedback" class="invalid-feedback d-none" style="margin-top:-5px;">
+                            Selecciona si el sub-ensamble requiere herramientas.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- FIN BLOQUE SUB-ENSAMBLE -->
+
+
+
+
 
                                 <!-- DESCRIPCIÓN -->
                                 <div class="mb-3">
@@ -419,59 +556,91 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
                     id="close-modal"></button>
             </div>
+
             <div class="modal-body">
-                <table class="table table-bordered">
+                <table class="table table-bordered align-middle">
                     <tbody>
                         <tr>
-                            <td>Clave:</td>
-                            <td id="celClave">654654654</td>
+                            <td width="35%"><strong>Clave:</strong></td>
+                            <td id="celClave">-</td>
                         </tr>
                         <tr>
-                            <td>Nombre:</td>
-                            <td id="celNombre">Jacob</td>
+                            <td><strong>Nombre:</strong></td>
+                            <td id="celNombre">-</td>
                         </tr>
                         <tr>
-                            <td>Proceso:</td>
-                            <td id="celProceso">Jacob</td>
+                            <td><strong>Proceso:</strong></td>
+                            <td id="celProceso">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Estándar:</strong></td>
+                            <td id="celEstandar">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Unidad de Medida:</strong></td>
+                            <td id="celUnidad">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tiempo de ajuste:</strong></td>
+                            <td id="celTiempo">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>MX:</strong></td>
+                            <td id="celMx">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Línea:</strong></td>
+                            <td id="celLinea">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Requiere herramientas:</strong></td>
+                            <td id="celHerramientas">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tiene sub-ensamble:</strong></td>
+                            <td id="celTieneSubensamble">-</td>
+                        </tr>
+
+                        <!-- BLOQUE SUB-ENSAMBLE -->
+                        <tr class="table-light">
+                            <td colspan="2"><strong>Información de Sub-Ensamble</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Nombre sub-ensamble:</strong></td>
+                            <td id="celSubNombre">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Proceso sub-ensamble:</strong></td>
+                            <td id="celSubProceso">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Estándar sub-ensamble:</strong></td>
+                            <td id="celSubEstandar">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tiempo de ajuste sub-ensamble:</strong></td>
+                            <td id="celSubTiempo">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Herramientas sub-ensamble:</strong></td>
+                            <td id="celSubHerramientas">-</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Estado sub-ensamble:</strong></td>
+                            <td id="celSubEstado">-</td>
                         </tr>
 
                         <tr>
-                            <td>Estandar:</td>
-                            <td id="celEstandar">Jacob</td>
+                            <td><strong>Estado:</strong></td>
+                            <td id="celEstado">-</td>
                         </tr>
                         <tr>
-                            <td>Unidad de Medida:</td>
-                            <td id="celUnidad">Jacob</td>
+                            <td><strong>Descripción:</strong></td>
+                            <td id="celDescripcion">-</td>
                         </tr>
                         <tr>
-                            <td>Tiempo de ajuste:</td>
-                            <td id="celTiempo">Jacob</td>
-                        </tr>
-                        <tr>
-                            <td>MX:</td>
-                            <td id="celProceso">Jacob</td>
-                        </tr>
-                        <tr>
-                            <td>Proceso:</td>
-                            <td id="celMx">Jacob</td>
-                        </tr>
-
-                        <tr>
-                            <td>Línea:</td>
-                            <td id="celLinea">Jacob</td>
-                        </tr>
-
-                        <tr>
-                            <td>Estado:</td>
-                            <td id="celEstado">Larry</td>
-                        </tr>
-                        <tr>
-                            <td>Descripción:</td>
-                            <td id="celDescripcion">Larry</td>
-                        </tr>
-                        <tr>
-                            <td>Fecha:</td>
-                            <td id="celFecha">Larry</td>
+                            <td><strong>Fecha:</strong></td>
+                            <td id="celFecha">-</td>
                         </tr>
                     </tbody>
                 </table>
@@ -480,11 +649,7 @@
             <div class="modal-footer">
                 <div class="hstack gap-2 justify-content-end">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
-                    <!-- <button type="submit" id="btnActionForm" class="btn btn-success">
-        <span id="m">Guardar</span>
-      </button> -->
                 </div>
-
             </div>
         </div>
     </div>

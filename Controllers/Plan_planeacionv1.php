@@ -1,0 +1,2352 @@
+<?php
+class Plan_planeacionv1 extends Controllers
+{
+  public function __construct()
+  {
+    parent::__construct();
+    session_start(); 
+    // session_regenerate_id(true);
+    if (empty($_SESSION['login'])) {
+      header('Location: ' . base_url() . '/login');
+      die(); 
+    }
+    getPermisos(MPPLANPRODUCCION);
+  }
+
+  public function Plan_planeacionv1()
+  {
+    if (empty($_SESSION['permisosMod']['r'])) {
+      header("Location:" . base_url() . '/dashboard');
+    }
+    $data['page_tag'] = "Planeación";
+    $data['page_title'] = "Plan de producción";
+    $data['page_name'] = "Planeación";
+    $data['page_functions_js'] = "functions_plan_planeacionv1.js";
+    $this->views->getView($this, "plan_planeacionv1", $data);
+  }
+
+
+  public function getSelectProductos()
+  {
+    $htmlOptions = '<option value="" selected>--Seleccione--</option>';
+    $arrData = $this->model->selectOptionProductos();
+    if (count($arrData) > 0) {
+      for ($i = 0; $i < count($arrData); $i++) {
+        if ($arrData[$i]['estado'] == 2) {
+          $htmlOptions .= '<option value="' . $arrData[$i]['idproducto'] . '">' . $arrData[$i]['cve_producto'] . ' - ' . $arrData[$i]['descripcion'] . '</option>';
+        }
+      }
+    }
+    echo $htmlOptions;
+    die();
+  }
+
+
+  public function getSelectSupervisor()
+  {
+    $htmlOptions = '<option value="" selected>--Seleccione--</option>';
+    $arrData = $this->model->selectOptionSupervisores();
+    if (count($arrData) > 0) {
+      for ($i = 0; $i < count($arrData); $i++) {
+        // if ($arrData[$i]['status'] != 0) {
+
+        $email = htmlspecialchars((string) $arrData[$i]['email_user'], ENT_QUOTES, 'UTF-8');
+        $htmlOptions .= '<option data-email="' . $email . '" value="' . $arrData[$i]['idusuario'] . '">' . $arrData[$i]['nombres'] . '  ' . $arrData[$i]['apellidos'] . '</option>';
+        // }
+      }
+    }
+    echo $htmlOptions;
+    die();
+  }
+
+  public function getSelectEstaciones($idproducto)
+  {
+    $arrData = $this->model->selectOptionEstacionesByProducto($idproducto);
+    echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+    die();
+  }
+
+
+  public function getSelectOperadores()
+  {
+
+    $htmlOptions = '';
+    $arrData = $this->model->selectOperadores();
+    if (count($arrData) > 0) {
+      for ($i = 0; $i < count($arrData); $i++) {
+        if ($arrData[$i]['status'] == 1) {
+          $email = htmlspecialchars((string) $arrData[$i]['email_user'], ENT_QUOTES, 'UTF-8');
+          $htmlOptions .= '<option data-email="' . $email . '" value="' . $arrData[$i]['idusuario'] . '">' . $arrData[$i]['nombres'] . ' ' . $arrData[$i]['apellidos'] . '</option>';
+        }
+      }
+    }
+    echo $htmlOptions;
+    die();
+  }
+
+  public function getSelectOperadoresAyudantes()
+  {
+
+    $htmlOptions = '';
+    $arrData = $this->model->selectOperadoresAyudantes();
+    if (count($arrData) > 0) {
+      for ($i = 0; $i < count($arrData); $i++) {
+        if ($arrData[$i]['status'] == 1) {
+          $email = htmlspecialchars((string) $arrData[$i]['email_user'], ENT_QUOTES, 'UTF-8');
+          $htmlOptions .= '<option data-email="' . $email . '" value="' . $arrData[$i]['idusuario'] . '">' . $arrData[$i]['nombres'] . ' ' . $arrData[$i]['apellidos'] . '</option>';
+        }
+      }
+    }
+    echo $htmlOptions;
+    die();
+  }
+
+
+
+
+
+
+
+public function setPlaneacion()
+{
+  header('Content-Type: application/json');
+
+  // --------------------------------------------------------------------
+  //  Datos de auditoría
+  // --------------------------------------------------------------------
+  $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+  $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+  $detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+  $fechaEvento = date('Y-m-d H:i:s');
+
+  $fecha_notificacion = date('Y-m-d');
+
+  $json = file_get_contents('php://input');
+  $data = json_decode($json, true);
+
+  if (!is_array($data)) {
+    echo json_encode(['status' => false, 'msg' => 'JSON inválido']);
+    die();
+  }
+
+  $h = $data['header'] ?? [];
+
+  $productoid = (int) ($h['productoid'] ?? 0);
+  $pedido = trim((string) ($h['pedido'] ?? ''));
+  $supervisor = (int) ($h['supervisor'] ?? 0);
+  $prioridad = trim((string) ($h['prioridad'] ?? ''));
+  $cantidad = (int) ($h['cantidad'] ?? 0);
+  $fecha_inicio = trim((string) ($h['fecha_inicio'] ?? ''));
+  $fecha_requerida = trim((string) ($h['fecha_requerida'] ?? ''));
+  $notas = trim((string) ($h['notas'] ?? ''));
+
+  if ($productoid <= 0) {
+    echo json_encode(['status' => false, 'msg' => 'Falta producto']);
+    die();
+  }
+
+  if ($supervisor <= 0) {
+    echo json_encode(['status' => false, 'msg' => 'Falta supervisor']);
+    die();
+  }
+
+  if ($prioridad === '') {
+    echo json_encode(['status' => false, 'msg' => 'Falta prioridad']);
+    die();
+  }
+
+  if ($cantidad <= 0) {
+    echo json_encode(['status' => false, 'msg' => 'Cantidad inválida']);
+    die();
+  }
+
+  if ($fecha_inicio === '' || $fecha_requerida === '') {
+    echo json_encode(['status' => false, 'msg' => 'Faltan fechas']);
+    die();
+  }
+
+  // =========================================================
+  // ASIGNACIONES
+  // =========================================================
+  $asignacionesData = $data['asignaciones'] ?? [];
+  $asignacionesEstaciones = $asignacionesData['estaciones'] ?? [];
+  $asignacionesSubensambles = $asignacionesData['subensambles'] ?? [];
+
+  if (!is_array($asignacionesEstaciones) || count($asignacionesEstaciones) === 0) {
+    echo json_encode(['status' => false, 'msg' => 'No hay asignaciones de estaciones']);
+    die();
+  }
+
+  // =========================================================
+  // SUPERVISOR OBTENEMOS NOMBRE Y CORREO
+  // =========================================================
+  $rowSup = $this->model->getSupervisorEmailById($supervisor);
+  if (!$rowSup) {
+    echo json_encode(['status' => false, 'msg' => 'Supervisor inválido o inactivo']);
+    die();
+  }
+
+  $emailSupervisor = trim((string) ($rowSup['email_user'] ?? ''));
+  $nombreSupervisor = trim((string) ($rowSup['nombres'] ?? ''));
+  $apellidosSupervisor = trim((string) ($rowSup['apellidos'] ?? ''));
+  $nombreCompletoSupervisor = trim($nombreSupervisor . ' ' . $apellidosSupervisor);
+
+  if ($emailSupervisor === '') {
+    echo json_encode(['status' => false, 'msg' => 'El supervisor no tiene correo configurado']);
+    die();
+  }
+
+  $idsEncargados = [];
+  $idsAyudantes = [];
+
+  // =========================================================
+  // VALIDAR ESTACIONES
+  // =========================================================
+  foreach ($asignacionesEstaciones as $a) {
+    $estacionid = (int) ($a['estacionid'] ?? 0);
+    $orden = (int) ($a['orden'] ?? 0);
+    $encargado = (int) ($a['encargado'] ?? 0);
+    $estampado = (int) ($a['estampado'] ?? 0);
+    $ayudantes = $a['ayudantes'] ?? [];
+
+    if ($estacionid <= 0 || $orden <= 0) {
+      echo json_encode(['status' => false, 'msg' => 'Asignación inválida (estacionid/orden)']);
+      die();
+    }
+
+    if ($encargado <= 0) {
+      echo json_encode(['status' => false, 'msg' => "Falta encargado en estación orden {$orden}"]);
+      die();
+    }
+
+    $idsEncargados[] = $encargado;
+
+    if (is_array($ayudantes)) {
+      foreach ($ayudantes as $uid) {
+        $uid = (int) $uid;
+        if ($uid > 0) {
+          $idsAyudantes[] = $uid;
+        }
+      }
+    }
+  }
+
+  // =========================================================
+  // VALIDAR SUBENSAMBLES
+  // =========================================================
+  foreach ($asignacionesSubensambles as $s) {
+    $idsubensamble = (int) ($s['idsubensamble'] ?? 0);
+    $estacionid = (int) ($s['estacionid'] ?? 0);
+    $orden_sub = trim((string) ($s['orden_sub'] ?? ''));
+    $encargado = (int) ($s['encargado'] ?? 0);
+    $ayudantes = $s['ayudantes'] ?? [];
+
+    if ($idsubensamble <= 0 || $estacionid <= 0 || $orden_sub === '') {
+      echo json_encode(['status' => false, 'msg' => 'Asignación inválida en subensamble']);
+      die();
+    }
+
+    if ($encargado <= 0) {
+      echo json_encode(['status' => false, 'msg' => "Falta encargado en subensamble {$orden_sub}"]);
+      die();
+    }
+
+    $idsEncargados[] = $encargado;
+
+    if (is_array($ayudantes)) {
+      foreach ($ayudantes as $uid) {
+        $uid = (int) $uid;
+        if ($uid > 0) {
+          $idsAyudantes[] = $uid;
+        }
+      }
+    }
+  }
+
+  $idsEncargados = array_values(array_unique(array_map('intval', $idsEncargados)));
+  $idsAyudantes = array_values(array_unique(array_map('intval', $idsAyudantes)));
+
+  // quitamos ayudantes que también estén como encargados
+  $idsAyudantes = array_values(array_diff($idsAyudantes, $idsEncargados));
+
+  $destEnc = [];
+  $destAy = [];
+
+  if (!empty($idsEncargados)) {
+    $arrEnc = $this->model->getEmailsUsuariosByIds($idsEncargados);
+    foreach ($arrEnc as $u) {
+      $email = trim((string) ($u['email_user'] ?? ''));
+      if ($email === '') {
+        continue;
+      }
+
+      $nombre = trim((string) ($u['nombres'] ?? ''));
+      $ape = trim((string) ($u['apellidos'] ?? ''));
+      $full = trim($nombre . ' ' . $ape);
+      if ($full === '') {
+        $full = '—';
+      }
+
+      $destEnc[] = [
+        'idusuario' => (int) ($u['idusuario'] ?? 0),
+        'email' => $email,
+        'nombre' => $full,
+      ];
+    }
+  }
+
+  if (!empty($idsAyudantes)) {
+    $arrAy = $this->model->getEmailsUsuariosByIds($idsAyudantes);
+    foreach ($arrAy as $u) {
+      $email = trim((string) ($u['email_user'] ?? ''));
+      if ($email === '') {
+        continue;
+      }
+
+      $nombre = trim((string) ($u['nombres'] ?? ''));
+      $ape = trim((string) ($u['apellidos'] ?? ''));
+      $full = trim($nombre . ' ' . $ape);
+      if ($full === '') {
+        $full = '—';
+      }
+
+      $destAy[] = [
+        'idusuario' => (int) ($u['idusuario'] ?? 0),
+        'email' => $email,
+        'nombre' => $full,
+      ];
+    }
+  }
+
+  $emailsEnc = array_values(array_unique(array_column($destEnc, 'email')));
+  $emailsAy = array_values(array_unique(array_column($destAy, 'email')));
+
+  $mapUserNombre = [];
+  $idsAll = array_values(array_unique(array_merge($idsEncargados, $idsAyudantes)));
+  if (!empty($idsAll)) {
+    $arrAll = $this->model->getNombresUsuariosByIds($idsAll);
+
+    foreach ($arrAll as $u) {
+      $id = (int) ($u['idusuario'] ?? 0);
+      if ($id <= 0) {
+        continue;
+      }
+
+      $nom = trim((string) ($u['nombres'] ?? ''));
+      $ape = trim((string) ($u['apellidos'] ?? ''));
+      $full = trim($nom . ' ' . $ape);
+      $mapUserNombre[$id] = $full !== '' ? $full : '—';
+    }
+  }
+
+  try {
+
+    $num_orden = $this->model->generarNumeroOrden();
+
+    $request_CONFIGURACION = $this->model->insertPlaneacion(
+      $num_orden,
+      $productoid,
+      $pedido,
+      $supervisor,
+      $prioridad,
+      $cantidad,
+      $fecha_inicio,
+      $fecha_requerida,
+      $notas
+    );
+
+    if ((int) $request_CONFIGURACION <= 0) {
+      throw new Exception('No se pudo registrar la planeación (cabecera)');
+    }
+
+    $idplaneacion = (int) $request_CONFIGURACION;
+
+    $this->model->insertAuditoria(
+      MPPLANPRODUCCION,
+      1,
+      $idusuario,
+      'mrp_planeacion',
+      $idplaneacion,
+      $fechaEvento,
+      $ip,
+      $detalle
+    );
+
+    // ---------------------------------------------------------
+    // Producto (para correos)
+    // ---------------------------------------------------------
+    $cve_producto = '';
+    $descripcion = '';
+
+    $request_Producto = $this->model->getProducto($productoid);
+    if (is_array($request_Producto) && !empty($request_Producto)) {
+      $cve_producto = (string) ($request_Producto['cve_producto'] ?? '');
+      $descripcion = (string) ($request_Producto['descripcion'] ?? '');
+    }
+
+    $detalleAsignaciones = [];
+    $mapPlaneacionEstacion = [];
+
+    // =========================================================
+    // GUARDAR ESTACIONES
+    // =========================================================
+    foreach ($asignacionesEstaciones as $a) {
+      $estacionid = (int) $a['estacionid'];
+      $orden = (int) $a['orden'];
+      $encargado = (int) $a['encargado'];
+      $estampado = (int) ($a['estampado'] ?? 0);
+      $ayudantes = is_array($a['ayudantes']) ? $a['ayudantes'] : [];
+
+      $id_planeacion_estacion = (int) $this->model->upsertPlaneacionEstacion(
+        $idplaneacion,
+        $estacionid,
+        $orden,
+        $estampado
+      );
+
+      if ($id_planeacion_estacion <= 0) {
+        throw new Exception("No se pudo guardar estación {$estacionid} en planeación");
+      }
+
+      $mapPlaneacionEstacion[$estacionid] = $id_planeacion_estacion;
+
+      $infoEst = $this->model->getEstacionInfoById($estacionid);
+      $nombre_estacion = trim((string) ($infoEst['nombre_estacion'] ?? ''));
+      $proceso = trim((string) ($infoEst['proceso'] ?? ''));
+      $linea = trim((string) ($infoEst['linea'] ?? ''));
+
+      $ayudantesInt = [];
+      foreach ($ayudantes as $uid) {
+        $uid = (int) $uid;
+        if ($uid > 0) {
+          $ayudantesInt[] = $uid;
+        }
+      }
+      $ayudantesInt = array_values(array_unique($ayudantesInt));
+
+      $ayudantesNombres = [];
+      foreach ($ayudantesInt as $aid) {
+        $ayudantesNombres[] = $mapUserNombre[$aid] ?? "ID {$aid}";
+      }
+      $ayudantesNombresTxt = !empty($ayudantesNombres) ? implode(', ', $ayudantesNombres) : '—';
+
+      $detalleAsignaciones[] = [
+        'tipo' => 'ESTACION',
+        'orden' => $orden,
+        'orden_label' => 'EST-' . $orden,
+        'estacionid' => $estacionid,
+        'idsubensamble' => 0,
+        'nombre_estacion' => $nombre_estacion,
+        'proceso' => $proceso,
+        'linea' => $linea,
+        'encargado' => $encargado,
+        'encargado_nombre' => $mapUserNombre[$encargado] ?? "ID {$encargado}",
+        'ayudantes' => $ayudantesInt,
+        'ayudantes_nombres' => $ayudantesNombresTxt,
+        'planeacion_estacionid' => $id_planeacion_estacion,
+        'planeacion_subensambleid' => 0
+      ];
+
+      for ($s = 1; $s <= $cantidad; $s++) {
+        $num_orden_s = $num_orden . '-U' . str_pad((string) $s, 2, '0', STR_PAD_LEFT);
+
+        $okOrd = $this->model->insertOrdenes($id_planeacion_estacion, $num_orden_s, $estampado);
+
+        if ((int) $okOrd <= 0) {
+          throw new Exception("No se pudo insertar orden {$num_orden_s} para planeación_estación {$id_planeacion_estacion}");
+        }
+      }
+
+      $this->model->clearOperadoresByPlaneacionEstacion($id_planeacion_estacion);
+
+      $okEnc = $this->model->insertPlaneacionOperador(
+        $id_planeacion_estacion,
+        $encargado,
+        'ENCARGADO'
+      );
+      if ((int) $okEnc <= 0) {
+        throw new Exception("No se pudo guardar encargado en estación {$estacionid}");
+      }
+
+      $setAy = [];
+      foreach ($ayudantesInt as $uid) {
+        $uid = (int) $uid;
+        if ($uid <= 0) {
+          continue;
+        }
+        if (isset($setAy[$uid])) {
+          continue;
+        }
+        $setAy[$uid] = true;
+
+        $okAy = $this->model->insertPlaneacionOperador(
+          $id_planeacion_estacion,
+          $uid,
+          'AYUDANTE'
+        );
+
+        if ((int) $okAy <= 0) {
+          throw new Exception("No se pudo guardar ayudante {$uid} en estación {$estacionid}");
+        }
+      }
+    }
+
+    // =========================================================
+    // GUARDAR SUBENSAMBLES
+    // =========================================================
+    foreach ($asignacionesSubensambles as $s) {
+      $idsubensamble = (int) ($s['idsubensamble'] ?? 0);
+      $estacionid = (int) ($s['estacionid'] ?? 0);
+      $orden_sub = trim((string) ($s['orden_sub'] ?? ''));
+      $encargado = (int) ($s['encargado'] ?? 0);
+      $ayudantes = is_array($s['ayudantes'] ?? []) ? $s['ayudantes'] : [];
+
+      $id_planeacion_estacion = (int) ($mapPlaneacionEstacion[$estacionid] ?? 0);
+      if ($id_planeacion_estacion <= 0) {
+        throw new Exception("No se encontró la estación planeada para el subensamble {$orden_sub}");
+      }
+
+      $id_planeacion_subensamble = (int) $this->model->upsertPlaneacionSubensamble(
+        $idplaneacion,
+        $id_planeacion_estacion,
+        $estacionid,
+        $idsubensamble,
+        $orden_sub
+      );
+
+      if ($id_planeacion_subensamble <= 0) {
+        throw new Exception("No se pudo guardar subensamble {$idsubensamble}");
+      }
+
+      $infoSub = $this->model->getSubensambleInfoById($idsubensamble);
+      $nombre_subensamble = trim((string) ($infoSub['nombre_estacion'] ?? ''));
+      $proceso_subensamble = trim((string) ($infoSub['proceso'] ?? ''));
+
+      $ayudantesInt = [];
+      foreach ($ayudantes as $uid) {
+        $uid = (int) $uid;
+        if ($uid > 0) {
+          $ayudantesInt[] = $uid;
+        }
+      }
+      $ayudantesInt = array_values(array_unique($ayudantesInt));
+
+      $ayudantesNombres = [];
+      foreach ($ayudantesInt as $aid) {
+        $ayudantesNombres[] = $mapUserNombre[$aid] ?? "ID {$aid}";
+      }
+      $ayudantesNombresTxt = !empty($ayudantesNombres) ? implode(', ', $ayudantesNombres) : '—';
+
+      $detalleAsignaciones[] = [
+        'tipo' => 'SUBENSAMBLE',
+        'orden' => 0,
+        'orden_label' => $orden_sub,
+        'estacionid' => $estacionid,
+        'idsubensamble' => $idsubensamble,
+        'nombre_estacion' => $nombre_subensamble,
+        'proceso' => $proceso_subensamble,
+        'linea' => '',
+        'encargado' => $encargado,
+        'encargado_nombre' => $mapUserNombre[$encargado] ?? "ID {$encargado}",
+        'ayudantes' => $ayudantesInt,
+        'ayudantes_nombres' => $ayudantesNombresTxt,
+        'planeacion_estacionid' => $id_planeacion_estacion,
+        'planeacion_subensambleid' => $id_planeacion_subensamble
+      ];
+
+      for ($i = 1; $i <= $cantidad; $i++) {
+        // $num_sub_orden = $num_orden . '-' . $orden_sub . '-' . str_pad((string) $i, 2, '0', STR_PAD_LEFT);
+
+        $num_sub_orden = $num_orden . '-U' . str_pad((string) $i, 2, '0', STR_PAD_LEFT);
+
+
+        $codigoScan = $num_sub_orden;
+
+    
+
+        $okSubOrd = $this->model->insertOrdenesSubensamble(
+          $id_planeacion_subensamble,
+          $num_sub_orden,
+          $codigoScan
+        );
+
+        if ((int) $okSubOrd <= 0) {
+          throw new Exception("No se pudo insertar orden {$num_sub_orden} para subensamble {$idsubensamble}");
+        }
+      }
+
+      $this->model->clearOperadoresByPlaneacionSubensamble($id_planeacion_subensamble);
+
+      $okEncSub = $this->model->insertPlaneacionSubensambleOperador(
+        $id_planeacion_subensamble,
+        $encargado,
+        'ENCARGADO'
+      );
+
+      if ((int) $okEncSub <= 0) {
+        throw new Exception("No se pudo guardar encargado en subensamble {$idsubensamble}");
+      }
+
+      $setAySub = [];
+      foreach ($ayudantesInt as $uid) {
+        $uid = (int) $uid;
+        if ($uid <= 0) {
+          continue;
+        }
+        if (isset($setAySub[$uid])) {
+          continue;
+        }
+        $setAySub[$uid] = true;
+
+        $okAySub = $this->model->insertPlaneacionSubensambleOperador(
+          $id_planeacion_subensamble,
+          $uid,
+          'AYUDANTE'
+        );
+
+        if ((int) $okAySub <= 0) {
+          throw new Exception("No se pudo guardar ayudante {$uid} en subensamble {$idsubensamble}");
+        }
+      }
+    }
+
+    // =========================================================
+    //  CALCULO AUTOMATICO DE fecha_fin
+    // =========================================================
+    $estacionIds = [];
+    foreach ($asignacionesEstaciones as $a) {
+      $eid = (int) ($a['estacionid'] ?? 0);
+      if ($eid > 0) {
+        $estacionIds[] = $eid;
+      }
+    }
+    $estacionIds = array_values(array_unique($estacionIds));
+
+    $subensambleIds = [];
+    foreach ($asignacionesSubensambles as $s) {
+      $sid = (int) ($s['idsubensamble'] ?? 0);
+      if ($sid > 0) {
+        $subensambleIds[] = $sid;
+      }
+    }
+    $subensambleIds = array_values(array_unique($subensambleIds));
+
+    $totalTiempoAjusteEstaciones = (float) $this->model->getTotalTiempoAjusteByEstaciones($estacionIds);
+    $totalTiempoAjusteSubensambles = (float) $this->model->getTotalTiempoAjusteBySubensambles($subensambleIds);
+    $minutosTotales = ($totalTiempoAjusteEstaciones + $totalTiempoAjusteSubensambles) * (float) $cantidad;
+
+    $minPorDia = 540;
+    $daysApprox = (int) ceil($minutosTotales / $minPorDia);
+
+    $fromDate = substr($fecha_inicio, 0, 10);
+    $toDateDT = new DateTime($fecha_inicio);
+    $toDateDT->modify('+' . max(10, $daysApprox * 2) . ' days');
+    $toDate = $toDateDT->format('Y-m-d');
+
+    $festivosSet = $this->model->getFestivosBetween($fromDate, $toDate);
+
+    $fecha_fin = $this->model->addWorkingMinutesToDatetimeWithHolidays(
+      $fecha_inicio,
+      $minutosTotales,
+      [1, 2, 3, 4, 5],
+      $festivosSet
+    );
+
+    $this->model->updateFechaFinPlaneacion($idplaneacion, $fecha_fin);
+
+    // =========================================================
+    // URL DETALLE
+    // =========================================================
+    $url_recovery = base_url() . '/plan_planeacionv1/orden/' . $num_orden;
+
+    // =========================================================
+    // BLOQUE COMPONENTES ESTACIONES + SUBENSAMBLES
+    // =========================================================
+    $reqMap = [];
+
+    // ---------------------------------------------------------
+    // COMPONENTES DE ESTACIONES
+    // ---------------------------------------------------------
+    $componentes = $this->model->getComponentesByProducto($productoid);
+
+    if (!empty($componentes)) {
+      foreach ($componentes as $c) {
+        $almacenid = (int) ($c['almacenid'] ?? 0);
+        $inventarioid = (int) ($c['inventarioid'] ?? 0);
+        $qtyUnit = (float) ($c['cantidad'] ?? 0);
+        $estacionidComp = (int) ($c['estacionid'] ?? 0);
+
+        if ($almacenid <= 0 || $inventarioid <= 0 || $qtyUnit <= 0 || $estacionidComp <= 0) {
+          continue;
+        }
+
+        if (!in_array($estacionidComp, $estacionIds, true)) {
+          continue;
+        }
+
+        $key = $almacenid . '|' . $inventarioid;
+
+        if (!isset($reqMap[$key])) {
+          $reqMap[$key] = [
+            'almacenid' => $almacenid,
+            'inventarioid' => $inventarioid,
+            'qty_unit_total' => 0.0,
+            'referencias' => []
+          ];
+        }
+
+        $reqMap[$key]['qty_unit_total'] += $qtyUnit;
+        $reqMap[$key]['referencias'][] = 'ESTACION ' . $estacionidComp;
+      }
+    }
+
+    // ---------------------------------------------------------
+    // COMPONENTES DE SUBENSAMBLES
+    // ---------------------------------------------------------
+    $componentesSub = $this->model->getComponentesBySubensambles($productoid, $subensambleIds);
+
+    if (!empty($componentesSub)) {
+      foreach ($componentesSub as $c) {
+        $almacenid = (int) ($c['almacenid'] ?? 0);
+        $inventarioid = (int) ($c['inventarioid'] ?? 0);
+        $qtyUnit = (float) ($c['cantidad'] ?? 0);
+        $subensambleidComp = (int) ($c['subensambleid'] ?? 0);
+
+        if ($almacenid <= 0 || $inventarioid <= 0 || $qtyUnit <= 0 || $subensambleidComp <= 0) {
+          continue;
+        }
+
+        if (!in_array($subensambleidComp, $subensambleIds, true)) {
+          continue;
+        }
+
+        $key = $almacenid . '|' . $inventarioid;
+
+        if (!isset($reqMap[$key])) {
+          $reqMap[$key] = [
+            'almacenid' => $almacenid,
+            'inventarioid' => $inventarioid,
+            'qty_unit_total' => 0.0,
+            'referencias' => []
+          ];
+        }
+
+        $reqMap[$key]['qty_unit_total'] += $qtyUnit;
+        $reqMap[$key]['referencias'][] = 'SUBENSAMBLE ' . $subensambleidComp;
+      }
+    }
+
+    // ---------------------------------------------------------
+    // DESCONTAR INVENTARIO + INSERTAR MOVIMIENTOS
+    // ---------------------------------------------------------
+    if (!empty($reqMap)) {
+      foreach ($reqMap as $it) {
+        $almacenid = (int) $it['almacenid'];
+        $inventarioid = (int) $it['inventarioid'];
+        $qtySalida = (float) $it['qty_unit_total'] * (float) $cantidad;
+
+        if ($qtySalida <= 0) {
+          continue;
+        }
+
+        $okUpd = $this->model->updateExistenciaInventario($inventarioid, $almacenid, $qtySalida);
+        if (!$okUpd) {
+          throw new Exception("No se pudo actualizar existencia de inventario {$inventarioid}");
+        }
+
+        $referenciaTxt = 'Salida a fábrica';
+        if (!empty($it['referencias'])) {
+          $referenciaTxt .= ' [' . implode(', ', array_unique($it['referencias'])) . ']';
+        }
+
+        $mov = [
+          'inventarioid' => $inventarioid,
+          'almacenid' => $almacenid,
+          'numero_movimiento' => '',
+          'concepmovid' => 10,
+          'referencia' => $referenciaTxt,
+          'cantidad' => $qtySalida,
+          'costo_cantidad' => '',
+          'precio' => '',
+          'costo' => '',
+          'existencia' => '',
+          'signo' => '-1',
+          'fecha_movimiento' => date('Y-m-d H:i:s'),
+          'estado' => 2,
+        ];
+
+        $okMov = $this->model->insertMovimientoInventario($mov);
+        if ((int) $okMov <= 0) {
+          throw new Exception("No se pudo insertar movimiento inventario {$inventarioid}");
+        }
+      }
+    }
+
+    // ---------------------------------------------------------
+    // Base para correo
+    // ---------------------------------------------------------
+    $infoBase = [
+      'idplaneacion' => $idplaneacion,
+      'num_orden' => $num_orden,
+      'productoid' => $productoid,
+      'pedido' => $pedido,
+      'prioridad' => $prioridad,
+      'cantidad' => $cantidad,
+      'fecha_inicio' => $fecha_inicio,
+      'fecha_requerida' => $fecha_requerida,
+
+      'fecha_inicio_txt' => formatFechaLargaEs($fecha_inicio, true),
+      'fecha_requerida_txt' => formatFechaLargaEs($fecha_requerida, true),
+
+      'supervisor' => $nombreCompletoSupervisor,
+      'notas' => $notas,
+      'cve_producto' => $cve_producto,
+      'descripcion' => $descripcion,
+      'fecha_notificacion' => formatFechaLargaEs($fecha_notificacion, false),
+      'url_detalle' => $url_recovery,
+
+      'asignaciones_detalle' => $detalleAsignaciones,
+    ];
+
+    $mail = [
+      'encargados' => ['status' => true, 'msg' => 'OK', 'to_count' => count($emailsEnc)],
+      'ayudantes' => ['status' => true, 'msg' => 'OK', 'to_count' => count($emailsAy)],
+      'supervisor' => ['status' => true, 'msg' => 'OK', 'to_count' => 1],
+    ];
+
+    $cc = 'carlos.cruz@ldrsolutions.com.mx';
+
+    // ---------------------------------------------------------
+    // SUPERVISOR
+    // ---------------------------------------------------------
+    try {
+      $dataMail = $infoBase;
+      $dataMail['nombre'] = $nombreCompletoSupervisor !== '' ? $nombreCompletoSupervisor : 'Supervisor';
+      $dataMail['email'] = $emailSupervisor;
+      $dataMail['asunto'] = 'Planeación de Producción Registrada';
+
+      sendMailLocalCron($dataMail, 'email_new_ot_supervisor', $cc);
+    } catch (Exception $eSup) {
+      $mail['supervisor'] = ['status' => false, 'msg' => $eSup->getMessage(), 'to_count' => 1];
+    }
+
+    // ---------------------------------------------------------
+    // ENCARGADOS
+    // ---------------------------------------------------------
+    try {
+      if (!empty($destEnc)) {
+        foreach ($destEnc as $dest) {
+          $uid = (int) $dest['idusuario'];
+
+          $asigUser = null;
+          foreach ($detalleAsignaciones as $d) {
+            if ((int) $d['encargado'] === $uid) {
+              $asigUser = $d;
+              break;
+            }
+          }
+
+          $dataMail = $infoBase;
+          $dataMail['nombre'] = $dest['nombre'];
+          $dataMail['email'] = $dest['email'];
+          $dataMail['asunto'] = 'Responsabilidad de Estación Asignada';
+
+          $dataMail['estacion_asignada'] = $asigUser ? [
+            'tipo' => $asigUser['tipo'],
+            'orden' => $asigUser['tipo'] === 'SUBENSAMBLE' ? ($asigUser['orden_label'] ?? '') : ($asigUser['orden'] ?? 0),
+            'nombre_estacion' => $asigUser['nombre_estacion'],
+            'proceso' => $asigUser['proceso'],
+            'linea' => $asigUser['linea'],
+          ] : null;
+
+          $dataMail['ayudantes_nombres'] = $asigUser['ayudantes_nombres'] ?? '—';
+
+          sendMailLocalCron($dataMail, 'email_new_ot_encargado', $cc);
+        }
+      } else {
+        $mail['encargados'] = ['status' => false, 'msg' => 'Sin correos válidos', 'to_count' => 0];
+      }
+    } catch (Exception $e1) {
+      $mail['encargados'] = ['status' => false, 'msg' => $e1->getMessage(), 'to_count' => count($emailsEnc)];
+    }
+
+    // ---------------------------------------------------------
+    // AYUDANTES
+    // ---------------------------------------------------------
+    try {
+      if (!empty($destAy)) {
+        foreach ($destAy as $dest) {
+          $uid = (int) $dest['idusuario'];
+
+          $asigUser = null;
+          foreach ($detalleAsignaciones as $d) {
+            if (in_array($uid, $d['ayudantes'], true)) {
+              $asigUser = $d;
+              break;
+            }
+          }
+
+          $dataMail = $infoBase;
+          $dataMail['nombre'] = $dest['nombre'];
+          $dataMail['email'] = $dest['email'];
+          $dataMail['asunto'] = 'Orden de Trabajo Asignada';
+
+          $dataMail['estacion_asignada'] = $asigUser ? [
+            'tipo' => $asigUser['tipo'],
+            'orden' => $asigUser['tipo'] === 'SUBENSAMBLE' ? ($asigUser['orden_label'] ?? '') : ($asigUser['orden'] ?? 0),
+            'nombre_estacion' => $asigUser['nombre_estacion'],
+            'proceso' => $asigUser['proceso'],
+            'linea' => $asigUser['linea'],
+          ] : null;
+
+          $dataMail['encargado_nombre'] = $asigUser['encargado_nombre'] ?? '—';
+
+          sendMailLocalCron($dataMail, 'email_new_ot_ayudante', $cc);
+        }
+      } else {
+        $mail['ayudantes'] = ['status' => false, 'msg' => 'Sin correos válidos', 'to_count' => 0];
+      }
+    } catch (Exception $e2) {
+      $mail['ayudantes'] = ['status' => false, 'msg' => $e2->getMessage(), 'to_count' => count($emailsAy)];
+    }
+
+    echo json_encode([
+      'status' => true,
+      'msg' => 'Planeación guardada correctamente',
+      'idplaneacion' => $idplaneacion,
+      'mail' => $mail,
+      'num_planeacion' => $num_orden
+    ]);
+    die();
+
+  } catch (Exception $e) {
+    echo json_encode([
+      'status' => false,
+      'msg' => $e->getMessage()
+    ]);
+    die();
+  }
+}
+
+
+
+  // --------------------------------------------------------------------
+  // FUNCIÓN PARA LISTAR TODAS LAS PLANEACIONES PENDIENTGES
+  // --------------------------------------------------------------------
+  public function getPendientes()
+  {
+
+
+
+    $arrData = $this->model->selectPlanPendientes();
+    for ($i = 0; $i < count($arrData); $i++) {
+      $btnView = '';
+      $btnEdit = '';
+      $btnDelete = '';
+
+      if ($arrData[$i]['estado_planeacion'] == 2) {
+        $arrData[$i]['estado_planeacion'] = '<span class="badge bg-success">Activo</span>';
+      } else if ($arrData[$i]['estado_planeacion'] == 1) {
+        $arrData[$i]['estado_planeacion'] = '<span class="badge bg-danger">Inactivo</span>';
+      }
+
+      $btnEdit = '<button class="btn btn-sm btn-soft-warning edit-list" title="Editar Producto" onClick="fntEditProducto(' . $arrData[$i]['idplaneacion'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
+      $btnReporte = '<button class="btn btn-sm btn-soft-danger edit-file" title="Generar reporte" onClick="fntReportProducto(' . $arrData[$i]['idplaneacion'] . ')"><i class="ri-file-text-line me-1"></i></button>';
+
+
+
+      // $arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . '</div>';
+      $arrData[$i]['options'] = '<div class="text-center">' . $btnReporte . ' ' . $btnEdit . '</div>';
+    }
+    echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+
+    die();
+
+  }
+
+
+
+  // --------------------------------------------------------------------
+  // FUNCIÓN PARA LISTAR TODAS LAS PLANEACIONES FINALIZADAS
+  // --------------------------------------------------------------------
+  public function getFinalizadas()
+  {
+
+    $arrData = $this->model->selectPlanFinalizadas();
+    for ($i = 0; $i < count($arrData); $i++) {
+      $btnView = '';
+      $btnEdit = '';
+      $btnDelete = '';
+
+      if ($arrData[$i]['estado_planeacion'] == 2) {
+        $arrData[$i]['estado_planeacion'] = '<span class="badge bg-success">Activo</span>';
+      } else if ($arrData[$i]['estado_planeacion'] == 1) {
+        $arrData[$i]['estado_planeacion'] = '<span class="badge bg-danger">Inactivo</span>';
+      }
+
+      $btnEdit = '<button class="btn btn-sm btn-soft-warning edit-list" title="Editar Producto" onClick="fntEditProducto(' . $arrData[$i]['idplaneacion'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
+      $btnReporte = '<button class="btn btn-sm btn-soft-danger edit-file" title="Generar reporte" onClick="fntReportProducto(' . $arrData[$i]['idplaneacion'] . ')"><i class="ri-file-text-line me-1"></i></button>';
+
+
+
+      // $arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . '</div>';
+      $arrData[$i]['options'] = '<div class="text-center">' . $btnReporte . ' ' . $btnEdit . '</div>';
+    }
+    echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+
+    die();
+
+  }
+
+
+  // --------------------------------------------------------------------
+  // FUNCIÓN PARA LISTAR TODAS LAS PLANEACIONES CANCELADAS
+  // --------------------------------------------------------------------
+  public function getEnProceso()
+  {
+
+    $arrData = $this->model->selectPlanEnProceso();
+    for ($i = 0; $i < count($arrData); $i++) {
+      $btnView = '';
+      $btnEdit = '';
+      $btnDelete = '';
+
+      if ($arrData[$i]['estado_planeacion'] == 2) {
+        $arrData[$i]['estado_planeacion'] = '<span class="badge bg-success">Activo</span>';
+      } else if ($arrData[$i]['estado_planeacion'] == 1) {
+        $arrData[$i]['estado_planeacion'] = '<span class="badge bg-danger">Inactivo</span>';
+      }
+
+      $btnEdit = '<button class="btn btn-sm btn-soft-warning edit-list" title="Editar Producto" onClick="fntEditProducto(' . $arrData[$i]['idplaneacion'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
+      $btnReporte = '<button class="btn btn-sm btn-soft-danger edit-file" title="Generar reporte" onClick="fntReportProducto(' . $arrData[$i]['idplaneacion'] . ')"><i class="ri-file-text-line me-1"></i></button>';
+
+
+
+      // $arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . '</div>';
+      $arrData[$i]['options'] = '<div class="text-center">' . $btnReporte . ' ' . $btnEdit . '</div>';
+    }
+    echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+
+    die();
+
+  }
+
+public function validarExistencias()
+{
+  header('Content-Type: application/json');
+
+  $json = file_get_contents('php://input');
+  $data = json_decode($json, true);
+
+  if (!is_array($data)) {
+    echo json_encode(['status' => false, 'msg' => 'JSON inválido']);
+    die();
+  }
+
+  $productoid = (int) ($data['productoid'] ?? 0);
+  $cantidad = (int) ($data['cantidad'] ?? 0);
+  $estaciones = $data['estaciones'] ?? [];
+  $subensambles = $data['subensambles'] ?? [];
+
+  if ($productoid <= 0) {
+    echo json_encode(['status' => false, 'msg' => 'Falta productoid']);
+    die();
+  }
+
+  if ($cantidad <= 0) {
+    echo json_encode(['status' => false, 'msg' => 'Cantidad inválida']);
+    die();
+  }
+
+  if (
+    (!is_array($estaciones) || count($estaciones) === 0) &&
+    (!is_array($subensambles) || count($subensambles) === 0)
+  ) {
+    echo json_encode(['status' => false, 'msg' => 'No hay estaciones o subensambles']);
+    die();
+  }
+
+  $errores = [];
+
+  // =========================================================
+  // VALIDAR ESTACIONES
+  // =========================================================
+  if (is_array($estaciones)) {
+    foreach ($estaciones as $e) {
+      $estacionid = (int) ($e['estacionid'] ?? 0);
+      if ($estacionid <= 0) continue;
+
+      $res = $this->model->consultarExistencias($productoid, $estacionid, $cantidad);
+
+      if (!empty($res) && isset($res['status']) && (int) $res['status'] === 0 && !empty($res['data'])) {
+        foreach ($res['data'] as $row) {
+          $row['tipo'] = 'ESTACION';
+          $row['msg'] = $res['msg'] ?? 'Faltan componentes en inventario';
+          $errores[] = $row;
+        }
+      }
+    }
+  }
+
+  // =========================================================
+  // VALIDAR SUBENSAMBLES
+  // =========================================================
+  if (is_array($subensambles)) {
+    foreach ($subensambles as $s) {
+      $idsubensamble = (int) ($s['idsubensamble'] ?? 0);
+      $estacionid = (int) ($s['estacionid'] ?? 0);
+
+      if ($idsubensamble <= 0) continue;
+
+      $res = $this->model->consultarExistenciasSubensamble($productoid, $idsubensamble, $cantidad, $estacionid);
+
+      if (!empty($res) && isset($res['status']) && (int) $res['status'] === 0 && !empty($res['data'])) {
+        foreach ($res['data'] as $row) {
+          $row['tipo'] = 'SUBENSAMBLE';
+          $row['msg'] = $res['msg'] ?? 'Faltan componentes en inventario';
+          $errores[] = $row;
+        }
+      }
+    }
+  }
+
+  if (count($errores) > 0) {
+    echo json_encode([
+      'status' => false,
+      'msg' => 'Faltan componentes en inventario para una o más estaciones/subensambles.',
+      'errores' => $errores
+    ]);
+    die();
+  }
+
+  echo json_encode(['status' => true, 'msg' => 'OK']);
+  die();
+}
+
+
+
+
+
+
+  public function validarHerramientasExistencias()
+  {
+    header('Content-Type: application/json');
+
+    $json = file_get_contents('php://input');
+    $data = json_decode($json, true);
+
+    if (!is_array($data)) {
+      echo json_encode(['status' => false, 'msg' => 'JSON inválido']);
+      die();
+    }
+
+    $productoid = (int) ($data['productoid'] ?? 0);
+    $cantidad = (int) ($data['cantidad'] ?? 0);
+    $estaciones = $data['estaciones'] ?? [];
+
+    if ($productoid <= 0) {
+      echo json_encode(['status' => false, 'msg' => 'Falta productoid']);
+      die();
+    }
+    if ($cantidad <= 0) {
+      echo json_encode(['status' => false, 'msg' => 'Cantidad inválida']);
+      die();
+    }
+    if (!is_array($estaciones) || count($estaciones) === 0) {
+      echo json_encode(['status' => false, 'msg' => 'No hay estaciones']);
+      die();
+    }
+
+    $errores = [];
+
+    foreach ($estaciones as $e) {
+      $estacionid = (int) ($e['estacionid'] ?? 0);
+      if ($estacionid <= 0)
+        continue;
+
+
+      $res = $this->model->consultarHerramientasExistencias($productoid, $estacionid, $cantidad);
+
+      if (isset($res['status']) && ($res['status'] === false || $res['status'] === 0) && !empty($res['data'])) {
+        // acumulamos
+        foreach ($res['data'] as $row) {
+          $errores[] = $row;
+        }
+      }
+    }
+
+    if (count($errores) > 0) {
+      echo json_encode([
+        'status' => false,
+        'msg' => 'Faltan herramientas en inventario para una o más estaciones.',
+        'errores' => $errores
+      ]);
+      die();
+    }
+
+    echo json_encode(['status' => true, 'msg' => 'OK']);
+    die();
+  }
+
+  public function getDataPlaneacion($idplaneacion)
+  {
+    header('Content-Type: application/json; charset=utf-8');
+    $idplaneacion = (int) $idplaneacion;
+    if ($idplaneacion <= 0) {
+      echo json_encode(['status' => false, 'msg' => 'ID de planeación inválido'], JSON_UNESCAPED_UNICODE);
+      die();
+    }
+    $request_planeacion = $this->model->obtenerPlaneacion($idplaneacion);
+    $arrResponse = array('status' => true, 'data' => $request_planeacion);
+
+    echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+    die();
+  }
+
+
+
+  // FUNCIÓN PARA MNADAR A TRAER LA VISTA DE LA ORDEN DE TRABAJO
+  public function ordenv1($num_orden)
+  {
+    $num_orden = trim((string) $num_orden);
+
+    if ($num_orden === '') {
+      header("Location:" . base_url() . '/plan_planeacionv1');
+      die(); 
+    }
+ 
+
+    if (isset($_GET['json']) && $_GET['json'] == '1') {
+      header('Content-Type: application/json; charset=utf-8');
+
+      $resp = $this->model->obtenerPlaneacion($num_orden);
+
+      if (empty($resp)) {
+        echo json_encode([
+          'status' => false,
+          'msg' => 'No se encontró la planeación'
+        ], JSON_UNESCAPED_UNICODE);
+        die();
+      }
+
+
+
+      if (is_array($resp) && array_key_exists('status', $resp)) {
+        echo json_encode($resp, JSON_UNESCAPED_UNICODE);
+        die();
+      }
+
+      echo json_encode([
+        'status' => true,
+        'data' => [
+          'header' => $resp
+        ]
+      ], JSON_UNESCAPED_UNICODE);
+      die();
+    }
+
+ 
+    $data['page_tag'] = $num_orden;
+    $data['page_title'] = "Orden <small>de trabajo</small>";
+    $data['page_name'] = "Orden de trabajo";
+    $data['page_functions_js'] = "functions_orden.js";
+    $data['arrOrdenDetalle'] = $this->model->obtenerPlaneacion($num_orden);
+
+    if (empty($data['arrOrdenDetalle'])) {
+      header("Location:" . base_url() . '/plan_planeacionv1');
+      die();
+    }
+
+    $this->views->getView($this, "ordenv1", $data);
+  }
+
+
+
+
+  //FUNCIÓN PARA GUARDAr el co9mentari
+
+  public function setCommentario()
+  {
+    header('Content-Type: application/json; charset=utf-8');
+        	// --------------------------------------------------------------------
+				//  Datos de auditoría
+				// --------------------------------------------------------------------
+				$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+				$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+				$fechaEvento = date('Y-m-d H:i:s');
+
+    $json = file_get_contents('php://input');
+    $data = json_decode($json, true);
+
+    if (!is_array($data)) {
+      echo json_encode(['status' => false, 'msg' => 'JSON inválido']);
+      die();
+    }
+
+
+    $idorden = isset($data['idorden']) ? trim((string) $data['idorden']) : '';
+    $comentario = isset($data['comentario']) ? trim((string) $data['comentario']) : '';
+
+    if ($idorden === '') {
+      echo json_encode(['status' => false, 'msg' => 'Falta idorden']);
+      die();
+    }
+
+    $resp = $this->model->updateComentarioOrden($idorden, $comentario);
+
+    
+      			 $this->model->insertAuditoria(
+							MPPLANPRODUCCION,
+							2,
+							$idusuario,
+							'mrp_ordenes_trabajo',
+							$resp,
+							$fechaEvento,
+							$ip,
+							$detalle
+						);
+
+  
+    echo json_encode([
+      'status' => true,
+      'msg' => 'Comentario actualizado'
+    ]);
+    die();
+  }
+
+  public function startOT()
+  {
+    header('Content-Type: application/json');
+    				$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+				$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+				$fechaEvento = date('Y-m-d H:i:s');
+
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($data)) {
+      echo json_encode(['status' => false, 'msg' => 'JSON inválido']);
+      die();
+    }
+
+    $idorden = (int) ($data['idorden'] ?? 0);
+    $fecha_inicio = trim((string) ($data['fecha_inicio'] ?? ''));
+
+    if ($idorden <= 0) {
+      echo json_encode(['status' => false, 'msg' => 'Falta idorden']);
+      die();
+    }
+    if ($fecha_inicio === '') {
+      echo json_encode(['status' => false, 'msg' => 'Falta fecha_inicio']);
+      die();
+    }
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/', $fecha_inicio)) {
+      echo json_encode(['status' => false, 'msg' => 'Formato de fecha_inicio inválido']);
+      die();
+    } 
+
+    echo json_encode($this->model->startOT($idorden, $fecha_inicio));
+
+          			 $this->model->insertAuditoria(
+							MPPLANPRODUCCION,
+							5,
+							$idusuario,
+							'mrp_ordenes_trabajo',
+							$idorden,
+							$fechaEvento,
+							$ip,
+							$detalle
+						);
+
+
+
+    die();
+  }
+
+  public function finishOT()
+  {
+    header('Content-Type: application/json');
+        				$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+				$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+				$fechaEvento = date('Y-m-d H:i:s');
+
+    $data = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($data)) {
+      echo json_encode(['status' => false, 'msg' => 'JSON inválido']);
+      die();
+    }
+
+    $idorden = (int) ($data['idorden'] ?? 0);
+    $fecha_fin = trim((string) ($data['fecha_fin'] ?? ''));
+
+    if ($idorden <= 0) {
+      echo json_encode(['status' => false, 'msg' => 'Falta idorden']);
+      die();
+    }
+    if ($fecha_fin === '') {
+      echo json_encode(['status' => false, 'msg' => 'Falta fecha_fin']);
+      die();
+    }
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/', $fecha_fin)) {
+      echo json_encode(['status' => false, 'msg' => 'Formato de fecha_fin inválido']);
+      die();
+    } 
+
+
+      $inventarioid = (int) ($data['inventarioid'] ?? 0);
+          if ($inventarioid <= 0) {
+      echo json_encode(['status' => false, 'msg' => 'Falta inventario id']);
+      die();
+    }
+
+    // dep($data);
+    // exit;
+
+    echo json_encode($this->model->finishOT($idorden, $fecha_fin, $inventarioid));
+              			 $this->model->insertAuditoria(
+							MPPLANPRODUCCION,
+							6,
+							$idusuario,
+							'mrp_ordenes_trabajo',
+							$idorden,
+							$fechaEvento,
+							$ip,
+							$detalle
+						);
+    die();
+  }
+
+
+
+
+  public function getStatusOT()
+  {
+    header('Content-Type: application/json');
+
+    $json = file_get_contents('php://input');
+    $req = json_decode($json, true);
+
+    if (!is_array($req)) {
+      echo json_encode(['status' => false, 'msg' => 'JSON inválido']);
+      die();
+    }
+
+
+    $planeacionid = (int) ($req['planeacionid'] ?? 0);
+    $peid = (int) ($req['peid'] ?? 0);
+
+    if ($planeacionid <= 0 && $peid <= 0) {
+      echo json_encode(['status' => false, 'msg' => 'Falta planeacionid o peid']);
+      die();
+    }
+
+
+    if ($peid > 0) {
+      $rows = $this->model->getStatusOTByPeid($peid);
+ 
+      echo json_encode([
+        'status' => true,
+        'scope' => 'peid',
+        'peid' => $peid,
+        'data' => $rows
+      ]);
+      die();
+    }
+
+
+    $rows = $this->model->getStatusOTByPlaneacion($planeacionid);
+
+    echo json_encode([
+      'status' => true,
+      'scope' => 'planeacionid',
+      'planeacionid' => $planeacionid,
+      'data' => $rows
+    ]);
+    die();
+  }
+
+
+  public function descargarOrden($num_orden)
+  {
+    $num_orden = trim((string) $num_orden);
+    $request = $this->model->obtenerPlaneacion($num_orden);
+    echo json_encode($request, JSON_UNESCAPED_UNICODE);
+    die();
+  }
+
+
+  public function getOrdenes()
+  {
+    header('Content-Type: application/json; charset=utf-8');
+
+    try {
+      // (opcional) si requieres sesión/login
+      // if (empty($_SESSION['login'])) {
+      //   echo json_encode(['status' => false, 'msg' => 'No autorizado']);
+      //   die();
+      // } 
+
+      $rows = $this->model->selectOrdenesCalendar();
+
+      echo json_encode([
+        'status' => true,
+        'data' => $rows
+      ], JSON_UNESCAPED_UNICODE);
+      die();
+
+    } catch (Exception $e) {
+      echo json_encode([
+        'status' => false,
+        'msg' => 'Error al obtener órdenes',
+        'error' => $e->getMessage()
+      ], JSON_UNESCAPED_UNICODE);
+      die();
+    }
+  }
+
+
+
+
+
+
+
+  /////////////////////////////////////////////////
+
+
+  public function getChatMessages()
+  {
+    header('Content-Type: application/json');
+    $d = json_decode(file_get_contents('php://input'), true);
+
+    $subot = trim($d['subot'] ?? '');
+    if ($subot === '') {
+      echo json_encode(['status' => false, 'msg' => 'SubOT requerida']);
+      return;
+    }
+
+    $rows = $this->model->getChatMessages(
+      $subot,
+      (int) ($d['last_id'] ?? 0)
+    );
+
+    echo json_encode(['status' => true, 'data' => $rows]);
+  }
+
+  public function sendChatMessage()
+  {
+    header('Content-Type: application/json');
+
+    $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    $detalleserver = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $fechaEvento = date('Y-m-d H:i:s');
+    $d = json_decode(file_get_contents('php://input'), true);
+
+    $ok = $this->model->insertChatMessage([
+      'subot' => $d['subot'] ?? '',
+      'estacionid' => (int) ($d['estacionid'] ?? 0),
+      'planeacionid' => (int) ($d['planeacionid'] ?? 0),
+      'message' => trim($d['message'] ?? '')
+    ]);
+
+    $this->model->insertAuditoria(
+      MPPLANPRODUCCION,
+      1,
+      $idusuario,
+      'mrp_ot_chat',
+      $ok,
+      $fechaEvento,
+      $ip,
+      $detalleserver
+    );
+
+    echo json_encode(
+      $ok
+      ? ['status' => true]
+      : ['status' => false, 'msg' => 'No se pudo guardar el mensaje']
+    );
+  }
+
+  
+
+  //   public function getDescriptiva($idproducto)
+  // {
+  //   header('Content-Type: application/json; charset=utf-8');
+
+  //   try {
+  //     $idproducto = (int) $idproducto;
+  //     if ($idproducto <= 0) {
+  //       echo json_encode([
+  //         'status' => false,
+  //         'msg' => 'ID de producto inválido.'
+  //       ]);
+  //       die();
+  //     }
+
+  //     $rows = $this->model->selectDescriptivaByProducto($idproducto);
+
+  //     echo json_encode([
+  //       'status' => true,
+  //       'msg' => 'OK',
+  //       'data' => [
+  //         'productoid' => $idproducto,
+  //         'archivos' => $rows
+  //       ]
+  //     ], JSON_UNESCAPED_UNICODE);
+  //     die();
+
+  //   } catch (Throwable $e) {
+  //     echo json_encode([
+  //       'status' => false,
+  //       'msg' => 'Error al obtener descriptiva.',
+  //       'error' => $e->getMessage()
+  //     ], JSON_UNESCAPED_UNICODE);
+  //     die();
+  //   }
+  // }
+
+
+
+    public function getDescriptiva()
+  {
+    header('Content-Type: application/json; charset=utf-8');
+
+    try {
+      $json = file_get_contents('php://input');
+      $data = json_decode($json, true);
+
+      $productoid = (int) ($data['productoid'] ?? 0);
+      // $estacionid = (int) ($data['estacionid'] ?? 0);
+
+      if ($productoid <= 0) {
+        echo json_encode(['status' => false, 'msg' => 'Parámetros inválidos.'], JSON_UNESCAPED_UNICODE);
+        die();
+      }
+
+      $rows = $this->model->selectDescriptivaByProducto($productoid);
+
+      echo json_encode([
+        'status' => true,
+        'msg' => 'OK',
+        'data' => [
+          'productoid' => $productoid,
+          'data' => $rows
+        ]
+      ], JSON_UNESCAPED_UNICODE);
+      die();
+
+    } catch (Throwable $e) {
+      echo json_encode([
+        'status' => false,
+        'msg' => 'Error al obtener la descriptiva.',
+        'error' => $e->getMessage()
+      ], JSON_UNESCAPED_UNICODE);
+      die();
+    }
+  }
+
+
+public function getDocumentacion()
+{
+  header('Content-Type: application/json; charset=utf-8');
+
+  try {
+    $json = file_get_contents('php://input');
+    $data = json_decode($json, true);
+
+    $productoid = (int)($data['productoid'] ?? 0);
+
+
+    if ($productoid <= 0) {
+      echo json_encode(['status' => false, 'msg' => 'Parámetros inválidos.'], JSON_UNESCAPED_UNICODE);
+      die();
+    }
+
+    $rows = $this->model->selectDocumentacionByProducto($productoid);
+
+    echo json_encode([
+      'status' => true,
+      'msg'    => 'OK',
+      'data'   => [
+        'productoid' => $productoid,
+        'rows'       => $rows
+      ]
+    ], JSON_UNESCAPED_UNICODE);
+    die();
+
+  } catch (Throwable $e) {
+    echo json_encode([
+      'status' => false,
+      'msg'    => 'Error al obtener documentación.',
+      'error'  => $e->getMessage()
+    ], JSON_UNESCAPED_UNICODE);
+    die();
+  }
+}
+
+
+  //CREAMOS LA FUN CIÓN PARA OBTENER LAS ESPECIFICACIONES CRITICAS POR ORDEN DE TRABAJO Y POR ESTACIONESs
+
+  public function getEspecificaciones()
+  {
+    header('Content-Type: application/json; charset=utf-8');
+
+    try {
+      $json = file_get_contents('php://input');
+      $data = json_decode($json, true);
+
+      $productoid = (int) ($data['productoid'] ?? 0);
+      $estacionid = (int) ($data['estacionid'] ?? 0);
+
+      if ($productoid <= 0 || $estacionid <= 0) {
+        echo json_encode(['status' => false, 'msg' => 'Parámetros inválidos.'], JSON_UNESCAPED_UNICODE);
+        die();
+      }
+
+      $rows = $this->model->selectEspecificacionesByProductoEstacion($productoid, $estacionid);
+
+      echo json_encode([
+        'status' => true,
+        'msg' => 'OK',
+        'data' => [
+          'productoid' => $productoid,
+          'estacionid' => $estacionid,
+          'rows' => $rows
+        ]
+      ], JSON_UNESCAPED_UNICODE);
+      die();
+
+    } catch (Throwable $e) {
+      echo json_encode([
+        'status' => false,
+        'msg' => 'Error al obtener especificaciones.',
+        'error' => $e->getMessage()
+      ], JSON_UNESCAPED_UNICODE);
+      die();
+    }
+  }
+
+  public function getComponentes(){
+    header('Content-Type: application/json; charset=utf-8');
+    try{
+      $json = file_get_contents('php://input');
+      $data = json_decode($json, true);
+
+        $productoid = (int) ($data['productoid'] ?? 0);
+      $estacionid = (int) ($data['estacionid'] ?? 0);
+
+            if ($productoid <= 0 || $estacionid <= 0) {
+        echo json_encode(['status' => false, 'msg' => 'Parámetros inválidos.'], JSON_UNESCAPED_UNICODE);
+        die();
+      }
+
+      $rows = $this->model->selectComponentesByProductoEstacion($productoid, $estacionid);
+
+      echo json_encode([
+        'status' => true,
+        'msg' => 'OK',
+        'data' => [
+          'productoid' => $productoid,
+          'estacionid' => $estacionid,
+          'rows' => $rows
+        ]
+      ], JSON_UNESCAPED_UNICODE);
+      die();
+    } catch(Throwable $e){
+
+          echo json_encode([
+        'status' => false,
+        'msg' => 'Error al obtener componentes.',
+        'error' => $e->getMessage()
+      ], JSON_UNESCAPED_UNICODE);
+      die();
+
+    }
+  }
+
+
+
+
+
+      public function getHerramientas(){
+    header('Content-Type: application/json; charset=utf-8');
+    try{
+      $json = file_get_contents('php://input');
+      $data = json_decode($json, true);
+
+        $productoid = (int) ($data['productoid'] ?? 0);
+      $estacionid = (int) ($data['estacionid'] ?? 0);
+
+            if ($productoid <= 0 || $estacionid <= 0) {
+        echo json_encode(['status' => false, 'msg' => 'Parámetros inválidos.'], JSON_UNESCAPED_UNICODE);
+        die();
+      }
+
+      $rows = $this->model->selectHerramientasByProductoEstacion($productoid, $estacionid);
+
+      echo json_encode([
+        'status' => true,
+        'msg' => 'OK',
+        'data' => [
+          'productoid' => $productoid,
+          'estacionid' => $estacionid,
+          'rows' => $rows
+        ]
+      ], JSON_UNESCAPED_UNICODE);
+      die();
+    } catch(Throwable $e){
+
+          echo json_encode([
+        'status' => false,
+        'msg' => 'Error al obtener herramientas.',
+        'error' => $e->getMessage()
+      ], JSON_UNESCAPED_UNICODE);
+      die();
+
+    }
+  }
+
+
+ 
+
+
+public function setInspeccionCalidad()
+{
+  header('Content-Type: application/json');
+  			$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+				$detalleserver = $_SERVER['HTTP_USER_AGENT'] ?? '';
+				$fechaEvento = date('Y-m-d H:i:s');
+
+  if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => false, 'msg' => 'Método no permitido']);
+    die();
+  }
+
+  $accion    = isset($_POST['accion']) ? strtoupper(trim((string)$_POST['accion'])) : 'PAUSAR';
+  $idorden   = isset($_POST['idorden']) ? (int)$_POST['idorden'] : 0;
+  $numot     = isset($_POST['numot']) ? trim((string)$_POST['numot']) : '';
+  $productoid= isset($_POST['productoid']) ? (int)$_POST['productoid'] : 0;
+  $estacionid= isset($_POST['estacionid']) ? (int)$_POST['estacionid'] : 0;
+
+  $usuarioid = isset($_SESSION['idUser']) ? (int)$_SESSION['idUser'] : 0;
+
+  $detalleJson = isset($_POST['detalle']) ? (string)$_POST['detalle'] : '[]';
+  $detalle = json_decode($detalleJson, true);
+  if (!is_array($detalle)) $detalle = [];
+
+  if (!in_array($accion, ['PAUSAR', 'LIBERAR'], true)) $accion = 'PAUSAR';
+
+  if ($idorden <= 0 || $productoid <= 0 || $estacionid <= 0 || $usuarioid <= 0) {
+    echo json_encode(['status' => false, 'msg' => 'Datos incompletos (idorden/productoid/estacionid/usuario).']);
+    die();
+  }
+
+  if (!count($detalle)) {
+    echo json_encode(['status' => false, 'msg' => 'No hay detalle de inspección.']);
+    die();
+  }
+
+
+  if ($accion === 'LIBERAR') {
+    foreach ($detalle as $d) {
+      if (($d['resultado'] ?? '') !== 'OK') {
+        echo json_encode(['status' => false, 'msg' => 'Para liberar, todo debe estar en OK.']);
+        die();
+      }
+    }
+  }
+
+
+  if ($accion === 'PAUSAR') {
+    foreach ($detalle as $d) {
+      $res = $d['resultado'] ?? '';
+      $eid = (int)($d['especificacionid'] ?? 0);
+      $com = trim((string)($d['comentario'] ?? ''));
+
+      if ($res === 'NO_OK') {
+        if ($com === '') {
+          echo json_encode(['status' => false, 'msg' => "Falta comentario en especificación {$eid}."]);
+          die();
+        }
+        $key = "evidencia_{$eid}";
+        $hasFiles = isset($_FILES[$key]) && !empty($_FILES[$key]['name'][0]);
+        if (!$hasFiles) {
+          echo json_encode(['status' => false, 'msg' => "Falta evidencia en especificación {$eid}."]);
+          die();
+        }
+      }
+    }
+  }
+
+  // -----------------------
+  // Subida de evidencias
+  // -----------------------
+  $uploadDir = __DIR__ . "/../Assets/uploads/calidad_evidencias/";
+  if (!is_dir($uploadDir)) { @mkdir($uploadDir, 0775, true); }
+
+  $evidencias = [];
+
+  foreach ($detalle as $d) {
+    $especificacionid = (int)($d['especificacionid'] ?? 0);
+    if ($especificacionid <= 0) continue;
+
+    $fileKey = "evidencia_{$especificacionid}";
+    if (!isset($_FILES[$fileKey])) continue;
+
+    $files = $this->normalizeFiles($_FILES[$fileKey]);
+
+    foreach ($files as $f) {
+      if (($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
+
+      $orig = $f['name'] ?? '';
+      $tmp  = $f['tmp_name'] ?? '';
+      $mime = $f['type'] ?? '';
+      $size = (int)($f['size'] ?? 0);
+
+      $ext = strtolower(pathinfo($orig, PATHINFO_EXTENSION));
+      if (!in_array($ext, ['jpg','jpeg','png','pdf'], true)) continue;
+
+      $newName = "cal_" . date('Ymd_His') . "_OT{$idorden}_ES{$especificacionid}_" . bin2hex(random_bytes(4)) . "." . $ext;
+      $dest = rtrim($uploadDir, "/\\") . DIRECTORY_SEPARATOR . $newName;
+
+      if (!move_uploaded_file($tmp, $dest)) continue;
+
+      $evidencias[$especificacionid][] = [
+        'nombre_original' => $orig,
+        'archivo'         => $newName,
+        'mime'            => $mime,
+        'size_bytes'      => $size
+      ];
+    }
+  }
+
+
+  $estado = ($accion === 'LIBERAR') ? 2 : 1;
+
+  // Guardar en modelo
+  $resp = $this->model->saveInspeccionCalidad([
+    'idorden'     => $idorden,
+    'numot'       => $numot,
+    'productoid'  => $productoid,
+    'estacionid'  => $estacionid,
+    'usuarioid'   => $usuarioid,
+    'estado'      => $estado
+  ], $detalle, $evidencias);
+
+   $idinspeccion = (int)($resp['data']['idinspeccion'] ?? 0);
+
+  if (!empty($resp['status']) && $idinspeccion > 0 && $idusuario > 0) {
+
+    $this->model->insertAuditoria(
+      MPPLANPRODUCCION,
+      1,
+      $idusuario,
+      'mrp_calidad_inspeccion',
+      $idinspeccion,
+      $fechaEvento,
+      $ip,
+      $detalleserver
+    );
+  }
+
+
+  echo json_encode($resp);
+  die();
+}
+
+private function normalizeFiles($file)
+{
+  $out = [];
+  if (!isset($file['name'])) return $out;
+
+  if (!is_array($file['name'])) {
+    $out[] = $file;
+    return $out;
+  }
+
+  $count = count($file['name']);
+  for ($i = 0; $i < $count; $i++) {
+    $out[] = [
+      'name'     => $file['name'][$i] ?? '',
+      'type'     => $file['type'][$i] ?? '',
+      'tmp_name' => $file['tmp_name'][$i] ?? '',
+      'error'    => $file['error'][$i] ?? UPLOAD_ERR_NO_FILE,
+      'size'     => $file['size'][$i] ?? 0,
+    ];
+  }
+  return $out;
+}
+
+
+
+public function getInspeccionCalidad()
+{
+  header('Content-Type: application/json');
+
+  if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => false, 'msg' => 'Método no permitido']);
+    die();
+  }
+
+  $json = file_get_contents('php://input');
+  $data = json_decode($json, true);
+  if (!is_array($data)) $data = [];
+
+  $idorden   = (int)($data['idorden'] ?? 0);
+  $estacionid= (int)($data['estacionid'] ?? 0);
+
+  if ($idorden <= 0 || $estacionid <= 0) {
+    echo json_encode(['status' => false, 'msg' => 'Datos incompletos (idorden/estacionid).']);
+    die();
+  }
+
+  $resp = $this->model->getInspeccionCalidad($idorden, $estacionid);
+  echo json_encode($resp);
+  die();
+}
+
+
+
+public function getViewInspeccionCalidad()
+{
+  header('Content-Type: application/json');
+
+  if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => false, 'msg' => 'Método no permitido']);
+    die();
+  }
+
+  $json = file_get_contents('php://input');
+  $data = json_decode($json, true);
+  if (!is_array($data)) $data = [];
+
+  $idorden   = (int)($data['idorden'] ?? 0);
+  $estacionid= (int)($data['estacionid'] ?? 0);
+
+  if ($idorden <= 0 || $estacionid <= 0) {
+    echo json_encode(['status' => false, 'msg' => 'Datos incompletos (idorden/estacionid).']);
+    die();
+  }
+
+  $resp = $this->model->getViewInspeccionCalidad($idorden, $estacionid);
+  echo json_encode($resp);
+  die();
+}
+
+
+
+
+public function getSelectDates(){
+      $arrData = $this->model->selectDatesDisponibles();
+    echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+    die();
+}
+
+public function iniciarPlaneacion()
+{
+  header('Content-Type: application/json');
+                        $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $fechaEvento = date('Y-m-d H:i:s');
+
+
+  if (!isset($_SESSION['idUser']) || (int)$_SESSION['idUser'] <= 0) {
+    echo json_encode(["status" => false, "msg" => "Sesión no válida."]);
+    die();
+  }
+ 
+  $raw = file_get_contents("php://input");
+  $json = json_decode($raw, true);
+
+  $idplaneacion = isset($json['idplaneacion']) ? (int)$json['idplaneacion'] : 0;
+  if ($idplaneacion <= 0) {
+    echo json_encode(["status" => false, "msg" => "ID de planeación inválido."]);
+    die();
+  }
+
+  $userId = (int)$_SESSION['idUser'];
+
+  try {
+    $ok = $this->model->iniciarPlaneacionModel($idplaneacion, $userId);
+
+                   $this->model->insertAuditoria(
+              MPPLANPRODUCCION,
+              7,
+              $idusuario,
+              'mrp_planeacion',
+              $idplaneacion,
+              $fechaEvento,
+              $ip,
+              $detalle
+            );
+
+    if (!$ok) {
+      echo json_encode(["status" => false, "msg" => "No fue posible iniciar la producción (ya iniciada o no existe)."]);
+      die();
+    }
+
+    echo json_encode([
+      "status" => true,
+      "msg" => "Producción iniciada correctamente.",
+      "data" => [
+        "idplaneacion" => $idplaneacion
+      ]
+    ]);
+    die();
+
+  } catch (Exception $e) {
+    echo json_encode(["status" => false, "msg" => "Error: " . $e->getMessage()]);
+    die();
+  }
+}
+
+public function finalizarPlaneacion()
+{
+  header('Content-Type: application/json');
+                        $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $fechaEvento = date('Y-m-d H:i:s');
+
+  if (!isset($_SESSION['idUser']) || (int)$_SESSION['idUser'] <= 0) {
+    echo json_encode(["status" => false, "msg" => "Sesión no válida."]);
+    die();
+  }
+
+  $raw = file_get_contents("php://input");
+  $json = json_decode($raw, true);
+
+  $idplaneacion = isset($json['idplaneacion']) ? (int)$json['idplaneacion'] : 0;
+  if ($idplaneacion <= 0) {
+    echo json_encode(["status" => false, "msg" => "ID de planeación inválido."]);
+    die();
+  }
+
+  $userId = (int)$_SESSION['idUser'];
+
+  try {
+    $ok = $this->model->finalizarPlaneacionModel($idplaneacion, $userId);
+
+                       $this->model->insertAuditoria(
+              MPPLANPRODUCCION,
+              8,
+              $idusuario,
+              'mrp_planeacion',
+              $idplaneacion,
+              $fechaEvento,
+              $ip,
+              $detalle
+            );
+
+    if (!$ok) {
+      echo json_encode([
+        "status" => false,
+        "msg" => "No fue posible finalizar (no existe o no está en producción)."
+      ]);
+      die();
+    }
+
+    echo json_encode([
+      "status" => true,
+      "msg" => "Producción finalizada correctamente.",
+      "data" => ["idplaneacion" => $idplaneacion]
+    ]);
+    die();
+
+  } catch (Exception $e) {
+    echo json_encode(["status" => false, "msg" => "Error: " . $e->getMessage()]);
+    die();
+  }
+}
+
+public function getVinesDisponibles($referencia = '')
+{
+  header('Content-Type: application/json');
+
+  $referencia = trim((string)$referencia);
+  if ($referencia === '') {
+    echo json_encode(['status' => false, 'msg' => 'Falta referencia', 'data' => []]);
+    die();
+  }
+
+  try {
+    $rows = $this->model->getVinesDisponiblesByReferencia($referencia);
+
+    $data = [];
+    if (!empty($rows)) {
+      foreach ($rows as $r) {
+        $data[] = [
+          'id'  => (int)($r['id_numeros_serie'] ?? 0),
+          'vin' => (string)($r['numero_serie'] ?? ''),
+        ];
+      }
+    }
+
+    echo json_encode([
+      'status' => true,
+      'msg' => 'OK',
+      'data' => $data
+    ]);
+    die();
+
+  } catch (Exception $e) {
+    echo json_encode(['status' => false, 'msg' => $e->getMessage(), 'data' => []]);
+    die();
+  }
+}
+
+
+public function setVinAsignacion()
+{
+    header('Content-Type: application/json; charset=utf-8');
+                          $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $fechaEvento = date('Y-m-d H:i:s');
+
+    try {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['status' => false, 'msg' => 'Método no permitido']);
+            die();
+        }
+
+        $ordenId = isset($_POST['orden_trabajo_id']) ? intval($_POST['orden_trabajo_id']) : 0;
+        $numeroSerieId = isset($_POST['numero_serie_id']) ? intval($_POST['numero_serie_id']) : 0;
+        $numeroMotor = isset($_POST['numero_motor']) ? trim($_POST['numero_motor']) : '';
+
+        if ($ordenId <= 0) {
+            echo json_encode(['status' => false, 'msg' => 'Orden de trabajo inválida']);
+            die();
+        }
+
+        if ($numeroSerieId <= 0) {
+            echo json_encode(['status' => false, 'msg' => 'Número de serie inválido']);
+            die();
+        }
+
+        if ($numeroMotor === '' || strlen($numeroMotor) < 3) {
+            echo json_encode(['status' => false, 'msg' => 'Número de motor obligatorio']);
+            die();
+        }
+
+        if (strlen($numeroMotor) > 60) {
+            echo json_encode(['status' => false, 'msg' => 'Número de motor demasiado largo']);
+            die();
+        }
+
+        $usuarioId = intval($_SESSION['userData']['idusuario'] ?? 0);
+        if ($usuarioId <= 0) {
+            echo json_encode(['status' => false, 'msg' => 'Sesión no válida. Inicia sesión nuevamente.']);
+            die();
+        }
+
+        $fecha = date('Y-m-d');
+
+  
+        if (method_exists($this->model, 'existeAsignacionActiva') && $this->model->existeAsignacionActiva($ordenId)) {
+            echo json_encode(['status' => false, 'msg' => 'Esta OT ya tiene un VIN asignado.']);
+            die();
+        }
+
+      
+        $insertId = $this->model->insertVinAsignacion(
+            $ordenId,
+            $numeroSerieId,
+            $numeroMotor,
+            $usuarioId,
+            $fecha
+        );
+
+              $this->model->insertAuditoria(
+              MPPLANPRODUCCION,
+              1,
+              $idusuario,
+              'mrp_vin_asignaciones',
+              $insertId,
+              $fechaEvento,
+              $ip,
+              $detalle
+            );
+
+        if ($insertId <= 0) {
+            echo json_encode(['status' => false, 'msg' => 'No se pudo guardar la asignación.']);
+            die();
+        }
+
+
+        $okOT = $this->model->setEstatusEstampadoVin($ordenId, 3);
+        if (!$okOT) {
+            echo json_encode(['status' => false, 'msg' => 'Se asignó el VIN, pero no se pudo actualizar la OT.']);
+            die();
+        }
+
+  
+        $okSerie = $this->model->setEstadoNumeroSerie($numeroSerieId, 2);
+        if (!$okSerie) {
+            echo json_encode(['status' => false, 'msg' => 'Se asignó el VIN, pero no se pudo actualizar el estado del número de serie.']);
+            die();
+        }
+
+        echo json_encode([
+            'status' => true,
+            'msg' => 'VIN asignado correctamente.',
+            'data' => [
+                'idasignacion' => $insertId,
+                'orden_trabajo_id' => $ordenId,
+                'numero_serie_id' => $numeroSerieId,
+                'numero_motor' => $numeroMotor,
+                'usuario_id' => $usuarioId,
+                'fecha_asignacion' => $fecha,
+                'estado' => 1,
+                'estampado' => 3,
+                'numero_serie_estado' => 2
+            ]
+        ]);
+        die();
+
+    } catch (Exception $e) {
+        echo json_encode(['status' => false, 'msg' => 'Error: ' . $e->getMessage()]);
+        die();
+    }
+}
+
+public function getVinAsignado($idorden = 0)
+{
+    header('Content-Type: application/json; charset=utf-8');
+
+    try {
+        $idorden = intval($idorden);
+
+        if ($idorden <= 0) {
+            echo json_encode(['status' => false, 'msg' => 'OT inválida']);
+            die();
+        }
+
+        $row = $this->model->getVinAsignadoPorOrden($idorden);
+
+        if (empty($row)) {
+            echo json_encode(['status' => false, 'msg' => 'No existe asignación de VIN para esta OT']);
+            die();
+        }
+
+        echo json_encode(['status' => true, 'data' => $row]);
+        die();
+
+    } catch (Exception $e) {
+        echo json_encode(['status' => false, 'msg' => 'Error: ' . $e->getMessage()]);
+        die();
+    }
+}
+
+
+
+
+
+
+}
+
+
+?>

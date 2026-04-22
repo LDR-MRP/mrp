@@ -79,16 +79,18 @@ public function generarClave()
     
 		public function selectPlantas()
 		{
+               $plantaid = $_SESSION['userData']['plantaid'];
 			$sql = "SELECT * FROM  mrp_planta 
-					WHERE estado != 0 ";
+					WHERE estado != 0 AND idplanta = $plantaid";
 			$request = $this->select_all($sql);
 			return $request;
-		}
+		} 
 
         		public function selectOptionPlantas()
 		{
+            $plantaid = $_SESSION['userData']['plantaid'];
 			$sql = "SELECT * FROM  mrp_planta 
-					WHERE estado = 2";
+					WHERE estado = 2 AND idplanta = $plantaid";
 			$request = $this->select_all($sql);
 			return $request;
 		}

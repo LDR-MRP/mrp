@@ -16,11 +16,11 @@
 		{
 			$this->strUsuario = $usuario;
 			$this->strPassword = $password;
-			$sql = "SELECT idusuario,status,avatar_file,rolid FROM usuarios WHERE 
+			$sql = "SELECT idusuario,status,avatar_file,rolid,plantaid FROM usuarios WHERE 
 					email_user = '$this->strUsuario' and 
 					password = '$this->strPassword' and 
 					status != 0 ";
-			$request = $this->select($sql);
+			$request = $this->select($sql); 
 			return $request;
 		}
  
@@ -37,7 +37,9 @@
 							p.direccionfiscal,
 							r.idrol,r.nombrerol,
 							p.status,
-							p.avatar 
+							p.avatar,
+							p.plantaid,
+							p.rolid 
 					FROM usuarios p
 					INNER JOIN rol r
 					ON p.rolid = r.idrol
@@ -97,7 +99,7 @@
 {
     $this->strUsuario = $numcolaborador;
 
-    $sql = "SELECT idusuario, status, avatar_file, rolid
+    $sql = "SELECT idusuario, status, avatar_file, rolid, plantaid
             FROM usuarios
             WHERE numcolaborador = ?
               AND status != 0

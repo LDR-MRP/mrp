@@ -6,8 +6,8 @@ let divLoading = null;
 let estacion = null;      // #idestacion (hidden)
 let idestacion = null;
 let idmantenimiento = null;
-let nombre = null;
-let proceso = null;
+let nombre = null; 
+let proceso = null; 
 let estandar = null;
 let unidaddmedida = null;
 let tiempo = null;
@@ -23,6 +23,16 @@ let firstTab = null;
 let tabNuevo = null;      // elemento <a> del tab "NUEVO/ACTUALIZAR"
 let spanBtnText = null;   // span del botón (REGISTRAR / ACTUALIZAR)
 let formEstaciones = null;
+
+// Campos sub-ensamble
+let bloqueSubensamble = null;
+let radiosAgregarSubensamble = null;
+let subNombre = null;
+let subProceso = null;
+let subEstandar = null;
+let subTiempo = null;
+let subRadiosHerramientas = null;
+let subHerramientasFeedback = null;
 
 // Campos de mantenimiento
 let tipoMantenimientoSelect = null;
@@ -54,6 +64,16 @@ document.addEventListener('DOMContentLoaded', function () {
     estado = document.querySelector('#estado-select');
     descripcion = document.querySelector('#descripcion-estacion-textarea');
 
+    // Sub-ensamble
+    bloqueSubensamble = document.querySelector('#bloqueSubensamble');
+    radiosAgregarSubensamble = document.querySelectorAll('input[name="agregar_subensamble"]');
+    subNombre = document.querySelector('#sub-nombre-estacion-input');
+    subProceso = document.querySelector('#sub-proceso-estacion-input');
+    subEstandar = document.querySelector('#sub-estandar-input');
+    subTiempo = document.querySelector('#sub-tiempo-ajuste-input');
+    subRadiosHerramientas = document.querySelectorAll('input[name="sub_requiere_herramientas"]');
+    subHerramientasFeedback = document.querySelector('#subHerramientasFeedback');
+
     // Mantenimiento
     tipoMantenimientoSelect = document.querySelector('#tipo_mantenimiento');
     fechaProgramadaGroup = document.querySelector('#grupo-fecha-programada');
@@ -67,6 +87,11 @@ document.addEventListener('DOMContentLoaded', function () {
         console.warn('formEstaciones no encontrado. JS de estaciones no se inicializa en esta vista.');
         return;
     }
+
+    // --------------------------------------------------------------------
+    //  INICIALIZAR SUB-ENSAMBLE
+    // --------------------------------------------------------------------
+    inicializarSubensamble();
 
     // --------------------------------------------------------------------
     //  CARGAR PLANTAS POR AJAX
@@ -88,15 +113,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 "url": base_url + "/Cap_estaciones/getEstaciones",
                 "dataSrc": ""
             },
-            "columns": [
-                { "data": "cve_estacion" },
-                { "data": "nombre_estacion" },
-                { "data": "nombre_linea" },
-                { "data": "fecha_creacion" },
-                { "data": "estacion_mantenimiento" },
-                { "data": "estado" },
-                { "data": "options" }
-            ],
+"columns": [
+    { "data": "cve_estacion" },
+    { "data": "nombre_estacion" },
+    { "data": "subensamble_nombre" },
+    { "data": "nombre_linea" },
+    { "data": "fecha_creacion" },
+    { "data": "estacion_mantenimiento" },
+    { "data": "estado" },
+    { "data": "options" }
+],
             'dom': 'lBfrtip',
             'buttons': [],
             "responsive": true,
@@ -125,6 +151,7 @@ document.addEventListener('DOMContentLoaded', function () {
             formEstaciones.reset();
             if (selectLineas) selectLineas.value = '';
             if (selectPlantas) selectPlantas.value = '';
+            resetSubensamble();
         });
 
         // CLICK EN "LISTA" → RESETE
@@ -135,16 +162,29 @@ document.addEventListener('DOMContentLoaded', function () {
             formEstaciones.reset();
             if (selectLineas) selectLineas.value = '';
             if (selectPlantas) selectPlantas.value = '';
+            resetSubensamble();
         });
     } else {
         console.warn('Tabs de estaciones no encontrados o btnText faltante.');
     }
 
     // --------------------------------------------------------------------
-    //  SUBMIT FORM ESTACIONES FORMSS
+    //  SUBMIT FORM ESTACIONES
     // --------------------------------------------------------------------
     formEstaciones.addEventListener('submit', function (e) {
         e.preventDefault(); // evitar envío por URL
+
+        limpiarValidacionSubensamble();
+
+        const validacionSubensamble = validarSubensamble();
+        const validacionGeneral = formEstaciones.checkValidity();
+
+        formEstaciones.classList.add('was-validated');
+
+        if (!validacionGeneral || !validacionSubensamble) {
+            Swal.fire("Atención", "Por favor completa los campos obligatorios.", "warning");
+            return;
+        }
 
         if (divLoading) divLoading.style.display = "flex";
 
@@ -195,6 +235,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (estado) estado.value = '1';
                         if (spanBtnText) spanBtnText.textContent = 'REGISTRAR';
                         if (tabNuevo) tabNuevo.textContent = 'NUEVO';
+                        resetSubensamble();
 
                         if (!result.isConfirmed && primerTab) {
                             primerTab.show();
@@ -217,6 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (estado) estado.value = '1';
                         if (spanBtnText) spanBtnText.textContent = 'REGISTRAR';
                         if (tabNuevo) tabNuevo.textContent = 'NUEVO';
+                        resetSubensamble();
                         if (primerTab) primerTab.show();
                         if (tableEstaciones) tableEstaciones.ajax.reload();
                     });
@@ -231,17 +273,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // --------------------------------------------------------------------
     //  VALIDACIONES DE FECHAS DE MANTENIMIENTO
     // --------------------------------------------------------------------
-    // *** NUEVO: función 
-function getTodayYMD() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-
-
+    function getTodayYMD() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
 
     if (tipoMantenimientoSelect) {
         tipoMantenimientoSelect.addEventListener('change', function () {
@@ -253,11 +291,9 @@ function getTodayYMD() {
                 value === 'predictivo';
 
             if (aplicaFechaProgramada) {
-                // Mostrar y hacer obligatoria fecha_programada
                 if (fechaProgramadaGroup) fechaProgramadaGroup.classList.remove('d-none');
                 if (fechaProgramadaInput) {
                     fechaProgramadaInput.required = true;
-                    // *** NUEVO: bloquear fechas anteriores a hoy
                     fechaProgramadaInput.min = getTodayYMD();
                 }
             } else {
@@ -267,13 +303,11 @@ function getTodayYMD() {
                     fechaProgramadaInput.value = '';
                     fechaProgramadaInput.removeAttribute('min');
                 }
-                // Si no aplica, también limpiar restricciones de inicio
                 if (fechaInicioInput) fechaInicioInput.removeAttribute('min');
             }
         });
     }
 
-    // *** NUEVO: cuando cambia fecha_programada, fecha_inicio solo puede ser desde ahí en adelante
     if (fechaProgramadaInput && fechaInicioInput) {
         fechaProgramadaInput.addEventListener('change', function () {
             const fechaProg = this.value;
@@ -282,23 +316,18 @@ function getTodayYMD() {
                 return;
             }
 
-            // fecha_inicio a partir de fecha_programada
             fechaInicioInput.min = fechaProg;
 
-            // Si ya tenía fecha_inicio menor a programada, la ajustamos
             if (fechaInicioInput.value && fechaInicioInput.value < fechaProg) {
                 fechaInicioInput.value = fechaProg;
             }
 
-            // Opcional: también podrías ajustar fecha_fin si ya existía
             if (fechaFinInput && fechaFinInput.value && fechaFinInput.value < fechaProg) {
                 fechaFinInput.value = fechaProg;
             }
         });
     }
 
-    // *** NUEVO: siempre que seleccione fecha_inicio,
-    // fecha_fin se habilita solo a partir de esa fecha hacia adelante.
     if (fechaInicioInput && fechaFinInput) {
         fechaInicioInput.addEventListener('change', function () {
             const fechaIni = this.value;
@@ -307,10 +336,8 @@ function getTodayYMD() {
                 return;
             }
 
-            // fecha_fin a partir de fecha_inicio
             fechaFinInput.min = fechaIni;
 
-            // Si ya tenía fecha_fin menor, la ajustamos
             if (fechaFinInput.value && fechaFinInput.value < fechaIni) {
                 fechaFinInput.value = fechaIni;
             }
@@ -361,11 +388,149 @@ function getTodayYMD() {
 }, false);
 
 // ------------------------------------------------------------------------
-// FUNCIÓN EDITAR ESTACION 
+//  FUNCIONES SUB-ENSAMBLE
+// ------------------------------------------------------------------------
+function inicializarSubensamble() {
+    if (radiosAgregarSubensamble && radiosAgregarSubensamble.length > 0) {
+        radiosAgregarSubensamble.forEach(radio => {
+            radio.addEventListener('change', function () {
+                toggleSubensamble(this.value === '1');
+            });
+        });
+    }
+
+    const seleccionado = obtenerValorRadio('agregar_subensamble');
+    toggleSubensamble(seleccionado === '1');
+}
+
+function toggleSubensamble(mostrar) {
+    if (!bloqueSubensamble) return;
+
+    if (mostrar) {
+        bloqueSubensamble.classList.remove('d-none');
+        setSubensambleRequired(true);
+        setSubensambleDisabled(false);
+    } else {
+        bloqueSubensamble.classList.add('d-none');
+        setSubensambleRequired(false);
+        setSubensambleDisabled(true);
+        limpiarCamposSubensamble();
+        limpiarValidacionSubensamble();
+    }
+}
+
+function setSubensambleRequired(required) {
+    if (subNombre) subNombre.required = required;
+    if (subProceso) subProceso.required = required;
+    if (subEstandar) subEstandar.required = required;
+    if (subTiempo) subTiempo.required = required;
+
+    if (subRadiosHerramientas && subRadiosHerramientas.length > 0) {
+        subRadiosHerramientas.forEach(radio => {
+            radio.required = required;
+        });
+    }
+}
+
+function setSubensambleDisabled(disabled) {
+    if (subNombre) subNombre.disabled = disabled;
+    if (subProceso) subProceso.disabled = disabled;
+    if (subEstandar) subEstandar.disabled = disabled;
+    if (subTiempo) subTiempo.disabled = disabled;
+
+    if (subRadiosHerramientas && subRadiosHerramientas.length > 0) {
+        subRadiosHerramientas.forEach(radio => {
+            radio.disabled = disabled;
+        });
+    }
+}
+
+function limpiarCamposSubensamble() {
+    if (subNombre) subNombre.value = '';
+    if (subProceso) subProceso.value = '';
+    if (subEstandar) subEstandar.value = '';
+    if (subTiempo) subTiempo.value = '';
+
+    if (subRadiosHerramientas && subRadiosHerramientas.length > 0) {
+        subRadiosHerramientas.forEach(radio => {
+            radio.checked = false;
+        });
+    }
+}
+
+function limpiarValidacionSubensamble() {
+    if (subNombre) subNombre.classList.remove('is-invalid');
+    if (subProceso) subProceso.classList.remove('is-invalid');
+    if (subEstandar) subEstandar.classList.remove('is-invalid');
+    if (subTiempo) subTiempo.classList.remove('is-invalid');
+
+    if (subRadiosHerramientas && subRadiosHerramientas.length > 0) {
+        subRadiosHerramientas.forEach(radio => {
+            radio.classList.remove('is-invalid');
+        });
+    }
+
+    if (subHerramientasFeedback) {
+        subHerramientasFeedback.classList.add('d-none');
+    }
+}
+
+function validarSubensamble() {
+    const agregarSub = obtenerValorRadio('agregar_subensamble');
+    if (agregarSub !== '1') return true;
+
+    let valido = true;
+
+    if (subNombre && !subNombre.value.trim()) {
+        subNombre.classList.add('is-invalid');
+        valido = false;
+    }
+
+    if (subProceso && !subProceso.value.trim()) {
+        subProceso.classList.add('is-invalid');
+        valido = false;
+    }
+
+    if (subEstandar && !subEstandar.value.trim()) {
+        subEstandar.classList.add('is-invalid');
+        valido = false;
+    }
+
+    if (subTiempo && !subTiempo.value.trim()) {
+        subTiempo.classList.add('is-invalid');
+        valido = false;
+    }
+
+    const valorHerramientasSub = obtenerValorRadio('sub_requiere_herramientas');
+    if (valorHerramientasSub === null) {
+        if (subRadiosHerramientas && subRadiosHerramientas.length > 0) {
+            subRadiosHerramientas.forEach(radio => radio.classList.add('is-invalid'));
+        }
+        if (subHerramientasFeedback) {
+            subHerramientasFeedback.classList.remove('d-none');
+        }
+        valido = false;
+    }
+
+    return valido;
+}
+
+function obtenerValorRadio(name) {
+    const radio = document.querySelector(`input[name="${name}"]:checked`);
+    return radio ? radio.value : null;
+}
+
+function resetSubensamble() {
+    const radioNo = document.querySelector('#agregar-subensamble-no');
+    if (radioNo) radioNo.checked = true;
+    toggleSubensamble(false);
+}
+
+// ------------------------------------------------------------------------
+// FUNCIÓN EDITAR ESTACION
 // ------------------------------------------------------------------------
 function fntEditInfo(idestacion) {
 
-    // Cambiar textos a modo ACTUALIZAR
     if (tabNuevo) tabNuevo.textContent = 'ACTUALIZAR';
     if (spanBtnText) spanBtnText.textContent = "ACTUALIZAR";
 
@@ -391,10 +556,8 @@ function fntEditInfo(idestacion) {
 
         if (objData.status) {
 
-            // Cargar líneas de la planta y seleccionar la línea
             fntLineas(objData.data.plantaid, objData.data.lineaid);
 
-            // Asegurarnos de tener las referencias
             if (!estacion) estacion = document.querySelector('#idestacion');
             if (!nombre) nombre = document.querySelector('#nombre-estacion-input');
             if (!proceso) proceso = document.querySelector('#proceso-estacion-input');
@@ -425,6 +588,39 @@ function fntEditInfo(idestacion) {
                         radio.checked = true;
                     }
                 });
+            }
+
+            // ------------------------------------------------------------
+            //  SUB-ENSAMBLE EN EDICIÓN
+            //  Estos campos se llenarán si tu backend los retorna
+            // ------------------------------------------------------------
+            const radioSubSi = document.querySelector('#agregar-subensamble-si');
+            const radioSubNo = document.querySelector('#agregar-subensamble-no');
+
+            const tieneSubensamble = (
+                objData.data.agregar_subensamble == 1 ||
+                objData.data.tiene_subensamble == 1
+            );
+
+            if (tieneSubensamble) {
+                if (radioSubSi) radioSubSi.checked = true;
+                toggleSubensamble(true);
+
+                if (subNombre) subNombre.value = objData.data.sub_nombre_estacion || '';
+                if (subProceso) subProceso.value = objData.data.sub_proceso || '';
+                if (subEstandar) subEstandar.value = objData.data.sub_estandar || '';
+                if (subTiempo) subTiempo.value = objData.data.sub_tiempo_ajuste || '';
+
+                if (subRadiosHerramientas && subRadiosHerramientas.length > 0) {
+                    subRadiosHerramientas.forEach(radio => {
+                        if (radio.value == objData.data.sub_herramientas) {
+                            radio.checked = true;
+                        }
+                    });
+                }
+            } else {
+                if (radioSubNo) radioSubNo.checked = true;
+                toggleSubensamble(false);
             }
 
             if (firstTab) firstTab.show();
@@ -501,12 +697,9 @@ function fntDelInfo(idestacion) {
 // ------------------------------------------------------------------------
 //  VER EL DETALLE DE LA ESTACION (PLANTA?)
 // ------------------------------------------------------------------------
-function fntViewPlanta(idestacion) {
-    let request = (window.XMLHttpRequest)
-        ? new XMLHttpRequest()
-        : new ActiveXObject('Microsoft.XMLHTTP');
-
-    let ajaxUrl = base_url + '/Cap_estaciones/getEstacion/' + idestacion;
+function fntViewLinea(idestacion) {
+    let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+    let ajaxUrl = base_url + '/cap_estaciones/getEstacion/' + idestacion;
     request.open("GET", ajaxUrl, true);
     request.send();
 
@@ -515,16 +708,55 @@ function fntViewPlanta(idestacion) {
             let objData = JSON.parse(request.responseText);
 
             if (objData.status) {
-                let estadoUsuario = objData.data.estado == 1 ?
-                    '<span class="badge bg-success">Activo</span>' :
-                    '<span class="badge bg-danger">Inactivo</span>';
 
-                document.querySelector("#celClave").innerHTML = objData.data.cve_planta;
-                document.querySelector("#celNombre").innerHTML = objData.data.nombre_planta;
-                document.querySelector("#celFecha").innerHTML = objData.data.fecha_creacion;
-                document.querySelector("#celEstado").innerHTML = estadoUsuario;
+                let estadoEstacion = objData.data.estado == 2
+                    ? '<span class="badge bg-success">Activo</span>'
+                    : '<span class="badge bg-danger">Inactivo</span>';
 
-                $('#modalViewPlanta').modal('show');
+                let herramientasEstacion = objData.data.herramientas == 1
+                    ? '<span class="badge bg-info">Sí</span>'
+                    : '<span class="badge bg-secondary">No</span>';
+
+                let tieneSubensamble = objData.data.tiene_subensamble == 1
+                    ? '<span class="badge bg-success">Sí</span>'
+                    : '<span class="badge bg-secondary">No</span>';
+
+                let subHerramientas = objData.data.sub_herramientas == 1
+                    ? '<span class="badge bg-info">Sí</span>'
+                    : '<span class="badge bg-secondary">No</span>';
+
+                let subEstado = '-';
+                if (objData.data.sub_estado != null) {
+                    subEstado = objData.data.sub_estado == 2
+                        ? '<span class="badge bg-success">Activo</span>'
+                        : '<span class="badge bg-danger">Inactivo</span>';
+                }
+
+                document.querySelector("#celClave").innerHTML = objData.data.cve_estacion || '-';
+                document.querySelector("#celNombre").innerHTML = objData.data.nombre_estacion || '-';
+                document.querySelector("#celProceso").innerHTML = objData.data.proceso || '-';
+                document.querySelector("#celEstandar").innerHTML = objData.data.estandar || '-';
+                document.querySelector("#celUnidad").innerHTML = objData.data.unidad_medida || '-';
+                document.querySelector("#celTiempo").innerHTML = objData.data.tiempo_ajuste || '-';
+                document.querySelector("#celMx").innerHTML = objData.data.mxn || '-';
+                document.querySelector("#celLinea").innerHTML = objData.data.nombre_linea || '-';
+                document.querySelector("#celHerramientas").innerHTML = herramientasEstacion;
+                document.querySelector("#celTieneSubensamble").innerHTML = tieneSubensamble;
+                document.querySelector("#celEstado").innerHTML = estadoEstacion;
+                document.querySelector("#celDescripcion").innerHTML = objData.data.descripcion || '-';
+                document.querySelector("#celFecha").innerHTML = objData.data.fecha_creacion || '-';
+
+                console.log(objData.data.sub_nombre_estacion);
+
+                // SUB-ENSAMBLE
+                document.querySelector("#celSubNombre").innerHTML = objData.data.sub_nombre_estacion || '<span class="text-muted fst-italic">Sin sub-ensamble registrado</span>';
+                document.querySelector("#celSubProceso").innerHTML = objData.data.sub_proceso || '<span class="text-muted fst-italic">Sin información</span>';
+                document.querySelector("#celSubEstandar").innerHTML = objData.data.sub_estandar || '<span class="text-muted fst-italic">Sin información</span>';
+                document.querySelector("#celSubTiempo").innerHTML = objData.data.sub_tiempo_ajuste || '<span class="text-muted fst-italic">Sin información</span>';
+                document.querySelector("#celSubHerramientas").innerHTML = objData.data.sub_nombre_estacion ? subHerramientas : '<span class="text-muted fst-italic">No aplica</span>';
+                document.querySelector("#celSubEstado").innerHTML = objData.data.sub_nombre_estacion ? subEstado : '<span class="text-muted fst-italic">No aplica</span>';
+
+                $('#modalViewEstacion').modal('show');
             } else {
                 Swal.fire("Error", objData.msg, "error");
             }
@@ -600,7 +832,7 @@ function fntLineas(idPlanta, selectedLinea = "") {
 // ------------------------------------------------------------------------
 //  VER EL DETALLE DE LA ESTACION
 // ------------------------------------------------------------------------
-function fntViewLinea(idestacion) {
+function fntViewLineaold(idestacion) {
     let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
     let ajaxUrl = base_url + '/cap_estaciones/getEstacion/' + idestacion;
     request.open("GET", ajaxUrl, true);
@@ -652,7 +884,6 @@ function fntAddMantenimiento(idestacion) {
     const inputidEstacions = modal ? modal.querySelector('#idestacionmto') : null;
     if (inputidEstacions) inputidEstacions.value = idestacion || '';
 
-    // *** NUEVO: recalcular estado de fecha_programada/inputs al abrir
     if (tipoMantenimientoSelect) {
         tipoMantenimientoSelect.dispatchEvent(new Event('change'));
     }
@@ -686,7 +917,7 @@ function fnteditMantenimiento(idmantenimiento) {
             if (objData.status) {
 
                 const inputIdEstacion = document.querySelector('#idestacionmto');
-                 const strresponsable = document.querySelector('#responsable-mantenimiento-input');
+                const strresponsable = document.querySelector('#responsable-mantenimiento-input');
                 const inputIdmantenimiento = document.querySelector('#idmantenimiento');
                 const tipoMantenimientoSelectLocal = document.querySelector('#tipo_mantenimiento');
                 const fechaProgramadaInputLocal = document.querySelector('#fecha_programada');
@@ -696,7 +927,7 @@ function fnteditMantenimiento(idmantenimiento) {
                 const comentariosInput = document.querySelector('#comentarios');
 
                 if (inputIdEstacion) inputIdEstacion.value = objData.data.estacionid;
-                     if (strresponsable) strresponsable.value = objData.data.responsable;
+                if (strresponsable) strresponsable.value = objData.data.responsable;
                 if (inputIdmantenimiento) inputIdmantenimiento.value = objData.data.idmantenimiento;
                 if (tipoMantenimientoSelectLocal) tipoMantenimientoSelectLocal.value = objData.data.tipo;
                 if (fechaProgramadaInputLocal) fechaProgramadaInputLocal.value = objData.data.fecha_programada;
@@ -705,7 +936,6 @@ function fnteditMantenimiento(idmantenimiento) {
                 if (estadoSelect) estadoSelect.value = objData.data.mantenimiento;
                 if (comentariosInput) comentariosInput.value = objData.data.comentarios;
 
-                // Disparar la lógica de ocultar/mostrar fecha_programada y restricciones
                 if (tipoMantenimientoSelectLocal) {
                     tipoMantenimientoSelectLocal.dispatchEvent(new Event('change'));
                 }
@@ -748,31 +978,28 @@ function cargarHistoricoMantenimientos(idEstacion) {
 
             if (objData.status && Array.isArray(objData.data) && objData.data.length > 0) {
 
-
-
                 let html = "";
 
                 objData.data.forEach(function (mto, index) {
 
-                                    let badgeEstado = "";
-switch (String(mto.mantenimiento)) {
-    case "2":
-        badgeEstado = '<span class="badge bg-warning">Pendiente</span>';
-        break;
-    case "3":
-        badgeEstado = '<span class="badge bg-info">En proceso</span>';
-        break;
-    case "4":
-        badgeEstado = '<span class="badge bg-success">Finalizado</span>';
-        break;
-    case "5":
-        badgeEstado = '<span class="badge bg-danger">Cancelado</span>';
-        break;
-    default:
-        badgeEstado = '<span class="badge bg-secondary">Sin estatus</span>';
-        break;
-}
-
+                    let badgeEstado = "";
+                    switch (String(mto.mantenimiento)) {
+                        case "2":
+                            badgeEstado = '<span class="badge bg-warning">Pendiente</span>';
+                            break;
+                        case "3":
+                            badgeEstado = '<span class="badge bg-info">En proceso</span>';
+                            break;
+                        case "4":
+                            badgeEstado = '<span class="badge bg-success">Finalizado</span>';
+                            break;
+                        case "5":
+                            badgeEstado = '<span class="badge bg-danger">Cancelado</span>';
+                            break;
+                        default:
+                            badgeEstado = '<span class="badge bg-secondary">Sin estatus</span>';
+                            break;
+                    }
 
                     html += `
                         <tr>

@@ -33,6 +33,8 @@ public $strResponsable;
 public $strip;
 public $strDetalle;
 
+public $intTieneSubensamble;
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -125,7 +127,7 @@ public function insertAuditoria($modulo, $accion, $id_usuario, $tabla, $idregist
 
 
 
-	public function insertEstacion($claveUnica, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $fecha_creacion, $requiereHerramientas, $estado)
+	public function insertEstacionOLD($claveUnica, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $fecha_creacion, $requiereHerramientas, $estado)
 	{
 
 		$return = 0;
@@ -173,16 +175,102 @@ public function insertAuditoria($modulo, $accion, $id_usuario, $tabla, $idregist
 
 	}
 
+	public function insertEstacion(
+    $claveUnica,
+    $planta,
+    $linea,
+    $nombre_estacion,
+    $proceso,
+    $estandar,
+    $unidaddmedida,
+    $tiempoajuste,
+    $mxinput,
+    $descripcion,
+    $fecha_creacion,
+    $requiereHerramientas,
+    $tieneSubensamble,
+    $estado
+) {
+    $return = 0;
+    $this->strClave = $claveUnica;
+    $this->intPlanta = $planta;
+    $this->intLinea = $linea;
+    $this->strNombre = $nombre_estacion;
+    $this->strProceso = $proceso;
+    $this->strEstandar = $estandar;
+    $this->strUnidad = $unidaddmedida;
+    $this->strTiempo = $tiempoajuste;
+    $this->strMx = $mxinput;
+    $this->strDescripcion = $descripcion;
+    $this->strFecha = $fecha_creacion;
+    $this->intHerramientas = $requiereHerramientas;
+    $this->intTieneSubensamble = $tieneSubensamble;
+    $this->intEstatus = $estado;
+
+    $sql = "SELECT * 
+            FROM mrp_estacion 
+            WHERE plantaid = '{$this->intPlanta}' 
+              AND lineaid = '{$this->intLinea}' 
+              AND nombre_estacion = '{$this->strNombre}'";
+    $request = $this->select_all($sql);
+
+    if (empty($request)) {
+        $query_insert = "INSERT INTO mrp_estacion(
+                            cve_estacion,
+                            plantaid,
+                            lineaid,
+                            nombre_estacion,
+                            proceso,
+                            estandar,
+                            unidad_medida,
+                            tiempo_ajuste,
+                            mxn,
+                            descripcion,
+                            fecha_creacion,
+                            herramientas,
+                            tiene_subensamble,
+                            estado
+                        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+
+        $arrData = array(
+            $this->strClave,
+            $this->intPlanta,
+            $this->intLinea,
+            $this->strNombre,
+            $this->strProceso,
+            $this->strEstandar,
+            $this->strUnidad,
+            $this->strTiempo,
+            $this->strMx,
+            $this->strDescripcion,
+            $this->strFecha,
+            $this->intHerramientas,
+            $this->intTieneSubensamble,
+            $this->intEstatus
+        );
+
+        $request_insert = $this->insert($query_insert, $arrData);
+        $return = $request_insert;
+    } else {
+        $return = "exist";
+    }
+
+    return $return;
+}
+
 
 
 public function selectEstaciones()
 {
+
+$plantaid = $_SESSION['userData']['plantaid'];
     $sql = "SELECT 
                 est.*, 
                 li.nombre_linea,
 
                 /* ID del último mantenimiento (o NULL si no existe) */
                 mem.idmantenimiento AS id_mantenimiento,
+				sub.nombre_estacion AS sub_nombre_estacion,
 
                 /* Tipo de mantenimiento (o 1 si no tiene ninguno) */
                 COALESCE(mem.mantenimiento, 1) AS estacion_mantenimiento
@@ -190,6 +278,8 @@ public function selectEstaciones()
             FROM mrp_estacion AS est
             INNER JOIN mrp_linea AS li 
                 ON est.lineaid = li.idlinea
+
+			LEFT JOIN mrp_estacion_subensamble AS sub ON sub.estacionid = est.idestacion
 
             /* Último mantenimiento por estación */
             LEFT JOIN (
@@ -210,8 +300,29 @@ public function selectEstaciones()
             ) AS mem 
                 ON mem.estacionid = est.idestacion
 
-            WHERE est.estado != 0;
+            WHERE est.estado != 0 AND est.plantaid = $plantaid;
 ";
+
+    $request = $this->select_all($sql);
+    return $request;
+}
+
+public function selectEstacionesOLD()
+{
+    $sql = "SELECT 
+                est.idestacion,
+                est.cve_estacion,
+                est.nombre_estacion,
+                est.fecha_creacion,
+                est.estado,
+                est.tiene_subensamble,
+                li.nombre_linea,
+                sub.nombre_estacion AS sub_nombre_estacion
+            FROM mrp_estacion AS est
+            INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
+            LEFT JOIN mrp_estacion_subensamble AS sub ON sub.estacionid = est.idestacion
+            WHERE est.estado != 0
+            ORDER BY est.idestacion DESC";
 
     $request = $this->select_all($sql);
     return $request;
@@ -227,7 +338,7 @@ public function selectEstaciones()
 		return $request;
 	}
 
-	public function selectEstacion(int $idestacion)
+	public function selectEstacionOLD(int $idestacion)
 	{
 		$this->intIdestacion = $idestacion;
 		$sql = "SELECT est.*, li.nombre_linea
@@ -237,6 +348,29 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 		$request = $this->select($sql);
 		return $request;
 	}
+
+	public function selectEstacion(int $idestacion)
+{
+    $this->intIdestacion = $idestacion;
+
+    $sql = "SELECT 
+                est.*,
+                li.nombre_linea,
+                sub.idsubensamble,
+                sub.nombre_estacion AS sub_nombre_estacion,
+                sub.proceso AS sub_proceso,
+                sub.estandar AS sub_estandar,
+                sub.tiempo_ajuste AS sub_tiempo_ajuste,
+                sub.herramientas AS sub_herramientas,
+                sub.estado AS sub_estado
+            FROM mrp_estacion AS est
+            INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
+            LEFT JOIN mrp_estacion_subensamble AS sub ON sub.estacionid = est.idestacion
+            WHERE est.idestacion = {$this->intIdestacion}";
+
+    $request = $this->select($sql);
+    return $request;
+}
 
 	public function deleteEstacion(int $idestacion)
 	{
@@ -248,7 +382,7 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 	}
 
 
-	public function updateEstacion($idestacion, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $requiereHerramientas, $estado)
+	public function updateEstacionOLD($idestacion, $planta, $linea, $nombre_estacion, $proceso, $estandar, $unidaddmedida, $tiempoajuste, $mxinput, $descripcion, $requiereHerramientas, $estado)
 	{
 
 
@@ -305,6 +439,235 @@ INNER JOIN mrp_linea AS li ON est.lineaid = li.idlinea
 
 		return $request;
 	}
+
+	public function updateEstacion(
+    $idestacion,
+    $planta,
+    $linea,
+    $nombre_estacion,
+    $proceso,
+    $estandar,
+    $unidaddmedida,
+    $tiempoajuste,
+    $mxinput,
+    $descripcion,
+    $requiereHerramientas,
+    $tieneSubensamble,
+    $estado
+) {
+    $this->intIdestacion = $idestacion;
+    $this->intPlanta = $planta;
+    $this->intLinea = $linea;
+    $this->strNombre = $nombre_estacion;
+    $this->strProceso = $proceso;
+    $this->strEstandar = $estandar;
+    $this->strUnidad = $unidaddmedida;
+    $this->strTiempo = $tiempoajuste;
+    $this->strMx = $mxinput;
+    $this->strDescripcion = $descripcion;
+    $this->intHerramientas = $requiereHerramientas;
+    $this->intTieneSubensamble = $tieneSubensamble;
+    $this->intEstatus = $estado;
+
+    $sql = "SELECT * 
+            FROM mrp_estacion 
+            WHERE plantaid = '{$this->intPlanta}' 
+              AND lineaid = '{$this->intLinea}' 
+              AND nombre_estacion = '{$this->strNombre}'
+              AND idestacion != {$this->intIdestacion}";
+    $request = $this->select_all($sql);
+
+    if (empty($request)) {
+        $sql = "UPDATE mrp_estacion 
+                SET plantaid = ?,
+                    lineaid = ?, 
+                    nombre_estacion = ?, 
+                    proceso = ?,
+                    estandar = ?,
+                    unidad_medida = ?,
+                    tiempo_ajuste = ?,
+                    mxn = ?,
+                    descripcion = ?,
+                    herramientas = ?,
+                    tiene_subensamble = ?,
+                    estado = ?
+                WHERE idestacion = {$this->intIdestacion}";
+
+        $arrData = array(
+            $this->intPlanta,
+            $this->intLinea,
+            $this->strNombre,
+            $this->strProceso,
+            $this->strEstandar,
+            $this->strUnidad,
+            $this->strTiempo,
+            $this->strMx,
+            $this->strDescripcion,
+            $this->intHerramientas,
+            $this->intTieneSubensamble,
+            $this->intEstatus
+        );
+
+        $request = $this->update($sql, $arrData);
+    } else {
+        $request = "exist";
+    }
+
+    return $request;
+}
+
+public function insertSubensamble(
+    $idestacion,
+    $nombre_estacion,
+    $proceso,
+    $estandar,
+    $tiempo_ajuste,
+    $fecha_creacion,
+    $herramientas,
+    $estado
+) {
+    $this->intIdestacion = $idestacion;
+    $this->strNombre = $nombre_estacion;
+    $this->strProceso = $proceso;
+    $this->strEstandar = $estandar;
+    $this->strTiempo = $tiempo_ajuste;
+    $this->strFecha = $fecha_creacion;
+    $this->intHerramientas = $herramientas;
+    $this->intEstatus = $estado;
+
+    $sql = "SELECT * 
+            FROM mrp_estacion_subensamble 
+            WHERE estacionid = {$this->intIdestacion}";
+    $request = $this->select_all($sql);
+
+    if (!empty($request)) {
+        return "exist";
+    }
+
+    $query_insert = "INSERT INTO mrp_estacion_subensamble(
+                        estacionid,
+                        nombre_estacion,
+                        proceso,
+                        estandar,
+                        tiempo_ajuste,
+                        fecha_creacion,
+                        herramientas,
+                        estado
+                    ) VALUES(?,?,?,?,?,?,?,?)";
+
+    $arrData = array(
+        $this->intIdestacion,
+        $this->strNombre,
+        $this->strProceso,
+        $this->strEstandar,
+        $this->strTiempo,
+        $this->strFecha,
+        $this->intHerramientas,
+        $this->intEstatus
+    );
+
+    return $this->insert($query_insert, $arrData);
+}
+
+public function updateSubensamble(
+    $idestacion,
+    $nombre_estacion,
+    $proceso,
+    $estandar,
+    $tiempo_ajuste,
+    $herramientas,
+    $estado
+) {
+    $this->intIdestacion = $idestacion;
+    $this->strNombre = $nombre_estacion;
+    $this->strProceso = $proceso;
+    $this->strEstandar = $estandar;
+    $this->strTiempo = $tiempo_ajuste;
+    $this->intHerramientas = $herramientas;
+    $this->intEstatus = $estado;
+
+    $sql = "UPDATE mrp_estacion_subensamble
+            SET nombre_estacion = ?,
+                proceso = ?,
+                estandar = ?,
+                tiempo_ajuste = ?,
+                herramientas = ?,
+                estado = ?
+            WHERE estacionid = ?";
+
+    $arrData = array(
+        $this->strNombre,
+        $this->strProceso,
+        $this->strEstandar,
+        $this->strTiempo,
+        $this->intHerramientas,
+        $this->intEstatus,
+        $this->intIdestacion
+    );
+
+    return $this->update($sql, $arrData);
+}
+
+public function upsertSubensamble(
+    $idestacion,
+    $nombre_estacion,
+    $proceso,
+    $estandar,
+    $tiempo_ajuste,
+    $fecha_creacion,
+    $herramientas,
+    $estado
+) {
+    $this->intIdestacion = $idestacion;
+
+    $sql = "SELECT * 
+            FROM mrp_estacion_subensamble
+            WHERE estacionid = {$this->intIdestacion}";
+    $request = $this->select($sql);
+
+    if (empty($request)) {
+        return $this->insertSubensamble(
+            $idestacion,
+            $nombre_estacion,
+            $proceso,
+            $estandar,
+            $tiempo_ajuste,
+            $fecha_creacion,
+            $herramientas,
+            $estado
+        );
+    } else {
+        return $this->updateSubensamble(
+            $idestacion,
+            $nombre_estacion,
+            $proceso,
+            $estandar,
+            $tiempo_ajuste,
+            $herramientas,
+            $estado
+        );
+    }
+}
+
+public function deleteSubensambleByEstacion($idestacion)
+{
+    $this->intIdestacion = intval($idestacion);
+    $sql = "DELETE FROM mrp_estacion_subensamble WHERE estacionid = {$this->intIdestacion}";
+    return $this->delete($sql);
+}
+
+
+public function selectSubensambleByEstacion(int $idestacion)
+{
+    $this->intIdestacion = $idestacion;
+    $sql = "SELECT *
+            FROM mrp_estacion_subensamble
+            WHERE estacionid = {$this->intIdestacion}
+            LIMIT 1";
+    return $this->select($sql);
+}
+
+
 
 	
 

@@ -68,6 +68,7 @@ public function login()
                 $_SESSION['login'] = true;
                 $_SESSION['avatar_file'] = $requestUser['avatar_file'];
                 $_SESSION['rolid'] = $requestUser['rolid'];
+				$_SESSION['plantaid'] = $requestUser['plantaid'];
 
                 $this->model->sessionLogin($_SESSION['idUser']);
 

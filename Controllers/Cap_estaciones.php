@@ -28,8 +28,9 @@ class Cap_estaciones extends Controllers
     //CAPTURAR UNA NUEVA ESTACIÓN
 
 
-    public function setEstacion()
+    public function setEstacionOLD()
     {
+
         if (!$_POST) {
           
             return;
@@ -206,6 +207,274 @@ class Cap_estaciones extends Controllers
     }
 
 
+    public function setEstacion()
+{
+    if (!$_POST) {
+        return;
+    }
+
+    // --------------------------------------------------------------------
+    //  Datos de auditoría
+    // --------------------------------------------------------------------
+    $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    $detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $fechaEvento = date('Y-m-d H:i:s');
+
+    // --------------------------------------------------------------------
+    //  campos obligatorios
+    // --------------------------------------------------------------------
+    if (
+        empty($_POST['nombre-estacion-input']) ||
+        empty($_POST['listLineas']) ||
+        empty($_POST['estado-select'])
+    ) {
+        $arrResponse = array("status" => false, "msg" => 'Datos incorrectos.');
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    // --------------------------------------------------------------------
+    //  Limpieza y asignación de datos estación principal
+    // --------------------------------------------------------------------
+    $intIdEstacion = intval($_POST['idestacion'] ?? 0);
+    $planta = intval($_POST['listPlantas'] ?? 0);
+    $linea = intval($_POST['listLineas'] ?? 0);
+    $nombre_estacion = strClean($_POST['nombre-estacion-input']);
+    $proceso = strClean($_POST['proceso-estacion-input'] ?? '');
+    $estandar = strClean($_POST['estandar-input'] ?? '');
+    $unidaddmedida = strClean($_POST['unidad-medida-select'] ?? '');
+    $tiempoajuste = strClean($_POST['tiempo-ajuste-input'] ?? '');
+    $mxinput = strClean($_POST['mx-input'] ?? '');
+    $descripcion = strClean($_POST['descripcion-estacion-textarea'] ?? '');
+    $estado = intval($_POST['estado-select']);
+
+    $requiereHerramientas = isset($_POST['requiere_herramientas'])
+        ? intval($_POST['requiere_herramientas'])
+        : 0;
+
+    // --------------------------------------------------------------------
+    //  Subensamble
+    // --------------------------------------------------------------------
+    $tieneSubensamble = isset($_POST['agregar_subensamble'])
+        ? intval($_POST['agregar_subensamble'])
+        : 0;
+
+    $subNombre = strClean($_POST['sub_nombre_estacion_input'] ?? '');
+    $subProceso = strClean($_POST['sub_proceso_estacion_input'] ?? '');
+    $subEstandar = strClean($_POST['sub_estandar_input'] ?? '');
+    $subTiempo = strClean($_POST['sub_tiempo_ajuste_input'] ?? '');
+    $subHerramientas = isset($_POST['sub_requiere_herramientas'])
+        ? intval($_POST['sub_requiere_herramientas'])
+        : 0;
+
+    // Validación condicional del subensamble
+    if ($tieneSubensamble == 1) {
+        if (
+            empty($subNombre) ||
+            empty($subProceso) ||
+            empty($subEstandar) ||
+            empty($subTiempo) ||
+            !isset($_POST['sub_requiere_herramientas'])
+        ) {
+            $arrResponse = array(
+                "status" => false,
+                "msg" => 'Debes capturar todos los datos del sub-ensamble.'
+            );
+            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+            return;
+        }
+    }
+
+    $request_estacion = null;
+    $request_subensamble = true;
+    $option = 0;
+    $idEstacionFinal = 0;
+
+    // --------------------------------------------------------------------
+    //  Crear nueva estación
+    // --------------------------------------------------------------------
+    if ($intIdEstacion == 0) {
+
+        if (!$_SESSION['permisosMod']['w']) {
+            $arrResponse = array("status" => false, "msg" => 'No tiene permisos para registrar estaciones.');
+            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $claveUnica = $this->model->generarClave($linea);
+
+        // Insertar estación principal
+        $request_estacion = $this->model->insertEstacion(
+            $claveUnica,
+            $planta,
+            $linea,
+            $nombre_estacion,
+            $proceso,
+            $estandar,
+            $unidaddmedida,
+            $tiempoajuste,
+            $mxinput,
+            $descripcion,
+            $fechaEvento,
+            $requiereHerramientas,
+            $tieneSubensamble,
+            $estado
+        );
+
+        $option = 1;
+
+        if ($request_estacion > 0 && $request_estacion !== 'exist') {
+            $idEstacionFinal = intval($request_estacion);
+
+            // Insertar subensamble si aplica
+            if ($tieneSubensamble == 1) {
+                $request_subensamble = $this->model->insertSubensamble(
+                    $idEstacionFinal,
+                    $subNombre,
+                    $subProceso,
+                    $subEstandar,
+                    $subTiempo,
+                    $fechaEvento,
+                    $subHerramientas,
+                    $estado
+                );
+            }
+
+            // Auditoría estación
+            $this->model->insertAuditoria(
+                MCESTACIONESTRABAJO,
+                1,
+                $idusuario,
+                'mrp_estacion',
+                $idEstacionFinal,
+                $fechaEvento,
+                $ip,
+                $detalle
+            );
+
+            // Auditoría subensamble si aplica
+            if ($tieneSubensamble == 1 && $request_subensamble > 0 && $request_subensamble !== 'exist') {
+                $this->model->insertAuditoria(
+                    MCESTACIONESTRABAJO,
+                    1,
+                    $idusuario,
+                    'mrp_estacion_subensamble',
+                    $request_subensamble,
+                    $fechaEvento,
+                    $ip,
+                    $detalle
+                );
+            }
+        }
+
+    } else {
+
+        // --------------------------------------------------------------------
+        //  Actualizar estación existente
+        // --------------------------------------------------------------------
+        if (!$_SESSION['permisosMod']['u']) {
+            $arrResponse = array("status" => false, "msg" => 'No tiene permisos para actualizar estaciones.');
+            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $request_estacion = $this->model->updateEstacion(
+            $intIdEstacion,
+            $planta,
+            $linea,
+            $nombre_estacion,
+            $proceso,
+            $estandar,
+            $unidaddmedida,
+            $tiempoajuste,
+            $mxinput,
+            $descripcion,
+            $requiereHerramientas,
+            $tieneSubensamble,
+            $estado
+        );
+
+        $option = 2;
+        $idEstacionFinal = $intIdEstacion;
+
+        if ($request_estacion > 0 && $request_estacion !== 'exist') {
+
+            if ($tieneSubensamble == 1) {
+                // Si ya existe lo actualiza, si no existe lo inserta
+                $request_subensamble = $this->model->upsertSubensamble(
+                    $idEstacionFinal,
+                    $subNombre,
+                    $subProceso,
+                    $subEstandar,
+                    $subTiempo,
+                    $fechaEvento,
+                    $subHerramientas,
+                    $estado
+                );
+            } else {
+                // Si ya no requiere subensamble, eliminarlo
+                $this->model->deleteSubensambleByEstacion($idEstacionFinal);
+            }
+
+            $this->model->insertAuditoria(
+                MCESTACIONESTRABAJO,
+                2,
+                $idusuario,
+                'mrp_estacion',
+                $idEstacionFinal,
+                $fechaEvento,
+                $ip,
+                $detalle
+            );
+        }
+    }
+
+    // --------------------------------------------------------------------
+    //  Respuesta final
+    // --------------------------------------------------------------------
+    if ($request_estacion === 'exist') {
+
+        $arrResponse = array(
+            'status' => false,
+            'msg' => '¡Atención! La estación ya existe.'
+        );
+
+    } elseif ($request_estacion > 0) {
+
+        if ($tieneSubensamble == 1 && ($request_subensamble === 'exist' || $request_subensamble <= 0)) {
+            $arrResponse = array(
+                'status' => false,
+                'msg' => 'La estación se guardó, pero no fue posible almacenar correctamente el sub-ensamble.'
+            );
+        } else {
+            if ($option == 1) {
+                $arrResponse = array(
+                    'status' => true,
+                    'msg' => 'La información se ha registrado exitosamente.',
+                    'tipo' => 'insert'
+                );
+            } else {
+                $arrResponse = array(
+                    'status' => true,
+                    'msg' => 'La información ha sido actualizada correctamente.',
+                    'tipo' => 'update'
+                );
+            }
+        }
+
+    } else {
+
+        $arrResponse = array(
+            "status" => false,
+            "msg" => 'No es posible almacenar los datos.'
+        );
+    }
+
+    echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+}
+
+
     public function getEstaciones()
     {
 
@@ -264,6 +533,16 @@ class Cap_estaciones extends Controllers
                 }
 
 
+                           // SUB-ENSAMBLE
+            if (!empty($arrData[$i]['sub_nombre_estacion'])) {
+                $arrData[$i]['subensamble_nombre'] = '<span class="badge bg-info-subtle text-info">'
+                    . $arrData[$i]['sub_nombre_estacion'] .
+                    '</span>';
+            } else {
+                $arrData[$i]['subensamble_nombre'] = '<span class="text-muted fst-italic">Sin sub-ensamble registrado</span>';
+            }
+
+
 
 
 
@@ -316,6 +595,8 @@ class Cap_estaciones extends Controllers
         }
         die();
     }
+
+    
 
     public function delEstacion()
     {
