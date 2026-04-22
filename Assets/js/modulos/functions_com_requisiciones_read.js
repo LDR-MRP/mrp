@@ -135,22 +135,6 @@ const RequisitionRead = {
         this.dom.$tblPartidas.empty();
         if (d.items && d.items.length > 0) {
             d.items.forEach(item => {
-                const html = `
-                    <tr>
-                        <td>
-                            <div class="fw-bold text-dark">${item.cve_articulo || 'N/A'}</div>
-                            <div class="small text-muted">${item.descripcion || 'Artículo'}</div>
-                        </td>
-                        <td class="text-center fw-medium">${parseFloat(item.cantidad).toString()} <span class="small text-muted">${item.unidad_salida || 'PZA'}</span></td>
-                        <td class="text-end">${Sys_Core.Format.toCurrency(item.precio_unitario_estimado)}</td>
-                        <td class="text-end fw-bold text-primary">${Sys_Core.Format.toCurrency(item.subtotal)}</td>
-                        <td class="small text-muted">${item.notas || '-'}</td>
-                    </tr>
-                `;
-                this.dom.$tblPartidas.append(html);
-            });
-
-            d.items.forEach(item => {
                 // Si el backend nos manda cantidad_comprada (debería), lo mostramos
                 const qtySolicitada = parseFloat(item.cantidad);
                 const qtyComprada = parseFloat(item.cantidad_comprada || 0);

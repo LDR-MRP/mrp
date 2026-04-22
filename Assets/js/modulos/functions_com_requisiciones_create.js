@@ -515,24 +515,35 @@ const RequisitionForm = {
 
     loadUserDrafts: function() {
         this.dom.$selectDrafts.empty().append('<option value="">Cargando...</option>');
-        $.ajax({
-            url: `${this.config.apiBase}`, 
-            method: 'GET',
-            data: { status: 'borrador' } 
-        }).done((res) => {
-            this.dom.$selectDrafts.empty();
-            if (res.status && res.data && res.data.length > 0) {
-                const otherDrafts = res.data.filter(req => req.idrequisicion !== this.state.id);
-                if (otherDrafts.length === 0) {
-                    this.dom.$selectDrafts.append('<option value="">No tienes otros borradores.</option>');
+        const params = new URLSearchParams({ status: 'borrador' });
+        const requestUrl = `${this.config.apiBase}?${params.toString()}`;
+
+        Sys_Core.Net.get({
+            url: requestUrl,
+            onSuccess: (res) => {
+                this.dom.$selectDrafts.empty();
+                
+                // Validación del response
+                if (res.status && res.data && res.data.length > 0) {
+                    // Evitamos que se pueda fusionar/mover al mismo borrador en el que estamos
+                    const otherDrafts = res.data.filter(req => req.idrequisicion !== this.state.id);
+                    
+                    if (otherDrafts.length === 0) {
+                        this.dom.$selectDrafts.append('<option value="">No tienes otros borradores.</option>');
+                    } else {
+                        this.dom.$selectDrafts.append('<option value="">Selecciona el borrador destino...</option>');
+                        otherDrafts.forEach(req => {
+                            this.dom.$selectDrafts.append(
+                                $('<option>', {
+                                    value: req.idrequisicion,
+                                    text: `#${req.idrequisicion} - ${req.titulo}`
+                                })
+                            );
+                        });
+                    }
                 } else {
-                    this.dom.$selectDrafts.append('<option value="">Selecciona el borrador destino...</option>');
-                    otherDrafts.forEach(req => {
-                        this.dom.$selectDrafts.append(`<option value="${req.idrequisicion}">#${req.idrequisicion} - ${req.titulo}</option>`);
-                    });
+                    this.dom.$selectDrafts.append('<option value="">No tienes borradores.</option>');
                 }
-            } else {
-                this.dom.$selectDrafts.append('<option value="">No tienes borradores.</option>');
             }
         });
     },

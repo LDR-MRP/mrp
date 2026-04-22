@@ -264,16 +264,6 @@ class RequisitionService
                     }
                 }
 
-                // C. LIMPIEZA: Eliminar partidas que estaban en BD pero que el usuario quitó en la UI 
-                // antes de darle a Guardar (Si no implementaste la eliminación inline)
-                // Opcional, pero recomendado para mantener sincronía perfecta.
-                if (!empty($incomingItemIds)) {
-                     $this->requisicionModel->deleteMissingItems($requisitionId, $incomingItemIds);
-                } else {
-                    // Si mandó artículos pero todos eran nuevos, no borramos nada.
-                    // Si el array de artículos viene vacío, borramos todos los existentes (vació el carrito).
-                }
-
             } else {
                 // Si el frontend manda un array vacío de artículos, borramos todo el detalle
                 $this->requisicionModel->deleteAllItems($requisitionId);
