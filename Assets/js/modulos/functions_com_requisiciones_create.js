@@ -436,9 +436,7 @@ const RequisitionForm = {
             Sys_Core.UI.alert('Tabla Vacía', 'Debe agregar al menos un artículo antes de enviar.', 'warning');
             return;
         }
-
-        $('.btn-guardar').prop('disabled', true); 
-
+        
         // Construir el payload
         const payload = {
             action: action, // 'save_draft' o 'submit_approval'
@@ -474,7 +472,7 @@ const RequisitionForm = {
             url: targetUrl,
             method: httpMethod, // Pasamos explícitamente POST o PUT
             payload: payload,
-            $btn: $(document.activeElement), // Pasamos el botón que el usuario acaba de presionar
+            $btn: $('.btn-guardar'), // Pasamos el botón que el usuario acaba de presionar
             onDone: (res) => {
                 setTimeout(() => {
                     // Redirigir al modo vista (Show) tras guardar

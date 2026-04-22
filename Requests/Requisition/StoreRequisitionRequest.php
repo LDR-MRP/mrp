@@ -10,7 +10,6 @@ class StoreRequisitionRequest extends Requests {
         'departamentoid' =>  'El departamento solicitante es obligatorio.',
         'monto_estimado' => 'El monto estimado del documento es obligatorio.',
         'justificacion' => 'El comentario de justificación de la compra es obligatorio.',
-        'articulos' => 'La requisición debe contener al menos un artículo.',
     ];
     
     public function rules(): void
@@ -21,7 +20,7 @@ class StoreRequisitionRequest extends Requests {
         }
 
         // --- Reglas Condicionales basadas en la intención del usuario ---
-        $action = $this->input('estatus', 'save_draft'); // Default a 'save_draft' si no se especifica
+        $action = $this->input('action', 'save_draft'); // Default a 'save_draft' si no se especifica
 
         if ($action === 'submit_approval') {
             $this->applyStrictRules();
