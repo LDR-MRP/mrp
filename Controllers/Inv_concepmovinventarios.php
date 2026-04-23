@@ -129,16 +129,9 @@ class Inv_concepmovinventarios extends Controllers
                     $arrData[$i]['tipo_movimiento'] = '<span class="">Salida</span>';
                 }
 
-                if ($_SESSION['permisosMod']['r']) {
-
-                    $btnView = '<button class="btn btn-sm btn-soft-info edit-list" title="Ver concepto" onClick="fntViewConcepto(' . $arrData[$i]['idconcepmov'] . ')"><i class="ri-eye-fill align-bottom text-muted"></i></button>';
-                }
                 if ($_SESSION['permisosMod']['u']) {
 
                     $btnEdit = '<button class="btn btn-sm btn-soft-warning edit-list" title="Editar concepto" onClick="fntEditConcepto(' . $arrData[$i]['idconcepmov'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
-                }
-                if ($_SESSION['permisosMod']['d']) {
-                    $btnDelete = '<button class="btn btn-sm btn-soft-danger remove-list" title="Eliminar concepto" onClick="fntDelInfo(' . $arrData[$i]['idconcepmov'] . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
                 }
                 $arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . '</div>';
             }

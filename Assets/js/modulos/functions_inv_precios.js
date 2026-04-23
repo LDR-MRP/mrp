@@ -90,28 +90,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 
-// ----------------------------------------------
-// VER DETALLE
-// ----------------------------------------------
-function fntViewPrecio(id) {
-  fetch(base_url + "/Inv_precios/getPrecio/" + id)
-    .then((res) => res.json())
-    .then((objData) => {
-      if (objData.status) {
-        document.querySelector("#celClave").innerHTML = objData.data.cve_precio;
-        document.querySelector("#celDescripcion").innerHTML =
-          objData.data.descripcion;
-        document.querySelector("#celImpuesto").innerHTML =
-          objData.data.impuesto;
-        document.querySelector("#celFecha").innerHTML =
-          objData.data.fecha_creacion;
-        document.querySelector("#celEstado").innerHTML =
-          objData.data.estado == 2 ? "Activo" : "Inactivo";
-
-        $("#modalViewPrecio").modal("show");
-      }
-    });
-}
 
 // ----------------------------------------------
 // EDITAR
@@ -124,7 +102,12 @@ function fntEditPrecio(id) {
         document.querySelector("#idprecio").value = objData.data.idprecio;
         cve_precio.value = objData.data.cve_precio;
         descripcion.value = objData.data.descripcion;
-        impuesto.value = objData.data.impuesto;
+
+        // 👇 IMPORTANTE
+        setTimeout(() => {
+          impuesto.value = objData.data.impuestoid;
+        }, 200);
+
         estado.value = objData.data.estado;
 
         spanBtnText.textContent = "ACTUALIZAR";

@@ -17,13 +17,12 @@ class Inv_monedaModel extends Mysql
         parent::__construct();
     }
 
-    public function inserMoneda($cve_moneda, $descripcion, $simbolo, $cambio_moneda, $fecha_creacion, $intEstatus)
+    public function inserMoneda($cve_moneda, $descripcion, $simbolo, $fecha_creacion, $intEstatus)
     {
         $this->strCvePrecio = $cve_moneda;
         $this->strDescripcion = $descripcion;
         $this->strSimbolo = $simbolo;
         $this->strFecha = $fecha_creacion;
-        $this->strtipoCambio = $cambio_moneda;
         $this->intEstatus = $intEstatus;
 
         $sql = "SELECT * FROM wms_moneda WHERE cve_moneda = '{$this->strCvePrecio}'";
@@ -31,14 +30,13 @@ class Inv_monedaModel extends Mysql
 
         if (empty($request)) {
 
-            $query_insert = "INSERT INTO wms_moneda(cve_moneda, descripcion, simbolo, tipo_cambio, fecha_creacion, estado) 
-                         VALUES(?,?,?,?,?,?)";
+            $query_insert = "INSERT INTO wms_moneda(cve_moneda, descripcion, simbolo, fecha_creacion, estado)
+                                VALUES(?,?,?,?,?)";
 
             $arrData = array(
                 $this->strCvePrecio,
                 $this->strDescripcion,
                 $this->strSimbolo,
-                $this->strtipoCambio,
                 $this->strFecha,
                 $this->intEstatus
             );
@@ -57,7 +55,6 @@ class Inv_monedaModel extends Mysql
                 cve_moneda,
                 descripcion,
                 simbolo,
-                tipo_cambio,
                 fecha_creacion,
                 estado
             FROM wms_moneda
@@ -91,43 +88,48 @@ class Inv_monedaModel extends Mysql
 
 
 
-    public function updateMoneda($idmoneda, $cve_moneda, $descripcion, $simbolo, $cambio_moneda, $estado)
+    public function updateMoneda($idmoneda, $cve_moneda, $descripcion, $simbolo, $estado)
     {
         $this->intidmoneda = $idmoneda;
         $this->strCvePrecio = $cve_moneda;
         $this->strDescripcion = $descripcion;
         $this->strSimbolo = $simbolo;
-        $this->strtipoCambio = $cambio_moneda;
         $this->intEstatus = $estado;
 
-        $sql = "SELECT * FROM wms_moneda 
-            WHERE cve_moneda = '{$this->strCvePrecio}' 
-            AND idmoneda != {$this->intidmoneda}";
-        $request = $this->select_all($sql);
+        // 🔥 Obtener registro actual
+        $sql = "SELECT cve_moneda FROM wms_moneda WHERE idmoneda = {$this->intidmoneda}";
+        $actual = $this->select($sql);
 
-        if (empty($request)) {
+        // 🔥 SOLO validar duplicado si cambió la clave
+        if ($actual['cve_moneda'] != $this->strCvePrecio) {
 
-            $sql = "UPDATE wms_moneda 
-                SET cve_moneda=?, descripcion=?, simbolo=?, tipo_cambio=?, estado=? 
-                WHERE idmoneda = $this->intidmoneda";
+            $sql = "SELECT * FROM wms_moneda 
+                WHERE cve_moneda = '{$this->strCvePrecio}'";
+            $request = $this->select_all($sql);
 
-            $arrData = array(
-                $this->strCvePrecio,
-                $this->strDescripcion,
-                $this->strSimbolo,
-                $this->strtipoCambio,
-                $this->intEstatus
-            );
-
-            return $this->update($sql, $arrData);
+            if (!empty($request)) {
+                return "exist";
+            }
         }
 
-        return "exist";
+        // 🔥 Actualizar
+        $sql = "UPDATE wms_moneda 
+            SET cve_moneda=?, descripcion=?, simbolo=?, estado=?
+            WHERE idmoneda = $this->intidmoneda";
+
+        $arrData = array(
+            $this->strCvePrecio,
+            $this->strDescripcion,
+            $this->strSimbolo,
+            $this->intEstatus
+        );
+
+        return $this->update($sql, $arrData);
     }
 
     public function all(array $filters = [])
     {
-        $query ="SELECT
+        $query = "SELECT
                     wms_moneda.*,
                     wms_moneda.simbolo AS id,
                     CONCAT(wms_moneda.simbolo, ' - ', wms_moneda.descripcion) AS nombre
@@ -135,7 +137,7 @@ class Inv_monedaModel extends Mysql
             WHERE true
             ";
 
-        if(array_key_exists('idmoneda', $filters)) {
+        if (array_key_exists('idmoneda', $filters)) {
             $query .= "AND wms_moneda.idmoneda = '{$filters['idmoneda']}'";
         }
 

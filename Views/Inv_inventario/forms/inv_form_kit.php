@@ -17,18 +17,6 @@
             </div>
         </div>
 
-        <!-- LINEA DE PRODUCTO -->
-        <div class="col-lg-4 col-sm-6">
-            <div class="mb-3">
-                <label class="form-label" for="lineaproductoid_kit">LÍNEA DE PRODUCTO</label>
-                <div class="input-group mb-3">
-                    <span class="input-group-text" id="nombre-linea-addon">Lin. Prod.</span>
-                    <select class="form-control" id="lineaproductoid_kit" name="lineaproductoid" required></select>
-                    <div class="invalid-feedback">El campo de precios es obligatorio</div>
-                </div>
-            </div>
-        </div>
-
         <!-- UNIDAD DE ENTRADA -->
         <div class="col-lg-4 col-sm-6">
             <div class="mb-3">

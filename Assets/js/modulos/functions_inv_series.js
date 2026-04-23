@@ -1,186 +1,268 @@
 let tableSeries;
 let ordenesCache = [];
+let productosCache = [];
 let collapsedGroups = {};
 
 document.addEventListener("DOMContentLoaded", function () {
-  // 🔹 FORZAR MAYÚSCULAS EN PREFIJO
-  const vinInput = document.querySelector("input[name='prefijo']");
-  const vinCounter = document.getElementById("vinCounter");
-
-  vinInput.addEventListener("input", function () {
-    // 🔹 Convertir a mayúsculas
-    let value = this.value.toUpperCase();
-
-    // 🔒 Eliminar letras prohibidas
-    value = value.replace(/[IOQÑ]/g, "");
-
-    // 🔒 Permitir solo alfanumérico
-    value = value.replace(/[^A-Z0-9]/g, "");
-
-    // 🔒 Limitar a 17 caracteres
-    value = value.substring(0, 17);
-
-    this.value = value;
-
-    let length = value.length;
-
-    vinCounter.textContent = `${length} / 17 caracteres`;
-
-    vinCounter.classList.remove(
-      "text-muted",
-      "text-danger",
-      "text-warning",
-      "text-success",
-    );
-
-    vinInput.classList.remove("is-invalid", "is-valid");
-
-    if (length < 11) {
-      vinCounter.classList.add("text-danger");
-      vinInput.classList.add("is-invalid");
-    } else if (length < 17) {
-      vinCounter.classList.add("text-warning");
-    } else if (length === 17) {
-      vinCounter.classList.add("text-success");
-      vinInput.classList.add("is-valid");
-    }
-  });
-
-  // 🔹 DATATABLE
-  let collapsedGroups = {};
-
-  // 🔹 DATATABLE
-tableSeries = $("#tableSeries").DataTable({
-  ajax: {
-    url: base_url + "/Inv_series/getSeries",
-    dataSrc: "",
-  },
-
-  paging: false,
-  info: false,
-  lengthChange: false,
-
-  // ⭐ ARREGLOS DE LAYOUT
-  responsive: false,
-  autoWidth: false,
-  scrollX: true,
-
-  columns: [
-    { data: "producto" },
-    { data: "almacen" },
-    { data: "numero_serie" },
-    { data: "referencia" },
-    { data: "fecha" },
-    { data: "estado" },
-    {
-      data: null,
-      orderable: false,
-      render: function (data) {
-        return `
-          <a href="${base_url}/Inv_series/generarCodigoPDF/${data.numero_serie}" 
-            target="_blank"
-            class="btn btn-sm btn-dark">
+  tableSeries = $("#tableSeries").DataTable({
+    ajax: {
+      url: base_url + "/Inv_series/getSeries",
+      dataSrc: "",
+    },
+    columns: [
+      { data: "producto" },
+      { data: "almacen" },
+      { data: "numero_serie" },
+      { data: "referencia" },
+      { data: "fecha" },
+      { data: "estado" },
+      {
+        data: "numero_serie",
+        render: function (data) {
+          return `
+          <a href="${base_url}/Inv_series/generarCodigoPDF/${data}" target="_blank" class="btn btn-sm btn-primary">
             Código
           </a>
+          <a href="${base_url}/Inv_series/generarQRPDF/${data}" target="_blank" class="btn btn-sm btn-success">
+            QR
+          </a>
         `;
+        },
+      },
+    ],
+    responsive: true,
+    bDestroy: true,
+    paging: false,
+    order: [[4, "desc"]],
+
+    rowGroup: {
+      dataSrc: "referencia",
+
+      startRender: function (rows, group) {
+        if (collapsedGroups[group] === undefined) {
+          collapsedGroups[group] = true; // 👈 inicia colapsado
+        }
+
+        let collapsed = collapsedGroups[group];
+
+        // 🔥 ocultar SOLO las filas de este grupo
+        rows.nodes().each(function (r) {
+          r.style.display = collapsed ? "none" : "";
+        });
+
+        return $(`
+      <tr class="group-row" data-name="${group}" style="background:#e9ecef; cursor:pointer;">
+        <td colspan="7">
+          <strong>Referencia:</strong> ${group} 
+          | <strong>Total:</strong> ${rows.count()}
+
+          <button class="btn btn-sm btn-danger float-end btn-pdf-group" data-ref="${group}">
+            Descargar PDF
+          </button>
+        </td>
+      </tr>
+    `);
       },
     },
-  ],
-
-  order: [[4, "desc"]],
-
-  // ⭐ CONTROL DE ANCHOS
-  columnDefs: [
-    { targets: 3, visible: false },
-    { width: "25%", targets: 0 },
-    { width: "25%", targets: 1 },
-    { width: "20%", targets: 2 },
-    { width: "15%", targets: 4 },
-    { width: "10%", targets: 5 },
-    { width: "10%", targets: 6 },
-  ],
-
-  rowGroup: {
-    dataSrc: "referencia",
-    startRender: function (rows, group) {
-
-      if (collapsedGroups[group] === undefined) {
-        collapsedGroups[group] = true;
-      }
-
-      let collapsed = !!collapsedGroups[group];
-
-      rows.nodes().each(function (r) {
-        r.style.display = collapsed ? "none" : "";
-      });
-
-      return $("<tr/>")
-        .addClass("group-header")
-        .attr("data-name", group)
-        .append(`
-          <td colspan="7" class="fw-bold d-flex justify-content-between align-items-center">
-
-            <div>
-              ${collapsed ? "▶" : "▼"} 
-              ORDEN DE TRABAJO: ${group}
-              <span class="badge bg-secondary ms-2">
-                ${rows.count()} Series
-              </span>
-            </div>
-
-            <div>
-              <a href="${base_url}/Inv_series/generarOrdenPDF/${group}" 
-                target="_blank"
-                class="btn btn-sm btn-primary">
-                Imprimir Orden
-              </a>
-            </div>
-
-          </td>
-        `)
-        .toggleClass("collapsed", collapsed);
-    },
-  },
-
-  bDestroy: true,
-});
-
-  $("#tableSeries tbody").on("click", "tr.group-header", function () {
-    let name = $(this).data("name");
-    collapsedGroups[name] = !collapsedGroups[name];
-    tableSeries.draw(false);
   });
 
-  // 🔹 CARGAR ORDENES EN CACHE
+  $("#tableSeries tbody").on("click", "tr.group-row", function () {
+    let group = $(this).data("name");
+
+    // 🔥 alternar estado
+    collapsedGroups[group] = !collapsedGroups[group];
+
+    // 🔥 redibujar tabla SIN resetear paginación
+    tableSeries.draw(false);
+  });
+  $("#tableSeries tbody").on("click", ".btn-pdf-group", function (e) {
+    e.stopPropagation(); // 🔥 evita que colapse el grupo
+
+    let ref = $(this).data("ref");
+
+    window.open(base_url + "/Inv_series/generarOrdenPDF/" + ref, "_blank");
+  });
+
+  // ================================
+  // 🔹 CARGAR MODELOS VIN
+  // ================================
+  fetch(base_url + "/Inv_captura_vin/getModelosVin")
+    .then((res) => res.json())
+    .then((res) => {
+      if (!res.success) return;
+
+      const selectOrden = document.getElementById("modelo_vin");
+      const selectLote = document.getElementById("modelo_vin_lote");
+
+      res.data.forEach((m) => {
+        let option1 = document.createElement("option");
+        let option2 = document.createElement("option");
+
+        let base =
+          m.digt_pais +
+          m.digit_fabricante +
+          m.digit_vehiculo +
+          m.digit_modelo +
+          m.digit_cuerpo +
+          m.digit_sujecion +
+          m.digit_transmision +
+          m.digit_motor;
+
+        option1.value = option2.value = m.id_cat_modelo_vin;
+
+        option1.dataset.base = option2.dataset.base = base;
+        option1.dataset.anio = option2.dataset.anio = m.codigo;
+        option1.dataset.planta = option2.dataset.planta = m.digit_fabricacion;
+
+        option1.textContent = option2.textContent = `${m.modelo} (${m.anio})`;
+
+        selectOrden.appendChild(option1);
+        selectLote.appendChild(option2);
+      });
+    });
+
+  fetch(base_url + "/Inv_series/getProductos")
+    .then((res) => res.json())
+    .then((data) => {
+      productosCache = data;
+    });
+
+  document
+    .getElementById("modelo_vin_lote")
+    .addEventListener("change", function () {
+      let opt = this.selectedOptions[0];
+      if (!opt.value) return;
+
+      let base = opt.dataset.base;
+      let anio = opt.dataset.anio;
+      let planta = opt.dataset.planta;
+
+      let vinBase = base + "-" + anio + planta;
+
+      document.getElementById("vinBasePreview_lote").value = vinBase;
+
+      // 🔥 reutilizamos los mismos hidden
+      document.getElementById("vin_parte_1_8").value = base;
+      document.getElementById("vin_anio").value = anio;
+      document.getElementById("vin_planta").value = planta;
+
+      generarPreviewFinal();
+    });
+
+  // ================================
+  // 🔹 CUANDO SELECCIONA MODELO VIN
+  // ================================
+  document.getElementById("modelo_vin").addEventListener("change", function () {
+    let opt = this.selectedOptions[0];
+
+    if (!opt.value) return;
+
+    let base = opt.dataset.base;
+    let anio = opt.dataset.anio;
+    let planta = opt.dataset.planta;
+
+    // VIN BASE (SIN DIGITO 9)
+    let vinBase = base + "-" + anio + planta;
+
+    document.getElementById("vinBasePreview").value = vinBase;
+
+    // guardar ocultos
+    document.getElementById("vin_parte_1_8").value = base;
+    document.getElementById("vin_anio").value = anio;
+    document.getElementById("vin_planta").value = planta;
+
+    generarPreviewFinal();
+  });
+
+  // ================================
+  // 🔹 FUNCIÓN CALCULAR DÍGITO VIN
+  // ================================
+  function calcularDigitoVIN(vin) {
+    const transliteracion = {
+      A: 1,
+      B: 2,
+      C: 3,
+      D: 4,
+      E: 5,
+      F: 6,
+      G: 7,
+      H: 8,
+      J: 1,
+      K: 2,
+      L: 3,
+      M: 4,
+      N: 5,
+      P: 7,
+      R: 9,
+      S: 2,
+      T: 3,
+      U: 4,
+      V: 5,
+      W: 6,
+      X: 7,
+      Y: 8,
+      Z: 9,
+      0: 0,
+      1: 1,
+      2: 2,
+      3: 3,
+      4: 4,
+      5: 5,
+      6: 6,
+      7: 7,
+      8: 8,
+      9: 9,
+    };
+
+    const pesos = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
+
+    let suma = 0;
+
+    for (let i = 0; i < 17; i++) {
+      let char = vin[i];
+      let valor = transliteracion[char] ?? 0;
+      suma += valor * pesos[i];
+    }
+
+    let residuo = suma % 11;
+
+    return residuo === 10 ? "X" : residuo.toString();
+  }
+
+  // ================================
+  // 🔹 GENERAR PREVIEW FINAL
+  // ================================
+  function generarPreviewFinal() {
+    let base = document.getElementById("vin_parte_1_8").value;
+    let anio = document.getElementById("vin_anio").value;
+    let planta = document.getElementById("vin_planta").value;
+
+    if (!base || !anio || !planta) return;
+
+    // armamos VIN sin consecutivo
+    let vin = base + "0" + anio + planta + "000000";
+
+    // asegurar 17
+    vin = vin.substring(0, 17);
+
+    // calcular dígito 9
+    let digito = calcularDigitoVIN(vin);
+
+    // reemplazar posición 9
+    vin = vin.substring(0, 8) + digito + vin.substring(9);
+
+    document.getElementById("vinPreviewFinal").textContent = vin;
+  }
+
+  // ================================
+  // 🔹 AUTOCOMPLETE ORDEN
+  // ================================
   fetch(base_url + "/Inv_series/getOrdenesTrabajo")
     .then((res) => res.json())
     .then((data) => {
       ordenesCache = data;
     });
 
-  let btnImprimir = document.querySelector("#btnImprimirOrden");
-
-  if (btnImprimir) {
-    btnImprimir.addEventListener("click", function () {
-      let orden = document.querySelector("#inventarioid").value;
-
-      if (!orden) {
-        Swal.fire("Error", "Debe seleccionar una orden", "error");
-        return;
-      }
-
-      window.open(base_url + "/Inv_series/generarOrdenPDF/" + orden, "_blank");
-    });
-  }
-
-  // 🔹 PREVENIR SUBMIT NORMAL
-  document
-    .querySelector("#formSeries")
-    .addEventListener("submit", function (e) {
-      e.preventDefault();
-    });
-
-  // 🔹 AUTOCOMPLETE ORDEN DE TRABAJO
   document.addEventListener("input", function (e) {
     if (!e.target.classList.contains("ordenSearch")) return;
 
@@ -189,7 +271,6 @@ tableSeries = $("#tableSeries").DataTable({
 
     cerrarListaOrden();
 
-    // limpiar campos ocultos si escriben
     document.querySelector("#inventarioid").value = "";
     document.querySelector("#referencia").value = "";
     document.querySelector("#productoNombre").value = "";
@@ -214,7 +295,6 @@ tableSeries = $("#tableSeries").DataTable({
           document.querySelector("#inventarioid").value = o.idinventario;
           document.querySelector("#productoNombre").value = o.producto;
 
-          // 🔹 cantidad desde MRP
           document.querySelector("#cantidadOrden").value = o.cantidad;
           document.querySelector("#cantidadPreview").value = o.cantidad;
 
@@ -237,216 +317,247 @@ tableSeries = $("#tableSeries").DataTable({
     }
   });
 
+  // ================================
   // 🔹 CARGAR ALMACENES
+  // ================================
   fetch(base_url + "/Inv_series/getAlmacenes")
     .then((res) => res.json())
     .then((data) => {
-      const selectAlmacen = document.querySelector("#almacenid");
+      const selectOrden = document.querySelector("#almacenid");
+      const selectLote = document.querySelector("#almacenid_lote");
 
-      selectAlmacen.innerHTML = '<option value="">Seleccione almacén</option>';
+      selectOrden.innerHTML = '<option value="">Seleccione almacén</option>';
+      selectLote.innerHTML = '<option value="">Seleccione almacén</option>';
 
       data.forEach((a) => {
-        let option = document.createElement("option");
-        option.value = a.idalmacen;
-        option.textContent = `${a.cve_almacen} - ${a.descripcion}`;
-        selectAlmacen.appendChild(option);
+        let option1 = document.createElement("option");
+        let option2 = document.createElement("option");
+
+        option1.value = option2.value = a.idalmacen;
+        option1.textContent =
+          option2.textContent = `${a.cve_almacen} - ${a.descripcion}`;
+
+        selectOrden.appendChild(option1);
+        selectLote.appendChild(option2);
       });
     });
 
-  // 🔹 PREVIEW VIN
-  document.querySelector("#btnPreview").addEventListener("click", function () {
-    let inventarioid = document.querySelector("#inventarioid").value;
-
-    if (!inventarioid) {
-      Swal.fire(
-        "Error",
-        "Debe seleccionar una orden de trabajo válida",
-        "error",
-      );
-      return;
-    }
-
-    let baseVin = document
-      .querySelector("input[name='prefijo']")
-      .value.trim()
-      .toUpperCase();
-
-    let cantidad = parseInt(document.querySelector("#cantidadOrden").value);
-
-    // 🔴 VALIDACIÓN CORRECTA
-    if (!cantidad || cantidad <= 0) {
-      Swal.fire(
-        "Error",
-        "La orden de trabajo no tiene cantidad definida",
-        "error",
-      );
-      return;
-    }
-
-    if (!baseVin) {
-      Swal.fire("Error", "Debe ingresar el prefijo VIN", "error");
-      return;
-    }
-
-    // mínimo 11 obligatorios
-    if (baseVin.length < 11) {
-      return;
-    }
-
-    // máximo 17
-    if (baseVin.length > 17) {
-      Swal.fire("Error", "El VIN no puede exceder 17 caracteres", "error");
-      return;
-    }
-
-    //  caracteres inválidos
-    if (/[IOQÑ]/.test(baseVin)) {
-      Swal.fire(
-        "Error",
-        "El VIN no puede contener las letras I, O, Ñ o Q",
-        "error",
-      );
-      return;
-    }
-
-    let parteFija = baseVin;
-    let contador = 1;
-    let longitudNumerica;
-
-    if (baseVin.length === 17) {
-      let match = baseVin.match(/(\d+)$/);
-
-      if (match) {
-        let numeroBase = match[1];
-        longitudNumerica = numeroBase.length;
-        parteFija = baseVin.slice(0, -longitudNumerica);
-        contador = parseInt(numeroBase);
-      } else {
-        Swal.fire("Error", "El VIN completo debe terminar en números", "error");
-        return;
-      }
-    } else {
-      longitudNumerica = 17 - baseVin.length;
-    }
-
-    let container = document.querySelector("#previewContainer");
-    container.innerHTML = "";
-
-    for (let i = 0; i < cantidad; i++) {
-      let nuevoNumero = String(contador + i).padStart(longitudNumerica, "0");
-
-      let vinFinal = parteFija + nuevoNumero;
-
-      if (vinFinal.length !== 17) {
-        Swal.fire(
-          "Error",
-          "Error interno: el VIN generado no tiene 17 caracteres",
-          "error",
-        );
-        return;
-      }
-
-      let div = document.createElement("div");
-      div.className = "col-md-3 mb-2";
-      div.innerHTML = `
-        <div class="border p-2 text-center bg-light">
-            ${vinFinal}
-        </div>
-      `;
-
-      container.appendChild(div);
-    }
-
-    let modal = new bootstrap.Modal(
-      document.getElementById("modalPreviewSeries"),
-    );
-    modal.show();
-  });
-
-  // 🔹 CONFIRMAR INSERT
+  // ================================
+  // 🔹 PREVIEW SERIES
+  // ================================
   document.addEventListener("click", function (e) {
-    if (e.target && e.target.id === "btnConfirmSeries") {
-      let form = document.querySelector("#formSeries");
-      let formData = new FormData(form);
+    if (e.target && e.target.id === "btnPreview") {
+      let base = document.getElementById("vin_parte_1_8").value;
+      let anio = document.getElementById("vin_anio").value;
+      let planta = document.getElementById("vin_planta").value;
+      let modo = document.getElementById("modoGeneracion").value;
 
-      fetch(base_url + "/Inv_series/validarSeries", {
-        method: "POST",
-        body: formData,
-      })
+      let cantidad =
+        modo === "orden"
+          ? parseInt(document.getElementById("cantidadOrden").value)
+          : parseInt(document.getElementById("cantidad_lote").value);
+
+      if (!base || !anio || !planta) {
+        Swal.fire("Error", "Seleccione un modelo VIN", "error");
+        return;
+      }
+
+      if (!cantidad || cantidad <= 0) {
+        Swal.fire("Error", "Cantidad inválida", "error");
+        return;
+      }
+
+      let baseCompleta = base + "0" + anio + planta;
+
+      // 🔥 CONSULTAR ÚLTIMO CONSECUTIVO REAL
+      fetch(
+        base_url + "/Inv_series/getUltimoConsecutivo?baseVin=" + baseCompleta,
+      )
         .then((res) => res.json())
-        .then((obj) => {
-          if (!obj.status) {
-            Swal.fire("Error", obj.msg, "error");
-            return;
+        .then((data) => {
+          let ultimo = data.status ? data.ultimo : 0;
+
+          let container = document.getElementById("previewContainer");
+          container.innerHTML = "";
+
+          for (let i = 0; i < cantidad; i++) {
+            let consecutivo = String(ultimo + i + 1).padStart(6, "0");
+
+            let vin = base + "0" + anio + planta + consecutivo;
+
+            vin = vin.substring(0, 17);
+
+            let digito = calcularDigitoVIN(vin);
+
+            vin = vin.substring(0, 8) + digito + vin.substring(9);
+
+            let div = document.createElement("div");
+            div.className = "col-md-3 mb-2";
+
+            div.innerHTML = `
+          <div class="border p-2 text-center bg-light">
+            ${vin}
+          </div>
+        `;
+
+            container.appendChild(div);
           }
 
-          let repetidos = obj.repetidos;
-          let disponibles = obj.disponibles;
-
-          if (repetidos.length === 0) {
-            insertarSeries(disponibles);
-          } else if (disponibles.length === 0) {
-            Swal.fire({
-              icon: "error",
-              title: "Todos los VIN están ocupados",
-              html: repetidos.join("<br>"),
-            });
-          } else {
-            Swal.fire({
-              icon: "warning",
-              title: "VIN repetidos detectados",
-              html: `
-                <b>Repetidos:</b><br>${repetidos.join("<br>")}
-                <br><br>
-                <b>Disponibles:</b> ${disponibles.length}
-              `,
-              showCancelButton: true,
-              confirmButtonText: "Insertar disponibles",
-              cancelButtonText: "Cancelar",
-            }).then((result) => {
-              if (result.isConfirmed) {
-                insertarSeries(disponibles);
-              }
-            });
-          }
+          let modal = new bootstrap.Modal(
+            document.getElementById("modalPreviewSeries"),
+          );
+          modal.show();
+        })
+        .catch(() => {
+          Swal.fire("Error", "No se pudo obtener el consecutivo", "error");
         });
     }
   });
-});
 
-// 🔹 INSERTAR SERIES
-function insertarSeries(lista) {
-  fetch(base_url + "/Inv_series/setSeriesConfirmadas", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      lista: lista,
-      inventarioid: document.querySelector("#inventarioid").value,
-      almacenid: document.querySelector("#almacenid").value,
-      referencia: document.querySelector("#referencia").value,
-      costo: document.querySelector("input[name='costo']")
-        ? document.querySelector("input[name='costo']").value
-        : 0,
-    }),
-  })
-    .then((res) => res.json())
-    .then((obj) => {
-      if (obj.status) {
-        Swal.fire("Correcto", obj.msg, "success");
-        tableSeries.ajax.reload();
+  document.addEventListener("click", function (e) {
+    if (e.target && e.target.id === "btnConfirmSeries") {
+      let modo = document.getElementById("modoGeneracion").value;
 
-        document.querySelector("#formSeries").reset();
-        document.querySelector("#inventarioid").value = "";
-        document.querySelector("#referencia").value = "";
-        document.querySelector("#productoNombre").value = "";
+      let inventarioid =
+        modo === "orden"
+          ? document.getElementById("inventarioid").value
+          : document.getElementById("inventarioid_lote").value;
+      let almacenid =
+        modo === "orden"
+          ? document.getElementById("almacenid").value
+          : document.getElementById("almacenid_lote").value;
 
-        bootstrap.Modal.getInstance(
-          document.getElementById("modalPreviewSeries"),
-        ).hide();
-      } else {
-        Swal.fire("Error", obj.msg, "error");
+      let referencia =
+        modo === "orden"
+          ? document.getElementById("referencia").value
+          : document.getElementById("lote").value;
+
+      let costo = 0;
+
+      let lista = [];
+
+      document.querySelectorAll("#previewContainer .col-md-3").forEach((el) => {
+        lista.push(el.textContent.trim());
+      });
+
+      if (lista.length === 0) {
+        Swal.fire("Error", "No hay VIN para guardar", "error");
+        return;
       }
+
+      fetch(base_url + "/Inv_series/setSeriesConfirmadas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          lista,
+          inventarioid,
+          almacenid,
+          referencia,
+          costo,
+          modo, // 🔥 IMPORTANTE
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status) {
+            Swal.fire("OK", data.msg, "success");
+
+            // cerrar modal
+            bootstrap.Modal.getInstance(
+              document.getElementById("modalPreviewSeries"),
+            ).hide();
+
+            // limpiar preview
+            document.getElementById("previewContainer").innerHTML = "";
+
+            // 🔥 LIMPIAR FORMULARIO COMPLETO
+            document.getElementById("formSeries").reset();
+
+            // 🔥 LIMPIAR CAMPOS VISUALES
+            document.getElementById("vinPreviewFinal").textContent =
+              "-----------------";
+            document.getElementById("vinBasePreview").value = "";
+            document.getElementById("vinBasePreview_lote").value = "";
+            document.getElementById("productoNombre").value = "";
+            document.getElementById("ordenSearch").value = "";
+            document.getElementById("productoSearchLote").value = "";
+          } else {
+            Swal.fire("Error", data.msg, "error");
+          }
+        })
+        .catch(() => {
+          Swal.fire("Error", "Error en el servidor", "error");
+        });
+      tableSeries.ajax.reload();
+    }
+  });
+
+  document
+    .getElementById("modoGeneracion")
+    .addEventListener("change", function () {
+      let modo = this.value;
+
+      document.getElementById("vinPreviewFinal").textContent =
+        "-----------------";
+
+      document.getElementById("bloqueOrden").style.display =
+        modo === "orden" ? "block" : "none";
+
+      document.getElementById("bloqueLote").style.display =
+        modo === "lote" ? "block" : "none";
     });
-}
+
+  document.addEventListener("input", function (e) {
+    if (!e.target.classList.contains("productoSearch")) return;
+
+    let input = e.target;
+    let val = input.value.toLowerCase();
+
+    cerrarListaProductos();
+
+    document.querySelector("#inventarioid_lote").value = "";
+
+    if (!val) return;
+
+    let lista = document.createElement("div");
+    lista.className = "autocomplete-items list-group position-absolute w-100";
+    input.parentNode.appendChild(lista);
+
+    productosCache
+      .filter(
+        (p) =>
+          p.descripcion.toLowerCase().includes(val) ||
+          p.cve_articulo.toLowerCase().includes(val),
+      )
+      .slice(0, 10)
+      .forEach((p) => {
+        let item = document.createElement("div");
+        item.className = "list-group-item list-group-item-action";
+
+        item.innerHTML = `<strong>${p.cve_articulo}</strong> - ${p.descripcion}`;
+
+        item.addEventListener("click", function () {
+          document.querySelector("#productoSearchLote").value =
+            `${p.cve_articulo} - ${p.descripcion}`;
+
+          document.querySelector("#inventarioid_lote").value = p.idinventario;
+
+          cerrarListaProductos();
+        });
+
+        lista.appendChild(item);
+      });
+  });
+  function cerrarListaProductos() {
+    document
+      .querySelectorAll(".autocomplete-items")
+      .forEach((el) => el.remove());
+  }
+  document.addEventListener("click", function (e) {
+    if (!e.target.classList.contains("productoSearch")) {
+      cerrarListaProductos();
+    }
+  });
+});

@@ -12,8 +12,9 @@ class Inv_captura_vin extends Controllers
 		}
 		getPermisos(MICAPTURAVIN);
 
+		// 🔥 AGREGA ESTO
 		$this->service = new Inv_captura_vinService();
-		$this->service->model = $this->model; // 
+		$this->service->model = $this->model; // 👈 importante
 	}
 
 
@@ -28,7 +29,6 @@ class Inv_captura_vin extends Controllers
 		$data['page_functions_js'] = "functions_inv_captura_vin.js";
 		$this->views->getView($this, "inv_captura_vin", $data);
 	}
-
 
 
 

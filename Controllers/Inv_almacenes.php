@@ -41,6 +41,7 @@ class Inv_almacenes extends Controllers
 				empty($_POST['direccion-input']) ||
 				empty($_POST['encargado-input']) ||
 				empty($_POST['telefono-input']) ||
+				empty($_POST['correo-input']) ||
 				empty($_POST['listPrecios']) ||
 				empty($_POST['estado-select'])
 			) {
@@ -53,6 +54,7 @@ class Inv_almacenes extends Controllers
 				$direccion = strClean($_POST['direccion-input']);
 				$encargado = strClean($_POST['encargado-input']);
 				$telefono = strClean($_POST['telefono-input']);
+				$correo = strClean($_POST['correo-input']);
 				$precio = intval($_POST['listPrecios']);
 				$estado = intval($_POST['estado-select']);
 
@@ -64,13 +66,13 @@ class Inv_almacenes extends Controllers
 
 					//Crear 
 					if ($_SESSION['permisosMod']['w']) {
-						$request_almacen = $this->model->inserAlmacen($clave_almacen, $descripcion, $direccion, $encargado, $telefono, $precio, $fecha_creacion, $estado);
+						$request_almacen = $this->model->inserAlmacen($clave_almacen, $descripcion, $direccion, $encargado, $telefono, $correo, $precio, $fecha_creacion, $estado);
 						$option = 1;
 					}
 				} else {
 					//Actualizar
 					if ($_SESSION['permisosMod']['u']) {
-						$request_almacen = $this->model->updateAlmacen($intidalmacen, $clave_almacen, $descripcion, $direccion, $encargado, $telefono, $precio, $estado);
+						$request_almacen = $this->model->updateAlmacen($intidalmacen, $clave_almacen, $descripcion, $direccion, $encargado, $telefono, $correo, $precio, $estado);
 						$option = 2;
 					}
 				}

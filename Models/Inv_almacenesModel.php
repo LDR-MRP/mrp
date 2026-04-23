@@ -8,6 +8,7 @@ class Inv_almacenesModel extends Mysql
     public $strdirecion;
     public $intelefono;
     public $strencargado;
+    public $strcorreo;
     public $strFecha;
     public $intEstatus;
     public $intPrecio;
@@ -27,6 +28,7 @@ class Inv_almacenesModel extends Mysql
         string $direccion,
         string $encargado,
         string $telefono,
+        string $correo,
         string $listaprecioid,
         string $fecha,
         int $estado
@@ -41,8 +43,8 @@ class Inv_almacenesModel extends Mysql
         }
 
         $query_insert = "INSERT INTO wms_almacenes
-        (cve_almacen, descripcion, direccion, encargado, telefono, listaprecioid, fecha_creacion, estado)
-        VALUES (?,?,?,?,?,?,?,?)
+        (cve_almacen, descripcion, direccion, encargado, telefono, correo, listaprecioid, fecha_creacion, estado)
+        VALUES (?,?,?,?,?,?,?,?,?)
     ";
 
         return $this->insert($query_insert, [
@@ -51,6 +53,7 @@ class Inv_almacenesModel extends Mysql
             $direccion,
             $encargado,
             $telefono,
+            $correo,
             $listaprecioid,
             $fecha,
             $estado
@@ -69,6 +72,7 @@ class Inv_almacenesModel extends Mysql
             alm.direccion,
             alm.encargado,
             alm.telefono,
+            alm.correo,
             IFNULL(pre.descripcion,'SIN LISTA') AS lista_precio,
             alm.fecha_creacion,
             alm.estado
@@ -106,6 +110,7 @@ class Inv_almacenesModel extends Mysql
                 alm.direccion,
                 alm.encargado,
                 alm.telefono,
+                alm.correo,
                 alm.listaprecioid,
                 IFNULL(pre.descripcion,'SIN LISTA') AS lista_precio,
                 alm.fecha_creacion,
@@ -136,6 +141,7 @@ class Inv_almacenesModel extends Mysql
         string $direccion,
         string $encargado,
         string $telefono,
+        string $correo,
         string $listaprecioid,
         int $estado
     ) {
@@ -156,6 +162,7 @@ class Inv_almacenesModel extends Mysql
                 direccion = ?,
                 encargado = ?,
                 telefono = ?,
+                correo = ?,
                 listaprecioid = ?,
                 estado = ?
             WHERE idalmacen = ?";
@@ -166,6 +173,7 @@ class Inv_almacenesModel extends Mysql
             $direccion,
             $encargado,
             $telefono,
+            $correo,
             $listaprecioid,
             $estado,
             $idalmacen

@@ -62,7 +62,7 @@
                                                     <th>PRODUCTO</th>
                                                     <th>ALMACÉN</th>
                                                     <th>NÚMERO VIN</th>
-                                                    <th>ORDEN DE TRABAJO</th>
+                                                    <th>REFERENCIA</th>
                                                     <th>FECHA</th>
                                                     <th>ESTADO</th>
                                                     <th>PDF</th>
@@ -74,66 +74,150 @@
                                     <!-- TAB GENERAR -->
                                     <div class="tab-pane" id="agregarSerie" role="tabpanel">
 
+                                        <div class="col-lg-6 mt-3">
+                                            <label>Modo de generación</label>
+                                            <select id="modoGeneracion" class="form-select">
+                                                <option value="orden">Por orden de trabajo</option>
+                                                <option value="lote">Por lote</option>
+                                            </select>
+                                        </div>
+
                                         <form id="formSeries">
+                                            <div id="bloqueOrden">
+                                                <div class="row">
 
-                                            <div class="row">
+                                                    <!-- ORDEN DE TRABAJO -->
+                                                    <div class="col-lg-6 mt-3 position-relative">
+                                                        <label>Orden de trabajo</label>
 
-                                                <div class="col-lg-6 mt-3">
-                                                    <label>Orden de trabajo</label>
+                                                        <input type="hidden" name="inventarioid" id="inventarioid">
+                                                        <input type="hidden" name="referencia" id="referencia">
 
-                                                    <input type="hidden" name="inventarioid" id="inventarioid">
-                                                    <input type="hidden" name="referencia" id="referencia">
+                                                        <input type="text"
+                                                            class="form-control ordenSearch"
+                                                            id="ordenSearch"
+                                                            placeholder="Buscar orden de trabajo..."
+                                                            autocomplete="off"
+                                                            required>
 
-                                                    <input type="text"
-                                                        class="form-control ordenSearch"
-                                                        id="ordenSearch"
-                                                        placeholder="Buscar orden de trabajo..."
-                                                        autocomplete="off"
-                                                        required>
+                                                        <div id="listaOrdenes" class="list-group"></div>
+                                                    </div>
 
-                                                    <div id="listaOrdenes" class="list-group"></div>
+                                                    <!-- PRODUCTO -->
+                                                    <div class="col-lg-6 mt-3">
+                                                        <label>Producto</label>
+                                                        <input type="text"
+                                                            class="form-control"
+                                                            id="productoNombre"
+                                                            readonly>
+                                                    </div>
+
+                                                    <!-- ALMACÉN -->
+                                                    <div class="col-lg-6 mt-3">
+                                                        <label>Almacén</label>
+                                                        <select class="form-select" name="almacenid" id="almacenid" required></select>
+                                                    </div>
+
+                                                    <!-- MODELO VIN -->
+                                                    <div class="col-lg-6 mt-3">
+                                                        <label>Modelo VIN</label>
+                                                        <select class="form-select" name="modelo_vin" id="modelo_vin" required>
+                                                            <option value="">Seleccione modelo VIN</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <!-- VIN BASE -->
+                                                    <div class="col-lg-6 mt-3">
+                                                        <label>VIN Base</label>
+                                                        <input type="text"
+                                                            class="form-control"
+                                                            id="vinBasePreview"
+                                                            readonly>
+
+                                                        <small class="text-muted">
+                                                            Se genera automáticamente con el modelo seleccionado
+                                                        </small>
+                                                    </div>
+
+                                                    <!-- CANTIDAD -->
+                                                    <div class="col-lg-6 mt-3">
+                                                        <label>Cantidad a generar</label>
+                                                        <input type="text"
+                                                            id="cantidadPreview"
+                                                            class="form-control"
+                                                            readonly>
+                                                    </div>
+
                                                 </div>
 
-                                                <div class="col-lg-6 mt-3">
-                                                    <label>Producto</label>
-                                                    <input type="text"
-                                                        class="form-control"
-                                                        id="productoNombre"
-                                                        readonly>
-                                                </div>
-
-
-                                                <div class="col-lg-6 mt-3">
-                                                    <label>Almacén</label>
-                                                    <select class="form-select" name="almacenid" id="almacenid" required></select>
-                                                </div>
-
-                                                <div class="col-lg-6 mt-3">
-                                                    <label>Prefijo (VIN)</label>
-                                                    <input type="text"
-                                                        class="form-control"
-                                                        name="prefijo"
-                                                        maxlength="17"
-                                                        required>
-
-                                                    <small id="vinCounter" class="text-muted">
-                                                        0 / 17 caracteres
-                                                    </small>
-                                                </div>
+                                                <!-- INPUTS OCULTOS -->
+                                                <input type="hidden" id="vin_parte_1_8">
+                                                <input type="hidden" id="vin_anio">
+                                                <input type="hidden" id="vin_planta">
 
                                                 <input type="hidden" id="cantidadOrden" name="cantidad">
+                                            </div>
 
-                                                <div class="col-lg-6 mt-3">
-                                                    <label>Cantidad a generar</label>
-                                                    <input type="text" id="cantidadPreview" class="form-control" readonly>
+                                            <div id="bloqueLote" style="display:none;">
+                                                <div class="row">
+
+                                                    <!-- LOTE -->
+                                                    <div class="col-lg-6 mt-3">
+                                                        <label>Lote</label>
+                                                        <input type="text" id="lote" name="lote" class="form-control">
+                                                    </div>
+
+                                                    <div class="col-lg-6 mt-3 position-relative">
+                                                        <label>Producto</label>
+
+                                                        <input type="hidden" id="inventarioid_lote">
+
+                                                        <input type="text"
+                                                            class="form-control productoSearch"
+                                                            id="productoSearchLote"
+                                                            placeholder="Buscar producto..."
+                                                            autocomplete="off"
+                                                            required>
+
+                                                        <div id="listaProductos" class="list-group position-absolute w-100"></div>
+                                                    </div>
+
+                                                    <!-- ALMACÉN -->
+                                                    <div class="col-lg-6 mt-3">
+                                                        <label>Almacén</label>
+                                                        <select class="form-select" id="almacenid_lote"></select>
+                                                    </div>
+
+                                                    <!-- MODELO VIN -->
+                                                    <div class="col-lg-6 mt-3">
+                                                        <label>Modelo VIN</label>
+                                                        <select class="form-select" id="modelo_vin_lote">
+                                                            <option value="">Seleccione modelo VIN</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <!-- VIN BASE -->
+                                                    <div class="col-lg-6 mt-3">
+                                                        <label>VIN Base</label>
+                                                        <input type="text" id="vinBasePreview_lote" class="form-control" readonly>
+                                                    </div>
+
+                                                    <!-- CANTIDAD -->
+                                                    <div class="col-lg-6 mt-3">
+                                                        <label>Cantidad</label>
+                                                        <input type="number" id="cantidad_lote" class="form-control">
+                                                    </div>
                                                 </div>
 
-                                                <!--<div class="col-lg-4 mt-3">
-                                                    <label>Costo</label>
-                                                    <input type="number" step="0.01" class="form-control" name="costo">
-                                                </div>-->
-
                                             </div>
+
+
+                                            <!-- PREVIEW FINAL -->
+                                            <div class="mt-4 text-center">
+                                                <h5>VIN Generado (Preview)</h5>
+                                                <h3 id="vinPreviewFinal" class="text-primary">-----------------</h3>
+                                            </div>
+
 
                                             <div class="d-flex align-items-start gap-3 mt-4">
                                                 <button type="button" id="btnPreview"
@@ -141,7 +225,6 @@
                                                     PREVISUALIZAR
                                                 </button>
                                             </div>
-
                                         </form>
 
                                     </div>

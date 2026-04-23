@@ -117,7 +117,7 @@ class Inv_preciosModel extends Mysql
             $sql = "UPDATE wms_precios 
         SET cve_precio = ?, 
             descripcion = ?, 
-            idimpuesto = ?, 
+            impuestoid = ?, 
             estado = ?  
         WHERE idprecio = $this->intidprecio ";
             $arrData = array(

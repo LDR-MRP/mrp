@@ -19,17 +19,22 @@ class Inv_kardexModel extends Mysql
     public function selectProductoKardex(int $inventarioid)
     {
         $sql = "SELECT 
-                idinventario,
-                cve_articulo,
-                descripcion,
-                unidad_salida,
-                unidad_entrada,
-                control_almacen,
-                ultimo_costo
-            FROM wms_inventario
-            WHERE idinventario = $inventarioid
-            AND estado = 2
-            AND tipo_elemento IN ('P', 'H', 'C')";
+            i.idinventario,
+            i.cve_articulo,
+            i.descripcion,
+            i.unidad_salida,
+            i.unidad_entrada,
+            i.control_almacen,
+            i.ultimo_costo,
+            f.foto
+        FROM wms_inventario i
+        LEFT JOIN wms_fotos_inventario f 
+            ON f.inventarioid = i.idinventario
+        WHERE i.idinventario = $inventarioid
+        AND i.estado = 2
+        AND i.tipo_elemento IN ('P', 'H', 'C')
+        LIMIT 1";
+
         return $this->select($sql);
     }
 
@@ -119,5 +124,14 @@ class Inv_kardexModel extends Mysql
             AND estado = 2";
 
         return $this->select($sql);
+    }
+
+    public function selectFotosProducto(int $inventarioid)
+    {
+        $sql = "SELECT foto 
+            FROM wms_fotos_inventario 
+            WHERE inventarioid = $inventarioid";
+
+        return $this->select_all($sql);
     }
 }
