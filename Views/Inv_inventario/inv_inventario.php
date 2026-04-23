@@ -64,7 +64,6 @@
                                         <th>CLAVE</th>
                                         <th>DESCRIPCIÓN</th>
                                         <th>TIPO</th>
-                                        <th>LÍNEA</th>
                                         <th>ESTADO</th>
                                         <th>ACCIÓN</th>
                                     </tr>
@@ -172,10 +171,6 @@
                         <tr>
                             <td>Factor:</td>
                             <td id="celFactor"></td>
-                        </tr>
-                        <tr>
-                            <td>Ubicación:</td>
-                            <td id="celUbicacion"></td>
                         </tr>
                         <tr>
                             <td>Peso:</td>
@@ -409,16 +404,16 @@
 
                             <hr>
 
-                            <div id="bloqueFiscalTabla" class="mt-3 d-none">
-                                <h6>Datos fiscales asignados</h6>
-
-                                <table class="table table-sm table-bordered">
-                                    <thead>
+                            <div id="bloqueFiscalTabla" class="mt-2">
+                                <br />
+                                <h5>Datos fiscales asignados</h5>
+                                <table class="table table-striped table-bordered">
+                                    <thead style="background-color: #ff896534;">
                                         <tr>
                                             <th>Tipo</th>
                                             <th>Clave</th>
                                             <th>Descripción</th>
-                                            <th></th>
+                                            <th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tbodyFiscal"></tbody>
@@ -451,10 +446,11 @@
                                 </div>
                             </form>
 
-                            <div class="mt-4">
-                                <h6>Impuestos asignados</h6>
-                                <table class="table table-bordered table-sm">
-                                    <thead>
+                            <div class="mt-2">
+                                <br />
+                                <h5>Impuestos asignados</h5>
+                                <table class="table table-striped table-bordered">
+                                    <thead style="background-color: #ff896534;">
                                         <tr>
                                             <th>Impuesto</th>
                                             <th>Estado</th>
@@ -496,9 +492,9 @@
 
                         <!-- ✅ TABLA -->
                         <div class="mt-4">
-                            <h6>Lotes / Pedimentos asignados</h6>
+                            <h5>Lotes / Pedimentos asignados</h5>
                             <table class="table table-striped table-bordered">
-                                <thead>
+                                <thead style="background-color: #ff896534;">
                                     <tr>
                                         <th>Tipo</th>
                                         <th>Almacén</th>
@@ -584,20 +580,30 @@
                             </div>
                         </form>
 
-                        <table class="table mt-3">
-                            <thead>
-                                <tr>
-                                    <th>Ubicación</th>
-                                    <th>Cantidad</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbodyUbicaciones"></tbody>
-                        </table>
+                        <div class="mt-2">
+                            <br />
+                            <h5>Ubicación asignada</h5>
+                            <table class="table table-striped table-bordered">
+                                <thead style="background-color: #ff896534;">
+                                    <thead style="background-color: #ff896534;">
+                                        <tr>
+                                            <th>Ubicación</th>
+                                            <th>Cantidad</th>
+                                            <th>Fecha</th>
+                                        </tr>
+                                    </thead>
+                                <tbody id="tbodyUbicaciones"></tbody>
+                            </table>
+                        </div>
 
                     </div>
 
                 </div>
 
+            </div>
+
+            <div class="modal-footer bg-primary-subtle p-3">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar proceso</button>
             </div>
 
         </div>

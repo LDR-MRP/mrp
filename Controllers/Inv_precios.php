@@ -57,16 +57,34 @@ class Inv_precios extends Controllers
                         $option = 2;
                     }
                 }
-                if ($request_precio > 0) {
-                    if ($option == 1) {
-                        $arrResponse = array('status' => true, 'msg' => 'La información se ha registrado exitosamente', 'tipo' => 'insert');
-                    } else {
-                        $arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update');
-                    }
-                } else if ($request_precio == 'exist') {
-                    $arrResponse = array('status' => false, 'msg' => '¡Atención! ya existe.');
+                if ($request_precio === "exist") {
+
+                    $arrResponse = array(
+                        'status' => false,
+                        'msg' => '¡Atención! ya existe.'
+                    );
+                } else if ($option == 1 && $request_precio > 0) {
+
+                    // INSERT
+                    $arrResponse = array(
+                        'status' => true,
+                        'msg' => 'La información se ha registrado exitosamente',
+                        'tipo' => 'insert'
+                    );
+                } else if ($option == 2) {
+
+                    // UPDATE (aquí aceptamos true, 1 o 0)
+                    $arrResponse = array(
+                        'status' => true,
+                        'msg' => 'La información ha sido actualizada correctamente.',
+                        'tipo' => 'update'
+                    );
                 } else {
-                    $arrResponse = array("status" => false, "msg" => 'No es posible almacenar los datos.');
+
+                    $arrResponse = array(
+                        "status" => false,
+                        "msg" => 'No es posible almacenar los datos.'
+                    );
                 }
 
                 echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
@@ -88,19 +106,11 @@ class Inv_precios extends Controllers
                 } else if ($arrData[$i]['estado'] == 1) {
                     $arrData[$i]['estado'] = '<span class="badge bg-danger">Inactivo</span>';
                 }
-
-                if ($_SESSION['permisosMod']['r']) {
-
-                    $btnView = '<button class="btn btn-sm btn-soft-info edit-list" title="Ver precio" onClick="fntViewPrecio(' . $arrData[$i]['idprecio'] . ')"><i class="ri-eye-fill align-bottom text-muted"></i></button>';
-                }
                 if ($_SESSION['permisosMod']['u']) {
 
                     $btnEdit = '<button class="btn btn-sm btn-soft-warning edit-list" title="Editar precio" onClick="fntEditPrecio(' . $arrData[$i]['idprecio'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
                 }
-                if ($_SESSION['permisosMod']['d']) {
-                    $btnDelete = '<button class="btn btn-sm btn-soft-danger remove-list" title="Eliminar precio" onClick="fntDelInfo(' . $arrData[$i]['idprecio'] . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
-                }
-                $arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . '</div>';
+                $arrData[$i]['options'] = '<div class="text-center">' . $btnEdit . '</div>';
             }
             echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
         }
@@ -169,7 +179,7 @@ class Inv_precios extends Controllers
         if (count($arrData) > 0) {
             for ($i = 0; $i < count($arrData); $i++) {
                 $htmlOptions .= '<option value="' . $arrData[$i]['idimpuesto'] . '">'
-                    . $arrData[$i]['cve_impuesto'] . ' - ' . $arrData[$i]['descripcion'] .
+                    . $arrData[$i]['descripcion'] .
                     '</option>';
             }
         }

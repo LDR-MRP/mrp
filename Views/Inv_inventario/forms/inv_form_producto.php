@@ -3,7 +3,7 @@
     <div class="container d-flex justify-content-center align-items-center p-3 mb-3 rounded">
 
         <!-- PRODUCTO -->
-        <div class="col-md-4 form-check d-flex align-items-center">
+        <div class="col-md-3 form-check d-flex align-items-center">
             <input class="form-check-input" type="radio"
                 name="tipo_elemento" id="producto" value="P" checked>
             <label class="form-label fw-semibold ms-2" for="producto">
@@ -12,7 +12,7 @@
         </div>
 
         <!-- COMPONENTE -->
-        <div class="col-md-4 form-check d-flex align-items-center">
+        <div class="col-md-3 form-check d-flex align-items-center">
             <input class="form-check-input" type="radio"
                 name="tipo_elemento" id="componente" value="C">
             <label class="form-label fw-semibold ms-2" for="componente">
@@ -21,11 +21,20 @@
         </div>
 
         <!-- HERRAMIENTA -->
-        <div class="col-md-4 form-check d-flex align-items-center">
+        <div class="col-md-3 form-check d-flex align-items-center">
             <input class="form-check-input" type="radio"
                 name="tipo_elemento" id="herramienta" value="H">
             <label class="form-label fw-semibold ms-2" for="herramienta">
                 HERRAMIENTA
+            </label>
+        </div>
+
+        <!-- REFACCIÓN  -->
+        <div class="col-md-3 form-check d-flex align-items-center">
+            <input class="form-check-input" type="radio"
+                name="tipo_elemento" id="refaccion" value="R">
+            <label class="form-label fw-semibold ms-2" for="refaccion">
+                REFACCION
             </label>
         </div>
     </div>
@@ -34,9 +43,9 @@
 
 
         <!-- CLAVE -->
-        <div class="col-lg-4 col-sm-6">
+        <div class="col-lg-6 col-sm-6">
             <div class="mb-3">
-                <label class="form-label" for="cve_articulo">CLAVE</label>
+                <label class="form-label" for="cve_articulo">SKU/CLAVE</label>
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="clave-inventario-addon">Clave</span>
                     <input type="text" class="form-control"
@@ -48,7 +57,7 @@
         </div>
 
         <!-- CLAVE ALTERNA -->
-        <div class="col-lg-4 col-sm-6">
+        <div class="col-lg-6 col-sm-6">
             <div class="mb-3">
                 <label class="form-label" for="clave_alterna">CLAVE ALTERNA</label>
                 <div class="input-group mb-3">
@@ -74,17 +83,6 @@
                     <option value="V">Proveedor</option>
                     <option value="I">Interna</option>
                 </select>
-            </div>
-        </div>
-
-        <!-- LISTA LINEAS DE PRODUCTO -->
-        <div class="col-lg-4 col-sm-6">
-            <div class="mb-3">
-                <label class="form-label" for="lineaproductoid_producto">LÍNEA DE PRODUCTO</label>
-                <div class="input-group mb-3">
-                    <span class="input-group-text" id="nombre-linea-addon">Lín. Prod.</span>
-                    <select class="form-control" id="lineaproductoid_producto" name="lineaproductoid"></select>
-                </div>
             </div>
         </div>
 
@@ -133,20 +131,6 @@
                         <option value="CAJA">Caja</option>
                     </select>
                     <div class="invalid-feedback">El campo estado es obligatorio</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- UBICACIÓN -->
-        <div class="col-lg-4 col-sm-6">
-            <div class="mb-3">
-                <label class="form-label" for="ubicacion">UBICACIÓN</label>
-                <div class="input-group mb-3">
-                    <span class="input-group-text" id="ubicacion-addon">Ub.</span>
-                    <input type="text" class="form-control"
-                        placeholder="Ingresa la ubicación" id="ubicacion" name="ubicacion"
-                        aria-describedby="ubicacion-addon" required>
-                    <div class="invalid-feedback">El campo ubicación es obligatorio</div>
                 </div>
             </div>
         </div>

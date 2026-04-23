@@ -321,9 +321,32 @@
                                           </li>
                                       <?php } ?>
 
-                                      <?php if (!empty($_SESSION['permisos'][71]['r'])) { ?>
+                                      <?php if (!empty($_SESSION['permisos'][66]['r'])) { ?>
                                           <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/inv_series" class="nav-link" data-key="t-detached">VIN</a>
+                                              <a href="<?= base_url(); ?>/inv_tipo_cambio_moneda" class="nav-link" data-key="t-detached">Tipo de cambio</a>
+                                          </li>
+                                      <?php } ?>
+
+                                      <?php if (!empty($_SESSION['permisos'][71]['r']) || !empty($_SESSION['permisos'][65]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="javascript:void(0)" class="nav-link flex-grow-1" data-key="t-detached" data-bs-toggle="collapse" data-bs-target="#subVIN" aria-expanded="false" aria-controls="subVIN">
+                                                  VIN
+                                              </a>
+                                              <div class="collapse ms-3" id="subVIN">
+                                                  <ul class="nav nav-sm flex-column">
+
+                                                      <?php if (!empty($_SESSION['permisos'][65]['r'])) { ?>
+                                                          <li class="nav-item">
+                                                              <a href="<?= base_url(); ?>/inv_captura_vin" class="nav-link" data-key="t-detached">Captura glosario VIN</a>
+                                                          </li>
+                                                      <?php } ?>
+                                                      <?php if (!empty($_SESSION['permisos'][71]['r'])) { ?>
+                                                          <li class="nav-item">
+                                                              <a href="<?= base_url(); ?>/inv_series" class="nav-link" data-key="t-detached">Generar VIN</a>
+                                                          </li>
+                                                      <?php } ?>
+                                                  </ul>
+                                              </div>
                                           </li>
                                       <?php } ?>
 

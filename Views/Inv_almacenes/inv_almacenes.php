@@ -127,10 +127,29 @@
                                             <label class="form-label" for="telefono-input">TELÉFONO</label>
                                             <div class="input-group mb-3">
                                                 <span class="input-group-text" id="telefono-addon">Tel</span>
-                                                <input type="number" class="form-control"
-                                                    placeholder="Ingresa el teléfono" id="telefono-input" name="telefono-input"
-                                                    aria-describedby="telefono-addon" required>
-                                                <div class="invalid-feedback">El campo teléfono es obligatorio</div>
+                                                <input type="text" class="form-control"
+                                                    id="telefono-input"
+                                                    name="telefono-input"
+                                                    placeholder="Ingresa el teléfono"
+                                                    pattern="\d{10}"
+                                                    maxlength="10"
+                                                    minlength="10"
+                                                    required>
+                                                <div class="invalid-feedback">El campo teléfono es obligatorio y debe ser de 10 dígitos</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- CORREO -->
+                                    <div class="col-lg-4 col-sm-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="correo-input">CORREO</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="correo-addon">@</span>
+                                                <input type="email" class="form-control"
+                                                    placeholder="Ingresa el correo electrónico" id="correo-input" name="correo-input"
+                                                    aria-describedby="correo-addon" required>
+                                                <div class="invalid-feedback">El campo correo es obligatorio y debe ser un correo electrónico válido</div>
                                             </div>
                                         </div>
                                     </div>
@@ -235,7 +254,7 @@
                 <h5 class="modal-title" id="titleModal">Datos del registro</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="close-modal"></button>
             </div>
-            
+
             <div class="modal-body">
                 <table class="table table-bordered">
                     <tbody>
@@ -258,6 +277,10 @@
                         <tr>
                             <td>Teléfono:</td>
                             <td id="celtelefono"></td>
+                        </tr>
+                        <tr>
+                            <td>Correo:</td>
+                            <td id="celcorreo"></td>
                         </tr>
                         <tr>
                         <tr>

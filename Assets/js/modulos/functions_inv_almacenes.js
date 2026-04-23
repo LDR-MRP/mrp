@@ -225,23 +225,24 @@ function fntEditInfo(idalmacen) {
   request.onreadystatechange = function () {
     if (request.readyState != 4) return;
     if (request.status != 200) {
-      Swal.fire("Error", "Error al consultar la línea.", "error");
+      Swal.fire("Error", "Error al consultar el almacén.", "error");
       return;
     }
 
     let objData = JSON.parse(request.responseText);
 
     if (objData.status) {
+      console.log(objData.data); // 👈 agrega esto
       // Asegurarnos de tener las referencias por si el DOM cambió
       almacen.value = objData.data.idalmacen;
       cve_almacen.value = objData.data.cve_almacen;
       document.querySelector("#direccion-input").value = objData.data.direccion;
       document.querySelector("#encargado-input").value = objData.data.encargado;
       document.querySelector("#telefono-input").value = objData.data.telefono;
+      document.querySelector("#correo-input").value = objData.data.correo;
       document.querySelector('#descripcion-almacen-textarea').value = objData.data.descripcion;
       estado.value = objData.data.estado;
-      selectPrecios.value = objData.data.listaprecioid;
-      firstTab.show();
+      fntAlmacenes(objData.data.listaprecioid);
       if (firstTab) firstTab.show();
     } else {
       Swal.fire("Error", objData.msg, "error");
@@ -320,15 +321,16 @@ function fntDelInfo(idalmacen) {
 function fntAlmacenes(selectedValue = "") {
   if (document.querySelector("#listPrecios")) {
     let ajaxUrl = base_url + "/Inv_precios/getSelectPrecios";
-    let request = window.XMLHttpRequest
-      ? new XMLHttpRequest()
-      : new ActiveXObject("Microsoft.XMLHTTP");
+    let request = new XMLHttpRequest();
+
     request.open("GET", ajaxUrl, true);
     request.send();
+
     request.onreadystatechange = function () {
       if (request.readyState == 4 && request.status == 200) {
         document.querySelector("#listPrecios").innerHTML = request.responseText;
 
+        // ✅ AQUÍ SE ASIGNA DESPUÉS DE CARGAR
         if (selectedValue !== "") {
           document.querySelector("#listPrecios").value = selectedValue;
         }
@@ -367,6 +369,8 @@ function fntViewAlmacen(idalmacen) {
           objData.data.encargado;
         document.querySelector("#celtelefono").innerHTML =
           objData.data.telefono;
+        document.querySelector("#celcorreo").innerHTML =
+          objData.data.correo;
         document.querySelector("#cellistaprecio").innerHTML =
           objData.data.lista_precio;
         document.querySelector("#celFecha").innerHTML =
