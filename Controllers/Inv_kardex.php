@@ -89,10 +89,13 @@ class Inv_kardex extends Controllers
         $resumen  = $this->model->selectResumenKardex($inventarioid);
         $totales  = $this->model->selectTotalesKardex($inventarioid);
 
+        $fotos = $this->model->selectFotosProducto($inventarioid);
+
         echo json_encode([
             'producto' => $producto,
             'resumen'  => $resumen,
-            'totales'  => $totales
+            'totales'  => $totales,
+            'fotos'    => $fotos
         ], JSON_UNESCAPED_UNICODE);
 
         die();

@@ -1,5 +1,7 @@
 let productosCache = [];
 let tableKardex;
+let fotosProducto = [];
+let indexFotoActual = 0;
 
 document.addEventListener("DOMContentLoaded", function () {
   cargarProductos();
@@ -139,7 +141,7 @@ fetch(base_url + "/Inv_kardex/getSelectConceptos")
   .then((html) => {
     document.querySelector("#filtroConcepto").innerHTML = html;
   });
-  
+
 function cargarInfoProducto(inventarioid) {
   fetch(base_url + "/Inv_kardex/getInfoProducto/" + inventarioid)
     .then((res) => res.json())
@@ -163,6 +165,24 @@ function cargarInfoProducto(inventarioid) {
 
       document.querySelector("#existencia_actual").value = r.existencia ?? 0;
 
+      // 👉 FOTO (YA CORRECTO)
+      // 👉 GALERÍA
+      // 👉 GALERÍA SIMPLE (SIN MINIATURAS)
+      fotosProducto = [];
+      indexFotoActual = 0;
+
+      if (data.fotos && data.fotos.length > 0) {
+        fotosProducto = data.fotos;
+
+        document.querySelector("#foto_producto").src =
+          base_url +
+          "/Assets/uploads/inventario_imagenes/" +
+          fotosProducto[0].foto;
+      } else {
+        document.querySelector("#foto_producto").src =
+          base_url + "/Assets/uploads/inventario_imagenes/no-image.png";
+      }
+
       // Totales
       document.querySelector("#total_existencia").value =
         data.totales.total_existencia ?? 0;
@@ -178,3 +198,58 @@ function cargarInfoProducto(inventarioid) {
       ).toFixed(2);
     });
 }
+
+document.querySelector("#foto_producto").addEventListener("click", function () {
+  let src = this.src;
+
+  if (!src) return;
+
+  document.querySelector("#imagenGrande").src = src;
+  $("#modalImagen").modal("show");
+});
+
+// 👉 abrir modal
+document.querySelector("#foto_producto").addEventListener("click", function () {
+  if (fotosProducto.length === 0) return;
+
+  indexFotoActual = 0;
+
+  document.querySelector("#imagenGrande").src =
+    base_url +
+    "/Assets/uploads/inventario_imagenes/" +
+    fotosProducto[indexFotoActual].foto;
+
+  $("#modalImagen").modal("show");
+});
+
+// 👉 siguiente
+document.querySelector("#btnNext").addEventListener("click", function () {
+  if (fotosProducto.length === 0) return;
+
+  indexFotoActual++;
+
+  if (indexFotoActual >= fotosProducto.length) {
+    indexFotoActual = 0; // loop
+  }
+
+  document.querySelector("#imagenGrande").src =
+    base_url +
+    "/Assets/uploads/inventario_imagenes/" +
+    fotosProducto[indexFotoActual].foto;
+});
+
+// 👉 anterior
+document.querySelector("#btnPrev").addEventListener("click", function () {
+  if (fotosProducto.length === 0) return;
+
+  indexFotoActual--;
+
+  if (indexFotoActual < 0) {
+    indexFotoActual = fotosProducto.length - 1; // loop
+  }
+
+  document.querySelector("#imagenGrande").src =
+    base_url +
+    "/Assets/uploads/inventario_imagenes/" +
+    fotosProducto[indexFotoActual].foto;
+});

@@ -147,58 +147,86 @@ class Inv_seriesModel extends Mysql
         ];
     }
 
-    public function insertarSeriesConfirmadas($lista, $inventarioid, $almacenid, $referencia, $costo)
+
+    public function insertarSeriesConfirmadas($lista, $inventarioid, $almacenid, $referencia, $costo, $modo)
     {
         $fecha = date('Y-m-d H:i:s');
         $insertados = 0;
 
-        foreach ($lista as $vin) {
+        $cantidad = count($lista);
 
-            $vin = strtoupper(trim($vin));
+        // 🔥 base del VIN (sin consecutivo)
+        $baseVin = substr($lista[0], 0, -6);
 
-            // 🔒 VALIDACIONES VIN OFICIALES
-            if (strlen($vin) != 17) {
-                continue;
+        // ============================
+        // 🔒 VALIDAR ORDEN (AQUÍ VA)
+        // ============================
+        if ($modo === "orden") {
+            $sql = "SELECT COUNT(*) as total 
+            FROM wms_numeros_series 
+            WHERE referencia = ?";
+
+            $existe = $this->select($sql, [$referencia]);
+
+            if ($existe['total'] > 0) {
+                return [
+                    "status" => false,
+                    "msg" => "Esta orden ya tiene VIN generados"
+                ];
             }
+        }
 
-            if (preg_match('/[IOQ]/', $vin)) {
-                continue;
-            }
+        // ============================
+        // 🔥 DEFINIR CONTADOR
+        // ============================
+        if ($modo === "lote") {
+            // ✅ LOTE: continuar consecutivo
+            $ultimo = $this->getUltimoConsecutivo($baseVin);
+            $contador = $ultimo + 1;
+        } else {
+            // ❌ ORDEN: SIEMPRE iniciar desde 1
+            $contador = 1;
+        }
 
-            // 🔒 Protección contra concurrencia
+        for ($i = 0; $i < $cantidad; $i++) {
+
+            $consecutivo = str_pad($contador + $i, 6, "0", STR_PAD_LEFT);
+            $vin = $baseVin . $consecutivo;
+
+            // validaciones
+            if (strlen($vin) != 17) continue;
+            if (preg_match('/[IOQÑ]/', $vin)) continue;
+            if (!preg_match('/^[A-Z0-9]{17}$/', $vin)) continue;
+
+            // 🔥 IMPORTANTE: en orden NO permitir duplicados
             $sqlCheck = "SELECT id_numeros_serie FROM wms_numeros_series WHERE numero_serie = ?";
             $existente = $this->select($sqlCheck, array($vin));
 
             if (!empty($existente)) {
+                // 🔥 si es orden, error directo
+                if ($modo === "orden") {
+                    return [
+                        "status" => false,
+                        "msg" => "La orden ya tiene VIN generados o hay duplicados."
+                    ];
+                }
                 continue;
             }
-
-            if (strlen($vin) != 17) {
-                continue;
-            }
-
-            if (!preg_match('/^[A-Z0-9]{17}$/', $vin)) {
-                continue;
-            }
-
-            if (preg_match('/[IOQÑ]/', $vin)) {
-                continue;
-            }
-
 
             $sql = "INSERT INTO wms_numeros_series
-            (inventarioid, almacenid, numero_serie, referencia, costo, fecha, estado)
-            VALUES (?,?,?,?,?,?,?)";
+        (inventarioid, almacenid, numero_serie, referencia, costo, fecha, estado, tipo_generacion)
+        VALUES (?,?,?,?,?,?,?,?)";
 
-            $arrData = array(
+            $arrData = [
                 $inventarioid,
                 $almacenid,
                 $vin,
                 $referencia,
                 $costo,
                 $fecha,
-                1
-            );
+                1,
+                $modo
+            ];
 
             $insert = $this->insert($sql, $arrData);
 
@@ -208,8 +236,10 @@ class Inv_seriesModel extends Mysql
         }
 
         return [
-            "status" => true,
-            "msg" => $insertados . " VIN insertados correctamente"
+            "status" => $insertados > 0,
+            "msg" => $insertados > 0
+                ? "$insertados VIN insertados correctamente"
+                : "No se insertó ningún VIN"
         ];
     }
 
@@ -238,8 +268,8 @@ class Inv_seriesModel extends Mysql
     }
 
     public function getSeriesByOrden($orden)
-{
-    $sql = "SELECT s.numero_serie,
+    {
+        $sql = "SELECT s.numero_serie,
                    s.referencia,
                    i.descripcion AS producto
             FROM wms_numeros_series s
@@ -248,6 +278,31 @@ class Inv_seriesModel extends Mysql
             WHERE s.referencia = ?
             ORDER BY s.numero_serie ASC";
 
-    return $this->select_all($sql, array($orden));
-}
+        return $this->select_all($sql, array($orden));
+    }
+
+    public function getUltimoConsecutivo($baseVin)
+    {
+        // separar partes
+        $parte1 = substr($baseVin, 0, 8);  // antes del dígito 9
+        $parte2 = substr($baseVin, 9);     // después del dígito 9
+
+        // patrón con wildcard en posición 9
+        $like = $parte1 . "_" . $parte2 . "%";
+
+        $sql = "SELECT numero_serie 
+            FROM wms_numeros_series 
+            WHERE numero_serie LIKE ?
+            ORDER BY numero_serie DESC 
+            LIMIT 1";
+
+        $result = $this->select($sql, array($like));
+
+        if ($result) {
+            $numero = substr($result['numero_serie'], -6);
+            return intval($numero);
+        }
+
+        return 0;
+    }
 }

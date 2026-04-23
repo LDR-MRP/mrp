@@ -4,7 +4,6 @@ let divLoading = document.querySelector("#divLoading");
 
 // Inputs del formulario
 const cve_moneda = document.querySelector('#clave-moneda-input');
-const cambio_moneda = document.querySelector('#cambio-moneda-input');
 const simbolo_moneda = document.querySelector('#simbolo-moneda-input');
 const estado = document.querySelector('#estado-select');
 const descripcion = document.querySelector('#descripcion-moneda-textarea');
@@ -32,7 +31,6 @@ document.addEventListener('DOMContentLoaded', function () {
     { "data": "cve_moneda" },
     { "data": "descripcion" },
     { "data": "simbolo" },
-    { "data": "tipo_cambio" },
     { "data": "fecha_creacion" },
     { "data": "estado" },
     { "data": "options" } 
@@ -94,7 +92,6 @@ function fntViewMoneda(id){
         if(objData.status){
             document.querySelector("#celClave").innerHTML = objData.data.cve_moneda;
             document.querySelector("#celDescripcion").innerHTML = objData.data.descripcion;
-            document.querySelector("#celCambio").innerHTML = objData.data.tipo_cambio; 
             document.querySelector("#celSimbolo").innerHTML = objData.data.simbolo; 
             document.querySelector("#celFecha").innerHTML = objData.data.fecha_creacion;
             document.querySelector("#celEstado").innerHTML = objData.data.estado == 2 ? "Activo" : "Inactivo";
@@ -117,7 +114,6 @@ function fntEditMoneda(id){
             cve_moneda.value = objData.data.cve_moneda;
             descripcion.value = objData.data.descripcion;
             simbolo_moneda.value = objData.data.simbolo;
-            cambio_moneda.value = objData.data.tipo_cambio;
             estado.value = objData.data.estado;
 
             spanBtnText.textContent = "ACTUALIZAR";

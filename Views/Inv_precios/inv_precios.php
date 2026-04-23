@@ -54,7 +54,7 @@
                                     <tr>
                                         <th>CLAVE</th>
                                         <th>DESCRIPCIÓN</th>
-                                        <th>CON IMPUESTO</th>
+                                        <th>IMPUESTO</th>
                                         <th>FECHA CREACIÓN</th>
                                         <th>ESTATUS</th>
                                         <th>Action</th>
