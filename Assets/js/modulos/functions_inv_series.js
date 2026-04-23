@@ -83,6 +83,9 @@ document.addEventListener("DOMContentLoaded", function () {
     window.open(base_url + "/Inv_series/generarOrdenPDF/" + ref, "_blank");
   });
 
+  // ✅ AQUÍ VA (justo después de la tabla)
+  cargarProductos("lote");
+
   // ================================
   // 🔹 CARGAR MODELOS VIN
   // ================================
@@ -121,11 +124,13 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     });
 
-  fetch(base_url + "/Inv_series/getProductos")
-    .then((res) => res.json())
-    .then((data) => {
-      productosCache = data;
-    });
+  function cargarProductos(modo) {
+    fetch(base_url + "/Inv_series/getProductos?modo=" + modo)
+      .then((res) => res.json())
+      .then((data) => {
+        productosCache = data;
+      });
+  }
 
   document
     .getElementById("modelo_vin_lote")
@@ -456,7 +461,7 @@ document.addEventListener("DOMContentLoaded", function () {
           almacenid,
           referencia,
           costo,
-          modo, // 🔥 IMPORTANTE
+          modo, 
         }),
       })
         .then((res) => res.json())
@@ -472,10 +477,10 @@ document.addEventListener("DOMContentLoaded", function () {
             // limpiar preview
             document.getElementById("previewContainer").innerHTML = "";
 
-            // 🔥 LIMPIAR FORMULARIO COMPLETO
+            //  LIMPIAR FORMULARIO COMPLETO
             document.getElementById("formSeries").reset();
 
-            // 🔥 LIMPIAR CAMPOS VISUALES
+            //  LIMPIAR CAMPOS VISUALES
             document.getElementById("vinPreviewFinal").textContent =
               "-----------------";
             document.getElementById("vinBasePreview").value = "";
@@ -483,6 +488,9 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById("productoNombre").value = "";
             document.getElementById("ordenSearch").value = "";
             document.getElementById("productoSearchLote").value = "";
+
+            tableSeries.ajax.reload(null, false);
+
           } else {
             Swal.fire("Error", data.msg, "error");
           }
@@ -490,7 +498,6 @@ document.addEventListener("DOMContentLoaded", function () {
         .catch(() => {
           Swal.fire("Error", "Error en el servidor", "error");
         });
-      tableSeries.ajax.reload();
     }
   });
 
@@ -507,6 +514,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
       document.getElementById("bloqueLote").style.display =
         modo === "lote" ? "block" : "none";
+
+      // 🔥 RECARGAR PRODUCTOS CORRECTOS
+      cargarProductos(modo);
     });
 
   document.addEventListener("input", function (e) {

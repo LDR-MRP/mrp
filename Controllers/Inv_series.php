@@ -49,9 +49,13 @@ class Inv_series extends Controllers
     {
         if ($_SESSION['permisosMod']['r']) {
 
-            $term = strClean($_GET['term'] ?? '');
+            $modo = $_GET['modo'] ?? 'lote'; // default lote
 
-            $arrData = $this->model->searchProductos($term);
+            if ($modo === "orden") {
+                $arrData = $this->model->searchProductosOrden();
+            } else {
+                $arrData = $this->model->searchProductosLote();
+            }
 
             echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
         }
