@@ -23,7 +23,7 @@ class Inv_seriesModel extends Mysql
         return $this->select_all($sql);
     }
 
-    public function searchProductos()
+    public function searchProductosOrden()
     {
         $sql = "SELECT 
                 i.idinventario,
@@ -38,6 +38,22 @@ class Inv_seriesModel extends Mysql
             LEFT JOIN mrp_planeacion pl 
                 ON pl.productoid = p.idproducto
             ORDER BY i.descripcion ASC";
+
+        return $this->select_all($sql);
+    }
+
+    public function searchProductosLote($term = "")
+    {
+        $sql = "SELECT 
+            i.idinventario,
+            i.cve_articulo,
+            i.descripcion,
+            i.serie,
+            i.tipo_elemento
+        FROM wms_inventario i
+        WHERE i.estado != 0 
+        AND i.tipo_elemento = 'P'
+        ORDER BY i.descripcion ASC";
 
         return $this->select_all($sql);
     }
