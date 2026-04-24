@@ -48,6 +48,7 @@ class AuthService{
                     'id'     => $user['idusuario'],
                     'nombre' => $user['nombres'] . ' ' . $user['apellidos'],
                     'rolid'  => $user['rolid'],
+                    'plantaid'  => $user['plantaid'],
                     'rol'    => $user['rol_nombre'],
                     'avatar' => $user['avatar_file']
                 ]
