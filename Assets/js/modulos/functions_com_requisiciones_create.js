@@ -160,20 +160,38 @@ const RequisitionForm = {
     loadRequisitionData: function () {
         Sys_Core.UI.toggleLoader('.page-content', true);
 
-        // Llamamos al endpoint GET /api/v1/requisitions/{id}
-        $.ajax({
+        Sys_Core.Net.get({
             url: `${this.config.apiBase}/${this.state.id}`,
-            method: 'GET'
-        }).done((res) => {
-            if (res.status === 'success' || res.status === true) {
-                this.populateUI(res.data);
-            } else {
-                Sys_Core.UI.alert('Error', 'No se pudo cargar la requisición.', 'error');
-                Sys_Core.Navigation.to('requisiciones');
+            onSuccess: (res) => {
+                // Validación de lógica de negocio (status 200 pero resultado negativo)
+                if (res.status === 'success' || res.status === true) {
+                    this.populateUI(res.data);
+                } else {
+                    // Si el backend responde status: false (ej: recurso no encontrado o inactivo)
+                    Sys_Core.UI.alert('Error', 'No se pudo cargar la requisición.', 'error');
+                    Sys_Core.Navigation.to('requisiciones');
+                }
+            },
+            onComplete: () => {
+                // Quitamos el loader sin importar si fue Success o Error (401, 403, 500, etc.)
+                Sys_Core.UI.toggleLoader('.page-content', false);
             }
-        }).always(() => {
-            Sys_Core.UI.toggleLoader('.page-content', false);
         });
+
+        // Llamamos al endpoint GET /api/v1/requisitions/{id}
+        // $.ajax({
+        //     url: `${this.config.apiBase}/${this.state.id}`,
+        //     method: 'GET'
+        // }).done((res) => {
+        //     if (res.status === 'success' || res.status === true) {
+        //         this.populateUI(res.data);
+        //     } else {
+        //         Sys_Core.UI.alert('Error', 'No se pudo cargar la requisición.', 'error');
+        //         Sys_Core.Navigation.to('requisiciones');
+        //     }
+        // }).always(() => {
+        //     Sys_Core.UI.toggleLoader('.page-content', false);
+        // });
     },
 
     populateUI: function (data) {

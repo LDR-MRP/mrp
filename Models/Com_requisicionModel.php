@@ -56,6 +56,31 @@ class Com_requisicionModel extends Mysql
         );
     }
 
+    public function getRequisitionForUpdate(int $id): array|bool
+    {
+        return $this->select(
+            "SELECT
+                idrequisicion,
+                id_empresa,
+                usuarioid,
+                departamentoid,
+                id_centro_costo,
+                titulo,
+                fecha_requerida,
+                prioridad,
+                estatus,
+                monto_estimado,
+                justificacion,
+                created_at AS fecha
+            FROM {$this->table}
+            WHERE idrequisicion = ?
+            FOR UPDATE",
+            [
+                $id
+            ]
+        );
+    }
+
     public function getAllRequisitions(): array|bool
     {
         return $this->select_all(
@@ -119,6 +144,7 @@ class Com_requisicionModel extends Mysql
             "INSERT INTO {$this->table}
             (
                 usuarioid
+                -- ,plantaid
                 ,estatus
                 ,titulo
                 ,departamentoid
@@ -130,6 +156,7 @@ class Com_requisicionModel extends Mysql
             VALUES
             (
                 :usuarioid
+                -- ,1
                 ,:estatus
                 ,:titulo
                 ,:departamentoid
@@ -140,6 +167,7 @@ class Com_requisicionModel extends Mysql
             )",
             [
                 ':usuarioid' => $data['user_id'],
+                //':plantaid' => $data['´planta_id'],
                 ':estatus' => !empty($data['estatus']) ? mb_strtolower($data['estatus'], 'UTF-8') : 'borrador',
                 ':titulo' => $data['titulo'],
                 ':departamentoid' => $data['departamentoid'],
@@ -187,11 +215,23 @@ class Com_requisicionModel extends Mysql
         $query = "UPDATE {$this->detailTable} SET cantidad = cantidad - ? WHERE idrequisicionarticulo = ?;";
         return $this->update($query, [$quantityToReduce, $idrequisicionarticulo]);
     }
-    
+
     public function getItemDetails(int $requisicionId, int $idrequisicionarticulo): ?array {
         $query = "SELECT inventarioid, cantidad, precio_unitario_estimado, notas 
                   FROM {$this->detailTable} 
                   WHERE requisicionid = ? AND idrequisicionarticulo = ? LIMIT 1;";
+        $result = $this->select($query, [$requisicionId, $idrequisicionarticulo]);
+        return $result ?: null;
+    }
+    
+    /**
+     * Obtiene los detalles de una partida bloqueando la fila para la transacción actual.
+     * Previne Race Conditions durante el proceso de movimiento de ítems.
+     */
+    public function getItemDetailsForUpdate(int $requisicionId, int $idrequisicionarticulo): ?array {
+        $query = "SELECT inventarioid, cantidad, precio_unitario_estimado, notas 
+                  FROM {$this->detailTable} 
+                  WHERE requisicionid = ? AND idrequisicionarticulo = ? LIMIT 1 FOR UPDATE;";
         $result = $this->select($query, [$requisicionId, $idrequisicionarticulo]);
         return $result ?: null;
     }

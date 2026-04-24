@@ -224,25 +224,24 @@ const RequisitionIndex = {
 
         const targetUrl = `${this.config.endpoints.base}/${idrequisicion}${actionConfig.suffix}`;
 
-        $.ajax({
+        Sys_Core.Net.post({
             url: targetUrl,
-            method: actionConfig.method,
-            contentType: 'application/json',
-            data: JSON.stringify({ comentario: comentario }),
-            beforeSend: () => {
-                Sys_Core.UI.toggleLoader('#tblReqs', true);
-                $btn.prop('disabled', true).html('<i class="ri-loader-4-line ri-spin"></i>');
-            },
-            success: (res) => {
-                Sys_Core.UI.notify(res.message, 'success');
+            method: actionConfig.method, // Soporta POST, PUT, DELETE, etc.
+            payload: { comentario: comentario },
+            $btn: $btn, // Sys_Core se encarga de deshabilitarlo y poner el spinner
+            onDone: (res) => {
+                // Esta lógica es específica de tu módulo
                 this.hideInlineAction();
-                this.state.dataTable.ajax.reload(null, false);
-                this.initKPIs();
-            },
-            error: (xhr) => {
-                Sys_Core.Net.handleError(xhr);
-                $btn.prop('disabled', false).html(originalHtml);
-                Sys_Core.UI.toggleLoader('#tblReqs', false);
+                
+                // Recargar la tabla sin perder la posición de la paginación
+                if (this.state.dataTable) {
+                    this.state.dataTable.ajax.reload(null, false);
+                }
+                
+                // Refrescar los indicadores (Dashboard/KPIs)
+                if (typeof this.initKPIs === 'function') {
+                    this.initKPIs();
+                }
             }
         });
     },

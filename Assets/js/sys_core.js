@@ -278,13 +278,14 @@ const Sys_Core = {
          * Petición GET con soporte para recursividad.
          * @param {Object} options 
          * @param {string} options.url
-         * @param {function} options.onSuccess
+         * @param {function} [options.onSuccess] - Callback en caso de éxito (200 OK).
+         * @param {function} [options.onComplete] - Callback que se ejecuta SIEMPRE (éxito o error).
          * @param {boolean} [options.recurrent=false]
          * @param {number} [options.interval=30000]
          * @param {boolean} [options.silent=false]
          */
         get: function(options) {
-            const { url, onSuccess, recurrent, interval = 30000, silent } = options;
+            const { url, onSuccess, onComplete, recurrent, interval = 30000, silent } = options;
             const token = localStorage.getItem('mrp_token');
             
             const execute = () => {
@@ -298,7 +299,8 @@ const Sys_Core = {
                     },
                     success: (res) => { if (onSuccess) onSuccess(res); },
                     error: (xhr) => { if (!silent) Sys_Core.Net.handleError(xhr); },
-                    complete: () => {
+                    complete: (xhr) => {
+                        if (onComplete) onComplete(xhr);
                         if (recurrent) setTimeout(execute, interval);
                     }
                 });

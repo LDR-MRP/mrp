@@ -38,26 +38,35 @@ class RequisitionService
      * Incluye una validación de seguridad para prevenir que un usuario vea requisiciones ajenas (IDOR).
      *
      * @param int $requisitionId ID de la requisición a obtener.
-     * @param int $userId ID del usuario que solicita la información.
+     * @param array $userContext contexto del usuario que solicita la información.
      * @return ServiceResponse Objeto con los datos de la requisición o un error si no se encuentra/no tiene permisos.
      */
-    public function getRequisitionWithDetails(int $requisitionId, int $userId): ServiceResponse
+    public function getRequisitionWithDetails(int $requisitionId, array $userContext): ServiceResponse
     {
         try {
+            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+            $scope = $role->getScope();
+
             // 1. Obtener la cabecera
-            $requisition = $this->requisicionModel->getRequisition($requisitionId);
+            $requisition = $this->requisicionModel->getRequisitionForUpdate($requisitionId);
 
             // 2. Validación de Existencia
             if (!$requisition) {
                 throw new \Exception("La requisición #{$requisitionId} no existe.", 404);
             }
 
+            // APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
+            $isAllowed = match($scope) {
+                'propio' => (int)$requisition['usuarioid'] === (int)$userContext['id'],
+                'planta'  => (int)$requisition['plantaid'] === (int)$userContext['plantaid'],
+                'total'  => true,
+                default  => false
+            };
+
             // 3. Validación de Seguridad (IDOR de Lectura)
-            // Evita que el Usuario A lea por URL la requisición del Usuario B
-            // TODO: JWT
-            // if ((int)$requisition['usuarioid'] !== $userId) {
-            //     throw new \Exception("Security Error: No tienes permisos para ver esta requisición.", 403);
-            // }
+            if (!$isAllowed) {
+                return ServiceResponse::error("Security Error: No tienes permisos para ver esta requisición.", 403);
+            }
 
             // 4. Obtener las partidas
             $items = $this->requisicionModel->getRequisitionItems($requisitionId);
@@ -76,7 +85,7 @@ class RequisitionService
             $this->logMessage($e, \LogLevel::WARNING, [
                 'action' => 'getRequisitionWithDetails',
                 'requisition_id' => $requisitionId,
-                'user_id' => $userId
+                'user_id' => $userContext['id']
             ]);
 
             $code = $e->getCode() !== 0 ? $e->getCode() : 500;
@@ -88,10 +97,10 @@ class RequisitionService
      * Almacena una nueva requisición, aplicando reglas laxas (borrador) o estrictas (enviar a aprobación)
      * basándose en el campo 'action' del payload.
      *
-     * @param int $userId ID del usuario que crea la solicitud.
+     * @param array $userContext ID del usuario que crea la solicitud.
      * @return ServiceResponse Objeto con el resultado de la operación.
      */
-    public function store(int $userId): ServiceResponse
+    public function store(array $userContext): ServiceResponse
     {
         $request = new StoreRequisitionRequest();
 
@@ -108,7 +117,8 @@ class RequisitionService
 
             // 3. CREAR CABECERA
             $headerData = [
-                'user_id'         => $userId,
+                'user_id'         => $userContext['id'],
+                'planta_id'       => $userContext['plantaid'],
                 'estatus'         => $estatusFinal,
                 'titulo'          => $payload['titulo'],
                 'departamentoid'  => !empty($payload['departamentoid']) ? $payload['departamentoid'] : null,
@@ -143,7 +153,7 @@ class RequisitionService
 
             // 6. LOG DE AUDITORÍA
             $auditMsg = $isSubmit ? 'Creada y enviada a aprobación.' : 'Creada como borrador.';
-            $this->requisicionModel->logAudit($requisitionId, AuditAction::CREATED, $auditMsg, $userId);
+            $this->requisicionModel->logAudit($requisitionId, AuditAction::CREATED, $auditMsg, $userContext['id']);
 
             $this->db->commit();
 
@@ -165,7 +175,7 @@ class RequisitionService
             }
             $this->logMessage($p, \LogLevel::CRITICAL, [
                 'action' => 'storeRequisition',
-                'id_user' => $userId
+                'id_user' => $userContext['id']
             ]);
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
             
@@ -187,10 +197,10 @@ class RequisitionService
      * Realiza una sincronización completa de las partidas (UPSERT lógico y eliminación de huérfanas).
      *
      * @param int $requisitionId ID de la requisición a actualizar.
-     * @param int $userId ID del usuario que realiza la edición.
+     * @param array $userContext ID del usuario que realiza la edición.
      * @return ServiceResponse Objeto con el resultado de la operación.
      */
-    public function update(int $requisitionId, int $userId): ServiceResponse
+    public function update(int $requisitionId, array $userContext): ServiceResponse
     {
         $request = new \Requests\Requisition\StoreRequisitionRequest();
 
@@ -212,10 +222,9 @@ class RequisitionService
             if ($existingReq['estatus'] !== 'borrador') {
                 throw new \Exception("Compliance Error: No se puede editar una requisición que ya no es un borrador.", 403);
             }
-            // TODO: JWT
-            // if ($existingReq['usuarioid'] !== $userId) {
-            //     throw new \Exception("Security Error: No tienes permisos para editar esta requisición.", 403);
-            // }
+            if ($existingReq['usuarioid'] !== $userContext['id']) {
+                throw new \Exception("Security Error: No tienes permisos para editar esta requisición.", 403);
+            }
 
             // 2. DETERMINAR EL NUEVO ESTATUS FINAL
             $isSubmit = ($payload['action'] === 'submit_approval');
@@ -274,7 +283,7 @@ class RequisitionService
 
             // 6. LOG DE AUDITORÍA
             $auditMsg = $isSubmit ? 'Editada y enviada a aprobación.' : 'Borrador actualizado.';
-            $this->requisicionModel->logAudit($requisitionId, AuditAction::UPDATED, $auditMsg, $userId);
+            $this->requisicionModel->logAudit($requisitionId, AuditAction::UPDATED, $auditMsg, $userContext['id']);
 
             $this->db->commit();
 
@@ -289,7 +298,7 @@ class RequisitionService
             return ServiceResponse::validation(errors: $i->getMessage());
         } catch (\PDOException $p) {
             if ($this->db->inTransaction()) $this->db->rollBack();
-            $this->logMessage($p, \LogLevel::CRITICAL, ['action' => 'updateRequisition', 'id_user' => $userId]);
+            $this->logMessage($p, \LogLevel::CRITICAL, ['action' => 'updateRequisition', 'id_user' => $userContext['id']]);
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
@@ -299,7 +308,22 @@ class RequisitionService
         }
     }
 
-    public function moveItems(int $sourceRequisitionId, int $userId): ServiceResponse
+    /**
+     * Mueve partidas específicas entre requisiciones en estado borrador.
+     * 
+     * Soporta dos flujos:
+     * 1. Split: Crea una nueva requisición y mueve las partidas hacia ella.
+     * 2. Merge/Transfer: Mueve partidas hacia otra requisición existente.
+     * 
+     * @param int $sourceRequisitionId ID de la requisición de origen.
+     * @param array $userContext ID del usuario autenticado (inyectado por Middleware).
+     * 
+     * @return ServiceResponse Objeto estandarizado con el resultado de la operación.
+     * 
+     * @throws \Exception Si el origen no es borrador, si hay violación de IDOR, 
+     *                    o si las cantidades a mover exceden la existencia.
+     */
+    public function moveItems(int $sourceRequisitionId, array $userContext): ServiceResponse
     {
         $request = new MoveRequisitionItemsRequest();
 
@@ -318,16 +342,15 @@ class RequisitionService
             if ($sourceReq['estatus'] !== 'borrador') {
                 throw new \Exception("Compliance Error: Solo se pueden mover partidas de una requisición en estado DRAFT.", 403);
             }
-            // TODO: JWT
-            // if ($sourceReq['usuarioid'] !== $userId) {
-            //     throw new \Exception("Security Error: No tienes permisos sobre este DRAFT.", 403); // Prevención IDOR
-            // }
+            if ($sourceReq['usuarioid'] !== $userContext['id']) {
+                throw new \Exception("Security Error: No tienes permisos sobre este DRAFT.", 403); // Prevención IDOR
+            }
 
             // 2. RESOLVER EL DESTINO (Split o Merge)
             $targetReqId = null;
             if ($payload['create_new'] === true) {
                 // Caso: Urgencia o Capex/Opex (Crear nuevo DRAFT)
-                $targetReqId = $this->createNewDraft($userId, "Split de Requisición #{$sourceRequisitionId}");
+                $targetReqId = $this->createNewDraft($userContext['id'], "Split de Requisición #{$sourceRequisitionId}");
             } else {
                 // Caso: Mover a DRAFT existente
                 $targetReqId = $payload['target_requisition_id'];
@@ -339,6 +362,11 @@ class RequisitionService
                 if ($targetReq['estatus'] !== 'borrador') {
                     throw new \Exception("Compliance Error: El destino también debe ser un DRAFT.", 403);
                 }
+                // --- FIX DE SEGURIDAD (IDOR CRUZADO) ---
+                // Validamos que el destino también pertenezca al usuario logueado
+                if ((int)$targetReq['usuarioid'] !== $userContext['id']) {
+                    throw new \Exception("Security Error: No tienes permisos sobre la requisición destino #{$targetReqId}.", 403);
+                }
             }
     
             // 3. MOVER LAS PARTIDAS (Lógica iterativa)
@@ -346,7 +374,7 @@ class RequisitionService
             foreach ($payload['items'] as $item) {
 
                 // A) Leer TODO el registro a la memoria RAM primero (y validamos IDOR de la partida)
-                $sourceItemDetails = $this->requisicionModel->getItemDetails($sourceRequisitionId, $item['requisition_item_id']);
+                $sourceItemDetails = $this->requisicionModel->getItemDetailsForUpdate($sourceRequisitionId, $item['requisition_item_id']);
                 
                 if (!$sourceItemDetails) {
                     $itemsErrors[] = $item['requisition_item_id'] . " (No existe o no te pertenece)";
@@ -406,7 +434,7 @@ class RequisitionService
 
             $this->logMessage($p, \LogLevel::CRITICAL,[
                 'action' => 'moveItems',
-                'id_user' => $userId
+                'id_user' => $userContext['id']
             ]);
             
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
@@ -429,10 +457,10 @@ class RequisitionService
     /**
      * @param int $requisitionId
      * @param int $itemId
-     * @param int $userId
+     * @param array $userContext
      * @return ServiceResponse
      */
-    public function deleteItem(int $requisitionId, int $itemId, int $userId): ServiceResponse
+    public function deleteItem(int $requisitionId, int $itemId, array $userContext): ServiceResponse
     {
         try {
             $this->db->beginTransaction();
@@ -446,10 +474,9 @@ class RequisitionService
             if ($requisition['estatus'] !== 'borrador') {
                 throw new \Exception("Compliance Error: Solo se pueden eliminar partidas de una requisición en estado DRAFT.", 403);
             }
-            // TODO: JWT
-            // if ($requisition['usuarioid'] !== $userId) {
-            //     throw new \Exception("Security Error: No tienes permisos para modificar esta requisición.", 403);
-            // }
+            if ($requisition['usuarioid'] !== $userContext['id']) {
+                throw new \Exception("Security Error: No tienes permisos para modificar esta requisición.", 403);
+            }
 
             // 2. VALIDACIÓN DE EXISTENCIA DE LA PARTIDA (Previene IDOR Partida)
             // Aseguramos que la partida realmente pertenezca a ESTA requisición
@@ -486,7 +513,7 @@ class RequisitionService
                 'action' => 'deleteItem',
                 'requisition_id' => $requisitionId,
                 'item_id' => $itemId,
-                'id_user' => $userId
+                'id_user' => $userContext['id']
             ]);
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
             
@@ -509,20 +536,51 @@ class RequisitionService
      * Solo es válido si el estado actual es 'pendiente'.
      *
      * @param int $requisitionId ID de la requisición a aprobar.
-     * @param int $userId ID del usuario que realiza la aprobación.
+     * @param array $userContext ID del usuario que realiza la aprobación.
      * @return ServiceResponse
      */
-    public function approve(int $requisitionId, int $userId): ServiceResponse
+    public function approve(int $requisitionId, array $userContext): ServiceResponse
     {
-        $request = new \Requests\Requisition\ChangeStatusRequest(); // Reutilizamos un request simple
+        $request = new \Requests\Requisition\ChangeStatusRequest();
+
+        $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+
+        // 1. ¿Tiene permiso de firma?
+        $level = $role?->getApprovalLevel();
+        if (!$level) {
+            return ServiceResponse::error("Tu rol no tiene facultades de aprobación.", 403);
+        }
+
+        $requisition = $this->requisicionModel->getRequisition($requisitionId);
+
+        // 2. Validación de Scope (Jefe Depto/Planta solo aprueba lo suyo)
+        if ($role === RoleEnum::JEFE_DEPARTAMENTO && $requisition['plantaid'] !== $userContext['plantaid']) {
+            return ServiceResponse::error("Solo puedes aprobar requisiciones de tu propio departamento/planta.", 403);
+        }
+
+        // 3. Máquina de Estados L1 -> L2
+        // TODO: Determinamos el estado origen y destino basado en quién firma
+        $config = match($level) {
+            'L1' => [
+                'from' => ['pendiente'], 
+                'to'   => 'pendiente_l2', // Siguiente nivel
+                'msg'  => 'Aprobación L1 (Jefe Depto) completada.'
+            ],
+            'L2' => [
+                'from' => ['pendiente', 'pendiente_l2'], // Puede aprobar directo o tras L1
+                'to'   => 'aprobada', 
+                'msg'  => 'Aprobación final L2 completada exitosamente.'
+            ]
+        };
+        
         return $this->changeStatus(
             $requisitionId,
-            $userId,
+            $userContext['id'],
             'aprobada',
             ['pendiente'], // Solo se puede aprobar si está 'pendiente'
             'Solicitud aprobada.',
             AuditAction::APPROVED,
-            ucfirst(AuditAction::APPROVED->value) . ':' . $request->input('comentario')
+            "Firma {$level} autorizada por " . $userContext['nombre'] . '. Notas: ' . $request->input('comentario')
         );
     }
 
@@ -531,15 +589,15 @@ class RequisitionService
      * Solo es válido si el estado actual es 'pendiente'.
      *
      * @param int $requisitionId ID de la requisición a rechazar.
-     * @param int $userId ID del usuario que realiza el rechazo.
+     * @param array $userContext ID del usuario que realiza el rechazo.
      * @return ServiceResponse
      */
-    public function reject(int $requisitionId, int $userId): ServiceResponse
+    public function reject(int $requisitionId, array $userContext): ServiceResponse
     {
         $request = new \Requests\Requisition\ChangeStatusRequest();
         return $this->changeStatus(
             $requisitionId,
-            $userId,
+            $userContext['id'],
             'rechazada',
             ['pendiente'], // Solo se puede rechazar si está 'pendiente'
             'Solicitud rechazada.',
@@ -549,18 +607,40 @@ class RequisitionService
     }
 
     /**
-     * Devuelve una requisición 'pendiente' o 'rechazada' al estado de 'borrador' para su corrección.
+     * Cambia el estado de una requisición a 'rechazada'.
+     * Solo es válido si el estado actual es 'pendiente'.
      *
-     * @param int $requisitionId ID de la requisición a devolver.
-     * @param int $userId ID del usuario que realiza la acción.
+     * @param int $requisitionId ID de la requisición a rechazar.
+     * @param array $userContext ID del usuario que realiza el rechazo.
      * @return ServiceResponse
      */
-    public function returnToDraft(int $requisitionId, int $userId): ServiceResponse
+    public function cancel(int $requisitionId, array $userContext): ServiceResponse
     {
         $request = new \Requests\Requisition\ChangeStatusRequest();
         return $this->changeStatus(
             $requisitionId,
-            $userId,
+            $userContext['id'],
+            'rechazada',
+            ['aprobada', 'en compra'], // Solo se puede cancelar si está en 'aprobada' o 'en_compra'
+            'Solicitud cancelada.',
+            AuditAction::CANCELED,
+            ucfirst(AuditAction::CANCELED->value) . ':' . $request->input('comentario')
+        );
+    }
+
+    /**
+     * Devuelve una requisición 'pendiente' o 'rechazada' al estado de 'borrador' para su corrección.
+     *
+     * @param int $requisitionId ID de la requisición a devolver.
+     * @param array $userContext ID del usuario que realiza la acción.
+     * @return ServiceResponse
+     */
+    public function returnToDraft(int $requisitionId, array $userContext): ServiceResponse
+    {
+        $request = new \Requests\Requisition\ChangeStatusRequest();
+        return $this->changeStatus(
+            $requisitionId,
+            $userContext['id'],
             'borrador',
             ['pendiente', 'rechazada'], // Se puede devolver si está 'pendiente' o si fue 'rechazada'
             'Solicitud devuelta a borrador.',
@@ -574,10 +654,10 @@ class RequisitionService
      * Solo se permite eliminar requisiciones en estado 'borrador' o 'pendiente'.
      *
      * @param int $requisitionId ID de la requisición a eliminar.
-     * @param int $userId        ID del usuario que realiza la eliminación.
+     * @param array $userContext        ID del usuario que realiza la eliminación.
      * @return ServiceResponse
      */
-    public function destroy(int $requisitionId, int $userId): ServiceResponse
+    public function destroy(int $requisitionId, array $userContext): ServiceResponse
     {
         try {
             $this->db->beginTransaction();
@@ -590,10 +670,9 @@ class RequisitionService
             }
 
             // 2. VALIDAR SEGURIDAD (IDOR)
-            // TODO: JWT
-            // if ((int)$requisition['usuarioid'] !== $userId) {
-            //     throw new \Exception("Security Error: No tienes permisos para eliminar esta solicitud.", 403);
-            // }
+            if ((int)$requisition['usuarioid'] !== $userContext['id']) {
+                throw new \Exception("Security Error: No tienes permisos para eliminar esta solicitud.", 403);
+            }
 
             // 3. VALIDAR MÁQUINA DE ESTADOS (Business Rules)
             // Una vez aprobada o en compras, no se puede borrar (afectaría auditorías contables).
@@ -609,7 +688,7 @@ class RequisitionService
             }
 
             // 5. REGISTRAR EN AUDITORÍA
-            $this->requisicionModel->logAudit($requisitionId, AuditAction::DELETED, "Solicitud eliminada por el usuario.", $userId);
+            $this->requisicionModel->logAudit($requisitionId, AuditAction::DELETED, "Solicitud eliminada por el usuario.", $userContext['id']);
 
             $this->db->commit();
 
@@ -628,7 +707,7 @@ class RequisitionService
             $this->logMessage($p, \LogLevel::CRITICAL, [
                 'action' => 'destroyRequisition',
                 'requisition_id' => $requisitionId,
-                'id_user' => $userId
+                'id_user' => $userContext['id']
             ]);
 
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos al intentar eliminar la solicitud.");
@@ -642,7 +721,7 @@ class RequisitionService
             $this->logMessage($e, \LogLevel::WARNING, [
                 'action' => 'destroyRequisition',
                 'requisition_id' => $requisitionId,
-                'id_user' => $userId
+                'id_user' => $userContext['id']
             ]);
 
             $code = $e->getCode() !== 0 ? $e->getCode() : 500;
@@ -654,10 +733,10 @@ class RequisitionService
      * Obtiene las partidas de una requisición que aún tienen saldo pendiente por comprar.
      *
      * @param int $requisitionId
-     * @param int $userId
+     * @param array $userContext
      * @return ServiceResponse
      */
-    public function getPendingItemsToPurchase(int $requisitionId, int $userId): ServiceResponse
+    public function getPendingItemsToPurchase(int $requisitionId, array $userContext): ServiceResponse
     {
         try {
             // 1. Validar existencia y seguridad (IDOR)
@@ -668,7 +747,7 @@ class RequisitionService
             }
 
             // Opcional: Si solo ciertos roles (ej. Compradores) pueden ver esto, valídalo aquí.
-            // if (!$this->userHasRole($userId, 'comprador')) throw new \Exception("No tienes permisos de compras.", 403);
+            // if (!$this->userHasRole($userContext['id'], 'comprador')) throw new \Exception("No tienes permisos de compras.", 403);
 
             // 2. Validar Máquina de Estados
             // Solo se puede comprar si ya fue aprobada, o si ya está en proceso de compra (cumplimiento parcial)
@@ -693,7 +772,7 @@ class RequisitionService
             $this->logMessage($e, \LogLevel::WARNING, [
                 'action' => 'getPendingItemsToPurchase',
                 'requisition_id' => $requisitionId,
-                'id_user' => $userId
+                'id_user' => $userContext['id']
             ]);
             $code = $e->getCode() !== 0 ? $e->getCode() : 500;
             return ServiceResponse::error(message: $e->getMessage(), code: $code);
@@ -703,7 +782,7 @@ class RequisitionService
     /**
      * 
      */
-    public function getKpis(int $userId): ServiceResponse
+    public function getKpis(array $userContext): ServiceResponse
     {
         return ServiceResponse::success(
             $this->requisicionModel->getKpi(),
@@ -716,13 +795,13 @@ class RequisitionService
      * Crea una nueva cabecera de requisición en estado DRAFT.
      * Es un método helper privado y no maneja su propia transacción.
      *
-     * @param int $userId El ID del usuario que crea el DRAFT.
+     * @param array $userContext El ID del usuario que crea el DRAFT.
      * @param string $description La descripción para el nuevo DRAFT.
      * @return int El ID de la nueva requisición creada.
      */
-    private function createNewDraft(int $userId, string $description): int {
+    private function createNewDraft(array $userContext, string $description): int {
         $headerData = [
-            'user_id' => $userId,
+            'user_id' => $userContext['id'],
             'titulo' => $description,
             'estatus' => 'borrador' // Forzamos el estado a DRAFT
         ];
@@ -735,7 +814,7 @@ class RequisitionService
             throw new \Exception('No se pudo crear el nuevo DRAFT de destino.', 500);
         }
         
-        $this->requisicionModel->logAudit($newRequisitionId, AuditAction::CREATED, 'Creación automática por split.', $userId);
+        $this->requisicionModel->logAudit($newRequisitionId, AuditAction::CREATED, 'Creación automática por split.', $userContext['id']);
         
         return $newRequisitionId;
     }
@@ -769,7 +848,7 @@ class RequisitionService
      * Encapsula la validación de la máquina de estados, permisos y auditoría.
      *
      * @param int    $requisitionId       ID de la requisición a modificar.
-     * @param int    $userId              ID del usuario que ejecuta la acción.
+     * @param array  $userContext         Contexto del usuario que ejecuta la acción.
      * @param string $newStatus           El nuevo estado al que se transicionará.
      * @param array  $allowedFromStatuses Lista de estados desde los cuales es válida la transición.
      * @param string $successMessage      Mensaje a devolver en caso de éxito.

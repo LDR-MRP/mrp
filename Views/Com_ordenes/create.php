@@ -152,7 +152,7 @@
                                     <button type="button" id="btn-generar-oc" class="btn btn-primary btn-lg shadow-sm">
                                         <i class="ri-file-check-line align-middle me-1"></i> Generar Orden de Compra
                                     </button>
-                                    <button type="button" class="btn btn-light" data-redirect="com_requisiciones">
+                                    <button type="button" class="btn btn-light" data-redirect="com_requisicion">
                                         Cancelar
                                     </button>
                                 </div>

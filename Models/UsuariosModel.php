@@ -236,7 +236,7 @@ public function updateAvatarUsuario(int $usuarioid, string $filename, string $se
      */
     public function loginUser(string $usuario, string $password): ?array {
         $query = "SELECT 
-                    u.idusuario, u.status, u.rolid, u.avatar_file, 
+                    u.idusuario, u.status, u.rolid, u.plantaid, u.avatar_file, 
                     u.nombres, u.apellidos, r.nombrerol as rol_nombre
                   FROM usuarios u
                   INNER JOIN rol r ON u.rolid = r.idrol

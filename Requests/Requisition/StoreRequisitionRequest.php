@@ -8,7 +8,6 @@ class StoreRequisitionRequest extends Requests {
     protected $requiredFields = [
         'fecha_requerida' => 'La fecha no contiene un formato válido.',
         'departamentoid' =>  'El departamento solicitante es obligatorio.',
-        'monto_estimado' => 'El monto estimado del documento es obligatorio.',
         'justificacion' => 'El comentario de justificación de la compra es obligatorio.',
     ];
     
