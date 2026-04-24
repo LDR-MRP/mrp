@@ -1,6 +1,7 @@
 {
     "require": {
-        "firebase/php-jwt": "*"
+        "firebase/php-jwt": "*",
+        "dompdf/dompdf": "^3.1"
     },
     "autoload": {
         "classmap": [
