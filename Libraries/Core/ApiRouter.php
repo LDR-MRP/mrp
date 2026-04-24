@@ -45,6 +45,7 @@ class ApiRouter {
 
                 // Preparamos el núcleo para el Pipeline
                 $coreAction = function($request) use ($controllerInstance, $methodToCall, $params) {
+                    $controllerInstance->request = $request;
                     return call_user_func_array([$controllerInstance, $methodToCall], $params);
                 };
 
