@@ -90,7 +90,7 @@ const supplierManager = {
     loadCatalogs: function() {
         const catalogos = [
             { url: 'Catalogo/condiciones_pago', selector: '[name="id_condicion_pago"]' },
-            { url: 'Catalogo/cuentas_contables', selector: '[name="id_cuenta_contable"]' },
+            // { url: 'Catalogo/cuentas_contables', selector: '[name="cuenta_contable"]' },
             { url: 'SatCatalogo/tipos_personas', selector: '[name="id_tipo_persona"]' },
             { url: 'inv_moneda/index', selector: '[name="id_moneda_banco"]' }
         ];

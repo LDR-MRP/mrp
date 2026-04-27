@@ -41,7 +41,7 @@ $(document).ready(function () {
             },
             { "data": "nombre_comercial" },
             { "data": "razon_social" },
-            { "data": "id_cuenta_contable" },
+            { "data": "cuenta_contable" },
             { "data": "rfc" },
             { "data": "origen" },
             { "data": "telefono" },

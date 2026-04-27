@@ -46,7 +46,7 @@ class Prv_proveedorStoreRequest extends Requests
 
             // Finanzas (prv_det_config_financiera)
             'id_condicion_pago' => 'Debe asignar una condición de pago predeterminada.',
-            'id_cuenta_contable'=> 'La cuenta contable es obligatoria para la integración con ERP.',
+            'cuenta_contable'=> 'La cuenta contable es obligatoria para la integración con ERP.',
             'limite_credito'    => 'El límite de crédito debe ser un valor numérico.',
             'id_moneda_defecto' => 'Especifique la moneda principal de operación (MXN/USD).',
             'tasa_iva_default'  => 'Indique la tasa de IVA aplicable (ej. 16.00).',

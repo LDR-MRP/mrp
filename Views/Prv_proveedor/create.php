@@ -351,8 +351,7 @@
                                                 <label class="form-label text-uppercase fs-11 fw-bold text-muted">Cuenta Contable <span class="text-danger-asterisk">*</span></label>
                                                 <div class="input-group border rounded-3 overflow-hidden shadow-none">
                                                     <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-git-repository-line"></i></span>
-                                                    <select name="id_cuenta_contable" class="form-select border-0 fs-16">
-                                                    </select>
+                                                    <input name="cuenta_contable" class="form-control border-0 fs-16"/>
                                                 </div>
                                             </div>                                            
 

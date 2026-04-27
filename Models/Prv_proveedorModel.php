@@ -47,7 +47,7 @@ class Prv_proveedorModel extends Mysql
             'id_config_financiera',
             'id_proveedor',
             'id_condicion_pago',
-            'id_cuenta_contable',
+            'cuenta_contable',
             'limite_credito',
             'id_moneda_defecto',
             'tasa_iva_default',
@@ -115,7 +115,7 @@ class Prv_proveedorModel extends Mysql
                 `prv_det_config_financiera`.`id_config_financiera`,
                 `prv_det_config_financiera`.`id_proveedor`,
                 `prv_det_config_financiera`.`id_condicion_pago`,
-                `prv_det_config_financiera`.`id_cuenta_contable`,
+                `prv_det_config_financiera`.`cuenta_contable`,
                 `prv_det_config_financiera`.`limite_credito`,
                 `prv_det_config_financiera`.`id_moneda_defecto`,
                 `prv_det_config_financiera`.`tasa_iva_default`,
@@ -136,9 +136,6 @@ class Prv_proveedorModel extends Mysql
             -- Financial Config JOIN
             LEFT JOIN `prv_det_config_financiera`
                 ON `prv_det_config_financiera`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
-            -- Financial Config JOIN
-            LEFT JOIN `cat_cuentas_contables`
-                ON `cat_cuentas_contables`.`id_cuenta_contable` = `prv_det_config_financiera`.`id_cuenta_contable`
             -- Financial Config JOIN
             LEFT JOIN `cat_condiciones_pago`
                 ON `cat_condiciones_pago`.`id_condicion` = `prv_det_config_financiera`.`id_condicion_pago`
@@ -243,7 +240,7 @@ class Prv_proveedorModel extends Mysql
             "INSERT INTO prv_det_config_financiera (
                     id_proveedor,
                     id_condicion_pago,
-                    id_cuenta_contable,
+                    cuenta_contable,
                     limite_credito,
                     id_moneda_defecto,
                     tasa_iva_default,
@@ -253,7 +250,7 @@ class Prv_proveedorModel extends Mysql
                 [
                     $supplierId,
                     $f['id_condicion_pago'],
-                    $f['id_cuenta_contable'], 
+                    $f['cuenta_contable'], 
                     $f['limite_credito'],
                     $f['id_moneda_defecto'],
                     $f['tasa_iva_default'],
