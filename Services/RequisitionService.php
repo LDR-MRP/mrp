@@ -45,7 +45,7 @@ class RequisitionService
     {
         try {
             $role = RoleEnum::tryFrom((int)$userContext['rolid']);
-            $scope = $role->getScope();
+            $scope = $role?->getScope() ?? 'propio';
 
             // 1. Obtener la cabecera
             $requisition = $this->requisicionModel->getRequisitionForUpdate($requisitionId);
