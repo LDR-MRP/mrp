@@ -5,20 +5,20 @@ class SupplierController
 {
     use \ApiResponser;
 
-    protected \Prv_proveedorService $prvProveedorService;
+    protected \SupplierService $supplierService;
 
     public function __construct()
     {
-        $this->prvProveedorService = new \Prv_proveedorService;
+        $this->supplierService = new \SupplierService;
     }
 
     public function index()
     {
-        return $this->apiResponse($this->prvProveedorService->findByCriteria());
+        return $this->apiResponse($this->supplierService->findByCriteria());
     }
 
     public function show(string $id)
     {
-        return $this->apiResponse($this->prvProveedorService->findByCriteria(['id_proveedor' => $id]));
+        return $this->apiResponse($this->supplierService->findByCriteria(['id_proveedor' => $id]));
     }
 }

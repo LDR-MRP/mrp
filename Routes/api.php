@@ -11,14 +11,11 @@ use Middlewares\AuthMiddleware;
 // Rutas Públicas
 // Endpoint público para obtener el token
 Route::post('api/v1/login', [AuthController::class, 'login']);
-Route::get('api/v1/suppliers', [SupplierController::class, 'index']);
-Route::get('api/v1/suppliers/{id}', [SupplierController::class, 'show']);
 
 // Rutas Protegidas
 // --- SUPPLIERS ---
-Route::post('api/v1/supplier', [SupplierController::class, 'store'])
-    //->middleware([AuthMiddleware::class])
-    ;
+Route::get('api/v1/suppliers', [SupplierController::class, 'index'])->middleware([AuthMiddleware::class]);
+Route::get('api/v1/suppliers/{id}', [SupplierController::class, 'show'])->middleware([AuthMiddleware::class]);
 
 // --- REQUISITIONS ---
 Route::get('api/v1/requisitions', [RequisitionController::class, 'index'])->middleware([AuthMiddleware::class]);
