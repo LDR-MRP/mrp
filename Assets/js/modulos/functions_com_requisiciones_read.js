@@ -56,45 +56,16 @@ const RequisitionRead = {
 
     bindEvents: function () {
         this.dom.$actionContainer.on('click', '.action-btn', (e) => this.handleAction(e));
-        this.dom.$actionContainer.on('click', '#btn-export-pdf', () => this.downloadPDF());
+        this.dom.$actionContainer.on('click', '#btn-export-pdf', () => this.printRequisition());
     },
 
-    downloadPDF: function () {
-        const $btn = $('#btn-export-pdf');
-        const originalHtml = $btn.html();
+    printRequisition: function() {
+        const requisitionId = this.state.id;
+        if (!requisitionId) return;
 
-        $.ajax({
-            url: `${this.config.apiBase}/${this.state.id}/pdf`,
-            method: 'GET',
-            xhrFields: { responseType: 'blob' },
-            beforeSend: () => {
-                $btn.prop('disabled', true).html('<i class="ri-loader-4-line ri-spin"></i> Generando...');
-                Sys_Core.UI.toggleLoader('.page-content', true);
-            },
-            success: (blob, status, xhr) => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                let filename = `Requisicion_${this.state.id}.pdf`;
-                const disposition = xhr.getResponseHeader('Content-Disposition');
-                if (disposition && disposition.indexOf('attachment') !== -1) {
-                    const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
-                    if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
-                }
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-            },
-            error: (xhr) => {
-                Sys_Core.Net.handleError(xhr);
-            },
-            complete: () => {
-                $btn.prop('disabled', false).html(originalHtml);
-                Sys_Core.UI.toggleLoader('.page-content', false);
-            }
+        Sys_Core.Net.downloadPdf({
+            url: `${this.config.apiBase}/${requisitionId}/pdf`,
+            filename: `Requisicion_${requisitionId}.pdf`
         });
     },
 

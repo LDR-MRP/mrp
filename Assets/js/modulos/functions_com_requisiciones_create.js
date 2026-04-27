@@ -177,21 +177,6 @@ const RequisitionForm = {
                 Sys_Core.UI.toggleLoader('.page-content', false);
             }
         });
-
-        // Llamamos al endpoint GET /api/v1/requisitions/{id}
-        // $.ajax({
-        //     url: `${this.config.apiBase}/${this.state.id}`,
-        //     method: 'GET'
-        // }).done((res) => {
-        //     if (res.status === 'success' || res.status === true) {
-        //         this.populateUI(res.data);
-        //     } else {
-        //         Sys_Core.UI.alert('Error', 'No se pudo cargar la requisición.', 'error');
-        //         Sys_Core.Navigation.to('requisiciones');
-        //     }
-        // }).always(() => {
-        //     Sys_Core.UI.toggleLoader('.page-content', false);
-        // });
     },
 
     populateUI: function (data) {
@@ -461,7 +446,7 @@ const RequisitionForm = {
             titulo: $('input[name="titulo"]').val(),
             fecha_requerida: $('input[name="fecha_requerida"]').val(),
             departamentoid: $('select[name="departamentoid"]').val(),
-            id_centro_costo: $('select[name="id_centro_costo"]').val(),
+            centro_costo: $('input[name="centro_costo"]').val(),
             prioridad: $('select[name="prioridad"] option:selected').text().split(' ')[0].toLowerCase(), // Enviar 'alta', 'media', 'baja'
             justificacion: $('textarea[name="justificacion"]').val(),
             articulos: []

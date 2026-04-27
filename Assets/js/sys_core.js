@@ -380,6 +380,47 @@ const Sys_Core = {
             });
         },
 
+        downloadPdf: function(options) {
+            const { url, filename } = options;
+            const token = localStorage.getItem('mrp_token');
+            Sys_Core.UI.toggleLoader('.page-content', true);
+
+            fetch(url, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(async response => {
+                const contentType = response.headers.get('content-type');
+                
+                // Caso A: El servidor devolvió un error en formato JSON
+                if (contentType && contentType.includes('application/json')) {
+                    const errData = await response.json();
+                    throw new Error(errData.message || 'Error desconocido al generar PDF');
+                }
+
+                // Caso B: Todo bien, procesamos el binario
+                if (!response.ok) throw new Error('Error en la comunicación con el servidor');
+                return response.blob();
+            })
+            .then(blob => {
+                const urlBlob = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = urlBlob;
+                a.download = filename || 'Requisicion.pdf';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(urlBlob);
+                Sys_Core.UI.notify('PDF generado correctamente', 'success');
+            })
+            .catch(error => {
+                Sys_Core.UI.alert('Error de Impresión', error.message, 'error');
+            })
+            .finally(() => {
+                Sys_Core.UI.toggleLoader('.page-content', false);
+            });
+        },
+
         /**
          * Manejador global de errores AJAX. 
          * Diseñado para atrapar la estructura anidada de "ServiceResponse" y "FormRequest".

@@ -2,6 +2,7 @@
 namespace Controllers\Api\V1;
 
 use Services\RequisitionService;
+use Services\RequisitionPrintService;
 
 class RequisitionController
 {
@@ -9,11 +10,14 @@ class RequisitionController
 
     protected \RequisitionService $requisitionService;
 
+    protected readonly \RequisitionPrintService $requisitionPrintService;
+
     public array $request = [];
 
     public function __construct()
     {
         $this->requisitionService = new \RequisitionService;
+        $this->requisitionPrintService = new \RequisitionPrintService;
     }
     
     // GET /api/v1/requisitions
@@ -105,20 +109,32 @@ class RequisitionController
         return $this->apiResponse($serviceResponse);
     }
 
-    public function generatePdf(string $id)
+    /**
+     * Genera y descarga el PDF de la requisición.
+     * GET /api/v1/requisitions/{id}/pdf
+     */
+    public function generatePdf(int $id)
     {
-        $pdfContent = $this->requisitionService->generatePdf((int)$id, $this->request['auth_user']);
+        // 1. Llamamos al service pasándole el contexto del usuario (JWT)
+        $serviceResponse = $this->requisitionPrintService->generatePdf((int)$id, $this->request['auth_user']);
 
-        // Si el servicio devuelve false o lanza excepción, lo manejas.
-        // Si devuelve el contenido binario del PDF, lo escupes con los headers:
-        
-        ob_clean(); // Limpiar cualquier output previo
+        // 2. Si el Service falló (IDOR, 403, 404), devolvemos JSON estándar
+        if (!$serviceResponse) {
+            return $this->apiResponse($serviceResponse);
+        }
+
+        // 3. Si tuvo éxito, extraemos el binario y los headers
+        $pdfData = $serviceResponse->data;
+
+        // Limpiar buffers para evitar basura en el PDF
+        if (ob_get_length()) ob_end_clean();
+
         header('Content-Type: application/pdf');
-        header('Content-Disposition: attachment; filename="Requisicion_REQ-'.str_pad($id, 5, '0', STR_PAD_LEFT).'.pdf"');
-        header('Cache-Control: private, max-age=0, must-revalidate');
-        header('Pragma: public');
+        header('Content-Transfer-Encoding: binary');
+        header("Content-Disposition: attachment; filename=\"{$pdfData['filename']}\"");
+        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
         
-        echo $pdfContent;
+        echo $pdfData['content'];
         exit;
     }
 }

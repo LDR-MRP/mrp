@@ -40,7 +40,7 @@ class Com_requisicionModel extends Mysql
                 id_empresa,
                 usuarioid,
                 departamentoid,
-                id_centro_costo,
+                centro_costo,
                 titulo,
                 fecha_requerida,
                 prioridad,
@@ -64,7 +64,7 @@ class Com_requisicionModel extends Mysql
                 id_empresa,
                 usuarioid,
                 departamentoid,
-                id_centro_costo,
+                centro_costo,
                 titulo,
                 fecha_requerida,
                 prioridad,
@@ -89,7 +89,7 @@ class Com_requisicionModel extends Mysql
                 id_empresa,
                 usuarioid,
                 departamentoid,
-                id_centro_costo,
+                centro_costo,
                 titulo,
                 fecha_requerida,
                 prioridad,
@@ -416,6 +416,52 @@ class Com_requisicionModel extends Mysql
                   SET estatus = 'eliminada', deleted_at = NOW() 
                   WHERE idrequisicion = ?";
         return $this->update($query, [$requisicionId]);
+    }
+
+    /**
+     * Obtiene la data completa de una requisición para impresión.
+     * Resuelve nombres de usuarios, departamentos y descripción de artículos.
+     */
+    public function getRequisitionForPrint(int $id): ?array
+    {
+        $sql = "SELECT 
+                    r.idrequisicion,
+                    r.titulo,
+                    r.fecha_requerida,
+                    r.estatus,
+                    r.prioridad,
+                    r.justificacion,
+                    r.monto_estimado,
+                    r.created_at AS fecha,
+                    r.plantaid,
+                    r.usuarioid,
+                    r.departamentoid,
+                    r.centro_costo,
+                    CONCAT(u.nombres, ' ', u.apellidos) AS solicitante_nombre,
+                    d.nombre AS departamento_nombre
+                FROM com_requisiciones r
+                INNER JOIN usuarios u ON r.usuarioid = u.idusuario
+                INNER JOIN cli_departamentos d ON r.departamentoid = d.id
+                WHERE r.idrequisicion = ? AND r.deleted_at IS NULL";
+
+        $requisition = $this->select($sql, [$id]);
+        
+        if (!$requisition) return null;
+
+        // Consultar partidas con detalles de inventario
+        $sqlItems = "SELECT 
+                        d.cantidad,
+                        d.precio_unitario_estimado,
+                        d.notas,
+                        i.cve_articulo,
+                        i.descripcion
+                     FROM com_requisiciones_detalle d
+                     INNER JOIN wms_inventario i ON d.inventarioid = i.idinventario
+                     WHERE d.requisicionid = ? AND d.deleted_at IS NULL";
+        
+        $requisition['items'] = $this->select_all($sqlItems, [$id]);
+
+        return $requisition;
     }
 
     /**
