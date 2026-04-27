@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 enum RoleEnum: int
 {
-    case ADMINISTRADOR     = 18;
-    case GERENTE_COMPRAS   = 17;
-    case COMPRADOR         = 16;
-    case JEFE_DEPARTAMENTO = 14;
-    case SOLICITANTE       = 15;
+    case ADMINISTRADOR     = COMPRAS_ADMINISTRADOR;
+    case GERENTE_COMPRAS   = COMPRAS_GERENTE_COMPRAS;
+    case COMPRADOR         = COMPRAS_COMPRADOR;
+    case JEFE_DEPARTAMENTO = COMPRAS_JEFE_DEPARTAMENTO;
+    case SOLICITANTE       = COMPRAS_SOLICITANTE;
 
     /**
      * Define el alcance de visualización (Ojo)
