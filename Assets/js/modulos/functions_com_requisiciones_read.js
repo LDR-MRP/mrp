@@ -91,7 +91,7 @@ const RequisitionRead = {
         this.dom.$lblId.text(d.idrequisicion);
         this.dom.$lblTitulo.text(d.titulo || 'Sin título de referencia');
         this.dom.$lblSolicitante.text(d.solicitante || 'Usuario del Sistema');
-        this.dom.$lblDepto.text(d.departamento_descripcion || 'No asignado');
+        this.dom.$lblDepto.text(d.departamento || 'No asignado');
         this.dom.$lblFechaReq.text(Sys_Core.Format.toDate(d.fecha_requerida));
         this.dom.$lblCreacion.text(Sys_Core.Format.toDate(d.fecha));
         this.dom.$lblJustificacion.text(d.justificacion || 'Sin justificación proporcionada.');
@@ -106,29 +106,31 @@ const RequisitionRead = {
         this.dom.$tblPartidas.empty();
         if (d.items && d.items.length > 0) {
             d.items.forEach(item => {
-                // Si el backend nos manda cantidad_comprada (debería), lo mostramos
-                const qtySolicitada = parseFloat(item.cantidad);
-                const qtyComprada = parseFloat(item.cantidad_comprada || 0);
-                const pendiente = qtySolicitada - qtyComprada;
-                
-                const badgeColor = pendiente <= 0 ? 'success' : (qtyComprada > 0 ? 'warning' : 'secondary');
-                const badgeText = pendiente <= 0 ? 'Completado' : (qtyComprada > 0 ? `Faltan ${pendiente}` : 'Pendiente');
-
+                const progress = item.porcentaje_surtido;
+                const barColor = progress >= 100 ? 'bg-success' : (progress > 0 ? 'bg-warning' : 'bg-light');
                 const html = `
                     <tr>
-                        <td>
-                            <div class="fw-bold text-dark">${item.cve_articulo || 'N/A'}</div>
-                            <div class="small text-muted">${item.descripcion || 'Artículo'}</div>
+                        <td style="width: 40%;">
+                            <div class="fw-bold text-dark">${item.cve_articulo}</div>
+                            <div class="text-muted fs-11 text-truncate" style="max-width: 250px;">${item.descripcion}</div>
                         </td>
-                        <td class="text-center">
-                            <span class="fw-medium">${qtySolicitada.toString()}</span><br>
-                            <span class="badge bg-soft-${badgeColor} text-${badgeColor} fs-10">${badgeText}</span>
+                        <td class="text-center" style="width: 25%;">
+                            <div class="d-flex justify-content-between mb-1 fs-11">
+                                <span class="fw-medium">${item.qty_comprada} / ${item.cantidad}</span>
+                                <span class="text-muted">${progress}%</span>
+                            </div>
+                            <div class="progress" style="height: 6px; background-color: #f0f0f0;">
+                                <div class="progress-bar ${barColor}" role="progressbar" style="width: ${progress}%"></div>
+                            </div>
                         </td>
-                        <td class="text-end">${Sys_Core.Format.toCurrency(item.precio_unitario_estimado)}</td>
-                        <td class="text-end fw-bold text-primary">${Sys_Core.Format.toCurrency(item.subtotal)}</td>
-                        <td class="small text-muted">${item.notas || '-'}</td>
-                    </tr>
-                `;
+                        <td class="text-end" style="width: 20%;">
+                            <div class="fw-bold text-primary">${Sys_Core.Format.toCurrency(item.subtotal)}</div>
+                            <div class="text-muted fs-10">${Sys_Core.Format.toCurrency(item.precio_unitario_estimado)} c/u</div>
+                        </td>
+                        <td class="text-center" style="width: 15%;">
+                            ${item.notas ? `<i class="ri-information-line text-info cursor-pointer" title="${item.notas}"></i>` : '---'}
+                        </td>
+                    </tr>`;
                 this.dom.$tblPartidas.append(html);
             });
         } else {

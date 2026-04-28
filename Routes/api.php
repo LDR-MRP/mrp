@@ -45,4 +45,8 @@ Route::post('api/v1/purchase-orders', [PurchaseOrderController::class, 'store'])
 Route::get('api/v1/purchase-orders/{id}', [PurchaseOrderController::class, 'show'])->middleware([AuthMiddleware::class]);
 // Listado de Órdenes de Compra con filtros
 Route::get('api/v1/purchase-orders', [PurchaseOrderController::class, 'index'])->middleware([AuthMiddleware::class]);
+
+// --- WAREHOUSE ---
+
+// --- CURRENCY ---
 ?>

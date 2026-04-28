@@ -85,10 +85,25 @@ class RequisitionService
 
             // 4. Obtener las partidas
             $items = $this->requisicionModel->getRequisitionItems($requisitionId);
+            $balances = $this->requisicionModel->getRequisitionBalances($requisitionId);
 
-            // 5. Ensamblar la respuesta para el Frontend
-            // Anidamos las partidas dentro del objeto principal
-            $requisition['items'] = $items;
+            // Indexamos los saldos por ID de partida para acceso instantáneo
+            $balanceMap = array_column($balances, null, 'idrequisicionarticulo');
+
+            // Enriquecemos el objeto
+            $requisition['items'] = array_map(function($item) use ($balanceMap) {
+                $b = $balanceMap[$item['idrequisicionarticulo']] ?? null;
+                
+                $item['qty_comprada']  = (float)($b['cantidad_ya_comprada'] ?? 0);
+                $item['qty_pendiente'] = (float)($b['cantidad_pendiente'] ?? $item['cantidad']);
+                
+                // Calculamos el porcentaje de surtido (0 a 100)
+                $item['porcentaje_surtido'] = $item['cantidad'] > 0 
+                    ? round(($item['qty_comprada'] / $item['cantidad']) * 100, 2) 
+                    : 0;
+
+                return $item;
+            }, $items);
 
             return ServiceResponse::success(
                 $requisition,

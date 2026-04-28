@@ -57,10 +57,18 @@ class Com_requisicionModel extends Mysql
                 estatus,
                 monto_estimado,
                 justificacion,
-                created_at AS fecha
-            FROM {$this->table}
-            WHERE idrequisicion = ?
-            FOR UPDATE",
+                created_at AS fecha,
+                -- data usuarios
+                CONCAT(u.nombres,' ',u.apellidos) as solicitante,
+                -- data departamentos
+                d.nombre AS departamento,
+                d.descripcion AS departamento_descripcion
+            FROM {$this->table} r
+            INNER JOIN cli_departamentos d
+            ON d.id = r.departamentoid
+            INNER JOIN usuarios u
+            ON u.idusuario = r.usuarioid
+            WHERE r.idrequisicion = ?",
             [
                 $id
             ]
@@ -393,6 +401,50 @@ class Com_requisicionModel extends Mysql
         $result = $this->select_all($query, [$requisicionId]);
         
         return $result ?: [];
+    }
+
+    /**
+     * Retorna todas las partidas de la requisición con sus saldos calculados.
+     * Ideal para el renderizado de la UI (Dashboard de Requisición).
+     */
+    public function getRequisitionBalances(int $requisicionId): array
+    {
+        $query = "
+            SELECT 
+                rd.idrequisicionarticulo,
+                rd.inventarioid,
+                rd.notas,
+                rd.cantidad AS cantidad_solicitada,
+                rd.precio_unitario_estimado,
+                -- Detalles adicionales para no tener que hacer más joins en el service
+                i.cve_articulo,
+                i.descripcion,
+                i.unidad_salida,
+                
+                -- Cálculo de lo comprado (Excluyendo canceladas)
+                IFNULL(oc_comprado.total_comprado, 0) AS cantidad_ya_comprada,
+                
+                -- Saldo pendiente
+                (rd.cantidad - IFNULL(oc_comprado.total_comprado, 0)) AS cantidad_pendiente
+                
+            FROM com_requisiciones_detalle rd
+            INNER JOIN wms_inventario i ON rd.inventarioid = i.idinventario
+            LEFT JOIN (
+                SELECT 
+                    ocd.idrequisicionarticulo, 
+                    SUM(ocd.cantidad) AS total_comprado
+                FROM com_ordenes_compra_detalle ocd
+                INNER JOIN com_ordenes_compra oc ON ocd.compraid = oc.idcompra
+                WHERE oc.estatus != 'cancelada'
+                GROUP BY ocd.idrequisicionarticulo
+            ) AS oc_comprado ON rd.idrequisicionarticulo = oc_comprado.idrequisicionarticulo
+            
+            WHERE rd.requisicionid = ?
+            AND rd.deleted_at IS NULL;
+            -- Quitamos el HAVING para que en la UI veamos también lo que ya se completó.
+        ";
+
+        return $this->select_all($query, [$requisicionId]) ?: [];
     }
 
     /**

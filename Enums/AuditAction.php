@@ -11,6 +11,7 @@ enum AuditAction: string
     case RESTORED = 'restauracion';
     case CANCELED = 'cancelacion';
     case REJECTED = 'rechazo';
+    case FINALIZED = 'finalización';
     
     // Flujos de Aprobación ERP (State Machine)
     case APPROVED = 'aprobacion';

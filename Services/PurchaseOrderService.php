@@ -139,14 +139,41 @@ class PurchaseOrderService
             $totalOC = $subtotalOC + $ivaOC;
             $this->ordenCompraModel->updateTotals($ocId, $subtotalOC, $ivaOC, $totalOC);
 
-            // 6. MÁQUINA DE ESTADOS (US 3): Actualizar Requisición a 'en compra'
-            if ($requisition['estatus'] === 'aprobada') {
-                $this->requisicionModel->updateStatus($reqId, 'en compra', $userId);
-            }
+            // 6. MÁQUINA DE ESTADOS: Actualización dinámica
+            // Recalculamos los saldos pendientes DESPUÉS de haber insertado la OC actual
+            $finalPendingBalance = $this->requisicionModel->calculatePendingItems($reqId);
 
-            // Opcional: Si quieres ser ultra-senior, aquí podrías volver a llamar a calculatePendingItems($reqId).
-            // Si devuelve un array vacío, significa que esta OC satisfizo el 100% de la requisición, 
-            // y podrías cambiar el estatus de la requisición a 'finalizada'.
+            if (empty($finalPendingBalance)) {
+                /**
+                 * CASO A: Cumplimiento Total.
+                 * Esta OC (o la suma de esta con anteriores) ya cubrió el 100% de lo solicitado.
+                 */
+                $this->requisicionModel->updateStatus($reqId, 'finalizada', $userId);
+                
+                // Registramos en auditoría el cierre automático
+                $this->requisicionModel->logAudit(
+                    $reqId, 
+                    AuditAction::FINALIZED, 
+                    "Requisición finalizada automáticamente por cumplimiento total de partidas (OC #{$ocId}).", 
+                    $userId
+                );
+            } else {
+                /**
+                 * CASO B: Cumplimiento Parcial.
+                 * Aún quedan saldos pendientes, por lo que solo nos aseguramos de que pase
+                 * de 'aprobada' a 'en compra' si es la primera compra que se le hace.
+                 */
+                if ($requisition['estatus'] === 'aprobada') {
+                    $this->requisicionModel->updateStatus($reqId, 'en compra', $userId);
+                    
+                    $this->requisicionModel->logAudit(
+                        $reqId, 
+                        AuditAction::UPDATED, 
+                        "Estado cambiado a 'en compra' tras generación de OC #{$ocId} (Surtido Parcial).", 
+                        $userId
+                    );
+                }
+            }
 
             $this->db->commit();
 
