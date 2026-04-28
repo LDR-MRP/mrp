@@ -37,6 +37,8 @@ Route::delete('api/v1/requisitions/{id}', [RequisitionController::class, 'destro
 Route::get('api/v1/requisitions/{id}/pdf', [RequisitionController::class, 'generatePdf'])->middleware([AuthMiddleware::class]);
 // Obtener las partidas pendientes de compra de una requisición
 Route::get('api/v1/requisitions/{id}/pending-items', [RequisitionController::class, 'getPendingItems'])->middleware([AuthMiddleware::class]);
+
+// --- PURCHASE ORDERS ---
 // Crear Orden de Compra (a partir de una requisición)
 Route::post('api/v1/purchase-orders', [PurchaseOrderController::class, 'store'])->middleware([AuthMiddleware::class]);
 // Obtener detalle de una OC específica

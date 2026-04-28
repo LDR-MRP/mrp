@@ -38,6 +38,8 @@ const PurchaseOrderIndex = {
     },
 
     initDataTable: function () {
+        const token = localStorage.getItem('mrp_token');
+
         this.state.dataTable = this.dom.$table.DataTable({
             ajax: {
                 url: this.config.endpoint,
@@ -47,7 +49,12 @@ const PurchaseOrderIndex = {
                     const formData = this.dom.$filterForm.serializeArray();
                     formData.forEach(item => d[item.name] = item.value);
                 },
-                dataSrc: "data"
+                dataSrc: "data",
+                beforeSend: function (request) {
+                    if (token) {
+                        request.setRequestHeader("Authorization", `Bearer ${token}`);
+                    }
+                },
             },
             columns: [
                 { data: "idcompra", render: (d) => `<span class="fw-bold">#${d}</span>` },

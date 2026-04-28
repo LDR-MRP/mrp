@@ -9,6 +9,8 @@ class PurchaseOrderController {
 
     protected \PurchaseOrderService $purchaseOrderService;
 
+    public array $request = [];
+
     public function __construct() {
         $this->purchaseOrderService = new \PurchaseOrderService();
     }
@@ -17,10 +19,8 @@ class PurchaseOrderController {
      * POST /api/v1/purchase-orders
      */
     public function store() {
-        // TODO: Extraer del Middleware JWT cuando esté implementado
-        $authenticatedUserId = 1; 
 
-        $serviceResponse = $this->purchaseOrderService->store($authenticatedUserId);
+        $serviceResponse = $this->purchaseOrderService->store($this->request['auth_user']);
         
         return $this->apiResponse($serviceResponse);
     }
@@ -28,11 +28,9 @@ class PurchaseOrderController {
     /**
      * GET /api/v1/purchase-orders/{id}
      */
-    public function show($id) {
-        // TODO: Extraer del Middleware JWT cuando esté implementado
-        $authenticatedUserId = 1; 
-
-        $serviceResponse = $this->purchaseOrderService->getWithDetails($id, $authenticatedUserId);
+    public function show(int $id) {
+        
+        $serviceResponse = $this->purchaseOrderService->getWithDetails($id, $this->request['auth_user']);
         
         return $this->apiResponse($serviceResponse);
     }
@@ -47,7 +45,7 @@ class PurchaseOrderController {
             'fecha_hasta' => $_GET['fecha_hasta'] ?? null,
         ];
 
-        $res = $this->purchaseOrderService->index($filters);
+        $res = $this->purchaseOrderService->index($filters, $this->request);
         return $this->apiResponse($res);
     }
 }

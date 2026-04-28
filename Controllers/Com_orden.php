@@ -4,10 +4,6 @@ class Com_orden extends Controllers
 {
     use ApiResponser;
 
-    private $compraService;
-
-    private $requisitionService;
-
     public function __construct()
     {
         parent::__construct();
@@ -58,11 +54,6 @@ class Com_orden extends Controllers
 
             ]
         );
-    }
-
-    public function exportPDF(int $id)
-    {
-        return $this->compraService->generatePremiumOCPDF($id);
     }
 }
 ?>

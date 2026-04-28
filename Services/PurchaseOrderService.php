@@ -8,8 +8,8 @@ class PurchaseOrderService
     use \Loggable;
 
     protected Com_requisicionModel $requisicionModel;
-    protected $ordenCompraModel;
-    protected $db;
+    protected Com_ordenCompraModel $ordenCompraModel;
+    protected object $db;
 
     public function __construct()
     {
@@ -19,20 +19,37 @@ class PurchaseOrderService
         $this->db = $this->ordenCompraModel->getConexion();
     }
 
-    public function index(array $filters): \ServiceResponse {
+    public function index(array $filters, array $userContext): \ServiceResponse {
         try {
+            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+            $scope = $role?->getScope() ?? 'propio';
+
             $data = $this->ordenCompraModel->getAll($filters);
+
+            // Validación de Seguridad (IDOR de Lectura), APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
+            if (
+                !match($scope) {
+                'propio' => (int)$oc['created_by'] === (int)$userContext['id'],
+                'planta'  => (int)$oc['plantaid'] === (int)$userContext['plantaid'],
+                'total'  => true,
+                default  => false
+            }
+            ) {
+                return ServiceResponse::error("Security Error: No tienes permisos para ver esta requisición.", 403);
+            }
+
             return \ServiceResponse::success($data, "Listado de Órdenes de Compra recuperado.");
         } catch (\Exception $e) {
             return \ServiceResponse::error("Error al obtener el listado: " . $e->getMessage());
         }
     }
 
-    public function store(int $userId): \ServiceResponse
+    public function store(array $userContext): \ServiceResponse
     {
         $request = new StorePurchaseOrderRequest();
 
         try {
+            $userId = $userContext['id'];
             $request->validate();
             $payload = $request->all();
             $reqId = (int)$payload['requisicionid'];
@@ -154,10 +171,25 @@ class PurchaseOrderService
         }
     }
 
-    public function getWithDetails(int $ocId, int $userId): \ServiceResponse {
+    public function getWithDetails(int $ocId, array $userContext): \ServiceResponse {
         try {
+            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+            $scope = $role?->getScope() ?? 'propio';
+
             $oc = $this->ordenCompraModel->getById($ocId);
             if (!$oc) throw new \Exception("Orden de Compra no encontrada.", 404);
+
+            // Validación de Seguridad (IDOR de Lectura), APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
+            if (
+                !match($scope) {
+                'propio' => (int)$oc['created_by'] === (int)$userContext['id'],
+                'planta'  => (int)$oc['plantaid'] === (int)$userContext['plantaid'],
+                'total'  => true,
+                default  => false
+            }
+            ) {
+                return ServiceResponse::error("Security Error: No tienes permisos para ver esta requisición.", 403);
+            }
 
             $oc['items'] = $this->ordenCompraModel->getDetails($ocId);
             $oc['related_pos'] = $this->ordenCompraModel->getRelatedPOs((int)$oc['requisicionid'], $ocId);

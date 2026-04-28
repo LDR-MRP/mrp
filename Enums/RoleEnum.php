@@ -5,10 +5,11 @@ declare(strict_types=1);
 enum RoleEnum: int
 {
     case ADMINISTRADOR     = COMPRAS_ADMINISTRADOR;
-    case GERENTE_COMPRAS   = COMPRAS_GERENTE_COMPRAS;
+    case GERENTE           = COMPRAS_GERENTE;
     case COMPRADOR         = COMPRAS_COMPRADOR;
     case JEFE_DEPARTAMENTO = COMPRAS_JEFE_DEPARTAMENTO;
     case SOLICITANTE       = COMPRAS_SOLICITANTE;
+    case SYS_ADMIN         = RADMINISTRADOR;
 
     /**
      * Define el alcance de visualización (Ojo)
@@ -30,7 +31,8 @@ enum RoleEnum: int
     {
         return match($this) {
             self::JEFE_DEPARTAMENTO => 'L1', // Firma departamental
-            self::GERENTE_COMPRAS, 
+            self::GERENTE, 
+            self::SYS_ADMIN,
             self::ADMINISTRADOR     => 'L2', // Firma global/finanzas
             default                 => null, // Solicitantes y Compradores no firman
         };
@@ -42,8 +44,9 @@ enum RoleEnum: int
     public function canMutate(bool $isOwner, bool $isSameDept): bool
     {
         return match($this) {
+            self::SYS_ADMIN, 
             self::ADMINISTRADOR, 
-            self::GERENTE_COMPRAS   => true,
+            self::GERENTE   => true,
             self::JEFE_DEPARTAMENTO => $isSameDept,
             self::SOLICITANTE       => $isOwner,
             self::COMPRADOR         => false,
