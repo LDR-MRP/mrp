@@ -24,13 +24,13 @@ class PurchaseOrderService
             $role = RoleEnum::tryFrom((int)$userContext['rolid']);
             $scope = $role?->getScope() ?? 'propio';
 
-            $data = $this->ordenCompraModel->getAll($filters);
+            $po = $this->ordenCompraModel->getAll($filters);
 
             // Validación de Seguridad (IDOR de Lectura), APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
             if (
                 !match($scope) {
-                'propio' => (int)$oc['created_by'] === (int)$userContext['id'],
-                'planta'  => (int)$oc['plantaid'] === (int)$userContext['plantaid'],
+                'propio' => (int)$po['created_by'] === (int)$userContext['id'],
+                'planta'  => (int)$po['plantaid'] === (int)$userContext['plantaid'],
                 'total'  => true,
                 default  => false
             }
@@ -38,7 +38,7 @@ class PurchaseOrderService
                 return ServiceResponse::error("Security Error: No tienes permisos para ver esta requisición.", 403);
             }
 
-            return \ServiceResponse::success($data, "Listado de Órdenes de Compra recuperado.");
+            return \ServiceResponse::success($po, "Listado de Órdenes de Compra recuperado.");
         } catch (\Exception $e) {
             return \ServiceResponse::error("Error al obtener el listado: " . $e->getMessage());
         }

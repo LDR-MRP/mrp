@@ -45,7 +45,7 @@ class PurchaseOrderController {
             'fecha_hasta' => $_GET['fecha_hasta'] ?? null,
         ];
 
-        $res = $this->purchaseOrderService->index($filters, $this->request);
+        $res = $this->purchaseOrderService->index($filters, $this->request['auth_user']);
         return $this->apiResponse($res);
     }
 }

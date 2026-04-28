@@ -4,23 +4,9 @@ class Com_requisicionModel extends Mysql
 {
     use Auditable;
 
-    protected $table = 'com_requisiciones';
+    protected string $table = 'com_requisiciones';
 
-    protected $detailTable = 'com_requisiciones_detalle';
-
-    public const ESTATUS_BORRADOR = "borrador";
-
-    public const ESTATUS_PENDIENTE = "pendiente";
-
-    public const ESTATUS_APROBADA = "aprobada";
-
-    public const ESTATUS_RECHAZADA = "rechazada";
-
-    public const ESTATUS_CANCELADA = "cancelada";
-
-    public const ESTATUS_ELIMINADA = "eliminada";
-
-    public const ESTATUS_EN_COMPRA = "en compra";
+    protected string $detailTable = 'com_requisiciones_detalle';
 
     public function __construct()
     {
@@ -81,10 +67,37 @@ class Com_requisicionModel extends Mysql
         );
     }
 
-    public function getAllRequisitions(): array|bool
+    public function getAllRequisitions(array $filters = []): array|bool
     {
-        return $this->select_all(
-            "SELECT
+        $where = " WHERE TRUE ";
+        $params = [];
+
+        // Filtro por Usuario
+        if (!empty($filters['usuarioid'])) {
+            $where .= " AND r.usuarioid = ? ";
+            $params[] = $filters['usuarioid'];
+        }
+
+        // Filtro por Planta
+        if (array_key_exists('plantaid', $filters)) {
+            $where .= " AND r.plantaid = ? ";
+            $params[] = $filters['plantaid'];
+        }
+
+        // Filtro por Estatus
+        if (!empty($filters['estatus'])) {
+            $where .= " AND r.estatus = ? ";
+            $params[] = $filters['estatus'];
+        }
+
+        // Filtro por Rango de Fechas
+        if (!empty($filters['fecha_desde']) && !empty($filters['fecha_hasta'])) {
+            $where .= " AND r.created_at BETWEEN ? AND ? ";
+            $params[] = $filters['fecha_desde'] . " 00:00:00";
+            $params[] = $filters['fecha_hasta'] . " 23:59:59";
+        }
+
+        $query = "SELECT
                 idrequisicion,
                 id_empresa,
                 usuarioid,
@@ -110,8 +123,11 @@ class Com_requisicionModel extends Mysql
                 ON u_modifier.idusuario = r.modified_by
             LEFT JOIN cli_departamentos AS d
                 ON d.id = r.departamentoid
-            "
-        );
+            $where
+            ORDER BY r.idrequisicion DESC
+            ";
+
+        return $this->select_all($query, $params);
     }
 
     /**
@@ -382,18 +398,37 @@ class Com_requisicionModel extends Mysql
     /**
      * 
      */
-    public function getKpi()
+    public function getKpi(array $filters)
     {
-        return $this->select_all(
-            "SELECT 
+        $where = " WHERE (
+            (estatus != 'finalizada')
+            OR
+            (estatus = 'finalizada' AND MONTH(fecha_requerida) = MONTH(current_date) AND YEAR(fecha_requerida) = YEAR(current_date))
+        )    
+        ";
+        $params = [];
+
+        // Filtro por Usuario
+        if (!empty($filters['usuarioid'])) {
+            $where .= " AND usuarioid = ? ";
+            $params[] = $filters['usuarioid'];
+        }
+
+        // Filtro por Planta
+        if (array_key_exists('plantaid', $filters)) {
+            $where .= " AND plantaid = ? ";
+            $params[] = $filters['plantaid'];
+        }
+
+        $query = "SELECT 
                 estatus,
                 count(idrequisicion) as cantidad
             FROM com_requisiciones
-            WHERE (estatus != 'finalizada')
-            or (estatus = 'finalizada' AND MONTH(fecha_requerida) = MONTH(current_date) AND YEAR(fecha_requerida) = YEAR(current_date))
+            $where
             GROUP BY estatus;
-            "
-        );
+            ";
+
+        return $this->select_all($query, $params);
     }
 
     /**

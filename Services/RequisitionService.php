@@ -20,7 +20,7 @@ class RequisitionService
 
     protected Inv_inventarioModel $inventarioModel;
 
-    protected $db;
+    protected object $db;
 
     public function __construct()
     {
@@ -28,9 +28,24 @@ class RequisitionService
         $this->db = $this->requisicionModel->getConexion();
     }
 
-    public function index(): ServiceResponse
+    public function index(array $filters, array $userContext): ServiceResponse
     {
-        return ServiceResponse::success($this->requisicionModel->getAllRequisitions());
+        $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+        $scope = $role?->getScope() ?? 'propio';
+
+        // APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
+        $scopeFilters = match($scope) {
+            'propio' => ['usuarioid' => (int)$userContext['id']],
+            'planta'  => ['plantaid' => (int)$userContext['plantaid']],
+            'total'  => true,
+            default  => false
+        };
+
+        if(!empty($scopeFilters) && is_array($scopeFilters)) {
+            $filters += $scopeFilters;
+        }
+
+        return ServiceResponse::success($this->requisicionModel->getAllRequisitions($filters));
     }
 
     /**
@@ -784,8 +799,24 @@ class RequisitionService
      */
     public function getKpis(array $userContext): ServiceResponse
     {
+        $filters = [];
+        $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+        $scope = $role?->getScope() ?? 'propio';
+
+        // APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
+        $scopeFilters = match($scope) {
+            'propio' => ['usuarioid' => (int)$userContext['id']],
+            'planta'  => ['plantaid' => (int)$userContext['plantaid']],
+            'total'  => true,
+            default  => false
+        };
+
+        if(!empty($scopeFilters) && is_array($scopeFilters)) {
+            $filters = $scopeFilters;
+        }
+        
         return ServiceResponse::success(
-            $this->requisicionModel->getKpi(),
+            $this->requisicionModel->getKpi($filters),
             'Datos obtenidos correctamente.',
             200
         );

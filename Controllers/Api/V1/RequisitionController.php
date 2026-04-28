@@ -23,7 +23,14 @@ class RequisitionController
     // GET /api/v1/requisitions
     public function index()
     {
-        return $this->apiResponse($this->requisitionService->index());
+        // Capturamos los filtros de la URL (Query Params)
+        $filters = [
+            'estatus'     => $_GET['estatus'] ?? null,
+            'fecha_desde' => $_GET['fecha_desde'] ?? null,
+            'fecha_hasta' => $_GET['fecha_hasta'] ?? null,
+        ];
+
+        return $this->apiResponse($this->requisitionService->index($filters, $this->request['auth_user']));
     }
 
     // GET /api/v1/requisitions/{id}
