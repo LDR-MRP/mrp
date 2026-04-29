@@ -92,7 +92,7 @@
                 </div>
 
                 <div class="row mb-4">
-                    <div class="col-xl-4 col-md-6">
+                    <div class="col-xl-3 col-md-6">
                         <div class="card card-animate border-0 shadow-sm border-start border-warning border-3" style="border-radius: 10px;">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
@@ -115,7 +115,30 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-4 col-md-6">
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card card-animate border-0 shadow-sm border-start border-success border-3" style="border-radius: 10px;">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-0 fs-12 ls-1">Listas para Compra</p>
+                                    </div>
+                                    <div class="flex-shrink-0">
+                                        <h5 class="text-success fs-14 mb-0">
+                                            <i class="ri-check-line fs-22 align-middle"></i>
+                                        </h5>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-end justify-content-between mt-3">
+                                    <div>
+                                        <h4 class="fs-24 fw-bold text-dark mb-2"><span class="counter-value" id="kpi-aprobadas">0</span></h4>
+                                        <span class="badge bg-soft-success text-success fw-medium mb-0 px-2 py-1">Aprobadas</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6">
                         <div class="card card-animate border-0 shadow-sm border-start border-info border-3" style="border-radius: 10px;">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
@@ -124,29 +147,29 @@
                                     </div>
                                     <div class="flex-shrink-0">
                                         <h5 class="text-info fs-14 mb-0">
-                                            <i class="ri-shopping-cart-2-line fs-22 align-middle"></i>
+                                            <i class="ri-shopping-cart-fill fs-22 align-middle"></i>
                                         </h5>
                                     </div>
                                 </div>
                                 <div class="d-flex align-items-end justify-content-between mt-3">
                                     <div>
-                                        <h4 class="fs-24 fw-bold text-dark mb-2"><span class="counter-value" id="kpi-aprobadas">0</span></h4>
-                                        <span class="badge bg-soft-info text-info fw-medium mb-0 px-2 py-1">Aprobadas</span>
+                                        <h4 class="fs-24 fw-bold text-dark mb-2"><span class="counter-value" id="kpi-en-compra">0</span></h4>
+                                        <span class="badge bg-soft-info text-info fw-medium mb-0 px-2 py-1">En Cumplimiento Parcial</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-xl-4 col-md-6">
-                        <div class="card card-animate border-0 shadow-sm border-start border-success border-3" style="border-radius: 10px;">
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card card-animate border-0 shadow-sm border-start border-dark border-3" style="border-radius: 10px;">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
                                         <p class="text-uppercase fw-bold text-muted text-truncate mb-0 fs-12 ls-1">Finalizadas este Mes</p>
                                     </div>
                                     <div class="flex-shrink-0">
-                                        <h5 class="text-success fs-14 mb-0">
+                                        <h5 class="text-dark fs-14 mb-0">
                                             <i class="ri-check-double-line fs-22 align-middle"></i>
                                         </h5>
                                     </div>
@@ -154,7 +177,7 @@
                                 <div class="d-flex align-items-end justify-content-between mt-3">
                                     <div>
                                         <h4 class="fs-24 fw-bold text-dark mb-2"><span class="counter-value" id="kpi-finalizadas">0</span></h4>
-                                        <span class="badge bg-soft-success text-success fw-medium mb-0 px-2 py-1">Cerradas</span>
+                                        <span class="badge bg-soft-dark text-dark fw-medium mb-0 px-2 py-1">Cerradas</span>
                                     </div>
                                 </div>
                             </div>

@@ -255,7 +255,8 @@ const RequisitionIndex = {
         const requisicionesMap = {
             'pendiente': 'kpi-pendientes',
             'aprobada':  'kpi-aprobadas',
-            'finalizada':'kpi-finalizadas'
+            'finalizada':'kpi-finalizadas',
+            'en compra':'kpi-en-compra'
         };
 
         Sys_Core.UI.Dashboard.refreshKPIs(this.config.endpoints.kpis, requisicionesMap, true);

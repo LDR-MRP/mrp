@@ -237,30 +237,39 @@ class RequisitionService
         try {
             $request->validate();
             $payload = $request->all();
-
             $this->db->beginTransaction();
-
-            // 1. VALIDACIONES DE SEGURIDAD Y COMPLIANCE
             $existingReq = $this->requisicionModel->getRequisition($requisitionId);
             
             if (!$existingReq) {
                 throw new \Exception("La requisición #{$requisitionId} no existe.", 404);
-            }
-            
+            }            
             // IMPORTANTE: Solo se puede editar si está en borrador. 
             // Si ya fue enviada a aprobación, está bloqueada.
             if ($existingReq['estatus'] !== 'borrador') {
                 throw new \Exception("Compliance Error: No se puede editar una requisición que ya no es un borrador.", 403);
             }
-            if ($existingReq['usuarioid'] !== $userContext['id']) {
-                throw new \Exception("Security Error: No tienes permisos para editar esta requisición.", 403);
+
+            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+            $scope = $role?->getScope() ?? 'propio';
+            
+            // Aplicación de la matriz de visibilidad
+            $isAllowed = match($scope) {
+                'propio' => (int)$existingReq['usuarioid'] === (int)$userContext['id'],
+                'planta'  => (int)$existingReq['plantaid'] === (int)$userContext['plantaid'],
+                'total'  => true,
+                default  => false
+            };
+
+            // Validación de Seguridad
+            if (!$isAllowed) {
+                return ServiceResponse::error("Security Error: No tienes permisos para editar esta requisición.", 403);
             }
 
-            // 2. DETERMINAR EL NUEVO ESTATUS FINAL
+            // Determinar el nuevo estatus final
             $isSubmit = ($payload['action'] === 'submit_approval');
             $estatusFinal = $isSubmit ? 'pendiente' : 'borrador';
 
-            // 3. ACTUALIZAR CABECERA
+            // Actualizar cabecera
             $headerData = [
                 'estatus'         => $estatusFinal,
                 'titulo'          => $payload['titulo'],
@@ -272,7 +281,7 @@ class RequisitionService
 
             $headerUpdated = $this->requisicionModel->updateHeader($requisitionId, $headerData);
 
-            // 4. PROCESAR PARTIDAS (UPSERT Lógico)
+            // Procesar partidas (UPSERT Lógico)
             if (!empty($payload['articulos'])) {
                 
                 // Recolectamos los IDs que nos mandó el Frontend para saber cuáles NO borrar
@@ -308,10 +317,10 @@ class RequisitionService
                 $this->requisicionModel->deleteAllItems($requisitionId);
             }
 
-            // 5. RECALCULAR MONTO ESTIMADO
+            // Recalcular monto estimado
             $this->requisicionModel->updateEstimatedAmount($requisitionId);
 
-            // 6. LOG DE AUDITORÍA
+            // Log de auditoría
             $auditMsg = $isSubmit ? 'Editada y enviada a aprobación.' : 'Borrador actualizado.';
             $this->requisicionModel->logAudit($requisitionId, AuditAction::UPDATED, $auditMsg, $userContext['id']);
 

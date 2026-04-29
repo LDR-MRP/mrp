@@ -30,6 +30,7 @@ Route::post('api/v1/requisitions/{id}/submit', [RequisitionController::class, 's
 // Rutas de cambio de estado (Máquina de Estados)
 Route::post('api/v1/requisitions/{id}/approve', [RequisitionController::class, 'approve'])->middleware([AuthMiddleware::class]);
 Route::post('api/v1/requisitions/{id}/reject', [RequisitionController::class, 'reject'])->middleware([AuthMiddleware::class]);
+Route::post('api/v1/requisitions/{id}/cancel', [RequisitionController::class, 'reject'])->middleware([AuthMiddleware::class]);
 Route::post('api/v1/requisitions/{id}/return-to-draft', [RequisitionController::class, 'returnToDraft'])->middleware([AuthMiddleware::class]);
 // Ruta de eliminación
 Route::delete('api/v1/requisitions/{id}', [RequisitionController::class, 'destroy'])->middleware([AuthMiddleware::class]);
