@@ -114,7 +114,7 @@ const PurchaseOrderRead = {
     },
 
     renderActions: function (status) {
-        let html = `<button class="btn btn-light" data-redirect="com_requisicion"><i class="ri-arrow-left-line"></i> Volver</button>`;
+        let html = `<button class="btn btn-light" data-redirect="com_compra"><i class="ri-arrow-left-line"></i> Volver</button>`;
         html += `<button class="btn btn-outline-danger"><i class="ri-file-pdf-line"></i> PDF</button>`;
 
         if (status === 'emitida') {
