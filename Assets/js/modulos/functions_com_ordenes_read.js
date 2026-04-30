@@ -50,28 +50,54 @@ const PurchaseOrderRead = {
         });
     },
 
+    /**
+     * Maneja el cambio de estado solicitando un comentario (Consistencia con Index)
+     */
     handleStatusChange: function (action) {
         const config = {
-            transit: { title: '¿Confirmar Tránsito?', text: 'Marcar como enviada.', url: 'transit' },
-            cancel: { title: '¿Anular Orden?', text: 'Esta acción liberará los saldos de la requisición.', url: 'cancel' }
+            transit: { 
+                title: '¿Confirmar Tránsito?', 
+                text: 'Marcar como enviada por el proveedor.', 
+                url: 'transit', 
+                icon: 'info',
+                placeholder: 'Ej: Guía de rastreo o confirmación telefónica...'
+            },
+            cancel: { 
+                title: '¿Anular Orden de Compra?', 
+                text: 'Esta acción es irreversible y liberará los saldos.', 
+                url: 'cancel', 
+                icon: 'warning',
+                placeholder: 'Indique obligatoriamente el motivo de la anulación...'
+            }
         };
 
-        const activeAction = config[action];
-        if (!activeAction) return;
+        const color = action === 'transit' ? '#ffbc0a' : '#dc3545';
 
-        Sys_Core.UI.confirm({
-            title: activeAction.title,
-            text: activeAction.text,
-            confirmText: 'Sí, proceder'
+        const active = config[action];
+        if (!active) return;
+
+        // Usamos Swal directamente para aprovechar el campo 'input'
+        Swal.fire({
+            title: active.title,
+            text: active.text,
+            input: 'textarea', // <--- Inyectamos el campo de texto en el modal
+            icon: active.icon,
+            inputPlaceholder: active.placeholder,            
+            showCancelButton: true,
+            confirmButtonColor: color,
+            confirmButtonText: 'Confirmar',
+            cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
-                // Disparamos el POST al endpoint correspondiente
+                const comentario = result.value;
+
                 Sys_Core.Net.post({
-                    url: `${this.config.apiBase}/${this.state.id}/${activeAction.url}`,
-                    payload: { comentario: 'Acción ejecutada desde el expediente digital.' },
+                    url: `${this.config.apiBase}/${this.state.id}/${active.url}`,
+                    payload: { comentario: comentario },
                     $btn: $(`.action-btn[data-action="${action}"]`),
                     onDone: (res) => {
-                        this.loadData(); // Refrescar UI (los botones cambiarán según el nuevo estado)
+                        Sys_Core.UI.notify(res.message, 'success');
+                        this.loadData(); // Refrescar UI
                     }
                 });
             }

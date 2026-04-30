@@ -234,6 +234,7 @@ const RequisitionRead = {
             text: "Ingrese un comentario obligatorio para esta acción:",
             input: 'textarea',
             icon: 'warning',
+            
             showCancelButton: true,
             confirmButtonColor: color,
             cancelButtonColor: '#6c757d',
