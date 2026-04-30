@@ -150,9 +150,9 @@ const PurchaseOrderRead = {
     renderStatus: function (status) {
         const clases = { 
             'emitida': 'text-bg-primary', 
-            'en_transito': 'bg-soft-warning text-warning',
-            'cerrada': 'bg-soft-success text-success',
-            'cancelada': 'bg-soft-danger text-danger'
+            'en_transito': 'text-bg-warning',
+            'cerrada': 'text-bg-success',
+            'cancelada': 'text-bg-danger'
         };
         this.dom.$lblEstatus.removeClass().addClass(`badge ${clases[status] || 'bg-secondary'} ms-3 text-capitalize`).text(status);
     },
