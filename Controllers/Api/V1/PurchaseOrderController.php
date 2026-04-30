@@ -1,18 +1,19 @@
 <?php
 namespace Controllers\Api\V1;
 
-use Services\PurchaseOrderService;
-
 class PurchaseOrderController {
     
     use \ApiResponser; // Asumiendo que usas este trait para las respuestas
 
     protected \PurchaseOrderService $purchaseOrderService;
 
+    protected \PurchaseOrderPrintService $purchaseOrderPrintService;
+
     public array $request = [];
 
     public function __construct() {
         $this->purchaseOrderService = new \PurchaseOrderService();
+        $this->purchaseOrderPrintService = new \PurchaseOrderPrintService();
     }
 
     /**
@@ -47,6 +48,35 @@ class PurchaseOrderController {
 
         $res = $this->purchaseOrderService->index($filters, $this->request['auth_user']);
         return $this->apiResponse($res);
+    }
+
+    /**
+     * Genera y descarga el PDF de la requisición.
+     * GET /api/v1/requisitions/{id}/pdf
+     */
+    public function generatePdf(int $id)
+    {
+        // 1. Llamamos al service pasándole el contexto del usuario (JWT)
+        $serviceResponse = $this->purchaseOrderPrintService->generatePdf((int)$id, $this->request['auth_user']);
+
+        // 2. Si el Service falló (IDOR, 403, 404), devolvemos JSON estándar
+        if (!$serviceResponse) {
+            return $this->apiResponse($serviceResponse);
+        }
+
+        // 3. Si tuvo éxito, extraemos el binario y los headers
+        $pdfData = $serviceResponse->data;
+
+        // Limpiar buffers para evitar basura en el PDF
+        if (ob_get_length()) ob_end_clean();
+
+        header('Content-Type: application/pdf');
+        header('Content-Transfer-Encoding: binary');
+        header("Content-Disposition: attachment; filename=\"{$pdfData['filename']}\"");
+        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+        
+        echo $pdfData['content'];
+        exit;
     }
 }
 ?>

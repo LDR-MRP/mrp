@@ -48,6 +48,8 @@ Route::post('api/v1/purchase-orders', [PurchaseOrderController::class, 'store'])
 Route::get('api/v1/purchase-orders/{id}', [PurchaseOrderController::class, 'show'])->middleware([AuthMiddleware::class]);
 // Listado de Órdenes de Compra con filtros
 Route::get('api/v1/purchase-orders', [PurchaseOrderController::class, 'index'])->middleware([AuthMiddleware::class]);
+// Ruta de PDF
+Route::get('api/v1/purchase-orders/{id}/pdf', [PurchaseOrderController::class, 'generatePdf'])->middleware([AuthMiddleware::class]);
 
 // --- WAREHOUSE ---
 Route::get('api/v1/warehouses', [WarehouseController::class, 'index'])->middleware([AuthMiddleware::class]);

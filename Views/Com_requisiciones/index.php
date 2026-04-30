@@ -3,59 +3,11 @@
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
-            <style>
-                .badge-draft {
-                    background: #f1f5f9;
-                    color: #475569;
-                }
 
-                .badge-review {
-                    background: #e0f2fe;
-                    color: #0369a1;
-                }
-
-                .badge-observed {
-                    background: #fffbeb;
-                    color: #b45309;
-                }
-
-                .badge-approved {
-                    background: #f0fdf4;
-                    color: #15803d;
-                }
-
-                .badge-rejected {
-                    background: #fef2f2;
-                    color: #b91c1c;
-                }
-
-                .badge-purchasing {
-                    background: #f5f3ff;
-                    color: #6d28d9;
-                }
-
-                .badge-closed {
-                    background: #f8fafc;
-                    color: #1e293b;
-                    border: 1px solid #e2e8f0;
-                }
-
-                :root {
-                    --primary: #0056b3;
-                    --success: #28a745;
-                    --warning: #ffc107;
-                    --danger: #dc3545;
-                }
-
-                body {
-                    background-color: #f4f7f6;
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                }
-            </style>
             <section id="view-index-general">
                 <div class="row align-items-center mb-4">
                     <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-white">
+                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2">
                             <div class="page-title-right">
                                 <ol class="breadcrumb m-0">
                                     <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
@@ -70,12 +22,12 @@
                     <div class="col-md-7">
                         <div class="d-flex align-items-center">
                             <div class="avatar-md me-4">
-                                <span class="avatar-title bg-white text-primary rounded-circle fs-2 shadow-lg border border-light">
+                                <span class="avatar-title text-white rounded-circle fs-2 shadow-lg border border-light">
                                     <i class="ri-file-list-3-line"></i>
                                 </span>
                             </div>
                             <div>
-                                <h3 class="mb-1 text-dark fw-bold text-uppercase ls-1">Bandeja de Requisiciones</h3>
+                                <h3 class="mb-1 fw-bold text-uppercase ls-1">Bandeja de Requisiciones</h3>
                                 <p class="text-muted mb-0 fs-14">
                                     Gestión centralizada y seguimiento de solicitudes internas.
                                 </p>
@@ -107,7 +59,7 @@
                                 </div>
                                 <div class="d-flex align-items-end justify-content-between mt-3">
                                     <div>
-                                        <h4 class="fs-24 fw-bold text-dark mb-2"><span class="counter-value" id="kpi-pendientes">0</span></h4>
+                                        <h4 class="fs-24 fw-bold mb-2"><span class="counter-value" id="kpi-pendientes">0</span></h4>
                                         <span class="badge bg-soft-warning text-warning fw-medium mb-0 px-2 py-1">Requieren firma</span>
                                     </div>
                                 </div>
@@ -130,7 +82,7 @@
                                 </div>
                                 <div class="d-flex align-items-end justify-content-between mt-3">
                                     <div>
-                                        <h4 class="fs-24 fw-bold text-dark mb-2"><span class="counter-value" id="kpi-aprobadas">0</span></h4>
+                                        <h4 class="fs-24 fw-bold mb-2"><span class="counter-value" id="kpi-aprobadas">0</span></h4>
                                         <span class="badge bg-soft-success text-success fw-medium mb-0 px-2 py-1">Aprobadas</span>
                                     </div>
                                 </div>
@@ -153,7 +105,7 @@
                                 </div>
                                 <div class="d-flex align-items-end justify-content-between mt-3">
                                     <div>
-                                        <h4 class="fs-24 fw-bold text-dark mb-2"><span class="counter-value" id="kpi-en-compra">0</span></h4>
+                                        <h4 class="fs-24 fw-bold mb-2"><span class="counter-value" id="kpi-en-compra">0</span></h4>
                                         <span class="badge bg-soft-info text-info fw-medium mb-0 px-2 py-1">En Cumplimiento Parcial</span>
                                     </div>
                                 </div>
@@ -162,22 +114,22 @@
                     </div>
 
                     <div class="col-xl-3 col-md-6">
-                        <div class="card card-animate border-0 shadow-sm border-start border-dark border-3" style="border-radius: 10px;">
+                        <div class="card card-animate border-0 shadow-sm border-start border-secondary border-3" style="border-radius: 10px;">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
                                         <p class="text-uppercase fw-bold text-muted text-truncate mb-0 fs-12 ls-1">Finalizadas este Mes</p>
                                     </div>
                                     <div class="flex-shrink-0">
-                                        <h5 class="text-dark fs-14 mb-0">
+                                        <h5 class="fs-14 mb-0">
                                             <i class="ri-check-double-line fs-22 align-middle"></i>
                                         </h5>
                                     </div>
                                 </div>
                                 <div class="d-flex align-items-end justify-content-between mt-3">
                                     <div>
-                                        <h4 class="fs-24 fw-bold text-dark mb-2"><span class="counter-value" id="kpi-finalizadas">0</span></h4>
-                                        <span class="badge bg-soft-dark text-dark fw-medium mb-0 px-2 py-1">Cerradas</span>
+                                        <h4 class="fs-24 fw-bold mb-2"><span class="counter-value" id="kpi-finalizadas">0</span></h4>
+                                        <span class="badge bg-soft-secondary fw-medium mb-0 px-2 py-1">Cerradas</span>
                                     </div>
                                 </div>
                             </div>
@@ -212,7 +164,7 @@
                         </div>
                     </div>
 
-                    <div class="card-footer bg-white border-top-0 py-4">
+                    <div class="card-footer border-top-0 py-4">
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-muted fw-medium">
                                 <i class="ri-shield-check-line text-success me-1"></i> Datos sincronizados en tiempo real

@@ -98,6 +98,7 @@ class PurchaseOrderService
                 $idReqArticulo = (int)$item['idrequisicionarticulo'];
                 $cantidadAComprar = (float)$item['cantidad'];
                 $costoUnitario = (float)$item['costo_unitario'];
+                $pct = (float)$item['porcentaje_descuento'];
 
                 // A) Verificar que la partida exista en los saldos pendientes
                 if (!isset($saldosPendientes[$idReqArticulo])) {
@@ -123,6 +124,7 @@ class PurchaseOrderService
                     'inventarioid'          => $item['inventarioid'],
                     'cantidad'              => $cantidadAComprar,
                     'costo_unitario'        => $costoUnitario,
+                    'porcentaje_descuento'  => $pct,
                     'descuento_partida'     => $descuento,
                     'impuesto_partida'      => $impuestoPartida,
                     'subtotal_partida'      => $subtotalPartida

@@ -111,7 +111,7 @@ const RequisitionRead = {
                 const html = `
                     <tr>
                         <td style="width: 40%;">
-                            <div class="fw-bold text-dark">${item.cve_articulo}</div>
+                            <div class="fw-bold">${item.cve_articulo}</div>
                             <div class="text-muted fs-11 text-truncate" style="max-width: 250px;">${item.descripcion}</div>
                         </td>
                         <td class="text-center" style="width: 25%;">
@@ -159,7 +159,7 @@ const RequisitionRead = {
                                 <div class="fw-bold text-primary">OC #${po.idcompra}</div>
                                 <small class="text-muted">${Sys_Core.Format.toDate(po.created_at)}</small>
                             </div>
-                            <span class="badge bg-light text-dark">${po.estatus.toUpperCase()}</span>
+                            <span class="badge bg-light">${po.estatus.toUpperCase()}</span>
                         </div>
                     </a>
                 `);
@@ -170,12 +170,17 @@ const RequisitionRead = {
     getStatusBadge: function (status) {
         const strStatus = status ? status.toLowerCase() : '';
         const clases = {
-            'borrador': 'badge-draft', 'pendiente': 'badge-review', 'aprobada': 'badge-approved',
-            'rechazada': 'badge-rejected', 'en compra': 'badge-purchasing',
-            'finalizada': 'bg-secondary', 'cancelada': 'bg-secondary', 'eliminada': 'bg-danger'
+            'borrador': 'badge text-bg-light',
+            'pendiente': 'badge text-bg-warning',
+            'aprobada': 'badge text-bg-success',
+            'rechazada': 'badge text-bg-danger',
+            'en compra': 'badge text-bg-info',
+            'finalizada': 'badge text-bg-secondary',
+            'cancelada': 'badge text-bg-danger',
+            'eliminada': 'badge text-bg-danger'
         };
         const badgeClass = clases[strStatus] || 'bg-secondary';
-        return `<span id="lbl-estatus" class="badge ${badgeClass} px-3 py-2 text-capitalize fs-13 shadow-sm">${status}</span>`;
+        return `<span id="lbl-estatus" class="badge ${badgeClass} px-3 py-2 text-capitalize fs-13 shadow-sm ms-3">${status}</span>`;
     },
 
     renderContextualActions: function (status) {
@@ -187,18 +192,18 @@ const RequisitionRead = {
         let html = `<button type="button" class="btn btn-light" data-redirect="com_requisicion"><i class="ri-arrow-left-line"></i> Volver</button>`;
 
         // Botón PDF
-        html += `<button type="button" class="btn btn-outline-danger ms-2" id="btn-export-pdf"><i class="ri-file-pdf-2-line"></i> Exportar PDF</button>`;
+        html += `<button type="button" class="btn btn-outline-danger" id="btn-export-pdf"><i class="ri-file-pdf-line"></i> PDF</button>`;
 
         switch (strStatus) {
             case 'borrador':
                 if (canUpdate) {
-                    html += `<button type="button" class="btn btn-primary ms-2" data-redirect="com_requisicion/create/${this.state.id}"><i class="ri-pencil-line"></i> Editar Borrador</button>`;
+                    html += `<button type="button" class="btn btn-primary" data-redirect="com_requisicion/create/${this.state.id}"><i class="ri-pencil-line"></i> Editar Borrador</button>`;
                 }
                 break;
             case 'pendiente':
                 if (canApprove) {
-                    html += `<button type="button" class="btn btn-danger ms-2 action-btn" data-accion="reject"><i class="ri-close-circle-line"></i> Rechazar</button>`;
-                    html += `<button type="button" class="btn btn-success ms-2 action-btn" data-accion="approve"><i class="ri-check-line"></i> Aprobar Solicitud</button>`;
+                    html += `<button type="button" class="btn btn-danger action-btn" data-accion="reject"><i class="ri-close-circle-line"></i> Rechazar</button>`;
+                    html += `<button type="button" class="btn btn-success action-btn" data-accion="approve"><i class="ri-check-line"></i> Aprobar Solicitud</button>`;
                 }
                 break;
             case 'aprobada':
@@ -206,7 +211,7 @@ const RequisitionRead = {
                 // ¡LÓGICA DE COMPRAS!: Si está aprobada o en proceso, permitir generar/continuar la OC
                 if (canApprove) {
                     const btnLabel = (strStatus === 'aprobada') ? 'Generar Orden de Compra' : 'Continuar con Compra';
-                    html += `<button type="button" class="btn btn-primary ms-2 shadow-sm" data-redirect="com_orden/create?req_id=${this.state.id}">
+                    html += `<button type="button" class="btn btn-primary shadow-sm" data-redirect="com_orden/create?req_id=${this.state.id}">
                                 <i class="ri-shopping-cart-2-line align-middle me-1"></i> ${btnLabel}
                              </button>`;
                 }

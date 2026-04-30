@@ -90,12 +90,12 @@ const PurchaseOrderRead = {
 
     renderStatus: function (status) {
         const clases = { 
-            'emitida': 'bg-soft-primary text-primary', 
+            'emitida': 'text-bg-primary', 
             'en_transito': 'bg-soft-warning text-warning',
             'cerrada': 'bg-soft-success text-success',
             'cancelada': 'bg-soft-danger text-danger'
         };
-        this.dom.$lblEstatus.removeClass().addClass(`badge ${clases[status] || 'bg-secondary'} ms-2`).text(status.toUpperCase());
+        this.dom.$lblEstatus.removeClass().addClass(`badge ${clases[status] || 'bg-secondary'} ms-3 text-capitalize`).text(status);
     },
 
     renderItems: function (items) {

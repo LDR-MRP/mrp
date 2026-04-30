@@ -3,65 +3,11 @@
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
-            <!-- Mantengo tus estilos intactos -->
-            <style>
-                :root {
-                    --primary: #0056b3;
-                    --success: #28a745;
-                    --warning: #ffc107;
-                    --danger: #dc3545;
-                }
-
-                body {
-                    background-color: #f4f7f6;
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                }
-
-                .card {
-                    border: none;
-                    border-radius: 10px;
-                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
-                    margin-bottom: 2rem;
-                }
-
-                .card-header {
-                    background: #fff;
-                    border-bottom: 1px solid #f1f1f1;
-                    font-weight: bold;
-                    text-transform: uppercase;
-                    font-size: 0.8rem;
-                    letter-spacing: 1px;
-                }
-
-                /* Badges LDR Style */
-                .badge-draft { background-color: #e2e8f0; color: #475569; }
-                .badge-review { background-color: #fef3c7; color: #92400e; }
-                .badge-approved { background-color: #dcfce7; color: #166534; }
-                .badge-rejected { background-color: #fee2e2; color: #991b1b; }
-                .badge-purchasing { background-color: #e0e7ff; color: #3730a3; }
-
-                .table thead th {
-                    border-top: none;
-                    font-size: 0.75rem;
-                    color: #718096;
-                    text-transform: uppercase;
-                }
-                
-                /* Estilo extra para simular campos de solo lectura elegantes */
-                .read-only-field {
-                    background-color: #f8f9fa;
-                    border: 1px solid #e9ecef;
-                    border-radius: 6px;
-                    padding: 10px 15px;
-                    min-height: 42px;
-                }
-            </style>
-
             <section id="view-read-requisicion">
                 <!-- Breadcrumb -->
                 <div class="row align-items-center mb-4">
                     <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-white">
+                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2">
                             <div class="page-title-right">
                                 <ol class="breadcrumb m-0">
                                     <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
@@ -84,7 +30,7 @@
                                     </span>
                                 </div>
                                 <div>
-                                    <h4 class="mb-1 text-dark fw-bold ls-05 d-flex align-items-center">
+                                    <h4 class="mb-1 fw-bold ls-05 d-flex align-items-center">
                                         Solicitud de Compra #<span id="lbl-idrequisicion" class="ms-1">...</span>
                                         <span id="lbl-estatus" class="ms-3 badge bg-light text-muted fs-12 fw-normal">Cargando...</span>
                                     </h4>
@@ -92,10 +38,9 @@
                                 </div>
                             </div>
                             
-                            <!-- Badges de Prioridad (Movido arriba para mejor visibilidad) -->
                             <div class="text-end">
                                 <span class="text-uppercase fs-11 fw-bold text-muted d-block mb-1">Prioridad</span>
-                                <span id="lbl-prioridad" class="badge bg-light text-dark fs-12 px-3 py-1 shadow-sm">...</span>
+                                <span id="lbl-prioridad" class="badge bg-light fs-12 px-3 py-1 shadow-sm">...</span>
                             </div>
                         </div>
                     </div>
@@ -108,23 +53,23 @@
                         <!-- Tarjeta: Datos Generales -->
                         <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
                             <div class="card-header bg-soft-primary border-bottom border-light d-flex justify-content-between align-items-center">
-                                <h6 class="card-title mb-0 text-dark fw-bold"><i class="ri-article-line text-primary me-1 fs-14 align-middle"></i> Datos Generales</h6>
+                                <h6 class="card-title mb-0 fw-bold"><i class="ri-article-line me-1 fs-14 align-middle"></i> Datos Generales</h6>
                             </div>
                             <div class="card-body p-4">
                                 <div class="row g-4">
                                     <div class="col-12">
                                         <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Título de referencia</label>
-                                        <div class="read-only-field fs-15 fw-bold text-dark" id="lbl-titulo">...</div>
+                                        <div class="read-only-field fs-15 fw-bold" id="lbl-titulo">...</div>
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Departamento de Cargo</label>
-                                        <div class="read-only-field text-dark" id="lbl-departamento">...</div>
+                                        <div class="read-only-field" id="lbl-departamento">...</div>
                                     </div>
                                     
                                     <div class="col-md-6">
                                         <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Fecha Requerida</label>
-                                        <div class="read-only-field text-dark d-flex align-items-center">
+                                        <div class="read-only-field d-flex align-items-center">
                                             <i class="ri-calendar-event-line text-muted me-2"></i> 
                                             <span id="lbl-fecha-requerida">...</span>
                                         </div>
@@ -136,7 +81,7 @@
                         <!-- Tarjeta: Partidas -->
                         <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
                             <div class="card-header bg-soft-primary border-bottom border-light d-flex justify-content-between align-items-center">
-                                <h6 class="card-title mb-0 text-dark fw-bold"><i class="ri-shopping-basket-line text-primary me-1"></i> Partidas / Artículos Solicitados</h6>
+                                <h6 class="card-title mb-0 fw-bold"><i class="ri-shopping-basket-line me-1"></i> Partidas / Artículos Solicitados</h6>
                             </div>
                             
                             <div class="card-body p-0">
@@ -172,7 +117,7 @@
                                     <i class="ri-chat-1-line text-secondary me-1 fs-14 align-middle"></i> Justificación del Gasto
                                 </h5>
                                 <div class="bg-light p-3 rounded" style="min-height: 80px;">
-                                    <p class="mb-0 text-dark" id="lbl-justificacion" style="white-space: pre-wrap; font-style: italic;">...</p>
+                                    <p class="mb-0" id="lbl-justificacion" style="white-space: pre-wrap; font-style: italic;">...</p>
                                 </div>
                             </div>
                         </div>
@@ -184,7 +129,7 @@
 
                         <!-- Tarjeta: Acciones Contextuales -->
                         <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
-                            <div class="card-header bg-white border-bottom border-light">
+                            <div class="card-header border-bottom border-light">
                                 <h6 class="card-title mb-0 fw-bold">Acciones Disponibles</h6>
                             </div>
                             <div class="card-body">
@@ -237,7 +182,7 @@
                                 
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="text-muted fs-12 fw-medium"><i class="ri-time-line me-1"></i> Creado el:</span>
-                                    <span class="text-dark fw-bold fs-12" id="lbl-fecha-creacion">...</span>
+                                    <span class="fw-bold fs-12" id="lbl-fecha-creacion">...</span>
                                 </div>
                             </div>
                         </div>

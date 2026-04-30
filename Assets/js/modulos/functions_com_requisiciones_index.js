@@ -101,14 +101,14 @@ const RequisitionIndex = {
     // 5. RENDERIZADORES DE UI
     renderStatusBadge: function (status) {
         const clases = {
-            'borrador': 'badge-draft',
-            'pendiente': 'badge-review',
-            'aprobada': 'badge-approved',
-            'rechazada': 'badge-rejected',
-            'en compra': 'badge-purchasing',
-            'finalizada': 'badge-closed',
-            'cancelada': 'badge-closed',
-            'eliminada': 'badge-closed'
+            'borrador': 'badge text-bg-light',
+            'pendiente': 'badge text-bg-warning',
+            'aprobada': 'badge text-bg-success',
+            'rechazada': 'badge text-bg-danger',
+            'en compra': 'badge text-bg-info',
+            'finalizada': 'badge text-bg-secondary',
+            'cancelada': 'badge text-bg-danger',
+            'eliminada': 'badge text-bg-danger'
         };
         const badgeClass = clases[status?.toLowerCase()] || 'bg-secondary';
         return `<span class="badge ${badgeClass} px-3 py-2 text-capitalize shadow-sm">${status}</span>`;

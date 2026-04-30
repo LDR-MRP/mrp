@@ -83,8 +83,8 @@ class Com_ordenCompraModel extends Mysql {
      */
     public function createDetail(int $ocId, array $data): bool {
         $query = "INSERT INTO com_ordenes_compra_detalle 
-                  (compraid, idrequisicionarticulo, inventarioid, cantidad, costo_unitario, descuento_partida, impuesto_partida, subtotal_partida) 
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                  (compraid, idrequisicionarticulo, inventarioid, cantidad, costo_unitario, porcentaje_descuento, descuento_partida, impuesto_partida, subtotal_partida) 
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $values = [
             $ocId,
@@ -92,6 +92,7 @@ class Com_ordenCompraModel extends Mysql {
             $data['inventarioid'],
             $data['cantidad'],
             $data['costo_unitario'],
+            $data['porcentaje_descuento'],
             $data['descuento_partida'],
             $data['impuesto_partida'],
             $data['subtotal_partida']
@@ -136,6 +137,36 @@ class Com_ordenCompraModel extends Mysql {
                   INNER JOIN wms_inventario i ON ocd.inventarioid = i.idinventario
                   WHERE ocd.compraid = ?";
         return $this->select_all($query, [$id]);
+    }
+
+    public function getPurchaseOrderForPrint(int $id): ?array
+    {
+        // Consulta de Cabecera con JOINs a Proveedor, Almacen y Planta
+        $sql = "SELECT 
+                    oc.*,
+                    p.razon_social AS proveedor_nombre,
+                    p.rfc AS proveedor_rfc,
+                    a.descripcion AS almacen_nombre
+                FROM com_ordenes_compra oc
+                INNER JOIN prv_cat_proveedores p ON oc.proveedorid = p.id_proveedor
+                INNER JOIN wms_almacenes a ON oc.almacenid = a.idalmacen
+                WHERE oc.idcompra = ? AND oc.deleted_at IS NULL";
+
+        $po = $this->select($sql, [$id]);
+        if (!$po) return null;
+
+        // Consulta de Detalles con JOIN a Inventario
+        $sqlItems = "SELECT 
+                        d.*, 
+                        i.cve_articulo, 
+                        i.descripcion, 
+                        i.unidad_salida
+                    FROM com_ordenes_compra_detalle d
+                    INNER JOIN wms_inventario i ON d.inventarioid = i.idinventario
+                    WHERE d.compraid = ? AND d.deleted_at IS NULL";
+        
+        $po['items'] = $this->select_all($sqlItems, [$id]);
+        return $po;
     }
 }
 ?>

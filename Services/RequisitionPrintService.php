@@ -11,7 +11,7 @@ class RequisitionPrintService
 
     private readonly Com_requisicionModel $requisicionModel;
 
-    protected $db;
+    protected object $db;
 
     public function __construct()
     {
@@ -54,7 +54,7 @@ class RequisitionPrintService
             // . RENDERIZAR HTML (Usando un buffer de salida)
             ob_start();
             $data = $requisition; // Datos para la vista
-            require __DIR__ . '/../Views/Com_requisiciones/requisition_pdf_template.php';
+            require __DIR__ . '/../Views/Com_requisiciones/requisition_template.php';
             $html = ob_get_clean();
 
             // 5. CONFIGURAR DOMPDF

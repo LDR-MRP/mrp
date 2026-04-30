@@ -158,7 +158,7 @@ const PurchaseOrderForm = {
                     data-invid="${item.inventarioid}">
                     
                     <td class="ps-4">
-                        <div class="fw-bold text-dark">ID Inv: ${item.inventarioid}</div>
+                        <div class="fw-bold">ID Inv: ${item.inventarioid}</div>
                         <small class="text-muted">${item.notas || 'Sin notas'}</small>
                     </td>
                     
@@ -191,7 +191,7 @@ const PurchaseOrderForm = {
                                value="0.00" min="0" step="0.01">
                     </td>
                     
-                    <td class="text-end pe-4 fw-bold text-dark row-subtotal">
+                    <td class="text-end pe-4 fw-bold row-subtotal">
                         ${Sys_Core.Format.toCurrency(maxQty * price)}
                     </td>
                     
@@ -287,6 +287,7 @@ const PurchaseOrderForm = {
                 inventarioid: $row.data('invid'),
                 cantidad: $row.find('.input-qty').val(),
                 costo_unitario: $row.find('.input-price').val(),
+                porcentaje_descuento: parseFloat($row.find('.input-pct-discount').val()),
                 descuento_partida: $row.find('.input-discount').val()
             });
         });
