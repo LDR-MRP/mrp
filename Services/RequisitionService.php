@@ -365,10 +365,10 @@ class RequisitionService
     public function moveItems(int $sourceRequisitionId, array $userContext): ServiceResponse
     {
         $request = new MoveRequisitionItemsRequest();
+        $request->validate();
+        $payload = $request->all();
 
         try {
-            $request->validate();
-            $payload = $request->all();
             
             $this->db->beginTransaction();
 
@@ -903,11 +903,11 @@ class RequisitionService
      * Encapsula la validación de la máquina de estados, permisos y auditoría.
      *
      * @param int    $requisitionId       ID de la requisición a modificar.
-     * @param array  $userContext         Contexto del usuario que ejecuta la acción.
+     * @param int  $userId         Contexto del usuario que ejecuta la acción.
      * @param string $newStatus           El nuevo estado al que se transicionará.
      * @param array  $allowedFromStatuses Lista de estados desde los cuales es válida la transición.
      * @param string $successMessage      Mensaje a devolver en caso de éxito.
-     * @param string $auditAction         Constante de acción para el log de auditoría.
+     * @param AuditAction $auditAction         Constante de acción para el log de auditoría.
      * @param string $comment             Comentario asociado a la acción.
      * @return ServiceResponse
      */

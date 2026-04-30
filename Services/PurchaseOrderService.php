@@ -228,5 +228,131 @@ class PurchaseOrderService
             return \ServiceResponse::error($e->getMessage(), $e->getCode() ?: 500);
         }
     }
+
+    /**
+     * Marca una Orden de Compra como 'en_transito'.
+     */
+    public function transit(int $id, array $userContext): ServiceResponse
+    {        
+        return $this->changeStatus(
+            $id,
+            $userContext,
+            PurchaseOrderEnum::EN_TRANSITO,
+            [PurchaseOrderEnum::EMITIDA->value], // Solo se puede transicionar desde 'emitida'
+            'La orden de compra ha sido marcada en tránsito.',
+            AuditAction::SHIPPED,
+            'TRANSIT: Iniciando logística de entrega.'
+        );
+    }
+
+    /**
+     * Cancela una Orden de Compra y libera los saldos de la requisición.
+     */
+    public function cancel(int $id, array $userContext): ServiceResponse
+    {
+        $userId = $userContext['id'];
+
+        try {
+            // 1. Ejecutar el cambio de estado usando nuestro motor central
+            $response = $this->changeStatus(
+                $id,
+                $userContext,
+                PurchaseOrderEnum::CANCELADA,
+                [PurchaseOrderEnum::EMITIDA->value, PurchaseOrderEnum::EN_TRANSITO->value],
+                'Orden de Compra cancelada exitosamente.',
+                AuditAction::CANCELED,
+                'CANCELACIÓN: Cancelación manual por el comprador.'
+            );
+
+            if (!$response->success) return $response;
+
+            // 2. LÓGICA DE REVERSIÓN DE REQUISICIÓN
+            // Obtenemos la OC para saber a qué requisición pertenecía
+            $po = $this->ordenCompraModel->getById($id);
+            $reqId = (int)$po['requisicionid'];
+
+            // Verificamos si la requisición se quedó sin compras activas
+            $activeOCsCount = $this->ordenCompraModel->countActiveOrdersByRequisition($reqId);
+
+            if ($activeOCsCount === 0) {
+                // Si ya no hay más compras para esta requisición, regresa a 'aprobada'
+                $this->requisicionModel->updateStatus($reqId, 'aprobada', $userId);
+                $this->requisicionModel->logAudit(
+                    $reqId, 
+                    AuditAction::UPDATED, 
+                    "Estado revertido a 'aprobada' tras cancelación de OC #{$id}.", 
+                    $userId
+                );
+            }
+
+            return $response;
+
+        } catch (\Exception $e) {
+            return ServiceResponse::error($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Motor central para la máquina de estados de Órdenes de Compra.
+     */
+    private function changeStatus(
+        int $id,
+        array $userContext,
+        PurchaseOrderEnum  $newStatus,
+        array $allowedFromStatuses,
+        string $successMessage,
+        AuditAction $auditAction,
+        string $comment
+    ): ServiceResponse {
+        try {
+            $this->db->beginTransaction();
+
+            // 1. OBTENER Y BLOQUEAR (Pessimistic Locking)
+            $po = $this->ordenCompraModel->getPurchaseOrderForUpdate($id);
+            if (!$po) throw new \Exception("La Orden de Compra #{$id} no existe.", 404);
+
+            // 2. VALIDAR MÁQUINA DE ESTADOS
+            if (!in_array($po['estatus'], $allowedFromStatuses)) {
+                throw new \Exception("Cambio de estado no permitido desde '{$po['estatus']}' a '{$newStatus->value}'.", 403);
+            }
+
+            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+            $scope = $role?->getScope() ?? 'propio';
+
+            // APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
+            $isAllowed = match($scope) {
+                'propio' => (int)$po['usuarioid'] === (int)$userContext['id'],
+                'planta'  => (int)$po['plantaid'] === (int)$userContext['plantaid'],
+                'total'  => true,
+                default  => false
+            };
+
+            // 3. Validación de Seguridad (IDOR de Lectura)
+            if (!$isAllowed) {
+                return ServiceResponse::error("Security Error: No tienes permisos para modificar esta órden de compra.", 403);
+            }
+
+            // 4. EJECUTAR ACTUALIZACIÓN
+            // Nota: Asegúrate de tener updateStatus en tu Com_orden_compraModel
+            $updated = $this->ordenCompraModel->updateStatus($id, $newStatus->value, $userContext['id']);
+            if (!$updated) throw new \Exception("Error al actualizar el estado en la base de datos.", 500);
+
+            // 5. REGISTRAR AUDITORÍA
+            $this->ordenCompraModel->logAudit($id, $auditAction, $comment, $userContext['id']);
+
+            $this->db->commit();
+
+            return ServiceResponse::success(
+                ['new_status' => $newStatus, 'idcompra' => $id],
+                $successMessage,
+                200
+            );
+
+        } catch (\Exception $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            $this->logMessage($e, \LogLevel::ERROR, ['id' => $id, 'status' => $newStatus]);
+            return ServiceResponse::error($e->getMessage(), $e->getCode() ?: 500);
+        }
+    }
 }
 ?>

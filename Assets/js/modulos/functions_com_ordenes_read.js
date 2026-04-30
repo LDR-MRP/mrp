@@ -50,6 +50,34 @@ const PurchaseOrderRead = {
         });
     },
 
+    handleStatusChange: function (action) {
+        const config = {
+            transit: { title: '¿Confirmar Tránsito?', text: 'Marcar como enviada.', url: 'transit' },
+            cancel: { title: '¿Anular Orden?', text: 'Esta acción liberará los saldos de la requisición.', url: 'cancel' }
+        };
+
+        const activeAction = config[action];
+        if (!activeAction) return;
+
+        Sys_Core.UI.confirm({
+            title: activeAction.title,
+            text: activeAction.text,
+            confirmText: 'Sí, proceder'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Disparamos el POST al endpoint correspondiente
+                Sys_Core.Net.post({
+                    url: `${this.config.apiBase}/${this.state.id}/${activeAction.url}`,
+                    payload: { comentario: 'Acción ejecutada desde el expediente digital.' },
+                    $btn: $(`.action-btn[data-action="${action}"]`),
+                    onDone: (res) => {
+                        this.loadData(); // Refrescar UI (los botones cambiarán según el nuevo estado)
+                    }
+                });
+            }
+        });
+    },
+
     printPurchaseOrder: function() {
         const purchaseOrderId = this.state.id;
         if (!purchaseOrderId) return;

@@ -5,8 +5,19 @@ use Mysql; // Asumiendo que tu clase base está en el namespace global o ajusta 
 
 class Com_ordenCompraModel extends Mysql {
 
+    use Auditable;
+
+    protected string $table = 'com_ordenes_compra';
+
+    protected string $detailTable = 'com_ordenes_compra_detalle';
+
     public function __construct() {
         parent::__construct();
+    }
+
+    public function getTableName(): string 
+    {
+        return $this->table;
     }
 
     /**
@@ -167,6 +178,50 @@ class Com_ordenCompraModel extends Mysql {
         
         $po['items'] = $this->select_all($sqlItems, [$id]);
         return $po;
+    }
+
+    /**
+     * Obtiene la OC bloqueando la fila para actualización.
+     */
+    public function getPurchaseOrderForUpdate(int $id): ?array
+    {
+        $sql = "SELECT idcompra, estatus, requisicionid, plantaid 
+                FROM com_ordenes_compra 
+                WHERE idcompra = ? 
+                AND deleted_at IS NULL 
+                FOR UPDATE";
+                
+        return $this->select($sql, [$id]) ?: null;
+    }
+
+    /**
+     * Actualiza el estatus de la Orden de Compra.
+     */
+    public function updateStatus(int $id, string $status, int $userId): bool
+    {
+        // Usamos el campo updated_by definido en tu DDL
+        $sql = "UPDATE com_ordenes_compra 
+                SET estatus = ?, 
+                    updated_by = ? 
+                WHERE idcompra = ? 
+                AND deleted_at IS NULL";
+
+        return $this->update($sql, [$status, $userId, $id]);
+    }
+
+    /**
+     * Cuenta cuántas OCs activas (no canceladas) tiene una requisición.
+     */
+    public function countActiveOrdersByRequisition(int $requisicionId): int
+    {
+        $sql = "SELECT COUNT(*) as total 
+                FROM com_ordenes_compra 
+                WHERE requisicionid = ? 
+                AND estatus != 'cancelada' 
+                AND deleted_at IS NULL";
+                
+        $result = $this->select($sql, [$requisicionId]);
+        return (int)($result['total'] ?? 0);
     }
 }
 ?>

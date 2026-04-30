@@ -48,6 +48,9 @@ Route::post('api/v1/purchase-orders', [PurchaseOrderController::class, 'store'])
 Route::get('api/v1/purchase-orders/{id}', [PurchaseOrderController::class, 'show'])->middleware([AuthMiddleware::class]);
 // Listado de Órdenes de Compra con filtros
 Route::get('api/v1/purchase-orders', [PurchaseOrderController::class, 'index'])->middleware([AuthMiddleware::class]);
+// Rutas de cambio de estado (Máquina de Estados)
+Route::post('api/v1/purchase-orders/{id}/transit', [PurchaseOrderController::class, 'transit'])->middleware([AuthMiddleware::class]);
+Route::post('api/v1/purchase-orders/{id}/cancel', [PurchaseOrderController::class, 'cancel'])->middleware([AuthMiddleware::class]);
 // Ruta de PDF
 Route::get('api/v1/purchase-orders/{id}/pdf', [PurchaseOrderController::class, 'generatePdf'])->middleware([AuthMiddleware::class]);
 

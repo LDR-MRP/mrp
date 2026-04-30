@@ -27,14 +27,20 @@ class PurchaseOrderPrintService
                 throw new \Exception("La Orden de Compra #{$id} no existe.", 404);
             }
 
-            // 2. SEGURIDAD: Validar que el usuario tenga acceso a la planta de la OC
-            $userPlantaId = (int)$userContext['plantaid'];
-            $poPlantaId   = (int)$poData['plantaid'];
-            $role         = RoleEnum::tryFrom((int)$userContext['rolid']);
+            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+            $scope = $role?->getScope() ?? 'propio';
 
-            // Si no es admin y la planta no coincide, bloqueamos (IDOR)
-            if ($role !== RoleEnum::ADMINISTRADOR && $userPlantaId !== $poPlantaId) {
-                return ServiceResponse::error("Security Error: No tienes permisos para imprimir esta Orden de Compra.", 403);
+            // APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
+            $isAllowed = match($scope) {
+                'propio' => (int)$poData['usuarioid'] === (int)$userContext['id'],
+                'planta'  => (int)$poData['plantaid'] === (int)$userContext['plantaid'],
+                'total'  => true,
+                default  => false
+            };
+
+            // 3. Validación de Seguridad (IDOR de Lectura)
+            if (!$isAllowed) {
+                return ServiceResponse::error("Security Error: No tienes permisos para imprimir esta órden de compra.", 403);
             }
 
             // 3. PREPARACIÓN DE MONTOS

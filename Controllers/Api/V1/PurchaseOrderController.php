@@ -78,5 +78,19 @@ class PurchaseOrderController {
         echo $pdfData['content'];
         exit;
     }
+
+    // POST /api/v1/purchase-orders/{id}/transit
+    public function transit(int $id)
+    {
+        $serviceResponse = $this->purchaseOrderService->transit((int)$id, $this->request['auth_user']);
+        return $this->apiResponse($serviceResponse);
+    }
+
+    // POST /api/v1/purchase-orders/{id}/cancel
+    public function cancel(int $id)
+    {
+        $serviceResponse = $this->purchaseOrderService->cancel((int)$id, $this->request['auth_user']);
+        return $this->apiResponse($serviceResponse);
+    }
 }
 ?>
