@@ -126,7 +126,7 @@ class RequisitionController
         $serviceResponse = $this->requisitionPrintService->generatePdf((int)$id, $this->request['auth_user']);
 
         // 2. Si el Service falló (IDOR, 403, 404), devolvemos JSON estándar
-        if (!$serviceResponse) {
+        if (!$serviceResponse->success) {
             return $this->apiResponse($serviceResponse);
         }
 
