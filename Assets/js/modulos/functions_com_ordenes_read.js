@@ -6,6 +6,7 @@ const PurchaseOrderRead = {
     init: function () {
         this.extractId();
         this.cacheDOM();
+        this.bindEvents();
         this.loadData();
     },
 
@@ -30,6 +31,36 @@ const PurchaseOrderRead = {
             $tblItems: $('#tbl-items'),
             $actionContainer: $('#action-buttons-container')
         };
+    },
+
+    bindEvents: function () {
+        /** 
+         * Usamos delegación de eventos porque los botones se inyectan 
+         * dinámicamente en renderActions()
+         */
+        this.dom.$actionContainer.on('click', '#btn-export-pdf', (e) => {
+            e.preventDefault();
+            this.printPurchaseOrder();
+        });
+
+        // Eventos para otras acciones (Tránsito, Cancelar)
+        this.dom.$actionContainer.on('click', '.action-btn', (e) => {
+            const action = $(e.currentTarget).data('action');
+            this.handleStatusChange(action);
+        });
+    },
+
+    printPurchaseOrder: function() {
+        const purchaseOrderId = this.state.id;
+        if (!purchaseOrderId) return;
+
+        // Notificación de cortesía
+        Sys_Core.UI.notify('Generando documento oficial...', 'info');
+
+        Sys_Core.Net.downloadPdf({
+            url: `${this.config.apiBase}/${purchaseOrderId}/pdf`,
+            filename: `Orden_Compra_${purchaseOrderId}.pdf`
+        });
     },
 
     loadData: function () {
@@ -115,7 +146,7 @@ const PurchaseOrderRead = {
 
     renderActions: function (status) {
         let html = `<button class="btn btn-light" data-redirect="com_orden"><i class="ri-arrow-left-line"></i> Volver</button>`;
-        html += `<button class="btn btn-outline-danger"><i class="ri-file-pdf-line"></i> PDF</button>`;
+        html += `<button class="btn btn-outline-danger" id="btn-export-pdf"><i class="ri-file-pdf-line"></i> PDF</button>`;
 
         if (status === 'emitida') {
             html += `<button class="btn btn-warning action-btn" data-action="transit"><i class="ri-truck-line"></i> Marcar En Tránsito</button>`;

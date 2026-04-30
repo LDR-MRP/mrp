@@ -63,6 +63,9 @@ const RequisitionRead = {
         const requisitionId = this.state.id;
         if (!requisitionId) return;
 
+        // Notificación de cortesía
+        Sys_Core.UI.notify('Generando documento...', 'info');
+
         Sys_Core.Net.downloadPdf({
             url: `${this.config.apiBase}/${requisitionId}/pdf`,
             filename: `Requisicion_${requisitionId}.pdf`

@@ -38,9 +38,21 @@ class PurchaseOrderPrintService
             }
 
             // 3. PREPARACIÓN DE MONTOS
-            // Usamos el TOTAL final de la OC para la letra
-            $totalPO = (float)$poData['total'];
-            $poData['monto_letras'] = NumberToLetter::convert($totalPO);
+            $totalDescuento = 0;
+            $subtotalBruto = 0;
+
+            foreach ($poData['items'] as $item) {
+                // Sumamos el valor real (sin descuento)
+                $subtotalBruto += (float)$item['cantidad'] * (float)$item['costo_unitario'];
+                // Sumamos los montos de descuento de cada partida
+                $totalDescuento += (float)$item['descuento_partida'];
+            }
+
+            $poData['subtotal_bruto'] = $subtotalBruto;
+            $poData['total_descuento'] = $totalDescuento;
+
+            // El monto en letras debe basarse en el TOTAL neto de la OC
+            $poData['monto_letras'] = NumberToLetter::convert((float)$poData['total']);
 
             // 4. CONFIGURAR MARCA DE AGUA (State Machine de la OC)
             $watermark = $this->getWatermarkConfig($poData['estatus']);

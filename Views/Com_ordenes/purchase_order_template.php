@@ -91,14 +91,29 @@
 
     <div class="footer-container">
         <div class="justificacion-box">
-            <span class="label">Observaciones de Entrega:</span><br><div style="font-size: 8pt;"><?= $data['observaciones'] ?></div>
+            <span class="label">Observaciones de Entrega:</span><br>
+            <div style="font-size: 8pt;"><?= nl2br(htmlspecialchars($data['observaciones'])) ?></div>
         </div>
         <div class="totals-box">
             <table class="totals-table">
-                <tr><td class="label">Subtotal:</td><td align="right">$ <?= number_format($data['subtotal'], 2) ?></td></tr>
-                <tr><td class="label">Descuentos:</td><td align="right">$ <?= number_format($data['total_descuento'] ?? 0, 2) ?></td></tr>
-                <tr><td class="label">I.V.A. (16%):</td><td align="right">$ <?= number_format($data['iva'], 2) ?></td></tr>
-                <tr class="total-row"><td class="label">TOTAL OC:</td><td align="right">$ <?= number_format($data['total'], 2) ?></td></tr>
+                <tr>
+                    <td class="label">Subtotal:</td>
+                    <!-- Mostramos el subtotal antes de descuentos -->
+                    <td align="right">$ <?= number_format($data['subtotal_bruto'], 2) ?></td>
+                </tr>
+                <tr>
+                    <td class="label">Descuentos:</td>
+                    <!-- Mostramos la suma de descuentos en rojo o con paréntesis -->
+                    <td align="right" style="color: #d00;">$ -<?= number_format($data['total_descuento'], 2) ?></td>
+                </tr>
+                <tr>
+                    <td class="label">I.V.A. (16%):</td>
+                    <td align="right">$ <?= number_format($data['iva'], 2) ?></td>
+                </tr>
+                <tr class="total-row">
+                    <td class="label">TOTAL OC:</td>
+                    <td align="right">$ <?= number_format($data['total'], 2) ?></td>
+                </tr>
             </table>
         </div>
         <div class="clearfix"></div>
