@@ -343,14 +343,14 @@ class PurchaseOrderService
             $this->db->commit();
 
             return ServiceResponse::success(
-                ['new_status' => $newStatus, 'idcompra' => $id],
+                ['new_status' => $newStatus->value, 'idcompra' => $id],
                 $successMessage,
                 200
             );
 
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
-            $this->logMessage($e, \LogLevel::ERROR, ['id' => $id, 'status' => $newStatus]);
+            $this->logMessage($e, \LogLevel::ERROR, ['id' => $id, 'status' => $newStatus->value]);
             return ServiceResponse::error($e->getMessage(), $e->getCode() ?: 500);
         }
     }
