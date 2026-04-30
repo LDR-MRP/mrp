@@ -4,7 +4,7 @@ class Prv_proveedorModel extends Mysql
 {
     use Auditable;
 
-    protected $table = 'prv_cat_proveedores';
+    protected string $table = 'prv_cat_proveedores';
 
     const SCHEMA = [
         'prv_cat_proveedores' => [

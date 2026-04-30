@@ -14,6 +14,7 @@ class SupplierService
 
     public function findByCriteria(array $filters = []): ServiceResponse
     {
-        return ServiceResponse::success($this->prvProveedorModel->findByCriteria($filters));
+        $suppliers = $this->prvProveedorModel->findByCriteria($filters);
+        return ServiceResponse::success($suppliers);
     }
 }

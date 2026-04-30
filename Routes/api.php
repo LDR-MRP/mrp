@@ -3,9 +3,11 @@
 
 use Libraries\Core\Route;
 use Controllers\Api\V1\AuthController;
+use Controllers\Api\V1\CurrencyController;
 use Controllers\Api\V1\SupplierController;
 use Controllers\Api\V1\RequisitionController;
 use Controllers\Api\V1\PurchaseOrderController;
+use Controllers\Api\V1\WarehouseController;
 use Middlewares\AuthMiddleware;
 
 // Rutas Públicas
@@ -48,6 +50,8 @@ Route::get('api/v1/purchase-orders/{id}', [PurchaseOrderController::class, 'show
 Route::get('api/v1/purchase-orders', [PurchaseOrderController::class, 'index'])->middleware([AuthMiddleware::class]);
 
 // --- WAREHOUSE ---
+Route::get('api/v1/warehouses', [WarehouseController::class, 'index'])->middleware([AuthMiddleware::class]);
 
 // --- CURRENCY ---
+Route::get('api/v1/currencies', [CurrencyController::class, 'index'])->middleware([AuthMiddleware::class]);
 ?>

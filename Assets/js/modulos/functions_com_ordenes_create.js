@@ -48,12 +48,14 @@ const PurchaseOrderForm = {
             $lblReqId: $('#lbl-req-id'),
             $lblReqTitle: $('#lbl-req-title'),
             $tblBody: $('#tblPartidasOC tbody'),
-            $selProveedor: $('select[name="proveedorid"]'),
-            $selAlmacen: $('select[name="almacenid"]'),
+            $selectProveedor: $('select[name="proveedorid"]'),
+            $selectAlmacen: $('select[name="almacenid"]'),
             $lblSubtotal: $('#lbl-subtotal'),
             $lblIva: $('#lbl-iva'),
             $lblTotal: $('#lbl-total'),
-            $btnSubmit: $('#btn-generar-oc')
+            $btnSubmit: $('#btn-generar-oc'),
+            $selectMoneda: $('select[name="moneda"]'),
+            $inputTipoCambio: $('input[name="tipo_cambio"]'),
         };
     },
 
@@ -74,13 +76,52 @@ const PurchaseOrderForm = {
             e.preventDefault();
             this.submitPurchaseOrder();
         });
+
+        this.dom.$selectMoneda.on('change', (e) => {
+            const moneda = $(e.target).val();
+            if (moneda === 'MXN') {
+                this.dom.$inputTipoCambio.val('1.000000').prop('readonly', true).addClass('bg-light');
+            } else {
+                this.dom.$inputTipoCambio.prop('readonly', false).removeClass('bg-light').focus();
+            }
+        });
+
+        this.dom.$tblBody.on('input', '.input-calc', (e) => {
+            const $row = $(e.target).closest('.partida-row');
+            this.updateRowSubtotal($row, $(e.target)); // Pasamos el target para saber qué cambió
+        });
     },
 
     loadCatalogs: function () {
-        // TODO: Llama a tus endpoints reales de proveedores y almacenes usando Sys_Core.Net.get
-        // Ejemplo rápido para que la UI funcione:
-        this.dom.$selProveedor.append('<option value="105">Proveedor de Prueba S.A.</option>');
-        this.dom.$selAlmacen.append('<option value="2">Almacén General (Matriz)</option>');
+        // 1. Cargar Proveedores
+        Sys_Core.Net.get({
+            url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers`,
+            onSuccess: (res) => {
+                Sys_Core.UI.fillSelect(this.dom.$selectProveedor, res.data, { textField: 'razon_social' });
+            }
+        });
+
+        // 2. Cargar Almacenes
+        Sys_Core.Net.get({
+            url: `${Sys_Core.Config.baseUrl}/api/v1/warehouses`,
+            onSuccess: (res) => {
+                Sys_Core.UI.fillSelect(this.dom.$selectAlmacen, res.data, { valueField: 'idalmacen', textField: 'cve_almacen' });
+            }
+        });
+
+        // 3. Cargar Monedas (Nueva integración)
+        Sys_Core.Net.get({
+            url: `${Sys_Core.Config.baseUrl}/api/v1/currencies`,
+            onSuccess: (res) => {
+                Sys_Core.UI.fillSelect(this.dom.$selectMoneda, res.data, { 
+                    valueField: 'cve_moneda', // Ej: 'MXN', 'USD'
+                    textField: 'cve_moneda',
+                    selectedValue: 'MXN' // Pre-seleccionar Moneda Nacional
+                });
+                // Disparar el cambio manualmente para bloquear el input de TC si es MXN
+                this.dom.$selectMoneda.trigger('change');
+            }
+        });
     },
 
     loadPendingItems: function () {
@@ -135,6 +176,15 @@ const PurchaseOrderForm = {
                         <input type="number" class="form-control form-control-sm text-end input-calc input-price" 
                                value="${price.toFixed(2)}" min="0" step="0.01">
                     </td>
+
+                    <!-- COLUMNA NUEVA: PORCENTAJE -->
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control text-end input-calc input-pct-discount text-danger" 
+                                value="0" min="0" max="100" step="0.1">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </td>
                     
                     <td>
                         <input type="number" class="form-control form-control-sm text-end input-calc input-discount text-danger" 
@@ -158,20 +208,35 @@ const PurchaseOrderForm = {
         this.calculateGrandTotals();
     },
 
-    updateRowSubtotal: function ($row) {
+    updateRowSubtotal: function ($row, triggerInput) {
         let qty = parseFloat($row.find('.input-qty').val()) || 0;
         const maxQty = parseFloat($row.find('.input-qty').attr('max'));
         const price = parseFloat($row.find('.input-price').val()) || 0;
-        const discount = parseFloat($row.find('.input-discount').val()) || 0;
+        const pct = parseFloat($row.find('.input-pct-discount').val()) || 0;
+        let discount = parseFloat($row.find('.input-discount').val()) || 0;
 
-        // UX: Prevenir visualmente que superen el saldo pendiente
+        // 1. Validación de Cantidad (Anti-Fraude)
         if (qty > maxQty) {
             qty = maxQty;
             $row.find('.input-qty').val(maxQty);
             Sys_Core.UI.notify('No puede comprar más del saldo pendiente.', 'warning');
         }
 
-        const subtotal = (qty * price) - discount;
+        const bruto = qty * price;
+
+        // 2. Lógica de Descuento: Si cambiaron el %, recalculamos el monto en $
+        if (triggerInput && triggerInput.hasClass('input-pct-discount')) {
+            discount = bruto * (pct / 100);
+            $row.find('.input-discount').val(discount.toFixed(2));
+        } 
+        // Opcional: Si cambiaron el monto $, podríamos recalcular el % para feedback visual
+        else if (triggerInput && triggerInput.hasClass('input-discount')) {
+            const newPct = bruto > 0 ? (discount / bruto) * 100 : 0;
+            $row.find('.input-pct-discount').val(newPct.toFixed(1));
+        }
+
+        // 3. Aplicar subtotal
+        const subtotal = bruto - discount;
         $row.find('.row-subtotal').text(Sys_Core.Format.toCurrency(subtotal > 0 ? subtotal : 0));
         
         this.calculateGrandTotals();
@@ -207,8 +272,8 @@ const PurchaseOrderForm = {
         // Construir Payload idéntico al que probaste en Postman
         const payload = {
             requisicionid: this.state.reqId,
-            proveedorid: this.dom.$selProveedor.val(),
-            almacenid: this.dom.$selAlmacen.val(),
+            proveedorid: this.dom.$selectProveedor.val(),
+            almacenid: this.dom.$selectAlmacen.val(),
             moneda: $('select[name="moneda"]').val(),
             tipo_cambio: $('input[name="tipo_cambio"]').val(),
             observaciones: $('textarea[name="observaciones"]').val(),

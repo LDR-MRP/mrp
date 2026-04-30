@@ -59,11 +59,12 @@
                                         <thead class="bg-light">
                                             <tr>
                                                 <th class="ps-4">Artículo</th>
-                                                <th width="120" class="text-center" title="Saldo Pendiente por Comprar">Pendiente</th>
-                                                <th width="120" class="text-center">Cant. a Comprar</th>
-                                                <th width="140" class="text-end">Costo Unit. Real</th>
-                                                <th width="120" class="text-end">Descuento</th>
-                                                <th width="120" class="text-end">Subtotal</th>
+                                                <th width="50" class="text-center" title="Saldo Pendiente por Comprar">Pendiente</th>
+                                                <th width="50" class="text-center">Cant. a Comprar</th>
+                                                <th width="50" class="text-end">Costo Unit. Real</th>
+                                                <th width="50" class="text-end">Descuento %</th>
+                                                <th width="50" class="text-end">Descuento $</th>
+                                                <th width="50" class="text-end">Subtotal</th>
                                                 <th width="50"></th>
                                             </tr>
                                         </thead>
