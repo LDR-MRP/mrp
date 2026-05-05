@@ -72,10 +72,10 @@ const PurchaseOrderIndex = {
 
     renderStatusBadge: function (status) {
         const clases = { 
-            'emitida': 'bg-soft-primary text-primary', 
-            'en_transito': 'bg-soft-warning text-warning',
-            'cerrada': 'bg-soft-success text-success',
-            'cancelada': 'bg-soft-danger text-danger'
+            'emitida': 'text-bg-primary', 
+            'en_transito': 'text-bg-warning',
+            'cerrada': 'text-bg-success',
+            'cancelada': 'text-bg-danger'
         };
         return `<span class="badge ${clases[status] || 'bg-secondary'} px-3 py-2 text-capitalize">${status.replace('_', ' ')}</span>`;
     },

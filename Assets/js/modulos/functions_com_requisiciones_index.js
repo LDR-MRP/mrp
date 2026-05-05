@@ -111,7 +111,7 @@ const RequisitionIndex = {
             'eliminada': 'badge text-bg-danger'
         };
         const badgeClass = clases[status?.toLowerCase()] || 'bg-secondary';
-        return `<span class="badge ${badgeClass} px-3 py-2 text-capitalize shadow-sm">${status}</span>`;
+        return `<span class="badge ${badgeClass} px-3 py-2 text-capitalize shadow-sm">${status.replace('_', ' ')}</span>`;
     },
 
     renderActionButtons: function (row) {

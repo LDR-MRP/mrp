@@ -32,7 +32,7 @@ const PurchaseOrderForm = {
         const reqId = Sys_Core.URL.getParam('req_id');
         if (!reqId || isNaN(reqId)) {
             Sys_Core.UI.alert('Error', 'No se especificó una requisición de origen válida.', 'error')
-                .then(() => Sys_Core.Navigation.to('com_requisiciones'));
+                .then(() => Sys_Core.Navigation.to('com_requisicion'));
             return;
         }
         this.state.reqId = parseInt(reqId);
@@ -133,7 +133,7 @@ const PurchaseOrderForm = {
                     
                     if (res.data.items_pendientes.length === 0) {
                         Sys_Core.UI.alert('Completada', 'Esta requisición ya fue comprada en su totalidad. No hay saldos pendientes.', 'info')
-                            .then(() => Sys_Core.Navigation.to('com_requisiciones'));
+                            .then(() => Sys_Core.Navigation.to('com_requisicion'));
                         return;
                     }
 

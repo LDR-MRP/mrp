@@ -185,7 +185,7 @@ class Com_ordenCompraModel extends Mysql {
      */
     public function getPurchaseOrderForUpdate(int $id): ?array
     {
-        $sql = "SELECT idcompra, estatus, requisicionid, plantaid 
+        $sql = "SELECT idcompra, estatus, requisicionid, proveedorid, plantaid, almacenid
                 FROM com_ordenes_compra 
                 WHERE idcompra = ? 
                 AND deleted_at IS NULL 
@@ -222,6 +222,59 @@ class Com_ordenCompraModel extends Mysql {
                 
         $result = $this->select($sql, [$requisicionId]);
         return (int)($result['total'] ?? 0);
+    }
+
+    /**
+     * Calcula el saldo pendiente de recibir de una Orden de Compra.
+     * Base para la HU #72 y HU #70 (Validación de excesos).
+     */
+    public function getPendingReceptionItems(int $idcompra): array
+    {
+        $query = "
+            SELECT 
+                ocd.idrequisicionarticulo,
+                ocd.inventarioid,
+                i.cve_articulo,
+                i.descripcion,
+                i.unidad_salida,
+                ocd.costo_unitario AS precio_unitario_estimado,
+                ocd.cantidad AS cantidad_comprada,
+                -- Sumamos todas las recepciones previas de esta partida
+                IFNULL(recepcionado.total_recibido, 0) AS cantidad_ya_recibida,
+                -- Calculamos lo que falta
+                (ocd.cantidad - IFNULL(recepcionado.total_recibido, 0)) AS saldo_pendiente
+            FROM com_ordenes_compra_detalle ocd
+            INNER JOIN wms_inventario i ON ocd.inventarioid = i.idinventario
+            LEFT JOIN (
+                SELECT 
+                    rd.idrequisicionarticulo,
+                    SUM(rd.cantidad_recibida) AS total_recibido
+                FROM inv_recepcion_detalle rd
+                INNER JOIN inv_recepciones r ON rd.recepcionid = r.idrecepcion
+                WHERE r.idcompra = ?
+                GROUP BY rd.idrequisicionarticulo
+            ) AS recepcionado ON ocd.idrequisicionarticulo = recepcionado.idrequisicionarticulo
+            WHERE ocd.compraid = ?
+            HAVING saldo_pendiente > 0;
+        ";
+
+        return $this->select_all($query, [$idcompra, $idcompra]) ?: [];
+    }
+
+    /**
+     * Obtiene la sumatoria de lo recibido físicamente para cada partida de una OC.
+     */
+    public function getReceivedBalancesByOC(int $ocId): array
+    {
+        $sql = "SELECT 
+                    rd.idrequisicionarticulo, 
+                    SUM(rd.cantidad_recibida) as total_recibido
+                FROM inv_recepcion_detalle rd
+                INNER JOIN inv_recepciones r ON rd.recepcionid = r.idrecepcion
+                WHERE r.idcompra = ?
+                GROUP BY rd.idrequisicionarticulo";
+
+        return $this->select_all($sql, [$ocId]) ?: [];
     }
 }
 ?>

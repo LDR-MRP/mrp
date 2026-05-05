@@ -180,19 +180,33 @@ const PurchaseOrderRead = {
             'cerrada': 'text-bg-success',
             'cancelada': 'text-bg-danger'
         };
-        this.dom.$lblEstatus.removeClass().addClass(`badge ${clases[status] || 'bg-secondary'} ms-3 text-capitalize`).text(status);
+        this.dom.$lblEstatus.removeClass().addClass(`badge ${clases[status] || 'bg-secondary'} ms-3 text-capitalize`).text(status.replace('_', ' '));
     },
 
     renderItems: function (items) {
         this.dom.$tblItems.empty();
         items.forEach(item => {
+            const progress = item.progreso_recepcion;
+            const barColor = progress >= 100 ? 'bg-success' : (progress > 0 ? 'bg-warning' : 'bg-light');
+
             this.dom.$tblItems.append(`
                 <tr>
-                    <td class="ps-4"><b>${item.cve_articulo}</b><br><small>${item.descripcion}</small></td>
-                    <td class="text-center">${parseFloat(item.cantidad)}</td>
+                    <td class="ps-4">
+                        <div class="fw-bold text-dark">${item.cve_articulo}</div>
+                        <small class="text-muted">${item.descripcion}</small>
+                    </td>
+                    <td class="text-center" style="width: 200px;">
+                        <div class="d-flex justify-content-between mb-1 fs-11">
+                            <span class="fw-bold">${item.cantidad_recibida} / ${item.cantidad}</span>
+                            <span class="text-muted">${progress}%</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar ${barColor}" style="width: ${progress}%"></div>
+                        </div>
+                    </td>
                     <td class="text-end">${Sys_Core.Format.toCurrency(item.costo_unitario)}</td>
                     <td class="text-end text-danger">-${Sys_Core.Format.toCurrency(item.descuento_partida)}</td>
-                    <td class="text-end fw-bold">${Sys_Core.Format.toCurrency(item.subtotal_partida)}</td>
+                    <td class="text-end fw-bold pe-4">${Sys_Core.Format.toCurrency(item.subtotal_partida)}</td>
                 </tr>
             `);
         });
@@ -205,7 +219,7 @@ const PurchaseOrderRead = {
         if (status === 'emitida') {
             html += `<button class="btn btn-warning action-btn" data-action="transit"><i class="ri-truck-line"></i> Marcar En Tránsito</button>`;
             html += `<button class="btn btn-soft-danger action-btn" data-action="cancel"><i class="ri-close-line"></i> Cancelar OC</button>`;
-        } else if (status === 'en_transito') {
+        } else if (status === 'en_transito' || status === 'recibida_parcial') {
             html += `<button class="btn btn-success" data-redirect="inv_recepcion/create?oc_id=${this.state.id}"><i class="ri-inbox-archive-line"></i> Recibir Mercancía</button>`;
         }
 

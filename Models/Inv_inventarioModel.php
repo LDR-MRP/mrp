@@ -899,4 +899,67 @@ WHERE idinventario = ?";
 
         return $this->select_all($sql);
     }
+
+    /**
+     * Actualiza el último costo negociado en el maestro de inventarios.
+     */
+    public function updateLastCost(int $idinventario, float $costo): bool
+    {
+        $sql = "UPDATE wms_inventario 
+                SET ultimo_costo = ? 
+                WHERE idinventario = ?";
+                
+        return $this->update($sql, [$costo, $idinventario]);
+    }
+
+    /**
+     * Calcula la existencia actual de un artículo en un almacén específico
+     * basándose en la sumatoria de movimientos.
+     */
+    public function getCurrentStock(int $idinventario, int $almacenid): float
+    {
+        // Sumamos (cantidad * signo). 
+        // Entradas: (qty * 1), Salidas: (qty * -1)
+        $sql = "SELECT IFNULL(SUM(cantidad * signo), 0) AS stock 
+                FROM wms_movimientos_inventario 
+                WHERE inventarioid = ? 
+                AND almacenid = ? 
+                AND estado = 2"; // Estado 2 = Movimiento Activo
+
+        $result = $this->select($sql, [$idinventario, $almacenid]);
+        
+        return (float)($result['stock'] ?? 0);
+    }
+
+    /**
+     * Registra un nuevo movimiento de entrada o salida en el Kardex.
+     */
+    public function addMovement(array $data): int
+    {
+        $sql = "INSERT INTO wms_movimientos_inventario (
+                    inventarioid, 
+                    almacenid, 
+                    numero_movimiento, 
+                    concepmovid, 
+                    referencia, 
+                    cantidad, 
+                    costo, 
+                    existencia, 
+                    signo, 
+                    fecha_movimiento,
+                    estado
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 2)";
+                
+        return $this->insert($sql, [
+            $data['inventarioid'],
+            $data['almacenid'],
+            $data['numero_movimiento'], // ID de la recepción
+            $data['concepmovid'],       // Concepto (ej: 1 para compras)
+            $data['referencia'],        // Num de remisión
+            $data['cantidad'],
+            $data['costo'],             // Costo unitario real
+            $data['existencia'],        // Saldo calculado (nueva existencia)
+            $data['signo']              // 1 o -1
+        ]);
+    }
 }

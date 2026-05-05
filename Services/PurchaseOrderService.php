@@ -205,22 +205,52 @@ class PurchaseOrderService
             $role = RoleEnum::tryFrom((int)$userContext['rolid']);
             $scope = $role?->getScope() ?? 'propio';
 
+            // 1. Obtener cabecera de la OC
             $oc = $this->ordenCompraModel->getById($ocId);
             if (!$oc) throw new \Exception("Orden de Compra no encontrada.", 404);
 
-            // Validación de Seguridad (IDOR de Lectura), APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
-            if (
-                !match($scope) {
+            // 2. Validación de Seguridad (Matriz de Visibilidad)
+            $isAllowed = match($scope) {
                 'propio' => (int)$oc['created_by'] === (int)$userContext['id'],
-                'planta'  => (int)$oc['plantaid'] === (int)$userContext['plantaid'],
+                'planta' => (int)$oc['plantaid'] === (int)$userContext['plantaid'],
                 'total'  => true,
                 default  => false
-            }
-            ) {
-                return ServiceResponse::error("Security Error: No tienes permisos para ver esta requisición.", 403);
+            };
+
+            if (!$isAllowed) {
+                return ServiceResponse::error("Security Error: No tienes permisos para ver esta orden.", 403);
             }
 
-            $oc['items'] = $this->ordenCompraModel->getDetails($ocId);
+            // 3. Obtener partidas base de la OC
+            $items = $this->ordenCompraModel->getDetails($ocId);
+
+            /**
+             * LÓGICA DE PROGRESO DE RECEPCIÓN (Consistencia 3-Way Match)
+             * Consultamos a la base de datos cuánto se ha recibido físicamente de esta OC
+             */
+            $receptionBalances = $this->ordenCompraModel->getReceivedBalancesByOC($ocId);
+            
+            // Creamos un mapa [idrequisicionarticulo => cantidad_recibida] para cruce rápido
+            $receivedMap = array_column($receptionBalances, 'total_recibido', 'idrequisicionarticulo');
+
+            // 4. Enriquecer cada item con su estado de surtido real
+            foreach ($items as &$item) {
+                $idPartida = $item['idrequisicionarticulo'];
+                
+                // Cantidad que ya entró al almacén según las tablas de recepción
+                $item['cantidad_recibida'] = (float)($receivedMap[$idPartida] ?? 0);
+                
+                // Cantidad total que se pidió en esta OC
+                $qtyTotal = (float)$item['cantidad'];
+
+                // Cálculo del porcentaje para la barra de progreso del Frontend
+                $item['progreso_recepcion'] = ($qtyTotal > 0) 
+                    ? round(($item['cantidad_recibida'] / $qtyTotal) * 100, 2) 
+                    : 0;
+            }
+
+            // 5. Asignar datos enriquecidos y relacionados
+            $oc['items'] = $items;
             $oc['related_pos'] = $this->ordenCompraModel->getRelatedPOs((int)$oc['requisicionid'], $ocId);
 
             return \ServiceResponse::success($oc);

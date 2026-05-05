@@ -4,6 +4,7 @@
 use Libraries\Core\Route;
 use Controllers\Api\V1\AuthController;
 use Controllers\Api\V1\CurrencyController;
+use Controllers\Api\V1\InventoryReceptionController;
 use Controllers\Api\V1\SupplierController;
 use Controllers\Api\V1\RequisitionController;
 use Controllers\Api\V1\PurchaseOrderController;
@@ -53,6 +54,11 @@ Route::post('api/v1/purchase-orders/{id}/transit', [PurchaseOrderController::cla
 Route::post('api/v1/purchase-orders/{id}/cancel', [PurchaseOrderController::class, 'cancel'])->middleware([AuthMiddleware::class]);
 // Ruta de PDF
 Route::get('api/v1/purchase-orders/{id}/pdf', [PurchaseOrderController::class, 'generatePdf'])->middleware([AuthMiddleware::class]);
+
+// --- INVENTORY RECEPTION ---
+Route::get('api/v1/purchase-orders/{id}/pending-reception', [InventoryReceptionController::class, 'getPendingItems'])->middleware([AuthMiddleware::class]);
+
+Route::post('api/v1/inventory-receptions', [InventoryReceptionController::class, 'store'])->middleware([AuthMiddleware::class]);
 
 // --- WAREHOUSE ---
 Route::get('api/v1/warehouses', [WarehouseController::class, 'index'])->middleware([AuthMiddleware::class]);
