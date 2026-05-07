@@ -315,6 +315,18 @@
                                           </li>
                                       <?php } ?>
 
+                                      <?php if (!empty($_SESSION['permisos'][20]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/inv_productossustitutos" class="nav-link" data-key="t-detached">Productos sustitutos</a>
+                                          </li>
+                                      <?php } ?>
+
+                                      <?php if (!empty($_SESSION['permisos'][64]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/inv_recepcion" class="nav-link" data-key="t-detached">Recepción</a>
+                                          </li>
+                                      <?php } ?>
+
                                       <?php if (!empty($_SESSION['permisos'][72]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_reportes" class="nav-link" data-key="t-detached">Reportes</a>

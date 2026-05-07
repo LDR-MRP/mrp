@@ -96,6 +96,7 @@ const MIUBICACIONES = 69;
 const MIPICKING = 74;
 const MICAPTURAVIN = 65;
 const MITIPOCAMBIOMONEDA = 66;
+const MIRECEPCION = 64;
 
 //Submodulos Capacidad
 

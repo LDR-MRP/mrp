@@ -229,26 +229,6 @@ WHERE idinventario = ?";
     }
 
     /* ===============================
-       IMPUESTOS
-    =============================== */
-    public function selectImpuestos()
-    {
-        $sql = "SELECT idimpuesto, cve_impuesto, descripcion
-            FROM wms_impuestos
-            WHERE estado = 2";
-        return $this->select_all($sql);
-    }
-
-    public function insertInventarioImpuesto(int $inventarioid, int $idimpuesto)
-    {
-        $sql = "INSERT INTO wms_inventario_impuestos
-            (inventarioid, idimpuesto, estado)
-            VALUES (?,?,2)";
-        return $this->insert($sql, [$inventarioid, $idimpuesto]);
-    }
-
-
-    /* ===============================
        CLAVES ALTERNAS
     =============================== */
     public function insertClaveAlterna(
@@ -283,48 +263,47 @@ WHERE idinventario = ?";
     }
 
     public function upsertClaveAlterna(
-    int $inventarioid,
-    string $cve_alterna,
-    string $tipo
-) {
-    $inventarioid = (int)$inventarioid;
-    $cve_alterna = addslashes($cve_alterna);
+        int $inventarioid,
+        string $cve_alterna,
+        string $tipo
+    ) {
+        $inventarioid = (int)$inventarioid;
+        $cve_alterna = addslashes($cve_alterna);
 
-    // 🔍 Verificar si ya existe una clave para ese inventario
-    $sql = "SELECT idclavealterna 
+        // 🔍 Verificar si ya existe una clave para ese inventario
+        $sql = "SELECT idclavealterna 
             FROM wms_claves_alternas 
             WHERE inventarioid = $inventarioid 
             LIMIT 1";
 
-    $existe = $this->select($sql);
+        $existe = $this->select($sql);
 
-    if (!empty($existe)) {
+        if (!empty($existe)) {
 
-        // 🔄 UPDATE
-        $sql = "UPDATE wms_claves_alternas 
+            // 🔄 UPDATE
+            $sql = "UPDATE wms_claves_alternas 
                 SET cve_alterna = ?, tipo = ?
                 WHERE inventarioid = ?";
 
-        return $this->update($sql, [
-            $cve_alterna,
-            $tipo,
-            $inventarioid
-        ]);
+            return $this->update($sql, [
+                $cve_alterna,
+                $tipo,
+                $inventarioid
+            ]);
+        } else {
 
-    } else {
-
-        // ➕ INSERT
-        $sql = "INSERT INTO wms_claves_alternas 
+            // ➕ INSERT
+            $sql = "INSERT INTO wms_claves_alternas 
                 (inventarioid, cve_alterna, tipo)
                 VALUES (?, ?, ?)";
 
-        return $this->insert($sql, [
-            $inventarioid,
-            $cve_alterna,
-            $tipo
-        ]);
+            return $this->insert($sql, [
+                $inventarioid,
+                $cve_alterna,
+                $tipo
+            ]);
+        }
     }
-}
 
     /* ===============================
        BUSCADOR KIT
@@ -771,6 +750,8 @@ WHERE idinventario = ?";
         return $this->select_all($sql);
     }
 
+    //filtros
+
     public function items(array $filters = []): array
     {
         $query = "SELECT
@@ -807,12 +788,13 @@ WHERE idinventario = ?";
 
     //----------------------------- UBICACIONES INVENTARIO
 
-    public function insertInventarioUbicacion($inventarioid, $ubicacionid, $fecha, $estado)
+    public function insertInventarioUbicacion($inventarioid, $ubicacionid, $cantidad, $fecha)
     {
         $inventarioid = intval($inventarioid);
         $ubicacionid = intval($ubicacionid);
+        $cantidad = intval($cantidad);
 
-        // 🔹 VALIDAR DUPLICADO
+        // VALIDAR DUPLICADO
         $exist = $this->select("
         SELECT idubicacionasignada 
         FROM wms_ubicaciones_asignadas
@@ -824,7 +806,7 @@ WHERE idinventario = ?";
             return "exist";
         }
 
-        // 🔹 VALIDAR SI ESTÁ OCUPADA
+        // VALIDAR SI ESTÁ OCUPADA
         $ubicacion = $this->select("
         SELECT estado 
         FROM wms_ubicaciones 
@@ -835,16 +817,14 @@ WHERE idinventario = ?";
             return "ocupada";
         }
 
-        // 🔹 INSERT
+        // INSERT
         $sql = "INSERT INTO wms_ubicaciones_asignadas 
-        (inventarioid, ubicacionesid, fecha_creacion) 
-        VALUES ($inventarioid, $ubicacionid, '$fecha')";
+        (inventarioid, ubicacionesid, cantidad, fecha_creacion) 
+        VALUES ($inventarioid, $ubicacionid, $cantidad, '$fecha')";
 
         $insert = $this->insert($sql, []);
 
         if ($insert > 0) {
-
-            // 🔥 CAMBIAR A OCUPADA
             $sqlUpdate = "UPDATE wms_ubicaciones 
                       SET estado = 1 
                       WHERE idubicaciones = $ubicacionid";
@@ -885,6 +865,7 @@ WHERE idinventario = ?";
 
         $sql = "SELECT 
         ua.idubicacionasignada,
+        ua.cantidad,
         CONCAT(
             s.descripcion, ' - ',
             z.descripcion, ' - ',
@@ -900,6 +881,8 @@ WHERE idinventario = ?";
         return $this->select_all($sql);
     }
 
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
     /**
      * Actualiza el último costo negociado en el maestro de inventarios.
      */
@@ -962,4 +945,100 @@ WHERE idinventario = ?";
             $data['signo']              // 1 o -1
         ]);
     }
+=======
+=======
+>>>>>>> Stashed changes
+    // ================= PROVEEDORES =================
+
+    public function selectProveedoresCfg()
+    {
+        $sql = "SELECT id_proveedor, nombre_comercial 
+            FROM prv_cat_proveedores 
+            WHERE estatus_operativo = 0";
+        return $this->select_all($sql);
+    }
+
+    public function insertInventarioProveedorform($inventarioid, $id_proveedor, $estado)
+    {
+        $inventarioid = intval($inventarioid);
+        $id_proveedor   = intval($id_proveedor);
+
+        //  verificar si ya existe
+        $sqlCheck = "SELECT id_inv_proveedores 
+                 FROM wms_inventario_proveedores 
+                 WHERE inventarioid = $inventarioid 
+                   AND id_proveedor = $id_proveedor";
+
+        $exist = $this->select($sqlCheck);
+
+        if (!empty($exist)) {
+            return "exist";
+        }
+
+        //  insertar
+        $sql = "INSERT INTO wms_inventario_proveedores
+            (inventarioid,id_proveedor,estado)
+            VALUES (?,?,?)";
+
+        return $this->insert($sql, [
+            $inventarioid,
+            $id_proveedor,
+            $estado
+        ]);
+    }
+
+
+    public function getProveedoresAsignados($idinventario)
+    {
+        $idinventario = intval($idinventario);
+
+        $sql = "SELECT p.id_proveedor,
+                   p.nombre_comercial,
+                   ip.estado
+            FROM prv_cat_proveedores p
+            INNER JOIN wms_inventario_proveedores ip 
+              ON p.id_proveedor = ip.id_proveedor
+            WHERE ip.inventarioid = $idinventario";
+
+        return $this->select_all($sql);
+    }
+
+
+    // ================= CANTIDADES  =================
+    public function selectCantidadesProducto(int $inventarioid)
+    {
+        $sql = "SELECT 
+                i.idinventario AS inventarioid,
+                IFNULL(SUM(ma.existencia),0) AS existencia_total,
+                IFNULL(i.stock_minimo,0) AS stock_minimo,
+                IFNULL(i.stock_maximo,0) AS stock_maximo,
+                IFNULL(SUM(ma.pendiente_surtir),0) AS apartado
+            FROM wms_inventario i
+            LEFT JOIN wms_multialmacen ma 
+                ON ma.inventarioid = i.idinventario
+            WHERE i.idinventario = ?
+            GROUP BY i.idinventario, i.stock_minimo, i.stock_maximo";
+
+        return $this->select($sql, [$inventarioid]);
+    }
+
+    public function selectAlmacenesProducto(int $inventarioid)
+    {
+        $sql = "SELECT 
+                a.descripcion AS almacen,
+                m.existencia,
+                m.stock_minimo,
+                m.stock_maximo,
+                m.pendiente_surtir AS apartado
+            FROM wms_multialmacen m
+            INNER JOIN wms_almacenes a 
+                ON a.idalmacen = m.almacenid
+            WHERE m.inventarioid = ?";
+
+        return $this->select_all($sql, [$inventarioid]);
+    }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 }
