@@ -1212,13 +1212,14 @@ class Inv_inventario extends Controllers
 
 		$inventarioid = intval($_POST['inventarioid']);
 		$ubicacionid = intval($_POST['ubicacionid']);
+		$cantidad = intval($_POST['cantidad']);
 		$fecha = date('Y-m-d H:i:s');
 
 		$resp = $this->model->insertInventarioUbicacion(
 			$inventarioid,
 			$ubicacionid,
-			$fecha,
-			2
+			$cantidad,
+			$fecha
 		);
 
 		if ($resp === "exist") {
@@ -1263,5 +1264,96 @@ class Inv_inventario extends Controllers
 	public function index()
 	{
 		return $this->apiResponse($this->inventarioService->items(sanitizeGet()));
+	}
+
+
+	// ================= PROVEEDORES =================
+
+	public function getSelectProveedoresCfg()
+	{
+		$data = $this->model->selectProveedoresCfg();
+
+		$html = '<option value="">Seleccione un proveedor</option>';
+		foreach ($data as $row) {
+			$html .= '<option value="' . $row['id_proveedor'] . '">' . $row['nombre_comercial'] . '</option>';
+		}
+
+		echo $html;
+		die();
+	}
+
+	public function setProveedor()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		if (empty($_POST['inventarioid']) || empty($_POST['id_proveedor'])) {
+			echo json_encode(['status' => false, 'msg' => 'Datos incompletos']);
+			die();
+		}
+
+		$inventarioid = intval($_POST['inventarioid']);
+		$id_proveedor   = intval($_POST['id_proveedor']);
+
+		$resp = $this->model->insertInventarioProveedorform($inventarioid, $id_proveedor, 2);
+
+		if ($resp === "exist") {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'Este proveedor ya está asignado al producto'
+			]);
+		} elseif ($resp > 0) {
+			echo json_encode([
+				'status' => true,
+				'msg' => 'Proveedor asignado correctamente'
+			]);
+		} else {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'Error al asignar proveedor'
+			]);
+		}
+
+		die();
+	}
+
+
+	public function getProveedoresAsignados($idinventario)
+	{
+		$data = $this->model->getProveedoresAsignados($idinventario);
+
+		header('Content-Type: application/json; charset=utf-8');
+		echo json_encode([
+			'status' => true,
+			'data' => $data
+		]);
+		die();
+	}
+
+	// ================= CANTIDADES =================
+
+	public function getCantidadesProducto()
+	{
+		if ($_POST) {
+
+			$inventarioid = intval($_POST['inventarioid']);
+
+			$arrData = $this->model->selectCantidadesProducto($inventarioid);
+
+			echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+			die();
+		}
+	}
+
+	public function getAlmacenesProducto()
+	{
+		if ($_POST) {
+
+			$inventarioid = intval($_POST['inventarioid']);
+
+			$arrData = $this->model->selectAlmacenesProducto($inventarioid);
+
+			echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+			die();
+		}
 	}
 }

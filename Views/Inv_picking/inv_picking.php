@@ -26,59 +26,75 @@
             </div>
             <!-- end page title -->
 
-            <div class="card mb-3">
-                <div class="card-body">
-                    <h5>Crear Picking</h5>
-
-                    <div class="row">
-                        <div class="col-md-3">
-                            <input type="text" id="folio" class="form-control" placeholder="Folio">
-                        </div>
-
-                        <div class="col-md-3">
-                            <input type="text" id="pedido" class="form-control" placeholder="Pedido cliente">
-                        </div>
-
-                        <div class="col-md-3">
-                            <select id="prioridad" class="form-control">
-                                <option value="Alta">Alta</option>
-                                <option value="Media">Media</option>
-                                <option value="Baja">Baja</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-3">
-                            <button class="btn btn-primary" onclick="crearPicking()">Crear</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div class="row">
                 <div class="col-md-4">
-                    <h5>Órdenes de Picking</h5>
+                    <h5>Órdenes de compra por recibir</h5>
                     <ul class="list-group" id="listaPicking"></ul>
                 </div>
 
                 <div class="col-md-8">
-                    <h5>Detalle</h5>
+                    <h5>Recepción de materiales</h5>
 
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Producto</th>
-                                <th>Ubicación</th>
-                                <th>Lote</th>
-                                <th>Solicitado</th>
-                                <th>Existente</th>
-                                <th>Pickear</th>
-                            </tr>
-                        </thead>
-                        <tbody id="detallePicking"></tbody>
-                    </table>
+                    <!-- Header documento -->
+                    <div class="card mb-3">
+                        <div class="card-body p-0">
+                            <table class="table table-bordered mb-0">
+                                <tr>
+                                    <th class="w-50">Compra origen</th>
+                                    <th class="w-50">Destino</th>
+                                </tr>
+                                <tr>
+                                    <td id="headerOrigen" class="align-top"></td>
+                                    <td id="headerDestino" class="align-top"></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
 
-                    <button class="btn btn-success" onclick="guardarPicking()">Guardar Picking</button>
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <strong>Escaneo de producto</strong>
+                        </div>
+                        <div class="card-body">
+                            <input type="text" id="scannerInput" class="form-control"
+                                placeholder="Escanea código de barras..."
+                                autocomplete="off">
+                        </div>
+                    </div>
+
+                    <!-- Tabla detalle -->
+                    <div class="card mb-3">
+                        <div class="card-body p-0">
+                            <table class="table table-bordered mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Código</th>
+                                        <th>Descripción</th>
+                                        <th>Lote</th>
+                                        <th>Solicitado</th>
+                                        <th>Recibido</th>
+                                        <th>Pendiente</th>
+                                        <th>Unidad</th>
+                                        <th>Obs.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detallePicking"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Observaciones -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <strong>Observaciones</strong>
+                        </div>
+                        <div class="card-body">
+                            <textarea id="observacionesPicking" class="form-control" rows="4"></textarea>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-success" onclick="guardarPicking()">Registrar Recepción</button>
                 </div>
             </div>
 
