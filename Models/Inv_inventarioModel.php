@@ -880,9 +880,6 @@ WHERE idinventario = ?";
 
         return $this->select_all($sql);
     }
-
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     /**
      * Actualiza el último costo negociado en el maestro de inventarios.
      */
@@ -945,9 +942,6 @@ WHERE idinventario = ?";
             $data['signo']              // 1 o -1
         ]);
     }
-=======
-=======
->>>>>>> Stashed changes
     // ================= PROVEEDORES =================
 
     public function selectProveedoresCfg()
@@ -1037,8 +1031,4 @@ WHERE idinventario = ?";
 
         return $this->select_all($sql, [$inventarioid]);
     }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 }
