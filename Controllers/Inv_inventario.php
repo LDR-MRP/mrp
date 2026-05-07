@@ -121,7 +121,7 @@ class Inv_inventario extends Controllers
 					// =========================
 
 					if (is_numeric($request) && $request > 0) {
-						$this->model->insertInventarioImpuesto($request, $idimpuesto);
+						$this->model->insertInventarioImpuestoform($request, $idimpuesto, 2);
 					}
 
 
@@ -584,23 +584,24 @@ class Inv_inventario extends Controllers
 		die();
 	}
 
-	//----------------------------------------------------------------------IMPUESTOS
-	public function getSelectImpuestos()
-	{
-		$data = $this->model->selectImpuestos();
+//----------------------------------------------------------------------IMPUESTOS
+public function getSelectImpuestos()
+{
+    $data = $this->model->selectImpuestosCfg();
 
-		$html = '<option value="">Seleccione impuesto</option>';
+    $html = '<option value="">Seleccione impuesto</option>';
 
-		foreach ($data as $row) {
-			$selected = ($row['idimpuesto'] == 1) ? 'selected' : '';
-			$html .= '<option value="' . $row['idimpuesto'] . '" ' . $selected . '>'
-				. $row['cve_impuesto'] . ' - ' . $row['descripcion'] .
-				'</option>';
-		}
+    foreach ($data as $row) {
+        $selected = ($row['idimpuesto'] == 1) ? 'selected' : '';
 
-		echo $html;
-		die();
-	}
+        $html .= '<option value="' . $row['idimpuesto'] . '" ' . $selected . '>'
+            . $row['descripcion'] .
+            '</option>';
+    }
+
+    echo $html;
+    die();
+}
 
 	//----------------------------------------------------------------------MONEDAS
 	public function getSelectMonedas()

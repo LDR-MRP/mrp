@@ -129,11 +129,6 @@ const PERROR = 9;
 const RADMINISTRADOR = 1;
 const RPLANIFICADORPRODUCCION = 2;
 const RANALISTAMATERIALES = 3;
-const COMPRAS_ADMINISTRADOR = 28;
-const COMPRAS_GERENTE = 21;
-const COMPRAS_COMPRADOR = 20;
-const COMPRAS_JEFE_DEPARTAMENTO = 18;
-const COMPRAS_SOLICITANTE  = 19;
 
 
 const STATUS = array('Completo', 'Aprobado', 'Cancelado', 'Reembolsado', 'Pendiente', 'Entregado');
