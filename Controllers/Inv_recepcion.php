@@ -1,19 +1,10 @@
 <?php
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 class Inv_recepcion extends Controllers
 {
     public function __construct()
     {
         parent::__construct();
         session_start();
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         getPermisos(COM_COMPRAS);
     }
 
@@ -30,9 +21,6 @@ class Inv_recepcion extends Controllers
 
             ]
         );
-=======
-=======
->>>>>>> Stashed changes
 
         if (empty($_SESSION['login'])) {
             header('Location: ' . base_url() . '/login');
@@ -152,9 +140,6 @@ class Inv_recepcion extends Controllers
     {
         echo json_encode($this->model->selectOrdenesParciales(), JSON_UNESCAPED_UNICODE);
         die();
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
+
     }
 }

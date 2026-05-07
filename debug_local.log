@@ -1,0 +1,2 @@
+[07-May-2026 09:08:29 America/Mexico_City] PHP Parse error:  syntax error, unexpected token "<<", expecting end of file in C:\xampp\htdocs\mrp-ldr\Controllers\Inv_recepcion.php on line 2
+[07-May-2026 09:09:05 America/Mexico_City] PHP Fatal error:  Cannot declare class Inv_recepcionModel, because the name is already in use in C:\xampp\htdocs\mrp-ldr\Models\Inv_recepcionModel.php on line 36
