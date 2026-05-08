@@ -389,7 +389,7 @@ class RequisitionService
             $targetReqId = null;
             if ($payload['create_new'] === true) {
                 // Caso: Urgencia o Capex/Opex (Crear nuevo DRAFT)
-                $targetReqId = $this->createNewDraft($userContext['id'], "Split de Requisición #{$sourceRequisitionId}");
+                $targetReqId = $this->createNewDraft($userContext, "Split de Requisición #{$sourceRequisitionId}");
             } else {
                 // Caso: Mover a DRAFT existente
                 $targetReqId = $payload['target_requisition_id'];

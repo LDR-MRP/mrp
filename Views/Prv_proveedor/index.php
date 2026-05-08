@@ -6,7 +6,7 @@
             <section id="view-index-proveedores">
                 <div class="row align-items-center mb-4">
                     <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-white">
+                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2">
                             <div class="page-title-right">
                                 <ol class="breadcrumb m-0">
                                     <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
@@ -21,12 +21,12 @@
                     <div class="col-md-7">
                         <div class="d-flex align-items-center">
                             <div class="avatar-md me-4">
-                                <span class="avatar-title bg-white text-primary rounded-circle fs-2 shadow-lg border border-light">
+                                <span class="avatar-title text-primary rounded-circle fs-2 shadow-lg border border-light">
                                     <i class="ri-truck-line"></i>
                                 </span>
                             </div>
                             <div>
-                                <h3 class="mb-1 text-dark fw-bold text-uppercase ls-1">Gestión de Proveedores</h3>
+                                <h3 class="mb-1 fw-bold text-uppercase ls-1">Gestión de Proveedores</h3>
                                 <p class="text-muted mb-0 fs-14">
                                     Administración del directorio de empresas y socios comerciales.
                                 </p>
@@ -60,7 +60,7 @@
                                 </div>
                                 <div class="d-flex align-items-end justify-content-between mt-3">
                                     <div>
-                                        <h4 class="fs-24 fw-bold text-dark mb-2"><span class="counter-value" id="kpi-total">0</span></h4>
+                                        <h4 class="fs-24 fw-bold mb-2"><span class="counter-value" id="kpi-total">0</span></h4>
                                         <span class="badge bg-soft-primary text-primary fw-medium mb-0 px-2 py-1">Directorio completo</span>
                                     </div>
                                 </div>
@@ -83,7 +83,7 @@
                                 </div>
                                 <div class="d-flex align-items-end justify-content-between mt-3">
                                     <div>
-                                        <h4 class="fs-24 fw-bold text-dark mb-2"><span class="counter-value" id="kpi-activos">0</span></h4>
+                                        <h4 class="fs-24 fw-bold mb-2"><span class="counter-value" id="kpi-activos">0</span></h4>
                                         <span class="badge bg-soft-success text-success fw-medium mb-0 px-2 py-1">Listos para compra</span>
                                     </div>
                                 </div>
@@ -106,7 +106,7 @@
                                 </div>
                                 <div class="d-flex align-items-end justify-content-between mt-3">
                                     <div>
-                                        <h4 class="fs-24 fw-bold text-dark mb-2"><span class="counter-value" id="kpi-inactivos">0</span></h4>
+                                        <h4 class="fs-24 fw-bold mb-2"><span class="counter-value" id="kpi-inactivos">0</span></h4>
                                         <span class="badge bg-soft-danger text-danger fw-medium mb-0 px-2 py-1">Requieren Atención</span>
                                     </div>
                                 </div>
@@ -147,7 +147,7 @@
                         </div>
                     </div>
 
-                    <div class="card-footer bg-white border-top-0 py-4">
+                    <div class="card-footer border-top-0 py-4">
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-muted fw-medium">
                                 <i class="ri-shield-check-line text-success me-1"></i> Directorio sincronizado en tiempo real

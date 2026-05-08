@@ -119,13 +119,7 @@ class Prv_proveedorModel extends Mysql
                 `prv_det_config_financiera`.`limite_credito`,
                 `prv_det_config_financiera`.`id_moneda_defecto`,
                 `prv_det_config_financiera`.`tasa_iva_default`,
-                `cat_condiciones_pago`.`descripcion`,
-                -- Banking Information Columns 
-                `prv_det_cuentas_bancarias`.`id_banco`,
-                `prv_det_cuentas_bancarias`.`clabe`,
-                `prv_det_cuentas_bancarias`.`cuenta`,
-                `prv_det_cuentas_bancarias`.`swift_bic`,
-                `prv_det_cuentas_bancarias`.`es_principal`
+                `cat_condiciones_pago`.`descripcion`
             FROM `prv_cat_proveedores`
             -- Addresses JOIN
             LEFT JOIN `prv_det_direcciones`
@@ -139,9 +133,6 @@ class Prv_proveedorModel extends Mysql
             -- Financial Config JOIN
             LEFT JOIN `cat_condiciones_pago`
                 ON `cat_condiciones_pago`.`id_condicion` = `prv_det_config_financiera`.`id_condicion_pago`
-            -- Banking Information JOIN
-            LEFT JOIN `prv_det_cuentas_bancarias`
-                ON `prv_det_cuentas_bancarias`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
             -- Onboarding Information JOIN
             LEFT JOIN `prv_tra_onboarding`
                 ON `prv_tra_onboarding`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
@@ -154,16 +145,35 @@ class Prv_proveedorModel extends Mysql
         return $this->select_all($sql);
     }
 
-    public function getKpi()
+    /**
+     * 
+     */
+    public function getKpi(array $filters)
     {
-        return $this->select_all(
-            "SELECT 
-                IFNULL(estatus_operativo, 'total') AS estatus,
-                COUNT(id_proveedor) AS cantidad
+        $where = "";
+        $params = [];
+
+        // Filtro por Usuario
+        if (!empty($filters['created_by'])) {
+            $where .= " AND created_by = ? ";
+            $params[] = $filters['created_by'];
+        }
+
+        // Filtro por Planta
+        if (array_key_exists('id_planta', $filters)) {
+            $where .= " AND id_planta = ? ";
+            $params[] = $filters['id_planta'];
+        }
+
+        $query = "SELECT 
+                lower(IFNULL(estatus_onboarding, 'total')) AS estatus,
+                count(id_proveedor) as cantidad
             FROM prv_cat_proveedores
-            GROUP BY estatus_operativo WITH ROLLUP;
-            "
-        );
+            $where
+            GROUP BY estatus_onboarding WITH ROLLUP;
+            ";
+
+        return $this->select_all($query, $params);
     }
 
     public function destroy(int $supplierId)
@@ -298,7 +308,7 @@ class Prv_proveedorModel extends Mysql
         );
     }
 
-    public function updateDynamic($table, $cols, $values)
+    public function updateDynamic(string $table, string $cols, array $values)
     {        
         return $this->update(
             query: 
@@ -307,5 +317,73 @@ class Prv_proveedorModel extends Mysql
                 WHERE id_proveedor = ?;",
             arrValues: $values
         );
+    }
+
+    public function getFinancialConfig(int $proveedorId): array
+    {
+        return [];
+    }
+
+    /**
+     * Actualiza el estatus de madurez del proveedor en el flujo de Onboarding.
+     * Esta transición permite que el proveedor sea visible para el módulo de Compras.
+     *
+     * @param int    $supplierId ID del proveedor.
+     * @param string $status     Nuevo estado ('Prospecto', 'En Revision', 'Aprobado', 'Rechazado').
+     * @param int    $adminId    ID del administrador que autoriza el cambio.
+     * @return bool True si se actualizó correctamente.
+     */
+    public function updateOnboardingStatus(int $supplierId, string $status, int $adminId): bool
+    {
+        $sql = "UPDATE `{$this->table}` 
+                SET estatus_onboarding = ?, 
+                    updated_by = ?, 
+                    updated_at = CURRENT_TIMESTAMP 
+                WHERE id_proveedor = ? 
+                  AND deleted_at IS NULL";
+
+        // Usamos el método update de tu clase base Mysql
+        $rowCount = $this->update($sql, [
+            $status, 
+            $adminId, 
+            $supplierId
+        ]);
+
+        return $rowCount > 0;
+    }
+
+    /**
+     * Obtiene los datos maestros de un proveedor específico por su identificador.
+     * Este método es vital para validar el perfil fiscal (Tipo Persona/Origen) 
+     * durante el proceso de Onboarding.
+     *
+     * @param int $id ID único del proveedor en la tabla prv_cat_proveedores.
+     * @return array|null Retorna el registro del proveedor o null si no existe o fue eliminado.
+     */
+    public function getById(int $id): ?array
+    {
+        $sql = "SELECT 
+                    id_proveedor,
+                    id_empresa,
+                    rfc,
+                    razon_social,
+                    nombre_comercial,
+                    id_tipo_persona, -- 'F' o 'M'
+                    id_regimen_fiscal,
+                    tipo,           -- 'Interno' o 'Externo'
+                    origen,         -- 'Nacional' o 'Extranjero'
+                    estatus_onboarding,
+                    estatus_operativo,
+                    id_planta,        -- Para validaciones de Scope (IDOR)
+                    created_at
+                FROM `{$this->table}` 
+                WHERE id_proveedor = ? 
+                  AND deleted_at IS NULL 
+                LIMIT 1";
+
+        $result = $this->select($sql, [$id]);
+
+        // Retornamos null si el objeto Mysql devuelve false o vacío
+        return $result ?: null;
     }
 }

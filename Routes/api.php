@@ -17,8 +17,29 @@ Route::post('api/v1/login', [AuthController::class, 'login']);
 
 // Rutas Protegidas
 // --- SUPPLIERS ---
+// Registro y Actualización de Proveedor (Maestro + Satélites)
+Route::post('api/v1/suppliers', [SupplierController::class, 'store'])->middleware([AuthMiddleware::class]);
+// Listado y Detalle
 Route::get('api/v1/suppliers', [SupplierController::class, 'index'])->middleware([AuthMiddleware::class]);
+Route::get('api/v1/suppliers/kpis', [SupplierController::class, 'kpis'])->middleware([AuthMiddleware::class]);
 Route::get('api/v1/suppliers/{id}', [SupplierController::class, 'show'])->middleware([AuthMiddleware::class]);
+
+// Expediente Digital
+Route::post('api/v1/suppliers/documents', [SupplierController::class, 'uploadDocument'])->middleware([AuthMiddleware::class]);
+Route::get('api/v1/suppliers/{id}/documents', [SupplierController::class, 'getDocuments'])->middleware([AuthMiddleware::class]);
+Route::post('api/v1/suppliers/audit-document', [SupplierController::class, 'auditDocument'])->middleware([AuthMiddleware::class]);
+
+// --- GESTIÓN BANCARIA DE PROVEEDORES ---
+// Listar cuentas de un proveedor específico
+Route::get('api/v1/suppliers/{id}/banks', [SupplierController::class, 'getBanks'])->middleware([AuthMiddleware::class]);
+// Registrar nueva cuenta
+Route::post('api/v1/suppliers/store-bank', [SupplierController::class, 'storeBank'])->middleware([AuthMiddleware::class]);
+// Aprobar o Rechazar cuenta (Compliance L2)
+Route::post('api/v1/suppliers/audit-bank', [SupplierController::class, 'auditBankAccount'])->middleware([AuthMiddleware::class]);
+// Eliminar cuenta (Soft Delete)
+Route::delete('api/v1/suppliers/banks/{id}', [SupplierController::class, 'deleteBank'])->middleware([AuthMiddleware::class]);
+// Onboarding
+Route::get('api/v1/suppliers/{id}/onboarding-timeline', [SupplierController::class, 'getOnboardingTimeline'])->middleware([AuthMiddleware::class]);
 
 // --- REQUISITIONS ---
 Route::get('api/v1/requisitions', [RequisitionController::class, 'index'])->middleware([AuthMiddleware::class]);
@@ -56,13 +77,20 @@ Route::post('api/v1/purchase-orders/{id}/cancel', [PurchaseOrderController::clas
 Route::get('api/v1/purchase-orders/{id}/pdf', [PurchaseOrderController::class, 'generatePdf'])->middleware([AuthMiddleware::class]);
 
 // --- INVENTORY RECEPTION ---
+// Pendiente de recepción
 Route::get('api/v1/purchase-orders/{id}/pending-reception', [InventoryReceptionController::class, 'getPendingItems'])->middleware([AuthMiddleware::class]);
-
+// Recepción de mercancía
 Route::post('api/v1/inventory-receptions', [InventoryReceptionController::class, 'store'])->middleware([AuthMiddleware::class]);
 
+// --- ACCOUNTS PAYABLE ---
+// Guardar facturas
+Route::post('api/v1/accounts-payable/invoices', [AccountsPayableController::class, 'store']);
+
 // --- WAREHOUSE ---
+// Almacenes
 Route::get('api/v1/warehouses', [WarehouseController::class, 'index'])->middleware([AuthMiddleware::class]);
 
 // --- CURRENCY ---
+// Monedas
 Route::get('api/v1/currencies', [CurrencyController::class, 'index'])->middleware([AuthMiddleware::class]);
 ?>

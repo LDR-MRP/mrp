@@ -64,9 +64,9 @@ class Com_requisicionModel extends Mysql
                 d.nombre AS departamento,
                 d.descripcion AS departamento_descripcion
             FROM {$this->table} r
-            INNER JOIN cli_departamentos d
+            LEFT JOIN cli_departamentos d
             ON d.id = r.departamentoid
-            INNER JOIN usuarios u
+            LEFT JOIN usuarios u
             ON u.idusuario = r.usuarioid
             WHERE r.idrequisicion = ?",
             [

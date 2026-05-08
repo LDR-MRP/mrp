@@ -1,13 +1,19 @@
 <?php
 
-class Prv_proveedorStoreRequest extends Requests
-{
-    private $prvProveedorModel;
-    private $currentSupplier = null;
+declare(strict_types=1);
 
-    public function __construct(array $data) {
-        parent::__construct($data);
-        $this->prvProveedorModel = new Prv_proveedorModel();
+namespace Requests\Supplier;
+
+use Requests;
+
+class StoreSupplierRequest extends Requests
+{
+    private \Prv_proveedorModel $prvProveedorModel;
+    private ?array $currentSupplier = null;
+
+    public function __construct() {
+        parent::__construct();
+        $this->prvProveedorModel = new \Prv_proveedorModel();
     }
 
     public function rules(): void
@@ -59,13 +65,18 @@ class Prv_proveedorStoreRequest extends Requests
         ];
 
         foreach ($requiredFields as $field => $message) {
-            if (empty(trim($this->data[$field]))) {
+            // 1. Obtenemos el valor o un string vacío si no existe el índice (blindaje vs null)
+            // 2. Forzamos a string por si llega un número (blindaje vs TypeError)
+            $val = (string)($this->data[$field] ?? '');
+
+            if (empty(trim($val))) {
                 $this->addError($field, $message);
             }
         }
 
-        if (!empty($this->data['correo_electronico']) && !filter_var($this->data['correo_electronico'], FILTER_VALIDATE_EMAIL)) {
-            $this->addError('correo_electronico', 'El correo electrónico no es válido.');
+        $email = (string)($this->data['email'] ?? ''); // Nota: En tu captura dice 'correo_electronico' pero en el array pusiste 'email'
+        if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->addError('email', 'El correo electrónico no es válido.');
         }
 
         if (!empty($this->data['rfc']) && !empty($this->data['id_tipo_persona'])) {

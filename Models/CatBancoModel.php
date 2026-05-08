@@ -21,19 +21,12 @@ class CatBancoModel extends Mysql
         );
     }
 
-    public function findById(string $id): array
+    /**
+     * Valida la existencia del banco en el catálogo.
+     */
+    public function findById(string $idBanco): ?array
     {
-        return $this->select_all(
-            "SELECT
-                id_banco,
-                nombre_corto,
-                razon_social,
-                estatus
-            FROM {$this->table}
-            WHERE id_banco = ?",
-            [
-                $id
-            ]
-        );
+        $sql = "SELECT id_banco, nombre_corto FROM cat_bancos WHERE id_banco = ?";
+        return $this->select($sql, [$idBanco]) ?: null;
     }
 }

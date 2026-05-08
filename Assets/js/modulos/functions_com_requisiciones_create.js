@@ -565,15 +565,20 @@ const RequisitionForm = {
         };
 
         const originalHtml = this.dom.$btnConfirmarMover.html();
+        const token = localStorage.getItem('mrp_token');
 
         $.ajax({
             url: `${this.config.apiBase}/${this.state.id}/items/move`,
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(payload),
-            beforeSend: () => {
-                this.dom.$btnConfirmarMover.prop('disabled', true).html('<i class="ri-loader-4-line ri-spin"></i> Procesando...');
+            beforeSend: function (request) {
+                // this.dom.$btnConfirmarMover.prop('disabled', true).html('<i class="ri-loader-4-line ri-spin"></i> Procesando...');
+                if (token) {
+                    request.setRequestHeader("Authorization", `Bearer ${token}`);
+                }
             },
+
             success: (res) => {
                 this.dom.$modalMover.modal('hide');
                 Sys_Core.UI.notify(res.message, 'success');

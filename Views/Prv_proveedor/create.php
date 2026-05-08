@@ -6,15 +6,6 @@
     <div class="page-content">
         <div class="container-fluid">
             <style>
-                body {
-                    background-color: #f4f7f6;
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                }
-                /* Estilo para resaltar los asteriscos de campos obligatorios */
-                label.form-label:contains('*'), 
-                label.form-label {
-                    position: relative;
-                }
                 .text-danger-asterisk {
                     color: #ef4444; /* Rojo vibrante */
                     font-weight: bold;
@@ -93,7 +84,7 @@
                 <!-- Main Banner -->
                 <div class="row align-items-center mb-4 text-start">
                     <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-white">
+                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2">
                             <div class="page-title-right">
                                 <ol class="breadcrumb m-0">
                                     <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
@@ -113,7 +104,7 @@
                                 </span>
                             </div>
                             <div>
-                                <h4 id="page-title" class="mb-1 text-dark fw-bold ls-05">Nuevo Proveedor</h4>
+                                <h4 id="page-title" class="mb-1 fw-bold ls-05">Nuevo Proveedor</h4>
                                 <p id="page-description" class="text-muted mb-0 fs-13">Complete la información para dar de alta un nuevo socio.</p>
                             </div>
                         </div>
@@ -163,21 +154,21 @@
                                                 <div class="col-md-4">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">ID Empresa <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
-                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-building-line"></i></span>
+                                                        <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-building-line"></i></span>
                                                         <input type="text" name="id_empresa" class="form-control border-0">
                                                     </div>
                                                 </div>
                                                 <div class="col-md-4">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">RFC <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
-                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-barcode-box-line"></i></span>
+                                                        <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-barcode-box-line"></i></span>
                                                         <input type="text" name="rfc" class="form-control border-0" maxlength="13" placeholder="ABCD123456EFG" style="text-transform: uppercase;">
                                                     </div>
                                                 </div>
                                                 <div class="col-md-4">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Origen <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
-                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-earth-line"></i></span>
+                                                        <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-earth-line"></i></span>
                                                         <select name="origen" class="form-select border-0">
                                                             <option value="Nacional">Nacional</option>
                                                             <option value="Extranjero">Extranjero</option>
@@ -191,7 +182,7 @@
                                                 <div class="col-md-12">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Nombre Comercial <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group rounded-3 overflow-hidden shadow-none">
-                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-store-2-line"></i></span>
+                                                        <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-store-2-line"></i></span>
                                                         <input type="text" name="nombre_comercial" class="form-control border-top-0 border-start-0 border-end-0 rounded-0 ps-0">
                                                     </div>
                                                 </div>
@@ -227,7 +218,7 @@
                                                 <div class="col-md-4">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Código Postal <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border border-info rounded">
-                                                        <span class="input-group-text bg-white border-0"><i class="ri-map-pin-user-line text-info"></i></span>
+                                                        <span class="input-group-text border-0"><i class="ri-map-pin-user-line text-info"></i></span>
                                                         <input type="text" name="cp" id="cp" class="form-control border-0 fw-bold fs-15 text-info" placeholder="00000" maxlength="5">
                                                     </div>
                                                 </div>
@@ -235,9 +226,9 @@
                                                     <label class="form-label text-uppercase fs-11 fw-semibold text-muted d-block">¿Es Principal?</label>
                                                     <div class="btn-group w-100">
                                                         <input type="radio" class="btn-check" name="es_principal" id="principal_si" value="1">
-                                                        <label class="btn btn-outline-light w-100 border text-dark fs-12" for="principal_si">SÍ</label>
+                                                        <label class="btn btn-outline-light w-100 border fs-12" for="principal_si">SÍ</label>
                                                         <input type="radio" class="btn-check" name="es_principal" id="principal_no" value="0">
-                                                        <label class="btn btn-outline-light w-100 border text-dark fs-12" for="principal_no">NO</label>
+                                                        <label class="btn btn-outline-light w-100 border fs-12" for="principal_no">NO</label>
                                                     </div>
                                                 </div>
                                                 <div class="col-md-8">
@@ -290,7 +281,7 @@
                                                 <div class="col-md-6">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Nombre Completo <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
-                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-user-3-line"></i></span>
+                                                        <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-user-3-line"></i></span>
                                                         <input type="text" name="nombre" class="form-control border-0 fs-16">
                                                     </div>
                                                 </div>
@@ -303,14 +294,14 @@
                                                 <div class="col-md-6">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Email <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
-                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-mail-line"></i></span>
+                                                        <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-mail-line"></i></span>
                                                         <input type="email" name="email" class="form-control border-0 fs-16" placeholder="ejemplo@correo.com">
                                                     </div>
                                                 </div>
                                                 <div class="col-md-4">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Teléfono <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
-                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-phone-line"></i></span>
+                                                        <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-phone-line"></i></span>
                                                         <input type="text" name="telefono" id="telefono" class="form-control border-0 fs-16" placeholder="(00) 0000-0000">
                                                     </div>
                                                 </div>
@@ -318,9 +309,9 @@
                                                     <label class="form-label text-uppercase fs-11 fw-semibold text-muted d-block">¿Notificar Compras?</label>
                                                     <div class="btn-group w-100">
                                                         <input type="radio" class="btn-check" name="notificar_compras" id="notificar_si" value="1">
-                                                        <label class="btn btn-outline-light w-100 border text-dark fs-12" for="notificar_si">SÍ</label>
+                                                        <label class="btn btn-outline-light w-100 border fs-12" for="notificar_si">SÍ</label>
                                                         <input type="radio" class="btn-check" name="notificar_compras" id="notificar_no" value="0">
-                                                        <label class="btn btn-outline-light w-100 border text-dark fs-12" for="notificar_no">NO</label>
+                                                        <label class="btn btn-outline-light w-100 border fs-12" for="notificar_no">NO</label>
                                                     </div>
                                                 </div>
                                             </div>
@@ -350,7 +341,7 @@
                                             <div class="mb-3">
                                                 <label class="form-label text-uppercase fs-11 fw-bold text-muted">Cuenta Contable <span class="text-danger-asterisk">*</span></label>
                                                 <div class="input-group border rounded-3 overflow-hidden shadow-none">
-                                                    <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-git-repository-line"></i></span>
+                                                    <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-git-repository-line"></i></span>
                                                     <input name="cuenta_contable" class="form-control border-0 fs-16"/>
                                                 </div>
                                             </div>                                            
@@ -359,7 +350,7 @@
                                                 <label class="form-label text-uppercase fs-11 fw-semibold text-muted">IVA</label>
                                                 <div class="p-3 bg-light rounded-3 position-relative">
                                                     <div class="d-flex justify-content-between mb-2">
-                                                        <span class="badge bg-white text-dark border shadow-sm px-3 py-2 fs-14" id="iva-label">
+                                                        <span class="badge border shadow-sm px-3 py-2 fs-14" id="iva-label">
                                                             <?= $isEdit ? $p['tasa_iva_default'] : '16.00' ?>%
                                                         </span>
                                                         <span class="text-muted fs-11 align-self-center">Desliza para ajustar</span>
@@ -378,7 +369,7 @@
                                             <div class="mb-3">
                                                 <label class="form-label text-uppercase fs-11 fw-semibold text-muted">Crédito Autorizado</label>
                                                 <div class="input-group border rounded-3 overflow-hidden shadow-none">
-                                                    <span class="input-group-text bg-white border-0 text-muted fw-bold"></span>
+                                                    <span class="input-group-text border-0 text-muted fw-bold"></span>
                                                     <input type="text" step="1" name="limite_credito" placeholder="$0.00" class="form-control border-0 text-end fw-bold fs-16">
                                                 </div>
                                             </div>
@@ -388,11 +379,11 @@
                                                 <div class="d-flex gap-2">
                                                     <div class="flex-grow-1">
                                                         <input type="radio" class="btn-check" name="id_moneda_defecto" id="mxn" value="MXN">
-                                                        <label class="btn btn-outline-light w-100 border text-dark fs-12" for="mxn">MXN</label>
+                                                        <label class="btn btn-outline-light w-100 border fs-12" for="mxn">MXN</label>
                                                     </div>
                                                     <div class="flex-grow-1">
                                                         <input type="radio" class="btn-check" name="id_moneda_defecto" id="usd" value="USD">
-                                                        <label class="btn btn-outline-light w-100 border text-dark fs-12" for="usd">USD</label>
+                                                        <label class="btn btn-outline-light w-100 border fs-12" for="usd">USD</label>
                                                     </div>
                                                 </div>
                                             </div>
@@ -504,7 +495,7 @@
                                                 <div class="col-md-12">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">CLABE Interbancaria (Nacional) <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
-                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-numbers-line"></i></span>
+                                                        <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-numbers-line"></i></span>
                                                         <input type="text" name="clabe" class="form-control border-0 fs-16 fw-medium" maxlength="18" placeholder="18 dígitos">
                                                     </div>
                                                 </div>
@@ -513,7 +504,7 @@
                                                 <div class="col-md-6">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Número de Cuenta</label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
-                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-bank-line"></i></span>
+                                                        <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-bank-line"></i></span>
                                                         <input type="text" name="cuenta" class="form-control border-0 fs-15" maxlength="20" placeholder="Ej. 0123456789">
                                                     </div>
                                                 </div>
@@ -523,9 +514,9 @@
                                                     <label class="form-label text-uppercase fs-11 fw-semibold text-muted d-block">¿Es Cuenta Principal?</label>
                                                     <div class="btn-group w-100">
                                                         <input type="radio" class="btn-check" name="banco_es_principal" id="banco_principal_si" value="1">
-                                                        <label class="btn btn-outline-light w-100 border text-dark fs-12" for="banco_principal_si">SÍ</label>
+                                                        <label class="btn btn-outline-light w-100 border fs-12" for="banco_principal_si">SÍ</label>
                                                         <input type="radio" class="btn-check" name="banco_es_principal" id="banco_principal_no" value="0" checked>
-                                                        <label class="btn btn-outline-light w-100 border text-dark fs-12" for="banco_principal_no">NO</label>
+                                                        <label class="btn btn-outline-light w-100 border fs-12" for="banco_principal_no">NO</label>
                                                     </div>
                                                 </div>
 
@@ -542,7 +533,7 @@
                                                 <div class="col-md-6">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">SWIFT / BIC</label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
-                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-global-line"></i></span>
+                                                        <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-global-line"></i></span>
                                                         <input type="text" name="swift_bic" class="form-control border-0 fs-15" maxlength="15" placeholder="Código SWIFT">
                                                     </div>
                                                 </div>
@@ -551,7 +542,7 @@
                                                 <div class="col-md-6">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">IBAN</label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
-                                                        <span class="input-group-text bg-white border-0 text-muted fw-bold"><i class="ri-money-euro-circle-line"></i></span>
+                                                        <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-money-euro-circle-line"></i></span>
                                                         <input type="text" name="iban" class="form-control border-0 fs-15" maxlength="34" placeholder="Código IBAN">
                                                     </div>
                                                 </div>
