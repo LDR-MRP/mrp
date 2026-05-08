@@ -8,3 +8,6 @@ vendor/
 
 # Storage
 Logs/
+
+# Debug
+debug_local.log
