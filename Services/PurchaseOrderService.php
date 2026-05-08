@@ -35,7 +35,7 @@ class PurchaseOrderService
                 default  => false
             }
             ) {
-                return ServiceResponse::error("Security Error: No tienes permisos para ver esta requisición.", 403);
+                return ServiceResponse::error("Security Error: No tienes permisos para ver este módulo.", 403);
             }
 
             return \ServiceResponse::success($po, "Listado de Órdenes de Compra recuperado.");
