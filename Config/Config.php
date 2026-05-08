@@ -121,7 +121,9 @@ const MCLI_TIPOS_CLIENTES = 46;
 const COM_COMPRAS = 50;
 const COM_REQUISICIONES = 51;
 const COM_ORDENES = 52;
+//-----------------------------
 const PRV_PROVEEDORES = 53;
+
 
 const PERROR = 9;
 
@@ -129,6 +131,11 @@ const PERROR = 9;
 const RADMINISTRADOR = 1;
 const RPLANIFICADORPRODUCCION = 2;
 const RANALISTAMATERIALES = 3;
+const COMPRAS_ADMINISTRADOR = 18;
+const COMPRAS_GERENTE = 17;
+const COMPRAS_COMPRADOR = 16;
+const COMPRAS_JEFE_DEPARTAMENTO = 14;
+const COMPRAS_SOLICITANTE  = 15;
 
 
 const STATUS = array('Completo', 'Aprobado', 'Cancelado', 'Reembolsado', 'Pendiente', 'Entregado');
