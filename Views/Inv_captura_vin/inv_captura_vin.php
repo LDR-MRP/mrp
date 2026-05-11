@@ -36,6 +36,7 @@
                         <div class="card-body">
 
                             <form id="formVinModelo">
+                                <input type="hidden" name="id" id="id">
 
                                 <!-- MODELO -->
                                 <div class="row">
@@ -55,56 +56,120 @@
 
                                 <hr>
 
-                                <!-- VIN 8 DIGITOS -->
-                                <label class="fw-bold">Estructura VIN (8 caracteres)</label>
+                                <!-- CONFIGURACIÓN VIN -->
+                                <label class="fw-bold">Configuración VIN</label>
 
-                                <div class="row text-center mt-3">
+                                <div class="row mt-3">
 
-                                    <?php
-                                    $campos = [
-                                        "digt_pais" => "País",
-                                        "digit_fabricante" => "Fabricante",
-                                        "digit_vehiculo" => "Vehículo",
-                                        "digit_modelo" => "Modelo",
-                                        "digit_cuerpo" => "Tipo de cuerpo",
-                                        "digit_sujecion" => "Sujeción",
-                                        "digit_transmision" => "Transmisión",
-                                        "digit_motor" => "Motor"
-                                    ];
-
-                                    foreach ($campos as $name => $label): ?>
-
-                                        <div class="col">
-                                            <input
-                                                type="text"
-                                                maxlength="1"
-                                                class="form-control vin-input text-center"
-                                                name="<?= $name ?>"
-                                                data-label="<?= $label ?>"
-                                                required>
-                                            <small><?= $label ?></small>
-                                        </div>
-
-
-
-                                    <?php endforeach; ?>
-
-                                    <div class="col">
-                                        <select class="form-select text-center" name="anio" id="anio" required>
-                                            <option value="">Año</option>
+                                    <!-- FABRICANTE -->
+                                    <div class="col-md-4 mb-3">
+                                        <label>Fabricante (WMI)</label>
+                                        <select class="form-select" name="id_fabricante" id="id_fabricante" required>
+                                            <option value="">Seleccionar</option>
                                         </select>
-                                        <small>Año (VIN)</small>
                                     </div>
 
-                                    <div class="col">
-                                        <input
-                                            type="text"
-                                            maxlength="1"
-                                            class="form-control vin-planta text-center"
-                                            name="planta"
-                                            id="planta"
+                                    <!-- TIPO VEHICULO -->
+                                    <div class="col-md-4 mb-3">
+                                        <label>Tipo de vehículo</label>
+                                        <select class="form-select" name="id_tipo_vehiculo" id="id_tipo_vehiculo" required>
+                                            <option value="">Seleccionar</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- PESO -->
+                                    <div class="col-md-4 mb-3">
+                                        <label>Peso bruto vehicular (kg)</label>
+                                        <input type="number"
+                                            class="form-control"
+                                            name="peso_bruto_kg"
+                                            id="peso_bruto_kg"
+                                            min="1"
                                             required>
-                                        <small>Planta</small>
+                                    </div>
+
+                                    <!-- MOTOR -->
+                                    <div class="col-md-4 mb-3">
+                                        <label>Tipo de motor</label>
+                                        <select class="form-select" name="id_tipo_motor" id="id_tipo_motor" required>
+                                            <option value="">Seleccionar</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- POTENCIA -->
+                                    <div class="col-md-4 mb-3">
+                                        <label>Potencia HP</label>
+                                        <input type="number"
+                                            class="form-control"
+                                            name="potencia_hp"
+                                            id="potencia_hp"
+                                            min="1"
+                                            required>
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+
+                                        <label>Clasificación distancia</label>
+
+                                        <select
+                                            class="form-select"
+                                            id="tipo_distancia">
+
+                                            <option value="">
+                                                Seleccionar
+                                            </option>
+
+                                            <option value="AUTO">
+                                                Automóvil (mm)
+                                            </option>
+
+                                            <option value="CAMION">
+                                                Autobús / Camiones (m)
+                                            </option>
+
+                                        </select>
+
+                                    </div>
+
+                                    <!-- DISTANCIA -->
+                                    <div class="col-md-4 mb-3">
+
+                                        <label id="label_distancia">
+                                            Distancia entre ejes
+                                        </label>
+
+                                        <input
+                                            type="number"
+                                            step="1"
+                                            class="form-control"
+                                            name="distancia_ejes"
+                                            id="distancia_ejes"
+                                            required>
+
+                                        <small
+                                            class="text-muted"
+                                            id="help_distancia">
+
+                                            Seleccione clasificación
+
+                                        </small>
+
+                                    </div>
+
+                                    <!-- AÑO -->
+                                    <div class="col-md-4 mb-3">
+                                        <label>Año VIN</label>
+                                        <select class="form-select" name="anio" id="anio" required>
+                                            <option value="">Seleccionar</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- PLANTA -->
+                                    <div class="col-md-4 mb-3">
+                                        <label>Planta</label>
+                                        <select class="form-select" name="id_planta" id="id_planta" required>
+                                            <option value="">Seleccionar</option>
+                                        </select>
                                     </div>
 
                                 </div>
@@ -113,9 +178,13 @@
                                     <h5>VIN Base:</h5>
                                     <h3 id="vinPreview" class="text-primary">--------</h3>
                                 </div>
+                                <input type="hidden" name="vin_base" id="vin_base">
 
                                 <div class="mt-4 text-end">
-                                    <button type="submit" class="btn btn-success">
+                                    <button
+                                        type="submit"
+                                        id="btnGuardar"
+                                        class="btn btn-success">
                                         Guardar Modelo VIN
                                     </button>
                                 </div>

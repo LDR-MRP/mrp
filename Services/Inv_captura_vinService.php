@@ -5,116 +5,109 @@ class Inv_captura_vinService
 
     public $model;
 
-    public function index(array $filters)
-    {
-        return ServiceResponse::success($this->model->all($filters));
-    }
-
+    /*
+    |--------------------------------------------------------------------------
+    | STORE
+    |--------------------------------------------------------------------------
+    */
 
     public function store($data)
     {
+
+        // VALIDACIÓN
         foreach ($data as $key => $val) {
-            if ($key !== "estado" && $key !== "id" && empty($val)) {
-                return ServiceResponse::error("Todos los campos son obligatorios");
+
+            if ($key != "id" && empty($val)) {
+
+                return ServiceResponse::error(
+                    "Todos los campos son obligatorios"
+                );
             }
         }
 
-        if (empty($data['anio'])) {
-            return ServiceResponse::error("Debes seleccionar un año");
-        }
+        // VALIDAR DUPLICADOS
+        $exist = $this->model->select(
 
-        // 🔥 SI EXISTE ID → UPDATE
+            "SELECT id_cat_modelo_vin
+
+            FROM cat_modelos_vin
+
+            WHERE modelo = ?
+            AND id_fabricante = ?
+            AND id_tipo_vehiculo = ?
+            AND peso_bruto_kg = ?
+            AND id_tipo_motor = ?
+            AND potencia_hp = ?
+            AND distancia_ejes = ?
+            AND id_cat_anio_vin = ?
+            AND id_planta = ?",
+
+            [
+
+                $data['modelo'],
+                $data['id_fabricante'],
+                $data['id_tipo_vehiculo'],
+                $data['peso_bruto_kg'],
+                $data['id_tipo_motor'],
+                $data['potencia_hp'],
+                $data['distancia_ejes'],
+                $data['anio'],
+                $data['id_planta']
+
+            ]
+
+        );
+
+        // UPDATE
         if (!empty($data['id'])) {
-            $exist = $this->model->select(
-        "SELECT id_cat_modelo_vin 
-         FROM cat_modelos_vin 
-         WHERE modelo = ?
-         AND digt_pais = ?
-         AND digit_fabricante = ?
-         AND digit_vehiculo = ?
-         AND digit_modelo = ?
-         AND digit_cuerpo = ?
-         AND digit_sujecion = ?
-         AND digit_transmision = ?
-         AND digit_motor = ?
-         AND id_cat_anio_vin = ?
-         AND digit_fabricacion = ?
-         AND id_cat_modelo_vin != ?",
-        [
-            $data['modelo'],
-            $data['digt_pais'],
-            $data['digit_fabricante'],
-            $data['digit_vehiculo'],
-            $data['digit_modelo'],
-            $data['digit_cuerpo'],
-            $data['digit_sujecion'],
-            $data['digit_transmision'],
-            $data['digit_motor'],
-            $data['anio'],
-            $data['planta'],
-            $data['id']
-        ]
-    );
 
-    if (!empty($exist)) {
-        return ServiceResponse::error("Ya existe este VIN configurado");
-    }
-
-            // 🔹 UPDATE
             $update = $this->model->updateModeloVin($data);
 
             if ($update) {
-                return ServiceResponse::success([], "Modelo VIN actualizado");
+
+                return ServiceResponse::success(
+                    [],
+                    "Modelo VIN actualizado"
+                );
             }
 
-            return ServiceResponse::error("Error al actualizar");
+            return ServiceResponse::error(
+                "Error al actualizar"
+            );
         }
 
-        // 🔹 INSERT NORMAL
-        $exist = $this->model->select(
-            "SELECT id_cat_modelo_vin 
-     FROM cat_modelos_vin 
-     WHERE modelo = ?
-     AND digt_pais = ?
-     AND digit_fabricante = ?
-     AND digit_vehiculo = ?
-     AND digit_modelo = ?
-     AND digit_cuerpo = ?
-     AND digit_sujecion = ?
-     AND digit_transmision = ?
-     AND digit_motor = ?
-     AND id_cat_anio_vin = ?
-     AND digit_fabricacion = ?",
-            [
-                $data['modelo'],
-                $data['digt_pais'],
-                $data['digit_fabricante'],
-                $data['digit_vehiculo'],
-                $data['digit_modelo'],
-                $data['digit_cuerpo'],
-                $data['digit_sujecion'],
-                $data['digit_transmision'],
-                $data['digit_motor'],
-                $data['anio'],
-                $data['planta']
-            ]
-        );
-
+        // INSERT
         if (!empty($exist)) {
-            return ServiceResponse::error("El modelo ya existe");
+
+            return ServiceResponse::error(
+                "Ya existe esta configuración VIN"
+            );
         }
 
         $insert = $this->model->insertModeloVin($data);
 
         if ($insert) {
-            return ServiceResponse::success([], "Modelo VIN guardado");
+
+            return ServiceResponse::success(
+                [],
+                "Modelo VIN guardado"
+            );
         }
 
-        return ServiceResponse::error("Error al guardar");
+        return ServiceResponse::error(
+            "Error al guardar"
+        );
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | GET ALL
+    |--------------------------------------------------------------------------
+    */
 
     public function getAll()
     {
+
         return ServiceResponse::success(
             $this->model->getModelosVin()
         );
