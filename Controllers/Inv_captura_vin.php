@@ -61,4 +61,35 @@ class Inv_captura_vin extends Controllers
 		echo json_encode($request, JSON_UNESCAPED_UNICODE);
 		die();
 	}
+	public function getFabricantes()
+	{
+		$arrData = $this->model->selectFabricantes();
+
+		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	public function getTiposVehiculo()
+	{
+		$arrData = $this->model->selectTiposVehiculo();
+
+		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	public function getTiposMotor()
+	{
+		$arrData = $this->model->selectTiposMotor();
+
+		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	public function getPlantas()
+	{
+		$arrData = $this->model->selectPlantas();
+
+		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+		die();
+	}
 }

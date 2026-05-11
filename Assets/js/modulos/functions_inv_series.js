@@ -92,6 +92,7 @@ document.addEventListener("DOMContentLoaded", function () {
   fetch(base_url + "/Inv_captura_vin/getModelosVin")
     .then((res) => res.json())
     .then((res) => {
+      console.log(res.data);
       if (!res.success) return;
 
       const selectOrden = document.getElementById("modelo_vin");
@@ -101,24 +102,23 @@ document.addEventListener("DOMContentLoaded", function () {
         let option1 = document.createElement("option");
         let option2 = document.createElement("option");
 
-        let base =
-          m.digt_pais +
-          m.digit_fabricante +
-          m.digit_vehiculo +
-          m.digit_modelo +
-          m.digit_cuerpo +
-          m.digit_sujecion +
-          m.digit_transmision +
-          m.digit_motor;
+        // 🔥 NUEVA ESTRUCTURA
+        let base = m.vin_base;
 
+        // VALUE
         option1.value = option2.value = m.id_cat_modelo_vin;
 
+        // DATASETS
         option1.dataset.base = option2.dataset.base = base;
-        option1.dataset.anio = option2.dataset.anio = m.codigo;
-        option1.dataset.planta = option2.dataset.planta = m.digit_fabricacion;
 
+        option1.dataset.anio = option2.dataset.anio = m.codigo_anio;
+
+        option1.dataset.planta = option2.dataset.planta = m.caracter_planta;
+
+        // TEXTO DEL SELECT
         option1.textContent = option2.textContent = `${m.modelo} (${m.anio})`;
 
+        // AGREGAR AL SELECT
         selectOrden.appendChild(option1);
         selectLote.appendChild(option2);
       });
@@ -142,7 +142,7 @@ document.addEventListener("DOMContentLoaded", function () {
       let anio = opt.dataset.anio;
       let planta = opt.dataset.planta;
 
-      let vinBase = base + "-" + anio + planta;
+      let vinBase = base;
 
       document.getElementById("vinBasePreview_lote").value = vinBase;
 
@@ -167,7 +167,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let planta = opt.dataset.planta;
 
     // VIN BASE (SIN DIGITO 9)
-    let vinBase = base + "-" + anio + planta;
+    let vinBase = base;
 
     document.getElementById("vinBasePreview").value = vinBase;
 
@@ -238,26 +238,29 @@ document.addEventListener("DOMContentLoaded", function () {
   // 🔹 GENERAR PREVIEW FINAL
   // ================================
   function generarPreviewFinal() {
-    let base = document.getElementById("vin_parte_1_8").value;
-    let anio = document.getElementById("vin_anio").value;
-    let planta = document.getElementById("vin_planta").value;
+  let base = document.getElementById("vin_parte_1_8").value;
 
-    if (!base || !anio || !planta) return;
+  if (!base) return;
 
-    // armamos VIN sin consecutivo
-    let vin = base + "0" + anio + planta + "000000";
+  /*
+    EJEMPLO BASE:
+    3LD11C1L-VA
+  */
 
-    // asegurar 17
-    vin = vin.substring(0, 17);
+  // agregar consecutivo temporal
+  let vin = base + "000001";
 
-    // calcular dígito 9
-    let digito = calcularDigitoVIN(vin);
+  // asegurar longitud 17
+  vin = vin.substring(0, 17);
 
-    // reemplazar posición 9
-    vin = vin.substring(0, 8) + digito + vin.substring(9);
+  // calcular dígito usando el VIN con placeholder
+  let digito = calcularDigitoVIN(vin);
 
-    document.getElementById("vinPreviewFinal").textContent = vin;
-  }
+  // reemplazar posición 9 (el guion)
+  vin = vin.substring(0, 8) + digito + vin.substring(9);
+
+  document.getElementById("vinPreviewFinal").textContent = vin;
+}
 
   // ================================
   // 🔹 AUTOCOMPLETE ORDEN
@@ -372,7 +375,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      let baseCompleta = base + "0" + anio + planta;
+      let baseCompleta = base;
 
       // 🔥 CONSULTAR ÚLTIMO CONSECUTIVO REAL
       fetch(
@@ -388,13 +391,26 @@ document.addEventListener("DOMContentLoaded", function () {
           for (let i = 0; i < cantidad; i++) {
             let consecutivo = String(ultimo + i + 1).padStart(6, "0");
 
-            let vin = base + "0" + anio + planta + consecutivo;
+            // base YA incluye VA
+            // ejemplo: 3LD11C1LVA
 
-            vin = vin.substring(0, 17);
+            // base YA trae el placeholder "-" en posición 9
+// ejemplo:
+// 3LD11C1L-VA
 
-            let digito = calcularDigitoVIN(vin);
+let vinTemporal = base + consecutivo;
 
-            vin = vin.substring(0, 8) + digito + vin.substring(9);
+// asegurar 17 caracteres
+vinTemporal = vinTemporal.substring(0, 17);
+
+// calcular dígito usando placeholder
+let digito = calcularDigitoVIN(vinTemporal);
+
+// reemplazar el "-" por el dígito real
+let vin =
+  vinTemporal.substring(0, 8) +
+  digito +
+  vinTemporal.substring(9);
 
             let div = document.createElement("div");
             div.className = "col-md-3 mb-2";
@@ -461,7 +477,7 @@ document.addEventListener("DOMContentLoaded", function () {
           almacenid,
           referencia,
           costo,
-          modo, 
+          modo,
         }),
       })
         .then((res) => res.json())
@@ -490,7 +506,6 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById("productoSearchLote").value = "";
 
             tableSeries.ajax.reload(null, false);
-
           } else {
             Swal.fire("Error", data.msg, "error");
           }
