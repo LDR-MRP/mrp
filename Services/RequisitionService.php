@@ -111,6 +111,16 @@ class RequisitionService
                 200
             );
 
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'getRequisitionWithDetails',
+                'id_user' => $userContext['id']
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            
         } catch (\Exception $e) {
             $this->logMessage($e, \LogLevel::WARNING, [
                 'action' => 'getRequisitionWithDetails',
