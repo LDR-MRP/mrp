@@ -80,6 +80,11 @@ Route::post('api/v1/sourcing/quotations', [SourcingController::class, 'addQuotat
  * Actualiza automáticamente el precio negociado en la requisición original.
  */
 Route::post('api/v1/sourcing/quotations/{id}/select-winner', [SourcingController::class, 'selectWinner'])->middleware([AuthMiddleware::class]);
+/**
+ * Realiza el borrado lógico de una cotización de sourcing.
+ * DELETE /api/v1/sourcing/quotations/{id}
+ */
+Route::delete('api/v1/sourcing/quotations/{id}', [SourcingController::class, 'deleteQuotation'])->middleware([AuthMiddleware::class]);
 // --- MÓDULO DE SOURCING: FINALIZACIÓN ---
 
 /**

@@ -31,6 +31,7 @@ class Com_requisicionCotizacionModel extends Mysql
                 FROM com_requisicion_cotizaciones c
                 INNER JOIN prv_cat_proveedores p ON c.id_proveedor = p.id_proveedor
                 WHERE c.idrequisicionarticulo = ?
+                AND c.deleted_at IS NULL
                 ORDER BY c.precio_unitario ASC";
 
         return $this->select_all($sql, [$idReqArt]);
@@ -58,9 +59,11 @@ class Com_requisicionCotizacionModel extends Mysql
                     precio_unitario, 
                     moneda, 
                     tipo_cambio, 
-                    url_pdf_cotizacion, 
-                    comentarios_comprador
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                    url_pdf_cotizacion,
+                    url_foto_producto,
+                    comentarios_comprador,
+                    specs_particulares_proveedor
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         // MAPEO MANUAL: Garantizamos orden y cantidad de parámetros (7 vs 7)
         $params = [
@@ -70,7 +73,9 @@ class Com_requisicionCotizacionModel extends Mysql
             $data['moneda'],
             (float)$data['tipo_cambio'],
             $data['url_pdf_cotizacion'],
-            $data['comentarios_comprador']
+            $data['url_foto_producto'],
+            $data['comentarios_comprador'],
+            $data['specs_particulares_proveedor']
         ];
 
         // Ejecutamos la inserción
@@ -114,5 +119,36 @@ class Com_requisicionCotizacionModel extends Mysql
                 INNER JOIN com_requisiciones_detalle rd ON c.idrequisicionarticulo = rd.idrequisicionarticulo
                 WHERE c.idrequisicionarticulo = ? AND c.es_ganadora = 1 LIMIT 1";
         return $this->select($sql, [$idReqArt]) ?: null;
+    }
+
+    /**
+     * Counts the number of active (not deleted) quotations for a specific requisition item.
+     * This is used to enforce the "Rule of 3" procurement policy.
+     *
+     * @param int $idrequisicionarticulo The ID of the specific item being sourced.
+     * @return int Total number of active quotations found.
+     */
+    public function countActiveQuotations(int $idrequisicionarticulo): int
+    {
+        $sql = "SELECT COUNT(*) as total 
+                FROM `{$this->table}` 
+                WHERE idrequisicionarticulo = ? 
+                AND deleted_at IS NULL";
+
+        $result = $this->select($sql, [$idrequisicionarticulo]);
+
+        // We return the integer value of 'total', or 0 if something went wrong.
+        return (int)($result['total'] ?? 0);
+    }
+
+    /**
+     * Marca una cotización como eliminada.
+     */
+    public function softDelete(int $id, int $userId): bool
+    {
+        $sql = "UPDATE com_requisicion_cotizaciones 
+                SET deleted_at = NOW() 
+                WHERE idcotizacion = ?";
+        return $this->update($sql, [$id]);
     }
 }

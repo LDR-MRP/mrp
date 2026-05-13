@@ -466,9 +466,19 @@ const Sys_Core = {
                     title = 'No Encontrado';
                     icon = 'question';
                     html = res.message || 'El recurso solicitado no existe o pertenece a otra planta.';
+                    break;                
+                case 409: // REGLA DE NEGOCIO / CONFLICTO
+                    title = 'Validación de Proceso';
+                    icon = 'info'; // Icono de información (Azul) para que sea menos agresivo
+                    html = `
+                        <div class="text-center">
+                            <i class="ri-git-repository-commits-line fs-1 text-info mb-3 d-block"></i>
+                            <p class="fw-bold mb-1">Requisito Incumplido</p>
+                            <p class="text-muted">${res.message || 'El estado actual del proceso no permite continuar.'}</p>
+                            <hr class="border-light">
+                            <p class="small text-primary">Consulte el manual de procedimientos de Sourcing.</p>
+                        </div>`;
                     break;
-                
-                case 409: // BUSINESS LOGIC / STATE MACHINE ERROR (The item is in the wrong state)    
                 case 422: // VALIDATION
                     title = 'Datos Inválidos';
                     icon = 'warning';

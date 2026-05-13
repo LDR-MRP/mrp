@@ -62,5 +62,25 @@ class StoreQuotationRequest extends Requests
         if (strlen((string)($this->data['comentarios_comprador'] ?? '')) > 1000) {
             $this->addError('comentarios_comprador', 'El comentario es demasiado largo (máximo 1000 caracteres).');
         }
+
+         // 5. NUEVO: Fotografía del Producto (Opcional pero validada)
+        if (!empty($this->files()['foto_producto'])) {
+            $photo = $this->files()['foto_producto'];
+            $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $mimeType = $finfo->file($photo['tmp_name']);
+
+            if (!in_array($mimeType, $allowedMimes)) {
+                $this->addError('foto_producto', 'La foto debe ser formato JPG, PNG o WEBP.');
+            }
+            if ($photo['size'] > 5 * 1024 * 1024) { // 5MB limit
+                $this->addError('foto_producto', 'La foto no debe exceder los 5MB.');
+            }
+        }
+
+        // 6. NUEVO: Especificaciones Particulares
+        if (empty($this->data['specs_particulares_proveedor'])) {
+            $this->addError('specs_particulares_proveedor', 'Debe indicar las especificaciones particulares que ofrece este proveedor.');
+        }
     }
 }

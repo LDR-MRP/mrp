@@ -58,4 +58,9 @@ class SourcingController
         $response = $this->sourcingService->promoteToCatalog($this->request['auth_user']);
         return $this->apiResponse($response);
     }
+
+    public function deleteQuotation(int $id): string {
+        $response = $this->sourcingService->deleteQuotation($id, $this->request['auth_user']);
+        return $this->apiResponse($response);
+    }
 }

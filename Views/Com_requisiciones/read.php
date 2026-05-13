@@ -209,7 +209,7 @@
     </footer>
 
     <div class="modal fade" id="modalSourcing" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-dialog modal-xl modal-fullscreen modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
                 <div class="modal-header bg-soft-primary p-3">
                     <h5 class="modal-title text-primary fw-bold fs-15"><i class="ri-scales-3-line me-2"></i>Cuadro Comparativo de Sourcing</h5>
@@ -255,13 +255,33 @@
                                     </div>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label fs-11 fw-bold">Evidencia (PDF de Cotización)</label>
-                                    <input type="file" name="cotizacion_pdf" class="form-control form-control-sm" accept=".pdf" required>
+                                    <label class="form-label fs-11 fw-bold text-uppercase">Evidencia (PDF de Cotización) <span class="text-danger">*</span></label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light"><i class="ri-file-pdf-line"></i></span>
+                                        <input type="file" name="cotizacion_pdf" class="form-control" accept=".pdf" required>
+                                    </div>
+                                </div>
+                                <!-- NEW FIELD: Product Photo -->
+                                <div class="mb-3">
+                                    <label class="form-label fs-11 fw-bold text-uppercase">Fotografía del Producto / Referencia</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light"><i class="ri-image-add-line"></i></span>
+                                        <input type="file" name="foto_producto" class="form-control" accept="image/*">
+                                    </div>
+                                    <small class="text-muted fs-10">Opcional. Formatos permitidos: JPG, PNG.</small>
+                                </div>
+                                <!-- NEW FIELD: Particular Specs -->
+                                <div class="mb-3">
+                                    <label class="form-label fs-11 fw-bold text-uppercase">Especificaciones Particulares del Proveedor <span class="text-danger">*</span></label>
+                                    <textarea name="specs_particulares_proveedor" class="form-control fs-12 bg-light-subtle" rows="3" 
+                                            placeholder="Describa aquí si el proveedor ofrece una alternativa o cambios técnicos..." required></textarea>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label fs-11 fw-bold">Comentarios / Capacidad</label>
-                                    <textarea name="comentarios_comprador" class="form-control fs-12" rows="3" placeholder="Ej: Producción mexicana, entrega en 15 días..."></textarea>
+                                    <label class="form-label fs-11 fw-bold text-uppercase">Notas Internas (Comprador)</label>
+                                    <textarea name="comentarios_comprador" class="form-control fs-12" rows="2" 
+                                            placeholder="Notas para el equipo de finanzas..."></textarea>
                                 </div>
+
                                 <button type="submit" class="btn btn-primary btn-sm w-100 shadow-sm fw-bold">
                                     <i class="ri-add-line align-middle"></i> Agregar al Cuadro
                                 </button>

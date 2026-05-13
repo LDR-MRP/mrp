@@ -71,6 +71,32 @@ const RequisitionRead = {
         this.handleCurrencyChange();
 
         this.dom.$actionContainer.on('click', '.action-btn', (e) => this.handleAction(e));
+        $('#tblComparativa').on('click', '.btn-delete-quotation', (e) => this.handleDeleteQuotation(e));
+    },
+
+    /**
+     * Confirma y ejecuta el borrado de una cotización.
+     */
+    handleDeleteQuotation: function(e) {
+        const id = $(e.currentTarget).data('id');
+        
+        Sys_Core.UI.confirm({
+            title: '¿Eliminar propuesta?',
+            text: 'Esta cotización dejará de ser visible en el cuadro comparativo.',
+            confirmText: 'Sí, eliminar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Sys_Core.Net.post({
+                    url: `${Sys_Core.Config.baseUrl}/api/v1/sourcing/quotations/${id}`,
+                    method: 'DELETE', // Semantics matter!
+                    onDone: (res) => {
+                        Sys_Core.UI.notify(res.message, 'info');
+                        // Refresh the table
+                        this.loadComparisonData(this.state.currentPartidaId);
+                    }
+                });
+            }
+        });
     },
 
     /**
@@ -205,57 +231,78 @@ const RequisitionRead = {
                 const { item, cotizaciones } = res.data;
                 const targetPrice = parseFloat(item.precio_objetivo);
 
-                // Llenar header del modal
                 $('#sourcing-item-name').text(item.descripcion_sourcing || 'Sourcing');
                 $('#sourcing-target-price').text(Sys_Core.Format.toCurrency(targetPrice));
                 
-                // Renderizar tabla
                 const $tbody = $('#tblComparativa tbody').empty();
                 
                 if (cotizaciones.length === 0) {
-                    $tbody.html('<tr><td colspan="4" class="text-center py-4 text-muted fs-12">No hay cotizaciones registradas para este artículo.</td></tr>');
+                    $tbody.html('<tr><td colspan="5" class="text-center py-4 text-muted fs-12">No hay cotizaciones registradas para este artículo.</td></tr>');
                     return;
                 }
 
                 cotizaciones.forEach(cot => {
-                    const precioFinal = parseFloat(cot.precio_unitario) * parseFloat(cot.tipo_cambio || 1);
-                    const diff = targetPrice - precioFinal;
-                    const diffClass = diff >= 0 ? 'text-success' : 'text-danger';
-                    const diffIcon = diff >= 0 ? 'ri-arrow-down-circle-line' : 'ri-arrow-up-circle-line';
-                    const isWinner = parseInt(cot.es_ganadora) === 1;
-                    const actionButtons = isWinner ? 
-                        `<button class="btn btn-sm btn-success btn-promote-now" data-id="${idPartida}">
-                            <i class="ri-checkbox-circle-line"></i> Promover a SKU
-                        </button>` : 
-                        `<button class="btn btn-sm btn-outline-success btn-select-winner" data-id="${cot.idcotizacion}">Ganadora</button>`;
                     const tc = parseFloat(cot.tipo_cambio) || 1.0;
                     const precioUnitario = parseFloat(cot.precio_unitario) || 0;
-                    const precioFinalMXN = precioUnitario * tc; // Normalización a MXN
+                    const precioFinalMXN = precioUnitario * tc;
+                    const diff = targetPrice - precioFinalMXN;
+                    const diffClass = diff >= 0 ? 'text-success' : 'text-danger';
+                    const diffIcon = diff >= 0 ? 'ri-arrow-down-s-fill' : 'ri-arrow-up-s-fill';
+                    
+                    const isWinner = parseInt(cot.es_ganadora) === 1;
+                    const actionButtons = isWinner ? 
+                        `<button class="btn btn-sm btn-success btn-promote-now shadow-sm" data-id="${idPartida}">
+                            <i class="ri-checkbox-circle-line align-middle"></i> Promover a SKU
+                        </button>` : 
+                        `<button class="btn btn-sm btn-outline-success btn-select-winner" data-id="${cot.idcotizacion}">Elegir Ganadora</button>`;
+
+                    // --- NUEVOS COMPONENTES VISUALES ---
+                    // 1. Botón de Foto (Solo si existe)
+                    const photoBtn = cot.url_foto_producto ? 
+                        `<a href="${Sys_Core.Config.baseUrl}/${cot.url_foto_producto}" target="_blank" class="btn btn-sm btn-soft-info" title="Ver Fotografía de Referencia"><i class="ri-image-line"></i></a>` : '';
+
+                    // 2. Bloque de Especificaciones Particulares
+                    const specsHtml = cot.specs_particulares_proveedor ? 
+                        `<div class="mt-2 p-2 bg-light rounded border-start border-2 border-info">
+                            <small class="d-block fw-bold text-uppercase fs-9 text-muted mb-1">Oferta Particular:</small>
+                            <p class="mb-0 fs-11 text-dark fst-italic">${cot.specs_particulares_proveedor}</p>
+                        </div>` : '';
+
                     const html = `
-                        <tr>
-                            <td>
-                                <div class="fw-bold text-dark">${cot.razon_social}</div>
-                                <div class="fs-10 text-muted">Ref: ${cot.moneda} ${Sys_Core.Format.toCurrency(precioUnitario)}</div>
-                                <div class="fs-10">
+                        <tr class="${isWinner ? 'table-success' : ''} align-middle">
+                            <td style="max-width: 300px;">
+                                <div class="fw-bold text-dark fs-13">${cot.razon_social}</div>
+                                <div class="fs-10 text-muted mb-1">Ref: ${cot.moneda} ${Sys_Core.Format.toCurrency(precioUnitario)}</div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
                                     ${cot.estatus_onboarding === 'Aprobado' ? 
-                                        '<span class="text-success"><i class="ri-checkbox-circle-line"></i> Docs OK</span>' : 
-                                        '<span class="text-warning"><i class="ri-error-warning-line"></i> Docs Pendientes</span>'}
-                                    <span class="ms-2 text-muted">| ${cot.contacto_email || 'Sin asignar'}</span>
+                                        '<span class="badge bg-soft-success text-success border border-success-subtle fs-10"><i class="ri-shield-check-line"></i> Docs OK</span>' : 
+                                        '<span class="badge bg-soft-warning text-warning border border-warning-subtle fs-10"><i class="ri-error-warning-line"></i> Docs Pendientes</span>'}
+                                    <span class="text-muted fs-11">| <i class="ri-mail-line"></i> ${cot.contacto_email || 'Sin correo'}</span>
                                 </div>
+                                ${specsHtml} <!-- Inyección de las notas técnicas del proveedor -->
                             </td>
                             <td class="text-center text-muted font-monospace fs-11">
                                 x ${tc.toFixed(4)}
                             </td>
-                            <td class="text-end fw-bold">
+                            <td class="text-end fw-bold text-primary fs-14">
                                 ${Sys_Core.Format.toCurrency(precioFinalMXN)}
                             </td>
                             <td class="text-center fw-medium ${diffClass}">
-                                ${diff >= 0 ? '<i class="ri-arrow-down-s-fill"></i>' : '<i class="ri-arrow-up-s-fill"></i>'}
-                                ${Sys_Core.Format.toCurrency(Math.abs(diff))}
+                                <div class="d-flex flex-column align-items-center">
+                                    <span class="fs-12"><i class="${diffIcon}"></i> ${Sys_Core.Format.toCurrency(Math.abs(diff))}</span>
+                                    <small class="fs-10 opacity-75">${diff >= 0 ? 'Ahorro' : 'Déficit'}</small>
+                                </div>
                             </td>
                             <td class="text-center">
-                                <div class="btn-group">
-                                    <a href="${Sys_Core.Config.baseUrl}/${cot.url_pdf_cotizacion}" target="_blank" class="btn btn-sm btn-light border"><i class="ri-file-pdf-line"></i></a>
+                                <div class="d-flex flex-column gap-2">
+                                    <div class="btn-group">
+                                        <a href="${Sys_Core.Config.baseUrl}/${cot.url_pdf_cotizacion}" target="_blank" class="btn btn-sm btn-light border" title="Ver PDF Oficial"><i class="ri-file-pdf-line"></i></a>
+                                        ${photoBtn} <!-- Inyección del botón de foto -->
+                                        <!-- NEW DELETE BUTTON -->
+                                        <button class="btn btn-sm btn-soft-danger btn-delete-quotation" data-id="${cot.idcotizacion}" title="Eliminar Cotización">
+                                            <i class="ri-delete-bin-line"></i>
+                                        </button>
+                                    </div>
                                     ${actionButtons}
                                 </div>
                             </td>
@@ -266,18 +313,35 @@ const RequisitionRead = {
         });
     },
 
+    /**
+     * Envía la propuesta del proveedor al servidor incluyendo archivos adjuntos.
+     */
     submitQuotation: function(e) {
         e.preventDefault();
+        
+        // 1. Encapsulate all fields (including files)
         const formData = new FormData(e.target);
+        
+        // 2. Inject context IDs
         formData.append('idrequisicionarticulo', this.state.currentPartidaId);
+        formData.append('idrequisicion', this.state.id);
 
         Sys_Core.Net.post({
             url: `${Sys_Core.Config.baseUrl}/api/v1/sourcing/quotations`,
             payload: formData,
+            // Sys_Core.Net.post will automatically set contentType: false and processData: false
+            // because the payload is an instance of FormData.
             onDone: (res) => {
                 Sys_Core.UI.notify(res.message, 'success');
+                
+                // 3. Refresh the Comparison Table to show the new entry
                 this.loadComparisonData(this.state.currentPartidaId);
+                
+                // 4. Reset form and clear file previews
                 e.target.reset();
+                
+                // Re-render the main UI to update totals if needed
+                this.loadData();
             }
         });
     },

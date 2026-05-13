@@ -34,12 +34,20 @@ class SourcingService
         ]);
     }
 
+    /**
+     * Registra una cotización de proveedor, procesando la evidencia documental (PDF) 
+     * y la evidencia física (Foto con redimensionamiento).
+     * 
+     * @param array $userContext Contexto del usuario autenticado.
+     * @return ServiceResponse
+     */
     public function storeQuotation(array $userContext): ServiceResponse {
         $request = new StoreQuotationRequest();
         try {
             $request->validate();
             $payload = $request->all();
             $userId = (int)$userContext['id'];
+            $idReqArt = (int)$payload['idrequisicionarticulo'];
 
             $this->db->beginTransaction();
 
@@ -47,31 +55,41 @@ class SourcingService
             $specs = $this->requisicionModel->getItemSpecs((int)$payload['idrequisicionarticulo']);
             
             // 2. Gestionar PDF
-            $file = $_FILES['cotizacion_pdf'];
-            $path = "Assets/uploads/quotations/art_{$payload['idrequisicionarticulo']}/";
+            $path = "Assets/uploads/quotations/art_{$idReqArt}/";
             if (!is_dir($path)) mkdir($path, 0755, true);
             
-            $fileName = "COT_" . time() . "_" . bin2hex(random_bytes(4)) . ".pdf";
-            $fullPath = $path . $fileName;
+            // 2. Gestionar PDF (Standard)
+            $pdfFile = $_FILES['cotizacion_pdf'];
+            $pdfName = "COT_" . time() . "_" . bin2hex(random_bytes(4)) . ".pdf";
+            $pdfPath = $path . $pdfName;
+            move_uploaded_file($pdfFile['tmp_name'], $pdfPath);
 
-            if (!move_uploaded_file($file['tmp_name'], $fullPath)) {
-                throw new Exception("Falla al mover archivo al servidor.");
+            // 3. NUEVO: Gestionar Foto con Redimensionamiento (GD Library)
+            $photoPath = null;
+            if (!empty($_FILES['foto_producto']['tmp_name'])) {
+                $photoFile = $_FILES['foto_producto'];
+                $photoName = "IMG_" . time() . "_" . bin2hex(random_bytes(4)) . ".jpg";
+                $photoPath = $path . $photoName;
+                
+                $this->resizeImage($photoFile['tmp_name'], $photoPath, 1200); // Max 1200px width
             }
 
-            // 3. Persistencia en DB
+            // 4. Persistencia en DB
             $cotData = [
-                'idrequisicionarticulo' => $payload['idrequisicionarticulo'],
-                'id_proveedor'          => $payload['id_proveedor'],
-                'precio_unitario'       => (float)$payload['precio_unitario'],
-                'moneda'                => $payload['moneda'] ?? 'MXN',
-                'tipo_cambio'           => (float)($payload['tipo_cambio'] ?? 1.0),
-                'url_pdf_cotizacion'    => $fullPath,
-                'comentarios_comprador' => $payload['comentarios_comprador'] ?? ''
+                'idrequisicionarticulo'      => $payload['idrequisicionarticulo'],
+                'id_proveedor'               => $payload['id_proveedor'],
+                'precio_unitario'            => (float)$payload['precio_unitario'],
+                'moneda'                     => $payload['moneda'] ?? 'MXN',
+                'tipo_cambio'                => (float)($payload['tipo_cambio'] ?? 1.0),
+                'url_pdf_cotizacion'         => $pdfPath,
+                'url_foto_producto'          => $photoPath,
+                'comentarios_comprador'      => $payload['comentarios_comprador'] ?? '',
+                'specs_particulares_proveedor' => $payload['specs_particulares_proveedor']
             ];
             
             $this->requisicionCotizacionModel->insertQuotation($cotData);
 
-            // 4. Cálculo de Ahorro para el mensaje de éxito
+            // 5. Cálculo de Ahorro para el mensaje de éxito
             $precioCotizadoMXN = $cotData['precio_unitario'] * $cotData['tipo_cambio'];
             $ahorro = (float)$specs['precio_objetivo'] - $precioCotizadoMXN;
             
@@ -85,6 +103,15 @@ class SourcingService
         } catch (\InvalidArgumentException $i) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             return ServiceResponse::validation($i->getMessage());
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'storeQuotation',
+                'id_user' => $userId
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");            
         } catch (Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             return ServiceResponse::error($e->getMessage());
@@ -108,6 +135,12 @@ class SourcingService
             // 1. Obtener datos de la cotización
             $cotizacion = $this->requisicionCotizacionModel->getQuotationById($idCotizacion);
             if (!$cotizacion) throw new \Exception("La cotización no existe.", 404);
+
+            // --- REGLA DE NEGOCIO: Mínimo 3 Cotizaciones ---
+            $count = $this->requisicionCotizacionModel->countActiveQuotations((int)$cotizacion['idrequisicionarticulo']);
+            if ($count < 3 || $count > 5) {
+                throw new \Exception("Compliance Error: Se requieren al menos 3 y máximo 5 cotizaciones para elegir una ganadora (Actuales: {$count}).", 409);
+            }
 
             $idReqArt = (int)$cotizacion['idrequisicionarticulo'];
 
@@ -142,6 +175,16 @@ class SourcingService
                 "Cotización seleccionada como ganadora. El presupuesto de la requisición ha sido actualizado."
             );
 
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'selectWinner',
+                'id_user' => $userContext['id']
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             return ServiceResponse::error($e->getMessage(), (int)$e->getCode() ?: 500);
@@ -226,7 +269,7 @@ class SourcingService
                 $this->db->rollBack();
             }
             $this->logMessage($p, \LogLevel::CRITICAL, [
-                'action' => 'storeRequisition',
+                'action' => 'promoteToCatalog',
                 'id_user' => $userContext['id']
             ]);
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
@@ -235,5 +278,79 @@ class SourcingService
             if ($this->db->inTransaction()) $this->db->rollBack();
             return ServiceResponse::error($e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Elimina lógicamente una cotización.
+     * HU: Limpieza de Sourcing.
+     * 
+     * @param int $id ID de la cotización.
+     * @param array $userContext Usuario autenticado.
+     */
+    public function deleteQuotation(int $id, array $userContext): ServiceResponse
+    {
+        try {
+            $this->db->beginTransaction();
+
+            // 1. Obtener y Validar
+            $cot = $this->requisicionCotizacionModel->getQuotationById($id);
+            if (!$cot) throw new \Exception("La cotización no existe.", 404);
+
+            // 2. REGLA DE NEGOCIO: No se puede borrar la ganadora
+            if ((int)$cot['es_ganadora'] === 1) {
+                throw new \Exception("No puedes eliminar la cotización ganadora. Primero debes seleccionar otra opción o desmarcarla.", 409);
+            }
+
+            // 3. Ejecutar Soft Delete
+            $this->requisicionCotizacionModel->softDelete($id, $userContext['id']);
+
+            // 4. Auditoría
+            $this->requisicionCotizacionModel->logAudit(
+                (int)$cot['requisicionid'], 
+                AuditAction::DELETED, 
+                "Cotización del proveedor #{$cot['id_proveedor']} eliminada por el usuario.", 
+                $userContext['id']
+            );
+
+            $this->db->commit();
+            return ServiceResponse::success(null, "Cotización removida del cuadro comparativo.");
+
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'deleteQuotation',
+                'id_user' => $userContext['id']
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            
+        } catch (\Exception $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            return ServiceResponse::error($e->getMessage(), (int)$e->getCode() ?: 500);
+        }
+    }
+
+    /**
+     * Redimensiona una imagen para optimizar espacio en disco.
+     * @private
+     */
+    private function resizeImage(string $sourcePath, string $destPath, int $maxWidth): void {
+        list($origWidth, $origHeight, $type) = getimagesize($sourcePath);
+        $ratio = $maxWidth / $origWidth;
+        $newWidth = $maxWidth;
+        $newHeight = (int)($origHeight * $ratio);
+
+        $srcImage = match($type) {
+            IMAGETYPE_JPEG => imagecreatefromjpeg($sourcePath),
+            IMAGETYPE_PNG  => imagecreatefrompng($sourcePath),
+            default => throw new \Exception("Formato de imagen no soportado para redimensionamiento.")
+        };
+
+        $newImage = imagecreatetruecolor($newWidth, $newHeight);
+        imagecopyresampled($newImage, $srcImage, 0, 0, 0, 0, $newWidth, $newHeight, $origWidth, $origHeight);
+        imagejpeg($newImage, $destPath, 85); // Save as JPG with 85% quality
+        imagedestroy($srcImage);
+        imagedestroy($newImage);
     }
 }
