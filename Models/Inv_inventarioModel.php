@@ -1084,7 +1084,7 @@ WHERE idinventario = ?";
                     id_moneda = VALUES(id_moneda),
                     updated_at = CURRENT_TIMESTAMP";
 
-        return $this->execute($sql, [
+        return $this->insert($sql, [
             (int)$data['id_proveedor'],
             (int)$data['idinventario'],
             (float)$data['precio_referencia'],
