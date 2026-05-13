@@ -853,6 +853,20 @@ class RequisitionService
                 200
             );
 
+        } catch (\PDOException $p) {
+            // Manejo de errores a nivel de Base de Datos
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'getPendingItemsToPurchase',
+                'requisition_id' => $requisitionId,
+                'id_user' => $userContext['id']
+            ]);
+
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos al intentar eliminar la solicitud.");
+            
         } catch (\Exception $e) {
             $this->logMessage($e, \LogLevel::WARNING, [
                 'action' => 'getPendingItemsToPurchase',
