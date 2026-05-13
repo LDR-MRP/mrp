@@ -162,34 +162,89 @@ class Inv_recepcionModel extends Mysql
     }
 
     public function selectOrdenesAbiertas()
-{
-    $sql = "SELECT 
-                oc.idcompra,
-                CONCAT('OC-', oc.idcompra) AS folio,
-                IFNULL(p.razon_social, 'Sin proveedor') AS proveedor
-            FROM com_ordenes_compra oc
-            LEFT JOIN prv_cat_proveedores p ON p.id_proveedor = oc.proveedorid
-            LEFT JOIN wms_recepcion r ON r.compraid = oc.idcompra
-            WHERE oc.deleted_at IS NULL
-            AND (r.estatus IS NULL OR r.estatus = 'abierta')
-            ORDER BY oc.created_at DESC";
+    {
+        $sql = "SELECT 
+                    oc.idcompra,
+                    CONCAT('OC-', oc.idcompra) AS folio,
+                    IFNULL(p.razon_social, 'Sin proveedor') AS proveedor
+                FROM com_ordenes_compra oc
+                LEFT JOIN prv_cat_proveedores p ON p.id_proveedor = oc.proveedorid
+                LEFT JOIN wms_recepcion r ON r.compraid = oc.idcompra
+                WHERE oc.deleted_at IS NULL
+                AND (r.estatus IS NULL OR r.estatus = 'abierta')
+                ORDER BY oc.created_at DESC";
 
-    return $this->select_all($sql);
-}
+        return $this->select_all($sql);
+    }
 
-public function selectOrdenesParciales()
-{
-    $sql = "SELECT 
-                oc.idcompra,
-                CONCAT('OC-', oc.idcompra) AS folio,
-                IFNULL(p.razon_social, 'Sin proveedor') AS proveedor
-            FROM com_ordenes_compra oc
-            LEFT JOIN prv_cat_proveedores p ON p.id_proveedor = oc.proveedorid
-            INNER JOIN wms_recepcion r ON r.compraid = oc.idcompra
-            WHERE r.estatus = 'parcial'
-            AND oc.deleted_at IS NULL
-            ORDER BY r.updated_at DESC";
+    public function selectOrdenesParciales()
+    {
+        $sql = "SELECT 
+                    oc.idcompra,
+                    CONCAT('OC-', oc.idcompra) AS folio,
+                    IFNULL(p.razon_social, 'Sin proveedor') AS proveedor
+                FROM com_ordenes_compra oc
+                LEFT JOIN prv_cat_proveedores p ON p.id_proveedor = oc.proveedorid
+                INNER JOIN wms_recepcion r ON r.compraid = oc.idcompra
+                WHERE r.estatus = 'parcial'
+                AND oc.deleted_at IS NULL
+                ORDER BY r.updated_at DESC";
 
-    return $this->select_all($sql);
-}
+        return $this->select_all($sql);
+    }
+
+    /**
+     * Registra la cabecera de una nueva recepción de mercancía.
+     * 
+     * @param array $data { idcompra, plantaid, usuarioid, num_remision, observaciones, created_by }
+     * @return int ID de la recepción generada.
+     */
+    public function insertHeader(array $data): int
+    {
+        $sql = "INSERT INTO inv_recepciones (
+                    idcompra, 
+                    plantaid, 
+                    usuarioid, 
+                    num_remision, 
+                    observaciones, 
+                    created_by
+                ) VALUES (?, ?, ?, ?, ?, ?)";
+
+        $params = [
+            (int)$data['idcompra'],
+            (int)$data['plantaid'],
+            (int)$data['usuarioid'],
+            $data['num_remision'],
+            $data['observaciones'] ?? '',
+            (int)$data['created_by']
+        ];
+
+        return $this->insert($sql, $params) ?? 0;
+    }
+
+    /**
+     * Registra el detalle físico de una partida recibida.
+     * 
+     * @param int   $recepcionId ID de la cabecera (inv_recepciones).
+     * @param array $item { idrequisicionarticulo, inventarioid, cantidad_recibida }
+     * @return int ID del detalle generado.
+     */
+    public function insertDetail(int $recepcionId, array $item): int
+    {
+        $sql = "INSERT INTO inv_recepcion_detalle (
+                    recepcionid, 
+                    idrequisicionarticulo, 
+                    inventarioid, 
+                    cantidad_recibida
+                ) VALUES (?, ?, ?, ?)";
+
+        $params = [
+            $recepcionId,
+            (int)$item['idrequisicionarticulo'],
+            (int)$item['inventarioid'],
+            (float)$item['cantidad_recibida']
+        ];
+
+        return $this->insert($sql, $params) ?? 0;
+    }
 }

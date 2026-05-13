@@ -428,72 +428,91 @@ const Sys_Core = {
          * @param {Object} xhr El objeto XMLHttpRequest devuelto por jQuery.
          */
         handleError: function(xhr) {
-            // Analizar la respuesta JSON si existe
-            let res = null;
-            try {
-                res = xhr.responseJSON || JSON.parse(xhr.responseText);
-            } catch (e) {
-                res = {}; // Fallback si no es JSON válido
+            let res = {};
+            try { 
+                res = xhr.responseJSON || JSON.parse(xhr.responseText); 
+            } catch (e) { 
+                res = {}; 
             }
 
-            if (xhr.status === 422) {
-                // Extracción de Errores de Validación (HTTP 422)
-                let mainMessage = res.message || 'Se encontraron datos inválidos:';
-                let html = `<div class="text-start small"><p class="fw-bold text-danger mb-2">${mainMessage}</p><ul class="mb-0">`;
-                
-                let errorList = null;
+            const status = xhr.status;
+            let title = `Error (${status})`;
+            let icon = 'error';
+            let html = res.message || res.error || "Ocurrió un error inesperado.";
 
-                // --- NAVEGADOR INTELIGENTE DE ESTRUCTURA ---
-                if (res.errors) {
-                    if (res.errors.errors && typeof res.errors.errors === 'object') {
-                        // Caso: { "errors": { "status": false, "errors": { "campo": "msg" } } }
-                        errorList = res.errors.errors;
-                    } else if (typeof res.errors === 'object' && !res.errors.status) {
-                        // Estructura plana: { "errors": { "campo": "msg" } }
-                        errorList = res.errors;
-                    } else if (typeof res.errors === 'string') {
-                        // Doble codificación JSON (a veces pasa en los traits)
-                        try {
-                            const decoded = JSON.parse(res.errors);
-                            errorList = decoded.errors || decoded;
-                        } catch(e) {}
-                    }
-                }
-
-                // Generar el HTML iterando sobre los mensajes encontrados
-                if (errorList && Object.keys(errorList).length > 0) {
-                    $.each(errorList, (campo, mensaje) => {
-                        // Asegurarnos de imprimir solo strings, no objetos internos raros
-                        if (typeof mensaje === 'string') {
-                            html += `<li><b>${campo}:</b> ${mensaje}</li>`;
-                        } else if (Array.isArray(mensaje)) {
-                            // Si Laravel/Framework manda un array de mensajes por campo
-                            mensaje.forEach(m => html += `<li><b>${campo}:</b> ${m}</li>`);
-                        }
+            switch (status) {
+                case 401: // UNAUTHORIZED
+                    title = 'Sesión Expirada';
+                    icon = 'info';
+                    html = 'Tu identidad no pudo ser validada. Por seguridad, ingresa nuevamente.';
+                    Sys_Core.UI.alert(title, html, icon).then(() => {
+                        localStorage.removeItem('mrp_token');
+                        window.location.reload();
                     });
-                } else {
-                    // Fallback visual si el buscador falla pero sabemos que es un 422
-                    html += `<li>Por favor, revise los campos del formulario. Verifique la consola (F12) para más detalles.</li>`;
-                    console.warn("Estructura de error 422 desconocida:", res);
-                }
+                    return;
 
-                html += '</ul></div>';
-                
-                // Mostrar el popup
-                Sys_Core.UI.alert('Datos Inválidos', html, 'error');
-                
-            } else {
-                // Manejo de Errores Genéricos (500, 404, 403, 401)
-                let errorMsg = `El servidor respondió con código ${xhr.status}.`;
-                
-                if (res && res.message) {
-                    errorMsg = res.message;
-                } else if (res && res.error) {
-                    errorMsg = res.error;
-                }
+                case 403: // FORBIDDEN (The PM's concern)
+                    title = 'Acceso Restringido';
+                    icon = 'warning';
+                    html = `
+                        <div class="text-center">
+                            <i class="ri-shield-user-line fs-1 text-warning mb-3 d-block"></i>
+                            <p class="fw-bold mb-1">${res.message || 'Privilegios insuficientes.'}</p>
+                            <p class="text-muted small">Esta acción está limitada por tu perfil actual. Contacta a tu jefe directo para revisar tus permisos.</p>
+                        </div>`;
+                    break;
 
-                Sys_Core.UI.alert(`Error de Sistema (${xhr.status})`, errorMsg, 'error');
+                case 404: // NOT FOUND
+                    title = 'No Encontrado';
+                    icon = 'question';
+                    html = res.message || 'El recurso solicitado no existe o pertenece a otra planta.';
+                    break;
+                
+                case 409: // BUSINESS LOGIC / STATE MACHINE ERROR (The item is in the wrong state)    
+                case 422: // VALIDATION
+                    title = 'Datos Inválidos';
+                    icon = 'warning';
+                    // Llamamos al método interno de este mismo objeto
+                    html = this._extractValidationHtml(res);
+                    break;
+
+                case 500: // SERVER ERROR
+                    title = 'Falla de Sistema';
+                    icon = 'error';
+                    html = `
+                        <div class="text-start">
+                            <p class="fw-bold">El servidor no pudo procesar la solicitud.</p>
+                            <p class="small text-muted mb-0">ID de Auditoría: <span class="font-monospace">${Date.now()}</span></p>
+                        </div>`;
+                    break;
             }
+
+            Sys_Core.UI.alert(title, html, icon);
+        },
+
+        /**
+         * MÉTODO INTERNO (Helper): Aplanar errores de validación.
+         * Se mantiene dentro de Net para no dejar "funciones sueltas".
+         * @private
+         */
+        _extractValidationHtml: function(res) {
+            let rawErrors = res.errors?.errors || res.errors || {};
+            
+            if (typeof rawErrors === 'string') {
+                try { 
+                    rawErrors = JSON.parse(rawErrors).errors || JSON.parse(rawErrors);
+                } catch(e) { rawErrors = {}; }
+            }
+
+            if (Object.keys(rawErrors).length === 0) return res.message || 'Revise el formulario.';
+
+            let list = '<div class="text-start small"><ul class="mb-0">';
+            $.each(rawErrors, (campo, mensaje) => {
+                if (campo === 'status') return;
+                const text = Array.isArray(mensaje) ? mensaje[0] : mensaje;
+                list += `<li><b>${campo.replace('_', ' ')}:</b> ${text}</li>`;
+            });
+            return list + '</ul></div>';
         }
     },
 

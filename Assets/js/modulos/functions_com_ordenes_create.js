@@ -150,7 +150,8 @@ const PurchaseOrderForm = {
         this.state.pendingItems.forEach(item => {
             // El backend nos mandó cantidad_pendiente y precio_unitario_estimado
             const maxQty = parseFloat(item.cantidad_pendiente);
-            const price = parseFloat(item.precio_unitario_estimado);
+            const hasWinner = item.id_proveedor_ganador !== null;
+            const price = hasWinner ? parseFloat(item.precio_pactado) : parseFloat(item.precio_unitario_estimado);
 
             const html = `
                 <tr class="partida-row" 

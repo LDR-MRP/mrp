@@ -40,4 +40,9 @@ class Catalogo extends Controllers
     {
         return $this->apiResponse($this->catalogoService->paises());
     }
+
+    public function productLines()
+    {
+        return $this->apiResponse($this->catalogoService->getProductLines());
+    }
 }

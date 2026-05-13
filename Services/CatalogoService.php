@@ -2,17 +2,19 @@
 
 class CatalogoService
 {
-    protected $catCondicionPagoModel;
+    protected CatCondicionPagoModel $catCondicionPagoModel;
 
-    protected $catBancoModel;
+    protected CatBancoModel $catBancoModel;
 
-    protected $catCodigoPostalModel;
+    protected CatCodigoPostalModel $catCodigoPostalModel;
 
-    protected $catCuentaContableModel;
+    protected CatCuentaContableModel $catCuentaContableModel;
 
-    protected $catEstadoModel;
+    protected CatEstadoModel $catEstadoModel;
 
-    protected $catPaisModel;
+    protected CatPaisModel $catPaisModel;
+
+    protected Inv_lineasdproductoModel $lineasProductoModel;
 
     public function __construct()
     {
@@ -22,6 +24,7 @@ class CatalogoService
         $this->catCuentaContableModel = new CatCuentaContableModel;
         $this->catEstadoModel = new CatEstadoModel;
         $this->catPaisModel = new CatPaisModel;
+        $this->lineasProductoModel = new Inv_lineasdproductoModel;
     }
     
     public function condicionesPago()
@@ -60,4 +63,11 @@ class CatalogoService
     {
         return ServiceResponse::success($this->catPaisModel->all());
     }
+
+    public function getProductLines()
+    {
+        return ServiceResponse::success($this->lineasProductoModel->selectLineasProductos());
+    }
+
+
 }

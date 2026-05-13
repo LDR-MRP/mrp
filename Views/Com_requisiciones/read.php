@@ -207,6 +207,137 @@
             </div>
         </div>
     </footer>
+
+    <div class="modal fade" id="modalSourcing" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+                <div class="modal-header bg-soft-primary p-3">
+                    <h5 class="modal-title text-primary fw-bold fs-15"><i class="ri-scales-3-line me-2"></i>Cuadro Comparativo de Sourcing</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <!-- Resumen de Meta (Directiva Tito) -->
+                    <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1 fw-bold text-dark" id="sourcing-item-name">Cargando artículo...</h6>
+                            <p class="mb-0 text-muted fs-12" id="sourcing-item-specs">Ficha técnica del requerimiento.</p>
+                        </div>
+                        <div class="text-end">
+                            <span class="text-uppercase fs-10 fw-bold text-muted d-block">Precio Objetivo</span>
+                            <h4 class="mb-0 fw-bold text-primary" id="sourcing-target-price">$0.00</h4>
+                        </div>
+                    </div>
+
+                    <div class="row g-0">
+                        <!-- Izquierda: Formulario de Nueva Cotización -->
+                        <div class="col-lg-4 border-end p-4">
+                            <h6 class="fw-bold mb-3 text-uppercase fs-11 ls-1">Registrar Cotización</h6>
+                            <form id="formNuevaCotizacion" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <label class="form-label fs-11 fw-bold">Proveedor Potencial</label>
+                                    <select name="id_proveedor" class="form-select form-select-sm" required></select>
+                                </div>
+                                <!-- Fila de Precio y Moneda actualizada -->
+                                <div class="row g-2 mb-3">
+                                    <div class="col-4">
+                                        <label class="form-label fs-11 fw-bold">Precio Unit.</label>
+                                        <input type="number" name="precio_unitario" class="form-control form-control-sm" step="0.01" required>
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label fs-11 fw-bold">Moneda</label>
+                                        <select name="moneda" id="sel-moneda-cotizacion" class="form-select form-select-sm" required>
+                                            <!-- Dinámico -->
+                                        </select>
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label fs-11 fw-bold">T. Cambio</label>
+                                        <input type="number" name="tipo_cambio" id="txt-tc-cotizacion" class="form-control form-control-sm bg-light" value="1.000000" step="0.000001" readonly>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fs-11 fw-bold">Evidencia (PDF de Cotización)</label>
+                                    <input type="file" name="cotizacion_pdf" class="form-control form-control-sm" accept=".pdf" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fs-11 fw-bold">Comentarios / Capacidad</label>
+                                    <textarea name="comentarios_comprador" class="form-control fs-12" rows="3" placeholder="Ej: Producción mexicana, entrega en 15 días..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-sm w-100 shadow-sm fw-bold">
+                                    <i class="ri-add-line align-middle"></i> Agregar al Cuadro
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Derecha: Tabla Comparativa -->
+                        <div class="col-lg-8 p-4 bg-soft-light">
+                            <h6 class="fw-bold mb-3 text-uppercase fs-11 ls-1">Análisis de Propuestas</h6>
+                            <div class="table-responsive">
+                                <!-- Tabla Comparativa con columna T.C. -->
+                                <table class="table table-nowrap align-middle mb-0" id="tblComparativa">
+                                    <thead class="bg-white">
+                                        <tr>
+                                            <th>Proveedor / Compliance</th>
+                                            <th class="text-center">T.C.</th> <!-- NUEVA COLUMNA -->
+                                            <th class="text-end">Precio MXN</th>
+                                            <th class="text-center">Ahorro / Déficit</th>
+                                            <th class="text-center">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalPromoverCatalog" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+                <div class="modal-header bg-soft-success p-3">
+                    <h5 class="modal-title text-success fw-bold fs-15"><i class="ri-price-tag-3-line me-2"></i>Alta en Catálogo Maestro</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formPromoverCatalog">
+                        <input type="hidden" name="idrequisicionarticulo">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fs-11 fw-bold text-uppercase">SKU / Clave Oficial <span class="text-danger">*</span></label>
+                                <input type="text" name="cve_articulo" class="form-control fw-bold text-primary" placeholder="Ej: LLAN-RAD-001" required>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fs-11 fw-bold text-uppercase">Línea de Producto <span class="text-danger">*</span></label>
+                                <select name="lineaproductoid" class="form-select" required>
+                                    <!-- Llenar con catálogo -->
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fs-11 fw-bold text-uppercase">Tipo</label>
+                                <select name="tipo_elemento" class="form-select">
+                                    <option value="P">Producto</option>
+                                    <option value="S">Servicio</option>
+                                    <option value="H">Herramienta</option>
+                                    <option value="C">Componente</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fs-11 fw-bold text-uppercase">Unidad</label>
+                                <input type="text" name="unidad_salida" class="form-control" value="PIEZA" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light-subtle">
+                    <button type="button" id="btn-ejecutar-promocion" class="btn btn-success w-100 shadow-sm fw-bold">
+                        <i class="ri-check-line align-middle me-1"></i> Crear SKU y Vincular
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php footerAdmin($data); ?>
