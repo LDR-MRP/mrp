@@ -721,4 +721,23 @@ class Com_requisicionModel extends Mysql
                     AND deleted_at IS NULL";
         $this->update($sqlQuotes, [$itemId]);
     }
+
+    /**
+     * Transfiere la propiedad de los datos de sourcing de una partida a otra.
+     * Esto evita violaciones de integridad referencial (FK Constraints).
+     */
+    public function transferSourcingData(int $oldItemId, int $newItemId): void
+    {
+        // 1. Transferir Ficha Técnica (Specs)
+        $sqlSpecs = "UPDATE com_requisicion_items_nuevos 
+                     SET idrequisicionarticulo = ? 
+                     WHERE idrequisicionarticulo = ?";
+        $this->update($sqlSpecs, [$newItemId, $oldItemId]);
+
+        // 2. Transferir Cotizaciones de Proveedores
+        $sqlQuotes = "UPDATE com_requisicion_cotizaciones 
+                      SET idrequisicionarticulo = ? 
+                      WHERE idrequisicionarticulo = ?";
+        $this->update($sqlQuotes, [$newItemId, $oldItemId]);
+    }
 }

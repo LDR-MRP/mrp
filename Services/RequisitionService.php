@@ -450,32 +450,50 @@ class RequisitionService
             $itemsErrors = [];
             foreach ($payload['items'] as $item) {
 
-                // A) Leer TODO el registro a la memoria RAM primero (y validamos IDOR de la partida)
-                $sourceItemDetails = $this->requisicionModel->getItemDetailsForUpdate($sourceRequisitionId, $item['requisition_item_id']);
+                $idItemOrigen = (int)$item['requisition_item_id'];
+                $qtyToMove = (float)$item['qty_to_move'];
+
+                // A) Leer registro bloqueando fila (FOR UPDATE)
+                $sourceItemDetails = $this->requisicionModel->getItemDetailsForUpdate($sourceRequisitionId, $idItemOrigen);
                 
                 if (!$sourceItemDetails) {
-                    $itemsErrors[] = $item['requisition_item_id'] . " (No existe o no te pertenece)";
+                    $itemsErrors[] = $idItemOrigen . " (No existe o no te pertenece)";
                     continue;
                 }
 
                 $currentQty = (float) $sourceItemDetails['cantidad'];
                 
                 if ($item['qty_to_move'] > $currentQty) {
-                    $itemsErrors[] = $item['requisition_item_id'] . " (Stock insuficiente)";
+                    $itemsErrors[] = $idItemOrigen . " (Stock insuficiente)";
                     continue;
                 }
-                    
-                // B) Restar del Origen (o eliminar si se mueve todo)
-                // El registro desaparece de MySQL, pero sigue vivo en la variable $sourceItemDetails
-                if ($item['qty_to_move'] == $currentQty) {
-                    $this->requisicionModel->deleteItemFromRequisition($item['requisition_item_id']);
-                } else {
-                    $this->requisicionModel->reduceItemQty($item['requisition_item_id'], $item['qty_to_move']);
-                }
 
-                // C) Insertar/Sumar al Destino
-                // Pasamos el array de datos en memoria, evitando volver a consultar MySQL
-                $this->addItemToRequisition($targetReqId, $sourceItemDetails, $item['qty_to_move']);
+                // --- INICIO DE LÓGICA DE TRANSFERENCIA DE SOURCING ---
+
+                // B) Insertar/Sumar al Destino PRIMERO
+                // IMPORTANTE: addItemToRequisition DEBE devolver el ID insertado en la nueva requisición
+                $newIdItemDestino = $this->addItemToRequisition($targetReqId, $sourceItemDetails, $qtyToMove);
+                    
+                // C) ¿Es un movimiento TOTAL de la partida?
+                if ($qtyToMove == $currentQty) {
+                    /**
+                     * RE-PARENTING: Si movemos todo, el "ADN" del Sourcing (Specs y Cotizaciones) 
+                     * debe viajar a la nueva partida antes de borrar la vieja.
+                     * Esto soluciona el ERROR 1451.
+                     */
+                    $this->requisicionModel->transferSourcingData($idItemOrigen, $newIdItemDestino);
+
+                    // Ahora que los hijos ya tienen nuevo padre, borramos al padre original
+                    $this->requisicionModel->deleteItemFromRequisition($idItemOrigen);
+                } else {
+                    /**
+                     * Si es movimiento PARCIAL, la partida original sobrevive (reducida).
+                     * Por regla de negocio, los hijos (Cotizaciones) se quedan con el remanente 
+                     * en el origen, la nueva partida en el destino nace "limpia".
+                     */
+                    $this->requisicionModel->reduceItemQty($idItemOrigen, $qtyToMove);
+                }
+                // --- FIN DE LÓGICA DE SOURCING ---
             }
 
             if ($itemsErrors) {
