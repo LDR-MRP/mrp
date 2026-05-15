@@ -29,6 +29,11 @@ const supplierManager = {
             const data = new FormData(this);
             const payload = Object.fromEntries(data.entries());
             payload.id = self.currentId || null;
+
+            // LIMPIEZA: Antes de enviar, convertimos a número real
+            if (payload.limite_credito) {
+                payload.limite_credito = Sys_Core.Format.toNumber(payload.limite_credito);
+            }
             
             Sys_Core.Net.post({
                 url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers`,

@@ -189,7 +189,7 @@ class Prv_proveedorModel extends Mysql
     {
         return $this->insert(
             "INSERT INTO prv_cat_proveedores (
-                id_empresa,
+                -- id_empresa,
                 rfc,
                 razon_social,
                 nombre_comercial,
@@ -199,7 +199,7 @@ class Prv_proveedorModel extends Mysql
                 created_by
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [
-                $h['id_empresa'],
+                // $h['id_empresa'],
                 $h['rfc'],
                 $h['razon_social'], 
                 $h['nombre_comercial'],
@@ -308,7 +308,7 @@ class Prv_proveedorModel extends Mysql
         );
     }
 
-    public function updateDynamic(string $table, string $cols, array $values)
+    public function updateDynamic(string $table, array $cols, array $values)
     {        
         return $this->update(
             query: 
