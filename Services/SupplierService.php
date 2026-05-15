@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Requests\Supplier\StoreBankAccountRequest;
+use Requests\Supplier\StoreSupplierRequest;
 
 class SupplierService
 {
@@ -79,6 +80,7 @@ class SupplierService
         $id = $this->proveedorModel->insertSupplier($data, $userId);
         if (!$id) throw new \Exception("No se pudo crear el maestro.");
 
+        $data['limite_credito'] = (float)$data['limite_credito'] ?? null;
         $this->proveedorModel->insertAddress($data, $id, $userId);
         $this->proveedorModel->insertFinancialConfig($data, $id, $userId);
         $this->proveedorModel->insertContact($data, $id, $userId);
@@ -91,8 +93,12 @@ class SupplierService
 
     /**
      * Lógica de actualización: Dirty Checking sobre el esquema.
+     * @param int $id
+     * @param array $data
+     * @param StoreSupplierRequest $request
+     * @param int $userId
      */
-    private function processUpdate(int $id, array $data, $request, int $userId): ServiceResponse
+    private function processUpdate(int $id, array $data, StoreSupplierRequest $request, int $userId): ServiceResponse
     {
         $current = $request->getCurrentSupplier();
         $dirtyData = [];
@@ -112,7 +118,7 @@ class SupplierService
         foreach ($this->proveedorModel::SCHEMA as $table => $allowedColumns) {
             $tableData = array_intersect_key($dirtyData, array_flip($allowedColumns));
             if (!empty($tableData)) {
-                $this->proveedorModel->updateDynamic($table, $tableData, $id);
+                $this->proveedorModel->updateDynamic($table, $tableData, (int)$id);
             }
         }
 

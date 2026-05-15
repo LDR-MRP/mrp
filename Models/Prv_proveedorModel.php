@@ -308,15 +308,30 @@ class Prv_proveedorModel extends Mysql
         );
     }
 
-    public function updateDynamic(string $table, array $cols, array $values)
-    {        
-        return $this->update(
-            query: 
-                "UPDATE {$table}
-                SET {$cols}
-                WHERE id_proveedor = ?;",
-            arrValues: $values
-        );
+    /**
+     * Realiza una actualización dinámica sobre una tabla específica.
+     * Construye la sentencia SET basada en los campos "sucios" (dirty data).
+     * 
+     * @param string $table Nombre de la tabla satélite.
+     * @param array $tableData Array asociativo [columna => valor].
+     * @param int $supplierId ID del proveedor para el WHERE.
+     */
+    public function updateDynamic(string $table, array $tableData, int $supplierId): bool
+    {
+        // 1. Construir el set de columnas: "col1 = ?, col2 = ?"
+        $colNames = array_keys($tableData);
+        $setClause = implode(', ', array_map(fn($col) => "{$col} = ?", $colNames));
+
+        // 2. Preparar el query
+        $query = "UPDATE {$table} SET {$setClause} WHERE id_proveedor = ?;";
+
+        // 3. Unificar valores: [valor1, valor2, ..., supplierId]
+        // El orden es CRÍTICO: primero los valores del SET, al final el del WHERE.
+        $params = array_values($tableData);
+        $params[] = $supplierId;
+
+        // 4. Ejecutar usando tu método base de la clase Mysql
+        return $this->update($query, $params);
     }
 
     public function getFinancialConfig(int $proveedorId): array
