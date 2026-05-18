@@ -40,6 +40,9 @@ const URLPAYPAL = "https://api-m.sandbox.paypal.com";
 const IDCLIENTE = "";
 const SECRET = "";
 
+// WEBMASTERS
+const MAIL_WEBMASTER = 'erick.pulido@ldrsolutions.com.mx';
+
 // Configuración del Servidor SMTP
 const MAIL_HOST = "smtp.gmail.com";
 const MAIL_USER = "notificacion@ldrsolutions.com.mx";

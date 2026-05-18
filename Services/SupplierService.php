@@ -7,17 +7,19 @@ use Requests\Supplier\StoreSupplierRequest;
 
 class SupplierService
 {
-    use \Loggable;
+    use \Loggable, \Notifiable;
 
     private readonly \Prv_proveedorModel $proveedorModel;
     private readonly \Prv_detExpedienteModel $expedienteModel;
     private readonly \Prv_detCuentaBancariaModel $bankModel;
+    private readonly \UsuariosModel $usuarioModel;
     private object $db;
 
     public function __construct() {
         $this->proveedorModel = new \Prv_proveedorModel();
         $this->expedienteModel = new \Prv_detExpedienteModel();
         $this->bankModel = new \Prv_detCuentaBancariaModel();
+        $this->usuarioModel = new \UsuariosModel();
         $this->db = $this->proveedorModel->getConexion();
     }
 
@@ -185,8 +187,43 @@ class SupplierService
                 unlink($oldFilePath);
             }
 
-            // 6. Recalcular Progreso de Onboarding
+            // 7. Recalcular Progreso de Onboarding
             $newProgress = $this->calculateOnboardingProgress($supplierId);
+
+            // --- INICIO DE INTEGRACIÓN DE NOTIFICACIÓN ---
+            /**
+             * Lógica de Disparo: Solo notificamos si el expediente llegó al 100%.
+             * Usamos el motor dinámico de distribución para no hardcodear correos.
+             */
+            if ($newProgress === 100) {
+                $supplier = $this->proveedorModel->getById($supplierId);
+
+                // Resolvemos quiénes deben recibir el correo
+                $recipients = $this->usuarioModel->resolveRecipients('supplier_ready_for_approval', $supplier['id_planta'] ?? 0);
+                
+                if (empty($recipients)) {
+                    $recipients = [MAIL_WEBMASTER];
+                }
+                
+                // Preparamos los datos para el template "LDR Premium" que diseñamos
+                $emailData = [
+                    'razon_social'    => $supplier['razon_social'],
+                    'rfc'             => $supplier['rfc'],
+                    'origen'          => $supplier['origen'],
+                    'tipo'            => $supplier['tipo'],
+                    'created_at'      => date('d/m/Y', strtotime($supplier['created_at'])),
+                    'link_expediente' => base_url() . "/prv_proveedor/edit?id=" . $supplierId
+                ];
+
+                // El método sendNotification buscará en 'sys_notification_distribution' 
+                // a quién avisarle según el evento y la planta del proveedor.
+                $this->sendNotification(
+                    'supplier_ready_for_approval', 
+                    $emailData, 
+                    $recipients
+                );
+            }
+            // --- FIN DE INTEGRACIÓN ---
 
             return ServiceResponse::success(
                 ['progress' => $newProgress], 
@@ -196,6 +233,16 @@ class SupplierService
         } catch (\InvalidArgumentException $i) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             return \ServiceResponse::validation(errors: $i->getMessage());
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'auditDocument',
+                'id_user' => $userContext['id']
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            
         } catch (Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             return ServiceResponse::error($e->getMessage());
@@ -277,6 +324,9 @@ class SupplierService
             $supplierId = (int)$data['id_proveedor'];
             $userId = (int)$userContext['id'];
 
+            $supplierData  = $this->proveedorModel->getById($supplierId);
+            if (!$supplierData) throw new \Exception("No se encontró el proveedor.", 404);
+
             // 1. Actualizar el estatus del documento
             $updated = $this->expedienteModel->updateDocumentStatus($idDoc, $status, $motivo, $userId);
             if (!$updated) throw new \Exception("No se encontró el documento para auditar.", 404);
@@ -291,6 +341,28 @@ class SupplierService
             $onboardingComplete = false;
             if ($status === 1) {
                 $onboardingComplete = $this->checkAndActivateSupplier($supplierId, $userId);
+
+                if ($onboardingComplete) {
+                    // 1. Resolvemos quiénes deben recibir el correo
+                    $recipients = $this->usuarioModel->resolveRecipients('supplier_onboarding_complete', $supplierData['plantaid']);
+                    
+                    if (empty($recipients)) {
+                       ['erick.pulido@ldrsolutions.com.mx'];
+                    }
+                    // NOTIFICACIÓN: Documentos Listos
+                    $this->sendNotification(
+                        'supplier_onboarding_complete',
+                        [
+                            'razon_social'    => $supplierData['razon_social'],
+                            'rfc'             => $supplierData['rfc'],
+                            'origen'          => $supplierData['origen'],
+                            'tipo'            => $supplierData['tipo'],
+                            'created_at'      => date('d/m/Y', strtotime($supplierData['created_at'])),
+                            'link_expediente' => base_url() . "/prv_proveedor/edit?id=" . $supplierId
+                        ],
+                        $recipients
+                    );
+                }
             }
 
             $this->db->commit();
@@ -300,6 +372,16 @@ class SupplierService
                 "Dictamen registrado exitosamente."
             );
 
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'auditDocument',
+                'id_user' => $userContext['id']
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            
         } catch (\InvalidArgumentException $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             return ServiceResponse::validation(errors: $e->getMessage());

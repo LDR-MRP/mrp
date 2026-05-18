@@ -255,6 +255,20 @@ public function updateAvatarUsuario(int $usuarioid, string $filename, string $se
         $this->insert($query, [$id, $evento, $ip, $detalle]);
     }
 
+	/**
+	 * Resuelve los correos electrónicos de los destinatarios basados en la configuración.
+	 */
+	public function resolveRecipients(string $event, int $plantaId): array
+	{
+		$sql = "SELECT DISTINCT u.email_user 
+				FROM usuarios u
+				INNER JOIN sys_notification_distribution d ON u.rolid = d.rolid
+				WHERE d.event_key = ? 
+				AND (d.plantaid = ? OR d.plantaid IS NULL) -- Local o Global
+				AND d.is_active = 1
+				AND u.status = 1"; // Solo usuarios activos
 
+		return $this->select_all($sql, [$event, $plantaId]);
+	}
 	}
  ?>
