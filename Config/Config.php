@@ -143,6 +143,10 @@ const COMPRAS_SOLICITANTE  = 51;
 const COMPRAS_COMPRADOR = 52;
 const COMPRAS_GERENTE = 53;
 const COMPRAS_ADMINISTRADOR = 54;
+const COMPRAS_DIRECTOR = 55;
+const COMPRAS_DIRECTOR_CORPORATIVO = 56;
+const COMPRAS_CONTADOR = 57;
+const COMPRAS_TESORERO = 58;
 
 
 const STATUS = array('Completo', 'Aprobado', 'Cancelado', 'Reembolsado', 'Pendiente', 'Entregado');
