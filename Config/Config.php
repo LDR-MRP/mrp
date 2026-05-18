@@ -40,6 +40,13 @@ const URLPAYPAL = "https://api-m.sandbox.paypal.com";
 const IDCLIENTE = "";
 const SECRET = "";
 
+// Configuración del Servidor SMTP
+const MAIL_HOST = "smtp.gmail.com";
+const MAIL_USER = "notificacion@ldrsolutions.com.mx";
+const MAIL_PASS = "ppiz zylc bpod tczi";
+const MAIL_PORT = 465;
+const MAIL_FROM_NAME = "Notificaciones LDR";
+
 //Datos envio de correo
 const NOMBRE_REMITENTE = "LDR - SOLUTIONS";
 const EMAIL_REMITENTE = "carlosbunti97@gmail.com";
