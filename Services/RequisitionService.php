@@ -18,13 +18,17 @@ class RequisitionService
 
     protected Com_requisicionModel $requisicionModel;
 
-    protected Inv_inventarioModel $inventarioModel;
+    protected PurchaseOrderService $purchaseOrderService;
+
+    protected readonly Com_ordenCompraModel $ordenCompraModel;
 
     protected object $db;
 
     public function __construct()
     {
         $this->requisicionModel = new Com_requisicionModel;
+        $this->purchaseOrderService = new PurchaseOrderService;
+        $this->ordenCompraModel = new Com_ordenCompraModel;
         $this->db = $this->requisicionModel->getConexion();
     }
 
@@ -105,6 +109,10 @@ class RequisitionService
                 return $item;
             }, $items);
 
+            // 5. OBTENER ÓRDENES DE COMPRA RELACIONADAS (The Missing Link)
+            // This ensures the frontend knows which POs were generated from this Req.
+            $requisition['related_pos'] = $this->ordenCompraModel->getRelatedPOsByRequisition($requisitionId);
+
             return ServiceResponse::success(
                 $requisition,
                 "Requisición recuperada exitosamente.",
@@ -161,6 +169,9 @@ class RequisitionService
                 'planta_id'       => $userContext['plantaid'],
                 'estatus'         => $estatusFinal,
                 'titulo'          => $payload['titulo'],
+                'tipo_requisicion' => $payload['tipo_requisicion'] ?? 'standard',
+                'idmetodopago'     => $payload['idmetodopago'] ?: null,
+                'url_referencia'   => $payload['url_referencia'] ?: null,
                 'departamentoid'  => !empty($payload['departamentoid']) ? $payload['departamentoid'] : null,
                 'fecha_requerida' => !empty($payload['fecha_requerida']) ? $payload['fecha_requerida'] : null,
                 'prioridad'       => $payload['prioridad'] ?? 'media',
@@ -300,6 +311,9 @@ class RequisitionService
             $headerData = [
                 'estatus'         => $estatusFinal,
                 'titulo'          => $payload['titulo'],
+                'tipo_requisicion' => $payload['tipo_requisicion'] ?? 'standard',
+                'idmetodopago'     => $payload['idmetodopago'] ?: null,
+                'url_referencia'   => $payload['url_referencia'] ?: null,
                 'departamentoid'  => !empty($payload['departamentoid']) ? $payload['departamentoid'] : null,
                 'fecha_requerida' => !empty($payload['fecha_requerida']) ? $payload['fecha_requerida'] : null,
                 'prioridad'       => $payload['prioridad'] ?? 'media',
@@ -676,7 +690,8 @@ class RequisitionService
             ]
         };
         
-        return $this->changeStatus(
+        // 4. EJECUTAR CAMBIO DE ESTADO
+        $response = $this->changeStatus(
             $requisitionId,
             $userContext,
             'aprobada',
@@ -685,6 +700,27 @@ class RequisitionService
             AuditAction::APPROVED,
             "Firma {$level} autorizada por " . $userContext['nombre'] . '. Notas: ' . $request->input('comentario')
         );
+
+        // --- INICIO LÓGICA DE COMPRA DIRECTA (STP) ---
+        /**
+         * Si la aprobación fue exitosa, el nuevo estado es 'aprobada' 
+         * y la requisición es de tipo 'directa', disparamos la automatización.
+         */
+        if ($response->success && $config['to'] === 'aprobada' && $requisition['tipo_requisicion'] === 'spot_buy') {
+            try {
+                // Este método lo crearemos a continuación
+                $this->purchaseOrderService->processSpotBuyAutomation($requisitionId, $userContext);
+                
+                $response->message .= " Se ha generado automáticamente la Orden de Compra Directa.";
+            } catch (\Exception $e) {
+                // Logueamos el error pero no revertimos la aprobación (la requisición ya está aprobada)
+                $this->logMessage("Error en Compra Directa: " . $e->getMessage(), \LogLevel::ERROR);
+                $response->message .= " Advertencia: No se pudo completar la compra automática.";
+            }
+        }
+        // --- FIN LÓGICA DE COMPRA DIRECTA ---
+
+        return $response;
     }
 
     /**

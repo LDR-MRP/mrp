@@ -126,4 +126,6 @@ Route::get('api/v1/currencies', [CurrencyController::class, 'index'])->middlewar
 
 // --- CATALOGS ---
 Route::get('api/v1/catalogs/product-lines', [Catalogo::class, 'productLines'])->middleware([AuthMiddleware::class]);
+
+Route::get('api/v1/catalogs/payment-methods', [Catalogo::class, 'paymentMethods'])->middleware([AuthMiddleware::class]);
 ?>

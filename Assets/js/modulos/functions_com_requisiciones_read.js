@@ -441,11 +441,34 @@ const RequisitionRead = {
         this.dom.$lblJustificacion.text(d.justificacion || 'Sin justificación proporcionada.');
         this.dom.$lblTotal.text(Sys_Core.Format.toCurrency(d.monto_estimado));
 
-        this.dom.$lblEstatus.replaceWith(this.getStatusBadge(d.estatus));
-        
+        // FIX: Actualización de Badge sin destruir el elemento (Consistencia)
+        const badgeClass = this.getStatusConfig(d.estatus);        
+        this.dom.$lblEstatus
+            .removeClass() 
+            .addClass(`badge ${badgeClass} px-3 py-2 text-capitalize fs-12 shadow-sm ms-3`)
+            .text(d.estatus);
+  
         const prioColors = { 'baja': 'bg-info', 'media': 'bg-warning', 'alta': 'bg-danger', 'critica': 'bg-dark' };
         const prioColor = prioColors[d.prioridad?.toLowerCase()] || 'bg-secondary';
-        this.dom.$lblPrioridad.removeClass().addClass(`badge ${prioColor} fs-12 px-3 py-1 shadow-sm`).text((d.prioridad || 'Normal').toUpperCase());
+        
+        this.dom.$lblEstatus
+            .removeClass() // Limpiamos todas las clases previas
+            .addClass(`badge ${badgeClass} px-3 py-2 text-capitalize fs-12 shadow-sm ms-3`)
+            .text(d.estatus);
+        this.dom.$lblPrioridad
+            .removeClass()
+            .addClass(`badge ${prioColor} fs-12 px-3 py-1 shadow-sm`)
+            .text((d.prioridad || 'Normal')
+            .toUpperCase());
+
+        // LÓGICA SPOT BUY: Mostrar información de pago inmediato si aplica
+        if (d.tipo_requisicion === 'spot_buy') {
+            $('#section-direct-info').removeClass('d-none');
+            $('#lbl-pago-sugerido').text(d.nombre_metodo_pago || 'Pago Electrónico');
+            $('#link-referencia').attr('href', d.url_referencia || '#').text(d.url_referencia ? 'Ver producto en sitio externo' : 'No proporcionado');
+        } else {
+            $('#section-direct-info').addClass('d-none');
+        }
 
         this.dom.$tblPartidas.empty();
         if (d.items && d.items.length > 0) {
@@ -545,24 +568,23 @@ const RequisitionRead = {
         }
     },
 
-    getStatusBadge: function (status) {
+    // Cambia el nombre a getStatusConfig para mayor claridad semántica
+    getStatusConfig: function (status) {
         const strStatus = status ? status.toLowerCase() : '';
-        const clases = {
-            'borrador': 'badge text-bg-light',
-            'pendiente': 'badge text-bg-warning',
-            'aprobada': 'badge text-bg-success',
-            'rechazada': 'badge text-bg-danger',
-            'en compra': 'badge text-bg-info',
-            'finalizada': 'badge text-bg-secondary',
-            'cancelada': 'badge text-bg-danger',
-            'eliminada': 'badge text-bg-danger'
+        const config = {
+            'borrador':   'bg-soft-secondary text-secondary',
+            'pendiente':  'bg-soft-warning text-warning',
+            'aprobada':   'bg-soft-success text-success',
+            'rechazada':  'bg-soft-danger text-danger',
+            'en compra':  'bg-soft-info text-info',
+            'finalizada': 'bg-success text-white',
+            'cancelada':  'bg-dark text-white'
         };
-        const badgeClass = clases[strStatus] || 'bg-secondary';
-        return `<span id="lbl-estatus" class="badge ${badgeClass} px-3 py-2 text-capitalize fs-13 shadow-sm ms-3">${status}</span>`;
+        return config[strStatus] || 'bg-secondary text-white';
     },
 
     renderContextualActions: function (status) {
-        const canUpdate = Sys_Core.Auth.hasPermissions(MODS.COM_REQUISICIONES, 'u');
+        const d = this.state.data;
         const canApprove = Sys_Core.Auth.hasPermissions(MODS.COM_COMPRAS, 'r'); 
         const strStatus = status ? status.toLowerCase() : '';
 
@@ -572,11 +594,27 @@ const RequisitionRead = {
         // Botón PDF
         html += `<button type="button" class="btn btn-outline-danger" id="btn-export-pdf"><i class="ri-file-pdf-line"></i> PDF</button>`;
 
+        // --- LÓGICA DE USABILIDAD STP ---
+        if (strStatus === 'finalizada' && d.tipo_requisicion === 'spot_buy') {
+            const lastPO = d.related_pos ? d.related_pos[0] : null;
+            html += `<hr class="my-2 border-light">`;
+            html += `<div class="alert alert-success border-0 shadow-sm mb-2 fs-11 p-2">
+                        <i class="ri-checkbox-circle-fill me-1"></i> Proceso automatizado por <b>Sistema</b>.
+                     </div>`;
+            if (lastPO) {
+                html += `<button type="button" class="btn btn-primary w-100 shadow-sm animate__animated animate__fadeInUp" 
+                                 data-redirect="com_orden/read/${lastPO.idcompra}">
+                            <i class="ri-external-link-line align-middle me-1"></i> Ver Orden de Compra #${lastPO.idcompra}
+                         </button>`;
+            }
+            this.dom.$actionContainer.html(html);
+            return; // Salir de la función, no necesitamos el resto
+        }
+
+        // --- FLUJO ESTÁNDAR ---
         switch (strStatus) {
             case 'borrador':
-                if (canUpdate) {
-                    html += `<button type="button" class="btn btn-primary" data-redirect="com_requisicion/create/${this.state.id}"><i class="ri-pencil-line"></i> Editar Borrador</button>`;
-                }
+                html += `<button type="button" class="btn btn-primary" data-redirect="com_requisicion/create/${this.state.id}"><i class="ri-pencil-line"></i> Editar Borrador</button>`;
                 break;
             case 'pendiente':
                 if (canApprove) {
@@ -586,7 +624,6 @@ const RequisitionRead = {
                 break;
             case 'aprobada':
             case 'en compra':
-                // ¡LÓGICA DE COMPRAS!: Si está aprobada o en proceso, permitir generar/continuar la OC
                 if (canApprove) {
                     const btnLabel = (strStatus === 'aprobada') ? 'Generar Orden de Compra' : 'Continuar con Compra';
                     html += `<button type="button" class="btn btn-primary shadow-sm" data-redirect="com_orden/create?req_id=${this.state.id}">

@@ -45,4 +45,9 @@ class Catalogo extends Controllers
     {
         return $this->apiResponse($this->catalogoService->getProductLines());
     }
+
+    public function paymentMethods()
+    {
+        return $this->apiResponse($this->catalogoService->getPaymentMethods());
+    }
 }

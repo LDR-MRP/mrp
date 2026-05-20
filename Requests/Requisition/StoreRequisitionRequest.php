@@ -26,6 +26,12 @@ class StoreRequisitionRequest extends Requests {
         } else {
             $this->applyLaxRules();
         }
+
+        $tipo = (string)$this->input('tipo_requisicion', 'standard');
+
+        if ($tipo === 'directa') {
+            $this->applyDirectPurchaseRules();
+        }
     }
 
     private function applyStrictRules(): void {
@@ -75,6 +81,19 @@ class StoreRequisitionRequest extends Requests {
 
     private function applyLaxRules(): void {
         // Para DRAFT, no hay reglas adicionales obligatorias.
+    }
+
+    private function applyDirectPurchaseRules(): void {
+        if (empty($this->data['idmetodopago'])) {
+            $this->addError('idmetodopago', 'Para compras directas, el método de pago es obligatorio.');
+        }
+        
+        $url = (string)($this->data['url_referencia'] ?? '');
+        if (empty($url)) {
+            $this->addError('url_referencia', 'Debe proporcionar el enlace del producto (Amazon/ML).');
+        } elseif (!filter_var($url, FILTER_VALIDATE_URL)) {
+            $this->addError('url_referencia', 'El formato de la URL no es válido.');
+        }
     }
 }
 ?>

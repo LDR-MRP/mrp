@@ -87,6 +87,10 @@ const RequisitionForm = {
             $btnItemEspecial: $('#btn-item-especial'),
             $modalEspecial: $('#modalArticuloEspecial'),
             $btnConfirmarEspecial: $('#btn-confirmar-especial'),
+            $chkDirecta: $('#chk-compra-directa'),
+            $sectionDirecta: $('.section-compra-directa'),
+            $selectMetodoPago: $('select[name="idmetodopago"]'),
+            $inputUrl: $('input[name="url_referencia"]'),
         };
     },
 
@@ -97,6 +101,26 @@ const RequisitionForm = {
         
         // Autocompletar al seleccionar producto
         this.dom.$productSelect.on('change', (e) => this.handleProductSelection(e));
+
+        this.dom.$chkDirecta = $('#chk-compra-directa');
+        this.dom.$sectionDirecta = $('.section-compra-directa');
+
+        this.dom.$chkDirecta.on('change', (e) => {
+            if (e.target.checked) {
+                this.dom.$sectionDirecta.removeClass('d-none').hide().fadeIn(300);
+                this.loadPaymentMethods(); // Cargar catálogo de métodos de pago
+                
+                // Notificación Premium
+                Sys_Core.UI.notify('Modo Compra Directa activado. Se omitirá el proceso de Sourcing.', 'info');
+            } else {
+                this.dom.$sectionDirecta.fadeOut(300, () => {
+                    $(this).addClass('d-none');
+                    // Limpiar valores para no enviar basura si se arrepiente
+                    $('[name="idmetodopago"]').val('');
+                    $('[name="url_referencia"]').val('');
+                });
+            }
+        });
         
         // Enter key para agregar
         this.dom.$form.on('keydown', '#sku, #cantidad, #ultimo_costo', (e) => {
@@ -122,6 +146,10 @@ const RequisitionForm = {
             this.removeRow($(e.currentTarget).closest('tr'));
         });
 
+        this.dom.$chkDirecta.on('change', (e) => {
+            this.toggleSpotBuySection(e.target.checked);
+        });
+
         // Submit del Formulario (Interceptamos los dos botones: Draft y Submit)
         this.dom.$btnSubmit.on('click', (e) => {
             e.preventDefault();
@@ -144,6 +172,43 @@ const RequisitionForm = {
 
         this.dom.$btnItemEspecial.on('click', () => this.dom.$modalEspecial.modal('show'));
         this.dom.$btnConfirmarEspecial.on('click', () => this.addSpecialItemToTable());
+    },
+
+    /**
+     * Controla la visibilidad y carga de datos de la sección Spot Buy
+     */
+    toggleSpotBuySection: function(show, callback = null) {
+        if (show) {
+            this.dom.$sectionDirecta.removeClass('d-none').hide().fadeIn(300);
+            this.loadPaymentMethods().then(() => {
+                if (callback) callback();
+            });
+        } else {
+            this.dom.$sectionDirecta.fadeOut(300, () => {
+                this.dom.$sectionDirecta.addClass('d-none');
+                this.dom.$selectMetodoPago.val('');
+                this.dom.$inputUrl.val('');
+            });
+        }
+    },
+
+    // Método para cargar el catálogo
+    loadPaymentMethods: function() {
+        return new Promise((resolve) => {
+            if (this.dom.$selectMetodoPago.children('option').length > 1) return resolve();
+
+            Sys_Core.Net.get({
+                url: `${Sys_Core.Config.baseUrl}/api/v1/catalogs/payment-methods`,
+                onSuccess: (res) => {
+                    Sys_Core.UI.fillSelect(this.dom.$selectMetodoPago, res.data, {
+                        valueField: 'idmetodopago',
+                        textField: 'nombre',
+                        placeholder: 'Seleccione método de pago...'
+                    });
+                    resolve();
+                }
+            });
+        });
     },
 
     // 4. CARGA DE DATOS E INTERACCIÓN API
@@ -188,34 +253,43 @@ const RequisitionForm = {
     },
 
     populateUI: function (data) {
-        // 1. Llenar campos de cabecera usando la utilidad del core
-        Sys_Core.UI.fillForm('#formRequisicion', {
+        // --- PASO 1: MAPEO Y TRANSFORMACIÓN (Mantenemos tu lógica original) ---
+        const formData = {
             titulo: data.titulo,
             departamentoid: data.departamentoid,
             fecha_requerida: data.fecha_requerida,
             justificacion: data.justificacion,
-            prioridad: this.mapPriorityToValue(data.prioridad) // Convertir string a ID del select
-        });
+            idmetodopago: data.idmetodopago,
+            url_referencia: data.url_referencia,
+            prioridad: this.mapPriorityToValue(data.prioridad) // Tu transformación manual
+        };
 
-        // 2. Limpiar tabla y dibujar partidas existentes
+        // --- PASO 2: GESTIÓN DEL FLUJO SPOT BUY ---
+        if (data.tipo_requisicion === 'spot_buy') {
+            this.dom.$chkDirecta.prop('checked', true);
+            // toggleSpotBuySection ahora recibe los datos transformados para llenar el form
+            this.toggleSpotBuySection(true, () => {
+                Sys_Core.UI.fillForm('#formRequisicion', formData);
+            });
+        } else {
+            this.dom.$chkDirecta.prop('checked', false);
+            this.toggleSpotBuySection(false);
+            Sys_Core.UI.fillForm('#formRequisicion', formData);
+        }
+
+        // --- PASO 3: POBLAR TABLA (Mantenemos fallbacks de 'N/A') ---
         this.dom.$tableBody.empty();
         if (data.items && data.items.length > 0) {
             data.items.forEach(item => {
-                this.renderRow({
-                    idrequisicionarticulo: item.idrequisicionarticulo, // Clave para el Update
-                    inventarioid: item.inventarioid,
-                    sku: item.cve_articulo || 'N/A', 
-                    descripcion: item.descripcion || 'Artículo recuperado',
-                    unidad: item.unidad_salida || 'PZA',
-                    cantidad: item.cantidad,
-                    precio: item.precio_unitario_estimado,
-                    notas: item.notas || ''
-                });
+                // Pasamos el item tal cual; renderRow ya tiene la lógica de 
+                // IFNULL(i.cve_articulo, 'SOURCING') que hicimos antes.
+                this.renderRow(item);
             });
         } else {
             this.renderEmptyState();
         }
 
+        // --- PASO 4: ETIQUETAS INFORMATIVAS ---
         this.dom.$lblSolicitante.text(data.solicitante || 'Usuario del Sistema');
         this.dom.$lblSolicitanteRol.text(data.rol_solicitante || 'Rol no especificado');
         this.dom.$lblFechaCreacion.text(Sys_Core.Format.toDate(data.fecha));
@@ -355,7 +429,7 @@ const RequisitionForm = {
                     <div class="d-flex flex-column">
                         <span class="fw-bold ${isSourcing ? 'text-primary' : 'text-dark'}">
                             ${isSourcing ? '<span class="badge bg-primary me-1">SOURCING</span>' : ''} 
-                            ${data.sku} — ${data.descripcion}
+                            ${data.cve_articulo} — ${data.descripcion}
                         </span>
                         <small class="text-muted">
                             ${isSourcing ? '<i class="ri-error-warning-line text-warning"></i> Requiere búsqueda de proveedor' : 'Unidad: ' + unitLabel}
@@ -479,6 +553,11 @@ const RequisitionForm = {
         const payload = {
             action: action, // 'save_draft' o 'submit_approval'
             titulo: $('input[name="titulo"]').val(),
+            // --- NUEVOS CAMPOS ---
+            tipo_requisicion: $('#chk-compra-directa').is(':checked') ? 'spot_buy' : 'standard',
+            idmetodopago: $('select[name="idmetodopago"]').val() || null,
+            url_referencia: $('input[name="url_referencia"]').val() || null,
+            // ---------------------
             fecha_requerida: $('input[name="fecha_requerida"]').val(),
             departamentoid: $('select[name="departamentoid"]').val(),
             centro_costo: $('input[name="centro_costo"]').val(),

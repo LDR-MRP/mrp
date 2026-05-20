@@ -276,5 +276,19 @@ class Com_ordenCompraModel extends Mysql {
 
         return $this->select_all($sql, [$ocId]) ?: [];
     }
+
+    /**
+     * Recupera las Órdenes de Compra generadas a partir de una requisición específica.
+     */
+    public function getRelatedPOsByRequisition(int $requisitionId): array
+    {
+        $sql = "SELECT idcompra, total, estatus, created_at 
+                FROM com_ordenes_compra 
+                WHERE requisicionid = ? 
+                AND deleted_at IS NULL 
+                ORDER BY created_at DESC";
+
+        return $this->select_all($sql, [$requisitionId]) ?: [];
+    }
 }
 ?>

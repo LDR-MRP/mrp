@@ -9,6 +9,7 @@ class PurchaseOrderService
 
     protected Com_requisicionModel $requisicionModel;
     protected Com_ordenCompraModel $ordenCompraModel;
+    protected InventoryReceptionService $inventoryReceptionService;
     protected object $db;
 
     public function __construct()
@@ -16,6 +17,7 @@ class PurchaseOrderService
         // Instanciamos ambos modelos para orquestar la transacción
         $this->requisicionModel = new Com_requisicionModel;
         $this->ordenCompraModel = new Com_ordenCompraModel;
+        $this->inventoryReceptionService = new InventoryReceptionService;
         $this->db = $this->ordenCompraModel->getConexion();
     }
 
@@ -44,43 +46,49 @@ class PurchaseOrderService
         }
     }
 
-    public function store(array $userContext): \ServiceResponse
+    public function store(array $userContext, ?array $manualPayload = null): \ServiceResponse
     {
         $request = new StorePurchaseOrderRequest();
 
         try {
             $userId = $userContext['id'];
-            $request->validate();
-            $payload = $request->all();
+            // AJUSTE 1: Priorizar payload manual si existe (para automatización)
+            if (!$manualPayload) $request->validate();
+            $payload = $manualPayload ?? $request->all();
+            
             $reqId = (int)$payload['requisicionid'];
 
-            $this->db->beginTransaction();
+            $isInternalCall = $this->db->inTransaction(); 
+            if (!$isInternalCall) {
+                $this->db->beginTransaction();
+            }
 
             // 1. VALIDAR REQUISICIÓN ORIGEN
             $requisition = $this->requisicionModel->getRequisition($reqId);
             if (!$requisition) {
                 throw new \Exception("La requisición origen #{$reqId} no existe.", 404);
             }
+
+            // --- INICIO AJUSTE 2: Identificar flujo Directo ---
+            $isSpotBuy = ($requisition['tipo_requisicion'] === 'spot_buy');
+            $ocStatus = $isSpotBuy ? PurchaseOrderEnum::CERRADA->value : PurchaseOrderEnum::EMITIDA->value;
+            $receptionItems = []; // Para WMS automático
+            // --- FIN AJUSTE 2 ---
+
             if (!in_array($requisition['estatus'], ['aprobada', 'en compra'])) {
                 throw new \Exception("No se pueden generar compras para una requisición en estado '{$requisition['estatus']}'.", 403);
-            }
+            }            
 
-            // 2. OBTENER SALDOS PENDIENTES (La fuente de la verdad)
-            // Reutilizamos el método de la US 1 para saber exactamente cuánto podemos comprar
+            // 2. OBTENER SALDOS PENDIENTES
             $pendingItemsData = $this->requisicionModel->calculatePendingItems($reqId);
-            
-            // Convertimos el array a un diccionario [id_articulo => cantidad_pendiente] para búsqueda rápida O(1)
-            $saldosPendientes = [];
-            foreach ($pendingItemsData as $pItem) {
-                $saldosPendientes[$pItem['idrequisicionarticulo']] = (float)$pItem['cantidad_pendiente'];
-            }
+            $saldosPendientes = array_column($pendingItemsData, 'cantidad_pendiente', 'idrequisicionarticulo');
 
             // 3. CREAR CABECERA DE LA ORDEN DE COMPRA
             $ocHeaderData = [
                 'requisicionid' => $reqId,
                 'proveedorid'   => $payload['proveedorid'],
                 'almacenid'     => $payload['almacenid'],
-                'estatus'       => 'emitida',
+                'estatus'       => $ocStatus,
                 'moneda'        => $payload['moneda'] ?? 'MXN',
                 'tipo_cambio'   => $payload['tipo_cambio'] ?? 1.000000,
                 'observaciones' => $payload['observaciones'] ?? '',
@@ -132,14 +140,35 @@ class PurchaseOrderService
 
                 $this->ordenCompraModel->createDetail($ocId, $ocDetailData);
 
+                // AJUSTE 3: Recolectar para auto-recepción si es directa
+                if ($isSpotBuy) {
+                    $receptionItems[] = [
+                        'idrequisicionarticulo' => $idReqArticulo,
+                        'inventarioid' => $item['inventarioid'],
+                        'cantidad_recibida' => $cantidadAComprar
+                    ];
+                }
+
                 // Acumular para la cabecera
                 $subtotalOC += $subtotalPartida;
                 $ivaOC += $impuestoPartida;
             }
 
             // 5. ACTUALIZAR TOTALES DE LA OC
-            $totalOC = $subtotalOC + $ivaOC;
-            $this->ordenCompraModel->updateTotals($ocId, $subtotalOC, $ivaOC, $totalOC);
+            $this->ordenCompraModel->updateTotals($ocId, $subtotalOC, $ivaOC, $subtotalOC + $ivaOC);
+
+            // --- INICIO AJUSTE 3: Disparar Recepción Automática ---
+            if ($isSpotBuy) {
+                $receptionRes = $this->inventoryReceptionService->store($userContext, [
+                    'idcompra' => $ocId,
+                    'num_remision' => 'STP-SPOT-BUY',
+                    'observaciones' => 'Entrada generada automáticamente por flujo de Pago Inmediato.',
+                    'articulos' => $receptionItems
+                ]);
+
+                if (!$receptionRes->success) throw new \Exception("Error en auto-recepción: " . $receptionRes->message);
+            }
+            // --- FIN AJUSTE 3 ---
 
             // 6. MÁQUINA DE ESTADOS: Actualización dinámica
             // Recalculamos los saldos pendientes DESPUÉS de haber insertado la OC actual
@@ -177,7 +206,9 @@ class PurchaseOrderService
                 }
             }
 
-            $this->db->commit();
+            if (!$isInternalCall) {
+                $this->db->commit();
+            }
 
             return \ServiceResponse::success(
                 ['orden_compra_id' => $ocId],
@@ -427,6 +458,52 @@ class PurchaseOrderService
 
         // 5. REGISTRAR AUDITORÍA
         $this->ordenCompraModel->logAudit($id, $auditAction, $comment, $userContext['id']);
+    }
+
+    /**
+     * Método puente para procesar requisiciones de Pago Inmediato.
+     */
+    public function processSpotBuyAutomation(int $reqId, array $userContext): void
+    {
+        // 1. Obtener la requisición con sus saldos (usando el query que refactorizamos)
+        $items = $this->requisicionModel->calculatePendingItems($reqId);
+        
+        if (empty($items)) return;
+
+        // 2. Preparar el payload para el método 'store'
+        // Como es directa, asumimos el proveedor sugerido y almacén por defecto
+        $payload = [
+            'requisicionid' => $reqId,
+            'proveedorid'   => 1, // Ejemplo: ID de Amazon/Clara
+            'almacenid'     => 1, // Almacén general o de oficina
+            'moneda'        => 'MXN',
+            'tipo_cambio'   => 1.0,
+            'observaciones' => "Generado automáticamente por flujo de Compra Directa.",
+            'articulos'     => []
+        ];
+
+        foreach ($items as $item) {
+            $payload['articulos'][] = [
+                'idrequisicionarticulo' => $item['idrequisicionarticulo'],
+                'inventarioid'          => $item['inventarioid'],
+                'cantidad'              => $item['cantidad_pendiente'],
+                'costo_unitario'        => $item['precio_unitario_estimado'],
+                'porcentaje_descuento'  => 0,
+                'descuento_partida'     => 0
+            ];
+        }
+
+        /**
+         * IMPORTANTE: Llamamos al método store() que ya tiene la lógica de:
+         * - Crear OC (Cerrada)
+         * - Crear Recepción (WMS)
+         * - Actualizar Kardex
+         */
+        $res = $this->store($userContext, $payload); // Asegúrate de que store acepte el payload opcional
+
+        if (!$res->success) {
+            throw new \Exception("Fallo en la creación de OC Directa: " . $res->message);
+        }
     }
 }
 ?>

@@ -47,16 +47,28 @@ class InventoryReceptionService
 
     /**
      * Procesa la entrada de almacén y gestiona la máquina de estados de la OC.
-     * Criterio HU #71 y HU #70.
+     * AJUSTE: Se añade parámetro opcional $manualPayload para soporte STP.
      */
-    public function store(array $userContext): ServiceResponse
+    public function store(array $userContext, ?array $manualPayload = null): ServiceResponse
     {
         $storeInventoryReceptionRequest = new StoreInventoryReceptionRequest;
 
         try {
-            $payload = $storeInventoryReceptionRequest->all(); 
+            // --- INICIO AJUSTE 1: Resolución de Payload ---
+            // Si no viene payload manual, validamos la petición HTTP global
+            if (!$manualPayload) {
+                $storeInventoryReceptionRequest->validate();
+            }
+            $payload = $manualPayload ?? $storeInventoryReceptionRequest->all();
+            // --- FIN AJUSTE 1 ---
 
-            $this->db->beginTransaction();
+            // --- INICIO AJUSTE 2: Gestión de Transacción Atómica ---
+            // Solo iniciamos transacción si no hay una activa (evita error en llamadas internas)
+            $isInternalCall = $this->db->inTransaction();
+            if (!$isInternalCall) {
+                $this->db->beginTransaction();
+            }
+            // --- FIN AJUSTE 2 ---
 
             $idCompra = (int)$payload['idcompra'];
             $userId   = (int)$userContext['id'];
@@ -161,7 +173,12 @@ class InventoryReceptionService
                 $userId
             );
 
-            $this->db->commit();
+            // --- INICIO AJUSTE 3: Cierre de Transacción ---
+            // Solo hacemos commit si este método fue el que inició la transacción
+            if (!$isInternalCall) {
+                $this->db->commit();
+            }
+            // --- FIN AJUSTE 3 ---
 
             return ServiceResponse::success(
                 ['idrecepcion' => $recepcionId], 
@@ -169,7 +186,10 @@ class InventoryReceptionService
             );
 
         } catch (\Exception $e) {
-            if ($this->db->inTransaction()) $this->db->rollBack();
+            // Rollback solo si somos los dueños de la transacción
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             $this->logMessage($e, \LogLevel::CRITICAL, ['payload' => $payload]);
             return ServiceResponse::error($e->getMessage(), (int)$e->getCode() ?: 500);
         }

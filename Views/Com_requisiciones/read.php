@@ -75,6 +75,19 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div class="row mt-3 d-none" id="section-direct-info">
+                                    <div class="col-md-6">
+                                        <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Método de Pago</label>
+                                        <div class="read-only-field" id="lbl-pago-sugerido">...</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Referencia Digital</label>
+                                        <div class="read-only-field">
+                                            <i class="ri-external-link-line text-primary me-2"></i>
+                                            <a href="#" id="link-referencia" target="_blank" class="fw-medium">Ver producto</a>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

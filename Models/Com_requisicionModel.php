@@ -28,6 +28,7 @@ class Com_requisicionModel extends Mysql
                 departamentoid,
                 centro_costo,
                 titulo,
+                tipo_requisicion,
                 fecha_requerida,
                 prioridad,
                 estatus,
@@ -52,6 +53,9 @@ class Com_requisicionModel extends Mysql
                 departamentoid,
                 centro_costo,
                 titulo,
+                tipo_requisicion,
+                url_referencia,
+                idmetodopago,
                 fecha_requerida,
                 prioridad,
                 estatus,
@@ -180,13 +184,15 @@ class Com_requisicionModel extends Mysql
 
     public function createHeader(array $data): ?int
     {
-        return $this->insert(
-            "INSERT INTO {$this->table}
+        $query = "INSERT INTO {$this->table}
             (
                 usuarioid
-                -- ,plantaid
+                ,plantaid
                 ,estatus
                 ,titulo
+                ,tipo_requisicion
+                ,idmetodopago
+                ,url_referencia
                 ,departamentoid
                 ,fecha_requerida
                 ,monto_estimado
@@ -196,27 +202,34 @@ class Com_requisicionModel extends Mysql
             VALUES
             (
                 :usuarioid
-                -- ,1
+                ,:plantaid
                 ,:estatus
                 ,:titulo
+                ,:tipo_requisicion
+                ,:idmetodopago
+                ,:url_referencia
                 ,:departamentoid
                 ,:fecha_requerida
                 ,:monto_estimado
                 ,:prioridad
                 ,:justificacion
-            )",
-            [
+            )";
+            
+        $params = [
                 ':usuarioid' => $data['user_id'],
-                //':plantaid' => $data['´planta_id'],
+                ':plantaid' => $data['planta_id'],
                 ':estatus' => !empty($data['estatus']) ? mb_strtolower($data['estatus'], 'UTF-8') : 'borrador',
                 ':titulo' => $data['titulo'],
+                ':tipo_requisicion' => $data['tipo_requisicion'],
+                ':idmetodopago' => $data['idmetodopago'],
+                ':url_referencia' => $data['url_referencia'],
                 ':departamentoid' => $data['departamentoid'],
                 ':fecha_requerida' => $data['fecha_requerida'],
                 ':monto_estimado' => $data['monto_estimado'] ?: 0.000000,
                 ':prioridad' => !empty($data['prioridad']) ? mb_strtolower($data['prioridad'], 'UTF-8') : 'media',
                 ':justificacion' => $data['justificacion'] ?? '',
-            ]
-        ) ?? 0;
+            ] ;
+        return $this->insert($query, $params) ?? 0;
     }
 
     public function createDetail(int $requisitionId, array $item): ?int
@@ -309,13 +322,16 @@ class Com_requisicionModel extends Mysql
      */
     public function updateHeader(int $requisicionId, array $data): bool {
         $query = "UPDATE com_requisiciones SET 
-                    estatus = ?, titulo = ?, departamentoid = ?, 
+                    estatus = ?, titulo = ?, tipo_requisicion = ?, idmetodopago = ?, url_referencia = ?, departamentoid = ?, 
                     fecha_requerida = ?, prioridad = ?, justificacion = ?
                   WHERE idrequisicion = ?";
         
         $params = [
             $data['estatus'],
             $data['titulo'],
+            $data['tipo_requisicion'],
+            $data['idmetodopago'],
+            $data['url_referencia'],
             $data['departamentoid'],
             $data['fecha_requerida'],
             $data['prioridad'],

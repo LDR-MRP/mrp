@@ -14,6 +14,8 @@ class CatalogoService
 
     protected CatPaisModel $catPaisModel;
 
+    protected CatMetodosPago $catMetodosPago;
+
     protected Inv_lineasdproductoModel $lineasProductoModel;
 
     public function __construct()
@@ -24,6 +26,7 @@ class CatalogoService
         $this->catCuentaContableModel = new CatCuentaContableModel;
         $this->catEstadoModel = new CatEstadoModel;
         $this->catPaisModel = new CatPaisModel;
+        $this->catMetodosPago = new CatMetodosPago;
         $this->lineasProductoModel = new Inv_lineasdproductoModel;
     }
     
@@ -67,6 +70,11 @@ class CatalogoService
     public function getProductLines()
     {
         return ServiceResponse::success($this->lineasProductoModel->selectLineasProductos());
+    }
+
+    public function getPaymentMethods()
+    {
+        return ServiceResponse::success($this->catMetodosPago->all());
     }
 
 
