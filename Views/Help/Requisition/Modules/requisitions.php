@@ -5,12 +5,13 @@
     <!-- 1. MONITORIZACIÓN Y ESTADOS -->
     <div class="row mt-5">
         <div class="col-md-7">
-            <h4>1. Panel de Control (Dashboard)</h4>
-            <p>Desde el listado principal, los usuarios pueden monitorear el estado global de sus solicitudes mediante indicadores de desempeño (KPIs):</p>
+            <h4>1. Dashboard y Trazabilidad de Estados</h4>
+            <p>El listado permite filtrar y gestionar el ciclo de vida de cada solicitud mediante indicadores visuales dinámicos:</p>
             <ul class="fs-13">
-                <li><span class="badge bg-soft-warning text-warning">Pendientes:</span> Solicitudes esperando firma de Jefatura.</li>
-                <li><span class="badge bg-soft-success text-success">Listas para Compra:</span> Requisiciones aprobadas que ya pueden ser procesadas por el área de Adquisiciones.</li>
-                <li><span class="badge bg-soft-info text-info">En Proceso:</span> Artículos que ya cuentan con una Orden de Compra vinculada.</li>
+                <li><span class="badge bg-soft-warning text-warning">Pendiente:</span> Esperando firma de Visto Bueno (L1) o Autorización (L2).</li>
+                <li><span class="badge bg-soft-success text-success">Aprobada:</span> Firma completada. Lista para ser procesada por Compras.</li>
+                <li><span class="badge bg-soft-info text-info">En Compra:</span> Existe una Orden de Compra (OC) activa vinculada a esta solicitud.</li>
+                <li><span class="badge bg-success text-white">Finalizada:</span> Todo el material solicitado ha ingresado físicamente al almacén.</li>
             </ul>
         </div>
         <div class="col-md-5">
@@ -41,7 +42,17 @@
             <ul class="fs-13">
                 <li><strong>Guardar Borrador:</strong> Permite pausar la captura para continuar después. La solicitud no es visible para los jefes.</li>
                 <li><strong>Enviar a Aprobación:</strong> Bloquea la edición y notifica al jefe de departamento para su revisión legal y técnica.</li>
-            </ul>
+            </ul>            
+            
+            <h4>2.1 Modalidad de Compra</h4>
+            <p>El sistema ofrece una nueva modalidad de procesamiento:</p>
+            
+            <div class="card bg-light border-0 shadow-none mb-3">
+                <div class="card-body">
+                    <h6 class="fw-bold text-primary"><i class="ri-flashlight-fill me-1"></i> Spot Buy (Pago Inmediato)</h6>
+                    <p class="small mb-0">Para compras en Amazon, Mercado Libre o servicios liquidados con <b>el Medio de Pago Seleccionado</b>. Al activarse, el sistema automatiza la generación de la OC y la entrada de almacén tras la aprobación final.</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -59,6 +70,10 @@
             <div class="alert alert-info border-0 shadow-sm">
                 <h6 class="fw-bold"><i class="ri-information-line me-1"></i> Nota de Auditoría:</h6>
                 Todas las acciones (aprobaciones, rechazos o ediciones) quedan registradas con fecha, hora y usuario responsable en el log de auditoría del sistema.
+            </div>
+            <div class="alert alert-warning border-0 shadow-sm">
+                <h6 class="fw-bold"><i class="ri-shield-keyhole-line me-1"></i> Seguridad y Permisos:</h6>
+                Solo el dueño de la requisición puede editarla en estado <b>Borrador</b>. Una vez enviada a aprobación, el documento queda bloqueado para garantizar que la firma se aplique sobre datos inalterables.
             </div>
         </div>
         <div class="col-md-5">
