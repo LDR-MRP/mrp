@@ -347,6 +347,9 @@ class RequisitionService
                         if ($existingItem) {
                             $this->requisicionModel->updateDetail($itemId, $itemData);
                             $incomingItemIds[] = $itemId;
+                            
+                            // --- FIX: ASIGNAR EL ID ACTUAL ---
+                            $currentIdArt = (int)$itemId; 
                         }
                     } else {
                         // B. INSERTAR NUEVA PARTIDA
@@ -357,6 +360,7 @@ class RequisitionService
                     // Aplicamos el mismo check: si es sourcing y trae specs, persistimos
                     if (is_null($itemData['inventarioid']) && !empty($item['specs'])) {
                         $specData = $item['specs'];
+                        $specData['precio_objetivo'] = $itemData['precio_unitario_estimado'];
                         $specData['requisicionid'] = $requisitionId;
                         $specData['idrequisicionarticulo'] = $currentIdArt;
                         $this->persistSpecialSpecs($specData);

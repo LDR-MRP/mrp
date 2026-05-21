@@ -281,8 +281,21 @@ const RequisitionForm = {
         this.dom.$tableBody.empty();
         if (data.items && data.items.length > 0) {
             data.items.forEach(item => {
-                // Pasamos el item tal cual; renderRow ya tiene la lógica de 
-                // IFNULL(i.cve_articulo, 'SOURCING') que hicimos antes.
+                // Si es sourcing, reconstruimos el objeto de specs para el atributo data-specs
+                if (parseInt(item.es_sourcing) === 1) {
+                    item.specs = {
+                        justificacion_proyecto: item.justificacion_proyecto,
+                        categoria: item.categoria,
+                        descripcion_sourcing: item.descripcion_sourcing,
+                        especificaciones_tecnicas: item.especificaciones_tecnicas,
+                        dimensiones_principales: item.dimensiones_principales,
+                        normas_requeridas: item.normas_requeridas,
+                        volumen_anual: item.volumen_anual,
+                        precio_objetivo: item.precio_objetivo,
+                        fecha_inicio_negociacion: item.fecha_inicio_negociacion,
+                        fecha_limite_acuerdo: item.fecha_limite_acuerdo
+                    };
+                }
                 this.renderRow(item);
             });
         } else {
