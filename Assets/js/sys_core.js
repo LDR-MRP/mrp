@@ -637,6 +637,26 @@ const Sys_Core = {
  * Event Listeners Globales
  * Manejo de eventos delegados para atributos de datos Sys_Core.
  */
+// --- INICIO AGREGADO: Auto-hidratación de Cabecera Global (JWT) ---
+$(document).ready(function() {
+    const payload = Sys_Core.Auth.decodeJWT();
+    if (payload && payload.data) {
+        const user = payload.data;
+        
+        // Hidratar nombre de usuario en cabecera si el elemento existe en el DOM
+        if ($('#lbl-user-name').length) {
+            $('#lbl-user-name').text(user.nombre);
+        }
+        
+        // Hidratar iniciales del avatar si el elemento existe en el DOM
+        if ($('#lbl-user-avatar').length) {
+            const iniciales = user.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            $('#lbl-user-avatar').text(iniciales);
+        }
+    }
+});
+// --- FIN AGREGADO ---
+
 $(document).on('click', '[data-redirect]', function(e) {
     e.preventDefault();
     const target = $(this).data('redirect');

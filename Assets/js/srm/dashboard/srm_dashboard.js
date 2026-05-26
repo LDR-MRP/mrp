@@ -16,25 +16,15 @@ const SrmDashboard = {
      * Dibuja la información del proveedor en la UI (Header / Saludo)
      */
     renderUserData: function() {
-        // --- INICIO MODIFICACIÓN: Desencriptación del token centralizada ---
-        // Leemos el payload del JWT utilizando el motor nativo del Core
+        // --- INICIO MODIFICACIÓN: El Core ya hidrata el TopBar de forma automática.
+        // Aquí solo pintamos el saludo exclusivo de la vista principal del Dashboard.
         const payload = Sys_Core.Auth.decodeJWT();
         const user = payload ? payload.data : null;
-        // --- FIN MODIFICACIÓN ---
 
-        if (user) {
-            // Nombre en saludo y Header
-            $('#lbl-welcome-user, #lbl-user-name').text(user.nombre);
-            
-            // Avatar (Iniciales)
-            const iniciales = user.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            $('#lbl-user-avatar').text(iniciales);
-        } else {
-            // --- INICIO MODIFICACIÓN: Logout unificado ---
-            // Si el token es inválido o no existe usuario, disparamos el logout del Core
-            Sys_Core.Auth.logout('/srm/login');
-            // --- FIN MODIFICACIÓN ---
+        if (user && $('#lbl-welcome-user').length) {
+            $('#lbl-welcome-user').text(user.nombre);
         }
+        // --- FIN MODIFICACIÓN ---
     },
 
     /**
