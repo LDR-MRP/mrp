@@ -441,15 +441,26 @@ const Sys_Core = {
             let html = res.message || res.error || "Ocurrió un error inesperado.";
 
             switch (status) {
-                case 401: // UNAUTHORIZED
-                    title = 'Sesión Expirada';
-                    icon = 'info';
-                    html = 'Tu identidad no pudo ser validada. Por seguridad, ingresa nuevamente.';
-                    Sys_Core.UI.alert(title, html, icon).then(() => {
-                        localStorage.removeItem('mrp_token');
-                        window.location.reload();
-                    });
-                    return;
+                case 401: // UNAUTHORIZED (Sesión Expirada vs Credenciales Incorrectas)
+                    // Detectamos si la petición falló estando en las vistas de Login
+                    const isLoginPage = window.location.pathname.toLowerCase().includes('login');
+                    
+                    if (isLoginPage) {
+                        title = 'Acceso Denegado';
+                        icon = 'warning';
+                        html = res.message || 'El usuario o la contraseña es incorrecto.';
+                        // Rompemos el switch para que use el alert global al final sin recargar la página
+                        break; 
+                    } else {
+                        title = 'Sesión Expirada';
+                        icon = 'info';
+                        html = 'Tu identidad no pudo ser validada. Por seguridad, ingresa nuevamente.';
+                        Sys_Core.UI.alert(title, html, icon).then(() => {
+                            localStorage.removeItem('mrp_token');
+                            window.location.reload();
+                        });
+                        return; // Retornamos temprano para evitar doble modal
+                    }
 
                 case 403: // FORBIDDEN (The PM's concern)
                     title = 'Acceso Restringido';
