@@ -141,7 +141,18 @@ class SupplierService
             $validated = $request->all();
             $file = $request->files()['archivo'];
             
-            $supplierId = (int)$validated['id_proveedor'];
+            // --- INICIO DE CIRUGÍA: Prevención de IDOR ---
+            $isVendor = ($userContext['role'] ?? '') === 'VENDOR' || !empty($userContext['vendor_id']);
+            
+            if ($isVendor) {
+                // Si es proveedor, forzamos que sea su propio ID (Seguridad SRM)
+                $supplierId = (int)$userContext['vendor_id'];
+            } else {
+                // Si es administrador interno, tomamos el del Request validado
+                $supplierId = (int)$validated['id_proveedor'];
+            }
+            // --- FIN DE CIRUGÍA ---
+            
             $docType    = $validated['tipo_documento'];
             $userId     = (int)$userContext['id'];
 

@@ -9,6 +9,8 @@ use Controllers\Api\V1\SupplierController;
 use Controllers\Api\V1\RequisitionController;
 use Controllers\Api\V1\PurchaseOrderController;
 use Controllers\Api\V1\SourcingController;
+use Controllers\Api\V1\SrmController;
+use Controllers\Api\V1\SrmPurchaseOrderController;
 use Controllers\Api\V1\WarehouseController;
 use Middlewares\AuthMiddleware;
 
@@ -128,4 +130,42 @@ Route::get('api/v1/currencies', [CurrencyController::class, 'index'])->middlewar
 Route::get('api/v1/catalogs/product-lines', [Catalogo::class, 'productLines'])->middleware([AuthMiddleware::class]);
 
 Route::get('api/v1/catalogs/payment-methods', [Catalogo::class, 'paymentMethods'])->middleware([AuthMiddleware::class]);
+
+/**
+ * ==============================================================================
+ * RUTAS DEL API RESTFUL SRM V1 (SERVICIOS JSON)
+ * ==============================================================================
+ */
+// 1. RESUMEN / DASHBOARD
+Route::get('api/v1/dashboard/dashboard/summary', [SrmController::class, 'getSummary'])->middleware([AuthMiddleware::class]);
+
+// 2. EXPEDIENTE DIGITAL
+Route::get('api/v1/srm/dossier', [SrmController::class, 'getDossier'])->middleware([AuthMiddleware::class]);
+Route::post('api/v1/srm/dossier/upload', [SrmController::class, 'uploadDocument'])->middleware([AuthMiddleware::class]);
+
+// 3. ÓRDENES DE COMPRA
+Route::get('api/v1/srm/purchase-orders', [SrmPurchaseOrderController::class, 'index'])->middleware([AuthMiddleware::class]);
+Route::get('api/v1/srm/purchase-orders/{id_oc}', [SrmPurchaseOrderController::class, 'show'])->middleware([AuthMiddleware::class]);
+Route::get('api/v1/srm/purchase-orders/{id}/pdf', [SrmPurchaseOrderController::class, 'generatePdf'])->middleware([AuthMiddleware::class]);
+
+// 4. BUZÓN DE FACTURAS (XML/PDF)
+
+// Route::group(['prefix' => 'api/v1/srm', 'middleware' => [JwtAuthMiddleware::class]], function () {
+    
+//     // 1. RESUMEN / DASHBOARD
+//     Route::get('dashboard/summary', [SrmApiController::class, 'getSummary']);
+    
+//     // 2. EXPEDIENTE DIGITAL
+//     Route::get('dossier', [SrmApiController::class, 'getDossier']);
+//     Route::post('dossier/upload', [SrmApiController::class, 'uploadDocument']);
+    
+//     // 3. ÓRDENES DE COMPRA
+//     Route::get('purchase-orders', [SrmPurchaseOrderController::class, 'index']); // Listado de OCs del proveedor
+//     Route::get('purchase-orders/{id_oc}', [SrmPurchaseOrderController::class, 'show']); // Detalle de una OC específica
+    
+//     // 4. BUZÓN DE FACTURAS (XML/PDF)
+//     Route::get('invoices', [SrmInvoiceController::class, 'index']); // Historial de facturas subidas
+//     Route::post('invoices/upload', [SrmInvoiceController::class, 'uploadInvoice']); // Validación y carga de XML + PDF
+// });
+
 ?>

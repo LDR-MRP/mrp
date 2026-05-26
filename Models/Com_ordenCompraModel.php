@@ -1,7 +1,4 @@
 <?php
-//namespace Models;
-
-use Mysql; // Asumiendo que tu clase base está en el namespace global o ajusta según tu autoloader
 
 class Com_ordenCompraModel extends Mysql {
 
@@ -49,15 +46,18 @@ class Com_ordenCompraModel extends Mysql {
         $query = "SELECT 
                     oc.idcompra,
                     oc.requisicionid,
+                    oc.plantaid,
                     oc.estatus,
                     oc.total,
                     oc.moneda,
                     oc.created_at,
                     p.nombre_comercial AS proveedor_nombre,
-                    u.nombres AS comprador_nombre
+                    u.nombres AS comprador_nombre,
+                    a.cve_almacen
                   FROM com_ordenes_compra oc
                   LEFT JOIN prv_cat_proveedores p ON oc.proveedorid = p.id_proveedor
                   LEFT JOIN usuarios u ON oc.created_by = u.idusuario
+                  LEFT JOIN wms_almacenes a ON oc.almacenid = a.idalmacen
                   $where
                   ORDER BY oc.idcompra DESC";
 
@@ -125,7 +125,7 @@ class Com_ordenCompraModel extends Mysql {
     }
 
     public function getById(int $id): ?array {
-        $query = "SELECT oc.idcompra, oc.requisicionid, oc.proveedorid, oc.almacenid, oc.estatus, 
+        $query = "SELECT oc.idcompra, oc.requisicionid, oc.proveedorid, oc.plantaid, oc.almacenid, oc.estatus, 
                          oc.moneda, oc.tipo_cambio, oc.subtotal, oc.iva, oc.total, oc.observaciones, oc.created_at,
                          p.nombre_comercial AS proveedor_nombre, a.cve_almacen AS almacen_nombre
                   FROM com_ordenes_compra oc

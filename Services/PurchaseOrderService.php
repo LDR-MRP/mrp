@@ -21,28 +21,48 @@ class PurchaseOrderService
         $this->db = $this->ordenCompraModel->getConexion();
     }
 
-    public function index(array $filters, array $userContext): \ServiceResponse {
+    /**
+     * Recupera las POs aplicando filtros seguros de Query-Level Security.
+     * Soporta de forma híbrida e integrada tanto a Empleados (ERP) como a Proveedores (SRM).
+     */
+    public function index(array $filters, array $userContext): ServiceResponse
+    {
         try {
-            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
-            $scope = $role?->getScope() ?? 'propio';
+            // 1. Identificar si el usuario autenticado es un Proveedor Externo (SRM)
+            $isVendor = ($userContext['rol'] ?? '') === 'VENDOR' || !empty($userContext['vendor_id']);
 
-            $po = $this->ordenCompraModel->getAll($filters);
+            if ($isVendor) {
+                // SEGURIDAD IMPLACABLE (Anti-IDOR): Forzamos que el filtro de proveedor 
+                // sea estrictamente el ID de su JWT, ignorando cualquier cosa enviada por GET.
+                $filters['proveedorid'] = (int) $userContext['vendor_id'];
+            } else {
+                // 2. Si es Empleado Interno, aplicamos la Matriz de Visibilidad (RBAC)
+                $role = RoleEnum::tryFrom((int) $userContext['rolid']);
+                $scope = $role?->getScope() ?? 'propio';
 
-            // Validación de Seguridad (IDOR de Lectura), APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
-            if (
-                !match($scope) {
-                'propio' => (int)$po['created_by'] === (int)$userContext['id'],
-                'planta'  => (int)$po['plantaid'] === (int)$userContext['plantaid'],
-                'total'  => true,
-                default  => false
+                // Inyectamos el alcance de seguridad como un filtro directo para la consulta SQL
+                switch ($scope) {
+                    case 'propio':
+                        $filters['created_by'] = (int) $userContext['id'];
+                        break;
+                    case 'planta':
+                        $filters['plantaid'] = (int) $userContext['plantaid'];
+                        break;
+                    case 'total':
+                        // Sin restricciones adicionales en la consulta SQL (Ver todo)
+                        break;
+                    default:
+                        return ServiceResponse::error("Security Error: Alcance de visibilidad no configurado.", 403);
+                }
             }
-            ) {
-                return ServiceResponse::error("Security Error: No tienes permisos para ver este módulo.", 403);
-            }
 
-            return \ServiceResponse::success($po, "Listado de Órdenes de Compra recuperado.");
+            // 3. El modelo ejecuta la consulta SQL filtrando de origen en BD de forma ultra rápida
+            $poList = $this->ordenCompraModel->getAll($filters);
+
+            return ServiceResponse::success($poList, "Listado de Órdenes de Compra recuperado.");
+
         } catch (\Exception $e) {
-            return \ServiceResponse::error("Error al obtener el listado: " . $e->getMessage());
+            return ServiceResponse::error("Error al obtener el listado: " . $e->getMessage(), 500);
         }
     }
 
@@ -233,24 +253,37 @@ class PurchaseOrderService
 
     public function getWithDetails(int $ocId, array $userContext): \ServiceResponse {
         try {
-            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
-            $scope = $role?->getScope() ?? 'propio';
-
             // 1. Obtener cabecera de la OC
             $oc = $this->ordenCompraModel->getById($ocId);
             if (!$oc) throw new \Exception("Orden de Compra no encontrada.", 404);
 
-            // 2. Validación de Seguridad (Matriz de Visibilidad)
-            $isAllowed = match($scope) {
-                'propio' => (int)$oc['created_by'] === (int)$userContext['id'],
-                'planta' => (int)$oc['plantaid'] === (int)$userContext['plantaid'],
-                'total'  => true,
-                default  => false
-            };
+            // =================================================================
+            // 2. CIRUGÍA DE MÍNIMA INVASIÓN: Soporte de Seguridad Híbrido
+            // =================================================================
+            $isVendor = ($userContext['role'] ?? '') === 'VENDOR' || !empty($userContext['vendor_id']);
+
+            if ($isVendor) {
+                // Seguridad SRM (Anti-IDOR): Validamos que la OC pertenezca a este proveedor
+                $isAllowed = (int)($oc['proveedorid'] ?? $oc['proveedor_id'] ?? 0) === (int)$userContext['vendor_id'];
+            } else {
+                // Seguridad ERP Interno: Matriz de Visibilidad para Empleados
+                $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+                $scope = $role?->getScope() ?? 'propio';
+
+                $isAllowed = match($scope) {
+                    'propio' => (int)$oc['created_by'] === (int)$userContext['id'],
+                    'planta' => (int)$oc['plantaid'] === (int)$userContext['plantaid'],
+                    'total'  => true,
+                    default  => false
+                };
+            }
 
             if (!$isAllowed) {
                 return ServiceResponse::error("Security Error: No tienes permisos para ver esta orden.", 403);
             }
+            // =================================================================
+            // FIN DE LA CIRUGÍA (El resto del código se mantiene intacto)
+            // =================================================================
 
             // 3. Obtener partidas base de la OC
             $items = $this->ordenCompraModel->getDetails($ocId);

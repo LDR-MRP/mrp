@@ -162,7 +162,17 @@ class Com_requisicionModel extends Mysql
                 IFNULL(i.unidad_salida, 'PZA') AS unidad_salida,
                 -- Flags para el Frontend
                 (CASE WHEN rd.inventarioid IS NULL THEN 1 ELSE 0 END) AS es_sourcing,
+                
+                -- FICHA TÉCNICA COMPLETA (AQUÍ ESTABA LA FALLA)
+                n.justificacion_proyecto,
+                n.categoria,
+                n.descripcion_sourcing,
+                n.especificaciones_tecnicas,
+                n.dimensiones_principales,
+                n.normas_requeridas,
+                n.volumen_anual,
                 n.precio_objetivo,
+                n.fecha_inicio_negociacion,
                 n.fecha_limite_acuerdo
                 
             FROM com_requisiciones_detalle rd
