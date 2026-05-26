@@ -13,15 +13,10 @@ const SrmInvoices = {
     },
 
     init: function() {
-        this.validateSession();
+        Sys_Core.Auth.validateSession('VENDOR');
         this.loadActivePOs();
         this.loadInvoiceHistory();
         this.bindEvents();
-    },
-
-    validateSession: function() {
-        const token = localStorage.getItem('mrp_token');
-        if (!token) window.location.href = base_url + '/srm_login';
     },
 
     bindEvents: function() {

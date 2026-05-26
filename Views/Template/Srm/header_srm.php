@@ -86,7 +86,7 @@
                                 <h6 class="dropdown-header">¡Bienvenido!</h6>
                                 <a class="dropdown-item" href="<?= base_url(); ?>/srm/dossier"><i class="ri-archive-line text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Mi Expediente</span></a>
                                 <div class="dropdown-divider"></div>
-                                <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="SrmDashboard.logout()"><i class="ri-shut-down-line text-danger fs-16 align-middle me-1"></i> <span class="align-middle">Cerrar Sesión</span></a>
+                                <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="Sys_Core.Auth.logout()"><i class="ri-shut-down-line text-danger fs-16 align-middle me-1"></i> <span class="align-middle">Cerrar Sesión</span></a>
                             </div>
                         </div>
                     </div>

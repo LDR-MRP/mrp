@@ -6,44 +6,22 @@
 const SrmDashboard = {
 
     init: function() {
-        this.validateSession();
+        Sys_Core.Auth.validateSession('VENDOR');
+
         this.renderUserData();
         this.loadMetrics();
-    },
-
-    /**
-     * Valida que exista el token. Si no, limpia y desvía al login de proveedores
-     */
-    validateSession: function() {
-        const token = localStorage.getItem('mrp_token');
-        if (!token) {
-            this.logout();
-        }
-    },
-
-    /**
-     * Extrae de forma segura el perfil del usuario del token JWT
-     */
-    getUserContext: function() {
-        try {
-            const token = localStorage.getItem('mrp_token');
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-
-            return JSON.parse(jsonPayload).data;
-        } catch (e) {
-            return null;
-        }
     },
 
     /**
      * Dibuja la información del proveedor en la UI (Header / Saludo)
      */
     renderUserData: function() {
-        const user = this.getUserContext();
+        // --- INICIO MODIFICACIÓN: Desencriptación del token centralizada ---
+        // Leemos el payload del JWT utilizando el motor nativo del Core
+        const payload = Sys_Core.Auth.decodeJWT();
+        const user = payload ? payload.data : null;
+        // --- FIN MODIFICACIÓN ---
+
         if (user) {
             // Nombre en saludo y Header
             $('#lbl-welcome-user, #lbl-user-name').text(user.nombre);
@@ -52,7 +30,10 @@ const SrmDashboard = {
             const iniciales = user.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             $('#lbl-user-avatar').text(iniciales);
         } else {
-            this.logout();
+            // --- INICIO MODIFICACIÓN: Logout unificado ---
+            // Si el token es inválido o no existe usuario, disparamos el logout del Core
+            Sys_Core.Auth.logout('/srm/login');
+            // --- FIN MODIFICACIÓN ---
         }
     },
 
@@ -130,11 +111,6 @@ const SrmDashboard = {
                 </div>`;
             $list.append(html);
         });
-    },
-
-    logout: function() {
-        localStorage.removeItem('mrp_token');
-        window.location.href = base_url + '/srm_login';
     }
 };
 

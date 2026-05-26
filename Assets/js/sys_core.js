@@ -41,7 +41,76 @@ const Sys_Core = {
                     $(this).remove(); 
                 }
             });
+        },
+
+        // ==============================================================================
+        // --- INICIO AGREGADO: GESTIÓN DE SESIÓN STATELESS (JWT) GLOBAL ---
+        // ==============================================================================
+        
+        /**
+         * Descifra el payload de un token JWT almacenado en localStorage de forma segura.
+         * @returns {Object|null} Payload decodificado o null si el token no existe o está dañado.
+         */
+        decodeJWT: function() {
+            const token = localStorage.getItem('mrp_token');
+            if (!token) return null;
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                return null;
+            }
+        },
+
+        /**
+         * Valida síncronamente que la sesión esté activa, no haya expirado y pertenezca al rol.
+         * @param {string} [roleRequired] - Opcional. Filtro de rol (ej: 'VENDOR' para SRM)
+         * @returns {boolean} True si la sesión es válida.
+         */
+        validateSession: function(roleRequired = null) {
+            const payload = Sys_Core.Auth.decodeJWT();
+            const redirectPath = (roleRequired === 'VENDOR') ? '/srm/login' : '/login';
+
+            // A. Si no existe token, expulsar
+            if (!payload || !payload.exp) {
+                Sys_Core.Auth.logout(redirectPath);
+                return false;
+            }
+
+            // B. DevSecOps: Validar expiración del JWT en el cliente
+            const now = Math.floor(Date.now() / 1000);
+            if (payload.exp < now) {
+                Sys_Core.Auth.logout(redirectPath);
+                return false;
+            }
+
+            // C. Validar correspondencia de rol para evitar accesos cruzados
+            const userRole = payload.data?.rol || payload.data?.role;
+            if (roleRequired && userRole !== roleRequired) {
+                Sys_Core.Auth.logout(redirectPath);
+                return false;
+            }
+
+            return true;
+        },
+
+        /**
+         * Destruye la sesión en el cliente y redirige al login correcto.
+         * @param {string} [redirectPath='/login'] - Ruta destino
+         */
+        logout: function(redirectPath = '/srm/login') {
+            localStorage.removeItem('mrp_token');
+            localStorage.removeItem('mrp_user'); // Limpieza preventiva de datos planos
+            window.location.href = `${Sys_Core.Config.baseUrl}${redirectPath}`;
         }
+
+        // ==============================================================================
+        // --- FIN AGREGADO ---
+        // ==============================================================================
     },
 
     /**

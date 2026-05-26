@@ -9,6 +9,19 @@ class Srm extends Controllers
         parent::__construct();
     }
 
+    public function login()
+    {
+        // Data inyectada a la vista
+        $data['page_tag'] = "Portal de Proveedores - LDR Solutions";
+        $data['page_title'] = "Login Proveedores";
+        $data['page_name'] = "srm_login";
+        // Apuntamos al JS que creamos
+        $data['page_functions_js'] = "srm/auth/srm_login.js"; 
+
+        // Renderiza: Views/Srm_login/Auth/Login.php
+        $this->views->getView($this, "../Srm/Auth/Login", $data);
+    }
+
     /**
      * Renderiza el Dashboard Premium (Modern Theme)
      * URL: {{base_url}}/srm

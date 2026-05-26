@@ -13,13 +13,8 @@ const SrmPurchaseOrders = {
     },
 
     init: function() {
-        this.validateSession();
+        Sys_Core.Auth.validateSession('VENDOR');
         this.loadPurchaseOrders();
-    },
-
-    validateSession: function() {
-        const token = localStorage.getItem('mrp_token');
-        if (!token) window.location.href = base_url + '/srm_login';
     },
 
     /**

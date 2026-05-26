@@ -17,18 +17,8 @@ const SrmDossier = {
     },
 
     init: function() {
-        this.validateSession();
+        Sys_Core.Auth.validateSession('VENDOR');
         this.loadDossier();
-    },
-
-    /**
-     * Valida que el JWT exista. Si no, lo expulsa.
-     */
-    validateSession: function() {
-        const token = localStorage.getItem('mrp_token');
-        if (!token) {
-            window.location.href = base_url + '/srm_login';
-        }
     },
 
     /**
