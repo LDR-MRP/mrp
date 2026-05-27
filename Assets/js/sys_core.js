@@ -526,7 +526,17 @@ const Sys_Core = {
                         html = 'Tu identidad no pudo ser validada. Por seguridad, ingresa nuevamente.';
                         Sys_Core.UI.alert(title, html, icon).then(() => {
                             localStorage.removeItem('mrp_token');
-                            window.location.reload();
+                            // --- INICIO AJUSTE: Redirección defensiva y retrocompatible ---
+                            // 1. Resolvemos la URL base de forma segura (ERP vs Core)
+                            const rootUrl = typeof base_url !== 'undefined' ? base_url : Sys_Core.Config.baseUrl;
+                            
+                            // 2. Identificamos si expiró en el SRM o en el ERP Interno
+                            const isSrmPage = window.location.pathname.toLowerCase().includes('srm');
+                            const redirectPath = isSrmPage ? '/srm/login' : '/login';
+                            
+                            // 3. Forzamos redirección física inmediata al login correspondiente
+                            window.location.href = rootUrl + redirectPath;
+                            // --- FIN AJUSTE -
                         });
                         return; // Retornamos temprano para evitar doble modal
                     }
