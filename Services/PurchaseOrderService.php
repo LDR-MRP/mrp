@@ -72,6 +72,7 @@ class PurchaseOrderService
 
         try {
             $userId = $userContext['id'];
+            $plantaId = $userContext['plantaid'];
             // AJUSTE 1: Priorizar payload manual si existe (para automatización)
             if (!$manualPayload) $request->validate();
             $payload = $manualPayload ?? $request->all();
@@ -107,6 +108,7 @@ class PurchaseOrderService
             $ocHeaderData = [
                 'requisicionid' => $reqId,
                 'proveedorid'   => $payload['proveedorid'],
+                'plantaid'      => $plantaId,
                 'almacenid'     => $payload['almacenid'],
                 'estatus'       => $ocStatus,
                 'moneda'        => $payload['moneda'] ?? 'MXN',

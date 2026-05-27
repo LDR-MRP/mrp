@@ -71,13 +71,14 @@ class Com_ordenCompraModel extends Mysql {
     public function createHeader(array $data): int {
         // Se ha eliminado 'usuarioid' de la lista de campos y se ha quitado un '?'
         $query = "INSERT INTO com_ordenes_compra 
-                  (requisicionid, proveedorid, almacenid, estatus, moneda, tipo_cambio, observaciones, created_by) 
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                  (requisicionid, proveedorid, plantaid, almacenid, estatus, moneda, tipo_cambio, observaciones, created_by) 
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         // Se ha eliminado $data['usuarioid'] del array de valores
         $values = [
             $data['requisicionid'],
             $data['proveedorid'],
+            $data['plantaid'],
             $data['almacenid'],
             $data['estatus'],
             $data['moneda'],
@@ -127,7 +128,16 @@ class Com_ordenCompraModel extends Mysql {
     public function getById(int $id): ?array {
         $query = "SELECT oc.idcompra, oc.requisicionid, oc.proveedorid, oc.plantaid, oc.almacenid, oc.estatus, 
                          oc.moneda, oc.tipo_cambio, oc.subtotal, oc.iva, oc.total, oc.observaciones, oc.created_at,
-                         p.nombre_comercial AS proveedor_nombre, a.cve_almacen AS almacen_nombre
+                         p.nombre_comercial AS proveedor_nombre, a.cve_almacen AS almacen_nombre,
+                         -- SUBCONSULTA DINÁMICA DE COMPLIANCE (3-Way Match)
+                        COALESCE(
+                            (SELECT SUM(f.monto_total) 
+                            FROM cxp_tra_facturas f 
+                            WHERE f.id_compra = oc.idcompra 
+                            AND f.estatus_validacion = 1 -- 1 = Validada/Aprobada en CxP
+                            AND f.deleted_at IS NULL
+                            ), 0
+                        ) AS total_facturado
                   FROM com_ordenes_compra oc
                   LEFT JOIN prv_cat_proveedores p ON oc.proveedorid = p.id_proveedor
                   LEFT JOIN wms_almacenes a ON oc.almacenid = a.idalmacen

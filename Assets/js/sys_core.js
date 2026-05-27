@@ -639,6 +639,8 @@ const Sys_Core = {
  */
 // --- INICIO AGREGADO: Auto-hidratación de Cabecera Global (JWT) ---
 $(document).ready(function() {
+    Sys_Core.Auth.applyUIPermissions();
+    
     const payload = Sys_Core.Auth.decodeJWT();
     if (payload && payload.data) {
         const user = payload.data;

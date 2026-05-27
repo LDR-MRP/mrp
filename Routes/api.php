@@ -1,6 +1,7 @@
 <?php
 // Routes/api.php
 
+use Controllers\Api\V1\AccountsPayableInvoiceController;
 use Libraries\Core\Route;
 use Controllers\Api\V1\AuthController;
 use Controllers\Api\V1\CurrencyController;
@@ -10,6 +11,7 @@ use Controllers\Api\V1\RequisitionController;
 use Controllers\Api\V1\PurchaseOrderController;
 use Controllers\Api\V1\SourcingController;
 use Controllers\Api\V1\SrmController;
+use Controllers\Api\V1\SrmInvoiceController;
 use Controllers\Api\V1\SrmPurchaseOrderController;
 use Controllers\Api\V1\WarehouseController;
 use Middlewares\AuthMiddleware;
@@ -115,8 +117,12 @@ Route::get('api/v1/purchase-orders/{id}/pending-reception', [InventoryReceptionC
 Route::post('api/v1/inventory-receptions', [InventoryReceptionController::class, 'store'])->middleware([AuthMiddleware::class]);
 
 // --- ACCOUNTS PAYABLE ---
-// Guardar facturas
-//Route::post('api/v1/accounts-payable/invoices', [AccountsPayableController::class, 'store']);
+// Listado de facturas
+Route::get('api/v1/accounts-payable/invoices', [AccountsPayableInvoiceController::class, 'index'])->middleware([AuthMiddleware::class]);
+// KPIs del Dashboard
+Route::get('api/v1/accounts-payable/invoices/kpis', [AccountsPayableInvoiceController::class, 'getKpis'])->middleware([AuthMiddleware::class]);
+// Liberación Manual de Factura
+Route::get('api/v1/accounts-payable/invoices/override', [AccountsPayableInvoiceController::class, 'getKpis'])->middleware([AuthMiddleware::class]);
 
 // --- WAREHOUSE ---
 // Almacenes
@@ -149,23 +155,6 @@ Route::get('api/v1/srm/purchase-orders/{id_oc}', [SrmPurchaseOrderController::cl
 Route::get('api/v1/srm/purchase-orders/{id}/pdf', [SrmPurchaseOrderController::class, 'generatePdf'])->middleware([AuthMiddleware::class]);
 
 // 4. BUZÓN DE FACTURAS (XML/PDF)
-
-// Route::group(['prefix' => 'api/v1/srm', 'middleware' => [JwtAuthMiddleware::class]], function () {
-    
-//     // 1. RESUMEN / DASHBOARD
-//     Route::get('dashboard/summary', [SrmApiController::class, 'getSummary']);
-    
-//     // 2. EXPEDIENTE DIGITAL
-//     Route::get('dossier', [SrmApiController::class, 'getDossier']);
-//     Route::post('dossier/upload', [SrmApiController::class, 'uploadDocument']);
-    
-//     // 3. ÓRDENES DE COMPRA
-//     Route::get('purchase-orders', [SrmPurchaseOrderController::class, 'index']); // Listado de OCs del proveedor
-//     Route::get('purchase-orders/{id_oc}', [SrmPurchaseOrderController::class, 'show']); // Detalle de una OC específica
-    
-//     // 4. BUZÓN DE FACTURAS (XML/PDF)
-//     Route::get('invoices', [SrmInvoiceController::class, 'index']); // Historial de facturas subidas
-//     Route::post('invoices/upload', [SrmInvoiceController::class, 'uploadInvoice']); // Validación y carga de XML + PDF
-// });
-
+Route::get('api/v1/srm/invoices', [SrmInvoiceController::class, 'index'])->middleware([AuthMiddleware::class]); // Historial de facturas subidas
+Route::post('api/v1/srm/invoices/upload', [SrmInvoiceController::class, 'uploadInvoice'])->middleware([AuthMiddleware::class]); // Validación y carga de XML + PDF
 ?>

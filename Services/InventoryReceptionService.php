@@ -9,6 +9,8 @@ class InventoryReceptionService
     private readonly Com_ordenCompraModel $ordenCompraModel;
     private readonly Inv_recepcionModel $recepcionModel;
     private readonly Inv_inventarioModel $inventarioModel;
+    private AccountsPayableInvoiceModel $facturaModel;
+    private ThreeWayMatchService $threeWayMatchService;
     protected object $db;
 
     public function __construct()
@@ -17,6 +19,14 @@ class InventoryReceptionService
         $this->recepcionModel = new Inv_recepcionModel();
         $this->inventarioModel = new Inv_inventarioModel();
         $this->db = $this->ordenCompraModel->getConexion();
+
+        // --- INICIO INYECCIÓN: Dependencias para Auto-conciliación ---
+        $this->facturaModel = new AccountsPayableInvoiceModel();
+        $this->threeWayMatchService = new ThreeWayMatchService(
+            $this->facturaModel, 
+            $this->ordenCompraModel
+        );
+        // --- FIN INYECCIÓN ---
     }
 
     /**
@@ -28,8 +38,17 @@ class InventoryReceptionService
             $oc = $this->ordenCompraModel->getById($idcompra);
             if (!$oc) throw new \Exception("La Orden de Compra #{$idcompra} no existe.", 404);
             
-            // Seguridad IDOR: Validar planta
-            if ((int)$userContext['rolid'] !== 1 && (int)$oc['plantaid'] !== (int)$userContext['plantaid']) {
+            // // Seguridad IDOR: Validar planta
+            // if ((int)$userContext['rolid'] !== 1 && (int)$oc['plantaid'] !== (int)$userContext['plantaid']) {
+            //     throw new \Exception("No tienes permiso para recibir mercancía de esta planta.", 403);
+            // }
+
+            // Seguridad IDOR: Validar planta (Permitir nulos si es una orden corporativa/global)
+            if (
+                (int)$userContext['rolid'] !== 1 && 
+                !is_null($oc['plantaid']) && 
+                (int)$oc['plantaid'] !== (int)$userContext['plantaid']
+            ) {
                 throw new \Exception("No tienes permiso para recibir mercancía de esta planta.", 403);
             }
 
@@ -179,6 +198,32 @@ class InventoryReceptionService
                 $this->db->commit();
             }
             // --- FIN AJUSTE 3 ---
+
+            // =================================================================
+            // AUTO-RECONCILIACIÓN 3-WAY MATCH POST-RECEPCIÓN (CXP INTEGRACIÓN)
+            // =================================================================
+            // Si la transacción fue exitosa y somos los dueños del flujo (no es llamada interna),
+            // buscamos facturas de esta OC que estén congeladas por falta de inventario (estatus 0)
+            // y les volvemos a correr el motor para ver si ya se pueden liberar para pago.
+            if (!$isInternalCall) {
+                try {
+                    $pendingInvoices = $this->facturaModel->getPendingInvoicesByOC($idCompra);
+                    
+                    foreach ($pendingInvoices as $inv) {
+                        // El motor evaluará y actualizará automáticamente de PENDIENTE (0) a APROBADO (1)
+                        // si la nueva mercancía que acaba de entrar ya cubre el monto cobrado.
+                        $this->threeWayMatchService->reconcile((int)$inv['id']);
+                    }
+                } catch (\Throwable $t) {
+                    // Importante: Registramos la advertencia en logs pero NO tiramos la operación de almacén
+                    // si el validador o el SAT fallan de forma asíncrona.
+                    $this->logMessage($t, \LogLevel::WARNING, [
+                        'action' => 'post_reception_reconciliation_failed',
+                        'id_compra' => $idCompra
+                    ]);
+                }
+            }
+            // =================================================================
 
             return ServiceResponse::success(
                 ['idrecepcion' => $recepcionId], 

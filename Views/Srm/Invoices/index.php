@@ -84,9 +84,6 @@
                                     <i class="ri-checkbox-circle-fill text-success fs-18 me-3"></i> El XML debe estar vigente en el repositorio del SAT.
                                 </li>
                                 <li class="d-flex align-items-center">
-                                    <i class="ri-checkbox-circle-fill text-success fs-18 me-3"></i> El uso de CFDI de la factura debe ser de tipo G03 (Gastos en general).
-                                </li>
-                                <li class="d-flex align-items-center">
                                     <i class="ri-checkbox-circle-fill text-success fs-18 me-3"></i> El monto total de la factura no debe exceder el saldo pendiente de la Orden de Compra asociada.
                                 </li>
                             </ul>
