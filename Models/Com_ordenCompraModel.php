@@ -300,5 +300,39 @@ class Com_ordenCompraModel extends Mysql {
 
         return $this->select_all($sql, [$requisitionId]) ?: [];
     }
+
+    /**
+     * Obtiene los contadores de órdenes de compra agrupados por estatus,
+     * respetando estrictamente los filtros de seguridad inyectados por el servicio.
+     */
+    public function getDashboardKpis(array $filters): array
+    {
+        $query = "SELECT estatus, COUNT(*) AS cantidad 
+                  FROM com_ordenes_compra 
+                  WHERE deleted_at IS NULL";
+        
+        $params = [];
+
+        // Inyección de Seguridad (Query-Level Security)
+        if (!empty($filters['created_by'])) {
+            $query .= " AND created_by = :created_by";
+            $params[':created_by'] = (int)$filters['created_by'];
+        }
+
+        if (!empty($filters['plantaid'])) {
+            $query .= " AND plantaid = :plantaid";
+            $params[':plantaid'] = (int)$filters['plantaid'];
+        }
+
+        if (!empty($filters['proveedorid'])) {
+            $query .= " AND proveedorid = :proveedorid";
+            $params[':proveedorid'] = (int)$filters['proveedorid'];
+        }
+
+        $query .= " GROUP BY estatus";
+
+        // Asumiendo tu método select_all() del Core
+        return $this->select_all($query, $params) ?? [];
+    }
 }
 ?>

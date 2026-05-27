@@ -92,5 +92,23 @@ class PurchaseOrderController {
         $serviceResponse = $this->purchaseOrderService->cancel((int)$id, $this->request['auth_user']);
         return $this->apiResponse($serviceResponse);
     }
+
+    /**
+     * Obtiene el resumen de KPIs de Órdenes de Compra.
+     * GET /api/v1/purchase-orders/kpis
+     */
+    public function getKpis()
+    {
+        $userContext = $this->request['auth_user'] ?? null;
+
+        if (!$userContext) {
+            return $this->errorResponse('Acceso no autorizado.', 401);
+        }
+
+        // Delegación estricta al servicio unificado
+        $response = $this->purchaseOrderService->getKpiSummary($userContext);
+
+        return $this->apiResponse($response);
+    }
 }
 ?>

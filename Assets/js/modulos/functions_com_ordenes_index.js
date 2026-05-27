@@ -1,3 +1,8 @@
+/**
+ * Controlador de Bandeja de Órdenes de Compra (ERP Interno)
+ * Integrado al motor central Sys_Core
+ */
+
 const PurchaseOrderIndex = {
     config: {
         endpoint: `${Sys_Core.Config.baseUrl}/api/v1/purchase-orders`,
@@ -14,6 +19,7 @@ const PurchaseOrderIndex = {
     init: function () {
         this.cacheDOM();
         this.initDataTable();
+        this.initKPIs(); // --- INICIO AGREGADO: Animación de KPIs en carga ---
         this.bindEvents();
     },
 
@@ -29,6 +35,7 @@ const PurchaseOrderIndex = {
         this.dom.$filterForm.on('submit', (e) => {
             e.preventDefault();
             this.state.dataTable.ajax.reload();
+            this.initKPIs(); // --- INICIO AGREGADO: Sincronizar KPIs al aplicar filtros ---
         });
 
         // Acciones Inline
@@ -36,6 +43,23 @@ const PurchaseOrderIndex = {
         this.dom.$table.on('click', '.btn-confirmar-inline', (e) => this.submitInlineAction(e));
         this.dom.$table.on('click', '.btn-cancelar-inline', () => $('.fila-accion-inline').remove());
     },
+
+    // --- INICIO AGREGADO: Integración de KPIs Dinámicos con Sys_Core ---
+    initKPIs: function() {
+        const mapping = {
+            'emitida': 'kpi-emitidas',
+            'en_transito': 'kpi-transito',
+            'recibida_parcial': 'kpi-parciales',
+            'cerrada': 'kpi-cerradas'
+        };
+
+        // El motor Net.get y el refrescador del core calculan y animan todo
+        Sys_Core.UI.Dashboard.refreshKPIs(
+            `${Sys_Core.Config.baseUrl}/api/v1/purchase-orders/kpis`, // Endpoint de KPIs
+            mapping
+        );
+    },
+    // --- FIN AGREGADO ---
 
     initDataTable: function () {
         const token = localStorage.getItem('mrp_token');
@@ -45,7 +69,6 @@ const PurchaseOrderIndex = {
                 url: this.config.endpoint,
                 type: 'GET',
                 data: (d) => {
-                    // Inyectamos los filtros del formulario a la petición de la API
                     const formData = this.dom.$filterForm.serializeArray();
                     formData.forEach(item => d[item.name] = item.value);
                 },
@@ -57,27 +80,48 @@ const PurchaseOrderIndex = {
                 },
             },
             columns: [
-                { data: "idcompra", render: (d) => `<span class="fw-bold">#${d}</span>` },
+                // 1. CORRECCIÓN: Forzamos ordenamiento numérico usando el parámetro 'type'
+                { 
+                    data: "idcompra", 
+                    type: "num", // Forzar tipo numérico nativo en el motor de ordenación
+                    render: function (d, type) {
+                        if (type === 'display') {
+                            return `<span class="fw-bold">#${d}</span>`;
+                        }
+                        return d; // Retorna el entero crudo para ordenación y filtros
+                    }
+                },
                 { data: "created_at", render: (d) => Sys_Core.Format.toDate(d) },
                 { data: "proveedor_nombre", render: (d) => `<span class="text-primary fw-medium">${d}</span>` },
-                { data: "requisicionid", render: (d) => `<a href="${Sys_Core.Config.baseUrl}/com_requisicion/read/${d}" class="badge bg-soft-info text-info">REQ #${d}</a>` },
+                // 2. CORRECCIÓN PREVENTIVA: Aplicamos la misma regla para el folio de la requisición
+                { 
+                    data: "requisicionid", 
+                    type: "num",
+                    render: function (d, type) {
+                        if (type === 'display') {
+                            return `<a href="${Sys_Core.Config.baseUrl}/com_requisicion/read/${d}" class="badge bg-soft-info text-info">REQ #${d}</a>`;
+                        }
+                        return d;
+                    }
+                },
                 { data: "total", className: "text-end fw-bold", render: (d) => Sys_Core.Format.toCurrency(d) },
                 { data: "estatus", className: "text-center", render: (d) => this.renderStatusBadge(d) },
                 { data: null, className: "text-end", render: (d, t, row) => this.renderActions(row) }
             ],
-            order: [[1, 'desc']],
+            order: [[0, 'desc']], // CORRECCIÓN: Ordenar por ID de compra (desc) de forma idéntica
             responsive: true
         });
     },
 
     renderStatusBadge: function (status) {
         const clases = { 
-            'emitida': 'text-bg-primary', 
-            'en_transito': 'text-bg-warning',
-            'cerrada': 'text-bg-success',
-            'cancelada': 'text-bg-danger'
+            'emitida': 'bg-primary-subtle text-primary', 
+            'en_transito': 'bg-warning-subtle text-warning',
+            'recibida_parcial': 'bg-info-subtle text-info',
+            'cerrada': 'bg-success-subtle text-success',
+            'cancelada': 'bg-danger-subtle text-danger'
         };
-        return `<span class="badge ${clases[status] || 'bg-secondary'} px-3 py-2 text-capitalize">${status.replace('_', ' ')}</span>`;
+        return `<span class="badge ${clases[status] || 'bg-secondary'} px-3 py-2 text-capitalize fs-12">${status.replace('_', ' ')}</span>`;
     },
 
     renderActions: function (row) {
@@ -101,7 +145,7 @@ const PurchaseOrderIndex = {
     },
 
     /**
-     * Muestra el formulario de comentario inline (Copiado de RequisitionIndex)
+     * Muestra el formulario de comentario inline
      */
     showInlineAction: function (e) {
         const $btn = $(e.currentTarget);
@@ -109,9 +153,10 @@ const PurchaseOrderIndex = {
         const actionKey = $btn.data('accion');
         const actionConfig = this.config.actionDictionary[actionKey];
 
-        // Limpiar filas abiertas previas
         $('.fila-accion-inline').remove();
 
+        // --- INICIO MODIFICACIÓN: Soporte de Modo Oscuro en Plantillas Inline ---
+        // Reemplazamos la clase text-dark por text-body para asegurar legibilidad en Dark Mode
         const html = `
             <tr class="fila-accion-inline bg-soft-${actionConfig.clase} animate__animated animate__fadeIn">
                 <td colspan="7" class="p-3">
@@ -124,7 +169,7 @@ const PurchaseOrderIndex = {
                             </div>
                         </div>
                         <div class="flex-grow-1">
-                            <h6 class="mb-1 fw-bold text-dark">${actionConfig.titulo} - OC #${id}</h6>
+                            <h6 class="mb-1 fw-bold text-body">${actionConfig.titulo} - OC #${id}</h6>
                             <input type="text" class="form-control form-control-sm txt-comentario-inline border-${actionConfig.clase}" 
                                    placeholder="Escriba un comentario para el historial de auditoría...">
                         </div>
@@ -141,6 +186,7 @@ const PurchaseOrderIndex = {
                 </td>
             </tr>
         `;
+        // --- FIN MODIFICACIÓN ---
 
         $btn.closest('tr').after(html);
         $('.txt-comentario-inline').focus();
@@ -157,7 +203,6 @@ const PurchaseOrderIndex = {
         const $filaInline = $btn.closest('.fila-accion-inline');
         const comentario = $filaInline.find('.txt-comentario-inline').val();
 
-        // Construcción de URL RESTful
         const targetUrl = `${this.config.endpoint}/${id}${actionConfig.suffix}`;
 
         Sys_Core.Net.post({
@@ -169,11 +214,8 @@ const PurchaseOrderIndex = {
                 Sys_Core.UI.notify(res.message, 'success');
                 $filaInline.remove();
                 
-                // Recargar el DataTable manteniendo la posición
                 this.state.dataTable.ajax.reload(null, false);
-                
-                // Si tienes KPIs de compra, aquí los refrescarías
-                // this.initKPIs(); 
+                this.initKPIs(); // --- INICIO MODIFICACIÓN: Refrescar KPIs tras acción exitosa ---
             }
         });
     }

@@ -100,6 +100,8 @@ Route::post('api/v1/sourcing/promote-to-catalog', [SourcingController::class, 'p
 // --- PURCHASE ORDERS ---
 // Crear Orden de Compra (a partir de una requisición)
 Route::post('api/v1/purchase-orders', [PurchaseOrderController::class, 'store'])->middleware([AuthMiddleware::class]);
+// Obtiene KPIs
+Route::get('api/v1/purchase-orders/kpis', [PurchaseOrderController::class, 'getKpis'])->middleware([AuthMiddleware::class]);
 // Obtener detalle de una OC específica
 Route::get('api/v1/purchase-orders/{id}', [PurchaseOrderController::class, 'show'])->middleware([AuthMiddleware::class]);
 // Listado de Órdenes de Compra con filtros

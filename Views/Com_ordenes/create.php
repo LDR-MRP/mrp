@@ -4,15 +4,15 @@
     <div class="page-content">
         <div class="container-fluid">
             <section id="id-create-oc">
-                <!-- Breadcrumb -->
+                <!-- 1. BREADCRUMBS -->
                 <div class="row align-items-center mb-4">
                     <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-white">
+                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-transparent">
                             <div class="page-title-right">
-                                <ol class="breadcrumb m-0">
+                                <ol class="breadcrumb m-0 fs-13">
                                     <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
-                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/com_requisicion">Requisiciones</a></li>
-                                    <li class="breadcrumb-item active">Generar Orden</li>
+                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/com_orden">Órdenes</a></li>
+                                    <li class="breadcrumb-item active text-primary">Generar Orden</li>
                                 </ol>
                             </div>
                         </div>

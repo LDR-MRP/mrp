@@ -540,5 +540,53 @@ class PurchaseOrderService
             throw new \Exception("Fallo en la creación de OC Directa: " . $res->message);
         }
     }
+
+    /**
+     * Calcula los KPIs para el dashboard administrativo o SRM, aplicando 
+     * de forma híbrida la matriz de visibilidad de datos.
+     */
+    public function getKpiSummary(array $userContext): ServiceResponse
+    {
+        try {
+            $isVendor = ($userContext['role'] ?? '') === 'VENDOR' || !empty($userContext['vendor_id']);
+            $filters = [];
+
+            if ($isVendor) {
+                // Proveedores externos (SRM) solo ven sus propios números
+                $filters['proveedorid'] = (int) $userContext['vendor_id'];
+            } else {
+                // Empleados internos (ERP) aplican su alcance por rol
+                $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+                $scope = $role?->getScope() ?? 'propio';
+
+                switch ($scope) {
+                    case 'propio':
+                        $filters['created_by'] = (int)$userContext['id'];
+                        break;
+                    case 'planta':
+                        $filters['plantaid'] = (int)$userContext['plantaid'];
+                        break;
+                    case 'total':
+                        // Ver todo
+                        break;
+                    default:
+                        return ServiceResponse::error("Security Error: Alcance de visibilidad no configurado.", 403);
+                }
+            }
+
+            $kpis = $this->ordenCompraModel->getDashboardKpis($filters);
+
+            // Casteo de tipos estricto para PHP 8.3 / Laravel 13 Ready
+            foreach ($kpis as &$kpi) {
+                $kpi['cantidad'] = (int)$kpi['cantidad'];
+                $kpi['estatus']  = (string)$kpi['estatus'];
+            }
+
+            return ServiceResponse::success($kpis, "KPIs calculados de forma segura.");
+
+        } catch (\Exception $e) {
+            return ServiceResponse::error("Error al calcular KPIs: " . $e->getMessage(), 500);
+        }
+    }
 }
 ?>
