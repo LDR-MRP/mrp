@@ -156,7 +156,7 @@
                     <div class="card-footer border-top-0 py-4">
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-muted fw-medium">
-                                <i class="ri-shield-check-line text-success me-1"></i> Auditoría integrada con el motor de Three-Way Match de forma Stateless
+                                <i class="ri-shield-check-line text-success me-1"></i> Auditoría integrada con el motor de Three-Way Match
                             </small>
                         </div>
                     </div>
