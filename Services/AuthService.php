@@ -119,6 +119,14 @@ class AuthService{
                 ];
             }
 
+            // --- INICIO AGREGADO: LIMPIEZA DE BLOQUEO SSO ---
+            // Si el usuario logró autenticarse manualmente, eliminamos cualquier 
+            // restricción de "Forced Logout" para habilitar el SSO en el futuro.
+            if (isset($_COOKIE['mrp_forced_logout'])) {
+                setcookie('mrp_forced_logout', '', time() - 3600, '/', COOKIE_DOMAIN);
+            }
+            // --- FIN AGREGADO ---
+
             // 4. Firmar Token (Asegúrate de que JWT_SECRET sea robusto)
             $jwt = JWT::encode($tokenPayload, JWT_SECRET, 'HS256');
 
@@ -155,5 +163,128 @@ class AuthService{
             $code = $e->getCode() !== 0 ? $e->getCode() : 500;
             return ServiceResponse::error(message: $e->getMessage(), code: $code);
         }
+    }
+
+     /**
+     * FLUJO C: SSO TOKEN EXCHANGE (RRHH -> MRP)
+     * Implementa Just-In-Time Provisioning para usuarios validados por el sistema ajeno.
+     * @param array $data Datos decodificados del JWT de RRHH
+     */
+    public function authenticateViaSso(array $data): \ServiceResponse 
+    {
+        $userModel = new UsuariosModel();
+        
+        try {
+            $email = strtolower(trim($data['correo'] ?? ''));
+            if (empty($email)) throw new \Exception("Identidad incompleta.", 400);
+
+            $this->db->beginTransaction();
+
+            // 1. Localizar al usuario por el Anchor (Email)
+            $userBase = $userModel->findByEmail($email);
+            $userId = null;
+
+            if (!$userBase) {
+                // 2. JIT Provisioning (Solo si no existe)
+                $userId = $this->provisionUserFromSso($data, $userModel);
+                $this->logMessage("SSO: Usuario provicionado: {$email}", \LogLevel::INFO);
+            } else {
+                // 3. Ya existe, tomamos su ID local
+                $userId = (int)$userBase['idusuario'];
+            }
+
+            // ---------------------------------------------------------
+            // AQUÍ ESTÁ EL CAMBIO CLAVE:
+            // ---------------------------------------------------------
+            // Fuera del IF, recuperamos el perfil ENRIQUECIDO (con JOINs) 
+            // para TODOS los casos (nuevo o existente).
+            $userFull = $userModel->loginUserById($userId);
+
+            if (!$userFull) {
+                throw new \Exception("No se pudo recuperar el perfil operativo en MRP.");
+            }
+
+            // 4. Validar Estatus (Ahora sobre el perfil completo)
+            if ((int)$userFull['status'] !== 1) {
+                return \ServiceResponse::error("Acceso denegado: Usuario inactivo.", 403);
+            }
+
+            // 5. Preparar Payload con datos enriquecidos (rol_nombre, planta_nombre, etc.)
+            $now = time();
+            $tokenPayload = [
+                'iat'  => $now,
+                'exp'  => $now + (60 * 60 * 10),
+                'data' => [
+                    'id'       => $userFull['idusuario'],
+                    'nombre'   => $userFull['nombres'] . ' ' . $userFull['apellidos'],
+                    'rolid'    => $userFull['rolid'],
+                    'plantaid' => $userFull['plantaid'],
+                    'rol'      => $userFull['rol_nombre'], // Viene del JOIN
+                    'planta'   => $userFull['planta_nombre'], // Viene del JOIN
+                    'avatar'   => $userFull['avatar_file'],
+                    'is_vendor'=> false,
+                    'auth_type'=> 'SSO_RRHH'
+                ]
+            ];
+
+            $userModel->registrarAcceso($userFull['idusuario'], 'SSO Exchange (RRHH)', $_SERVER['REMOTE_ADDR'], $_SERVER['HTTP_USER_AGENT']);
+            $this->db->commit();
+
+            // --- INICIO AGREGADO: LIMPIEZA DE BLOQUEO SSO ---
+            // Si el intercambio es exitoso (porque el usuario activó el SSO manualmente), 
+            // eliminamos la cookie de bloqueo.
+            if (isset($_COOKIE['mrp_forced_logout'])) {
+                setcookie('mrp_forced_logout', '', time() - 3600, '/', COOKIE_DOMAIN);
+            }
+            // --- FIN AGREGADO ---
+
+            $jwt = \Firebase\JWT\JWT::encode($tokenPayload, JWT_SECRET, 'HS256');
+
+            return \ServiceResponse::success([
+                'access_token' => $jwt,
+                'user'         => $tokenPayload['data']
+            ], "Sincronización SSO exitosa.");
+
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'authenticateViaSso',
+                'id_user' => $email
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            
+        } catch (\Exception $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            $this->logMessage($e, \LogLevel::ERROR, ['context' => 'SSO_EXCHANGE']);
+            return \ServiceResponse::error($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Crea un usuario local basado en el contexto de identidad externo.
+     */
+    private function provisionUserFromSso(array $data, UsuariosModel $model): int 
+    {
+        // Mapeo de Sede (RRHH) a Planta (MRP)
+        $plantaId = match($data['nombre_sede'] ?? '') {
+            'CORPORATIVO' => 50,
+            default       => 50
+        };
+
+        // Separación simple de nombre completo
+        $parts = explode(' ', $data['nombre'], 2);
+        
+        return $model->insertUserFromSso([
+            'nombres'     => $parts[0],
+            'apellidos'   => $parts[1] ?? '',
+            'email'       => strtolower($data['correo']),
+            'rolid'       => 3, // Rol 'Empleado' por defecto
+            'plantaid'    => $plantaId,
+            'status'      => 1,
+            'password'    => 'SSO_LDR_IDENTITY', // Placeholder de seguridad
+            'avatar_file' => 'avatar_default.svg'
+        ]);
     }
 }

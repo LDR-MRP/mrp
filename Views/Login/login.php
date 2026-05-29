@@ -202,6 +202,13 @@
 
           <button class="btn btn-primary-custom w-100 mb-1" type="submit">Iniciar sesión</button>
 
+          <div class="mt-4 text-center">
+              <p>¿Tienes problemas con tu contraseña?</p>
+              <a href="<?= base_url() ?>/login/sso_login" class="btn btn-outline-primary">
+                  <i class="fas fa-id-card"></i> Iniciar sesión con mi cuenta de RRHH
+              </a>
+          </div>
+
           <div class="small-footer">
              © <?= date('Y') ?> LDR Solutions · MRP
           </div>
