@@ -697,7 +697,7 @@ const RequisitionForm = {
         };
 
         const originalHtml = this.dom.$btnConfirmarMover.html();
-        const token = localStorage.getItem('mrp_token');
+        const token = Sys_Core.Auth.getCookie('mrp_token');
 
         $.ajax({
             url: `${this.config.apiBase}/${this.state.id}/items/move`,

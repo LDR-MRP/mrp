@@ -163,7 +163,7 @@ const SrmDossier = {
      * Instancia de forma segura un objeto Dropzone por tarjeta
      */
     bindDropzone: function(key) {
-        const token = localStorage.getItem('mrp_token');
+        const token = Sys_Core.Auth.getCookie('mrp_token');
         const selector = `#dz-${key}`;
 
         new Dropzone(selector, {

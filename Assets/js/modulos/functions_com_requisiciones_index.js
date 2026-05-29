@@ -53,7 +53,7 @@ const RequisitionIndex = {
     // 4. CONFIGURACIÓN DATATABLES
     initDataTable: function () {
         
-        const token = localStorage.getItem('mrp_token');
+        const token = Sys_Core.Auth.getCookie('mrp_token');
 
         this.state.dataTable = this.dom.$table.DataTable({
             ajax: {

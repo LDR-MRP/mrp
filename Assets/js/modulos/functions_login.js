@@ -48,10 +48,6 @@ document.addEventListener('DOMContentLoaded', function(){
 
 								if(requestApi.status == 200 || requestApi.status == 201) {
 									var objDataApi = JSON.parse(requestApi.responseText);
-									
-									// Guardamos el token en localStorage para Sys_Core.js
-									localStorage.setItem('mrp_token', objDataApi.data.access_token);
-									localStorage.setItem('mrp_user', JSON.stringify(objDataApi.data.user));
 
 									// ¡AMBAS EXITOSAS! Recargamos
 									window.location.reload(false);
