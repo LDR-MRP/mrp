@@ -130,6 +130,16 @@ class AuthService{
             // 4. Firmar Token (Asegúrate de que JWT_SECRET sea robusto)
             $jwt = JWT::encode($tokenPayload, JWT_SECRET, 'HS256');
 
+            // El navegador recibirá esto y guardará la cookie por ti.
+            setcookie('mrp_token', $jwt, [
+                'expires'  => time() + 36000,
+                'path'     => '/',
+                'domain'   => COOKIE_DOMAIN, // .ldrhumanresources.local o .com
+                'secure'   => COOKIE_SECURE,
+                'httponly' => false, // Para que tu JS de permisos pueda decodificarlo
+                'samesite' => 'Lax'
+            ]);
+
             return \ServiceResponse::success([
                 'access_token' => $jwt,
                 'redirect_to'  => $loginType === 'VENDOR' ? '/srm/dashboard' : '/dashboard',
