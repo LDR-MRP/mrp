@@ -165,7 +165,7 @@ readonly class InvoiceValidationService
 
             // 6. MOVER ARCHIVOS AL STORAGE (Hostinger)
             $relativeDir = "Assets/uploads/facturas/prov_{$vendorId}/";
-            $physicPath  = __DIR__ . '/../../' . $relativeDir;
+            $physicPath  = __DIR__ . '/../' . $relativeDir;
 
             if (!is_dir($physicPath)) {
                 mkdir($physicPath, 0755, true);

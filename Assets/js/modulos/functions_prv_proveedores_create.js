@@ -700,6 +700,18 @@ const bankingManager = {
             // 3. Botones Dinámicos
             let actionButtons = '';
 
+            // --- INICIO ADICIÓN: Botón para ver la Carátula Bancaria (PDF) ---
+            // Si la cuenta tiene un archivo PDF registrado, mostramos el visor seguro [4]
+            if (c.url_pdf) {
+                const absolutePdfUrl = `${base_url}/${c.url_pdf}`;
+                actionButtons += `
+                    <a href="${absolutePdfUrl}" target="_blank" class="btn btn-sm btn-soft-danger btn-icon shadow-none" title="Ver Carátula Bancaria (PDF)">
+                        <i class="ri-file-pdf-line"></i>
+                    </a>
+                `;
+            }
+            // --- FIN ADICIÓN ---
+
             // Si está pendiente y el usuario es auditor -> Mostrar botones de Visto Bueno
             if (status === 'PENDIENTE' && canAudit) {
                 actionButtons += `

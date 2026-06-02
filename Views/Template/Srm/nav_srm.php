@@ -34,6 +34,13 @@
                     </a>
                 </li>
 
+                <!-- Datos Bancarios Autogestionables -->
+                <li class="nav-item">
+                    <a class="nav-link menu-link" href="<?= base_url(); ?>/srm/bank">
+                        <i class="ri-bank-card-line"></i> <span>Datos Bancarios</span>
+                    </a>
+                </li>
+
                 <li class="menu-title"><span>Operaciones</span></li>
 
                 <!-- Órdenes de Compra -->

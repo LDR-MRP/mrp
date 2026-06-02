@@ -2,18 +2,28 @@
 
 namespace Controllers\Api\V1;
 
+use Services\SupplierService;
+use Services\AccountsPayableBankService; // Importamos el servicio
+use Prv_detCuentaBancariaModel;
+use Prv_proveedorModel;
+
 class SrmController
 {
     // Inyectamos el trait nativo para estandarizar respuestas
     use \ApiResponser; 
 
     private \SupplierService $supplierService;
-
+    private AccountsPayableBankService $bankService;
     public array $request = [];
 
     public function __construct()
     {
         $this->supplierService = new \SupplierService();
+        // Inyección manual de dependencias en el constructor
+        $this->bankService = new AccountsPayableBankService(
+            new Prv_detCuentaBancariaModel(),
+            new Prv_proveedorModel()
+        );
     }
 
     /**
@@ -89,6 +99,43 @@ class SrmController
         $response = $this->supplierService->uploadDocument($userContext);
 
         // 4. Responder usando el estándar de tu Trait
+        return $this->apiResponse($response);
+    }
+
+    /**
+     * Obtiene las cuentas bancarias registradas del proveedor autenticado.
+     * GET /api/v1/srm/bank-accounts
+     */
+    public function getBankAccounts()
+    {
+        $userContext = $this->request['auth_user'] ?? null;
+
+        if (!$userContext || $userContext['rol'] !== 'VENDOR') {
+            return $this->errorResponse('Acceso denegado.', 403);
+        }
+
+        // Delegación limpia al servicio
+        $response = $this->bankService->getSupplierAccounts($userContext);
+        return $this->apiResponse($response);
+    }
+
+    /**
+     * Registra una nueva cuenta bancaria desde el SRM de forma Stateless.
+     * POST /api/v1/srm/bank-accounts
+     */
+    public function storeBankAccount()
+    {
+        $userContext = $this->request['auth_user'] ?? null;
+
+        if (!$userContext || $userContext['rol'] !== 'VENDOR') {
+            return $this->errorResponse('Acceso denegado.', 403);
+        }
+
+        $_POST['id_proveedor'] = (int) $userContext['vendor_id'];
+        $_REQUEST['id_proveedor'] = (int) $userContext['vendor_id'];
+
+        $response = $this->supplierService->storeBank($userContext);
+        
         return $this->apiResponse($response);
     }
 }

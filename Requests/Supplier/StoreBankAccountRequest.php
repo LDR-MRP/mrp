@@ -51,6 +51,33 @@ class StoreBankAccountRequest extends Requests
             $this->addError('id_moneda_banco', 'Debe seleccionar una moneda valida.');
         }
 
+        // --- INICIO: Validación de Carátula Bancaria (PDF) ---
+        if (empty($this->files()['caratula_pdf'])) {
+            $this->addError('caratula_pdf', 'El archivo PDF de la carátula bancaria es obligatorio para validación.');
+        } else {
+            $file = $this->files()['caratula_pdf'];
+            
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                $this->addError('caratula_pdf', 'Ocurrió un error al cargar el archivo de la carátula bancaria.');
+            } else {
+                // Límite estricto de 5MB
+                $maxSize = 5 * 1024 * 1024;
+                if ($file['size'] > $maxSize) {
+                    $this->addError('caratula_pdf', 'El archivo de la carátula bancaria excede el límite permitido de 5MB.');
+                }
+
+                // Validar que sea un PDF legítimo leyendo sus bytes internos (Anti-Malware)
+                $allowedMime = 'application/pdf';
+                $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                $mimeType = $finfo->file($file['tmp_name']);
+                
+                if ($mimeType !== $allowedMime) {
+                    $this->addError('caratula_pdf', 'Solo se permiten carátulas bancarias en formato PDF original.');
+                }
+            }
+        }
+        // --- FIN ---
+
         // Reglas Condicionales (Nacional vs Transferencia Internacional)
         $idMoneda = $this->data['id_moneda_banco'];
         $esNacional = ($this->data['id_moneda_banco'] === 'MXN');

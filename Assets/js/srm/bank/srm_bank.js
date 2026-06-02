@@ -7,7 +7,6 @@ const SrmBank = {
 
     ui: {
         form: '#formCargaBanco',
-        selBanco: '#sel-bancos-cat',
         tblBody: '#tbl-body-bancos-srm',
         btnSubmit: '#btnGuardarBanco'
     },
@@ -117,14 +116,22 @@ const SrmBank = {
                 ? `<span class="badge bg-soft-info text-info ms-2">Principal</span>` 
                 : '';
 
+            // --- INICIO ADICIÓN: Previsualización de PDF para el Proveedor ---
+            // Si la cuenta tiene un PDF registrado, le pintamos un icono rojo discreto para que pueda revisarlo [4]
+            const pdfIcon = acc.url_pdf 
+                ? `<a href="${base_url}/${acc.url_pdf}" target="_blank" class="text-danger ms-2" title="Ver PDF de la Carátula Bancaria"><i class="ri-file-pdf-line align-middle fs-16"></i></a>` 
+                : '';
+            // --- FIN ADICIÓN ---
+
             const row = `
                 <tr>
                     <td class="fw-semibold text-dark">${acc.nombre_banco || 'Banco'}</td>
                     <td>
                         <span class="font-monospace fs-13 text-muted">${acc.clabe || acc.cuenta}</span>
                         ${isPrincipal}
+                        ${pdfIcon}
                     </td>
-                    <td class="fw-bold">${acc.id_moneda}</td>
+                    <td class="fw-bold text-body">${acc.id_moneda}</td>
                     <td>${badge}</td>
                 </tr>`;
             $tbl.append(row);

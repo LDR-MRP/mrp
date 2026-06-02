@@ -86,4 +86,21 @@ class Srm extends Controllers
         // CORRECCIÓN: Renderiza: Views/Srm/Invoices/index.php
         $this->views->getView($this, "Invoices/index", $data);
     }
+
+    /**
+     * Renderiza el Gestor de Cuentas Bancarias Autogestionable
+     * URL: {{base_url}}/srm/bancos
+     */
+    public function bank()
+    {
+        $data['page_tag'] = "Mis Cuentas Bancarias - LDR Solutions";
+        $data['page_title'] = "Cuentas Bancarias";
+        $data['page_name'] = "srm_bank";
+        
+        // Apuntamos al JS del módulo de bancos que escribimos en el paso anterior
+        $data['page_functions_js'] = "srm/bank/srm_bank.js";
+
+        // Renderiza: Views/Srm/Bank/index.php (Sigue la taxonomía de tus carpetas de VS Code)
+        $this->views->getView($this, "Bank/index", $data);
+    }
 }

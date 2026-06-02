@@ -30,13 +30,13 @@ class Prv_detCuentaBancariaModel extends Mysql
     {
         $sql = "INSERT INTO `{$this->table}` (
                     id_proveedor, id_banco, id_moneda, cuenta, clabe, 
-                    swift_bic, iban, es_principal, estatus_aprobacion, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    swift_bic, iban, url_pdf, es_principal, estatus_aprobacion, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         return $this->insert($sql, [
             $data['id_proveedor'], $data['id_banco'], $data['id_moneda'],
             $data['cuenta'], $data['clabe'], $data['swift_bic'],
-            $data['iban'], $data['es_principal'], $data['estatus_aprobacion'],
+            $data['iban'], $data['url_pdf'], $data['es_principal'], $data['estatus_aprobacion'],
             $data['created_by']
         ]);
     }
@@ -59,6 +59,7 @@ class Prv_detCuentaBancariaModel extends Mysql
                     cb.swift_bic,
                     cb.clabe,
                     cb.iban,
+                    cb.url_pdf,
                     cb.es_principal,
                     cb.estatus_aprobacion,
                     cb.created_at

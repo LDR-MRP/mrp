@@ -520,6 +520,17 @@
                                                     </div>
                                                 </div>
 
+                                                <!-- CARÁTULA -->
+                                                <div class="col-12 mb-3">
+                                                    <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Carátula Bancaria (PDF) <span class="text-danger">*</span></label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text bg-light border-0 text-muted"><i class="ri-file-pdf-line"></i></span>
+                                                        <!-- Campo name="caratula_pdf" que espera tu StoreBankAccountRequest -->
+                                                        <input type="file" name="caratula_pdf" class="form-control bg-light-subtle border-0" accept=".pdf" required>
+                                                    </div>
+                                                    <small class="text-muted fs-11 mt-1 d-block">Obligatorio para que Finanzas L2 realice el cotejo y la auditoría antifraude.</small>
+                                                </div>
+
                                                 <!-- Divisor: Transferencias Internacionales -->
                                                 <div class="col-12 mt-4">
                                                     <div class="d-flex align-items-center mb-2">
@@ -546,7 +557,6 @@
                                                         <input type="text" name="iban" class="form-control border-0 fs-15" maxlength="34" placeholder="Código IBAN">
                                                     </div>
                                                 </div>
-
                                             </div>
                                         </div>
                                     </div>

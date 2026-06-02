@@ -19,7 +19,7 @@ readonly class AccountsPayableInvoiceService
     public function getInvoices(array $filters, array $userContext): ServiceResponse
     {
         try {
-            if (($userContext['role'] ?? '') === 'VENDOR') {
+            if (($userContext['rol'] ?? '') === 'VENDOR') {
                 return ServiceResponse::error("Acceso denegado. Rol insuficiente.", 403);
             }
 
@@ -46,7 +46,7 @@ readonly class AccountsPayableInvoiceService
     public function getKpiSummary(array $userContext): ServiceResponse
     {
         try {
-            if (($userContext['role'] ?? '') === 'VENDOR') {
+            if (($userContext['rol'] ?? '') === 'VENDOR') {
                 return ServiceResponse::error("Acceso denegado.", 403);
             }
 
@@ -72,7 +72,7 @@ readonly class AccountsPayableInvoiceService
     public function forceApproval(int $invoiceId, string $comentario, array $userContext): ServiceResponse
     {
         try {
-            if (($userContext['role'] ?? '') === 'VENDOR') {
+            if (($userContext['rol'] ?? '') === 'VENDOR') {
                 return ServiceResponse::error("Acceso denegado.", 403);
             }
 

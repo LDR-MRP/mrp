@@ -383,6 +383,10 @@ class SupplierService
                 "Dictamen registrado exitosamente."
             );
 
+        } catch (\InvalidArgumentException $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            return ServiceResponse::validation(errors: $e->getMessage());
+
         } catch (\PDOException $p) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
@@ -393,10 +397,6 @@ class SupplierService
             ]);
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
             
-        } catch (\InvalidArgumentException $e) {
-            if ($this->db->inTransaction()) $this->db->rollBack();
-            return ServiceResponse::validation(errors: $e->getMessage());
-
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             return ServiceResponse::error($e->getMessage(), (int)$e->getCode() ?: 500);
@@ -508,6 +508,26 @@ class SupplierService
             $userId = (int)$userContext['id'];
             $supplierId = (int)$validated['id_proveedor']; // Validado en el request
 
+            // Obtenemos el archivo ya validado de forma segura del request
+            $file = $request->files()['caratula_pdf'];
+
+            // 2. Mover archivo al almacenamiento físico (Hostinger)
+            $relativeDir = "Assets/uploads/expedientes/prov_{$supplierId}/";
+            $uploadPath  = __DIR__ . '/../' . $relativeDir; // Ajustar según estructura de carpetas de tu WSL
+
+            if (!is_dir($uploadPath)) {
+                mkdir($uploadPath, 0755, true);
+            }
+
+            $fileName = "caratula_bancaria_" . bin2hex(random_bytes(4)) . ".pdf";
+            $fullPath = $uploadPath . $fileName;
+
+            if (!move_uploaded_file($file['tmp_name'], $fullPath)) {
+                throw new \Exception("Error técnico al mover el archivo de carátula al servidor.", 500);
+            }
+
+            $urlPdf = $relativeDir . $fileName;
+
             $this->db->beginTransaction();
 
             // 2. Lógica de Cuenta Principal
@@ -529,6 +549,7 @@ class SupplierService
                 'clabe'              => $nullify($validated['clabe'] ?? null), // <--- AQUÍ ESTÁ EL FIX
                 'swift_bic'          => $nullify($validated['swift_bic'] ?? null),
                 'iban'               => $nullify($validated['iban'] ?? null),
+                'url_pdf'            => $urlPdf,
                 'es_principal'       => (int)($validated['banco_es_principal'] ?? 0),
                 'estatus_aprobacion' => 'PENDIENTE',
                 'created_by'         => $userId
@@ -556,6 +577,16 @@ class SupplierService
             if ($this->db->inTransaction()) $this->db->rollBack();
             return ServiceResponse::validation(errors: $e->getMessage());
 
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'storeBank',
+                'id_user' => $userContext['id']
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             return ServiceResponse::error($e->getMessage(), (int)$e->getCode() ?: 500);
