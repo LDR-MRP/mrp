@@ -26,6 +26,7 @@ enum AuditAction: string
     // --- ACCIONES ESPECIALES ---
     case ITEMS_MOVED = 'partidas_movidas'; // NUEVO: Para el Split/Merge de Reqs
     case PDF_EXPORTED = 'exportacion_pdf'; // NUEVO: Para auditoría de descargas
+    case GENERATE_PAYMENT_LAYOUT = 'generacion_layout_pago'; // NUEVO: Para auditoría de descargas
     
     // --- SEGURIDAD (DEVSECOPS) ---
     case UPLOAD_FILE = 'carga_documento';
@@ -45,6 +46,7 @@ enum AuditAction: string
             self::ITEMS_MOVED => 'Movimiento de Partidas entre Folios',
             self::LOGIN_SUCCESS => 'Acceso Exitoso al Sistema',
             self::LOGIN_FAILED => 'Intento de Acceso Fallido',
+            self::GENERATE_PAYMENT_LAYOUT => 'Generación de Layout de Pago',
             default => 'Acción del Sistema'
         };
     }

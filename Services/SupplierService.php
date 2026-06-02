@@ -355,7 +355,7 @@ class SupplierService
 
                 if ($onboardingComplete) {
                     // 1. Resolvemos quiénes deben recibir el correo
-                    $recipients = $this->usuarioModel->resolveRecipients('supplier_onboarding_complete', $supplierData['plantaid']);
+                    $recipients = $this->usuarioModel->resolveRecipients('supplier_onboarding_complete', $supplierData['id_planta']);
                     
                     if (empty($recipients)) {
                        ['erick.pulido@ldrsolutions.com.mx'];

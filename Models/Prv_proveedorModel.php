@@ -340,31 +340,31 @@ class Prv_proveedorModel extends Mysql
     }
 
     /**
-     * Actualiza el estatus de madurez del proveedor en el flujo de Onboarding.
-     * Esta transición permite que el proveedor sea visible para el módulo de Compras.
-     *
+     * Actualiza el estatus de onboarding y, si se aprueba, activa automáticamente la operación comercial.
+     * 
      * @param int    $supplierId ID del proveedor.
-     * @param string $status     Nuevo estado ('Prospecto', 'En Revision', 'Aprobado', 'Rechazado').
-     * @param int    $adminId    ID del administrador que autoriza el cambio.
-     * @return bool True si se actualizó correctamente.
+     * @param string $status     'Aprobado', 'Rechazado', 'En Revision'.
+     * @param int    $adminId    ID del administrador que ejecuta la acción.
+     * @return bool
      */
     public function updateOnboardingStatus(int $supplierId, string $status, int $adminId): bool
     {
-        $sql = "UPDATE `{$this->table}` 
-                SET estatus_onboarding = ?, 
-                    updated_by = ?, 
-                    updated_at = CURRENT_TIMESTAMP 
-                WHERE id_proveedor = ? 
-                  AND deleted_at IS NULL";
+        // Usamos CASE WHEN para que la activación de estatus_operativo sea atómica
+        // y ocurra directamente en el motor de base de datos de Hostinger.
+        $sql = "UPDATE `prv_cat_proveedores` 
+                SET estatus_onboarding = ?,
+                    estatus_operativo = CASE WHEN ? = 'Aprobado' THEN 1 ELSE estatus_operativo END,
+                    updated_by = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id_proveedor = ?";
 
-        // Usamos el método update de tu clase base Mysql
-        $rowCount = $this->update($sql, [
-            $status, 
-            $adminId, 
+        // Pasamos los parámetros posicionales en el orden exacto de los '?'
+        return (bool) $this->update($sql, [
+            $status,
+            $status, // Duplicamos para la condición CASE WHEN
+            $adminId,
             $supplierId
         ]);
-
-        return $rowCount > 0;
     }
 
     /**

@@ -134,7 +134,8 @@ const COM_REQUISICIONES = 51;
 const COM_ORDENES = 52;
 //-----------------------------
 const PRV_PROVEEDORES = 53;
-const CXP = 54;
+const CXP_FACTURAS = 54;
+const CXP_PAGOS = 55;
 
 
 const PERROR = 9;

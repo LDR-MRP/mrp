@@ -453,7 +453,7 @@
                       <!-- ==============================================================================
                         CATEGORÍA 3: CUENTAS POR PAGAR - CXP (FINANZAS)
                         ============================================================================== -->
-                      <li class="nav-item" data-permiso="CXP|r">
+                      <li class="nav-item" data-permiso="CXP_FACTURAS|r">
                           <a class="nav-link menu-link" href="#sidebarCxP" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarCxP">
                               <i class="ri-bank-card-2-line icon-dual"></i> <span>Cuentas por Pagar</span>
                           </a>
@@ -461,15 +461,15 @@
                               <ul class="nav nav-sm flex-column">
 
                                   <!-- Bandeja de Facturas (Conciliación) -->
-                                  <li class="nav-item" data-permiso="CXP|r">
+                                  <li class="nav-item" data-permiso="CXP_FACTURAS|r">
                                       <a href="<?= base_url(); ?>/accountspayableinvoice/index" class="nav-link">
                                           <i class="ri-calculator-line align-bottom me-1"></i> Bandeja de Facturas
                                       </a>
                                   </li>
 
                                   <!-- Programación de Pagos (Dispersión #153) -->
-                                  <li class="nav-item" data-permiso="CXP|r">
-                                      <a href="<?= base_url(); ?>/cxp_pagos" class="nav-link">
+                                  <li class="nav-item" data-permiso="CXP_PAGOS|r">
+                                      <a href="<?= base_url(); ?>/accountspayablepayment/index" class="nav-link">
                                           <i class="ri-refund-2-line align-bottom me-1"></i> Programación de Pagos
                                       </a>
                                   </li>
