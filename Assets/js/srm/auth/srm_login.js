@@ -70,9 +70,6 @@ const SrmLogin = {
             successMsg: 'Acceso autorizado. Redirigiendo...',
             onDone: (response) => {
                 Sys_Core.UI.notify(response.message, 'success');
-
-                // Guardamos el token bajo la firma exacta que tu Sys_Core.Net requiere para inyectar los headers en futuras llamadas: 'mrp_token'
-                localStorage.setItem('mrp_token', response.data.access_token);
                 
                 // Redirección limpia utilizando el helper de tu core
                 Sys_Core.Navigation.to(response.data.redirect_to);

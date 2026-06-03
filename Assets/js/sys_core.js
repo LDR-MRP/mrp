@@ -8,7 +8,8 @@ const Sys_Core = {
         brandName: 'System',
         baseUrl: '',
         defaultLocale: 'es-MX',
-        defaultCurrency: 'MXN'
+        defaultCurrency: 'MXN',
+        tokenName: 'mrp_token' // Valor por defecto (ERP)
     },
 
     /**
@@ -30,6 +31,22 @@ const Sys_Core = {
                 if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
             }
             return null;
+        },
+
+        setCookie: function(name, value, days = 1) {
+            let expires = "";
+            if (days) {
+                let date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            const host = window.location.hostname;
+            const baseDomain = host.includes('ldrhumanresources') 
+                               ? host.substring(host.lastIndexOf(".", host.lastIndexOf(".") - 1)) 
+                               : host;
+
+            // Directivas de seguridad modernas (Lax y Secure) para protección CSRF
+            document.cookie = `${name}=${value || ""}${expires}; path=/; domain=${baseDomain}; SameSite=Lax; Secure`;
         },
 
         /**
@@ -58,18 +75,16 @@ const Sys_Core = {
                 }
             });
         },
-
-        // ==============================================================================
-        // --- REFACTORIZADO: GESTIÓN DE SESIÓN VÍA COOKIES (SSO COMPATIBLE) ---
-        // ==============================================================================
         
         /**
-         * Descifra el payload del JWT almacenado en COOKIES.
+         * Descifra el payload del JWT almacenado en COOKIES de forma dinámica.
+         * @param {string} [tokenName] - Opcional. Nombre de la cookie a decodificar.
          * @returns {Object|null} Payload decodificado o null si el token no existe.
          */
-        decodeJWT: function() {
-            // MIGRACIÓN: Ahora leemos de la cookie 'mrp_token'
-            const token = Sys_Core.Auth.getCookie('mrp_token');
+        decodeJWT: function(tokenName = null) {
+            // INFERENCIA INTELIGENTE: Si se omite, deducimos el token por la ruta de URL
+            const actualToken = tokenName || (window.location.pathname.includes('/srm') ? 'srm_token' : 'mrp_token');
+            const token = Sys_Core.Auth.getCookie(actualToken);
             
             if (!token) return null;
             try {
@@ -80,38 +95,41 @@ const Sys_Core = {
                 }).join(''));
                 return JSON.parse(jsonPayload);
             } catch (e) {
-                console.error("Error decodificando JWT de la cookie:", e);
+                console.error(`Error decodificando JWT de la cookie [${actualToken}]:`, e);
                 return null;
             }
         },
 
         /**
          * Valida síncronamente que la sesión esté activa, no haya expirado y pertenezca al rol.
+         * @param {string} [roleRequired] - Opcional. Filtro de rol (ej: 'VENDOR')
+         * @param {string} [tokenName] - Opcional. Nombre específico del token a validar.
          */
-        validateSession: function(roleRequired = null) {
-            const payload = Sys_Core.Auth.decodeJWT();
+        validateSession: function(roleRequired = null, tokenName = null) {
+            const actualToken = tokenName || (window.location.pathname.includes('/srm') ? 'srm_token' : 'mrp_token');
+            const payload = Sys_Core.Auth.decodeJWT(actualToken);
             
-            // Detectar si estamos en el subdirectorio de SRM para el redirect
+            // Determinar la ruta de redirección correcta según el dominio
             const isSrm = window.location.pathname.includes('/srm');
-            const redirectPath = isSrm ? '/srm/login' : '/login';
+            const redirectPath = isSrm ? '/srm_login' : '/login'; // Srm_login unificado
 
             // A. Si no existe token en la cookie, expulsar
             if (!payload || !payload.exp) {
-                Sys_Core.Auth.logout(redirectPath);
+                Sys_Core.Auth.logout(redirectPath, actualToken);
                 return false;
             }
 
             // B. Validación de expiración (Client-side sync)
             const now = Math.floor(Date.now() / 1000);
             if (payload.exp < now) {
-                Sys_Core.Auth.logout(redirectPath);
+                Sys_Core.Auth.logout(redirectPath, actualToken);
                 return false;
             }
 
             // C. Validar correspondencia de rol
             const userRole = payload.data?.rol || payload.data?.role;
             if (roleRequired && userRole !== roleRequired) {
-                Sys_Core.Auth.logout(redirectPath);
+                Sys_Core.Auth.logout(redirectPath, actualToken);
                 return false;
             }
 
@@ -119,12 +137,12 @@ const Sys_Core = {
         },
 
         /**
-         * Destruye la sesión eliminando cookies y limpiando almacenamiento.
+         * Destruye la sesión eliminando cookies de forma dinámica y limpiando almacenamiento.
          * @param {string} [redirectPath='/login'] - Ruta destino
+         * @param {string} [tokenName] - Nombre de la cookie a destruir
          */
-        logout: function(redirectPath = '/login') {
-            // 1. ELIMINAR COOKIES: Para borrar una cookie en JS, se expira en el pasado.
-            // Es vital incluir el path y el domain para que el navegador la identifique.
+        logout: function(redirectPath = '/login', tokenName = null) {
+            const actualToken = tokenName || (window.location.pathname.includes('/srm') ? 'srm_token' : 'mrp_token');
             
             // Extraer el dominio base para limpiar la wildcard cookie (.ldrhumanresources.local/com)
             const host = window.location.hostname;
@@ -132,16 +150,16 @@ const Sys_Core = {
                                ? host.substring(host.lastIndexOf(".", host.lastIndexOf(".") - 1)) 
                                : host;
 
-            // Borrar mrp_token
-            document.cookie = `mrp_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${baseDomain}`;
+            // Borrar de forma parametrizada la cookie configurada
+            document.cookie = `${actualToken}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${baseDomain}`;
             
             // Borrar mrp_forced_logout (si existiera)
             document.cookie = `mrp_forced_logout=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${baseDomain}`;
 
-            // 2. LIMPIEZA PREVENTIVA: Borramos restos de localStorage por si acaso
-            localStorage.removeItem('mrp_token');
+            // Limpieza preventiva de localStorage antiguos
+            localStorage.removeItem(actualToken);
 
-            // 3. REDIRECCIÓN
+            // Redirección segura
             window.location.href = `${Sys_Core.Config.baseUrl}${redirectPath}`;
         }
     },
@@ -380,6 +398,7 @@ const Sys_Core = {
          * Petición GET con soporte para recursividad.
          * @param {Object} options 
          * @param {string} options.url
+         * @param {string} [options.tokenName] - Opcional. Nombre específico del token a inyectar en las cabeceras.
          * @param {function} [options.onSuccess] - Callback en caso de éxito (200 OK).
          * @param {function} [options.onComplete] - Callback que se ejecuta SIEMPRE (éxito o error).
          * @param {boolean} [options.recurrent=false]
@@ -388,7 +407,8 @@ const Sys_Core = {
          */
         get: function(options) {
             const { url, onSuccess, onComplete, recurrent, interval = 30000, silent } = options;
-            const token = Sys_Core.Auth.getCookie('mrp_token');
+            const actualTokenName = options.tokenName || (window.location.pathname.includes('/srm') ? 'srm_token' : 'mrp_token');
+            const token = Sys_Core.Auth.getCookie(actualTokenName);
             
             const execute = () => {
                 $.ajax({
@@ -396,7 +416,7 @@ const Sys_Core = {
                     method: 'GET',
                     dataType: 'json',
                     headers: {
-                        // --- INYECCIÓN AUTOMÁTICA DEL TOKEN ---
+                        // Inyección automática del token de seguridad correspondiente
                         'Authorization': token ? `Bearer ${token}` : ''
                     },
                     success: (res) => { if (onSuccess) onSuccess(res); },
@@ -413,6 +433,7 @@ const Sys_Core = {
         /**
          * @param {Object} options 
          * @param {string} options.url
+         * @param {string} [options.tokenName] - Opcional. Nombre específico del token a inyectar en las cabeceras.
          * @param {any} options.payload
          * @param {string} [options.method='POST'] - Verbo HTTP (POST, PUT, DELETE, PATCH)
          * @param {jQuery} [options.$btn] - Botón que disparó la acción (para el spinner)
@@ -423,7 +444,8 @@ const Sys_Core = {
          */
         post: function(options) {
             const { url, payload, successMsg, onDone } = options;
-            const token = Sys_Core.Auth.getCookie('mrp_token');
+            const actualTokenName = options.tokenName || (window.location.pathname.includes('/srm') ? 'srm_token' : 'mrp_token');
+            const token = Sys_Core.Auth.getCookie(actualTokenName);
             
             // 1. SOPORTE RESTful: Si no mandan method, asumimos POST por retrocompatibilidad
             const httpMethod = (options.method || 'POST').toUpperCase();
@@ -482,14 +504,23 @@ const Sys_Core = {
             });
         },
 
+        /**
+         * Descarga física y segura de archivos PDF de solo lectura (Dompdf binario).
+         * @param {Object} options 
+         * @param {string} options.url
+         * @param {string} [options.filename]
+         * @param {string} [options.tokenName] - Opcional. Nombre específico del token a inyectar en las cabeceras.
+         */
         downloadPdf: function(options) {
             const { url, filename } = options;
-            const token = Sys_Core.Auth.getCookie('mrp_token');
+            const actualTokenName = options.tokenName || (window.location.pathname.includes('/srm') ? 'srm_token' : 'mrp_token');
+            const token = Sys_Core.Auth.getCookie(actualTokenName);
+            
             Sys_Core.UI.toggleLoader('.page-content', true);
 
             fetch(url, {
                 method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': token ? `Bearer ${token}` : '' }
             })
             .then(async response => {
                 const contentType = response.headers.get('content-type');
