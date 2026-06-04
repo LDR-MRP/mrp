@@ -99,9 +99,9 @@
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">En Carga (Onboarding)</p>
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Expediente Digital Pendiente</p>
                                         <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="kpi-onboarding-total">0</span></h4>
-                                        <span class="badge bg-soft-warning text-warning fw-medium mb-0 px-2 py-1">Captura Pendiente</span>
+                                        <span class="badge bg-soft-warning text-warning fw-medium mb-0 px-2 py-1">Carga y Aprobación de Expediente</span>
                                     </div>
                                     <div class="avatar-sm flex-shrink-0">
                                         <span class="avatar-title bg-warning-subtle text-warning rounded-circle fs-3">
@@ -121,7 +121,7 @@
                                     <div class="flex-grow-1 overflow-hidden">
                                         <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Pendientes Finanzas</p>
                                         <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="kpi-pendientes-l2">0</span></h4>
-                                        <span class="badge bg-soft-info text-info fw-medium mb-0 px-2 py-1">Revisión de PDFs</span>
+                                        <span class="badge bg-soft-info text-info fw-medium mb-0 px-2 py-1">Revisión de Cuenta y Carátula Bancaria</span>
                                     </div>
                                     <div class="avatar-sm flex-shrink-0">
                                         <span class="avatar-title bg-info-subtle text-info rounded-circle fs-3">
