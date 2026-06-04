@@ -59,4 +59,21 @@ class Prv_proveedor  extends Controllers{
             ]
         );
     }
+
+    /**
+     * Renderiza el Reporte Analítico de Onboarding para el CEO
+     * URL: {{base_url}}/prv_proveedor/reporte
+     */
+    public function reporte(): void
+    {
+        $data['page_tag'] = "Reporte Ejecutivo - LDR Solutions";
+        $data['page_title'] = "Reporte de Onboarding";
+        $data['page_name'] = "prv_reporte_onboarding";
+        
+        // JS exclusivo que dará vida a los gráficos y la tabla ejecutiva
+        $data['page_functions_js'] = "functions_prv_proveedores_reporte.js";
+
+        // Renderiza de forma Stateless: Views/Prv_proveedor/reporte.php
+        $this->views->getView($this, "../Prv_proveedor/reporte", $data);
+    }
 }

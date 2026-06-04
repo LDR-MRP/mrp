@@ -138,10 +138,22 @@ const supplierManager = {
                         });
                     }
 
-                    // 3. Cargamos Colonias y al terminar, seleccionamos
-                    if (data.cp) {
+                    // 3. CORRECCIÓN: Cargamos Colonias con comparador insensible a mayúsculas/minúsculas
+                    if (data.cp && data.colonia) {
                         cascadeCatalogs.searchCP(data.cp, () => {
-                            $('[name="colonia"]').val(data.colonia).trigger('change');
+                            const valToSearch = data.colonia.toLowerCase().trim();
+                            let exactValue = data.colonia; // Fallback por defecto
+
+                            // Escaneamos las opciones cargadas en el select de forma insensible a mayúsculas [4]
+                            $('#colonia option').each(function() {
+                                if ($(this).val().toLowerCase().trim() === valToSearch) {
+                                    exactValue = $(this).val(); // Obtenemos el valor exacto del option (Mayúsculas)
+                                    return false; // Break loop de jQuery
+                                }
+                            });
+
+                            // Asignamos el valor exacto que el navegador sí reconoce
+                            $('[name="colonia"]').val(exactValue).trigger('change');
                         });
                     }
                 }

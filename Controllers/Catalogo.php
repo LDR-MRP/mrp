@@ -50,4 +50,14 @@ class Catalogo extends Controllers
     {
         return $this->apiResponse($this->catalogoService->getPaymentMethods());
     }
+
+    public function plants()
+    {
+        // Capturamos el filtro opcional de la URL
+        $filters = [
+            'plantaid' => $_GET['plantaid'] ?? null
+        ];
+
+        return $this->apiResponse($this->catalogoService->getPlants($filters));
+    }
 }

@@ -702,4 +702,68 @@ class SupplierService
             200
         );
     }
+
+    /**
+     * Obtiene el reporte analítico del progreso del onboarding de todos los proveedores.
+     * Diseñado para la visualización y auditoría del CEO.
+     */
+    public function getOnboardingReport(array $filters, array $userContext): ServiceResponse
+    {
+        try {
+            // Protección de privilegios: Excluir proveedores del reporte
+            if (($userContext['rol'] ?? '') === 'VENDOR') {
+                return ServiceResponse::error("Acceso denegado. Rol insuficiente.", 403);
+            }
+
+            $rawReport = $this->proveedorModel->getOnboardingReportData($filters);
+            $processedReport = [];
+
+            foreach ($rawReport as $row) {
+                // 1. Resolver la lista de documentos requeridos para este perfil del proveedor
+                $requiredDocs = \DocumentTypeEnum::getRequiredList(
+                    $row['id_tipo_persona'],
+                    $row['origen']
+                );
+                
+                $requiredCount = count($requiredDocs);
+                $approvedCount = (int)$row['approved_docs_count'];
+
+                // 2. Calcular el porcentaje matemático real de progreso del expediente
+                $progressPercent = $requiredCount > 0 
+                    ? (int)round(($approvedCount / $requiredCount) * 100) 
+                    : 0;
+
+                $processedReport[] = [
+                    'id_proveedor'      => (int)$row['id_proveedor'],
+                    'razon_social'      => $row['razon_social'],
+                    'nombre_comercial'  => $row['nombre_comercial'] ?: $row['razon_social'],
+                    'rfc'               => $row['rfc'],
+                    'origen'            => $row['origen'],
+                    'estatus_onboarding'=> $row['estatus_onboarding'],
+                    'estatus_operativo' => (int)$row['estatus_operativo'],
+                    'created_at'        => $row['created_at'],
+                    
+                    // Métricas de Progreso de Expediente
+                    'expediente' => [
+                        'aprobados'  => $approvedCount,
+                        'requeridos' => $requiredCount,
+                        'porcentaje' => $progressPercent
+                    ],
+                    
+                    // Datos Satélite (Booleans y Enums para UI badges)
+                    'satelites' => [
+                        'bancos'             => $row['estatus_bancario'], // 'SIN_REGISTRAR', 'PENDIENTE', 'APROBADO'
+                        'direccion'          => (int)$row['tiene_direccion'] === 1,
+                        'contacto'           => (int)$row['tiene_contacto'] === 1,
+                        'config_financiera'  => (int)$row['tiene_config_financiera'] === 1
+                    ]
+                ];
+            }
+
+            return ServiceResponse::success($processedReport, "Reporte de onboarding compilado con éxito.");
+
+        } catch (\Exception $e) {
+            return ServiceResponse::error("Error al compilar el reporte: " . $e->getMessage(), 500);
+        }
+    }
 }

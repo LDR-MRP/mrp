@@ -134,8 +134,8 @@ class Prv_proveedorModel extends Mysql
             LEFT JOIN `cat_condiciones_pago`
                 ON `cat_condiciones_pago`.`id_condicion` = `prv_det_config_financiera`.`id_condicion_pago`
             -- Onboarding Information JOIN
-            LEFT JOIN `prv_tra_onboarding`
-                ON `prv_tra_onboarding`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
+            -- LEFT JOIN `prv_tra_onboarding`
+            --     ON `prv_tra_onboarding`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
             WHERE true\n";
 
         if(array_key_exists('id_proveedor', $filters)){ $sql .= "AND `prv_cat_proveedores`.`id_proveedor` = '{$filters['id_proveedor']}'"; }
@@ -191,6 +191,7 @@ class Prv_proveedorModel extends Mysql
             "INSERT INTO prv_cat_proveedores (
                 -- id_empresa,
                 rfc,
+                rfc_activo,
                 razon_social,
                 nombre_comercial,
                 id_tipo_persona,
@@ -200,6 +201,7 @@ class Prv_proveedorModel extends Mysql
             ) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [
                 // $h['id_empresa'],
+                $h['rfc'],
                 $h['rfc'],
                 $h['razon_social'], 
                 $h['nombre_comercial'],
@@ -400,5 +402,80 @@ class Prv_proveedorModel extends Mysql
 
         // Retornamos null si el objeto Mysql devuelve false o vacío
         return $result ?: null;
+    }
+
+    /**
+     * Extrae los datos consolidados de Onboarding y Datos Satélite para el Reporte del CEO.
+     * Soporta filtrado opcional por planta (id_planta).
+     */
+    public function getOnboardingReportData(array $filters = []): array
+    {
+        $query = "SELECT 
+                    p.id_proveedor,
+                    p.razon_social,
+                    p.nombre_comercial,
+                    p.rfc,
+                    p.id_tipo_persona,
+                    p.origen,
+                    p.estatus_onboarding,
+                    p.estatus_operativo,
+                    p.created_at,
+                    
+                    -- 1. Conteo de documentos aprobados en el expediente (Vía 1)
+                    (SELECT COUNT(*) 
+                     FROM prv_det_expediente de 
+                     WHERE de.id_proveedor = p.id_proveedor 
+                       AND de.estatus_validacion = 1 
+                       AND de.deleted_at IS NULL
+                    ) AS approved_docs_count,
+                    
+                    -- 2. Datos Satélite: Estatus de Cuentas Bancarias
+                    (SELECT 
+                        CASE 
+                            WHEN COUNT(*) = 0 THEN 'SIN_REGISTRAR'
+                            WHEN SUM(CASE WHEN cb.estatus_aprobacion = 'APROBADO' THEN 1 ELSE 0 END) > 0 THEN 'APROBADO'
+                            ELSE 'PENDIENTE'
+                        END
+                     FROM prv_det_cuentas_bancarias cb 
+                     WHERE cb.id_proveedor = p.id_proveedor 
+                       AND cb.deleted_at IS NULL
+                    ) AS estatus_bancario,
+                    
+                    -- 3. Datos Satélite: Dirección
+                    (SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END 
+                     FROM prv_det_direcciones d 
+                     WHERE d.id_proveedor = p.id_proveedor 
+                       AND d.deleted_at IS NULL
+                    ) AS tiene_direccion,
+                    
+                    -- 4. Datos Satélite: Contacto
+                    (SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END 
+                     FROM prv_det_contactos c 
+                     WHERE c.id_proveedor = p.id_proveedor 
+                       AND c.deleted_at IS NULL
+                    ) AS tiene_contacto,
+                    
+                    -- 5. Datos Satélite: Configuración Financiera
+                    (SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END 
+                     FROM prv_det_config_financiera cf 
+                     WHERE cf.id_proveedor = p.id_proveedor 
+                       AND cf.deleted_at IS NULL
+                    ) AS tiene_config_financiera
+
+                  FROM prv_cat_proveedores p
+                  WHERE p.deleted_at IS NULL";
+
+        $params = [];
+
+        // --- INICIO ADICIÓN: Filtro Dinámico por Planta ---
+        if (!empty($filters['plantaid'])) {
+            $query .= " AND p.id_planta = :plantaid";
+            $params[':plantaid'] = (int)$filters['plantaid'];
+        }
+        // --- FIN ADICIÓN ---
+
+        $query .= " ORDER BY p.estatus_onboarding DESC, p.created_at DESC";
+
+        return $this->select_all($query, $params) ?? [];
     }
 }

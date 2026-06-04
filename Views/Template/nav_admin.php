@@ -446,6 +446,13 @@
                                       </a>
                                   </li>
 
+                                  <!-- Reporte Ejecutivo de Proveedores -->
+                                  <li class="nav-item" data-permiso="PRV_PROVEEDORES|r">
+                                      <a href="<?= base_url(); ?>/prv_proveedor/reporte" class="nav-link">
+                                          <i class="ri-shield-check-line align-bottom me-1"></i> Reporte Análitico de Onboarding
+                                      </a>
+                                  </li>
+
                               </ul>
                           </div>
                       </li>

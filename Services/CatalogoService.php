@@ -16,6 +16,8 @@ class CatalogoService
 
     protected CatMetodosPago $catMetodosPago;
 
+    protected Cap_plantasModel $catPlantsModel;
+
     protected Inv_lineasdproductoModel $lineasProductoModel;
 
     public function __construct()
@@ -28,6 +30,7 @@ class CatalogoService
         $this->catPaisModel = new CatPaisModel;
         $this->catMetodosPago = new CatMetodosPago;
         $this->lineasProductoModel = new Inv_lineasdproductoModel;
+        $this->catPlantsModel = new Cap_plantasModel;
     }
     
     public function condicionesPago()
@@ -75,6 +78,11 @@ class CatalogoService
     public function getPaymentMethods()
     {
         return ServiceResponse::success($this->catMetodosPago->all());
+    }
+
+    public function getPlants(array $filters)
+    {
+        return ServiceResponse::success($this->catPlantsModel->findByCriteria($filters));
     }
 
 

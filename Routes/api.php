@@ -50,6 +50,12 @@ Route::post('api/v1/suppliers/audit-bank', [SupplierController::class, 'auditBan
 Route::delete('api/v1/suppliers/banks/{id}', [SupplierController::class, 'deleteBank'])->middleware([AuthMiddleware::class]);
 // Onboarding
 Route::get('api/v1/suppliers/{id}/onboarding-timeline', [SupplierController::class, 'getOnboardingTimeline'])->middleware([AuthMiddleware::class]);
+/**
+ * Reporte Ejecutivo de Onboarding (CEO)
+ * GET /api/v1/suppliers/reports/onboarding
+ */
+Route::get('api/v1/suppliers/reports/onboarding', [SupplierController::class, 'getOnboardingReport'])
+    ->middleware([AuthMiddleware::class]);
 
 /**
  * ==============================================================================
@@ -167,10 +173,14 @@ Route::get('api/v1/warehouses', [WarehouseController::class, 'index'])->middlewa
 // Monedas
 Route::get('api/v1/currencies', [CurrencyController::class, 'index'])->middleware([AuthMiddleware::class]);
 
-// --- CATALOGS ---
+// --- PRODUCT LINES ---
 Route::get('api/v1/catalogs/product-lines', [Catalogo::class, 'productLines'])->middleware([AuthMiddleware::class]);
 
+// -- PAYMENT METHODS --
 Route::get('api/v1/catalogs/payment-methods', [Catalogo::class, 'paymentMethods'])->middleware([AuthMiddleware::class]);
+
+// -- 
+Route::get('api/v1/catalogs/plants', [Catalogo::class, 'plants'])->middleware([AuthMiddleware::class]);
 
 /**
  * ==============================================================================
