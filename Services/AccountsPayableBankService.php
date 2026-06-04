@@ -11,8 +11,8 @@ use ServiceResponse;
 readonly class AccountsPayableBankService
 {
     // Cuenta de retiro de LDR Solutions registrada en BBVA (10 dígitos obligatorios)
-    private const string CUENTA_RETIRO_BBVA = '0123456789';
-    private const string CUENTA_RETIRO_BANORTE = '9876543210';
+    private const CUENTA_RETIRO_BBVA = '0123456789';
+    private const CUENTA_RETIRO_BANORTE = '9876543210';
 
     public function __construct(
         private Prv_detCuentaBancariaModel $bankModel,
