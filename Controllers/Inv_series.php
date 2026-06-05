@@ -49,9 +49,13 @@ class Inv_series extends Controllers
     {
         if ($_SESSION['permisosMod']['r']) {
 
-            $term = strClean($_GET['term'] ?? '');
+            $modo = $_GET['modo'] ?? 'lote'; // default lote
 
-            $arrData = $this->model->searchProductos($term);
+            if ($modo === "orden") {
+                $arrData = $this->model->searchProductosOrden();
+            } else {
+                $arrData = $this->model->searchProductosLote();
+            }
 
             echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
         }
@@ -105,29 +109,41 @@ class Inv_series extends Controllers
         $lista = $data['lista'];
         $inventarioid = $data['inventarioid'];
         $almacenid = $data['almacenid'];
-        $referencia = $data['referencia'];
-        $costo = $data['costo'];
+        $referencia = $data['referencia']; // orden o lote
+        $costo = $data['costo'] ?? 0;
+        $modo = $data['modo']; // 🔥 NUEVO
 
-        // 🔒 Validar que tenga orden de trabajo
+        if ($modo === "orden") {
 
-        $orden = $this->model->validarOrdenTrabajoPorOrden($referencia);
+            // 🔒 validar orden
+            $orden = $this->model->validarOrdenTrabajoPorOrden($referencia);
 
-        if (empty($orden)) {
-            echo json_encode([
-                "status" => false,
-                "msg" => "Orden de trabajo inválida."
-            ]);
-            die();
+            if (empty($orden)) {
+                echo json_encode([
+                    "status" => false,
+                    "msg" => "Orden de trabajo inválida."
+                ]);
+                die();
+            }
+        } else if ($modo === "lote") {
+
+            // 🔒 validar lote
+            if (empty($referencia)) {
+                echo json_encode([
+                    "status" => false,
+                    "msg" => "El lote es obligatorio."
+                ]);
+                die();
+            }
         }
-
-
 
         $request = $this->model->insertarSeriesConfirmadas(
             $lista,
             $inventarioid,
             $almacenid,
             $referencia,
-            $costo
+            $costo,
+            $modo // 🔥 IMPORTANTE
         );
 
         echo json_encode($request, JSON_UNESCAPED_UNICODE);
@@ -362,5 +378,23 @@ class Inv_series extends Controllers
 
         $pdf->Output('VIN_ORDEN_' . $orden . '.pdf', 'I');
         exit;
+    }
+
+    public function getUltimoConsecutivo()
+    {
+        $baseVin = $_GET['baseVin'] ?? '';
+
+        if (empty($baseVin)) {
+            echo json_encode(["status" => false]);
+            die();
+        }
+
+        $ultimo = $this->model->getUltimoConsecutivo($baseVin);
+
+        echo json_encode([
+            "status" => true,
+            "ultimo" => $ultimo
+        ]);
+        die();
     }
 }

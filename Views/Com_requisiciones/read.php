@@ -3,70 +3,16 @@
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
-            <!-- Mantengo tus estilos intactos -->
-            <style>
-                :root {
-                    --primary: #0056b3;
-                    --success: #28a745;
-                    --warning: #ffc107;
-                    --danger: #dc3545;
-                }
-
-                body {
-                    background-color: #f4f7f6;
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                }
-
-                .card {
-                    border: none;
-                    border-radius: 10px;
-                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
-                    margin-bottom: 2rem;
-                }
-
-                .card-header {
-                    background: #fff;
-                    border-bottom: 1px solid #f1f1f1;
-                    font-weight: bold;
-                    text-transform: uppercase;
-                    font-size: 0.8rem;
-                    letter-spacing: 1px;
-                }
-
-                /* Badges LDR Style */
-                .badge-draft { background-color: #e2e8f0; color: #475569; }
-                .badge-review { background-color: #fef3c7; color: #92400e; }
-                .badge-approved { background-color: #dcfce7; color: #166534; }
-                .badge-rejected { background-color: #fee2e2; color: #991b1b; }
-                .badge-purchasing { background-color: #e0e7ff; color: #3730a3; }
-
-                .table thead th {
-                    border-top: none;
-                    font-size: 0.75rem;
-                    color: #718096;
-                    text-transform: uppercase;
-                }
-                
-                /* Estilo extra para simular campos de solo lectura elegantes */
-                .read-only-field {
-                    background-color: #f8f9fa;
-                    border: 1px solid #e9ecef;
-                    border-radius: 6px;
-                    padding: 10px 15px;
-                    min-height: 42px;
-                }
-            </style>
-
             <section id="view-read-requisicion">
-                <!-- Breadcrumb -->
+                <!-- 1. BREADCRUMBS -->
                 <div class="row align-items-center mb-4">
                     <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-white">
+                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-transparent">
                             <div class="page-title-right">
-                                <ol class="breadcrumb m-0">
+                                <ol class="breadcrumb m-0 fs-13">
                                     <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
-                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/com_requisiciones">Requisiciones</a></li>
-                                    <li class="breadcrumb-item active">Ver Solicitud</li>
+                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/com_requisicion">Requisiciones</a></li>
+                                    <li class="breadcrumb-item active text-primary">Ver Solicitud</li>
                                 </ol>
                             </div>
                         </div>
@@ -84,7 +30,7 @@
                                     </span>
                                 </div>
                                 <div>
-                                    <h4 class="mb-1 text-dark fw-bold ls-05 d-flex align-items-center">
+                                    <h4 class="mb-1 fw-bold ls-05 d-flex align-items-center">
                                         Solicitud de Compra #<span id="lbl-idrequisicion" class="ms-1">...</span>
                                         <span id="lbl-estatus" class="ms-3 badge bg-light text-muted fs-12 fw-normal">Cargando...</span>
                                     </h4>
@@ -92,10 +38,9 @@
                                 </div>
                             </div>
                             
-                            <!-- Badges de Prioridad (Movido arriba para mejor visibilidad) -->
                             <div class="text-end">
                                 <span class="text-uppercase fs-11 fw-bold text-muted d-block mb-1">Prioridad</span>
-                                <span id="lbl-prioridad" class="badge bg-light text-dark fs-12 px-3 py-1 shadow-sm">...</span>
+                                <span id="lbl-prioridad" class="badge bg-light fs-12 px-3 py-1 shadow-sm">...</span>
                             </div>
                         </div>
                     </div>
@@ -108,25 +53,38 @@
                         <!-- Tarjeta: Datos Generales -->
                         <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
                             <div class="card-header bg-soft-primary border-bottom border-light d-flex justify-content-between align-items-center">
-                                <h6 class="card-title mb-0 text-dark fw-bold"><i class="ri-article-line text-primary me-1 fs-14 align-middle"></i> Datos Generales</h6>
+                                <h6 class="card-title mb-0 fw-bold"><i class="ri-article-line me-1 fs-14 align-middle"></i> Datos Generales</h6>
                             </div>
                             <div class="card-body p-4">
                                 <div class="row g-4">
                                     <div class="col-12">
                                         <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Título de referencia</label>
-                                        <div class="read-only-field fs-15 fw-bold text-dark" id="lbl-titulo">...</div>
+                                        <div class="read-only-field fs-15 fw-bold" id="lbl-titulo">...</div>
                                     </div>
 
                                     <div class="col-md-6">
                                         <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Departamento de Cargo</label>
-                                        <div class="read-only-field text-dark" id="lbl-departamento">...</div>
+                                        <div class="read-only-field" id="lbl-departamento">...</div>
                                     </div>
                                     
                                     <div class="col-md-6">
                                         <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Fecha Requerida</label>
-                                        <div class="read-only-field text-dark d-flex align-items-center">
+                                        <div class="read-only-field d-flex align-items-center">
                                             <i class="ri-calendar-event-line text-muted me-2"></i> 
                                             <span id="lbl-fecha-requerida">...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mt-3 d-none" id="section-direct-info">
+                                    <div class="col-md-6">
+                                        <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Método de Pago</label>
+                                        <div class="read-only-field" id="lbl-pago-sugerido">...</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Referencia Digital</label>
+                                        <div class="read-only-field">
+                                            <i class="ri-external-link-line text-primary me-2"></i>
+                                            <a href="#" id="link-referencia" target="_blank" class="fw-medium">Ver producto</a>
                                         </div>
                                     </div>
                                 </div>
@@ -136,7 +94,7 @@
                         <!-- Tarjeta: Partidas -->
                         <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
                             <div class="card-header bg-soft-primary border-bottom border-light d-flex justify-content-between align-items-center">
-                                <h6 class="card-title mb-0 text-dark fw-bold"><i class="ri-shopping-basket-line text-primary me-1"></i> Partidas / Artículos Solicitados</h6>
+                                <h6 class="card-title mb-0 fw-bold"><i class="ri-shopping-basket-line me-1"></i> Partidas / Artículos Solicitados</h6>
                             </div>
                             
                             <div class="card-body p-0">
@@ -172,7 +130,7 @@
                                     <i class="ri-chat-1-line text-secondary me-1 fs-14 align-middle"></i> Justificación del Gasto
                                 </h5>
                                 <div class="bg-light p-3 rounded" style="min-height: 80px;">
-                                    <p class="mb-0 text-dark" id="lbl-justificacion" style="white-space: pre-wrap; font-style: italic;">...</p>
+                                    <p class="mb-0" id="lbl-justificacion" style="white-space: pre-wrap; font-style: italic;">...</p>
                                 </div>
                             </div>
                         </div>
@@ -184,7 +142,7 @@
 
                         <!-- Tarjeta: Acciones Contextuales -->
                         <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
-                            <div class="card-header bg-white border-bottom border-light">
+                            <div class="card-header border-bottom border-light">
                                 <h6 class="card-title mb-0 fw-bold">Acciones Disponibles</h6>
                             </div>
                             <div class="card-body">
@@ -237,7 +195,7 @@
                                 
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="text-muted fs-12 fw-medium"><i class="ri-time-line me-1"></i> Creado el:</span>
-                                    <span class="text-dark fw-bold fs-12" id="lbl-fecha-creacion">...</span>
+                                    <span class="fw-bold fs-12" id="lbl-fecha-creacion">...</span>
                                 </div>
                             </div>
                         </div>
@@ -262,6 +220,157 @@
             </div>
         </div>
     </footer>
+
+    <div class="modal fade" id="modalSourcing" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-fullscreen modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+                <div class="modal-header bg-soft-primary p-3">
+                    <h5 class="modal-title text-primary fw-bold fs-15"><i class="ri-scales-3-line me-2"></i>Cuadro Comparativo de Sourcing</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <!-- Resumen de Meta (Directiva Tito) -->
+                    <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1 fw-bold text-dark" id="sourcing-item-name">Cargando artículo...</h6>
+                            <p class="mb-0 text-muted fs-12" id="sourcing-item-specs">Ficha técnica del requerimiento.</p>
+                        </div>
+                        <div class="text-end">
+                            <span class="text-uppercase fs-10 fw-bold text-muted d-block">Precio Objetivo</span>
+                            <h4 class="mb-0 fw-bold text-primary" id="sourcing-target-price">$0.00</h4>
+                        </div>
+                    </div>
+
+                    <div class="row g-0">
+                        <!-- Izquierda: Formulario de Nueva Cotización -->
+                        <div class="col-lg-4 border-end p-4">
+                            <h6 class="fw-bold mb-3 text-uppercase fs-11 ls-1">Registrar Cotización</h6>
+                            <form id="formNuevaCotizacion" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <label class="form-label fs-11 fw-bold">Proveedor Potencial</label>
+                                    <select name="id_proveedor" class="form-select form-select-sm" required></select>
+                                </div>
+                                <!-- Fila de Precio y Moneda actualizada -->
+                                <div class="row g-2 mb-3">
+                                    <div class="col-4">
+                                        <label class="form-label fs-11 fw-bold">Precio Unit.</label>
+                                        <input type="number" name="precio_unitario" class="form-control form-control-sm" step="0.01" required>
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label fs-11 fw-bold">Moneda</label>
+                                        <select name="moneda" id="sel-moneda-cotizacion" class="form-select form-select-sm" required>
+                                            <!-- Dinámico -->
+                                        </select>
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label fs-11 fw-bold">T. Cambio</label>
+                                        <input type="number" name="tipo_cambio" id="txt-tc-cotizacion" class="form-control form-control-sm bg-light" value="1.000000" step="0.000001" readonly>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fs-11 fw-bold text-uppercase">Evidencia (PDF de Cotización) <span class="text-danger">*</span></label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light"><i class="ri-file-pdf-line"></i></span>
+                                        <input type="file" name="cotizacion_pdf" class="form-control" accept=".pdf" required>
+                                    </div>
+                                </div>
+                                <!-- NEW FIELD: Product Photo -->
+                                <div class="mb-3">
+                                    <label class="form-label fs-11 fw-bold text-uppercase">Fotografía del Producto / Referencia</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light"><i class="ri-image-add-line"></i></span>
+                                        <input type="file" name="foto_producto" class="form-control" accept="image/*">
+                                    </div>
+                                    <small class="text-muted fs-10">Opcional. Formatos permitidos: JPG, PNG.</small>
+                                </div>
+                                <!-- NEW FIELD: Particular Specs -->
+                                <div class="mb-3">
+                                    <label class="form-label fs-11 fw-bold text-uppercase">Especificaciones Particulares del Proveedor <span class="text-danger">*</span></label>
+                                    <textarea name="specs_particulares_proveedor" class="form-control fs-12 bg-light-subtle" rows="3" 
+                                            placeholder="Describa aquí si el proveedor ofrece una alternativa o cambios técnicos..." required></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fs-11 fw-bold text-uppercase">Notas Internas (Comprador)</label>
+                                    <textarea name="comentarios_comprador" class="form-control fs-12" rows="2" 
+                                            placeholder="Notas para el equipo de finanzas..."></textarea>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary btn-sm w-100 shadow-sm fw-bold">
+                                    <i class="ri-add-line align-middle"></i> Agregar al Cuadro
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Derecha: Tabla Comparativa -->
+                        <div class="col-lg-8 p-4 bg-soft-light">
+                            <h6 class="fw-bold mb-3 text-uppercase fs-11 ls-1">Análisis de Propuestas</h6>
+                            <div class="table-responsive">
+                                <!-- Tabla Comparativa con columna T.C. -->
+                                <table class="table table-nowrap align-middle mb-0" id="tblComparativa">
+                                    <thead class="bg-white">
+                                        <tr>
+                                            <th>Proveedor / Compliance</th>
+                                            <th class="text-center">T.C.</th> <!-- NUEVA COLUMNA -->
+                                            <th class="text-end">Precio MXN</th>
+                                            <th class="text-center">Ahorro / Déficit</th>
+                                            <th class="text-center">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalPromoverCatalog" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+                <div class="modal-header bg-soft-success p-3">
+                    <h5 class="modal-title text-success fw-bold fs-15"><i class="ri-price-tag-3-line me-2"></i>Alta en Catálogo Maestro</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formPromoverCatalog">
+                        <input type="hidden" name="idrequisicionarticulo">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fs-11 fw-bold text-uppercase">SKU / Clave Oficial <span class="text-danger">*</span></label>
+                                <input type="text" name="cve_articulo" class="form-control fw-bold text-primary" placeholder="Ej: LLAN-RAD-001" required>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fs-11 fw-bold text-uppercase">Línea de Producto <span class="text-danger">*</span></label>
+                                <select name="lineaproductoid" class="form-select" required>
+                                    <!-- Llenar con catálogo -->
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fs-11 fw-bold text-uppercase">Tipo</label>
+                                <select name="tipo_elemento" class="form-select">
+                                    <option value="P">Producto</option>
+                                    <option value="S">Servicio</option>
+                                    <option value="H">Herramienta</option>
+                                    <option value="C">Componente</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fs-11 fw-bold text-uppercase">Unidad</label>
+                                <input type="text" name="unidad_salida" class="form-control" value="PIEZA" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light-subtle">
+                    <button type="button" id="btn-ejecutar-promocion" class="btn btn-success w-100 shadow-sm fw-bold">
+                        <i class="ri-check-line align-middle me-1"></i> Crear SKU y Vincular
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php footerAdmin($data); ?>

@@ -2,17 +2,23 @@
 
 class CatalogoService
 {
-    protected $catCondicionPagoModel;
+    protected CatCondicionPagoModel $catCondicionPagoModel;
 
-    protected $catBancoModel;
+    protected CatBancoModel $catBancoModel;
 
-    protected $catCodigoPostalModel;
+    protected CatCodigoPostalModel $catCodigoPostalModel;
 
-    protected $catCuentaContableModel;
+    protected CatCuentaContableModel $catCuentaContableModel;
 
-    protected $catEstadoModel;
+    protected CatEstadoModel $catEstadoModel;
 
-    protected $catPaisModel;
+    protected CatPaisModel $catPaisModel;
+
+    protected CatMetodosPago $catMetodosPago;
+
+    protected Cap_plantasModel $catPlantsModel;
+
+    protected Inv_lineasdproductoModel $lineasProductoModel;
 
     public function __construct()
     {
@@ -22,6 +28,9 @@ class CatalogoService
         $this->catCuentaContableModel = new CatCuentaContableModel;
         $this->catEstadoModel = new CatEstadoModel;
         $this->catPaisModel = new CatPaisModel;
+        $this->catMetodosPago = new CatMetodosPago;
+        $this->lineasProductoModel = new Inv_lineasdproductoModel;
+        $this->catPlantsModel = new Cap_plantasModel;
     }
     
     public function condicionesPago()
@@ -60,4 +69,21 @@ class CatalogoService
     {
         return ServiceResponse::success($this->catPaisModel->all());
     }
+
+    public function getProductLines()
+    {
+        return ServiceResponse::success($this->lineasProductoModel->selectLineasProductos());
+    }
+
+    public function getPaymentMethods()
+    {
+        return ServiceResponse::success($this->catMetodosPago->all());
+    }
+
+    public function getPlants(array $filters)
+    {
+        return ServiceResponse::success($this->catPlantsModel->findByCriteria($filters));
+    }
+
+
 }

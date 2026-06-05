@@ -1,0 +1,115 @@
+<?php
+
+use Dompdf\Dompdf;
+use Dompdf\Options;
+use Helpers\NumberToLetter;
+
+class PurchaseOrderPrintService
+{
+    use \Loggable;
+
+    private readonly Com_ordenCompraModel $ordenCompraModel;
+    protected object $db;
+
+    public function __construct()
+    {
+        $this->ordenCompraModel = new Com_ordenCompraModel();
+        $this->db = $this->ordenCompraModel->getConexion();
+    }
+
+    public function generatePdf(int $id, array $userContext): ServiceResponse
+    {
+        try {
+            // 1. OBTENER DATA (Requiere un método específico en el modelo de OC)
+            $poData = $this->ordenCompraModel->getPurchaseOrderForPrint($id);
+            
+            if (!$poData) {
+                throw new \Exception("La Orden de Compra #{$id} no existe.", 404);
+            }
+
+            // =================================================================
+            // 2. CIRUGÍA DE MÍNIMA INVASIÓN: Seguridad Híbrida de Impresión
+            // =================================================================
+            $isVendor = ($userContext['role'] ?? '') === 'VENDOR' || !empty($userContext['vendor_id']);
+
+            if ($isVendor) {
+                // Seguridad SRM (Anti-IDOR): El proveedor solo puede imprimir sus propias órdenes
+                $isAllowed = (int)($poData['proveedorid'] ?? $poData['proveedor_id'] ?? 0) === (int)$userContext['vendor_id'];
+            } else {
+                // Seguridad ERP: Matriz de Visibilidad por Rol (Empleados)
+                $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+                $scope = $role?->getScope() ?? 'propio';
+
+                $isAllowed = match($scope) {
+                    'propio' => (int)$poData['usuarioid'] === (int)$userContext['id'],
+                    'planta'  => (int)$poData['plantaid'] === (int)$userContext['plantaid'],
+                    'total'  => true,
+                    default  => false
+                };
+            }
+
+            // 3. Validación de Seguridad (IDOR de Lectura / Descarga)
+            if (!$isAllowed) {
+                return ServiceResponse::error("Security Error: No tienes permisos para imprimir esta orden de compra.", 403);
+            }
+            // =================================================================
+            // FIN DE LA CIRUGÍA (El resto del motor de Dompdf se mantiene intacto)
+            // =================================================================
+
+            // 3. PREPARACIÓN DE MONTOS
+            $totalDescuento = 0;
+            $subtotalBruto = 0;
+
+            foreach ($poData['items'] as $item) {
+                // Sumamos el valor real (sin descuento)
+                $subtotalBruto += (float)$item['cantidad'] * (float)$item['costo_unitario'];
+                // Sumamos los montos de descuento de cada partida
+                $totalDescuento += (float)$item['descuento_partida'];
+            }
+
+            $poData['subtotal_bruto'] = $subtotalBruto;
+            $poData['total_descuento'] = $totalDescuento;
+
+            // El monto en letras debe basarse en el TOTAL neto de la OC
+            $poData['monto_letras'] = NumberToLetter::convert((float)$poData['total']);
+
+            // 4. CONFIGURAR MARCA DE AGUA (State Machine de la OC)
+            $watermark = $this->getWatermarkConfig($poData['estatus']);
+
+            // 5. RENDERIZAR HTML
+            ob_start();
+            $data = $poData; 
+            // Apuntamos al template de OC que creamos antes
+            require __DIR__ . '/../Views/Com_ordenes/purchase_order_template.php';
+            $html = ob_get_clean();
+
+            // 6. EJECUTAR DOMPDF
+            $options = new Options();
+            $options->set('isHtml5ParserEnabled', true);
+            $options->set('isRemoteEnabled', true); 
+
+            $dompdf = new Dompdf($options);
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+
+            return ServiceResponse::success([
+                'content' => $dompdf->output(),
+                'filename' => "ORDEN_COMPRA_{$id}_" . date('Ymd') . ".pdf"
+            ]);
+
+        } catch (\Exception $e) {
+            $this->logMessage($e, \LogLevel::ERROR, ['action' => 'generatePoPdf', 'id' => $id]);
+            return ServiceResponse::error($e->getMessage(), (int)$e->getCode() ?: 500);
+        }
+    }
+
+    private function getWatermarkConfig(string $status): ?array
+    {
+        return match ($status) {
+            'cancelada' => ['text' => 'ORDEN CANCELADA', 'color' => 'rgba(255, 0, 0, 0.2)'],
+            'emitida'   => ['text' => 'NO ENVIADA', 'color' => 'rgba(41, 156, 219, 0.1)'],
+            default     => null, // Limpio para órdenes activas/en tránsito/recibidas
+        };
+    }
+}

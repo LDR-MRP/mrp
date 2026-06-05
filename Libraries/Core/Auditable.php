@@ -9,7 +9,7 @@ trait Auditable
     /**
      * Registra una acción en la tabla de bitácora.
      * * @param int $resourceId ID del registro afectado.
-     * @param string $action Nombre de la acción (Ej: APROBACIÓN).
+     * @param AuditAction $action Nombre de la acción (Ej: APROBACIÓN).
      * @param string $comment Comentario explicativo.
      * @param int $userId Sesión de usuario activa.
      * @return bool

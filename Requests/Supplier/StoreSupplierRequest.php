@@ -1,13 +1,19 @@
 <?php
 
-class Prv_proveedorStoreRequest extends Requests
-{
-    private $prvProveedorModel;
-    private $currentSupplier = null;
+declare(strict_types=1);
 
-    public function __construct(array $data) {
-        parent::__construct($data);
-        $this->prvProveedorModel = new Prv_proveedorModel();
+namespace Requests\Supplier;
+
+use Requests;
+
+class StoreSupplierRequest extends Requests
+{
+    private \Prv_proveedorModel $prvProveedorModel;
+    private ?array $currentSupplier = null;
+
+    public function __construct() {
+        parent::__construct();
+        $this->prvProveedorModel = new \Prv_proveedorModel();
     }
 
     public function rules(): void
@@ -28,7 +34,7 @@ class Prv_proveedorStoreRequest extends Requests
     {
         $requiredFields = [
             // Datos Maestros (prv_cat_proveedores)
-            'id_empresa'        => 'La empresa origen es obligatoria para el multi-tenant.',
+            // 'id_empresa'        => 'La empresa origen es obligatoria para el multi-tenant.',
             'rfc'               => 'El RFC es obligatorio para la validación fiscal.',
             'razon_social'      => 'La Razón Social es requerida según la Constancia de Situación Fiscal.',
             'nombre_comercial'  => 'El Nombre Comercial es necesario para identificar al proveedor.',
@@ -40,14 +46,14 @@ class Prv_proveedorStoreRequest extends Requests
             'tipo'              => 'Especifique el tipo de dirección (Fiscal, Bodega, etc.).',
             'calle'             => 'El nombre de la calle es obligatorio.',
             'num_ext'           => 'El número exterior es requerido.',
-            'num_int'           => 'Indique el número interior (use N/A si no aplica).',
+            // 'num_int'           => 'Indique el número interior (use N/A si no aplica).',
             'colonia'           => 'La colonia debe coincidir con el Código Postal.',
             'cp'                => 'El Código Postal es obligatorio para la geolocalización.',
 
             // Finanzas (prv_det_config_financiera)
             'id_condicion_pago' => 'Debe asignar una condición de pago predeterminada.',
-            'id_cuenta_contable'=> 'La cuenta contable es obligatoria para la integración con ERP.',
-            'limite_credito'    => 'El límite de crédito debe ser un valor numérico.',
+            // 'cuenta_contable'=> 'La cuenta contable es obligatoria para la integración con ERP.',
+            // 'limite_credito'    => 'El límite de crédito debe ser un valor numérico.',
             'id_moneda_defecto' => 'Especifique la moneda principal de operación (MXN/USD).',
             'tasa_iva_default'  => 'Indique la tasa de IVA aplicable (ej. 16.00).',
 
@@ -59,13 +65,18 @@ class Prv_proveedorStoreRequest extends Requests
         ];
 
         foreach ($requiredFields as $field => $message) {
-            if (empty(trim($this->data[$field]))) {
+            // 1. Obtenemos el valor o un string vacío si no existe el índice (blindaje vs null)
+            // 2. Forzamos a string por si llega un número (blindaje vs TypeError)
+            $val = (string)($this->data[$field] ?? '');
+
+            if (empty(trim($val))) {
                 $this->addError($field, $message);
             }
         }
 
-        if (!empty($this->data['correo_electronico']) && !filter_var($this->data['correo_electronico'], FILTER_VALIDATE_EMAIL)) {
-            $this->addError('correo_electronico', 'El correo electrónico no es válido.');
+        $email = (string)($this->data['email'] ?? ''); // Nota: En tu captura dice 'correo_electronico' pero en el array pusiste 'email'
+        if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->addError('email', 'El correo electrónico no es válido.');
         }
 
         if (!empty($this->data['rfc']) && !empty($this->data['id_tipo_persona'])) {

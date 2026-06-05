@@ -56,18 +56,34 @@ class Inv_lineasdproducto extends Controllers
                         $option = 2;
                     }
                 }
-                if ($request_linea_producto > 0) {
-                    if ($option == 1) {
-                        $arrResponse = array('status' => true, 'msg' => 'La información se ha registrado exitosamente', 'tipo' => 'insert');
-                    } else {
-                        $arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update');
-                    }
-                } else if ($request_linea_producto == 'exist') {
-                    $arrResponse = array('status' => false, 'msg' => '¡Atención! ya existe.');
-                } else {
-                    $arrResponse = array("status" => false, "msg" => 'No es posible almacenar los datos.');
-                }
+                if ($request_linea_producto === "exist") {
 
+                    $arrResponse = array(
+                        'status' => false,
+                        'msg' => '¡Atención! ya existe.'
+                    );
+                } else if ($request_linea_producto !== false) {
+
+                    if ($option == 1) {
+                        $arrResponse = array(
+                            'status' => true,
+                            'msg' => 'La información se ha registrado exitosamente',
+                            'tipo' => 'insert'
+                        );
+                    } else {
+                        $arrResponse = array(
+                            'status' => true,
+                            'msg' => 'La información ha sido actualizada correctamente.',
+                            'tipo' => 'update'
+                        );
+                    }
+                } else {
+
+                    $arrResponse = array(
+                        "status" => false,
+                        "msg" => 'No es posible almacenar los datos.'
+                    );
+                }
                 echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
             }
         }
@@ -88,22 +104,15 @@ class Inv_lineasdproducto extends Controllers
                     $arrData[$i]['estado'] = '<span class="badge bg-danger">Inactivo</span>';
                 }
 
-                if ($_SESSION['permisosMod']['r']) {
-
-                    $btnView = '<button class="btn btn-sm btn-soft-info edit-list" title="Ver linea producto" onClick="fntViewLineaProducto(' . $arrData[$i]['idlineaproducto'] . ')"><i class="ri-eye-fill align-bottom text-muted"></i></button>';
-                }
                 if ($_SESSION['permisosMod']['u']) {
 
                     $btnEdit = '<button class="btn btn-sm btn-soft-warning edit-list" title="Editar linea producto" onClick="fntEditLineaProducto(' . $arrData[$i]['idlineaproducto'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
-                }
-                if ($_SESSION['permisosMod']['d']) {
-                    $btnDelete = '<button class="btn btn-sm btn-soft-danger remove-list" title="Eliminar linea producto" onClick="fntDelInfo(' . $arrData[$i]['idlineaproducto'] . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
                 }
                 if ($_SESSION['permisosMod']['u']) {
 
                     $btnTree = '<button class="btn btn-sm btn-soft-secondary edit-list" title="Agregar sublíneas" onClick="fntEstructuraLinea(' . $arrData[$i]['idlineaproducto'] . ')"><i class="ri-node-tree"></i></button>';
                 }
-                $arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . ' ' . $btnTree . '</div>';
+                $arrData[$i]['options'] = '<div class="text-center">' . $btnEdit . ' ' . $btnTree . '</div>';
             }
             echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
         }

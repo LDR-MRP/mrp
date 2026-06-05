@@ -4,7 +4,7 @@ class Prv_proveedorModel extends Mysql
 {
     use Auditable;
 
-    protected $table = 'prv_cat_proveedores';
+    protected string $table = 'prv_cat_proveedores';
 
     const SCHEMA = [
         'prv_cat_proveedores' => [
@@ -47,7 +47,7 @@ class Prv_proveedorModel extends Mysql
             'id_config_financiera',
             'id_proveedor',
             'id_condicion_pago',
-            'id_cuenta_contable',
+            'cuenta_contable',
             'limite_credito',
             'id_moneda_defecto',
             'tasa_iva_default',
@@ -115,17 +115,11 @@ class Prv_proveedorModel extends Mysql
                 `prv_det_config_financiera`.`id_config_financiera`,
                 `prv_det_config_financiera`.`id_proveedor`,
                 `prv_det_config_financiera`.`id_condicion_pago`,
-                `prv_det_config_financiera`.`id_cuenta_contable`,
+                `prv_det_config_financiera`.`cuenta_contable`,
                 `prv_det_config_financiera`.`limite_credito`,
                 `prv_det_config_financiera`.`id_moneda_defecto`,
                 `prv_det_config_financiera`.`tasa_iva_default`,
-                `cat_condiciones_pago`.`descripcion`,
-                -- Banking Information Columns 
-                `prv_det_cuentas_bancarias`.`id_banco`,
-                `prv_det_cuentas_bancarias`.`clabe`,
-                `prv_det_cuentas_bancarias`.`cuenta`,
-                `prv_det_cuentas_bancarias`.`swift_bic`,
-                `prv_det_cuentas_bancarias`.`es_principal`
+                `cat_condiciones_pago`.`descripcion`
             FROM `prv_cat_proveedores`
             -- Addresses JOIN
             LEFT JOIN `prv_det_direcciones`
@@ -137,17 +131,11 @@ class Prv_proveedorModel extends Mysql
             LEFT JOIN `prv_det_config_financiera`
                 ON `prv_det_config_financiera`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
             -- Financial Config JOIN
-            LEFT JOIN `cat_cuentas_contables`
-                ON `cat_cuentas_contables`.`id_cuenta_contable` = `prv_det_config_financiera`.`id_cuenta_contable`
-            -- Financial Config JOIN
             LEFT JOIN `cat_condiciones_pago`
                 ON `cat_condiciones_pago`.`id_condicion` = `prv_det_config_financiera`.`id_condicion_pago`
-            -- Banking Information JOIN
-            LEFT JOIN `prv_det_cuentas_bancarias`
-                ON `prv_det_cuentas_bancarias`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
             -- Onboarding Information JOIN
-            LEFT JOIN `prv_tra_onboarding`
-                ON `prv_tra_onboarding`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
+            -- LEFT JOIN `prv_tra_onboarding`
+            --     ON `prv_tra_onboarding`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
             WHERE true\n";
 
         if(array_key_exists('id_proveedor', $filters)){ $sql .= "AND `prv_cat_proveedores`.`id_proveedor` = '{$filters['id_proveedor']}'"; }
@@ -157,16 +145,35 @@ class Prv_proveedorModel extends Mysql
         return $this->select_all($sql);
     }
 
-    public function getKpi()
+    /**
+     * 
+     */
+    public function getKpi(array $filters)
     {
-        return $this->select_all(
-            "SELECT 
-                IFNULL(estatus_operativo, 'total') AS estatus,
-                COUNT(id_proveedor) AS cantidad
+        $where = "";
+        $params = [];
+
+        // Filtro por Usuario
+        if (!empty($filters['created_by'])) {
+            $where .= " AND created_by = ? ";
+            $params[] = $filters['created_by'];
+        }
+
+        // Filtro por Planta
+        if (array_key_exists('id_planta', $filters)) {
+            $where .= " AND id_planta = ? ";
+            $params[] = $filters['id_planta'];
+        }
+
+        $query = "SELECT 
+                lower(IFNULL(estatus_onboarding, 'total')) AS estatus,
+                count(id_proveedor) as cantidad
             FROM prv_cat_proveedores
-            GROUP BY estatus_operativo WITH ROLLUP;
-            "
-        );
+            $where
+            GROUP BY estatus_onboarding WITH ROLLUP;
+            ";
+
+        return $this->select_all($query, $params);
     }
 
     public function destroy(int $supplierId)
@@ -182,17 +189,19 @@ class Prv_proveedorModel extends Mysql
     {
         return $this->insert(
             "INSERT INTO prv_cat_proveedores (
-                id_empresa,
+                -- id_empresa,
                 rfc,
+                rfc_activo,
                 razon_social,
                 nombre_comercial,
                 id_tipo_persona,
                 id_regimen_fiscal,
                 origen,
                 created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [
-                $h['id_empresa'],
+                // $h['id_empresa'],
+                $h['rfc'],
                 $h['rfc'],
                 $h['razon_social'], 
                 $h['nombre_comercial'],
@@ -243,7 +252,7 @@ class Prv_proveedorModel extends Mysql
             "INSERT INTO prv_det_config_financiera (
                     id_proveedor,
                     id_condicion_pago,
-                    id_cuenta_contable,
+                    cuenta_contable,
                     limite_credito,
                     id_moneda_defecto,
                     tasa_iva_default,
@@ -253,7 +262,7 @@ class Prv_proveedorModel extends Mysql
                 [
                     $supplierId,
                     $f['id_condicion_pago'],
-                    $f['id_cuenta_contable'], 
+                    $f['cuenta_contable'], 
                     $f['limite_credito'],
                     $f['id_moneda_defecto'],
                     $f['tasa_iva_default'],
@@ -301,14 +310,172 @@ class Prv_proveedorModel extends Mysql
         );
     }
 
-    public function updateDynamic($table, $cols, $values)
-    {        
-        return $this->update(
-            query: 
-                "UPDATE {$table}
-                SET {$cols}
-                WHERE id_proveedor = ?;",
-            arrValues: $values
-        );
+    /**
+     * Realiza una actualización dinámica sobre una tabla específica.
+     * Construye la sentencia SET basada en los campos "sucios" (dirty data).
+     * 
+     * @param string $table Nombre de la tabla satélite.
+     * @param array $tableData Array asociativo [columna => valor].
+     * @param int $supplierId ID del proveedor para el WHERE.
+     */
+    public function updateDynamic(string $table, array $tableData, int $supplierId): bool
+    {
+        // 1. Construir el set de columnas: "col1 = ?, col2 = ?"
+        $colNames = array_keys($tableData);
+        $setClause = implode(', ', array_map(fn($col) => "{$col} = ?", $colNames));
+
+        // 2. Preparar el query
+        $query = "UPDATE {$table} SET {$setClause} WHERE id_proveedor = ?;";
+
+        // 3. Unificar valores: [valor1, valor2, ..., supplierId]
+        // El orden es CRÍTICO: primero los valores del SET, al final el del WHERE.
+        $params = array_values($tableData);
+        $params[] = $supplierId;
+
+        // 4. Ejecutar usando tu método base de la clase Mysql
+        return $this->update($query, $params);
+    }
+
+    public function getFinancialConfig(int $proveedorId): array
+    {
+        return [];
+    }
+
+    /**
+     * Actualiza el estatus de onboarding y, si se aprueba, activa automáticamente la operación comercial.
+     * 
+     * @param int    $supplierId ID del proveedor.
+     * @param string $status     'Aprobado', 'Rechazado', 'En Revision'.
+     * @param int    $adminId    ID del administrador que ejecuta la acción.
+     * @return bool
+     */
+    public function updateOnboardingStatus(int $supplierId, string $status, int $adminId): bool
+    {
+        // Usamos CASE WHEN para que la activación de estatus_operativo sea atómica
+        // y ocurra directamente en el motor de base de datos de Hostinger.
+        $sql = "UPDATE `prv_cat_proveedores` 
+                SET estatus_onboarding = ?,
+                    estatus_operativo = CASE WHEN ? = 'Aprobado' THEN 1 ELSE estatus_operativo END,
+                    updated_by = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id_proveedor = ?";
+
+        // Pasamos los parámetros posicionales en el orden exacto de los '?'
+        return (bool) $this->update($sql, [
+            $status,
+            $status, // Duplicamos para la condición CASE WHEN
+            $adminId,
+            $supplierId
+        ]);
+    }
+
+    /**
+     * Obtiene los datos maestros de un proveedor específico por su identificador.
+     * Este método es vital para validar el perfil fiscal (Tipo Persona/Origen) 
+     * durante el proceso de Onboarding.
+     *
+     * @param int $id ID único del proveedor en la tabla prv_cat_proveedores.
+     * @return array|null Retorna el registro del proveedor o null si no existe o fue eliminado.
+     */
+    public function getById(int $id): ?array
+    {
+        $sql = "SELECT 
+                    id_proveedor,
+                    id_empresa,
+                    rfc,
+                    razon_social,
+                    nombre_comercial,
+                    id_tipo_persona, -- 'F' o 'M'
+                    id_regimen_fiscal,
+                    tipo,           -- 'Interno' o 'Externo'
+                    origen,         -- 'Nacional' o 'Extranjero'
+                    estatus_onboarding,
+                    estatus_operativo,
+                    id_planta,        -- Para validaciones de Scope (IDOR)
+                    created_at
+                FROM `{$this->table}` 
+                WHERE id_proveedor = ? 
+                  AND deleted_at IS NULL 
+                LIMIT 1";
+
+        $result = $this->select($sql, [$id]);
+
+        // Retornamos null si el objeto Mysql devuelve false o vacío
+        return $result ?: null;
+    }
+
+    /**
+     * Extrae los datos consolidados de Onboarding y Datos Satélite para el Reporte del CEO.
+     * Soporta filtrado opcional por planta (id_planta).
+     */
+    public function getOnboardingReportData(array $filters = []): array
+    {
+        $query = "SELECT 
+                    p.id_proveedor,
+                    p.razon_social,
+                    p.nombre_comercial,
+                    p.rfc,
+                    p.id_tipo_persona,
+                    p.origen,
+                    p.estatus_onboarding,
+                    p.estatus_operativo,
+                    p.created_at,
+                    
+                    -- 1. Conteo de documentos aprobados en el expediente (Vía 1)
+                    (SELECT COUNT(*) 
+                     FROM prv_det_expediente de 
+                     WHERE de.id_proveedor = p.id_proveedor 
+                       AND de.estatus_validacion = 1 
+                       AND de.deleted_at IS NULL
+                    ) AS approved_docs_count,
+                    
+                    -- 2. Datos Satélite: Estatus de Cuentas Bancarias
+                    (SELECT 
+                        CASE 
+                            WHEN COUNT(*) = 0 THEN 'SIN_REGISTRAR'
+                            WHEN SUM(CASE WHEN cb.estatus_aprobacion = 'APROBADO' THEN 1 ELSE 0 END) > 0 THEN 'APROBADO'
+                            ELSE 'PENDIENTE'
+                        END
+                     FROM prv_det_cuentas_bancarias cb 
+                     WHERE cb.id_proveedor = p.id_proveedor 
+                       AND cb.deleted_at IS NULL
+                    ) AS estatus_bancario,
+                    
+                    -- 3. Datos Satélite: Dirección
+                    (SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END 
+                     FROM prv_det_direcciones d 
+                     WHERE d.id_proveedor = p.id_proveedor 
+                       AND d.deleted_at IS NULL
+                    ) AS tiene_direccion,
+                    
+                    -- 4. Datos Satélite: Contacto
+                    (SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END 
+                     FROM prv_det_contactos c 
+                     WHERE c.id_proveedor = p.id_proveedor 
+                       AND c.deleted_at IS NULL
+                    ) AS tiene_contacto,
+                    
+                    -- 5. Datos Satélite: Configuración Financiera
+                    (SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END 
+                     FROM prv_det_config_financiera cf 
+                     WHERE cf.id_proveedor = p.id_proveedor 
+                       AND cf.deleted_at IS NULL
+                    ) AS tiene_config_financiera
+
+                  FROM prv_cat_proveedores p
+                  WHERE p.deleted_at IS NULL";
+
+        $params = [];
+
+        // --- INICIO ADICIÓN: Filtro Dinámico por Planta ---
+        if (!empty($filters['plantaid'])) {
+            $query .= " AND p.id_planta = :plantaid";
+            $params[':plantaid'] = (int)$filters['plantaid'];
+        }
+        // --- FIN ADICIÓN ---
+
+        $query .= " ORDER BY p.estatus_onboarding DESC, p.created_at DESC";
+
+        return $this->select_all($query, $params) ?? [];
     }
 }

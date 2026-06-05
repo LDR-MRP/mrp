@@ -136,7 +136,30 @@ public function generarClave()
         return $request;
     }
 
+    /**
+     * Extrae los datos de las plantas
+     * Soporta filtrado opcional por planta (id_planta).
+     */
+    public function findByCriteria(array $filters = []): array
+    {
+        $query = "SELECT 
+                    idplanta, cve_planta, nombre_planta, direccion, fecha_creacion, estado
+                  FROM mrp_planta
+                  WHERE TRUE";
 
+        $params = [];
+
+        // --- INICIO FILTROS: Filtro Dinámico por Planta ---
+        if (!empty($filters['plantaid'])) {
+            $query .= " AND idplanta = :plantaid";
+            $params[':plantaid'] = (int)$filters['plantaid'];
+        }
+        // --- FIN FILTROS ---
+
+        $query .= " ORDER BY cve_planta DESC";
+
+        return $this->select_all($query, $params) ?? [];
+    }
 
 }
 ?>

@@ -53,7 +53,7 @@ const RequisitionIndex = {
     // 4. CONFIGURACIÓN DATATABLES
     initDataTable: function () {
         
-        const token = localStorage.getItem('mrp_token');
+        const token = Sys_Core.Auth.getCookie('mrp_token');
 
         this.state.dataTable = this.dom.$table.DataTable({
             ajax: {
@@ -101,17 +101,17 @@ const RequisitionIndex = {
     // 5. RENDERIZADORES DE UI
     renderStatusBadge: function (status) {
         const clases = {
-            'borrador': 'badge-draft',
-            'pendiente': 'badge-review',
-            'aprobada': 'badge-approved',
-            'rechazada': 'badge-rejected',
-            'en compra': 'badge-purchasing',
-            'finalizada': 'badge-closed',
-            'cancelada': 'badge-closed',
-            'eliminada': 'badge-closed'
+            'borrador': 'badge text-bg-light',
+            'pendiente': 'badge text-bg-warning',
+            'aprobada': 'badge text-bg-success',
+            'rechazada': 'badge text-bg-danger',
+            'en compra': 'badge text-bg-info',
+            'finalizada': 'badge text-bg-secondary',
+            'cancelada': 'badge text-bg-danger',
+            'eliminada': 'badge text-bg-danger'
         };
         const badgeClass = clases[status?.toLowerCase()] || 'bg-secondary';
-        return `<span class="badge ${badgeClass} px-3 py-2 text-capitalize shadow-sm">${status}</span>`;
+        return `<span class="badge ${badgeClass} px-3 py-2 text-capitalize shadow-sm">${status.replace('_', ' ')}</span>`;
     },
 
     renderActionButtons: function (row) {
@@ -224,25 +224,24 @@ const RequisitionIndex = {
 
         const targetUrl = `${this.config.endpoints.base}/${idrequisicion}${actionConfig.suffix}`;
 
-        $.ajax({
+        Sys_Core.Net.post({
             url: targetUrl,
-            method: actionConfig.method,
-            contentType: 'application/json',
-            data: JSON.stringify({ comentario: comentario }),
-            beforeSend: () => {
-                Sys_Core.UI.toggleLoader('#tblReqs', true);
-                $btn.prop('disabled', true).html('<i class="ri-loader-4-line ri-spin"></i>');
-            },
-            success: (res) => {
-                Sys_Core.UI.notify(res.message, 'success');
+            method: actionConfig.method, // Soporta POST, PUT, DELETE, etc.
+            payload: { comentario: comentario },
+            $btn: $btn, // Sys_Core se encarga de deshabilitarlo y poner el spinner
+            onDone: (res) => {
+                // Esta lógica es específica de tu módulo
                 this.hideInlineAction();
-                this.state.dataTable.ajax.reload(null, false);
-                this.initKPIs();
-            },
-            error: (xhr) => {
-                Sys_Core.Net.handleError(xhr);
-                $btn.prop('disabled', false).html(originalHtml);
-                Sys_Core.UI.toggleLoader('#tblReqs', false);
+                
+                // Recargar la tabla sin perder la posición de la paginación
+                if (this.state.dataTable) {
+                    this.state.dataTable.ajax.reload(null, false);
+                }
+                
+                // Refrescar los indicadores (Dashboard/KPIs)
+                if (typeof this.initKPIs === 'function') {
+                    this.initKPIs();
+                }
             }
         });
     },
@@ -256,7 +255,8 @@ const RequisitionIndex = {
         const requisicionesMap = {
             'pendiente': 'kpi-pendientes',
             'aprobada':  'kpi-aprobadas',
-            'finalizada':'kpi-finalizadas'
+            'finalizada':'kpi-finalizadas',
+            'en compra':'kpi-en-compra'
         };
 
         Sys_Core.UI.Dashboard.refreshKPIs(this.config.endpoints.kpis, requisicionesMap, true);

@@ -4,23 +4,9 @@ class Com_requisicionModel extends Mysql
 {
     use Auditable;
 
-    protected $table = 'com_requisiciones';
+    protected string $table = 'com_requisiciones';
 
-    protected $detailTable = 'com_requisiciones_detalle';
-
-    public const ESTATUS_BORRADOR = "borrador";
-
-    public const ESTATUS_PENDIENTE = "pendiente";
-
-    public const ESTATUS_APROBADA = "aprobada";
-
-    public const ESTATUS_RECHAZADA = "rechazada";
-
-    public const ESTATUS_CANCELADA = "cancelada";
-
-    public const ESTATUS_ELIMINADA = "eliminada";
-
-    public const ESTATUS_EN_COMPRA = "en compra";
+    protected string $detailTable = 'com_requisiciones_detalle';
 
     public function __construct()
     {
@@ -40,8 +26,9 @@ class Com_requisicionModel extends Mysql
                 id_empresa,
                 usuarioid,
                 departamentoid,
-                id_centro_costo,
+                centro_costo,
                 titulo,
+                tipo_requisicion,
                 fecha_requerida,
                 prioridad,
                 estatus,
@@ -56,15 +43,78 @@ class Com_requisicionModel extends Mysql
         );
     }
 
-    public function getAllRequisitions(): array|bool
+    public function getRequisitionForUpdate(int $id): array|bool
     {
-        return $this->select_all(
+        return $this->select(
             "SELECT
                 idrequisicion,
                 id_empresa,
                 usuarioid,
                 departamentoid,
-                id_centro_costo,
+                centro_costo,
+                titulo,
+                tipo_requisicion,
+                url_referencia,
+                idmetodopago,
+                fecha_requerida,
+                prioridad,
+                estatus,
+                monto_estimado,
+                justificacion,
+                created_at AS fecha,
+                -- data usuarios
+                CONCAT(u.nombres,' ',u.apellidos) as solicitante,
+                -- data departamentos
+                d.nombre AS departamento,
+                d.descripcion AS departamento_descripcion
+            FROM {$this->table} r
+            LEFT JOIN cli_departamentos d
+            ON d.id = r.departamentoid
+            LEFT JOIN usuarios u
+            ON u.idusuario = r.usuarioid
+            WHERE r.idrequisicion = ?",
+            [
+                $id
+            ]
+        );
+    }
+
+    public function getAllRequisitions(array $filters = []): array|bool
+    {
+        $where = " WHERE TRUE ";
+        $params = [];
+
+        // Filtro por Usuario
+        if (!empty($filters['usuarioid'])) {
+            $where .= " AND r.usuarioid = ? ";
+            $params[] = $filters['usuarioid'];
+        }
+
+        // Filtro por Planta
+        if (array_key_exists('plantaid', $filters)) {
+            $where .= " AND r.plantaid = ? ";
+            $params[] = $filters['plantaid'];
+        }
+
+        // Filtro por Estatus
+        if (!empty($filters['estatus'])) {
+            $where .= " AND r.estatus = ? ";
+            $params[] = $filters['estatus'];
+        }
+
+        // Filtro por Rango de Fechas
+        if (!empty($filters['fecha_desde']) && !empty($filters['fecha_hasta'])) {
+            $where .= " AND r.created_at BETWEEN ? AND ? ";
+            $params[] = $filters['fecha_desde'] . " 00:00:00";
+            $params[] = $filters['fecha_hasta'] . " 23:59:59";
+        }
+
+        $query = "SELECT
+                idrequisicion,
+                id_empresa,
+                usuarioid,
+                departamentoid,
+                centro_costo,
                 titulo,
                 fecha_requerida,
                 prioridad,
@@ -85,42 +135,74 @@ class Com_requisicionModel extends Mysql
                 ON u_modifier.idusuario = r.modified_by
             LEFT JOIN cli_departamentos AS d
                 ON d.id = r.departamentoid
-            "
-        );
+            $where
+            ORDER BY r.idrequisicion DESC
+            ";
+
+        return $this->select_all($query, $params);
     }
 
     /**
-     * Obtiene todas las partidas (detalles) asociadas a una requisición.
-     * Devuelve un array vacío si no tiene partidas.
+     * Obtiene todas las partidas de la requisición, incluyendo artículos de catálogo
+     * y artículos especiales de sourcing.
      */
     public function getRequisitionItems(int $requisicionId): array
     {
-        $query = "SELECT 
-                    idrequisicionarticulo,
-                    inventarioid,
-                    cantidad,
-                    precio_unitario_estimado,
-                    notas,
-                    (cantidad * precio_unitario_estimado) as subtotal,
-                    i.cve_articulo,
-                    i.descripcion,
-                    i.unidad_salida
-                  FROM com_requisiciones_detalle r
-                  INNER JOIN wms_inventario i
-                  ON i.idinventario = r.inventarioid
-                  WHERE requisicionid = ?";
-        $result = $this->select_all($query, [$requisicionId]);
-        return $result ?: [];
+        $query = "
+            SELECT 
+                rd.idrequisicionarticulo,
+                rd.requisicionid,
+                rd.inventarioid,
+                rd.cantidad,
+                rd.precio_unitario_estimado,
+                rd.notas,
+                -- Si inventarioid es NULL, traemos los datos de la tabla de sourcing
+                IFNULL(i.cve_articulo, 'SOURCING') AS cve_articulo,
+                IFNULL(i.descripcion, n.categoria) AS descripcion,
+                IFNULL(i.unidad_salida, 'PZA') AS unidad_salida,
+                -- Flags para el Frontend
+                (CASE WHEN rd.inventarioid IS NULL THEN 1 ELSE 0 END) AS es_sourcing,
+                
+                -- FICHA TÉCNICA COMPLETA (AQUÍ ESTABA LA FALLA)
+                n.justificacion_proyecto,
+                n.categoria,
+                n.descripcion_sourcing,
+                n.especificaciones_tecnicas,
+                n.dimensiones_principales,
+                n.normas_requeridas,
+                n.volumen_anual,
+                n.precio_objetivo,
+                n.fecha_inicio_negociacion,
+                n.fecha_limite_acuerdo
+                
+            FROM com_requisiciones_detalle rd
+            
+            -- LEFT JOIN 1: Catálogo Maestro (Para artículos que SÍ existen)
+            LEFT JOIN wms_inventario i 
+                ON rd.inventarioid = i.idinventario
+                
+            -- LEFT JOIN 2: Especificaciones Especiales (Para artículos nuevos)
+            LEFT JOIN com_requisicion_items_nuevos n 
+                ON rd.idrequisicionarticulo = n.idrequisicionarticulo
+                
+            WHERE rd.requisicionid = ? 
+            AND rd.deleted_at IS NULL
+        ";
+
+        return $this->select_all($query, [$requisicionId]) ?: [];
     }
 
     public function createHeader(array $data): ?int
     {
-        return $this->insert(
-            "INSERT INTO {$this->table}
+        $query = "INSERT INTO {$this->table}
             (
                 usuarioid
+                ,plantaid
                 ,estatus
                 ,titulo
+                ,tipo_requisicion
+                ,idmetodopago
+                ,url_referencia
                 ,departamentoid
                 ,fecha_requerida
                 ,monto_estimado
@@ -130,28 +212,37 @@ class Com_requisicionModel extends Mysql
             VALUES
             (
                 :usuarioid
+                ,:plantaid
                 ,:estatus
                 ,:titulo
+                ,:tipo_requisicion
+                ,:idmetodopago
+                ,:url_referencia
                 ,:departamentoid
                 ,:fecha_requerida
                 ,:monto_estimado
                 ,:prioridad
                 ,:justificacion
-            )",
-            [
+            )";
+            
+        $params = [
                 ':usuarioid' => $data['user_id'],
+                ':plantaid' => $data['planta_id'],
                 ':estatus' => !empty($data['estatus']) ? mb_strtolower($data['estatus'], 'UTF-8') : 'borrador',
                 ':titulo' => $data['titulo'],
+                ':tipo_requisicion' => $data['tipo_requisicion'],
+                ':idmetodopago' => $data['idmetodopago'],
+                ':url_referencia' => $data['url_referencia'],
                 ':departamentoid' => $data['departamentoid'],
                 ':fecha_requerida' => $data['fecha_requerida'],
                 ':monto_estimado' => $data['monto_estimado'] ?: 0.000000,
                 ':prioridad' => !empty($data['prioridad']) ? mb_strtolower($data['prioridad'], 'UTF-8') : 'media',
                 ':justificacion' => $data['justificacion'] ?? '',
-            ]
-        ) ?? 0;
+            ] ;
+        return $this->insert($query, $params) ?? 0;
     }
 
-    public function createDetail(int $requisitionId, array $item): ?bool
+    public function createDetail(int $requisitionId, array $item): ?int
     {
         return $this->insert(
             "INSERT INTO {$this->detailTable}
@@ -169,7 +260,7 @@ class Com_requisicionModel extends Mysql
                 $item['precio_unitario_estimado'],
                 $item['notas'] ?? '',
             ]
-        );
+        ) ?? 0;
     }
 
     public function getItemQty(int $idrequisicionarticulo): ?float {
@@ -187,11 +278,23 @@ class Com_requisicionModel extends Mysql
         $query = "UPDATE {$this->detailTable} SET cantidad = cantidad - ? WHERE idrequisicionarticulo = ?;";
         return $this->update($query, [$quantityToReduce, $idrequisicionarticulo]);
     }
-    
+
     public function getItemDetails(int $requisicionId, int $idrequisicionarticulo): ?array {
         $query = "SELECT inventarioid, cantidad, precio_unitario_estimado, notas 
                   FROM {$this->detailTable} 
                   WHERE requisicionid = ? AND idrequisicionarticulo = ? LIMIT 1;";
+        $result = $this->select($query, [$requisicionId, $idrequisicionarticulo]);
+        return $result ?: null;
+    }
+    
+    /**
+     * Obtiene los detalles de una partida bloqueando la fila para la transacción actual.
+     * Previne Race Conditions durante el proceso de movimiento de ítems.
+     */
+    public function getItemDetailsForUpdate(int $requisicionId, int $idrequisicionarticulo): ?array {
+        $query = "SELECT inventarioid, cantidad, precio_unitario_estimado, notas 
+                  FROM {$this->detailTable} 
+                  WHERE requisicionid = ? AND idrequisicionarticulo = ? LIMIT 1 FOR UPDATE;";
         $result = $this->select($query, [$requisicionId, $idrequisicionarticulo]);
         return $result ?: null;
     }
@@ -229,13 +332,16 @@ class Com_requisicionModel extends Mysql
      */
     public function updateHeader(int $requisicionId, array $data): bool {
         $query = "UPDATE com_requisiciones SET 
-                    estatus = ?, titulo = ?, departamentoid = ?, 
+                    estatus = ?, titulo = ?, tipo_requisicion = ?, idmetodopago = ?, url_referencia = ?, departamentoid = ?, 
                     fecha_requerida = ?, prioridad = ?, justificacion = ?
                   WHERE idrequisicion = ?";
         
         $params = [
             $data['estatus'],
             $data['titulo'],
+            $data['tipo_requisicion'],
+            $data['idmetodopago'],
+            $data['url_referencia'],
             $data['departamentoid'],
             $data['fecha_requerida'],
             $data['prioridad'],
@@ -340,20 +446,83 @@ class Com_requisicionModel extends Mysql
     }
 
     /**
+     * Retorna todas las partidas de la requisición con sus saldos calculados.
+     * Ideal para el renderizado de la UI (Dashboard de Requisición).
+     */
+    public function getRequisitionBalances(int $requisicionId): array
+    {
+        $query = "
+            SELECT 
+                rd.idrequisicionarticulo,
+                rd.inventarioid,
+                rd.notas,
+                rd.cantidad AS cantidad_solicitada,
+                rd.precio_unitario_estimado,
+                -- Detalles adicionales para no tener que hacer más joins en el service
+                i.cve_articulo,
+                i.descripcion,
+                i.unidad_salida,
+                
+                -- Cálculo de lo comprado (Excluyendo canceladas)
+                IFNULL(oc_comprado.total_comprado, 0) AS cantidad_ya_comprada,
+                
+                -- Saldo pendiente
+                (rd.cantidad - IFNULL(oc_comprado.total_comprado, 0)) AS cantidad_pendiente
+                
+            FROM com_requisiciones_detalle rd
+            INNER JOIN wms_inventario i ON rd.inventarioid = i.idinventario
+            LEFT JOIN (
+                SELECT 
+                    ocd.idrequisicionarticulo, 
+                    SUM(ocd.cantidad) AS total_comprado
+                FROM com_ordenes_compra_detalle ocd
+                INNER JOIN com_ordenes_compra oc ON ocd.compraid = oc.idcompra
+                WHERE oc.estatus != 'cancelada'
+                GROUP BY ocd.idrequisicionarticulo
+            ) AS oc_comprado ON rd.idrequisicionarticulo = oc_comprado.idrequisicionarticulo
+            
+            WHERE rd.requisicionid = ?
+            AND rd.deleted_at IS NULL;
+            -- Quitamos el HAVING para que en la UI veamos también lo que ya se completó.
+        ";
+
+        return $this->select_all($query, [$requisicionId]) ?: [];
+    }
+
+    /**
      * 
      */
-    public function getKpi()
+    public function getKpi(array $filters)
     {
-        return $this->select_all(
-            "SELECT 
+        $where = " WHERE (
+            (estatus != 'finalizada')
+            OR
+            (estatus = 'finalizada' AND MONTH(fecha_requerida) = MONTH(current_date) AND YEAR(fecha_requerida) = YEAR(current_date))
+        )    
+        ";
+        $params = [];
+
+        // Filtro por Usuario
+        if (!empty($filters['usuarioid'])) {
+            $where .= " AND usuarioid = ? ";
+            $params[] = $filters['usuarioid'];
+        }
+
+        // Filtro por Planta
+        if (array_key_exists('plantaid', $filters)) {
+            $where .= " AND plantaid = ? ";
+            $params[] = $filters['plantaid'];
+        }
+
+        $query = "SELECT 
                 estatus,
                 count(idrequisicion) as cantidad
             FROM com_requisiciones
-            WHERE (estatus != 'finalizada')
-            or (estatus = 'finalizada' AND MONTH(fecha_requerida) = MONTH(current_date) AND YEAR(fecha_requerida) = YEAR(current_date))
+            $where
             GROUP BY estatus;
-            "
-        );
+            ";
+
+        return $this->select_all($query, $params);
     }
 
     /**
@@ -379,31 +548,222 @@ class Com_requisicionModel extends Mysql
     }
 
     /**
-     * @deprecated since api-driven, use getRequisition() instead.
+     * Obtiene la data completa de una requisición para impresión.
+     * Resuelve nombres de usuarios, departamentos y descripción de artículos.
      */
-    public function requisition(int $id)
+    public function getRequisitionForPrint(int $id): ?array
     {
-        return $this->select(
-            "SELECT 
-                idrequisicion,
-                usuarioid,
-                departamentoid,
-                prioridad,
-                estatus,
-                justificacion,
-                monto_estimado,
-                modified_by,
-                modified_at,
-                date(created_at) as fecha,
-                CONCAT(usuarios.nombres,' ',usuarios.apellidos) as solicitante
-            FROM com_requisiciones
-            LEFT JOIN usuarios
-            ON usuarios.idusuario = com_requisiciones.usuarioid
-            LEFT JOIN cli_departamentos
-            ON cli_departamentos.id = com_requisiciones.departamentoid
-            WHERE idrequisicion = ?;
-            ",
-            [$id]
-        );
+        $sql = "SELECT 
+                    r.idrequisicion,
+                    r.titulo,
+                    r.fecha_requerida,
+                    r.estatus,
+                    r.prioridad,
+                    r.justificacion,
+                    r.monto_estimado,
+                    r.created_at AS fecha,
+                    r.plantaid,
+                    r.usuarioid,
+                    r.departamentoid,
+                    r.centro_costo,
+                    CONCAT(u.nombres, ' ', u.apellidos) AS solicitante_nombre,
+                    d.nombre AS departamento_nombre
+                FROM com_requisiciones r
+                INNER JOIN usuarios u ON r.usuarioid = u.idusuario
+                INNER JOIN cli_departamentos d ON r.departamentoid = d.id
+                WHERE r.idrequisicion = ? AND r.deleted_at IS NULL";
+
+        $requisition = $this->select($sql, [$id]);
+        
+        if (!$requisition) return null;
+
+        // Consultar partidas con detalles de inventario
+        $sqlItems = "SELECT 
+                        d.cantidad,
+                        d.precio_unitario_estimado,
+                        d.notas,
+                        i.cve_articulo,
+                        i.descripcion
+                     FROM com_requisiciones_detalle d
+                     INNER JOIN wms_inventario i ON d.inventarioid = i.idinventario
+                     WHERE d.requisicionid = ? AND d.deleted_at IS NULL";
+        
+        $requisition['items'] = $this->select_all($sqlItems, [$id]);
+
+        return $requisition;
+    }
+
+    /**
+     * Inserta o actualiza las especificaciones de un artículo nuevo.
+     */
+    public function upsertItemSpecs(array $data): bool
+    {
+        $sql = "INSERT INTO com_requisicion_items_nuevos (
+                    idrequisicionarticulo, justificacion_proyecto, categoria, descripcion_sourcing, especificaciones_tecnicas, 
+                    dimensiones_principales, normas_requeridas, volumen_anual, 
+                    precio_objetivo, fecha_inicio_negociacion, fecha_limite_acuerdo
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE 
+                    justificacion_proyecto = VALUES(justificacion_proyecto),
+                    categoria = VALUES(categoria),
+                    descripcion_sourcing = VALUES(descripcion_sourcing),
+                    especificaciones_tecnicas = VALUES(especificaciones_tecnicas),
+                    dimensiones_principales = VALUES(dimensiones_principales),
+                    normas_requeridas = VALUES(normas_requeridas),
+                    volumen_anual = VALUES(volumen_anual),
+                    precio_objetivo = VALUES(precio_objetivo),
+                    fecha_inicio_negociacion = VALUES(fecha_inicio_negociacion),
+                    fecha_limite_acuerdo = VALUES(fecha_limite_acuerdo)";
+
+        // MAPEO QUIRÚRGICO: Solo mandamos los 9 que el SQL espera y en el orden correcto
+        $params = [
+            (int)$data['idrequisicionarticulo'], // Forzamos a entero
+            $data['justificacion_proyecto'], // <--- Nuevo campo
+            $data['categoria'],
+            $data['descripcion_sourcing'],
+            $data['especificaciones_tecnicas'],
+            $data['dimensiones_principales'],
+            $data['normas_requeridas'],
+            $data['volumen_anual'],
+            (float)$data['precio_objetivo'],
+            $data['fecha_inicio_negociacion'],
+            $data['fecha_limite_acuerdo']
+        ];
+
+        return $this->insert($sql, $params) >= 1;
+    }
+
+    /**
+     * Recupera la ficha técnica vinculada a una partida.
+     */
+    public function getItemSpecs(int $idReqArticulo): ?array
+    {
+        $sql = "SELECT * FROM com_requisicion_items_nuevos WHERE idrequisicionarticulo = ?";
+        return $this->select($sql, [$idReqArticulo]) ?: null;
+    }
+
+    /**
+     * Actualiza el precio de una partida tras la negociación de sourcing.
+     */
+    public function updatePartidaPrice(int $idReqArt, float $nuevoPrecio): bool
+    {
+        $sql = "UPDATE com_requisiciones_detalle 
+                SET precio_unitario_estimado = ?, 
+                    updated_at = NOW() 
+                WHERE idrequisicionarticulo = ?";
+        return $this->update($sql, [$nuevoPrecio, $idReqArt]);
+    }
+
+    public function linkOfficialInventoryItem(int $idReqArt, int $idInv): bool {
+        $sql = "UPDATE com_requisiciones_detalle SET inventarioid = ? WHERE idrequisicionarticulo = ?";
+        return $this->update($sql, [$idInv, $idReqArt]);
+    }
+
+    /**
+     * Calcula y retorna las partidas de una requisición que aún no han sido compradas en su totalidad,
+     * detectando automáticamente si tienen un proveedor ganador asignado vía Sourcing.
+     */
+    public function getPendingItemsWithSourcing(int $requisicionId): array
+    {
+        $query = "
+            SELECT 
+                rd.idrequisicionarticulo,
+                rd.inventarioid,
+                rd.notas,
+                rd.cantidad AS cantidad_solicitada,
+                rd.precio_unitario_estimado,
+                
+                -- IDENTIDAD DEL ARTÍCULO (Catálogo o Sourcing)
+                IFNULL(i.cve_articulo, 'SOURCING') AS cve_articulo,
+                IFNULL(i.descripcion, (SELECT categoria FROM com_requisicion_items_nuevos WHERE idrequisicionarticulo = rd.idrequisicionarticulo LIMIT 1)) AS descripcion,
+                IFNULL(i.unidad_salida, 'PZA') AS unidad_salida,
+
+                -- LÓGICA DE SOURCING (Ganador detectado)
+                cot.id_proveedor AS id_proveedor_ganador,
+                p.razon_social AS proveedor_nombre_ganador,
+                IFNULL(cot.precio_unitario * cot.tipo_cambio, rd.precio_unitario_estimado) AS precio_pactado,
+
+                -- SUMATORIA DE COMPRAS PREVIAS
+                IFNULL(oc_comprado.total_comprado, 0) AS cantidad_ya_comprada,
+                
+                -- CÁLCULO DE SALDO PENDIENTE
+                (rd.cantidad - IFNULL(oc_comprado.total_comprado, 0)) AS cantidad_pendiente
+                
+            FROM com_requisiciones_detalle rd
+            
+            -- Join 1: Inventario (Si ya fue promovido o existía)
+            LEFT JOIN wms_inventario i ON rd.inventarioid = i.idinventario
+            
+            -- Join 2: Sourcing (Buscamos si hay una cotización marcada como ganadora)
+            LEFT JOIN com_requisicion_cotizaciones cot 
+                ON rd.idrequisicionarticulo = cot.idrequisicionarticulo AND cot.es_ganadora = 1 AND cot.deleted_at IS NULL
+                
+            -- Join 3: Datos del Proveedor Ganador
+            LEFT JOIN prv_cat_proveedores p ON cot.id_proveedor = p.id_proveedor
+            
+            -- Join 4: Subconsulta de Compras Reales
+            LEFT JOIN (
+                SELECT 
+                    ocd.idrequisicionarticulo, 
+                    SUM(ocd.cantidad) AS total_comprado
+                FROM com_ordenes_compra_detalle ocd
+                INNER JOIN com_ordenes_compra oc ON ocd.compraid = oc.idcompra
+                WHERE oc.estatus != 'cancelada' AND ocd.deleted_at IS NULL
+                GROUP BY ocd.idrequisicionarticulo
+            ) AS oc_comprado ON rd.idrequisicionarticulo = oc_comprado.idrequisicionarticulo
+            
+            WHERE rd.requisicionid = ? 
+            AND rd.deleted_at IS NULL
+            
+            -- Filtro de integridad: Solo lo que falta por comprar
+            HAVING cantidad_pendiente > 0;
+        ";
+
+        $result = $this->select_all($query, [$requisicionId]);
+        
+        return $result ?: [];
+    }
+
+    /**
+     * Performs a soft delete on all child data linked to a requisition item.
+     * This ensures FK constraints are satisfied and no orphan data remains.
+     *
+     * @param int $itemId The idrequisicionarticulo to clean up.
+     * @param int $userId The ID of the user performing the deletion.
+     */
+    public function deleteSourcingDataByItem(int $itemId, int $userId): void
+    {
+        // 1. Mark Technical Specs as deleted
+        $sqlSpecs = "UPDATE com_requisicion_items_nuevos 
+                    SET deleted_at = NOW() 
+                    WHERE idrequisicionarticulo = ? 
+                    AND deleted_at IS NULL";
+        $this->update($sqlSpecs, [$itemId]);
+
+        // 2. Mark Vendor Quotations as deleted
+        $sqlQuotes = "UPDATE com_requisicion_cotizaciones 
+                    SET deleted_at = NOW() 
+                    WHERE idrequisicionarticulo = ? 
+                    AND deleted_at IS NULL";
+        $this->update($sqlQuotes, [$itemId]);
+    }
+
+    /**
+     * Transfiere la propiedad de los datos de sourcing de una partida a otra.
+     * Esto evita violaciones de integridad referencial (FK Constraints).
+     */
+    public function transferSourcingData(int $oldItemId, int $newItemId): void
+    {
+        // 1. Transferir Ficha Técnica (Specs)
+        $sqlSpecs = "UPDATE com_requisicion_items_nuevos 
+                     SET idrequisicionarticulo = ? 
+                     WHERE idrequisicionarticulo = ?";
+        $this->update($sqlSpecs, [$newItemId, $oldItemId]);
+
+        // 2. Transferir Cotizaciones de Proveedores
+        $sqlQuotes = "UPDATE com_requisicion_cotizaciones 
+                      SET idrequisicionarticulo = ? 
+                      WHERE idrequisicionarticulo = ?";
+        $this->update($sqlQuotes, [$newItemId, $oldItemId]);
     }
 }

@@ -6,6 +6,7 @@ const PurchaseOrderRead = {
     init: function () {
         this.extractId();
         this.cacheDOM();
+        this.bindEvents();
         this.loadData();
     },
 
@@ -30,6 +31,90 @@ const PurchaseOrderRead = {
             $tblItems: $('#tbl-items'),
             $actionContainer: $('#action-buttons-container')
         };
+    },
+
+    bindEvents: function () {
+        /** 
+         * Usamos delegación de eventos porque los botones se inyectan 
+         * dinámicamente en renderActions()
+         */
+        this.dom.$actionContainer.on('click', '#btn-export-pdf', (e) => {
+            e.preventDefault();
+            this.printPurchaseOrder();
+        });
+
+        // Eventos para otras acciones (Tránsito, Cancelar)
+        this.dom.$actionContainer.on('click', '.action-btn', (e) => {
+            const action = $(e.currentTarget).data('action');
+            this.handleStatusChange(action);
+        });
+    },
+
+    /**
+     * Maneja el cambio de estado solicitando un comentario (Consistencia con Index)
+     */
+    handleStatusChange: function (action) {
+        const config = {
+            transit: { 
+                title: '¿Confirmar Tránsito?', 
+                text: 'Marcar como enviada por el proveedor.', 
+                url: 'transit', 
+                icon: 'info',
+                placeholder: 'Ej: Guía de rastreo o confirmación telefónica...'
+            },
+            cancel: { 
+                title: '¿Anular Orden de Compra?', 
+                text: 'Esta acción es irreversible y liberará los saldos.', 
+                url: 'cancel', 
+                icon: 'warning',
+                placeholder: 'Indique obligatoriamente el motivo de la anulación...'
+            }
+        };
+
+        const color = action === 'transit' ? '#ffbc0a' : '#dc3545';
+
+        const active = config[action];
+        if (!active) return;
+
+        // Usamos Swal directamente para aprovechar el campo 'input'
+        Swal.fire({
+            title: active.title,
+            text: active.text,
+            input: 'textarea', // <--- Inyectamos el campo de texto en el modal
+            icon: active.icon,
+            inputPlaceholder: active.placeholder,            
+            showCancelButton: true,
+            confirmButtonColor: color,
+            confirmButtonText: 'Confirmar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const comentario = result.value;
+
+                Sys_Core.Net.post({
+                    url: `${this.config.apiBase}/${this.state.id}/${active.url}`,
+                    payload: { comentario: comentario },
+                    $btn: $(`.action-btn[data-action="${action}"]`),
+                    onDone: (res) => {
+                        Sys_Core.UI.notify(res.message, 'success');
+                        this.loadData(); // Refrescar UI
+                    }
+                });
+            }
+        });
+    },
+
+    printPurchaseOrder: function() {
+        const purchaseOrderId = this.state.id;
+        if (!purchaseOrderId) return;
+
+        // Notificación de cortesía
+        Sys_Core.UI.notify('Generando documento oficial...', 'info');
+
+        Sys_Core.Net.downloadPdf({
+            url: `${this.config.apiBase}/${purchaseOrderId}/pdf`,
+            filename: `Orden_Compra_${purchaseOrderId}.pdf`
+        });
     },
 
     loadData: function () {
@@ -90,37 +175,51 @@ const PurchaseOrderRead = {
 
     renderStatus: function (status) {
         const clases = { 
-            'emitida': 'bg-soft-primary text-primary', 
-            'en_transito': 'bg-soft-warning text-warning',
-            'cerrada': 'bg-soft-success text-success',
-            'cancelada': 'bg-soft-danger text-danger'
+            'emitida': 'text-bg-primary', 
+            'en_transito': 'text-bg-warning',
+            'cerrada': 'text-bg-success',
+            'cancelada': 'text-bg-danger'
         };
-        this.dom.$lblEstatus.removeClass().addClass(`badge ${clases[status] || 'bg-secondary'} ms-2`).text(status.toUpperCase());
+        this.dom.$lblEstatus.removeClass().addClass(`badge ${clases[status] || 'bg-secondary'} ms-3 text-capitalize`).text(status.replace('_', ' '));
     },
 
     renderItems: function (items) {
         this.dom.$tblItems.empty();
         items.forEach(item => {
+            const progress = item.progreso_recepcion;
+            const barColor = progress >= 100 ? 'bg-success' : (progress > 0 ? 'bg-warning' : 'bg-light');
+
             this.dom.$tblItems.append(`
                 <tr>
-                    <td class="ps-4"><b>${item.cve_articulo}</b><br><small>${item.descripcion}</small></td>
-                    <td class="text-center">${parseFloat(item.cantidad)}</td>
+                    <td class="ps-4">
+                        <div class="fw-bold text-dark">${item.cve_articulo}</div>
+                        <small class="text-muted">${item.descripcion}</small>
+                    </td>
+                    <td class="text-center" style="width: 200px;">
+                        <div class="d-flex justify-content-between mb-1 fs-11">
+                            <span class="fw-bold">${item.cantidad_recibida} / ${item.cantidad}</span>
+                            <span class="text-muted">${progress}%</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar ${barColor}" style="width: ${progress}%"></div>
+                        </div>
+                    </td>
                     <td class="text-end">${Sys_Core.Format.toCurrency(item.costo_unitario)}</td>
                     <td class="text-end text-danger">-${Sys_Core.Format.toCurrency(item.descuento_partida)}</td>
-                    <td class="text-end fw-bold">${Sys_Core.Format.toCurrency(item.subtotal_partida)}</td>
+                    <td class="text-end fw-bold pe-4">${Sys_Core.Format.toCurrency(item.subtotal_partida)}</td>
                 </tr>
             `);
         });
     },
 
     renderActions: function (status) {
-        let html = `<button class="btn btn-light" data-redirect="com_requisicion"><i class="ri-arrow-left-line"></i> Volver</button>`;
-        html += `<button class="btn btn-outline-danger"><i class="ri-file-pdf-line"></i> PDF</button>`;
+        let html = `<button class="btn btn-light" data-redirect="com_orden"><i class="ri-arrow-left-line"></i> Volver</button>`;
+        html += `<button class="btn btn-outline-danger" id="btn-export-pdf"><i class="ri-file-pdf-line"></i> PDF</button>`;
 
         if (status === 'emitida') {
             html += `<button class="btn btn-warning action-btn" data-action="transit"><i class="ri-truck-line"></i> Marcar En Tránsito</button>`;
             html += `<button class="btn btn-soft-danger action-btn" data-action="cancel"><i class="ri-close-line"></i> Cancelar OC</button>`;
-        } else if (status === 'en_transito') {
+        } else if (status === 'en_transito' || status === 'recibida_parcial') {
             html += `<button class="btn btn-success" data-redirect="inv_recepcion/create?oc_id=${this.state.id}"><i class="ri-inbox-archive-line"></i> Recibir Mercancía</button>`;
         }
 

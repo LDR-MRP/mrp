@@ -26,19 +26,37 @@
             </div>
             <!-- end page title -->
 
-            <div class="row">
-                <div class="col-md-8">
+            <div class="row align-items-end">
+
+                <div class="col-md-7">
                     <label>Producto</label>
                     <input type="text" class="form-control" id="inventarioSearch" placeholder="Buscar por clave o descripción">
                     <input type="hidden" id="inventarioid">
                 </div>
 
-
-                <div class="col-md-2 align-self-end">
-                    <button class="btn btn-primary" id="btnBuscar">
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" id="btnBuscar">
                         <i class="fas fa-search"></i> Consultar
                     </button>
                 </div>
+
+                <!-- 👇 IMAGEN ALINEADA AL BOTÓN -->
+                <div class="col-md-3 text-end">
+                    <img id="foto_producto"
+                        src=""
+                        style="
+                width: 120px;
+                height: 120px;
+                object-fit: cover;
+                border-radius: 10px;
+                border: 1px solid #ddd;
+                background: #fff;
+                padding: 5px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                cursor:pointer;
+            ">
+                </div>
+
             </div>
 
             <hr>
@@ -174,7 +192,29 @@
     </div>
     <!-- End Page-content -->
 
+    <!-- Modal imagen -->
+    <div class="modal fade" id="modalImagen" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content text-center">
+                <div class="modal-body position-relative">
 
+                    <!-- botón anterior -->
+                    <button id="btnPrev" class="btn btn-dark position-absolute top-50 start-0 translate-middle-y">
+                        ◀
+                    </button>
+
+                    <!-- imagen -->
+                    <img id="imagenGrande" src="" style="width:100%; border-radius:10px; max-height:500px; object-fit:contain;">
+
+                    <!-- botón siguiente -->
+                    <button id="btnNext" class="btn btn-dark position-absolute top-50 end-0 translate-middle-y">
+                        ▶
+                    </button>
+
+                </div>
+            </div>
+        </div>
+    </div>
 
     <footer class="footer">
         <div class="container-fluid">

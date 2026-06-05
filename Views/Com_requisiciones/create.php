@@ -3,108 +3,16 @@
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
-            <style>
-                :root {
-                    --primary: #0056b3;
-                    --success: #28a745;
-                    --warning: #ffc107;
-                    --danger: #dc3545;
-                }
-
-                body {
-                    background-color: #f4f7f6;
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                }
-
-                .card {
-                    border: none;
-                    border-radius: 10px;
-                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
-                    margin-bottom: 2rem;
-                }
-
-                .card-header {
-                    background: #fff;
-                    border-bottom: 1px solid #f1f1f1;
-                    font-weight: bold;
-                    text-transform: uppercase;
-                    font-size: 0.8rem;
-                    letter-spacing: 1px;
-                }
-
-                /* Badges LDR Style */
-                .badge-draft {
-                    background-color: #e2e8f0;
-                    color: #475569;
-                }
-
-                .badge-review {
-                    background-color: #fef3c7;
-                    color: #92400e;
-                }
-
-                .badge-approved {
-                    background-color: #dcfce7;
-                    color: #166534;
-                }
-
-                .badge-rejected {
-                    background-color: #fee2e2;
-                    color: #991b1b;
-                }
-
-                .badge-purchasing {
-                    background-color: #e0e7ff;
-                    color: #3730a3;
-                }
-
-                /* Layout Helpers */
-                .bg-dark-ldr {
-                    background-color: #1a202c;
-                    color: white;
-                }
-
-                .table thead th {
-                    border-top: none;
-                    font-size: 0.75rem;
-                    color: #718096;
-                    text-transform: uppercase;
-                }
-
-                .input-real-price {
-                    background-color: #fffbeb;
-                    border: 1px solid #fcd34d;
-                    font-weight: bold;
-                }
-
-                .section-separator {
-                    border-top: 2px dashed #cbd5e0;
-                    margin: 4rem 0;
-                    position: relative;
-                }
-
-                .section-separator::after {
-                    content: 'SIGUIENTE VISTA';
-                    position: absolute;
-                    top: -12px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    background: #cbd5e0;
-                    padding: 2px 15px;
-                    font-size: 10px;
-                    border-radius: 10px;
-                    color: white;
-                }
-            </style>
             <section id="view-create-requisicion">
+                <!-- 1. BREADCRUMBS -->
                 <div class="row align-items-center mb-4">
                     <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-white">
+                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-transparent">
                             <div class="page-title-right">
-                                <ol class="breadcrumb m-0">
-                                    <li class="breadcrumb-item"><a href=": TODO/dashboard">Dashboard</a></li>
-                                    <li class="breadcrumb-item"><a href=": TODO/com_requisiciones">Requisiciones</a></li>
-                                    <li class="breadcrumb-item active">Nueva Solicitud</li>
+                                <ol class="breadcrumb m-0 fs-13">
+                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
+                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/com_requisicion">Requisiciones</a></li>
+                                    <li class="breadcrumb-item active text-primary">Nueva Solicitud</li>
                                 </ol>
                             </div>
                         </div>
@@ -120,7 +28,7 @@
                                 </span>
                             </div>
                             <div>
-                                <h4 class="mb-1 text-dark fw-bold ls-05">Crear Solicitud de Compra</h4>
+                                <h4 class="mb-1 fw-bold ls-05">Crear Solicitud de Compra</h4>
                                 <p class="text-muted mb-0 fs-13">Complete los detalles y justificación para iniciar el flujo de aprobación.</p>
                             </div>
                         </div>
@@ -131,7 +39,7 @@
                         <div class="col-lg-8">
                             <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
                                 <div class="card-header bg-soft-warning border-bottom border-light d-flex justify-content-between align-items-center">
-                                    <h6 class="card-title mb-0 text-dark fw-bold"><i class="ri-article-line text-warning me-1 fs-14 align-middle"></i> Datos Generales</h6>
+                                    <h6 class="card-title mb-0 fw-bold"><i class="ri-article-line me-1 fs-14 align-middle"></i> Datos Generales</h6>
                                 </div>
                                 <div class="card-body p-4">
                                     <div class="row g-4">
@@ -149,9 +57,37 @@
                                         <div class="col-md-6">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Fecha Requerida <span class="text-danger">*</span></label>
                                             <div class="input-group">
-                                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="ri-calendar-event-line"></i></span>
+                                                <span class="input-group-text border-end-0 text-muted"><i class="ri-calendar-event-line"></i></span>
                                                 <input type="date" name="fecha_requerida" class="form-control border-start-0 ps-0">
                                             </div>
+                                        </div>
+                                    </div>
+                                    <!-- Dentro de la Card de Datos Generales en Views/Com_requisiciones/create.php -->
+                                    <div class="row g-4 mt-4 p-3 bg-light-subtle rounded-3 border">
+                                        <div class="col-md-6 d-flex align-items-center">
+                                            <div class="form-check form-switch form-switch-lg" dir="ltr">
+                                                <input type="checkbox" class="form-check-input" id="chk-compra-directa" name="tipo_requisicion" value="directa">
+                                                <label class="form-check-label fw-bold text-primary ms-2" for="chk-compra-directa">
+                                                    ¿Es Pago Inmediato?
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Campos condicionales (Ocultos por defecto) -->
+                                        <div class="col-md-6 d-none section-compra-directa">
+                                            <label class="form-label text-uppercase fs-10 fw-bold text-muted">Método de Pago Sugerido</label>
+                                            <select name="idmetodopago" class="form-select border-primary-subtle">
+                                                <!-- Cargado por catálogo (Clara, Caja Chica, etc.) -->
+                                            </select>
+                                        </div>
+
+                                        <div class="col-12 d-none section-compra-directa">
+                                            <label class="form-label text-uppercase fs-10 fw-bold text-muted">URL del Producto / Referencia Digital</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-white text-primary"><i class="ri-links-line"></i></span>
+                                                <input type="url" name="url_referencia" class="form-control" placeholder="https://www.amazon.com.mx/dp/...">
+                                            </div>
+                                            <small class="text-muted fs-11">Pegue el enlace del artículo para que el aprobador pueda validar las especificaciones.</small>
                                         </div>
                                     </div>
                                 </div>
@@ -159,7 +95,7 @@
 
                             <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
                                 <div class="card-header bg-soft-warning border-bottom border-light d-flex justify-content-between align-items-center">
-                                    <h6 class="card-title mb-0 text-dark fw-bold"><i class="ri-shopping-basket-line me-1"></i> Partidas / Artículos</h6>
+                                    <h6 class="card-title mb-0 fw-bold"><i class="ri-shopping-basket-line me-1 fs-14 align-middle"></i> Partidas / Artículos</h6>
                                 </div>
 
                                 <div class="card-body p-4 bg-soft-light">
@@ -167,7 +103,7 @@
                                         <div class="col-md-4">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">SKU / Clave</label>
                                             <div class="input-group">
-                                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="ri-barcode-line"></i></span>
+                                                <span class="input-group-text border-end-0 text-muted"><i class="ri-barcode-line"></i></span>
                                                 <input id="sku" name="sku" type="text" class="form-control border-start-0 ps-0" placeholder="Escanear o escribir...">
                                             </div>
                                             <div id="sku-feedback" class="small text-danger mt-1 fw-bold"></div>
@@ -193,7 +129,7 @@
                                         <div class="col-md-4">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Precio Est. (MXN)</label>
                                             <div class="input-group">
-                                                <span class="input-group-text bg-white border-end-0 text-muted">$</span>
+                                                <span class="input-group-text border-end-0 text-muted">$</span>
                                                 <input id="ultimo_costo" type="text" class="form-control border-start-0 ps-0 text-end fw-bold" value="0.000000">
                                             </div>
                                         </div>
@@ -201,6 +137,12 @@
                                         <div class="col-md-2 d-flex align-items-end">
                                             <button id="btn-agregar" type="button" class="btn btn-sm btn-warning w-100 shadow-sm">
                                                 <i class="ri-add-line align-middle"></i> Agregar Artículo
+                                            </button>
+                                        </div>
+                                        <!-- NUEVO BOTÓN PARA SOURCING -->
+                                        <div class="col-12 mt-2">
+                                            <button type="button" id="btn-item-especial" class="btn btn-link btn-sm text-primary p-0 fw-bold">
+                                                <i class="ri-asterisk me-1"></i> ¿No encuentras el artículo? Solicitar alta de artículo nuevo
                                             </button>
                                         </div>
                                     </div>
@@ -237,7 +179,7 @@
                                         </table>
                                     </div>
                                 </div>
-                                <div class="card-footer bg-white border-top-0 py-3">
+                                <div class="card-footer border-top-0 py-3">
                                     <small class="text-muted fst-italic"><i class="ri-information-line me-1"></i> Los precios son estimados y pueden variar en la Orden de Compra.</small>
                                 </div>
                             </div>
@@ -257,9 +199,9 @@
                         <div class="col-lg-4">
 
                             <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
-                                <div class="card-header bg-white border-bottom border-light">
+                                <div class="card-header border-bottom border-light">
                                     <div class="d-flex align-items-center justify-content-between">
-                                        <h6 class="card-title mb-0 fw-bold">Acciones</h6>
+                                        <h6 class="card-title mb-0 fw-bold">Acciones Disponibles</h6>
                                     </div>
                                 </div>
                                 <div class="card-body">
@@ -275,13 +217,13 @@
                                     <hr class="border-dashed my-3">
 
                                     <div class="d-grid gap-2">
-                                        <button type="button" class="btn btn-success btn-lg shadow-md waves-effect waves-light btn-guardar" data-estatus="pendiente">
+                                        <button type="button" class="btn btn-success btn-lg shadow-md btn-guardar" data-estatus="pendiente">
                                             <i class="ri-send-plane-fill align-middle me-1"></i> Enviar a Aprobación
                                         </button>
-                                        <button type="button" class="btn btn-light waves-effect waves-light text-muted btn-guardar" data-estatus="borrador">
+                                        <button type="button" class="btn btn-light btn-guardar" data-estatus="borrador">
                                             <i class="ri-save-3-line align-middle me-1"></i> Guardar Borrador
                                         </button>
-                                        <button type="button" class="btn btn-light btn-label waves-effect waves-light" data-redirect="com_requisicion">
+                                        <button type="button" class="btn btn-light btn-label" data-redirect="com_requisicion">
                                             <i class="ri-arrow-go-back-line label-icon align-middle fs-16 me-2"></i> Cancelar y Volver
                                         </button>
                                     </div>
@@ -336,7 +278,7 @@
                                     
                                     <div class="d-flex justify-content-between align-items-center">
                                         <span class="text-muted fs-12 fw-medium"><i class="ri-time-line me-1"></i> Creado el:</span>
-                                        <span class="text-dark fw-bold fs-12" id="lbl-fecha-creacion">...</span>
+                                        <span class="fw-bold fs-12" id="lbl-fecha-creacion">...</span>
                                     </div>
                                 </div>
                             </div>
@@ -401,6 +343,67 @@
                 <div class="modal-footer border-top-0 bg-light">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" id="btn-confirmar-mover" class="btn btn-primary px-4 shadow-sm">Confirmar y Mover</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalArticuloEspecial" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+                <div class="modal-header bg-soft-primary p-3">
+                    <h5 class="modal-title text-primary fw-bold fs-15"><i class="ri-Shield-star-line me-2"></i>Ficha Técnica para Sourcing</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formArticuloEspecial">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Justificación / Proyecto <span class="text-danger">*</span></label>
+                                <textarea name="justificacion_proyecto" class="form-control fs-13" rows="2" placeholder="Ej: Proyecto Foton Tunland en planta Tlajomulco 1" required></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Categoría del Componente</label>
+                                <input type="text" name="categoria" class="form-control" placeholder="Ej. COMPONENTE DE ENSAMBLE" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Precio Objetivo (MXN)</label>
+                                <input type="number" name="precio_objetivo" class="form-control fw-bold text-success" placeholder="0.00" step="0.01" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Descripción General</label>
+                                <input type="text" name="descripcion_sourcing" class="form-control" placeholder="Ej. Llantas radiales para Pick up..." required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Especificaciones Técnicas</label>
+                                <textarea name="especificaciones_tecnicas" class="form-control" rows="3" placeholder="Treadwear, Velocidad, Carga..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Dimensiones y Características</label>
+                                <textarea name="dimensiones_principales" class="form-control" rows="3" placeholder="Rin, Piso, Ancho..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Normas Requeridas</label>
+                                <input type="text" name="normas_requeridas" class="form-control" placeholder="NOM, ISO, etc.">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Volumen Anual Estimado</label>
+                                <input type="text" name="volumen_anual" class="form-control" placeholder="Ej. 5,000 unidades">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Inicio Negociación</label>
+                                <input type="date" name="fecha_inicio_negociacion" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Límite de Acuerdo</label>
+                                <input type="date" name="fecha_limite_acuerdo" class="form-control" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light-subtle">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" id="btn-confirmar-especial" class="btn btn-primary px-4 shadow-sm fw-bold">Agregar como Artículo Especial</button>
                 </div>
             </div>
         </div>

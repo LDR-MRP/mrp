@@ -29,9 +29,14 @@ const supplierManager = {
             const data = new FormData(this);
             const payload = Object.fromEntries(data.entries());
             payload.id = self.currentId || null;
+
+            // LIMPIEZA: Antes de enviar, convertimos a número real
+            if (payload.limite_credito) {
+                payload.limite_credito = Sys_Core.Format.toNumber(payload.limite_credito);
+            }
             
             Sys_Core.Net.post({
-                url: `${Sys_Core.Config.baseUrl}/prv_proveedor/storeSupplier`,
+                url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers`,
                 payload: payload,
                 successMsg: 'El proveedor ha sido registrado y/o actualizado correctamente.',
                 onDone: () => {
@@ -90,9 +95,7 @@ const supplierManager = {
     loadCatalogs: function() {
         const catalogos = [
             { url: 'Catalogo/condiciones_pago', selector: '[name="id_condicion_pago"]' },
-            { url: 'Catalogo/cuentas_contables', selector: '[name="id_cuenta_contable"]' },
-            { url: 'SatCatalogo/tipos_personas', selector: '[name="id_tipo_persona"]' },
-            { url: 'inv_moneda/index', selector: '[name="id_moneda_banco"]' }
+            { url: 'SatCatalogo/tipos_personas', selector: '[name="id_tipo_persona"]' }
         ];
 
         const promises = catalogos.map(cat => {
@@ -119,7 +122,7 @@ const supplierManager = {
         Sys_Core.UI.toggleLoader('.page-content', true);
         
         Sys_Core.Net.get({
-            url: `${Sys_Core.Config.baseUrl}/prv_proveedor/show/${id}`,
+            url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers/${id}`,
             silent: true,
             onSuccess: (res) => {
                 if (res.status && res.data) {
@@ -135,10 +138,22 @@ const supplierManager = {
                         });
                     }
 
-                    // 3. Cargamos Colonias y al terminar, seleccionamos
-                    if (data.cp) {
+                    // 3. CORRECCIÓN: Cargamos Colonias con comparador insensible a mayúsculas/minúsculas
+                    if (data.cp && data.colonia) {
                         cascadeCatalogs.searchCP(data.cp, () => {
-                            $('[name="colonia"]').val(data.colonia).trigger('change');
+                            const valToSearch = data.colonia.toLowerCase().trim();
+                            let exactValue = data.colonia; // Fallback por defecto
+
+                            // Escaneamos las opciones cargadas en el select de forma insensible a mayúsculas [4]
+                            $('#colonia option').each(function() {
+                                if ($(this).val().toLowerCase().trim() === valToSearch) {
+                                    exactValue = $(this).val(); // Obtenemos el valor exacto del option (Mayúsculas)
+                                    return false; // Break loop de jQuery
+                                }
+                            });
+
+                            // Asignamos el valor exacto que el navegador sí reconoce
+                            $('[name="colonia"]').val(exactValue).trigger('change');
                         });
                     }
                 }
@@ -326,7 +341,7 @@ const files = {
         Sys_Core.UI.toggleLoader('#tab-expediente', true);
         
         Sys_Core.Net.get({
-            url: `${Sys_Core.Config.baseUrl}/prv_proveedor/documents/${idProveedor}`,
+            url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers/${idProveedor}/documents`,
             silent: false,
             onSuccess: (res) => {
                 if (res.status && res.data) {
@@ -462,51 +477,73 @@ const files = {
         formData.append('id_proveedor', idProveedor);
 
         const $progress = $(`#progress-${docType}`);
+        const $progressBar = $progress.find('.progress-bar');
         const $success = $(`#success-${docType}`);
 
+        // UI: Iniciar estado de carga
         $progress.removeClass('d-none');
+        $progressBar.css('width', '50%'); // Feedback visual inmediato
         $success.addClass('d-none');
 
         Sys_Core.Net.post({
-            url: `${Sys_Core.Config.baseUrl}/prv_proveedor/uploadDocument`,
+            url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers/documents`,
             payload: formData,
-            successMsg: `Documento ${docType} cargado correctamente.`,
+            // Importante: No pasamos successMsg aquí para no saturar con Toasts, 
+            // dejamos que la UI se actualice sola con loadStatus
             onDone: (res) => {
+                // El backend devuelve el nuevo progreso global
+                if (res.data && res.data.progress !== undefined) {
+                    $('#global-progress-bar').css('width', `${res.data.progress}%`);
+                    $('#global-progress-text').text(`${res.data.progress}%`);
+                }
+                
+                Sys_Core.UI.notify(`${docType.replace('_', ' ')} cargado con éxito.`, 'success');
                 this.loadStatus(idProveedor);
-                $(input).val('');
+            },
+            // Limpieza en caso de error (Sys_Core ya lanza el alert)
+            onError: () => {
+                $progress.addClass('d-none');
+                $progressBar.css('width', '0%');
+            },
+            complete: () => {
+                $(input).val(''); // Resetear el input file siempre
             }
         });
     },
 
     /**
-     * Envía el dictamen al backend
-     * @param {number} idDoc - ID del documento en la tabla prv_det_expediente
-     * @param {number} action - 1 (Aprobado), 2 (Rechazado)
-     * @param {string} motivo - Texto del motivo (solo aplica en rechazo)
+     * Envía el dictamen de validación (Aprobado/Rechazado) al servidor.
+     * 
+     * @param {number} idDoc - ID del registro en prv_det_expediente.
+     * @param {number} action - 1 (Aprobado), 2 (Rechazado).
+     * @param {string} motivo - Comentario de rechazo (obligatorio si action es 2).
      */
     auditDocument: function(idDoc, action, motivo = '') {
-        const idProveedor = new URLSearchParams(window.location.search).get('id');
+        const idProveedor = Sys_Core.URL.getParam('id');
         
         Sys_Core.Net.post({
-            url: `${Sys_Core.Config.baseUrl}/prv_proveedor/auditDocument`,
-            payload: $.param({ 
+            url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers/audit-document`,
+            payload: { 
                 id_documento: idDoc, 
                 estatus_validacion: action, 
                 motivo_rechazo: motivo,
                 id_proveedor: idProveedor
-            }),
-            successMsg: action === 1 ? 'Documento aprobado exitosamente.' : 'Documento devuelto al proveedor.',
+            },
             onDone: (res) => {
+                // Notificación Premium según la acción
+                const msg = action === 1 ? 'Documento verificado.' : 'Observación enviada al proveedor.';
+                Sys_Core.UI.notify(msg, action === 1 ? 'success' : 'warning');
+
+                // Recargar el estatus del expediente para actualizar cards y barra de progreso
                 this.loadStatus(idProveedor);
                 
-                // Opcional: Si el backend nos responde que ya se alcanzó el 100% aprobado
+                // Si el backend activó al proveedor automáticamente
                 if (res.data && res.data.proveedor_activado) {
                     Sys_Core.UI.alert(
-                        '¡Proveedor Activo!', 
-                        'Todos los documentos han sido aprobados. El proveedor ya puede operar en el sistema.', 
+                        '¡Expediente Validado!', 
+                        'Todos los documentos han sido aprobados. El proveedor ha sido ACTIVADO para operaciones de compra.', 
                         'success'
                     );
-                    // TODO: Aquí recargar el tab de Onboarding para que muestre el 100%
                 }
             }
         });
@@ -555,6 +592,33 @@ const bankingManager = {
                 }
             });
         });
+
+        // --- EVENTO PARA APROBAR / RECHAZAR CUENTA ---
+        $('#lista-cuentas-bancarias').on('click', '.btn-audit-bank', function() {
+            const idCuenta = $(this).data('id');
+            const nuevoEstatus = $(this).data('status');
+            const idProveedor = Sys_Core.URL.getParam('id');
+
+            Sys_Core.UI.confirm({
+                title: `¿${nuevoEstatus === 'APROBADO' ? 'Aprobar' : 'Rechazar'} cuenta?`,
+                text: `La cuenta será marcada como ${nuevoEstatus.toLowerCase()} para pagos.`,
+                confirmText: 'Confirmar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Sys_Core.Net.post({
+                        url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers/audit-bank`,
+                        payload: { 
+                            id_cuenta_bancaria: idCuenta, 
+                            estatus_aprobacion: nuevoEstatus 
+                        },
+                        onDone: (res) => {
+                            Sys_Core.UI.notify(res.message, 'success');
+                            self.loadAccounts(idProveedor);
+                        }
+                    });
+                }
+            });
+        });
     },
 
     loadCatalogs: function() {
@@ -569,22 +633,42 @@ const bankingManager = {
                 });
             }
         });
+
+        Sys_Core.Net.get({
+            url: `${Sys_Core.Config.baseUrl}/api/v1/currencies`,
+            onSuccess: (res) => {
+                Sys_Core.UI.fillSelect('#id_moneda_banco', res.data, { 
+                    valueField: 'cve_moneda', // Ej: 'MXN', 'USD'
+                    textField: 'cve_moneda',
+                    selectedValue: 'MXN' // Pre-seleccionar Moneda Nacional
+                });
+                // Disparar el cambio manualmente para bloquear el input de TC si es MXN
+                $('#id_moneda_banco').trigger('change');
+            }
+        });
     },
 
+    /**
+     * Carga las cuentas bancarias desde la API REST.
+     */
     loadAccounts: function(idProveedor) {
         Sys_Core.UI.toggleLoader('#tab-banking', true);
 
         Sys_Core.Net.get({
-            url: `${Sys_Core.Config.baseUrl}/prv_proveedor/banks/${idProveedor}`,
-            silent: false,
+            url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers/${idProveedor}/banks`,
             onSuccess: (res) => {
-                this.renderTable(res.data);
-                this.isLoaded = true;
+                if (res.status) {
+                    this.renderTable(res.data);
+                    this.isLoaded = true;
+                }
                 Sys_Core.UI.toggleLoader('#tab-banking', false);
             }
         });
     },
 
+    /**
+     * Renderiza la tabla de cuentas con lógica de permisos y estatus.
+     */
     renderTable: function(cuentas) {
         const $tbody = $('#lista-cuentas-bancarias');
         $tbody.empty();
@@ -592,43 +676,105 @@ const bankingManager = {
         if (!cuentas || cuentas.length === 0) {
             $tbody.html(`
                 <tr>
-                    <td colspan="5" class="text-center py-4 text-muted">
-                        <i class="ri-bank-card-line fs-24 d-block mb-2 text-light"></i>
-                        Aún no hay cuentas bancarias registradas.
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <div class="avatar-sm mx-auto mb-3">
+                            <div class="avatar-title bg-light text-primary rounded-circle fs-24">
+                                <i class="ri-bank-card-line"></i>
+                            </div>
+                        </div>
+                        <h6 class="fw-bold">Sin cuentas registradas</h6>
+                        <p class="mb-0 fs-12">El proveedor no ha proporcionado datos de transferencia.</p>
                     </td>
                 </tr>
             `);
             return;
         }
 
+        // Determinar si el usuario actual puede AUDITAR (Aprobar/Rechazar)
+        // Usamos el permiso 'd' (Delete/Audit) como gatillo para Tesorería
+        const canAudit = Sys_Core.Auth.hasPermissions(MODS.PRV_PROVEEDORES, 'd');
+
         let html = '';
         cuentas.forEach(c => {
-            // Badges de Estatus (Compliance L2)
-            let badgeEstatus = `<span class="badge bg-warning text-white">Pendiente</span>`;
-            if (c.estatus_aprobacion === 'APROBADO') badgeEstatus = `<span class="badge bg-success">Aprobado</span>`;
-            if (c.estatus_aprobacion === 'RECHAZADO') badgeEstatus = `<span class="badge bg-danger">Rechazado</span>`;
+            const status = c.estatus_aprobacion.toUpperCase();
+            
+            // 1. Mapeo de Badges Premium
+            const badges = {
+                'PENDIENTE': 'bg-warning',
+                'APROBADO':  'bg-success',
+                'RECHAZADO': 'bg-danger'
+            };
+            const badgeClass = badges[status] || 'bg-secondary';
 
-            // Badge si es Principal
-            const badgePrincipal = c.es_principal == 1 ? `<span class="badge bg-info-subtle text-info ms-1 border border-info">Principal</span>` : '';
+            // 2. Identificador Único (CLABE, SWIFT o IBAN)
+            const identificador = c.clabe || (c.swift_bic ? `SWIFT: ${c.swift_bic}` : `IBAN: ${c.iban}`);
+            
+            // 3. Botones Dinámicos
+            let actionButtons = '';
 
-            // Lógica de visualización: Nacional vs Extranjero
-            const identificador = c.clabe ? c.clabe : (c.swift_bic ? `SWIFT: ${c.swift_bic}` : `IBAN: ${c.iban}`);
+            // --- INICIO ADICIÓN: Botón para ver la Carátula Bancaria (PDF) ---
+            // Si la cuenta tiene un archivo PDF registrado, mostramos el visor seguro [4]
+            if (c.url_pdf) {
+                const absolutePdfUrl = `${base_url}/${c.url_pdf}`;
+                actionButtons += `
+                    <a href="${absolutePdfUrl}" target="_blank" class="btn btn-sm btn-soft-danger btn-icon shadow-none" title="Ver Carátula Bancaria (PDF)">
+                        <i class="ri-file-pdf-line"></i>
+                    </a>
+                `;
+            }
+            // --- FIN ADICIÓN ---
+
+            // Si está pendiente y el usuario es auditor -> Mostrar botones de Visto Bueno
+            if (status === 'PENDIENTE' && canAudit) {
+                actionButtons += `
+                    <button type="button" class="btn btn-sm btn-success btn-audit-bank shadow-sm" 
+                            data-id="${c.id_cuenta_bancaria}" data-status="APROBADO" title="Aprobar">
+                        <i class="ri-check-line"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger btn-audit-bank shadow-sm" 
+                            data-id="${c.id_cuenta_bancaria}" data-status="RECHAZADO" title="Rechazar">
+                        <i class="ri-close-line"></i>
+                    </button>
+                `;
+            }
+
+            // Botón de eliminar (Solo si no está aprobado o si es admin)
+            if (status !== 'APROBADO' || canAudit) {
+                actionButtons += `
+                    <button type="button" class="btn btn-sm btn-soft-danger btn-delete-bank" 
+                            data-id="${c.id_cuenta_bancaria}" title="Eliminar">
+                        <i class="ri-delete-bin-line"></i>
+                    </button>
+                `;
+            }
 
             html += `
-                <tr>
+                <tr class="align-middle">
                     <td>
-                        <div class="fw-bold text-dark">${c.id_banco ?? 'N/A'}</div>
-                        <div class="text-muted fs-11">Cuenta: ${c.cuenta ?? '---'}</div>
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-xs me-2">
+                                <div class="avatar-title bg-soft-primary text-primary rounded fs-16">
+                                    <i class="ri-bank-line"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h6 class="fs-13 mb-0 fw-bold">${c.id_banco ?? 'BANCO'}</h6>
+                                <p class="text-muted mb-0 fs-11">Cuenta: ${c.cuenta || '---'}</p>
+                            </div>
+                        </div>
                     </td>
                     <td>
-                        <span class="font-monospace fs-12">${identificador}</span> ${badgePrincipal}
+                        <code class="text-primary fw-bold fs-12">${identificador}</code>
+                        ${c.es_principal == 1 ? '<span class="badge bg-soft-info text-info ms-1 border border-info-subtle">Principal</span>' : ''}
                     </td>
-                    <td class="fw-medium">${c.id_moneda}</td>
-                    <td>${badgeEstatus}</td>
-                    <td class="text-end">
-                        <button type="button" class="btn btn-sm btn-soft-danger btn-delete-bank" data-id="${c.id_cuenta_bancaria}">
-                            <i class="ri-delete-bin-line"></i>
-                        </button>
+                    <td class="text-center fw-medium">${c.id_moneda}</td>
+                    <td class="text-center">
+                        <span class="badge ${badgeClass} shadow-sm">${status}</span>
+                    </td>
+                    <td>
+                        <div class="d-flex justify-content-end gap-1">
+                            ${actionButtons}
+                        </div>
                     </td>
                 </tr>
             `;
@@ -649,7 +795,7 @@ const bankingManager = {
         payload.append('id_proveedor', idProveedor);
 
         Sys_Core.Net.post({
-            url: `${Sys_Core.Config.baseUrl}/prv_proveedor/storeBank`,
+            url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers/store-bank`,
             payload: payload,
             successMsg: 'Cuenta bancaria agregada y enviada a revisión.',
             onDone: () => {
@@ -660,15 +806,96 @@ const bankingManager = {
         });
     },
 
+    /**
+     * Ejecuta el borrado lógico de la cuenta bancaria.
+     */
     deleteAccount: function(idCuenta) {
+        const idProveedor = Sys_Core.URL.getParam('id');
+
         Sys_Core.Net.post({
-            url: `${Sys_Core.Config.baseUrl}/prv_proveedor/deleteBank`,
-            payload: { id_cuenta_bancaria: idCuenta },
-            successMsg: 'Cuenta eliminada del registro.',
-            onDone: () => {
-                const idProveedor = Sys_Core.URL.getParam('id');
+            // Cambiamos a la ruta RESTful con el verbo DELETE
+            url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers/banks/${idCuenta}`,
+            method: 'DELETE', // Semántica RESTful
+            onDone: (res) => {
+                Sys_Core.UI.notify(res.message, 'info');
                 this.loadAccounts(idProveedor);
             }
+        });
+    }
+};
+
+/**
+ * Gestión visual del Stepper de Onboarding
+ */
+const onboardingManager = {
+    isLoaded: false,
+
+    init: function() {
+        const self = this;
+        // Lazy loading al cambiar a la pestaña
+        $('button[data-bs-target="#tab-onboarding"], a[href="#tab-onboarding"]').on('shown.bs.tab', function () {
+            const id = Sys_Core.URL.getParam('id');
+            if (id) self.loadTimeline(id);
+        });
+    },
+
+    loadTimeline: function(id) {
+        Sys_Core.Net.get({
+            url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers/${id}/onboarding-timeline`,
+            onSuccess: (res) => {
+                if (res.status) {
+                    this.render(res.data);
+                    this.isLoaded = true;
+                }
+            }
+        });
+    },
+
+    render: function(data) {
+        const { steps, current_status_text } = data;
+        
+        // 1. Actualizar Banner Central
+        $('#onboarding-status-title').text(`Estatus: ${current_status_text}`);
+        
+        const $list = $('.custom-timeline-list');
+        $list.empty();
+
+        const stepIcons = {
+            step1: 'ri-user-add-line',
+            step2: 'ri-folder-open-line',
+            step3: 'ri-shield-check-line',
+            step4: 'ri-bank-card-2-line'
+        };
+
+        const stepLabels = {
+            step1: 'Registro Inicial',
+            step2: 'Expediente Digital',
+            step3: 'Validación',
+            step4: 'Alta en ERP'
+        };
+
+        Object.entries(steps).forEach(([key, info]) => {
+            const isCompleted = info.status === 'completed';
+            const isActive = info.status === 'active';
+            
+            let itemClass = isCompleted ? 'completed' : (isActive ? 'active' : '');
+            let iconClass = isCompleted ? 'bg-success text-white' : (isActive ? 'bg-warning text-white' : 'bg-light text-muted');
+            let contentClass = isActive ? 'active-card' : '';
+            let icon = isCompleted ? 'ri-check-line' : stepIcons[key];
+
+            const html = `
+                <li class="timeline-item ${itemClass}">
+                    <div class="timeline-icon ${iconClass}">
+                        <i class="${icon}"></i>
+                    </div>
+                    <div class="timeline-content ${contentClass}">
+                        <h6 class="fs-14 fw-bold mb-1 ${isActive ? 'text-warning' : 'text-dark'}">${stepLabels[key]}</h6>
+                        <span class="badge ${isCompleted ? 'bg-success' : 'bg-warning'} text-white">${info.badge}</span>
+                        <p class="text-muted fs-12 mb-0 mt-1">${info.date || ''}</p>
+                    </div>
+                </li>
+            `;
+            $list.append(html);
         });
     }
 };
@@ -678,4 +905,5 @@ $(document).ready(() => {
     supplierManager.init();
     files.init();
     bankingManager.init();
+    onboardingManager.init();
 });

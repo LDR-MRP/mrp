@@ -18,7 +18,8 @@ const RequisitionForm = {
         id: null,          // Si tiene ID, estamos en Update Mode
         isEditMode: false,
         items: [],          // Memoria RAM del frontend para las partidas
-        selectedItemsToMove: []
+        selectedItemsToMove: [],
+        tempSpecs: null, // Memoria temporal para la ficha técnica del modal
     },
 
     dom: {}, // Caché de selectores del DOM
@@ -82,7 +83,14 @@ const RequisitionForm = {
             $solicitanteContainer: $('#user-avatar-container'),
             $lblSolicitante: $('#lbl-solicitante'),
             $lblSolicitanteRol: $('#lbl-solicitante-rol'),
-            $lblFechaCreacion: $('#lbl-fecha-creacion')
+            $lblFechaCreacion: $('#lbl-fecha-creacion'),
+            $btnItemEspecial: $('#btn-item-especial'),
+            $modalEspecial: $('#modalArticuloEspecial'),
+            $btnConfirmarEspecial: $('#btn-confirmar-especial'),
+            $chkDirecta: $('#chk-compra-directa'),
+            $sectionDirecta: $('.section-compra-directa'),
+            $selectMetodoPago: $('select[name="idmetodopago"]'),
+            $inputUrl: $('input[name="url_referencia"]'),
         };
     },
 
@@ -93,6 +101,26 @@ const RequisitionForm = {
         
         // Autocompletar al seleccionar producto
         this.dom.$productSelect.on('change', (e) => this.handleProductSelection(e));
+
+        this.dom.$chkDirecta = $('#chk-compra-directa');
+        this.dom.$sectionDirecta = $('.section-compra-directa');
+
+        this.dom.$chkDirecta.on('change', (e) => {
+            if (e.target.checked) {
+                this.dom.$sectionDirecta.removeClass('d-none').hide().fadeIn(300);
+                this.loadPaymentMethods(); // Cargar catálogo de métodos de pago
+                
+                // Notificación Premium
+                Sys_Core.UI.notify('Modo Compra Directa activado. Se omitirá el proceso de Sourcing.', 'info');
+            } else {
+                this.dom.$sectionDirecta.fadeOut(300, () => {
+                    $(this).addClass('d-none');
+                    // Limpiar valores para no enviar basura si se arrepiente
+                    $('[name="idmetodopago"]').val('');
+                    $('[name="url_referencia"]').val('');
+                });
+            }
+        });
         
         // Enter key para agregar
         this.dom.$form.on('keydown', '#sku, #cantidad, #ultimo_costo', (e) => {
@@ -118,11 +146,16 @@ const RequisitionForm = {
             this.removeRow($(e.currentTarget).closest('tr'));
         });
 
+        this.dom.$chkDirecta.on('change', (e) => {
+            this.toggleSpotBuySection(e.target.checked);
+        });
+
         // Submit del Formulario (Interceptamos los dos botones: Draft y Submit)
         this.dom.$btnSubmit.on('click', (e) => {
             e.preventDefault();
+            const $clickedBtn = $(e.currentTarget); // <--- Capturamos EL BOTÓN exacto
             const action = $(e.currentTarget).data('estatus') === 'borrador' ? 'save_draft' : 'submit_approval';
-            this.saveRequisition(action);
+            this.saveRequisition(action, $clickedBtn);
         });
 
         this.dom.$tableBody.on('change', '.chk-mover-partida', () => this.handleCheckboxSelection());
@@ -136,6 +169,46 @@ const RequisitionForm = {
             }
         });
         this.dom.$btnConfirmarMover.on('click', () => this.submitMoveItems());
+
+        this.dom.$btnItemEspecial.on('click', () => this.dom.$modalEspecial.modal('show'));
+        this.dom.$btnConfirmarEspecial.on('click', () => this.addSpecialItemToTable());
+    },
+
+    /**
+     * Controla la visibilidad y carga de datos de la sección Spot Buy
+     */
+    toggleSpotBuySection: function(show, callback = null) {
+        if (show) {
+            this.dom.$sectionDirecta.removeClass('d-none').hide().fadeIn(300);
+            this.loadPaymentMethods().then(() => {
+                if (callback) callback();
+            });
+        } else {
+            this.dom.$sectionDirecta.fadeOut(300, () => {
+                this.dom.$sectionDirecta.addClass('d-none');
+                this.dom.$selectMetodoPago.val('');
+                this.dom.$inputUrl.val('');
+            });
+        }
+    },
+
+    // Método para cargar el catálogo
+    loadPaymentMethods: function() {
+        return new Promise((resolve) => {
+            if (this.dom.$selectMetodoPago.children('option').length > 1) return resolve();
+
+            Sys_Core.Net.get({
+                url: `${Sys_Core.Config.baseUrl}/api/v1/catalogs/payment-methods`,
+                onSuccess: (res) => {
+                    Sys_Core.UI.fillSelect(this.dom.$selectMetodoPago, res.data, {
+                        valueField: 'idmetodopago',
+                        textField: 'nombre',
+                        placeholder: 'Seleccione método de pago...'
+                    });
+                    resolve();
+                }
+            });
+        });
     },
 
     // 4. CARGA DE DATOS E INTERACCIÓN API
@@ -160,51 +233,76 @@ const RequisitionForm = {
     loadRequisitionData: function () {
         Sys_Core.UI.toggleLoader('.page-content', true);
 
-        // Llamamos al endpoint GET /api/v1/requisitions/{id}
-        $.ajax({
+        Sys_Core.Net.get({
             url: `${this.config.apiBase}/${this.state.id}`,
-            method: 'GET'
-        }).done((res) => {
-            if (res.status === 'success' || res.status === true) {
-                this.populateUI(res.data);
-            } else {
-                Sys_Core.UI.alert('Error', 'No se pudo cargar la requisición.', 'error');
-                Sys_Core.Navigation.to('requisiciones');
+            onSuccess: (res) => {
+                // Validación de lógica de negocio (status 200 pero resultado negativo)
+                if (res.status === 'success' || res.status === true) {
+                    this.populateUI(res.data);
+                } else {
+                    // Si el backend responde status: false (ej: recurso no encontrado o inactivo)
+                    Sys_Core.UI.alert('Error', 'No se pudo cargar la requisición.', 'error');
+                    Sys_Core.Navigation.to('requisiciones');
+                }
+            },
+            onComplete: () => {
+                // Quitamos el loader sin importar si fue Success o Error (401, 403, 500, etc.)
+                Sys_Core.UI.toggleLoader('.page-content', false);
             }
-        }).always(() => {
-            Sys_Core.UI.toggleLoader('.page-content', false);
         });
     },
 
     populateUI: function (data) {
-        // 1. Llenar campos de cabecera usando la utilidad del core
-        Sys_Core.UI.fillForm('#formRequisicion', {
+        // --- PASO 1: MAPEO Y TRANSFORMACIÓN (Mantenemos tu lógica original) ---
+        const formData = {
             titulo: data.titulo,
             departamentoid: data.departamentoid,
             fecha_requerida: data.fecha_requerida,
             justificacion: data.justificacion,
-            prioridad: this.mapPriorityToValue(data.prioridad) // Convertir string a ID del select
-        });
+            idmetodopago: data.idmetodopago,
+            url_referencia: data.url_referencia,
+            prioridad: this.mapPriorityToValue(data.prioridad) // Tu transformación manual
+        };
 
-        // 2. Limpiar tabla y dibujar partidas existentes
+        // --- PASO 2: GESTIÓN DEL FLUJO SPOT BUY ---
+        if (data.tipo_requisicion === 'spot_buy') {
+            this.dom.$chkDirecta.prop('checked', true);
+            // toggleSpotBuySection ahora recibe los datos transformados para llenar el form
+            this.toggleSpotBuySection(true, () => {
+                Sys_Core.UI.fillForm('#formRequisicion', formData);
+            });
+        } else {
+            this.dom.$chkDirecta.prop('checked', false);
+            this.toggleSpotBuySection(false);
+            Sys_Core.UI.fillForm('#formRequisicion', formData);
+        }
+
+        // --- PASO 3: POBLAR TABLA (Mantenemos fallbacks de 'N/A') ---
         this.dom.$tableBody.empty();
         if (data.items && data.items.length > 0) {
             data.items.forEach(item => {
-                this.renderRow({
-                    idrequisicionarticulo: item.idrequisicionarticulo, // Clave para el Update
-                    inventarioid: item.inventarioid,
-                    sku: item.cve_articulo || 'N/A', 
-                    descripcion: item.descripcion || 'Artículo recuperado',
-                    unidad: item.unidad_salida || 'PZA',
-                    cantidad: item.cantidad,
-                    precio: item.precio_unitario_estimado,
-                    notas: item.notas || ''
-                });
+                // Si es sourcing, reconstruimos el objeto de specs para el atributo data-specs
+                if (parseInt(item.es_sourcing) === 1) {
+                    item.specs = {
+                        justificacion_proyecto: item.justificacion_proyecto,
+                        categoria: item.categoria,
+                        descripcion_sourcing: item.descripcion_sourcing,
+                        especificaciones_tecnicas: item.especificaciones_tecnicas,
+                        dimensiones_principales: item.dimensiones_principales,
+                        normas_requeridas: item.normas_requeridas,
+                        volumen_anual: item.volumen_anual,
+                        precio_objetivo: item.precio_objetivo,
+                        fecha_inicio_negociacion: item.fecha_inicio_negociacion,
+                        fecha_limite_acuerdo: item.fecha_limite_acuerdo
+                    };
+                }
+                this.renderRow(item);
             });
         } else {
             this.renderEmptyState();
         }
 
+        // --- PASO 4: ETIQUETAS INFORMATIVAS ---
         this.dom.$lblSolicitante.text(data.solicitante || 'Usuario del Sistema');
         this.dom.$lblSolicitanteRol.text(data.rol_solicitante || 'Rol no especificado');
         this.dom.$lblFechaCreacion.text(Sys_Core.Format.toDate(data.fecha));
@@ -299,15 +397,30 @@ const RequisitionForm = {
     },
 
     renderRow: function (data) {
-        $('.empty-state-row').remove(); // Quitar mensaje de tabla vacía
+        $('.empty-state-row').remove();
 
-        // Atributo data-itemid guarda el ID real de BD si estamos en modo edición
+        // --- 1. NORMALIZACIÓN DE DATOS (Lo nuevo) ---
+        // Detectamos si es sourcing ya sea por el flag del backend (es_sourcing) 
+        // o por el flag del frontend (isSourcing) cuando se agrega al vuelo.
+        const isSourcing = (parseInt(data.es_sourcing) === 1 || data.isSourcing === true);
+        
+        // El query ahora manda 'unidad_salida' o 'PZA' por defecto
+        const unitLabel = data.unidad_salida || data.unidad || 'PZA';
+        
+        // Clases visuales según el ADN LDR Premium
+        const sourcingClass = isSourcing ? 'table-info border-start border-4 border-primary' : '';
+
+        // --- 2. GESTIÓN DE ATRIBUTOS ---
         const itemIdAttr = data.idrequisicionarticulo ? `data-itemid="${data.idrequisicionarticulo}"` : '';
+        
+        // Si el artículo ya viene de la BD con specs, o se acaban de crear, las guardamos
+        // Si data.specs no existe (porque viene del query plano), podemos omitirlo o reconstruirlo
+        const specsData = data.specs ? JSON.stringify(data.specs) : '{}';
+        const specsAttr = isSourcing ? `data-specs='${specsData}'` : '';
 
         let chkHtml = '';
         if (this.state.isEditMode) {
             if (data.idrequisicionarticulo) {
-                // El artículo YA EXISTE en BD: Mostramos el checkbox funcional
                 chkHtml = `
                 <td width="40" class="text-center align-middle px-3">
                     <div class="form-check d-flex justify-content-center m-0">
@@ -315,7 +428,6 @@ const RequisitionForm = {
                     </div>
                 </td>`;
             } else {
-                // El artículo es NUEVO: Mostramos una celda vacía o un ícono para mantener la alineación
                 chkHtml = `
                 <td width="40" class="text-center align-middle px-3">
                     <i class="ri-checkbox-blank-circle-line text-muted opacity-25" title="Guarde primero para poder mover"></i>
@@ -324,25 +436,35 @@ const RequisitionForm = {
         }
 
         const html = `
-            <tr data-invid="${data.inventarioid}" ${itemIdAttr} class="partida-row">
+            <tr data-invid="${data.inventarioid || ''}" ${itemIdAttr} ${specsAttr} class="partida-row ${sourcingClass}">
                 ${chkHtml}
                 <td class="ps-4">
                     <div class="d-flex flex-column">
-                        <span class="fw-bold text-dark">${data.sku} — ${data.descripcion}</span>
-                        <small class="text-muted">Unidad: ${data.unidad}</small>
+                        <span class="fw-bold ${isSourcing ? 'text-primary' : 'text-dark'}">
+                            ${isSourcing ? '<span class="badge bg-primary me-1">SOURCING</span>' : ''} 
+                            ${data.cve_articulo} — ${data.descripcion}
+                        </span>
+                        <small class="text-muted">
+                            ${isSourcing ? '<i class="ri-error-warning-line text-warning"></i> Requiere búsqueda de proveedor' : 'Unidad: ' + unitLabel}
+                        </small>
                     </div>
                 </td>
                 <td>
-                    <input type="number" class="form-control form-control-sm text-end input-cantidad-tabla fw-bold" value="${data.cantidad}" min="1">
+                    <input type="number" class="form-control form-control-sm text-center input-cantidad-tabla fw-bold" value="${data.cantidad}" min="1">
                 </td>
                 <td>
-                    <input type="number" class="form-control form-control-sm text-end input-precio-tabla bg-light border-0" value="${parseFloat(data.precio).toFixed(2)}" step="0.01">
+                    <div class="input-group input-group-sm">
+                        ${isSourcing ? '<span class="input-group-text bg-light">$</span>' : ''}
+                        <input type="number" class="form-control form-control-sm text-end input-precio-tabla ${isSourcing ? 'bg-soft-primary fw-bold' : 'bg-light border-0'}" 
+                               value="${parseFloat(data.precio || data.precio_unitario_estimado).toFixed(2)}" step="0.01">
+                    </div>
+                    ${isSourcing ? '<small class="text-primary d-block text-end">Precio Objetivo</small>' : ''}
                 </td>
                 <td class="text-end pe-4 fw-bold text-primary subtotal-display">
-                    ${Sys_Core.Format.toCurrency(data.cantidad * data.precio)}
+                    ${Sys_Core.Format.toCurrency(data.cantidad * (data.precio || data.precio_unitario_estimado))}
                 </td>
                 <td>
-                    <input type="text" class="form-control form-control-sm input-notas-tabla" value="${data.notas}" placeholder="Observaciones">
+                    <input type="text" class="form-control form-control-sm input-notas-tabla" value="${data.notas || ''}" placeholder="Observaciones">
                 </td>
                 <td class="text-center">
                     <button type="button" class="btn btn-link btn-sm text-danger p-0 btn-eliminar" title="Quitar">
@@ -350,6 +472,7 @@ const RequisitionForm = {
                     </button>
                 </td>
             </tr>`;
+            
         this.dom.$tableBody.append(html);
     },
 
@@ -378,19 +501,21 @@ const RequisitionForm = {
                 const itemId = $fila.data('itemid');
 
                 if (itemId) {
-                    // 1. EXISTE EN BD -> Hacemos petición DELETE
-                    $.ajax({
+                    // 1. EXISTE EN BD -> Petición vía Sys_Core (Maneja JWT y Loader automáticamente)
+                    Sys_Core.Net.post({
                         url: `${this.config.apiBase}/${this.state.id}/items/${itemId}`,
-                        method: 'DELETE',
-                        beforeSend: () => Sys_Core.UI.toggleLoader('.page-content', true),
-                        success: (res) => {
+                        method: 'DELETE', // Especificamos el verbo RESTful
+                        onDone: (res) => {
+                            // Esta lógica solo corre si el servidor responde status: true
                             $fila.remove();
                             this.calculateGrandTotal();
                             this.handleCheckboxSelection(); // Refrescar contador por si estaba checkeado
-                            Sys_Core.UI.notify('Partida eliminada de la base de datos.', 'info');
-                        },
-                        error: (xhr) => Sys_Core.Net.handleError(xhr),
-                        complete: () => Sys_Core.UI.toggleLoader('.page-content', false)
+                            
+                            // El mensaje de éxito lo puede mandar el backend en res.message, 
+                            // o puedes usar el notificación del Core
+                            Sys_Core.UI.notify('Partida eliminada correctamente.', 'info');
+                        }
+                        // No necesitas error: ni complete:, Sys_Core se encarga del rollback del loader y del alert.
                     });
                 } else {
                     // 2. ES NUEVO (Solo DOM) -> Solo quitamos el HTML
@@ -431,21 +556,24 @@ const RequisitionForm = {
     },
 
     // 6. SUBMIT & API COMMUNICATION
-    saveRequisition: function (action) {
+    saveRequisition: function (action, $triggerBtn) {
         if ($('.partida-row').length === 0) {
             Sys_Core.UI.alert('Tabla Vacía', 'Debe agregar al menos un artículo antes de enviar.', 'warning');
             return;
         }
-
-        $('.btn-guardar').prop('disabled', true); 
-
+        
         // Construir el payload
         const payload = {
             action: action, // 'save_draft' o 'submit_approval'
             titulo: $('input[name="titulo"]').val(),
+            // --- NUEVOS CAMPOS ---
+            tipo_requisicion: $('#chk-compra-directa').is(':checked') ? 'spot_buy' : 'standard',
+            idmetodopago: $('select[name="idmetodopago"]').val() || null,
+            url_referencia: $('input[name="url_referencia"]').val() || null,
+            // ---------------------
             fecha_requerida: $('input[name="fecha_requerida"]').val(),
             departamentoid: $('select[name="departamentoid"]').val(),
-            id_centro_costo: $('select[name="id_centro_costo"]').val(),
+            centro_costo: $('input[name="centro_costo"]').val(),
             prioridad: $('select[name="prioridad"] option:selected').text().split(' ')[0].toLowerCase(), // Enviar 'alta', 'media', 'baja'
             justificacion: $('textarea[name="justificacion"]').val(),
             articulos: []
@@ -454,13 +582,17 @@ const RequisitionForm = {
         // Recorrer tabla para extraer detalle
         $('.partida-row').each(function() {
             const $row = $(this);
+            const rowSpecs = $row.data('specs'); // Aquí recuperamos el JSON de la ficha técnica
+
             payload.articulos.push({
                 // Si tiene data-itemid, es un artículo existente (Update), si no, es nuevo (Insert)
                 idrequisicionarticulo: $row.data('itemid') || null, 
                 inventarioid: $row.data('invid'),
                 cantidad: $row.find('.input-cantidad-tabla').val(),
                 precio_unitario_estimado: $row.find('.input-precio-tabla').val(),
-                notas: $row.find('.input-notas-tabla').val()
+                notas: $row.find('.input-notas-tabla').val(),
+                // ENVIAMOS LAS SPECS SI EXISTEN
+                specs: rowSpecs || null 
             });
         });
 
@@ -474,7 +606,8 @@ const RequisitionForm = {
             url: targetUrl,
             method: httpMethod, // Pasamos explícitamente POST o PUT
             payload: payload,
-            $btn: $(document.activeElement), // Pasamos el botón que el usuario acaba de presionar
+            // FIX: Usamos el botón que recibimos, no la clase genérica
+            $btn: $triggerBtn, 
             onDone: (res) => {
                 setTimeout(() => {
                     // Redirigir al modo vista (Show) tras guardar
@@ -515,24 +648,35 @@ const RequisitionForm = {
 
     loadUserDrafts: function() {
         this.dom.$selectDrafts.empty().append('<option value="">Cargando...</option>');
-        $.ajax({
-            url: `${this.config.apiBase}`, 
-            method: 'GET',
-            data: { status: 'borrador' } 
-        }).done((res) => {
-            this.dom.$selectDrafts.empty();
-            if (res.status && res.data && res.data.length > 0) {
-                const otherDrafts = res.data.filter(req => req.idrequisicion !== this.state.id);
-                if (otherDrafts.length === 0) {
-                    this.dom.$selectDrafts.append('<option value="">No tienes otros borradores.</option>');
+        const params = new URLSearchParams({ status: 'borrador' });
+        const requestUrl = `${this.config.apiBase}?${params.toString()}`;
+
+        Sys_Core.Net.get({
+            url: requestUrl,
+            onSuccess: (res) => {
+                this.dom.$selectDrafts.empty();
+                
+                // Validación del response
+                if (res.status && res.data && res.data.length > 0) {
+                    // Evitamos que se pueda fusionar/mover al mismo borrador en el que estamos
+                    const otherDrafts = res.data.filter(req => req.idrequisicion !== this.state.id);
+                    
+                    if (otherDrafts.length === 0) {
+                        this.dom.$selectDrafts.append('<option value="">No tienes otros borradores.</option>');
+                    } else {
+                        this.dom.$selectDrafts.append('<option value="">Selecciona el borrador destino...</option>');
+                        otherDrafts.forEach(req => {
+                            this.dom.$selectDrafts.append(
+                                $('<option>', {
+                                    value: req.idrequisicion,
+                                    text: `#${req.idrequisicion} - ${req.titulo}`
+                                })
+                            );
+                        });
+                    }
                 } else {
-                    this.dom.$selectDrafts.append('<option value="">Selecciona el borrador destino...</option>');
-                    otherDrafts.forEach(req => {
-                        this.dom.$selectDrafts.append(`<option value="${req.idrequisicion}">#${req.idrequisicion} - ${req.titulo}</option>`);
-                    });
+                    this.dom.$selectDrafts.append('<option value="">No tienes borradores.</option>');
                 }
-            } else {
-                this.dom.$selectDrafts.append('<option value="">No tienes borradores.</option>');
             }
         });
     },
@@ -553,15 +697,20 @@ const RequisitionForm = {
         };
 
         const originalHtml = this.dom.$btnConfirmarMover.html();
+        const token = Sys_Core.Auth.getCookie('mrp_token');
 
         $.ajax({
             url: `${this.config.apiBase}/${this.state.id}/items/move`,
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(payload),
-            beforeSend: () => {
-                this.dom.$btnConfirmarMover.prop('disabled', true).html('<i class="ri-loader-4-line ri-spin"></i> Procesando...');
+            beforeSend: function (request) {
+                // this.dom.$btnConfirmarMover.prop('disabled', true).html('<i class="ri-loader-4-line ri-spin"></i> Procesando...');
+                if (token) {
+                    request.setRequestHeader("Authorization", `Bearer ${token}`);
+                }
             },
+
             success: (res) => {
                 this.dom.$modalMover.modal('hide');
                 Sys_Core.UI.notify(res.message, 'success');
@@ -576,7 +725,36 @@ const RequisitionForm = {
     mapPriorityToValue: function(priorityString) {
         const map = { 'baja': '3', 'media': '1', 'alta': '2', 'critica': '2' };
         return map[priorityString?.toLowerCase()] || '1';
-    }
+    },
+
+    addSpecialItemToTable: function() {
+        const form = document.getElementById('formArticuloEspecial');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const data = Object.fromEntries(new FormData(form).entries());
+        
+        // Agregamos a la tabla principal con un indicador visual
+        this.renderRow({
+            idrequisicionarticulo: null,
+            inventarioid: null, // IDENTIFICADOR DE ARTÍCULO NUEVO
+            sku: 'SOURCING',
+            descripcion: data.descripcion_sourcing,
+            unidad: 'PZA',
+            cantidad: 1, // Por defecto 1 para sourcing, el usuario ajusta en tabla
+            precio: data.precio_objetivo,
+            notas: `ESPECIAL: ${data.categoria}`,
+            isSourcing: true,
+            specs: data // Guardamos la ficha técnica oculta en el row
+        });
+
+        this.dom.$modalEspecial.modal('hide');
+        form.reset();
+        this.calculateGrandTotal();
+        Sys_Core.UI.notify('Artículo especial añadido correctamente.', 'info');
+    },
 };
 
 // Arrancar Módulo

@@ -3,18 +3,12 @@
 class Com_requisicion extends Controllers
 {
     use ApiResponser;
-
-    protected $requisitionService;
-
-    protected $usuariosModel;
-
+    
     public function __construct()
     {
         parent::__construct();
         session_start();
-
         getPermisos(COM_COMPRAS);
-        $this->usuariosModel = new UsuariosModel;
     }
 
     public function Com_requisicion() {
@@ -36,9 +30,9 @@ class Com_requisicion extends Controllers
             $this,
             "../Com_requisiciones/create",
             [
-                'page_tag' => "Nueva Requisición",
-                'page_title' => "Nueva Requisición",
-                'page_name' => "Nueva Requisición",
+                'page_tag' => "Requisición",
+                'page_title' => "Requisición",
+                'page_name' => "Requisición",
                 'page_functions_js' => "functions_com_requisiciones_create.js",
             ]
         );

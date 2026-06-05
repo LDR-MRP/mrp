@@ -16,6 +16,7 @@
 		private $strNomFiscal;
 		private $strDirFiscal;
 		private $strAvatar;
+		protected $table = "usuarios";
 
 		public function __construct()
 		{
@@ -236,7 +237,7 @@ public function updateAvatarUsuario(int $usuarioid, string $filename, string $se
      */
     public function loginUser(string $usuario, string $password): ?array {
         $query = "SELECT 
-                    u.idusuario, u.status, u.rolid, u.avatar_file, 
+                    u.idusuario, u.status, u.rolid, u.plantaid, u.avatar_file, 
                     u.nombres, u.apellidos, r.nombrerol as rol_nombre
                   FROM usuarios u
                   INNER JOIN rol r ON u.rolid = r.idrol
@@ -255,6 +256,112 @@ public function updateAvatarUsuario(int $usuarioid, string $filename, string $se
         $this->insert($query, [$id, $evento, $ip, $detalle]);
     }
 
+	/**
+	 * Resuelve los correos electrónicos de los destinatarios basados en la configuración.
+	 */
+	public function resolveRecipients(string $event, int $plantaId): array
+	{
+		$sql = "SELECT DISTINCT u.email_user 
+				FROM usuarios u
+				INNER JOIN sys_notification_distribution d ON u.rolid = d.rolid
+				WHERE d.event_key = ? 
+				AND (d.plantaid = ? OR d.plantaid IS NULL) -- Local o Global
+				AND d.is_active = 1
+				AND u.status = 1"; // Solo usuarios activos
 
+		return $this->select_all($sql, [$event, $plantaId]);
 	}
+
+	/**
+     * Localiza un usuario por su ancla de identidad (Email).
+     * Se usa para determinar si el usuario de RRHH ya existe localmente.
+     */
+    public function findByEmail(string $email): ?array
+    {
+        $sql = "SELECT idusuario, email_user, status, rolid, plantaid
+                FROM {$this->table} 
+                WHERE email_user = :email 
+                LIMIT 1";
+        
+        $params = [':email' => strtolower($email)];
+        $request = $this->select($sql, $params);
+        
+        return $request ?: null;
+    }
+
+    /**
+     * Recupera el perfil completo para hidratación de sesión (SSO/Legacy).
+     * Incluye JOINs para obtener nombres de roles y plantas.
+     */
+    public function loginUserById(int $idUsuario): ?array
+    {
+        $sql = "SELECT 
+                    u.idusuario, 
+                    u.nombres, 
+                    u.apellidos, 
+                    u.email_user, 
+                    u.rolid, 
+                    u.plantaid, 
+                    u.status, 
+                    u.avatar_file,
+                    r.nombrerol as rol_nombre,
+                    p.nombre_planta as planta_nombre
+                FROM {$this->table} u
+                INNER JOIN rol r ON u.rolid = r.idrol
+                INNER JOIN mrp_planta p ON u.plantaid = p.idplanta
+                WHERE u.idusuario = :id 
+                  AND u.status != 0 
+                LIMIT 1";
+
+        $params = [':id' => $idUsuario];
+        $request = $this->select($sql, $params);
+
+        return $request ?: null;
+    }
+
+    /**
+     * Inserta un nuevo usuario provicionado desde el sistema de RRHH.
+     * Implementa el 'Deber Ser' de integridad de datos.
+     */
+    public function insertUserFromSso(array $data): int
+    {
+        $sql = "INSERT INTO {$this->table} (
+                    nombres, 
+                    apellidos, 
+                    email_user, 
+                    password, 
+                    rolid, 
+                    plantaid, 
+                    status, 
+                    avatar_file, 
+                    fecha_creacion
+                ) VALUES (
+                    :nom, 
+                    :ape, 
+                    :email, 
+                    :pass, 
+                    :rol, 
+                    :planta, 
+                    :status, 
+                    :avatar, 
+                    NOW()
+                )";
+
+        $params = [
+            ':nom'    => $data['nombres'],
+            ':ape'    => $data['apellidos'],
+            ':email'  => strtolower($data['email']),
+            ':pass'   => $data['password'], // 'SSO_LDR_IDENTITY' o hash dummy
+            ':rol'    => (int)$data['rolid'],
+            ':planta' => (int)$data['plantaid'],
+            ':status' => (int)$data['status'],
+            ':avatar' => $data['avatar_file'] ?? 'default.png'
+        ];
+
+        // El método insert de tu Core devuelve el ID insertado
+        $request_insert = parent::insert($sql, $params);
+        
+        return (int)$request_insert;
+    }
+}
  ?>

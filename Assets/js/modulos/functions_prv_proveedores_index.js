@@ -7,15 +7,22 @@
 
 $(document).ready(function () {
 
+    const token = Sys_Core.Auth.getCookie('mrp_token');
+
     /**
      * @description Inicialización de la tabla principal de proveedores.
      */
     const tabla = $('#tblProveedores').DataTable({
         "ajax": {
-            "url": `${Sys_Core.Config.baseUrl}/prv_proveedor/index`,
+            "url": `${Sys_Core.Config.baseUrl}/api/v1/suppliers`,
             "dataSrc": "data",
-            "beforeSend": () => Sys_Core.UI.toggleLoader('#tblVendors', true),
-            "complete": () => Sys_Core.UI.toggleLoader('#tblVendors', false)
+            beforeSend: function (request) {
+                Sys_Core.UI.toggleLoader('#tblProveedores', true);
+                if (token) {
+                    request.setRequestHeader("Authorization", `Bearer ${token}`);
+                }
+            },
+            "complete": () => Sys_Core.UI.toggleLoader('#tblProveedores', false)
         },
         "columns": [
             { "data": "created_at", "render": (data) => `<span class="fw-bold">${data}</span>` },
@@ -41,7 +48,7 @@ $(document).ready(function () {
             },
             { "data": "nombre_comercial" },
             { "data": "razon_social" },
-            { "data": "id_cuenta_contable" },
+            { "data": "cuenta_contable" },
             { "data": "rfc" },
             { "data": "origen" },
             { "data": "telefono" },
@@ -114,7 +121,7 @@ $(document).ready(function () {
         }).then((result) => {
             if (result.isConfirmed) {
                 Sys_Core.Net.post({
-                    url: `${Sys_Core.Config.baseUrl}/prv_proveedor/delete`,
+                    url: `${Sys_Core.Config.baseUrl}/prv_proveedor/delete`, // TODO
                     payload: $.param({ idproveedor, rfc }),
                     successMsg: `Removido correctamente.`,
                     onDone: () => {
@@ -126,16 +133,16 @@ $(document).ready(function () {
     });
 
     // Definimos qué estatus de la DB va a qué ID de HTML
-    const requisicionesMap = {
+    const proveedoresMap = {
         'total': 'kpi-total',
-        '1': 'kpi-activos',
-        '0': 'kpi-inactivos'
+        'aprobado': 'kpi-activos',
+        'prospecto': 'kpi-inactivos'
     };
 
     // Lanzamos la actualización recurrente cada 30 segundos
     Sys_Core.UI.Dashboard.refreshKPIs(
-        Sys_Core.Config.baseUrl + '/prv_proveedor/getKpi', 
-        requisicionesMap, 
+        Sys_Core.Config.baseUrl + '/api/v1/suppliers/kpis', 
+        proveedoresMap, 
         true
     );
 });

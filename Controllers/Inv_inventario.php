@@ -63,11 +63,9 @@ class Inv_inventario extends Controllers
 			$idinventario     = intval($_POST['idinventario'] ?? 0);
 			$cve_articulo     = strClean($_POST['cve_articulo']);
 			$descripcion      = strClean($_POST['descripcion']);
-			$lineaproductoid  = intval($_POST['lineaproductoid'] ?? 0);
 			$tipo_elemento    = strClean($_POST['tipo_elemento']); // P S K
 			$unidad_entrada   = strClean($_POST['unidad_entrada'] ?? '');
 			$unidad_salida    = strClean($_POST['unidad_salida'] ?? '');
-			$ubicacion = strClean($_POST['ubicacion'] ?? 'GENERAL');
 			$unidad_empaque = strClean($_POST['unidad_empaque'] ?? '');
 			$ultimo_costo = floatval($_POST['ultimo_costo'] ?? 0);
 			$factor_unidades  = floatval($_POST['factor_unidades'] ?? 1);
@@ -85,21 +83,6 @@ class Inv_inventario extends Controllers
 			$precioUnitario   = floatval($_POST['precio'] ?? 0);
 			$idimpuesto = intval($_POST['idimpuesto'] ?? 1);
 
-
-
-
-
-
-			if ($lineaproductoid <= 0) {
-				$arrResponse = [
-					'status' => false,
-					'msg' => 'Debes seleccionar una línea de producto válida'
-				];
-				header('Content-Type: application/json; charset=utf-8');
-				echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-				die();
-			}
-
 			// =========================
 			// INSERT / UPDATE
 			// =========================
@@ -114,10 +97,8 @@ class Inv_inventario extends Controllers
 						$unidad_salida,
 						$unidad_empaque,
 						$ultimo_costo,
-						$lineaproductoid,
 						$tipo_elemento,
 						$factor_unidades,
-						$ubicacion,
 						$tiempo_surtido,
 						$peso,
 						$volumen,
@@ -127,12 +108,20 @@ class Inv_inventario extends Controllers
 					);
 					$option = 1;
 
+					if ($request === "exist") {
+						echo json_encode([
+							'status' => false,
+							'msg' => 'La clave del artículo ya existe'
+						], JSON_UNESCAPED_UNICODE);
+						die();
+					}
+
 					// =========================
 					// INSERTAR IMPUESTO
 					// =========================
 
 					if (is_numeric($request) && $request > 0) {
-						$this->model->insertInventarioImpuesto($request, $idimpuesto);
+						$this->model->insertInventarioImpuestoform($request, $idimpuesto, 2);
 					}
 
 
@@ -155,7 +144,7 @@ class Inv_inventario extends Controllers
 
 				if ($_SESSION['permisosMod']['u']) {
 
-					$estado = 2; // activo por defecto
+					$estado = 2;
 
 					$request = $this->model->updateInventario(
 						$idinventario,
@@ -165,18 +154,27 @@ class Inv_inventario extends Controllers
 						$unidad_salida,
 						$unidad_empaque,
 						$ultimo_costo,
-						$lineaproductoid,
 						$tipo_elemento,
 						$factor_unidades,
-						$ubicacion,
 						$tiempo_surtido,
 						$peso,
 						$volumen,
 						$serie,
 						$lote,
 						$pedimiento,
-						$estado           // ✅ PARAMETRO QUE FALTABA
+						$estado
 					);
+
+					// AQUI VA
+					if ($request && !empty($clave_alterna) && !empty($tipo_asignacion)) {
+
+						$this->model->upsertClaveAlterna(
+							$idinventario,
+							$clave_alterna,
+							$tipo_asignacion
+						);
+					}
+
 					$option = 2;
 				}
 			}
@@ -233,7 +231,7 @@ class Inv_inventario extends Controllers
 			if (
 				$request > 0 &&
 				$option == 1 && // SOLO ALTA NUEVA
-				in_array($tipo_elemento, ['P', 'C', 'H']) &&
+				in_array($tipo_elemento, ['P', 'C', 'H', 'R']) &&
 				$almacenid > 0 &&
 				$cantidadInicial > 0 &&
 				$costoUnitario > 0
@@ -311,6 +309,7 @@ class Inv_inventario extends Controllers
 				if ($arrData[$i]['tipo_elemento'] == 'K') $arrData[$i]['tipo_elemento'] = 'Kit';
 				if ($arrData[$i]['tipo_elemento'] == 'C') $arrData[$i]['tipo_elemento'] = 'Componente';
 				if ($arrData[$i]['tipo_elemento'] == 'H') $arrData[$i]['tipo_elemento'] = 'Herramienta';
+				if ($arrData[$i]['tipo_elemento'] == 'R') $arrData[$i]['tipo_elemento'] = 'Refacción';
 
 
 				// Botones
@@ -336,7 +335,7 @@ class Inv_inventario extends Controllers
                                 <i class="ri-delete-bin-5-fill"></i>
                             </button>';
 				}
-				if (in_array($tipoRaw, ['P', 'C', 'H', 'K'])) {
+				if (in_array($tipoRaw, ['P', 'C', 'H', 'K', 'R'])) {
 					$btnConfig = '<button class="btn btn-sm btn-soft-primary" title="Configurar" onClick="fntConfigInventario(' . $arrData[$i]['idinventario'] . ')"><i class="ri-settings-3-fill"></i></button>';
 				}
 
@@ -374,8 +373,7 @@ class Inv_inventario extends Controllers
 					];
 				} else {
 
-					$principal = $arrData[0];
-					$principal['claves'] = $arrData;
+					$principal = $arrData;
 
 					// 🔥 NUEVO: TRAER IMÁGENES
 					$imagenes = $this->model->selectImagenesInventario($intidalmacen);
@@ -586,23 +584,24 @@ class Inv_inventario extends Controllers
 		die();
 	}
 
-	//----------------------------------------------------------------------IMPUESTOS
-	public function getSelectImpuestos()
-	{
-		$data = $this->model->selectImpuestos();
+//----------------------------------------------------------------------IMPUESTOS
+public function getSelectImpuestos()
+{
+    $data = $this->model->selectImpuestosCfg();
 
-		$html = '<option value="">Seleccione impuesto</option>';
+    $html = '<option value="">Seleccione impuesto</option>';
 
-		foreach ($data as $row) {
-			$selected = ($row['idimpuesto'] == 1) ? 'selected' : '';
-			$html .= '<option value="' . $row['idimpuesto'] . '" ' . $selected . '>'
-				. $row['cve_impuesto'] . ' - ' . $row['descripcion'] .
-				'</option>';
-		}
+    foreach ($data as $row) {
+        $selected = ($row['idimpuesto'] == 1) ? 'selected' : '';
 
-		echo $html;
-		die();
-	}
+        $html .= '<option value="' . $row['idimpuesto'] . '" ' . $selected . '>'
+            . $row['descripcion'] .
+            '</option>';
+    }
+
+    echo $html;
+    die();
+}
 
 	//----------------------------------------------------------------------MONEDAS
 	public function getSelectMonedas()
@@ -699,19 +698,21 @@ class Inv_inventario extends Controllers
 
 		if ($_POST) {
 
-			if (empty($_POST['inventarioid']) || empty($_POST['idprecio'])) {
+			if (empty($_POST['inventarioid']) || empty($_POST['idprecio']) || empty($_POST['precio'])) {
 				echo json_encode(['status' => false, 'msg' => 'Datos obligatorios']);
 				die();
 			}
 
 			$inventarioid = intval($_POST['inventarioid']);
 			$idprecio = intval($_POST['idprecio']);
+			$precio = floatval($_POST['precio']);
 			$fecha = date('Y-m-d H:i:s');
 			$estado = 2;
 
 			$request = $this->model->insertInventarioPrecio(
 				$inventarioid,
 				$idprecio,
+				$precio,
 				$fecha,
 				$estado
 			);
@@ -1212,13 +1213,14 @@ class Inv_inventario extends Controllers
 
 		$inventarioid = intval($_POST['inventarioid']);
 		$ubicacionid = intval($_POST['ubicacionid']);
+		$cantidad = intval($_POST['cantidad']);
 		$fecha = date('Y-m-d H:i:s');
 
 		$resp = $this->model->insertInventarioUbicacion(
 			$inventarioid,
 			$ubicacionid,
-			$fecha,
-			2
+			$cantidad,
+			$fecha
 		);
 
 		if ($resp === "exist") {
@@ -1263,5 +1265,96 @@ class Inv_inventario extends Controllers
 	public function index()
 	{
 		return $this->apiResponse($this->inventarioService->items(sanitizeGet()));
+	}
+
+
+	// ================= PROVEEDORES =================
+
+	public function getSelectProveedoresCfg()
+	{
+		$data = $this->model->selectProveedoresCfg();
+
+		$html = '<option value="">Seleccione un proveedor</option>';
+		foreach ($data as $row) {
+			$html .= '<option value="' . $row['id_proveedor'] . '">' . $row['nombre_comercial'] . '</option>';
+		}
+
+		echo $html;
+		die();
+	}
+
+	public function setProveedor()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		if (empty($_POST['inventarioid']) || empty($_POST['id_proveedor'])) {
+			echo json_encode(['status' => false, 'msg' => 'Datos incompletos']);
+			die();
+		}
+
+		$inventarioid = intval($_POST['inventarioid']);
+		$id_proveedor   = intval($_POST['id_proveedor']);
+
+		$resp = $this->model->insertInventarioProveedorform($inventarioid, $id_proveedor, 2);
+
+		if ($resp === "exist") {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'Este proveedor ya está asignado al producto'
+			]);
+		} elseif ($resp > 0) {
+			echo json_encode([
+				'status' => true,
+				'msg' => 'Proveedor asignado correctamente'
+			]);
+		} else {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'Error al asignar proveedor'
+			]);
+		}
+
+		die();
+	}
+
+
+	public function getProveedoresAsignados($idinventario)
+	{
+		$data = $this->model->getProveedoresAsignados($idinventario);
+
+		header('Content-Type: application/json; charset=utf-8');
+		echo json_encode([
+			'status' => true,
+			'data' => $data
+		]);
+		die();
+	}
+
+	// ================= CANTIDADES =================
+
+	public function getCantidadesProducto()
+	{
+		if ($_POST) {
+
+			$inventarioid = intval($_POST['inventarioid']);
+
+			$arrData = $this->model->selectCantidadesProducto($inventarioid);
+
+			echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+			die();
+		}
+	}
+
+	public function getAlmacenesProducto()
+	{
+		if ($_POST) {
+
+			$inventarioid = intval($_POST['inventarioid']);
+
+			$arrData = $this->model->selectAlmacenesProducto($inventarioid);
+
+			echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+			die();
+		}
 	}
 }

@@ -18,19 +18,38 @@ class RequisitionService
 
     protected Com_requisicionModel $requisicionModel;
 
-    protected Inv_inventarioModel $inventarioModel;
+    protected PurchaseOrderService $purchaseOrderService;
 
-    protected $db;
+    protected readonly Com_ordenCompraModel $ordenCompraModel;
+
+    protected object $db;
 
     public function __construct()
     {
         $this->requisicionModel = new Com_requisicionModel;
+        $this->purchaseOrderService = new PurchaseOrderService;
+        $this->ordenCompraModel = new Com_ordenCompraModel;
         $this->db = $this->requisicionModel->getConexion();
     }
 
-    public function index(): ServiceResponse
+    public function index(array $filters, array $userContext): ServiceResponse
     {
-        return ServiceResponse::success($this->requisicionModel->getAllRequisitions());
+        $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+        $scope = $role?->getScope() ?? 'propio';
+
+        // APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
+        $scopeFilters = match($scope) {
+            'propio' => ['usuarioid' => (int)$userContext['id']],
+            'planta'  => ['plantaid' => (int)$userContext['plantaid']],
+            'total'  => true,
+            default  => false
+        };
+
+        if(!empty($scopeFilters) && is_array($scopeFilters)) {
+            $filters += $scopeFilters;
+        }
+
+        return ServiceResponse::success($this->requisicionModel->getAllRequisitions($filters));
     }
 
     /**
@@ -38,33 +57,61 @@ class RequisitionService
      * Incluye una validación de seguridad para prevenir que un usuario vea requisiciones ajenas (IDOR).
      *
      * @param int $requisitionId ID de la requisición a obtener.
-     * @param int $userId ID del usuario que solicita la información.
+     * @param array $userContext contexto del usuario que solicita la información.
      * @return ServiceResponse Objeto con los datos de la requisición o un error si no se encuentra/no tiene permisos.
      */
-    public function getRequisitionWithDetails(int $requisitionId, int $userId): ServiceResponse
+    public function getRequisitionWithDetails(int $requisitionId, array $userContext): ServiceResponse
     {
         try {
+            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+            $scope = $role?->getScope() ?? 'propio';
+
             // 1. Obtener la cabecera
-            $requisition = $this->requisicionModel->getRequisition($requisitionId);
+            $requisition = $this->requisicionModel->getRequisitionForUpdate($requisitionId);
 
             // 2. Validación de Existencia
             if (!$requisition) {
                 throw new \Exception("La requisición #{$requisitionId} no existe.", 404);
             }
 
+            // APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
+            $isAllowed = match($scope) {
+                'propio' => (int)$requisition['usuarioid'] === (int)$userContext['id'],
+                'planta'  => (int)$requisition['plantaid'] === (int)$userContext['plantaid'],
+                'total'  => true,
+                default  => false
+            };
+
             // 3. Validación de Seguridad (IDOR de Lectura)
-            // Evita que el Usuario A lea por URL la requisición del Usuario B
-            // TODO: JWT
-            // if ((int)$requisition['usuarioid'] !== $userId) {
-            //     throw new \Exception("Security Error: No tienes permisos para ver esta requisición.", 403);
-            // }
+            if (!$isAllowed) {
+                return ServiceResponse::error("Security Error: No tienes permisos para ver esta requisición.", 403);
+            }
 
             // 4. Obtener las partidas
             $items = $this->requisicionModel->getRequisitionItems($requisitionId);
+            $balances = $this->requisicionModel->getRequisitionBalances($requisitionId);
 
-            // 5. Ensamblar la respuesta para el Frontend
-            // Anidamos las partidas dentro del objeto principal
-            $requisition['items'] = $items;
+            // Indexamos los saldos por ID de partida para acceso instantáneo
+            $balanceMap = array_column($balances, null, 'idrequisicionarticulo');
+
+            // Enriquecemos el objeto
+            $requisition['items'] = array_map(function($item) use ($balanceMap) {
+                $b = $balanceMap[$item['idrequisicionarticulo']] ?? null;
+                
+                $item['qty_comprada']  = (float)($b['cantidad_ya_comprada'] ?? 0);
+                $item['qty_pendiente'] = (float)($b['cantidad_pendiente'] ?? $item['cantidad']);
+                
+                // Calculamos el porcentaje de surtido (0 a 100)
+                $item['porcentaje_surtido'] = $item['cantidad'] > 0 
+                    ? round(($item['qty_comprada'] / $item['cantidad']) * 100, 2) 
+                    : 0;
+
+                return $item;
+            }, $items);
+
+            // 5. OBTENER ÓRDENES DE COMPRA RELACIONADAS (The Missing Link)
+            // This ensures the frontend knows which POs were generated from this Req.
+            $requisition['related_pos'] = $this->ordenCompraModel->getRelatedPOsByRequisition($requisitionId);
 
             return ServiceResponse::success(
                 $requisition,
@@ -72,11 +119,21 @@ class RequisitionService
                 200
             );
 
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'getRequisitionWithDetails',
+                'id_user' => $userContext['id']
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            
         } catch (\Exception $e) {
             $this->logMessage($e, \LogLevel::WARNING, [
                 'action' => 'getRequisitionWithDetails',
                 'requisition_id' => $requisitionId,
-                'user_id' => $userId
+                'user_id' => $userContext['id']
             ]);
 
             $code = $e->getCode() !== 0 ? $e->getCode() : 500;
@@ -88,10 +145,10 @@ class RequisitionService
      * Almacena una nueva requisición, aplicando reglas laxas (borrador) o estrictas (enviar a aprobación)
      * basándose en el campo 'action' del payload.
      *
-     * @param int $userId ID del usuario que crea la solicitud.
+     * @param array $userContext ID del usuario que crea la solicitud.
      * @return ServiceResponse Objeto con el resultado de la operación.
      */
-    public function store(int $userId): ServiceResponse
+    public function store(array $userContext): ServiceResponse
     {
         $request = new StoreRequisitionRequest();
 
@@ -108,9 +165,13 @@ class RequisitionService
 
             // 3. CREAR CABECERA
             $headerData = [
-                'user_id'         => $userId,
+                'user_id'         => $userContext['id'],
+                'planta_id'       => $userContext['plantaid'],
                 'estatus'         => $estatusFinal,
                 'titulo'          => $payload['titulo'],
+                'tipo_requisicion' => $payload['tipo_requisicion'] ?? 'standard',
+                'idmetodopago'     => $payload['idmetodopago'] ?: null,
+                'url_referencia'   => $payload['url_referencia'] ?: null,
                 'departamentoid'  => !empty($payload['departamentoid']) ? $payload['departamentoid'] : null,
                 'fecha_requerida' => !empty($payload['fecha_requerida']) ? $payload['fecha_requerida'] : null,
                 'prioridad'       => $payload['prioridad'] ?? 'media',
@@ -127,14 +188,31 @@ class RequisitionService
             // 4. CREAR PARTIDAS (Si existen)
             if (!empty($payload['articulos'])) {
                 foreach ($payload['articulos'] as $item) {
+                    // Lógica de protección: Si el ID viene vacío o como string '', lo convertimos a NULL real
+                    $invId = (!empty($item['inventarioid'])) ? (int)$item['inventarioid'] : null;
+
                     $itemData = [
-                        'inventarioid'             => $item['inventarioid'],
+                        'inventarioid'             => $invId, // <-- Ahora enviamos NULL real o un entero
                         'cantidad'                 => (float)($item['cantidad'] ?? 0),
                         'precio_unitario_estimado' => (float)($item['precio_unitario_estimado'] ?? 0),
                         'notas'                    => $item['notas'] ?? ''
                     ];
                     
-                    $this->requisicionModel->createDetail($requisitionId, $itemData);
+                    // 1. Insertamos la partida y obtenemos su ID
+                    $idReqArticulo = $this->requisicionModel->createDetail($requisitionId, $itemData);
+
+                    // --- NUEVA LÓGICA: SOURCING ---
+                    // Si no tiene inventarioid y trae el nodo 'specs', guardamos la ficha técnica
+                    if (is_null($itemData['inventarioid']) && !empty($item['specs'])) {
+                        $specData = $item['specs'];
+                        $specData['requisicionid'] = $requisitionId;
+                        $specData['idrequisicionarticulo'] = $idReqArticulo;
+
+                        // Llamamos al método que ya procesa el guardado en 'com_requisicion_items_nuevos'
+                        // Nota: Se debe asegurar que este método no cierre la transacción
+                        $this->persistSpecialSpecs($specData);
+                    }
+                    // ------------------------------
                 }
 
                 // 5. RECALCULAR MONTO ESTIMADO (Consistencia Financiera)
@@ -143,7 +221,7 @@ class RequisitionService
 
             // 6. LOG DE AUDITORÍA
             $auditMsg = $isSubmit ? 'Creada y enviada a aprobación.' : 'Creada como borrador.';
-            $this->requisicionModel->logAudit($requisitionId, AuditAction::CREATED, $auditMsg, $userId);
+            $this->requisicionModel->logAudit($requisitionId, AuditAction::CREATED, $auditMsg, $userContext['id']);
 
             $this->db->commit();
 
@@ -165,7 +243,7 @@ class RequisitionService
             }
             $this->logMessage($p, \LogLevel::CRITICAL, [
                 'action' => 'storeRequisition',
-                'id_user' => $userId
+                'id_user' => $userContext['id']
             ]);
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
             
@@ -187,44 +265,55 @@ class RequisitionService
      * Realiza una sincronización completa de las partidas (UPSERT lógico y eliminación de huérfanas).
      *
      * @param int $requisitionId ID de la requisición a actualizar.
-     * @param int $userId ID del usuario que realiza la edición.
+     * @param array $userContext ID del usuario que realiza la edición.
      * @return ServiceResponse Objeto con el resultado de la operación.
      */
-    public function update(int $requisitionId, int $userId): ServiceResponse
+    public function update(int $requisitionId, array $userContext): ServiceResponse
     {
         $request = new \Requests\Requisition\StoreRequisitionRequest();
 
         try {
             $request->validate();
             $payload = $request->all();
-
             $this->db->beginTransaction();
-
-            // 1. VALIDACIONES DE SEGURIDAD Y COMPLIANCE
             $existingReq = $this->requisicionModel->getRequisition($requisitionId);
             
             if (!$existingReq) {
                 throw new \Exception("La requisición #{$requisitionId} no existe.", 404);
-            }
-            
+            }            
             // IMPORTANTE: Solo se puede editar si está en borrador. 
             // Si ya fue enviada a aprobación, está bloqueada.
             if ($existingReq['estatus'] !== 'borrador') {
                 throw new \Exception("Compliance Error: No se puede editar una requisición que ya no es un borrador.", 403);
             }
-            // TODO: JWT
-            // if ($existingReq['usuarioid'] !== $userId) {
-            //     throw new \Exception("Security Error: No tienes permisos para editar esta requisición.", 403);
-            // }
 
-            // 2. DETERMINAR EL NUEVO ESTATUS FINAL
+            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+            $scope = $role?->getScope() ?? 'propio';
+            
+            // Aplicación de la matriz de visibilidad
+            $isAllowed = match($scope) {
+                'propio' => (int)$existingReq['usuarioid'] === (int)$userContext['id'],
+                'planta'  => (int)$existingReq['plantaid'] === (int)$userContext['plantaid'],
+                'total'  => true,
+                default  => false
+            };
+
+            // Validación de Seguridad
+            if (!$isAllowed) {
+                return ServiceResponse::error("Security Error: No tienes permisos para editar esta requisición.", 403);
+            }
+
+            // Determinar el nuevo estatus final
             $isSubmit = ($payload['action'] === 'submit_approval');
             $estatusFinal = $isSubmit ? 'pendiente' : 'borrador';
 
-            // 3. ACTUALIZAR CABECERA
+            // Actualizar cabecera
             $headerData = [
                 'estatus'         => $estatusFinal,
                 'titulo'          => $payload['titulo'],
+                'tipo_requisicion' => $payload['tipo_requisicion'] ?? 'standard',
+                'idmetodopago'     => $payload['idmetodopago'] ?: null,
+                'url_referencia'   => $payload['url_referencia'] ?: null,
                 'departamentoid'  => !empty($payload['departamentoid']) ? $payload['departamentoid'] : null,
                 'fecha_requerida' => !empty($payload['fecha_requerida']) ? $payload['fecha_requerida'] : null,
                 'prioridad'       => $payload['prioridad'] ?? 'media',
@@ -233,7 +322,7 @@ class RequisitionService
 
             $headerUpdated = $this->requisicionModel->updateHeader($requisitionId, $headerData);
 
-            // 4. PROCESAR PARTIDAS (UPSERT Lógico)
+            // Procesar partidas (UPSERT Lógico)
             if (!empty($payload['articulos'])) {
                 
                 // Recolectamos los IDs que nos mandó el Frontend para saber cuáles NO borrar
@@ -241,9 +330,11 @@ class RequisitionService
 
                 foreach ($payload['articulos'] as $item) {
                     $itemId = $item['idrequisicionarticulo'] ?? null;
+                    // Lógica de protección: Si el ID viene vacío o como string '', lo convertimos a NULL real
+                    $invId = (!empty($item['inventarioid'])) ? (int)$item['inventarioid'] : null;
                     
                     $itemData = [
-                        'inventarioid'             => $item['inventarioid'],
+                        'inventarioid'             => $invId, // <-- Ahora enviamos NULL real o un entero
                         'cantidad'                 => (float)($item['cantidad'] ?? 0),
                         'precio_unitario_estimado' => (float)($item['precio_unitario_estimado'] ?? 0),
                         'notas'                    => $item['notas'] ?? ''
@@ -256,22 +347,25 @@ class RequisitionService
                         if ($existingItem) {
                             $this->requisicionModel->updateDetail($itemId, $itemData);
                             $incomingItemIds[] = $itemId;
+                            
+                            // --- FIX: ASIGNAR EL ID ACTUAL ---
+                            $currentIdArt = (int)$itemId; 
                         }
                     } else {
                         // B. INSERTAR NUEVA PARTIDA
-                        $this->requisicionModel->createDetail($requisitionId, $itemData);
-                        // El nuevo ID lo podríamos obtener si createDetail lo retorna, pero no es estrictamente necesario aquí
+                        $currentIdArt = $this->requisicionModel->createDetail($requisitionId, $itemData);
                     }
-                }
 
-                // C. LIMPIEZA: Eliminar partidas que estaban en BD pero que el usuario quitó en la UI 
-                // antes de darle a Guardar (Si no implementaste la eliminación inline)
-                // Opcional, pero recomendado para mantener sincronía perfecta.
-                if (!empty($incomingItemIds)) {
-                     $this->requisicionModel->deleteMissingItems($requisitionId, $incomingItemIds);
-                } else {
-                    // Si mandó artículos pero todos eran nuevos, no borramos nada.
-                    // Si el array de artículos viene vacío, borramos todos los existentes (vació el carrito).
+                    // --- NUEVA LÓGICA: SOURCING (Edición) ---
+                    // Aplicamos el mismo check: si es sourcing y trae specs, persistimos
+                    if (is_null($itemData['inventarioid']) && !empty($item['specs'])) {
+                        $specData = $item['specs'];
+                        $specData['precio_objetivo'] = $itemData['precio_unitario_estimado'];
+                        $specData['requisicionid'] = $requisitionId;
+                        $specData['idrequisicionarticulo'] = $currentIdArt;
+                        $this->persistSpecialSpecs($specData);
+                    }
+                    // ----------------------------------------
                 }
 
             } else {
@@ -279,12 +373,12 @@ class RequisitionService
                 $this->requisicionModel->deleteAllItems($requisitionId);
             }
 
-            // 5. RECALCULAR MONTO ESTIMADO
+            // Recalcular monto estimado
             $this->requisicionModel->updateEstimatedAmount($requisitionId);
 
-            // 6. LOG DE AUDITORÍA
+            // Log de auditoría
             $auditMsg = $isSubmit ? 'Editada y enviada a aprobación.' : 'Borrador actualizado.';
-            $this->requisicionModel->logAudit($requisitionId, AuditAction::UPDATED, $auditMsg, $userId);
+            $this->requisicionModel->logAudit($requisitionId, AuditAction::UPDATED, $auditMsg, $userContext['id']);
 
             $this->db->commit();
 
@@ -299,7 +393,7 @@ class RequisitionService
             return ServiceResponse::validation(errors: $i->getMessage());
         } catch (\PDOException $p) {
             if ($this->db->inTransaction()) $this->db->rollBack();
-            $this->logMessage($p, \LogLevel::CRITICAL, ['action' => 'updateRequisition', 'id_user' => $userId]);
+            $this->logMessage($p, \LogLevel::CRITICAL, ['action' => 'updateRequisition', 'id_user' => $userContext['id']]);
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
@@ -309,13 +403,28 @@ class RequisitionService
         }
     }
 
-    public function moveItems(int $sourceRequisitionId, int $userId): ServiceResponse
+    /**
+     * Mueve partidas específicas entre requisiciones en estado borrador.
+     * 
+     * Soporta dos flujos:
+     * 1. Split: Crea una nueva requisición y mueve las partidas hacia ella.
+     * 2. Merge/Transfer: Mueve partidas hacia otra requisición existente.
+     * 
+     * @param int $sourceRequisitionId ID de la requisición de origen.
+     * @param array $userContext ID del usuario autenticado (inyectado por Middleware).
+     * 
+     * @return ServiceResponse Objeto estandarizado con el resultado de la operación.
+     * 
+     * @throws \Exception Si el origen no es borrador, si hay violación de IDOR, 
+     *                    o si las cantidades a mover exceden la existencia.
+     */
+    public function moveItems(int $sourceRequisitionId, array $userContext): ServiceResponse
     {
         $request = new MoveRequisitionItemsRequest();
+        $request->validate();
+        $payload = $request->all();
 
         try {
-            $request->validate();
-            $payload = $request->all();
             
             $this->db->beginTransaction();
 
@@ -328,16 +437,15 @@ class RequisitionService
             if ($sourceReq['estatus'] !== 'borrador') {
                 throw new \Exception("Compliance Error: Solo se pueden mover partidas de una requisición en estado DRAFT.", 403);
             }
-            // TODO: JWT
-            // if ($sourceReq['usuarioid'] !== $userId) {
-            //     throw new \Exception("Security Error: No tienes permisos sobre este DRAFT.", 403); // Prevención IDOR
-            // }
+            if ($sourceReq['usuarioid'] !== $userContext['id']) {
+                throw new \Exception("Security Error: No tienes permisos sobre este DRAFT.", 403); // Prevención IDOR
+            }
 
             // 2. RESOLVER EL DESTINO (Split o Merge)
             $targetReqId = null;
             if ($payload['create_new'] === true) {
                 // Caso: Urgencia o Capex/Opex (Crear nuevo DRAFT)
-                $targetReqId = $this->createNewDraft($userId, "Split de Requisición #{$sourceRequisitionId}");
+                $targetReqId = $this->createNewDraft($userContext, "Split de Requisición #{$sourceRequisitionId}");
             } else {
                 // Caso: Mover a DRAFT existente
                 $targetReqId = $payload['target_requisition_id'];
@@ -349,38 +457,61 @@ class RequisitionService
                 if ($targetReq['estatus'] !== 'borrador') {
                     throw new \Exception("Compliance Error: El destino también debe ser un DRAFT.", 403);
                 }
+                // --- FIX DE SEGURIDAD (IDOR CRUZADO) ---
+                // Validamos que el destino también pertenezca al usuario logueado
+                if ((int)$targetReq['usuarioid'] !== $userContext['id']) {
+                    throw new \Exception("Security Error: No tienes permisos sobre la requisición destino #{$targetReqId}.", 403);
+                }
             }
     
             // 3. MOVER LAS PARTIDAS (Lógica iterativa)
             $itemsErrors = [];
             foreach ($payload['items'] as $item) {
 
-                // A) Leer TODO el registro a la memoria RAM primero (y validamos IDOR de la partida)
-                $sourceItemDetails = $this->requisicionModel->getItemDetails($sourceRequisitionId, $item['requisition_item_id']);
+                $idItemOrigen = (int)$item['requisition_item_id'];
+                $qtyToMove = (float)$item['qty_to_move'];
+
+                // A) Leer registro bloqueando fila (FOR UPDATE)
+                $sourceItemDetails = $this->requisicionModel->getItemDetailsForUpdate($sourceRequisitionId, $idItemOrigen);
                 
                 if (!$sourceItemDetails) {
-                    $itemsErrors[] = $item['requisition_item_id'] . " (No existe o no te pertenece)";
+                    $itemsErrors[] = $idItemOrigen . " (No existe o no te pertenece)";
                     continue;
                 }
 
                 $currentQty = (float) $sourceItemDetails['cantidad'];
                 
                 if ($item['qty_to_move'] > $currentQty) {
-                    $itemsErrors[] = $item['requisition_item_id'] . " (Stock insuficiente)";
+                    $itemsErrors[] = $idItemOrigen . " (Stock insuficiente)";
                     continue;
                 }
-                    
-                // B) Restar del Origen (o eliminar si se mueve todo)
-                // El registro desaparece de MySQL, pero sigue vivo en la variable $sourceItemDetails
-                if ($item['qty_to_move'] == $currentQty) {
-                    $this->requisicionModel->deleteItemFromRequisition($item['requisition_item_id']);
-                } else {
-                    $this->requisicionModel->reduceItemQty($item['requisition_item_id'], $item['qty_to_move']);
-                }
 
-                // C) Insertar/Sumar al Destino
-                // Pasamos el array de datos en memoria, evitando volver a consultar MySQL
-                $this->addItemToRequisition($targetReqId, $sourceItemDetails, $item['qty_to_move']);
+                // --- INICIO DE LÓGICA DE TRANSFERENCIA DE SOURCING ---
+
+                // B) Insertar/Sumar al Destino PRIMERO
+                // IMPORTANTE: addItemToRequisition DEBE devolver el ID insertado en la nueva requisición
+                $newIdItemDestino = $this->addItemToRequisition($targetReqId, $sourceItemDetails, $qtyToMove);
+                    
+                // C) ¿Es un movimiento TOTAL de la partida?
+                if ($qtyToMove == $currentQty) {
+                    /**
+                     * RE-PARENTING: Si movemos todo, el "ADN" del Sourcing (Specs y Cotizaciones) 
+                     * debe viajar a la nueva partida antes de borrar la vieja.
+                     * Esto soluciona el ERROR 1451.
+                     */
+                    $this->requisicionModel->transferSourcingData($idItemOrigen, $newIdItemDestino);
+
+                    // Ahora que los hijos ya tienen nuevo padre, borramos al padre original
+                    $this->requisicionModel->deleteItemFromRequisition($idItemOrigen);
+                } else {
+                    /**
+                     * Si es movimiento PARCIAL, la partida original sobrevive (reducida).
+                     * Por regla de negocio, los hijos (Cotizaciones) se quedan con el remanente 
+                     * en el origen, la nueva partida en el destino nace "limpia".
+                     */
+                    $this->requisicionModel->reduceItemQty($idItemOrigen, $qtyToMove);
+                }
+                // --- FIN DE LÓGICA DE SOURCING ---
             }
 
             if ($itemsErrors) {
@@ -416,7 +547,7 @@ class RequisitionService
 
             $this->logMessage($p, \LogLevel::CRITICAL,[
                 'action' => 'moveItems',
-                'id_user' => $userId
+                'id_user' => $userContext['id']
             ]);
             
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
@@ -439,10 +570,10 @@ class RequisitionService
     /**
      * @param int $requisitionId
      * @param int $itemId
-     * @param int $userId
+     * @param array $userContext
      * @return ServiceResponse
      */
-    public function deleteItem(int $requisitionId, int $itemId, int $userId): ServiceResponse
+    public function deleteItem(int $requisitionId, int $itemId, array $userContext): ServiceResponse
     {
         try {
             $this->db->beginTransaction();
@@ -456,14 +587,21 @@ class RequisitionService
             if ($requisition['estatus'] !== 'borrador') {
                 throw new \Exception("Compliance Error: Solo se pueden eliminar partidas de una requisición en estado DRAFT.", 403);
             }
-            // TODO: JWT
-            // if ($requisition['usuarioid'] !== $userId) {
-            //     throw new \Exception("Security Error: No tienes permisos para modificar esta requisición.", 403);
-            // }
+            if ($requisition['usuarioid'] !== $userContext['id']) {
+                throw new \Exception("Security Error: No tienes permisos para modificar esta requisición.", 403);
+            }
 
             // 2. VALIDACIÓN DE EXISTENCIA DE LA PARTIDA (Previene IDOR Partida)
             // Aseguramos que la partida realmente pertenezca a ESTA requisición
             $itemDetails = $this->requisicionModel->getItemDetails($requisitionId, $itemId);
+
+            // --- INICIO DE INTEGRACIÓN: LIMPIEZA DE SOURCING
+            /**
+             * Antes de eliminar la partida, debemos limpiar las tablas hijas para evitar el 
+             * error de restricción de llave foránea (FK Constraint Violation).
+             */
+            $this->requisicionModel->deleteSourcingDataByItem($itemId, $userContext['id']);
+            // --- FIN DE INTEGRACIÓN ---
             
             if (!$itemDetails) {
                 throw new \Exception("La partida #{$itemId} no existe o no pertenece a esta requisición.", 404);
@@ -496,7 +634,7 @@ class RequisitionService
                 'action' => 'deleteItem',
                 'requisition_id' => $requisitionId,
                 'item_id' => $itemId,
-                'id_user' => $userId
+                'id_user' => $userContext['id']
             ]);
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
             
@@ -519,21 +657,74 @@ class RequisitionService
      * Solo es válido si el estado actual es 'pendiente'.
      *
      * @param int $requisitionId ID de la requisición a aprobar.
-     * @param int $userId ID del usuario que realiza la aprobación.
+     * @param array $userContext ID del usuario que realiza la aprobación.
      * @return ServiceResponse
      */
-    public function approve(int $requisitionId, int $userId): ServiceResponse
+    public function approve(int $requisitionId, array $userContext): ServiceResponse
     {
-        $request = new \Requests\Requisition\ChangeStatusRequest(); // Reutilizamos un request simple
-        return $this->changeStatus(
+        $request = new \Requests\Requisition\ChangeStatusRequest();
+
+        $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+
+        // 1. ¿Tiene permiso de firma?
+        $level = $role?->getApprovalLevel();
+        if (!$level) {
+            return ServiceResponse::error("Tu rol no tiene facultades de aprobación.", 403);
+        }
+
+        $requisition = $this->requisicionModel->getRequisition($requisitionId);
+
+        // 2. Validación de Scope (Jefe Depto/Planta solo aprueba lo suyo)
+        if ($role === RoleEnum::JEFE_DEPARTAMENTO && $requisition['plantaid'] !== $userContext['plantaid']) {
+            return ServiceResponse::error("Solo puedes aprobar requisiciones de tu propio departamento/planta.", 403);
+        }
+
+        // 3. Máquina de Estados L1 -> L2
+        // TODO: Determinamos el estado origen y destino basado en quién firma
+        $config = match($level) {
+            'L1' => [
+                'from' => ['pendiente'], 
+                'to'   => 'pendiente_l2', // Siguiente nivel
+                'msg'  => 'Aprobación L1 (Jefe Depto) completada.'
+            ],
+            'L2' => [
+                'from' => ['pendiente', 'pendiente_l2'], // Puede aprobar directo o tras L1
+                'to'   => 'aprobada', 
+                'msg'  => 'Aprobación final L2 completada exitosamente.'
+            ]
+        };
+        
+        // 4. EJECUTAR CAMBIO DE ESTADO
+        $response = $this->changeStatus(
             $requisitionId,
-            $userId,
+            $userContext,
             'aprobada',
             ['pendiente'], // Solo se puede aprobar si está 'pendiente'
             'Solicitud aprobada.',
             AuditAction::APPROVED,
-            ucfirst(AuditAction::APPROVED->value) . ':' . $request->input('comentario')
+            "Firma {$level} autorizada por " . $userContext['nombre'] . '. Notas: ' . $request->input('comentario')
         );
+
+        // --- INICIO LÓGICA DE COMPRA DIRECTA (STP) ---
+        /**
+         * Si la aprobación fue exitosa, el nuevo estado es 'aprobada' 
+         * y la requisición es de tipo 'directa', disparamos la automatización.
+         */
+        if ($response->success && $config['to'] === 'aprobada' && $requisition['tipo_requisicion'] === 'spot_buy') {
+            try {
+                // Este método lo crearemos a continuación
+                $this->purchaseOrderService->processSpotBuyAutomation($requisitionId, $userContext);
+                
+                $response->message .= " Se ha generado automáticamente la Orden de Compra Directa.";
+            } catch (\Exception $e) {
+                // Logueamos el error pero no revertimos la aprobación (la requisición ya está aprobada)
+                $this->logMessage("Error en Compra Directa: " . $e->getMessage(), \LogLevel::ERROR);
+                $response->message .= " Advertencia: No se pudo completar la compra automática.";
+            }
+        }
+        // --- FIN LÓGICA DE COMPRA DIRECTA ---
+
+        return $response;
     }
 
     /**
@@ -541,15 +732,15 @@ class RequisitionService
      * Solo es válido si el estado actual es 'pendiente'.
      *
      * @param int $requisitionId ID de la requisición a rechazar.
-     * @param int $userId ID del usuario que realiza el rechazo.
+     * @param array $userContext ID del usuario que realiza el rechazo.
      * @return ServiceResponse
      */
-    public function reject(int $requisitionId, int $userId): ServiceResponse
+    public function reject(int $requisitionId, array $userContext): ServiceResponse
     {
         $request = new \Requests\Requisition\ChangeStatusRequest();
         return $this->changeStatus(
             $requisitionId,
-            $userId,
+            $userContext,
             'rechazada',
             ['pendiente'], // Solo se puede rechazar si está 'pendiente'
             'Solicitud rechazada.',
@@ -559,18 +750,40 @@ class RequisitionService
     }
 
     /**
-     * Devuelve una requisición 'pendiente' o 'rechazada' al estado de 'borrador' para su corrección.
+     * Cambia el estado de una requisición a 'rechazada'.
+     * Solo es válido si el estado actual es 'pendiente'.
      *
-     * @param int $requisitionId ID de la requisición a devolver.
-     * @param int $userId ID del usuario que realiza la acción.
+     * @param int $requisitionId ID de la requisición a rechazar.
+     * @param array $userContext ID del usuario que realiza el rechazo.
      * @return ServiceResponse
      */
-    public function returnToDraft(int $requisitionId, int $userId): ServiceResponse
+    public function cancel(int $requisitionId, array $userContext): ServiceResponse
     {
         $request = new \Requests\Requisition\ChangeStatusRequest();
         return $this->changeStatus(
             $requisitionId,
-            $userId,
+            $userContext,
+            'cancelada',
+            ['aprobada', 'en compra'], // Solo se puede cancelar si está en 'aprobada' o 'en_compra'
+            'Solicitud cancelada.',
+            AuditAction::CANCELED,
+            ucfirst(AuditAction::CANCELED->value) . ':' . $request->input('comentario')
+        );
+    }
+
+    /**
+     * Devuelve una requisición 'pendiente' o 'rechazada' al estado de 'borrador' para su corrección.
+     *
+     * @param int $requisitionId ID de la requisición a devolver.
+     * @param array $userContext ID del usuario que realiza la acción.
+     * @return ServiceResponse
+     */
+    public function returnToDraft(int $requisitionId, array $userContext): ServiceResponse
+    {
+        $request = new \Requests\Requisition\ChangeStatusRequest();
+        return $this->changeStatus(
+            $requisitionId,
+            $userContext,
             'borrador',
             ['pendiente', 'rechazada'], // Se puede devolver si está 'pendiente' o si fue 'rechazada'
             'Solicitud devuelta a borrador.',
@@ -584,10 +797,10 @@ class RequisitionService
      * Solo se permite eliminar requisiciones en estado 'borrador' o 'pendiente'.
      *
      * @param int $requisitionId ID de la requisición a eliminar.
-     * @param int $userId        ID del usuario que realiza la eliminación.
+     * @param array $userContext        ID del usuario que realiza la eliminación.
      * @return ServiceResponse
      */
-    public function destroy(int $requisitionId, int $userId): ServiceResponse
+    public function destroy(int $requisitionId, array $userContext): ServiceResponse
     {
         try {
             $this->db->beginTransaction();
@@ -600,10 +813,9 @@ class RequisitionService
             }
 
             // 2. VALIDAR SEGURIDAD (IDOR)
-            // TODO: JWT
-            // if ((int)$requisition['usuarioid'] !== $userId) {
-            //     throw new \Exception("Security Error: No tienes permisos para eliminar esta solicitud.", 403);
-            // }
+            if ((int)$requisition['usuarioid'] !== $userContext['id']) {
+                throw new \Exception("Security Error: No tienes permisos para eliminar esta solicitud.", 403);
+            }
 
             // 3. VALIDAR MÁQUINA DE ESTADOS (Business Rules)
             // Una vez aprobada o en compras, no se puede borrar (afectaría auditorías contables).
@@ -619,7 +831,7 @@ class RequisitionService
             }
 
             // 5. REGISTRAR EN AUDITORÍA
-            $this->requisicionModel->logAudit($requisitionId, AuditAction::DELETED, "Solicitud eliminada por el usuario.", $userId);
+            $this->requisicionModel->logAudit($requisitionId, AuditAction::DELETED, "Solicitud eliminada por el usuario.", $userContext['id']);
 
             $this->db->commit();
 
@@ -638,7 +850,7 @@ class RequisitionService
             $this->logMessage($p, \LogLevel::CRITICAL, [
                 'action' => 'destroyRequisition',
                 'requisition_id' => $requisitionId,
-                'id_user' => $userId
+                'id_user' => $userContext['id']
             ]);
 
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos al intentar eliminar la solicitud.");
@@ -652,7 +864,7 @@ class RequisitionService
             $this->logMessage($e, \LogLevel::WARNING, [
                 'action' => 'destroyRequisition',
                 'requisition_id' => $requisitionId,
-                'id_user' => $userId
+                'id_user' => $userContext['id']
             ]);
 
             $code = $e->getCode() !== 0 ? $e->getCode() : 500;
@@ -664,10 +876,10 @@ class RequisitionService
      * Obtiene las partidas de una requisición que aún tienen saldo pendiente por comprar.
      *
      * @param int $requisitionId
-     * @param int $userId
+     * @param array $userContext
      * @return ServiceResponse
      */
-    public function getPendingItemsToPurchase(int $requisitionId, int $userId): ServiceResponse
+    public function getPendingItemsToPurchase(int $requisitionId, array $userContext): ServiceResponse
     {
         try {
             // 1. Validar existencia y seguridad (IDOR)
@@ -678,7 +890,7 @@ class RequisitionService
             }
 
             // Opcional: Si solo ciertos roles (ej. Compradores) pueden ver esto, valídalo aquí.
-            // if (!$this->userHasRole($userId, 'comprador')) throw new \Exception("No tienes permisos de compras.", 403);
+            // if (!$this->userHasRole($userContext['id'], 'comprador')) throw new \Exception("No tienes permisos de compras.", 403);
 
             // 2. Validar Máquina de Estados
             // Solo se puede comprar si ya fue aprobada, o si ya está en proceso de compra (cumplimiento parcial)
@@ -687,7 +899,7 @@ class RequisitionService
             }
 
             // 3. Obtener los saldos pendientes desde la Base de Datos
-            $pendingItems = $this->requisicionModel->calculatePendingItems($requisitionId);
+            $pendingItems = $this->requisicionModel->getPendingItemsWithSourcing($requisitionId);
 
             // 4. Retornar la data
             return ServiceResponse::success(
@@ -699,11 +911,25 @@ class RequisitionService
                 200
             );
 
+        } catch (\PDOException $p) {
+            // Manejo de errores a nivel de Base de Datos
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'getPendingItemsToPurchase',
+                'requisition_id' => $requisitionId,
+                'id_user' => $userContext['id']
+            ]);
+
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos al intentar eliminar la solicitud.");
+            
         } catch (\Exception $e) {
             $this->logMessage($e, \LogLevel::WARNING, [
                 'action' => 'getPendingItemsToPurchase',
                 'requisition_id' => $requisitionId,
-                'id_user' => $userId
+                'id_user' => $userContext['id']
             ]);
             $code = $e->getCode() !== 0 ? $e->getCode() : 500;
             return ServiceResponse::error(message: $e->getMessage(), code: $code);
@@ -713,10 +939,26 @@ class RequisitionService
     /**
      * 
      */
-    public function getKpis(int $userId): ServiceResponse
+    public function getKpis(array $userContext): ServiceResponse
     {
+        $filters = [];
+        $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+        $scope = $role?->getScope() ?? 'propio';
+
+        // APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
+        $scopeFilters = match($scope) {
+            'propio' => ['usuarioid' => (int)$userContext['id']],
+            'planta'  => ['plantaid' => (int)$userContext['plantaid']],
+            'total'  => true,
+            default  => false
+        };
+
+        if(!empty($scopeFilters) && is_array($scopeFilters)) {
+            $filters = $scopeFilters;
+        }
+        
         return ServiceResponse::success(
-            $this->requisicionModel->getKpi(),
+            $this->requisicionModel->getKpi($filters),
             'Datos obtenidos correctamente.',
             200
         );
@@ -726,13 +968,13 @@ class RequisitionService
      * Crea una nueva cabecera de requisición en estado DRAFT.
      * Es un método helper privado y no maneja su propia transacción.
      *
-     * @param int $userId El ID del usuario que crea el DRAFT.
+     * @param array $userContext El ID del usuario que crea el DRAFT.
      * @param string $description La descripción para el nuevo DRAFT.
      * @return int El ID de la nueva requisición creada.
      */
-    private function createNewDraft(int $userId, string $description): int {
+    private function createNewDraft(array $userContext, string $description): int {
         $headerData = [
-            'user_id' => $userId,
+            'user_id' => $userContext['id'],
             'titulo' => $description,
             'estatus' => 'borrador' // Forzamos el estado a DRAFT
         ];
@@ -745,7 +987,7 @@ class RequisitionService
             throw new \Exception('No se pudo crear el nuevo DRAFT de destino.', 500);
         }
         
-        $this->requisicionModel->logAudit($newRequisitionId, AuditAction::CREATED, 'Creación automática por split.', $userId);
+        $this->requisicionModel->logAudit($newRequisitionId, AuditAction::CREATED, 'Creación automática por split.', $userContext['id']);
         
         return $newRequisitionId;
     }
@@ -779,17 +1021,17 @@ class RequisitionService
      * Encapsula la validación de la máquina de estados, permisos y auditoría.
      *
      * @param int    $requisitionId       ID de la requisición a modificar.
-     * @param int    $userId              ID del usuario que ejecuta la acción.
+     * @param array  $userContext         Contexto del usuario que ejecuta la acción.
      * @param string $newStatus           El nuevo estado al que se transicionará.
      * @param array  $allowedFromStatuses Lista de estados desde los cuales es válida la transición.
      * @param string $successMessage      Mensaje a devolver en caso de éxito.
-     * @param string $auditAction         Constante de acción para el log de auditoría.
+     * @param AuditAction $auditAction         Constante de acción para el log de auditoría.
      * @param string $comment             Comentario asociado a la acción.
      * @return ServiceResponse
      */
     private function changeStatus(
         int $requisitionId,
-        int $userId,
+        array $userContext,
         string $newStatus,
         array $allowedFromStatuses,
         string $successMessage,
@@ -797,9 +1039,12 @@ class RequisitionService
         string $comment
     ): ServiceResponse {
         try {
+            $userId = (int)$userContext['id'];
+            $plantaId = (int)$userContext['plantaid'];
+
             // Instanciamos el validador aquí adentro para asegurarnos de que el comentario
             // cumpla con las reglas antes de abrir la transacción.
-            $request = new \Requests\Requisition\ChangeStatusRequest(['comentario' => $comment]);
+            $request = new \Requests\Requisition\ChangeStatusRequest();
             $request->validate();
 
             $this->db->beginTransaction();
@@ -813,13 +1058,23 @@ class RequisitionService
 
             // 2. VALIDAR MÁQUINA DE ESTADOS (Business Rule)
             if (!in_array($requisition['estatus'], $allowedFromStatuses)) {
-                throw new \Exception("Acción no permitida. La solicitud se encuentra en estado '{$requisition['estatus']}' y no puede ser transicionada a '{$newStatus}'.", 403);
+                throw new \Exception("Acción no permitida. La solicitud se encuentra en estado '{$requisition['estatus']}' y no puede ser transicionada a '{$newStatus}'.", 409);
             }
 
+            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+            $scope = $role?->getScope() ?? 'propio';
+            
             // 3. VALIDAR PERMISOS (Segregación de Funciones)
-            // Previene que un usuario apruebe sus propias solicitudes (a menos que las reglas de negocio lo permitan explícitamente en el futuro).
-            if ($requisition['usuarioid'] === $userId && in_array($newStatus, ['aprobada', 'rechazada'])) {
-                throw new \Exception("Conflicto de intereses: No tienes permitido aprobar o rechazar tus propias solicitudes.", 403);
+            $isAllowed = match($scope) {
+                'propio' => (int)$requisition['usuarioid'] === $userId,
+                'planta'  => (int)$requisition['plantaid'] === $plantaId,
+                'total'  => true,
+                default  => false
+            };
+
+            // Validación de Seguridad
+            if (!$isAllowed) {
+                return ServiceResponse::error("Conflicto de intereses: No tienes permitido aprobar o rechazar tus propias solicitudes.", 403);
             }
 
             // 4. EJECUTAR EL CAMBIO DE ESTADO EN LA BD
@@ -878,6 +1133,20 @@ class RequisitionService
             // Si la excepción no tiene un código HTTP seteado (0), forzamos un 500 Internal Server Error
             $code = $e->getCode() !== 0 ? $e->getCode() : 500;
             return ServiceResponse::error(message: $e->getMessage(), code: $code);
+        }
+    }
+
+    /**
+     * MÉTODO HIJO (Worker)
+     * Solo se encarga de la persistencia. No maneja transacciones ni ServiceResponse.
+     */
+    private function persistSpecialSpecs(array $specData): void 
+    {
+        // Solo hacemos el insert/update en la tabla de sourcing
+        $success = $this->requisicionModel->upsertItemSpecs($specData);
+        
+        if (!$success) {
+            throw new \Exception("Error técnico al persistir la ficha de sourcing.");
         }
     }
 }

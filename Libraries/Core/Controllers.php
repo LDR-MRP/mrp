@@ -2,6 +2,8 @@
 	
 	class Controllers
 	{
+		public Views $views;
+
 		public function __construct()
 		{
 			$this->views = new Views();

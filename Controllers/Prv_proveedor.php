@@ -4,8 +4,6 @@ class Prv_proveedor  extends Controllers{
 
     use ApiResponser;
 
-    protected $supplierService;
-
     public function __construct()
     {
         parent::__construct();
@@ -13,8 +11,6 @@ class Prv_proveedor  extends Controllers{
         session_start();
 
         getPermisos(PRV_PROVEEDORES);
-
-        $this->supplierService = new Prv_proveedorService($this->model);
     }
 
     public function Prv_proveedor() {
@@ -64,66 +60,20 @@ class Prv_proveedor  extends Controllers{
         );
     }
 
-    /* ======================================================
-     * API (JSON): listar, mostrar, crear, eliminar
-     * ====================================================== */
-    public function index()
+    /**
+     * Renderiza el Reporte Analítico de Onboarding para el CEO
+     * URL: {{base_url}}/prv_proveedor/reporte
+     */
+    public function reporte(): void
     {
-        return $this->apiResponse($this->supplierService->findByCriteria());
-    }
+        $data['page_tag'] = "Reporte Ejecutivo - LDR Solutions";
+        $data['page_title'] = "Reporte de Onboarding";
+        $data['page_name'] = "prv_reporte_onboarding";
+        
+        // JS exclusivo que dará vida a los gráficos y la tabla ejecutiva
+        $data['page_functions_js'] = "functions_prv_proveedores_reporte.js";
 
-    public function show(int $id)
-    {
-        return $this->apiResponse($this->supplierService->findByCriteria(['id_proveedor' => $id]));
-    }
-
-    public function getKpi()
-    {
-        return $this->apiResponse($this->supplierService->getKpi());
-    }
-
-    public function delete()
-    {
-        return $this->apiResponse($this->supplierService->delete($_POST));
-    }
-    
-    public function suppliers()
-    {
-        return $this->apiResponse($this->supplierService->suppliers($filters = sanitizeGet()));
-    }
-
-    public function storeSupplier()
-    {
-        return $this->apiResponse($this->supplierService->storeSupplier(file_get_contents('php://input')));
-    }
-
-    public function uploadDocument()
-    {
-        return $this->apiResponse($this->supplierService->uploadDocument($_POST, $_FILES));
-    }
-
-    public function documents(int $supplierId)
-    {
-        return $this->apiResponse($this->supplierService->documents($supplierId));
-    }
-
-    public function auditDocument()
-    {
-        return $this->apiResponse($this->supplierService->auditDocument($_POST));
-    }
-
-    public function getOnboarding(int $supplierId)
-    {
-        return $this->apiResponse($this->supplierService->getOnboardingStatus($supplierId));
-    }
-
-    public function storeBank()
-    {
-        return $this->apiResponse($this->supplierService->storeBank($_POST));
-    }
-
-    public function banks(int $supplierId)
-    {
-        return $this->apiResponse($this->supplierService->banks($supplierId));
+        // Renderiza de forma Stateless: Views/Prv_proveedor/reporte.php
+        $this->views->getView($this, "../Prv_proveedor/reporte", $data);
     }
 }

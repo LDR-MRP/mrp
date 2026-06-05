@@ -17,10 +17,8 @@ class Inv_inventarioModel extends Mysql
         string $unidad_salida,
         string $unidad_empaque, // ✅ NUEVO
         float $ultimo_costo,
-        int $lineaproductoid,
         string $tipo_elemento,
         float $factor_unidades,
-        string $ubicacion,
         int $tiempo_surtido,
         float $peso,
         float $volumen,
@@ -49,12 +47,10 @@ class Inv_inventarioModel extends Mysql
     descripcion,
     unidad_entrada,
     unidad_salida,
-    unidad_empaque,      -- ✅
+    unidad_empaque,
     ultimo_costo,
-    lineaproductoid,
     tipo_elemento,
     factor_unidades,
-    control_almacen,
     tiempo_surtido,
     peso,
     volumen,
@@ -63,7 +59,8 @@ class Inv_inventarioModel extends Mysql
     pedimiento,
     fecha_creacion,
     estado
-) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),2)";
+)
+VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),2)";
 
         return $this->insert($sql, [
             $cve_articulo,
@@ -72,10 +69,8 @@ class Inv_inventarioModel extends Mysql
             $unidad_salida,
             $unidad_empaque,   // ✅
             $ultimo_costo,
-            $lineaproductoid,
             $tipo_elemento,
             $factor_unidades,
-            $ubicacion,
             $tiempo_surtido,
             $peso,
             $volumen,
@@ -128,18 +123,19 @@ class Inv_inventarioModel extends Mysql
     =============================== */
     public function selectInventario(int $idinventario)
     {
-        $idinventario = (int)$idinventario;
+        $sql = "SELECT * FROM wms_inventario 
+            WHERE idinventario = $idinventario";
 
-        $sql = "SELECT i.*,
-                   ca.cve_alterna,
-                   ca.tipo AS tipo_clave,
-                   i.ultimo_costo
-            FROM wms_inventario i
-            LEFT JOIN wms_claves_alternas ca 
-                   ON ca.inventarioid = i.idinventario
-            WHERE i.idinventario = $idinventario";
+        $inventario = $this->select($sql);
 
-        return $this->select_all($sql);
+        $sqlClaves = "SELECT * FROM wms_claves_alternas 
+                  WHERE inventarioid = $idinventario";
+
+        $claves = $this->select_all($sqlClaves);
+
+        $inventario['claves'] = $claves;
+
+        return $inventario;
     }
 
 
@@ -154,10 +150,8 @@ class Inv_inventarioModel extends Mysql
         string $unidad_salida,
         string $unidad_empaque, // ✅ NUEVO
         float $ultimo_costo,
-        int $lineaproductoid,
         string $tipo_elemento,
         float $factor_unidades,
-        string $ubicacion,
         int $tiempo_surtido,
         float $peso,
         float $volumen,
@@ -190,10 +184,8 @@ class Inv_inventarioModel extends Mysql
     unidad_salida = ?,
     unidad_empaque = ?,      -- ✅
     ultimo_costo = ?,
-    lineaproductoid = ?,
     tipo_elemento = ?,
     factor_unidades = ?,
-    control_almacen = ?,
     tiempo_surtido = ?,
     peso = ?,
     volumen = ?,
@@ -211,10 +203,8 @@ WHERE idinventario = ?";
             $unidad_salida,
             $unidad_empaque, // ✅
             $ultimo_costo,
-            $lineaproductoid,
             $tipo_elemento,
             $factor_unidades,
-            $ubicacion,
             $tiempo_surtido,
             $peso,
             $volumen,
@@ -237,26 +227,6 @@ WHERE idinventario = ?";
 
         return $this->update($sql, [$idinventario]);
     }
-
-    /* ===============================
-       IMPUESTOS
-    =============================== */
-    public function selectImpuestos()
-    {
-        $sql = "SELECT idimpuesto, cve_impuesto, descripcion
-            FROM wms_impuestos
-            WHERE estado = 2";
-        return $this->select_all($sql);
-    }
-
-    public function insertInventarioImpuesto(int $inventarioid, int $idimpuesto)
-    {
-        $sql = "INSERT INTO wms_inventario_impuestos
-            (inventarioid, idimpuesto, estado)
-            VALUES (?,?,2)";
-        return $this->insert($sql, [$inventarioid, $idimpuesto]);
-    }
-
 
     /* ===============================
        CLAVES ALTERNAS
@@ -292,6 +262,49 @@ WHERE idinventario = ?";
         ]);
     }
 
+    public function upsertClaveAlterna(
+        int $inventarioid,
+        string $cve_alterna,
+        string $tipo
+    ) {
+        $inventarioid = (int)$inventarioid;
+        $cve_alterna = addslashes($cve_alterna);
+
+        // 🔍 Verificar si ya existe una clave para ese inventario
+        $sql = "SELECT idclavealterna 
+            FROM wms_claves_alternas 
+            WHERE inventarioid = $inventarioid 
+            LIMIT 1";
+
+        $existe = $this->select($sql);
+
+        if (!empty($existe)) {
+
+            // 🔄 UPDATE
+            $sql = "UPDATE wms_claves_alternas 
+                SET cve_alterna = ?, tipo = ?
+                WHERE inventarioid = ?";
+
+            return $this->update($sql, [
+                $cve_alterna,
+                $tipo,
+                $inventarioid
+            ]);
+        } else {
+
+            // ➕ INSERT
+            $sql = "INSERT INTO wms_claves_alternas 
+                (inventarioid, cve_alterna, tipo)
+                VALUES (?, ?, ?)";
+
+            return $this->insert($sql, [
+                $inventarioid,
+                $cve_alterna,
+                $tipo
+            ]);
+        }
+    }
+
     /* ===============================
        BUSCADOR KIT
     =============================== */
@@ -313,25 +326,25 @@ WHERE idinventario = ?";
        KIT
     =============================== */
     public function insertKitDetalle(
-    int $kitid,
-    int $productoId,
-    float $cantidad,
-    float $porcentaje
-) {
-    $sql = "INSERT INTO wms_kit_detalle
+        int $kitid,
+        int $productoId,
+        float $cantidad,
+        float $porcentaje
+    ) {
+        $sql = "INSERT INTO wms_kit_detalle
         (idkitconfig, producto_id, cantidad, porcentaje)
         VALUES (?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             cantidad = VALUES(cantidad),
             porcentaje = VALUES(porcentaje)";
 
-    return $this->insert($sql, [
-        $kitid,
-        $productoId,
-        $cantidad,
-        $porcentaje
-    ]);
-}
+        return $this->insert($sql, [
+            $kitid,
+            $productoId,
+            $cantidad,
+            $porcentaje
+        ]);
+    }
 
     public function insertKitConfig(
         int $inventarioid,
@@ -397,49 +410,49 @@ WHERE idinventario = ?";
     }
 
     public function deleteKitDetalleExcepto(int $kitid, array $ids)
-{
-    $kitid = (int)$kitid;
+    {
+        $kitid = (int)$kitid;
 
-    if (empty($ids)) {
-        return $this->delete("DELETE FROM wms_kit_detalle WHERE idkitconfig = $kitid");
-    }
+        if (empty($ids)) {
+            return $this->delete("DELETE FROM wms_kit_detalle WHERE idkitconfig = $kitid");
+        }
 
-    $ids = array_map('intval', $ids);
-    $idsStr = implode(',', $ids);
+        $ids = array_map('intval', $ids);
+        $idsStr = implode(',', $ids);
 
-    $sql = "DELETE FROM wms_kit_detalle
+        $sql = "DELETE FROM wms_kit_detalle
             WHERE idkitconfig = $kitid
             AND producto_id NOT IN ($idsStr)";
 
-    return $this->delete($sql);
-}
+        return $this->delete($sql);
+    }
 
-public function selectKitConfigByInventario(int $inventarioid)
-{
-    $sql = "SELECT idkitconfig
+    public function selectKitConfigByInventario(int $inventarioid)
+    {
+        $sql = "SELECT idkitconfig
             FROM wms_kit_config
             WHERE inventarioid = $inventarioid
             AND estado = 2
             LIMIT 1";
 
-    return $this->select($sql);
-}
+        return $this->select($sql);
+    }
 
-public function insertImagenInventario($inventarioid, $nombre)
-{
-    $sql = "INSERT INTO wms_fotos_inventario (inventarioid, foto) VALUES (?, ?)";
-    $arrData = array($inventarioid, $nombre);
-    return $this->insert($sql, $arrData);
-}
+    public function insertImagenInventario($inventarioid, $nombre)
+    {
+        $sql = "INSERT INTO wms_fotos_inventario (inventarioid, foto) VALUES (?, ?)";
+        $arrData = array($inventarioid, $nombre);
+        return $this->insert($sql, $arrData);
+    }
 
-public function selectImagenesInventario(int $inventarioid)
-{
-    $sql = "SELECT foto 
+    public function selectImagenesInventario(int $inventarioid)
+    {
+        $sql = "SELECT foto 
             FROM wms_fotos_inventario 
             WHERE inventarioid = $inventarioid";
 
-    return $this->select_all($sql);
-}
+        return $this->select_all($sql);
+    }
 
 
     //--------------------------------------------INVENTARIO MONEDAS
@@ -481,7 +494,7 @@ public function selectImagenesInventario(int $inventarioid)
         return $this->insert($sql, [$inventarioid, $idprecio]);
     }
 
-    public function insertInventarioPrecio($inventarioid, $idprecio, $fecha, $estado)
+    public function insertInventarioPrecio($inventarioid, $idprecio, $precio, $fecha, $estado)
     {
         // evitar duplicados
         $sql = "SELECT * FROM wms_inventario_precios
@@ -494,10 +507,10 @@ public function selectImagenesInventario(int $inventarioid)
         }
 
         $sql = "INSERT INTO wms_inventario_precios
-            (inventarioid, idprecio, fecha_creacion, estado)
-            VALUES (?,?,?,?)";
+            (inventarioid, idprecio, precio, fecha_creacion, estado)
+            VALUES (?,?,?,?,?)";
 
-        return $this->insert($sql, [$inventarioid, $idprecio, $fecha, $estado]);
+        return $this->insert($sql, [$inventarioid, $idprecio, $precio, $fecha, $estado]);
     }
 
     public function getPreciosAsignados($idinventario)
@@ -507,7 +520,8 @@ public function selectImagenesInventario(int $inventarioid)
         $sql = "SELECT ip.idprecio,
                    p.cve_precio,
                    p.descripcion,
-                   ip.estado
+                   ip.precio,
+                   ip.fecha_creacion
             FROM wms_inventario_precios ip
             INNER JOIN wms_precios p ON p.idprecio = ip.idprecio
             WHERE ip.inventarioid = $idinventario";
@@ -736,6 +750,8 @@ public function selectImagenesInventario(int $inventarioid)
         return $this->select_all($sql);
     }
 
+    //filtros
+
     public function items(array $filters = []): array
     {
         $query = "SELECT
@@ -772,12 +788,13 @@ public function selectImagenesInventario(int $inventarioid)
 
     //----------------------------- UBICACIONES INVENTARIO
 
-    public function insertInventarioUbicacion($inventarioid, $ubicacionid, $fecha, $estado)
+    public function insertInventarioUbicacion($inventarioid, $ubicacionid, $cantidad, $fecha)
     {
         $inventarioid = intval($inventarioid);
         $ubicacionid = intval($ubicacionid);
+        $cantidad = intval($cantidad);
 
-        // 🔹 VALIDAR DUPLICADO
+        // VALIDAR DUPLICADO
         $exist = $this->select("
         SELECT idubicacionasignada 
         FROM wms_ubicaciones_asignadas
@@ -789,7 +806,7 @@ public function selectImagenesInventario(int $inventarioid)
             return "exist";
         }
 
-        // 🔹 VALIDAR SI ESTÁ OCUPADA
+        // VALIDAR SI ESTÁ OCUPADA
         $ubicacion = $this->select("
         SELECT estado 
         FROM wms_ubicaciones 
@@ -800,16 +817,14 @@ public function selectImagenesInventario(int $inventarioid)
             return "ocupada";
         }
 
-        // 🔹 INSERT
+        // INSERT
         $sql = "INSERT INTO wms_ubicaciones_asignadas 
-        (inventarioid, ubicacionesid, fecha_creacion) 
-        VALUES ($inventarioid, $ubicacionid, '$fecha')";
+        (inventarioid, ubicacionesid, cantidad, fecha_creacion) 
+        VALUES ($inventarioid, $ubicacionid, $cantidad, '$fecha')";
 
         $insert = $this->insert($sql, []);
 
         if ($insert > 0) {
-
-            // 🔥 CAMBIAR A OCUPADA
             $sqlUpdate = "UPDATE wms_ubicaciones 
                       SET estado = 1 
                       WHERE idubicaciones = $ubicacionid";
@@ -850,6 +865,7 @@ public function selectImagenesInventario(int $inventarioid)
 
         $sql = "SELECT 
         ua.idubicacionasignada,
+        ua.cantidad,
         CONCAT(
             s.descripcion, ' - ',
             z.descripcion, ' - ',
@@ -863,5 +879,217 @@ public function selectImagenesInventario(int $inventarioid)
     WHERE ua.inventarioid = $idinventario";
 
         return $this->select_all($sql);
+    }
+    /**
+     * Actualiza el último costo negociado en el maestro de inventarios.
+     */
+    public function updateLastCost(int $idinventario, float $costo): bool
+    {
+        $sql = "UPDATE wms_inventario 
+                SET ultimo_costo = ? 
+                WHERE idinventario = ?";
+                
+        return $this->update($sql, [$costo, $idinventario]);
+    }
+
+    /**
+     * Calcula la existencia actual de un artículo en un almacén específico
+     * basándose en la sumatoria de movimientos.
+     */
+    public function getCurrentStock(int $idinventario, int $almacenid): float
+    {
+        // Sumamos (cantidad * signo). 
+        // Entradas: (qty * 1), Salidas: (qty * -1)
+        $sql = "SELECT IFNULL(SUM(cantidad * signo), 0) AS stock 
+                FROM wms_movimientos_inventario 
+                WHERE inventarioid = ? 
+                AND almacenid = ? 
+                AND estado = 2"; // Estado 2 = Movimiento Activo
+
+        $result = $this->select($sql, [$idinventario, $almacenid]);
+        
+        return (float)($result['stock'] ?? 0);
+    }
+
+    /**
+     * Registra un nuevo movimiento de entrada o salida en el Kardex.
+     */
+    public function addMovement(array $data): int
+    {
+        $sql = "INSERT INTO wms_movimientos_inventario (
+                    inventarioid, 
+                    almacenid, 
+                    numero_movimiento, 
+                    concepmovid, 
+                    referencia, 
+                    cantidad, 
+                    costo, 
+                    existencia, 
+                    signo, 
+                    fecha_movimiento,
+                    estado
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 2)";
+                
+        return $this->insert($sql, [
+            $data['inventarioid'],
+            $data['almacenid'],
+            $data['numero_movimiento'], // ID de la recepción
+            $data['concepmovid'],       // Concepto (ej: 1 para compras)
+            $data['referencia'],        // Num de remisión
+            $data['cantidad'],
+            $data['costo'],             // Costo unitario real
+            $data['existencia'],        // Saldo calculado (nueva existencia)
+            $data['signo']              // 1 o -1
+        ]);
+    }
+    // ================= PROVEEDORES =================
+
+    public function selectProveedoresCfg()
+    {
+        $sql = "SELECT id_proveedor, nombre_comercial 
+            FROM prv_cat_proveedores 
+            WHERE estatus_operativo = 0";
+        return $this->select_all($sql);
+    }
+
+    public function insertInventarioProveedorform($inventarioid, $id_proveedor, $estado)
+    {
+        $inventarioid = intval($inventarioid);
+        $id_proveedor   = intval($id_proveedor);
+
+        //  verificar si ya existe
+        $sqlCheck = "SELECT id_inv_proveedores 
+                 FROM wms_inventario_proveedores 
+                 WHERE inventarioid = $inventarioid 
+                   AND id_proveedor = $id_proveedor";
+
+        $exist = $this->select($sqlCheck);
+
+        if (!empty($exist)) {
+            return "exist";
+        }
+
+        //  insertar
+        $sql = "INSERT INTO wms_inventario_proveedores
+            (inventarioid,id_proveedor,estado)
+            VALUES (?,?,?)";
+
+        return $this->insert($sql, [
+            $inventarioid,
+            $id_proveedor,
+            $estado
+        ]);
+    }
+
+
+    public function getProveedoresAsignados($idinventario)
+    {
+        $idinventario = intval($idinventario);
+
+        $sql = "SELECT p.id_proveedor,
+                   p.nombre_comercial,
+                   ip.estado
+            FROM prv_cat_proveedores p
+            INNER JOIN wms_inventario_proveedores ip 
+              ON p.id_proveedor = ip.id_proveedor
+            WHERE ip.inventarioid = $idinventario";
+
+        return $this->select_all($sql);
+    }
+
+
+    // ================= CANTIDADES  =================
+    public function selectCantidadesProducto(int $inventarioid)
+    {
+        $sql = "SELECT 
+                i.idinventario AS inventarioid,
+                IFNULL(SUM(ma.existencia),0) AS existencia_total,
+                IFNULL(i.stock_minimo,0) AS stock_minimo,
+                IFNULL(i.stock_maximo,0) AS stock_maximo,
+                IFNULL(SUM(ma.pendiente_surtir),0) AS apartado
+            FROM wms_inventario i
+            LEFT JOIN wms_multialmacen ma 
+                ON ma.inventarioid = i.idinventario
+            WHERE i.idinventario = ?
+            GROUP BY i.idinventario, i.stock_minimo, i.stock_maximo";
+
+        return $this->select($sql, [$inventarioid]);
+    }
+
+    public function selectAlmacenesProducto(int $inventarioid)
+    {
+        $sql = "SELECT 
+                a.descripcion AS almacen,
+                m.existencia,
+                m.stock_minimo,
+                m.stock_maximo,
+                m.pendiente_surtir AS apartado
+            FROM wms_multialmacen m
+            INNER JOIN wms_almacenes a 
+                ON a.idalmacen = m.almacenid
+            WHERE m.inventarioid = ?";
+
+        return $this->select_all($sql, [$inventarioid]);
+    }
+
+    /**
+     * Inserta un nuevo artículo en el catálogo maestro.
+     * Basado estrictamente en el DDL de wms_inventario.
+     */
+    public function insertOfficialItem(array $data): int
+    {
+        $sql = "INSERT INTO wms_inventario (
+                    cve_articulo, descripcion, lineaproductoid, serie, 
+                    unidad_salida, unidad_empaque, control_almacen, tiempo_surtido, 
+                    ultimo_costo, tipo_elemento, unidad_entrada, factor_unidades, 
+                    lote, pedimiento, peso, volumen, fecha_creacion, estado
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)";
+
+        // Mapeo exacto para evitar errores de integridad
+        $params = [
+            $data['cve_articulo'],
+            $data['descripcion'],
+            (int)$data['lineaproductoid'],
+            $data['serie'] ?? 'N',                // S=si, N=NO
+            $data['unidad_salida'],
+            (float)($data['unidad_empaque'] ?? 1),
+            $data['control_almacen'] ?? 'FIFO',
+            (int)($data['tiempo_surtido'] ?? 0),
+            (float)$data['ultimo_costo'],
+            $data['tipo_elemento'],               // K,P,S,H,C
+            $data['unidad_entrada'] ?? $data['unidad_salida'],
+            (float)($data['factor_unidades'] ?? 1),
+            $data['lote'] ?? 'N',                 // S=Si, N=No
+            $data['pedimiento'] ?? 'N',           // S=Si, N=No
+            (float)($data['peso'] ?? 0),
+            (float)($data['volumen'] ?? 0),
+            '2'                                   // 2 = Activa
+        ];
+
+        return $this->insert($sql, $params) ?? 0;
+    }
+
+    /**
+     * Registra al proveedor como fuente autorizada para un artículo.
+     * Implementa 'ON DUPLICATE KEY UPDATE' para actualizar el precio si el vínculo ya existe.
+     */
+    public function linkSupplierToItem(array $data): bool
+    {
+        $sql = "INSERT INTO wms_proveedor_articulos (
+                    id_proveedor, idinventario, precio_referencia, id_moneda, 
+                    fecha_acuerdo, created_by
+                ) VALUES (?, ?, ?, ?, CURRENT_DATE, ?)
+                ON DUPLICATE KEY UPDATE 
+                    precio_referencia = VALUES(precio_referencia),
+                    id_moneda = VALUES(id_moneda),
+                    updated_at = CURRENT_TIMESTAMP";
+
+        return $this->insert($sql, [
+            (int)$data['id_proveedor'],
+            (int)$data['idinventario'],
+            (float)$data['precio_referencia'],
+            $data['id_moneda'],
+            (int)$data['created_by']
+        ]);
     }
 }

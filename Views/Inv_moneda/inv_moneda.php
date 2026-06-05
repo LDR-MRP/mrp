@@ -55,7 +55,6 @@
                                         <th>CLAVE</th>
                                         <th>DESCRIPCIÓN</th>
                                         <th>SIMBOLO</th>
-                                        <th>TIPO DE CAMBIO</th>
                                         <th>FECHA CREACIÓN</th>
                                         <th>ESTATUS</th>
                                         <th>Action</th>
@@ -80,27 +79,13 @@
                                     <!-- CLAVE -->
                                     <div class="col-lg-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="clave-moneda-input">CLAVE</label>
+                                            <label class="form-label" for="clave-moneda-input">CLAVE MONEDA</label>
                                             <div class="input-group mb-3">
                                                 <span class="input-group-text" id="clave-moneda-addon">Clave mon.</span>
                                                 <input type="text" class="form-control"
                                                     placeholder="Ingresa la clave" id="clave-moneda-input" name="clave-moneda-input"
                                                     aria-describedby="clave-moneda-addon" required>
                                                 <div class="invalid-feedback">El campo clave es obligatorio</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- TIPO DE CAMBIO -->
-                                    <div class="col-lg-6">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="cambio-moneda-input">TIPO DE CAMBIO</label>
-                                            <div class="input-group mb-3">
-                                                <span class="input-group-text" id="cambio-moneda-addon">Tip. Camb.</span>
-                                                <input type="text" class="form-control"
-                                                    placeholder="Ingresa el cambio" id="cambio-moneda-input" name="cambio-moneda-input"
-                                                    aria-describedby="cambio-moneda-addon" required>
-                                                <div class="invalid-feedback">El campo tipo de cambio es obligatorio</div>
                                             </div>
                                         </div>
                                     </div>
@@ -215,10 +200,6 @@
                         <tr>
                             <td>Descripción</td>
                             <td id="celDescripcion"></td>
-                        </tr>
-                        <tr>
-                            <td>Tipo de cambio</td>
-                            <td id="celCambio"></td>
                         </tr>
                         <tr>
                             <td>Simbolo</td>

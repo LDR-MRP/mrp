@@ -3,79 +3,33 @@
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
-            <style>
-                .badge-draft {
-                    background: #f1f5f9;
-                    color: #475569;
-                }
 
-                .badge-review {
-                    background: #e0f2fe;
-                    color: #0369a1;
-                }
-
-                .badge-observed {
-                    background: #fffbeb;
-                    color: #b45309;
-                }
-
-                .badge-approved {
-                    background: #f0fdf4;
-                    color: #15803d;
-                }
-
-                .badge-rejected {
-                    background: #fef2f2;
-                    color: #b91c1c;
-                }
-
-                .badge-purchasing {
-                    background: #f5f3ff;
-                    color: #6d28d9;
-                }
-
-                .badge-closed {
-                    background: #f8fafc;
-                    color: #1e293b;
-                    border: 1px solid #e2e8f0;
-                }
-
-                :root {
-                    --primary: #0056b3;
-                    --success: #28a745;
-                    --warning: #ffc107;
-                    --danger: #dc3545;
-                }
-
-                body {
-                    background-color: #f4f7f6;
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                }
-            </style>
             <section id="view-index-general">
+                <!-- 1. BREADCRUMB -->
                 <div class="row align-items-center mb-4">
                     <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-white">
+                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-transparent">
                             <div class="page-title-right">
-                                <ol class="breadcrumb m-0">
+                                <ol class="breadcrumb m-0 fs-13">
                                     <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
-                                    <li class="breadcrumb-item active">Requisiciones</li>
+                                    <li class="breadcrumb-item active text-primary">Requisiciones</li>
                                 </ol>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- 2. HEADER CON DESCRIPCIÓN Y ACCIÓN -->
                 <div class="row align-items-center mb-4">
                     <div class="col-md-7">
                         <div class="d-flex align-items-center">
                             <div class="avatar-md me-4">
-                                <span class="avatar-title bg-white text-primary rounded-circle fs-2 shadow-lg border border-light">
+                                <span class="avatar-title text-white rounded-circle fs-2 shadow-lg border border-light" style="background-color: #C46623 !important;">
                                     <i class="ri-file-list-3-line"></i>
                                 </span>
                             </div>
                             <div>
-                                <h3 class="mb-1 text-dark fw-bold text-uppercase ls-1">Bandeja de Requisiciones</h3>
+                                <h3 class="mb-1 fw-bold text-uppercase ls-1 text-body">Bandeja de Requisiciones</h3>
                                 <p class="text-muted mb-0 fs-14">
                                     Gestión centralizada y seguimiento de solicitudes internas.
                                 </p>
@@ -91,70 +45,82 @@
                     </div>
                 </div>
 
+                <!-- 3. NUEVO BLOQUE DE KPIS CIRCULARES (ESTILO 3-WAY MATCH) -->
                 <div class="row mb-4">
-                    <div class="col-xl-4 col-md-6">
-                        <div class="card card-animate border-0 shadow-sm border-start border-warning border-3" style="border-radius: 10px;">
+                    <!-- KPI 1: Pendientes de Revisión -->
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card card-animate border-0 shadow-sm rounded-3">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-0 fs-12 ls-1">Pendientes de Revisión</p>
-                                    </div>
-                                    <div class="flex-shrink-0">
-                                        <h5 class="text-warning fs-14 mb-0">
-                                            <i class="ri-time-line fs-22 align-middle"></i>
-                                        </h5>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-end justify-content-between mt-3">
-                                    <div>
-                                        <h4 class="fs-24 fw-bold text-dark mb-2"><span class="counter-value" id="kpi-pendientes">0</span></h4>
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Pendientes de Revisión</p>
+                                        <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="kpi-pendientes">0</span></h4>
                                         <span class="badge bg-soft-warning text-warning fw-medium mb-0 px-2 py-1">Requieren firma</span>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-xl-4 col-md-6">
-                        <div class="card card-animate border-0 shadow-sm border-start border-info border-3" style="border-radius: 10px;">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-0 fs-12 ls-1">En Proceso de Compra</p>
-                                    </div>
-                                    <div class="flex-shrink-0">
-                                        <h5 class="text-info fs-14 mb-0">
-                                            <i class="ri-shopping-cart-2-line fs-22 align-middle"></i>
-                                        </h5>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-end justify-content-between mt-3">
-                                    <div>
-                                        <h4 class="fs-24 fw-bold text-dark mb-2"><span class="counter-value" id="kpi-aprobadas">0</span></h4>
-                                        <span class="badge bg-soft-info text-info fw-medium mb-0 px-2 py-1">Aprobadas</span>
+                                    <div class="avatar-sm flex-shrink-0">
+                                        <span class="avatar-title bg-warning-subtle text-warning rounded-circle fs-3">
+                                            <i class="ri-time-line"></i>
+                                        </span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-xl-4 col-md-6">
-                        <div class="card card-animate border-0 shadow-sm border-start border-success border-3" style="border-radius: 10px;">
+                    <!-- KPI 2: Listas para Compra -->
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card card-animate border-0 shadow-sm rounded-3">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-0 fs-12 ls-1">Finalizadas este Mes</p>
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Listas para Compra</p>
+                                        <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="kpi-aprobadas">0</span></h4>
+                                        <span class="badge bg-soft-success text-success fw-medium mb-0 px-2 py-1">Aprobadas</span>
                                     </div>
-                                    <div class="flex-shrink-0">
-                                        <h5 class="text-success fs-14 mb-0">
-                                            <i class="ri-check-double-line fs-22 align-middle"></i>
-                                        </h5>
+                                    <div class="avatar-sm flex-shrink-0">
+                                        <span class="avatar-title bg-success-subtle text-success rounded-circle fs-3">
+                                            <i class="ri-check-line"></i>
+                                        </span>
                                     </div>
                                 </div>
-                                <div class="d-flex align-items-end justify-content-between mt-3">
-                                    <div>
-                                        <h4 class="fs-24 fw-bold text-dark mb-2"><span class="counter-value" id="kpi-finalizadas">0</span></h4>
-                                        <span class="badge bg-soft-success text-success fw-medium mb-0 px-2 py-1">Cerradas</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI 3: En Proceso de Compra -->
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card card-animate border-0 shadow-sm rounded-3">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">En Proceso de Compra</p>
+                                        <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="kpi-en-compra">0</span></h4>
+                                        <span class="badge bg-soft-info text-info fw-medium mb-0 px-2 py-1">En Cumplimiento Parcial</span>
+                                    </div>
+                                    <div class="avatar-sm flex-shrink-0">
+                                        <span class="avatar-title bg-info-subtle text-info rounded-circle fs-3">
+                                            <i class="ri-shopping-cart-fill"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI 4: Finalizadas este Mes -->
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card card-animate border-0 shadow-sm rounded-3">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Finalizadas este Mes</p>
+                                        <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="kpi-finalizadas">0</span></h4>
+                                        <span class="badge bg-soft-secondary text-secondary fw-medium mb-0 px-2 py-1">Cerradas</span>
+                                    </div>
+                                    <div class="avatar-sm flex-shrink-0">
+                                        <span class="avatar-title bg-secondary-subtle text-secondary rounded-circle fs-3">
+                                            <i class="ri-check-double-line"></i>
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -162,15 +128,16 @@
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-xl" style="border-radius: 12px;">
+                <!-- 4. TABLA CARD -->
+                <div class="card border-0 shadow-xl">
                     <div class="bg-primary" style="height: 4px;"></div>
 
                     <div class="card-body">
-                        <div class="">
+                        <div class="table-responsive">
                             <table id="tblReqs" class="table table-hover table-lg align-middle mb-0" style="width:100% !important;">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3 ps-4">Folio</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Folio</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Título</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Fecha de Elaboración</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Fecha de Recepción de Requisición</th>
@@ -189,7 +156,7 @@
                         </div>
                     </div>
 
-                    <div class="card-footer bg-white border-top-0 py-4">
+                    <div class="card-footer border-top-0 py-4">
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-muted fw-medium">
                                 <i class="ri-shield-check-line text-success me-1"></i> Datos sincronizados en tiempo real
@@ -199,22 +166,17 @@
                 </div>
             </section>
         </div>
-        <!-- container-fluid -->
     </div>
-    <!-- End Page-content -->
 
+    <!-- Footer -->
     <footer class="footer">
         <div class="container-fluid">
             <div class="row">
                 <div class="col-sm-6">
-                    <script>
-                        document.write(new Date().getFullYear())
-                    </script> © LDR.
+                    <script>document.write(new Date().getFullYear())</script> © LDR.
                 </div>
                 <div class="col-sm-6">
-                    <div class="text-sm-end d-none d-sm-block">
-                        LDR Solutions · MRP
-                    </div>
+                    <div class="text-sm-end d-none d-sm-block">LDR Solutions · MRP</div>
                 </div>
             </div>
         </div>

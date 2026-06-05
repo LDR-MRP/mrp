@@ -64,7 +64,6 @@
                                         <th>CLAVE</th>
                                         <th>DESCRIPCIÓN</th>
                                         <th>TIPO</th>
-                                        <th>LÍNEA</th>
                                         <th>ESTADO</th>
                                         <th>ACCIÓN</th>
                                     </tr>
@@ -172,10 +171,6 @@
                         <tr>
                             <td>Factor:</td>
                             <td id="celFactor"></td>
-                        </tr>
-                        <tr>
-                            <td>Ubicación:</td>
-                            <td id="celUbicacion"></td>
                         </tr>
                         <tr>
                             <td>Peso:</td>
@@ -304,6 +299,16 @@
                             Ubicaciones
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#tabProveedores">
+                            Proveedores
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#tabCantidades">
+                            Cantidades
+                        </a>
+                    </li>
                 </ul>
 
                 <div class="tab-content mt-3">
@@ -409,16 +414,16 @@
 
                             <hr>
 
-                            <div id="bloqueFiscalTabla" class="mt-3 d-none">
-                                <h6>Datos fiscales asignados</h6>
-
-                                <table class="table table-sm table-bordered">
-                                    <thead>
+                            <div id="bloqueFiscalTabla" class="mt-2">
+                                <br />
+                                <h5>Datos fiscales asignados</h5>
+                                <table class="table table-striped table-bordered">
+                                    <thead style="background-color: #ff896534;">
                                         <tr>
                                             <th>Tipo</th>
                                             <th>Clave</th>
                                             <th>Descripción</th>
-                                            <th></th>
+                                            <th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tbodyFiscal"></tbody>
@@ -451,10 +456,11 @@
                                 </div>
                             </form>
 
-                            <div class="mt-4">
-                                <h6>Impuestos asignados</h6>
-                                <table class="table table-bordered table-sm">
-                                    <thead>
+                            <div class="mt-2">
+                                <br />
+                                <h5>Impuestos asignados</h5>
+                                <table class="table table-striped table-bordered">
+                                    <thead style="background-color: #ff896534;">
                                         <tr>
                                             <th>Impuesto</th>
                                             <th>Estado</th>
@@ -496,9 +502,9 @@
 
                         <!-- ✅ TABLA -->
                         <div class="mt-4">
-                            <h6>Lotes / Pedimentos asignados</h6>
+                            <h5>Lotes / Pedimentos asignados</h5>
                             <table class="table table-striped table-bordered">
-                                <thead>
+                                <thead style="background-color: #ff896534;">
                                     <tr>
                                         <th>Tipo</th>
                                         <th>Almacén</th>
@@ -584,20 +590,121 @@
                             </div>
                         </form>
 
-                        <table class="table mt-3">
-                            <thead>
-                                <tr>
-                                    <th>Ubicación</th>
-                                    <th>Cantidad</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbodyUbicaciones"></tbody>
-                        </table>
+                        <div class="mt-2">
+                            <br />
+                            <h5>Ubicación asignada</h5>
+                            <table class="table table-striped table-bordered">
+                                <thead style="background-color: #ff896534;">
+                                    <thead style="background-color: #ff896534;">
+                                        <tr>
+                                            <th>Cantidad</th>
+                                            <th>Ubicación</th>
+                                            <th>Fecha</th>
+                                        </tr>
+                                    </thead>
+                                <tbody id="tbodyUbicaciones"></tbody>
+                            </table>
+                        </div>
+
+                    </div>
+
+                    <!--tab de los proveedores-->
+                    <div class="tab-pane fade" id="tabProveedores">
+
+                        <div id="contentProveedor">
+
+                            <form id="formProveedores">
+                                <input type="hidden" id="prov_inventarioid" name="inventarioid">
+
+                                <div class="row g-3">
+                                    <div class="col-md-8">
+                                        <label class="form-label">Proveedores</label>
+                                        <select id="cfg_proveedor" name="id_proveedor" class="form-select">
+                                            <option value="">Seleccione un proveedor</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <button type="submit" class="btn btn-primary w-100">
+                                            Registrar proveedor
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+
+                            <div class="mt-2">
+                                <br />
+                                <h5>Proveedores asignados</h5>
+                                <table class="table table-striped table-bordered">
+                                    <thead style="background-color: #ff896534;">
+                                        <tr>
+                                            <th>Proveedor</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbodyProveedoresCfg"></tbody>
+                                </table>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!--tab de los Cantidades-->
+                    <div class="tab-pane fade" id="tabCantidades">
+
+                        <input type="hidden" id="inventarioid_cantidades">
+
+                        <!-- Resumen general -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label>Existencia</label>
+                                <input type="text" id="existencia_total" class="form-control" readonly>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label>Stock mínimo</label>
+                                <input type="text" id="stock_minimo" class="form-control" readonly>
+                            </div>
+
+                            <div class="col-md-6 mt-3">
+                                <label>Stock máximo</label>
+                                <input type="text" id="stock_maximo" class="form-control" readonly>
+                            </div>
+
+                            <div class="col-md-6 mt-3">
+                                <label>Apartado</label>
+                                <input type="text" id="apartado" class="form-control" readonly>
+                            </div>
+                        </div>
+
+                        <!-- Detalle por almacenes -->
+                        <div class="mt-3" id="contenedorAlmacenes" style="display:none;">
+                            <br />
+                            <h5>Almacenes</h5>
+                            <table class="table table-striped table-bordered">
+                                <thead style="background-color: #ff896534;">
+                                    <tr>
+                                        <th>Almacén</th>
+                                        <th>Existencia</th>
+                                        <th>Stock mínimo</th>
+                                        <th>Stock máximo</th>
+                                        <th>Apartado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyAlmacenes"></tbody>
+                            </table>
+                        </div>
 
                     </div>
 
                 </div>
 
+            </div>
+
+            <div class="modal-footer bg-primary-subtle p-3">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar proceso</button>
             </div>
 
         </div>

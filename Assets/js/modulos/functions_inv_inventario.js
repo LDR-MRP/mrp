@@ -32,7 +32,6 @@ document.addEventListener("DOMContentLoaded", () => {
       { data: "cve_articulo" },
       { data: "descripcion" },
       { data: "tipo_elemento" },
-      { data: "linea" },
       { data: "estado" },
       { data: "options" },
     ],
@@ -87,15 +86,26 @@ document.addEventListener("DOMContentLoaded", () => {
   function limpiarModalInventario() {
     console.log("Limpiando modalConfigInventario...");
 
-    // ---------- HIDDEN ----------
+    // ---------- HIDDEN  de impuestos----------
     const hidImp = document.getElementById("imp_inventarioid");
     if (hidImp) hidImp.value = "";
 
-    // ---------- SELECTS ----------
+    // ---------- HIDDEN  de proveedores----------
+    const hidProv = document.getElementById("prov_inventarioid");
+    if (hidProv) hidProv.value = "";
+
+    // ---------- SELECT impuesto ----------
     const selImp = document.getElementById("cfg_impuesto");
     if (selImp) {
       selImp.innerHTML = `<option value="">Seleccione un impuesto</option>`;
       selImp.value = "";
+    }
+
+    // ---------- SELECT proveedor ----------
+    const selProv = document.getElementById("cfg_proveedor");
+    if (selProv) {
+      selProv.innerHTML = `<option value="">Seleccione un proveedor</option>`;
+      selProv.value = "";
     }
 
     // ---------- TABLAS ----------
@@ -113,6 +123,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const t5 = document.getElementById("tbodyLtpd");
     if (t5) t5.innerHTML = "";
+
+    const t6 = document.getElementById("tbodyProveedoresCfg");
+    if (t6) t6.innerHTML = "";
 
     // ---------- FORMS ----------
     document
@@ -185,12 +198,10 @@ document.addEventListener("DOMContentLoaded", () => {
     },
     agregarServicio: {
       form: "#formInventarioServicio",
-      selectLinea: "#lineaproductoid_servicio",
       tipo: "S",
     },
     agregarKit: {
       form: "#formInventarioKit",
-      selectLinea: "#lineaproductoid_kit",
       tipo: "K",
     },
   };
@@ -202,9 +213,9 @@ document.addEventListener("DOMContentLoaded", () => {
     .querySelector('a[href="#agregarProducto"]')
     ?.addEventListener("click", () => {
       resetFormularioInventario();
-      cargarLineas("#lineaproductoid_producto");
       cargarAlmacenes("#almacenid");
-      cargarImpuestos("#idimpuesto"); // ✅ NUEVO
+      cargarImpuestos("#idimpuesto"); //
+      cargarProveedores("#id_proveedor"); //
     });
 
   /* =============================
@@ -268,6 +279,24 @@ document.addEventListener("DOMContentLoaded", () => {
   // 🔹 HACERLA GLOBAL
   window.cargarImpuestos = cargarImpuestos;
 
+  function cargarProveedores(selectId, selectedValue = "") {
+    const select = document.querySelector(selectId);
+    if (!select) return;
+
+    const request = new XMLHttpRequest();
+    request.open("GET", rutas.impuestos, true);
+    request.send();
+
+    request.onreadystatechange = () => {
+      if (request.readyState === 4 && request.status === 200) {
+        select.innerHTML = request.responseText;
+        if (selectedValue) select.value = selectedValue;
+      }
+    };
+  }
+  // 🔹 HACERLA GLOBAL
+  window.cargarProveedores = cargarProveedores;
+
   /* =============================
      EVENTOS DE TABS
   ============================= */
@@ -276,10 +305,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const targetId = e.target.getAttribute("href").replace("#", "");
       const config = tabsConfig[targetId];
 
-      // 🔥 SI CAMBIAS DE TAB → SIEMPRE LIMPIA
+      //  SI CAMBIAS DE TAB → SIEMPRE LIMPIA
       resetFormularioInventario();
 
-      // 🔥 SI CAMBIAS DE TAB → OCULTAR KIT SI NO ES KIT
+      //  SI CAMBIAS DE TAB → OCULTAR KIT SI NO ES KIT
       if (targetId !== "agregarKit") {
         const kitContainer = document.getElementById("kit_config_container");
         if (kitContainer) {
@@ -287,18 +316,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
-      // 🔥 CARGAS NORMALES
+      //  CARGAS NORMALES
       if (config) {
-        cargarLineas(config.selectLinea);
-
         if (config.selectAlmacen) {
           cargarAlmacenes(config.selectAlmacen);
         }
 
         cargarImpuestos("#idimpuesto");
+        cargarProveedores("#id_proveedor");
       }
 
-      // 🔥 CONTROL DEL BOTÓN
+      //  CONTROL DEL BOTÓN
       const btnText = document.querySelector("#btnText");
 
       if (modoEdicion) {
@@ -319,39 +347,10 @@ document.addEventListener("DOMContentLoaded", () => {
     form.addEventListener("submit", (e) => {
       e.preventDefault();
 
-      // 1️⃣ Crear FormData PRIMERO
+      //  Crear FormData
       const formData = new FormData(form);
 
-      let lineaProducto = null;
-
-      // 2️⃣ Detectar tab activo
-      if (document.querySelector("#agregarProducto.show")) {
-        lineaProducto = document.querySelector(
-          "#lineaproductoid_producto",
-        )?.value;
-      }
-
-      if (document.querySelector("#agregarKit.show")) {
-        lineaProducto = document.querySelector("#lineaproductoid_kit")?.value;
-      }
-
-      if (document.querySelector("#agregarServicio.show")) {
-        lineaProducto = document.querySelector(
-          "#lineaproductoid_servicio",
-        )?.value;
-      }
-
-      // 3️⃣ Validación FK
-      if (!lineaProducto || lineaProducto === "") {
-        Swal.fire(
-          "Aviso",
-          "Selecciona una línea de producto válida",
-          "warning",
-        );
-        return;
-      }
-
-      // 5️⃣ Envío AJAX
+      //  Envío AJAX
       const request = new XMLHttpRequest();
       request.open("POST", rutas.save, true);
       request.send(formData);
@@ -373,7 +372,8 @@ document.addEventListener("DOMContentLoaded", () => {
               res.tipo === "P" ||
               res.tipo === "S" ||
               res.tipo === "C" ||
-              res.tipo === "H"
+              res.tipo === "H" ||
+              res.tipo === "R"
             ) {
               // Limpiar formularios
               form.reset();
@@ -401,7 +401,6 @@ document.addEventListener("DOMContentLoaded", () => {
               }
             }
           } else {
-            // ✅ AQUÍ VA EL ERROR
             Swal.fire({
               icon: "warning",
               title: "Atención",
@@ -427,7 +426,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     });
   });
-
+  // 🔹 GUARDAR UBICACION
   const form = document.getElementById("formUbicacionInventario");
 
   if (form) {
@@ -745,8 +744,6 @@ function fntViewInventario(idinventario) {
         document.querySelector("#celUnidadSalida").innerHTML =
           data.unidad_salida;
         document.querySelector("#celFactor").innerHTML = data.factor_unidades;
-        document.querySelector("#celUbicacion").innerHTML =
-          data.control_almacen;
         document.querySelector("#celPeso").innerHTML = data.peso;
         document.querySelector("#celVolumen").innerHTML = data.volumen;
         document.querySelector("#celSerie").innerHTML =
@@ -835,7 +832,7 @@ function abrirImagenGrande(ruta) {
   img.src = ruta;
 
   const modal = new bootstrap.Modal(
-    document.getElementById("modalImagenGrande")
+    document.getElementById("modalImagenGrande"),
   );
 
   modal.show();
@@ -947,7 +944,7 @@ function cargarKitParaEdicion(idinventario) {
 function abrirTabEdicion(tipo) {
   let tabId = null;
 
-  if (tipo === "P" || tipo === "C" || tipo === "H") {
+  if (tipo === "P" || tipo === "C" || tipo === "H" || tipo === "R") {
     tabId = "#agregarProducto";
   }
 
@@ -968,6 +965,23 @@ function abrirTabEdicion(tipo) {
 }
 
 function llenarFormularioInventario(data) {
+  // 🔥 RESET CLAVE ALTERNA SIEMPRE
+  const inputClave = document.getElementById("clave_alterna");
+  const tipoSelect = document.getElementById("tipo_asignacion");
+  const contenedorTipo = document.getElementById("tipo_asignacion_container");
+
+  if (inputClave) {
+    inputClave.value = "";
+    inputClave.disabled = true;
+  }
+
+  if (tipoSelect) {
+    tipoSelect.value = "";
+  }
+
+  if (contenedorTipo) {
+    contenedorTipo.style.display = "none";
+  }
   let form = null;
 
   // 🔹 marcar tipo_elemento (radio)
@@ -981,7 +995,8 @@ function llenarFormularioInventario(data) {
   if (
     data.tipo_elemento === "P" ||
     data.tipo_elemento === "C" ||
-    data.tipo_elemento === "H"
+    data.tipo_elemento === "H" ||
+    data.tipo_elemento === "R"
   ) {
     form = document.querySelector("#formInventarioProducto");
   }
@@ -1011,7 +1026,6 @@ function llenarFormularioInventario(data) {
   set('[name="unidad_entrada"]', data.unidad_entrada);
   set('[name="unidad_salida"]', data.unidad_salida);
   set('[name="factor_unidades"]', data.factor_unidades);
-  set('[name="ubicacion"]', data.control_almacen);
   set('[name="tiempo_surtido"]', data.tiempo_surtido);
   set('[name="peso"]', data.peso);
   set('[name="volumen"]', data.volumen);
@@ -1019,21 +1033,26 @@ function llenarFormularioInventario(data) {
   set('[name="ultimo_costo"]', data.ultimo_costo);
   set('[name="estado"]', data.estado);
 
-  // 🔹 línea
-  if (
-    data.tipo_elemento === "P" ||
-    data.tipo_elemento === "C" ||
-    data.tipo_elemento === "H"
-  ) {
-    cargarLineas("#lineaproductoid_producto", data.lineaproductoid);
-  }
+  //  CHECKS
+  document.getElementById("serie").checked = data.serie === "S";
+  document.getElementById("lote").checked = data.lote === "S";
+  document.getElementById("pedimiento").checked = data.pedimiento === "S";
 
-  if (data.tipo_elemento === "S") {
-    cargarLineas("#lineaproductoid_servicio", data.lineaproductoid);
-  }
+  //  CLAVE ALTERNA
+  if (data.claves && data.claves.length > 0) {
+    const clave = data.claves[0];
 
-  if (data.tipo_elemento === "K") {
-    cargarLineas("#lineaproductoid_kit", data.lineaproductoid);
+    const inputClave = document.getElementById("clave_alterna");
+    const tipoSelect = document.getElementById("tipo_asignacion");
+    const contenedorTipo = document.getElementById("tipo_asignacion_container");
+
+    inputClave.disabled = false;
+    inputClave.value = clave.cve_alterna;
+
+    if (clave.tipo) {
+      contenedorTipo.style.display = "block";
+      tipoSelect.value = clave.tipo;
+    }
   }
 }
 
@@ -1061,12 +1080,7 @@ function resetFormularioInventario() {
     .forEach((el) => (el.value = ""));
 
   // 🔹 Reset selects
-  [
-    "#lineaproductoid_producto",
-    "#lineaproductoid_servicio",
-    "#lineaproductoid_kit",
-    "#almacenid",
-  ].forEach((sel) => {
+  ["#almacenid"].forEach((sel) => {
     const s = document.querySelector(sel);
     if (s) s.innerHTML = "";
   });
@@ -1089,6 +1103,24 @@ function resetFormularioInventario() {
   // 🔹 Limpiar kitid
   const kitid = document.getElementById("kitid");
   if (kitid) kitid.value = "";
+
+  // 🔥 RESET CLAVE ALTERNA
+  const inputClave = document.getElementById("clave_alterna");
+  const tipoSelect = document.getElementById("tipo_asignacion");
+  const contenedorTipo = document.getElementById("tipo_asignacion_container");
+
+  if (inputClave) {
+    inputClave.value = "";
+    inputClave.disabled = true;
+  }
+
+  if (tipoSelect) {
+    tipoSelect.value = "";
+  }
+
+  if (contenedorTipo) {
+    contenedorTipo.style.display = "none";
+  }
 }
 
 function setValue(selector, value) {
@@ -1148,6 +1180,9 @@ function fntConfigInventario(idinventario) {
         case "C":
           tipo = "Componente";
           break;
+        case "R":
+          tipo = "Refacción";
+          break;
       }
       document.getElementById("cfg_tipo").innerText = tipo;
 
@@ -1161,6 +1196,7 @@ function fntConfigInventario(idinventario) {
         refrescarFiscal(idinventario);
         cargarTabImpuestos(idinventario);
         cargarTabUbicaciones(idinventario);
+        cargarTabProveedores(idinventario);
       }, 150);
     });
 }
@@ -1199,9 +1235,10 @@ function cargarTabMoneda(idinventario) {
         </div>
 
         <div class="mt-2">
-          <h6>Monedas asignadas</h6>
+        <br/>
+          <h5>Monedas asignadas</h5>
           <table class="table table-striped table-bordered">
-            <thead>
+            <thead style="background-color: #ff896534;">
               <tr>
                 <th>ID</th>
                 <th>Moneda</th>
@@ -1233,11 +1270,16 @@ function cargartabPrecio(idinventario) {
       cont.innerHTML = `
         <div class="row g-3 mb-3">
 
-          <div class="col-md-10">
-            <label class="form-label">Precio</label>
+          <div class="col-md-5">
+            <label class="form-label">Catalogo de precios</label>
             <select id="cfg_precio" class="form-select">
               ${html}
             </select>
+          </div>
+
+          <div class="col-md-5">
+            <label class="form-label">Precio actual</label>
+            <input type="number" step="0.01" id="cfg_precio_num" class="form-control">
           </div>
 
           <div class="col-md-2 align-self-end">
@@ -1250,14 +1292,15 @@ function cargartabPrecio(idinventario) {
         </div>
 
         <div class="mt-2">
-          <h6>Precios asignados</h6>
+        <br/>
+          <h5>Precios asignados</h5>
           <table class="table table-striped table-bordered">
-            <thead>
+            <thead style="background-color: #ff896534;">
               <tr>
-                <th>ID</th>
                 <th>Clave</th>
                 <th>Descripción</th>
-                <th>Estado</th>
+                <th>Precio</th>
+                <th>Fecha</th>
               </tr>
             </thead>
             <tbody id="tbodyPrecios"></tbody>
@@ -1271,15 +1314,17 @@ function cargartabPrecio(idinventario) {
 function guardarPrecio(idinventario) {
   let select = document.getElementById("cfg_precio");
   let idprecio = select.value;
+  let precio = document.getElementById("cfg_precio_num").value;
 
-  if (!idprecio) {
-    Swal.fire("Atención", "Seleccione un precio", "warning");
+  if (!precio || precio <= 0) {
+    Swal.fire("Atención", "Ingrese un precio válido", "warning");
     return;
   }
 
   let formData = new FormData();
   formData.append("inventarioid", idinventario);
   formData.append("idprecio", idprecio);
+  formData.append("precio", precio);
 
   fetch(base_url + "/Inv_inventario/setPrecioInventario", {
     method: "POST",
@@ -1292,6 +1337,9 @@ function guardarPrecio(idinventario) {
 
         // ✅ LIMPIAR SELECT
         select.selectedIndex = 0;
+
+        // ✅ LIMPIAR INPUT PRECIO
+        document.getElementById("cfg_precio_num").value = "";
 
         // O también puedes usar:
         // select.value = "";
@@ -1316,10 +1364,10 @@ function refrescarTablaPrecios(idinventario) {
         data.data.forEach((item) => {
           tbody.innerHTML += `
             <tr>
-              <td>${item.idprecio}</td>
               <td>${item.cve_precio}</td>
               <td>${item.descripcion}</td>
-              <td>${item.estado == 2 ? "Activo" : "Inactivo"}</td>
+              <td>$${item.precio}</td>
+              <td>${item.fecha_creacion}</td>
             </tr>
           `;
         });
@@ -1342,7 +1390,7 @@ function cargarTabLineas(idinventario) {
         <div class="row g-3 mb-3">
 
           <!-- LINEA -->
-          <div class="col-md-6">
+          <div class="col-md-5">
             <label class="form-label">Línea</label>
             <select id="cfg_linea" class="form-select">
               ${htmlLineas}
@@ -1350,14 +1398,14 @@ function cargarTabLineas(idinventario) {
           </div>
 
           <!-- SUBLINEA -->
-          <div class="col-md-6">
+          <div class="col-md-5">
             <label class="form-label">Sublínea</label>
             <select id="cfg_sublinea" class="form-select">
               <option value="">Seleccione una sublínea</option>
             </select>
           </div>
 
-          <div class="col-md-12">
+          <div class="col-md-2 align-self-end">
             <button class="btn btn-primary w-100" onclick="guardarLinea(${idinventario})">
               Guardar
             </button>
@@ -1365,15 +1413,17 @@ function cargarTabLineas(idinventario) {
         </div>
 
         <div class="mt-2">
-          <h6>Líneas asignadas</h6>
+        <br/>
+          <h5>Líneas asignadas</h5>
           <table class="table table-striped table-bordered">
-            <thead>
+            <thead style="background-color: #ff896534;">
               <tr>
                 <th>ID</th>
                 <th>Línea</th>
                 <th>Sublínea</th>
                 <th>Fecha</th>
                 <th>Estado</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="tbodyLineasAsignadas"></tbody>
@@ -2464,7 +2514,7 @@ function refrescarTablaUbicaciones(idinventario) {
       data.data.forEach((u) => {
         tbody.innerHTML += `
           <tr>
-            <td>${u.idubicacionasignada}</td>
+            <td>${u.cantidad}</td>
             <td>${u.ubicacion}</td>
             <td>${u.fecha_creacion}</td>
           </tr>
@@ -2511,3 +2561,184 @@ function guardarUbicacion(e) {
       }
     });
 }
+
+//-----------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------PROVEEDORES-------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------
+document
+  .getElementById("formProveedores")
+  .addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    const idinv = document.getElementById("prov_inventarioid").value;
+    guardarProveedor(idinv);
+  });
+
+function cargarTabProveedores(idinventario) {
+  // setear hidden
+  const hid = document.getElementById("prov_inventarioid");
+  if (hid) hid.value = idinventario;
+
+  fetch(base_url + "/Inv_inventario/getSelectProveedoresCfg")
+    .then((r) => r.text())
+    .then((html) => {
+      document.getElementById("cfg_proveedor").innerHTML = html;
+      refrescarTablaProveedores(idinventario);
+    });
+}
+
+function guardarProveedor(idinventario) {
+  console.log("ID inventario:", idinventario);
+  const proveedor = document.getElementById("cfg_proveedor").value;
+
+  if (!proveedor) {
+    Swal.fire("Aviso", "Selecciona un proveedor", "warning");
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("inventarioid", idinventario);
+  fd.append("id_proveedor", proveedor);
+
+  fetch(base_url + "/Inv_inventario/setProveedor", {
+    method: "POST",
+    body: fd,
+  })
+    .then((r) => r.json())
+    .then((res) => {
+      if (res.status) {
+        Swal.fire("OK", res.msg, "success");
+
+        document.getElementById("cfg_proveedor").value = "";
+
+        refrescarTablaProveedores(idinventario);
+      } else {
+        Swal.fire("Error", res.msg, "error");
+      }
+    });
+}
+function refrescarTablaProveedores(idinventario) {
+  fetch(base_url + "/Inv_inventario/getProveedoresAsignados/" + idinventario)
+    .then((r) => r.json())
+    .then((res) => {
+      console.log("Respuesta impuestos:", res);
+
+      const tbody = document.getElementById("tbodyProveedoresCfg");
+      if (!tbody) {
+        console.log("No existe tbodyProveedoresCfg");
+        return;
+      }
+
+      tbody.innerHTML = "";
+
+      if (!res.data || res.data.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="3" class="text-center text-muted">
+              Sin proveedores asignados
+            </td>
+          </tr>`;
+        return;
+      }
+
+      res.data.forEach((i) => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${i.nombre_comercial}</td>
+            <td>${i.estado == 2 ? "Activo" : "Inactivo"}</td>
+          </tr>
+        `;
+      });
+    });
+}
+
+//-----------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------CANTIDADES-------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------
+
+function cargarCantidades(inventarioid) {
+  $("#inventarioid_cantidades").val(inventarioid);
+
+  // limpiar visual
+  $("#tbodyAlmacenes").html(`
+    <tr>
+      <td colspan="5" class="text-center">Cargando...</td>
+    </tr>
+  `);
+  $("#contenedorAlmacenes").show();
+
+  // ===============================
+  // RESUMEN GENERAL (wms_inventario)
+  // ===============================
+  $.ajax({
+    url: base_url + "/Inv_inventario/getCantidadesProducto",
+    type: "POST",
+    data: { inventarioid: inventarioid },
+    dataType: "json",
+    success: function (res) {
+      $("#existencia_total").val(res.existencia_total ?? 0);
+      $("#stock_minimo").val(res.stock_minimo ?? 0);
+      $("#stock_maximo").val(res.stock_maximo ?? 0);
+      $("#apartado").val(res.apartado ?? 0);
+    },
+    error: function () {
+      $("#existencia_total").val(0);
+      $("#stock_minimo").val(0);
+      $("#stock_maximo").val(0);
+      $("#apartado").val(0);
+    },
+  });
+
+  // ===============================
+  // DETALLE POR ALMACÉN (wms_multialmacen)
+  // ===============================
+  $.ajax({
+    url: base_url + "/Inv_inventario/getAlmacenesProducto",
+    type: "POST",
+    data: { inventarioid: inventarioid },
+    dataType: "json",
+    success: function (res) {
+      let html = "";
+
+      if (res.length > 0) {
+        res.forEach((row) => {
+          html += `
+            <tr>
+              <td>${row.almacen}</td>
+              <td>${row.existencia ?? 0}</td>
+              <td>${row.stock_minimo ?? 0}</td>
+              <td>${row.stock_maximo ?? 0}</td>
+              <td>${row.apartado ?? 0}</td>
+            </tr>
+          `;
+        });
+      } else {
+        html = `
+          <tr>
+            <td colspan="5" class="text-center">Sin almacenes asignados</td>
+          </tr>
+        `;
+      }
+
+      $("#tbodyAlmacenes").html(html);
+      $("#contenedorAlmacenes").show();
+    },
+    error: function () {
+      $("#tbodyAlmacenes").html(`
+        <tr>
+          <td colspan="5" class="text-center text-danger">
+            Error al consultar almacenes
+          </td>
+        </tr>
+      `);
+      $("#contenedorAlmacenes").show();
+    },
+  });
+}
+
+document
+  .querySelector('a[href="#tabCantidades"]')
+  .addEventListener("shown.bs.tab", function () {
+    if (!currentInventarioId) return;
+    cargarCantidades(currentInventarioId);
+  });
