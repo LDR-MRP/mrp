@@ -35,9 +35,9 @@ let btnProcesos = null;
 let btnFinalizado = null;
 
 // RUTA 
-let rutaEstaciones = [];           
-let rutaDetallePendiente = [];     
-let aplicoRutaPendiente = false;   
+let rutaEstaciones = [];
+let rutaDetallePendiente = [];
+let aplicoRutaPendiente = false;
 
 let tableEspecifica = null;
 let estacionActual = 0;
@@ -50,7 +50,7 @@ let herramientasSeleccionadas = []; //
 
 // NUEVOS 
 let estacionesOriginales = new Set();
-let estacionesEliminadas = [];   
+let estacionesEliminadas = [];
 
 let estacionSeleccionadaActual = null;
 let subensamblesCache = {};
@@ -127,7 +127,7 @@ function xhrRequest({ method = "GET", url, data = null, headers = {}, responseTy
               out = JSON.parse(request.responseText);
             } catch (e) {
               console.error("JSON inválido:", e);
-              console.log("Respuesta cruda:", request.responseText);
+              // console.log("Respuesta cruda:", request.responseText);
               out = { status: false, msg: "JSON inválido" };
             }
           } else {
@@ -190,9 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   refreshLowerTabs();
   setPanelDetalleActivo(false);
-limpiarPanelDetalleEstacion();
-
-
+  limpiarPanelDetalleEstacion();
 
 
   // --------------------------------------------------------------------
@@ -201,32 +199,29 @@ limpiarPanelDetalleEstacion();
   initTabInformacion();
   initAyudasVisualesEventos();
 
+  initPdiModalEventos();
 
+  const btnAbrirModalPdi = document.getElementById('btnAbrirModalPdi');
+  if (btnAbrirModalPdi && !btnAbrirModalPdi.dataset.bound) {
+    btnAbrirModalPdi.addEventListener('click', async function () {
+      const idestacion = document.getElementById('idestacion_actual')?.value || '';
+      const idproducto = document.getElementById('idproducto_proceso')?.value || '';
 
+      if (!idestacion || !idproducto) {
+        Swal.fire('Atención', 'Primero selecciona una estación.', 'warning');
+        return;
+      }
 
-initPdiModalEventos();
+      await inicializarPdiDesdeLocalOBd(idestacion, idproducto);
 
-const btnAbrirModalPdi = document.getElementById('btnAbrirModalPdi');
-if (btnAbrirModalPdi && !btnAbrirModalPdi.dataset.bound) {
-  btnAbrirModalPdi.addEventListener('click', async function () {
-    const idestacion = document.getElementById('idestacion_actual')?.value || '';
-    const idproducto = document.getElementById('idproducto_proceso')?.value || '';
+      const modalEl = document.getElementById('modalPdi');
+      if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      }
+    });
 
-    if (!idestacion || !idproducto) {
-      Swal.fire('Atención', 'Primero selecciona una estación.', 'warning');
-      return;
-    }
-
-    await inicializarPdiDesdeLocalOBd(idestacion, idproducto);
-
-    const modalEl = document.getElementById('modalPdi');
-    if (modalEl) {
-      bootstrap.Modal.getOrCreateInstance(modalEl).show();
-    }
-  });
-
-  btnAbrirModalPdi.dataset.bound = '1';
-}
+    btnAbrirModalPdi.dataset.bound = '1';
+  }
 
 
   const btnAgregar = document.getElementById('btnAgregarAyudaSub');
@@ -237,17 +232,14 @@ if (btnAbrirModalPdi && !btnAbrirModalPdi.dataset.bound) {
 
 
 
-const btnGuardarTodoAyudas = document.getElementById('btnGuardarTodoAyudas');
-if (btnGuardarTodoAyudas && !btnGuardarTodoAyudas.dataset.bound) {
-  btnGuardarTodoAyudas.addEventListener('click', function () {
-    const idestacion = document.getElementById('idestacion_actual')?.value || '';
-    guardarTodoAyudasEstacion(idestacion);
-  });
-  btnGuardarTodoAyudas.dataset.bound = '1';
-}
-
-
-
+  const btnGuardarTodoAyudas = document.getElementById('btnGuardarTodoAyudas');
+  if (btnGuardarTodoAyudas && !btnGuardarTodoAyudas.dataset.bound) {
+    btnGuardarTodoAyudas.addEventListener('click', function () {
+      const idestacion = document.getElementById('idestacion_actual')?.value || '';
+      guardarTodoAyudasEstacion(idestacion);
+    });
+    btnGuardarTodoAyudas.dataset.bound = '1';
+  }
 
   // --------------------------------------------------------------------
   //  DATATABLE DOCUMENTOS
@@ -452,7 +444,7 @@ if (btnGuardarTodoAyudas && !btnGuardarTodoAyudas.dataset.bound) {
           if (idproducto_proceso) idproducto_proceso.value = objData.idproducto;
           if (idproducto_especificacion) idproducto_especificacion.value = objData.idproducto;
 
-         
+
           if (id_ruta_producto) id_ruta_producto.value = '';
           resetRutaUI();
           rutaDetallePendiente = [];
@@ -554,54 +546,13 @@ if (btnGuardarTodoAyudas && !btnGuardarTodoAyudas.dataset.bound) {
     formRuta.addEventListener('submit', async function (e) {
       e.preventDefault();
 
-      const payload = construirPayloadRuta();
-      const d = payload[0];
+      const ok = await guardarRutaProductoDesdePdi();
 
-      if (!d.listPlantasSelect || !d.listLineasSelect) {
-        Swal.fire("Atención", "Selecciona Planta y Línea.", "warning");
-        return;
-      }
-      if (!d.detalle_ruta || d.detalle_ruta.length === 0) {
-        Swal.fire("Atención", "Agrega estaciones a la ruta.", "warning");
-        return;
-      }
-
-      // ✅ Validar que exista EXACTAMENTE 1 estación con estampado=1
-const estampadas = (d.detalle_ruta || []).filter(x => Number(x.estampado || 0) === 1);
-
-if (estampadas.length !== 1) {
-  Swal.fire(
-    "Atención",
-    "Debes marcar EXACTAMENTE 1 estación con “Estampar VIN” para poder guardar la ruta.",
-    "warning"
-  );
-  return;
-}
-
-      const formData = new FormData(formRuta);
-      formData.append('ruta', JSON.stringify(payload));
-
-      const res = await fetchJSON(base_url + '/Plan_confproductosv1/setRutaProducto', {
-        method: 'POST',
-        body: formData
-      }, { useLoading: true });
-
-      if (res.status) {
+      if (ok) {
         Swal.fire({
           icon: 'success',
           title: '¡Operación exitosa!',
-          text: res.msg || 'La ruta del producto fue guardada correctamente',
-          confirmButtonText: 'Aceptar'
-        });
-
-        const inputRuta = document.querySelector('#id_ruta_producto');
-        if (inputRuta && res.idruta) inputRuta.value = res.idruta;
-
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: res.msg || 'No se pudo guardar la ruta',
+          text: 'La ruta del producto fue guardada correctamente',
           confirmButtonText: 'Aceptar'
         });
       }
@@ -661,71 +612,51 @@ if (estampadas.length !== 1) {
     formEspecificaciones.addEventListener('submit', async function (e) {
       e.preventDefault();
 
-      // const ajaxUrl = base_url + '/Plan_confproductosv1/setEspecificacion';
-
       const tipoContextoEsp = document.querySelector('#tipo_contexto_especificacion')?.value || 'estacion';
-const ajaxUrl = tipoContextoEsp === 'subensamble'
-  ? getControllerBase() + '/setEspecificacionSubensamble'
-  : getControllerBase() + '/setEspecificacion';
+      const esCritica = Number(document.querySelector('#es_critica_especificacion')?.value || 0);
 
-
+      const ajaxUrl = tipoContextoEsp === 'subensamble'
+        ? getControllerBase() + '/setEspecificacionSubensamble'
+        : getControllerBase() + '/setEspecificacion';
 
       const formData = new FormData(formEspecificaciones);
+      formData.set('es_critica', String(esCritica));
 
-      const objData = await fetchJSON(ajaxUrl, { method: "POST", body: formData }, { useLoading: true });
+      const objData = await fetchJSON(ajaxUrl, {
+        method: "POST",
+        body: formData
+      }, { useLoading: true });
 
       if (!objData || objData.status === false) {
         Swal.fire("Error", objData?.msg || "Ocurrió un error en el servidor.", "error");
         return;
       }
 
-      if (objData.status) {
+      if (!objData.status) {
+        Swal.fire("Error", objData.msg || "No se pudo guardar.", "error");
+        return;
+      }
 
-        if (objData.tipo === 'insert') {
+      Swal.fire("¡Operación exitosa!", objData.msg || "Registro guardado correctamente.", "success");
 
-          if (tableEspecifica) tableEspecifica.ajax.reload(null, false);
-          refreshLowerTabs();
-          marcarEstacionConDatosUI(estacionActual);
-          
+      resetFormEspecificacion();
 
-          Swal.fire({
-            title: '¡Operación exitosa!',
-            text: objData.msg,
-            icon: 'success',
-            confirmButtonText: 'OK',
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#dc3545',
-            allowOutsideClick: false,
-            allowEscapeKey: false
-          }).then(() => {
-            const txtEspecificacion = document.querySelector('#txtEspecificacion');
-            if (txtEspecificacion) txtEspecificacion.value = '';
-            const btnTextEsp = document.querySelector('#btnTextEspecificacion');
-            if (btnTextEsp) btnTextEsp.innerHTML = "Registrar";
-          });
+      if (tipoContextoEsp === 'subensamble') {
+        const idSub = document.querySelector('#idsubensamble_especificacion')?.value || 0;
+        const idEstacion = document.querySelector('#idestacion_especificacion')?.value
+          || document.querySelector('#idestacion_actual')?.value
+          || 0;
 
-        } else {
-          if (tableEspecifica) tableEspecifica.ajax.reload(null, false);
-
-          Swal.fire("¡Operación exitosa!", objData.msg, "success");
-
-          const txtEspecificacion = document.querySelector('#txtEspecificacion');
-          if (txtEspecificacion) txtEspecificacion.value = '';
-          if (idespecificacioninput) idespecificacioninput.value = 0;
-          const btnTextEsp = document.querySelector('#btnTextEspecificacion');
-          if (btnTextEsp) btnTextEsp.innerHTML = "Registrar";
+        if (idSub) {
+          cargarEspecificacionesSubensamble(idSub, esCritica);
+          await refrescarMetricasSubensamble(idEstacion, idSub);
         }
-
-        // await refrescarEstadoEstacion(estacionActual);
-        if (tipoContextoEsp === 'subensamble') {
-  const idSub = document.querySelector('#idsubensamble_especificacion')?.value || 0;
-  if (idSub) cargarEspecificacionesSubensamble(idSub);
-} else {
-  await refrescarEstadoEstacion(estacionActual);
-}
-
       } else {
-        Swal.fire("Error", objData.msg, "error");
+        const idEstacion = document.querySelector('#idestacion')?.value || estacionActual;
+        if (idEstacion) {
+          cargarEspecificaciones(idEstacion, esCritica);
+          await refrescarEstadoEstacion(idEstacion);
+        }
       }
     });
   }
@@ -803,19 +734,15 @@ const ajaxUrl = tipoContextoEsp === 'subensamble'
   });
 
 
+  const listaRutaEl = document.querySelector('#listaRutaCards');
+  if (listaRutaEl && !listaRutaEl.dataset.boundEstampadoOne) {
+    listaRutaEl.addEventListener('change', function (e) {
+      const chk = e.target.closest('.chk-estampado');
+      if (!chk) return;
+    });
 
-
-
-// ✅ SOLO 1 estación puede tener VIN
-const listaRutaEl = document.querySelector('#listaRutaCards');
-if (listaRutaEl && !listaRutaEl.dataset.boundEstampadoOne) {
-  listaRutaEl.addEventListener('change', function (e) {
-    const chk = e.target.closest('.chk-estampado');
-    if (!chk) return;
-  });
-
-  listaRutaEl.dataset.boundEstampadoOne = '1';
-}
+    listaRutaEl.dataset.boundEstampadoOne = '1';
+  }
 
 
 }, false);
@@ -828,6 +755,64 @@ function initTabInformacion() {
   fntInventarios();
   fntLineasProducto();
   fntPlantas();
+}
+
+
+async function guardarRutaProductoDesdePdi() {
+  const formRuta = document.querySelector('#formRutaProducto');
+
+  if (!formRuta) {
+    console.warn('No se encontró el formulario de ruta.');
+    return false;
+  }
+
+  const payload = construirPayloadRuta();
+  const d = payload[0];
+
+  if (!d.listPlantasSelect || !d.listLineasSelect) {
+    Swal.fire("Atención", "Selecciona Planta y Línea.", "warning");
+    return false;
+  }
+
+  if (!d.detalle_ruta || d.detalle_ruta.length === 0) {
+    Swal.fire("Atención", "Agrega estaciones a la ruta.", "warning");
+    return false;
+  }
+
+  const estampadas = (d.detalle_ruta || []).filter(x => Number(x.estampado || 0) === 1);
+
+  if (estampadas.length !== 1) {
+    Swal.fire(
+      "Atención",
+      "Debes marcar EXACTAMENTE 1 estación con “Estampar VIN” para poder guardar la ruta.",
+      "warning"
+    );
+    return false;
+  }
+
+  const formData = new FormData(formRuta);
+  formData.append('ruta', JSON.stringify(payload));
+
+  const res = await fetchJSON(base_url + '/Plan_confproductosv1/setRutaProducto', {
+    method: 'POST',
+    body: formData
+  }, { useLoading: true });
+
+  if (res.status) {
+    const inputRuta = document.querySelector('#id_ruta_producto');
+    if (inputRuta && res.idruta) inputRuta.value = res.idruta;
+
+    return true;
+  }
+
+  Swal.fire({
+    icon: 'error',
+    title: 'Error',
+    text: res.msg || 'No se pudo guardar la ruta',
+    confirmButtonText: 'Aceptar'
+  });
+
+  return false;
 }
 
 
@@ -885,7 +870,7 @@ async function loadDescriptivaForProducto() {
   const inputSistemaElectrico = formConfDescriptiva.querySelector('#txtSistemaElectrico');
   const inputCapCombustible = formConfDescriptiva.querySelector('#txtCapacidadCombustible');
   const inputDireccion = formConfDescriptiva.querySelector('#txtDireccion');
-    const inputNorma = formConfDescriptiva.querySelector('#txtNorma');
+  const inputNorma = formConfDescriptiva.querySelector('#txtNorma');
   const inputEquipamiento = formConfDescriptiva.querySelector('#txtEquipamiento');
 
   if (inputMarca) inputMarca.value = d.marca ?? '';
@@ -910,7 +895,7 @@ async function loadDescriptivaForProducto() {
   if (inputSistemaElectrico) inputSistemaElectrico.value = d.sistema_electrico ?? '';
   if (inputCapCombustible) inputCapCombustible.value = d.capacidad_combustible ?? '';
   if (inputDireccion) inputDireccion.value = d.direccion ?? '';
-    if (inputNorma) inputNorma.value = d.norma ?? '';
+  if (inputNorma) inputNorma.value = d.norma ?? '';
   if (inputEquipamiento) inputEquipamiento.value = d.equipamiento ?? '';
 
   if (btnSubmitDes) btnSubmitDes.textContent = 'ACTUALIZAR';
@@ -995,10 +980,10 @@ function requireRutaProductoOrWarn() {
 // ------------------------------------------------------------------------
 function resetRutaCompleta() {
   const listPlanta = document.querySelector('#listPlantasSelect');
-  const listLinea  = document.querySelector('#listLineasSelect');
+  const listLinea = document.querySelector('#listLineasSelect');
 
   if (listPlanta) listPlanta.value = '';
-  if (listLinea)  listLinea.value  = '';
+  if (listLinea) listLinea.value = '';
 
   const listaEstaciones = document.querySelector('#listaEstaciones');
   if (listaEstaciones) listaEstaciones.innerHTML = '';
@@ -1244,18 +1229,18 @@ async function fntPlantas(selectedValue = "") {
 
 
   if (!selectPlantasLocal.dataset.bound) {
-  selectPlantasLocal.addEventListener('change', function () {
-    const idPlanta = this.value;
+    selectPlantasLocal.addEventListener('change', function () {
+      const idPlanta = this.value;
 
-    resetRutaUI();
-    rutaDetallePendiente = [];
-    aplicoRutaPendiente = false;
+      resetRutaUI();
+      rutaDetallePendiente = [];
+      aplicoRutaPendiente = false;
 
-    if (selectLineasLocal) selectLineasLocal.innerHTML = '<option value="">--Seleccione--</option>';
-    fntLineas(idPlanta);
-  });
-  selectPlantasLocal.dataset.bound = '1';
-}
+      if (selectLineasLocal) selectLineasLocal.innerHTML = '<option value="">--Seleccione--</option>';
+      fntLineas(idPlanta);
+    });
+    selectPlantasLocal.dataset.bound = '1';
+  }
 
 }
 
@@ -1304,15 +1289,15 @@ async function fntLineas(idPlanta, selectedLinea = "") {
   // }
 
   if (!selectLineasLocal.dataset.bound) {
-  selectLineasLocal.addEventListener('change', function () {
-    resetRutaUI();
-    rutaDetallePendiente = [];
-    aplicoRutaPendiente = false;
+    selectLineasLocal.addEventListener('change', function () {
+      resetRutaUI();
+      rutaDetallePendiente = [];
+      aplicoRutaPendiente = false;
 
-    fntEstaciones(this.value || "");
-  });
-  selectLineasLocal.dataset.bound = '1';
-}
+      fntEstaciones(this.value || "");
+    });
+    selectLineasLocal.dataset.bound = '1';
+  }
 
 }
 
@@ -1337,14 +1322,14 @@ async function fntEstaciones(idLinea, selectedEstacion = "") {
   // }
 
   if (!idLinea) {
-  listaEstaciones.innerHTML = '';
-  badgeCount.textContent = '0';
-  if (msgSinEstaciones) msgSinEstaciones.classList.remove('d-none');
-  if (selectEstaciones) selectEstaciones.innerHTML = '<option value="">--Seleccione--</option>';
-  resetRutaUI();
-  setPanelDetalleActivo(false);
-  return;
-}
+    listaEstaciones.innerHTML = '';
+    badgeCount.textContent = '0';
+    if (msgSinEstaciones) msgSinEstaciones.classList.remove('d-none');
+    if (selectEstaciones) selectEstaciones.innerHTML = '<option value="">--Seleccione--</option>';
+    resetRutaUI();
+    setPanelDetalleActivo(false);
+    return;
+  }
 
 
   const ajaxUrl = getControllerBase() + '/getSelectEstaciones/' + idLinea;
@@ -1360,14 +1345,14 @@ async function fntEstaciones(idLinea, selectedEstacion = "") {
   // }
 
   if (!Array.isArray(estaciones) || estaciones.length === 0) {
-  listaEstaciones.innerHTML = '';
-  badgeCount.textContent = '0';
-  if (msgSinEstaciones) msgSinEstaciones.classList.remove('d-none');
-  if (selectEstaciones) selectEstaciones.innerHTML = '<option value="">--Seleccione--</option>';
-  resetRutaUI();
-  setPanelDetalleActivo(false);
-  return;
-}
+    listaEstaciones.innerHTML = '';
+    badgeCount.textContent = '0';
+    if (msgSinEstaciones) msgSinEstaciones.classList.remove('d-none');
+    if (selectEstaciones) selectEstaciones.innerHTML = '<option value="">--Seleccione--</option>';
+    resetRutaUI();
+    setPanelDetalleActivo(false);
+    return;
+  }
 
 
   listaEstaciones.innerHTML = '';
@@ -1393,12 +1378,13 @@ async function fntEstaciones(idLinea, selectedEstacion = "") {
     item.setAttribute('data-idestacion', String(est.idestacion));
     item.setAttribute('data-cve', est.cve_estacion || '');
     item.setAttribute('data-nombre', est.nombre_estacion || '');
+    item.setAttribute('data-proceso', est.proceso || '');
     item.setAttribute('data-herramientas', String(est.herramientas ?? 0));
     item.setAttribute('data-tiene-subensamble', String(est.tiene_subensamble ?? 0));
     item.setAttribute('data-tiempo-ajuste', String(est.tiempo_ajuste ?? ''));
     item.setAttribute('draggable', 'true');
 
-item.innerHTML = `
+    item.innerHTML = `
   <div class="d-flex align-items-start justify-content-between w-100 gap-2">
     <div class="d-flex align-items-start gap-2 text-start">
       <div class="mt-1 text-body-secondary">
@@ -1410,22 +1396,20 @@ item.innerHTML = `
         </div>
         <small class="text-body-secondary d-block">${est.nombre_estacion}</small>
         <div class="mt-1 d-flex flex-wrap gap-1">
-          ${
-            Number(est.tiene_subensamble || 0) === 1
-            ? `<span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">
+          ${Number(est.tiene_subensamble || 0) === 1
+        ? `<span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">
                  <i class="bi bi-diagram-3 me-1"></i>Con subensamble
                </span>`
-            : `<span class="badge rounded-pill bg-body-secondary text-body border">
+        : `<span class="badge rounded-pill bg-body-secondary text-body border">
                  <i class="bi bi-box me-1"></i>Estación
                </span>`
-          }
-          ${
-            (est.tiempo_ajuste ?? '') !== ''
-            ? `<span class="badge rounded-pill bg-warning-subtle text-warning-emphasis">
+      }
+          ${(est.tiempo_ajuste ?? '') !== ''
+        ? `<span class="badge rounded-pill bg-warning-subtle text-warning-emphasis">
                  <i class="bi bi-clock-history me-1"></i>${est.tiempo_ajuste}
                </span>`
-            : ''
-          }
+        : ''
+      }
         </div>
       </div>
     </div>
@@ -1442,6 +1426,7 @@ item.innerHTML = `
         idestacion: est.idestacion,
         cve_estacion: est.cve_estacion,
         nombre_estacion: est.nombre_estacion,
+        proceso: est.proceso,
         herramientas: est.herramientas,
         tiene_subensamble: Number(est.tiene_subensamble || 0),
         tiempo_ajuste: est.tiempo_ajuste || ''
@@ -1484,6 +1469,7 @@ function aplicarRutaPendienteSiExiste() {
         idestacion: idEst,
         cve_estacion: btnOrigen.getAttribute('data-cve') || '',
         nombre_estacion: btnOrigen.getAttribute('data-nombre') || '',
+        proceso: btnOrigen.getAttribute('data-proceso') || '',
         herramientas: Number(btnOrigen.getAttribute('data-herramientas') || 0),
         tiene_subensamble: Number(btnOrigen.getAttribute('data-tiene-subensamble') || 0),
         iddetalle: Number(item.iddetalle || 0),
@@ -1533,13 +1519,11 @@ function resetRutaUI() {
   }
 }
 
-
-
 // ------------------------------------------------------------------------
 //  AGREGAR ESTACIÓN A LA RUTA
 // ------------------------------------------------------------------------
 function agregarEstacionARuta(est, botonOrigen) {
-  console.log(est);
+
   const contenedor = document.querySelector('#listaRutaCards');
   if (!contenedor) return;
 
@@ -1563,6 +1547,7 @@ function agregarEstacionARuta(est, botonOrigen) {
   card.setAttribute('data-estampado', String(estampadoVal));
   card.setAttribute('data-cve', est.cve_estacion || '');
   card.setAttribute('data-nombre', est.nombre_estacion || '');
+  card.setAttribute('data-proceso', est.proceso || '');
   card.setAttribute('data-tiene-subensamble', String(tieneSub));
   card.setAttribute('data-tiempo-ajuste', String(est.tiempo_ajuste || ''));
   card.setAttribute('data-calidad', String(calidadVal)); //
@@ -1580,21 +1565,18 @@ function agregarEstacionARuta(est, botonOrigen) {
             </div>
             <small class="text-muted d-block">${est.nombre_estacion || ''}</small>
             <div class="mt-2 d-flex flex-wrap gap-1">
-              ${
-                (est.tiempo_ajuste || '') !== ''
-                ? `<span class="badge rounded-pill bg-warning-subtle text-warning-emphasis"><i class="bi bi-clock-history me-1"></i>${est.tiempo_ajuste}</span>`
-                : ''
-              }
-              ${
-                estampadoVal === 1
-                ? `<span class="badge rounded-pill bg-info-subtle text-info-emphasis"><i class="bi bi-upc-scan me-1"></i>VIN</span>`
-                : ''
-              }
-              ${
-                tieneSub === 1
-                ? `<span class="badge rounded-pill bg-primary-subtle text-primary-emphasis"><i class="bi bi-diagram-3 me-1"></i>PRE</span>`
-                : ''
-              }
+              ${(est.tiempo_ajuste || '') !== ''
+      ? `<span class="badge rounded-pill bg-warning-subtle text-warning-emphasis"><i class="bi bi-clock-history me-1"></i>${est.tiempo_ajuste}</span>`
+      : ''
+    }
+              ${estampadoVal === 1
+      ? `<span class="badge rounded-pill bg-info-subtle text-info-emphasis"><i class="bi bi-upc-scan me-1"></i>VIN</span>`
+      : ''
+    }
+              ${tieneSub === 1
+      ? `<span class="badge rounded-pill bg-primary-subtle text-primary-emphasis"><i class="bi bi-diagram-3 me-1"></i>PRE</span>`
+      : ''
+    }
             </div>
           </div>
         </div>
@@ -1636,7 +1618,7 @@ function agregarEstacionARuta(est, botonOrigen) {
 
 function obtenerSubensambleDeEstacion(idestacion) {
   const estacion = rutaProductoDetalle.find(x => String(x.idestacion) === String(idestacion));
-  
+
   if (!estacion) return null;
 
   return estacion.subensamble || null;
@@ -1694,30 +1676,28 @@ async function cargarSubensamblesMiniEnRuta(idestacion, tieneSub) {
     </div>
   `;
 
-const item = wrap.querySelector('.subensamble-box-mini');
-if (item) {
-  item.addEventListener('click', function (e) {
-    e.stopPropagation();
+  const item = wrap.querySelector('.subensamble-box-mini');
+  if (item) {
+    item.addEventListener('click', function (e) {
+      e.stopPropagation();
 
-    seleccionarEstacionRuta(idestacion);
-    seleccionarSubensambleEnPanel(idestacion, sub.idsubensamble);
+      seleccionarEstacionRuta(idestacion);
+      seleccionarSubensambleEnPanel(idestacion, sub.idsubensamble);
 
-    const tabBtn = document.querySelector('#tab-det-sub');
-    if (tabBtn) bootstrap.Tab.getOrCreateInstance(tabBtn).show();
+      const tabBtn = document.querySelector('#tab-det-sub');
+      if (tabBtn) bootstrap.Tab.getOrCreateInstance(tabBtn).show();
 
-    const inputSub = document.getElementById('id_subensamble_actual');
-    if (inputSub) {
-      inputSub.value = sub.idsubensamble;
-    }
+      const inputSub = document.getElementById('id_subensamble_actual');
+      if (inputSub) {
+        inputSub.value = sub.idsubensamble;
+      }
 
-   
 
-    cargarAyudasVisualesSubensamble(sub.idsubensamble);
-  });
+
+      cargarAyudasVisualesSubensamble(sub.idsubensamble);
+    });
+  }
 }
-}
-
-
 
 function bloquearBotonEstacion(btn) {
   btn.disabled = true;
@@ -1782,7 +1762,7 @@ async function refrescarEstadoEstacion(idestacion) {
   const card = document.querySelector(`#listaRutaCards .ruta-card-mini[data-idestacion="${CSS.escape(String(idestacion))}"]`);
   if (!card) return;
 
-        await cargarAyudasDesdeServidor(idestacion, idProductoProceso);
+  await cargarAyudasDesdeServidor(idestacion, idProductoProceso);
 
 
 
@@ -1802,6 +1782,13 @@ async function refrescarEstadoEstacion(idestacion) {
   const resOps = await fetchJSON(urlOps, { method: 'GET' }, { useLoading: false });
   const totalOps = !!(resOps && resOps.status && Array.isArray(resOps.data)) ? resOps.data.length : 0;
 
+
+  const urlSubC = getControllerBase() + '/getOperacionesSubensamble/' + idestacion + '?idproducto=' + encodeURIComponent(idProductoProceso);
+  const resSuben = await fetchJSON(urlSubC, { method: 'GET' }, { useLoading: false });
+  const totalOperCriticas = !!(resSuben && resSuben.status && Array.isArray(resSuben.data)) ? resSuben.data.length : 0;
+
+
+
   const urlSub = getControllerBase() + '/getSubensamblesEstacion/' + idestacion + '?idproducto=' + encodeURIComponent(idProductoProceso);
   const resSub = await fetchJSON(urlSub, { method: 'GET' }, { useLoading: false });
 
@@ -1811,25 +1798,25 @@ async function refrescarEstadoEstacion(idestacion) {
     else if (resSub.data) totalSub = 1;
   }
 
-  
+
 
   if (String(estacionSeleccionadaActual) === String(idestacion)) {
     const metricHerr = document.querySelector('#metricHerramientas');
     const metricComp = document.querySelector('#metricComponentes');
     const metricOps = document.querySelector('#metricOperaciones');
-    const metricSub = document.querySelector('#metricSubensambles');
+    const totalOperC = document.querySelector('#metricSubensambles');
 
     if (metricHerr) metricHerr.textContent = totalHerr;
     if (metricComp) metricComp.textContent = totalComp;
     if (metricOps) metricOps.textContent = totalEsp;
-    if (metricSub) metricSub.textContent = totalSub;
+    if (totalOperC) totalOperC.textContent = totalOperCriticas;
   }
 
   if (resSub && resSub.status && resSub.data) {
     subensamblesCache[idestacion] = Array.isArray(resSub.data) ? resSub.data[0] : resSub.data;
   }
 
-  // repinta chips de estación
+
   const badgeContainer = card.querySelector('.flex-grow-1 .mt-2');
   if (badgeContainer) {
     const tiempo = card.getAttribute('data-tiempo-ajuste') || '';
@@ -1842,21 +1829,62 @@ async function refrescarEstadoEstacion(idestacion) {
     `;
   }
 
+}
 
 
+async function refrescarMetricasSubensamble(idestacion = null, idsubensamble = null) {
+  idestacion = idestacion || document.querySelector('#idestacion_actual')?.value || '';
+  idsubensamble = idsubensamble || document.querySelector('#id_subensamble_actual')?.value || '';
+  const idproducto = document.querySelector('#idproducto_proceso')?.value || '';
+
+  if (!idestacion || !idsubensamble || !idproducto) return;
+
+  const url = getControllerBase()
+    + '/getSubensamblesEstacion/'
+    + encodeURIComponent(idestacion)
+    + '?idproducto='
+    + encodeURIComponent(idproducto);
+
+  const res = await fetchJSON(url, { method: 'GET' }, { useLoading: false });
+
+  let sub = null;
+
+  if (res && res.status) {
+    if (Array.isArray(res.data)) {
+      sub = res.data.find(x => String(x.idsubensamble) === String(idsubensamble)) || res.data[0];
+    } else if (res.data) {
+      sub = res.data;
+    }
+  }
+
+  if (!sub) return;
+
+  subensamblesCache[idestacion] = sub;
+
+  const mHerr = document.querySelector('#metricSubHerramientas');
+  const mComp = document.querySelector('#metricSubComponentes');
+  const mOp = document.querySelector('#metricSubOperaciones');
+  const mEsp1 = document.querySelector('#metricSubSubensambles');
+  const mEsp2 = document.querySelector('#metricSubEspecificaciones');
+
+  if (mHerr) mHerr.textContent = Number(sub.total_herramientas || 0);
+  if (mComp) mComp.textContent = Number(sub.total_componentes || 0);
+  if (mOp) mOp.textContent = Number(sub.total_operaciones || 0);
+  if (mEsp1) mEsp1.textContent = Number(sub.total_especificaciones || 0);
+  if (mEsp2) mEsp2.textContent = Number(sub.total_especificaciones || 0);
 }
 
 function pintarBotonEstado(btn, tiene, color) {
   if (!btn) return;
 
-  // Limpia clases posibles
+
   btn.classList.remove(
-    'btn-info','btn-primary','btn-success',
-    'btn-outline-info','btn-outline-primary','btn-outline-success'
+    'btn-info', 'btn-primary', 'btn-success',
+    'btn-outline-info', 'btn-outline-primary', 'btn-outline-success'
   );
 
   const outline = `btn-outline-${color}`;
-  const filled  = `btn-${color}`;
+  const filled = `btn-${color}`;
 
   btn.classList.add(tiene ? filled : outline);
 }
@@ -1898,25 +1926,22 @@ function seleccionarEstacionRuta(idestacion) {
     item.classList.remove('active');
   });
 
- 
+
 
   cargarDetalleEstacionPanel(idestacion);
   inicializarDatosLocalesOBdEstacion(idestacion);
   //  obtenerSubensambleDeEstacion(idestacion);
-  
+
 }
 
-async function cargarDetalleEstacionPanel(idestacion) {
+async function cargarDetalleEstacionPanelold(idestacion) {
   const card = document.querySelector(`#listaRutaCards .ruta-card-mini[data-idestacion="${CSS.escape(String(idestacion))}"]`);
   if (!card) return;
 
-  console.log(card);
-
- 
 
   subensambleSeleccionadoActual = null;
 
-    const inputSub = document.getElementById('id_subensamble_actual');
+  const inputSub = document.getElementById('id_subensamble_actual');
   if (inputSub) {
     inputSub.value = '';
   }
@@ -1928,8 +1953,7 @@ async function cargarDetalleEstacionPanel(idestacion) {
   const tiempoAjuste = card.dataset.tiempoAjuste || '-';
   const calidad = Number(card.dataset.calidad || 0);
 
-
-  
+  const proceso = card.dataset.proceso || '';
 
   const title = document.querySelector('#titleEstacionDetalle');
   if (title) title.textContent = `Estación principal: ${cve}`;
@@ -1943,7 +1967,7 @@ async function cargarDetalleEstacionPanel(idestacion) {
   if (detCodigo) detCodigo.textContent = cve;
   if (detArea) detArea.textContent = nombre;
   if (detTipo) detTipo.textContent = 'Estación principal';
-  if (detDesc) detDesc.textContent = `Estación de ensamble principal - ${nombre}`;
+  if (detDesc) detDesc.textContent = proceso;
   if (detTiempo) detTiempo.textContent = tiempoAjuste || '-';
 
   document.getElementById('idestacion_actual').value = idestacion;
@@ -1956,16 +1980,13 @@ async function cargarDetalleEstacionPanel(idestacion) {
     };
   }
 
-    const chkCalidad = document.querySelector('#chkRequiereInspeccion');
+  const chkCalidad = document.querySelector('#chkRequiereInspeccion');
   if (chkCalidad) {
     chkCalidad.checked = calidad == 1;
     // chkCalidad.onchange = function () {
     //   marcarCalidadDesdePanel(idestacion, this.checked);
     // };
   }
-
-
-
 
   const liSubTab = document.querySelector('#li-tab-det-sub');
   if (liSubTab) liSubTab.classList.toggle('d-none', tieneSub !== 1);
@@ -1986,6 +2007,91 @@ async function cargarDetalleEstacionPanel(idestacion) {
   const btnCompTop = document.querySelector('#btnCompPanelTop');
   const btnEspTop = document.querySelector('#btnEspPanelTop');
   const btnOpTop = document.querySelector('#btnOpPanelTop');
+  const btnEspCritTop = document.querySelector('#btnEspCriticasPanelTop');
+
+
+
+
+  if (btnHerr) btnHerr.onclick = () => abrirHerramientas(idestacion, cve);
+  if (btnComp) btnComp.onclick = () => abrirComponentes(idestacion, cve);
+  if (btnOp) btnOp.onclick = () => abrirOperaciones(idestacion, cve);
+  if (btnHerrTop) btnHerrTop.onclick = () => abrirHerramientas(idestacion, cve);
+  if (btnEspTop) {
+    btnEspTop.onclick = () => abrirEspecificaciones(idestacion, cve);
+  }
+  if (btnEspTop) btnEspTop.onclick = () => abrirEspecificaciones(idestacion, cve);
+  if (btnOpTop) btnOpTop.onclick = () => abrirOperaciones(idestacion, cve);
+
+
+
+  if (btnEspCritTop) {
+    btnEspCritTop.onclick = () => abrirEspecificacionesCriticasEstacion(idestacion, cve);
+  }
+
+  inicializarControlesInspeccionEstacion(idestacion);
+  renderAyudasVisualesEstacion(idestacion);
+
+  await refrescarEstadoEstacion(idestacion);
+  await cargarSubensamblesPanel(idestacion, tieneSub);
+
+}
+
+
+
+
+function setText(selector, value) {
+  const el = document.querySelector(selector);
+  if (el) el.textContent = value && String(value).trim() !== '' ? value : '-';
+}
+
+async function cargarDetalleEstacionPanel(idestacion) {
+  const card = document.querySelector(`#listaRutaCards .ruta-card-mini[data-idestacion="${CSS.escape(String(idestacion))}"]`);
+  if (!card) return;
+
+  subensambleSeleccionadoActual = null;
+
+  const inputSub = document.getElementById('id_subensamble_actual');
+  if (inputSub) inputSub.value = '';
+
+  const cve = card.dataset.cve || '';
+  const nombre = card.dataset.nombre || '';
+  const proceso = card.dataset.proceso || '';
+  const tieneSub = Number(card.dataset.tieneSubensamble || 0);
+  const estampado = Number(card.dataset.estampado || 0);
+  const tiempoAjuste = card.dataset.tiempoAjuste || '-';
+  const calidad = Number(card.dataset.calidad || 0);
+
+  setText('#titleEstacionDetalle', `Estación principal: ${cve}`);
+  setText('#detCodigoEstacion', cve);
+  setText('#detAreaEstacion', nombre);
+  setText('#detTipoEstacion', 'Estación principal');
+  setText('#detDescEstacion', proceso);
+  setText('#detTiempoAjusteEstacion', tiempoAjuste);
+
+  document.getElementById('idestacion_actual').value = idestacion;
+
+  const chkVin = document.querySelector('#chkVinDetalle');
+  if (chkVin) {
+    chkVin.checked = estampado === 1;
+    chkVin.onchange = function () {
+      marcarVinDesdePanel(idestacion, this.checked);
+    };
+  }
+
+  const chkCalidad = document.querySelector('#chkRequiereInspeccion');
+  if (chkCalidad) chkCalidad.checked = calidad === 1;
+
+  const liSubTab = document.querySelector('#li-tab-det-sub');
+  if (liSubTab) liSubTab.classList.toggle('d-none', tieneSub !== 1);
+
+  const btnHerr = document.querySelector('#btnAbrirHerramientasPanel');
+  const btnComp = document.querySelector('#btnAbrirComponentesPanel');
+  const btnOp = document.querySelector('#btnAbrirOperacionesPanel');
+  const btnHerrTop = document.querySelector('#btnHerrPanelTop');
+  const btnCompTop = document.querySelector('#btnCompPanelTop');
+  const btnEspTop = document.querySelector('#btnEspPanelTop');
+  const btnOpTop = document.querySelector('#btnOpPanelTop');
+  const btnEspCritTop = document.querySelector('#btnEspCriticasPanelTop');
 
   if (btnHerr) btnHerr.onclick = () => abrirHerramientas(idestacion, cve);
   if (btnComp) btnComp.onclick = () => abrirComponentes(idestacion, cve);
@@ -1994,15 +2100,13 @@ async function cargarDetalleEstacionPanel(idestacion) {
   if (btnCompTop) btnCompTop.onclick = () => abrirComponentes(idestacion, cve);
   if (btnEspTop) btnEspTop.onclick = () => abrirEspecificaciones(idestacion, cve);
   if (btnOpTop) btnOpTop.onclick = () => abrirOperaciones(idestacion, cve);
+  if (btnEspCritTop) btnEspCritTop.onclick = () => abrirEspecificacionesCriticasEstacion(idestacion, cve);
 
   inicializarControlesInspeccionEstacion(idestacion);
   renderAyudasVisualesEstacion(idestacion);
 
   await refrescarEstadoEstacion(idestacion);
   await cargarSubensamblesPanel(idestacion, tieneSub);
-
-
-  
 }
 
 function inicializarControlesInspeccionEstacion(idestacion) {
@@ -2150,7 +2254,7 @@ function agregarPuntoPdiEstacion(idestacion) {
     // renderPuntosPdiEstacion(idestacion);
     // renderModalPdi(idestacion);
 
-     inicializarPdiDesdeLocalOBd(idestacion, idproducto);
+    inicializarPdiDesdeLocalOBd(idestacion, idproducto);
   });
 }
 
@@ -2260,7 +2364,7 @@ function renderAyudasVisualesEstacion(idestacion) {
   if (!cont) return;
 
   const lista = ayudasVisualesEstacion[idestacion] || [];
-  console.log(lista);
+
 
   if (lista.length === 0) {
     cont.innerHTML = '<div class="text-muted small">No hay ayudas visuales registradas.</div>';
@@ -2272,13 +2376,15 @@ function renderAyudasVisualesEstacion(idestacion) {
 
     const rutaArchivo = `${base_url}/Assets/uploads/ayudas_estacion/${item.archivo}`;
 
-return `
+    return `
   <div class="d-flex justify-content-between align-items-center border rounded-3 px-3 py-2 mb-2 bg-body">
-    
+      
     <div>
       <div class="fw-semibold">
         <i class="bi bi-file-earmark-richtext me-1 text-primary"></i>${item.titulo}
       </div>
+
+   
 
       <small class="text-muted">
         ${String(item.tipo || '').toUpperCase()} · 
@@ -2288,14 +2394,13 @@ return `
 
     <div class="d-flex align-items-center gap-2">
       
-      ${
-        item.archivo
-          ? `<button type="button" 
+      ${item.archivo
+        ? `<button type="button" 
                 class="btn btn-sm btn-soft-info"
                 onclick="verDocumento('${rutaArchivo}')">
                 <i class="ri-eye-fill align-bottom"></i>
              </button>`
-          : ''
+        : ''
       }
 
       <button type="button" class="btn btn-soft-danger btn-sm"
@@ -2328,18 +2433,18 @@ function eliminarAyudaVisualEstacion(idestacion, idx, idayuda) {
       idayuda: idayuda
     })
   })
-  .then(response => response.json())
-  .then(data => {
-    if (data.status) {
-      ayudasVisualesEstacion[idestacion].splice(idx, 1);
-      renderAyudasVisualesEstacion(idestacion);
-    } else {
-      alert(data.msg || 'No se pudo actualizar el estado de la ayuda visual');
-    }
-  })
-  .catch(error => {
-    console.error('Error al actualizar ayuda visual:', error);
-  });
+    .then(response => response.json())
+    .then(data => {
+      if (data.status) {
+        ayudasVisualesEstacion[idestacion].splice(idx, 1);
+        renderAyudasVisualesEstacion(idestacion);
+      } else {
+        alert(data.msg || 'No se pudo actualizar el estado de la ayuda visual');
+      }
+    })
+    .catch(error => {
+      console.error('Error al actualizar ayuda visual:', error);
+    });
 }
 
 
@@ -2377,13 +2482,12 @@ function renderAyudasSubensamble(idsubensamble) {
       </div>
 
       <div class="d-flex align-items-center gap-2">
-        ${
-          item.archivo
-            ? `<a href="${base_url}/Uploads/subensambles/${item.archivo}" target="_blank" class="btn btn-sm btn-soft-info">
+        ${item.archivo
+      ? `<a href="${base_url}/Uploads/subensambles/${item.archivo}" target="_blank" class="btn btn-sm btn-soft-info">
                 <i class="ri-eye-fill align-bottom text-muted"></i>
               </a>`
-            : ''
-        }
+      : ''
+    }
 
         <button type="button" class="btn btn-soft-danger btn-sm"
           onclick="eliminarAyudaSubensamble('${idsubensamble}', ${index}, ${item.idaysubayuda || 0})">
@@ -2567,7 +2671,7 @@ async function cargarSubensamblesPanel(idestacion, tieneSub) {
 function seleccionarSubensambleEnPanel(idestacion, idsubensamble) {
   subensambleSeleccionadoActual = String(idsubensamble);
 
-    const inputSub = document.getElementById('id_subensamble_actual');
+  const inputSub = document.getElementById('id_subensamble_actual');
   if (inputSub) {
     inputSub.value = idsubensamble || '';
   }
@@ -2581,7 +2685,7 @@ function seleccionarSubensambleEnPanel(idestacion, idsubensamble) {
   cargarDetalleSubensamble(idestacion, idsubensamble);
 }
 
-async function cargarDetalleSubensamble(idestacion, idsubensamble) {
+async function cargarDetalleSubensambleold(idestacion, idsubensamble) {
   const panel = document.querySelector('#panelSubensambleUnico');
   if (!panel) return;
 
@@ -2603,7 +2707,7 @@ async function cargarDetalleSubensamble(idestacion, idsubensamble) {
   const mHerr = document.querySelector('#metricSubHerramientas');
   const mComp = document.querySelector('#metricSubComponentes');
   const mOp = document.querySelector('#metricSubOperaciones');
-  const mEsp = document.querySelector('#metricSubEspecificaciones');
+  const mEsp = document.querySelector('#metricSubSubensambles');
 
   if (mHerr) mHerr.textContent = Number(sub.total_herramientas || 0);
   if (mComp) mComp.textContent = Number(sub.total_componentes || 0);
@@ -2613,6 +2717,7 @@ async function cargarDetalleSubensamble(idestacion, idsubensamble) {
   const btnSubHerr = document.querySelector('#btnSubHerramientas');
   const btnSubComp = document.querySelector('#btnSubComponentes');
   const btnSubOp = document.querySelector('#btnSubOperaciones');
+  const btnSubEspCrit = document.querySelector('#btnSubEspCriticas');
   const btnSubEsp = document.querySelector('#btnSubEspecificaciones');
   const btnEdit = document.querySelector('#btnEditarSubensambleUnico');
   const btnDel = document.querySelector('#btnEliminarSubensambleUnico');
@@ -2620,7 +2725,66 @@ async function cargarDetalleSubensamble(idestacion, idsubensamble) {
   if (btnSubHerr) btnSubHerr.onclick = () => abrirHerramientasSubensamble(idsubensamble, sub.proceso || '');
   if (btnSubComp) btnSubComp.onclick = () => abrirComponentesSubensamble(idsubensamble, sub.proceso || '');
   if (btnSubOp) btnSubOp.onclick = () => abrirEspecificacionesSubensamble(idsubensamble, sub.proceso || '');
+
+  if (btnSubEspCrit) {
+    btnSubEspCrit.onclick = () => abrirEspecificacionesCriticasSubensamble(idsubensamble, sub.proceso || '');
+  }
+
   // if (btnSubEsp) btnSubEsp.onclick = () => abrirEspecificacionesSubensamble(idsubensamble, sub.proceso || '');
+  if (btnEdit) btnEdit.onclick = () => editarSubensamble(idsubensamble);
+  if (btnDel) btnDel.onclick = () => eliminarSubensamble(idsubensamble);
+}
+
+
+
+
+
+async function cargarDetalleSubensamble(idestacion, idsubensamble) {
+  const panel = document.querySelector('#panelSubensambleUnico');
+  if (!panel) return;
+
+  const sub = subensamblesCache[idestacion];
+  if (!sub || String(sub.idsubensamble) !== String(idsubensamble)) return;
+
+  const nombreSub = sub.nombre_estacion || sub.nombre_subensamble || sub.nombre || 'Subensamble';
+  const procesoSub = sub.proceso || '-';
+  const estandarSub = sub.estandar || '-';
+  const tiempoSub = sub.tiempo_ajuste || '-';
+
+  setText('#titleSubensambleDetalle', `Subensamble: ${nombreSub}`);
+  setText('#detSubNombre', nombreSub);
+  setText('#detSubProceso', procesoSub);
+  setText('#detSubEstandar', estandarSub);
+  setText('#detSubTiempo', tiempoSub);
+
+  const detEstado = document.querySelector('#detSubEstado');
+  if (detEstado) detEstado.closest('.col')?.classList.add('d-none');
+
+  const mHerr = document.querySelector('#metricSubHerramientas');
+  const mComp = document.querySelector('#metricSubComponentes');
+  const mOp = document.querySelector('#metricSubOperaciones');
+  const mEsp = document.querySelector('#metricSubEspecificaciones');
+  const mSub = document.querySelector('#metricSubSubensambles');
+
+  if (mHerr) mHerr.textContent = Number(sub.total_herramientas || 0);
+  if (mComp) mComp.textContent = Number(sub.total_componentes || 0);
+  if (mOp) mOp.textContent = Number(sub.total_operaciones || 0);
+  if (mEsp) mEsp.textContent = Number(sub.total_especificaciones || 0);
+
+
+  if (mSub) mSub.textContent = Number(sub.total_subensambles || 1);
+
+  const btnSubHerr = document.querySelector('#btnSubHerramientas');
+  const btnSubComp = document.querySelector('#btnSubComponentes');
+  const btnSubOp = document.querySelector('#btnSubOperaciones');
+  const btnSubEspCrit = document.querySelector('#btnSubEspCriticas');
+  const btnEdit = document.querySelector('#btnEditarSubensambleUnico');
+  const btnDel = document.querySelector('#btnEliminarSubensambleUnico');
+
+  if (btnSubHerr) btnSubHerr.onclick = () => abrirHerramientasSubensamble(idsubensamble, procesoSub);
+  if (btnSubComp) btnSubComp.onclick = () => abrirComponentesSubensamble(idsubensamble, procesoSub);
+  if (btnSubOp) btnSubOp.onclick = () => abrirEspecificacionesSubensamble(idsubensamble, procesoSub);
+  if (btnSubEspCrit) btnSubEspCrit.onclick = () => abrirEspecificacionesCriticasSubensamble(idsubensamble, procesoSub);
   if (btnEdit) btnEdit.onclick = () => editarSubensamble(idsubensamble);
   if (btnDel) btnDel.onclick = () => eliminarSubensamble(idsubensamble);
 }
@@ -2747,7 +2911,7 @@ function eliminarDeRutaDesdeCard(card) {
   if (!card) return;
 
   const idestacion = String(card.getAttribute('data-idestacion') || '').trim();
-  const iddetalle  = Number(card.getAttribute('data-iddetalle') || 0);
+  const iddetalle = Number(card.getAttribute('data-iddetalle') || 0);
 
   if (iddetalle > 0 && idestacion) {
     const ya = estacionesEliminadas.some(x => Number(x.iddetalle) === iddetalle);
@@ -2766,25 +2930,24 @@ function eliminarDeRutaDesdeCard(card) {
   //   if (first) seleccionarEstacionRuta(first.dataset.idestacion);
   // }
 
-const totalRestantes = document.querySelectorAll('#listaRutaCards .ruta-card-mini').length;
-if (totalRestantes === 0) {
-  setPanelDetalleActivo(false);
-}
+  const totalRestantes = document.querySelectorAll('#listaRutaCards .ruta-card-mini').length;
+  if (totalRestantes === 0) {
+    setPanelDetalleActivo(false);
+  }
 
 
 
   if (String(estacionSeleccionadaActual) === String(idestacion)) {
-  estacionSeleccionadaActual = null;
-  limpiarPanelDetalleEstacion();
+    estacionSeleccionadaActual = null;
+    limpiarPanelDetalleEstacion();
 
-  const first = document.querySelector('#listaRutaCards .ruta-card-mini');
-  if (first) {
-    seleccionarEstacionRuta(first.dataset.idestacion);
-  } else {
-    setPanelDetalleActivo(false);
+    const first = document.querySelector('#listaRutaCards .ruta-card-mini');
+    if (first) {
+      seleccionarEstacionRuta(first.dataset.idestacion);
+    } else {
+      setPanelDetalleActivo(false);
+    }
   }
-}
-
 
   reindexarRutaVisual();
   actualizarPlaceholderRuta();
@@ -2838,8 +3001,6 @@ function marcarVinDesdePanel(idestacion, checked) {
 }
 
 
-
-
 function marcarCalidadDesdePanel(idestacion, checked) {
   const actual = document.querySelector(`#listaRutaCards .ruta-card-mini[data-idestacion="${CSS.escape(String(idestacion))}"]`);
   if (!actual) return;
@@ -2862,19 +3023,19 @@ function abrirSubensamble(idestacion, cve_estacion) {
 }
 
 function moverSubensambleArriba(idsubensamble) {
-  console.log('Subir subensamble', idsubensamble);
+
 }
 
 function moverSubensambleAbajo(idsubensamble) {
-  console.log('Bajar subensamble', idsubensamble);
+
 }
 
 function editarSubensamble(idsubensamble) {
-  console.log('Editar subensamble', idsubensamble);
+
 }
 
 function eliminarSubensamble(idsubensamble) {
-  console.log('Eliminar subensamble', idsubensamble);
+
 }
 
 
@@ -2908,11 +3069,10 @@ function dropOnRuta(ev) {
     idestacion: idEstacion,
     cve_estacion: btnOrigen.getAttribute('data-cve') || '',
     nombre_estacion: btnOrigen.getAttribute('data-nombre') || '',
+    proceso: btnOrigen.getAttribute('data-proceso') || '',
     herramientas: Number(btnOrigen.getAttribute('data-herramientas') || 0),
     tiene_subensamble: Number(btnOrigen.getAttribute('data-tiene-subensamble') || 0)
   };
-
-  console.log(est)
 
   agregarEstacionARuta(est, btnOrigen);
 }
@@ -2924,41 +3084,47 @@ function dropOnRuta(ev) {
 function abrirEspecificaciones(idestacion, cve_estacion) {
   if (!requireRutaProductoOrWarn()) return;
 
-  setContextoCaptura('estacion', {
-    idestacion: idestacion,
-    nombre: cve_estacion
+  configurarModalEspecificaciones({
+    tipo: 'estacion',
+    idestacion,
+    idsubensamble: 0,
+    nombre: cve_estacion,
+    es_critica: 0
   });
-
-  const modal = document.getElementById('modalEspecificaciones');
-  const inputIdEstacion = modal ? modal.querySelector('#idestacion') : null;
-  const inputSub = modal ? modal.querySelector('#idsubensamble_especificacion') : null;
-  const inputTipo = modal ? modal.querySelector('#tipo_contexto_especificacion') : null;
-
-  
-    const inputSubeS = modal ? modal.querySelector('#idespecificacionsubensamble') : null;
-
-  if (inputIdEstacion) inputIdEstacion.value = idestacion || '';
-  if (inputSub) inputSub.value = 0;
-  if (inputTipo) inputTipo.value = 'estacion';
-   if (inputSubeS) inputSubeS.value = 0;
-
-  document.querySelector('#titleModalEspecificaciones').innerHTML = "Especificaciones - " + cve_estacion;
-  $('#modalEspecificaciones').modal('show');
-  cargarEspecificaciones(idestacion);
 }
 
-function cargarEspecificaciones(idEstacion) {
+function abrirEspecificacionesCriticasEstacion(idestacion, cve_estacion) {
+  if (!requireRutaProductoOrWarn()) return;
 
+  configurarModalEspecificaciones({
+    tipo: 'estacion',
+    idestacion,
+    idsubensamble: 0,
+    nombre: cve_estacion,
+    es_critica: 1
+  });
+}
+
+
+function cargarEspecificaciones(idEstacion, esCritica = 0) {
   const idProductoProceso = parseInt(document.getElementById('idproducto_proceso')?.value || 0);
   estacionActual = parseInt(idEstacion || 0);
 
-  if (!estacionActual || !idProductoProceso) {
-    console.log("Falta estacionActual o idProductoProceso", { estacionActual, idProductoProceso });
-    return;
-  }
+  if (!estacionActual || !idProductoProceso) return;
 
-  const url = base_url + '/Plan_confproductosv1/getEspecificaciones/' + estacionActual + '/' + idProductoProceso;
+  const url = getControllerBase()
+    + '/getEspecificaciones/'
+    + estacionActual
+    + '/'
+    + idProductoProceso
+    + '?es_critica='
+    + encodeURIComponent(Number(esCritica || 0));
 
+  cargarTablaEspecificaciones(url);
+}
+
+
+function cargarTablaEspecificaciones(url) {
   if (tableEspecifica) {
     tableEspecifica.ajax.url(url).load();
     return;
@@ -2976,7 +3142,6 @@ function cargarEspecificaciones(idEstacion) {
       }
     },
     columns: [
-      // { data: 'idespecificacion' },
       { data: 'especificacion' },
       { data: 'fecha_creacion' },
       { data: 'options', orderable: false, searchable: false }
@@ -2985,35 +3150,7 @@ function cargarEspecificaciones(idEstacion) {
   });
 }
 
-function cargarEspecificacionesOLD(idEstacion) {
-  estacionActual = parseInt(idEstacion || 0);
-  if (!estacionActual) return;
 
-  if (tableEspecifica) {
-    tableEspecifica.ajax.url(base_url + '/Plan_confproductosv1/getEspecificaciones/' + estacionActual).load();
-    return;
-  }
-
-  tableEspecifica = $('#tableEspecificaciones').DataTable({
-    responsive: true,
-    processing: true,
-    serverSide: false,
-    destroy: true,
-    ajax: {
-      url: base_url + '/Plan_confproductosv1/getEspecificaciones/' + estacionActual,
-      dataSrc: function (json) {
-        return (json && json.status && Array.isArray(json.data)) ? json.data : [];
-      }
-    },
-    columns: [
-      // { data: 'idespecificacion' },
-      { data: 'especificacion' },
-      { data: 'fecha_creacion' },
-      { data: 'options', orderable: false, searchable: false }
-    ],
-    order: [[1, 'desc']]
-  });
-}
 
 function fntDelEspecificacion(idespecificacion) {
   Swal.fire({
@@ -3046,8 +3183,14 @@ function fntDelEspecificacion(idespecificacion) {
   }).then(async (result) => {
     if (!result.isConfirmed) return;
 
+    const inputCritica = document.querySelector('#es_critica_especificacion');
+    const esCritica = inputCritica ? Number(inputCritica.value || 0) : 0;
+
     const ajaxUrl = base_url + '/Plan_confproductosv1/delEspecificacion';
-    const strData = "idespecificacion=" + encodeURIComponent(idespecificacion);
+
+    const strData =
+      "idespecificacion=" + encodeURIComponent(idespecificacion) +
+      "&es_critica=" + encodeURIComponent(esCritica);
 
     const objData = await xhrRequest({
       method: "POST",
@@ -3060,7 +3203,11 @@ function fntDelEspecificacion(idespecificacion) {
 
     if (objData && objData.status) {
       Swal.fire("¡Operación exitosa!", objData.msg, "success");
-      if (tableEspecifica) tableEspecifica.ajax.reload();
+
+      if (tableEspecifica) {
+        tableEspecifica.ajax.reload();
+      }
+
     } else {
       Swal.fire("Atención!", objData?.msg || "Error al eliminar", "error");
     }
@@ -3068,17 +3215,30 @@ function fntDelEspecificacion(idespecificacion) {
 }
 
 
-
 async function fntEditEspecificacion(idespecificacion) {
   const btnTextEsp = document.querySelector('#btnTextEspecificacion');
   if (btnTextEsp) btnTextEsp.innerHTML = "Actualizar";
 
-  const ajaxUrl = base_url + '/Plan_confproductosv1/getEspecificacion/' + idespecificacion;
-  const objData = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "json", useLoading: true });
+  const inputCritica = document.querySelector('#es_critica_especificacion');
+  const esCritica = inputCritica ? Number(inputCritica.value || 0) : 0;
+
+  const ajaxUrl = getControllerBase() + '/getEspecificacion/' + idespecificacion + '/' + esCritica;
+
+  const objData = await xhrRequest({
+    method: "GET",
+    url: ajaxUrl,
+    responseType: "json",
+    useLoading: true
+  });
 
   if (objData && objData.status) {
     document.querySelector("#idespecificacion").value = objData.data.idespecificacion;
     document.querySelector("#txtEspecificacion").value = objData.data.especificacion;
+
+    if (inputCritica) {
+      inputCritica.value = Number(objData.data.es_critica || esCritica || 0);
+    }
+
   } else {
     Swal.fire("Error", objData?.msg || "No se pudo cargar", "error");
   }
@@ -3308,7 +3468,7 @@ function initTablaSeleccionadosComponentes() {
   });
 
   prepararEventosSeleccionadosComponentes();
-} 
+}
 function prepararEventosCatalogoComponentes() {
   const tabla = document.querySelector('#tblCatalogComponentes');
   if (!tabla || tabla.dataset.boundAdd) return;
@@ -3484,6 +3644,7 @@ function prepararGuardarTodoComponentes() {
 
       if (tipoContexto === 'subensamble') {
         await cargarComponentesGuardadosSubensamble(idSubensamble);
+        await refrescarMetricasSubensamble(idEstacion, idSubensamble);
       } else {
         await cargarComponentesGuardadosEstacion(idEstacion);
         await refrescarEstadoEstacion(idEstacion);
@@ -3696,116 +3857,17 @@ function agregarHerramientaASeleccionadas(filaCatalogo) {
 
 
 document.getElementById('btnAbrirModalPdi').onclick = () => {
-    const idestacion = document.getElementById('idestacion_actual').value;
-    // renderModalPdi(idestacion);
-    new bootstrap.Modal(document.getElementById('modalPdi')).show();
+  const idestacion = document.getElementById('idestacion_actual').value;
+  // renderModalPdi(idestacion);
+  new bootstrap.Modal(document.getElementById('modalPdi')).show();
 };
 
 document.getElementById('btnAbrirModalAyudas').onclick = () => {
-    const idestacion = document.getElementById('idestacion_actual').value;
-    renderAyudas(idestacion);
-    new bootstrap.Modal(document.getElementById('modalAyudas')).show();
+  const idestacion = document.getElementById('idestacion_actual').value;
+  renderAyudas(idestacion);
+  new bootstrap.Modal(document.getElementById('modalAyudas')).show();
 };
 
-// document.getElementById('btnNuevoPdi').onclick = function () {
-
-//     const idestacion = document.getElementById('idestacion_actual').value;
-
-//     const punto = prompt("Punto a revisar");
-//     if (!punto) return;
-
-//     const criterio = prompt("Criterio de aceptación");
-//     if (!criterio) return;
-
-//     const severidad = prompt("Severidad (critica, mayor, menor)") || '';
-//     const evidencia = prompt("Evidencia (foto, firma, lectura)") || '';
-
-//     if (!puntosPdiEstacion[idestacion]) {
-//         puntosPdiEstacion[idestacion] = [];
-//     }
-
-//     puntosPdiEstacion[idestacion].push({
-//         punto,
-//         criterio,
-//         severidad,
-//         evidencia
-//     });
-
-//     renderModalPdi(idestacion);
-// };
-
-// function renderModalPdi(idestacion) {
-//   const tbody = document.getElementById('tbodyModalPdi');
-//   const msg = document.getElementById('msgPdiVacio');
-
-//   const lista = puntosPdiEstacion[idestacion] || [];
-//   tbody.innerHTML = '';
-
-//   if (lista.length === 0) {
-//     msg.style.display = 'block';
-//     return;
-//   }
-
-//   msg.style.display = 'none';
-
-//   lista.forEach((p, i) => {
-//     const tr = document.createElement('tr');
-
-//     tr.innerHTML = `
-//       <td>${i + 1}</td>
-//       <td>${p.punto || ''}</td>
-//       <td>${p.criterio || ''}</td>
-//       <td>${p.severidad || ''}</td>
-//       <td>${p.evidencia || ''}</td>
-//       <td>
-//         <button class="btn btn-danger btn-sm" onclick="eliminarPuntoPdiEstacion('${idestacion}', ${i})">
-//           <i class="bi bi-trash"></i>
-//         </button>
-//       </td>
-//     `;
-
-//     tbody.appendChild(tr);
-//   });
-// }
-
-// function eliminarPdi(idestacion, index) {
-//     puntosPdiEstacion[idestacion].splice(index, 1);
-//     renderModalPdi(idestacion);
-// }
-
-
-// async function guardarTodoPdiEstacion(idestacion) {
-//   const idproducto = document.getElementById('idproducto_proceso')?.value || '';
-//   if (!idproducto || !idestacion) {
-//     Swal.fire('Atención', 'Falta producto o estación.', 'warning');
-//     return;
-//   }
-
-//   const detalle = puntosPdiEstacion[idestacion] || [];
-
-//   const payload = [{
-//     idproducto: parseInt(idproducto, 10),
-//     idestacion: parseInt(idestacion, 10),
-//     detalle_puntos: detalle
-//   }];
-
-//   const formData = new FormData();
-//   formData.append('puntos_pdi', JSON.stringify(payload));
-
-//   const res = await fetchJSON(base_url + '/Plan_confproductosv1/setPuntosInspeccionEstacion', {
-//     method: 'POST',
-//     body: formData
-//   }, { useLoading: true });
-
-//   if (res && res.status) {
-//     limpiarPdiLocal(idproducto, idestacion);
-//     await cargarPdiDesdeServidor(idestacion, idproducto);
-//     Swal.fire('Éxito', res.msg || 'Puntos PDI guardados correctamente.', 'success');
-//   } else {
-//     guardarPdiEnLocal(idproducto, idestacion);
-//     Swal.fire('Error', res?.msg || 'No fue posible guardar los puntos PDI.', 'error');
-//   }
-// }
 
 async function guardarConfiguracionInspeccionEstacion(idestacion) {
   const idproducto = document.getElementById('idproducto_proceso')?.value || '';
@@ -3835,9 +3897,6 @@ async function guardarConfiguracionInspeccionEstacion(idestacion) {
 
   return res;
 }
-
-
-
 
 
 document.getElementById('btnAgregarAyuda').onclick = function () {
@@ -3907,7 +3966,7 @@ function renderAyudas(idestacion) {
         </div>
         <small class="text-muted">${a.tipo} · ${a.archivo}</small>
       </div>
-      <button class="btn btn-soft-danger btn-sm" onclick="eliminarAyuda('${idestacion}', ${i}, ${a.idayuda })">
+      <button class="btn btn-soft-danger btn-sm" onclick="eliminarAyuda('${idestacion}', ${i}, ${a.idayuda})">
         <i class="ri-delete-bin-line"></i>
       </button>
     `;
@@ -4211,6 +4270,7 @@ function prepararGuardarTodoHerramientas() {
 
       if (tipoContexto === 'subensamble') {
         await cargarHerramientasGuardadasSubensamble(idSubensamble);
+        await refrescarMetricasSubensamble(idEstacion, idSubensamble);
       } else {
         await cargarHerramientasGuardadasEstacion(idEstacion);
         await refrescarEstadoEstacion(idEstacion);
@@ -4286,12 +4346,12 @@ async function cargarHerramientasGuardadasEstacion(idestacion) {
 // ======================================================================
 function construirPayloadRuta() {
   const plantaSel = document.querySelector('#listPlantasSelect');
-  const lineaSel  = document.querySelector('#listLineasSelect');
-  const inpProd   = document.querySelector('#idproducto_proceso');
+  const lineaSel = document.querySelector('#listLineasSelect');
+  const inpProd = document.querySelector('#idproducto_proceso');
   const contenedorRuta = document.querySelector('#listaRutaCards');
 
   const planta = plantaSel ? (plantaSel.value || '') : '';
-  const linea  = lineaSel  ? (lineaSel.value || '')  : '';
+  const linea = lineaSel ? (lineaSel.value || '') : '';
   const idproducto = inpProd ? (inpProd.value || '') : '';
 
   const cards = contenedorRuta ? Array.from(contenedorRuta.querySelectorAll('.ruta-card-mini[data-idestacion]')) : [];
@@ -4327,7 +4387,7 @@ function construirPayloadRuta() {
 
 
 
- 
+
 async function fntReportProducto(idproducto) {
   if (!idproducto) return;
 
@@ -4347,26 +4407,10 @@ async function fntReportProducto(idproducto) {
 
   const data = objData.data || objData;
 
-  console.log(data);
-
-
-  const logoUrl = base_url + '/Assets/images/ldr_logo_color.png'; 
+  const logoUrl = base_url + '/Assets/images/ldr_logo_color.png';
   const logoBase64 = await urlToBase64(logoUrl);
 
   buildPdfProductoV1(data, logoBase64);
-}
-
-
-async function urlToBase64(url) {
-  const res = await fetch(url, { cache: "no-store" });
-  const blob = await res.blob();
-
-  return await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }
 
 function buildPdfProductoV1(payload, logoBase64) {
@@ -4682,11 +4726,17 @@ safeList(doc).forEach((x, idx) => {
 }
 
 
+async function urlToBase64(url) {
+  const res = await fetch(url, { cache: "no-store" });
+  const blob = await res.blob();
 
-
-
-
-
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
 function abrirHerramientasSubensamble(idsubensamble, proceso) {
   if (!requireRutaProductoOrWarn()) return;
@@ -4755,42 +4805,30 @@ function abrirComponentesSubensamble(idsubensamble, proceso) {
 function abrirEspecificacionesSubensamble(idsubensamble, proceso) {
   if (!requireRutaProductoOrWarn()) return;
 
-  const idproducto = document.querySelector('#idproducto_proceso')?.value || '';
   const idestacion = document.querySelector('#idestacion_actual')?.value || '';
 
-  setContextoCaptura('subensamble', {
-    idestacion: idestacion,
-    idsubensamble: idsubensamble,
-    nombre: proceso
+  configurarModalEspecificaciones({
+    tipo: 'subensamble',
+    idestacion,
+    idsubensamble,
+    nombre: proceso,
+    es_critica: 0
   });
-
-  const modal = document.getElementById('modalEspecificaciones');
-  if (!modal) return;
-
-  const inputProducto = modal.querySelector('#idproducto_especificacion');
-  const inputEstacion = modal.querySelector('#idestacion');
-  const inputSub = modal.querySelector('#idsubensamble_especificacion');
-  const inputTipo = modal.querySelector('#tipo_contexto_especificacion');
-  const inputIdEsp = modal.querySelector('#idespecificacion');
-  const txtEsp = modal.querySelector('#txtEspecificacion');
-
-  if (inputProducto) inputProducto.value = idproducto;
-  if (inputEstacion) inputEstacion.value = idestacion;
-  if (inputSub) inputSub.value = idsubensamble;
-  if (inputTipo) inputTipo.value = 'subensamble';
-  if (inputIdEsp) inputIdEsp.value = 0;
-  if (txtEsp) txtEsp.value = '';
-
-  const btnTextEsp = document.querySelector('#btnTextEspecificacion');
-  if (btnTextEsp) btnTextEsp.innerHTML = 'Registrar';
-
-  const title = document.querySelector('#titleModalEspecificaciones');
-  if (title) title.innerHTML = `Especificaciones - Sub-ensamble ${proceso}`;
-
-  $('#modalEspecificaciones').modal('show');
-  cargarEspecificacionesSubensamble(idsubensamble);
 }
 
+function abrirEspecificacionesCriticasSubensamble(idsubensamble, proceso) {
+  if (!requireRutaProductoOrWarn()) return;
+
+  const idestacion = document.querySelector('#idestacion_actual')?.value || '';
+
+  configurarModalEspecificaciones({
+    tipo: 'subensamble',
+    idestacion,
+    idsubensamble,
+    nombre: proceso,
+    es_critica: 1
+  });
+}
 
 
 
@@ -4848,7 +4886,7 @@ function limpiarAyudasLocal(idproducto, idestacion) {
 
 
 function getControllerBase() {
-  // Deja una sola base para evitar mezclar v1 y no-v1
+
   return base_url + '/Plan_confproductosv1';
 }
 
@@ -4864,24 +4902,101 @@ function setContextoCaptura(tipo, opts = {}) {
     tipo: tipo === 'subensamble' ? 'subensamble' : 'estacion',
     idestacion: Number(opts.idestacion || 0),
     idsubensamble: Number(opts.idsubensamble || 0),
-    nombre: String(opts.nombre || '')
+    nombre: String(opts.nombre || ''),
+    es_critica: Number(opts.es_critica || 0)
   };
 }
 
+
+function resetFormEspecificacion() {
+  const txt = document.querySelector('#txtEspecificacion');
+  const idEsp = document.querySelector('#idespecificacion');
+  const idEspSub = document.querySelector('#idespecificacionsubensamble');
+  const btnText = document.querySelector('#btnTextEspecificacion');
+
+  if (txt) txt.value = '';
+  if (idEsp) idEsp.value = 0;
+  if (idEspSub) idEspSub.value = 0;
+  if (btnText) btnText.innerHTML = 'Registrar';
+}
+
+function configurarModalEspecificaciones({
+  tipo = 'estacion',
+  idestacion = 0,
+  idsubensamble = 0,
+  nombre = '',
+  es_critica = 0
+}) {
+  const idproducto = document.querySelector('#idproducto_proceso')?.value || '';
+  const modal = document.getElementById('modalEspecificaciones');
+  if (!modal) return false;
+
+  setContextoCaptura(tipo, {
+    idestacion,
+    idsubensamble,
+    nombre,
+    es_critica
+  });
+
+  const inputProducto = modal.querySelector('#idproducto_especificacion');
+  const inputEstacion = modal.querySelector('#idestacion');
+  const inputSub = modal.querySelector('#idsubensamble_especificacion');
+  const inputTipo = modal.querySelector('#tipo_contexto_especificacion');
+  const inputCritica = modal.querySelector('#es_critica_especificacion');
+
+  if (inputProducto) inputProducto.value = idproducto;
+  if (inputEstacion) inputEstacion.value = idestacion || 0;
+  if (inputSub) inputSub.value = tipo === 'subensamble' ? idsubensamble : 0;
+  if (inputTipo) inputTipo.value = tipo;
+  if (inputCritica) inputCritica.value = Number(es_critica || 0);
+
+  resetFormEspecificacion();
+
+  const title = document.querySelector('#titleModalEspecificaciones');
+  const labelTipo = es_critica ? 'Especificaciones críticas' : 'Operaciones';
+  const labelContexto = tipo === 'subensamble' ? 'Subensamble' : 'Estación';
+
+  if (title) {
+    title.innerHTML = `${labelTipo} - ${labelContexto} ${nombre}`;
+  }
+
+  const formTitle = modal.querySelector('h5');
+  const formDesc = modal.querySelector('p.text-muted');
+
+  if (formTitle) formTitle.textContent = es_critica ? 'Registro de especificaciones críticas' : 'Registro de operaciones';
+  if (formDesc) {
+    formDesc.textContent = es_critica
+      ? `Captura las especificaciones críticas para ${tipo === 'subensamble' ? 'este subensamble' : 'esta estación'}`
+      : `Captura las operaciones para ${tipo === 'subensamble' ? 'este subensamble' : 'esta estación'}`;
+  }
+
+  $('#modalEspecificaciones').modal('show');
+
+  if (tipo === 'subensamble') {
+    cargarEspecificacionesSubensamble(idsubensamble, es_critica);
+  } else {
+    cargarEspecificaciones(idestacion, es_critica);
+  }
+
+  return true;
+}
+
+
+
+
 function resetContextoCaptura() {
-  contextoCapturaActual = {
+  let contextoCapturaActual = {
     tipo: 'estacion',
     idestacion: 0,
     idsubensamble: 0,
-    nombre: ''
+    nombre: '',
+    es_critica: 0
   };
 }
 
 function esContextoSubensamble() {
   return String(contextoCapturaActual.tipo) === 'subensamble';
 }
-
-
 
 
 // ==========================================================
@@ -5212,24 +5327,48 @@ function renderDetalleZonaPdi(idestacion) {
                  placeholder="Describe el punto a inspeccionar">
         </td>
 
-        <td class="text-center pdi-check-cell">
-          <input class="form-check-input pdi-check" type="checkbox" data-index="${index}" data-field="check_china" ${Number(punto.check_china || 0) === 1 ? 'checked' : ''}>
-        </td>
-        <td class="text-center pdi-check-cell">
-          <input class="form-check-input pdi-check" type="checkbox" data-index="${index}" data-field="check_mexico" ${Number(punto.check_mexico || 0) === 1 ? 'checked' : ''}>
-        </td>
-        <td class="text-center pdi-check-cell">
-          <input class="form-check-input pdi-check" type="checkbox" data-index="${index}" data-field="check_i1" ${Number(punto.check_i1 || 0) === 1 ? 'checked' : ''}>
-        </td>
-        <td class="text-center pdi-check-cell">
-          <input class="form-check-input pdi-check" type="checkbox" data-index="${index}" data-field="check_i2" ${Number(punto.check_i2 || 0) === 1 ? 'checked' : ''}>
-        </td>
-        <td class="text-center pdi-check-cell">
-          <input class="form-check-input pdi-check" type="checkbox" data-index="${index}" data-field="check_i3" ${Number(punto.check_i3 || 0) === 1 ? 'checked' : ''}>
-        </td>
-        <td class="text-center pdi-check-cell">
-          <input class="form-check-input pdi-check" type="checkbox" data-index="${index}" data-field="check_i4" ${Number(punto.check_i4 || 0) === 1 ? 'checked' : ''}>
-        </td>
+        <td class="d-none">
+    <input class="form-check-input pdi-check"
+           type="checkbox"
+           data-index="${index}"
+           data-field="check_china">
+</td>
+
+<td class="d-none">
+    <input class="form-check-input pdi-check"
+           type="checkbox"
+           data-index="${index}"
+           data-field="check_mexico"
+           checked>
+</td>
+
+<td class="d-none">
+    <input class="form-check-input pdi-check"
+           type="checkbox"
+           data-index="${index}"
+           data-field="check_i1">
+</td>
+
+<td class="d-none">
+    <input class="form-check-input pdi-check"
+           type="checkbox"
+           data-index="${index}"
+           data-field="check_i2">
+</td>
+
+<td class="d-none">
+    <input class="form-check-input pdi-check"
+           type="checkbox"
+           data-index="${index}"
+           data-field="check_i3">
+</td>
+
+<td class="d-none">
+    <input class="form-check-input pdi-check"
+           type="checkbox"
+           data-index="${index}"
+           data-field="check_i4">
+</td>
 
         <td class="text-center">
           <div class="btn-group btn-group-sm pdi-action-btns">
@@ -5301,7 +5440,7 @@ function agregarNuevoPuntoPdi(idestacion) {
     punto: '',
     orden: zona.puntos.length + 1,
     check_china: 0,
-    check_mexico: 0,
+    check_mexico: 1,
     check_i1: 0,
     check_i2: 0,
     check_i3: 0,
@@ -5388,16 +5527,16 @@ async function guardarTodoPdiEstacion(idestacion) {
     }))
     .filter(z => z.nombre_zona !== '');
 
-  if (!zonas.length) {
-    Swal.fire('Atención', 'Debes registrar al menos una zona de inspección.', 'warning');
-    return;
-  }
+  // if (!zonas.length) {
+  //   Swal.fire('Atención', 'Debes registrar al menos una zona de inspección.', 'warning');
+  //   return;
+  // }
 
-  const totalPuntos = zonas.reduce((acc, z) => acc + (z.puntos?.length || 0), 0);
-  if (!totalPuntos) {
-    Swal.fire('Atención', 'Debes registrar al menos un punto de inspección.', 'warning');
-    return;
-  }
+  // const totalPuntos = zonas.reduce((acc, z) => acc + (z.puntos?.length || 0), 0);
+  // if (!totalPuntos) {
+  //   Swal.fire('Atención', 'Debes registrar al menos un punto de inspección.', 'warning');
+  //   return;
+  // }
 
   const payload = [{
     idproducto: parseInt(idproducto, 10),
@@ -5414,6 +5553,24 @@ async function guardarTodoPdiEstacion(idestacion) {
   }, { useLoading: true });
 
   if (res && res.status) {
+
+
+
+    if (res.desactivar_pdi === true) {
+      const chkCalidad = document.querySelector('#chkRequiereInspeccion');
+
+      if (chkCalidad) {
+        chkCalidad.checked = false;
+
+        // Por si tienes eventos change escuchando este check
+        chkCalidad.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+    }
+
+    construirPayloadRuta()
+    await guardarRutaProductoDesdePdi();
+
     limpiarPdiLocal(idproducto, idestacion);
 
     await cargarPdiDesdeServidorNuevo(idestacion, idproducto);
@@ -5606,37 +5763,21 @@ async function cargarHerramientasGuardadasSubensamble(idsubensamble) {
 }
 
 
-function cargarEspecificacionesSubensamble(idSubensamble) {
+function cargarEspecificacionesSubensamble(idSubensamble, esCritica = 0) {
   const idProductoProceso = parseInt(document.getElementById('idproducto_proceso')?.value || 0);
   if (!idSubensamble || !idProductoProceso) return;
 
-  const url = getControllerBase() + '/getEspecificacionesSubensamble/' + idSubensamble + '/' + idProductoProceso;
+  const url = getControllerBase()
+    + '/getEspecificacionesSubensamble/'
+    + idSubensamble
+    + '/'
+    + idProductoProceso
+    + '?es_critica='
+    + encodeURIComponent(Number(esCritica || 0));
 
-  if (tableEspecifica) {
-    tableEspecifica.ajax.url(url).load();
-    return;
-  }
-
-  tableEspecifica = $('#tableEspecificaciones').DataTable({
-    responsive: true,
-    processing: true,
-    serverSide: false,
-    destroy: true,
-    ajax: {
-      url: url,
-      dataSrc: function (json) {
-        return (json && json.status && Array.isArray(json.data)) ? json.data : [];
-      }
-    },
-    columns: [
-      // { data: 'idespecificacionsubensamble' },
-      { data: 'especificacion' },
-      { data: 'fecha_creacion' },
-      { data: 'options', orderable: false, searchable: false }
-    ],
-    order: [[1, 'desc']]
-  });
+  cargarTablaEspecificaciones(url);
 }
+
 
 
 
@@ -5644,12 +5785,18 @@ async function fntEditEspecificacionSubensamble(idespecificacion) {
   const btnTextEsp = document.querySelector('#btnTextEspecificacion');
   if (btnTextEsp) btnTextEsp.innerHTML = "Actualizar";
 
-  const ajaxUrl = base_url + '/Plan_confproductosv1/getEspecificacionSubensamble/' + idespecificacion;
+  const inputCritica = document.querySelector('#es_critica_especificacion');
+  const esCritica = inputCritica ? Number(inputCritica.value || 0) : 0;
+
+  const ajaxUrl = getControllerBase() + '/getEspecificacionSubensamble/' + idespecificacion + '/' + esCritica;;
   const objData = await xhrRequest({ method: "GET", url: ajaxUrl, responseType: "json", useLoading: true });
 
   if (objData && objData.status) {
     document.querySelector("#idespecificacionsubensamble").value = objData.data.idespecificacionsubensamble;
     document.querySelector("#txtEspecificacion").value = objData.data.especificacion;
+
+    const inputCritica = document.querySelector('#es_critica_especificacion');
+    if (inputCritica) inputCritica.value = Number(objData.data.es_critica || 0);
   } else {
     Swal.fire("Error", objData?.msg || "No se pudo cargar", "error");
   }
@@ -5687,8 +5834,12 @@ function fntDelEspecificacionSubensamble(idespecificacion) {
   }).then(async (result) => {
     if (!result.isConfirmed) return;
 
+    const inputCritica = document.querySelector('#es_critica_especificacion');
+    const esCritica = inputCritica ? Number(inputCritica.value || 0) : 0;
+
     const ajaxUrl = base_url + '/Plan_confproductosv1/delEspecificacionSubensamble';
-    const strData = "idespecificacionsubensamble=" + encodeURIComponent(idespecificacion);
+    const strData = "idespecificacionsubensamble=" + encodeURIComponent(idespecificacion) +
+      "&es_critica=" + encodeURIComponent(esCritica);
 
     const objData = await xhrRequest({
       method: "POST",
@@ -5702,6 +5853,7 @@ function fntDelEspecificacionSubensamble(idespecificacion) {
     if (objData && objData.status) {
       Swal.fire("¡Operación exitosa!", objData.msg, "success");
       if (tableEspecifica) tableEspecifica.ajax.reload();
+      await refrescarMetricasSubensamble();
     } else {
       Swal.fire("Atención!", objData?.msg || "Error al eliminar", "error");
     }

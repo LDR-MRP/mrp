@@ -35,7 +35,7 @@ class Plan_confproductosv1 extends Controllers
 	// --------------------------------------------------------------------
 	public function getSelectProductos()
 	{
- 
+
 		$htmlOptions = '<option value="">--Seleccione--</option>';
 		$arrData = $this->model->selectOptionProductos();
 		if (count($arrData) > 0) {
@@ -646,7 +646,7 @@ class Plan_confproductosv1 extends Controllers
 		$fechaEvento = date('Y-m-d H:i:s');
 		$ip = $_SERVER['REMOTE_ADDR'] ?? '';
 		$detalleAudit = $_SERVER['HTTP_USER_AGENT'] ?? '';
-		
+
 
 		try {
 
@@ -707,13 +707,13 @@ class Plan_confproductosv1 extends Controllers
 			//  UPDATE (idruta>0)
 			// ==========================================================
 
-			// valida que exista y que sea del producto
+			
 			if (!$this->model->rutaExisteParaProducto($idruta, $prod)) {
 				echo json_encode(['status' => false, 'msg' => 'La ruta no existe o no pertenece al producto'], JSON_UNESCAPED_UNICODE);
 				exit;
 			}
 
-			// actualiza header (planta/linea)
+			
 			$this->model->updateRutaHeader($idruta, $planta, $linea);
 
 
@@ -729,7 +729,7 @@ class Plan_confproductosv1 extends Controllers
 			);
 
 			$idsDetalleVistos = [];
- 
+
 			foreach ($detalle as $row) {
 
 				$iddetalle = (int) ($row['iddetalle'] ?? 0);
@@ -760,7 +760,7 @@ class Plan_confproductosv1 extends Controllers
 
 
 				if ($idestacion > 0 && $orden > 0) {
-					$newId = $this->model->insertRutaDetalle($idruta, $idestacion, $orden, $now, $estampado);
+					$newId = $this->model->insertRutaDetalle($idruta, $idestacion, $orden, $now, $estampado, $calidad);
 					if ($newId)
 						$idsDetalleVistos[] = (int) $newId;
 				}
@@ -799,128 +799,197 @@ class Plan_confproductosv1 extends Controllers
 
 	public function setEspecificacion()
 	{
-
-
 		if ($_POST) {
+
 			if (
 				empty($_POST['idproducto_especificacion'])
 				|| empty($_POST['idestacion'])
+				|| empty($_POST['txtEspecificacion'])
 			) {
-				$arrResponse = array("status" => false, "msg" => 'Datos incorrectos .');
-			} else {
-
-				// --------------------------------------------------------------------
-				//  Datos de auditoría
-				// --------------------------------------------------------------------
-				$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
-				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
-				$detalle = $_SERVER['HTTP_USER_AGENT'] ?? ''; 
-				$fechaEvento = date('Y-m-d H:i:s');
-
-				$intEspecificacionid = intval($_POST['idespecificacion']);
-				$intIdproducto = intval($_POST['idproducto_especificacion']);
-				$intEstacionId = intval($_POST['idestacion']);
-				$descripcion = strClean($_POST['txtEspecificacion']);
-
-
-				if ($intEspecificacionid == 0) {
-
-					$fecha_creacion = date('Y-m-d H:i:s');
-					// $estado = 2;
-
-					//Crear 
-					// if ($_SESSION['permisosMod']['w']) {
-					$request_especificacion = $this->model->insertEspecificacion($intIdproducto, $intEstacionId, $descripcion, $fecha_creacion);
-
-					$option = 1;
-					// }
-
-				} else {
-					//Actualizar
-					// if ($_SESSION['permisosMod']['u']) {
-					$request_especificacion = $this->model->updateEspecificacion($intEspecificacionid, $descripcion);
-					$option = 2;
-					// }
-				}
-				if ($request_especificacion > 0) {
-					if ($option == 1) {
-						$arrResponse = array('status' => true, 'msg' => '¡La información se ha registrado exitosamente!', 'tipo' => 'insert', 'idespecificacion' => $request_especificacion);
-						$this->model->insertAuditoria(
-							MPCONFPRODUCTOS,
-							1,
-							$idusuario,
-							'mrp_estacion_especificaciones',
-							$request_especificacion,
-							$fechaEvento,
-							$ip,
-							$detalle
-						);
-					} else {
-						$arrResponse = array('status' => true, 'msg' => 'La información ha sido actualizada correctamente.', 'tipo' => 'update', 'idespecificacion' => $intEspecificacionid);
-						$this->model->insertAuditoria(
-							MPCONFPRODUCTOS,
-							2,
-							$idusuario,
-							'mrp_estacion_especificaciones',
-							$request_especificacion,
-							$fechaEvento,
-							$ip,
-							$detalle
-						);
-					}
-				} else if ($request_especificacion == 'exist') {
-					$arrResponse = array('status' => false, 'msg' => '¡Atención! La especificación ya existe.');
-				} else {
-					$arrResponse = array("status" => false, "msg" => 'No es posible almacenar los datos.');
-				}
+				$arrResponse = array(
+					"status" => false,
+					"msg" => 'Datos incorrectos.'
+				);
 
 				echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+				die();
 			}
-		}
-	}
 
+			// --------------------------------------------------------------------
+			// Datos de auditoría
+			// --------------------------------------------------------------------
+			$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+			$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+			$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+			$fechaEvento = date('Y-m-d H:i:s');
 
+			$intEspecificacionid = intval($_POST['idespecificacion'] ?? 0);
+			$intIdproducto = intval($_POST['idproducto_especificacion']);
+			$intEstacionId = intval($_POST['idestacion']);
+			$descripcion = strClean($_POST['txtEspecificacion']);
 
+			// Nuevo valor
+			$intEsCritica = intval($_POST['es_critica'] ?? 0);
 
-
-	public function getEspecificacionesold($idestacion)
-	{
-		// if ($_SESSION['permisosMod']['r']) {
-		$intIdestacion = intval($idestacion);
-		if ($intIdestacion > 0) {
-			$arrData = $this->model->EspecificacionesByEstacion($intIdestacion);
-			if (empty($arrData)) {
-				$arrResponse = array('status' => false, 'msg' => 'Datos no encontrados.');
+			if ($intEsCritica === 1) {
+				$tablaAuditoria = 'mrp_estacion_especificaciones_criticas';
 			} else {
+				$tablaAuditoria = 'mrp_estacion_especificaciones';
+			}
 
-				for ($i = 0; $i < count($arrData); $i++) {
+			if ($intEspecificacionid == 0) {
+
+				$fecha_creacion = date('Y-m-d H:i:s');
+
+				if ($intEsCritica === 1) {
+					$request_especificacion = $this->model->insertEspecificacionCritica(
+						$intIdproducto,
+						$intEstacionId,
+						$descripcion,
+						$fecha_creacion
+					);
+
+					$this->model->actualizarEspecificacionesRutaDetalle(
+						$intIdproducto,
+						$intEstacionId
+					);
+				} else {
+					$request_especificacion = $this->model->insertEspecificacion(
+						$intIdproducto,
+						$intEstacionId,
+						$descripcion,
+						$fecha_creacion
+					);
+
+					$this->model->actualizarOperacionesRutaDetalle($intIdproducto, $intEstacionId);
 
 
-					$btnEdit = '<button type="button" class="btn btn-sm btn-soft-warning edit-list" title="Editar especificación" onClick="fntEditEspecificacion(' . $arrData[$i]['idespecificacion'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
 
-					$btnDelete = '<button class="btn btn-sm btn-soft-danger remove-list" title="Eliminar especificación" onClick="fntDelEspecificacion(' . $arrData[$i]['idespecificacion'] . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
-
-
-
-					$arrData[$i]['options'] = '<div class="text-center">' . $btnEdit . ' ' . $btnDelete . '</div>';
 				}
 
-				$arrResponse = array('status' => true, 'data' => $arrData);
+				$option = 1;
+
+			} else {
+
+				if ($intEsCritica === 1) {
+					$request_especificacion = $this->model->updateEspecificacionCritica(
+						$intEspecificacionid,
+						$descripcion
+					);
+
+					$this->model->actualizarEspecificacionesRutaDetalle(
+						$intIdproducto,
+						$intEstacionId
+					);
+				} else {
+					$request_especificacion = $this->model->updateEspecificacion(
+						$intEspecificacionid,
+						$descripcion
+					);
+
+					$this->model->actualizarOperacionesRutaDetalle($intIdproducto, $intEstacionId);
+
+				}
+
+				$option = 2;
 			}
 
+			if ($request_especificacion > 0) {
 
+				if ($option == 1) {
 
+					$arrResponse = array(
+						'status' => true,
+						'msg' => '¡La información se ha registrado exitosamente!',
+						'tipo' => 'insert',
+						'es_critica' => $intEsCritica,
+						'idespecificacion' => $request_especificacion
+					);
+
+					$this->model->insertAuditoria(
+						MPCONFPRODUCTOS,
+						1,
+						$idusuario,
+						$tablaAuditoria,
+						$request_especificacion,
+						$fechaEvento,
+						$ip,
+						$detalle
+					);
+
+				} else {
+
+					$arrResponse = array(
+						'status' => true,
+						'msg' => 'La información ha sido actualizada correctamente.',
+						'tipo' => 'update',
+						'es_critica' => $intEsCritica,
+						'idespecificacion' => $intEspecificacionid
+					);
+
+					$this->model->insertAuditoria(
+						MPCONFPRODUCTOS,
+						2,
+						$idusuario,
+						$tablaAuditoria,
+						$intEspecificacionid,
+						$fechaEvento,
+						$ip,
+						$detalle
+					);
+				}
+
+			} else if ($request_especificacion == 'exist') {
+
+				$arrResponse = array(
+					'status' => false,
+					'msg' => '¡Atención! La especificación ya existe.'
+				);
+
+			} else {
+
+				$arrResponse = array(
+					"status" => false,
+					"msg" => 'No es posible almacenar los datos.'
+				);
+			}
 
 			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 		}
-		// }
-		die();
-
 	}
+
+
+
+
+
+	// public function getEspecificacionesOld($idestacion, $idproducto_proceso = 0, $es_critica = '')
+	// {
+	// 	// Si llega como "17,62" en $idestacion, lo separamos
+	// 	if (is_string($idestacion) && strpos($idestacion, ',') !== false) {
+	// 		[$idestacion, $idproducto_proceso] = array_pad(explode(',', $idestacion), 2, 0);
+	// 	}
+
+	// 	$intIdestacion = intval($idestacion);
+	// 	$intIdProductoProceso = intval($idproducto_proceso);
+
+	// 	$arrData = $this->model->EspecificacionesByEstacion($intIdestacion, $intIdProductoProceso);
+
+	// 	for ($i = 0; $i < count($arrData); $i++) {
+
+	// 		$btnEdit = '<button type="button" class="btn btn-sm btn-soft-warning edit-list" title="Editar especificación" onClick="fntEditEspecificacion(' . $arrData[$i]['idespecificacion'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
+
+	// 		$btnDelete = '<button class="btn btn-sm btn-soft-danger remove-list" title="Eliminar especificación" onClick="fntDelEspecificacion(' . $arrData[$i]['idespecificacion'] . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
+
+	// 		$arrData[$i]['options'] = '<div class="text-center">' . $btnEdit . ' ' . $btnDelete . '</div>';
+	// 	}
+
+	// 	$arrResponse = array('status' => true, 'data' => $arrData);
+
+	// 	echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+	// }
 
 	public function getEspecificaciones($idestacion, $idproducto_proceso = 0)
 	{
-		// Si llega como "17,62" en $idestacion, lo separamos
 		if (is_string($idestacion) && strpos($idestacion, ',') !== false) {
 			[$idestacion, $idproducto_proceso] = array_pad(explode(',', $idestacion), 2, 0);
 		}
@@ -928,77 +997,272 @@ class Plan_confproductosv1 extends Controllers
 		$intIdestacion = intval($idestacion);
 		$intIdProductoProceso = intval($idproducto_proceso);
 
-		$arrData = $this->model->EspecificacionesByEstacion($intIdestacion, $intIdProductoProceso);
+		$intEsCritica = isset($_GET['es_critica']) ? intval($_GET['es_critica']) : 0;
+
+		if ($intEsCritica === 1) {
+			$arrData = $this->model->EspecificacionesCriticasByEstacion(
+				$intIdestacion,
+				$intIdProductoProceso
+			);
+		} else {
+			$arrData = $this->model->EspecificacionesByEstacion(
+				$intIdestacion,
+				$intIdProductoProceso
+			);
+		}
 
 		for ($i = 0; $i < count($arrData); $i++) {
 
-			$btnEdit = '<button type="button" class="btn btn-sm btn-soft-warning edit-list" title="Editar especificación" onClick="fntEditEspecificacion(' . $arrData[$i]['idespecificacion'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
+			$btnEdit = '<button type="button" class="btn btn-sm btn-soft-warning edit-list" title="Editar especificación" onClick="fntEditEspecificacion(' . $arrData[$i]['idespecificacion'] . ', ' . $intEsCritica . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
 
-			$btnDelete = '<button class="btn btn-sm btn-soft-danger remove-list" title="Eliminar especificación" onClick="fntDelEspecificacion(' . $arrData[$i]['idespecificacion'] . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
+			$btnDelete = '<button type="button" class="btn btn-sm btn-soft-danger remove-list" title="Eliminar especificación" onClick="fntDelEspecificacion(' . $arrData[$i]['idespecificacion'] . ', ' . $intEsCritica . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
 
 			$arrData[$i]['options'] = '<div class="text-center">' . $btnEdit . ' ' . $btnDelete . '</div>';
 		}
 
-		$arrResponse = array('status' => true, 'data' => $arrData);
-
-		echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+		echo json_encode([
+			'status' => true,
+			'es_critica' => $intEsCritica,
+			'data' => $arrData
+		], JSON_UNESCAPED_UNICODE);
 	}
+
 
 
 	public function delEspecificacion()
 	{
 		if ($_POST) {
 
-			// --------------------------------------------------------------------
-			//  Datos de auditoría
-			// --------------------------------------------------------------------
 			$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
 			$ip = $_SERVER['REMOTE_ADDR'] ?? '';
 			$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
 			$fechaEvento = date('Y-m-d H:i:s');
 
-			$intIdEspecificacion = intval($_POST['idespecificacion']);
-			$requestDelete = $this->model->deleteEspecificacion($intIdEspecificacion);
-			if ($requestDelete == 'ok') {
-				$arrResponse = array('status' => true, 'msg' => 'El registro ha sido eliminado correctamente.');
+			$intIdEspecificacion = intval($_POST['idespecificacion'] ?? 0);
+			$intEsCritica = intval($_POST['es_critica'] ?? 0);
+
+			if ($intIdEspecificacion <= 0) {
+				$arrResponse = array(
+					'status' => false,
+					'msg' => 'Datos incorrectos.'
+				);
+
+				echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			$productoid = 0;
+			$estacionid = 0;
+
+			if ($intEsCritica === 1) {
+
+
+	
+				$especificacionActual = $this->model->getEspecificacionCriticasById($intIdEspecificacion);
+
+				if (!empty($especificacionActual)) {
+					$productoid = intval($especificacionActual['productoid']);
+					$estacionid = intval($especificacionActual['estacionid']);
+				}
+
+
+				$requestDelete = $this->model->deleteEspecificacionCritica($intIdEspecificacion);
+				$tablaAuditoria = 'mrp_estacion_especificaciones_criticas';
+
+								if ($productoid > 0 && $estacionid > 0) {
+					$this->model->actualizarEspecificacionesRutaDetalle(
+						$productoid,
+						$estacionid
+					);
+				}
+
+				
+
+			} else {
+
+	
+				$especificacionActual = $this->model->getEspecificacionById($intIdEspecificacion);
+
+				if (!empty($especificacionActual)) {
+					$productoid = intval($especificacionActual['productoid']);
+					$estacionid = intval($especificacionActual['estacionid']);
+				}
+
+				$requestDelete = $this->model->deleteEspecificacion($intIdEspecificacion);
+				$tablaAuditoria = 'mrp_estacion_especificaciones';
+			}
+
+			if ($requestDelete == 'ok' || $requestDelete > 0) {
+
+				if ($intEsCritica !== 1 && $productoid > 0 && $estacionid > 0) {
+					$this->model->actualizarOperacionesRutaDetalle(
+						$productoid,
+						$estacionid
+					);
+				}
+
+				$arrResponse = array(
+					'status' => true,
+					'msg' => 'El registro ha sido eliminado correctamente.',
+					'es_critica' => $intEsCritica
+				);
+
 				$this->model->insertAuditoria(
 					MPCONFPRODUCTOS,
 					3,
 					$idusuario,
-					'mrp_estacion_especificaciones',
+					$tablaAuditoria,
 					$intIdEspecificacion,
 					$fechaEvento,
 					$ip,
 					$detalle
 				);
-			} else if ($requestDelete == 'exist') {
-				$arrResponse = array('status' => false, 'msg' => 'No es posible almacenar el documento.');
-			} else {
-				$arrResponse = array('status' => false, 'msg' => 'Error al eliminar la categoría.');
-			}
-			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 
+			} else if ($requestDelete == 'exist') {
+
+				$arrResponse = array(
+					'status' => false,
+					'msg' => 'No es posible eliminar el registro.'
+				);
+
+			} else {
+
+				$arrResponse = array(
+					'status' => false,
+					'msg' => 'Error al eliminar la especificación.'
+				);
+			}
+
+			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 		}
+
 		die();
 	}
 
 
 
-	public function getEspecificacion($idespecificacion)
-	{
-		// if($_SESSION['permisosMod']['r']){
-		$intIdespecificacion = intval($idespecificacion);
-		if ($intIdespecificacion > 0) {
-			$arrData = $this->model->selectEspecificacion($intIdespecificacion);
-			if (empty($arrData)) {
-				$arrResponse = array('status' => false, 'msg' => 'Datos no encontrados.');
-			} else {
+	// public function delEspecificacionold()
+	// {
+	// 	if ($_POST) {
 
-				$arrResponse = array('status' => true, 'data' => $arrData);
+	// 		// --------------------------------------------------------------------
+	// 		// Datos de auditoría
+	// 		// --------------------------------------------------------------------
+	// 		$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+	// 		$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+	// 		$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+	// 		$fechaEvento = date('Y-m-d H:i:s');
+
+	// 		$intIdEspecificacion = intval($_POST['idespecificacion'] ?? 0);
+	// 		$intEsCritica = intval($_POST['es_critica'] ?? 0);
+
+	// 		if ($intIdEspecificacion <= 0) {
+	// 			$arrResponse = array(
+	// 				'status' => false,
+	// 				'msg' => 'Datos incorrectos.'
+	// 			);
+
+	// 			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+	// 			die();
+	// 		}
+
+	// 		if ($intEsCritica === 1) {
+	// 			$requestDelete = $this->model->deleteEspecificacionCritica($intIdEspecificacion);
+	// 			$tablaAuditoria = 'mrp_estacion_especificaciones_criticas';
+	// 		} else {
+	// 			$requestDelete = $this->model->deleteEspecificacion($intIdEspecificacion);
+	// 			$tablaAuditoria = 'mrp_estacion_especificaciones';
+	// 		}
+
+	// 		if ($requestDelete == 'ok' || $requestDelete > 0) {
+
+	// 			$arrResponse = array(
+	// 				'status' => true,
+	// 				'msg' => 'El registro ha sido eliminado correctamente.',
+	// 				'es_critica' => $intEsCritica
+	// 			);
+
+	// 			$this->model->insertAuditoria(
+	// 				MPCONFPRODUCTOS,
+	// 				3,
+	// 				$idusuario,
+	// 				$tablaAuditoria,
+	// 				$intIdEspecificacion,
+	// 				$fechaEvento,
+	// 				$ip,
+	// 				$detalle
+	// 			);
+
+	// 		} else if ($requestDelete == 'exist') {
+
+	// 			$arrResponse = array(
+	// 				'status' => false,
+	// 				'msg' => 'No es posible eliminar el registro.'
+	// 			);
+
+	// 		} else {
+
+	// 			$arrResponse = array(
+	// 				'status' => false,
+	// 				'msg' => 'Error al eliminar la especificación.'
+	// 			);
+	// 		}
+
+	// 		echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+	// 	}
+
+	// 	die();
+	// }
+
+
+
+	public function getEspecificacion($idespecificacion, $es_critica = null)
+	{
+		$intIdespecificacion = intval($idespecificacion);
+
+
+		if ($es_critica === null || $es_critica === '') {
+			$url = $_SERVER['REQUEST_URI'] ?? '';
+			$partes = explode('/', trim(parse_url($url, PHP_URL_PATH), '/'));
+
+
+			$ultimoSegmento = end($partes);
+
+			$intEsCritica = intval($ultimoSegmento);
+		} else {
+			$intEsCritica = intval($es_critica);
+		}
+
+
+		if ($intIdespecificacion > 0) {
+
+			if ($intEsCritica === 1) {
+				$arrData = $this->model->selectEspecificacionCritica($intIdespecificacion);
+			} else {
+				$arrData = $this->model->selectEspecificacion($intIdespecificacion);
 			}
+
+			if (empty($arrData)) {
+				$arrResponse = array(
+					'status' => false,
+					'msg' => 'Datos no encontrados.',
+					'debug' => array(
+						'idespecificacion' => $intIdespecificacion,
+						'es_critica' => $intEsCritica
+					)
+				);
+			} else {
+				$arrData['es_critica'] = $intEsCritica;
+
+				$arrResponse = array(
+					'status' => true,
+					'data' => $arrData
+				);
+			}
+
 			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 		}
-		// }
+
 		die();
 	}
 
@@ -1090,13 +1354,13 @@ class Plan_confproductosv1 extends Controllers
 		if (!is_array($detalle))
 			$detalle = [];
 
-		// normalizar inventarioids entrantes
+		
 		$incoming = [];
 		foreach ($detalle as $it) {
 			$inv = (int) ($it['inventarioid'] ?? 0);
 			$cant = (int) ($it['cantidad'] ?? 0);
 			if ($inv > 0 && $cant > 0) {
-				$incoming[$inv] = $cant; // evita duplicados
+				$incoming[$inv] = $cant; 
 			}
 		}
 
@@ -1424,114 +1688,165 @@ class Plan_confproductosv1 extends Controllers
 // --------------------------------------------------------------------
 // --------------------------------------------------------------------
 
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // FUNCIONES NUEVAS PARA SUBENSAMBLES / OPERACIONES / INSPECCION / AYUDAS
 // --------------------------------------------------------------------
 
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // OBTENER SUBENSAMBLE POR ESTACION
 // --------------------------------------------------------------------
-public function getSubensamblesEstacion($idestacion)
-{
-	header('Content-Type: application/json; charset=utf-8');
+	public function getSubensamblesEstacion($idestacion)
+	{
+		header('Content-Type: application/json; charset=utf-8');
 
-	$idestacion = intval($idestacion);
-	$idproducto = isset($_GET['idproducto']) ? intval($_GET['idproducto']) : 0;
+		$idestacion = intval($idestacion);
+		$idproducto = isset($_GET['idproducto']) ? intval($_GET['idproducto']) : 0;
 
-	if ($idestacion <= 0 || $idproducto <= 0) {
-		echo json_encode(['status' => false, 'msg' => 'Faltan datos: idestacion/idproducto'], JSON_UNESCAPED_UNICODE);
-		die();
-	}
-
-	$arrData = $this->model->selectSubensambleByEstacion($idestacion, $idproducto);
-
-	if (empty($arrData)) {
-		echo json_encode(['status' => false, 'msg' => 'Sin subensamble configurado'], JSON_UNESCAPED_UNICODE);
-		die();
-	}
-
-	echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
-	die();
-}
-
-
-// --------------------------------------------------------------------
-// GUARDAR / ACTUALIZAR SUBENSAMBLE
-// --------------------------------------------------------------------
-public function setSubensamble()
-{
-	header('Content-Type: application/json; charset=utf-8');
-
-	if ($_POST) {
-
-		$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
-		$ip = $_SERVER['REMOTE_ADDR'] ?? '';
-		$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
-		$fechaEvento = date('Y-m-d H:i:s');
-
-		$idsubensamble = intval($_POST['idsubensamble'] ?? 0);
-		$idestacion = intval($_POST['idestacion'] ?? 0);
-		$nombre_estacion = strClean($_POST['nombre_estacion'] ?? '');
-		$proceso = strClean($_POST['proceso'] ?? '');
-		$estandar = strClean($_POST['estandar'] ?? '');
-		$tiempo_ajuste = strClean($_POST['tiempo_ajuste'] ?? '');
-		$herramientas = intval($_POST['herramientas'] ?? 0);
-		$estado = intval($_POST['estado'] ?? 2);
-
-		if ($idestacion <= 0 || empty($proceso)) {
-			echo json_encode(['status' => false, 'msg' => 'Datos incompletos para el subensamble'], JSON_UNESCAPED_UNICODE);
+		if ($idestacion <= 0 || $idproducto <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Faltan datos: idestacion/idproducto'], JSON_UNESCAPED_UNICODE);
 			die();
 		}
 
-		$fecha = date('Y-m-d H:i:s');
+		$arrData = $this->model->selectSubensambleByEstacion($idestacion, $idproducto);
 
-		if ($idsubensamble == 0) {
-			$request = $this->model->insertSubensamble(
-				$idestacion,
-				$nombre_estacion,
-				$proceso,
-				$estandar,
-				$tiempo_ajuste,
-				$herramientas,
-				$estado,
-				$fecha
-			);
+		if (empty($arrData)) {
+			echo json_encode(['status' => false, 'msg' => 'Sin subensamble configurado'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
 
-			if ($request > 0) {
-				$this->model->insertAuditoria(
-					MPCONFPRODUCTOS,
-					1,
-					$idusuario,
-					'mrp_estacion_subensamble',
-					$request,
-					$fechaEvento,
-					$ip,
-					$detalle
-				);
+		echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
+		die();
+	}
 
-				echo json_encode([
-					'status' => true,
-					'msg' => 'Subensamble registrado correctamente',
-					'tipo' => 'insert',
-					'idsubensamble' => $request
-				], JSON_UNESCAPED_UNICODE);
+
+	// --------------------------------------------------------------------
+// GUARDAR / ACTUALIZAR SUBENSAMBLE
+// --------------------------------------------------------------------
+	public function setSubensamble()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		if ($_POST) {
+
+			$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+			$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+			$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+			$fechaEvento = date('Y-m-d H:i:s');
+
+			$idsubensamble = intval($_POST['idsubensamble'] ?? 0);
+			$idestacion = intval($_POST['idestacion'] ?? 0);
+			$nombre_estacion = strClean($_POST['nombre_estacion'] ?? '');
+			$proceso = strClean($_POST['proceso'] ?? '');
+			$estandar = strClean($_POST['estandar'] ?? '');
+			$tiempo_ajuste = strClean($_POST['tiempo_ajuste'] ?? '');
+			$herramientas = intval($_POST['herramientas'] ?? 0);
+			$estado = intval($_POST['estado'] ?? 2);
+
+			if ($idestacion <= 0 || empty($proceso)) {
+				echo json_encode(['status' => false, 'msg' => 'Datos incompletos para el subensamble'], JSON_UNESCAPED_UNICODE);
 				die();
 			}
-		} else {
-			$request = $this->model->updateSubensamble(
-				$idsubensamble,
-				$nombre_estacion,
-				$proceso,
-				$estandar,
-				$tiempo_ajuste,
-				$herramientas,
-				$estado
-			);
 
-			if ($request) {
+			$fecha = date('Y-m-d H:i:s');
+
+			if ($idsubensamble == 0) {
+				$request = $this->model->insertSubensamble(
+					$idestacion,
+					$nombre_estacion,
+					$proceso,
+					$estandar,
+					$tiempo_ajuste,
+					$herramientas,
+					$estado,
+					$fecha
+				);
+
+				if ($request > 0) {
+					$this->model->insertAuditoria(
+						MPCONFPRODUCTOS,
+						1,
+						$idusuario,
+						'mrp_estacion_subensamble',
+						$request,
+						$fechaEvento,
+						$ip,
+						$detalle
+					);
+
+					echo json_encode([
+						'status' => true,
+						'msg' => 'Subensamble registrado correctamente',
+						'tipo' => 'insert',
+						'idsubensamble' => $request
+					], JSON_UNESCAPED_UNICODE);
+					die();
+				}
+			} else {
+				$request = $this->model->updateSubensamble(
+					$idsubensamble,
+					$nombre_estacion,
+					$proceso,
+					$estandar,
+					$tiempo_ajuste,
+					$herramientas,
+					$estado
+				);
+
+				if ($request) {
+					$this->model->insertAuditoria(
+						MPCONFPRODUCTOS,
+						2,
+						$idusuario,
+						'mrp_estacion_subensamble',
+						$idsubensamble,
+						$fechaEvento,
+						$ip,
+						$detalle
+					);
+
+					echo json_encode([
+						'status' => true,
+						'msg' => 'Subensamble actualizado correctamente',
+						'tipo' => 'update',
+						'idsubensamble' => $idsubensamble
+					], JSON_UNESCAPED_UNICODE);
+					die();
+				}
+			}
+
+			echo json_encode(['status' => false, 'msg' => 'No fue posible guardar el subensamble'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+	}
+
+
+	// --------------------------------------------------------------------
+// ELIMINAR SUBENSAMBLE
+// --------------------------------------------------------------------
+	public function delSubensamble()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		if ($_POST) {
+
+			$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+			$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+			$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+			$fechaEvento = date('Y-m-d H:i:s');
+
+			$idsubensamble = intval($_POST['idsubensamble'] ?? 0);
+
+			if ($idsubensamble <= 0) {
+				echo json_encode(['status' => false, 'msg' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			$request = $this->model->deleteSubensamble($idsubensamble);
+
+			if ($request == 'ok') {
 				$this->model->insertAuditoria(
 					MPCONFPRODUCTOS,
-					2,
+					3,
 					$idusuario,
 					'mrp_estacion_subensamble',
 					$idsubensamble,
@@ -1540,959 +1855,1133 @@ public function setSubensamble()
 					$detalle
 				);
 
-				echo json_encode([
-					'status' => true,
-					'msg' => 'Subensamble actualizado correctamente',
-					'tipo' => 'update',
-					'idsubensamble' => $idsubensamble
-				], JSON_UNESCAPED_UNICODE);
+				echo json_encode(['status' => true, 'msg' => 'Subensamble eliminado correctamente'], JSON_UNESCAPED_UNICODE);
 				die();
 			}
+
+			echo json_encode(['status' => false, 'msg' => 'No fue posible eliminar el subensamble'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+	}
+
+
+	// --------------------------------------------------------------------
+// OBTENER OPERACIONES POR ESTACION
+// --------------------------------------------------------------------
+	public function getOperacionesEstacion($idestacion)
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		$idestacion = intval($idestacion);
+		$idproducto = isset($_GET['idproducto']) ? intval($_GET['idproducto']) : 0;
+
+		if ($idestacion <= 0 || $idproducto <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Faltan datos: idestacion/idproducto'], JSON_UNESCAPED_UNICODE);
+			die();
 		}
 
-		echo json_encode(['status' => false, 'msg' => 'No fue posible guardar el subensamble'], JSON_UNESCAPED_UNICODE);
+		$arrData = $this->model->selectOperacionesEstacion($idestacion, $idproducto);
+
+		echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
 		die();
 	}
-}
+
+	public function getOperacionesSubensamble($idestacion)
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		$idestacion = intval($idestacion);
+		$idproducto = isset($_GET['idproducto']) ? intval($_GET['idproducto']) : 0;
+
+		if ($idestacion <= 0 || $idproducto <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Faltan datos: idestacion/idproducto'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$arrData = $this->model->selectOperacionesSubensamble($idestacion, $idproducto);
+
+		echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
+		die();
+	}
 
 
+
+
+
+	// --------------------------------------------------------------------
+// GUARDAR OPERACIONES POR ESTACION
 // --------------------------------------------------------------------
-// ELIMINAR SUBENSAMBLE
-// --------------------------------------------------------------------
-public function delSubensamble()
-{
-	header('Content-Type: application/json; charset=utf-8');
+	public function setOperacionesEstacion()
+	{
+		header('Content-Type: application/json; charset=utf-8');
 
-	if ($_POST) {
+		if (!isset($_POST['operaciones'])) {
+			echo json_encode(['status' => false, 'msg' => 'No llegó el payload operaciones'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
 
 		$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
 		$ip = $_SERVER['REMOTE_ADDR'] ?? '';
-		$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+		$detalleAudit = $_SERVER['HTTP_USER_AGENT'] ?? '';
 		$fechaEvento = date('Y-m-d H:i:s');
 
-		$idsubensamble = intval($_POST['idsubensamble'] ?? 0);
-
-		if ($idsubensamble <= 0) {
-			echo json_encode(['status' => false, 'msg' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
+		$payload = json_decode($_POST['operaciones'], true);
+		if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
+			echo json_encode(['status' => false, 'msg' => 'JSON inválido en operaciones'], JSON_UNESCAPED_UNICODE);
 			die();
 		}
 
-		$request = $this->model->deleteSubensamble($idsubensamble);
+		$d = $payload[0];
+		$idProducto = intval($d['idproducto'] ?? 0);
+		$idEstacion = intval($d['idestacion'] ?? 0);
+		$detalle = $d['detalle_operaciones'] ?? [];
 
-		if ($request == 'ok') {
-			$this->model->insertAuditoria(
-				MPCONFPRODUCTOS,
-				3,
-				$idusuario,
-				'mrp_estacion_subensamble',
-				$idsubensamble,
-				$fechaEvento,
-				$ip,
-				$detalle
-			);
-
-			echo json_encode(['status' => true, 'msg' => 'Subensamble eliminado correctamente'], JSON_UNESCAPED_UNICODE);
+		if ($idProducto <= 0 || $idEstacion <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Faltan datos de producto/estación'], JSON_UNESCAPED_UNICODE);
 			die();
 		}
 
-		echo json_encode(['status' => false, 'msg' => 'No fue posible eliminar el subensamble'], JSON_UNESCAPED_UNICODE);
-		die();
-	}
-}
+		// $request = $this->model->syncOperacionesEstacion($idProducto, $idEstacion, $detalle);
 
+		$this->model->insertAuditoria(
+			MPCONFPRODUCTOS,
+			2,
+			$idusuario,
+			'mrp_estacion_operaciones',
+			$idEstacion,
+			$fechaEvento,
+			$ip,
+			$detalleAudit
+		);
 
-// --------------------------------------------------------------------
-// OBTENER OPERACIONES POR ESTACION
-// --------------------------------------------------------------------
-// public function getOperacionesEstacion($idestacion)
-// {
-// 	header('Content-Type: application/json; charset=utf-8');
-
-// 	$idestacion = intval($idestacion);
-// 	$idproducto = isset($_GET['idproducto']) ? intval($_GET['idproducto']) : 0;
-
-// 	if ($idestacion <= 0 || $idproducto <= 0) {
-// 		echo json_encode(['status' => false, 'msg' => 'Faltan datos: idestacion/idproducto'], JSON_UNESCAPED_UNICODE);
-// 		die();
-// 	}
-
-// 	$arrData = $this->model->selectOperacionesEstacion($idestacion, $idproducto);
-
-// 	echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
-// 	die();
-// }
-
-
-// --------------------------------------------------------------------
-// GUARDAR OPERACIONES POR ESTACION
-// --------------------------------------------------------------------
-public function setOperacionesEstacion()
-{
-	header('Content-Type: application/json; charset=utf-8');
-
-	if (!isset($_POST['operaciones'])) {
-		echo json_encode(['status' => false, 'msg' => 'No llegó el payload operaciones'], JSON_UNESCAPED_UNICODE);
+		echo json_encode(['status' => true, 'msg' => 'Operaciones sincronizadas correctamente'], JSON_UNESCAPED_UNICODE);
 		die();
 	}
 
-	$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
-	$ip = $_SERVER['REMOTE_ADDR'] ?? '';
-	$detalleAudit = $_SERVER['HTTP_USER_AGENT'] ?? '';
-	$fechaEvento = date('Y-m-d H:i:s');
 
-	$payload = json_decode($_POST['operaciones'], true);
-	if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
-		echo json_encode(['status' => false, 'msg' => 'JSON inválido en operaciones'], JSON_UNESCAPED_UNICODE);
-		die();
-	}
-
-	$d = $payload[0];
-	$idProducto = intval($d['idproducto'] ?? 0);
-	$idEstacion = intval($d['idestacion'] ?? 0);
-	$detalle = $d['detalle_operaciones'] ?? [];
-
-	if ($idProducto <= 0 || $idEstacion <= 0) {
-		echo json_encode(['status' => false, 'msg' => 'Faltan datos de producto/estación'], JSON_UNESCAPED_UNICODE);
-		die();
-	}
-
-	// $request = $this->model->syncOperacionesEstacion($idProducto, $idEstacion, $detalle);
-
-	$this->model->insertAuditoria(
-		MPCONFPRODUCTOS,
-		2,
-		$idusuario,
-		'mrp_estacion_operaciones',
-		$idEstacion,
-		$fechaEvento,
-		$ip,
-		$detalleAudit
-	);
-
-	echo json_encode(['status' => true, 'msg' => 'Operaciones sincronizadas correctamente'], JSON_UNESCAPED_UNICODE);
-	die();
-}
-
-
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // OBTENER HERRAMIENTAS DE SUBENSAMBLE
 // --------------------------------------------------------------------
 // public function getHerramientasSubensamble($idsubensamble)
 // {
 // 	header('Content-Type: application/json; charset=utf-8');
 
-// 	$idsubensamble = intval($idsubensamble);
+	// 	$idsubensamble = intval($idsubensamble);
 
-// 	if ($idsubensamble <= 0) {
+	// 	if ($idsubensamble <= 0) {
 // 		echo json_encode(['status' => false, 'msg' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
 // 		die();
 // 	}
 
-// 	$arrData = $this->model->selectHerramientasSubensamble($idsubensamble);
+	// 	$arrData = $this->model->selectHerramientasSubensamble($idsubensamble);
 // 	echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
 // 	die();
 // }
 
 
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // GUARDAR HERRAMIENTAS DE SUBENSAMBLE
 // --------------------------------------------------------------------
 // public function setHerramientasSubensamble()
 // {
 // 	header('Content-Type: application/json; charset=utf-8');
 
-// 	if (!isset($_POST['herramientas_sub'])) {
+	// 	if (!isset($_POST['herramientas_sub'])) {
 // 		echo json_encode(['status' => false, 'msg' => 'No llegó el payload herramientas_sub'], JSON_UNESCAPED_UNICODE);
 // 		die();
 // 	}
 
-// 	$payload = json_decode($_POST['herramientas_sub'], true);
+	// 	$payload = json_decode($_POST['herramientas_sub'], true);
 // 	if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
 // 		echo json_encode(['status' => false, 'msg' => 'JSON inválido en herramientas_sub'], JSON_UNESCAPED_UNICODE);
 // 		die();
 // 	}
 
-// 	$d = $payload[0];
+	// 	$d = $payload[0];
 // 	$idsubensamble = intval($d['idsubensamble'] ?? 0);
 // 	$idalmacen = intval($d['idalmacen'] ?? 0);
 // 	$detalle = $d['detalle_herramientas'] ?? [];
 
-// 	if ($idsubensamble <= 0 || $idalmacen <= 0) {
+	// 	if ($idsubensamble <= 0 || $idalmacen <= 0) {
 // 		echo json_encode(['status' => false, 'msg' => 'Faltan datos de subensamble/almacén'], JSON_UNESCAPED_UNICODE);
 // 		die();
 // 	}
 
-// 	$this->model->syncHerramientasSubensamble($idsubensamble, $idalmacen, $detalle);
+	// 	$this->model->syncHerramientasSubensamble($idsubensamble, $idalmacen, $detalle);
 
-// 	echo json_encode(['status' => true, 'msg' => 'Herramientas de subensamble sincronizadas correctamente'], JSON_UNESCAPED_UNICODE);
+	// 	echo json_encode(['status' => true, 'msg' => 'Herramientas de subensamble sincronizadas correctamente'], JSON_UNESCAPED_UNICODE);
 // 	die();
 // }
 
 
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // OBTENER COMPONENTES DE SUBENSAMBLE
 // --------------------------------------------------------------------
 // public function getComponentesSubensamble($idsubensamble)
 // {
 // 	header('Content-Type: application/json; charset=utf-8');
 
-// 	$idsubensamble = intval($idsubensamble);
+	// 	$idsubensamble = intval($idsubensamble);
 
-// 	if ($idsubensamble <= 0) {
+	// 	if ($idsubensamble <= 0) {
 // 		echo json_encode(['status' => false, 'msg' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
 // 		die();
 // 	}
 
-// 	$arrData = $this->model->selectComponentesSubensamble($idsubensamble);
+	// 	$arrData = $this->model->selectComponentesSubensamble($idsubensamble);
 // 	echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
 // 	die();
 // }
 
 
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // GUARDAR COMPONENTES DE SUBENSAMBLE
 // --------------------------------------------------------------------
 // public function setComponentesSubensamble()
 // {
 // 	header('Content-Type: application/json; charset=utf-8');
 
-// 	if (!isset($_POST['componentes_sub'])) {
+	// 	if (!isset($_POST['componentes_sub'])) {
 // 		echo json_encode(['status' => false, 'msg' => 'No llegó el payload componentes_sub'], JSON_UNESCAPED_UNICODE);
 // 		die();
 // 	}
 
-// 	$payload = json_decode($_POST['componentes_sub'], true);
+	// 	$payload = json_decode($_POST['componentes_sub'], true);
 // 	if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
 // 		echo json_encode(['status' => false, 'msg' => 'JSON inválido en componentes_sub'], JSON_UNESCAPED_UNICODE);
 // 		die();
 // 	}
 
-// 	$d = $payload[0];
+	// 	$d = $payload[0];
 // 	$idsubensamble = intval($d['idsubensamble'] ?? 0);
 // 	$idalmacen = intval($d['idalmacen'] ?? 0);
 // 	$detalle = $d['detalle_componentes'] ?? [];
 
-// 	if ($idsubensamble <= 0 || $idalmacen <= 0) {
+	// 	if ($idsubensamble <= 0 || $idalmacen <= 0) {
 // 		echo json_encode(['status' => false, 'msg' => 'Faltan datos de subensamble/almacén'], JSON_UNESCAPED_UNICODE);
 // 		die();
 // 	}
 
-// 	$this->model->syncComponentesSubensamble($idsubensamble, $idalmacen, $detalle);
+	// 	$this->model->syncComponentesSubensamble($idsubensamble, $idalmacen, $detalle);
 
-// 	echo json_encode(['status' => true, 'msg' => 'Componentes de subensamble sincronizados correctamente'], JSON_UNESCAPED_UNICODE);
+	// 	echo json_encode(['status' => true, 'msg' => 'Componentes de subensamble sincronizados correctamente'], JSON_UNESCAPED_UNICODE);
 // 	die();
 // }
 
 
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // OBTENER OPERACIONES DE SUBENSAMBLE
 // --------------------------------------------------------------------
-public function getOperacionesSubensamble($idsubensamble)
-{
-	header('Content-Type: application/json; charset=utf-8');
+	// public function getOperacionesSubensamble($idsubensamble)
+	// {
+	// 	header('Content-Type: application/json; charset=utf-8');
 
-	$idsubensamble = intval($idsubensamble);
+	// 	$idsubensamble = intval($idsubensamble);
 
-	if ($idsubensamble <= 0) {
-		echo json_encode(['status' => false, 'msg' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
-		die();
-	}
+	// 	if ($idsubensamble <= 0) {
+	// 		echo json_encode(['status' => false, 'msg' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
+	// 		die();
+	// 	}
 
-	$arrData = $this->model->selectOperacionesSubensamble($idsubensamble);
-	echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
-	die();
-}
+	// 	$arrData = $this->model->selectOperacionesSubensamble($idsubensamble);
+	// 	echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
+	// 	die();
+	// }
 
 
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // GUARDAR OPERACIONES DE SUBENSAMBLE
 // --------------------------------------------------------------------
-public function setOperacionesSubensamble()
-{
-	header('Content-Type: application/json; charset=utf-8');
+	public function setOperacionesSubensamble()
+	{
+		header('Content-Type: application/json; charset=utf-8');
 
-	if (!isset($_POST['operaciones_sub'])) {
-		echo json_encode(['status' => false, 'msg' => 'No llegó el payload operaciones_sub'], JSON_UNESCAPED_UNICODE);
+		if (!isset($_POST['operaciones_sub'])) {
+			echo json_encode(['status' => false, 'msg' => 'No llegó el payload operaciones_sub'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$payload = json_decode($_POST['operaciones_sub'], true);
+		if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
+			echo json_encode(['status' => false, 'msg' => 'JSON inválido en operaciones_sub'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$d = $payload[0];
+		$idsubensamble = intval($d['idsubensamble'] ?? 0);
+		$detalle = $d['detalle_operaciones'] ?? [];
+
+		if ($idsubensamble <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Falta el subensamble'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$this->model->syncOperacionesSubensamble($idsubensamble, $detalle);
+
+		echo json_encode(['status' => true, 'msg' => 'Operaciones de subensamble sincronizadas correctamente'], JSON_UNESCAPED_UNICODE);
 		die();
 	}
 
-	$payload = json_decode($_POST['operaciones_sub'], true);
-	if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
-		echo json_encode(['status' => false, 'msg' => 'JSON inválido en operaciones_sub'], JSON_UNESCAPED_UNICODE);
-		die();
-	}
 
-	$d = $payload[0];
-	$idsubensamble = intval($d['idsubensamble'] ?? 0);
-	$detalle = $d['detalle_operaciones'] ?? [];
-
-	if ($idsubensamble <= 0) {
-		echo json_encode(['status' => false, 'msg' => 'Falta el subensamble'], JSON_UNESCAPED_UNICODE);
-		die();
-	}
-
-	$this->model->syncOperacionesSubensamble($idsubensamble, $detalle);
-
-	echo json_encode(['status' => true, 'msg' => 'Operaciones de subensamble sincronizadas correctamente'], JSON_UNESCAPED_UNICODE);
-	die();
-}
-
-
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // OBTENER ESPECIFICACIONES DE SUBENSAMBLE
 // --------------------------------------------------------------------
 // public function getEspecificacionesSubensamble($idsubensamble)
 // {
 // 	header('Content-Type: application/json; charset=utf-8');
 
-// 	$idsubensamble = intval($idsubensamble);
+	// 	$idsubensamble = intval($idsubensamble);
 
-// 	if ($idsubensamble <= 0) {
+	// 	if ($idsubensamble <= 0) {
 // 		echo json_encode(['status' => false, 'msg' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
 // 		die();
 // 	}
 
-// 	$arrData = $this->model->selectEspecificacionesSubensamble($idsubensamble);
+	// 	$arrData = $this->model->selectEspecificacionesSubensamble($idsubensamble);
 // 	echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
 // 	die();
 // }
 
 
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // GUARDAR ESPECIFICACIONES DE SUBENSAMBLE
 // --------------------------------------------------------------------
-public function setEspecificacionesSubensamble()
-{
-	header('Content-Type: application/json; charset=utf-8');
+	public function setEspecificacionesSubensamble()
+	{
+		header('Content-Type: application/json; charset=utf-8');
 
-	if (!isset($_POST['especificaciones_sub'])) {
-		echo json_encode(['status' => false, 'msg' => 'No llegó el payload especificaciones_sub'], JSON_UNESCAPED_UNICODE);
+		if (!isset($_POST['especificaciones_sub'])) {
+			echo json_encode(['status' => false, 'msg' => 'No llegó el payload especificaciones_sub'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$payload = json_decode($_POST['especificaciones_sub'], true);
+		if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
+			echo json_encode(['status' => false, 'msg' => 'JSON inválido en especificaciones_sub'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$d = $payload[0];
+		$idsubensamble = intval($d['idsubensamble'] ?? 0);
+		$idproducto = intval($d['idproducto'] ?? 0);
+		$detalle = $d['detalle_especificaciones'] ?? [];
+
+		if ($idsubensamble <= 0 || $idproducto <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Faltan datos de subensamble/producto'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$this->model->syncEspecificacionesSubensamble($idsubensamble, $idproducto, $detalle);
+
+		echo json_encode(['status' => true, 'msg' => 'Especificaciones de subensamble sincronizadas correctamente'], JSON_UNESCAPED_UNICODE);
 		die();
 	}
 
-	$payload = json_decode($_POST['especificaciones_sub'], true);
-	if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
-		echo json_encode(['status' => false, 'msg' => 'JSON inválido en especificaciones_sub'], JSON_UNESCAPED_UNICODE);
-		die();
-	}
 
-	$d = $payload[0];
-	$idsubensamble = intval($d['idsubensamble'] ?? 0);
-	$idproducto = intval($d['idproducto'] ?? 0);
-	$detalle = $d['detalle_especificaciones'] ?? [];
-
-	if ($idsubensamble <= 0 || $idproducto <= 0) {
-		echo json_encode(['status' => false, 'msg' => 'Faltan datos de subensamble/producto'], JSON_UNESCAPED_UNICODE);
-		die();
-	}
-
-	$this->model->syncEspecificacionesSubensamble($idsubensamble, $idproducto, $detalle);
-
-	echo json_encode(['status' => true, 'msg' => 'Especificaciones de subensamble sincronizadas correctamente'], JSON_UNESCAPED_UNICODE);
-	die();
-}
-
-
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // OBTENER CONFIGURACION DE INSPECCION POR ESTACION
 // --------------------------------------------------------------------
-public function getInspeccionEstacion($idestacion)
-{
-	header('Content-Type: application/json; charset=utf-8');
+	public function getInspeccionEstacion($idestacion)
+	{
+		header('Content-Type: application/json; charset=utf-8');
 
-	$idestacion = intval($idestacion);
-	$idproducto = isset($_GET['idproducto']) ? intval($_GET['idproducto']) : 0;
+		$idestacion = intval($idestacion);
+		$idproducto = isset($_GET['idproducto']) ? intval($_GET['idproducto']) : 0;
 
-	if ($idestacion <= 0 || $idproducto <= 0) {
-		echo json_encode(['status' => false, 'msg' => 'Faltan datos'], JSON_UNESCAPED_UNICODE);
+		if ($idestacion <= 0 || $idproducto <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Faltan datos'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$arrData = $this->model->selectInspeccionEstacion($idestacion, $idproducto);
+
+		echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
 		die();
 	}
 
-	$arrData = $this->model->selectInspeccionEstacion($idestacion, $idproducto);
 
-	echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
-	die();
-}
-
-
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // GUARDAR CONFIGURACION DE INSPECCION POR ESTACION
 // --------------------------------------------------------------------
-public function setInspeccionEstacion()
-{
-	header('Content-Type: application/json; charset=utf-8');
+	public function setInspeccionEstacion()
+	{
+		header('Content-Type: application/json; charset=utf-8');
 
-	if ($_POST) {
-		$idproducto = intval($_POST['idproducto'] ?? 0);
-		$idestacion = intval($_POST['idestacion'] ?? 0);
-		$requiere_inspeccion = intval($_POST['requiere_inspeccion'] ?? 0);
-		$tipo_inspeccion = strClean($_POST['tipo_inspeccion'] ?? '');
-		$grupo_pdi = strClean($_POST['grupo_pdi'] ?? '');
-		$severidad = strClean($_POST['severidad'] ?? '');
-		$nota = strClean($_POST['nota'] ?? '');
+		if ($_POST) {
+			$idproducto = intval($_POST['idproducto'] ?? 0);
+			$idestacion = intval($_POST['idestacion'] ?? 0);
+			$requiere_inspeccion = intval($_POST['requiere_inspeccion'] ?? 0);
+			$tipo_inspeccion = strClean($_POST['tipo_inspeccion'] ?? '');
+			$grupo_pdi = strClean($_POST['grupo_pdi'] ?? '');
+			$severidad = strClean($_POST['severidad'] ?? '');
+			$nota = strClean($_POST['nota'] ?? '');
+
+			if ($idproducto <= 0 || $idestacion <= 0) {
+				echo json_encode(['status' => false, 'msg' => 'Datos incompletos'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			$request = $this->model->saveInspeccionEstacion(
+				$idproducto,
+				$idestacion,
+				$requiere_inspeccion,
+				$tipo_inspeccion,
+				$grupo_pdi,
+				$severidad,
+				$nota
+			);
+
+			echo json_encode(['status' => true, 'msg' => 'Configuración de inspección guardada correctamente'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+	}
+
+
+	// --------------------------------------------------------------------
+// OBTENER PUNTOS PDI POR ESTACION
+// --------------------------------------------------------------------
+	public function getPuntosInspeccionEstacion($idestacion)
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		$idestacion = intval($idestacion);
+		$idproducto = isset($_GET['idproducto']) ? intval($_GET['idproducto']) : 0;
+
+		if ($idestacion <= 0 || $idproducto <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Faltan datos'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$arrData = $this->model->selectPuntosInspeccionEstacion($idestacion, $idproducto);
+		echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+
+	// --------------------------------------------------------------------
+// GUARDAR PUNTOS PDI POR ESTACION
+// --------------------------------------------------------------------
+	public function setPuntosInspeccionEstacion()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		if (!isset($_POST['puntos_pdi'])) {
+			echo json_encode(['status' => false, 'msg' => 'No llegó el payload puntos_pdi'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$payload = json_decode($_POST['puntos_pdi'], true);
+		if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
+			echo json_encode(['status' => false, 'msg' => 'JSON inválido en puntos_pdi'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$d = $payload[0];
+		$idproducto = intval($d['idproducto'] ?? 0);
+		$idestacion = intval($d['idestacion'] ?? 0);
+		$detalle = $d['detalle_puntos'] ?? [];
 
 		if ($idproducto <= 0 || $idestacion <= 0) {
 			echo json_encode(['status' => false, 'msg' => 'Datos incompletos'], JSON_UNESCAPED_UNICODE);
 			die();
 		}
 
-		$request = $this->model->saveInspeccionEstacion(
-			$idproducto,
-			$idestacion,
-			$requiere_inspeccion,
-			$tipo_inspeccion,
-			$grupo_pdi,
-			$severidad,
-			$nota
-		);
+		$this->model->syncPuntosInspeccionEstacion($idproducto, $idestacion, $detalle);
 
-		echo json_encode(['status' => true, 'msg' => 'Configuración de inspección guardada correctamente'], JSON_UNESCAPED_UNICODE);
-		die();
-	}
-}
-
-
-// --------------------------------------------------------------------
-// OBTENER PUNTOS PDI POR ESTACION
-// --------------------------------------------------------------------
-public function getPuntosInspeccionEstacion($idestacion)
-{
-	header('Content-Type: application/json; charset=utf-8');
-
-	$idestacion = intval($idestacion);
-	$idproducto = isset($_GET['idproducto']) ? intval($_GET['idproducto']) : 0;
-
-	if ($idestacion <= 0 || $idproducto <= 0) {
-		echo json_encode(['status' => false, 'msg' => 'Faltan datos'], JSON_UNESCAPED_UNICODE);
+		echo json_encode(['status' => true, 'msg' => 'Puntos PDI sincronizados correctamente'], JSON_UNESCAPED_UNICODE);
 		die();
 	}
 
-	$arrData = $this->model->selectPuntosInspeccionEstacion($idestacion, $idproducto);
-	echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
-	die();
-}
 
-
-// --------------------------------------------------------------------
-// GUARDAR PUNTOS PDI POR ESTACION
-// --------------------------------------------------------------------
-public function setPuntosInspeccionEstacion()
-{
-	header('Content-Type: application/json; charset=utf-8');
-
-	if (!isset($_POST['puntos_pdi'])) {
-		echo json_encode(['status' => false, 'msg' => 'No llegó el payload puntos_pdi'], JSON_UNESCAPED_UNICODE);
-		die();
-	}
-
-	$payload = json_decode($_POST['puntos_pdi'], true);
-	if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
-		echo json_encode(['status' => false, 'msg' => 'JSON inválido en puntos_pdi'], JSON_UNESCAPED_UNICODE);
-		die();
-	}
-
-	$d = $payload[0];
-	$idproducto = intval($d['idproducto'] ?? 0);
-	$idestacion = intval($d['idestacion'] ?? 0);
-	$detalle = $d['detalle_puntos'] ?? [];
-
-	if ($idproducto <= 0 || $idestacion <= 0) {
-		echo json_encode(['status' => false, 'msg' => 'Datos incompletos'], JSON_UNESCAPED_UNICODE);
-		die();
-	}
-
-	$this->model->syncPuntosInspeccionEstacion($idproducto, $idestacion, $detalle);
-
-	echo json_encode(['status' => true, 'msg' => 'Puntos PDI sincronizados correctamente'], JSON_UNESCAPED_UNICODE);
-	die();
-}
-
-
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // ELIMINAR PUNTO PDI
 // --------------------------------------------------------------------
-public function delPuntoInspeccion()
-{
-	header('Content-Type: application/json; charset=utf-8');
+	public function delPuntoInspeccion()
+	{
+		header('Content-Type: application/json; charset=utf-8');
 
-	if ($_POST) {
-		$idpuntopdi = intval($_POST['idpuntopdi'] ?? 0);
+		if ($_POST) {
+			$idpuntopdi = intval($_POST['idpuntopdi'] ?? 0);
 
-		if ($idpuntopdi <= 0) {
-			echo json_encode(['status' => false, 'msg' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
+			if ($idpuntopdi <= 0) {
+				echo json_encode(['status' => false, 'msg' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			$request = $this->model->deletePuntoInspeccion($idpuntopdi);
+
+			if ($request == 'ok') {
+				echo json_encode(['status' => true, 'msg' => 'Punto PDI eliminado correctamente'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			echo json_encode(['status' => false, 'msg' => 'No fue posible eliminar el punto PDI'], JSON_UNESCAPED_UNICODE);
 			die();
 		}
-
-		$request = $this->model->deletePuntoInspeccion($idpuntopdi);
-
-		if ($request == 'ok') {
-			echo json_encode(['status' => true, 'msg' => 'Punto PDI eliminado correctamente'], JSON_UNESCAPED_UNICODE);
-			die();
-		}
-
-		echo json_encode(['status' => false, 'msg' => 'No fue posible eliminar el punto PDI'], JSON_UNESCAPED_UNICODE);
-		die();
 	}
-}
 
 
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // OBTENER AYUDAS VISUALES POR ESTACION
 // --------------------------------------------------------------------
-public function getAyudasVisualesEstacion($idestacion)
-{
-	header('Content-Type: application/json; charset=utf-8');
+	public function getAyudasVisualesEstacion($idestacion)
+	{
+		header('Content-Type: application/json; charset=utf-8');
 
-	$idestacion = intval($idestacion);
-	$idproducto = isset($_GET['idproducto']) ? intval($_GET['idproducto']) : 0;
+		$idestacion = intval($idestacion);
+		$idproducto = isset($_GET['idproducto']) ? intval($_GET['idproducto']) : 0;
 
-	if ($idestacion <= 0 || $idproducto <= 0) {
-		echo json_encode(['status' => false, 'msg' => 'Faltan datos'], JSON_UNESCAPED_UNICODE);
+		if ($idestacion <= 0 || $idproducto <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Faltan datos'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$arrData = $this->model->selectAyudasVisualesEstacion($idestacion, $idproducto);
+		echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
 		die();
 	}
 
-	$arrData = $this->model->selectAyudasVisualesEstacion($idestacion, $idproducto);
-	echo json_encode(['status' => true, 'data' => $arrData], JSON_UNESCAPED_UNICODE);
-	die();
-}
 
-
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // GUARDAR AYUDA VISUAL POR ESTACION
 // --------------------------------------------------------------------
-public function setAyudaVisualEstacion()
-{
-	header('Content-Type: application/json; charset=utf-8');
+	public function setAyudaVisualEstacion()
+	{
+		header('Content-Type: application/json; charset=utf-8');
 
-	if ($_POST) {
+		if ($_POST) {
 
-		$idproducto = intval($_POST['idproducto'] ?? 0);
-		$idestacion = intval($_POST['idestacion'] ?? 0);
-		$titulo = strClean($_POST['titulo'] ?? '');
-		$tipo = strClean($_POST['tipo'] ?? '');
+			$idproducto = intval($_POST['idproducto'] ?? 0);
+			$idestacion = intval($_POST['idestacion'] ?? 0);
+			$titulo = strClean($_POST['titulo'] ?? '');
+			$tipo = strClean($_POST['tipo'] ?? '');
 
-		if ($idproducto <= 0 || $idestacion <= 0 || empty($titulo) || empty($tipo)) {
-			echo json_encode(['status' => false, 'msg' => 'Datos incompletos'], JSON_UNESCAPED_UNICODE);
+			if ($idproducto <= 0 || $idestacion <= 0 || empty($titulo) || empty($tipo)) {
+				echo json_encode(['status' => false, 'msg' => 'Datos incompletos'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			if (!isset($_FILES['archivo']) || $_FILES['archivo']['error'] != 0) {
+				echo json_encode(['status' => false, 'msg' => 'No se recibió archivo'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			$code = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 5);
+			$fechaHora = date('Ymd_His');
+			$fecha = date('Y-m-d H:i:s');
+			$extension = pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION);
+			$nombreArchivo = 'ayuda_' . $fechaHora . '_' . $code . '.' . $extension;
+
+			$directorio = 'Assets/uploads/ayudas_estacion/';
+			if (!file_exists($directorio)) {
+				mkdir($directorio, 0777, true);
+			}
+
+			$rutaDestino = $directorio . $nombreArchivo;
+
+			if (!move_uploaded_file($_FILES['archivo']['tmp_name'], $rutaDestino)) {
+				echo json_encode(['status' => false, 'msg' => 'Error al mover archivo'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			$request = $this->model->insertAyudaVisualEstacion(
+				$idproducto,
+				$idestacion,
+				$titulo,
+				$tipo,
+				$nombreArchivo,
+				2,
+				$fecha
+			);
+
+			echo json_encode(['status' => true, 'msg' => 'Ayuda visual registrada correctamente', 'idayuda' => $request], JSON_UNESCAPED_UNICODE);
 			die();
 		}
-
-		if (!isset($_FILES['archivo']) || $_FILES['archivo']['error'] != 0) {
-			echo json_encode(['status' => false, 'msg' => 'No se recibió archivo'], JSON_UNESCAPED_UNICODE);
-			die();
-		}
-
-		$code = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 5);
-		$fechaHora = date('Ymd_His');
-		$fecha = date('Y-m-d H:i:s');
-		$extension = pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION);
-		$nombreArchivo = 'ayuda_' . $fechaHora . '_' . $code . '.' . $extension;
-
-		$directorio = 'Assets/uploads/ayudas_estacion/';
-		if (!file_exists($directorio)) {
-			mkdir($directorio, 0777, true);
-		}
-
-		$rutaDestino = $directorio . $nombreArchivo;
-
-		if (!move_uploaded_file($_FILES['archivo']['tmp_name'], $rutaDestino)) {
-			echo json_encode(['status' => false, 'msg' => 'Error al mover archivo'], JSON_UNESCAPED_UNICODE);
-			die();
-		}
-
-		$request = $this->model->insertAyudaVisualEstacion(
-			$idproducto,
-			$idestacion,
-			$titulo,
-			$tipo,
-			$nombreArchivo,
-			2,
-			$fecha
-		);
-
-		echo json_encode(['status' => true, 'msg' => 'Ayuda visual registrada correctamente', 'idayuda' => $request], JSON_UNESCAPED_UNICODE);
-		die();
 	}
-}
 
 
-// --------------------------------------------------------------------
+	// --------------------------------------------------------------------
 // ELIMINAR AYUDA VISUAL
 // --------------------------------------------------------------------
-public function delAyudaVisualEstacion()
-{
-	header('Content-Type: application/json; charset=utf-8');
+	public function delAyudaVisualEstacion()
+	{
+		header('Content-Type: application/json; charset=utf-8');
 
-	if ($_POST) {
-		$idayuda = intval($_POST['idayuda'] ?? 0);
+		if ($_POST) {
+			$idayuda = intval($_POST['idayuda'] ?? 0);
 
-		if ($idayuda <= 0) {
-			echo json_encode(['status' => false, 'msg' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
+			if ($idayuda <= 0) {
+				echo json_encode(['status' => false, 'msg' => 'ID inválido'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			$request = $this->model->deleteAyudaVisualEstacion($idayuda);
+
+			if ($request == 'ok') {
+				echo json_encode(['status' => true, 'msg' => 'Ayuda visual eliminada correctamente'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			echo json_encode(['status' => false, 'msg' => 'No fue posible eliminar la ayuda visual'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+	}
+
+
+	public function eliminarAyudaVisual()
+	{
+		$request = json_decode(file_get_contents("php://input"), true);
+
+		if (empty($request['idayuda'])) {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'El id de la ayuda es obligatorio.'
+			], JSON_UNESCAPED_UNICODE);
 			die();
 		}
 
-		$request = $this->model->deleteAyudaVisualEstacion($idayuda);
+		$idayuda = intval($request['idayuda']);
 
-		if ($request == 'ok') {
-			echo json_encode(['status' => true, 'msg' => 'Ayuda visual eliminada correctamente'], JSON_UNESCAPED_UNICODE);
-			die();
+		$resultado = $this->model->actualizarEstadoAyudaVisual($idayuda);
+
+		if ($resultado) {
+			echo json_encode([
+				'status' => true,
+				'msg' => 'Ayuda visual desactivada correctamente.'
+			], JSON_UNESCAPED_UNICODE);
+		} else {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'No fue posible actualizar el estado.'
+			], JSON_UNESCAPED_UNICODE);
 		}
-
-		echo json_encode(['status' => false, 'msg' => 'No fue posible eliminar la ayuda visual'], JSON_UNESCAPED_UNICODE);
 		die();
 	}
-}
-
-
-public function eliminarAyudaVisual()
-{
-    $request = json_decode(file_get_contents("php://input"), true);
-
-    if (empty($request['idayuda'])) {
-        echo json_encode([
-            'status' => false,
-            'msg' => 'El id de la ayuda es obligatorio.'
-        ], JSON_UNESCAPED_UNICODE);
-        die();
-    }
-
-    $idayuda = intval($request['idayuda']);
-
-    $resultado = $this->model->actualizarEstadoAyudaVisual($idayuda);
-
-    if ($resultado) {
-        echo json_encode([
-            'status' => true,
-            'msg' => 'Ayuda visual desactivada correctamente.'
-        ], JSON_UNESCAPED_UNICODE);
-    } else {
-        echo json_encode([
-            'status' => false,
-            'msg' => 'No fue posible actualizar el estado.'
-        ], JSON_UNESCAPED_UNICODE);
-    }
-    die();
-}
-
-
-public function setAyudaVisualSubensamble()
-{
-    if ($_POST) {
-        $productoid = intval($_POST['productoid'] ?? 0);
-        $subensambleid = intval($_POST['subensambleid'] ?? 0);
-        $titulo = strClean($_POST['titulo'] ?? '');
-        $tipo = strClean($_POST['tipo'] ?? '');
-
-        if ($productoid <= 0 || $subensambleid <= 0 || empty($titulo) || empty($tipo)) {
-            echo json_encode([
-                'status' => false,
-                'msg' => 'Datos incompletos.'
-            ], JSON_UNESCAPED_UNICODE);
-            die();
-        }
-
-        if (empty($_FILES['archivo']['name'])) {
-            echo json_encode([
-                'status' => false,
-                'msg' => 'Debes adjuntar un archivo.'
-            ], JSON_UNESCAPED_UNICODE);
-            die();
-        }
-
-        $archivo = $_FILES['archivo'];
-        $nombreArchivo = 'sub_' . time() . '_' . preg_replace('/[^A-Za-z0-9\.\-_]/', '_', $archivo['name']);
-        $rutaDestino = 'Uploads/subensambles/' . $nombreArchivo;
-
-        if (!is_dir('Uploads/subensambles')) {
-            mkdir('Uploads/subensambles', 0777, true);
-        }
-
-        if (!move_uploaded_file($archivo['tmp_name'], $rutaDestino)) {
-            echo json_encode([
-                'status' => false,
-                'msg' => 'No se pudo subir el archivo.'
-            ], JSON_UNESCAPED_UNICODE);
-            die();
-        }
-
-        $request = $this->model->insertAyudaVisualSubensamble(
-            $productoid,
-            $subensambleid,
-            $titulo,
-            $tipo,
-            $nombreArchivo
-        );
-
-        if ($request > 0) {
-            $item = [
-                'idaysubayuda' => $request,
-                'productoid' => $productoid,
-                'subensambleid' => $subensambleid,
-                'titulo' => $titulo,
-                'tipo' => $tipo,
-                'archivo' => $nombreArchivo
-            ];
-
-            echo json_encode([
-                'status' => true,
-                'msg' => 'Ayuda visual guardada correctamente.',
-                'item' => $item
-            ], JSON_UNESCAPED_UNICODE);
-        } else {
-            echo json_encode([
-                'status' => false,
-                'msg' => 'No fue posible guardar en base de datos.'
-            ], JSON_UNESCAPED_UNICODE);
-        }
-    }
-    die();
-}
 
-public function getAyudasVisualesSubensamble(int $subensambleid)
-{
-    $subensambleid = intval($subensambleid);
 
-    if ($subensambleid <= 0) {
-        echo json_encode([
-            'status' => false,
-            'msg' => 'Id de subensamble inválido.',
-            'data' => []
-        ], JSON_UNESCAPED_UNICODE);
-        die();
-    }
+	public function setAyudaVisualSubensamble()
+	{
+		if ($_POST) {
+			$productoid = intval($_POST['productoid'] ?? 0);
+			$subensambleid = intval($_POST['subensambleid'] ?? 0);
+			$titulo = strClean($_POST['titulo'] ?? '');
+			$tipo = strClean($_POST['tipo'] ?? '');
+
+			if ($productoid <= 0 || $subensambleid <= 0 || empty($titulo) || empty($tipo)) {
+				echo json_encode([
+					'status' => false,
+					'msg' => 'Datos incompletos.'
+				], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			if (empty($_FILES['archivo']['name'])) {
+				echo json_encode([
+					'status' => false,
+					'msg' => 'Debes adjuntar un archivo.'
+				], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			$archivo = $_FILES['archivo'];
+			$nombreArchivo = 'sub_' . time() . '_' . preg_replace('/[^A-Za-z0-9\.\-_]/', '_', $archivo['name']);
+			$rutaDestino = 'Assets/uploads/ayudas_estacion/' . $nombreArchivo;
+
+			// $directorio = 'Assets/uploads/ayudas_estacion/';
+
+			if (!is_dir('Assets/uploads/ayudas_estacion')) {
+				mkdir('Assets/uploads/ayudas_estacion', 0777, true);
+			}
+
+			if (!move_uploaded_file($archivo['tmp_name'], $rutaDestino)) {
+				echo json_encode([
+					'status' => false,
+					'msg' => 'No se pudo subir el archivo.'
+				], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			$request = $this->model->insertAyudaVisualSubensamble(
+				$productoid,
+				$subensambleid,
+				$titulo,
+				$tipo,
+				$nombreArchivo
+			);
+
+			if ($request > 0) {
+				$item = [
+					'idaysubayuda' => $request,
+					'productoid' => $productoid,
+					'subensambleid' => $subensambleid,
+					'titulo' => $titulo,
+					'tipo' => $tipo,
+					'archivo' => $nombreArchivo
+				];
+
+				echo json_encode([
+					'status' => true,
+					'msg' => 'Ayuda visual guardada correctamente.',
+					'item' => $item
+				], JSON_UNESCAPED_UNICODE);
+			} else {
+				echo json_encode([
+					'status' => false,
+					'msg' => 'No fue posible guardar en base de datos.'
+				], JSON_UNESCAPED_UNICODE);
+			}
+		}
+		die();
+	}
+
+	public function getAyudasVisualesSubensamble(int $subensambleid)
+	{
+		$subensambleid = intval($subensambleid);
+
+		if ($subensambleid <= 0) {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'Id de subensamble inválido.',
+				'data' => []
+			], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$arrData = $this->model->selectAyudasVisualesSubensamble($subensambleid);
+
+		echo json_encode([
+			'status' => true,
+			'data' => $arrData
+		], JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	public function delAyudaVisualSubensamble()
+	{
+		$request = json_decode(file_get_contents("php://input"), true);
 
-    $arrData = $this->model->selectAyudasVisualesSubensamble($subensambleid);
+		$idaysubayuda = intval($request['idaysubayuda'] ?? 0);
 
-    echo json_encode([
-        'status' => true,
-        'data' => $arrData
-    ], JSON_UNESCAPED_UNICODE);
-    die();
-}
+		if ($idaysubayuda <= 0) {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'El id de la ayuda visual es obligatorio.'
+			], JSON_UNESCAPED_UNICODE);
+			die();
+		}
 
-public function delAyudaVisualSubensamble()
-{
-    $request = json_decode(file_get_contents("php://input"), true);
+		$resultado = $this->model->updateEstadoAyudaVisualSubensamble($idaysubayuda);
 
-    $idaysubayuda = intval($request['idaysubayuda'] ?? 0);
+		if ($resultado) {
+			echo json_encode([
+				'status' => true,
+				'msg' => 'Ayuda visual desactivada correctamente.'
+			], JSON_UNESCAPED_UNICODE);
+		} else {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'No fue posible actualizar el estado.'
+			], JSON_UNESCAPED_UNICODE);
+		}
 
-    if ($idaysubayuda <= 0) {
-        echo json_encode([
-            'status' => false,
-            'msg' => 'El id de la ayuda visual es obligatorio.'
-        ], JSON_UNESCAPED_UNICODE);
-        die();
-    }
-
-    $resultado = $this->model->updateEstadoAyudaVisualSubensamble($idaysubayuda);
-
-    if ($resultado) {
-        echo json_encode([
-            'status' => true,
-            'msg' => 'Ayuda visual desactivada correctamente.'
-        ], JSON_UNESCAPED_UNICODE);
-    } else {
-        echo json_encode([
-            'status' => false,
-            'msg' => 'No fue posible actualizar el estado.'
-        ], JSON_UNESCAPED_UNICODE);
-    }
-
-    die();
-}
-
-
-
-
-
-
-
-
-
-public function setPdiCompletoEstacion()
-{
-    header('Content-Type: application/json; charset=utf-8');
-
-    $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-    $detalleAudit = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    $fechaEvento = date('Y-m-d H:i:s');
-    $fecha = date('Y-m-d H:i:s');
-
-    if (!isset($_POST['pdi_config'])) {
-        echo json_encode(['status' => false, 'msg' => 'No llegó la configuración PDI'], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    $payload = json_decode($_POST['pdi_config'], true);
-
-    if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
-        echo json_encode(['status' => false, 'msg' => 'JSON inválido en configuración PDI'], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    $d = $payload[0];
-
-    $idproducto = (int)($d['idproducto'] ?? 0);
-    $idestacion = (int)($d['idestacion'] ?? 0);
-    $zonas = $d['zonas'] ?? [];
-
-    if ($idproducto <= 0 || $idestacion <= 0) {
-        echo json_encode(['status' => false, 'msg' => 'Faltan datos: idproducto o idestacion'], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    if (!is_array($zonas)) {
-        $zonas = [];
-    }
-
-    try {
-        $idpdi = $this->model->getOrCreatePdiCabecera($idproducto, $idestacion, $fecha);
-
-        if ($idpdi <= 0) {
-            echo json_encode(['status' => false, 'msg' => 'No fue posible generar la cabecera PDI'], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-
-        $zonasGuardadas = [];
-        $puntosGuardados = [];
-
-        foreach ($zonas as $zona) {
-            $idzona = (int)($zona['idzona'] ?? 0);
-            $nombreZona = strClean($zona['nombre_zona'] ?? '');
-            $referencia = strClean($zona['referencia'] ?? '');
-            $ordenZona = (int)($zona['orden'] ?? 1);
-            $puntos = $zona['puntos'] ?? [];
-
-            if ($nombreZona === '') {
-                continue;
-            }
-
-            if ($idzona > 0) {
-                $this->model->updatePdiZona($idzona, $nombreZona, $referencia, $ordenZona);
-                $zonasGuardadas[] = $idzona;
-            } else {
-                $idzona = $this->model->insertPdiZona($idpdi, $nombreZona, $referencia, $ordenZona, $fecha);
-                $zonasGuardadas[] = $idzona;
-
-                $this->model->insertAuditoria(
-                    MPCONFPRODUCTOS,
-                    1,
-                    $idusuario,
-                    'mrp_estacion_pdi_zona',
-                    $idzona,
-                    $fechaEvento,
-                    $ip,
-                    $detalleAudit
-                );
-            }
-
-            if (!is_array($puntos)) {
-                $puntos = [];
-            }
-
-            foreach ($puntos as $punto) {
-                $idpuntopdi = (int)($punto['idpuntopdi'] ?? 0);
-                $textoPunto = strClean($punto['punto'] ?? '');
-                $ordenPunto = (int)($punto['orden'] ?? 1);
-
-                if ($textoPunto === '') {
-                    continue;
-                }
-
-                $checkChina  = (int)($punto['check_china'] ?? 0);
-                $checkMexico = (int)($punto['check_mexico'] ?? 0);
-                $checkI1     = (int)($punto['check_i1'] ?? 0);
-                $checkI2     = (int)($punto['check_i2'] ?? 0);
-                $checkI3     = (int)($punto['check_i3'] ?? 0);
-                $checkI4     = (int)($punto['check_i4'] ?? 0);
-
-                if ($idpuntopdi > 0) {
-                    $this->model->updatePdiPunto(
-                        $idpuntopdi,
-                        $textoPunto,
-                        $ordenPunto,
-                        $checkChina,
-                        $checkMexico,
-                        $checkI1,
-                        $checkI2,
-                        $checkI3,
-                        $checkI4
-                    );
-                    $puntosGuardados[] = $idpuntopdi;
-                } else {
-                    $idpuntopdi = $this->model->insertPdiPunto(
-                        $idzona,
-                        $textoPunto,
-                        $ordenPunto,
-                        $checkChina,
-                        $checkMexico,
-                        $checkI1,
-                        $checkI2,
-                        $checkI3,
-                        $checkI4,
-                        $fecha
-                    );
-                    $puntosGuardados[] = $idpuntopdi;
-
-                    $this->model->insertAuditoria(
-                        MPCONFPRODUCTOS,
-                        1,
-                        $idusuario,
-                        'mrp_estacion_pdi_punto',
-                        $idpuntopdi,
-                        $fechaEvento,
-                        $ip,
-                        $detalleAudit
-                    );
-                }
-            }
-        }
-
-        $this->model->desactivarZonasPdiNoIncluidas($idpdi, $zonasGuardadas);
-        $this->model->desactivarPuntosPdiNoIncluidos($zonasGuardadas, $puntosGuardados);
-
-        echo json_encode([
-            'status' => true,
-            'msg' => 'Configuración PDI guardada correctamente',
-            'idpdi' => $idpdi
-        ], JSON_UNESCAPED_UNICODE);
-        exit;
-
-    } catch (Throwable $e) {
-        echo json_encode([
-            'status' => false,
-            'msg' => 'Error al guardar configuración PDI',
-            'error' => $e->getMessage()
-        ], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-}
-
-public function getPdiCompletoEstacion($idestacion)
-{
-    header('Content-Type: application/json; charset=utf-8');
-
-    $idestacion = (int)$idestacion;
-    $idproducto = isset($_GET['idproducto']) ? (int)$_GET['idproducto'] : 0;
-
-    if ($idestacion <= 0 || $idproducto <= 0) {
-        echo json_encode(['status' => false, 'msg' => 'Faltan datos: idestacion/idproducto'], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    $data = $this->model->selectPdiCompletoEstacion($idestacion, $idproducto);
-
-    if (empty($data)) {
-        echo json_encode(['status' => false, 'msg' => 'Sin configuración PDI'], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    echo json_encode([
-        'status' => true,
-        'data' => $data
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
-}
+		die();
+	}
+
+
+
+
+
+
+
+
+
+	// public function setPdiCompletoEstacionOld()
+	// {
+	// 	header('Content-Type: application/json; charset=utf-8');
+
+	// 	$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+	// 	$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+	// 	$detalleAudit = $_SERVER['HTTP_USER_AGENT'] ?? '';
+	// 	$fechaEvento = date('Y-m-d H:i:s');
+	// 	$fecha = date('Y-m-d H:i:s');
+
+	// 	if (!isset($_POST['pdi_config'])) {
+	// 		echo json_encode(['status' => false, 'msg' => 'No llegó la configuración PDI'], JSON_UNESCAPED_UNICODE);
+	// 		exit;
+	// 	}
+
+	// 	$payload = json_decode($_POST['pdi_config'], true);
+
+	// 	if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
+	// 		echo json_encode(['status' => false, 'msg' => 'JSON inválido en configuración PDI'], JSON_UNESCAPED_UNICODE);
+	// 		exit;
+	// 	}
+
+	// 	$d = $payload[0];
+
+	// 	$idproducto = (int) ($d['idproducto'] ?? 0);
+	// 	$idestacion = (int) ($d['idestacion'] ?? 0);
+	// 	$zonas = $d['zonas'] ?? [];
+
+	// 	if ($idproducto <= 0 || $idestacion <= 0) {
+	// 		echo json_encode(['status' => false, 'msg' => 'Faltan datos: idproducto o idestacion'], JSON_UNESCAPED_UNICODE);
+	// 		exit;
+	// 	}
+
+	// 	if (!is_array($zonas)) {
+	// 		$zonas = [];
+	// 	}
+
+	// 	try {
+	// 		$idpdi = $this->model->getOrCreatePdiCabecera($idproducto, $idestacion, $fecha);
+
+	// 		if ($idpdi <= 0) {
+	// 			echo json_encode(['status' => false, 'msg' => 'No fue posible generar la cabecera PDI'], JSON_UNESCAPED_UNICODE);
+	// 			exit;
+	// 		}
+
+	// 		$zonasGuardadas = [];
+	// 		$puntosGuardados = [];
+
+	// 		foreach ($zonas as $zona) {
+	// 			$idzona = (int) ($zona['idzona'] ?? 0);
+	// 			$nombreZona = strClean($zona['nombre_zona'] ?? '');
+	// 			$referencia = strClean($zona['referencia'] ?? '');
+	// 			$ordenZona = (int) ($zona['orden'] ?? 1);
+	// 			$puntos = $zona['puntos'] ?? [];
+
+	// 			if ($nombreZona === '') {
+	// 				continue;
+	// 			}
+
+	// 			if ($idzona > 0) {
+	// 				$this->model->updatePdiZona($idzona, $nombreZona, $referencia, $ordenZona);
+	// 				$zonasGuardadas[] = $idzona;
+	// 			} else {
+	// 				$idzona = $this->model->insertPdiZona($idpdi, $nombreZona, $referencia, $ordenZona, $fecha);
+	// 				$zonasGuardadas[] = $idzona;
+
+	// 				$this->model->insertAuditoria(
+	// 					MPCONFPRODUCTOS,
+	// 					1,
+	// 					$idusuario,
+	// 					'mrp_estacion_pdi_zona',
+	// 					$idzona,
+	// 					$fechaEvento,
+	// 					$ip,
+	// 					$detalleAudit
+	// 				);
+	// 			}
+
+	// 			if (!is_array($puntos)) {
+	// 				$puntos = [];
+	// 			}
+
+	// 			foreach ($puntos as $punto) {
+	// 				$idpuntopdi = (int) ($punto['idpuntopdi'] ?? 0);
+	// 				$textoPunto = strClean($punto['punto'] ?? '');
+	// 				$ordenPunto = (int) ($punto['orden'] ?? 1);
+
+	// 				if ($textoPunto === '') {
+	// 					continue;
+	// 				}
+
+	// 				$checkChina = (int) ($punto['check_china'] ?? 0);
+	// 				$checkMexico = (int) ($punto['check_mexico'] ?? 0);
+	// 				$checkI1 = (int) ($punto['check_i1'] ?? 0);
+	// 				$checkI2 = (int) ($punto['check_i2'] ?? 0);
+	// 				$checkI3 = (int) ($punto['check_i3'] ?? 0);
+	// 				$checkI4 = (int) ($punto['check_i4'] ?? 0);
+
+	// 				if ($idpuntopdi > 0) {
+	// 					$this->model->updatePdiPunto(
+	// 						$idpuntopdi,
+	// 						$textoPunto,
+	// 						$ordenPunto,
+	// 						$checkChina,
+	// 						$checkMexico,
+	// 						$checkI1,
+	// 						$checkI2,
+	// 						$checkI3,
+	// 						$checkI4
+	// 					);
+	// 					$puntosGuardados[] = $idpuntopdi;
+	// 				} else {
+	// 					$idpuntopdi = $this->model->insertPdiPunto(
+	// 						$idzona,
+	// 						$textoPunto,
+	// 						$ordenPunto,
+	// 						$checkChina,
+	// 						$checkMexico,
+	// 						$checkI1,
+	// 						$checkI2,
+	// 						$checkI3,
+	// 						$checkI4,
+	// 						$fecha
+	// 					);
+	// 					$puntosGuardados[] = $idpuntopdi;
+
+	// 					$this->model->insertAuditoria(
+	// 						MPCONFPRODUCTOS,
+	// 						1,
+	// 						$idusuario,
+	// 						'mrp_estacion_pdi_punto',
+	// 						$idpuntopdi,
+	// 						$fechaEvento,
+	// 						$ip,
+	// 						$detalleAudit
+	// 					);
+	// 				}
+	// 			}
+	// 		}
+
+	// 		$this->model->desactivarZonasPdiNoIncluidas($idpdi, $zonasGuardadas);
+	// 		$this->model->desactivarPuntosPdiNoIncluidos($zonasGuardadas, $puntosGuardados);
+
+	// 		echo json_encode([
+	// 			'status' => true,
+	// 			'msg' => 'Configuración PDI guardada correctamente',
+	// 			'idpdi' => $idpdi
+	// 		], JSON_UNESCAPED_UNICODE);
+	// 		exit;
+
+	// 	} catch (Throwable $e) {
+	// 		echo json_encode([
+	// 			'status' => false,
+	// 			'msg' => 'Error al guardar configuración PDI',
+	// 			'error' => $e->getMessage()
+	// 		], JSON_UNESCAPED_UNICODE);
+	// 		exit;
+	// 	}
+	// }
+
+	public function setPdiCompletoEstacion()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+		$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+		$detalleAudit = $_SERVER['HTTP_USER_AGENT'] ?? '';
+		$fechaEvento = date('Y-m-d H:i:s');
+		$fecha = date('Y-m-d H:i:s');
+
+		if (!isset($_POST['pdi_config'])) {
+			echo json_encode(['status' => false, 'msg' => 'No llegó la configuración PDI'], JSON_UNESCAPED_UNICODE);
+			exit;
+		}
+
+		$payload = json_decode($_POST['pdi_config'], true);
+
+		if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload) || empty($payload[0])) {
+			echo json_encode(['status' => false, 'msg' => 'JSON inválido en configuración PDI'], JSON_UNESCAPED_UNICODE);
+			exit;
+		}
+
+		$d = $payload[0];
+
+		$idproducto = (int) ($d['idproducto'] ?? 0);
+		$idestacion = (int) ($d['idestacion'] ?? 0);
+		$zonas = $d['zonas'] ?? [];
+
+		if ($idproducto <= 0 || $idestacion <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Faltan datos: idproducto o idestacion'], JSON_UNESCAPED_UNICODE);
+			exit;
+		}
+
+		if (!is_array($zonas)) {
+			$zonas = [];
+		}
+
+		try {
+
+
+			if (empty($zonas)) {
+
+				$idpdiExistente = $this->model->getPdiCabeceraByProductoEstacion($idproducto, $idestacion);
+
+				if ($idpdiExistente > 0) {
+
+					$this->model->updateEstadoPdiCabecera($idproducto, $idestacion, 0);
+
+					$this->model->insertAuditoria(
+						MPCONFPRODUCTOS,
+						2,
+						$idusuario,
+						'mrp_estacion_pdi',
+						$idpdiExistente,
+						$fechaEvento,
+						$ip,
+						$detalleAudit
+					);
+				}
+
+				echo json_encode([
+					'status' => true,
+					'msg' => 'Configuración PDI desactivada correctamente',
+					'idpdi' => $idpdiExistente,
+					'desactivar_pdi' => true
+				], JSON_UNESCAPED_UNICODE);
+				exit;
+			}
+
+
+			$idpdi = $this->model->getOrCreatePdiCabecera($idproducto, $idestacion, $fecha);
+
+			if ($idpdi <= 0) {
+				echo json_encode(['status' => false, 'msg' => 'No fue posible generar la cabecera PDI'], JSON_UNESCAPED_UNICODE);
+				exit;
+			}
+
+			$zonasGuardadas = [];
+			$puntosGuardados = [];
+
+			foreach ($zonas as $zona) {
+
+				$idzona = (int) ($zona['idzona'] ?? 0);
+				$nombreZona = strClean($zona['nombre_zona'] ?? '');
+				$referencia = strClean($zona['referencia'] ?? '');
+				$ordenZona = (int) ($zona['orden'] ?? 1);
+				$puntos = $zona['puntos'] ?? [];
+
+				if ($nombreZona === '') {
+					continue;
+				}
+
+				if ($idzona > 0) {
+
+					$this->model->updatePdiZona($idzona, $nombreZona, $referencia, $ordenZona);
+					$zonasGuardadas[] = $idzona;
+
+				} else {
+
+					$idzona = $this->model->insertPdiZona($idpdi, $nombreZona, $referencia, $ordenZona, $fecha);
+					$zonasGuardadas[] = $idzona;
+
+					$this->model->insertAuditoria(
+						MPCONFPRODUCTOS,
+						1,
+						$idusuario,
+						'mrp_estacion_pdi_zona',
+						$idzona,
+						$fechaEvento,
+						$ip,
+						$detalleAudit
+					);
+				}
+
+				if (!is_array($puntos)) {
+					$puntos = [];
+				}
+
+				foreach ($puntos as $punto) {
+
+					$idpuntopdi = (int) ($punto['idpuntopdi'] ?? 0);
+					$textoPunto = strClean($punto['punto'] ?? '');
+					$ordenPunto = (int) ($punto['orden'] ?? 1);
+
+					if ($textoPunto === '') {
+						continue;
+					}
+
+					$checkChina = (int) ($punto['check_china'] ?? 0);
+					$checkMexico = (int) ($punto['check_mexico'] ?? 0);
+					$checkI1 = (int) ($punto['check_i1'] ?? 0);
+					$checkI2 = (int) ($punto['check_i2'] ?? 0);
+					$checkI3 = (int) ($punto['check_i3'] ?? 0);
+					$checkI4 = (int) ($punto['check_i4'] ?? 0);
+
+					if ($idpuntopdi > 0) {
+
+						$this->model->updatePdiPunto(
+							$idpuntopdi,
+							$textoPunto,
+							$ordenPunto,
+							$checkChina,
+							$checkMexico,
+							$checkI1,
+							$checkI2,
+							$checkI3,
+							$checkI4
+						);
+
+						$puntosGuardados[] = $idpuntopdi;
+
+					} else {
+
+						$idpuntopdi = $this->model->insertPdiPunto(
+							$idzona,
+							$textoPunto,
+							$ordenPunto,
+							$checkChina,
+							$checkMexico,
+							$checkI1,
+							$checkI2,
+							$checkI3,
+							$checkI4,
+							$fecha
+						);
+
+						$puntosGuardados[] = $idpuntopdi;
+
+						$this->model->insertAuditoria(
+							MPCONFPRODUCTOS,
+							1,
+							$idusuario,
+							'mrp_estacion_pdi_punto',
+							$idpuntopdi,
+							$fechaEvento,
+							$ip,
+							$detalleAudit
+						);
+					}
+				}
+			}
+
+			$this->model->desactivarZonasPdiNoIncluidas($idpdi, $zonasGuardadas);
+			$this->model->desactivarPuntosPdiNoIncluidos($zonasGuardadas, $puntosGuardados);
+
+			echo json_encode([
+				'status' => true,
+				'msg' => 'Configuración PDI guardada correctamente',
+				'idpdi' => $idpdi
+			], JSON_UNESCAPED_UNICODE);
+			exit;
+
+		} catch (Throwable $e) {
+			echo json_encode([
+				'status' => false,
+				'msg' => 'Error al guardar configuración PDI',
+				'error' => $e->getMessage()
+			], JSON_UNESCAPED_UNICODE);
+			exit;
+		}
+	}
+
+	public function getPdiCompletoEstacion($idestacion)
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		$idestacion = (int) $idestacion;
+		$idproducto = isset($_GET['idproducto']) ? (int) $_GET['idproducto'] : 0;
+
+		if ($idestacion <= 0 || $idproducto <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Faltan datos: idestacion/idproducto'], JSON_UNESCAPED_UNICODE);
+			exit;
+		}
+
+		$data = $this->model->selectPdiCompletoEstacion($idestacion, $idproducto);
+
+		if (empty($data)) {
+			echo json_encode(['status' => false, 'msg' => 'Sin configuración PDI'], JSON_UNESCAPED_UNICODE);
+			exit;
+		}
+
+		echo json_encode([
+			'status' => true,
+			'data' => $data
+		], JSON_UNESCAPED_UNICODE);
+		exit;
+	}
 
 
 	public function setComponentesSubensamble()
@@ -2524,9 +3013,9 @@ public function getPdiCompletoEstacion($idestacion)
 
 		$d = $payload[0];
 
-		$idAlmacen = (int)($d['idalmacen'] ?? 0);
-		$idProducto = (int)($d['idproducto'] ?? 0);
-		$idSubensamble = (int)($d['idsubensamble'] ?? 0);
+		$idAlmacen = (int) ($d['idalmacen'] ?? 0);
+		$idProducto = (int) ($d['idproducto'] ?? 0);
+		$idSubensamble = (int) ($d['idsubensamble'] ?? 0);
 		$detalle = $d['detalle_componentes'] ?? [];
 
 		if (!$idAlmacen || !$idProducto || !$idSubensamble) {
@@ -2543,8 +3032,8 @@ public function getPdiCompletoEstacion($idestacion)
 
 		$incoming = [];
 		foreach ($detalle as $it) {
-			$inv = (int)($it['inventarioid'] ?? 0);
-			$cant = (int)($it['cantidad'] ?? 0);
+			$inv = (int) ($it['inventarioid'] ?? 0);
+			$cant = (int) ($it['cantidad'] ?? 0);
 
 			if ($inv > 0 && $cant > 0) {
 				$incoming[$inv] = $cant;
@@ -2557,7 +3046,7 @@ public function getPdiCompletoEstacion($idestacion)
 		$existMap = [];
 
 		foreach ($existentes as $row) {
-			$existMap[(int)$row['inventarioid']] = (int)$row['idsubcomponente'];
+			$existMap[(int) $row['inventarioid']] = (int) $row['idsubcomponente'];
 		}
 
 		foreach ($incoming as $inventarioid => $cantidad) {
@@ -2610,12 +3099,12 @@ public function getPdiCompletoEstacion($idestacion)
 		exit;
 	}
 
-		public function getComponentesSubensamble($idsubensamble)
+	public function getComponentesSubensamble($idsubensamble)
 	{
 		header('Content-Type: application/json; charset=utf-8');
 
-		$idsubensamble = (int)$idsubensamble;
-		$idproducto = isset($_GET['idproducto']) ? (int)$_GET['idproducto'] : 0;
+		$idsubensamble = (int) $idsubensamble;
+		$idproducto = isset($_GET['idproducto']) ? (int) $_GET['idproducto'] : 0;
 
 		if ($idsubensamble <= 0 || $idproducto <= 0) {
 			echo json_encode([
@@ -2635,7 +3124,7 @@ public function getPdiCompletoEstacion($idestacion)
 			exit;
 		}
 
-		$idalmacen = (int)($rows[0]['almacenid'] ?? 0);
+		$idalmacen = (int) ($rows[0]['almacenid'] ?? 0);
 
 		echo json_encode([
 			'status' => true,
@@ -2646,7 +3135,7 @@ public function getPdiCompletoEstacion($idestacion)
 	}
 
 
-		public function setHerramientasSubensamble()
+	public function setHerramientasSubensamble()
 	{
 		header('Content-Type: application/json; charset=utf-8');
 
@@ -2675,9 +3164,9 @@ public function getPdiCompletoEstacion($idestacion)
 
 		$d = $payload[0];
 
-		$idAlmacen = (int)($d['idalmacen'] ?? 0);
-		$idProducto = (int)($d['idproducto'] ?? 0);
-		$idSubensamble = (int)($d['idsubensamble'] ?? 0);
+		$idAlmacen = (int) ($d['idalmacen'] ?? 0);
+		$idProducto = (int) ($d['idproducto'] ?? 0);
+		$idSubensamble = (int) ($d['idsubensamble'] ?? 0);
 		$detalle = $d['detalle_herramientas'] ?? [];
 
 		if (!$idAlmacen || !$idProducto || !$idSubensamble) {
@@ -2694,8 +3183,8 @@ public function getPdiCompletoEstacion($idestacion)
 
 		$incoming = [];
 		foreach ($detalle as $it) {
-			$inv = (int)($it['inventarioid'] ?? 0);
-			$cant = (int)($it['cantidad'] ?? 0);
+			$inv = (int) ($it['inventarioid'] ?? 0);
+			$cant = (int) ($it['cantidad'] ?? 0);
 
 			if ($inv > 0 && $cant > 0) {
 				$incoming[$inv] = $cant;
@@ -2708,7 +3197,7 @@ public function getPdiCompletoEstacion($idestacion)
 		$existMap = [];
 
 		foreach ($existentes as $row) {
-			$existMap[(int)$row['inventarioid']] = (int)$row['idsubherramienta'];
+			$existMap[(int) $row['inventarioid']] = (int) $row['idsubherramienta'];
 		}
 
 		foreach ($incoming as $inventarioid => $cantidad) {
@@ -2761,12 +3250,12 @@ public function getPdiCompletoEstacion($idestacion)
 		exit;
 	}
 
-		public function getHerramientasSubensamble($idsubensamble)
+	public function getHerramientasSubensamble($idsubensamble)
 	{
 		header('Content-Type: application/json; charset=utf-8');
 
-		$idsubensamble = (int)$idsubensamble;
-		$idproducto = isset($_GET['idproducto']) ? (int)$_GET['idproducto'] : 0;
+		$idsubensamble = (int) $idsubensamble;
+		$idproducto = isset($_GET['idproducto']) ? (int) $_GET['idproducto'] : 0;
 
 		if ($idsubensamble <= 0 || $idproducto <= 0) {
 			echo json_encode([
@@ -2786,7 +3275,7 @@ public function getPdiCompletoEstacion($idestacion)
 			exit;
 		}
 
-		$idalmacen = (int)($rows[0]['almacenid'] ?? 0);
+		$idalmacen = (int) ($rows[0]['almacenid'] ?? 0);
 
 		echo json_encode([
 			'status' => true,
@@ -2798,104 +3287,279 @@ public function getPdiCompletoEstacion($idestacion)
 
 
 
-		public function setEspecificacionSubensamble()
+	// public function setEspecificacionSubensambleOld()
+	// {
+	// 	if ($_POST) {
+
+	// 		// --------------------------------------------------------------------
+	// 		//  Datos de auditoría
+	// 		// --------------------------------------------------------------------
+	// 		$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+	// 		$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+	// 		$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+	// 		$fechaEvento = date('Y-m-d H:i:s');
+
+	// 		$intEspecificacionId = intval($_POST['idespecificacionsubensamble']);
+	// 		$intIdproducto = intval($_POST['idproducto_especificacion']);
+	// 		$intSubensambleId = intval($_POST['idsubensamble_especificacion']);
+	// 		$descripcion = strClean($_POST['txtEspecificacion']);
+
+	// 		if ($intEspecificacionId == 0) {
+
+	// 			$fecha_creacion = date('Y-m-d H:i:s');
+
+	// 			$request_especificacion = $this->model->insertEspecificacionSubensamble(
+	// 				$intIdproducto,
+	// 				$intSubensambleId,
+	// 				$descripcion,
+	// 				$fecha_creacion
+	// 			);
+
+	// 			$option = 1;
+
+	// 		} else {
+
+	// 			$request_especificacion = $this->model->updateEspecificacionSubensamble(
+	// 				$intEspecificacionId,
+	// 				$descripcion
+	// 			);
+
+	// 			$option = 2;
+	// 		}
+
+	// 		if ($request_especificacion > 0) {
+	// 			if ($option == 1) {
+	// 				$arrResponse = array(
+	// 					'status' => true,
+	// 					'msg' => '¡La información se ha registrado exitosamente!',
+	// 					'tipo' => 'insert',
+	// 					'idespecificacionsubensamble' => $request_especificacion
+	// 				);
+
+	// 				$this->model->insertAuditoria(
+	// 					MPCONFPRODUCTOS,
+	// 					1,
+	// 					$idusuario,
+	// 					'mrp_subensamble_especificaciones',
+	// 					$request_especificacion,
+	// 					$fechaEvento,
+	// 					$ip,
+	// 					$detalle
+	// 				);
+	// 			} else {
+	// 				$arrResponse = array(
+	// 					'status' => true,
+	// 					'msg' => 'La información ha sido actualizada correctamente.',
+	// 					'tipo' => 'update',
+	// 					'idespecificacionsubensamble' => $intEspecificacionId
+	// 				);
+
+	// 				$this->model->insertAuditoria(
+	// 					MPCONFPRODUCTOS,
+	// 					2,
+	// 					$idusuario,
+	// 					'mrp_subensamble_especificaciones',
+	// 					$intEspecificacionId,
+	// 					$fechaEvento,
+	// 					$ip,
+	// 					$detalle
+	// 				);
+	// 			}
+	// 		} else if ($request_especificacion == 'exist') {
+	// 			$arrResponse = array(
+	// 				'status' => false,
+	// 				'msg' => '¡Atención! La especificación ya existe.'
+	// 			);
+	// 		} else {
+	// 			$arrResponse = array(
+	// 				"status" => false,
+	// 				"msg" => 'No es posible almacenar los datos.'
+	// 			);
+	// 		}
+
+	// 		echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+
+	// 	}
+	// 	die();
+	// }
+
+
+
+	public function setEspecificacionSubensamble()
 	{
 		if ($_POST) {
 
-				// --------------------------------------------------------------------
-				//  Datos de auditoría
-				// --------------------------------------------------------------------
-				$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
-				$ip = $_SERVER['REMOTE_ADDR'] ?? '';
-				$detalle = $_SERVER['HTTP_USER_AGENT'] ?? ''; 
-				$fechaEvento = date('Y-m-d H:i:s');
+			if (
+				empty($_POST['idproducto_especificacion'])
+				|| empty($_POST['idsubensamble_especificacion'])
+				|| empty($_POST['txtEspecificacion'])
+			) {
+				$arrResponse = array(
+					"status" => false,
+					"msg" => 'Datos incorrectos.'
+				);
 
-				$intEspecificacionId = intval($_POST['idespecificacionsubensamble']);
-				$intIdproducto = intval($_POST['idproducto_especificacion']);
-				$intSubensambleId = intval($_POST['idsubensamble_especificacion']);
-				$descripcion = strClean($_POST['txtEspecificacion']);
+				echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+				die();
+			}
 
-				if ($intEspecificacionId == 0) {
+			// --------------------------------------------------------------------
+			// Datos de auditoría
+			// --------------------------------------------------------------------
+			$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+			$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+			$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
+			$fechaEvento = date('Y-m-d H:i:s');
 
-					$fecha_creacion = date('Y-m-d H:i:s');
+			$intEspecificacionId = intval($_POST['idespecificacionsubensamble'] ?? 0);
+			$intIdproducto = intval($_POST['idproducto_especificacion']);
+			$intSubensambleId = intval($_POST['idsubensamble_especificacion']);
+			$descripcion = strClean($_POST['txtEspecificacion']);
 
+			// 0 = normal | 1 = crítica
+			$intEsCritica = intval($_POST['es_critica'] ?? 0);
+
+			if ($intEsCritica === 1) {
+				$tablaAuditoria = 'mrp_subensamble_especificaciones_criticas';
+			} else {
+				$tablaAuditoria = 'mrp_subensamble_especificaciones';
+			}
+
+			if ($intEspecificacionId == 0) {
+
+				$fecha_creacion = date('Y-m-d H:i:s');
+
+				if ($intEsCritica === 1) {
+					$request_especificacion = $this->model->insertEspecificacionSubensambleCritica(
+						$intIdproducto,
+						$intSubensambleId,
+						$descripcion,
+						$fecha_creacion
+					);
+				} else {
 					$request_especificacion = $this->model->insertEspecificacionSubensamble(
 						$intIdproducto,
 						$intSubensambleId,
 						$descripcion,
 						$fecha_creacion
 					);
+				}
 
-					$option = 1;
+				$option = 1;
 
+			} else {
+
+				if ($intEsCritica === 1) {
+					$request_especificacion = $this->model->updateEspecificacionSubensambleCritica(
+						$intEspecificacionId,
+						$descripcion
+					);
 				} else {
-
 					$request_especificacion = $this->model->updateEspecificacionSubensamble(
 						$intEspecificacionId,
 						$descripcion
 					);
-
-					$option = 2;
 				}
 
-				if ($request_especificacion > 0) {
-					if ($option == 1) {
-						$arrResponse = array(
-							'status' => true,
-							'msg' => '¡La información se ha registrado exitosamente!',
-							'tipo' => 'insert',
-							'idespecificacionsubensamble' => $request_especificacion
-						);
+				$option = 2;
+			}
 
-						$this->model->insertAuditoria(
-							MPCONFPRODUCTOS,
-							1,
-							$idusuario,
-							'mrp_subensamble_especificaciones',
-							$request_especificacion,
-							$fechaEvento,
-							$ip,
-							$detalle
-						);
-					} else {
-						$arrResponse = array(
-							'status' => true,
-							'msg' => 'La información ha sido actualizada correctamente.',
-							'tipo' => 'update',
-							'idespecificacionsubensamble' => $intEspecificacionId
-						);
+			if ($request_especificacion > 0) {
 
-						$this->model->insertAuditoria(
-							MPCONFPRODUCTOS,
-							2,
-							$idusuario,
-							'mrp_subensamble_especificaciones',
-							$intEspecificacionId,
-							$fechaEvento,
-							$ip,
-							$detalle
-						);
-					}
-				} else if ($request_especificacion == 'exist') {
+				if ($option == 1) {
+
 					$arrResponse = array(
-						'status' => false,
-						'msg' => '¡Atención! La especificación ya existe.'
+						'status' => true,
+						'msg' => '¡La información se ha registrado exitosamente!',
+						'tipo' => 'insert',
+						'es_critica' => $intEsCritica,
+						'idespecificacionsubensamble' => $request_especificacion
 					);
+
+					$this->model->insertAuditoria(
+						MPCONFPRODUCTOS,
+						1,
+						$idusuario,
+						$tablaAuditoria,
+						$request_especificacion,
+						$fechaEvento,
+						$ip,
+						$detalle
+					);
+
 				} else {
+
 					$arrResponse = array(
-						"status" => false,
-						"msg" => 'No es posible almacenar los datos.'
+						'status' => true,
+						'msg' => 'La información ha sido actualizada correctamente.',
+						'tipo' => 'update',
+						'es_critica' => $intEsCritica,
+						'idespecificacionsubensamble' => $intEspecificacionId
+					);
+
+					$this->model->insertAuditoria(
+						MPCONFPRODUCTOS,
+						2,
+						$idusuario,
+						$tablaAuditoria,
+						$intEspecificacionId,
+						$fechaEvento,
+						$ip,
+						$detalle
 					);
 				}
 
-				echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-			
+			} else if ($request_especificacion == 'exist') {
+
+				$arrResponse = array(
+					'status' => false,
+					'msg' => '¡Atención! La especificación ya existe.'
+				);
+
+			} else {
+ 
+				$arrResponse = array(
+					"status" => false,
+					"msg" => 'No es posible almacenar los datos.'
+				);
+			}
+
+			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 		}
+
 		die();
 	}
 
+	
 
-		public function getEspecificacionesSubensamble($idsubensamble, $idproducto_proceso = 0)
+
+	// public function getEspecificacionesSubensambleOld($idsubensamble, $idproducto_proceso = 0)
+	// {
+	// 	if (is_string($idsubensamble) && strpos($idsubensamble, ',') !== false) {
+	// 		[$idsubensamble, $idproducto_proceso] = array_pad(explode(',', $idsubensamble), 2, 0);
+	// 	}
+
+	// 	$intIdSubensamble = intval($idsubensamble);
+	// 	$intIdProductoProceso = intval($idproducto_proceso);
+
+	// 	$arrData = $this->model->EspecificacionesBySubensamble($intIdSubensamble, $intIdProductoProceso);
+
+	// 	for ($i = 0; $i < count($arrData); $i++) {
+
+	// 		$btnEdit = '<button type="button" class="btn btn-sm btn-soft-warning edit-list" title="Editar especificación" onClick="fntEditEspecificacionSubensamble(' . $arrData[$i]['idespecificacionsubensamble'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
+
+	// 		$btnDelete = '<button class="btn btn-sm btn-soft-danger remove-list" title="Eliminar especificación" onClick="fntDelEspecificacionSubensamble(' . $arrData[$i]['idespecificacionsubensamble'] . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
+
+	// 		$arrData[$i]['options'] = '<div class="text-center">' . $btnEdit . ' ' . $btnDelete . '</div>';
+	// 	}
+
+	// 	$arrResponse = array('status' => true, 'data' => $arrData);
+
+	// 	echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+	// 	die();
+	// }
+
+	public function getEspecificacionesSubensamble($idsubensamble, $idproducto_proceso = 0)
 	{
 		if (is_string($idsubensamble) && strpos($idsubensamble, ',') !== false) {
 			[$idsubensamble, $idproducto_proceso] = array_pad(explode(',', $idsubensamble), 2, 0);
@@ -2904,49 +3568,94 @@ public function getPdiCompletoEstacion($idestacion)
 		$intIdSubensamble = intval($idsubensamble);
 		$intIdProductoProceso = intval($idproducto_proceso);
 
-		$arrData = $this->model->EspecificacionesBySubensamble($intIdSubensamble, $intIdProductoProceso);
+		
+		$intEsCritica = isset($_GET['es_critica']) ? intval($_GET['es_critica']) : 0;
+
+		if ($intEsCritica === 1) {
+			$arrData = $this->model->EspecificacionesCriticasBySubensamble(
+				$intIdSubensamble,
+				$intIdProductoProceso
+			);
+		} else {
+			$arrData = $this->model->EspecificacionesBySubensamble(
+				$intIdSubensamble,
+				$intIdProductoProceso
+			);
+		}
 
 		for ($i = 0; $i < count($arrData); $i++) {
 
-			$btnEdit = '<button type="button" class="btn btn-sm btn-soft-warning edit-list" title="Editar especificación" onClick="fntEditEspecificacionSubensamble(' . $arrData[$i]['idespecificacionsubensamble'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
+			$btnEdit = '<button type="button" 
+                        class="btn btn-sm btn-soft-warning edit-list" 
+                        title="Editar especificación" 
+                        onClick="fntEditEspecificacionSubensamble(' . $arrData[$i]['idespecificacionsubensamble'] . ')">
+                        <i class="ri-pencil-fill align-bottom"></i>
+                    </button>';
 
-			$btnDelete = '<button class="btn btn-sm btn-soft-danger remove-list" title="Eliminar especificación" onClick="fntDelEspecificacionSubensamble(' . $arrData[$i]['idespecificacionsubensamble'] . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
+			$btnDelete = '<button type="button" 
+                        class="btn btn-sm btn-soft-danger remove-list" 
+                        title="Eliminar especificación" 
+                        onClick="fntDelEspecificacionSubensamble(' . $arrData[$i]['idespecificacionsubensamble'] . ')">
+                        <i class="ri-delete-bin-5-fill align-bottom"></i>
+                    </button>';
 
 			$arrData[$i]['options'] = '<div class="text-center">' . $btnEdit . ' ' . $btnDelete . '</div>';
 		}
 
-		$arrResponse = array('status' => true, 'data' => $arrData);
+		$arrResponse = array(
+			'status' => true,
+			'es_critica' => $intEsCritica,
+			'data' => $arrData
+		);
 
 		echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 		die();
 	}
 
-		public function delEspecificacionSubensamble()
+	public function delEspecificacionSubensamble()
 	{
 		if ($_POST) {
 
 			// --------------------------------------------------------------------
-			//  Datos de auditoría
+			// Datos de auditoría
 			// --------------------------------------------------------------------
 			$idusuario = $_SESSION['userData']['idusuario'] ?? 0;
 			$ip = $_SERVER['REMOTE_ADDR'] ?? '';
 			$detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
 			$fechaEvento = date('Y-m-d H:i:s');
 
-			$intIdEspecificacion = intval($_POST['idespecificacionsubensamble']);
-			$requestDelete = $this->model->deleteEspecificacionSubensamble($intIdEspecificacion);
+			$intIdEspecificacion = intval($_POST['idespecificacionsubensamble'] ?? 0);
+			$intEsCritica = intval($_POST['es_critica'] ?? 0);
+
+			if ($intIdEspecificacion <= 0) {
+				echo json_encode([
+					'status' => false,
+					'msg' => 'Datos incorrectos.'
+				], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			if ($intEsCritica === 1) {
+				$requestDelete = $this->model->deleteEspecificacionSubensambleCritica($intIdEspecificacion);
+				$tablaAuditoria = 'mrp_subensamble_especificaciones_criticas';
+			} else {
+				$requestDelete = $this->model->deleteEspecificacionSubensamble($intIdEspecificacion);
+				$tablaAuditoria = 'mrp_subensamble_especificaciones';
+			}
 
 			if ($requestDelete == 'ok' || $requestDelete > 0) {
+
 				$arrResponse = array(
 					'status' => true,
-					'msg' => 'El registro ha sido eliminado correctamente.'
+					'msg' => 'El registro ha sido eliminado correctamente.',
+					'es_critica' => $intEsCritica
 				);
 
 				$this->model->insertAuditoria(
 					MPCONFPRODUCTOS,
 					3,
 					$idusuario,
-					'mrp_subensamble_especificaciones',
+					$tablaAuditoria,
 					$intIdEspecificacion,
 					$fechaEvento,
 					$ip,
@@ -2954,11 +3663,14 @@ public function getPdiCompletoEstacion($idestacion)
 				);
 
 			} else if ($requestDelete == 'exist') {
+
 				$arrResponse = array(
 					'status' => false,
 					'msg' => 'No es posible eliminar el registro.'
 				);
+
 			} else {
+
 				$arrResponse = array(
 					'status' => false,
 					'msg' => 'Error al eliminar la especificación.'
@@ -2967,22 +3679,63 @@ public function getPdiCompletoEstacion($idestacion)
 
 			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 		}
+
 		die();
 	}
 
-		public function getEspecificacionSubensamble($idespecificacionsubensamble)
+	public function getEspecificacionSubensamble($idespecificacionsubensamble, $es_critica = null)
 	{
 		$intIdEspecificacion = intval($idespecificacionsubensamble);
 
+		if ($es_critica === null || $es_critica === '') {
+			$url = $_SERVER['REQUEST_URI'] ?? '';
+			$partes = explode('/', trim(parse_url($url, PHP_URL_PATH), '/'));
+
+
+			$ultimoSegmento = end($partes);
+
+			$intEsCritica = intval($ultimoSegmento);
+		} else {
+			$intEsCritica = intval($es_critica);
+		}
+
+		// if ($intIdEspecificacion > 0) {
+		// 	$arrData = $this->model->selectEspecificacionSubensamble($intIdEspecificacion);
+
+		// 	if (empty($arrData)) {
+		// 		$arrResponse = array(
+		// 			'status' => false,
+		// 			'msg' => 'Datos no encontrados.'
+		// 		);
+		// 	} else {
+		// 		$arrResponse = array(
+		// 			'status' => true,
+		// 			'data' => $arrData
+		// 		);
+		// 	}
+
+		// 	echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+
 		if ($intIdEspecificacion > 0) {
-			$arrData = $this->model->selectEspecificacionSubensamble($intIdEspecificacion);
+
+			if ($intEsCritica === 1) {
+				$arrData = $this->model->selectEspecificacionCriticaSubensamble($intIdEspecificacion);
+			} else {
+				$arrData = $this->model->selectEspecificacionSubensamble($intIdEspecificacion);
+			}
 
 			if (empty($arrData)) {
 				$arrResponse = array(
 					'status' => false,
-					'msg' => 'Datos no encontrados.'
+					'msg' => 'Datos no encontrados.',
+					'debug' => array(
+						'idespecificacion' => $intIdEspecificacion,
+						'es_critica' => $intEsCritica
+					)
 				);
 			} else {
+				$arrData['es_critica'] = $intEsCritica;
+
 				$arrResponse = array(
 					'status' => true,
 					'data' => $arrData
@@ -2991,6 +3744,57 @@ public function getPdiCompletoEstacion($idestacion)
 
 			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 		}
+		// }
+		die();
+	}
+
+	public function getEspecificaciona($idespecificacion, $es_critica = null)
+	{
+		$intIdespecificacion = intval($idespecificacion);
+
+
+		if ($es_critica === null || $es_critica === '') {
+			$url = $_SERVER['REQUEST_URI'] ?? '';
+			$partes = explode('/', trim(parse_url($url, PHP_URL_PATH), '/'));
+
+
+			$ultimoSegmento = end($partes);
+
+			$intEsCritica = intval($ultimoSegmento);
+		} else {
+			$intEsCritica = intval($es_critica);
+		}
+
+
+		if ($intIdespecificacion > 0) {
+
+			if ($intEsCritica === 1) {
+				$arrData = $this->model->selectEspecificacionCritica($intIdespecificacion);
+			} else {
+				$arrData = $this->model->selectEspecificacion($intIdespecificacion);
+			}
+
+			if (empty($arrData)) {
+				$arrResponse = array(
+					'status' => false,
+					'msg' => 'Datos no encontrados.',
+					'debug' => array(
+						'idespecificacion' => $intIdespecificacion,
+						'es_critica' => $intEsCritica
+					)
+				);
+			} else {
+				$arrData['es_critica'] = $intEsCritica;
+
+				$arrResponse = array(
+					'status' => true,
+					'data' => $arrData
+				);
+			}
+
+			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+		}
+
 		die();
 	}
 
