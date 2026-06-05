@@ -177,6 +177,7 @@ if ($isLocal) {
      * Secure: false (Porque usualmente no usas HTTPS/SSL en WSL)
      */
     define('COOKIE_DOMAIN', '.ldrhumanresources.localhost');
+    // define('COOKIE_DOMAIN', '.mrp.com');
     define('COOKIE_SECURE', false);
 } else {
     /**
