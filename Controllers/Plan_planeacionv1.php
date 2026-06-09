@@ -1446,7 +1446,7 @@ class Plan_planeacionv1 extends Controllers
     $data['page_tag'] = $num_orden;
     $data['page_title'] = "Orden <small>de trabajo</small>";
     $data['page_name'] = "Orden de trabajo";
-    $data['page_functions_js'] = "functions_ordenv1.js";
+    $data['page_functions_js'] = "functions_ordenV1.js";
     $data['arrOrdenDetalle'] = $this->model->obtenerPlaneacion($num_orden);
 
     if (empty($data['arrOrdenDetalle'])) {
