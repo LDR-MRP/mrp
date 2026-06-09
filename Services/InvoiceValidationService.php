@@ -99,8 +99,8 @@ readonly class InvoiceValidationService
             $xml->registerXPathNamespace('tfd', $namespaces['tfd'] ?? 'http://www.sat.gob.mx/TimbreFiscalDigital');
 
             // Extraer atributos del Comprobante
-            $total    = (float) ($xml->xpath('//cfdi:Comprobante/@Total')[0] ?? 0);
-            $subtotal = (float) ($xml->xpath('//cfdi:Comprobante/@Subtotal')[0] ?? 0);
+            $total = (float) (str_replace(',', '', (string)$xml->xpath('//cfdi:Comprobante/@Total')[0]) ?? 0);
+            $subtotal = (float) (str_replace(',', '', (string)$xml->xpath('//cfdi:Comprobante/@Subtotal')[0]) ?? 0);
             $folio    = (string) ($xml->xpath('//cfdi:Comprobante/@Folio')[0] ?? '');
             $serie    = (string) ($xml->xpath('//cfdi:Comprobante/@Serie')[0] ?? '');
             $fechaEmision = (string) ($xml->xpath('//cfdi:Comprobante/@Fecha')[0] ?? '');
