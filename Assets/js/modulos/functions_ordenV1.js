@@ -4,12 +4,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
   let timer = null;
   let seconds = 0;
+  let timerKey = null;
   let currentNode = null;
   let currentSelection = null;
   let MRP_STATE = JSON.parse(JSON.stringify(MRP_DATA || {}));
 
   let timerParo = null;
   let secondsParo = 0;
+  let timerParoKey = null;
 
   let CURRENT_PRODUCTOID = 0;
   let CURRENT_ORIGENID = 0;
@@ -159,60 +161,89 @@ document.addEventListener('DOMContentLoaded', function () {
     ) || null;
   }
 
-  function validarParoMomentaneo(node) {
+function validarParoMomentaneo(node) {
 
-    if (!node || node.type !== 'estacion' || !node.unidadRaw) {
-      if (contenedorParoMomentaneo) {
-        contenedorParoMomentaneo.classList.add('d-none');
-        contenedorParoMomentaneo.style.display = 'none';
-      }
-
-      resetTimerParo();
-      return false;
-    }
-
-    const paroActivo = (node.unidadRaw.acciones_produccion || []).find(a =>
-      Number(a.tipo_accion) === 1 &&
-      Number(a.estado) === 2 &&
-      Number(a.estacionid) === Number(node.estacionid) &&
-      String(a.unidad || '').trim() === String(node.unit || '').trim()
-    );
-
-    const existeParoActivo = !!paroActivo;
+  if (!node || node.type !== 'estacion' || !node.unidadRaw) {
 
     if (contenedorParoMomentaneo) {
-      if (existeParoActivo) {
-        contenedorParoMomentaneo.classList.remove('d-none', 'none');
-        contenedorParoMomentaneo.style.display = '';
-        renderDetalleParoMomentaneo(node, paroActivo);
-      } else {
-        contenedorParoMomentaneo.classList.add('d-none');
-        contenedorParoMomentaneo.style.display = 'none';
-      }
+      contenedorParoMomentaneo.classList.add('d-none');
+      contenedorParoMomentaneo.style.display = 'none';
     }
 
-    if (!existeParoActivo) {
-      resetTimerParo();
-      return false;
-    }
+    resetTimerParo();
+    timerParoKey = null;
 
-    if (btnFinalizarUnidad) {
-      btnFinalizarUnidad.disabled = true;
-      btnFinalizarUnidad.classList.add('btn-state-disabled');
-    }
+    return false;
+  }
 
-    if (btnPausarUnidad) {
-      btnPausarUnidad.disabled = true;
-      btnPausarUnidad.classList.add('btn-state-disabled');
-      btnPausarUnidad.textContent = 'Paro activo';
-    }
+  const paroActivo = (node.unidadRaw.acciones_produccion || []).find(a =>
+    Number(a.tipo_accion) === 1 &&
+    Number(a.estado) === 2 &&
+    Number(a.estacionid) === Number(node.estacionid) &&
+    String(a.unidad || '').trim() === String(node.unit || '').trim()
+  );
 
-    secondsParo = getElapsedSeconds(paroActivo.fecha_inicio);
+  const existeParoActivo = !!paroActivo;
+
+  if (contenedorParoMomentaneo) {
+
+    if (existeParoActivo) {
+      contenedorParoMomentaneo.classList.remove('d-none', 'none');
+      contenedorParoMomentaneo.style.display = '';
+      renderDetalleParoMomentaneo(node, paroActivo);
+    } else {
+      contenedorParoMomentaneo.classList.add('d-none');
+      contenedorParoMomentaneo.style.display = 'none';
+    }
+  }
+
+  if (!existeParoActivo) {
+    resetTimerParo();
+    timerParoKey = null;
+    return false;
+  }
+
+  if (btnFinalizarUnidad) {
+    btnFinalizarUnidad.disabled = true;
+    btnFinalizarUnidad.classList.add('btn-state-disabled');
+  }
+
+  if (btnPausarUnidad) {
+    btnPausarUnidad.disabled = true;
+    btnPausarUnidad.classList.add('btn-state-disabled');
+    btnPausarUnidad.textContent = 'Paro activo';
+  }
+
+  const key = [
+    node.estacionid,
+    node.idordengeneral,
+    node.unit,
+    paroActivo.fecha_inicio
+  ].join('|');
+
+  if (timerParoKey !== key) {
+
+    detenerTimerParo();
+
+    timerParoKey = key;
+
+    secondsParo = getElapsedSeconds(
+      paroActivo.fecha_inicio
+    );
+
     renderTimerParo();
+
     iniciarTimerParo();
 
     return true;
   }
+
+  if (!timerParo) {
+    iniciarTimerParo();
+  }
+
+  return true;
+}
 
 
 
@@ -225,32 +256,75 @@ document.addEventListener('DOMContentLoaded', function () {
     return `${mins}:${secs}`;
   }
 
+  function getTimerKey(node) {
+
+  if (!node) return '';
+
+  return [
+    node.type || '',
+    node.estIndex ?? '',
+    node.subIndex ?? 'x',
+    node.idordengeneral || 0,
+    node.unit || ''
+  ].join('|');
+}
+
   function renderTime() {
     const t = formatTime(seconds);
     if (tiempoActualEstacion) tiempoActualEstacion.textContent = t;
     if (tiempoUnidadGlobal) tiempoUnidadGlobal.textContent = t;
   }
 
-  function iniciarTimer() {
-    if (timer) return;
-    timer = setInterval(() => {
-      seconds++;
+function iniciarTimer() {
+
+  pausarTimer();
+
+  timer = setInterval(() => {
+
+    // Seguridad:
+    // si ya no hay un nodo seleccionado
+    // detener completamente el contador
+    if (
+      !currentNode ||
+      Number(currentNode.unitStatus || 0) !== 2
+    ) {
+
+      pausarTimer();
+
+      timerKey = null;
+
+      seconds = 0;
+
       renderTime();
-    }, 1000);
-  }
 
-  function pausarTimer() {
-    if (timer) {
-      clearInterval(timer);
-      timer = null;
+      return;
     }
-  }
 
-  function reiniciarTimer() {
-    pausarTimer();
-    seconds = 0;
+    seconds++;
+
     renderTime();
+
+  }, 1000);
+}
+
+ function pausarTimer() {
+
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
   }
+}
+
+function reiniciarTimer() {
+
+  pausarTimer();
+
+  timerKey = null;
+
+  seconds = 0;
+
+  renderTime();
+}
 
   function getStation(estIndex) {
     return (MRP_STATE?.estaciones || [])[estIndex] || null;
@@ -309,28 +383,26 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  function validarPermisosProduccion() {
+function validarPermisosProduccion() {
 
-    const esCalidad =
-      esUsuarioCalidad();
+  const esCalidad = esUsuarioCalidad();
 
-    const ocultar =
-      esCalidad;
+  [
+    btnIniciarUnidad,
+    btnFinalizarUnidad,
+    btnPausarUnidad
+  ].forEach(btn => {
 
-    [
-      btnIniciarUnidad,
-      btnFinalizarUnidad,
-      btnPausarUnidad,
-      btnIniciarProduccion,
-      btnFinalizarProduccion
-    ].forEach(btn => {
+    if (!btn) return;
 
-      if (!btn) return;
+    btn.style.display = esCalidad ? 'none' : '';
+  });
 
-      btn.style.display =
-        ocultar ? 'none' : '';
-    });
-  }
+  // Importante:
+  // NO tocar aquí btnIniciarProduccion ni btnFinalizarProduccion,
+  // porque esos botones dependen de la fase.
+  validarBotonesProduccion();
+}
 
 
   function usuarioAsignadoEstacion(estacion) {
@@ -2048,19 +2120,50 @@ document.addEventListener('DOMContentLoaded', function () {
     return node.unidadRaw.fecha_inicio || null;
   }
 
-  function sincronizarTimerDesdeBD(node) {
-    const estado = Number(node?.unitStatus || 0);
+function sincronizarTimerDesdeBD(node) {
 
-    if (estado === 2) {
-      seconds = getElapsedSeconds(getNodeStartDate(node));
-      renderTime();
-      iniciarTimer();
-    } else {
-      pausarTimer();
-      seconds = 0;
-      renderTime();
-    }
+  const estado = Number(node?.unitStatus || 0);
+
+  // Si no está trabajando, SIEMPRE apagar reloj
+  if (estado !== 2) {
+
+    pausarTimer();
+
+    timerKey = null;
+
+    seconds = 0;
+
+    renderTime();
+
+    return;
   }
+
+  const key = getTimerKey(node);
+
+  // Cambié de estación/subensamble
+  if (timerKey !== key) {
+
+    pausarTimer();
+
+    timerKey = key;
+
+    seconds = getElapsedSeconds(
+      getNodeStartDate(node)
+    );
+
+    renderTime();
+
+    iniciarTimer();
+
+    return;
+  }
+
+  // Mismo nodo y por alguna razón el intervalo murió
+  if (!timer) {
+
+    iniciarTimer();
+  }
+}
 
 
   function badgeEstadoHtml(type, status, info = null, orden = null) {
@@ -2195,90 +2298,53 @@ document.addEventListener('DOMContentLoaded', function () {
       puedeFinalizar ? '' : 'none';
   }
 
-  function validarBotonesProduccion() {
+function validarBotonesProduccion() {
 
-    if (!btnIniciarProduccion || !btnFinalizarProduccion) {
-      return;
-    }
+  if (!btnIniciarProduccion || !btnFinalizarProduccion) {
+    return;
+  }
 
-    const supervisorId =
-      Number(MRP_STATE?.supervisorid || 0);
+  const supervisorId = Number(MRP_STATE?.supervisorid || 0);
+  const currentUserId = Number(window.CURRENT_USER_ID || 0);
+  const currentRolId = Number(window.CURRENT_ROL_ID || 0);
 
-    const currentUserId =
-      Number(window.CURRENT_USER_ID || 0);
+  const esSupervisor = currentUserId === supervisorId;
+  const esAdmin = currentRolId === 1;
 
-    const currentRolId =
-      Number(window.CURRENT_ROL_ID || 0);
+  const tienePermiso = esSupervisor || esAdmin;
 
-    const esSupervisor =
-      currentUserId === supervisorId;
-
-    const esAdmin =
-      currentRolId === 1;
-
-    const tienePermiso =
-      esSupervisor || esAdmin;
-
-    // =========================================
-    // SI NO TIENE PERMISOS
-    // =========================================
-    if (!tienePermiso) {
-
-      btnIniciarProduccion.style.display = 'none';
-      btnFinalizarProduccion.style.display = 'none';
-
-      return;
-    }
-
-    const fase =
-      Number(MRP_STATE?.fase || 0);
-
-    /*
-      1 = Borrador
-      2 = Pendiente
-      3 = En proceso
-      5 = Finalizada
-    */
-
-    // =========================================
-    // PENDIENTE
-    // =========================================
-    if (fase === 2) {
-
-      btnIniciarProduccion.style.display = '';
-      btnFinalizarProduccion.style.display = 'none';
-
-      return;
-    }
-
-    // =========================================
-    // EN PRODUCCIÓN
-    // =========================================
-    if (fase === 3) {
-
-      btnIniciarProduccion.style.display = 'none';
-      btnFinalizarProduccion.style.display = '';
-
-      return;
-    }
-
-    // =========================================
-    // FINALIZADA
-    // =========================================
-    if (fase === 5) {
-
-      btnIniciarProduccion.style.display = 'none';
-      btnFinalizarProduccion.style.display = 'none';
-
-      return;
-    }
-
-    // =========================================
-    // DEFAULT
-    // =========================================
+  if (!tienePermiso) {
     btnIniciarProduccion.style.display = 'none';
     btnFinalizarProduccion.style.display = 'none';
+    return;
   }
+
+  const fase = Number(MRP_STATE?.fase || 0);
+
+  // FASE 2 = pendiente / lista para iniciar producción
+  if (fase === 2) {
+    btnIniciarProduccion.style.display = '';
+    btnFinalizarProduccion.style.display = 'none';
+    return;
+  }
+
+  // FASE 3 = producción en proceso
+  if (fase === 3) {
+    btnIniciarProduccion.style.display = 'none';
+    btnFinalizarProduccion.style.display = '';
+    return;
+  }
+
+  // FASE 5 = producción finalizada
+  if (fase === 5) {
+    btnIniciarProduccion.style.display = 'none';
+    btnFinalizarProduccion.style.display = 'none';
+    return;
+  }
+
+  btnIniciarProduccion.style.display = 'none';
+  btnFinalizarProduccion.style.display = 'none';
+}
 
   function actualizarTextoUnidadActual(node, info) {
 
@@ -2647,6 +2713,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!data.status || !data.data) return;
 
       MRP_STATE = data.data;
+      validarBotonesProduccion();
       aplicarFiltroVisualUsuario();
       ordenarSubensamblesArriba();
 
@@ -2676,90 +2743,110 @@ document.addEventListener('DOMContentLoaded', function () {
 
   }
 
-  async function iniciarProcesoActual() {
-    if (!currentNode) return;
+async function iniciarProcesoActual() {
 
-    const info = validarVisualNodo(currentNode);
-    if (!info.canStart) {
-      swalError(info.texto);
+  if (!currentNode) return;
+
+  const info = validarVisualNodo(currentNode);
+
+  if (!info.canStart) {
+    swalError(info.texto);
+    return;
+  }
+
+  let url = '';
+  let payload = {};
+
+  if (currentNode.type === 'subensamble') {
+    url = `${base_url}/plan_planeacionv1/iniciarSubensamble`;
+    payload = {
+      idorden_subensamble: currentNode.idorden_subensamble
+    };
+  } else {
+    url = `${base_url}/plan_planeacionv1/iniciarEstacion`;
+    payload = {
+      idorden: currentNode.idorden
+    };
+  }
+
+  try {
+
+    btnIniciarUnidad.disabled = true;
+
+    const data = await postJson(url, payload);
+
+    if (!data.status) {
+      swalError(data.msg);
+      await refrescarEstadoProduccion(true);
       return;
     }
 
-    let url = '';
-    let payload = {};
+    reiniciarTimer();
 
-    if (currentNode.type === 'subensamble') {
-      url = `${base_url}/plan_planeacionv1/iniciarSubensamble`;
-      payload = { idorden_subensamble: currentNode.idorden_subensamble };
-    } else {
-      url = `${base_url}/plan_planeacionv1/iniciarEstacion`;
-      payload = { idorden: currentNode.idorden };
-    }
+    swalSuccess(data.msg);
 
-    try {
-      btnIniciarUnidad.disabled = true;
+    await refrescarEstadoProduccion(true);
 
-      const data = await postJson(url, payload);
+  } catch (err) {
 
-      if (!data.status) {
-        swalError(data.msg);
-        await refrescarEstadoProduccion(true);
-        return;
-      }
+    swalError(err.message);
 
-      seconds = 0;
-      iniciarTimer();
-      swalSuccess(data.msg);
-      await refrescarEstadoProduccion(true);
+    await refrescarEstadoProduccion(true);
+  }
+}
 
-    } catch (err) {
-      swalError(err.message);
-      await refrescarEstadoProduccion(true);
-    }
+async function finalizarProcesoActual() {
+
+  if (!currentNode) return;
+
+  const info = validarVisualNodo(currentNode);
+
+  if (!info.canFinish) {
+    swalError('No hay una unidad en proceso para finalizar.');
+    return;
   }
 
-  async function finalizarProcesoActual() {
-    if (!currentNode) return;
+  let url = '';
+  let payload = {};
 
-    const info = validarVisualNodo(currentNode);
-    if (!info.canFinish) {
-      swalError('No hay una unidad en proceso para finalizar.');
+  if (currentNode.type === 'subensamble') {
+    url = `${base_url}/plan_planeacionv1/finalizarSubensamble`;
+    payload = {
+      idorden_subensamble: currentNode.idorden_subensamble
+    };
+  } else {
+    url = `${base_url}/plan_planeacionv1/finalizarEstacion`;
+    payload = {
+      idorden: currentNode.idorden,
+      inventarioid: currentNode.inventarioid
+    };
+  }
+
+  try {
+
+    btnFinalizarUnidad.disabled = true;
+
+    const data = await postJson(url, payload);
+
+    if (!data.status) {
+      swalError(data.msg);
+      await refrescarEstadoProduccion(true);
       return;
     }
 
-    let url = '';
-    let payload = {};
+    reiniciarTimer();
 
-    if (currentNode.type === 'subensamble') {
-      url = `${base_url}/plan_planeacionv1/finalizarSubensamble`;
-      payload = { idorden_subensamble: currentNode.idorden_subensamble };
-    } else {
-      url = `${base_url}/plan_planeacionv1/finalizarEstacion`;
-      payload = { idorden: currentNode.idorden, inventarioid: currentNode.inventarioid };
-    }
+    swalSuccess(data.msg);
 
-    try {
-      btnFinalizarUnidad.disabled = true;
+    await refrescarEstadoProduccion(true);
 
-      const data = await postJson(url, payload);
+  } catch (err) {
 
-      if (!data.status) {
-        swalError(data.msg);
-        await refrescarEstadoProduccion(true);
-        return;
-      }
+    swalError(err.message);
 
-      pausarTimer();
-      seconds = 0;
-      renderTime();
-      swalSuccess(data.msg);
-      await refrescarEstadoProduccion(true);
-
-    } catch (err) {
-      swalError(err.message);
-      await refrescarEstadoProduccion(true);
-    }
+    await refrescarEstadoProduccion(true);
   }
+}
 
   document.querySelectorAll('.js-selectable-node').forEach(nodeEl => {
     nodeEl.addEventListener('click', function (e) {
@@ -4402,7 +4489,7 @@ function cerrarModalBootstrap(idModal) {
 
 function inicializarBusquedaUsuariosOperacion() {
   document.querySelectorAll('.empleado-operacion-input').forEach(input => {
-    let timer = null;
+  // let timer = null;
 
     input.addEventListener('input', function () {
       clearTimeout(timer);
