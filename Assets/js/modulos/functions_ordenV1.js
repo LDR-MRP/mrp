@@ -290,18 +290,11 @@ function iniciarTimer() {
 
       pausarTimer();
 
-      timerKey = null;
-
-      timerStartDate = null;
-
-      seconds = 0;
-
-      renderTime();
-
       return;
     }
 
-    seconds = getElapsedSeconds(timerStartDate);
+    seconds =
+      getElapsedSeconds(timerStartDate);
 
     renderTime();
 
@@ -2101,17 +2094,54 @@ function validarPermisosProduccion() {
   }
 
 
-  function getElapsedSeconds(fechaInicio) {
-    if (!fechaInicio || fechaInicio === '0000-00-00 00:00:00') return 0;
+function getElapsedSeconds(fechaInicio) {
 
-    const normalized = String(fechaInicio).replace(' ', 'T');
-    const start = new Date(normalized);
-
-    if (isNaN(start.getTime())) return 0;
-
-    const now = new Date();
-    return Math.max(0, Math.floor((now.getTime() - start.getTime()) / 1000));
+  if (
+    !fechaInicio ||
+    fechaInicio === '0000-00-00 00:00:00'
+  ) {
+    return 0;
   }
+
+  try {
+
+    const partes = String(fechaInicio)
+      .trim()
+      .replace('T', ' ')
+      .split(' ');
+
+    if (partes.length !== 2) {
+      return 0;
+    }
+
+    const fecha = partes[0].split('-');
+    const hora = partes[1].split(':');
+
+    const start = new Date(
+      Number(fecha[0]),
+      Number(fecha[1]) - 1,
+      Number(fecha[2]),
+      Number(hora[0]),
+      Number(hora[1]),
+      Number(hora[2])
+    );
+
+    if (isNaN(start.getTime())) {
+      return 0;
+    }
+
+    return Math.max(
+      0,
+      Math.floor(
+        (Date.now() - start.getTime()) / 1000
+      )
+    );
+
+  } catch (e) {
+
+    return 0;
+  }
+}
 
 function getNodeStartDate(node) {
 
@@ -2135,7 +2165,8 @@ function getNodeStartDate(node) {
 
 function sincronizarTimerDesdeBD(node) {
 
-  const estado = Number(node?.unitStatus || 0);
+  const estado =
+    Number(node?.unitStatus || 0);
 
   if (estado !== 2) {
 
@@ -2152,9 +2183,11 @@ function sincronizarTimerDesdeBD(node) {
     return;
   }
 
-  const key = getTimerKey(node);
+  const key =
+    getTimerKey(node);
 
-  const fechaInicio = getNodeStartDate(node);
+  const fechaInicio =
+    getNodeStartDate(node);
 
   if (!fechaInicio) {
 
@@ -2171,15 +2204,23 @@ function sincronizarTimerDesdeBD(node) {
     return;
   }
 
-  timerKey = key;
 
-  timerStartDate = fechaInicio;
 
-  seconds = getElapsedSeconds(timerStartDate);
+  if (timerKey !== key) {
 
-  renderTime();
+    timerKey = key;
 
-  iniciarTimer();
+    timerStartDate = fechaInicio;
+
+    seconds =
+      getElapsedSeconds(
+        timerStartDate
+      );
+
+    renderTime();
+
+    iniciarTimer();
+  }
 }
 
 
