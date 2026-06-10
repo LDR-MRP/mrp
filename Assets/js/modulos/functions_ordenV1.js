@@ -2100,40 +2100,45 @@ function getElapsedSeconds(fechaInicio) {
 
   try {
 
-    const partes = String(fechaInicio)
-      .trim()
-      .replace('T', ' ')
-      .split(' ');
+    let start = null;
 
-    if (partes.length !== 2) {
-      return 0;
+    // Si viene como Date(), por ejemplo al dar iniciar
+    if (fechaInicio instanceof Date) {
+      start = fechaInicio;
+    } else {
+
+      const partes = String(fechaInicio)
+        .trim()
+        .replace('T', ' ')
+        .split(' ');
+
+      if (partes.length !== 2) {
+        return 0;
+      }
+
+      const fecha = partes[0].split('-');
+      const hora = partes[1].split(':');
+
+      start = new Date(
+        Number(fecha[0]),
+        Number(fecha[1]) - 1,
+        Number(fecha[2]),
+        Number(hora[0]),
+        Number(hora[1]),
+        Number(hora[2] || 0)
+      );
     }
 
-    const fecha = partes[0].split('-');
-    const hora = partes[1].split(':');
-
-    const start = new Date(
-      Number(fecha[0]),
-      Number(fecha[1]) - 1,
-      Number(fecha[2]),
-      Number(hora[0]),
-      Number(hora[1]),
-      Number(hora[2])
-    );
-
-    if (isNaN(start.getTime())) {
+    if (!start || isNaN(start.getTime())) {
       return 0;
     }
 
     return Math.max(
       0,
-      Math.floor(
-        (Date.now() - start.getTime()) / 1000
-      )
+      Math.floor((Date.now() - start.getTime()) / 1000)
     );
 
   } catch (e) {
-
     return 0;
   }
 }
@@ -2164,7 +2169,6 @@ function sincronizarTimerDesdeBD(node) {
   const key = getTimerKey(node);
   const fechaInicio = getNodeStartDate(node);
 
-  // La unidad NO está trabajando
   if (estado !== 2) {
 
     const estaEnArranquePendiente =
@@ -2173,28 +2177,20 @@ function sincronizarTimerDesdeBD(node) {
       Date.now() < timerArranquePendienteHasta;
 
     if (estaEnArranquePendiente) {
-
-      if (!timer) {
-        iniciarTimer();
-      }
-
+      if (!timer) iniciarTimer();
       return;
     }
 
     pausarTimer();
-
     timerKey = null;
     timerStartDate = null;
     timerArranquePendienteHasta = 0;
-
     seconds = 0;
     renderTime();
-
     return;
   }
 
-  // Todavía no viene fecha_inicio desde BD
-  if (!fechaInicio) {
+  if (!fechaInicio || fechaInicio === '0000-00-00 00:00:00') {
 
     const estaEnArranquePendiente =
       timerKey === key &&
@@ -2202,30 +2198,21 @@ function sincronizarTimerDesdeBD(node) {
       Date.now() < timerArranquePendienteHasta;
 
     if (estaEnArranquePendiente) {
-
-      if (!timer) {
-        iniciarTimer();
-      }
-
+      if (!timer) iniciarTimer();
       return;
     }
 
-    // NO reiniciar el cronómetro todavía
     return;
   }
-
 
   timerKey = key;
   timerStartDate = fechaInicio;
   timerArranquePendienteHasta = 0;
 
   seconds = getElapsedSeconds(timerStartDate);
-
   renderTime();
 
-  if (!timer) {
-    iniciarTimer();
-  }
+  if (!timer) iniciarTimer();
 }
 
 
@@ -2846,9 +2833,9 @@ async function iniciarProcesoActual() {
 
     currentNode.unitStatus = 2;
 
-    timerKey = getTimerKey(currentNode);
-    timerStartDate = new Date();
-    timerArranquePendienteHasta = Date.now() + 10000;
+ timerKey = getTimerKey(currentNode);
+timerStartDate = new Date();
+timerArranquePendienteHasta = Date.now() + 15000;
 
     seconds = 0;
     renderTime();
