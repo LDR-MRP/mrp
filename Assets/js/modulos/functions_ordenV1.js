@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
   let timer = null;
   let seconds = 0;
   let timerKey = null;
+  let timerStartDate = null;
   let currentNode = null;
   let currentSelection = null;
   let MRP_STATE = JSON.parse(JSON.stringify(MRP_DATA || {}));
@@ -281,17 +282,17 @@ function iniciarTimer() {
 
   timer = setInterval(() => {
 
-    // Seguridad:
-    // si ya no hay un nodo seleccionado
-    // detener completamente el contador
     if (
       !currentNode ||
-      Number(currentNode.unitStatus || 0) !== 2
+      Number(currentNode.unitStatus || 0) !== 2 ||
+      !timerStartDate
     ) {
 
       pausarTimer();
 
       timerKey = null;
+
+      timerStartDate = null;
 
       seconds = 0;
 
@@ -300,7 +301,7 @@ function iniciarTimer() {
       return;
     }
 
-    seconds++;
+    seconds = getElapsedSeconds(timerStartDate);
 
     renderTime();
 
@@ -320,6 +321,8 @@ function reiniciarTimer() {
   pausarTimer();
 
   timerKey = null;
+
+  timerStartDate = null;
 
   seconds = 0;
 
@@ -2110,26 +2113,37 @@ function validarPermisosProduccion() {
     return Math.max(0, Math.floor((now.getTime() - start.getTime()) / 1000));
   }
 
-  function getNodeStartDate(node) {
-    if (!node || !node.unidadRaw) return null;
+function getNodeStartDate(node) {
 
-    if (node.type === 'subensamble') {
-      return node.unidadRaw.fecha_inicio_real || null;
-    }
+  if (!node || !node.unidadRaw) return null;
 
-    return node.unidadRaw.fecha_inicio || null;
+  if (node.type === 'subensamble') {
+    return (
+      node.unidadRaw.fecha_inicio_real ||
+      node.unidadRaw.fecha_inicio ||
+      node.unidadRaw.fecha_inicio_subensamble ||
+      null
+    );
   }
+
+  return (
+    node.unidadRaw.fecha_inicio ||
+    node.unidadRaw.fecha_inicio_real ||
+    null
+  );
+}
 
 function sincronizarTimerDesdeBD(node) {
 
   const estado = Number(node?.unitStatus || 0);
 
-  // Si no está trabajando, SIEMPRE apagar reloj
   if (estado !== 2) {
 
     pausarTimer();
 
     timerKey = null;
+
+    timerStartDate = null;
 
     seconds = 0;
 
@@ -2140,29 +2154,32 @@ function sincronizarTimerDesdeBD(node) {
 
   const key = getTimerKey(node);
 
-  // Cambié de estación/subensamble
-  if (timerKey !== key) {
+  const fechaInicio = getNodeStartDate(node);
+
+  if (!fechaInicio) {
 
     pausarTimer();
 
-    timerKey = key;
+    timerKey = null;
 
-    seconds = getElapsedSeconds(
-      getNodeStartDate(node)
-    );
+    timerStartDate = null;
+
+    seconds = 0;
 
     renderTime();
-
-    iniciarTimer();
 
     return;
   }
 
-  // Mismo nodo y por alguna razón el intervalo murió
-  if (!timer) {
+  timerKey = key;
 
-    iniciarTimer();
-  }
+  timerStartDate = fechaInicio;
+
+  seconds = getElapsedSeconds(timerStartDate);
+
+  renderTime();
+
+  iniciarTimer();
 }
 
 
