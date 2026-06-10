@@ -2,28 +2,18 @@
 
 namespace Controllers\Api\V1;
 
-use Services\SupplierService;
-use Services\AccountsPayableBankService; // Importamos el servicio
-use Prv_detCuentaBancariaModel;
-use Prv_proveedorModel;
-
+use SupplierService;
 class SrmController
 {
     // Inyectamos el trait nativo para estandarizar respuestas
     use \ApiResponser; 
 
-    private \SupplierService $supplierService;
-    private AccountsPayableBankService $bankService;
+    private SupplierService $supplierService;
     public array $request = [];
 
     public function __construct()
     {
         $this->supplierService = new \SupplierService();
-        // Inyección manual de dependencias en el constructor
-        $this->bankService = new AccountsPayableBankService(
-            new Prv_detCuentaBancariaModel(),
-            new Prv_proveedorModel()
-        );
     }
 
     /**
@@ -114,8 +104,7 @@ class SrmController
             return $this->errorResponse('Acceso denegado.', 403);
         }
 
-        // Delegación limpia al servicio
-        $response = $this->bankService->getSupplierAccounts($userContext);
+        $response = $this->supplierService->banks($userContext['vendor_id']);
         return $this->apiResponse($response);
     }
 
