@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
   let seconds = 0;
   let timerKey = null;
   let timerStartDate = null;
+  let timerStartMs = null;
   let timerArranquePendienteHasta = 0;
   let currentNode = null;
   let currentSelection = null;
@@ -279,18 +280,22 @@ function validarParoMomentaneo(node) {
 
 function iniciarTimer() {
 
-  pausarTimer();
+  if (timer) return;
 
   timer = setInterval(() => {
 
-    if (!timerStartDate) {
+    if (!timerStartMs) {
       pausarTimer();
       seconds = 0;
       renderTime();
       return;
     }
 
-    seconds = getElapsedSeconds(timerStartDate);
+    seconds = Math.max(
+      0,
+      Math.floor((Date.now() - timerStartMs) / 1000)
+    );
+
     renderTime();
 
   }, 1000);
@@ -309,8 +314,9 @@ function reiniciarTimer() {
   pausarTimer();
 
   timerKey = null;
-
   timerStartDate = null;
+  timerStartMs = null;
+  timerArranquePendienteHasta = 0;
 
   seconds = 0;
 
@@ -2089,7 +2095,7 @@ function validarPermisosProduccion() {
   }
 
 
-function getElapsedSeconds(fechaInicio) {
+function getElapsedSecondsoldd(fechaInicio) {
 
   if (
     !fechaInicio ||
@@ -2143,6 +2149,58 @@ function getElapsedSeconds(fechaInicio) {
   }
 }
 
+function parseFechaInicioToMs(fechaInicio) {
+
+  if (
+    !fechaInicio ||
+    fechaInicio === '0000-00-00 00:00:00'
+  ) {
+    return null;
+  }
+
+  if (fechaInicio instanceof Date) {
+    const ms = fechaInicio.getTime();
+    return isNaN(ms) ? null : ms;
+  }
+
+  const partes = String(fechaInicio)
+    .trim()
+    .replace('T', ' ')
+    .split(' ');
+
+  if (partes.length !== 2) {
+    return null;
+  }
+
+  const fecha = partes[0].split('-');
+  const hora = partes[1].split(':');
+
+  const start = new Date(
+    Number(fecha[0]),
+    Number(fecha[1]) - 1,
+    Number(fecha[2]),
+    Number(hora[0]),
+    Number(hora[1]),
+    Number(hora[2] || 0)
+  );
+
+  const ms = start.getTime();
+
+  return isNaN(ms) ? null : ms;
+}
+
+function getElapsedSeconds(fechaInicio) {
+
+  const ms = parseFechaInicioToMs(fechaInicio);
+
+  if (!ms) return 0;
+
+  return Math.max(
+    0,
+    Math.floor((Date.now() - ms) / 1000)
+  );
+}
+
 function getNodeStartDate(node) {
 
   if (!node || !node.unidadRaw) return null;
@@ -2168,37 +2226,33 @@ function sincronizarTimerDesdeBD(node) {
   const estado = Number(node?.unitStatus || 0);
   const key = getTimerKey(node);
   const fechaInicio = getNodeStartDate(node);
+  const fechaInicioMs = parseFechaInicioToMs(fechaInicio);
 
   if (estado !== 2) {
 
     const estaEnArranquePendiente =
       timerKey === key &&
-      timerStartDate &&
+      timerStartMs &&
       Date.now() < timerArranquePendienteHasta;
 
     if (estaEnArranquePendiente) {
-      if (!timer) iniciarTimer();
+      iniciarTimer();
       return;
     }
 
-    pausarTimer();
-    timerKey = null;
-    timerStartDate = null;
-    timerArranquePendienteHasta = 0;
-    seconds = 0;
-    renderTime();
+    reiniciarTimer();
     return;
   }
 
-  if (!fechaInicio || fechaInicio === '0000-00-00 00:00:00') {
+  if (!fechaInicioMs) {
 
     const estaEnArranquePendiente =
       timerKey === key &&
-      timerStartDate &&
+      timerStartMs &&
       Date.now() < timerArranquePendienteHasta;
 
     if (estaEnArranquePendiente) {
-      if (!timer) iniciarTimer();
+      iniciarTimer();
       return;
     }
 
@@ -2207,12 +2261,16 @@ function sincronizarTimerDesdeBD(node) {
 
   timerKey = key;
   timerStartDate = fechaInicio;
+  timerStartMs = fechaInicioMs;
   timerArranquePendienteHasta = 0;
 
-  seconds = getElapsedSeconds(timerStartDate);
-  renderTime();
+  seconds = Math.max(
+    0,
+    Math.floor((Date.now() - timerStartMs) / 1000)
+  );
 
-  if (!timer) iniciarTimer();
+  renderTime();
+  iniciarTimer();
 }
 
 
@@ -2831,15 +2889,24 @@ async function iniciarProcesoActual() {
       return;
     }
 
-    currentNode.unitStatus = 2;
+currentNode.unitStatus = 2;
 
- timerKey = getTimerKey(currentNode);
+if (currentNode.unidadRaw) {
+  if (currentNode.type === 'subensamble') {
+    currentNode.unidadRaw.estado = 2;
+  } else {
+    currentNode.unidadRaw.estatus = 2;
+  }
+}
+
+timerKey = getTimerKey(currentNode);
 timerStartDate = new Date();
-timerArranquePendienteHasta = Date.now() + 15000;
+timerStartMs = Date.now();
+timerArranquePendienteHasta = Date.now() + 30000;
 
-    seconds = 0;
-    renderTime();
-    iniciarTimer();
+seconds = 0;
+renderTime();
+iniciarTimer();
 
     swalSuccess(data.msg);
 
