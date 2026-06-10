@@ -4,17 +4,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
   let timer = null;
   let seconds = 0;
-  let timerKey = null;
-  let timerStartDate = null;
-  let timerStartMs = null;
-  let timerArranquePendienteHasta = 0;
   let currentNode = null;
   let currentSelection = null;
   let MRP_STATE = JSON.parse(JSON.stringify(MRP_DATA || {}));
 
   let timerParo = null;
   let secondsParo = 0;
-  let timerParoKey = null;
 
   let CURRENT_PRODUCTOID = 0;
   let CURRENT_ORIGENID = 0;
@@ -164,89 +159,60 @@ document.addEventListener('DOMContentLoaded', function () {
     ) || null;
   }
 
-function validarParoMomentaneo(node) {
+  function validarParoMomentaneo(node) {
 
-  if (!node || node.type !== 'estacion' || !node.unidadRaw) {
+    if (!node || node.type !== 'estacion' || !node.unidadRaw) {
+      if (contenedorParoMomentaneo) {
+        contenedorParoMomentaneo.classList.add('d-none');
+        contenedorParoMomentaneo.style.display = 'none';
+      }
 
-    if (contenedorParoMomentaneo) {
-      contenedorParoMomentaneo.classList.add('d-none');
-      contenedorParoMomentaneo.style.display = 'none';
+      resetTimerParo();
+      return false;
     }
 
-    resetTimerParo();
-    timerParoKey = null;
-
-    return false;
-  }
-
-  const paroActivo = (node.unidadRaw.acciones_produccion || []).find(a =>
-    Number(a.tipo_accion) === 1 &&
-    Number(a.estado) === 2 &&
-    Number(a.estacionid) === Number(node.estacionid) &&
-    String(a.unidad || '').trim() === String(node.unit || '').trim()
-  );
-
-  const existeParoActivo = !!paroActivo;
-
-  if (contenedorParoMomentaneo) {
-
-    if (existeParoActivo) {
-      contenedorParoMomentaneo.classList.remove('d-none', 'none');
-      contenedorParoMomentaneo.style.display = '';
-      renderDetalleParoMomentaneo(node, paroActivo);
-    } else {
-      contenedorParoMomentaneo.classList.add('d-none');
-      contenedorParoMomentaneo.style.display = 'none';
-    }
-  }
-
-  if (!existeParoActivo) {
-    resetTimerParo();
-    timerParoKey = null;
-    return false;
-  }
-
-  if (btnFinalizarUnidad) {
-    btnFinalizarUnidad.disabled = true;
-    btnFinalizarUnidad.classList.add('btn-state-disabled');
-  }
-
-  if (btnPausarUnidad) {
-    btnPausarUnidad.disabled = true;
-    btnPausarUnidad.classList.add('btn-state-disabled');
-    btnPausarUnidad.textContent = 'Paro activo';
-  }
-
-  const key = [
-    node.estacionid,
-    node.idordengeneral,
-    node.unit,
-    paroActivo.fecha_inicio
-  ].join('|');
-
-  if (timerParoKey !== key) {
-
-    detenerTimerParo();
-
-    timerParoKey = key;
-
-    secondsParo = getElapsedSeconds(
-      paroActivo.fecha_inicio
+    const paroActivo = (node.unidadRaw.acciones_produccion || []).find(a =>
+      Number(a.tipo_accion) === 1 &&
+      Number(a.estado) === 2 &&
+      Number(a.estacionid) === Number(node.estacionid) &&
+      String(a.unidad || '').trim() === String(node.unit || '').trim()
     );
 
-    renderTimerParo();
+    const existeParoActivo = !!paroActivo;
 
+    if (contenedorParoMomentaneo) {
+      if (existeParoActivo) {
+        contenedorParoMomentaneo.classList.remove('d-none', 'none');
+        contenedorParoMomentaneo.style.display = '';
+        renderDetalleParoMomentaneo(node, paroActivo);
+      } else {
+        contenedorParoMomentaneo.classList.add('d-none');
+        contenedorParoMomentaneo.style.display = 'none';
+      }
+    }
+
+    if (!existeParoActivo) {
+      resetTimerParo();
+      return false;
+    }
+
+    if (btnFinalizarUnidad) {
+      btnFinalizarUnidad.disabled = true;
+      btnFinalizarUnidad.classList.add('btn-state-disabled');
+    }
+
+    if (btnPausarUnidad) {
+      btnPausarUnidad.disabled = true;
+      btnPausarUnidad.classList.add('btn-state-disabled');
+      btnPausarUnidad.textContent = 'Paro activo';
+    }
+
+    secondsParo = getElapsedSeconds(paroActivo.fecha_inicio);
+    renderTimerParo();
     iniciarTimerParo();
 
     return true;
   }
-
-  if (!timerParo) {
-    iniciarTimerParo();
-  }
-
-  return true;
-}
 
 
 
@@ -259,69 +225,32 @@ function validarParoMomentaneo(node) {
     return `${mins}:${secs}`;
   }
 
-  function getTimerKey(node) {
-
-  if (!node) return '';
-
-  return [
-    node.type || '',
-    node.estIndex ?? '',
-    node.subIndex ?? 'x',
-    node.idordengeneral || 0,
-    node.unit || ''
-  ].join('|');
-}
-
   function renderTime() {
     const t = formatTime(seconds);
     if (tiempoActualEstacion) tiempoActualEstacion.textContent = t;
     if (tiempoUnidadGlobal) tiempoUnidadGlobal.textContent = t;
   }
 
-function iniciarTimer() {
-
-  if (timer) return;
-
-  timer = setInterval(() => {
-
-    if (!timerStartMs) {
-      pausarTimer();
-      seconds = 0;
+  function iniciarTimer() {
+    if (timer) return;
+    timer = setInterval(() => {
+      seconds++;
       renderTime();
-      return;
-    }
-
-    seconds = Math.max(
-      0,
-      Math.floor((Date.now() - timerStartMs) / 1000)
-    );
-
-    renderTime();
-
-  }, 1000);
-}
-
- function pausarTimer() {
-
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
+    }, 1000);
   }
-}
 
-function reiniciarTimer() {
+  function pausarTimer() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
 
-  pausarTimer();
-
-  timerKey = null;
-  timerStartDate = null;
-  timerStartMs = null;
-  timerArranquePendienteHasta = 0;
-
-  seconds = 0;
-
-  renderTime();
-}
+  function reiniciarTimer() {
+    pausarTimer();
+    seconds = 0;
+    renderTime();
+  }
 
   function getStation(estIndex) {
     return (MRP_STATE?.estaciones || [])[estIndex] || null;
@@ -395,9 +324,7 @@ function validarPermisosProduccion() {
     btn.style.display = esCalidad ? 'none' : '';
   });
 
-  // Importante:
-  // NO tocar aquí btnIniciarProduccion ni btnFinalizarProduccion,
-  // porque esos botones dependen de la fase.
+
   validarBotonesProduccion();
 }
 
@@ -2095,183 +2022,41 @@ function validarPermisosProduccion() {
   }
 
 
-function getElapsedSecondsoldd(fechaInicio) {
+  function getElapsedSeconds(fechaInicio) {
+    if (!fechaInicio || fechaInicio === '0000-00-00 00:00:00') return 0;
 
-  if (
-    !fechaInicio ||
-    fechaInicio === '0000-00-00 00:00:00'
-  ) {
-    return 0;
+    const normalized = String(fechaInicio).replace(' ', 'T');
+    const start = new Date(normalized);
+
+    if (isNaN(start.getTime())) return 0;
+
+    const now = new Date();
+    return Math.max(0, Math.floor((now.getTime() - start.getTime()) / 1000));
   }
 
-  try {
+  function getNodeStartDate(node) {
+    if (!node || !node.unidadRaw) return null;
 
-    let start = null;
+    if (node.type === 'subensamble') {
+      return node.unidadRaw.fecha_inicio_real || null;
+    }
 
-    // Si viene como Date(), por ejemplo al dar iniciar
-    if (fechaInicio instanceof Date) {
-      start = fechaInicio;
+    return node.unidadRaw.fecha_inicio || null;
+  }
+
+  function sincronizarTimerDesdeBD(node) {
+    const estado = Number(node?.unitStatus || 0);
+
+    if (estado === 2) {
+      seconds = getElapsedSeconds(getNodeStartDate(node));
+      renderTime();
+      iniciarTimer();
     } else {
-
-      const partes = String(fechaInicio)
-        .trim()
-        .replace('T', ' ')
-        .split(' ');
-
-      if (partes.length !== 2) {
-        return 0;
-      }
-
-      const fecha = partes[0].split('-');
-      const hora = partes[1].split(':');
-
-      start = new Date(
-        Number(fecha[0]),
-        Number(fecha[1]) - 1,
-        Number(fecha[2]),
-        Number(hora[0]),
-        Number(hora[1]),
-        Number(hora[2] || 0)
-      );
+      pausarTimer();
+      seconds = 0;
+      renderTime();
     }
-
-    if (!start || isNaN(start.getTime())) {
-      return 0;
-    }
-
-    return Math.max(
-      0,
-      Math.floor((Date.now() - start.getTime()) / 1000)
-    );
-
-  } catch (e) {
-    return 0;
   }
-}
-
-function parseFechaInicioToMs(fechaInicio) {
-
-  if (
-    !fechaInicio ||
-    fechaInicio === '0000-00-00 00:00:00'
-  ) {
-    return null;
-  }
-
-  if (fechaInicio instanceof Date) {
-    const ms = fechaInicio.getTime();
-    return isNaN(ms) ? null : ms;
-  }
-
-  const partes = String(fechaInicio)
-    .trim()
-    .replace('T', ' ')
-    .split(' ');
-
-  if (partes.length !== 2) {
-    return null;
-  }
-
-  const fecha = partes[0].split('-');
-  const hora = partes[1].split(':');
-
-  const start = new Date(
-    Number(fecha[0]),
-    Number(fecha[1]) - 1,
-    Number(fecha[2]),
-    Number(hora[0]),
-    Number(hora[1]),
-    Number(hora[2] || 0)
-  );
-
-  const ms = start.getTime();
-
-  return isNaN(ms) ? null : ms;
-}
-
-function getElapsedSeconds(fechaInicio) {
-
-  const ms = parseFechaInicioToMs(fechaInicio);
-
-  if (!ms) return 0;
-
-  return Math.max(
-    0,
-    Math.floor((Date.now() - ms) / 1000)
-  );
-}
-
-function getNodeStartDate(node) {
-
-  if (!node || !node.unidadRaw) return null;
-
-  if (node.type === 'subensamble') {
-    return (
-      node.unidadRaw.fecha_inicio_real ||
-      node.unidadRaw.fecha_inicio ||
-      node.unidadRaw.fecha_inicio_subensamble ||
-      null
-    );
-  }
-
-  return (
-    node.unidadRaw.fecha_inicio ||
-    node.unidadRaw.fecha_inicio_real ||
-    null
-  );
-}
-
-function sincronizarTimerDesdeBD(node) {
-
-  const estado = Number(node?.unitStatus || 0);
-  const key = getTimerKey(node);
-  const fechaInicio = getNodeStartDate(node);
-  const fechaInicioMs = parseFechaInicioToMs(fechaInicio);
-
-  if (estado !== 2) {
-
-    const estaEnArranquePendiente =
-      timerKey === key &&
-      timerStartMs &&
-      Date.now() < timerArranquePendienteHasta;
-
-    if (estaEnArranquePendiente) {
-      iniciarTimer();
-      return;
-    }
-
-    reiniciarTimer();
-    return;
-  }
-
-  if (!fechaInicioMs) {
-
-    const estaEnArranquePendiente =
-      timerKey === key &&
-      timerStartMs &&
-      Date.now() < timerArranquePendienteHasta;
-
-    if (estaEnArranquePendiente) {
-      iniciarTimer();
-      return;
-    }
-
-    return;
-  }
-
-  timerKey = key;
-  timerStartDate = fechaInicio;
-  timerStartMs = fechaInicioMs;
-  timerArranquePendienteHasta = 0;
-
-  seconds = Math.max(
-    0,
-    Math.floor((Date.now() - timerStartMs) / 1000)
-  );
-
-  renderTime();
-  iniciarTimer();
-}
 
 
   function badgeEstadoHtml(type, status, info = null, orden = null) {
@@ -2406,7 +2191,7 @@ function sincronizarTimerDesdeBD(node) {
       puedeFinalizar ? '' : 'none';
   }
 
-function validarBotonesProduccion() {
+ function validarBotonesProduccion() {
 
   if (!btnIniciarProduccion || !btnFinalizarProduccion) {
     return;
@@ -2851,127 +2636,90 @@ function validarBotonesProduccion() {
 
   }
 
-async function iniciarProcesoActual() {
+  async function iniciarProcesoActual() {
+    if (!currentNode) return;
 
-  if (!currentNode) return;
-
-  const info = validarVisualNodo(currentNode);
-
-  if (!info.canStart) {
-    swalError(info.texto);
-    return;
-  }
-
-  let url = '';
-  let payload = {};
-
-  if (currentNode.type === 'subensamble') {
-    url = `${base_url}/plan_planeacionv1/iniciarSubensamble`;
-    payload = {
-      idorden_subensamble: currentNode.idorden_subensamble
-    };
-  } else {
-    url = `${base_url}/plan_planeacionv1/iniciarEstacion`;
-    payload = {
-      idorden: currentNode.idorden
-    };
-  }
-
-  try {
-
-    btnIniciarUnidad.disabled = true;
-
-    const data = await postJson(url, payload);
-
-    if (!data.status) {
-      swalError(data.msg);
-      await refrescarEstadoProduccion(true);
+    const info = validarVisualNodo(currentNode);
+    if (!info.canStart) {
+      swalError(info.texto);
       return;
     }
 
-currentNode.unitStatus = 2;
+    let url = '';
+    let payload = {};
 
-if (currentNode.unidadRaw) {
-  if (currentNode.type === 'subensamble') {
-    currentNode.unidadRaw.estado = 2;
-  } else {
-    currentNode.unidadRaw.estatus = 2;
-  }
-}
+    if (currentNode.type === 'subensamble') {
+      url = `${base_url}/plan_planeacionv1/iniciarSubensamble`;
+      payload = { idorden_subensamble: currentNode.idorden_subensamble };
+    } else {
+      url = `${base_url}/plan_planeacionv1/iniciarEstacion`;
+      payload = { idorden: currentNode.idorden };
+    }
 
-timerKey = getTimerKey(currentNode);
-timerStartDate = new Date();
-timerStartMs = Date.now();
-timerArranquePendienteHasta = Date.now() + 30000;
+    try {
+      btnIniciarUnidad.disabled = true;
 
-seconds = 0;
-renderTime();
-iniciarTimer();
+      const data = await postJson(url, payload);
 
-    swalSuccess(data.msg);
+      if (!data.status) {
+        swalError(data.msg);
+        await refrescarEstadoProduccion(true);
+        return;
+      }
 
-    await refrescarEstadoProduccion(true);
-
-  } catch (err) {
-
-    swalError(err.message);
-
-    await refrescarEstadoProduccion(true);
-  }
-}
-
-async function finalizarProcesoActual() {
-
-  if (!currentNode) return;
-
-  const info = validarVisualNodo(currentNode);
-
-  if (!info.canFinish) {
-    swalError('No hay una unidad en proceso para finalizar.');
-    return;
-  }
-
-  let url = '';
-  let payload = {};
-
-  if (currentNode.type === 'subensamble') {
-    url = `${base_url}/plan_planeacionv1/finalizarSubensamble`;
-    payload = {
-      idorden_subensamble: currentNode.idorden_subensamble
-    };
-  } else {
-    url = `${base_url}/plan_planeacionv1/finalizarEstacion`;
-    payload = {
-      idorden: currentNode.idorden,
-      inventarioid: currentNode.inventarioid
-    };
-  }
-
-  try {
-
-    btnFinalizarUnidad.disabled = true;
-
-    const data = await postJson(url, payload);
-
-    if (!data.status) {
-      swalError(data.msg);
+      seconds = 0;
+      iniciarTimer();
+      swalSuccess(data.msg);
       await refrescarEstadoProduccion(true);
+
+    } catch (err) {
+      swalError(err.message);
+      await refrescarEstadoProduccion(true);
+    }
+  }
+
+  async function finalizarProcesoActual() {
+    if (!currentNode) return;
+
+    const info = validarVisualNodo(currentNode);
+    if (!info.canFinish) {
+      swalError('No hay una unidad en proceso para finalizar.');
       return;
     }
 
-    reiniciarTimer();
+    let url = '';
+    let payload = {};
 
-    swalSuccess(data.msg);
+    if (currentNode.type === 'subensamble') {
+      url = `${base_url}/plan_planeacionv1/finalizarSubensamble`;
+      payload = { idorden_subensamble: currentNode.idorden_subensamble };
+    } else {
+      url = `${base_url}/plan_planeacionv1/finalizarEstacion`;
+      payload = { idorden: currentNode.idorden, inventarioid: currentNode.inventarioid };
+    }
 
-    await refrescarEstadoProduccion(true);
+    try {
+      btnFinalizarUnidad.disabled = true;
 
-  } catch (err) {
+      const data = await postJson(url, payload);
 
-    swalError(err.message);
+      if (!data.status) {
+        swalError(data.msg);
+        await refrescarEstadoProduccion(true);
+        return;
+      }
 
-    await refrescarEstadoProduccion(true);
+      pausarTimer();
+      seconds = 0;
+      renderTime();
+      swalSuccess(data.msg);
+      await refrescarEstadoProduccion(true);
+
+    } catch (err) {
+      swalError(err.message);
+      await refrescarEstadoProduccion(true);
+    }
   }
-}
 
   document.querySelectorAll('.js-selectable-node').forEach(nodeEl => {
     nodeEl.addEventListener('click', function (e) {
@@ -3155,7 +2903,7 @@ async function finalizarProcesoActual() {
 
   if (btnOperacionesCriticas) {
     btnOperacionesCriticas.addEventListener('click', function () {
-      console.log('abrir modal de especificaciones criticas!!');
+      // console.log('abrir modal de especificaciones criticas!!');
 
       if (!currentNode) return;
 
@@ -3520,7 +3268,7 @@ async function modalAyudasVisuales(title, productoid, estacionid, tipo, nombreEs
   modal.show();
 
   try {
-    const resp = await fetch(`${base_url}/plan_planeacionv1/getAyudas`, {
+    const resp = await fetch(`${base_url}/plan_planeacionV1/getAyudas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({ productoid, estacionid, tipo })
@@ -3607,7 +3355,7 @@ async function openModalHerramientas(productoid, estacionid, nombreEstacion = ''
   modal.show();
 
   try {
-    const resp = await fetch(`${base_url}/plan_planeacionv1/getHerramientas`, {
+    const resp = await fetch(`${base_url}/plan_planeacionV1/getHerramientas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({ productoid, estacionid, tipo })
@@ -4614,7 +4362,7 @@ function cerrarModalBootstrap(idModal) {
 
 function inicializarBusquedaUsuariosOperacion() {
   document.querySelectorAll('.empleado-operacion-input').forEach(input => {
-  // let timer = null;
+    let timer = null;
 
     input.addEventListener('input', function () {
       clearTimeout(timer);
