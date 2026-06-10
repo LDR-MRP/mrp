@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
   let seconds = 0;
   let timerKey = null;
   let timerStartDate = null;
+  let timerArranquePendienteHasta = 0;
   let currentNode = null;
   let currentSelection = null;
   let MRP_STATE = JSON.parse(JSON.stringify(MRP_DATA || {}));
@@ -282,20 +283,14 @@ function iniciarTimer() {
 
   timer = setInterval(() => {
 
-    if (
-      !currentNode ||
-      Number(currentNode.unitStatus || 0) !== 2 ||
-      !timerStartDate
-    ) {
-
+    if (!timerStartDate) {
       pausarTimer();
-
+      seconds = 0;
+      renderTime();
       return;
     }
 
-    seconds =
-      getElapsedSeconds(timerStartDate);
-
+    seconds = getElapsedSeconds(timerStartDate);
     renderTime();
 
   }, 1000);
@@ -2165,62 +2160,59 @@ function getNodeStartDate(node) {
 
 function sincronizarTimerDesdeBD(node) {
 
-  const estado =
-    Number(node?.unitStatus || 0);
+  const estado = Number(node?.unitStatus || 0);
+  const key = getTimerKey(node);
+  const fechaInicio = getNodeStartDate(node);
 
   if (estado !== 2) {
 
+    const estaEnArranquePendiente =
+      timerKey === key &&
+      timerStartDate &&
+      Date.now() < timerArranquePendienteHasta;
+
+    if (estaEnArranquePendiente) {
+      if (!timer) iniciarTimer();
+      return;
+    }
+
     pausarTimer();
-
     timerKey = null;
-
     timerStartDate = null;
-
+    timerArranquePendienteHasta = 0;
     seconds = 0;
-
     renderTime();
-
     return;
   }
-
-  const key =
-    getTimerKey(node);
-
-  const fechaInicio =
-    getNodeStartDate(node);
 
   if (!fechaInicio) {
 
+    const estaEnArranquePendiente =
+      timerKey === key &&
+      timerStartDate &&
+      Date.now() < timerArranquePendienteHasta;
+
+    if (estaEnArranquePendiente) {
+      if (!timer) iniciarTimer();
+      return;
+    }
+
     pausarTimer();
-
     timerKey = null;
-
     timerStartDate = null;
-
     seconds = 0;
-
     renderTime();
-
     return;
   }
 
+  timerKey = key;
+  timerStartDate = fechaInicio;
+  timerArranquePendienteHasta = 0;
 
+  seconds = getElapsedSeconds(timerStartDate);
+  renderTime();
 
-  if (timerKey !== key) {
-
-    timerKey = key;
-
-    timerStartDate = fechaInicio;
-
-    seconds =
-      getElapsedSeconds(
-        timerStartDate
-      );
-
-    renderTime();
-
-    iniciarTimer();
-  }
+  if (!timer) iniciarTimer();
 }
 
 
@@ -2839,7 +2831,15 @@ async function iniciarProcesoActual() {
       return;
     }
 
-    reiniciarTimer();
+    currentNode.unitStatus = 2;
+
+    timerKey = getTimerKey(currentNode);
+    timerStartDate = new Date();
+    timerArranquePendienteHasta = Date.now() + 10000;
+
+    seconds = 0;
+    renderTime();
+    iniciarTimer();
 
     swalSuccess(data.msg);
 
