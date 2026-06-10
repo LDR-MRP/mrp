@@ -3268,7 +3268,7 @@ async function modalAyudasVisuales(title, productoid, estacionid, tipo, nombreEs
   modal.show();
 
   try {
-    const resp = await fetch(`${base_url}/plan_planeacionV1/getAyudas`, {
+    const resp = await fetch(`${base_url}/plan_planeacionv1/getAyudas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({ productoid, estacionid, tipo })
@@ -3355,7 +3355,7 @@ async function openModalHerramientas(productoid, estacionid, nombreEstacion = ''
   modal.show();
 
   try {
-    const resp = await fetch(`${base_url}/plan_planeacionV1/getHerramientas`, {
+    const resp = await fetch(`${base_url}/plan_planeacionv1/getHerramientas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({ productoid, estacionid, tipo })
