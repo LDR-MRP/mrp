@@ -12,8 +12,8 @@ use ServiceResponse;
 readonly class PaymentDispersalService
 {
     // Cuenta de retiro de LDR Solutions registrada en BBVA (10 dígitos obligatorios)
-    private const string CUENTA_RETIRO_BBVA = '0123456789'; // Cuenta de retiro de LDR en BBVA (10 dígitos)
-    private const string CUENTA_RETIRO_BANORTE = '9876543210'; // Cuenta de retiro de LDR en Banorte (10 dígitos)
+    private const CUENTA_RETIRO_BBVA = '0123456789'; // Cuenta de retiro de LDR en BBVA (10 dígitos)
+    private const CUENTA_RETIRO_BANORTE = '9876543210'; // Cuenta de retiro de LDR en Banorte (10 dígitos)
 
     public function __construct(
         private AccountsPayableInvoiceModel $paymentModel,

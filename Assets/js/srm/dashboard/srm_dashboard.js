@@ -1,76 +1,84 @@
 /**
  * Controlador de Resumen / Dashboard de Proveedores (SRM)
- * Utiliza e integra el motor central Sys_Core
+ * Integrado con la respuesta enriquecida del SupplierService
  */
-
 const SrmDashboard = {
 
     init: function() {
         Sys_Core.Auth.validateSession('VENDOR');
-
         this.renderUserData();
         this.loadMetrics();
     },
 
-    /**
-     * Dibuja la información del proveedor en la UI (Header / Saludo)
-     */
     renderUserData: function() {
-        // --- INICIO MODIFICACIÓN: El Core ya hidrata el TopBar de forma automática.
-        // Aquí solo pintamos el saludo exclusivo de la vista principal del Dashboard.
         const payload = Sys_Core.Auth.decodeJWT();
         const user = payload ? payload.data : null;
-
         if (user && $('#lbl-welcome-user').length) {
+            // Usamos el nombre del payload del JWT
             $('#lbl-welcome-user').text(user.nombre);
         }
-        // --- FIN MODIFICACIÓN ---
     },
 
-    /**
-     * Consume la API utilizando el motor de red Sys_Core
-     */
     loadMetrics: function() {
-        // endpoint ficticio o tu controlador /api/v1/srm/dashboard
         Sys_Core.Net.get({
             url: base_url + '/api/v1/srm/dashboard/summary',
-            silent: false,
             onSuccess: (response) => {
-                if (response.status) {
+                if (response.status === 'success') {
                     const metrics = response.data;
                     
-                    // Actualizamos KPIs con animación usando el motor de Sys_Core
+                    // 1. KPIs Numéricos con animación
                     Sys_Core.UI.Dashboard.animateCounter('kpi-ordenes', metrics.ordenes_activas);
                     Sys_Core.UI.Dashboard.animateCounter('kpi-facturas', metrics.facturas_proceso);
                     
-                    // KPI Financiero formateado
+                    // 2. KPI Financiero
                     $('#kpi-pagos').text(Sys_Core.Format.toCurrency(metrics.monto_pendiente));
                     
-                    // KPI Compliance
+                    // 3. KPI de Compliance (Expediente)
                     this.renderComplianceKpi(metrics.compliance);
                     
-                    // Renderizar actividad reciente
-                    this.renderActivity(metrics.recientes);
+                    // 4. Actividad Reciente (Pendiente de implementar en el Backend)
+                    if (metrics.recientes) {
+                        this.renderActivity(metrics.recientes);
+                    }
                 }
             },
-            onError: () => {
-                Sys_Core.UI.notify("Error al sincronizar indicadores en tiempo real.", "error");
+            onError: (err) => {
+                Sys_Core.UI.notify("Error al sincronizar indicadores de tablero.", "error");
             }
         });
     },
 
+    /**
+     * Gestiona la visualización del estatus de Onboarding/Compliance
+     */
     renderComplianceKpi: function(compliance) {
+        if (!compliance) return;
+
         const $el = $('#kpi-compliance');
         const $icon = $('#kpi-compliance-icon');
+        const percentage = compliance.expediente.porcentaje;
+
+        // Texto dinámico: Mostramos el estatus de onboarding y el porcentaje
+        $el.text(`${compliance.estatus_onboarding} (${percentage}%)`);
         
-        $el.text(compliance.status_text);
-        
-        if (compliance.status === 'ACTIVE') {
-            $icon.removeClass().addClass('avatar-title bg-success-subtle text-success rounded-circle fs-3')
+        // Limpiamos clases previas
+        $icon.removeClass('bg-success-subtle text-success bg-warning-subtle text-warning bg-danger-subtle text-danger');
+
+        /**
+         * Lógica de semaforización basada en el porcentaje y estatus operativo
+         */
+        if (percentage === 100 && compliance.estatus_operativo === 1) {
+            // Caso: Todo listo y aprobado
+            $icon.addClass('bg-success-subtle text-success')
                  .html("<i class='ri-checkbox-circle-line'></i>");
-        } else {
-            $icon.removeClass().addClass('avatar-title bg-warning-subtle text-warning rounded-circle fs-3')
+        } else if (percentage > 0 || compliance.satelites.bancos === 'PENDIENTE') {
+            // Caso: En proceso de carga o validación
+            $icon.addClass('bg-warning-subtle text-warning')
                  .html("<i class='ri-time-line'></i>");
+        } else {
+            // Caso: Crítico / Sin iniciar
+            $icon.addClass('bg-danger-subtle text-danger')
+                 .html("<i class='ri-error-warning-line'></i>");
         }
     },
 
@@ -79,10 +87,15 @@ const SrmDashboard = {
         $list.empty();
 
         if (!actividades || actividades.length === 0) {
-            $list.html("<div class='text-center text-muted py-4'>No hay actividades recientes registradas.</div>");
+            $list.html(`
+                <div class="text-center text-muted py-4">
+                    <i class="ri-inbox-line fs-1 display-5"></i>
+                    <p class="mt-2">No hay actividades recientes.</p>
+                </div>`);
             return;
         }
 
+        // Renderizado de lista (Se asume estructura de bitácora)
         actividades.forEach(act => {
             const html = `
                 <div class="acitivity-item d-flex mb-3">
@@ -94,7 +107,7 @@ const SrmDashboard = {
                         </div>
                     </div>
                     <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1 fs-13 text-dark">${act.evento}</h6>
+                        <h6 class="mb-1 fs-13">${act.evento}</h6>
                         <p class="text-muted fs-12 mb-0">${act.detalle}</p>
                         <small class="text-muted fs-10">${Sys_Core.Format.toDate(act.created_at)}</small>
                     </div>

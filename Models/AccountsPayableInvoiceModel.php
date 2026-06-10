@@ -190,7 +190,7 @@ class AccountsPayableInvoiceModel extends Mysql
     /**
      * Calcula de forma atómica los contadores de los 4 KPIs del Dashboard de CxP.
      */
-    public function getDashboardKpis(): array
+    public function getDashboardKpis(array $filters = []): array
     {
         $query = "SELECT 
                     -- KPI 1: Congeladas (Held) por diferencia con almacén
@@ -202,16 +202,31 @@ class AccountsPayableInvoiceModel extends Mysql
                     -- KPI 3: Rechazadas por fallas del SAT o excedentes
                     COALESCE(SUM(CASE WHEN estatus_validacion = 2 THEN 1 ELSE 0 END), 0) AS rechazadas,
                     
-                    -- KPI 4: Vencidas (Urgentes) -> Aprobadas cuya fecha de vencimiento ya pasó
-                    COALESCE(SUM(CASE WHEN estatus_validacion = 1 AND fecha_vencimiento < CURRENT_DATE() THEN 1 ELSE 0 END), 0) AS vencidas
+                    -- KPI de Urgencia (Vencidas y no pagadas)
+                    COALESCE(SUM(CASE WHEN estatus_validacion = 1 
+                                    AND estatus_pago != 'PAGADO' 
+                                    AND fecha_vencimiento < CURRENT_DATE() THEN 1 ELSE 0 END), 0) AS vencidas,
+                    
+                    -- KPI Financiero: Deuda Total (Facturas validadas que NO están pagadas)
+                    COALESCE(SUM(CASE WHEN estatus_validacion = 1 
+                                    AND estatus_pago != 'PAGADO' THEN monto_total ELSE 0 END), 0) AS monto_pendiente
                   FROM {$this->table}
                   WHERE deleted_at IS NULL";
 
-        return $this->select($query) ?? [
+        $params = [];
+
+        // Filtros Dinámicos Seguros
+        if (!empty($filters['proveedorid'])) {
+            $query .= " AND id_proveedor = :proveedorid";
+            $params[':proveedorid'] = (int)$filters['proveedorid'];
+        }
+
+        return $this->select($query, $params) ?? [
             'congeladas' => 0,
             'aprobadas' => 0,
             'rechazadas' => 0,
-            'vencidas' => 0
+            'vencidas' => 0, 
+            'monto_pendiente' => 0
         ];
     }
     

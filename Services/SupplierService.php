@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Requests\Supplier\StoreBankAccountRequest;
 use Requests\Supplier\StoreSupplierRequest;
+use Com_ordenCompraModel;
+use AccountsPayableInvoiceModel;
 
 class SupplierService
 {
@@ -12,6 +14,8 @@ class SupplierService
     private readonly \Prv_proveedorModel $proveedorModel;
     private readonly \Prv_detExpedienteModel $expedienteModel;
     private readonly \Prv_detCuentaBancariaModel $bankModel;
+    private readonly Com_ordenCompraModel $poModel;
+    private readonly AccountsPayableInvoiceModel $cxpModel;
     private readonly \UsuariosModel $usuarioModel;
     private object $db;
 
@@ -20,6 +24,8 @@ class SupplierService
         $this->expedienteModel = new \Prv_detExpedienteModel();
         $this->bankModel = new \Prv_detCuentaBancariaModel();
         $this->usuarioModel = new \UsuariosModel();
+        $this->poModel = new Com_ordenCompraModel;
+        $this->cxpModel = new AccountsPayableInvoiceModel;
         $this->db = $this->proveedorModel->getConexion();
     }
 
@@ -189,7 +195,7 @@ class SupplierService
             $this->expedienteModel->upsertDocument($dbData);
 
             // 5. Auditoría
-            $this->proveedorModel->logAudit($supplierId, AuditAction::UPLOAD_FILE, "Subida de documento: {$docType}", $userId);
+            $this->expedienteModel->logAudit($supplierId, AuditAction::UPLOAD_FILE, "Subida de documento: {$docType}", $userId);
 
             $this->db->commit();
 
@@ -346,7 +352,7 @@ class SupplierService
             $auditAction = ($status === 1) ? AuditAction::APPROVE_L1 : AuditAction::REJECTED;
             $logMsg = ($status === 1) ? "Documento verificado correctamente." : "Documento rechazado: " . $motivo;
 
-            $this->proveedorModel->logAudit($supplierId, $auditAction, $logMsg, $userId);
+            $this->expedienteModel->logAudit($supplierId, $auditAction, $logMsg, $userId);
 
             // 3. LÓGICA PRO: Verificar si el Onboarding se completó con esta aprobación
             $onboardingComplete = false;
@@ -719,45 +725,7 @@ class SupplierService
             $processedReport = [];
 
             foreach ($rawReport as $row) {
-                // 1. Resolver la lista de documentos requeridos para este perfil del proveedor
-                $requiredDocs = \DocumentTypeEnum::getRequiredList(
-                    $row['id_tipo_persona'],
-                    $row['origen']
-                );
-                
-                $requiredCount = count($requiredDocs);
-                $approvedCount = (int)$row['approved_docs_count'];
-
-                // 2. Calcular el porcentaje matemático real de progreso del expediente
-                $progressPercent = $requiredCount > 0 
-                    ? (int)round(($approvedCount / $requiredCount) * 100) 
-                    : 0;
-
-                $processedReport[] = [
-                    'id_proveedor'      => (int)$row['id_proveedor'],
-                    'razon_social'      => $row['razon_social'],
-                    'nombre_comercial'  => $row['nombre_comercial'] ?: $row['razon_social'],
-                    'rfc'               => $row['rfc'],
-                    'origen'            => $row['origen'],
-                    'estatus_onboarding'=> $row['estatus_onboarding'],
-                    'estatus_operativo' => (int)$row['estatus_operativo'],
-                    'created_at'        => $row['created_at'],
-                    
-                    // Métricas de Progreso de Expediente
-                    'expediente' => [
-                        'aprobados'  => $approvedCount,
-                        'requeridos' => $requiredCount,
-                        'porcentaje' => $progressPercent
-                    ],
-                    
-                    // Datos Satélite (Booleans y Enums para UI badges)
-                    'satelites' => [
-                        'bancos'             => $row['estatus_bancario'], // 'SIN_REGISTRAR', 'PENDIENTE', 'APROBADO'
-                        'direccion'          => (int)$row['tiene_direccion'] === 1,
-                        'contacto'           => (int)$row['tiene_contacto'] === 1,
-                        'config_financiera'  => (int)$row['tiene_config_financiera'] === 1
-                    ]
-                ];
+                $processedReport[] = $this->mapOnboardingRow($row);
             }
 
             return ServiceResponse::success($processedReport, "Reporte de onboarding compilado con éxito.");
@@ -765,5 +733,105 @@ class SupplierService
         } catch (\Exception $e) {
             return ServiceResponse::error("Error al compilar el reporte: " . $e->getMessage(), 500);
         }
+    }
+
+    public function getSummary(int $supplierId): ServiceResponse
+    {
+        try {
+            // 1. Procesar Órdenes de Compra (Viene como array de grupos por estatus)
+            $rawPOs = $this->poModel->getDashboardKpis(['proveedorid' => $supplierId]);
+            $ordenesActivas = 0;
+            
+            // Definimos qué estatus consideramos "Activos" para el Dashboard
+            $estatusActivos = ['emitida', 'en_transito', 'recibida_parcial'];
+            foreach ($rawPOs as $row) {
+                if (in_array($row['estatus'], $estatusActivos)) {
+                    $ordenesActivas += (int)$row['cantidad'];
+                }
+            }
+
+            // 2. Procesar Facturas y Montos
+            $metricsInvoices = $this->cxpModel->getDashboardKpis(['proveedorid' => $supplierId]);
+            
+            // 3. REUTILIZACIÓN: Obtener Onboarding (Compliance)
+            // Pedimos los datos del reporte pero filtrados solo para este proveedor
+            $onboardingDataRaw = $this->proveedorModel->getOnboardingReportData(['id_proveedor' => $supplierId]);
+            $complianceData = !empty($onboardingDataRaw) 
+                ? $this->mapOnboardingRow($onboardingDataRaw[0]) 
+                : null;
+            
+            // // 4. Actividad Reciente
+            $recentActivity = $this->proveedorModel->getRecentActivity($supplierId);
+
+            // Armamos el payload final estandarizado para la UI
+            $data = [
+                'ordenes_activas'  => $ordenesActivas,
+                'facturas_proceso' => (int)($metricsInvoices['congeladas'] + $metricsInvoices['aprobadas']),
+                'monto_pendiente'  => (float)$metricsInvoices['monto_pendiente'],
+                'compliance'       => $complianceData,
+                'recientes'        => $recentActivity
+            ];
+
+            return ServiceResponse::success($data, "Métricas sincronizadas.");
+            
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'storeBank',
+                'id_proveedor' => $supplierId
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            
+        } catch (\Exception $e) {
+            return ServiceResponse::error("Error al compilar el dashboard: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Procesa una fila de la base de datos para convertirla en el objeto de negocio de Onboarding.
+     * REUTILIZABLE: CEO Report y Supplier Dashboard.
+     */
+    private function mapOnboardingRow(array $row): array
+    {
+        $requiredDocs = \DocumentTypeEnum::getRequiredList(
+            $row['id_tipo_persona'],
+            $row['origen']
+        );
+        
+        $requiredCount = count($requiredDocs);
+        $approvedCount = (int)$row['approved_docs_count'];
+
+        // 2. Calcular el porcentaje matemático real de progreso del expediente
+        $progressPercent = $requiredCount > 0 
+            ? (int)round(($approvedCount / $requiredCount) * 100) 
+            : 0;
+
+        return [
+            'id_proveedor'      => (int)$row['id_proveedor'],
+            'razon_social'      => $row['razon_social'],
+            'nombre_comercial'  => $row['nombre_comercial'] ?: $row['razon_social'],
+            'rfc'               => $row['rfc'],
+            'origen'            => $row['origen'],
+            'estatus_onboarding'=> $row['estatus_onboarding'],
+            'estatus_operativo' => (int)$row['estatus_operativo'],
+            'created_at'        => $row['created_at'],
+            
+            // Métricas de Progreso de Expediente
+            'expediente' => [
+                'aprobados'  => $approvedCount,
+                'requeridos' => $requiredCount,
+                'porcentaje' => $progressPercent
+            ],
+            
+            // Datos Satélite (Booleans y Enums para UI badges)
+            'satelites' => [
+                'bancos'             => $row['estatus_bancario'], // 'SIN_REGISTRAR', 'PENDIENTE', 'APROBADO'
+                'direccion'          => (int)$row['tiene_direccion'] === 1,
+                'contacto'           => (int)$row['tiene_contacto'] === 1,
+                'config_financiera'  => (int)$row['tiene_config_financiera'] === 1
+            ]
+        ];
     }
 }

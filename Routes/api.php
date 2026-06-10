@@ -188,7 +188,7 @@ Route::get('api/v1/catalogs/plants', [Catalogo::class, 'plants'])->middleware([A
  * ==============================================================================
  */
 // 1. RESUMEN / DASHBOARD
-Route::get('api/v1/dashboard/dashboard/summary', [SrmController::class, 'getSummary'])->middleware([AuthMiddleware::class]);
+Route::get('api/v1/srm/dashboard/summary', [SrmController::class, 'getSummary'])->middleware([AuthMiddleware::class]);
 
 // 2. EXPEDIENTE DIGITAL
 Route::get('api/v1/srm/dossier', [SrmController::class, 'getDossier'])->middleware([AuthMiddleware::class]);

@@ -43,7 +43,7 @@ class SrmController
         }
 
         // El servicio retorna un ServiceResponse...
-        $response = $this->supplierService->documents($vendorId);
+        $response = $this->supplierService->getSummary($vendorId);
 
         // ...y el Trait se encarga de formatear, poner los headers, el código HTTP y hacer el exit;
         return $this->apiResponse($response); 

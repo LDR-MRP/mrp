@@ -472,10 +472,58 @@ class Prv_proveedorModel extends Mysql
             $query .= " AND p.id_planta = :plantaid";
             $params[':plantaid'] = (int)$filters['plantaid'];
         }
+
+        if (!empty($filters['id_proveedor'])) {
+            $query .= " AND p.id_proveedor = :id_proveedor";
+            $params[':id_proveedor'] = $filters['id_proveedor'];
+        }
         // --- FIN ADICIÓN ---
 
         $query .= " ORDER BY p.estatus_onboarding DESC, p.created_at DESC";
 
         return $this->select_all($query, $params) ?? [];
+    }
+
+    /**
+     * Obtiene la línea de tiempo de eventos relevantes para un proveedor.
+     * Filtra por el ID del proveedor en las tablas relacionadas.
+     */
+    public function getRecentActivity(int $supplierId, int $limit = 7): array
+    {
+        $query = "SELECT 
+                    accion as evento,
+                    comentario as detalle,
+                    created_at,
+                    nombre_tabla
+                  FROM log_audit
+                  WHERE 
+                    -- 1. Logs directos de su registro maestro
+                    (nombre_tabla = 'prv_cat_proveedores' AND resourceid = :id1)
+                    
+                    -- 2. Logs de sus Órdenes de Compra
+                    OR (nombre_tabla = 'com_ordenes_compra' AND resourceid IN (
+                        SELECT idcompra FROM com_ordenes_compra WHERE proveedorid = :id2
+                    ))
+                    
+                    -- 3. Logs de sus Facturas (CXP)
+                    OR (nombre_tabla = 'cxp_tra_facturas' AND resourceid IN (
+                        SELECT id FROM cxp_tra_facturas WHERE id_proveedor = :id3
+                    ))
+
+                    -- 4. Logs de su Expediente / Documentos
+                    OR (nombre_tabla = 'prv_det_expediente' AND resourceid IN (
+                        SELECT id_proveedor FROM prv_det_expediente WHERE id_proveedor = :id4
+                    ))
+                  ORDER BY created_at DESC
+                  LIMIT {$limit}";
+
+        $params = [
+            ':id1'   => $supplierId,
+            ':id2'   => $supplierId,
+            ':id3'   => $supplierId,
+            ':id4'   => $supplierId
+        ];
+
+        return $this->select_all($query, $params);
     }
 }
