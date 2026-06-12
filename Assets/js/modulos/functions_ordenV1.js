@@ -2,8 +2,10 @@ let payloadCriticosPendiente = null;
 let origenAccionProduccion = '';
 document.addEventListener('DOMContentLoaded', function () {
 
-  let timer = null;
-  let seconds = 0;
+let timer = null;
+let seconds = 0;
+let timerStartMs = 0;
+let timerNodeKey = '';
   let currentNode = null;
   let currentSelection = null;
   let MRP_STATE = JSON.parse(JSON.stringify(MRP_DATA || {}));
@@ -231,13 +233,28 @@ document.addEventListener('DOMContentLoaded', function () {
     if (tiempoUnidadGlobal) tiempoUnidadGlobal.textContent = t;
   }
 
-  function iniciarTimer() {
-    if (timer) return;
-    timer = setInterval(() => {
-      seconds++;
-      renderTime();
-    }, 1000);
+function iniciarTimer() {
+
+  if (timer) {
+    clearInterval(timer);
   }
+
+  timer = setInterval(() => {
+
+    if (!timerStartMs) {
+      seconds = 0;
+      renderTime();
+      return;
+    }
+
+    seconds = Math.floor(
+      (Date.now() - timerStartMs) / 1000
+    );
+
+    renderTime();
+
+  }, 1000);
+}
 
   function pausarTimer() {
     if (timer) {
@@ -246,11 +263,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  function reiniciarTimer() {
-    pausarTimer();
-    seconds = 0;
-    renderTime();
-  }
+function reiniciarTimer() {
+
+  pausarTimer();
+
+  timerStartMs = 0;
+  timerNodeKey = '';
+
+  seconds = 0;
+
+  renderTime();
+}
 
   function getStation(estIndex) {
     return (MRP_STATE?.estaciones || [])[estIndex] || null;
@@ -2044,19 +2067,110 @@ function validarPermisosProduccion() {
     return node.unidadRaw.fecha_inicio || null;
   }
 
-  function sincronizarTimerDesdeBD(node) {
-    const estado = Number(node?.unitStatus || 0);
+  function getNodeKey(node) {
 
-    if (estado === 2) {
-      seconds = getElapsedSeconds(getNodeStartDate(node));
-      renderTime();
-      iniciarTimer();
-    } else {
-      pausarTimer();
-      seconds = 0;
-      renderTime();
-    }
+  if (!node) return '';
+
+  if (node.type === 'subensamble') {
+
+    return 'SUB-' + (
+      node.idorden_subensamble ||
+      node.idordengeneral ||
+      0
+    );
   }
+
+  return 'EST-' + (
+    node.idorden ||
+    node.idordengeneral ||
+    0
+  );
+}
+
+function sincronizarTimerDesdeBD(node) {
+
+  if (!node) {
+
+    pausarTimer();
+
+    timerStartMs = 0;
+    timerNodeKey = '';
+
+    seconds = 0;
+
+    renderTime();
+
+    return;
+  }
+
+  const estado = Number(node.unitStatus || 0);
+
+  if (estado !== 2) {
+
+    pausarTimer();
+
+    timerStartMs = 0;
+    timerNodeKey = '';
+
+    seconds = 0;
+
+    renderTime();
+
+    return;
+  }
+
+  const fechaInicio = getNodeStartDate(node);
+
+  if (
+    !fechaInicio ||
+    fechaInicio === '0000-00-00 00:00:00'
+  ) {
+
+    pausarTimer();
+
+    timerStartMs = 0;
+
+    seconds = 0;
+
+    renderTime();
+
+    return;
+  }
+
+  const key = getNodeKey(node);
+
+  /*
+      IMPORTANTE
+      Si seguimos viendo exactamente
+      la misma estación/subensamble,
+      NO volver a reiniciar nada
+  */
+
+  if (timerNodeKey === key && timer) {
+
+    seconds = Math.floor(
+      (Date.now() - timerStartMs) / 1000
+    );
+
+    renderTime();
+
+    return;
+  }
+
+  timerNodeKey = key;
+
+  timerStartMs = new Date(
+    fechaInicio.replace(' ', 'T')
+  ).getTime();
+
+  seconds = Math.floor(
+    (Date.now() - timerStartMs) / 1000
+  );
+
+  renderTime();
+
+  iniciarTimer();
+}
 
 
   function badgeEstadoHtml(type, status, info = null, orden = null) {
@@ -2667,8 +2781,8 @@ function validarPermisosProduccion() {
         return;
       }
 
-      seconds = 0;
-      iniciarTimer();
+      // seconds = 0;
+      // iniciarTimer();
       swalSuccess(data.msg);
       await refrescarEstadoProduccion(true);
 
@@ -2709,9 +2823,9 @@ function validarPermisosProduccion() {
         return;
       }
 
-      pausarTimer();
-      seconds = 0;
-      renderTime();
+      // pausarTimer();
+      // seconds = 0;
+      // renderTime();
       swalSuccess(data.msg);
       await refrescarEstadoProduccion(true);
 
@@ -4362,7 +4476,7 @@ function cerrarModalBootstrap(idModal) {
 
 function inicializarBusquedaUsuariosOperacion() {
   document.querySelectorAll('.empleado-operacion-input').forEach(input => {
-    let timer = null;
+    // let timer = null;
 
     input.addEventListener('input', function () {
       clearTimeout(timer);
