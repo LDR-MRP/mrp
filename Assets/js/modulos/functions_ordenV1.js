@@ -278,73 +278,37 @@ let timerNodeKey = '';
 
 
 function formatTime(totalSeconds) {
+  totalSeconds = Math.max(0, Math.floor(Number(totalSeconds || 0)));
 
-  totalSeconds = Math.max(
-    0,
-    Math.floor(Number(totalSeconds || 0))
-  );
-
-  const mins = Math.floor(totalSeconds / 60)
-    .toString()
-    .padStart(2, '0');
-
-  const secs = (totalSeconds % 60)
-    .toString()
-    .padStart(2, '0');
+  const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+  const secs = (totalSeconds % 60).toString().padStart(2, '0');
 
   return `${mins}:${secs}`;
 }
 
 function renderTime() {
-
   const t = formatTime(seconds);
 
-  if (tiempoActualEstacion) {
-    tiempoActualEstacion.textContent = t;
-  }
-
-  if (tiempoUnidadGlobal) {
-    tiempoUnidadGlobal.textContent = t;
-  }
+  if (tiempoActualEstacion) tiempoActualEstacion.textContent = t;
+  if (tiempoUnidadGlobal) tiempoUnidadGlobal.textContent = t;
 }
 
-function parseFechaProduccion(fechaInicio) {
+function parseFechaProduccion(fecha) {
+  if (!fecha || fecha === '0000-00-00 00:00:00') return null;
 
-  if (
-    !fechaInicio ||
-    fechaInicio === '0000-00-00 00:00:00'
-  ) {
-    return null;
-  }
+  const partes = String(fecha).trim().replace('T', ' ').split(' ');
+  if (partes.length < 2) return null;
 
-  const partes = String(fechaInicio)
-    .trim()
-    .replace('T', ' ')
-    .split(' ');
-
-  if (partes.length < 2) {
-    return null;
-  }
-
-  const fecha = partes[0].split('-').map(Number);
-  const hora = partes[1].split(':').map(Number);
-
-  if (
-    fecha.length < 3 ||
-    hora.length < 2 ||
-    fecha.some(isNaN) ||
-    hora.some(isNaN)
-  ) {
-    return null;
-  }
+  const f = partes[0].split('-').map(Number);
+  const h = partes[1].split(':').map(Number);
 
   const date = new Date(
-    fecha[0],
-    fecha[1] - 1,
-    fecha[2],
-    hora[0],
-    hora[1],
-    hora[2] || 0
+    f[0],
+    f[1] - 1,
+    f[2],
+    h[0],
+    h[1],
+    h[2] || 0
   );
 
   const ms = date.getTime();
@@ -353,66 +317,64 @@ function parseFechaProduccion(fechaInicio) {
 }
 
 function getElapsedSeconds(fechaInicio) {
-
   const ms = parseFechaProduccion(fechaInicio);
 
   if (!ms) return 0;
 
-  return Math.max(
-    0,
-    Math.floor((Date.now() - ms) / 1000)
-  );
+  return Math.max(0, Math.floor((Date.now() - ms) / 1000));
 }
 
 function getNodeStartDate(node) {
-
   if (!node || !node.unidadRaw) return null;
 
   if (node.type === 'subensamble') {
-    return (
-      node.unidadRaw.fecha_inicio_real ||
-      node.unidadRaw.fecha_inicio ||
-      null
-    );
+    return node.unidadRaw.fecha_inicio_real || node.unidadRaw.fecha_inicio || null;
   }
 
-  return (
-    node.unidadRaw.fecha_inicio ||
-    node.unidadRaw.fecha_inicio_real ||
-    null
-  );
+  return node.unidadRaw.fecha_inicio || node.unidadRaw.fecha_inicio_real || null;
 }
 
 function obtenerNodoSeleccionadoActual() {
-
-  if (!currentSelection) return null;
+  if (!currentSelection) return currentNode || null;
 
   return getNodeData(
     currentSelection.type,
     currentSelection.estIndex,
     currentSelection.subIndex
-  );
+  ) || currentNode || null;
 }
 
 function pintarTiempoNodoSeleccionado() {
-
   const node = obtenerNodoSeleccionadoActual();
 
   if (!node || Number(node.unitStatus || 0) !== 2) {
+    timerStartMs = null;
     seconds = 0;
     renderTime();
     return;
   }
 
-  seconds = getElapsedSeconds(
-    getNodeStartDate(node)
+  const fechaMs = parseFechaProduccion(getNodeStartDate(node));
+
+  if (fechaMs) {
+    timerStartMs = fechaMs;
+  }
+
+  if (!timerStartMs) {
+    seconds = 0;
+    renderTime();
+    return;
+  }
+
+  seconds = Math.max(
+    0,
+    Math.floor((Date.now() - timerStartMs) / 1000)
   );
 
   renderTime();
 }
 
 function iniciarTimer() {
-
   if (timer) return;
 
   timer = setInterval(() => {
@@ -421,7 +383,6 @@ function iniciarTimer() {
 }
 
 function pausarTimer() {
-
   if (timer) {
     clearInterval(timer);
     timer = null;
@@ -429,36 +390,34 @@ function pausarTimer() {
 }
 
 function reiniciarTimer() {
-
+  timerStartMs = null;
   seconds = 0;
   renderTime();
 }
 
 function sincronizarTimerDesdeBD(node) {
+  currentNode = node;
 
   if (!node || Number(node.unitStatus || 0) !== 2) {
-    seconds = 0;
-    renderTime();
+    reiniciarTimer();
     iniciarTimer();
     return;
   }
 
-  seconds = getElapsedSeconds(
-    getNodeStartDate(node)
-  );
+  const fechaMs = parseFechaProduccion(getNodeStartDate(node));
 
-  renderTime();
+  timerStartMs = fechaMs || timerStartMs || Date.now();
+
+  pintarTiempoNodoSeleccionado();
   iniciarTimer();
 }
 
 function formatFechaLocalParaBD() {
-
   const d = new Date();
 
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
-
   const hh = String(d.getHours()).padStart(2, '0');
   const mi = String(d.getMinutes()).padStart(2, '0');
   const ss = String(d.getSeconds()).padStart(2, '0');
@@ -2942,7 +2901,7 @@ function validarPermisosProduccion() {
 
   }
 
- async function iniciarProcesoActual() {
+async function iniciarProcesoActual() {
   if (!currentNode) return;
 
   const info = validarVisualNodo(currentNode);
@@ -2957,18 +2916,13 @@ function validarPermisosProduccion() {
 
   if (currentNode.type === 'subensamble') {
     url = `${base_url}/plan_planeacionv1/iniciarSubensamble`;
-    payload = {
-      idorden_subensamble: currentNode.idorden_subensamble
-    };
+    payload = { idorden_subensamble: currentNode.idorden_subensamble };
   } else {
     url = `${base_url}/plan_planeacionv1/iniciarEstacion`;
-    payload = {
-      idorden: currentNode.idorden
-    };
+    payload = { idorden: currentNode.idorden };
   }
 
   try {
-
     btnIniciarUnidad.disabled = true;
 
     const data = await postJson(url, payload);
@@ -2993,6 +2947,8 @@ function validarPermisosProduccion() {
       }
     }
 
+    timerStartMs = parseFechaProduccion(getNodeStartDate(currentNode)) || Date.now();
+
     seconds = 0;
     renderTime();
     iniciarTimer();
@@ -3000,13 +2956,10 @@ function validarPermisosProduccion() {
     swalSuccess(data.msg);
 
     await refrescarEstadoProduccion(true);
-
     pintarTiempoNodoSeleccionado();
 
   } catch (err) {
-
     swalError(err.message);
-
     await refrescarEstadoProduccion(true);
   }
 }
