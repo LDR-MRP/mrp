@@ -226,11 +226,23 @@ let timerKeyActual = null;
 
   //END FUNCIOENS DE PARO
 
-  function formatTime(totalSeconds) {
-    const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-    const secs = (totalSeconds % 60).toString().padStart(2, '0');
-    return `${mins}:${secs}`;
-  }
+ function formatTime(totalSeconds) {
+
+  totalSeconds = Math.max(
+    0,
+    Math.floor(Number(totalSeconds || 0))
+  );
+
+  const mins = Math.floor(totalSeconds / 60)
+    .toString()
+    .padStart(2, '0');
+
+  const secs = (totalSeconds % 60)
+    .toString()
+    .padStart(2, '0');
+
+  return `${mins}:${secs}`;
+}
 
   function getTimerKey(node) {
 
@@ -254,23 +266,38 @@ function parseFechaToMs(fechaInicio) {
     return null;
   }
 
-  const partes = String(fechaInicio)
+  if (fechaInicio instanceof Date) {
+    const ms = fechaInicio.getTime();
+    return isNaN(ms) ? null : ms;
+  }
+
+  const valor = String(fechaInicio)
     .trim()
-    .replace('T', ' ')
-    .split(' ');
+    .replace('T', ' ');
 
-  if (partes.length !== 2) return null;
+  const partes = valor.split(' ');
 
-  const fecha = partes[0].split('-');
-  const hora = partes[1].split(':');
+  if (partes.length < 2) return null;
+
+  const fecha = partes[0].split('-').map(Number);
+  const hora = partes[1].split(':').map(Number);
+
+  if (
+    fecha.length < 3 ||
+    hora.length < 2 ||
+    fecha.some(isNaN) ||
+    hora.some(isNaN)
+  ) {
+    return null;
+  }
 
   const date = new Date(
-    Number(fecha[0]),
-    Number(fecha[1]) - 1,
-    Number(fecha[2]),
-    Number(hora[0]),
-    Number(hora[1]),
-    Number(hora[2] || 0)
+    fecha[0],
+    fecha[1] - 1,
+    fecha[2],
+    hora[0],
+    hora[1],
+    hora[2] || 0
   );
 
   const ms = date.getTime();
@@ -312,26 +339,26 @@ function iniciarTimer() {
 
   timer = setInterval(() => {
 
-    if (!timerKeyActual) return;
+    if (!timerKeyActual) {
+      seconds = 0;
+      renderTime();
+      return;
+    }
 
     const startMs = timersMap[timerKeyActual];
 
     if (!startMs) {
-
       seconds = 0;
       renderTime();
-
       return;
     }
 
-seconds = Math.max(
-  0,
-  Math.floor(
-    (Date.now() - startMs) / 1000
-  )
-);
+    seconds = Math.max(
+      0,
+      Math.floor((Date.now() - startMs) / 1000)
+    );
 
-renderTime();
+    renderTime();
 
   }, 1000);
 }
@@ -1298,7 +1325,8 @@ function reiniciarTimer() {
         unit: unidad?.num_sub_orden || 'SIN-UNIDAD',
         numbase: MRP_STATE?.num_orden || '',
         numorden: unidad?.num_sub_orden || '',
-        unitStatus: Number(unidad?.estado || 1),
+        // unitStatus: Number(unidad?.estado || 1),
+        unitStatus: unidad ? Number(unidad.estado || 1) : 0,
         supervisor: MRP_STATE?.supervisor || '-',
         model: MRP_STATE?.descripcion || '-',
         pedido: MRP_STATE?.num_pedido || '-',
@@ -2153,114 +2181,98 @@ function actualizarMapaTimers() {
 
   (MRP_STATE.estaciones || []).forEach((est, estIndex) => {
 
-    // estaciones
     (est.ordenes_trabajo || []).forEach(orden => {
 
-      if (Number(orden.estatus) === 2 && orden.fecha_inicio) {
+      const key = [
+        'estacion',
+        estIndex,
+        'x',
+        orden.idorden || 0,
+        orden.num_sub_orden || ''
+      ].join('|');
 
-        const key = [
-          'estacion',
-          estIndex,
-          'x',
-          orden.idorden,
-          orden.num_sub_orden
-        ].join('|');
+      if (Number(orden.estatus || 0) === 2) {
 
-        if (!timersMap[key]) {
+        const ms = parseFechaToMs(orden.fecha_inicio);
 
-          timersMap[key] =
-            parseFechaToMs(orden.fecha_inicio);
+        if (ms) {
+          timersMap[key] = ms;
         }
+
+      } else {
+        delete timersMap[key];
       }
     });
 
-    // subensambles
     (est.subensambles || []).forEach((sub, subIndex) => {
 
       (sub.ordenes_trabajo || []).forEach(orden => {
 
-        if (
-          Number(orden.estado) === 2 &&
-          orden.fecha_inicio_real
-        ) {
+        const key = [
+          'subensamble',
+          estIndex,
+          subIndex,
+          orden.idorden_subensamble || 0,
+          orden.num_sub_orden || ''
+        ].join('|');
 
-          const key = [
-            'subensamble',
-            estIndex,
-            subIndex,
-            orden.idorden_subensamble,
-            orden.num_sub_orden
-          ].join('|');
+        if (Number(orden.estado || 0) === 2) {
 
-          if (!timersMap[key]) {
+          const ms = parseFechaToMs(
+            orden.fecha_inicio_real ||
+            orden.fecha_inicio
+          );
 
-            timersMap[key] =
-              parseFechaToMs(orden.fecha_inicio_real);
+          if (ms) {
+            timersMap[key] = ms;
           }
+
+        } else {
+          delete timersMap[key];
         }
       });
-
     });
-
   });
-
 }
 
 function sincronizarTimerDesdeBD(node) {
 
   if (!node) {
-
+    timerKeyActual = null;
     seconds = 0;
     renderTime();
-
     return;
   }
 
   const estado = Number(node.unitStatus || 0);
-
   const key = getTimerKey(node);
 
   timerKeyActual = key;
 
-  // si no está trabajando mostrar 00:00
   if (estado !== 2) {
-
     seconds = 0;
-
     renderTime();
-
     return;
   }
 
-  const fechaInicio = getNodeStartDate(node);
+  const fechaMs = parseFechaToMs(
+    getNodeStartDate(node)
+  );
 
-  const fechaMs = parseFechaToMs(fechaInicio);
-
-  if (!fechaMs) {
-
-    seconds = 0;
-
-    renderTime();
-
-    return;
-  }
-
-  // guardar tiempo solamente la primera vez
-  if (!timersMap[key]) {
-
+  if (fechaMs) {
     timersMap[key] = fechaMs;
-
   }
 
-seconds = Math.max(
-  0,
-  Math.floor(
-    (Date.now() - timersMap[key]) / 1000
-  )
-);
+  if (!timersMap[key]) {
+    timersMap[key] = Date.now();
+  }
 
-renderTime();
+  seconds = Math.max(
+    0,
+    Math.floor((Date.now() - timersMap[key]) / 1000)
+  );
 
+  renderTime();
   iniciarTimer();
 }
 
@@ -2921,6 +2933,18 @@ function formatFechaLocalParaBD() {
 // renderTime();
 
 // iniciarTimer();
+
+const key = getTimerKey(currentNode);
+
+timerKeyActual = key;
+
+timersMap[key] = Date.now();
+
+seconds = 0;
+
+renderTime();
+
+iniciarTimer();
 
 
 
