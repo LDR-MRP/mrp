@@ -305,6 +305,7 @@ function renderTime() {
   }
 }
 
+
 function iniciarTimer() {
 
   if (timer) return;
@@ -323,11 +324,14 @@ function iniciarTimer() {
       return;
     }
 
-    seconds = Math.floor(
-      (Date.now() - startMs) / 1000
-    );
+seconds = Math.max(
+  0,
+  Math.floor(
+    (Date.now() - startMs) / 1000
+  )
+);
 
-    renderTime();
+renderTime();
 
   }, 1000);
 }
@@ -2248,11 +2252,14 @@ function sincronizarTimerDesdeBD(node) {
 
   }
 
-  seconds = Math.floor(
+seconds = Math.max(
+  0,
+  Math.floor(
     (Date.now() - timersMap[key]) / 1000
-  );
+  )
+);
 
-  renderTime();
+renderTime();
 
   iniciarTimer();
 }
@@ -3413,6 +3420,44 @@ renderTime();
     refrescarEstadoProduccion(true);
   }, 3000);
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
