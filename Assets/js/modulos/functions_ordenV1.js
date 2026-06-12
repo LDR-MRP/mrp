@@ -287,7 +287,10 @@ function formatTime(totalSeconds) {
 }
 
 function renderTime() {
+
   const t = formatTime(seconds);
+
+  console.log('PINTANDO TIEMPO:', t);
 
   document.querySelectorAll('#tiempoActualEstacion').forEach(el => {
     el.textContent = t;
@@ -360,10 +363,31 @@ function pintarTiempoNodoSeleccionado() {
 }
 
 function iniciarTimer() {
+
   if (timer) return;
 
   timer = setInterval(() => {
-    pintarTiempoNodoSeleccionado();
+
+    const node = currentSelection
+      ? getNodeData(
+          currentSelection.type,
+          currentSelection.estIndex,
+          currentSelection.subIndex
+        )
+      : currentNode;
+
+    debugTimerMRP('interval cada segundo', node);
+
+    if (!node || Number(node.unitStatus || 0) !== 2) {
+      seconds = 0;
+      renderTime();
+      return;
+    }
+
+    seconds = getElapsedSeconds(getNodeStartDate(node));
+
+    renderTime();
+
   }, 1000);
 }
 
@@ -379,10 +403,39 @@ function reiniciarTimer() {
   renderTime();
 }
 
+function debugTimerMRP(etiqueta, node = currentNode) {
+
+  const fecha = getNodeStartDate(node);
+  const segundos = getElapsedSeconds(fecha);
+
+  console.log('===== DEBUG TIMER MRP:', etiqueta, '=====');
+  console.log('node:', node);
+  console.log('type:', node?.type);
+  console.log('unitStatus:', node?.unitStatus);
+  console.log('unidadRaw:', node?.unidadRaw);
+  console.log('fecha usada:', fecha);
+  console.log('segundos calculados:', segundos);
+  console.log('tiempo formateado:', formatTime(segundos));
+  console.log('elementos tiempoUnidadGlobal:', document.querySelectorAll('#tiempoUnidadGlobal').length);
+  console.log('elementos tiempoActualEstacion:', document.querySelectorAll('#tiempoActualEstacion').length);
+}
+
 function sincronizarTimerDesdeBD(node) {
+
   currentNode = node;
 
-  pintarTiempoNodoSeleccionado();
+  debugTimerMRP('sincronizarTimerDesdeBD', node);
+
+  if (!node || Number(node.unitStatus || 0) !== 2) {
+    seconds = 0;
+    renderTime();
+    iniciarTimer();
+    return;
+  }
+
+  seconds = getElapsedSeconds(getNodeStartDate(node));
+
+  renderTime();
   iniciarTimer();
 }
 
