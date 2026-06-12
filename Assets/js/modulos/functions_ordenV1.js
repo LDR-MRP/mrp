@@ -289,28 +289,31 @@ function formatTime(totalSeconds) {
 function renderTime() {
   const t = formatTime(seconds);
 
-  if (tiempoActualEstacion) tiempoActualEstacion.textContent = t;
-  if (tiempoUnidadGlobal) tiempoUnidadGlobal.textContent = t;
+  document.querySelectorAll('#tiempoActualEstacion').forEach(el => {
+    el.textContent = t;
+  });
+
+  document.querySelectorAll('#tiempoUnidadGlobal').forEach(el => {
+    el.textContent = t;
+  });
 }
 
-function parseFechaProduccion(fecha) {
-  if (!fecha || fecha === '0000-00-00 00:00:00') return null;
+function parseFechaProduccion(fechaInicio) {
+  if (!fechaInicio || fechaInicio === '0000-00-00 00:00:00') {
+    return null;
+  }
 
-  const partes = String(fecha).trim().replace('T', ' ').split(' ');
+  const partes = String(fechaInicio).trim().replace('T', ' ').split(' ');
   if (partes.length < 2) return null;
 
   const f = partes[0].split('-').map(Number);
   const h = partes[1].split(':').map(Number);
 
-  const date = new Date(
-    f[0],
-    f[1] - 1,
-    f[2],
-    h[0],
-    h[1],
-    h[2] || 0
-  );
+  if (f.length < 3 || h.length < 2 || f.some(isNaN) || h.some(isNaN)) {
+    return null;
+  }
 
+  const date = new Date(f[0], f[1] - 1, f[2], h[0], h[1], h[2] || 0);
   const ms = date.getTime();
 
   return isNaN(ms) ? null : ms;
@@ -318,7 +321,6 @@ function parseFechaProduccion(fecha) {
 
 function getElapsedSeconds(fechaInicio) {
   const ms = parseFechaProduccion(fechaInicio);
-
   if (!ms) return 0;
 
   return Math.max(0, Math.floor((Date.now() - ms) / 1000));
@@ -348,29 +350,12 @@ function pintarTiempoNodoSeleccionado() {
   const node = obtenerNodoSeleccionadoActual();
 
   if (!node || Number(node.unitStatus || 0) !== 2) {
-    timerStartMs = null;
     seconds = 0;
     renderTime();
     return;
   }
 
-  const fechaMs = parseFechaProduccion(getNodeStartDate(node));
-
-  if (fechaMs) {
-    timerStartMs = fechaMs;
-  }
-
-  if (!timerStartMs) {
-    seconds = 0;
-    renderTime();
-    return;
-  }
-
-  seconds = Math.max(
-    0,
-    Math.floor((Date.now() - timerStartMs) / 1000)
-  );
-
+  seconds = getElapsedSeconds(getNodeStartDate(node));
   renderTime();
 }
 
@@ -390,23 +375,12 @@ function pausarTimer() {
 }
 
 function reiniciarTimer() {
-  timerStartMs = null;
   seconds = 0;
   renderTime();
 }
 
 function sincronizarTimerDesdeBD(node) {
   currentNode = node;
-
-  if (!node || Number(node.unitStatus || 0) !== 2) {
-    reiniciarTimer();
-    iniciarTimer();
-    return;
-  }
-
-  const fechaMs = parseFechaProduccion(getNodeStartDate(node));
-
-  timerStartMs = fechaMs || timerStartMs || Date.now();
 
   pintarTiempoNodoSeleccionado();
   iniciarTimer();
