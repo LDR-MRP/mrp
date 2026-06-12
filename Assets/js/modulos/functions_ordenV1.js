@@ -2158,30 +2158,61 @@ function sincronizarTimerDesdeBD(node) {
   const fechaInicio = getNodeStartDate(node);
   const fechaMs = parseFechaToMs(fechaInicio);
 
-  // Si el nodo seleccionado NO está trabajando,
-  // su tiempo debe mostrarse en 00:00
+  // Si no está trabajando
   if (estado !== 2) {
+
     reiniciarTimer();
+
     return;
   }
 
-  // Si está trabajando pero aún no trae fecha,
-  // no heredar tiempo de otro nodo
+  // Todavía no llega fecha desde BD
   if (!fechaMs) {
+
+    // Si es el mismo nodo y ya existe timer, NO tocar nada
+    if (
+      timerKey === key &&
+      timerStartMs
+    ) {
+      return;
+    }
+
     reiniciarTimer();
+
     return;
   }
 
-  // Aquí amarramos el cronómetro SOLO al nodo seleccionado
+  /*
+     IMPORTANTE:
+     Si ya estamos mostrando ese mismo nodo
+     NO volver a sincronizar porque
+     provoca que se reinicie.
+  */
+
+  if (
+    timerKey === key &&
+    timerStartMs
+  ) {
+
+    seconds = Math.floor(
+      (Date.now() - timerStartMs) / 1000
+    );
+
+    renderTime();
+
+    return;
+  }
+
+  // Solo cuando se cambia de estación o subensamble
   timerKey = key;
   timerStartMs = fechaMs;
 
-  seconds = Math.max(
-    0,
-    Math.floor((Date.now() - timerStartMs) / 1000)
+  seconds = Math.floor(
+    (Date.now() - timerStartMs) / 1000
   );
 
   renderTime();
+
   iniciarTimer();
 }
 
@@ -2831,12 +2862,16 @@ function formatFechaLocalParaBD() {
         }
       }
 
-      timerKey = getTimerKey(currentNode);
-      timerStartMs = Date.now();
-      seconds = 0;
+timerKey = getTimerKey(currentNode);
+timerStartMs = Date.now();
 
-      renderTime();
-      iniciarTimer();
+seconds = Math.floor(
+  (Date.now() - timerStartMs) / 1000
+);
+
+renderTime();
+
+iniciarTimer();
 
       swalSuccess(data.msg);
 
