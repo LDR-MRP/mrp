@@ -2862,16 +2862,18 @@ function formatFechaLocalParaBD() {
         }
       }
 
-timerKey = getTimerKey(currentNode);
-timerStartMs = Date.now();
+// timerKey = getTimerKey(currentNode);
+// timerStartMs = Date.now();
 
-seconds = Math.floor(
-  (Date.now() - timerStartMs) / 1000
-);
+// seconds = Math.floor(
+//   (Date.now() - timerStartMs) / 1000
+// );
 
-renderTime();
+// renderTime();
 
-iniciarTimer();
+// iniciarTimer();
+
+
 
       swalSuccess(data.msg);
 
