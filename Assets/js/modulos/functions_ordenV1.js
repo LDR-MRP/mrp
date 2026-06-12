@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   let timer = null;
   let seconds = 0;
+  let timerKey = null;
+  let timerStartMs = null;
   let currentNode = null;
   let currentSelection = null;
   let MRP_STATE = JSON.parse(JSON.stringify(MRP_DATA || {}));
@@ -225,32 +227,73 @@ document.addEventListener('DOMContentLoaded', function () {
     return `${mins}:${secs}`;
   }
 
-  function renderTime() {
-    const t = formatTime(seconds);
-    if (tiempoActualEstacion) tiempoActualEstacion.textContent = t;
-    if (tiempoUnidadGlobal) tiempoUnidadGlobal.textContent = t;
+
+  function getTimerKey(node) {
+
+  if (!node) return '';
+
+  return [
+    node.type || '',
+    node.estIndex ?? '',
+    node.subIndex ?? 'x',
+    node.idordengeneral || 0,
+    node.unit || ''
+  ].join('|');
+}
+
+function renderTime() {
+  const t = formatTime(seconds);
+
+  if (tiempoActualEstacion) {
+    tiempoActualEstacion.textContent = t;
   }
 
-  function iniciarTimer() {
-    if (timer) return;
-    timer = setInterval(() => {
-      seconds++;
+  if (tiempoUnidadGlobal) {
+    tiempoUnidadGlobal.textContent = t;
+  }
+}
+
+function iniciarTimer() {
+
+  if (timer) return;
+
+  timer = setInterval(() => {
+
+    if (!timerStartMs) {
+      pausarTimer();
+      seconds = 0;
       renderTime();
-    }, 1000);
-  }
-
-  function pausarTimer() {
-    if (timer) {
-      clearInterval(timer);
-      timer = null;
+      return;
     }
-  }
 
-  function reiniciarTimer() {
-    pausarTimer();
-    seconds = 0;
+    seconds = Math.max(
+      0,
+      Math.floor((Date.now() - timerStartMs) / 1000)
+    );
+
     renderTime();
+
+  }, 1000);
+}
+
+function pausarTimer() {
+
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
   }
+}
+
+function reiniciarTimer() {
+
+  pausarTimer();
+
+  timerKey = null;
+  timerStartMs = null;
+  seconds = 0;
+
+  renderTime();
+}
 
   function getStation(estIndex) {
     return (MRP_STATE?.estaciones || [])[estIndex] || null;
@@ -2022,41 +2065,110 @@ function validarPermisosProduccion() {
   }
 
 
-  function getElapsedSeconds(fechaInicio) {
-    if (!fechaInicio || fechaInicio === '0000-00-00 00:00:00') return 0;
+  function parseFechaToMs(fechaInicio) {
 
-    const normalized = String(fechaInicio).replace(' ', 'T');
-    const start = new Date(normalized);
-
-    if (isNaN(start.getTime())) return 0;
-
-    const now = new Date();
-    return Math.max(0, Math.floor((now.getTime() - start.getTime()) / 1000));
+  if (
+    !fechaInicio ||
+    fechaInicio === '0000-00-00 00:00:00'
+  ) {
+    return null;
   }
 
-  function getNodeStartDate(node) {
-    if (!node || !node.unidadRaw) return null;
+  const partes = String(fechaInicio)
+    .trim()
+    .replace('T', ' ')
+    .split(' ');
 
-    if (node.type === 'subensamble') {
-      return node.unidadRaw.fecha_inicio_real || null;
-    }
-
-    return node.unidadRaw.fecha_inicio || null;
+  if (partes.length !== 2) {
+    return null;
   }
 
-  function sincronizarTimerDesdeBD(node) {
-    const estado = Number(node?.unitStatus || 0);
+  const fecha = partes[0].split('-');
+  const hora = partes[1].split(':');
 
-    if (estado === 2) {
-      seconds = getElapsedSeconds(getNodeStartDate(node));
-      renderTime();
-      iniciarTimer();
+  const date = new Date(
+    Number(fecha[0]),
+    Number(fecha[1]) - 1,
+    Number(fecha[2]),
+    Number(hora[0]),
+    Number(hora[1]),
+    Number(hora[2] || 0)
+  );
+
+  const ms = date.getTime();
+
+  return isNaN(ms) ? null : ms;
+}
+
+
+
+ function getElapsedSeconds(fechaInicio) {
+
+  const ms = parseFechaToMs(fechaInicio);
+
+  if (!ms) return 0;
+
+  return Math.max(
+    0,
+    Math.floor((Date.now() - ms) / 1000)
+  );
+}
+
+ function getNodeStartDate(node) {
+
+  if (!node || !node.unidadRaw) return null;
+
+  if (node.type === 'subensamble') {
+    return node.unidadRaw.fecha_inicio_real || null;
+  }
+
+  return node.unidadRaw.fecha_inicio || null;
+}
+
+function sincronizarTimerDesdeBD(node) {
+
+  const estado = Number(node?.unitStatus || 0);
+  const key = getTimerKey(node);
+  const fechaInicio = getNodeStartDate(node);
+  const fechaInicioMs = parseFechaToMs(fechaInicio);
+
+  if (estado !== 2) {
+
+    if (timerKey === key) {
+      reiniciarTimer();
     } else {
-      pausarTimer();
       seconds = 0;
       renderTime();
     }
+
+    return;
   }
+
+  if (!fechaInicioMs) {
+
+    if (timerKey === key && timerStartMs) {
+      iniciarTimer();
+      return;
+    }
+
+    seconds = 0;
+    renderTime();
+    return;
+  }
+
+  if (timerKey !== key) {
+    timerKey = key;
+    timerStartMs = fechaInicioMs;
+  }
+
+  seconds = Math.max(
+    0,
+    Math.floor((Date.now() - timerStartMs) / 1000)
+  );
+
+  renderTime();
+  iniciarTimer();
+}
 
 
   function badgeEstadoHtml(type, status, info = null, orden = null) {
@@ -2636,90 +2748,145 @@ function validarPermisosProduccion() {
 
   }
 
-  async function iniciarProcesoActual() {
-    if (!currentNode) return;
 
-    const info = validarVisualNodo(currentNode);
-    if (!info.canStart) {
-      swalError(info.texto);
+  function formatFechaLocalParaBD() {
+
+  const d = new Date();
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+}
+
+async function iniciarProcesoActual() {
+
+  if (!currentNode) return;
+
+  const info = validarVisualNodo(currentNode);
+
+  if (!info.canStart) {
+    swalError(info.texto);
+    return;
+  }
+
+  let url = '';
+  let payload = {};
+
+  if (currentNode.type === 'subensamble') {
+    url = `${base_url}/plan_planeacionv1/iniciarSubensamble`;
+    payload = {
+      idorden_subensamble: currentNode.idorden_subensamble
+    };
+  } else {
+    url = `${base_url}/plan_planeacionv1/iniciarEstacion`;
+    payload = {
+      idorden: currentNode.idorden
+    };
+  }
+
+  try {
+
+    btnIniciarUnidad.disabled = true;
+
+    const data = await postJson(url, payload);
+
+    if (!data.status) {
+      swalError(data.msg);
+      await refrescarEstadoProduccion(true);
       return;
     }
 
-    let url = '';
-    let payload = {};
+    currentNode.unitStatus = 2;
 
-    if (currentNode.type === 'subensamble') {
-      url = `${base_url}/plan_planeacionv1/iniciarSubensamble`;
-      payload = { idorden_subensamble: currentNode.idorden_subensamble };
-    } else {
-      url = `${base_url}/plan_planeacionv1/iniciarEstacion`;
-      payload = { idorden: currentNode.idorden };
-    }
-
-    try {
-      btnIniciarUnidad.disabled = true;
-
-      const data = await postJson(url, payload);
-
-      if (!data.status) {
-        swalError(data.msg);
-        await refrescarEstadoProduccion(true);
-        return;
+    if (currentNode.unidadRaw) {
+      if (currentNode.type === 'subensamble') {
+        currentNode.unidadRaw.estado = 2;
+        currentNode.unidadRaw.fecha_inicio_real =
+          currentNode.unidadRaw.fecha_inicio_real || formatFechaLocalParaBD();
+      } else {
+        currentNode.unidadRaw.estatus = 2;
+        currentNode.unidadRaw.fecha_inicio =
+          currentNode.unidadRaw.fecha_inicio || formatFechaLocalParaBD();
       }
-
-      seconds = 0;
-      iniciarTimer();
-      swalSuccess(data.msg);
-      await refrescarEstadoProduccion(true);
-
-    } catch (err) {
-      swalError(err.message);
-      await refrescarEstadoProduccion(true);
     }
+
+    timerKey = getTimerKey(currentNode);
+    timerStartMs = Date.now();
+    seconds = 0;
+
+    renderTime();
+    iniciarTimer();
+
+    swalSuccess(data.msg);
+
+    await refrescarEstadoProduccion(true);
+
+  } catch (err) {
+
+    swalError(err.message);
+
+    await refrescarEstadoProduccion(true);
+  }
+}
+
+async function finalizarProcesoActual() {
+
+  if (!currentNode) return;
+
+  const info = validarVisualNodo(currentNode);
+
+  if (!info.canFinish) {
+    swalError('No hay una unidad en proceso para finalizar.');
+    return;
   }
 
-  async function finalizarProcesoActual() {
-    if (!currentNode) return;
+  let url = '';
+  let payload = {};
 
-    const info = validarVisualNodo(currentNode);
-    if (!info.canFinish) {
-      swalError('No hay una unidad en proceso para finalizar.');
+  if (currentNode.type === 'subensamble') {
+    url = `${base_url}/plan_planeacionv1/finalizarSubensamble`;
+    payload = {
+      idorden_subensamble: currentNode.idorden_subensamble
+    };
+  } else {
+    url = `${base_url}/plan_planeacionv1/finalizarEstacion`;
+    payload = {
+      idorden: currentNode.idorden,
+      inventarioid: currentNode.inventarioid
+    };
+  }
+
+  try {
+
+    btnFinalizarUnidad.disabled = true;
+
+    const data = await postJson(url, payload);
+
+    if (!data.status) {
+      swalError(data.msg);
+      await refrescarEstadoProduccion(true);
       return;
     }
 
-    let url = '';
-    let payload = {};
+    reiniciarTimer();
 
-    if (currentNode.type === 'subensamble') {
-      url = `${base_url}/plan_planeacionv1/finalizarSubensamble`;
-      payload = { idorden_subensamble: currentNode.idorden_subensamble };
-    } else {
-      url = `${base_url}/plan_planeacionv1/finalizarEstacion`;
-      payload = { idorden: currentNode.idorden, inventarioid: currentNode.inventarioid };
-    }
+    swalSuccess(data.msg);
 
-    try {
-      btnFinalizarUnidad.disabled = true;
+    await refrescarEstadoProduccion(true);
 
-      const data = await postJson(url, payload);
+  } catch (err) {
 
-      if (!data.status) {
-        swalError(data.msg);
-        await refrescarEstadoProduccion(true);
-        return;
-      }
+    swalError(err.message);
 
-      pausarTimer();
-      seconds = 0;
-      renderTime();
-      swalSuccess(data.msg);
-      await refrescarEstadoProduccion(true);
-
-    } catch (err) {
-      swalError(err.message);
-      await refrescarEstadoProduccion(true);
-    }
+    await refrescarEstadoProduccion(true);
   }
+}
 
   document.querySelectorAll('.js-selectable-node').forEach(nodeEl => {
     nodeEl.addEventListener('click', function (e) {
