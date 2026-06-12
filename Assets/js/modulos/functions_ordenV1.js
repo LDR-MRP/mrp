@@ -4,9 +4,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
   let timer = null;
-  let seconds = 0;
-  let timerKey = null;
-  let timerStartMs = null;
+let seconds = 0;
+
+// almacena los tiempos de todas las estaciones y subensambles
+let timersMap = {};
+
+// nodo actualmente visualizado
+let timerKeyActual = null;
   let currentNode = null;
   let currentSelection = null;
   let MRP_STATE = JSON.parse(JSON.stringify(MRP_DATA || {}));
@@ -301,39 +305,32 @@ function renderTime() {
   }
 }
 
- function iniciarTimer() {
+function iniciarTimer() {
 
   if (timer) return;
 
   timer = setInterval(() => {
 
-    if (!currentNode) {
-      reiniciarTimer();
+    if (!timerKeyActual) return;
+
+    const startMs = timersMap[timerKeyActual];
+
+    if (!startMs) {
+
+      seconds = 0;
+      renderTime();
+
       return;
     }
 
-    const currentKey = getTimerKey(currentNode);
-
-    if (
-      !timerKey ||
-      !timerStartMs ||
-      currentKey !== timerKey ||
-      Number(currentNode.unitStatus || 0) !== 2
-    ) {
-      reiniciarTimer();
-      return;
-    }
-
-    seconds = Math.max(
-      0,
-      Math.floor((Date.now() - timerStartMs) / 1000)
+    seconds = Math.floor(
+      (Date.now() - startMs) / 1000
     );
 
     renderTime();
 
   }, 1000);
 }
-
 
 function pausarTimer() {
 
@@ -345,10 +342,6 @@ function pausarTimer() {
 
 function reiniciarTimer() {
 
-  pausarTimer();
-
-  timerKey = null;
-  timerStartMs = null;
   seconds = 0;
 
   renderTime();
@@ -2151,64 +2144,112 @@ function getNodeStartDate(node) {
   return node.unidadRaw.fecha_inicio || null;
 }
 
+
+function actualizarMapaTimers() {
+
+  (MRP_STATE.estaciones || []).forEach((est, estIndex) => {
+
+    // estaciones
+    (est.ordenes_trabajo || []).forEach(orden => {
+
+      if (Number(orden.estatus) === 2 && orden.fecha_inicio) {
+
+        const key = [
+          'estacion',
+          estIndex,
+          'x',
+          orden.idorden,
+          orden.num_sub_orden
+        ].join('|');
+
+        if (!timersMap[key]) {
+
+          timersMap[key] =
+            parseFechaToMs(orden.fecha_inicio);
+        }
+      }
+    });
+
+    // subensambles
+    (est.subensambles || []).forEach((sub, subIndex) => {
+
+      (sub.ordenes_trabajo || []).forEach(orden => {
+
+        if (
+          Number(orden.estado) === 2 &&
+          orden.fecha_inicio_real
+        ) {
+
+          const key = [
+            'subensamble',
+            estIndex,
+            subIndex,
+            orden.idorden_subensamble,
+            orden.num_sub_orden
+          ].join('|');
+
+          if (!timersMap[key]) {
+
+            timersMap[key] =
+              parseFechaToMs(orden.fecha_inicio_real);
+          }
+        }
+      });
+
+    });
+
+  });
+
+}
+
 function sincronizarTimerDesdeBD(node) {
 
-  const estado = Number(node?.unitStatus || 0);
-  const key = getTimerKey(node);
-  const fechaInicio = getNodeStartDate(node);
-  const fechaMs = parseFechaToMs(fechaInicio);
+  if (!node) {
 
-  // Si no está trabajando
+    seconds = 0;
+    renderTime();
+
+    return;
+  }
+
+  const estado = Number(node.unitStatus || 0);
+
+  const key = getTimerKey(node);
+
+  timerKeyActual = key;
+
+  // si no está trabajando mostrar 00:00
   if (estado !== 2) {
 
-    reiniciarTimer();
-
-    return;
-  }
-
-  // Todavía no llega fecha desde BD
-  if (!fechaMs) {
-
-    // Si es el mismo nodo y ya existe timer, NO tocar nada
-    if (
-      timerKey === key &&
-      timerStartMs
-    ) {
-      return;
-    }
-
-    reiniciarTimer();
-
-    return;
-  }
-
-  /*
-     IMPORTANTE:
-     Si ya estamos mostrando ese mismo nodo
-     NO volver a sincronizar porque
-     provoca que se reinicie.
-  */
-
-  if (
-    timerKey === key &&
-    timerStartMs
-  ) {
-
-    seconds = Math.floor(
-      (Date.now() - timerStartMs) / 1000
-    );
+    seconds = 0;
 
     renderTime();
 
     return;
   }
 
-  // Solo cuando se cambia de estación o subensamble
-  timerKey = key;
-  timerStartMs = fechaMs;
+  const fechaInicio = getNodeStartDate(node);
+
+  const fechaMs = parseFechaToMs(fechaInicio);
+
+  if (!fechaMs) {
+
+    seconds = 0;
+
+    renderTime();
+
+    return;
+  }
+
+  // guardar tiempo solamente la primera vez
+  if (!timersMap[key]) {
+
+    timersMap[key] = fechaMs;
+
+  }
 
   seconds = Math.floor(
-    (Date.now() - timerStartMs) / 1000
+    (Date.now() - timersMap[key]) / 1000
   );
 
   renderTime();
@@ -2764,6 +2805,7 @@ function sincronizarTimerDesdeBD(node) {
       if (!data.status || !data.data) return;
 
       MRP_STATE = data.data;
+      actualizarMapaTimers();
       validarBotonesProduccion();
       aplicarFiltroVisualUsuario();
       ordenarSubensamblesArriba();
@@ -2926,7 +2968,13 @@ function formatFechaLocalParaBD() {
         return;
       }
 
-      reiniciarTimer();
+      // reiniciarTimer();
+
+      delete timersMap[getTimerKey(currentNode)];
+
+seconds = 0;
+
+renderTime();
 
       swalSuccess(data.msg);
 

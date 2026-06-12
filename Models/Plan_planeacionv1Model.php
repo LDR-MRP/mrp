@@ -6273,7 +6273,7 @@ class Plan_planeacionv1Model extends Mysql
           $almacenid,
           $numero_movimiento,
           $CONCEPMOVID,
-          $subot,
+          $numero_movimiento,
           1,
           0,
           0,
