@@ -1,24 +1,24 @@
 <?php
-//const BASE_URL = "http://mrp.com";
-const BASE_URL ="http://pruebasmrp.ldrhumanresources.com";
+const BASE_URL = "http://localhost/mrp-ldr";
+//const BASE_URL ="http://pruebasmrp.ldrhumanresources.com";
 //Zona horaria
 date_default_timezone_set('America/Mexico_City');
 
 
 //Datos de conexión a Base de Datos
-// const DB_HOST = "localhost";
-// const DB_NAME = "db_mrp";
-// const DB_USER = "root";
-// const DB_PASSWORD = "";
-// const DB_CHARSET = "utf8";
+ const DB_HOST = "localhost";
+ const DB_NAME = "mrp";
+ const DB_USER = "root";
+ const DB_PASSWORD = "";
+ const DB_CHARSET = "utf8";
 
 
 
-const DB_HOST = "localhost";
-const DB_NAME = "u546825723_dbmrp";
-const DB_USER = "u546825723_mrpuser";
-const DB_PASSWORD = "L=9xlH6~e";
-const DB_CHARSET = "utf8";
+//const DB_HOST = "localhost";
+//const DB_NAME = "u546825723_dbmrp";
+//const DB_USER = "u546825723_mrpuser";
+//const DB_PASSWORD = "L=9xlH6~e";
+//const DB_CHARSET = "utf8";
 
 //Configuración Email local
 const ENVIRONMENT = 0;
@@ -121,9 +121,7 @@ const MCLI_TIPOS_CLIENTES = 46;
 const COM_COMPRAS = 50;
 const COM_REQUISICIONES = 51;
 const COM_ORDENES = 52;
-//-----------------------------
 const PRV_PROVEEDORES = 53;
-
 
 const PERROR = 9;
 
@@ -131,11 +129,6 @@ const PERROR = 9;
 const RADMINISTRADOR = 1;
 const RPLANIFICADORPRODUCCION = 2;
 const RANALISTAMATERIALES = 3;
-const COMPRAS_JEFE_DEPARTAMENTO = 50;
-const COMPRAS_SOLICITANTE  = 51;
-const COMPRAS_COMPRADOR = 52;
-const COMPRAS_GERENTE = 53;
-const COMPRAS_ADMINISTRADOR = 54;
 
 
 const STATUS = array('Completo', 'Aprobado', 'Cancelado', 'Reembolsado', 'Pendiente', 'Entregado');

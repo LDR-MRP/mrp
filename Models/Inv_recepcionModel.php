@@ -6,6 +6,7 @@ class Inv_recepcionModel extends Mysql
         parent::__construct();
     }
 
+
     public function selectOrdenesCompraPendientes()
     {
         $sql = "SELECT 
@@ -152,9 +153,12 @@ class Inv_recepcionModel extends Mysql
                 r.estatus,
                 IFNULL(p.razon_social, 'Sin proveedor') AS proveedor
             FROM com_ordenes_compra oc
-            LEFT JOIN prv_cat_proveedores p ON p.id_proveedor = oc.proveedorid
-            INNER JOIN wms_recepcion r ON r.compraid = oc.idcompra
+            LEFT JOIN prv_cat_proveedores p 
+                ON p.id_proveedor = oc.proveedorid
+            INNER JOIN wms_recepcion r 
+                ON r.compraid = oc.idcompra
             WHERE r.estatus = 'cerrada'
+            AND oc.estatus = 'cerrada'
             AND oc.deleted_at IS NULL
             ORDER BY r.updated_at DESC";
 
@@ -162,34 +166,40 @@ class Inv_recepcionModel extends Mysql
     }
 
     public function selectOrdenesAbiertas()
-{
-    $sql = "SELECT 
+    {
+        $sql = "SELECT 
                 oc.idcompra,
                 CONCAT('OC-', oc.idcompra) AS folio,
                 IFNULL(p.razon_social, 'Sin proveedor') AS proveedor
             FROM com_ordenes_compra oc
-            LEFT JOIN prv_cat_proveedores p ON p.id_proveedor = oc.proveedorid
-            LEFT JOIN wms_recepcion r ON r.compraid = oc.idcompra
+            LEFT JOIN prv_cat_proveedores p 
+                ON p.id_proveedor = oc.proveedorid
+            LEFT JOIN wms_recepcion r 
+                ON r.compraid = oc.idcompra
             WHERE oc.deleted_at IS NULL
+            AND oc.estatus = 'cerrada'
             AND (r.estatus IS NULL OR r.estatus = 'abierta')
             ORDER BY oc.created_at DESC";
 
-    return $this->select_all($sql);
-}
+        return $this->select_all($sql);
+    }
 
-public function selectOrdenesParciales()
-{
-    $sql = "SELECT 
+    public function selectOrdenesParciales()
+    {
+        $sql = "SELECT 
                 oc.idcompra,
                 CONCAT('OC-', oc.idcompra) AS folio,
                 IFNULL(p.razon_social, 'Sin proveedor') AS proveedor
             FROM com_ordenes_compra oc
-            LEFT JOIN prv_cat_proveedores p ON p.id_proveedor = oc.proveedorid
-            INNER JOIN wms_recepcion r ON r.compraid = oc.idcompra
+            LEFT JOIN prv_cat_proveedores p 
+                ON p.id_proveedor = oc.proveedorid
+            INNER JOIN wms_recepcion r 
+                ON r.compraid = oc.idcompra
             WHERE r.estatus = 'parcial'
+            AND oc.estatus = 'cerrada'
             AND oc.deleted_at IS NULL
             ORDER BY r.updated_at DESC";
 
-    return $this->select_all($sql);
-}
+        return $this->select_all($sql);
+    }
 }
