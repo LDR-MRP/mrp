@@ -2,8 +2,11 @@ let payloadCriticosPendiente = null;
 let origenAccionProduccion = '';
 document.addEventListener('DOMContentLoaded', function () {
 
+
   let timer = null;
   let seconds = 0;
+  let timerKey = null;
+  let timerStartMs = null;
   let currentNode = null;
   let currentSelection = null;
   let MRP_STATE = JSON.parse(JSON.stringify(MRP_DATA || {}));
@@ -225,32 +228,131 @@ document.addEventListener('DOMContentLoaded', function () {
     return `${mins}:${secs}`;
   }
 
-  function renderTime() {
-    const t = formatTime(seconds);
-    if (tiempoActualEstacion) tiempoActualEstacion.textContent = t;
-    if (tiempoUnidadGlobal) tiempoUnidadGlobal.textContent = t;
+  function getTimerKey(node) {
+
+  if (!node) return '';
+
+  return [
+    node.type || '',
+    node.estIndex ?? '',
+    node.subIndex ?? 'x',
+    node.idordengeneral || 0,
+    node.unit || ''
+  ].join('|');
+}
+
+function parseFechaToMs(fechaInicio) {
+
+  if (
+    !fechaInicio ||
+    fechaInicio === '0000-00-00 00:00:00'
+  ) {
+    return null;
   }
 
-  function iniciarTimer() {
-    if (timer) return;
-    timer = setInterval(() => {
-      seconds++;
-      renderTime();
-    }, 1000);
+  const partes = String(fechaInicio)
+    .trim()
+    .replace('T', ' ')
+    .split(' ');
+
+  if (partes.length !== 2) return null;
+
+  const fecha = partes[0].split('-');
+  const hora = partes[1].split(':');
+
+  const date = new Date(
+    Number(fecha[0]),
+    Number(fecha[1]) - 1,
+    Number(fecha[2]),
+    Number(hora[0]),
+    Number(hora[1]),
+    Number(hora[2] || 0)
+  );
+
+  const ms = date.getTime();
+
+  return isNaN(ms) ? null : ms;
+}
+
+
+  // function getTimerKey(node) {
+
+  //   if (!node) return '';
+
+  //   return [
+  //     node.type || '',
+  //     node.estIndex ?? '',
+  //     node.subIndex ?? 'x',
+  //     node.idordengeneral || 0,
+  //     node.unit || ''
+  //   ].join('|');
+  // }
+
+function renderTime() {
+
+  const t = formatTime(seconds);
+
+  if (tiempoActualEstacion) {
+    tiempoActualEstacion.textContent = t;
   }
 
-  function pausarTimer() {
-    if (timer) {
-      clearInterval(timer);
-      timer = null;
+  if (tiempoUnidadGlobal) {
+    tiempoUnidadGlobal.textContent = t;
+  }
+}
+
+ function iniciarTimer() {
+
+  if (timer) return;
+
+  timer = setInterval(() => {
+
+    if (!currentNode) {
+      reiniciarTimer();
+      return;
     }
-  }
 
-  function reiniciarTimer() {
-    pausarTimer();
-    seconds = 0;
+    const currentKey = getTimerKey(currentNode);
+
+    if (
+      !timerKey ||
+      !timerStartMs ||
+      currentKey !== timerKey ||
+      Number(currentNode.unitStatus || 0) !== 2
+    ) {
+      reiniciarTimer();
+      return;
+    }
+
+    seconds = Math.max(
+      0,
+      Math.floor((Date.now() - timerStartMs) / 1000)
+    );
+
     renderTime();
+
+  }, 1000);
+}
+
+
+function pausarTimer() {
+
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
   }
+}
+
+function reiniciarTimer() {
+
+  pausarTimer();
+
+  timerKey = null;
+  timerStartMs = null;
+  seconds = 0;
+
+  renderTime();
+}
 
   function getStation(estIndex) {
     return (MRP_STATE?.estaciones || [])[estIndex] || null;
@@ -309,24 +411,24 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-function validarPermisosProduccion() {
+  function validarPermisosProduccion() {
 
-  const esCalidad = esUsuarioCalidad();
+    const esCalidad = esUsuarioCalidad();
 
-  [
-    btnIniciarUnidad,
-    btnFinalizarUnidad,
-    btnPausarUnidad
-  ].forEach(btn => {
+    [
+      btnIniciarUnidad,
+      btnFinalizarUnidad,
+      btnPausarUnidad
+    ].forEach(btn => {
 
-    if (!btn) return;
+      if (!btn) return;
 
-    btn.style.display = esCalidad ? 'none' : '';
-  });
+      btn.style.display = esCalidad ? 'none' : '';
+    });
 
 
-  validarBotonesProduccion();
-}
+    validarBotonesProduccion();
+  }
 
 
   function usuarioAsignadoEstacion(estacion) {
@@ -2022,41 +2124,66 @@ function validarPermisosProduccion() {
   }
 
 
-  function getElapsedSeconds(fechaInicio) {
-    if (!fechaInicio || fechaInicio === '0000-00-00 00:00:00') return 0;
 
-    const normalized = String(fechaInicio).replace(' ', 'T');
-    const start = new Date(normalized);
 
-    if (isNaN(start.getTime())) return 0;
 
-    const now = new Date();
-    return Math.max(0, Math.floor((now.getTime() - start.getTime()) / 1000));
+
+function getElapsedSeconds(fechaInicio) {
+
+  const ms = parseFechaToMs(fechaInicio);
+
+  if (!ms) return 0;
+
+  return Math.max(
+    0,
+    Math.floor((Date.now() - ms) / 1000)
+  );
+}
+
+function getNodeStartDate(node) {
+
+  if (!node || !node.unidadRaw) return null;
+
+  if (node.type === 'subensamble') {
+    return node.unidadRaw.fecha_inicio_real || null;
   }
 
-  function getNodeStartDate(node) {
-    if (!node || !node.unidadRaw) return null;
+  return node.unidadRaw.fecha_inicio || null;
+}
 
-    if (node.type === 'subensamble') {
-      return node.unidadRaw.fecha_inicio_real || null;
-    }
+function sincronizarTimerDesdeBD(node) {
 
-    return node.unidadRaw.fecha_inicio || null;
+  const estado = Number(node?.unitStatus || 0);
+  const key = getTimerKey(node);
+  const fechaInicio = getNodeStartDate(node);
+  const fechaMs = parseFechaToMs(fechaInicio);
+
+  // Si el nodo seleccionado NO está trabajando,
+  // su tiempo debe mostrarse en 00:00
+  if (estado !== 2) {
+    reiniciarTimer();
+    return;
   }
 
-  function sincronizarTimerDesdeBD(node) {
-    const estado = Number(node?.unitStatus || 0);
-
-    if (estado === 2) {
-      seconds = getElapsedSeconds(getNodeStartDate(node));
-      renderTime();
-      iniciarTimer();
-    } else {
-      pausarTimer();
-      seconds = 0;
-      renderTime();
-    }
+  // Si está trabajando pero aún no trae fecha,
+  // no heredar tiempo de otro nodo
+  if (!fechaMs) {
+    reiniciarTimer();
+    return;
   }
+
+  // Aquí amarramos el cronómetro SOLO al nodo seleccionado
+  timerKey = key;
+  timerStartMs = fechaMs;
+
+  seconds = Math.max(
+    0,
+    Math.floor((Date.now() - timerStartMs) / 1000)
+  );
+
+  renderTime();
+  iniciarTimer();
+}
 
 
   function badgeEstadoHtml(type, status, info = null, orden = null) {
@@ -2191,53 +2318,53 @@ function validarPermisosProduccion() {
       puedeFinalizar ? '' : 'none';
   }
 
- function validarBotonesProduccion() {
+  function validarBotonesProduccion() {
 
-  if (!btnIniciarProduccion || !btnFinalizarProduccion) {
-    return;
-  }
+    if (!btnIniciarProduccion || !btnFinalizarProduccion) {
+      return;
+    }
 
-  const supervisorId = Number(MRP_STATE?.supervisorid || 0);
-  const currentUserId = Number(window.CURRENT_USER_ID || 0);
-  const currentRolId = Number(window.CURRENT_ROL_ID || 0);
+    const supervisorId = Number(MRP_STATE?.supervisorid || 0);
+    const currentUserId = Number(window.CURRENT_USER_ID || 0);
+    const currentRolId = Number(window.CURRENT_ROL_ID || 0);
 
-  const esSupervisor = currentUserId === supervisorId;
-  const esAdmin = currentRolId === 1;
+    const esSupervisor = currentUserId === supervisorId;
+    const esAdmin = currentRolId === 1;
 
-  const tienePermiso = esSupervisor || esAdmin;
+    const tienePermiso = esSupervisor || esAdmin;
 
-  if (!tienePermiso) {
+    if (!tienePermiso) {
+      btnIniciarProduccion.style.display = 'none';
+      btnFinalizarProduccion.style.display = 'none';
+      return;
+    }
+
+    const fase = Number(MRP_STATE?.fase || 0);
+
+    // FASE 2 = pendiente / lista para iniciar producción
+    if (fase === 2) {
+      btnIniciarProduccion.style.display = '';
+      btnFinalizarProduccion.style.display = 'none';
+      return;
+    }
+
+    // FASE 3 = producción en proceso
+    if (fase === 3) {
+      btnIniciarProduccion.style.display = 'none';
+      btnFinalizarProduccion.style.display = '';
+      return;
+    }
+
+    // FASE 5 = producción finalizada
+    if (fase === 5) {
+      btnIniciarProduccion.style.display = 'none';
+      btnFinalizarProduccion.style.display = 'none';
+      return;
+    }
+
     btnIniciarProduccion.style.display = 'none';
     btnFinalizarProduccion.style.display = 'none';
-    return;
   }
-
-  const fase = Number(MRP_STATE?.fase || 0);
-
-  // FASE 2 = pendiente / lista para iniciar producción
-  if (fase === 2) {
-    btnIniciarProduccion.style.display = '';
-    btnFinalizarProduccion.style.display = 'none';
-    return;
-  }
-
-  // FASE 3 = producción en proceso
-  if (fase === 3) {
-    btnIniciarProduccion.style.display = 'none';
-    btnFinalizarProduccion.style.display = '';
-    return;
-  }
-
-  // FASE 5 = producción finalizada
-  if (fase === 5) {
-    btnIniciarProduccion.style.display = 'none';
-    btnFinalizarProduccion.style.display = 'none';
-    return;
-  }
-
-  btnIniciarProduccion.style.display = 'none';
-  btnFinalizarProduccion.style.display = 'none';
-}
 
   function actualizarTextoUnidadActual(node, info) {
 
@@ -2636,10 +2763,28 @@ function validarPermisosProduccion() {
 
   }
 
+
+function formatFechaLocalParaBD() {
+
+  const d = new Date();
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+}
+
   async function iniciarProcesoActual() {
+
     if (!currentNode) return;
 
     const info = validarVisualNodo(currentNode);
+
     if (!info.canStart) {
       swalError(info.texto);
       return;
@@ -2650,13 +2795,18 @@ function validarPermisosProduccion() {
 
     if (currentNode.type === 'subensamble') {
       url = `${base_url}/plan_planeacionv1/iniciarSubensamble`;
-      payload = { idorden_subensamble: currentNode.idorden_subensamble };
+      payload = {
+        idorden_subensamble: currentNode.idorden_subensamble
+      };
     } else {
       url = `${base_url}/plan_planeacionv1/iniciarEstacion`;
-      payload = { idorden: currentNode.idorden };
+      payload = {
+        idorden: currentNode.idorden
+      };
     }
 
     try {
+
       btnIniciarUnidad.disabled = true;
 
       const data = await postJson(url, payload);
@@ -2667,21 +2817,45 @@ function validarPermisosProduccion() {
         return;
       }
 
+      currentNode.unitStatus = 2;
+
+      if (currentNode.unidadRaw) {
+        if (currentNode.type === 'subensamble') {
+          currentNode.unidadRaw.estado = 2;
+          currentNode.unidadRaw.fecha_inicio_real =
+            currentNode.unidadRaw.fecha_inicio_real || formatFechaLocalParaBD();
+        } else {
+          currentNode.unidadRaw.estatus = 2;
+          currentNode.unidadRaw.fecha_inicio =
+            currentNode.unidadRaw.fecha_inicio || formatFechaLocalParaBD();
+        }
+      }
+
+      timerKey = getTimerKey(currentNode);
+      timerStartMs = Date.now();
       seconds = 0;
+
+      renderTime();
       iniciarTimer();
+
       swalSuccess(data.msg);
+
       await refrescarEstadoProduccion(true);
 
     } catch (err) {
+
       swalError(err.message);
+
       await refrescarEstadoProduccion(true);
     }
   }
 
   async function finalizarProcesoActual() {
+
     if (!currentNode) return;
 
     const info = validarVisualNodo(currentNode);
+
     if (!info.canFinish) {
       swalError('No hay una unidad en proceso para finalizar.');
       return;
@@ -2692,13 +2866,19 @@ function validarPermisosProduccion() {
 
     if (currentNode.type === 'subensamble') {
       url = `${base_url}/plan_planeacionv1/finalizarSubensamble`;
-      payload = { idorden_subensamble: currentNode.idorden_subensamble };
+      payload = {
+        idorden_subensamble: currentNode.idorden_subensamble
+      };
     } else {
       url = `${base_url}/plan_planeacionv1/finalizarEstacion`;
-      payload = { idorden: currentNode.idorden, inventarioid: currentNode.inventarioid };
+      payload = {
+        idorden: currentNode.idorden,
+        inventarioid: currentNode.inventarioid
+      };
     }
 
     try {
+
       btnFinalizarUnidad.disabled = true;
 
       const data = await postJson(url, payload);
@@ -2709,14 +2889,16 @@ function validarPermisosProduccion() {
         return;
       }
 
-      pausarTimer();
-      seconds = 0;
-      renderTime();
+      reiniciarTimer();
+
       swalSuccess(data.msg);
+
       await refrescarEstadoProduccion(true);
 
     } catch (err) {
+
       swalError(err.message);
+
       await refrescarEstadoProduccion(true);
     }
   }
