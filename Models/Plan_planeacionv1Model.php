@@ -6207,7 +6207,7 @@ class Plan_planeacionv1Model extends Mysql
     // OT260604-001-U03 -> OT260604-001
     $numero_movimiento = preg_replace('/-U\d+$/', '', $subot);
 
-    $almacenid = 6;
+    $almacenid = 4;
     $CONCEPMOVID = 3;
 
     $sqlPendientes = "SELECT COUNT(*) AS pendientes
@@ -6600,7 +6600,7 @@ class Plan_planeacionv1Model extends Mysql
     $idorden = (int) $idorden;
     $unidad_actual = strClean($unidad_actual);
 
-    $sql = "SELECT 
+    $sql = "SELECT  
                 ee.idespecificacion,
                 ee.productoid,
                 ee.estacionid,
