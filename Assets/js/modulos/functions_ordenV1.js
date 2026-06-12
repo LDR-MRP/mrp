@@ -225,13 +225,8 @@ function formatTime(totalSeconds) {
 
   totalSeconds = Math.max(0, Math.floor(Number(totalSeconds || 0)));
 
-  const mins = Math.floor(totalSeconds / 60)
-    .toString()
-    .padStart(2, '0');
-
-  const secs = (totalSeconds % 60)
-    .toString()
-    .padStart(2, '0');
+  const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+  const secs = (totalSeconds % 60).toString().padStart(2, '0');
 
   return `${mins}:${secs}`;
 }
@@ -291,17 +286,13 @@ function parseFechaToMs(fechaInicio) {
   return isNaN(ms) ? null : ms;
 }
 
+
 function renderTime() {
 
   const t = formatTime(seconds);
 
-  if (tiempoActualEstacion) {
-    tiempoActualEstacion.textContent = t;
-  }
-
-  if (tiempoUnidadGlobal) {
-    tiempoUnidadGlobal.textContent = t;
-  }
+  if (tiempoActualEstacion) tiempoActualEstacion.textContent = t;
+  if (tiempoUnidadGlobal) tiempoUnidadGlobal.textContent = t;
 }
 
 function calcularSegundosDesdeMs(ms) {
@@ -320,29 +311,7 @@ function iniciarTimer() {
   if (timer) return;
 
   timer = setInterval(() => {
-
-    if (!currentNode || !timerStartMs) {
-      seconds = 0;
-      renderTime();
-      return;
-    }
-
-    const keyActual = getTimerKey(currentNode);
-
-    if (keyActual !== timerNodeKey) {
-      return;
-    }
-
-    if (Number(currentNode.unitStatus || 0) !== 2) {
-      seconds = 0;
-      renderTime();
-      return;
-    }
-
-    seconds = calcularSegundosDesdeMs(timerStartMs);
-
-    renderTime();
-
+    pintarTiempoNodoSeleccionado();
   }, 1000);
 }
 
@@ -356,10 +325,7 @@ function pausarTimer() {
 
 function reiniciarTimer() {
 
-  timerNodeKey = null;
-  timerStartMs = null;
   seconds = 0;
-
   renderTime();
 }
 
@@ -2135,11 +2101,52 @@ function validarPermisosProduccion() {
   }
 
 
+  function parseFechaProduccion(fechaInicio) {
+
+  if (
+    !fechaInicio ||
+    fechaInicio === '0000-00-00 00:00:00'
+  ) {
+    return null;
+  }
+
+  const partes = String(fechaInicio).trim().replace('T', ' ').split(' ');
+
+  if (partes.length < 2) return null;
+
+  const fecha = partes[0].split('-').map(Number);
+  const hora = partes[1].split(':').map(Number);
+
+  if (
+    fecha.length < 3 ||
+    hora.length < 2 ||
+    fecha.some(isNaN) ||
+    hora.some(isNaN)
+  ) {
+    return null;
+  }
+
+  const date = new Date(
+    fecha[0],
+    fecha[1] - 1,
+    fecha[2],
+    hora[0],
+    hora[1],
+    hora[2] || 0
+  );
+
+  return isNaN(date.getTime()) ? null : date.getTime();
+}
+
+
+
 function getElapsedSeconds(fechaInicio) {
 
-  const ms = parseFechaToMs(fechaInicio);
+  const ms = parseFechaProduccion(fechaInicio);
 
-  return calcularSegundosDesdeMs(ms);
+  if (!ms) return 0;
+
+  return Math.max(0, Math.floor((Date.now() - ms) / 1000));
 }
 
 
@@ -2151,7 +2158,6 @@ function getNodeStartDate(node) {
     return (
       node.unidadRaw.fecha_inicio_real ||
       node.unidadRaw.fecha_inicio ||
-      node.unidadRaw.fecha_inicio_subensamble ||
       null
     );
   }
@@ -2163,47 +2169,45 @@ function getNodeStartDate(node) {
   );
 }
 
+function obtenerNodoSeleccionadoActual() {
+
+  if (!currentSelection) return null;
+
+  return getNodeData(
+    currentSelection.type,
+    currentSelection.estIndex,
+    currentSelection.subIndex
+  );
+}
+
+function pintarTiempoNodoSeleccionado() {
+
+  const node = obtenerNodoSeleccionadoActual();
+
+  if (!node || Number(node.unitStatus || 0) !== 2) {
+    seconds = 0;
+    renderTime();
+    return;
+  }
+
+  seconds = getElapsedSeconds(getNodeStartDate(node));
+
+  renderTime();
+}
+
 function sincronizarTimerDesdeBD(node) {
 
-  if (!node) {
-    reiniciarTimer();
-    return;
-  }
-
-  currentNode = node;
-
-  const estado = Number(node.unitStatus || 0);
-  const key = getTimerKey(node);
-
-  if (estado !== 2) {
-    timerNodeKey = key;
-    timerStartMs = null;
+  if (!node || Number(node.unitStatus || 0) !== 2) {
     seconds = 0;
     renderTime();
     iniciarTimer();
     return;
   }
 
-  const fechaMs = parseFechaToMs(getNodeStartDate(node));
-
-  if (!fechaMs) {
-    timerNodeKey = key;
-    timerStartMs = Date.now();
-    seconds = 0;
-    renderTime();
-    iniciarTimer();
-    return;
-  }
-
-  timerNodeKey = key;
-  timerStartMs = fechaMs;
-
-  seconds = calcularSegundosDesdeMs(timerStartMs);
-
+  seconds = getElapsedSeconds(getNodeStartDate(node));
   renderTime();
   iniciarTimer();
 }
-
 
   function badgeEstadoHtml(type, status, info = null, orden = null) {
 
@@ -2797,14 +2801,10 @@ async function iniciarProcesoActual() {
 
   if (currentNode.type === 'subensamble') {
     url = `${base_url}/plan_planeacionv1/iniciarSubensamble`;
-    payload = {
-      idorden_subensamble: currentNode.idorden_subensamble
-    };
+    payload = { idorden_subensamble: currentNode.idorden_subensamble };
   } else {
     url = `${base_url}/plan_planeacionv1/iniciarEstacion`;
-    payload = {
-      idorden: currentNode.idorden
-    };
+    payload = { idorden: currentNode.idorden };
   }
 
   try {
@@ -2819,30 +2819,21 @@ async function iniciarProcesoActual() {
       return;
     }
 
-    currentNode.unitStatus = 2;
-
-    const key = getTimerKey(currentNode);
-
-    timerNodeKey = key;
-    timerStartMs = Date.now();
-    seconds = 0;
-
-    renderTime();
-    iniciarTimer();
-
     swalSuccess(data.msg);
 
     await refrescarEstadoProduccion(true);
 
+    pintarTiempoNodoSeleccionado();
+    iniciarTimer();
+
   } catch (err) {
 
     swalError(err.message);
-
     await refrescarEstadoProduccion(true);
   }
 }
 
- async function finalizarProcesoActual() {
+async function finalizarProcesoActual() {
   if (!currentNode) return;
 
   const info = validarVisualNodo(currentNode);
@@ -2857,9 +2848,7 @@ async function iniciarProcesoActual() {
 
   if (currentNode.type === 'subensamble') {
     url = `${base_url}/plan_planeacionv1/finalizarSubensamble`;
-    payload = {
-      idorden_subensamble: currentNode.idorden_subensamble
-    };
+    payload = { idorden_subensamble: currentNode.idorden_subensamble };
   } else {
     url = `${base_url}/plan_planeacionv1/finalizarEstacion`;
     payload = {
@@ -2880,16 +2869,17 @@ async function iniciarProcesoActual() {
       return;
     }
 
-    reiniciarTimer();
+    seconds = 0;
+    renderTime();
 
     swalSuccess(data.msg);
 
     await refrescarEstadoProduccion(true);
+    pintarTiempoNodoSeleccionado();
 
   } catch (err) {
 
     swalError(err.message);
-
     await refrescarEstadoProduccion(true);
   }
 }
@@ -3315,9 +3305,12 @@ async function iniciarProcesoActual() {
 
   renderTime();
 
-  setInterval(() => {
-    refrescarEstadoProduccion(true);
-  }, 3000);
+pintarTiempoNodoSeleccionado();
+iniciarTimer();
+
+setInterval(() => {
+  refrescarEstadoProduccion(true);
+}, 3000);
 });
 
 
