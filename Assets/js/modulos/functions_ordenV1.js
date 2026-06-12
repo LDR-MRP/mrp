@@ -219,11 +219,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
   //END FUNCIOENS DE PARO
 
-  function formatTime(totalSeconds) {
-    const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-    const secs = (totalSeconds % 60).toString().padStart(2, '0');
-    return `${mins}:${secs}`;
-  }
+function formatTime(totalSeconds) {
+
+  totalSeconds = Math.max(
+    0,
+    Number(totalSeconds || 0)
+  );
+
+  const mins = Math.floor(totalSeconds / 60)
+    .toString()
+    .padStart(2, '0');
+
+  const secs = Math.floor(totalSeconds % 60)
+    .toString()
+    .padStart(2, '0');
+
+  return `${mins}:${secs}`;
+}
 
   function renderTime() {
     const t = formatTime(seconds);
@@ -231,13 +243,36 @@ document.addEventListener('DOMContentLoaded', function () {
     if (tiempoUnidadGlobal) tiempoUnidadGlobal.textContent = t;
   }
 
-  function iniciarTimer() {
-    if (timer) return;
-    timer = setInterval(() => {
-      seconds++;
+function iniciarTimer() {
+
+  if (timer) return;
+
+  timer = setInterval(() => {
+
+    if (!currentNode) {
+      seconds = 0;
       renderTime();
-    }, 1000);
-  }
+      return;
+    }
+
+    const estado = Number(currentNode.unitStatus || 0);
+
+    if (estado !== 2) {
+
+      seconds = 0;
+      renderTime();
+
+      return;
+    }
+
+    seconds = getElapsedSeconds(
+      getNodeStartDate(currentNode)
+    );
+
+    renderTime();
+
+  }, 1000);
+}
 
   function pausarTimer() {
     if (timer) {
@@ -246,11 +281,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  function reiniciarTimer() {
-    pausarTimer();
-    seconds = 0;
-    renderTime();
-  }
+function reiniciarTimer() {
+
+  seconds = 0;
+
+  renderTime();
+}
 
   function getStation(estIndex) {
     return (MRP_STATE?.estaciones || [])[estIndex] || null;
@@ -2022,17 +2058,46 @@ function validarPermisosProduccion() {
   }
 
 
-  function getElapsedSeconds(fechaInicio) {
-    if (!fechaInicio || fechaInicio === '0000-00-00 00:00:00') return 0;
+function getElapsedSeconds(fechaInicio) {
 
-    const normalized = String(fechaInicio).replace(' ', 'T');
-    const start = new Date(normalized);
-
-    if (isNaN(start.getTime())) return 0;
-
-    const now = new Date();
-    return Math.max(0, Math.floor((now.getTime() - start.getTime()) / 1000));
+  if (
+    !fechaInicio ||
+    fechaInicio === '0000-00-00 00:00:00'
+  ) {
+    return 0;
   }
+
+  const partes = String(fechaInicio)
+    .replace('T', ' ')
+    .split(' ');
+
+  if (partes.length !== 2) {
+    return 0;
+  }
+
+  const fecha = partes[0].split('-');
+  const hora = partes[1].split(':');
+
+  const start = new Date(
+    Number(fecha[0]),
+    Number(fecha[1]) - 1,
+    Number(fecha[2]),
+    Number(hora[0]),
+    Number(hora[1]),
+    Number(hora[2] || 0)
+  );
+
+  if (isNaN(start.getTime())) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    Math.floor(
+      (Date.now() - start.getTime()) / 1000
+    )
+  );
+}
 
   function getNodeStartDate(node) {
     if (!node || !node.unidadRaw) return null;
@@ -2044,19 +2109,34 @@ function validarPermisosProduccion() {
     return node.unidadRaw.fecha_inicio || null;
   }
 
-  function sincronizarTimerDesdeBD(node) {
-    const estado = Number(node?.unitStatus || 0);
+function sincronizarTimerDesdeBD(node) {
 
-    if (estado === 2) {
-      seconds = getElapsedSeconds(getNodeStartDate(node));
-      renderTime();
-      iniciarTimer();
-    } else {
-      pausarTimer();
-      seconds = 0;
-      renderTime();
-    }
+  if (!node) {
+
+    seconds = 0;
+    renderTime();
+
+    return;
   }
+
+  const estado = Number(node.unitStatus || 0);
+
+  if (estado !== 2) {
+
+    seconds = 0;
+    renderTime();
+
+    return;
+  }
+
+  seconds = getElapsedSeconds(
+    getNodeStartDate(node)
+  );
+
+  renderTime();
+
+  iniciarTimer();
+}
 
 
   function badgeEstadoHtml(type, status, info = null, orden = null) {
@@ -2667,8 +2747,8 @@ function validarPermisosProduccion() {
         return;
       }
 
-      seconds = 0;
-      iniciarTimer();
+      // seconds = 0;
+      // iniciarTimer();
       swalSuccess(data.msg);
       await refrescarEstadoProduccion(true);
 
