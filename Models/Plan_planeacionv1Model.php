@@ -5297,12 +5297,25 @@ class Plan_planeacionv1Model extends Mysql
       }
     }
 
+        $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
+        ->format('Y-m-d H:i:s');
 
-    $sqlUpdate = "UPDATE mrp_ordenes_trabajo_subensamble
-                  SET estado = ?, fecha_inicio_real = NOW()
+
+    // $sqlUpdate = "UPDATE mrp_ordenes_trabajo_subensamble
+    //               SET estado = ?, fecha_inicio_real = NOW()
+    //               WHERE idorden_subensamble = ? AND estado = 1";
+
+        $sqlUpdate = "UPDATE mrp_ordenes_trabajo_subensamble
+                  SET estado = ?, fecha_inicio_real = ?
                   WHERE idorden_subensamble = ? AND estado = 1";
 
-    $arrUpdate = [2, $idordenSubensamble];
+    // $arrUpdate = [2, $idordenSubensamble];
+
+     $arrUpdate = [
+        2,
+        $fechaMexico,
+        $idordenSubensamble
+    ];
     $updated = $this->update($sqlUpdate, $arrUpdate);
 
     if (!$updated) {
@@ -5560,12 +5573,23 @@ class Plan_planeacionv1Model extends Mysql
     $planeacionSubensambleid = (int) ($orden['planeacion_subensambleid'] ?? 0);
     $numSubOrden = (string) ($orden['num_sub_orden'] ?? '');
 
+     $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
+        ->format('Y-m-d H:i:s');
+
 
     $sqlUpdate = "UPDATE mrp_ordenes_trabajo_subensamble
-                  SET estado = ?, fecha_fin_real = NOW()
+                  SET estado = ?, fecha_fin_real = ?
                   WHERE idorden_subensamble = ? AND estado = 2";
 
-    $arrUpdate = [4, $idordenSubensamble];
+    // $arrUpdate = [4, $idordenSubensamble];
+
+       $arrUpdate = [
+        4,
+        $fechaMexico,
+        $idordenSubensamble
+    ];
+
+
     $updated = $this->update($sqlUpdate, $arrUpdate);
 
     if (!$updated) {
@@ -5758,12 +5782,19 @@ class Plan_planeacionv1Model extends Mysql
       }
     }
 
-
+$fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
+        ->format('Y-m-d H:i:s');
     $sqlUpdate = "UPDATE mrp_ordenes_trabajo
-                  SET estatus = ?, fecha_inicio = NOW()
+                  SET estatus = ?, fecha_inicio = ?
                   WHERE idorden = ? AND estatus = 1";
 
-    $arrUpdate = [2, $idorden];
+    // $arrUpdate = [2, $idorden];
+
+     $arrUpdate = [
+        2,
+        $fechaMexico,
+        $idorden
+    ];
     $updated = $this->update($sqlUpdate, $arrUpdate);
 
     if (!$updated) {
@@ -6157,11 +6188,20 @@ class Plan_planeacionv1Model extends Mysql
     }
 
 
+     $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
+        ->format('Y-m-d H:i:s');
+
     $sqlUpdate = "UPDATE mrp_ordenes_trabajo
-                  SET estatus = ?, fecha_fin = NOW()
+                  SET estatus = ?, fecha_fin = ?
                   WHERE idorden = ? AND estatus = 2";
 
-    $arrUpdate = [3, $idorden];
+    // $arrUpdate = [3, $idorden];
+
+     $arrUpdate = [
+        3,
+        $fechaMexico,
+        $idorden
+    ];
     $updated = $this->update($sqlUpdate, $arrUpdate);
 
     if (!$updated) {
