@@ -3,6 +3,7 @@ class Dashboard extends Controllers{
 	public function __construct()
 	{
 		parent::__construct();
+		getPermisos(MDASHBOARD);
 	}
 
 	public function dashboard()
