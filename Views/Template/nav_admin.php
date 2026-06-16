@@ -117,23 +117,27 @@
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/pbom" class="nav-link" data-key="t-horizontal">BOM - Control</a>
                                           </li>
-                                      <?php } ?>
-                                      <?php if (!empty($_SESSION['permisos'][8]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/pla_productos" class="nav-link" data-key="t-detached">Productos Terminados - PT</a>
-                                          </li>
                                       <?php } ?> -->
+                
                                       <?php if (!empty($_SESSION['permisos'][9]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/plan_planeacionv1" class="nav-link" data-key="t-two-column">Plan de producción</a>
 
                                           </li>
                                       <?php } ?>
+
+                                      
                                       <!-- <?php if (!empty($_SESSION['permisos'][10]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/pordenes" class="nav-link" data-key="t-hovered">Ordenes</a>
                                           </li>
                                       <?php } ?> -->
+
+                                                            <?php if (!empty($_SESSION['permisos'][8]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/pla_productost" class="nav-link" data-key="t-detached">Productos Terminados - PT</a>
+                                          </li>
+                                      <?php } ?> 
 
                                       <?php if (!empty($_SESSION['permisos'][11]['r'])) { ?>
 
