@@ -7146,6 +7146,10 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
 
   public function insertAccionProduccion($data)
   {
+
+
+      $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
+        ->format('Y-m-d H:i:s');
     $sql = "INSERT INTO mrp_acciones_produccion
             (
                 productoid,
@@ -7160,7 +7164,7 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
                 usuarioid,
                 estado
             )
-            VALUES (?, ?, ?, ?, ?, ?, NOW(), NULL, NULL, ?, 2)";
+            VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, 2)";
 
     return $this->insert($sql, [
       $data['productoid'],
@@ -7169,6 +7173,7 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
       $data['unidad'],
       $data['origen_accion'],
       $data['tipo_accion'],
+      $fechaMexico,
       $data['usuarioid']
     ]);
   }
@@ -7295,22 +7300,46 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
       $updateOrden = $this->update($sqlUpdateOrden, [
         $idordengeneral
       ]);
-      $sqlCerrarParo = "UPDATE mrp_acciones_produccion
-                          SET
-                              fecha_fin = NOW(),
-                              minutos_total = TIMESTAMPDIFF(
-                                  MINUTE,
-                                  fecha_inicio,
-                                  NOW()
-                              ),
-                              usuarioidfin = ?,
-                              estado = 3
-                          WHERE idaccion = ?";
 
-      $updateParo = $this->update($sqlCerrarParo, [
-        $idusuario,
-        $idaccion
-      ]);
+       $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
+        ->format('Y-m-d H:i:s');
+
+
+      // $sqlCerrarParo = "UPDATE mrp_acciones_produccion
+      //                     SET
+      //                         fecha_fin = NOW(),
+      //                         minutos_total = TIMESTAMPDIFF(
+      //                             MINUTE,
+      //                             fecha_inicio,
+      //                             NOW()
+      //                         ),
+      //                         usuarioidfin = ?,
+      //                         estado = 3
+      //                     WHERE idaccion = ?";
+
+      // $updateParo = $this->update($sqlCerrarParo, [
+      //   $idusuario,
+      //   $idaccion
+      // ]);
+
+      $sqlCerrarParo = "UPDATE mrp_acciones_produccion
+                  SET
+                      fecha_fin = ?,
+                      minutos_total = TIMESTAMPDIFF(
+                          MINUTE,
+                          fecha_inicio,
+                          ?
+                      ),
+                      usuarioidfin = ?,
+                      estado = 3
+                  WHERE idaccion = ?";
+
+$updateParo = $this->update($sqlCerrarParo, [
+    $fechaMexico,  
+    $fechaMexico,  
+    $idusuario,    // usuario que finaliza
+    $idaccion      // acción a cerrar
+]);
 
       return [
         "status" => true,
