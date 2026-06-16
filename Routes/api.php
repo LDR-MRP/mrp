@@ -6,6 +6,7 @@ use Controllers\Api\V1\AccountsPayablePaymentController;
 use Libraries\Core\Route;
 use Controllers\Api\V1\AuthController;
 use Controllers\Api\V1\CurrencyController;
+use Controllers\Api\V1\DashboardController;
 use Controllers\Api\V1\InventoryReceptionController;
 use Controllers\Api\V1\SupplierController;
 use Controllers\Api\V1\RequisitionController;
@@ -22,6 +23,13 @@ use Middlewares\AuthMiddleware;
 Route::post('api/v1/login', [AuthController::class, 'login']);
 
 // Rutas Protegidas
+/**
+ * ==============================================================================
+ * DASHBOARD
+ * ==============================================================================
+ */
+Route::get('api/v1/admin/dashboard/summary', [DashboardController::class, 'getSummary'])->middleware([AuthMiddleware::class]);
+
 /**
  * ==============================================================================
  * RUTAS DE SUPPLIERS

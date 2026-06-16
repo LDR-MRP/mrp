@@ -49,6 +49,12 @@ class LogAuditModel extends Mysql{
             $query .= "AND log_audit.resourceid = '{$filters['resource_id']}'";
         }
 
+        $query .= " ORDER BY id DESC";
+        
+        if(array_key_exists('limit', $filters)) {
+            $query .= " LIMIT {$filters['limit']}";
+        }
+
         return $this->select_all($query);
     }
 }

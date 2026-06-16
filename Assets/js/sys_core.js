@@ -111,7 +111,7 @@ const Sys_Core = {
             
             // Determinar la ruta de redirección correcta según el dominio
             const isSrm = window.location.pathname.includes('/srm');
-            const redirectPath = isSrm ? '/srm_login' : '/login'; // Srm_login unificado
+            const redirectPath = isSrm ? '/srm/login' : '/login';
 
             // A. Si no existe token en la cookie, expulsar
             if (!payload || !payload.exp) {
