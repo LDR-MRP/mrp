@@ -1,6 +1,6 @@
 <?php
 
-class pla_productostModel extends Mysql
+class Pla_productostModel extends Mysql
 {
 
 
