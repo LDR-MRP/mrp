@@ -108,218 +108,224 @@ function tiempoOrden($minutos)
             </div>
 
         </div>
-<div class="card border-0 shadow-sm mb-4 overflow-hidden">
+        <div class="card border-0 shadow-sm mb-4 overflow-hidden">
 
-    <div class="card-body p-0">
+            <div class="card-body p-0">
 
-        <div class="row g-0">
+                <div class="row g-0">
 
-            <div class="col-lg-8 p-4">
+                    <div class="col-lg-8 p-4">
 
-                <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4">
+                        <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4">
 
-                    <div>
-                        <div class="text-muted small text-uppercase fw-semibold mb-1">
-                            Orden de trabajo
-                        </div>
 
-                        <h2 class="fw-bold mb-1">
-                            <?= hOrden($header['num_orden'] ?? '') ?>
-                        </h2>
 
-                        <div class="text-muted">
-                            Pedido:
-                            <strong class="text-dark">
-                                <?= hOrden($header['num_pedido'] ?? 'N/A') ?>
-                            </strong>
-                        </div>
-                    </div>
+                            <div>
 
-                    <div class="text-end">
 
-                        <?php 
-                            $prioridad = strtoupper((string)($header['prioridad'] ?? ''));
-                            $classPrioridad = 'bg-secondary';
 
-                            if ($prioridad === 'CRITICA' || $prioridad === 'CRÍTICA') {
-                                $classPrioridad = 'bg-danger';
-                            } elseif ($prioridad === 'ALTA') {
-                                $classPrioridad = 'bg-warning text-dark';
-                            } elseif ($prioridad === 'MEDIA') {
-                                $classPrioridad = 'bg-info text-dark';
-                            } elseif ($prioridad === 'BAJA') {
+                                <div class="text-muted small text-uppercase fw-semibold mb-1">
+                                    <button class="btn btn-soft-secondary btn-sm" type="button" id="btnVolverHome2">
+
+                                        <i class="ri-arrow-left-line"></i>
+
+                                    </button> Orden de trabajo
+                                </div>
+
+                                <h2 class="fw-bold mb-1">
+                                    <?= hOrden($header['num_orden'] ?? '') ?>
+                                </h2>
+
+                                <div class="text-muted">
+                                    Pedido:
+                                    <strong class="text-dark">
+                                        <?= hOrden($header['num_pedido'] ?? 'N/A') ?>
+                                    </strong>
+                                </div>
+                            </div>
+
+                            <div class="text-end">
+
+                                <?php
+                                $prioridad = strtoupper((string) ($header['prioridad'] ?? ''));
                                 $classPrioridad = 'bg-secondary';
-                            } elseif ($prioridad === 'PROTOTIPO') {
-                                $classPrioridad = 'bg-dark';
+
+                                if ($prioridad === 'CRITICA' || $prioridad === 'CRÍTICA') {
+                                    $classPrioridad = 'bg-danger';
+                                } elseif ($prioridad === 'ALTA') {
+                                    $classPrioridad = 'bg-warning text-dark';
+                                } elseif ($prioridad === 'MEDIA') {
+                                    $classPrioridad = 'bg-info text-dark';
+                                } elseif ($prioridad === 'BAJA') {
+                                    $classPrioridad = 'bg-secondary';
+                                } elseif ($prioridad === 'PROTOTIPO') {
+                                    $classPrioridad = 'bg-dark';
+                                }
+                                ?>
+
+                                <span class="badge <?= $classPrioridad ?> px-3 py-2 fs-6">
+                                    <?= hOrden($header['prioridad'] ?? 'Sin prioridad') ?>
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                        <div class="row g-3">
+
+                            <div class="col-md-6 col-xl-4">
+                                <div class="border rounded-3 p-3 h-100 bg-light">
+                                    <div class="text-muted small mb-1">
+                                        Supervisor de orden
+                                    </div>
+                                    <div class="fw-bold">
+                                        <i class="ri-user-star-line me-1"></i>
+                                        <?= hOrden($header['supervisor_nombre'] ?? 'Sin supervisor') ?>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 col-xl-4">
+                                <div class="border rounded-3 p-3 h-100 bg-light">
+                                    <div class="text-muted small mb-1">
+                                        Piezas a construir
+                                    </div>
+                                    <div class="fw-bold fs-5">
+                                        <i class="ri-stack-line me-1"></i>
+                                        <?= hOrden($header['cantidad'] ?? 0) ?> unidades
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 col-xl-4">
+                                <div class="border rounded-3 p-3 h-100 bg-light">
+                                    <div class="text-muted small mb-1">
+                                        Fecha requerida
+                                    </div>
+                                    <div class="fw-bold">
+                                        <i class="ri-calendar-check-line me-1"></i>
+                                        <?= fechaOrden($header['fecha_requerida'] ?? '') ?>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 col-xl-4">
+                                <div class="border rounded-3 p-3 h-100 bg-light">
+                                    <div class="text-muted small mb-1">
+                                        Inicio planeado
+                                    </div>
+                                    <div class="fw-bold">
+                                        <i class="ri-calendar-event-line me-1"></i>
+                                        <?= fechaOrden($header['fecha_inicio'] ?? '') ?>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 col-xl-4">
+                                <div class="border rounded-3 p-3 h-100 bg-light">
+                                    <div class="text-muted small mb-1">
+                                        Fin planeado
+                                    </div>
+                                    <div class="fw-bold">
+                                        <i class="ri-calendar-todo-line me-1"></i>
+                                        <?= fechaOrden($header['fecha_fin'] ?? '') ?>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 col-xl-4">
+                                <div class="border rounded-3 p-3 h-100 bg-light">
+                                    <div class="text-muted small mb-1">
+                                        Planta
+                                    </div>
+
+                                    <div class="fw-bold">
+                                        <i class="ri-building-2-line me-1"></i>
+                                        <?= hOrden($header['nombre_planta'] ?? 'Sin planta') ?>
+                                    </div>
+
+                                    <div class="text-muted small mt-1">
+                                        <?= hOrden($header['cve_planta'] ?? '') ?>
+                                        <?php if (!empty($header['direccion_planta'])) { ?>
+                                            · <?= hOrden($header['direccion_planta']) ?>
+                                        <?php } ?>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="col-lg-4 bg-light border-start p-4">
+
+                        <div class="mb-4">
+                            <div class="text-muted small text-uppercase fw-semibold mb-2">
+                                Avance de unidades
+                            </div>
+
+                            <?php
+                            $cantidad = (int) ($header['cantidad'] ?? 0);
+                            $finalizadasCount = (int) ($header['total_finalizadas'] ?? 0);
+                            $pendientesCount = (int) ($header['total_pendientes'] ?? 0);
+
+                            $porcentaje = 0;
+                            if ($cantidad > 0) {
+                                $porcentaje = round(($finalizadasCount / $cantidad) * 100);
                             }
-                        ?>
+                            ?>
 
-                        <span class="badge <?= $classPrioridad ?> px-3 py-2 fs-6">
-                            <?= hOrden($header['prioridad'] ?? 'Sin prioridad') ?>
-                        </span>
+                            <div class="d-flex justify-content-between align-items-end mb-2">
+                                <div>
+                                    <div class="fs-2 fw-bold">
+                                        <?= $porcentaje ?>%
+                                    </div>
+                                    <div class="text-muted small">
+                                        avance general
+                                    </div>
+                                </div>
 
-                    </div>
-
-                </div>
-
-                <div class="row g-3">
-
-                    <div class="col-md-6 col-xl-4">
-                        <div class="border rounded-3 p-3 h-100 bg-light">
-                            <div class="text-muted small mb-1">
-                                Supervisor de orden
+                                <div class="text-end">
+                                    <div class="fw-bold text-success">
+                                        <?= $finalizadasCount ?> finalizadas
+                                    </div>
+                                    <div class="fw-bold text-warning">
+                                        <?= $pendientesCount ?> pendientes
+                                    </div>
+                                </div>
                             </div>
-                            <div class="fw-bold">
-                                <i class="ri-user-star-line me-1"></i>
-                                <?= hOrden($header['supervisor_nombre'] ?? 'Sin supervisor') ?>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div class="col-md-6 col-xl-4">
-                        <div class="border rounded-3 p-3 h-100 bg-light">
-                            <div class="text-muted small mb-1">
-                                Piezas a construir
-                            </div>
-                            <div class="fw-bold fs-5">
-                                <i class="ri-stack-line me-1"></i>
-                                <?= hOrden($header['cantidad'] ?? 0) ?> unidades
+                            <div class="progress" style="height: 10px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: <?= $porcentaje ?>%;">
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="col-md-6 col-xl-4">
-                        <div class="border rounded-3 p-3 h-100 bg-light">
-                            <div class="text-muted small mb-1">
-                                Fecha requerida
-                            </div>
-                            <div class="fw-bold">
-                                <i class="ri-calendar-check-line me-1"></i>
-                                <?= fechaOrden($header['fecha_requerida'] ?? '') ?>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6 col-xl-4">
-                        <div class="border rounded-3 p-3 h-100 bg-light">
-                            <div class="text-muted small mb-1">
-                                Inicio planeado
-                            </div>
-                            <div class="fw-bold">
-                                <i class="ri-calendar-event-line me-1"></i>
-                                <?= fechaOrden($header['fecha_inicio'] ?? '') ?>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6 col-xl-4">
-                        <div class="border rounded-3 p-3 h-100 bg-light">
-                            <div class="text-muted small mb-1">
-                                Fin planeado
-                            </div>
-                            <div class="fw-bold">
-                                <i class="ri-calendar-todo-line me-1"></i>
-                                <?= fechaOrden($header['fecha_fin'] ?? '') ?>
-                            </div>
-                        </div>
-                    </div>
-
-<div class="col-md-6 col-xl-4">
-    <div class="border rounded-3 p-3 h-100 bg-light">
-        <div class="text-muted small mb-1">
-            Planta
-        </div>
-
-        <div class="fw-bold">
-            <i class="ri-building-2-line me-1"></i>
-            <?= hOrden($header['nombre_planta'] ?? 'Sin planta') ?>
-        </div>
-
-        <div class="text-muted small mt-1">
-            <?= hOrden($header['cve_planta'] ?? '') ?>
-            <?php if (!empty($header['direccion_planta'])) { ?>
-                · <?= hOrden($header['direccion_planta']) ?>
-            <?php } ?>
-        </div>
-    </div>
-</div>
-
-                </div>
-
-            </div>
-
-            <div class="col-lg-4 bg-light border-start p-4">
-
-                <div class="mb-4">
-                    <div class="text-muted small text-uppercase fw-semibold mb-2">
-                        Avance de unidades
-                    </div>
-
-                    <?php 
-                        $cantidad = (int)($header['cantidad'] ?? 0);
-                        $finalizadasCount = (int)($header['total_finalizadas'] ?? 0);
-                        $pendientesCount = (int)($header['total_pendientes'] ?? 0);
-
-                        $porcentaje = 0;
-                        if ($cantidad > 0) {
-                            $porcentaje = round(($finalizadasCount / $cantidad) * 100);
-                        }
-                    ?>
-
-                    <div class="d-flex justify-content-between align-items-end mb-2">
                         <div>
-                            <div class="fs-2 fw-bold">
-                                <?= $porcentaje ?>%
+                            <div class="text-muted small text-uppercase fw-semibold mb-2">
+                                Notas de planeación
                             </div>
-                            <div class="text-muted small">
-                                avance general
+
+                            <div class="border rounded-3 bg-body-secondary p-3" style="min-height: 130px;">
+                                <?php if (!empty($header['notas'])) { ?>
+                                    <div class="text-dark">
+                                        <?= nl2br(hOrden($header['notas'])) ?>
+                                    </div>
+                                <?php } else { ?>
+                                    <div class="text-muted">
+                                        Sin notas registradas para esta orden.
+                                    </div>
+                                <?php } ?>
                             </div>
                         </div>
 
-                        <div class="text-end">
-                            <div class="fw-bold text-success">
-                                <?= $finalizadasCount ?> finalizadas
-                            </div>
-                            <div class="fw-bold text-warning">
-                                <?= $pendientesCount ?> pendientes
-                            </div>
-                        </div>
                     </div>
 
-                    <div class="progress" style="height: 10px;">
-                        <div 
-                            class="progress-bar bg-success" 
-                            role="progressbar" 
-                            style="width: <?= $porcentaje ?>%;">
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <div class="text-muted small text-uppercase fw-semibold mb-2">
-                        Notas de planeación
-                    </div>
-
-                  <div class="border rounded-3 bg-body-secondary p-3" style="min-height: 130px;">
-                        <?php if (!empty($header['notas'])) { ?>
-                            <div class="text-dark">
-                                <?= nl2br(hOrden($header['notas'])) ?>
-                            </div>
-                        <?php } else { ?>
-                            <div class="text-muted">
-                                Sin notas registradas para esta orden.
-                            </div>
-                        <?php } ?>
-                    </div>
                 </div>
 
             </div>
 
         </div>
-
-    </div>
-
-</div>
 
         <div class="card shadow-sm border-0">
 
@@ -327,13 +333,8 @@ function tiempoOrden($minutos)
                 <ul class="nav nav-tabs card-header-tabs" id="tabsOrdenTrabajo" role="tablist">
 
                     <li class="nav-item" role="presentation">
-                        <button
-                            class="nav-link active"
-                            id="tab-finalizadas"
-                            data-bs-toggle="tab"
-                            data-bs-target="#content-finalizadas"
-                            type="button"
-                            role="tab">
+                        <button class="nav-link active" id="tab-finalizadas" data-bs-toggle="tab"
+                            data-bs-target="#content-finalizadas" type="button" role="tab">
                             Unidades finalizadas
                             <span class="badge bg-success ms-1">
                                 <?= count($finalizadas) ?>
@@ -342,13 +343,8 @@ function tiempoOrden($minutos)
                     </li>
 
                     <li class="nav-item" role="presentation">
-                        <button
-                            class="nav-link"
-                            id="tab-pendientes"
-                            data-bs-toggle="tab"
-                            data-bs-target="#content-pendientes"
-                            type="button"
-                            role="tab">
+                        <button class="nav-link" id="tab-pendientes" data-bs-toggle="tab"
+                            data-bs-target="#content-pendientes" type="button" role="tab">
                             Pendientes / En proceso
                             <span class="badge bg-warning text-dark ms-1">
                                 <?= count($pendientes) ?>
@@ -363,10 +359,7 @@ function tiempoOrden($minutos)
 
                 <div class="tab-content">
 
-                    <div
-                        class="tab-pane fade show active"
-                        id="content-finalizadas"
-                        role="tabpanel">
+                    <div class="tab-pane fade show active" id="content-finalizadas" role="tabpanel">
 
                         <?php if (empty($finalizadas)) { ?>
 
@@ -383,10 +376,7 @@ function tiempoOrden($minutos)
                                         <label class="form-label small text-muted mb-1">
                                             Buscar unidad, VIN, VIN origen, motor o transmisión
                                         </label>
-                                        <input
-                                            type="text"
-                                            class="form-control"
-                                            id="buscarUnidadesFinalizadas"
+                                        <input type="text" class="form-control" id="buscarUnidadesFinalizadas"
                                             placeholder="Ejemplo: OT260608-001-U03, VIN, motor...">
                                     </div>
                                 </div>
@@ -409,61 +399,85 @@ function tiempoOrden($minutos)
 
                                     <tbody>
                                         <?php foreach ($finalizadas as $unidad) { ?>
-                                            <tr class="row-unidad-finalizada"
-                                                data-search="<?= hOrden(strtolower(
-                                                                    trim(
-                                                                        ($unidad['num_sub_orden'] ?? '') . ' ' .
-                                                                            ($unidad['numero_serie'] ?? '') . ' ' .
-                                                                            ($unidad['vin_origen'] ?? '') . ' ' .
-                                                                            ($unidad['numero_motor'] ?? '') . ' ' .
-                                                                            ($unidad['numero_transmision'] ?? '')
-                                                                    )
-                                                                )) ?>">
+                                            <tr class="row-unidad-finalizada" data-search="<?= hOrden(strtolower(
+                                                                                                trim(
+                                                                                                    ($unidad['num_sub_orden'] ?? '') . ' ' .
+                                                                                                        ($unidad['numero_serie'] ?? '') . ' ' .
+                                                                                                        ($unidad['vin_origen'] ?? '') . ' ' .
+                                                                                                        ($unidad['numero_motor'] ?? '') . ' ' .
+                                                                                                        ($unidad['numero_transmision'] ?? '')
+                                                                                                )
+                                                                                            )) ?>">
                                                 <td>
-                                                    <strong>
-                                                        <?= hOrden($unidad['num_sub_orden'] ?? '') ?>
-                                                    </strong>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div class="avatar-xs">
+                                                            <div class="avatar-title rounded-circle bg-success-subtle text-success">
+                                                                <i class="ri-checkbox-circle-line"></i>
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <div class="fw-bold">
+                                                                <?= hOrden($unidad['num_sub_orden'] ?? '') ?>
+                                                            </div>
+                                                            <div class="text-muted small">
+                                                                Unidad finalizada
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </td>
 
                                                 <td>
                                                     <?php if (!empty($unidad['numero_serie'])) { ?>
-                                                        <span class="badge bg-primary">
-                                                            <?= hOrden($unidad['numero_serie']) ?>
-                                                        </span>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <i class="ri-barcode-line text-primary fs-5"></i>
+                                                            <span class="badge bg-primary">
+                                                                <?= hOrden($unidad['numero_serie']) ?>
+                                                            </span>
+                                                        </div>
                                                     <?php } else { ?>
                                                         <span class="badge bg-secondary">
+                                                            <i class="ri-error-warning-line me-1"></i>
                                                             Sin VIN
                                                         </span>
                                                     <?php } ?>
                                                 </td>
 
                                                 <td>
+                                                    <i class="ri-settings-3-line text-muted me-1"></i>
                                                     <?= hOrden($unidad['numero_motor'] ?? 'N/A') ?>
                                                 </td>
 
                                                 <td>
+                                                    <i class="ri-tools-line text-muted me-1"></i>
                                                     <?= hOrden($unidad['numero_transmision'] ?? 'N/A') ?>
                                                 </td>
 
                                                 <td>
+                                                    <i class="ri-map-pin-2-line text-muted me-1"></i>
                                                     <?= hOrden($unidad['vin_origen'] ?? 'N/A') ?>
                                                 </td>
 
                                                 <td>
+                                                    <i class="ri-play-circle-line text-success me-1"></i>
                                                     <?= fechaOrden($unidad['fecha_inicio_produccion'] ?? '') ?>
                                                 </td>
 
                                                 <td>
+                                                    <i class="ri-flag-2-line text-danger me-1"></i>
                                                     <?= fechaOrden($unidad['fecha_fin_produccion'] ?? '') ?>
                                                 </td>
 
                                                 <td>
-                                                    <strong>
+                                                    <span class="badge bg-info-subtle text-info border">
+                                                        <i class="ri-time-line me-1"></i>
                                                         <?= tiempoOrden($unidad['minutos_armado'] ?? 0) ?>
-                                                    </strong>
+                                                    </span>
                                                 </td>
 
+
                                                 <td>
+                                                    <i class="ri-user-check-line text-muted me-1"></i>
                                                     <?= hOrden($unidad['usuario_vin'] ?? 'N/A') ?>
                                                 </td>
 
@@ -472,17 +486,21 @@ function tiempoOrden($minutos)
                                                 </td>
 
                                                 <td class="text-end">
-                                                    <a
-                                                        href="<?= base_url(); ?>/pla_productost/pdfUnidad/<?= urlencode($unidad['num_sub_orden'] ?? '') ?>"
-                                                        target="_blank"
-                                                        class="btn btn-outline-danger btn-sm">
-                                                        <i class="ri-file-pdf-2-line"></i>
+                                                    <a href="<?= base_url(); ?>/pla_productost/pdfUnidad/<?= urlencode($unidad['num_sub_orden'] ?? '') ?>"
+                                                        target="_blank" class="btn btn-soft-danger btn-sm">
+                                                        <i class="ri-file-pdf-2-line me-1"></i>
                                                         PDF
                                                     </a>
                                                 </td>
                                             </tr>
                                         <?php } ?>
                                     </tbody>
+
+
+                                    <div id="mensajeSinUnidadesFinalizadas" class="alert alert-warning mt-3"
+                                        style="display:none;">
+                                        No se encontraron unidades finalizadas con ese criterio de búsqueda.
+                                    </div>
                                 </table>
                             </div>
 
@@ -490,10 +508,7 @@ function tiempoOrden($minutos)
 
                     </div>
 
-                    <div
-                        class="tab-pane fade"
-                        id="content-pendientes"
-                        role="tabpanel">
+                    <div class="tab-pane fade" id="content-pendientes" role="tabpanel">
 
                         <?php if (empty($pendientes)) { ?>
 

@@ -141,7 +141,8 @@ $sqlHeader = "SELECT
 
                     HAVING estaciones_pendientes = 0
 
-                    ORDER BY CAST(SUBSTRING_INDEX(ot.num_sub_orden, '-U', -1) AS UNSIGNED) ASC";
+                 
+                    ORDER BY fecha_fin_produccion DESC";
 
     $unidadesFinalizadas = $this->select_all($sqlFinalizadas, [$num_orden]);
 

@@ -37,11 +37,11 @@
                             </div>
                         </div>
 
-                        <div class="d-flex align-items-center gap-2">
+                        <!-- <div class="d-flex align-items-center gap-2">
                             <button class="btn btn-outline-secondary btn-sm" type="button" id="btnVolverHome2">
                                 <i class="ri-arrow-left-line me-1"></i> Volver
                             </button>
-                        </div>
+                        </div> -->
                     </div>
                 </div>
 

@@ -13,46 +13,7 @@ class Pla_productost extends Controllers
     getPermisos(MPPRODUCTOSTERMINADOS);
   }
 
-
-public function orden($num_orden)
-{
-    $num_orden = trim((string) $num_orden);
-
-    if ($num_orden === '') {
-        header("Location:" . base_url() . '/plan_planeacion');
-        die();
-    }
-
-    $resp = $this->model->obtenerPlaneacion($num_orden);
-
-    if (isset($_GET['json']) && $_GET['json'] == '1') {
-        header('Content-Type: application/json; charset=utf-8');
-
-        if (empty($resp)) {
-            echo json_encode([
-                'status' => false,
-                'msg' => 'No se encontró la orden de trabajo'
-            ], JSON_UNESCAPED_UNICODE);
-            die();
-        }
-
-        echo json_encode([
-            'status' => true,
-            'data' => $resp
-        ], JSON_UNESCAPED_UNICODE);
-        die();
-    }
-
-    $data['page_tag'] = $num_orden;
-    $data['page_title'] = "Orden <small>de trabajo</small>";
-    $data['page_name'] = "Orden de trabajo";
-    $data['page_functions_js'] = "functions_orden.js";
-    $data['arrOrdenDetalle'] = $resp;
-
-    $this->views->getView($this, "orden", $data);
-} 
-
-  public function Pla_productost()
+    public function Pla_productost()
   {
     if (empty($_SESSION['permisosMod']['r'])) {
       header("Location:" . base_url() . '/dashboard');
@@ -62,6 +23,49 @@ public function orden($num_orden)
     $data['page_name'] = "Productos";
     $data['page_functions_js'] = "functions_pla_productost.js";
     $this->views->getView($this, "pla_productost", $data);
+  }
+
+
+  public function orden($num_orden)
+  {
+    $num_orden = trim((string) $num_orden);
+
+    if ($num_orden === '') {
+      header("Location:" . base_url() . '/plan_planeacion');
+      die();
+    }
+
+    $resp = $this->model->obtenerPlaneacion($num_orden);
+
+    if (isset($_GET['json']) && $_GET['json'] == '1') {
+      header('Content-Type: application/json; charset=utf-8');
+
+      if (empty($resp)) {
+        echo json_encode([
+          'status' => false,
+          'msg' => 'No se encontró la orden de trabajo'
+        ], JSON_UNESCAPED_UNICODE);
+        die();
+      }
+
+      echo json_encode([
+        'status' => true,
+        'data' => $resp
+      ], JSON_UNESCAPED_UNICODE);
+      die();
+    }
+
+    $data['page_tag'] = $num_orden;
+    $data['page_title'] = "Orden <small>de trabajo</small>";
+    $data['page_name'] = "Orden de trabajo";
+    $data['page_functions_js'] = "functions_pla_productost_orden.js";
+    $data['arrOrdenDetalle'] = $resp;
+
+    $this->views->getView($this, "orden", $data);
+  }
+
+  public function test(){
+    echo "ESTA ES UNA PRUEBA DE CONTROLADDOR!!";
   }
 
 
