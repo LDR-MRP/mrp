@@ -4,25 +4,25 @@ class pla_productostModel extends Mysql
 {
 
 
-    public function __construct()
-    {
-        parent::__construct();
-    }
+  public function __construct()
+  {
+    parent::__construct();
+  }
 
 
-public function obtenerPlaneacion($num_orden)
-{
+  public function obtenerPlaneacion($num_orden)
+  {
     $num_orden = trim((string) $num_orden);
 
     if ($num_orden === '') {
-        return [];
+      return [];
     }
 
     // ==============================
     // HEADER DE LA ORDEN
     // ==============================
 
-$sqlHeader = "SELECT 
+    $sqlHeader = "SELECT 
                 pla.idplaneacion,
                 pla.num_orden,
                 pla.productoid,
@@ -64,7 +64,7 @@ $sqlHeader = "SELECT
     $header = $this->select($sqlHeader, [$num_orden]);
 
     if (empty($header)) {
-        return [];
+      return [];
     }
 
     // ==============================
@@ -150,7 +150,7 @@ $sqlHeader = "SELECT
     // UNIDADES PENDIENTES / EN PROCESO
     // ==============================
 
-$sqlPendientes = "SELECT 
+    $sqlPendientes = "SELECT 
                     ot.num_sub_orden,
 
                     MIN(ot.fecha_inicio) AS fecha_inicio_produccion,
@@ -207,41 +207,54 @@ $sqlPendientes = "SELECT
     $header['total_unidades_detectadas'] = count($unidadesFinalizadas) + count($unidadesPendientes);
 
     return [
-        'header' => $header,
-        'unidades_finalizadas' => $unidadesFinalizadas,
-        'unidades_pendientes' => $unidadesPendientes
+      'header' => $header,
+      'unidades_finalizadas' => $unidadesFinalizadas,
+      'unidades_pendientes' => $unidadesPendientes
     ];
-}
+  }
 
-    public function selectPlanTodas()
-    {
-        $rolId = isset($_SESSION['rolid']) ? (int) $_SESSION['rolid'] : 0;
-        $userIdSes = isset($_SESSION['idUser']) ? (int) $_SESSION['idUser'] : 0;
 
-        $isAdmin = in_array($rolId, [1, 5]);
+  public function selectPlanTodas()
+  {
+    $rolId = 0;
+    $userIdSes = 0;
 
-        if (!$isAdmin && $userIdSes <= 0) {
-            return [];
-        }
+    if (isset($_SESSION['rolid'])) {
+      $rolId = (int) $_SESSION['rolid'];
+    } elseif (isset($_SESSION['userData']['rolid'])) {
+      $rolId = (int) $_SESSION['userData']['rolid'];
+    }
 
-        $whereUser = "";
+    if (isset($_SESSION['idUser'])) {
+      $userIdSes = (int) $_SESSION['idUser'];
+    } elseif (isset($_SESSION['userData']['idusuario'])) {
+      $userIdSes = (int) $_SESSION['userData']['idusuario'];
+    }
 
-        if (!$isAdmin) {
-            $whereUser = " AND (
-                pla.supervisorid = {$userIdSes}
-                OR pla.idplaneacion IN (
-                    SELECT DISTINCT pe.planeacionid
-                    FROM mrp_planeacion_estacion pe
-                    INNER JOIN mrp_planeacion_estacion_operador o
-                        ON o.planeacion_estacionid = pe.id_planeacion_estacion
-                    WHERE pe.estado = 2
-                    AND o.estado = 2
-                    AND o.usuarioid = {$userIdSes}
-                )
-            )";
-        }
+    $isAdmin = in_array($rolId, [1, 5], true);
 
-        $sql = "SELECT
+    if (!$isAdmin && $userIdSes <= 0) {
+      return [];
+    }
+
+    $whereUser = "";
+
+    if (!$isAdmin) {
+      $whereUser = " AND (
+            pla.supervisorid = {$userIdSes}
+            OR pla.idplaneacion IN (
+                SELECT DISTINCT pe.planeacionid
+                FROM mrp_planeacion_estacion pe
+                INNER JOIN mrp_planeacion_estacion_operador o
+                    ON o.planeacion_estacionid = pe.id_planeacion_estacion
+                WHERE pe.estado = 2
+                AND o.estado = 2
+                AND o.usuarioid = {$userIdSes}
+            )
+        )";
+    }
+
+    $sql = "SELECT
                 pla.*,
                 pla.estado AS estado_planeacion,
                 pro.cve_producto,
@@ -253,138 +266,181 @@ $sqlPendientes = "SELECT
             {$whereUser}
             ORDER BY pla.idplaneacion DESC";
 
-        return $this->select_all($sql);
+    return $this->select_all($sql);
+  }
+
+  public function selectPlanPendientes()
+  {
+    $rolId = 0;
+    $userIdSes = 0;
+
+    if (isset($_SESSION['rolid'])) {
+      $rolId = (int) $_SESSION['rolid'];
+    } elseif (isset($_SESSION['userData']['rolid'])) {
+      $rolId = (int) $_SESSION['userData']['rolid'];
     }
 
-    public function selectPlanPendientes()
-    {
-        $rolId = isset($_SESSION['rolid']) ? (int) $_SESSION['rolid'] : 0;
-        $userIdSes = isset($_SESSION['idUser']) ? (int) $_SESSION['idUser'] : 0;
+    if (isset($_SESSION['idUser'])) {
+      $userIdSes = (int) $_SESSION['idUser'];
+    } elseif (isset($_SESSION['userData']['idusuario'])) {
+      $userIdSes = (int) $_SESSION['userData']['idusuario'];
+    }
 
-        // Admin y rol 5 ven todo
-        $isAdmin = in_array($rolId, [1, 5]);
+    // Admin y rol 5 ven todo
+    $isAdmin = in_array($rolId, [1, 5], true);
 
-        if (!$isAdmin && $userIdSes <= 0) {
-            return [];
-        }
+    if (!$isAdmin && $userIdSes <= 0) {
+      return [];
+    }
 
-        $whereUser = "";
-        if (!$isAdmin) {
-            $whereUser = " AND (
+    $whereUser = "";
+
+    if (!$isAdmin) {
+      $whereUser = " AND (
             pla.supervisorid = {$userIdSes}
             OR pla.idplaneacion IN (
                 SELECT DISTINCT pe.planeacionid
                 FROM mrp_planeacion_estacion pe
                 INNER JOIN mrp_planeacion_estacion_operador o
-                  ON o.planeacion_estacionid = pe.id_planeacion_estacion
+                    ON o.planeacion_estacionid = pe.id_planeacion_estacion
                 WHERE pe.estado = 2
-                  AND o.estado  = 2
-                  AND o.usuarioid = {$userIdSes}
+                AND o.estado = 2
+                AND o.usuarioid = {$userIdSes}
             )
         )";
-        }
+    }
 
-        $sql = "SELECT pla.*,
-                   pla.estado AS estado_planeacion,
-                   pro.cve_producto,
-                   pro.descripcion AS descripcion_producto
+    $sql = "SELECT
+                pla.*,
+                pla.estado AS estado_planeacion,
+                pro.cve_producto,
+                pro.descripcion AS descripcion_producto
             FROM mrp_planeacion AS pla
             INNER JOIN mrp_productos AS pro
-              ON pla.productoid = pro.idproducto
+                ON pla.productoid = pro.idproducto
             WHERE pla.fase = 2
-              AND pla.estado != 0
-              {$whereUser};";
+            AND pla.estado != 0
+            {$whereUser}
+            ORDER BY pla.idplaneacion DESC";
 
-        return $this->select_all($sql);
+    return $this->select_all($sql);
+  }
+
+
+
+
+  public function selectPlanFinalizadas()
+  {
+    $rolId = 0;
+    $userIdSes = 0;
+
+    if (isset($_SESSION['rolid'])) {
+      $rolId = (int) $_SESSION['rolid'];
+    } elseif (isset($_SESSION['userData']['rolid'])) {
+      $rolId = (int) $_SESSION['userData']['rolid'];
     }
 
+    if (isset($_SESSION['idUser'])) {
+      $userIdSes = (int) $_SESSION['idUser'];
+    } elseif (isset($_SESSION['userData']['idusuario'])) {
+      $userIdSes = (int) $_SESSION['userData']['idusuario'];
+    }
 
+    // Administrador y rol 5 ven todo
+    $isAdmin = in_array($rolId, [1, 5], true);
 
+    if (!$isAdmin && $userIdSes <= 0) {
+      return [];
+    }
 
+    $whereUser = "";
 
-    public function selectPlanFinalizadas()
-    {
-        $isAdmin = isset($_SESSION['rolid']) && (int) $_SESSION['rolid'] === 1;
-        $userIdSes = isset($_SESSION['idUser']) ? (int) $_SESSION['idUser'] : 0;
-
-        if (!$isAdmin && $userIdSes <= 0) {
-            return [];
-        }
-
-        $whereUser = "";
-        if (!$isAdmin) {
-            $whereUser = " AND (
+    if (!$isAdmin) {
+      $whereUser = " AND (
             pla.supervisorid = {$userIdSes}
             OR pla.idplaneacion IN (
                 SELECT DISTINCT pe.planeacionid
                 FROM mrp_planeacion_estacion pe
                 INNER JOIN mrp_planeacion_estacion_operador o
-                  ON o.planeacion_estacionid = pe.id_planeacion_estacion
+                    ON o.planeacion_estacionid = pe.id_planeacion_estacion
                 WHERE pe.estado = 2
-                  AND o.estado  = 2
-                  AND o.usuarioid = {$userIdSes}
+                AND o.estado = 2
+                AND o.usuarioid = {$userIdSes}
             )
         )";
-        }
+    }
 
-        $sql = "SELECT pla.*,
-                   pla.estado AS estado_planeacion,
-                   pro.cve_producto,
-                   pro.descripcion AS descripcion_producto
+    $sql = "SELECT
+                pla.*,
+                pla.estado AS estado_planeacion,
+                pro.cve_producto,
+                pro.descripcion AS descripcion_producto
             FROM mrp_planeacion AS pla
             INNER JOIN mrp_productos AS pro
-              ON pla.productoid = pro.idproducto
+                ON pla.productoid = pro.idproducto
             WHERE pla.fase = 5
-              AND pla.estado != 0
-              {$whereUser};";
+            AND pla.estado != 0
+            {$whereUser}
+            ORDER BY pla.idplaneacion DESC";
 
-        return $this->select_all($sql);
+    return $this->select_all($sql);
+  }
+
+
+  public function selectPlanEnProceso()
+  {
+    $rolId = 0;
+    $userIdSes = 0;
+
+    if (isset($_SESSION['rolid'])) {
+      $rolId = (int) $_SESSION['rolid'];
+    } elseif (isset($_SESSION['userData']['rolid'])) {
+      $rolId = (int) $_SESSION['userData']['rolid'];
     }
 
+    if (isset($_SESSION['idUser'])) {
+      $userIdSes = (int) $_SESSION['idUser'];
+    } elseif (isset($_SESSION['userData']['idusuario'])) {
+      $userIdSes = (int) $_SESSION['userData']['idusuario'];
+    }
 
-    public function selectPlanEnProceso()
-    {
-        $isAdmin = isset($_SESSION['rolid']) && (int) $_SESSION['rolid'] === 1;
-        $userIdSes = isset($_SESSION['idUser']) ? (int) $_SESSION['idUser'] : 0;
+    // Administrador y rol 5 ven todo
+    $isAdmin = in_array($rolId, [1, 5], true);
 
-        if (!$isAdmin && $userIdSes <= 0) {
-            return [];
-        }
+    if (!$isAdmin && $userIdSes <= 0) {
+      return [];
+    }
 
-        $whereUser = "";
-        if (!$isAdmin) {
-            $whereUser = " AND (
+    $whereUser = "";
+
+    if (!$isAdmin) {
+      $whereUser = " AND (
             pla.supervisorid = {$userIdSes}
             OR pla.idplaneacion IN (
                 SELECT DISTINCT pe.planeacionid
                 FROM mrp_planeacion_estacion pe
                 INNER JOIN mrp_planeacion_estacion_operador o
-                  ON o.planeacion_estacionid = pe.id_planeacion_estacion
+                    ON o.planeacion_estacionid = pe.id_planeacion_estacion
                 WHERE pe.estado = 2
-                  AND o.estado  = 2
-                  AND o.usuarioid = {$userIdSes}
+                AND o.estado = 2
+                AND o.usuarioid = {$userIdSes}
             )
         )";
-        }
-
-        $sql = "SELECT pla.*,
-                   pla.estado AS estado_planeacion,
-                   pro.cve_producto,
-                   pro.descripcion AS descripcion_producto
-            FROM mrp_planeacion AS pla
-            INNER JOIN mrp_productos AS pro
-              ON pla.productoid = pro.idproducto
-            WHERE pla.fase = 3
-              AND pla.estado != 0
-              {$whereUser};";
-
-        return $this->select_all($sql);
     }
 
+    $sql = "SELECT
+                pla.*,
+                pla.estado AS estado_planeacion,
+                pro.cve_producto,
+                pro.descripcion AS descripcion_producto
+            FROM mrp_planeacion AS pla
+            INNER JOIN mrp_productos AS pro
+                ON pla.productoid = pro.idproducto
+            WHERE pla.fase = 3
+            AND pla.estado != 0
+            {$whereUser}
+            ORDER BY pla.idplaneacion DESC";
 
-
-
-
-
+    return $this->select_all($sql);
+  }
 }
-?>
