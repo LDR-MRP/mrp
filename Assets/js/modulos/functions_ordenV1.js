@@ -5337,11 +5337,11 @@ async function guardarAsignacionVin() {
       return;
     }
 
-    if (!numeroMotor) {
-      Swal.fire('Atención', 'Ingresa el número de motor.', 'warning');
-      document.getElementById('inputMotorIdenti')?.focus();
-      return;
-    }
+    // if (!numeroMotor) {
+    //   Swal.fire('Atención', 'Ingresa el número de motor.', 'warning');
+    //   document.getElementById('inputMotorIdenti')?.focus();
+    //   return;
+    // }
 
 
     if (!numeroSerieId) {

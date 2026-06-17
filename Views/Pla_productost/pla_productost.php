@@ -19,11 +19,11 @@
                             </ol>
                         </div>
                     </div>
-                </div>
+                </div> 
             </div>
             <!-- end page title -->
 
-
+ 
 
             <div class="row g-3 " id="viewListado">
                 <div class="col-12">

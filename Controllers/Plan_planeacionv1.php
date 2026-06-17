@@ -128,6 +128,7 @@ class Plan_planeacionv1 extends Controllers
     //  Datos de auditoría
     // --------------------------------------------------------------------
     $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
+    $plantaid = $_SESSION['userData']['plantaid'] ?? 0;
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
     $detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
     $fechaEvento = date('Y-m-d H:i:s');
@@ -416,7 +417,7 @@ class Plan_planeacionv1 extends Controllers
         $full = trim($nom . ' ' . $ape);
         $mapUserNombre[$id] = $full !== '' ? $full : '—';
       }
-    }
+    } 
 
     try {
 
@@ -431,7 +432,8 @@ class Plan_planeacionv1 extends Controllers
         $cantidad,
         $fecha_inicio,
         $fecha_requerida,
-        $notas
+        $notas,
+        $plantaid
       );
 
       if ((int) $request_CONFIGURACION <= 0) {
@@ -444,7 +446,7 @@ class Plan_planeacionv1 extends Controllers
         MPPLANPRODUCCION,
         1,
         $idusuario,
-        'mrp_planeacion',
+        'mrp_planeacion', 
         $idplaneacion,
         $fechaEvento,
         $ip,

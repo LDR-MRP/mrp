@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     return base_url + '/pla_productost/getTodas';
-  }
+  } 
 
   async function fetchJson(url) {
     const response = await fetch(url, {
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function () {
       headers: {
         'Accept': 'application/json'
       }
-    });
+    }); 
 
     if (!response.ok) {
       throw new Error('Error HTTP ' + response.status);
@@ -255,5 +255,6 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   renderListado('TODAS');
+  
 
 });

@@ -246,12 +246,13 @@ class Plan_planeacionv1Model extends Mysql
 
 
 
-  public function insertPlaneacion($num_orden, $productoid, $pedido, $supervisor, $prioridad, $cantidad, $fecha_inicio, $fecha_requerida, $notas)
+  public function insertPlaneacion($num_orden, $productoid, $pedido, $supervisor, $prioridad, $cantidad, $fecha_inicio, $fecha_requerida, $notas, $plantaid)
   {
-    $sql = "INSERT INTO mrp_planeacion (num_orden, productoid, num_pedido, supervisorid, prioridad, cantidad, fecha_inicio, fecha_requerida, notas, estado)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 2)";
+    $estado=2;
+    $sql = "INSERT INTO mrp_planeacion (num_orden, productoid, num_pedido, supervisorid, prioridad, cantidad, fecha_inicio, fecha_requerida, notas, estado, plantaid)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-    $arrData = [$num_orden, $productoid, $pedido, $supervisor, $prioridad, $cantidad, $fecha_inicio, $fecha_requerida, $notas];
+    $arrData = [$num_orden, $productoid, $pedido, $supervisor, $prioridad, $cantidad, $fecha_inicio, $fecha_requerida, $notas, $estado, $plantaid];
 
     return $this->insert($sql, $arrData);
   }
@@ -5874,6 +5875,7 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
                 pla.fase,
                 pla.cantidad,
                 pla.supervisorid,
+                pla.plantaid,
 
                 est.idestacion,
                 est.cve_estacion,
@@ -6129,6 +6131,8 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
     $accionProduccion = (int) ($orden['accion_produccion'] ?? 0);
     $accionActiva = (int) ($orden['accion_activa'] ?? 0);
 
+     
+
     if ($accionProduccion === 2 && $accionActiva === 2) {
       return [
         'status' => false,
@@ -6261,9 +6265,67 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
       [$subot]
     );
 
+    $idplaneacion = (int) ($orden['idplaneacion'] ?? 0);
+    $plantaid = (int) ($orden['plantaid'] ?? 0);
+
     $pendientes = (int) ($rowPendientes['pendientes'] ?? 0);
 
     if ($pendientes === 0) {
+
+
+          // ==========================================
+    // REGISTRAR UNIDAD TERMINADA
+    // ==========================================
+
+    $sqlExisteUnidad = "SELECT idunidad
+                        FROM mrp_unidades_terminadas
+                        WHERE num_unidad = ?
+                        LIMIT 1";
+
+    $rowUnidad = $this->select(
+        $sqlExisteUnidad,
+        [$subot]
+    );
+
+    if (empty($rowUnidad)) {
+
+        $sqlUnidadTerminada = "INSERT INTO mrp_unidades_terminadas
+        (
+            num_unidad,
+            planeacionid,
+            plantaid,
+            fecha_creacion,
+            estado
+        )
+        VALUES
+        (
+            ?, ?, ?, ?, ?
+        )";
+
+        $arrUnidadTerminada = [
+            $subot,
+            $idplaneacion,
+            $plantaid,
+            $fechaMexico,
+            2
+        ];
+
+        if (method_exists($this, 'insert')) {
+
+            $this->insert(
+                $sqlUnidadTerminada,
+                $arrUnidadTerminada
+            );
+
+        } else {
+
+            $this->update(
+                $sqlUnidadTerminada,
+                $arrUnidadTerminada
+            );
+        }
+    }
+
 
       // ==========================================
       // EVITAR DUPLICAR MOVIMIENTO
@@ -6340,8 +6402,7 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
       // ACTUALIZAR EXISTENCIA
       // ==========================================
 
-      $sqlExistencia = "
-        SELECT idmultialmacen
+      $sqlExistencia = "SELECT idmultialmacen
         FROM wms_multialmacen
         WHERE inventarioid = ?
         AND almacenid = ?
@@ -6357,8 +6418,7 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
 
         $idmultialmacen = (int) $rowExistencia['idmultialmacen'];
 
-        $sqlUpdateExistencia = "
-            UPDATE wms_multialmacen
+        $sqlUpdateExistencia = "UPDATE wms_multialmacen
             SET existencia = existencia + 1
             WHERE idmultialmacen = ?
         ";
@@ -6370,8 +6430,7 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
 
       } else {
 
-        $sqlInsertExistencia = "
-            INSERT INTO wms_multialmacen
+        $sqlInsertExistencia = "INSERT INTO wms_multialmacen
             (
                 inventarioid,
                 almacenid,
