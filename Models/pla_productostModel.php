@@ -269,6 +269,7 @@ class Pla_productostModel extends Mysql
     return $this->select_all($sql);
   }
 
+
   public function selectPlanPendientes()
   {
     $rolId = 0;

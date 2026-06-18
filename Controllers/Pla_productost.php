@@ -13,17 +13,7 @@ class Pla_productost extends Controllers
     getPermisos(MPPRODUCTOSTERMINADOS);
   }
 
-    public function Pla_productost()
-  {
-    if (empty($_SESSION['permisosMod']['r'])) {
-      header("Location:" . base_url() . '/dashboard');
-    }
-    $data['page_tag'] = "Ordenes de Trabajo";
-    $data['page_title'] = "Ordenes de Trabajo";
-    $data['page_name'] = "Productos";
-    $data['page_functions_js'] = "functions_pla_productost.js";
-    $this->views->getView($this, "pla_productost", $data);
-  }
+
 
 
   public function orden($num_orden)
