@@ -28,28 +28,43 @@ class Pla_productost extends Controllers
 
 
 
-public function orden()
-{
-    $uri = trim($_SERVER['REQUEST_URI'], '/');
-    $partes = explode('/', $uri);
-    $num_orden = urldecode(trim((string) end($partes)));
+  public function orden($num_orden)
+  {
+    $num_orden = trim((string) $num_orden);
 
-    if ($num_orden === '' || $num_orden === 'orden') {
-        header("Location:" . base_url() . '/pla_productost');
-        die();
+    if ($num_orden === '') {
+      header("Location:" . base_url() . '/plan_planeacion');
+      die();
     }
 
     $resp = $this->model->obtenerPlaneacion($num_orden);
+
+    if (isset($_GET['json']) && $_GET['json'] == '1') {
+      header('Content-Type: application/json; charset=utf-8');
+
+      if (empty($resp)) {
+        echo json_encode([
+          'status' => false,
+          'msg' => 'No se encontró la orden de trabajo'
+        ], JSON_UNESCAPED_UNICODE);
+        die();
+      }
+
+      echo json_encode([
+        'status' => true,
+        'data' => $resp
+      ], JSON_UNESCAPED_UNICODE);
+      die();
+    }
 
     $data['page_tag'] = $num_orden;
     $data['page_title'] = "Orden <small>de trabajo</small>";
     $data['page_name'] = "Orden de trabajo";
     $data['page_functions_js'] = "functions_pla_productost_orden.js";
     $data['arrOrdenDetalle'] = $resp;
-    $data['num_orden'] = $num_orden;
 
     $this->views->getView($this, "orden", $data);
-}
+  }
   
 
   public function test(){

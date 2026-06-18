@@ -2868,29 +2868,29 @@ class Plan_planeacionv1 extends Controllers
         die();
       }
 
-      if ($numeroMotor === '' || strlen($numeroMotor) < 3) {
-        echo json_encode([
-          'status' => false,
-          'msg' => 'Número de motor obligatorio'
-        ]);
-        die();
-      }
+      // if ($numeroMotor === '' || strlen($numeroMotor) < 3) {
+      //   echo json_encode([
+      //     'status' => false,
+      //     'msg' => 'Número de motor obligatorio'
+      //   ]);
+      //   die();
+      // }
 
-      if ($vinOrigen === '' || strlen($vinOrigen) < 3) {
-        echo json_encode([
-          'status' => false,
-          'msg' => 'VIN origen obligatorio'
-        ]);
-        die();
-      }
+      // if ($vinOrigen === '' || strlen($vinOrigen) < 3) {
+      //   echo json_encode([
+      //     'status' => false,
+      //     'msg' => 'VIN origen obligatorio'
+      //   ]);
+      //   die();
+      // }
 
-      if ($numeroTransmision === '' || strlen($numeroTransmision) < 3) {
-        echo json_encode([
-          'status' => false,
-          'msg' => 'Número de transmisión obligatorio'
-        ]);
-        die();
-      }
+      // if ($numeroTransmision === '' || strlen($numeroTransmision) < 3) {
+      //   echo json_encode([
+      //     'status' => false,
+      //     'msg' => 'Número de transmisión obligatorio'
+      //   ]);
+      //   die();
+      // }
 
       $usuarioId = intval($_SESSION['userData']['idusuario'] ?? 0);
 
