@@ -14,6 +14,18 @@ class Pla_productost extends Controllers
   }
 
 
+    public function Pla_productost()
+  {
+
+    $data['page_tag'] = "Ordenes de Trabajo";
+    $data['page_title'] = "Orden <small>de trabajo</small>";
+    $data['page_name'] = "Orden de trabajo";
+    $data['page_functions_js'] = "functions_pla_productost.js";
+
+    $this->views->getView($this, "pla_productost", $data);
+  }
+
+
 
 
   public function orden($num_orden)
