@@ -5050,11 +5050,14 @@ async function openModalIdentificacion(
   numbase
 ) {
 
+
+
   productoid = parseInt(productoid, 10) || 0;
   estacionid = parseInt(estacionid, 10) || 0;
   idorden = parseInt(idorden, 10) || 0;
-
-  console.log('ID ORDEN:', idorden);
+  // numot = parseInt(numot, 10) || 0;
+ 
+  // console.log('ID ORDEN:', idorden);
 
   const modalIdentiEl = document.getElementById('modalIdentificacion');
 
@@ -5080,16 +5083,22 @@ async function openModalIdentificacion(
   // =========================================
 
   const inputOrden = document.getElementById('ordenid');
+    const numUnidad = document.getElementById('numunidad');
 
   if (!inputOrden) {
     console.error('No existe el input hidden con id="ordenid"');
     return;
   }
 
-  // ESTA LÍNEA TE FALTABA
-  inputOrden.value = String(idorden);
+    if (!numUnidad) {
+    console.error('No existe el input hidden con id="numunidad"');
+    return;
+  }
 
-  console.log('VALOR GUARDADO EN HIDDEN:', inputOrden.value);
+  inputOrden.value = String(idorden);
+    numUnidad.value = String(numot);
+
+  // console.log('VALOR GUARDADO EN HIDDEN:', inputOrden.value);
 
 
   // =========================================
@@ -5300,6 +5309,7 @@ async function guardarAsignacionVin() {
   try {
 
     const ordenId = parseInt(document.getElementById('ordenid')?.value || '0', 10) || 0;
+      const numunidad = document.getElementById('numunidad')?.value || '0';
 
 
     const sel = document.getElementById('selectVinIdenti');
@@ -5378,6 +5388,7 @@ async function guardarAsignacionVin() {
     const fd = new FormData();
 
     fd.append('orden_trabajo_id', String(ordenId));
+    fd.append('num_unidad', String(numunidad));
     fd.append('vin', vin);
     fd.append('numero_serie_id', String(numeroSerieId));
     fd.append('numero_motor', numeroMotor);

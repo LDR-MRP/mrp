@@ -2812,7 +2812,7 @@ class Plan_planeacionv1 extends Controllers
   }
 
   public function setVinAsignacion()
-  {
+  { 
     header('Content-Type: application/json; charset=utf-8');
 
     $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
@@ -2851,6 +2851,10 @@ class Plan_planeacionv1 extends Controllers
         ? trim($_POST['numero_transmision'])
         : '';
 
+          $numUnidad = isset($_POST['num_unidad'])
+        ? trim($_POST['num_unidad'])
+        : '';
+
 
       if ($ordenId <= 0) {
         echo json_encode([
@@ -2867,6 +2871,9 @@ class Plan_planeacionv1 extends Controllers
         ]);
         die();
       }
+
+      // dep($numUnidad);
+      // exit;
 
       // if ($numeroMotor === '' || strlen($numeroMotor) < 3) {
       //   echo json_encode([
@@ -2907,6 +2914,7 @@ class Plan_planeacionv1 extends Controllers
 
       $insertId = $this->model->insertVinAsignacion(
         $ordenId,
+        $numUnidad,
         $numeroSerieId,
         $numeroMotor,
         $vinOrigen,

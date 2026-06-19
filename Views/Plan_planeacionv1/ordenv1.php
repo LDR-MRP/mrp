@@ -2981,6 +2981,7 @@ foreach ($estaciones as $est) {
 
           <!-- idorden hidden -->
           <input type="hidden" id="ordenid" name="orden_trabajo_id">
+           <input type="hidden" id="numunidad" name="numunidad">
 
           <div class="row g-3">
 

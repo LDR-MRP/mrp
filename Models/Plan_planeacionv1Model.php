@@ -4967,17 +4967,19 @@ class Plan_planeacionv1Model extends Mysql
 
   public function insertVinAsignacion(
     int $ordenId,
+    string $numUnidad,
     int $numeroSerieId,
     string $numeroMotor,
     string $vinOrigen,
     string $numeroTransmision,
     int $usuarioId,
     string $fecha
-  ) {
+  ) { 
 
     $sql = "INSERT INTO mrp_vin_asignaciones
                 (
                     orden_trabajo_id,
+                    num_unidad,
                     numero_serie_id,
                     numero_motor,
                     vin_origen,
@@ -4987,10 +4989,11 @@ class Plan_planeacionv1Model extends Mysql
                     estado
                 )
             VALUES
-                (?, ?, ?, ?, ?, ?, ?, 1)";
+                (?, ?, ?, ?, ?, ?, ?, ?, 1)";
 
     return $this->insert($sql, [
       $ordenId,
+      $numUnidad,
       $numeroSerieId,
       $numeroMotor,
       $vinOrigen,

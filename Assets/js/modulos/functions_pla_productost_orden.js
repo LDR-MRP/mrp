@@ -287,14 +287,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const btnVolverHome2 = document.getElementById('btnVolverHome2');
 
-if (btnVolverHome2) {
+  if (btnVolverHome2) {
 
     btnVolverHome2.addEventListener('click', function () {
 
-        window.location.href = base_url + '/pla_productost';
+      window.location.href = base_url + '/pla_productost';
 
     });
 
-}
+  }
 
 });

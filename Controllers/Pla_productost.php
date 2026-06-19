@@ -13,10 +13,8 @@ class Pla_productost extends Controllers
     getPermisos(MPPRODUCTOSTERMINADOS);
   }
 
-
     public function Pla_productost()
   {
-
     $data['page_tag'] = "Ordenes de Trabajo";
     $data['page_title'] = "Orden <small>de trabajo</small>";
     $data['page_name'] = "Orden de trabajo";
@@ -25,12 +23,9 @@ class Pla_productost extends Controllers
     $this->views->getView($this, "pla_productost", $data);
   }
 
-
-
-
   public function orden($num_orden)
   {
-    $num_orden = trim((string) $num_orden);
+    $num_orden = trim((string) $num_orden); 
 
     if ($num_orden === '') {
       header("Location:" . base_url() . '/plan_planeacion');
@@ -65,13 +60,6 @@ class Pla_productost extends Controllers
 
     $this->views->getView($this, "orden", $data);
   }
-  
-
-  public function test(){
-    echo "ESTA ES UNA PRUEBA DE CONTROLADDOR!!";
-  }
-
-
 
   public function getTodas()
   {
@@ -81,72 +69,23 @@ class Pla_productost extends Controllers
     die();
   }
 
-
-
-  // --------------------------------------------------------------------
-  // FUNCIÓN PARA LISTAR TODAS LAS PLANEACIONES PENDIENTGES
-  // --------------------------------------------------------------------
   public function getPendientes()
   {
-
-
-
     $arrData = $this->model->selectPlanPendientes();
-    // for ($i = 0; $i < count($arrData); $i++) {
-    //     $btnView = '';
-    //     $btnEdit = '';
-    //     $btnDelete = '';
-    // if ($arrData[$i]['estado_planeacion'] == 2) {
-    //     $arrData[$i]['estado_planeacion'] = '<span class="badge bg-success">Activo</span>';
-    // } else if ($arrData[$i]['estado_planeacion'] == 1) {
-    //     $arrData[$i]['estado_planeacion'] = '<span class="badge bg-danger">Inactivo</span>';
-    // }
-    // $btnEdit = '<button class="btn btn-sm btn-soft-warning edit-list" title="Editar Producto" onClick="fntEditProducto(' . $arrData[$i]['idplaneacion'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
-    // $btnReporte = '<button class="btn btn-sm btn-soft-danger edit-file" title="Generar reporte" onClick="fntReportProducto(' . $arrData[$i]['idplaneacion'] . ')"><i class="ri-file-text-line me-1"></i></button>';
-
-    // $arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . '</div>';
-    // $arrData[$i]['options'] = '<div class="text-center">' . $btnReporte . ' ' . $btnEdit . '</div>';
-    // }
     echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
-
     die();
-
   }
-
-
 
   // --------------------------------------------------------------------
   // FUNCIÓN PARA LISTAR TODAS LAS PLANEACIONES FINALIZADAS
   // --------------------------------------------------------------------
   public function getFinalizadas()
   {
-
     $arrData = $this->model->selectPlanFinalizadas();
-    // for ($i = 0; $i < count($arrData); $i++) {
-    //     $btnView = '';
-    //     $btnEdit = '';
-    //     $btnDelete = '';
-
-    //     if ($arrData[$i]['estado_planeacion'] == 2) {
-    //         $arrData[$i]['estado_planeacion'] = '<span class="badge bg-success">Activo</span>';
-    //     } else if ($arrData[$i]['estado_planeacion'] == 1) {
-    //         $arrData[$i]['estado_planeacion'] = '<span class="badge bg-danger">Inactivo</span>';
-    //     }
-
-    //     $btnEdit = '<button class="btn btn-sm btn-soft-warning edit-list" title="Editar Producto" onClick="fntEditProducto(' . $arrData[$i]['idplaneacion'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
-    //     $btnReporte = '<button class="btn btn-sm btn-soft-danger edit-file" title="Generar reporte" onClick="fntReportProducto(' . $arrData[$i]['idplaneacion'] . ')"><i class="ri-file-text-line me-1"></i></button>';
-
-
-
-    //     // $arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . '</div>';
-    //     $arrData[$i]['options'] = '<div class="text-center">' . $btnReporte . ' ' . $btnEdit . '</div>';
-    // }
     echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
-
     die();
 
   }
-
 
   // --------------------------------------------------------------------
   // FUNCIÓN PARA LISTAR TODAS LAS PLANEACIONES CANCELADAS
@@ -155,28 +94,21 @@ class Pla_productost extends Controllers
   {
 
     $arrData = $this->model->selectPlanEnProceso();
-    // for ($i = 0; $i < count($arrData); $i++) {
-    //     $btnView = '';
-    //     $btnEdit = '';
-    //     $btnDelete = '';
-
-    //     if ($arrData[$i]['estado_planeacion'] == 2) {
-    //         $arrData[$i]['estado_planeacion'] = '<span class="badge bg-success">Activo</span>';
-    //     } else if ($arrData[$i]['estado_planeacion'] == 1) {
-    //         $arrData[$i]['estado_planeacion'] = '<span class="badge bg-danger">Inactivo</span>';
-    //     }
-
-    //     $btnEdit = '<button class="btn btn-sm btn-soft-warning edit-list" title="Editar Producto" onClick="fntEditProducto(' . $arrData[$i]['idplaneacion'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
-    //     $btnReporte = '<button class="btn btn-sm btn-soft-danger edit-file" title="Generar reporte" onClick="fntReportProducto(' . $arrData[$i]['idplaneacion'] . ')"><i class="ri-file-text-line me-1"></i></button>';
-
-
-
-    //     // $arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . '</div>';
-    //     $arrData[$i]['options'] = '<div class="text-center">' . $btnReporte . ' ' . $btnEdit . '</div>';
-    // }
     echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
-
     die();
+  }
+
+  public function pdfUnidad($num_unidad){
+    $num_unidad = trim((string) $num_unidad); 
+
+    if ($num_unidad === '') {
+      header("Location:" . base_url() . '/plan_planeacion');
+      die();
+    }
+
+    dep($num_unidad);
+
+    // $resp = $this->model->obtenerPlaneacion($num_unidad);
 
   }
 

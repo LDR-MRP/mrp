@@ -40,7 +40,7 @@ class Pla_productostModel extends Mysql
                 pla.plantaid,
                 pla.fase,
 
-                pl.idplanta,
+                pl.idplanta, 
                 pl.cve_planta,
                 pl.nombre_planta,
                 pl.direccion AS direccion_planta,
