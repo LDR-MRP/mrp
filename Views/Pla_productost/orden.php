@@ -383,7 +383,7 @@ function tiempoOrden($minutos)
                                 <table class="table table-hover align-middle">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>Unidad</th>
+                                            <th>Unidad</th>  
                                             <th>VIN asignado</th>
                                             <th>Motor</th>
                                             <th>Transmisión</th>

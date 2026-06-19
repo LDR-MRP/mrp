@@ -98,13 +98,14 @@ class Pla_productost extends Controllers
     die();
   }
 
+
   public function pdfUnidad($num_unidad){
     $num_unidad = trim((string) $num_unidad); 
 
     if ($num_unidad === '') {
       header("Location:" . base_url() . '/plan_planeacion');
       die();
-    }
+    } 
 
     dep($num_unidad);
 

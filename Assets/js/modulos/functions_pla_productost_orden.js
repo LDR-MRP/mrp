@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
       return base_url + '/pla_productost/getFinalizadas';
     }
 
-    if (tipo === 'EN_PROCESO') {
+    if (tipo === 'EN_PROCESO') { 
       return base_url + '/pla_productost/getEnProceso';
     }
 
