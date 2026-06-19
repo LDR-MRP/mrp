@@ -99,22 +99,62 @@ class Pla_productost extends Controllers
   }
 
 
-  public function pdfUnidad($num_unidad){
-    $num_unidad = trim((string) $num_unidad); 
+public function getUnidadPdf()
+{
+    $num_unidad = trim($_POST['num_unidad'] ?? '');
 
     if ($num_unidad === '') {
-      header("Location:" . base_url() . '/plan_planeacion');
-      die();
-    } 
+        echo json_encode([
+            'status' => false,
+            'msg' => 'Unidad inválida.'
+        ], JSON_UNESCAPED_UNICODE);
+        die();
+    }
 
-    dep($num_unidad);
+    $unidad = $this->model->selectUnidadTerminadaPdf($num_unidad);
 
-    // $resp = $this->model->obtenerPlaneacion($num_unidad);
+    // dep($unidad['clave']);
+    // exit;
 
-  }
+    if (empty($unidad)) {
+        echo json_encode([
+            'status' => false,
+            'msg' => 'No se encontró información de la unidad.'
+        ], JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    echo json_encode([
+        'status' => true,
+        'data' => $unidad,
+        'url_qr' => base_url() . "/pla_productost/verUnidad/" . urlencode($unidad['clave'])
+    ], JSON_UNESCAPED_UNICODE);
+    die();
+}
 
 
+public function verUnidad($num_clave)
+{
+    $num_clave = trim((string)$num_clave);
 
+    if ($num_clave === '') {
+        die("Unidad inválida.");
+    }
+
+    echo "La clave generada es: ", $num_clave;
+
+    // $unidad = $this->model->selectUnidadTerminadaPdf($num_clave);
+
+    if (empty($unidad)) {
+        die("No se encontró información de la unidad.");
+    }
+
+    $data['page_tag'] = "Detalle unidad";
+    $data['page_title'] = "Detalle unidad terminada";
+    $data['unidad'] = $unidad;
+
+    // $this->views->getView($this, "ver_unidad", $data);
+}
 
 
 }

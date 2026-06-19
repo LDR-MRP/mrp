@@ -444,4 +444,85 @@ class Pla_productostModel extends Mysql
 
     return $this->select_all($sql);
   }
+
+
+public function selectUnidadTerminadaPdf(string $num_unidad)
+{
+    $num_unidad = trim($num_unidad);
+
+    $sql = "SELECT
+                ut.idunidad,
+                ut.clave,
+                ut.num_unidad,
+                ut.planeacionid,
+                ut.plantaid,
+                ut.fecha_creacion AS fecha_unidad_terminada,
+                ut.estado AS estado_unidad,
+
+                pla.idplaneacion,
+                pla.num_orden,
+                pla.productoid,
+                pla.num_pedido,
+                pla.supervisorid,
+                pla.prioridad,
+                pla.cantidad,
+                pla.fecha_requerida,
+                pla.fecha_inicio,
+                pla.fecha_fin,
+                pla.fecha_inicio_real,
+                pla.fecha_fin_real,
+                pla.fase,
+                pla.estado AS estado_planeacion,
+
+                pro.idproducto,
+                pro.cve_producto,
+                pro.descripcion AS producto,
+                pro.lineaproductoid,
+
+                pl.idplanta,
+                pl.cve_planta,
+                pl.nombre_planta,
+                pl.direccion AS direccion_planta,
+
+                vin.idasignacion,
+                vin.orden_trabajo_id,
+                vin.numero_serie_id,
+                vin.numero_motor,
+                vin.vin_origen,
+                vin.numero_transmision,
+                vin.usuario_id,
+                vin.fecha_asignacion,
+                vin.estado AS estado_vin,
+
+                ns.id_numeros_serie,
+                ns.numero_serie AS vin_asignado,
+                ns.referencia AS referencia_vin,
+                ns.costo AS costo_vin,
+                ns.fecha AS fecha_vin,
+                ns.estado AS estado_numero_serie
+
+            FROM mrp_unidades_terminadas ut
+
+            LEFT JOIN mrp_planeacion pla
+                ON pla.idplaneacion = ut.planeacionid
+
+            LEFT JOIN mrp_productos pro
+                ON pro.idproducto = pla.productoid
+
+            LEFT JOIN mrp_planta pl
+                ON pl.idplanta = ut.plantaid
+
+            LEFT JOIN mrp_vin_asignaciones vin
+                ON vin.num_unidad COLLATE utf8mb4_unicode_ci = ut.num_unidad COLLATE utf8mb4_unicode_ci
+                AND vin.estado != 0
+
+            LEFT JOIN wms_numeros_series ns
+                ON ns.id_numeros_serie = vin.numero_serie_id
+
+            WHERE ut.num_unidad = '{$num_unidad}'
+
+            LIMIT 1";
+
+    return $this->select($sql);
+}
 }

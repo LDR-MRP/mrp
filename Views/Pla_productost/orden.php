@@ -485,13 +485,14 @@ function tiempoOrden($minutos)
                                                     <?= fechaOrden($unidad['fecha_asignacion'] ?? '') ?>
                                                 </td>
 
-                                                <td class="text-end">
-                                                    <a href="<?= base_url(); ?>/pla_productost/pdfUnidad/<?= urlencode($unidad['num_sub_orden'] ?? '') ?>"
-                                                        target="_blank" class="btn btn-soft-danger btn-sm">
-                                                        <i class="ri-file-pdf-2-line me-1"></i>
-                                                        PDF
-                                                    </a>
-                                                </td>
+                                            <td class="text-end">
+   <button type="button"
+        class="btn btn-soft-danger btn-sm btnPdfUnidad"
+        data-unidad="<?= htmlspecialchars($unidad['num_sub_orden'] ?? '') ?>">
+    <i class="ri-file-pdf-2-line me-1"></i>
+    PDF
+</button>
+</td>
                                             </tr>
                                         <?php } ?>
                                     </tbody>
