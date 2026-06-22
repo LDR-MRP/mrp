@@ -1,17 +1,29 @@
 <?php
 class Pla_productost extends Controllers
 {
-  public function __construct()
-  {
+ public function __construct()
+{
     parent::__construct();
     session_start();
-    //session_regenerate_id(true); 
-    if (empty($_SESSION['login'])) {
-      header('Location: ' . base_url() . '/login');
-      die();
+
+    // Métodos que NO requieren sesión
+    $metodosPublicos = ['verUnidad'];
+
+  
+    $url = $_GET['url'] ?? '';
+    $arrUrl = explode('/', $url);
+    $metodoActual = $arrUrl[1] ?? '';
+
+    
+    if (!in_array($metodoActual, $metodosPublicos)) {
+        if (empty($_SESSION['login'])) {
+            header('Location: ' . base_url() . '/login');
+            die();
+        }
+
+        getPermisos(MPPRODUCTOSTERMINADOS);
     }
-    getPermisos(MPPRODUCTOSTERMINADOS);
-  }
+}
 
     public function Pla_productost()
   {

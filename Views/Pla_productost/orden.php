@@ -487,7 +487,7 @@ function tiempoOrden($minutos)
 
                                             <td class="text-end">
    <button type="button"
-        class="btn btn-soft-danger btn-sm btnPdfUnidad"
+        class="btn btn-soft-danger btn-sm"
         data-unidad="<?= htmlspecialchars($unidad['num_sub_orden'] ?? '') ?>">
     <i class="ri-file-pdf-2-line me-1"></i>
     PDF
