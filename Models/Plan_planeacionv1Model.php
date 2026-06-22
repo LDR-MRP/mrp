@@ -6087,6 +6087,21 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
     return !empty($row);
   }
 
+  private function generarClaveUnidad(int $longitud = 15): string
+{
+   
+    $caracteres = 'ABCDEFGHJKLMNPQRSTUVWXYZ123456789';
+
+    $clave = '';
+
+    for ($i = 0; $i < $longitud; $i++) {
+        $indice = random_int(0, strlen($caracteres) - 1);
+        $clave .= $caracteres[$indice];
+    }
+
+    return $clave;
+}
+
 
 
   public function finalizarOrdenEstacion(int $idorden, int $usuarioid, int $inventarioid)
@@ -6292,8 +6307,10 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
 
     if (empty($rowUnidad)) {
 
+         $clave = $this->generarClaveUnidad();
+
         $sqlUnidadTerminada = "INSERT INTO mrp_unidades_terminadas
-        (
+        (   clave,
             num_unidad,
             planeacionid,
             plantaid,
@@ -6302,10 +6319,11 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
         )
         VALUES
         (
-            ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?
         )";
 
         $arrUnidadTerminada = [
+            $clave,
             $subot,
             $idplaneacion,
             $plantaid,
