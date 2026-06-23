@@ -525,4 +525,344 @@ public function selectUnidadTerminadaPdf(string $num_unidad)
 
     return $this->select($sql);
 }
+
+
+public function selectUnidadTerminada(string $num_clave)
+{
+    $num_clave = trim($num_clave);
+
+    // ==============================
+    // DATOS GENERALES DE LA UNIDAD
+    // ==============================
+    $sqlUnidad = "SELECT
+                    ut.idunidad,
+                    ut.clave,
+                    ut.num_unidad,
+                    ut.planeacionid,
+                    ut.plantaid,
+                    ut.fecha_creacion AS fecha_unidad_terminada,
+                    ut.estado AS estado_unidad,
+
+                    pla.idplaneacion,
+                    pla.num_orden,
+                    pla.productoid,
+                    pla.num_pedido,
+                    pla.supervisorid,
+                    pla.prioridad,
+                    pla.cantidad,
+                    pla.fecha_requerida,
+                    pla.fecha_inicio,
+                    pla.fecha_fin,
+                    pla.fecha_inicio_real,
+                    pla.fecha_fin_real,
+                    pla.usuario_inicio,
+                    pla.usuario_fin,
+                    pla.fase,
+                    pla.estado AS estado_planeacion,
+
+                    CONCAT(sup.nombres, ' ', sup.apellidos) AS supervisor_nombre,
+                    sup.email_usER AS supervisor_email,
+
+                    CONCAT(uvin.nombres, ' ', uvin.apellidos) AS asignacion_vin_usuario,
+
+                    pro.idproducto,
+                    pro.cve_producto,
+                    pro.descripcion AS producto,
+                    pro.lineaproductoid,
+
+                    inv.idinventario,
+                    inv.cve_articulo,
+                    inv.descripcion AS descripcion_inventario,
+                    inv.serie,
+                    inv.unidad_salida,
+                    inv.tipo_elemento,
+
+                    pl.idplanta,
+                    pl.cve_planta,
+                    pl.nombre_planta,
+                    pl.direccion AS direccion_planta,
+
+                    vin.idasignacion,
+                    vin.orden_trabajo_id,
+                    vin.numero_serie_id,
+                    vin.numero_motor,
+                    vin.numero_transmision,
+                    vin.vin_origen,
+                    vin.usuario_id AS usuario_asigno_vin,
+                    vin.fecha_asignacion,
+                    vin.estado AS estado_vin,
+
+                    ns.id_numeros_serie,
+                    ns.numero_serie AS vin_asignado,
+                    ns.referencia AS referencia_vin,
+
+                    otvin.idorden AS idorden_estampado_vin,
+                    estvin.cve_estacion AS cve_estacion_vin,
+                    estvin.nombre_estacion AS estacion_estampado_vin,
+                    estvin.proceso AS proceso_estampado_vin
+
+
+                    
+
+                FROM mrp_unidades_terminadas ut
+
+                LEFT JOIN mrp_planeacion pla
+                    ON pla.idplaneacion = ut.planeacionid
+
+                    LEFT JOIN usuarios sup
+                      ON sup.idusuario = pla.supervisorid
+
+                LEFT JOIN mrp_productos pro
+                    ON pro.idproducto = pla.productoid
+
+                LEFT JOIN wms_inventario inv
+                    ON inv.idinventario = pro.inventarioid
+
+                LEFT JOIN mrp_planta pl
+                    ON pl.idplanta = ut.plantaid
+
+                LEFT JOIN mrp_ordenes_trabajo otvin
+                    ON otvin.num_sub_orden  = ut.num_unidad 
+                    AND otvin.estampado = 2
+
+                LEFT JOIN mrp_planeacion_estacion pevin
+                    ON pevin.id_planeacion_estacion = otvin.planeacion_estacionid
+
+                LEFT JOIN mrp_estacion estvin
+                    ON estvin.idestacion = pevin.estacionid
+
+                LEFT JOIN mrp_vin_asignaciones vin
+                    ON vin.orden_trabajo_id = otvin.idorden
+                    AND vin.estado != 0
+
+                LEFT JOIN usuarios uvin
+                    ON uvin.idusuario = vin.usuario_id
+
+                LEFT JOIN wms_numeros_series ns
+                    ON ns.id_numeros_serie = vin.numero_serie_id
+
+                WHERE ut.clave = '{$num_clave}'
+                LIMIT 1";
+
+    $unidad = $this->select($sqlUnidad);
+
+    if (empty($unidad)) {
+        return [];
+    }
+
+    $numUnidad = $unidad['num_unidad'];
+
+    // ==============================
+    // RECORRIDO POR ESTACIONES
+    // ==============================
+    $sqlEstaciones = "SELECT
+                        ot.idorden,
+                        ot.planeacion_estacionid,
+                        ot.num_sub_orden,
+                        ot.fecha_inicio,
+                        ot.fecha_fin,
+                        ot.comentarios,
+                        ot.estatus,
+                        ot.calidad,
+                        ot.estampado,
+                        ot.operaciones,
+                        ot.especificaciones_criticas,
+                        ot.accion_produccion,
+                        ot.accion_activa,
+
+                        pe.id_planeacion_estacion,
+                        pe.planeacionid,
+                        pe.estacionid,
+                        pe.orden,
+                        pe.estado AS estado_planeacion_estacion,
+                        pe.estampado AS estacion_requiere_estampado,
+                        pe.calidad AS estacion_requiere_calidad,
+                        pe.operaciones AS estacion_requiere_operaciones,
+                        pe.especificaciones AS estacion_requiere_especificaciones,
+
+                        est.idestacion,
+                        est.cve_estacion,
+                        est.nombre_estacion,
+                        est.proceso,
+                        est.estandar,
+                        est.unidad_medida,
+                        est.tiempo_ajuste,
+                        est.descripcion AS descripcion_estacion,
+                        est.herramientas,
+                        est.tiene_subensamble,
+
+                        TIMESTAMPDIFF(MINUTE, ot.fecha_inicio, ot.fecha_fin) AS tiempo_real_minutos,
+
+                        CASE 
+                            WHEN ot.fecha_inicio IS NOT NULL 
+                             AND ot.fecha_fin IS NOT NULL
+                            THEN CONCAT(
+                                FLOOR(TIMESTAMPDIFF(MINUTE, ot.fecha_inicio, ot.fecha_fin) / 60),
+                                ' h ',
+                                MOD(TIMESTAMPDIFF(MINUTE, ot.fecha_inicio, ot.fecha_fin), 60),
+                                ' min'
+                            )
+                            ELSE 'Sin finalizar'
+                        END AS tiempo_real_formato,
+
+                        CASE 
+                            WHEN est.tiempo_ajuste IS NOT NULL
+                            THEN CONCAT(est.tiempo_ajuste, ' ', est.unidad_medida)
+                            ELSE 'N/A'
+                        END AS tiempo_estandar_formato,
+
+                        CASE 
+                            WHEN ot.calidad = 2 THEN 'Sí requiere / se realizó inspección'
+                            ELSE 'No aplica'
+                        END AS texto_calidad,
+
+                        CASE 
+                            WHEN ot.estampado = 2 THEN 'Aquí se realizó estampado VIN'
+                            ELSE 'No aplica'
+                        END AS texto_estampado,
+
+                        CASE 
+                            WHEN ot.especificaciones_criticas = 2 THEN 'Sí se aplicaron especificaciones críticas'
+                            ELSE 'No aplica'
+                        END AS texto_especificaciones_criticas,
+
+                        vin.idasignacion,
+                        vin.numero_motor,
+                        vin.numero_transmision,
+                        vin.vin_origen,
+                        vin.usuario_id AS usuario_asigno_vin,
+                        vin.fecha_asignacion,
+
+                        ns.numero_serie AS vin_asignado,
+
+                        GROUP_CONCAT(
+                            DISTINCT CASE 
+                                WHEN ope.rol = 1 THEN CONCAT(u.nombres, ' ', u.apellidos)
+                                ELSE NULL
+                            END
+                            SEPARATOR ', '
+                        ) AS encargado,
+
+                        GROUP_CONCAT(
+                            DISTINCT CASE 
+                                WHEN ope.rol = 2 THEN CONCAT(u.nombres, ' ', u.apellidos)
+                                ELSE NULL
+                            END
+                            SEPARATOR ', '
+                        ) AS ayudantes,
+
+                        GROUP_CONCAT(
+                            DISTINCT CONCAT(u.nombres, ' ', u.apellidos)
+                            SEPARATOR ', '
+                        ) AS operadores,
+
+                        CASE
+                            WHEN ot.estatus = 3 THEN 'Finalizada'
+                            WHEN ot.estatus = 2 THEN 'En proceso'
+                            WHEN ot.estatus = 1 THEN 'Pendiente'
+                            ELSE 'Sin estado'
+                        END AS estado_texto
+
+                    FROM mrp_ordenes_trabajo ot
+
+                    INNER JOIN mrp_planeacion_estacion pe
+                        ON pe.id_planeacion_estacion = ot.planeacion_estacionid
+
+                    INNER JOIN mrp_estacion est
+                        ON est.idestacion = pe.estacionid
+
+                    LEFT JOIN mrp_vin_asignaciones vin
+                        ON vin.orden_trabajo_id = ot.idorden
+                        AND ot.estampado = 2
+                        AND vin.estado != 0
+
+                    LEFT JOIN wms_numeros_series ns
+                        ON ns.id_numeros_serie = vin.numero_serie_id
+
+                    LEFT JOIN mrp_planeacion_estacion_operador ope
+                        ON ope.planeacion_estacionid = pe.id_planeacion_estacion
+                        AND ope.estado = 2
+
+                    LEFT JOIN usuarios u
+                        ON u.idusuario = ope.usuarioid
+
+                    WHERE ot.num_sub_orden  = '{$numUnidad}' 
+
+                    GROUP BY 
+                        ot.idorden,
+                        ot.planeacion_estacionid,
+                        ot.num_sub_orden,
+                        ot.fecha_inicio,
+                        ot.fecha_fin,
+                        ot.comentarios,
+                        ot.estatus,
+                        ot.calidad,
+                        ot.estampado,
+                        ot.operaciones,
+                        ot.especificaciones_criticas,
+                        ot.accion_produccion,
+                        ot.accion_activa,
+                        pe.id_planeacion_estacion,
+                        est.idestacion,
+                        vin.idasignacion,
+                        ns.numero_serie
+
+                    ORDER BY pe.orden ASC";
+
+    $estaciones = $this->select_all($sqlEstaciones);
+
+    // ==============================
+    // EVENTOS IMPORTANTES
+    // ==============================
+    $eventos = [];
+
+    foreach ($estaciones as $estacion) {
+        if (!empty($estacion['fecha_inicio'])) {
+            $eventos[] = [
+                'tipo' => 'inicio_estacion',
+                'titulo' => 'Inicio de estación',
+                'descripcion' => 'Se inició la estación ' . $estacion['cve_estacion'] . ' - ' . $estacion['nombre_estacion'],
+                'usuario' => $estacion['encargado'] ?? 'N/A',
+                'fecha' => $estacion['fecha_inicio']
+            ];
+        }
+
+        if ((int)$estacion['calidad'] === 2) {
+            $eventos[] = [
+                'tipo' => 'calidad',
+                'titulo' => 'Inspección de calidad',
+                'descripcion' => 'Se realizó inspección de calidad en la estación ' . $estacion['cve_estacion'],
+                'usuario' => $estacion['encargado'] ?? 'N/A',
+                'fecha' => $estacion['fecha_fin']
+            ];
+        }
+
+        if ((int)$estacion['estampado'] === 2) {
+            $eventos[] = [
+                'tipo' => 'vin',
+                'titulo' => 'Estampado VIN',
+                'descripcion' => 'Se realizó el estampado del VIN ' . ($estacion['vin_asignado'] ?? 'N/A'),
+                'usuario' => $estacion['encargado'] ?? 'N/A',
+                'fecha' => $estacion['fecha_asignacion'] ?? $estacion['fecha_fin']
+            ];
+        }
+
+        if (!empty($estacion['fecha_fin'])) {
+            $eventos[] = [
+                'tipo' => 'fin_estacion',
+                'titulo' => 'Fin de estación',
+                'descripcion' => 'Se finalizó la estación ' . $estacion['cve_estacion'] . ' - ' . $estacion['nombre_estacion'],
+                'usuario' => $estacion['encargado'] ?? 'N/A',
+                'fecha' => $estacion['fecha_fin']
+            ];
+        }
+    }
+
+    return [
+        'unidad' => $unidad,
+        'estaciones' => $estaciones,
+        'eventos' => $eventos
+    ];
+}
+
 }

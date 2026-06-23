@@ -1,31 +1,31 @@
 <?php
 class Pla_productost extends Controllers
 {
- public function __construct()
-{
+  public function __construct()
+  {
     parent::__construct();
     session_start();
 
     // Métodos que NO requieren sesión
     $metodosPublicos = ['verUnidad'];
 
-  
+
     $url = $_GET['url'] ?? '';
     $arrUrl = explode('/', $url);
     $metodoActual = $arrUrl[1] ?? '';
 
-    
+
     if (!in_array($metodoActual, $metodosPublicos)) {
-        if (empty($_SESSION['login'])) {
-            header('Location: ' . base_url() . '/login');
-            die();
-        }
+      if (empty($_SESSION['login'])) {
+        header('Location: ' . base_url() . '/login');
+        die();
+      }
 
-        getPermisos(MPPRODUCTOSTERMINADOS);
+      getPermisos(MPPRODUCTOSTERMINADOS);
     }
-}
+  }
 
-    public function Pla_productost()
+  public function Pla_productost()
   {
     $data['page_tag'] = "Ordenes de Trabajo";
     $data['page_title'] = "Orden <small>de trabajo</small>";
@@ -37,7 +37,7 @@ class Pla_productost extends Controllers
 
   public function orden($num_orden)
   {
-    $num_orden = trim((string) $num_orden); 
+    $num_orden = trim((string) $num_orden);
 
     if ($num_orden === '') {
       header("Location:" . base_url() . '/plan_planeacion');
@@ -111,16 +111,16 @@ class Pla_productost extends Controllers
   }
 
 
-public function getUnidadPdf()
-{
+  public function getUnidadPdf()
+  {
     $num_unidad = trim($_POST['num_unidad'] ?? '');
 
     if ($num_unidad === '') {
-        echo json_encode([
-            'status' => false,
-            'msg' => 'Unidad inválida.'
-        ], JSON_UNESCAPED_UNICODE);
-        die();
+      echo json_encode([
+        'status' => false,
+        'msg' => 'Unidad inválida.'
+      ], JSON_UNESCAPED_UNICODE);
+      die();
     }
 
     $unidad = $this->model->selectUnidadTerminadaPdf($num_unidad);
@@ -129,44 +129,42 @@ public function getUnidadPdf()
     // exit;
 
     if (empty($unidad)) {
-        echo json_encode([
-            'status' => false,
-            'msg' => 'No se encontró información de la unidad.'
-        ], JSON_UNESCAPED_UNICODE);
-        die();
+      echo json_encode([
+        'status' => false,
+        'msg' => 'No se encontró información de la unidad.'
+      ], JSON_UNESCAPED_UNICODE);
+      die();
     }
 
     echo json_encode([
-        'status' => true,
-        'data' => $unidad,
-        'url_qr' => base_url() . "/pla_productost/verUnidad/" . urlencode($unidad['clave'])
+      'status' => true,
+      'data' => $unidad,
+      'url_qr' => base_url() . "/pla_productost/verUnidad/" . urlencode($unidad['clave'])
     ], JSON_UNESCAPED_UNICODE);
     die();
-}
+  }
 
 
-public function verUnidad($num_clave)
-{
-    $num_clave = trim((string)$num_clave);
+  public function verUnidad($num_clave)
+  {
+    $num_clave = trim((string) $num_clave);
 
     if ($num_clave === '') {
-        die("Unidad inválida.");
+      die("Unidad inválida.");
     }
+   $arrData = $this->model->selectUnidadTerminada($num_clave);
+// dep($arrData);
+// die();
 
-    echo "La clave generada es: ", $num_clave;
-
-    // $unidad = $this->model->selectUnidadTerminadaPdf($num_clave);
-
-    if (empty($unidad)) {
-        die("No se encontró información de la unidad.");
+    if (empty($arrData)) {
+      die("No se encontró información de la unidad.");
     }
 
     $data['page_tag'] = "Detalle unidad";
     $data['page_title'] = "Detalle unidad terminada";
-    $data['unidad'] = $unidad;
-
-    // $this->views->getView($this, "ver_unidad", $data);
-}
+    $data['unidad'] = $arrData;
+    $this->views->getView($this, "verunidad", $data);
+  }
 
 
 }
