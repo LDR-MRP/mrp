@@ -6387,7 +6387,7 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
             (
                 ?, ?, ?, ?, ?,
                 ?, ?, ?, ?, ?,
-                ?, NOW(), ?
+                ?, ?, ?
             )
         ";
 
@@ -6403,6 +6403,7 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
           0,
           1,
           1,
+          $fechaMexico,
           2
         ];
 
