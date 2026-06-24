@@ -6083,7 +6083,7 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
             LIMIT 1";
 
     $row = $this->select($sql);
-
+ 
     return !empty($row);
   }
 
@@ -6354,13 +6354,13 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
 
       $sqlYaExiste = "SELECT COUNT(*) AS total
         FROM wms_movimientos_inventario
-        WHERE numero_movimiento = ?
+        WHERE referencia = ?
         LIMIT 1
     ";
 
       $rowExiste = $this->select(
         $sqlYaExiste,
-        [$numero_movimiento]
+        [$numSubOrden]
       );
 
       $yaExiste = (int) ($rowExiste['total'] ?? 0);
@@ -6396,7 +6396,7 @@ $fechaMexico = (new DateTime('now', new DateTimeZone('America/Mexico_City')))
           $almacenid,
           $numero_movimiento,
           $CONCEPMOVID,
-          $numero_movimiento,
+          $numSubOrden,
           1,
           0,
           0,
