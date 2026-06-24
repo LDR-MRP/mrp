@@ -614,7 +614,7 @@ class SupplierService
 
             // 1. Solo ciertos roles pueden aprobar bancos (Seguridad RBAC)
             $role = RoleEnum::tryFrom((int)$userContext['rolid']);
-            if ($role !== RoleEnum::ADMINISTRADOR && $role !== RoleEnum::GERENTE) {
+            if ($role !== RoleEnum::SYS_ADMIN && $role !== RoleEnum::ADMINISTRADOR && $role !== RoleEnum::GERENTE) {
                 return ServiceResponse::error("Solo el área de Finanzas/Tesoreria puede autorizar cuentas bancarias.", 403);
             }
 
