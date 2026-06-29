@@ -615,6 +615,9 @@ class Com_requisicionModel extends Mysql
                     fecha_inicio_negociacion = VALUES(fecha_inicio_negociacion),
                     fecha_limite_acuerdo = VALUES(fecha_limite_acuerdo)";
 
+        $fechaInicio = !empty($data['fecha_inicio_negociacion']) ? $data['fecha_inicio_negociacion'] : null;
+        $fechaLimite = !empty($data['fecha_limite_acuerdo']) ? $data['fecha_limite_acuerdo'] : null;
+
         // MAPEO QUIRÚRGICO: Solo mandamos los 9 que el SQL espera y en el orden correcto
         $params = [
             (int)$data['idrequisicionarticulo'], // Forzamos a entero
@@ -626,11 +629,11 @@ class Com_requisicionModel extends Mysql
             $data['normas_requeridas'],
             $data['volumen_anual'],
             (float)$data['precio_objetivo'],
-            $data['fecha_inicio_negociacion'],
-            $data['fecha_limite_acuerdo']
+            $fechaInicio,
+            $fechaLimite
         ];
 
-        return $this->insert($sql, $params) >= 1;
+        return (bool)$this->update($sql, $params);
     }
 
     /**

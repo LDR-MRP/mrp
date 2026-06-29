@@ -62,34 +62,6 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- Dentro de la Card de Datos Generales en Views/Com_requisiciones/create.php -->
-                                    <div class="row g-4 mt-4 p-3 bg-light-subtle rounded-3 border">
-                                        <div class="col-md-6 d-flex align-items-center">
-                                            <div class="form-check form-switch form-switch-lg" dir="ltr">
-                                                <input type="checkbox" class="form-check-input" id="chk-compra-directa" name="tipo_requisicion" value="directa">
-                                                <label class="form-check-label fw-bold text-primary ms-2" for="chk-compra-directa">
-                                                    ¿Es Pago Inmediato?
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        <!-- Campos condicionales (Ocultos por defecto) -->
-                                        <div class="col-md-6 d-none section-compra-directa">
-                                            <label class="form-label text-uppercase fs-10 fw-bold text-muted">Método de Pago Sugerido</label>
-                                            <select name="idmetodopago" class="form-select border-primary-subtle">
-                                                <!-- Cargado por catálogo (Clara, Caja Chica, etc.) -->
-                                            </select>
-                                        </div>
-
-                                        <div class="col-12 d-none section-compra-directa">
-                                            <label class="form-label text-uppercase fs-10 fw-bold text-muted">URL del Producto / Referencia Digital</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-white text-primary"><i class="ri-links-line"></i></span>
-                                                <input type="url" name="url_referencia" class="form-control" placeholder="https://www.amazon.com.mx/dp/...">
-                                            </div>
-                                            <small class="text-muted fs-11">Pegue el enlace del artículo para que el aprobador pueda validar las especificaciones.</small>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
 
