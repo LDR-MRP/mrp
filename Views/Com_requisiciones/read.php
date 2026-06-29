@@ -247,8 +247,34 @@
                             <h6 class="fw-bold mb-3 text-uppercase fs-11 ls-1">Registrar Cotización</h6>
                             <form id="formNuevaCotizacion" enctype="multipart/form-data">
                                 <div class="mb-3">
-                                    <label class="form-label fs-11 fw-bold">Proveedor Potencial</label>
-                                    <select name="id_proveedor" class="form-select form-select-sm" required></select>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="form-label fs-11 fw-bold mb-0">Proveedor Potencial</label>
+                                        <div class="form-check form-switch form-switch-sm">
+                                            <input class="form-check-input" type="checkbox" id="chk-es-prospecto">
+                                            <label class="form-check-label fs-10 text-primary fw-bold" for="chk-es-prospecto">¿ES PROSPECTO / RETAIL?</label>
+                                        </div>
+                                    </div>
+                                    <!-- Select estándar -->
+                                    <div id="container-select-proveedor">
+                                        <select name="id_proveedor" class="form-select form-select-sm" required></select>
+                                    </div>
+                                    <!-- Input para prospectos (Oculto por defecto) -->
+                                    <div id="container-input-prospecto" class="d-none">
+                                        <input type="text" name="nombre_prospecto" class="form-control form-control-sm border-primary" placeholder="Nombre de la Tienda o Proveedor Nuevo">
+                                    </div>
+                                </div>
+                                <!-- Sección de Inteligencia de Pago (Nueva) -->
+                                <div class="p-2 mb-3 rounded bg-soft-info border border-info-subtle">
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" name="pago_inmediato" id="chk-pago-inmediato-cot">
+                                        <label class="form-check-label fs-11 fw-bold text-info" for="chk-pago-inmediato-cot">
+                                            <i class="ri-flashlight-line me-1"></i> REQUIERE PAGO INMEDIATO (SPOT BUY)
+                                        </label>
+                                    </div>
+                                    <div id="section-url-cotizacion" class="d-none">
+                                        <input type="url" name="url_referencia" class="form-control form-control-sm" placeholder="https://amazon.com.mx/...">
+                                        <small class="text-muted fs-10">URL obligatoria para compras en línea o retail.</small>
+                                    </div>
                                 </div>
                                 <!-- Fila de Precio y Moneda actualizada -->
                                 <div class="row g-2 mb-3">

@@ -18,36 +18,64 @@ class Com_requisicionCotizacionModel extends Mysql
     }
 
     /**
-     * Obtiene todas las cotizaciones de una partida para el Cuadro Comparativo.
+     * Obtiene el set de datos para el Cuadro Comparativo (Sourcing Hybrid).
+     * Resuelve nombres de prospectos y calcula el cumplimiento normativo.
+     * 
+     * @param int $idReqArt ID de la partida (artículo) en la requisición.
+     * @return array Listado de propuestas económicas.
      */
     public function getComparisonTable(int $idReqArt): array
     {
         $sql = "SELECT 
-                    c.*,
-                    p.razon_social,
-                    p.estatus_onboarding, -- Para ver 'Cumplimiento Documentos Legales'
+                    c.idcotizacion,
+                    c.idrequisicionarticulo,
+                    c.id_proveedor,
+                    -- RESOLUCIÓN DE NOMBRE: Prioriza catálogo, de lo contrario usa el prospecto
+                    COALESCE(p.razon_social, c.nombre_prospecto) as razon_social,
+                    -- ESTATUS DE CUMPLIMIENTO: Si es prospecto, marcamos como Pendiente Onboarding
+                    COALESCE(p.estatus_onboarding, 'Prospecto') as estatus_onboarding,
+                    c.comentarios_comprador,
+                    c.specs_particulares_proveedor,
+                    c.moneda,
+                    c.tipo_cambio,
+                    c.precio_unitario,
+                    -- NUEVOS CAMPOS DE INTELIGENCIA RETAIL
+                    c.pago_inmediato,
+                    c.url_referencia,
+                    c.url_pdf_cotizacion,
+                    c.url_foto_producto,
+                    c.es_ganadora,
+                    c.created_at,
+                    -- CONTACTOS: Subconsultas optimizadas
                     (SELECT email FROM prv_det_contactos WHERE id_proveedor = p.id_proveedor LIMIT 1) as contacto_email,
                     (SELECT telefono FROM prv_det_contactos WHERE id_proveedor = p.id_proveedor LIMIT 1) as contacto_tel
                 FROM com_requisicion_cotizaciones c
-                INNER JOIN prv_cat_proveedores p ON c.id_proveedor = p.id_proveedor
+                LEFT JOIN prv_cat_proveedores p ON c.id_proveedor = p.id_proveedor
                 WHERE c.idrequisicionarticulo = ?
                 AND c.deleted_at IS NULL
-                ORDER BY c.precio_unitario ASC";
+                -- ORDENAMIENTO FINANCIERO: Comparamos peras con peras (MXN Final)
+                ORDER BY (c.precio_unitario * c.tipo_cambio) ASC";
 
         return $this->select_all($sql, [$idReqArt]);
     }
 
     /**
-     * Registra una propuesta económica de un proveedor para un artículo de sourcing.
+     * Registra una propuesta económica de un proveedor (Catálogo o Prospecto/Retail).
+     * Soporta la nueva lógica de Spot Buy e integración de Sourcing.
      *
      * @param array $data {
-     *     @var int    $idrequisicionarticulo
-     *     @var int    $id_proveedor
-     *     @var float  $precio_unitario
-     *     @var string $moneda
-     *     @var float  $tipo_cambio
-     *     @var string $url_pdf_cotizacion
-     *     @var string $comentarios_comprador
+     *     @var int         $idrequisicionarticulo
+     *     @var int|null    $id_proveedor       ID del catálogo (null si es prospecto)
+     *     @var string|null $nombre_prospecto   Nombre manual si no está en catálogo
+     *     @var float       $precio_unitario
+     *     @var string      $moneda
+     *     @var float       $tipo_cambio
+     *     @var string      $url_pdf_cotizacion
+     *     @var string|null $url_foto_producto
+     *     @var string|null $comentarios_comprador
+     *     @var string      $specs_particulares_proveedor
+     *     @var int         $pago_inmediato     Flag (0|1)
+     *     @var string|null $url_referencia     URL de tienda retail
      * }
      * @return int ID de la cotización generada.
      */
@@ -56,30 +84,40 @@ class Com_requisicionCotizacionModel extends Mysql
         $sql = "INSERT INTO com_requisicion_cotizaciones (
                     idrequisicionarticulo, 
                     id_proveedor, 
+                    nombre_prospecto,
                     precio_unitario, 
                     moneda, 
                     tipo_cambio, 
                     url_pdf_cotizacion,
                     url_foto_producto,
                     comentarios_comprador,
-                    specs_particulares_proveedor
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    specs_particulares_proveedor,
+                    pago_inmediato,
+                    url_referencia
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-        // MAPEO MANUAL: Garantizamos orden y cantidad de parámetros (7 vs 7)
+        /**
+         * MAPEO SEGURO: 
+         * Manejamos tipos estrictos y nulos para evitar errores de integridad 
+         * en la llave foránea id_proveedor.
+         */
         $params = [
             (int)$data['idrequisicionarticulo'],
-            (int)$data['id_proveedor'],
+            // Si no hay id_proveedor, enviamos null (requiere que el DDL permita null en la FK)
+            !empty($data['id_proveedor']) ? (int)$data['id_proveedor'] : null,
+            $data['nombre_prospecto'] ?? null,
             (float)$data['precio_unitario'],
-            $data['moneda'],
-            (float)$data['tipo_cambio'],
-            $data['url_pdf_cotizacion'],
-            $data['url_foto_producto'],
-            $data['comentarios_comprador'],
-            $data['specs_particulares_proveedor']
+            $data['moneda'] ?? 'MXN',
+            (float)($data['tipo_cambio'] ?? 1.0),
+            $data['url_pdf_cotizacion'] ?? null,
+            $data['url_foto_producto'] ?? null,
+            $data['comentarios_comprador'] ?? null,
+            $data['specs_particulares_proveedor'] ?? '',
+            (int)($data['pago_inmediato'] ?? 0),
+            $data['url_referencia'] ?? null
         ];
 
-        // Ejecutamos la inserción
-        return $this->insert($sql, $params) ?? 0;
+        return (int)$this->insert($sql, $params) ?? 0;
     }
 
     /**

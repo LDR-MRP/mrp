@@ -66,25 +66,29 @@ class SourcingService
 
             // 3. NUEVO: Gestionar Foto con Redimensionamiento (GD Library)
             $photoPath = null;
-            if (!empty($_FILES['foto_producto']['tmp_name'])) {
+            if (isset($_FILES['foto_producto']) && $_FILES['foto_producto']['error'] === UPLOAD_ERR_OK) {
                 $photoFile = $_FILES['foto_producto'];
                 $photoName = "IMG_" . time() . "_" . bin2hex(random_bytes(4)) . ".jpg";
                 $photoPath = $path . $photoName;
-                
-                $this->resizeImage($photoFile['tmp_name'], $photoPath, 1200); // Max 1200px width
+                $this->resizeImage($photoFile['tmp_name'], $photoPath, 1200);
             }
+
+            $esProspecto = ($payload['es_prospecto'] ?? '0') === '1';
 
             // 4. Persistencia en DB
             $cotData = [
                 'idrequisicionarticulo'      => $payload['idrequisicionarticulo'],
-                'id_proveedor'               => $payload['id_proveedor'],
+                'id_proveedor'               => $esProspecto ? null : $payload['id_proveedor'],
+                'nombre_prospecto'           => $esProspecto ? $payload['nombre_prospecto'] : null,
                 'precio_unitario'            => (float)$payload['precio_unitario'],
                 'moneda'                     => $payload['moneda'] ?? 'MXN',
                 'tipo_cambio'                => (float)($payload['tipo_cambio'] ?? 1.0),
                 'url_pdf_cotizacion'         => $pdfPath,
                 'url_foto_producto'          => $photoPath,
                 'comentarios_comprador'      => $payload['comentarios_comprador'] ?? '',
-                'specs_particulares_proveedor' => $payload['specs_particulares_proveedor']
+                'specs_particulares_proveedor' => $payload['specs_particulares_proveedor'],
+                'pago_inmediato'             => (int)($payload['pago_inmediato'] ?? 0),
+                'url_referencia'             => $payload['url_referencia'] ?? null
             ];
             
             $this->requisicionCotizacionModel->insertQuotation($cotData);

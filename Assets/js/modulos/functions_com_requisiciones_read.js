@@ -72,6 +72,23 @@ const RequisitionRead = {
 
         this.dom.$actionContainer.on('click', '.action-btn', (e) => this.handleAction(e));
         $('#tblComparativa').on('click', '.btn-delete-quotation', (e) => this.handleDeleteQuotation(e));
+
+        // Toggle para Proveedor Prospecto
+        $(document).on('change', '#chk-es-prospecto', function() {
+            const isProspecto = $(this).is(':checked');
+            $('#container-select-proveedor').toggleClass('d-none', isProspecto);
+            $('#container-input-prospecto').toggleClass('d-none', !isProspecto);
+            
+            // El select deja de ser requerido si es prospecto y viceversa
+            $('[name="id_proveedor"]').prop('required', !isProspecto);
+            $('[name="nombre_prospecto"]').prop('required', isProspecto);
+        });
+
+        // Toggle para Pago Inmediato dentro de la cotización
+        $(document).on('change', '#chk-pago-inmediato-cot', function() {
+            $('#section-url-cotizacion').toggleClass('d-none', !$(this).is(':checked'));
+            $('[name="url_referencia"]').prop('required', $(this).is(':checked'));
+        });
     },
 
     /**
@@ -268,10 +285,22 @@ const RequisitionRead = {
                             <p class="mb-0 fs-11 text-dark fst-italic">${cot.specs_particulares_proveedor}</p>
                         </div>` : '';
 
+                    const badgePago = parseInt(cot.pago_inmediato) === 1 
+                        ? '<span class="badge bg-soft-info text-info ms-1"><i class="ri-flashlight-line"></i> SPOT BUY</span>' 
+                        : '';
+
+                    const urlLink = cot.url_referencia 
+                        ? `<a href="${cot.url_referencia}" target="_blank" class="ms-1 text-primary" title="Ver Link Retail"><i class="ri-external-link-line"></i></a>` 
+                        : '';
+
                     const html = `
                         <tr class="${isWinner ? 'table-success' : ''} align-middle">
                             <td style="max-width: 300px;">
-                                <div class="fw-bold text-dark fs-13">${cot.razon_social}</div>
+                                <div class="fw-bold text-dark fs-13">
+                                    ${cot.razon_social || cot.nombre_prospecto} 
+                                    ${badgePago}
+                                    ${urlLink}
+                                </div>
                                 <div class="fs-10 text-muted mb-1">Ref: ${cot.moneda} ${Sys_Core.Format.toCurrency(precioUnitario)}</div>
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     ${cot.estatus_onboarding === 'Aprobado' ? 
@@ -323,6 +352,12 @@ const RequisitionRead = {
         const formData = new FormData(e.target);
         
         // 2. Inject context IDs
+        formData.append('idrequisicionarticulo', this.state.currentPartidaId);
+        formData.append('idrequisicion', this.state.id);
+        
+        formData.append('pago_inmediato', $('#chk-pago-inmediato-cot').is(':checked') ? 1 : 0);
+        formData.append('es_prospecto', $('#chk-es-prospecto').is(':checked') ? 1 : 0);
+        
         formData.append('idrequisicionarticulo', this.state.currentPartidaId);
         formData.append('idrequisicion', this.state.id);
 

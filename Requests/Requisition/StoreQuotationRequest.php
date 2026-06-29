@@ -22,9 +22,19 @@ class StoreQuotationRequest extends Requests
             $this->addError('idrequisicionarticulo', 'La vinculación con la partida de la requisición es obligatoria.');
         }
 
-        if (empty($this->data['id_proveedor']) || !is_numeric($this->data['id_proveedor'])) {
-            $this->addError('id_proveedor', 'Debe seleccionar un proveedor válido del catálogo.');
+        // --- INICIO LÓGICA PROSPECTO VS CATÁLOGO ---
+        $esProspecto = ($this->data['es_prospecto'] ?? '0') === '1';
+
+        if ($esProspecto) {
+            if (empty($this->data['nombre_prospecto'])) {
+                $this->addError('nombre_prospecto', 'El nombre del prospecto o tienda es obligatorio.');
+            }
+        } else {
+            if (empty($this->data['id_proveedor']) || !is_numeric($this->data['id_proveedor'])) {
+                $this->addError('id_proveedor', 'Debe seleccionar un proveedor del catálogo.');
+            }
         }
+        // --- FIN LÓGICA PROSPECTO ---
 
         // 2. Validación Financiera
         $precio = (float)($this->data['precio_unitario'] ?? 0);
@@ -64,23 +74,26 @@ class StoreQuotationRequest extends Requests
         }
 
          // 5. NUEVO: Fotografía del Producto (Opcional pero validada)
-        if (!empty($this->files()['foto_producto'])) {
-            $photo = $this->files()['foto_producto'];
-            $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+        // Solo validamos si REALMENTE se subió un archivo (error === 0)
+        if (isset($files['foto_producto']) && $files['foto_producto']['error'] === UPLOAD_ERR_OK) {
+            $photo = $files['foto_producto'];
             $finfo = new \finfo(FILEINFO_MIME_TYPE);
             $mimeType = $finfo->file($photo['tmp_name']);
+            $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
 
             if (!in_array($mimeType, $allowedMimes)) {
-                $this->addError('foto_producto', 'La foto debe ser formato JPG, PNG o WEBP.');
+                $this->addError('foto_producto', 'Formato de imagen inválido.');
             }
-            if ($photo['size'] > 5 * 1024 * 1024) { // 5MB limit
-                $this->addError('foto_producto', 'La foto no debe exceder los 5MB.');
+            if ($photo['size'] > 5 * 1024 * 1024) {
+                $this->addError('foto_producto', 'La foto excede 5MB.');
             }
         }
 
         // 6. NUEVO: Especificaciones Particulares
-        if (empty($this->data['specs_particulares_proveedor'])) {
-            $this->addError('specs_particulares_proveedor', 'Debe indicar las especificaciones particulares que ofrece este proveedor.');
+        if (($this->data['pago_inmediato'] ?? '0') === '1') {
+            if (empty($this->data['url_referencia'])) {
+                $this->addError('url_referencia', 'Para pagos inmediatos, la URL de referencia es obligatoria.');
+            }
         }
     }
 }
