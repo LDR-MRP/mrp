@@ -422,8 +422,15 @@
                                       </a>
                                   </li>
 
+                                  <!-- Cotizaciones -->
+                                  <li class="nav-item" data-permiso="COM_COTIZACIONES|r">
+                                      <a href="<?= base_url(); ?>/com_sourcing" class="nav-link" data-key="t-reqs">
+                                          <i class="ri-file-list-3-line align-bottom me-1"></i> Cotizaciones
+                                      </a>
+                                  </li>
+
                                   <!-- Órdenes de Compra -->
-                                  <li class="nav-item" data-permiso="COM_COMPRAS|r">
+                                  <li class="nav-item" data-permiso="COM_ORDENES|r">
                                       <a href="<?= base_url(); ?>/com_orden" class="nav-link" data-key="t-ordenes">
                                           <i class="ri-shopping-bag-3-line align-bottom me-1"></i> Órdenes de Compra
                                       </a>
