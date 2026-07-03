@@ -263,7 +263,7 @@ public function login()
 
 		// 2. Redirigimos a la raíz del sistema
 		// El IdentityService en index.php detectará que ya no hay bloqueo y lo logueará.
-		header('Location: ' . BASE_URL);
+		header('Location: ' . BASE_URL . '/login');
 		exit;
 	}
 
