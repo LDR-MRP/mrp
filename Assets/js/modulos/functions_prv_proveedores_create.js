@@ -6,6 +6,7 @@ const supplierManager = {
     currentId: null,
 
     init: function() {
+        Sys_Core.Auth.validateSession();
 
         this.currentId = Sys_Core.URL.getParam('id');
         

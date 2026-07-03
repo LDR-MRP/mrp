@@ -6,6 +6,7 @@
  */
 
 $(document).ready(function () {
+    Sys_Core.Auth.validateSession();
 
     const token = Sys_Core.Auth.getCookie('mrp_token');
 

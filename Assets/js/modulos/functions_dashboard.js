@@ -5,8 +5,7 @@
 const AdminDashboard = {
 
     init: function() {
-        // 1. Protección de ruta (Solo Staff interno)
-        if (!Sys_Core.Auth.validateSession()) return;
+        Sys_Core.Auth.validateSession()
     }
 };
 

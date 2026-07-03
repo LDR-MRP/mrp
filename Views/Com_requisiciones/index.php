@@ -37,11 +37,9 @@
                         </div>
                     </div>
                     <div class="col-md-5 d-flex justify-content-md-end justify-content-start mt-4 mt-md-0">
-                        <?php if (hasPermissions(COM_REQUISICIONES, 'w')): ?>
-                        <button class="btn btn-primary btn-lg btn-label waves-effect waves-light shadow-md" data-redirect="com_requisicion/create">
+                        <button class="btn btn-primary btn-lg btn-label waves-effect waves-light shadow-md" data-redirect="com_requisicion/create" data-permiso="COM_REQUISICIONES|w">
                             <i class="ri-add-line label-icon align-middle fs-18 me-2"></i> Nueva Requisición
                         </button>
-                        <?php endif; ?>
                     </div>
                 </div>
 

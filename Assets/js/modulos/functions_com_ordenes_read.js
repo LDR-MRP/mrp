@@ -4,6 +4,7 @@ const PurchaseOrderRead = {
     dom: {},
 
     init: function () {
+        Sys_Core.Auth.validateSession();
         this.extractId();
         this.cacheDOM();
         this.bindEvents();

@@ -7,8 +7,7 @@ class Com_requisicion extends Controllers
     public function __construct()
     {
         parent::__construct();
-        session_start();
-        getPermisos(COM_COMPRAS);
+        getPermisos(COM_REQUISICIONES);
     }
 
     public function Com_requisicion() {

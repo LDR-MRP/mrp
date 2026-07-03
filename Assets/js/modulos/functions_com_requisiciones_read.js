@@ -17,6 +17,7 @@ const RequisitionRead = {
     dom: {},
 
     init: function () {
+        Sys_Core.Auth.validateSession();
         this.extractId();
         if (!this.state.id) {
             Sys_Core.Navigation.to('com_requisicion');

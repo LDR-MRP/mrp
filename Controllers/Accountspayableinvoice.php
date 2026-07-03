@@ -16,7 +16,7 @@ class Accountspayableinvoice extends Controllers
         $data['page_tag'] = "Bandeja de Facturas - LDR Solutions";
         $data['page_title'] = "Cuentas por Pagar (CxP)";
         $data['page_name'] = "cxp_facturas";
-        $data['page_functions_js'] = "functions_cxp_invoices.js";
+        $data['page_functions_js'] = "functions_cxp_invoices_index.js";
         $this->views->getView($this, "../Cxp_facturas/index", $data);
     }
 }

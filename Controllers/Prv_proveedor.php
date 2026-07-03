@@ -71,7 +71,7 @@ class Prv_proveedor  extends Controllers{
         $data['page_name'] = "prv_reporte_onboarding";
         
         // JS exclusivo que dará vida a los gráficos y la tabla ejecutiva
-        $data['page_functions_js'] = "functions_prv_proveedores_reporte.js";
+        $data['page_functions_js'] = "functions_prv_proveedores_reporte_index.js";
 
         // Renderiza de forma Stateless: Views/Prv_proveedor/reporte.php
         $this->views->getView($this, "../Prv_proveedor/reporte", $data);

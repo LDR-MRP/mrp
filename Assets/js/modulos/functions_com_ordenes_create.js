@@ -19,6 +19,7 @@ const PurchaseOrderForm = {
     dom: {},
 
     init: function () {
+        Sys_Core.Auth.validateSession();
         this.cacheDOM();
         this.extractReqId();
         this.bindEvents();

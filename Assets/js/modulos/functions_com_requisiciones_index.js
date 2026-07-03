@@ -31,6 +31,10 @@ const RequisitionIndex = {
 
     // 2. INICIALIZACIÓN
     init: function () {
+        // --- INICIO SEGURIDAD: Centralización de sesión administrativa ---
+        Sys_Core.Auth.validateSession(); // Valida sesión interna (ERP)
+        // --- FIN SEGURIDAD ---
+        
         this.cacheDOM();
         this.initDataTable();
         this.bindEvents();

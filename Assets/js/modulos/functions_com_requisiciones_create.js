@@ -26,6 +26,7 @@ const RequisitionForm = {
 
     // 2. INICIALIZACIÓN
     init: function () {
+        Sys_Core.Auth.validateSession();
         this.cacheDOM();
         this.checkMode();
         this.bindEvents();

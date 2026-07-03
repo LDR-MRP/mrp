@@ -17,6 +17,7 @@ const PurchaseOrderIndex = {
     dom: {},
 
     init: function () {
+        Sys_Core.Auth.validateSession();
         this.cacheDOM();
         this.initDataTable();
         this.initKPIs(); // --- INICIO AGREGADO: Animación de KPIs en carga ---
