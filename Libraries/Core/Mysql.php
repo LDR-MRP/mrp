@@ -55,6 +55,19 @@
 			$resExecute = $update->execute($this->arrValues);
 	        return $resExecute;
 		}
+
+		/**
+		 * Ejecuta un UPDATE y retorna el número de filas afectadas.
+		 */
+		public function updateAffected(string $query, array $arrValues): int
+		{
+			$this->strquery = $query;
+			$this->arrValues = $arrValues;
+			$update = $this->conexion->prepare($this->strquery);
+			$resExecute = $update->execute($this->arrValues);
+			return $resExecute ? $update->rowCount() : 0;
+		}
+
 		//Eliminar un registros
 		public function delete(string $query)
 		{
