@@ -1,11 +1,24 @@
-  <footer class="footer">
-    <div class="container footer-content">
-      <p>© 2026 AutoDistribuidores. Portal de solicitud de unidades.</p>
-      <p>Soporte comercial: pedidos@empresa.com</p>
-    </div>
-  </footer>
+<footer class="footer">
+  <div class="container">
+    <p>© <?= date('Y'); ?> LDR Solutions. Portal de pedidos para distribuidores.</p>
+  </div>
+</footer>
 
-  <!-- <script src="app.js"></script> -->
-    <script src="<?= media(); ?>/js/<?= $data['page_functions_js']; ?>"></script>
+<script>
+  const base_url = "<?= base_url(); ?>";
+  const media_url = "<?= media(); ?>";
+</script>
+
+<script src="<?= media(); ?>/js/orders/home.js"></script>
+
+<?php
+if (!empty($data['page_functions_js']) && is_array($data['page_functions_js'])) {
+  foreach ($data['page_functions_js'] as $js) {
+    echo '<script src="' . media() . '/js/' . $js . '"></script>' . PHP_EOL;
+  }
+}
+?>
+
 </body>
+
 </html>
