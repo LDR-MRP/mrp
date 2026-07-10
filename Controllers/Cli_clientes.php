@@ -25,14 +25,14 @@ class Cli_clientes extends Controllers
 		$this->views->getView($this, "cli_clientes", $data);
 	}
 
-	public function index()
+	public function getTodos()
 	{
 
 		$arrData = $this->model->selectDistribuidores();
 		for ($i = 0; $i < count($arrData); $i++) {
 			$btnView = '';
 			$btnEdit = '';
-			$btnDelete = '';
+			$btnDelete = ''; 
 
 			if ($arrData[$i]['estado'] == 2) {
 				$arrData[$i]['estado'] = '<span class="badge bg-success">Activo</span>';

@@ -11,32 +11,10 @@ class Cli_clientesModel extends Mysql
 
     public function selectDistribuidores()
     {
-        $sql = "SELECT 
-                c.id,
-                p.nombre AS nombre_grupo,
-                c.nombre_comercial,
-                c.razon_social,
-                c.rfc,
-                c.repve,
-                c.plaza,
-                c.tipo_negocio,
-                c.telefono,
-                c.telefono_alt,
-                c.fecha_registro,
-                c.estado,
-                r.nombre AS region
-            FROM cli_distribuidores c
-            INNER JOIN cli_grupos p ON c.grupo_id = p.id
-            LEFT JOIN cli_distribuidor_direcciones d 
-                ON d.distribuidor_id = c.id
-            LEFT JOIN cli_estados e 
-                ON e.id = d.estado_id
-            LEFT JOIN cli_regiones r 
-                ON r.id = e.region_id
-            WHERE c.estado != 0";
+        $sql = "SELECT * FROM cli_clientes";
 
         return $this->select_all($sql);
-    }
+    } 
 
     public function selectDistribuidor(int $iddistribuidor)
     {
