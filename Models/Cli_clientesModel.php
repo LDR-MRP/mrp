@@ -9,7 +9,7 @@ class Cli_clientesModel extends Mysql
         parent::__construct();
     }
 
-    public function selectDistribuidores()
+    public function selectTodos()
     {
         $sql = "SELECT * FROM cli_clientes";
 

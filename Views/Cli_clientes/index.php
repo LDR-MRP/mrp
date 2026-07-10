@@ -1,50 +1,41 @@
 <?php headerAdmin($data);
 ?>
-
-
 <div id="contentAjax"></div>
-
-
-
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
 
-            <!-- start page title -->
-            <div class="row">
-                <div class="col-12">
-                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0"><?= $data['page_title'] ?></h4>
-                        <div class="page-title-right">
-                            <ol class="breadcrumb m-0">
-                                <li class="breadcrumb-item"><a href="javascript:void(0);">MRP</a></li>
-                                <li class="breadcrumb-item active"><?= $data['page_tag'] ?></li>
-                            </ol>
-                        </div>
-                    </div>
-                </div> 
-            </div>
-            <!-- end page title -->
-
- 
-
             <div class="row g-3 " id="viewListado">
                 <div class="col-12">
-                    <div class="view-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-                        <div>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="badge bg-secondary-subtle text-secondary border" id="badgeListado">
-                                    <i class="ri-list-check-2 me-1"></i> Listado
-                                </span>
-                              
-                            </div>
-                        </div>
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
 
-                        <!-- <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-outline-secondary btn-sm" type="button" id="btnVolverHome2">
-                                <i class="ri-arrow-left-line me-1"></i> Volver
-                            </button>
-                        </div> -->
+                            <div class="d-flex align-items-center">
+
+                                <div
+                                    class="avatar-sm rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center me-3">
+                                    <i class="ri-team-line fs-2"></i>
+                                </div>
+
+                                <div>
+                                    <h3 class="mb-0 fw-bold">Clientes</h3>
+                                    <small class="text-muted">
+                                        Administra y consulta la información de tus clientes.
+                                    </small>
+                                </div>
+
+                            </div>
+
+                            <div>
+
+                                <button class="btn btn-primary btn-label">
+                                    <i class="ri-user-add-line label-icon align-middle fs-16 me-2"></i>
+                                    Agregar Cliente
+                                </button>
+
+                            </div>
+
+                        </div>
                     </div>
                 </div>
 
@@ -67,14 +58,14 @@
                                     <input type="date" class="form-control form-control-sm" id="filterHasta">
                                 </div>
                                 <div class="col-12 col-md-4 col-xxl-2">
-                                    <label class="form-label mb-1 small text-muted">Filtro</label>
+                                    <label class="form-label mb-1 small text-muted">Clientes</label>
                                     <select class="form-select form-select-sm" id="filterPrioridad">
                                         <option value="TODOS">Todos</option>
                                         <option value="DISTRIBUIDORES">Distribuidores</option>
                                         <option value="INTERNOS">Internos</option>
                                         <option value="EXTERNOS">Externos</option>
                                         <option value="GUBERNAMENTALES">Gubernamentales</option>
-                                        
+
                                     </select>
                                 </div>
                                 <div class="col-12 col-md-8 col-xxl-1 d-grid">
@@ -87,6 +78,8 @@
 
                         </div>
                     </div>
+
+
                 </div>
 
                 <!-- tabla -->
@@ -95,7 +88,7 @@
                         <div class="card-body">
 
                             <div class="table-responsive">
-                                <table class="table table-sm table-striped align-middle mb-0" id="tablaListados">
+                                <table class="table table-hover align-middle table-nowrap mb-0" id="tablaListados">
                                     <thead class="table-light">
                                         <tr>
                                             <th style="width:120px;">Clave</th>
@@ -104,8 +97,9 @@
                                             <th style="width:120px;">RFC</th>
                                             <th style="width:140px;">Limite Crédito</th>
                                             <th style="width:140px;">Días de Crédito</th>
-                                            <th style="width:160px;">Estatus</th>
-                                            <th style="width:210px;" class="text-end">Acciones</th>
+                                            <th style="width:120px;">Fecha registro</th>
+                                            <th style="width:50px;">Estatus</th>
+                                            <th style="width:260px;" class="text-end">Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tbodyListados"></tbody>
@@ -136,7 +130,5 @@
         </div>
     </footer>
 </div>
-
-
 <!-- end main content-->
 <?php footerAdmin($data); ?>

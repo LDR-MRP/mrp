@@ -21,41 +21,110 @@ class Cli_clientes extends Controllers
 		$data['page_tag'] = "Clientes";
 		$data['page_title'] = "Clientes";
 		$data['page_name'] = "bom";
-		$data['page_functions_js'] = "functions_cli_clientes.js";
-		$this->views->getView($this, "cli_clientes", $data);
+		$data['page_functions_js'] = "/clientes/index.js";
+		$this->views->getView($this, "index", $data);
 	}
 
 	public function getTodos()
 	{
+		header('Content-Type: application/json; charset=utf-8');
 
-		$arrData = $this->model->selectDistribuidores();
-		for ($i = 0; $i < count($arrData); $i++) {
-			$btnView = '';
-			$btnEdit = '';
-			$btnDelete = ''; 
+		try {
 
-			if ($arrData[$i]['estado'] == 2) {
-				$arrData[$i]['estado'] = '<span class="badge bg-success">Activo</span>';
-			} else if ($arrData[$i]['estado'] == 1) {
-				$arrData[$i]['estado'] = '<span class="badge bg-danger">Inactivo</span>';
+			$arrData = $this->model->selectTodos();
+
+			if (!is_array($arrData)) {
+				$arrData = [];
 			}
 
-			if ($_SESSION['permisosMod']['r']) {
+			for ($i = 0; $i < count($arrData); $i++) {
 
-				$btnView = '<button class="btn btn-sm btn-soft-info edit-list" title="Ver cliente" onClick="fntViewDistribuidor(' . $arrData[$i]['id'] . ')"><i class="ri-eye-fill align-bottom text-muted"></i></button>';
-			}
-			if ($_SESSION['permisosMod']['u']) {
+				$btnView = '';
+				$btnAccess = '';
+				$btnEdit = '';
+				$btnDelete = '';
 
-				$btnEdit = '<button class="btn btn-sm btn-soft-warning edit-list" title="Editar cliente" onClick="fntEditDistribuidor(' . $arrData[$i]['id'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
+				$idcliente = intval($arrData[$i]['idcliente'] ?? 0);
+
+				if (!empty($_SESSION['permisosMod']['r'])) {
+					$btnView = '
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-soft-info"
+                        title="Ver cliente"
+                        onclick="fntViewCliente(' . $idcliente . ')"
+                    >
+                        <i class="ri-eye-line"></i>
+                    </button>
+                ';
+				}
+
+				if (!empty($_SESSION['permisosMod']['r'])) {
+					$btnAccess = '
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-soft-primary"
+                        title="Administrar accesos"
+                        onclick="fntAccesosCliente(' . $idcliente . ')"
+                    >
+                        <i class="ri-key-2-line"></i>
+                    </button>
+                ';
+				}
+
+				if (!empty($_SESSION['permisosMod']['u'])) {
+					$btnEdit = '
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-soft-warning"
+                        title="Editar cliente"
+                        onclick="fntEditCliente(' . $idcliente . ')"
+                    >
+                        <i class="ri-pencil-line"></i>
+                    </button>
+                ';
+				}
+
+				if (!empty($_SESSION['permisosMod']['d'])) {
+					$btnDelete = '
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-soft-danger"
+                        title="Eliminar cliente"
+                        onclick="fntDelCliente(' . $idcliente . ')"
+                    >
+                        <i class="ri-delete-bin-6-line"></i>
+                    </button>
+                ';
+				}
+
+				$arrData[$i]['options'] = '
+                <div class="d-flex justify-content-center gap-1">
+                    ' . $btnView . '
+                    ' . $btnAccess . '
+                    ' . $btnEdit . '
+                    ' . $btnDelete . '
+                </div>
+            ';
 			}
-			if ($_SESSION['permisosMod']['d']) {
-				$btnDelete = '<button class="btn btn-sm btn-soft-danger remove-list" title="Eliminar cliente" onClick="fntDelDistribuidor(' . $arrData[$i]['id'] . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
-			}
-			$arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . '</div>';
+
+			echo json_encode(
+				$arrData,
+				JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+			);
+
+		} catch (Throwable $error) {
+
+			http_response_code(500);
+
+			echo json_encode([
+				'status' => false,
+				'message' => 'Error al consultar los clientes.',
+				'error' => $error->getMessage()
+			], JSON_UNESCAPED_UNICODE);
 		}
-		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
 
-		die();
+		exit;
 	}
 
 	public function setDistribuidor()
@@ -405,7 +474,7 @@ class Cli_clientes extends Controllers
 		if (count($arrData) > 0) {
 			for ($i = 0; $i < count($arrData); $i++) {
 				if ($arrData[$i]['estado'] == 2) {
-					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre']  . ' ' . $arrData[$i]['apellido_paterno'] . ' ' . $arrData[$i]['apellido_materno'] .  '</option>';
+					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre'] . ' ' . $arrData[$i]['apellido_paterno'] . ' ' . $arrData[$i]['apellido_materno'] . '</option>';
 				}
 			}
 		}
@@ -450,7 +519,7 @@ class Cli_clientes extends Controllers
 		if (count($arrData) > 0) {
 			for ($i = 0; $i < count($arrData); $i++) {
 				if ($arrData[$i]['estado'] == 2) {
-					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre']   .   '</option>';
+					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre'] . '</option>';
 				}
 			}
 		}
@@ -480,7 +549,7 @@ class Cli_clientes extends Controllers
 		if (count($arrData) > 0) {
 			for ($i = 0; $i < count($arrData); $i++) {
 				if ($arrData[$i]['estado'] == 2) {
-					$htmlOptions .= '<option value="' . $arrData[$i]['idlineaproducto'] . '">' . $arrData[$i]['cve_linea_producto']  . '</option>';
+					$htmlOptions .= '<option value="' . $arrData[$i]['idlineaproducto'] . '">' . $arrData[$i]['cve_linea_producto'] . '</option>';
 				}
 			}
 		}
@@ -495,7 +564,7 @@ class Cli_clientes extends Controllers
 		if (count($arrData) > 0) {
 			for ($i = 0; $i < count($arrData); $i++) {
 				if ($arrData[$i]['estado'] == 2) {
-					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre']  . '</option>';
+					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre'] . '</option>';
 				}
 			}
 		}
