@@ -1005,3 +1005,9 @@ function fntDelCliente(idcliente) {
     });
     */
 }
+
+/*creamos la funcionalidad para redirecionar a la vista de crear un nuevo cliente */
+
+document.getElementById("btnAgregarCliente").addEventListener("click", function () {
+    window.location.href = base_url + "/cli_clientes/create";
+});

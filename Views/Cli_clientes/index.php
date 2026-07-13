@@ -28,7 +28,7 @@
 
                             <div>
 
-                                <button class="btn btn-primary btn-label">
+                                <button id="btnAgregarCliente"  class="btn btn-primary btn-label">
                                     <i class="ri-user-add-line label-icon align-middle fs-16 me-2"></i>
                                     Agregar Cliente
                                 </button>
