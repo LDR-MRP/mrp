@@ -9,12 +9,71 @@ class Cli_clientesModel extends Mysql
         parent::__construct();
     }
 
+
+    /*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS CLIENTES
+	|--------------------------------------------------------------------------
+	*/
     public function selectTodos()
     {
         $sql = "SELECT * FROM cli_clientes";
 
         return $this->select_all($sql);
     } 
+
+    /*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS DISTRIBUIDORES
+	|--------------------------------------------------------------------------
+	*/
+
+        public function selectDistribuidores()
+    {
+        $sql = "SELECT * FROM cli_clientes WHERE idtipo_cliente = 1";
+
+        return $this->select_all($sql);
+    } 
+
+        /*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS CLIENTES INTERNOS
+	|--------------------------------------------------------------------------
+	*/
+
+        public function selectInternos()
+    {
+        $sql = "SELECT * FROM cli_clientes WHERE idtipo_cliente = 2";
+
+        return $this->select_all($sql);
+    } 
+
+            /*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS CLIENTES EXTERNOS
+	|--------------------------------------------------------------------------
+	*/
+
+        public function selectExternos()
+    {
+        $sql = "SELECT * FROM cli_clientes WHERE idtipo_cliente = 3";
+
+        return $this->select_all($sql);
+    } 
+
+                /*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS CLIENTES GUBERNAMENTALES
+	|--------------------------------------------------------------------------
+	*/
+
+        public function selectGubernamentales()
+    {
+        $sql = "SELECT * FROM cli_clientes WHERE idtipo_cliente = 4";
+
+        return $this->select_all($sql);
+    } 
+
 
     public function selectDistribuidor(int $iddistribuidor)
     {

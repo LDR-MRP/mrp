@@ -12,6 +12,12 @@ class Cli_clientes extends Controllers
 		}
 		getPermisos(MCCLIENTES);
 	}
+	
+	/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA REDIRIGIR A LA VISTA PRINCIPAL INDEX.PHP INLCUYENDO EL ARCHIVO JS 
+	|--------------------------------------------------------------------------
+	*/
 
 	public function Cli_clientes()
 	{
@@ -20,10 +26,15 @@ class Cli_clientes extends Controllers
 		}
 		$data['page_tag'] = "Clientes";
 		$data['page_title'] = "Clientes";
-		$data['page_name'] = "bom";
 		$data['page_functions_js'] = "/clientes/index.js";
 		$this->views->getView($this, "index", $data);
 	}
+
+	/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS CLIENTES
+	|--------------------------------------------------------------------------
+	*/
 
 	public function getTodos()
 	{
@@ -35,77 +46,6 @@ class Cli_clientes extends Controllers
 
 			if (!is_array($arrData)) {
 				$arrData = [];
-			}
-
-			for ($i = 0; $i < count($arrData); $i++) {
-
-				$btnView = '';
-				$btnAccess = '';
-				$btnEdit = '';
-				$btnDelete = '';
-
-				$idcliente = intval($arrData[$i]['idcliente'] ?? 0);
-
-				if (!empty($_SESSION['permisosMod']['r'])) {
-					$btnView = '
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-soft-info"
-                        title="Ver cliente"
-                        onclick="fntViewCliente(' . $idcliente . ')"
-                    >
-                        <i class="ri-eye-line"></i>
-                    </button>
-                ';
-				}
-
-				if (!empty($_SESSION['permisosMod']['r'])) {
-					$btnAccess = '
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-soft-primary"
-                        title="Administrar accesos"
-                        onclick="fntAccesosCliente(' . $idcliente . ')"
-                    >
-                        <i class="ri-key-2-line"></i>
-                    </button>
-                ';
-				}
-
-				if (!empty($_SESSION['permisosMod']['u'])) {
-					$btnEdit = '
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-soft-warning"
-                        title="Editar cliente"
-                        onclick="fntEditCliente(' . $idcliente . ')"
-                    >
-                        <i class="ri-pencil-line"></i>
-                    </button>
-                ';
-				}
-
-				if (!empty($_SESSION['permisosMod']['d'])) {
-					$btnDelete = '
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-soft-danger"
-                        title="Eliminar cliente"
-                        onclick="fntDelCliente(' . $idcliente . ')"
-                    >
-                        <i class="ri-delete-bin-6-line"></i>
-                    </button>
-                ';
-				}
-
-				$arrData[$i]['options'] = '
-                <div class="d-flex justify-content-center gap-1">
-                    ' . $btnView . '
-                    ' . $btnAccess . '
-                    ' . $btnEdit . '
-                    ' . $btnDelete . '
-                </div>
-            ';
 			}
 
 			echo json_encode(
@@ -127,7 +67,155 @@ class Cli_clientes extends Controllers
 		exit;
 	}
 
+	/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS DISTRIBUIDORES
+	|--------------------------------------------------------------------------
+	*/
+	public function getDistribuidores()
+	{
+		header('Content-Type: application/json; charset=utf-8');
 
+		try {
+
+			$arrData = $this->model->selectDistribuidores();
+
+			if (!is_array($arrData)) {
+				$arrData = [];
+			}
+
+			echo json_encode(
+				$arrData,
+				JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+			);
+
+		} catch (Throwable $error) {
+
+			http_response_code(500);
+
+			echo json_encode([
+				'status' => false,
+				'message' => 'Error al consultar los clientes.',
+				'error' => $error->getMessage()
+			], JSON_UNESCAPED_UNICODE);
+		}
+
+		exit;
+	}
+
+	/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS CLIENTES INTERNOS
+	|--------------------------------------------------------------------------
+	*/
+	public function getInternos()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		try {
+
+			$arrData = $this->model->selectInternos();
+
+			if (!is_array($arrData)) {
+				$arrData = [];
+			}
+
+			echo json_encode(
+				$arrData,
+				JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+			);
+
+		} catch (Throwable $error) {
+
+			http_response_code(500);
+
+			echo json_encode([
+				'status' => false,
+				'message' => 'Error al consultar los clientes.',
+				'error' => $error->getMessage()
+			], JSON_UNESCAPED_UNICODE);
+		}
+
+		exit;
+	}
+
+	/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS CLIENTES EXTERNOS
+	|--------------------------------------------------------------------------
+	*/
+	public function getExternos()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		try {
+
+			$arrData = $this->model->selectExternos();
+
+			if (!is_array($arrData)) {
+				$arrData = [];
+			}
+
+			echo json_encode(
+				$arrData,
+				JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+			);
+
+		} catch (Throwable $error) {
+
+			http_response_code(500);
+
+			echo json_encode([
+				'status' => false,
+				'message' => 'Error al consultar los clientes.',
+				'error' => $error->getMessage()
+			], JSON_UNESCAPED_UNICODE);
+		}
+
+		exit;
+	}
+
+	/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS CLIENTES GUBERNAMENTALES
+	|--------------------------------------------------------------------------
+	*/
+	public function getGubernamentales()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		try {
+
+			$arrData = $this->model->selectGubernamentales();
+
+			if (!is_array($arrData)) {
+				$arrData = [];
+			}
+
+			echo json_encode(
+				$arrData,
+				JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+			);
+
+		} catch (Throwable $error) {
+
+			http_response_code(500);
+
+			echo json_encode([
+				'status' => false,
+				'message' => 'Error al consultar los clientes.',
+				'error' => $error->getMessage()
+			], JSON_UNESCAPED_UNICODE);
+		}
+
+		exit;
+	}
+
+	/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA REDIRIGIR A LA VISTA DE CREAR NUEVO CLIENTE INCLUYENDO EL ARCHIVO JS
+	|--------------------------------------------------------------------------
+	*/
 	public function create()
 	{
 		if (empty($_SESSION['permisosMod']['r'])) {
@@ -138,6 +226,22 @@ class Cli_clientes extends Controllers
 		$data['page_name'] = "bom";
 		$data['page_functions_js'] = "/clientes/create.js";
 		$this->views->getView($this, "create", $data);
+	}
+
+		/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA REDIRIGIR A LA VISTA DE ACCESOS A CLIENTES INCLUYENDO SU ARCHIVO JS
+	|--------------------------------------------------------------------------
+	*/
+	public function accesos()
+	{
+		if (empty($_SESSION['permisosMod']['r'])) {
+			header("Location:" . base_url() . '/dashboard');
+		}
+		$data['page_tag'] = "Clientes";
+		$data['page_title'] = "Clientes";
+		$data['page_functions_js'] = "/clientes/accesos.js";
+		$this->views->getView($this, "accesos", $data);
 	}
 
 
