@@ -962,14 +962,12 @@ function fntViewCliente(idcliente) {
 
 
 function fntAccesosCliente(idcliente) {
-    console.log('Administrar accesos del cliente:', idcliente);
+    // console.log('Administrar accesos del cliente:', idcliente);
 
-    /*
-    Ejemplo futuro:
 
     window.location.href =
         `${base_url}/cli_clientes/accesos/${idcliente}`;
-    */
+ 
 }
 
 

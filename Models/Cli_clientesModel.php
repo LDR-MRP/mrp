@@ -74,6 +74,482 @@ class Cli_clientesModel extends Mysql
         return $this->select_all($sql);
     } 
 
+////////////////////////////////////////////////////////////////////
+
+
+ public function selectClienteAcceso(int $idcliente)
+    {
+        $sql = "SELECT
+                c.idcliente,
+                c.idtipo_cliente,
+                tc.nombre AS tipo_cliente,
+                c.codigo_cliente,
+                c.razon_social,
+                c.nombre_comercial,
+                c.correo,
+                c.telefono,
+                c.estado
+            FROM cli_clientes c
+            INNER JOIN cli_tipos_cliente tc
+                ON tc.id = c.idtipo_cliente
+            WHERE c.idcliente = $idcliente
+            LIMIT 1
+        ";
+
+        return $this->select($sql);
+    }
+
+    public function selectUsuarioAccesoPorCliente(int $idcliente)
+    {
+        $sql = "SELECT
+                ua.idusuario_acceso,
+                ua.idcliente,
+                ua.nombre_usuario,
+                ua.nombre,
+                ua.apellido,
+                ua.correo,
+                ua.telefono,
+                ua.url_portal,
+                ua.ultimo_login,
+                ua.ultimo_envio_accesos,
+                ua.doble_autenticacion,
+                ua.requiere_cambio_password,
+                ua.fecha_cambio_password,
+                ua.intentos_fallidos,
+                ua.bloqueado_hasta,
+                ua.estado,
+                ua.fecha_creacion,
+                ua.fecha_actualizacion
+            FROM cli_usuarios_acceso ua
+            WHERE ua.idcliente = $idcliente
+            LIMIT 1
+        ";
+
+        return $this->select($sql);
+    }
+
+    public function selectUsuarioAccesoPorId(int $idusuarioAcceso)
+    {
+        $sql = "SELECT
+                idusuario_acceso,
+                idcliente,
+                nombre_usuario,
+                nombre,
+                apellido,
+                correo,
+                password_hash,
+                telefono,
+                url_portal,
+                ultimo_login,
+                doble_autenticacion,
+                requiere_cambio_password,
+                fecha_cambio_password,
+                intentos_fallidos,
+                bloqueado_hasta,
+                estado
+            FROM cli_usuarios_acceso
+            WHERE idusuario_acceso = ?
+            LIMIT 1
+        ";
+
+        return $this->select($sql, [$idusuarioAcceso]);
+    }
+
+    public function selectUsuarioPorCorreo(string $correo)
+    {
+        $sql = "SELECT
+                idusuario_acceso,
+                idcliente,
+                nombre_usuario,
+                nombre,
+                apellido,
+                correo,
+                password_hash,
+                url_portal,
+                ultimo_login,
+                doble_autenticacion,
+                requiere_cambio_password,
+                fecha_cambio_password,
+                intentos_fallidos,
+                bloqueado_hasta,
+                estado
+            FROM cli_usuarios_acceso
+            WHERE correo = ?
+            LIMIT 1
+        ";
+
+        return $this->select($sql, [$correo]);
+    }
+
+    public function insertUsuarioAcceso(
+        int $idcliente,
+        string $nombreUsuario,
+        string $nombre,
+        string $apellido,
+        string $correo,
+        string $passwordHash,
+        string $telefono,
+        string $urlPortal,
+        int $dobleAutenticacion,
+        int $usuarioRegistro
+    ) {
+        $sql = "INSERT INTO cli_usuarios_acceso
+            (
+                idcliente,
+                nombre_usuario,
+                nombre,
+                apellido,
+                correo,
+                password_hash,
+                telefono,
+                url_portal,
+                doble_autenticacion,
+                requiere_cambio_password,
+                fecha_cambio_password,
+                intentos_fallidos,
+                estado,
+                created_by,
+                fecha_creacion,
+                fecha_actualizacion
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NULL, 0, 2, ?, NOW(), NOW())
+        ";
+
+        return $this->insert($sql, [
+            $idcliente,
+            $nombreUsuario,
+            $nombre,
+            $apellido,
+            $correo,
+            $passwordHash,
+            $telefono,
+            $urlPortal,
+            $dobleAutenticacion,
+            $usuarioRegistro
+        ]);
+    }
+
+    public function updateUsuarioAcceso(
+        int $idusuarioAcceso,
+        int $idcliente,
+        string $nombreUsuario,
+        string $correo,
+        string $passwordHash,
+        string $urlPortal,
+        int $dobleAutenticacion,
+        int $usuarioActualiza
+    ) {
+        $sql = "UPDATE cli_usuarios_acceso
+            SET
+                nombre_usuario = ?,
+                correo = ?,
+                password_hash = ?,
+                url_portal = ?,
+                doble_autenticacion = ?,
+                requiere_cambio_password = 1,
+                fecha_cambio_password = NULL,
+                intentos_fallidos = 0,
+                bloqueado_hasta = NULL,
+                estado = 2,
+                updated_by = ?,
+                fecha_actualizacion = NOW()
+            WHERE idusuario_acceso = ?
+              AND idcliente = ?
+        ";
+
+        return $this->update($sql, [
+            $nombreUsuario,
+            $correo,
+            $passwordHash,
+            $urlPortal,
+            $dobleAutenticacion,
+            $usuarioActualiza,
+            $idusuarioAcceso,
+            $idcliente
+        ]);
+    }
+
+    public function updateFechaEnvioAccesos(int $idusuarioAcceso)
+    {
+        $sql = "UPDATE cli_usuarios_acceso
+            SET
+                ultimo_envio_accesos = NOW(),
+                fecha_actualizacion = NOW()
+            WHERE idusuario_acceso = ?
+        ";
+
+        return $this->update($sql, [$idusuarioAcceso]);
+    }
+
+    public function updateUltimoLogin(int $idusuarioAcceso)
+    {
+        $sql = "UPDATE cli_usuarios_acceso
+            SET
+                ultimo_login = NOW(),
+                intentos_fallidos = 0,
+                bloqueado_hasta = NULL,
+                fecha_actualizacion = NOW()
+            WHERE idusuario_acceso = ?
+        ";
+
+        return $this->update($sql, [$idusuarioAcceso]);
+    }
+
+    public function updateIntentosFallidos(
+        int $idusuarioAcceso,
+        int $intentos,
+        ?string $bloqueadoHasta = null
+    ) {
+        $sql = "UPDATE cli_usuarios_acceso
+            SET
+                intentos_fallidos = ?,
+                bloqueado_hasta = ?,
+                fecha_actualizacion = NOW()
+            WHERE idusuario_acceso = ?
+        ";
+
+        return $this->update($sql, [
+            $intentos,
+            $bloqueadoHasta,
+            $idusuarioAcceso
+        ]);
+    }
+
+    public function updatePasswordDefinitiva(
+        int $idusuarioAcceso,
+        string $passwordHash
+    ) {
+        $sql = "UPDATE cli_usuarios_acceso
+            SET
+                password_hash = ?,
+                requiere_cambio_password = 0,
+                fecha_cambio_password = NOW(),
+                intentos_fallidos = 0,
+                bloqueado_hasta = NULL,
+                fecha_actualizacion = NOW()
+            WHERE idusuario_acceso = ?
+        ";
+
+        return $this->update($sql, [
+            $passwordHash,
+            $idusuarioAcceso
+        ]);
+    }
+
+    public function insertLogAcceso(
+        ?int $idusuarioAcceso,
+        ?int $idcliente,
+        string $tipoEvento,
+        string $resultado,
+        ?string $correoIntento,
+        ?string $direccionIp,
+        ?string $dispositivo,
+        ?string $tipoDispositivo,
+        ?string $navegador,
+        ?string $versionNavegador,
+        ?string $sistemaOperativo,
+        ?string $ubicacion,
+        ?string $idSesion,
+        ?string $userAgent,
+        ?string $motivo
+    ) {
+        $sql = "
+            INSERT INTO cli_usuarios_acceso_logs
+            (
+                idusuario_acceso,
+                idcliente,
+                tipo_evento,
+                resultado,
+                correo_intento,
+                direccion_ip,
+                dispositivo,
+                tipo_dispositivo,
+                navegador,
+                version_navegador,
+                sistema_operativo,
+                ubicacion_aproximada,
+                id_sesion,
+                user_agent,
+                motivo,
+                fecha_evento
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ";
+
+        return $this->insert($sql, [
+            $idusuarioAcceso,
+            $idcliente,
+            $tipoEvento,
+            $resultado,
+            $correoIntento,
+            $direccionIp,
+            $dispositivo,
+            $tipoDispositivo,
+            $navegador,
+            $versionNavegador,
+            $sistemaOperativo,
+            $ubicacion,
+            $idSesion,
+            $userAgent,
+            $motivo
+        ]);
+    }
+
+    public function selectLogsAcceso(int $idcliente)
+    {
+        $sql = "SELECT
+                l.idlog,
+                DATE_FORMAT(l.fecha_evento, '%d/%m/%Y') AS fecha,
+                DATE_FORMAT(l.fecha_evento, '%Y-%m-%d') AS fecha_iso,
+                DATE_FORMAT(l.fecha_evento, '%H:%i:%s') AS hora,
+                l.tipo_evento,
+                l.resultado,
+                l.correo_intento,
+                l.direccion_ip AS ip,
+                l.dispositivo,
+                l.tipo_dispositivo,
+                l.navegador,
+                l.version_navegador,
+                l.sistema_operativo,
+                l.ubicacion_aproximada AS ubicacion,
+                l.id_sesion,
+                l.user_agent,
+                l.motivo AS detalle
+            FROM cli_usuarios_acceso_logs l
+            WHERE l.idcliente = ?
+            ORDER BY l.fecha_evento DESC
+        ";
+
+        return $this->select_all($sql, [$idcliente]);
+    }
+
+    public function invalidarPinesAnteriores(int $idusuarioAcceso)
+    {
+        $sql = "UPDATE cli_usuarios_acceso_pines
+            SET utilizado = 1
+            WHERE idusuario_acceso = ?
+              AND utilizado = 0
+        ";
+
+        return $this->update($sql, [$idusuarioAcceso]);
+    }
+
+    public function insertPinDobleAutenticacion(
+        int $idusuarioAcceso,
+        string $codigoHash,
+        string $fechaExpiracion,
+        ?string $direccionIp,
+        ?string $idSesion
+    ) {
+        $sql = "INSERT INTO cli_usuarios_acceso_pines
+            (
+                idusuario_acceso,
+                codigo_hash,
+                fecha_generacion,
+                fecha_expiracion,
+                intentos,
+                max_intentos,
+                utilizado,
+                direccion_ip,
+                id_sesion
+            )
+            VALUES (?, ?, NOW(), ?, 0, 5, 0, ?, ?)
+        ";
+
+        return $this->insert($sql, [
+            $idusuarioAcceso,
+            $codigoHash,
+            $fechaExpiracion,
+            $direccionIp,
+            $idSesion
+        ]);
+    }
+
+    public function selectPinActivo(int $idusuarioAcceso)
+    {
+        $sql = "SELECT
+                idpin,
+                idusuario_acceso,
+                codigo_hash,
+                fecha_generacion,
+                fecha_expiracion,
+                intentos,
+                max_intentos,
+                utilizado
+            FROM cli_usuarios_acceso_pines
+            WHERE idusuario_acceso = ?
+              AND utilizado = 0
+              AND fecha_expiracion >= NOW()
+            ORDER BY idpin DESC
+            LIMIT 1
+        ";
+
+        return $this->select($sql, [$idusuarioAcceso]);
+    }
+
+    public function updateIntentoPin(int $idpin, int $intentos)
+    {
+        $sql = "UPDATE cli_usuarios_acceso_pines
+            SET intentos = ?
+            WHERE idpin = ?
+        ";
+
+        return $this->update($sql, [
+            $intentos,
+            $idpin
+        ]);
+    }
+
+    public function validarPin(int $idpin)
+    {
+        $sql = "UPDATE cli_usuarios_acceso_pines
+            SET
+                utilizado = 1,
+                fecha_validacion = NOW()
+            WHERE idpin = ?
+        ";
+
+        return $this->update($sql, [$idpin]);
+    }
+
+    public function insertEnvioAcceso(
+        int $idusuarioAcceso,
+        int $idcliente,
+        string $correo,
+        string $tipoEnvio,
+        string $asunto,
+        string $resultado,
+        ?string $detalle,
+        ?int $enviadoPor
+    ) {
+        $sql = "INSERT INTO cli_usuarios_acceso_envios
+            (
+                idusuario_acceso,
+                idcliente,
+                correo_destino,
+                tipo_envio,
+                asunto,
+                resultado,
+                detalle,
+                enviado_por,
+                fecha_envio
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ";
+
+        return $this->insert($sql, [
+            $idusuarioAcceso,
+            $idcliente,
+            $correo,
+            $tipoEnvio,
+            $asunto,
+            $resultado,
+            $detalle,
+            $enviadoPor
+        ]);
+    }
+
+///////////////////////////////////////////////////////////////////
 
     public function selectDistribuidor(int $iddistribuidor)
     {
