@@ -20,47 +20,22 @@ class Orders extends Controllers
     }
 
     public function restablecer($token = '')
-{
-    $token = trim(urldecode($token));
+    {
+        $token = trim(urldecode($token));
 
-    $data['page_tag'] = 'Restablecer contraseña - LDR Solutions';
-    $data['page_name'] = 'restablecer_password';
-    $data['page_functions_js'] = [
-        'orders/restablecer.js'
-    ];
+        $data['page_tag'] = 'Restablecer contraseña - LDR Solutions';
+        $data['page_name'] = 'restablecer_password';
+        $data['page_functions_js'] = [
+            'orders/restablecer.js'
+        ];
 
-    $data['token'] = '';
-    $data['token_valido'] = false;
-    $data['mensaje_token'] = '';
+        $data['token'] = '';
+        $data['token_valido'] = false;
+        $data['mensaje_token'] = '';
 
-    if (empty($token)) {
-        $data['mensaje_token'] =
-            'La liga de recuperación no es válida.';
-
-        $this->views->getView(
-            $this,
-            '../Orders/restablecer',
-            $data
-        );
-
-        return;
-    }
-
-    try {
-        /*
-         * En la base de datos se almacena SHA-256,
-         * no el token plano recibido en la URL.
-         */
-        $tokenHash = hash('sha256', $token);
-
-        $usuario = $this->model
-            ->selectUsuarioPorTokenRecuperacion(
-                $tokenHash
-            );
-
-        if (empty($usuario)) {
+        if (empty($token)) {
             $data['mensaje_token'] =
-                'La liga de recuperación es inválida, caducó o ya fue utilizada.';
+                'La liga de recuperación no es válida.';
 
             $this->views->getView(
                 $this,
@@ -71,15 +46,52 @@ class Orders extends Controllers
             return;
         }
 
-        /*
-         * Tus estados:
-         * 2 = activo
-         * 1 = inactivo
-         * 0 = eliminado
-         */
-        if (intval($usuario['estado']) !== 2) {
-            $data['mensaje_token'] =
-                'La cuenta no se encuentra activa. Contacta al administrador.';
+        try {
+            /*
+             * En la base de datos se almacena SHA-256,
+             * no el token plano recibido en la URL.
+             */
+            $tokenHash = hash('sha256', $token);
+
+            $usuario = $this->model
+                ->selectUsuarioPorTokenRecuperacion(
+                    $tokenHash
+                );
+
+            if (empty($usuario)) {
+                $data['mensaje_token'] =
+                    'La liga de recuperación es inválida, caducó o ya fue utilizada.';
+
+                $this->views->getView(
+                    $this,
+                    '../Orders/restablecer',
+                    $data
+                );
+
+                return;
+            }
+
+            /*
+             * Tus estados:
+             * 2 = activo
+             * 1 = inactivo
+             * 0 = eliminado
+             */
+            if (intval($usuario['estado']) !== 2) {
+                $data['mensaje_token'] =
+                    'La cuenta no se encuentra activa. Contacta al administrador.';
+
+                $this->views->getView(
+                    $this,
+                    '../Orders/restablecer',
+                    $data
+                );
+
+                return;
+            }
+
+            $data['token'] = $token;
+            $data['token_valido'] = true;
 
             $this->views->getView(
                 $this,
@@ -87,34 +99,22 @@ class Orders extends Controllers
                 $data
             );
 
-            return;
+        } catch (Throwable $e) {
+            $data['mensaje_token'] =
+                'Ocurrió un error al validar la liga de recuperación.';
+
+            /*
+             * Durante desarrollo puedes revisar:
+             * error_log($e->getMessage());
+             */
+
+            $this->views->getView(
+                $this,
+                '../Orders/restablecer',
+                $data
+            );
         }
-
-        $data['token'] = $token;
-        $data['token_valido'] = true;
-
-        $this->views->getView(
-            $this,
-            '../Orders/restablecer',
-            $data
-        );
-
-    } catch (Throwable $e) {
-        $data['mensaje_token'] =
-            'Ocurrió un error al validar la liga de recuperación.';
-
-        /*
-         * Durante desarrollo puedes revisar:
-         * error_log($e->getMessage());
-         */
-
-        $this->views->getView(
-            $this,
-            '../Orders/restablecer',
-            $data
-        );
     }
-}
 
     public function login()
     {
@@ -188,38 +188,36 @@ class Orders extends Controllers
         );
     }
 
-    public function autenticar()
-    {
+  public function autenticar()
+{
+    header('Content-Type: application/json; charset=utf-8');
 
-
-
-  try{
-
+    try {
+        /*
+         * Esto solo inicia la sesión si todavía no fue iniciada.
+         * El nombre personalizado de sesión debe configurarse
+         * globalmente antes del primer session_start().
+         */
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
         $this->soloPost();
 
-        $correo = strtolower(trim(
-            $_POST['correo'] ?? ''
-        ));
+        $correo = strtolower(
+            trim($_POST['correo'] ?? '')
+        );
 
         $password = $_POST['password'] ?? '';
 
-        if (
-            empty($correo)
-            || empty($password)
-        ) {
+        if (empty($correo) || empty($password)) {
             $this->responseJson(
                 false,
                 'El correo y la contraseña son obligatorios.'
             );
         }
 
-        if (
-            !filter_var(
-                $correo,
-                FILTER_VALIDATE_EMAIL
-            )
-        ) {
+        if (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
             $this->responseJson(
                 false,
                 'El correo no tiene un formato válido.'
@@ -230,11 +228,7 @@ class Orders extends Controllers
             $correo
         );
 
-      
         if (empty($usuario)) {
-            /*
-             * No revelamos si el correo existe.
-             */
             $this->registrarLogPortal(
                 null,
                 null,
@@ -250,25 +244,56 @@ class Orders extends Controllers
             );
         }
 
+        /*
+         * Estados del sistema:
+         * 2 = activo
+         * 1 = inactivo
+         * 0 = eliminado
+         */
         if (intval($usuario['estado']) !== 2) {
+            $estadoUsuario = intval(
+                $usuario['estado']
+            );
+
+            $motivo = $estadoUsuario === 0
+                ? 'La cuenta se encuentra eliminada.'
+                : 'La cuenta se encuentra inactiva.';
+
             $this->registrarLogPortal(
                 intval($usuario['idusuario_acceso']),
                 intval($usuario['idcliente']),
                 'LOGIN_FALLIDO',
                 'BLOQUEADO',
                 $correo,
-                intval($usuario['estado']) === 0
-                ? 'La cuenta se encuentra eliminada.'
-                : 'La cuenta se encuentra inactiva.'
+                $motivo
             );
 
-            $mensaje = intval($usuario['estado']) === 0
+            $mensaje = $estadoUsuario === 0
                 ? 'La cuenta ya no se encuentra disponible. Contacta al administrador.'
                 : 'La cuenta se encuentra inactiva. Contacta al administrador.';
 
             $this->responseJson(
                 false,
                 $mensaje
+            );
+        }
+
+        if (
+            !empty($usuario['estado_cliente'])
+            && intval($usuario['estado_cliente']) !== 2
+        ) {
+            $this->registrarLogPortal(
+                intval($usuario['idusuario_acceso']),
+                intval($usuario['idcliente']),
+                'LOGIN_FALLIDO',
+                'BLOQUEADO',
+                $correo,
+                'El cliente se encuentra inactivo o eliminado.'
+            );
+
+            $this->responseJson(
+                false,
+                'El cliente se encuentra inactivo. Contacta al administrador.'
             );
         }
 
@@ -282,7 +307,7 @@ class Orders extends Controllers
                 'CUENTA_BLOQUEADA',
                 'BLOQUEADO',
                 $correo,
-                'Intento de acceso durante bloqueo temporal.'
+                'Intento de acceso durante el bloqueo temporal.'
             );
 
             $this->responseJson(
@@ -297,9 +322,9 @@ class Orders extends Controllers
                 $usuario['password_hash']
             )
         ) {
-            $intentos =
-                intval($usuario['intentos_fallidos'])
-                + 1;
+            $intentos = intval(
+                $usuario['intentos_fallidos'] ?? 0
+            ) + 1;
 
             $bloqueadoHasta = null;
 
@@ -320,53 +345,44 @@ class Orders extends Controllers
                 intval($usuario['idusuario_acceso']),
                 intval($usuario['idcliente']),
                 $bloqueadoHasta
-                ? 'CUENTA_BLOQUEADA'
-                : 'LOGIN_FALLIDO',
+                    ? 'CUENTA_BLOQUEADA'
+                    : 'LOGIN_FALLIDO',
                 $bloqueadoHasta
-                ? 'BLOQUEADO'
-                : 'FALLIDO',
+                    ? 'BLOQUEADO'
+                    : 'FALLIDO',
                 $correo,
                 $bloqueadoHasta
-                ? 'Cuenta bloqueada durante 15 minutos por múltiples intentos fallidos.'
-                : 'Contraseña incorrecta.'
+                    ? 'Cuenta bloqueada durante 15 minutos por múltiples intentos fallidos.'
+                    : 'Contraseña incorrecta.'
             );
 
             $this->responseJson(
                 false,
                 $bloqueadoHasta
-                ? 'La cuenta fue bloqueada temporalmente por múltiples intentos fallidos.'
-                : 'El correo o la contraseña no son correctos.'
+                    ? 'La cuenta fue bloqueada temporalmente por múltiples intentos fallidos.'
+                    : 'El correo o la contraseña no son correctos.'
             );
         }
 
         /*
-         * Evita fijación de sesión.
+         * Regenerar solo después de validar las credenciales.
          */
         session_regenerate_id(true);
 
-        /*
-         * Sesión temporal: credenciales correctas,
-         * pero todavía falta PIN o cambio de contraseña.
-         */
         $_SESSION['portal_login_pendiente'] = [
-            'idusuario_acceso' =>
-                intval($usuario['idusuario_acceso']),
-
-            'idcliente' =>
-                intval($usuario['idcliente']),
-
-            'correo' =>
-                $usuario['correo'],
-
-            'requiere_cambio_password' =>
-                intval(
-                    $usuario['requiere_cambio_password']
-                ),
-
-            'doble_autenticacion' =>
-                intval(
-                    $usuario['doble_autenticacion']
-                )
+            'idusuario_acceso' => intval(
+                $usuario['idusuario_acceso']
+            ),
+            'idcliente' => intval(
+                $usuario['idcliente']
+            ),
+            'correo' => $usuario['correo'],
+            'requiere_cambio_password' => intval(
+                $usuario['requiere_cambio_password'] ?? 0
+            ),
+            'doble_autenticacion' => intval(
+                $usuario['doble_autenticacion'] ?? 0
+            )
         ];
 
         $this->model->updateIntentosFallidos(
@@ -384,44 +400,64 @@ class Orders extends Controllers
             'Correo y contraseña validados correctamente.'
         );
 
+        /*
+         * Usuario con doble autenticación.
+         */
         if (
-            intval($usuario['doble_autenticacion']) === 1
+            intval($usuario['doble_autenticacion'] ?? 0) === 1
         ) {
-            $resultadoPin =
-                $this->generarYEnviarPin($usuario);
+            $resultadoPin = $this->generarYEnviarPin(
+                $usuario
+            );
 
-            if (!$resultadoPin['status']) {
+            if (
+                empty($resultadoPin['status'])
+                || empty($resultadoPin['challenge'])
+            ) {
                 $this->responseJson(
                     false,
                     $resultadoPin['message']
+                        ?? 'No fue posible generar el PIN.'
                 );
             }
+
+            /*
+             * Guardar explícitamente el challenge en sesión.
+             */
+            $_SESSION['portal_pin_challenge'] =
+                $resultadoPin['challenge'];
+
+            /*
+             * Forzar la escritura de las variables en producción.
+             */
+            session_write_close();
 
             $this->responseJson(
                 true,
                 'Se envió un PIN de seguridad a tu correo.',
                 [
                     'requiere_pin' => true,
-                    'challenge' =>
-                        $resultadoPin['challenge'],
+                    'challenge' => $resultadoPin['challenge'],
                     'expira_en_segundos' => 180
                 ]
             );
         }
 
         /*
-         * Sin doble autenticación.
+         * Usuario sin doble autenticación.
          */
         $this->completarSesionPortal($usuario);
 
         if (
             intval(
-                $usuario['requiere_cambio_password']
+                $usuario['requiere_cambio_password'] ?? 0
             ) === 1
         ) {
             $_SESSION[
                 'portal_requiere_cambio_password'
             ] = true;
+
+            session_write_close();
 
             $this->responseJson(
                 true,
@@ -435,6 +471,8 @@ class Orders extends Controllers
 
         $this->registrarLoginExitoso($usuario);
 
+        session_write_close();
+
         $this->responseJson(
             true,
             'Inicio de sesión correcto.',
@@ -446,39 +484,76 @@ class Orders extends Controllers
             ]
         );
 
-
-            }catch(Throwable $e){
-
-        header('Content-Type: application/json');
+    } catch (Throwable $e) {
+        http_response_code(500);
 
         echo json_encode([
-            'status'=>false,
-            'message'=>$e->getMessage(),
-            'archivo'=>$e->getFile(),
-            'linea'=>$e->getLine()
-        ]);
+            'status' => false,
+            'message' =>
+                'Ocurrió un error al procesar el inicio de sesión.',
+            'debug' => $e->getMessage(),
+            'archivo' => $e->getFile(),
+            'linea' => $e->getLine()
+        ], JSON_UNESCAPED_UNICODE);
 
         die();
-
     }
-    }
+}
 
-    public function validarPin()
-    {
+   public function validarPin()
+{
+    header('Content-Type: application/json; charset=utf-8');
+
+    try {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
         $this->soloPost();
 
         if (
             empty(
-            $_SESSION['portal_login_pendiente']
-        )
+                $_SESSION['portal_login_pendiente']
+            )
         ) {
-            $this->responseJson(
-                false,
-                'La sesión de validación ya no es válida. Inicia sesión nuevamente.'
-            );
+            /*
+             * Este bloque de debug es temporal.
+             * Elimínalo cuando confirmes que la sesión funciona.
+             */
+            echo json_encode([
+                'status' => false,
+                'message' =>
+                    'La sesión de validación ya no es válida. Inicia sesión nuevamente.',
+                'debug' => [
+                    'session_name' =>
+                        session_name(),
+
+                    'session_id' =>
+                        session_id(),
+
+                    'cookie_session' =>
+                        $_COOKIE[session_name()] ?? null,
+
+                    'session_keys' =>
+                        array_keys($_SESSION),
+
+                    'host' =>
+                        $_SERVER['HTTP_HOST'] ?? null,
+
+                    'request_uri' =>
+                        $_SERVER['REQUEST_URI'] ?? null,
+
+                    'save_path' =>
+                        session_save_path()
+                ]
+            ], JSON_UNESCAPED_UNICODE);
+
+            die();
         }
 
-        $pin = trim($_POST['pin'] ?? '');
+        $pin = trim(
+            $_POST['pin'] ?? ''
+        );
 
         $challenge = trim(
             $_POST['challenge'] ?? ''
@@ -491,19 +566,32 @@ class Orders extends Controllers
             );
         }
 
+        if (empty($challenge)) {
+            $this->responseJson(
+                false,
+                'No se recibió el identificador de validación.'
+            );
+        }
+
         $pendiente =
             $_SESSION['portal_login_pendiente'];
 
-        $idusuarioAcceso =
-            intval(
-                $pendiente['idusuario_acceso']
+        $idusuarioAcceso = intval(
+            $pendiente['idusuario_acceso'] ?? 0
+        );
+
+        if ($idusuarioAcceso <= 0) {
+            $this->responseJson(
+                false,
+                'La sesión no contiene un usuario válido.'
             );
+        }
 
         if (
             empty($_SESSION['portal_pin_challenge'])
             || !hash_equals(
-                $_SESSION['portal_pin_challenge'],
-                $challenge
+                (string) $_SESSION['portal_pin_challenge'],
+                (string) $challenge
             )
         ) {
             $this->responseJson(
@@ -535,7 +623,8 @@ class Orders extends Controllers
         }
 
         if (
-            strtotime(
+            empty($pinActivo['fecha_expiracion'])
+            || strtotime(
                 $pinActivo['fecha_expiracion']
             ) < time()
         ) {
@@ -566,6 +655,15 @@ class Orders extends Controllers
                 intval($pinActivo['idpin'])
             );
 
+            $this->registrarLogPortal(
+                $idusuarioAcceso,
+                intval($pendiente['idcliente']),
+                'PIN_BLOQUEADO',
+                'BLOQUEADO',
+                $pendiente['correo'],
+                'Se alcanzó el número máximo de intentos del PIN.'
+            );
+
             $this->responseJson(
                 false,
                 'Se alcanzó el máximo de intentos. Solicita un PIN nuevo.'
@@ -578,9 +676,9 @@ class Orders extends Controllers
                 $pinActivo['codigo_hash']
             )
         ) {
-            $intentos =
-                intval($pinActivo['intentos'])
-                + 1;
+            $intentos = intval(
+                $pinActivo['intentos']
+            ) + 1;
 
             $this->model->updateIntentoPin(
                 intval($pinActivo['idpin']),
@@ -618,6 +716,13 @@ class Orders extends Controllers
             );
         }
 
+        if (intval($usuario['estado']) !== 2) {
+            $this->responseJson(
+                false,
+                'La cuenta ya no se encuentra activa.'
+            );
+        }
+
         $this->registrarLogPortal(
             $idusuarioAcceso,
             intval($usuario['idcliente']),
@@ -627,18 +732,27 @@ class Orders extends Controllers
             'PIN validado correctamente.'
         );
 
+        /*
+         * Ya no necesitamos el challenge anterior.
+         */
         unset($_SESSION['portal_pin_challenge']);
 
+        /*
+         * Esta función debe crear la sesión completa
+         * y eliminar portal_login_pendiente.
+         */
         $this->completarSesionPortal($usuario);
 
         if (
             intval(
-                $usuario['requiere_cambio_password']
+                $usuario['requiere_cambio_password'] ?? 0
             ) === 1
         ) {
             $_SESSION[
                 'portal_requiere_cambio_password'
             ] = true;
+
+            session_write_close();
 
             $this->responseJson(
                 true,
@@ -652,6 +766,8 @@ class Orders extends Controllers
 
         $this->registrarLoginExitoso($usuario);
 
+        session_write_close();
+
         $this->responseJson(
             true,
             'PIN validado correctamente.',
@@ -662,7 +778,22 @@ class Orders extends Controllers
                     base_url() . '/orders/micuenta'
             ]
         );
+
+    } catch (Throwable $e) {
+        http_response_code(500);
+
+        echo json_encode([
+            'status' => false,
+            'message' =>
+                'Ocurrió un error al validar el PIN.',
+            'debug' => $e->getMessage(),
+            'archivo' => $e->getFile(),
+            'linea' => $e->getLine()
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
     }
+}
 
     public function reenviarPin()
     {
@@ -720,141 +851,141 @@ class Orders extends Controllers
     public function cambiarPasswordInicial()
     {
 
-    try {
-        $this->soloPost();
+        try {
+            $this->soloPost();
 
-        if (
-            empty(
-            $_SESSION['portal_idusuario_acceso']
-        )
-            || empty(
-            $_SESSION[
-                'portal_requiere_cambio_password'
-            ]
-        )
-        ) {
-            $this->responseJson(
-                false,
-                'No existe un cambio de contraseña pendiente.'
-            );
-        }
-
-        $passwordNueva =
-            $_POST['password_nueva'] ?? '';
-
-        $confirmacion =
-            $_POST['password_confirmacion'] ?? '';
-
-        if ($passwordNueva !== $confirmacion) {
-            $this->responseJson(
-                false,
-                'Las contraseñas no coinciden.'
-            );
-        }
-
-        if (
-            !$this->validarPasswordSegura(
-                $passwordNueva
+            if (
+                empty(
+                $_SESSION['portal_idusuario_acceso']
             )
-        ) {
-            $this->responseJson(
-                false,
-                'La contraseña no cumple con los requisitos de seguridad.'
-            );
-        }
-
-        $idusuarioAcceso =
-            intval(
+                || empty(
                 $_SESSION[
-                    'portal_idusuario_acceso'
+                    'portal_requiere_cambio_password'
+                ]
+            )
+            ) {
+                $this->responseJson(
+                    false,
+                    'No existe un cambio de contraseña pendiente.'
+                );
+            }
+
+            $passwordNueva =
+                $_POST['password_nueva'] ?? '';
+
+            $confirmacion =
+                $_POST['password_confirmacion'] ?? '';
+
+            if ($passwordNueva !== $confirmacion) {
+                $this->responseJson(
+                    false,
+                    'Las contraseñas no coinciden.'
+                );
+            }
+
+            if (
+                !$this->validarPasswordSegura(
+                    $passwordNueva
+                )
+            ) {
+                $this->responseJson(
+                    false,
+                    'La contraseña no cumple con los requisitos de seguridad.'
+                );
+            }
+
+            $idusuarioAcceso =
+                intval(
+                    $_SESSION[
+                        'portal_idusuario_acceso'
+                    ]
+                );
+
+            $usuario =
+                $this->model->selectUsuarioAccesoPorId(
+                    $idusuarioAcceso
+                );
+
+            if (empty($usuario)) {
+                $this->responseJson(
+                    false,
+                    'No se encontró el usuario.'
+                );
+            }
+
+            /*
+             * Evitar reutilizar la contraseña temporal actual.
+             */
+            if (
+                password_verify(
+                    $passwordNueva,
+                    $usuario['password_hash']
+                )
+            ) {
+                $this->responseJson(
+                    false,
+                    'La nueva contraseña debe ser diferente de la contraseña temporal.'
+                );
+            }
+
+            $passwordHash = password_hash(
+                $passwordNueva,
+                PASSWORD_DEFAULT
+            );
+
+            $actualizado =
+                $this->model->updatePasswordDefinitiva(
+                    $idusuarioAcceso,
+                    $passwordHash
+                );
+
+            if (!$actualizado) {
+                $this->responseJson(
+                    false,
+                    'No fue posible actualizar la contraseña.'
+                );
+            }
+
+            unset(
+                $_SESSION[
+                    'portal_requiere_cambio_password'
                 ]
             );
 
-        $usuario =
-            $this->model->selectUsuarioAccesoPorId(
-                $idusuarioAcceso
-            );
-
-        if (empty($usuario)) {
-            $this->responseJson(
-                false,
-                'No se encontró el usuario.'
-            );
-        }
-
-        /*
-         * Evitar reutilizar la contraseña temporal actual.
-         */
-        if (
-            password_verify(
-                $passwordNueva,
-                $usuario['password_hash']
-            )
-        ) {
-            $this->responseJson(
-                false,
-                'La nueva contraseña debe ser diferente de la contraseña temporal.'
-            );
-        }
-
-        $passwordHash = password_hash(
-            $passwordNueva,
-            PASSWORD_DEFAULT
-        );
-
-        $actualizado =
-            $this->model->updatePasswordDefinitiva(
+            $this->registrarLogPortal(
                 $idusuarioAcceso,
-                $passwordHash
+                intval($usuario['idcliente']),
+                'PASSWORD_CAMBIADA',
+                'EXITOSO',
+                $usuario['correo'],
+                'El distribuidor cambió su contraseña temporal.'
             );
 
-        if (!$actualizado) {
+            $this->registrarLoginExitoso($usuario);
+
             $this->responseJson(
-                false,
-                'No fue posible actualizar la contraseña.'
+                true,
+                'La contraseña fue actualizada correctamente.',
+                [
+                    'redirect' =>
+                        base_url() . '/orders/micuenta'
+                ]
             );
+
+
+        } catch (Throwable $e) {
+            http_response_code(500);
+
+            echo json_encode([
+                'status' => false,
+                'message' => 'Ocurrió un error interno al cambiar la contraseña.',
+                'debug' => $e->getMessage(),
+                'archivo' => $e->getFile(),
+                'linea' => $e->getLine()
+            ], JSON_UNESCAPED_UNICODE);
+
+            die();
         }
-
-        unset(
-            $_SESSION[
-                'portal_requiere_cambio_password'
-            ]
-        );
-
-        $this->registrarLogPortal(
-            $idusuarioAcceso,
-            intval($usuario['idcliente']),
-            'PASSWORD_CAMBIADA',
-            'EXITOSO',
-            $usuario['correo'],
-            'El distribuidor cambió su contraseña temporal.'
-        );
-
-        $this->registrarLoginExitoso($usuario);
-
-        $this->responseJson(
-            true,
-            'La contraseña fue actualizada correctamente.',
-            [
-                'redirect' =>
-                    base_url() . '/orders/micuenta'
-            ]
-        );
-
-
-           } catch (Throwable $e) {
-        http_response_code(500);
-
-        echo json_encode([
-            'status' => false,
-            'message' => 'Ocurrió un error interno al cambiar la contraseña.',
-            'debug' => $e->getMessage(),
-            'archivo' => $e->getFile(),
-            'linea' => $e->getLine()
-        ], JSON_UNESCAPED_UNICODE);
-
-        die();
-    }
     }
 
     public function solicitarRecuperacion()
@@ -965,7 +1096,7 @@ class Orders extends Controllers
             'fecha_notificacion' =>
                 date('d/m/Y H:i')
         ];
- $cc = 'carlos.cruz@ldrsolutions.com.mx';
+        $cc = 'carlos.cruz@ldrsolutions.com.mx';
         $correoEnviado = sendMailLocalCron(
             $datosCorreo,
             'email_recuperar_acceso_pedidos',
@@ -1238,41 +1369,41 @@ class Orders extends Controllers
             ];
         }
 
-$datosCorreo = [
-    'email' => $usuario['correo'],
+        $datosCorreo = [
+            'email' => $usuario['correo'],
 
-    'nombre_destinatario' => trim(
-        ($usuario['nombre'] ?? '')
-        . ' '
-        . ($usuario['apellido'] ?? '')
-    ),
+            'nombre_destinatario' => trim(
+                ($usuario['nombre'] ?? '')
+                . ' '
+                . ($usuario['apellido'] ?? '')
+            ),
 
-    'asunto' =>
-        'Código de seguridad para ingresar al Portal de Pedidos',
+            'asunto' =>
+                'Código de seguridad para ingresar al Portal de Pedidos',
 
-    'nombre' => trim(
-        ($usuario['nombre'] ?? '')
-        . ' '
-        . ($usuario['apellido'] ?? '')
-    ),
+            'nombre' => trim(
+                ($usuario['nombre'] ?? '')
+                . ' '
+                . ($usuario['apellido'] ?? '')
+            ),
 
-    'pin' => $pin,
+            'pin' => $pin,
 
-    'vigencia_minutos' => 3,
+            'vigencia_minutos' => 3,
 
-    'fecha_notificacion' =>
-        date('d/m/Y H:i'),
+            'fecha_notificacion' =>
+                date('d/m/Y H:i'),
 
-    'liga_acceso' =>
-        base_url() . '/orders/login',
+            'liga_acceso' =>
+                base_url() . '/orders/login',
 
-    'logo_url' =>
-        'https://viaticos.ldrhumanresources.com/viaticos/Assets/images/Logotipo_Naranja.png',
+            'logo_url' =>
+                'https://viaticos.ldrhumanresources.com/viaticos/Assets/images/Logotipo_Naranja.png',
 
-    'anio' => date('Y')
-];
+            'anio' => date('Y')
+        ];
 
-           $cc = 'carlos.cruz@ldrsolutions.com.mx';
+        $cc = 'carlos.cruz@ldrsolutions.com.mx';
         $correoEnviado = sendMailLocalCron(
             $datosCorreo,
             'email_pin_portal_pedidos',
@@ -1409,7 +1540,7 @@ $datosCorreo = [
 
     public function detectarDispositivo(
         string $userAgent
-    ){
+    ) {
         $tipo = 'Escritorio';
         $dispositivo = 'Computadora';
 
