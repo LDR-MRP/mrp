@@ -14,7 +14,7 @@
 <?php
 if (!empty($data['page_functions_js']) && is_array($data['page_functions_js'])) {
   foreach ($data['page_functions_js'] as $js) {
-    echo '<script src="' . media() . '/js/' . $js . '"></script>' . PHP_EOL;
+    echo '<script src="' . media() . '/js/' . $js . '?v=1.0.0.4"></script>' . PHP_EOL;
   }
 }
 ?>
