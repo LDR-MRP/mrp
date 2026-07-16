@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const contenedor = document.getElementById("contenedorImagenes");
   const btnAgregar = document.getElementById("btnAgregarImagen");
 
-  let maxImagenes = 3;
+  let maxImagenes = 5;
 
   // 🔹 AGREGAR NUEVA IMAGEN
   btnAgregar.addEventListener("click", () => {
@@ -53,7 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (total >= maxImagenes) {
       Swal.fire(
         "Límite alcanzado",
-        "Solo puedes subir máximo 3 imágenes",
+        "Solo puedes subir máximo 5 imágenes",
         "warning",
       );
       return;

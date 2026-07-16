@@ -142,7 +142,7 @@
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="factor-unidades-addon">Fac. Un</span>
                     <input type="number" class="form-control"
-                        placeholder="Ingresa el factor entre unidades" id="factor_unidades" name="factor_unidades"
+                        placeholder="Ingresa el factor entre unidades" id="factor_unidades" name="factor_unidades" step="0.01"
                         aria-describedby="factor-unidades-addon" required>
                     <div class="invalid-feedback">El campo factor entre unidades es obligatorio</div>
                 </div>
@@ -152,7 +152,7 @@
         <!-- TIEMPO DE SURTIDO -->
         <div class="col-lg-4 col-sm-6">
             <div class="mb-3">
-                <label class="form-label" for="tiempo_surtido">TIEMPO DE SURTIDO</label>
+                <label class="form-label" for="tiempo_surtido">TIEMPO DE SURTIDO (T)</label>
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="tiempo-surtido-addon">Tiem. Sur</span>
                     <input type="number" class="form-control"
@@ -170,7 +170,7 @@
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="volumen-addon">Vol.</span>
                     <input type="number" class="form-control"
-                        placeholder="Ingresa el volumen" id="volumen" name="volumen"
+                        placeholder="Ingresa el volumen" id="volumen" name="volumen" step="0.01"
                         aria-describedby="volumen-addon" required>
                     <div class="invalid-feedback">El campo volumen es obligatorio</div>
                 </div>
@@ -180,11 +180,11 @@
         <!-- PESO -->
         <div class="col-lg-4 col-sm-6">
             <div class="mb-3">
-                <label class="form-label" for="peso">PESO</label>
+                <label class="form-label" for="peso">PESO (Kg)</label>
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="peso-addon">Peso</span>
                     <input type="number" class="form-control"
-                        placeholder="Ingresa el peso" id="peso" name="peso"
+                        placeholder="Ingresa el peso" id="peso" name="peso" step="0.01"
                         aria-describedby="peso-addon" required>
                     <div class="invalid-feedback">El campo peso es obligatorio</div>
                 </div>
@@ -198,7 +198,7 @@
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="unidad_empaque-addon">Unidad</span>
                     <input type="number" class="form-control"
-                        placeholder="Ingresa la unidad de empaque" id="unidad_empaque" name="unidad_empaque"
+                        placeholder="Ingresa la unidad de empaque" id="unidad_empaque" name="unidad_empaque" step="0.01"
                         aria-describedby="unidad_empaque-addon" required>
                     <div class="invalid-feedback">El campo unidad de empaque es obligatorio</div>
                 </div>
@@ -212,7 +212,7 @@
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="ultimo_costo-addon">Costo</span>
                     <input type="number" class="form-control"
-                        placeholder="Ingresa el ultimo costo" id="ultimo_costo" name="ultimo_costo"
+                        placeholder="Ingresa el ultimo costo" id="ultimo_costo" name="ultimo_costo" step="0.01"
                         aria-describedby="ultimo_costo-addon" required>
                     <div class="invalid-feedback">El campo ultimo costo es obligatorio</div>
                 </div>
@@ -248,7 +248,7 @@
                 </button>
 
                 <small class="text-muted d-block mt-1">
-                    Puedes tomar foto o subir desde tu dispositivo (máximo 3)
+                    Puedes tomar foto o subir desde tu dispositivo (máximo 5)
                 </small>
             </div>
         </div>
