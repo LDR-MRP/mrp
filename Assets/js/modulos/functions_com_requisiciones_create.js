@@ -18,13 +18,15 @@ const RequisitionForm = {
         id: null,          // Si tiene ID, estamos en Update Mode
         isEditMode: false,
         items: [],          // Memoria RAM del frontend para las partidas
-        selectedItemsToMove: []
+        selectedItemsToMove: [],
+        tempSpecs: null, // Memoria temporal para la ficha técnica del modal
     },
 
     dom: {}, // Caché de selectores del DOM
 
     // 2. INICIALIZACIÓN
     init: function () {
+        Sys_Core.Auth.validateSession();
         this.cacheDOM();
         this.checkMode();
         this.bindEvents();
@@ -82,7 +84,10 @@ const RequisitionForm = {
             $solicitanteContainer: $('#user-avatar-container'),
             $lblSolicitante: $('#lbl-solicitante'),
             $lblSolicitanteRol: $('#lbl-solicitante-rol'),
-            $lblFechaCreacion: $('#lbl-fecha-creacion')
+            $lblFechaCreacion: $('#lbl-fecha-creacion'),
+            $btnItemEspecial: $('#btn-item-especial'),
+            $modalEspecial: $('#modalArticuloEspecial'),
+            $btnConfirmarEspecial: $('#btn-confirmar-especial'),
         };
     },
 
@@ -121,8 +126,9 @@ const RequisitionForm = {
         // Submit del Formulario (Interceptamos los dos botones: Draft y Submit)
         this.dom.$btnSubmit.on('click', (e) => {
             e.preventDefault();
+            const $clickedBtn = $(e.currentTarget); // <--- Capturamos EL BOTÓN exacto
             const action = $(e.currentTarget).data('estatus') === 'borrador' ? 'save_draft' : 'submit_approval';
-            this.saveRequisition(action);
+            this.saveRequisition(action, $clickedBtn);
         });
 
         this.dom.$tableBody.on('change', '.chk-mover-partida', () => this.handleCheckboxSelection());
@@ -136,6 +142,9 @@ const RequisitionForm = {
             }
         });
         this.dom.$btnConfirmarMover.on('click', () => this.submitMoveItems());
+
+        this.dom.$btnItemEspecial.on('click', () => this.dom.$modalEspecial.modal('show'));
+        this.dom.$btnConfirmarEspecial.on('click', () => this.addSpecialItemToTable());
     },
 
     // 4. CARGA DE DATOS E INTERACCIÓN API
@@ -180,34 +189,42 @@ const RequisitionForm = {
     },
 
     populateUI: function (data) {
-        // 1. Llenar campos de cabecera usando la utilidad del core
-        Sys_Core.UI.fillForm('#formRequisicion', {
+        // --- PASO 1: MAPEO Y TRANSFORMACIÓN (Mantenemos tu lógica original) ---
+        const formData = {
             titulo: data.titulo,
             departamentoid: data.departamentoid,
             fecha_requerida: data.fecha_requerida,
             justificacion: data.justificacion,
-            prioridad: this.mapPriorityToValue(data.prioridad) // Convertir string a ID del select
-        });
+            prioridad: this.mapPriorityToValue(data.prioridad) // Tu transformación manual
+        };
 
-        // 2. Limpiar tabla y dibujar partidas existentes
+        Sys_Core.UI.fillForm('#formRequisicion', formData);
+
         this.dom.$tableBody.empty();
         if (data.items && data.items.length > 0) {
             data.items.forEach(item => {
-                this.renderRow({
-                    idrequisicionarticulo: item.idrequisicionarticulo, // Clave para el Update
-                    inventarioid: item.inventarioid,
-                    sku: item.cve_articulo || 'N/A', 
-                    descripcion: item.descripcion || 'Artículo recuperado',
-                    unidad: item.unidad_salida || 'PZA',
-                    cantidad: item.cantidad,
-                    precio: item.precio_unitario_estimado,
-                    notas: item.notas || ''
-                });
+                // Si es sourcing, reconstruimos el objeto de specs para el atributo data-specs
+                if (parseInt(item.es_sourcing) === 1) {
+                    item.specs = {
+                        justificacion_proyecto: item.justificacion_proyecto,
+                        categoria: item.categoria,
+                        descripcion_sourcing: item.descripcion_sourcing,
+                        especificaciones_tecnicas: item.especificaciones_tecnicas,
+                        dimensiones_principales: item.dimensiones_principales,
+                        normas_requeridas: item.normas_requeridas,
+                        volumen_anual: item.volumen_anual,
+                        precio_objetivo: item.precio_objetivo,
+                        fecha_inicio_negociacion: item.fecha_inicio_negociacion,
+                        fecha_limite_acuerdo: item.fecha_limite_acuerdo
+                    };
+                }
+                this.renderRow(item);
             });
         } else {
             this.renderEmptyState();
         }
 
+        // --- PASO 4: ETIQUETAS INFORMATIVAS ---
         this.dom.$lblSolicitante.text(data.solicitante || 'Usuario del Sistema');
         this.dom.$lblSolicitanteRol.text(data.rol_solicitante || 'Rol no especificado');
         this.dom.$lblFechaCreacion.text(Sys_Core.Format.toDate(data.fecha));
@@ -288,7 +305,7 @@ const RequisitionForm = {
             this.renderRow({
                 idrequisicionarticulo: null, // Es nuevo, no tiene ID de DB aún
                 inventarioid: itemData.idinventario,
-                sku: itemData.cve_articulo,
+                cve_articulo: itemData.cve_articulo,
                 descripcion: itemData.descripcion,
                 unidad: itemData.unidad_salida || 'PZA',
                 cantidad: cant,
@@ -302,15 +319,33 @@ const RequisitionForm = {
     },
 
     renderRow: function (data) {
-        $('.empty-state-row').remove(); // Quitar mensaje de tabla vacía
+        $('.empty-state-row').remove();
 
-        // Atributo data-itemid guarda el ID real de BD si estamos en modo edición
+        // --- 1. NORMALIZACIÓN DE DATOS (Lo nuevo) ---
+        // Detectamos si es sourcing ya sea por el flag del backend (es_sourcing) 
+        // o por el flag del frontend (isSourcing) cuando se agrega al vuelo.
+        const isSourcing = (parseInt(data.es_sourcing) === 1 || data.isSourcing === true);
+        
+        // El query ahora manda 'unidad_salida' o 'PZA' por defecto
+        const unitLabel = data.unidad_salida || data.unidad || 'PZA';
+        
+        // Clases visuales según el ADN LDR Premium
+        const sourcingClass = isSourcing ? 'table-info border-start border-4 border-primary' : '';
+
+        // --- 2. GESTIÓN DE ATRIBUTOS ---
         const itemIdAttr = data.idrequisicionarticulo ? `data-itemid="${data.idrequisicionarticulo}"` : '';
+        
+        // Si el artículo ya viene de la BD con specs, o se acaban de crear, las guardamos
+        // Si data.specs no existe (porque viene del query plano), podemos omitirlo o reconstruirlo
+        const specsData = data.specs ? JSON.stringify(data.specs) : '{}';
+        const specsAttr = isSourcing ? `data-specs='${specsData}'` : '';
+
+        const showSkuText = !(isSourcing && data.cve_articulo === 'SOURCING');
+        const skuDisplay = showSkuText ? `${data.cve_articulo} — ` : '';
 
         let chkHtml = '';
         if (this.state.isEditMode) {
             if (data.idrequisicionarticulo) {
-                // El artículo YA EXISTE en BD: Mostramos el checkbox funcional
                 chkHtml = `
                 <td width="40" class="text-center align-middle px-3">
                     <div class="form-check d-flex justify-content-center m-0">
@@ -318,7 +353,6 @@ const RequisitionForm = {
                     </div>
                 </td>`;
             } else {
-                // El artículo es NUEVO: Mostramos una celda vacía o un ícono para mantener la alineación
                 chkHtml = `
                 <td width="40" class="text-center align-middle px-3">
                     <i class="ri-checkbox-blank-circle-line text-muted opacity-25" title="Guarde primero para poder mover"></i>
@@ -327,25 +361,35 @@ const RequisitionForm = {
         }
 
         const html = `
-            <tr data-invid="${data.inventarioid}" ${itemIdAttr} class="partida-row">
+            <tr data-invid="${data.inventarioid || ''}" ${itemIdAttr} ${specsAttr} class="partida-row ${sourcingClass}">
                 ${chkHtml}
                 <td class="ps-4">
                     <div class="d-flex flex-column">
-                        <span class="fw-bold text-dark">${data.sku} — ${data.descripcion}</span>
-                        <small class="text-muted">Unidad: ${data.unidad}</small>
+                        <span class="fw-bold ${isSourcing ? 'text-primary' : 'text-dark'}">
+                            ${isSourcing ? '<span class="badge bg-primary me-1 shadow-sm">SOURCING</span>' : ''} 
+                            ${skuDisplay}${data.descripcion}
+                        </span>
+                        <small class="text-muted">
+                            ${isSourcing ? '<i class="ri-error-warning-line text-warning"></i> Requiere búsqueda de proveedor' : 'Unidad: ' + unitLabel}
+                        </small>
                     </div>
                 </td>
                 <td>
-                    <input type="number" class="form-control form-control-sm text-end input-cantidad-tabla fw-bold" value="${data.cantidad}" min="1">
+                    <input type="number" class="form-control form-control-sm text-center input-cantidad-tabla fw-bold" value="${data.cantidad}" min="1">
                 </td>
                 <td>
-                    <input type="number" class="form-control form-control-sm text-end input-precio-tabla bg-light border-0" value="${parseFloat(data.precio).toFixed(2)}" step="0.01">
+                    <div class="input-group input-group-sm">
+                        ${isSourcing ? '<span class="input-group-text bg-light">$</span>' : ''}
+                        <input type="number" class="form-control form-control-sm text-end input-precio-tabla ${isSourcing ? 'bg-soft-primary fw-bold' : 'bg-light border-0'}" 
+                               value="${parseFloat(data.precio || data.precio_unitario_estimado).toFixed(2)}" step="0.01">
+                    </div>
+                    ${isSourcing ? '<small class="text-primary d-block text-end">Precio Objetivo</small>' : ''}
                 </td>
                 <td class="text-end pe-4 fw-bold text-primary subtotal-display">
-                    ${Sys_Core.Format.toCurrency(data.cantidad * data.precio)}
+                    ${Sys_Core.Format.toCurrency(data.cantidad * (data.precio || data.precio_unitario_estimado))}
                 </td>
                 <td>
-                    <input type="text" class="form-control form-control-sm input-notas-tabla" value="${data.notas}" placeholder="Observaciones">
+                    <input type="text" class="form-control form-control-sm input-notas-tabla" value="${data.notas || ''}" placeholder="Observaciones">
                 </td>
                 <td class="text-center">
                     <button type="button" class="btn btn-link btn-sm text-danger p-0 btn-eliminar" title="Quitar">
@@ -353,6 +397,7 @@ const RequisitionForm = {
                     </button>
                 </td>
             </tr>`;
+            
         this.dom.$tableBody.append(html);
     },
 
@@ -381,19 +426,21 @@ const RequisitionForm = {
                 const itemId = $fila.data('itemid');
 
                 if (itemId) {
-                    // 1. EXISTE EN BD -> Hacemos petición DELETE
-                    $.ajax({
+                    // 1. EXISTE EN BD -> Petición vía Sys_Core (Maneja JWT y Loader automáticamente)
+                    Sys_Core.Net.post({
                         url: `${this.config.apiBase}/${this.state.id}/items/${itemId}`,
-                        method: 'DELETE',
-                        beforeSend: () => Sys_Core.UI.toggleLoader('.page-content', true),
-                        success: (res) => {
+                        method: 'DELETE', // Especificamos el verbo RESTful
+                        onDone: (res) => {
+                            // Esta lógica solo corre si el servidor responde status: true
                             $fila.remove();
                             this.calculateGrandTotal();
                             this.handleCheckboxSelection(); // Refrescar contador por si estaba checkeado
-                            Sys_Core.UI.notify('Partida eliminada de la base de datos.', 'info');
-                        },
-                        error: (xhr) => Sys_Core.Net.handleError(xhr),
-                        complete: () => Sys_Core.UI.toggleLoader('.page-content', false)
+                            
+                            // El mensaje de éxito lo puede mandar el backend en res.message, 
+                            // o puedes usar el notificación del Core
+                            Sys_Core.UI.notify('Partida eliminada correctamente.', 'info');
+                        }
+                        // No necesitas error: ni complete:, Sys_Core se encarga del rollback del loader y del alert.
                     });
                 } else {
                     // 2. ES NUEVO (Solo DOM) -> Solo quitamos el HTML
@@ -434,7 +481,7 @@ const RequisitionForm = {
     },
 
     // 6. SUBMIT & API COMMUNICATION
-    saveRequisition: function (action) {
+    saveRequisition: function (action, $triggerBtn) {
         if ($('.partida-row').length === 0) {
             Sys_Core.UI.alert('Tabla Vacía', 'Debe agregar al menos un artículo antes de enviar.', 'warning');
             return;
@@ -455,13 +502,17 @@ const RequisitionForm = {
         // Recorrer tabla para extraer detalle
         $('.partida-row').each(function() {
             const $row = $(this);
+            const rowSpecs = $row.data('specs'); // Aquí recuperamos el JSON de la ficha técnica
+
             payload.articulos.push({
                 // Si tiene data-itemid, es un artículo existente (Update), si no, es nuevo (Insert)
                 idrequisicionarticulo: $row.data('itemid') || null, 
                 inventarioid: $row.data('invid'),
                 cantidad: $row.find('.input-cantidad-tabla').val(),
                 precio_unitario_estimado: $row.find('.input-precio-tabla').val(),
-                notas: $row.find('.input-notas-tabla').val()
+                notas: $row.find('.input-notas-tabla').val(),
+                // ENVIAMOS LAS SPECS SI EXISTEN
+                specs: rowSpecs || null 
             });
         });
 
@@ -475,7 +526,8 @@ const RequisitionForm = {
             url: targetUrl,
             method: httpMethod, // Pasamos explícitamente POST o PUT
             payload: payload,
-            $btn: $('.btn-guardar'), // Pasamos el botón que el usuario acaba de presionar
+            // FIX: Usamos el botón que recibimos, no la clase genérica
+            $btn: $triggerBtn, 
             onDone: (res) => {
                 setTimeout(() => {
                     // Redirigir al modo vista (Show) tras guardar
@@ -565,7 +617,7 @@ const RequisitionForm = {
         };
 
         const originalHtml = this.dom.$btnConfirmarMover.html();
-        const token = localStorage.getItem('mrp_token');
+        const token = Sys_Core.Auth.getCookie('mrp_token');
 
         $.ajax({
             url: `${this.config.apiBase}/${this.state.id}/items/move`,
@@ -593,7 +645,36 @@ const RequisitionForm = {
     mapPriorityToValue: function(priorityString) {
         const map = { 'baja': '3', 'media': '1', 'alta': '2', 'critica': '2' };
         return map[priorityString?.toLowerCase()] || '1';
-    }
+    },
+
+    addSpecialItemToTable: function() {
+        const form = document.getElementById('formArticuloEspecial');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const data = Object.fromEntries(new FormData(form).entries());
+        
+        // Agregamos a la tabla principal con un indicador visual
+        this.renderRow({
+            idrequisicionarticulo: null,
+            inventarioid: null, // IDENTIFICADOR DE ARTÍCULO NUEVO
+            cve_articulo: 'SOURCING',
+            descripcion: data.descripcion_sourcing,
+            unidad: 'PZA',
+            cantidad: 1, // Por defecto 1 para sourcing, el usuario ajusta en tabla
+            precio: data.precio_objetivo,
+            notas: `ESPECIAL: ${data.categoria}`,
+            isSourcing: true,
+            specs: data // Guardamos la ficha técnica oculta en el row
+        });
+
+        this.dom.$modalEspecial.modal('hide');
+        form.reset();
+        this.calculateGrandTotal();
+        Sys_Core.UI.notify('Artículo especial añadido correctamente.', 'info');
+    },
 };
 
 // Arrancar Módulo

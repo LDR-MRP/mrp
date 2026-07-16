@@ -31,6 +31,10 @@ const RequisitionIndex = {
 
     // 2. INICIALIZACIÓN
     init: function () {
+        // --- INICIO SEGURIDAD: Centralización de sesión administrativa ---
+        Sys_Core.Auth.validateSession(); // Valida sesión interna (ERP)
+        // --- FIN SEGURIDAD ---
+        
         this.cacheDOM();
         this.initDataTable();
         this.bindEvents();
@@ -53,7 +57,7 @@ const RequisitionIndex = {
     // 4. CONFIGURACIÓN DATATABLES
     initDataTable: function () {
         
-        const token = localStorage.getItem('mrp_token');
+        const token = Sys_Core.Auth.getCookie('mrp_token');
 
         this.state.dataTable = this.dom.$table.DataTable({
             ajax: {

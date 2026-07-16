@@ -359,7 +359,7 @@
               </button>
             </div>
           </div>
-        </div>
+        </div> 
 
      
         
@@ -942,6 +942,56 @@
     </div>
   </div>
 </div>
+
+
+
+
+<div class="modal fade" id="modalAddCalidad" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0">
+      <div class="modal-header bg-info-subtle p-3">
+        <h5 class="modal-title" id="titleModalCalidad">Asignar personal de calidad</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="alert alert-info-subtle border mb-3">
+          <div class="d-flex gap-2">
+            <i class="ri-shield-check-line fs-4"></i>
+            <div>
+              <div class="fw-bold">Personal de calidad requerido</div>
+              <div class="text-muted">
+                Esta estación requiere personal para validar puntos críticos o realizar evaluación PDI.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-center mb-3">
+          <div class="fw-bold fs-5" id="modalCalidadEstacionNombre">—</div>
+          <div class="text-muted" id="modalCalidadEstacionProceso">—</div>
+          <input type="hidden" id="modalCalidadEstacionId" value="">
+          <input type="hidden" id="modalCalidadTipo" value="">
+        </div>
+
+        <label class="form-label fw-semibold">Personal de calidad</label>
+        <select class="form-select" id="selectPersonalCalidad">
+          <option value="">-- Selecciona personal --</option>
+        </select>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-info" id="btnAplicarCalidad">
+          <i class="ri-check-line me-1"></i> Aplicar asignación
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
 
 
 

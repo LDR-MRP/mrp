@@ -18,6 +18,7 @@ const InventoryReceptionForm = {
     dom: {},
 
     init: function () {
+        Sys_Core.Auth.validateSession();
         this.extractParams();
         this.cacheDOM();
         this.bindEvents();

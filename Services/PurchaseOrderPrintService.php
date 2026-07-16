@@ -27,21 +27,34 @@ class PurchaseOrderPrintService
                 throw new \Exception("La Orden de Compra #{$id} no existe.", 404);
             }
 
-            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
-            $scope = $role?->getScope() ?? 'propio';
+            // =================================================================
+            // 2. CIRUGÍA DE MÍNIMA INVASIÓN: Seguridad Híbrida de Impresión
+            // =================================================================
+            $isVendor = ($userContext['role'] ?? '') === 'VENDOR' || !empty($userContext['vendor_id']);
 
-            // APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
-            $isAllowed = match($scope) {
-                'propio' => (int)$poData['usuarioid'] === (int)$userContext['id'],
-                'planta'  => (int)$poData['plantaid'] === (int)$userContext['plantaid'],
-                'total'  => true,
-                default  => false
-            };
+            if ($isVendor) {
+                // Seguridad SRM (Anti-IDOR): El proveedor solo puede imprimir sus propias órdenes
+                $isAllowed = (int)($poData['proveedorid'] ?? $poData['proveedor_id'] ?? 0) === (int)$userContext['vendor_id'];
+            } else {
+                // Seguridad ERP: Matriz de Visibilidad por Rol (Empleados)
+                $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+                $scope = $role?->getScope() ?? 'propio';
 
-            // 3. Validación de Seguridad (IDOR de Lectura)
-            if (!$isAllowed) {
-                return ServiceResponse::error("Security Error: No tienes permisos para imprimir esta órden de compra.", 403);
+                $isAllowed = match($scope) {
+                    'propio' => (int)$poData['usuarioid'] === (int)$userContext['id'],
+                    'planta'  => (int)$poData['plantaid'] === (int)$userContext['plantaid'],
+                    'total'  => true,
+                    default  => false
+                };
             }
+
+            // 3. Validación de Seguridad (IDOR de Lectura / Descarga)
+            if (!$isAllowed) {
+                return ServiceResponse::error("Security Error: No tienes permisos para imprimir esta orden de compra.", 403);
+            }
+            // =================================================================
+            // FIN DE LA CIRUGÍA (El resto del motor de Dompdf se mantiene intacto)
+            // =================================================================
 
             // 3. PREPARACIÓN DE MONTOS
             $totalDescuento = 0;

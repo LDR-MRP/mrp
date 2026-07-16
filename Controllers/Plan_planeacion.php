@@ -1163,7 +1163,7 @@ class Plan_planeacion extends Controllers
     for ($i = 0; $i < count($arrData); $i++) {
       $btnView = '';
       $btnEdit = '';
-      $btnDelete = '';
+      $btnDelete = ''; 
 
       if ($arrData[$i]['estado_planeacion'] == 2) {
         $arrData[$i]['estado_planeacion'] = '<span class="badge bg-success">Activo</span>';

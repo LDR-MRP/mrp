@@ -4,15 +4,15 @@
     <div class="page-content">
         <div class="container-fluid">
             <section id="view-create-requisicion">
-                <!-- Breadcrumb -->
+                <!-- 1. BREADCRUMBS -->
                 <div class="row align-items-center mb-4">
                     <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2">
+                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-transparent">
                             <div class="page-title-right">
-                                <ol class="breadcrumb m-0">
+                                <ol class="breadcrumb m-0 fs-13">
                                     <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
                                     <li class="breadcrumb-item"><a href="<?= base_url(); ?>/com_requisicion">Requisiciones</a></li>
-                                    <li class="breadcrumb-item active">Nueva Solicitud</li>
+                                    <li class="breadcrumb-item active text-primary">Nueva Solicitud</li>
                                 </ol>
                             </div>
                         </div>
@@ -109,6 +109,12 @@
                                         <div class="col-md-2 d-flex align-items-end">
                                             <button id="btn-agregar" type="button" class="btn btn-sm btn-warning w-100 shadow-sm">
                                                 <i class="ri-add-line align-middle"></i> Agregar Artículo
+                                            </button>
+                                        </div>
+                                        <!-- NUEVO BOTÓN PARA SOURCING -->
+                                        <div class="col-12 mt-2">
+                                            <button type="button" id="btn-item-especial" class="btn btn-link btn-sm text-primary p-0 fw-bold">
+                                                <i class="ri-asterisk me-1"></i> ¿No encuentras el artículo? Solicitar alta de artículo nuevo
                                             </button>
                                         </div>
                                     </div>
@@ -309,6 +315,67 @@
                 <div class="modal-footer border-top-0 bg-light">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" id="btn-confirmar-mover" class="btn btn-primary px-4 shadow-sm">Confirmar y Mover</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalArticuloEspecial" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+                <div class="modal-header bg-soft-primary p-3">
+                    <h5 class="modal-title text-primary fw-bold fs-15"><i class="ri-Shield-star-line me-2"></i>Ficha Técnica para Sourcing</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formArticuloEspecial">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Justificación / Proyecto <span class="text-danger">*</span></label>
+                                <textarea name="justificacion_proyecto" class="form-control fs-13" rows="2" placeholder="Ej: Proyecto Foton Tunland en planta Tlajomulco 1" required></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Categoría del Componente</label>
+                                <input type="text" name="categoria" class="form-control" placeholder="Ej. COMPONENTE DE ENSAMBLE" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Precio Objetivo (MXN)</label>
+                                <input type="number" name="precio_objetivo" class="form-control fw-bold text-success" placeholder="0.00" step="0.01" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Descripción General</label>
+                                <input type="text" name="descripcion_sourcing" class="form-control" placeholder="Ej. Llantas radiales para Pick up..." required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Especificaciones Técnicas</label>
+                                <textarea name="especificaciones_tecnicas" class="form-control" rows="3" placeholder="Treadwear, Velocidad, Carga..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Dimensiones y Características</label>
+                                <textarea name="dimensiones_principales" class="form-control" rows="3" placeholder="Rin, Piso, Ancho..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Normas Requeridas</label>
+                                <input type="text" name="normas_requeridas" class="form-control" placeholder="NOM, ISO, etc.">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Volumen Anual Estimado</label>
+                                <input type="text" name="volumen_anual" class="form-control" placeholder="Ej. 5,000 unidades">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Inicio Negociación</label>
+                                <input type="date" name="fecha_inicio_negociacion" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Límite de Acuerdo</label>
+                                <input type="date" name="fecha_limite_acuerdo" class="form-control" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light-subtle">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" id="btn-confirmar-especial" class="btn btn-primary px-4 shadow-sm fw-bold">Agregar como Artículo Especial</button>
                 </div>
             </div>
         </div>

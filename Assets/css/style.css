@@ -404,11 +404,1233 @@
   margin-top: -1px;
 }
 
-.group-sede td {
-  background: #f1f3f5;
-  font-size: 15px;
+
+
+
+
+
+
+.ot-hero-header-pro {
+  position: relative;
+  overflow: hidden;
+  min-height: 128px;
+  padding: 1.25rem 1.5rem;
+  border-radius: 0.75rem 0.75rem 0 0;
+  background-color: #f8fafc;
+  isolation: isolate;
 }
 
+
+
+.ot-hero-header-pro::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-image: url('../images/fleet-banner.jpg'); 
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.28;
+  transform: scale(1.02);
+}
+
+
+.ot-hero-header-pro::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(248, 250, 252, 0.92) 0%,
+      rgba(248, 250, 252, 0.82) 28%,
+      rgba(255, 255, 255, 0.68) 56%,
+      rgba(255, 255, 255, 0.90) 78%,
+      rgba(255, 255, 255, 0.98) 100%
+    );
+}
+
+
+.ot-hero-header-pro .ot-hero-content,
+.ot-hero-header-pro .ot-hero-actions {
+  position: relative;
+  z-index: 3;
+}
+
+.ot-hero-header-pro .card-title {
+  color: #1e293b;
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: .2rem;
+}
+
+.ot-hero-header-pro .ot-folio {
+  color: #f97316;
+  font-weight: 800;
+}
+
+.ot-hero-header-pro .ot-hero-subtitle {
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.ot-hero-header-pro .ot-hero-subtitle span {
+  color: #0f172a;
+}
+
+.ot-hero-actions {
+  margin-left: auto;
+}
+
+.ot-priority-badge {
+  box-shadow: none !important;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.ot-btn-light {
+  background: rgba(255,255,255,.88);
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.ot-btn-light:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.ot-btn-pdf {
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.12);
+}
+
+
+.ot-hero-header-pro {
+  border-bottom: 1px solid #e9edf3;
+}
+
+@media (max-width: 768px) {
+  .ot-hero-header-pro {
+    min-height: auto;
+    padding: 1rem;
+  }
+
+  .ot-hero-header-pro::after {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(248, 250, 252, 0.90) 0%,
+        rgba(255, 255, 255, 0.82) 55%,
+        rgba(255, 255, 255, 0.96) 100%
+      );
+  }
+
+  .ot-hero-actions {
+    width: 100%;
+    margin-left: 0;
+    margin-top: .5rem;
+  }
+}
+
+
+
+
+
+
+
+.ot-hero-header-pro {
+  position: relative;
+  overflow: hidden;
+  min-height: 128px;
+  padding: 1.25rem 1.5rem;
+  border-radius: 0.75rem 0.75rem 0 0;
+  background-color: #f8fafc;
+  isolation: isolate;
+}
+
+/* Imagen un poco más visible */
+.ot-hero-header-pro::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-image: url('../images/fleet-banner.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  /* antes estaba en 0.28 */
+  opacity: 0.35;
+
+  transform: scale(1.02);
+}
+
+/* degradado más ligero */
+.ot-hero-header-pro::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(248, 250, 252, 0.82) 0%,
+      rgba(248, 250, 252, 0.72) 28%,
+      rgba(255, 255, 255, 0.60) 55%,
+      rgba(255, 255, 255, 0.80) 78%,
+      rgba(255, 255, 255, 0.95) 100%
+    );
+}
+
+
+
+
+.panel-process{
+    background: linear-gradient(180deg, #ffffff 0%, #f9fbfd 100%);
+}
+
+.lista-estaciones-panel .station-card,
+.ruta-estaciones-list .ruta-card-mini{
+    border: 1px solid #e7edf3;
+    border-radius: 14px;
+    padding: 12px 14px;
+    background: #fff;
+    margin-bottom: 12px;
+    transition: all .18s ease-in-out;
+    cursor: pointer;
+}
+
+.lista-estaciones-panel .station-card:hover,
+.ruta-estaciones-list .ruta-card-mini:hover{
+    border-color: #cfe2ff;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+}
+
+.ruta-card-mini.active{
+    border-color: #2f80ed;
+    background: linear-gradient(180deg,#f7fbff 0%,#eef6ff 100%);
+    box-shadow: 0 8px 18px rgba(47,128,237,.10);
+}
+
+.ruta-step-circle{
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #2f80ed;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: .9rem;
+    flex-shrink: 0;
+}
+
+.station-info-box{
+    border: 1px solid #e9edf3;
+    border-radius: 16px;
+    padding: 16px;
+    background: #fbfdff;
+}
+
+.metric-card{
+    border: 1px solid #e8edf3;
+    border-radius: 16px;
+    padding: 14px;
+    text-align: center;
+    background: #fff;
+    height: 100%;
+}
+
+.metric-icon{
+    font-size: 1.2rem;
+    margin-bottom: 6px;
+}
+
+.metric-value{
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.metric-label{
+    font-size: .80rem;
+    color: #667085;
+    margin-top: 4px;
+}
+
+.nav-tabs-custom .nav-link{
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #475467;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.nav-tabs-custom .nav-link.active{
+    color: #2f80ed;
+    background: transparent;
+    border-bottom: 2px solid #2f80ed;
+}
+
+.dropzone-ruta{
+    min-height: 420px;
+}
+
+.badge-soft-success{
+    background: #d1fae5;
+    color: #047857;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.sub-count-badge{
+    min-width: 32px;
+    padding: .18rem .55rem;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+    display: inline-block;
+    text-align: center;
+}
+
+.sub-count-herr{
+    background: #e8f1ff;
+    color: #0d6efd;
+}
+
+.sub-count-comp{
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.sub-count-esp{
+    background: #fff3cd;
+    color: #946200;
+}
+
+
+
+
+.ruta-station-wrapper{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+
+.ruta-subensambles-mini{
+    margin-left:18px;
+    padding-left:16px;
+    border-left:2px dashed #cfe2ff;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.subensamble-chip-mini{
+    border:1px solid #dce8f8;
+    background:#f8fbff;
+    border-radius:12px;
+    padding:8px 10px;
+    cursor:pointer;
+    transition:.18s ease;
+}
+
+.subensamble-chip-mini:hover{
+    border-color:#9cc2ff;
+    background:#eef5ff;
+}
+
+.subensamble-chip-mini.active{
+    border-color:#2f80ed;
+    background:#eaf3ff;
+}
+
+.station-main-row{
+    border-top:1px solid transparent;
+}
+
+
+
+
+.ruta-card-mini{
+    border: 1px solid #e7edf3;
+    border-radius: 16px;
+    padding: 12px 14px;
+    background: #fff;
+    margin-bottom: 12px;
+    transition: all .18s ease-in-out;
+    cursor: pointer;
+}
+
+.ruta-card-mini:hover{
+    border-color: #cfe2ff;
+    box-shadow: 0 8px 18px rgba(15,23,42,.06);
+}
+
+.ruta-card-mini.active{
+    border-color: #2f80ed;
+    background: linear-gradient(180deg,#f7fbff 0%,#eef6ff 100%);
+    box-shadow: 0 8px 18px rgba(47,128,237,.10);
+}
+
+.ruta-step-circle{
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#2f80ed,#56a3ff);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: .9rem;
+    flex-shrink: 0;
+}
+
+.ruta-subensamble-mini{
+    margin-left: 18px;
+    margin-bottom: 10px;
+    border-left: 2px dashed #bfd8ff;
+    padding-left: 14px;
+}
+
+.subensamble-box-mini{
+    border: 1px solid #d9e8ff;
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: linear-gradient(180deg,#fbfdff 0%,#f4f8ff 100%);
+    cursor: pointer;
+    transition: .18s ease;
+}
+
+.subensamble-box-mini:hover{
+    border-color: #8fbcff;
+    box-shadow: 0 8px 18px rgba(47,128,237,.07);
+}
+
+.subensamble-box-mini.active{
+    border-color: #2f80ed;
+    background: #eaf3ff;
+}
+
+.metric-card{
+    border: 1px solid #e8edf3;
+    border-radius: 16px;
+    padding: 14px;
+    text-align: center;
+    background: #fff;
+    height: 100%;
+}
+
+.metric-icon{
+    font-size: 1.2rem;
+    margin-bottom: 6px;
+}
+
+.metric-value{
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.metric-label{
+    font-size: .80rem;
+    color: #667085;
+    margin-top: 4px;
+}
+
+.station-info-box{
+    border: 1px solid #e9edf3;
+    border-radius: 16px;
+    padding: 16px;
+    background: #fbfdff;
+}
+
+.badge-soft-success{
+    background: #d1fae5;
+    color: #047857;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.badge-soft-warning{
+    background: #fff3cd;
+    color: #946200;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.pdi-point-row{
+    border: 1px solid #e9edf3;
+    border-radius: 14px;
+    padding: 12px;
+    background: #fff;
+    margin-bottom: 10px;
+}
+
+.visual-aid-item{
+    border: 1px solid #e9edf3;
+    border-radius: 14px;
+    padding: 12px 14px;
+    background: #fff;
+    margin-bottom: 10px;
+}
+
+
+
+/* =========================================================
+   PROCESOS / RUTA PRODUCTO - VELZON FRIENDLY
+   ========================================================= */
+
+#listaRutaCards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ruta-card-mini {
+  border: 1px solid var(--vz-border-color, #e9ebec);
+  border-radius: 14px;
+  background: var(--vz-secondary-bg, #fff);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all .2s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,.03);
+}
+
+.ruta-card-mini:hover {
+  transform: translateY(-1px);
+  border-color: rgba(var(--vz-primary-rgb, 64,81,137), .35);
+  box-shadow: 0 8px 18px rgba(0,0,0,.05);
+}
+
+.ruta-card-mini.active {
+  border-color: var(--vz-primary, #405189);
+  box-shadow: 0 0 0 3px rgba(var(--vz-primary-rgb, 64,81,137), .12);
+  background: rgba(var(--vz-primary-rgb, 64,81,137), .05);
+}
+
+.ruta-card-mini.station-selected {
+  border-left: 4px solid var(--vz-primary, #405189);
+}
+
+.ruta-card-mini.has-subensamble {
+  border-left: 4px solid #0ab39c;
+}
+
+.ruta-step-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--vz-primary, #405189);
+  color: #fff;
+  font-weight: 700;
+  font-size: .9rem;
+  flex-shrink: 0;
+}
+
+.ruta-subensambles-mini {
+  margin-bottom: 10px;
+  padding-left: 48px;
+}
+
+.ruta-subensamble-mini {
+  position: relative;
+}
+
+.ruta-subensamble-mini::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 18px;
+  width: 14px;
+  height: 2px;
+  background: var(--vz-border-color, #dcdfe3);
+}
+
+.subensamble-box-mini {
+  border: 1px dashed rgba(var(--vz-success-rgb, 10,179,156), .45);
+  background: rgba(var(--vz-success-rgb, 10,179,156), .06);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+
+.subensamble-box-mini:hover {
+  background: rgba(var(--vz-success-rgb, 10,179,156), .10);
+}
+
+.subensamble-box-mini.active {
+  border-style: solid;
+  border-color: #0ab39c;
+  background: rgba(var(--vz-success-rgb, 10,179,156), .16);
+  box-shadow: 0 0 0 3px rgba(var(--vz-success-rgb, 10,179,156), .12);
+}
+
+.badge-soft-success {
+  background: rgba(var(--vz-success-rgb, 10,179,156), .12);
+  color: #0ab39c;
+  border-radius: 999px;
+  padding: .35rem .7rem;
+  font-size: .72rem;
+  font-weight: 600;
+}
+
+.station-main-row {
+  min-height: 48px;
+}
+
+.station-card {
+  border-radius: 12px !important;
+}
+
+#panelSubensambleUnico,
+#wrapSubensamblesVacio,
+#listaAyudasVisuales,
+#bloqueInspeccionConfig,
+#modalPdi .modal-content,
+#modalAyudas .modal-content {
+  transition: all .2s ease;
+}
+
+/* =========================================================
+   DARK MODE - VELZON
+   ========================================================= */
+[data-layout-mode="dark"] .ruta-card-mini,
+[data-bs-theme="dark"] .ruta-card-mini,
+html[data-theme="dark"] .ruta-card-mini {
+  background: #283046;
+  border-color: #3a4055;
+  color: #e9edf4;
+}
+
+[data-layout-mode="dark"] .ruta-card-mini.active,
+[data-bs-theme="dark"] .ruta-card-mini.active,
+html[data-theme="dark"] .ruta-card-mini.active {
+  background: rgba(64,81,137,.28);
+  border-color: #6f85d5;
+}
+
+[data-layout-mode="dark"] .subensamble-box-mini,
+[data-bs-theme="dark"] .subensamble-box-mini,
+html[data-theme="dark"] .subensamble-box-mini {
+  background: rgba(10,179,156,.12);
+  border-color: rgba(10,179,156,.45);
+  color: #e9edf4;
+}
+
+[data-layout-mode="dark"] .subensamble-box-mini.active,
+[data-bs-theme="dark"] .subensamble-box-mini.active,
+html[data-theme="dark"] .subensamble-box-mini.active {
+  background: rgba(10,179,156,.22);
+}
+
+[data-layout-mode="dark"] .text-muted,
+[data-bs-theme="dark"] .text-muted,
+html[data-theme="dark"] .text-muted {
+  color: #b0b7c3 !important;
+}
+
+[data-layout-mode="dark"] #listaAyudas .list-group-item,
+[data-bs-theme="dark"] #listaAyudas .list-group-item,
+html[data-theme="dark"] #listaAyudas .list-group-item,
+[data-layout-mode="dark"] #listaAyudasVisuales .border,
+[data-bs-theme="dark"] #listaAyudasVisuales .border,
+html[data-theme="dark"] #listaAyudasVisuales .border {
+  background: #283046 !important;
+  border-color: #3a4055 !important;
+  color: #e9edf4 !important;
+}
+
+[data-layout-mode="dark"] #modalPdi .modal-content,
+[data-layout-mode="dark"] #modalAyudas .modal-content,
+[data-bs-theme="dark"] #modalPdi .modal-content,
+[data-bs-theme="dark"] #modalAyudas .modal-content,
+html[data-theme="dark"] #modalPdi .modal-content,
+html[data-theme="dark"] #modalAyudas .modal-content {
+  background: #283046;
+  color: #e9edf4;
+}
+
+[data-layout-mode="dark"] #modalPdi .table,
+[data-layout-mode="dark"] #modalAyudas .table,
+[data-bs-theme="dark"] #modalPdi .table,
+[data-bs-theme="dark"] #modalAyudas .table,
+html[data-theme="dark"] #modalPdi .table,
+html[data-theme="dark"] #modalAyudas .table {
+  color: #e9edf4;
+}
+
+[data-layout-mode="dark"] #modalPdi .table-light,
+[data-bs-theme="dark"] #modalPdi .table-light,
+html[data-theme="dark"] #modalPdi .table-light {
+  --bs-table-bg: #31384f;
+  --bs-table-color: #e9edf4;
+}
+
+
+
+/* =========================================================
+   PROCESOS / RUTA PRODUCTO - VELZON FRIENDLY
+   ========================================================= */
+
+#listaRutaCards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ruta-card-mini {
+  border: 1px solid var(--vz-border-color, #e9ebec);
+  border-radius: 14px;
+  background: var(--vz-secondary-bg, #fff);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all .2s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,.03);
+}
+
+.ruta-card-mini:hover {
+  transform: translateY(-1px);
+  border-color: rgba(var(--vz-primary-rgb, 64,81,137), .35);
+  box-shadow: 0 8px 18px rgba(0,0,0,.05);
+}
+
+.ruta-card-mini.active {
+  border-color: var(--vz-primary, #405189);
+  box-shadow: 0 0 0 3px rgba(var(--vz-primary-rgb, 64,81,137), .12);
+  background: rgba(var(--vz-primary-rgb, 64,81,137), .05);
+}
+
+.ruta-card-mini.station-selected {
+  border-left: 4px solid var(--vz-primary, #405189);
+}
+
+.ruta-card-mini.has-subensamble {
+  border-left: 4px solid #0ab39c;
+}
+
+.ruta-step-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--vz-primary, #405189);
+  color: #fff;
+  font-weight: 700;
+  font-size: .9rem;
+  flex-shrink: 0;
+}
+
+.ruta-subensambles-mini {
+  margin-bottom: 10px;
+  padding-left: 48px;
+}
+
+.ruta-subensamble-mini {
+  position: relative;
+}
+
+.ruta-subensamble-mini::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 18px;
+  width: 14px;
+  height: 2px;
+  background: var(--vz-border-color, #dcdfe3);
+}
+
+.subensamble-box-mini {
+  border: 1px dashed rgba(var(--vz-success-rgb, 10,179,156), .45);
+  background: rgba(var(--vz-success-rgb, 10,179,156), .06);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+
+.subensamble-box-mini:hover {
+  background: rgba(var(--vz-success-rgb, 10,179,156), .10);
+}
+
+.subensamble-box-mini.active {
+  border-style: solid;
+  border-color: #0ab39c;
+  background: rgba(var(--vz-success-rgb, 10,179,156), .16);
+  box-shadow: 0 0 0 3px rgba(var(--vz-success-rgb, 10,179,156), .12);
+}
+
+.badge-soft-success {
+  background: rgba(var(--vz-success-rgb, 10,179,156), .12);
+  color: #0ab39c;
+  border-radius: 999px;
+  padding: .35rem .7rem;
+  font-size: .72rem;
+  font-weight: 600;
+}
+
+.station-main-row {
+  min-height: 48px;
+}
+
+.station-card {
+  border-radius: 12px !important;
+}
+
+#panelSubensambleUnico,
+#wrapSubensamblesVacio,
+#listaAyudasVisuales,
+#bloqueInspeccionConfig,
+#modalPdi .modal-content,
+#modalAyudas .modal-content {
+  transition: all .2s ease;
+}
+
+/* =========================================================
+   DARK MODE - VELZON
+   ========================================================= */
+[data-layout-mode="dark"] .ruta-card-mini,
+[data-bs-theme="dark"] .ruta-card-mini,
+html[data-theme="dark"] .ruta-card-mini {
+  background: #283046;
+  border-color: #3a4055;
+  color: #e9edf4;
+}
+
+[data-layout-mode="dark"] .ruta-card-mini.active,
+[data-bs-theme="dark"] .ruta-card-mini.active,
+html[data-theme="dark"] .ruta-card-mini.active {
+  background: rgba(64,81,137,.28);
+  border-color: #6f85d5;
+}
+
+[data-layout-mode="dark"] .subensamble-box-mini,
+[data-bs-theme="dark"] .subensamble-box-mini,
+html[data-theme="dark"] .subensamble-box-mini {
+  background: rgba(10,179,156,.12);
+  border-color: rgba(10,179,156,.45);
+  color: #e9edf4;
+}
+
+[data-layout-mode="dark"] .subensamble-box-mini.active,
+[data-bs-theme="dark"] .subensamble-box-mini.active,
+html[data-theme="dark"] .subensamble-box-mini.active {
+  background: rgba(10,179,156,.22);
+}
+
+[data-layout-mode="dark"] .text-muted,
+[data-bs-theme="dark"] .text-muted,
+html[data-theme="dark"] .text-muted {
+  color: #b0b7c3 !important;
+}
+
+[data-layout-mode="dark"] #listaAyudas .list-group-item,
+[data-bs-theme="dark"] #listaAyudas .list-group-item,
+html[data-theme="dark"] #listaAyudas .list-group-item,
+[data-layout-mode="dark"] #listaAyudasVisuales .border,
+[data-bs-theme="dark"] #listaAyudasVisuales .border,
+html[data-theme="dark"] #listaAyudasVisuales .border {
+  background: #283046 !important;
+  border-color: #3a4055 !important;
+  color: #e9edf4 !important;
+}
+
+[data-layout-mode="dark"] #modalPdi .modal-content,
+[data-layout-mode="dark"] #modalAyudas .modal-content,
+[data-bs-theme="dark"] #modalPdi .modal-content,
+[data-bs-theme="dark"] #modalAyudas .modal-content,
+html[data-theme="dark"] #modalPdi .modal-content,
+html[data-theme="dark"] #modalAyudas .modal-content {
+  background: #283046;
+  color: #e9edf4;
+}
+
+[data-layout-mode="dark"] #modalPdi .table,
+[data-layout-mode="dark"] #modalAyudas .table,
+[data-bs-theme="dark"] #modalPdi .table,
+[data-bs-theme="dark"] #modalAyudas .table,
+html[data-theme="dark"] #modalPdi .table,
+html[data-theme="dark"] #modalAyudas .table {
+  color: #e9edf4;
+}
+
+[data-layout-mode="dark"] #modalPdi .table-light,
+[data-bs-theme="dark"] #modalPdi .table-light,
+html[data-theme="dark"] #modalPdi .table-light {
+  --bs-table-bg: #31384f;
+  --bs-table-color: #e9edf4;
+}
+
+
+#listaZonasPdi .list-group-item.active {
+  background: linear-gradient(135deg, #0d6efd 0%, #198754 100%);
+  border-color: transparent;
+  color: #fff;
+}
+
+#listaZonasPdi .list-group-item {
+  transition: all .2s ease;
+}
+
+#listaZonasPdi .list-group-item:hover {
+  transform: translateY(-1px);
+}
+
+
+.pdi-zonas-list .pdi-zona-item {
+    border: 1px solid var(--vz-border-color);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+    background: var(--vz-secondary-bg);
+    cursor: pointer;
+    transition: all .2s ease;
+}
+
+.pdi-zonas-list .pdi-zona-item:hover {
+    transform: translateY(-1px);
+    border-color: var(--vz-primary);
+}
+
+.pdi-zonas-list .pdi-zona-item.active {
+    background: linear-gradient(135deg, rgba(64,81,137,.12), rgba(10,179,156,.12));
+    border-color: var(--vz-primary);
+    box-shadow: 0 0 0 1px rgba(64,81,137,.15);
+}
+
+.pdi-zona-title {
+    font-weight: 600;
+    color: var(--vz-heading-color);
+}
+
+.pdi-zona-ref {
+    color: var(--vz-secondary-color);
+    font-size: .85rem;
+}
+
+.pdi-zona-badge {
+    min-width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(64,81,137,.12);
+    color: var(--vz-body-color);
+    font-size: .75rem;
+    font-weight: 700;
+}
+
+html[data-bs-theme="dark"] .pdi-zonas-list .pdi-zona-item {
+    background: #262a35;
+    border-color: #32394e;
+}
+
+html[data-bs-theme="dark"] .pdi-zonas-list .pdi-zona-item.active {
+    background: linear-gradient(135deg, rgba(64,81,137,.28), rgba(10,179,156,.20));
+    border-color: #405189;
+}
+
+.pdi-check-cell .form-check-input {
+    width: 1.05rem;
+    height: 1.05rem;
+}
+
+.pdi-action-btns .btn {
+    padding: .22rem .45rem;
+}
+
+/* estilos de scroll boton nuevo de guardar configuración */
+
+.panel-process {
+    height: 100%;
+}
+
+.dropzone-ruta {
+    min-height: 420px;
+    max-height: 600px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+}
+
+/* Scroll bonito */
+.dropzone-ruta::-webkit-scrollbar {
+    width: 8px;
+}
+
+.dropzone-ruta::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.18);
+    border-radius: 10px;
+}
+
+.dropzone-ruta::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
+    .dropzone-ruta {
+        max-height: 420px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .dropzone-ruta {
+        min-height: 300px;
+        max-height: 360px;
+    }
+}
+
+.lista-estaciones-panel .list-group-item {
+  background-color: var(--bs-body-bg);
+  border-color: var(--bs-border-color);
+}
+
+.lista-estaciones-panel .list-group-item:hover {
+  background-color: var(--bs-secondary-bg);
+  cursor: pointer;
+}
+
+.panel-process {
+    transition: all 0.2s ease;
+}
+
+.panel-process:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.08);
+}
+
+/* Dark mode ajuste */
+[data-bs-theme="dark"] .panel-process {
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.4);
+}
+
+.metric-card {
+    border-radius: 18px;
+    padding: 18px 14px;
+    min-height: 110px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all .25s ease;
+    text-align: center;
+    background: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.10);
+}
+
+.metric-card:hover {
+    transform: translateY(-3px);
+    background: var(--bs-secondary-bg);
+}
+
+.metric-value {
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--bs-body-color);
+    margin-bottom: 6px;
+}
+
+.metric-label {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--bs-secondary-color);
+    line-height: 1.2;
+}
+
+.station-info-box {
+    border-radius: 16px;
+    padding: 1rem 1.2rem;
+    border: 1px solid var(--bs-border-color);
+    transition: all .2s ease;
+}
+
+
+[data-bs-theme="light"] .station-dark {
+    background: #f8f9fa;
+    color: #212529;
+}
+
+/* 🌙 MODO OSCURO (LO IMPORTANTE) */
+[data-bs-theme="dark"] .station-dark {
+    background: linear-gradient(180deg, #1c2330 0%, #161c27 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #f1f5f9;
+}
+
+/* labels en oscuro */
+[data-bs-theme="dark"] .station-dark label {
+    color: #9ca3af;
+}
+
+/* valores en oscuro */
+[data-bs-theme="dark"] .station-dark .fw-semibold {
+    color: #ffffff;
+}
+
+
+
+
+
+[data-bs-theme="dark"] .mrp-flow-card,
+html[data-bs-theme="dark"] .mrp-flow-card,
+body[data-bs-theme="dark"] .mrp-flow-card {
+  background: linear-gradient(180deg, rgba(10,18,35,.92), rgba(11,18,32,.92));
+  border: 1px solid rgba(148, 163, 184, .14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 15px 34px rgba(0,0,0,.25);
+}
+
+[data-bs-theme="dark"] .mrp-flow-title,
+html[data-bs-theme="dark"] .mrp-flow-title,
+body[data-bs-theme="dark"] .mrp-flow-title {
+  color: #fff;
+}
+
+[data-bs-theme="dark"] .mrp-flow-subtitle,
+html[data-bs-theme="dark"] .mrp-flow-subtitle,
+body[data-bs-theme="dark"] .mrp-flow-subtitle {
+  color: #9fb1cc;
+}
+
+[data-bs-theme="dark"] .mrp-collapse-btn,
+html[data-bs-theme="dark"] .mrp-collapse-btn,
+body[data-bs-theme="dark"] .mrp-collapse-btn {
+  background: rgba(15,23,42,.7);
+  color: #dbeafe;
+  border: 1px solid rgba(148,163,184,.16);
+}
+
+[data-bs-theme="dark"] .mrp-collapse-btn:hover,
+html[data-bs-theme="dark"] .mrp-collapse-btn:hover,
+body[data-bs-theme="dark"] .mrp-collapse-btn:hover {
+  background: rgba(30,41,59,.95);
+  color: #fff;
+}
+
+/* LIGHT: aquí estaba faltando */
+[data-bs-theme="light"] .mrp-dark-wrap,
+html[data-bs-theme="light"] .mrp-dark-wrap,
+body[data-bs-theme="light"] .mrp-dark-wrap {
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, .05), transparent 28%),
+    radial-gradient(circle at top right, rgba(6, 182, 212, .04), transparent 22%),
+    linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  border: 1px solid rgba(0,0,0,.08);
+}
+
+[data-bs-theme="light"] .mrp-flow-card,
+html[data-bs-theme="light"] .mrp-flow-card,
+body[data-bs-theme="light"] .mrp-flow-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(0,0,0,.08);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+}
+
+[data-bs-theme="light"] .mrp-flow-title,
+html[data-bs-theme="light"] .mrp-flow-title,
+body[data-bs-theme="light"] .mrp-flow-title {
+  color: #1e293b;
+}
+
+[data-bs-theme="light"] .mrp-flow-subtitle,
+html[data-bs-theme="light"] .mrp-flow-subtitle,
+body[data-bs-theme="light"] .mrp-flow-subtitle {
+  color: #64748b;
+}
+
+[data-bs-theme="light"] .mrp-collapse-btn,
+html[data-bs-theme="light"] .mrp-collapse-btn,
+body[data-bs-theme="light"] .mrp-collapse-btn {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #dbe2ea;
+  box-shadow: 0 4px 10px rgba(15,23,42,.05);
+}
+
+[data-bs-theme="light"] .mrp-collapse-btn:hover,
+html[data-bs-theme="light"] .mrp-collapse-btn:hover,
+body[data-bs-theme="light"] .mrp-collapse-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+[data-bs-theme="light"] .mrp-scroll::-webkit-scrollbar-thumb,
+html[data-bs-theme="light"] .mrp-scroll::-webkit-scrollbar-thumb,
+body[data-bs-theme="light"] .mrp-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100,116,139,.28);
+}
+
+[data-bs-theme="light"] .mrp-soft-note,
+html[data-bs-theme="light"] .mrp-soft-note,
+body[data-bs-theme="light"] .mrp-soft-note {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+}
+
+
+.js-selectable-node {
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.js-selectable-node:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 22px rgba(0,0,0,.18);
+}
+
+.js-selectable-node.is-selected {
+  border: 1px solid rgba(56, 189, 248, .55) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.04),
+    0 0 0 1px rgba(56, 189, 248, .18),
+    0 0 0 4px rgba(56, 189, 248, .08);
+}
+
+[data-bs-theme="light"] .js-selectable-node.is-selected {
+  border: 1px solid rgba(37, 99, 235, .45) !important;
+  box-shadow:
+    0 0 0 1px rgba(37, 99, 235, .15),
+    0 0 0 4px rgba(37, 99, 235, .08);
+}
+
+
+.inspeccion-box {
+  min-width: 95px;
+  max-width: 150px;
+}
+
+#modalCalidad .modal-body {
+  overflow-y: auto;
+}
+
+#modalCalidad table th,
+#modalCalidad table td {
+  vertical-align: middle;
+}
+
+#modalCalidad textarea {
+  font-size: 12px;
+=======
 .group-zona td {
   background: #fafafa;
   font-size: 14px;
@@ -717,4 +1939,5 @@
 @keyframes flashRow {
   0% { background-color: rgba(25, 135, 84, 0.18); }
   100% { background-color: transparent; }
+
 }

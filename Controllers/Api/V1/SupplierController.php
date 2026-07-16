@@ -135,4 +135,25 @@ class SupplierController
     {
         return $this->apiResponse($this->supplierService->getKpis($this->request['auth_user']));
     }
+
+    /**
+     * Obtiene el reporte analítico del progreso de onboarding para el CEO.
+     * GET /api/v1/suppliers/reports/onboarding
+     */
+    public function getOnboardingReport()
+    {
+        $userContext = $this->request['auth_user'] ?? null;
+
+        if (!$userContext) {
+            return $this->errorResponse('Acceso no autorizado.', 401);
+        }
+
+        // Capturamos el filtro opcional de la URL
+        $filters = [
+            'plantaid' => $_GET['plantaid'] ?? null
+        ];
+
+        $response = $this->supplierService->getOnboardingReport($filters, $userContext);
+        return $this->apiResponse($response);
+    }
 }

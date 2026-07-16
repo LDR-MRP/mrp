@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 enum RoleEnum: int
 {
-    case ADMINISTRADOR     = COMPRAS_ADMINISTRADOR;
-    case GERENTE           = COMPRAS_GERENTE;
-    case COMPRADOR         = COMPRAS_COMPRADOR;
-    case JEFE_DEPARTAMENTO = COMPRAS_JEFE_DEPARTAMENTO;
-    case SOLICITANTE       = COMPRAS_SOLICITANTE;
-    case SYS_ADMIN         = RADMINISTRADOR;
+    case ADMINISTRADOR         = COMPRAS_ADMINISTRADOR;
+    case GERENTE               = COMPRAS_GERENTE;
+    case COMPRADOR             = COMPRAS_COMPRADOR;
+    case JEFE_DEPARTAMENTO     = COMPRAS_JEFE_DEPARTAMENTO;
+    case SOLICITANTE           = COMPRAS_SOLICITANTE;
+    case SYS_ADMIN             = RADMINISTRADOR;
+    case DIRECTOR              = COMPRAS_DIRECTOR;
+    case DIRECTOR_CORPORATIVO  = COMPRAS_DIRECTOR_CORPORATIVO;
+    case CONTADOR              = COMPRAS_CONTADOR;
+    case TESORERO              = COMPRAS_TESORERO;
 
     /**
      * Define el alcance de visualización (Ojo)
@@ -33,6 +37,10 @@ enum RoleEnum: int
             self::JEFE_DEPARTAMENTO => 'L1', // Firma departamental
             self::GERENTE, 
             self::SYS_ADMIN,
+            self::DIRECTOR,
+            self::DIRECTOR_CORPORATIVO,
+            self::CONTADOR          => 'L2',
+            self::TESORERO          => 'L2',
             self::ADMINISTRADOR     => 'L2', // Firma global/finanzas
             default                 => null, // Solicitantes y Compradores no firman
         };

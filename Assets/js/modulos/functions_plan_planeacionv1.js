@@ -161,6 +161,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
   fntSupervisores();
 
+  const btnAplicarCalidad = document.querySelector('#btnAplicarCalidad');
+if (btnAplicarCalidad) {
+  btnAplicarCalidad.addEventListener('click', onAplicarCalidad);
+}
+
   const btnAplicar = document.querySelector('#btnAplicarAsignacion');
   if (btnAplicar) btnAplicar.addEventListener('click', onAplicarAsignacion);
 
@@ -610,10 +615,13 @@ function renderTbodyEstaciones(detalle = []) {
 
 
 
-  tbody.innerHTML = rows.map((st) => {
+  tbody.innerHTML = rows.map((st) => { 
     const orden = Number(st.orden || 0);
     const estacionid = Number(st.estacionid || 0);
     const estampado = Number(st.estampado || 0);
+    const operaciones = Number(st.operaciones || 0);
+     const calidad = Number(st.calidad || 0);
+     const especificaciones = Number(st.especificaciones || 0);
     const tieneSubensamble = Number(st.tiene_subensamble || 0);
 
     const nombreRaw = st.nombre_estacion || "";
@@ -631,7 +639,9 @@ function renderTbodyEstaciones(detalle = []) {
           class="btn btn-link p-0 text-danger text-decoration-underline fw-semibold"
           data-action="ver-faltantes-comp"
           data-estacionid="${estacionid}"
-          data-estacion-nombre="${escapeHtml(nombreRaw)}">
+          data-especificaciones="${especificaciones}"
+          data-estacion-nombre="${escapeHtml(nombreRaw)}"
+          data-operaciones="${operaciones}">
           <i class="ri-error-warning-line me-1"></i> Faltan componentes en inventario
         </button>
       </div>
@@ -643,7 +653,9 @@ function renderTbodyEstaciones(detalle = []) {
           class="btn btn-link p-0 text-danger text-decoration-underline fw-semibold"
           data-action="ver-faltantes-her"
           data-estacionid="${estacionid}"
-          data-estacion-nombre="${escapeHtml(nombreRaw)}">
+          data-especificaciones="${especificaciones}"
+          data-estacion-nombre="${escapeHtml(nombreRaw)}"
+           data-operaciones="${operaciones}">
           <i class="ri-tools-line me-1"></i> Faltan herramientas en inventario
         </button>
       </div>
@@ -687,6 +699,7 @@ function renderTbodyEstaciones(detalle = []) {
             class="tr-subensamble"
             data-tipo="subensamble"
             data-estacionid="${estacionid}"
+            data-especificaciones="${especificaciones}"
             data-idsubensamble="${idsubensamble}"
             data-parent-orden="${orden}"
             data-orden-sub="S${contadorGlobalSubensambles}"
@@ -735,12 +748,49 @@ function renderTbodyEstaciones(detalle = []) {
       }).join("");
     }
 
+    const accionesCalidadHtml = `
+  ${especificaciones === 1 ? `
+    <div class="alert alert-warning-subtle border mt-2 mb-0 py-2">
+      <div class="small">
+        <i class="ri-error-warning-line me-1"></i>
+        Esta estación tiene puntos críticos configurados. Debes asignar personal para su validación.
+      </div>
+      <button type="button"
+        class="btn btn-outline-warning btn-sm mt-2"
+        onclick="abrirModalCalidad(${estacionid}, '${escapeHtml(nombreRaw)}', '${escapeHtml(st.proceso || "")}', 'CRITICOS')">
+        <i class="ri-user-star-line me-1"></i> Asignar críticos
+      </button>
+    </div>
+  ` : ''}
+
+  ${calidad === 1 ? `
+    <div class="alert alert-info-subtle border mt-2 mb-0 py-2">
+      <div class="small">
+        <i class="ri-shield-check-line me-1"></i>
+        Esta estación tiene PDI configurado. Selecciona el personal que realizará la evaluación.
+      </div>
+      <button type="button"
+        class="btn btn-outline-info btn-sm mt-2"
+        onclick="abrirModalCalidad(${estacionid}, '${escapeHtml(nombreRaw)}', '${escapeHtml(st.proceso || "")}', 'PDI')">
+        <i class="ri-user-search-line me-1"></i> Asignar PDI
+      </button>
+    </div>
+  ` : ''}
+
+  <div class="d-flex gap-1 flex-wrap mt-2" id="calidad_${estacionid}"></div>
+`;
+
+
+
     const rowEstacion = `
       <tr
         data-tipo="estacion"
         data-estacionid="${estacionid}"
+        data-especificaciones="${especificaciones}"
         data-orden="${orden}"
-        data-estampado="${estampado}">
+         data-calidad="${calidad}"
+        data-estampado="${estampado}"
+        data-operaciones="${operaciones}">
         <td class="fw-semibold">${orden}</td>
 
         <td>
@@ -758,6 +808,7 @@ function renderTbodyEstaciones(detalle = []) {
 
           ${compHtml}
           ${herHtml}
+          ${accionesCalidadHtml}
         </td>
 
         <td>
@@ -784,6 +835,7 @@ function renderTbodyEstaciones(detalle = []) {
   if (c) c.textContent = String(rows.length);
 
   restaurarAsignacionesEnTabla();
+  restaurarCalidadEnTabla();
 }
 
 // =====================================================
@@ -819,6 +871,10 @@ async function fntProductos(selectedValue = "") {
         renderEmptyTbody();
 
         try { localStorage.removeItem(getLSKeyAsignaciones()); } catch (e) { }
+            //  localStorage.removeItem(getLSKeyCalidad);
+              try { localStorage.removeItem(getLSKeyCalidad()); } catch (e) { }
+             console.log('debería de limpiarse');
+            //  await limpiarNuevaPlaneacion(true);
 
         await fntEstaciones(this.value || "");
       };
@@ -1659,40 +1715,6 @@ function aplicarBloqueoEncargados(estacionidActual) {
 }
 
 
-
-
-// =====================================================
-//  BLOQUEO ENCARGADOS
-// =====================================================
-// function getEncargadosUsados(exceptEstacionId = null) {
-//   const asignaciones = getAsignacionesLS();
-//   const usados = new Set();
-
-//   Object.keys(asignaciones).forEach((estId) => {
-//     if (exceptEstacionId && String(estId) === String(exceptEstacionId)) return;
-//     const enc = asignaciones[estId]?.encargado ?? null;
-//     if (enc) usados.add(String(enc));
-//   });
-
-//   return usados;
-// }
-
-// function aplicarBloqueoEncargados(estacionidActual) {
-//   const sel = document.querySelector('#listOperadores');
-//   if (!sel) return;
-
-//   const usados = getEncargadosUsados(estacionidActual);
-//   const asignaciones = getAsignacionesLS();
-//   const currentEnc = asignaciones[String(estacionidActual)]?.encargado ?? null;
-//   const current = currentEnc ? String(currentEnc) : null;
-
-//   Array.from(sel.options).forEach(opt => {
-//     const id = String(opt.value || "");
-//     if (!id) return;
-//     opt.disabled = usados.has(id) && id !== current;
-//   });
-// }
-
 // =====================================================
 //   VALIDACIONES
 // =====================================================
@@ -1715,7 +1737,10 @@ function getEstacionesDeTabla() {
   return rows.map(tr => ({
     estacionid: Number(tr.dataset.estacionid || 0),
     orden: Number(tr.dataset.orden || 0),
-    estampado: Number(tr.dataset.estampado || 0)
+    calidad: Number(tr.dataset.calidad || 0),
+    especificaciones: Number(tr.dataset.especificaciones || 0),
+    estampado: Number(tr.dataset.estampado || 0),
+    operaciones: Number(tr.dataset.operaciones || 0)
   })).filter(x => x.estacionid > 0);
 }
 
@@ -1727,7 +1752,7 @@ function getSubensamblesDeTabla() {
     estacionid: Number(tr.dataset.estacionid || 0),
     orden_sub: String(tr.dataset.ordenSub || "")
   })).filter(x => x.idsubensamble > 0);
-}
+} 
 
 function getAsignacionesParaGuardar() {
   const asignaciones = getAsignacionesLS();
@@ -1741,6 +1766,9 @@ function getAsignacionesParaGuardar() {
         estacionid: s.estacionid,
         orden: s.orden,
         estampado: s.estampado,
+        calidad: s.calidad,
+        operaciones: s.operaciones,
+        especificaciones: s.especificaciones,
         encargado: a?.encargado ?? null,
         ayudantes: Array.isArray(a?.ayudantes) ? a.ayudantes : []
       };
@@ -1763,12 +1791,14 @@ function buildPayloadPlaneacion() {
   const estaciones = getEstacionesDeTabla();
   const subensambles = getSubensamblesDeTabla();
   const asignaciones = getAsignacionesParaGuardar();
+  const calidad = getAsignacionesCalidadParaGuardar();
 
   return {
     header: getHeaderPlaneacion(),
     estaciones,
     subensambles,
-    asignaciones
+    asignaciones,
+    calidad
   };
 }
 
@@ -1896,6 +1926,7 @@ async function guardarPlaneacionHandler() {
   // VALIDAR OPERADORES
  const faltantes = validarAsignacionesCompletas();
 if (faltantes.length > 0) {
+  
   resaltarFilasIncompletas(faltantes);
 
 const lista = faltantes
@@ -1921,6 +1952,27 @@ const lista = faltantes
             ${lista}
           </div>`
   });
+  return;
+}
+
+
+
+const faltantesCalidad = validarAsignacionesCalidadCompletas();
+
+if (faltantesCalidad.length > 0) {
+  const lista = faltantesCalidad.map(x => {
+    return `• Estación orden ${x.orden}: falta asignar ${x.tipo === 'PDI' ? 'evaluador PDI' : 'inspector de puntos críticos'}`;
+  }).join('<br>');
+
+  Swal.fire({
+    icon: 'warning',
+    title: 'Faltan asignaciones de calidad',
+    html: `<div class="text-start">
+            <div class="fw-bold mb-2">Debes asignar el personal requerido para calidad:</div>
+            ${lista}
+          </div>`
+  });
+
   return;
 }
 
@@ -1961,6 +2013,7 @@ const lista = faltantes
     Swal.fire({ icon: 'success', title: '¡Operación exitosa!', text: 'Planeación guardada correctamente.' });
 
     localStorage.removeItem(getLSKeyAsignaciones());
+    localStorage.removeItem(getLSKeyCalidad);
     await limpiarNuevaPlaneacion(false);
 
     window.location.href = base_url + '/plan_planeacionv1/ordenv1/' + data.num_planeacion;
@@ -2001,9 +2054,10 @@ async function limpiarNuevaPlaneacion(limpiarLS = true) {
   document.querySelectorAll('#tbodyEstaciones tr').forEach(tr => tr.classList.remove('table-danger'));
   setBloqueoGuardarPorMantenimiento(false);
 
-  if (limpiarLS) {
-    try { localStorage.removeItem(getLSKeyAsignaciones()); } catch (e) { }
-  }
+if (limpiarLS) {
+  try { localStorage.removeItem(getLSKeyAsignaciones()); } catch (e) { }
+  try { localStorage.removeItem(getLSKeyCalidad()); } catch (e) { }
+}
 
   const enc = document.querySelector('#listOperadores');
   const ay = document.querySelector('#selectAyudantes');
@@ -2543,5 +2597,207 @@ function initFechaRequeridaPicker() {
 
   updateRequeridaMinByDay();
 }
+
+///////////////////////////////////////////////////////////////////
+// SE INICIAN LAS FUNCIONES PARA PODER ADIGNAR OPERADORES DE CALIDAD
+///////////////////////////////////////////////////////////////////
+
+function getLSKeyCalidad() {
+  const prod = document.querySelector('#selectProducto')?.value || '0';
+  return `plan_calidad_prod_${prod}`;
+}
+
+function getAsignacionesCalidadLS() {
+  try {
+    const raw = localStorage.getItem(getLSKeyCalidad());
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function setAsignacionesCalidadLS(obj) {
+  localStorage.setItem(getLSKeyCalidad(), JSON.stringify(obj || {}));
+}
+
+function cargarPersonalCalidad() {
+  const sel = document.querySelector('#selectPersonalCalidad');
+  if (!sel) return;
+
+  const ajaxUrl = base_url + '/plan_planeacionv1/getSelectPersonalCalidad';
+
+  showLoading();
+
+  const request = window.XMLHttpRequest
+    ? new XMLHttpRequest()
+    : new ActiveXObject('Microsoft.XMLHTTP');
+
+  request.open("GET", ajaxUrl, true);
+  request.send();
+
+  request.onreadystatechange = function () {
+    if (request.readyState !== 4) return;
+    hideLoading();
+
+    if (request.status === 200) {
+      sel.innerHTML = `<option value="">-- Selecciona personal --</option>` + request.responseText;
+
+      const estacionid = document.querySelector('#modalCalidadEstacionId')?.value || "";
+      const tipo = document.querySelector('#modalCalidadTipo')?.value || "";
+
+      const asignaciones = getAsignacionesCalidadLS();
+      const key = `${tipo}_${estacionid}`;
+      const data = asignaciones[key];
+
+      if (data?.usuarioid) {
+        sel.value = String(data.usuarioid);
+      }
+    }
+  };
+}
+
+function abrirModalCalidad(estacionid, nombreEstacion, proceso, tipo) {
+  const title = document.querySelector('#titleModalCalidad');
+  const nom = document.querySelector('#modalCalidadEstacionNombre');
+  const pro = document.querySelector('#modalCalidadEstacionProceso');
+  const hidEst = document.querySelector('#modalCalidadEstacionId');
+  const hidTipo = document.querySelector('#modalCalidadTipo');
+
+  if (title) {
+    title.textContent = tipo === 'PDI'
+      ? 'Asignar evaluador PDI'
+      : 'Asignar inspector de puntos críticos';
+  }
+
+  if (nom) nom.textContent = nombreEstacion || '—';
+  if (pro) pro.textContent = proceso || '—';
+  if (hidEst) hidEst.value = estacionid || '';
+  if (hidTipo) hidTipo.value = tipo || '';
+
+  cargarPersonalCalidad();
+
+  const modalEl = document.getElementById('modalAddCalidad');
+  if (!modalEl) return console.error('No existe #modalAddCalidad');
+
+  bootstrap.Modal.getOrCreateInstance(modalEl).show();
+}
+
+function onAplicarCalidad() {
+  const estacionid = document.querySelector('#modalCalidadEstacionId')?.value || '';
+  const tipo = document.querySelector('#modalCalidadTipo')?.value || '';
+  const sel = document.querySelector('#selectPersonalCalidad');
+  const usuarioid = sel?.value || '';
+
+  if (!estacionid || !tipo) return;
+
+  if (!usuarioid) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Falta personal',
+      text: 'Selecciona el personal de calidad.'
+    });
+    return;
+  }
+
+  const texto = getTextoOption(sel, usuarioid, `Usuario: ${usuarioid}`);
+  const asignaciones = getAsignacionesCalidadLS();
+  const key = `${tipo}_${estacionid}`;
+
+  asignaciones[key] = {
+    estacionid: Number(estacionid),
+    tipo,
+    usuarioid: Number(usuarioid),
+    usuario_texto: texto,
+    updated_at: new Date().toISOString()
+  };
+
+  setAsignacionesCalidadLS(asignaciones);
+  pintarCalidadEnFila(estacionid);
+
+  Swal.fire({
+    icon: 'success',
+    title: 'Guardado',
+    text: 'Se guardó correctamente la asignación de calidad.',
+    timer: 1200,
+    showConfirmButton: false
+  });
+
+  const modalEl = document.getElementById('modalAddCalidad');
+  if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+}
+
+function pintarCalidadEnFila(estacionid) {
+  const asignaciones = getAsignacionesCalidadLS();
+  const cont = document.querySelector(`#calidad_${estacionid}`);
+  if (!cont) return;
+
+  const crit = asignaciones[`CRITICOS_${estacionid}`];
+  const pdi = asignaciones[`PDI_${estacionid}`];
+
+  cont.innerHTML = `
+    ${crit?.usuario_texto ? `<span class="badge bg-warning-subtle text-warning border"><i class="ri-error-warning-line me-1"></i>${escapeHtml(crit.usuario_texto)}</span>` : ''}
+    ${pdi?.usuario_texto ? `<span class="badge bg-info-subtle text-info border"><i class="ri-shield-check-line me-1"></i>${escapeHtml(pdi.usuario_texto)}</span>` : ''}
+  `;
+}
+
+function restaurarCalidadEnTabla() {
+  document.querySelectorAll('#tbodyEstaciones tr[data-tipo="estacion"][data-estacionid]').forEach(tr => {
+    pintarCalidadEnFila(tr.dataset.estacionid);
+  });
+}
+
+
+function getAsignacionesCalidadParaGuardar() {
+  const asignaciones = getAsignacionesCalidadLS();
+  const estaciones = getEstacionesDeTabla();
+
+  return estaciones.map(s => {
+    const crit = asignaciones[`CRITICOS_${s.estacionid}`] || null;
+    const pdi = asignaciones[`PDI_${s.estacionid}`] || null;
+
+    return {
+      estacionid: s.estacionid,
+      orden: s.orden,
+      requiere_criticos: Number(s.especificaciones || 0),
+      requiere_pdi: Number(s.calidad || 0),
+      inspector_criticos: crit?.usuarioid ?? null,
+      inspector_pdi: pdi?.usuarioid ?? null
+    };
+  }).filter(x => x.requiere_criticos === 1 || x.requiere_pdi === 1);
+}
+
+
+function validarAsignacionesCalidadCompletas() {
+  const estaciones = getEstacionesDeTabla();
+  const asignaciones = getAsignacionesCalidadLS();
+  const faltantes = [];
+
+  estaciones.forEach(s => {
+    if (Number(s.especificaciones || 0) === 1) {
+      const crit = asignaciones[`CRITICOS_${s.estacionid}`];
+      if (!crit?.usuarioid) {
+        faltantes.push({
+          tipo: 'CRITICOS',
+          estacionid: s.estacionid,
+          orden: s.orden
+        });
+      }
+    }
+
+    if (Number(s.calidad || 0) === 1) {
+      const pdi = asignaciones[`PDI_${s.estacionid}`];
+      if (!pdi?.usuarioid) {
+        faltantes.push({
+          tipo: 'PDI',
+          estacionid: s.estacionid,
+          orden: s.orden
+        });
+      }
+    }
+  });
+
+  return faltantes;
+}
+
 
 

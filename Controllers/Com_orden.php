@@ -7,8 +7,7 @@ class Com_orden extends Controllers
     public function __construct()
     {
         parent::__construct();
-        session_start();
-        getPermisos(COM_COMPRAS);
+        getPermisos(COM_ORDENES);
     }
 
     public function create()

@@ -26,6 +26,7 @@ const ENVIRONMENT = 0;
 // API MRP / ERP / WMS
 const API_URL = "/api/v1";
 const JWT_SECRET = "kgIO9A1mT1CZU+QTKjLjFXrYE2wuogGEHyqoK0Z/t/8=";
+const JWT_SECRET_RRHH = "mi_super_secret_ultra_seguro_123456789";
 
 const SPD = ".";
 const SPM = ",";
@@ -39,6 +40,16 @@ const CURRENCY = "USD";
 const URLPAYPAL = "https://api-m.sandbox.paypal.com";
 const IDCLIENTE = "";
 const SECRET = "";
+
+// WEBMASTERS
+const MAIL_WEBMASTER = 'erick.pulido@ldrsolutions.com.mx';
+
+// Configuración del Servidor SMTP
+const MAIL_HOST = "smtp.gmail.com";
+const MAIL_USER = "notificacion@ldrsolutions.com.mx";
+const MAIL_PASS = "ppiz zylc bpod tczi";
+const MAIL_PORT = 465;
+const MAIL_FROM_NAME = "Notificaciones LDR";
 
 //Datos envio de correo
 const NOMBRE_REMITENTE = "LDR - SOLUTIONS";
@@ -120,8 +131,11 @@ const MCLI_TIPOS_CLIENTES = 46;
 //Submodulos Compras
 const COM_COMPRAS = 50;
 const COM_REQUISICIONES = 51;
+const COM_NEGOCIACIONES = 56;
 const COM_ORDENES = 52;
 const PRV_PROVEEDORES = 53;
+const CXP_FACTURAS = 54;
+const CXP_PAGOS = 55;
 
 const PERROR = 9;
 
@@ -129,8 +143,55 @@ const PERROR = 9;
 const RADMINISTRADOR = 1;
 const RPLANIFICADORPRODUCCION = 2;
 const RANALISTAMATERIALES = 3;
+<<<<<<< HEAD
+=======
+const COMPRAS_JEFE_DEPARTAMENTO = 50;
+const COMPRAS_SOLICITANTE  = 51;
+const COMPRAS_COMPRADOR = 52;
+const COMPRAS_GERENTE = 53;
+const COMPRAS_ADMINISTRADOR = 54;
+const COMPRAS_DIRECTOR = 55;
+const COMPRAS_DIRECTOR_CORPORATIVO = 56;
+const COMPRAS_CONTADOR = 57;
+const COMPRAS_TESORERO = 58;
+>>>>>>> 328e9fd126c8f2c36104dbe966640de6ef62e47f
 
 
 const STATUS = array('Completo', 'Aprobado', 'Cancelado', 'Reembolsado', 'Pendiente', 'Entregado');
+
+/**
+ * --------------------------------------------------------------------------
+ * CONFIGURACIÓN DE COOKIES Y SESIÓN (SSO)
+ * --------------------------------------------------------------------------
+ */
+
+// 1. Detectar el Host actual
+$httpHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+// 2. Determinar si estamos en entorno local
+// Buscamos si el host termina en .localhost o es una IP de red local
+$isLocal = preg_match('/(\.localhost)$|^127\.0\.0\.1$/', $httpHost);
+
+if ($isLocal) {
+    /**
+     * ENTORNO: LOCAL (WSL)
+     * Dominio: .ldrhumanresources.localhost (Permite compartir entre subdominios locales)
+     * Secure: false (Porque usualmente no usas HTTPS/SSL en WSL)
+     */
+    define('COOKIE_DOMAIN', '.ldrhumanresources.localhost');
+    // define('COOKIE_DOMAIN', '.mrp.com');
+    define('COOKIE_SECURE', false);
+} else {
+    /**
+     * ENTORNO: PRODUCCIÓN (Hostinger)
+     * Dominio: .ldrhumanresources.com (Permite compartir entre rrhh. y mrp.)
+     * Secure: true (Obligatorio ya que Hostinger usa Certificados SSL)
+     */
+    define('COOKIE_DOMAIN', '.ldrhumanresources.com');
+    define('COOKIE_SECURE', true);
+}
+
+// Opcional: Tiempo de vida estándar (10 horas = 36000 seg)
+define('COOKIE_EXPIRE', time() + 36000);
 
 ?>

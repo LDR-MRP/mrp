@@ -6,8 +6,9 @@
  */
 
 $(document).ready(function () {
+    Sys_Core.Auth.validateSession();
 
-    const token = localStorage.getItem('mrp_token');
+    const token = Sys_Core.Auth.getCookie('mrp_token');
 
     /**
      * @description Inicialización de la tabla principal de proveedores.

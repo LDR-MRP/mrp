@@ -13,6 +13,12 @@ class Cli_clientes extends Controllers
 		getPermisos(MCCLIENTES);
 	}
 
+	/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA REDIRIGIR A LA VISTA PRINCIPAL INDEX.PHP INLCUYENDO EL ARCHIVO JS 
+	|--------------------------------------------------------------------------
+	*/
+
 	public function Cli_clientes()
 	{
 		if (empty($_SESSION['permisosMod']['r'])) {
@@ -20,443 +26,718 @@ class Cli_clientes extends Controllers
 		}
 		$data['page_tag'] = "Clientes";
 		$data['page_title'] = "Clientes";
-		$data['page_name'] = "bom";
-		$data['page_functions_js'] = "functions_cli_clientes.js";
-		$this->views->getView($this, "cli_clientes", $data);
+		$data['page_functions_js'] = "/clientes/index.js";
+		$this->views->getView($this, "index", $data);
 	}
 
-	public function index()
+	/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS CLIENTES
+	|--------------------------------------------------------------------------
+	*/
+
+	public function getTodos()
 	{
+		header('Content-Type: application/json; charset=utf-8');
 
-		$arrData = $this->model->selectDistribuidores();
-		for ($i = 0; $i < count($arrData); $i++) {
-			$btnView = '';
-			$btnEdit = '';
-			$btnDelete = '';
+		try {
 
-			if ($arrData[$i]['estado'] == 2) {
-				$arrData[$i]['estado'] = '<span class="badge bg-success">Activo</span>';
-			} else if ($arrData[$i]['estado'] == 1) {
-				$arrData[$i]['estado'] = '<span class="badge bg-danger">Inactivo</span>';
+			$arrData = $this->model->selectTodos();
+
+			if (!is_array($arrData)) {
+				$arrData = [];
 			}
 
-			if ($_SESSION['permisosMod']['r']) {
-
-				$btnView = '<button class="btn btn-sm btn-soft-info edit-list" title="Ver cliente" onClick="fntViewDistribuidor(' . $arrData[$i]['id'] . ')"><i class="ri-eye-fill align-bottom text-muted"></i></button>';
-			}
-			if ($_SESSION['permisosMod']['u']) {
-
-				$btnEdit = '<button class="btn btn-sm btn-soft-warning edit-list" title="Editar cliente" onClick="fntEditDistribuidor(' . $arrData[$i]['id'] . ')"><i class="ri-pencil-fill align-bottom"></i></button>';
-			}
-			if ($_SESSION['permisosMod']['d']) {
-				$btnDelete = '<button class="btn btn-sm btn-soft-danger remove-list" title="Eliminar cliente" onClick="fntDelDistribuidor(' . $arrData[$i]['id'] . ')"><i class="ri-delete-bin-5-fill align-bottom"></i></button>';
-			}
-			$arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnDelete . '</div>';
-		}
-		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
-
-		die();
-	}
-
-	public function setDistribuidor()
-	{
-		if (!$_POST) {
-			return;
-		}
-
-		if (
-			empty($_POST['nombre-distribuidores-input']) ||
-			empty($_POST['razon-distribuidores-input']) ||
-			empty($_POST['rfc-distribuidores-input']) ||
-			empty($_POST['repve-distribuidores-input']) ||
-			empty($_POST['plaza-distribuidores-input']) ||
-			empty($_POST['clasificacion-distribuidores-input']) ||
-			empty($_POST['telefono-distribuidores-input'])
-		) {
-			echo json_encode(['status' => false, 'msg' => 'Datos obligatorios faltantes']);
-			return;
-		}
-
-		$idDistribuidor = intval($_POST['iddistribuidor']);
-		$tipo_cliente_id = intval($_POST['tipo_cliente_id']);
-		$regimen_fiscal_id = strClean($_POST['regimen_fiscal_id']);
-		$tipo_persona = strClean($_POST['tipo_persona-select']);
-		$correo = strClean($_POST['correo-distribuidores-input']);
-		$matriz_id = empty($_POST['matriz_id'])
-			? null
-			: (int) $_POST['matriz_id'];
-		$grupo_id = intval($_POST['grupo_id']);
-		$nombre_comercial = strClean($_POST['nombre-distribuidores-input']);
-		$razon_social = strClean($_POST['razon-distribuidores-input']);
-		$rfc = strClean($_POST['rfc-distribuidores-input']);
-		$repve = strClean($_POST['repve-distribuidores-input']);
-		$plaza = strClean($_POST['plaza-distribuidores-input']);
-		$clasificacion = strClean($_POST['clasificacion-distribuidores-input']);
-		$estatus = $_POST['estatus-select'];
-		$tipo_negocio = $_POST['tipo_negocio-select'];
-		$telefono = strClean($_POST['telefono-distribuidores-input']);
-		$telefono_alt = strClean($_POST['telefono_alt-input'] ?? '');
-
-		$nombre_fisica = strClean($_POST['nombre_fisica-distribuidores-input']);
-		$apellido_paterno = strClean($_POST['apellido_paterno-distribuidores-input']);
-		$apellido_materno = strClean($_POST['apellido_materno-distribuidores-input']);
-		$fecha_nacimiento = strClean($_POST['fecha_nacimiento-distribuidores-input']);
-		$curp = strClean($_POST['curp-distribuidores-input']);
-
-		$representante_legal = strClean($_POST['representante_legal-distribuidores-input']);
-		$domicilio_fiscal = strClean($_POST['domicilio_fiscal-distribuidores-input']);
-
-		if (strlen($nombre_comercial) < 3) {
-			$arrResponse = ["status" => false, "msg" => "El nombre debe tener al menos 3 caracteres"];
-			echo json_encode($arrResponse);
-			die();
-		}
-
-		if (strlen($razon_social) < 3) {
-			$arrResponse = ["status" => false, "msg" => "La razon social debe tener al menos 3 caracteres"];
-			echo json_encode($arrResponse);
-			die();
-		}
-
-		$rfc = strtoupper(trim($rfc));
-
-		if (!preg_match('/^([A-ZÑ&]{3,4})[0-9]{6}([A-Z0-9]{3})$/', $rfc)) {
-			$arrResponse = [
-				"status" => false,
-				"msg" => "El RFC no tiene un formato válido para persona física o moral"
-			];
-			echo json_encode($arrResponse);
-			die();
-		}
-
-		if (strlen($repve) < 1) {
-			$arrResponse = ["status" => false, "msg" => "El no de repuve debe tener al menos 1 caracter"];
-			echo json_encode($arrResponse);
-			die();
-		}
-
-		if (strlen($plaza) < 3) {
-			$arrResponse = ["status" => false, "msg" => "La plaza debe tener al menos 3 caracter"];
-			echo json_encode($arrResponse);
-			die();
-		}
-
-		if (strlen($clasificacion) < 1) {
-			$arrResponse = ["status" => false, "msg" => "La clasificacion debe tener al menos 1 caracter"];
-			echo json_encode($arrResponse);
-			die();
-		}
-
-		// Validaciones SOLO si es Persona Física
-		if ($tipo_persona === '1') {
-
-			if (strlen($nombre_fisica) < 3) {
-				echo json_encode([
-					"status" => false,
-					"msg" => "El nombre debe tener al menos 3 caracteres"
-				]);
-				die();
-			}
-
-			if (strlen($apellido_paterno) < 3) {
-				echo json_encode([
-					"status" => false,
-					"msg" => "El apellido paterno debe tener al menos 3 caracteres"
-				]);
-				die();
-			}
-
-			if (strlen($apellido_materno) < 3) {
-				echo json_encode([
-					"status" => false,
-					"msg" => "El apellido materno debe tener al menos 3 caracteres"
-				]);
-				die();
-			}
-
-			$curp = strtoupper(trim($curp));
-
-			if (!preg_match('/^[A-Z][AEIOUX][A-Z]{2}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[HM](AS|BC|BS|CC|CL|CM|CS|CH|DF|DG|GT|GR|HG|JC|MC|MN|MS|NT|NL|OC|PL|QT|QR|SP|SL|SR|TC|TS|TL|VZ|YN|ZS)[B-DF-HJ-NP-TV-Z]{3}[0-9A-Z][0-9]$/', $curp)) {
-				echo json_encode([
-					"status" => false,
-					"msg" => "La CURP no tiene un formato válido"
-				]);
-				die();
-			}
-		}
-
-		// Validaciones SOLO si es Persona Moral
-		if ($tipo_persona === '2') {
-
-			if (strlen($representante_legal) < 3) {
-				echo json_encode([
-					"status" => false,
-					"msg" => "El representante legal debe tener al menos 3 caracteres"
-				]);
-				die();
-			}
-
-			if (strlen($domicilio_fiscal) < 10) {
-				echo json_encode([
-					"status" => false,
-					"msg" => "El domicilio fiscal debe tener al menos 10 caracteres"
-				]);
-				die();
-			}
-		}
-
-		// INSERT / UPDATE DISTRIBUIDOR
-		if ($idDistribuidor == 0) {
-			$idDistribuidor = $this->model->insertDistribuidor(
-				$grupo_id,
-				$regimen_fiscal_id,
-				$tipo_persona,
-				$tipo_cliente_id,
-				$nombre_fisica,
-				$apellido_paterno,
-				$apellido_materno,
-				$fecha_nacimiento,
-				$correo,
-				$curp,
-				$razon_social,
-				$representante_legal,
-				$domicilio_fiscal,
-				$rfc,
-				$nombre_comercial,
-				$repve,
-				$plaza,
-				$clasificacion,
-				$estatus,
-				$tipo_negocio,
-				$matriz_id,
-				$telefono,
-				$telefono_alt
+			echo json_encode(
+				$arrData,
+				JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
 			);
 
-			$option = 'insert';
-		} else {
+		} catch (Throwable $error) {
 
-			$this->model->updateDistribuidor(
-				$idDistribuidor,
-				$grupo_id,
-				$regimen_fiscal_id,
-				$tipo_persona,
-				$tipo_cliente_id,
-				$nombre_fisica,
-				$apellido_paterno,
-				$apellido_materno,
-				$fecha_nacimiento,
-				$correo,
-				$curp,
-				$razon_social,
-				$representante_legal,
-				$domicilio_fiscal,
-				$rfc,
-				$nombre_comercial,
-				$repve,
-				$plaza,
-				$clasificacion,
-				$estatus,
-				$tipo_negocio,
-				$matriz_id,
-				$telefono,
-				$telefono_alt
-			);
+			http_response_code(500);
 
-			// LIMPIAR DIRECCIONES
-			$this->model->deleteDirecciones($idDistribuidor);
-			$this->model->deleteDireccionFiscal($idDistribuidor);
-
-			$option = 'update';
-		}
-
-		// DIRECCIÓN PRINCIPAL
-		$this->model->insertDireccion(
-			$idDistribuidor,
-			$_POST['tipo-select'],
-			strClean($_POST['calle-distribuidores-input']),
-			strClean($_POST['numero_ext-distribuidores-input'] ?? ''),
-			strClean($_POST['numero_int-distribuidores-input'] ?? ''),
-			strClean($_POST['colonia-distribuidores-input']),
-			strClean($_POST['codigo_postal-distribuidores-input']),
-			intval($_POST['listPaises']),
-			intval($_POST['listEstados']),
-			intval($_POST['listMunicipios'])
-		);
-
-		// DIRECCIÓN FISCAL
-		$mismaDireccion = isset($_POST['mismaDireccion']) && $_POST['mismaDireccion'] == 1;
-
-		if ($mismaDireccion) {
-
-			// COPIAMOS LA DIRECCIÓN PRINCIPAL
-			$this->model->insertDireccionFiscal(
-				$idDistribuidor,
-				strClean($_POST['calle-distribuidores-input']),
-				strClean($_POST['numero_ext-distribuidores-input'] ?? ''),
-				strClean($_POST['numero_int-distribuidores-input'] ?? ''),
-				strClean($_POST['colonia-distribuidores-input']),
-				strClean($_POST['codigo_postal-distribuidores-input']),
-				intval($_POST['listPaises']),
-				intval($_POST['listEstados']),
-				intval($_POST['listMunicipios'])
-			);
-		} else {
-
-			// DIRECCIÓN FISCAL 
-			$this->model->insertDireccionFiscal(
-				$idDistribuidor,
-				strClean($_POST['calle_fiscal']),
-				strClean($_POST['numero_ext_fiscal'] ?? ''),
-				strClean($_POST['numero_int_fiscal'] ?? ''),
-				strClean($_POST['colonia_fiscal']),
-				strClean($_POST['codigo_postal_fiscal']),
-				intval($_POST['listPaisesFiscal']),
-				intval($_POST['listEstadosFiscal']),
-				intval($_POST['listMunicipiosFiscal'])
-			);
-		}
-
-		if (empty($_POST['regional_id'])) {
 			echo json_encode([
 				'status' => false,
-				'msg' => 'Debe seleccionar una regional'
-			]);
-			return;
+				'message' => 'Error al consultar los clientes.',
+				'error' => $error->getMessage()
+			], JSON_UNESCAPED_UNICODE);
 		}
 
-		if (!empty($_POST['regional_id']) && is_array($_POST['regional_id'])) {
-
-			if ($option === 'update') {
-				$this->model->deleteDistribuidorRegional($idDistribuidor);
-			}
-
-			foreach ($_POST['regional_id'] as $regional_id) {
-				$this->model->insertDistribuidorRegional(
-					intval($regional_id),
-					$idDistribuidor
-				);
-			}
-		}
-
-		if (!empty($_POST['listModelos']) && is_array($_POST['listModelos'])) {
-
-			if ($option === 'update') {
-				$this->model->deleteDistribuidorModelos($idDistribuidor);
-			}
-
-			foreach ($_POST['listModelos'] as $idModelo) {
-				$this->model->insertDistribuidorModelo(
-					$idDistribuidor,
-					intval($idModelo)
-				);
-			}
-		}
-
-
-		echo json_encode([
-			'status' => true,
-			'msg' => $option === 'insert'
-				? 'Distribuidor registrado correctamente'
-				: 'Distribuidor actualizado correctamente',
-			'tipo' => $option
-		]);
+		exit;
 	}
 
-	public function show($iddistribuidor)
+	/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS DISTRIBUIDORES
+	|--------------------------------------------------------------------------
+	*/
+	public function getDistribuidores()
 	{
-		if ($_SESSION['permisosMod']['r']) {
-			$intIddistribuidor = intval($iddistribuidor);
-			if ($intIddistribuidor > 0) {
-				$arrData = $this->model->selectDistribuidor($intIddistribuidor);
-				if (empty($arrData)) {
-					$arrResponse = array('status' => false, 'msg' => 'Datos no encontrados.');
-				} else {
+		header('Content-Type: application/json; charset=utf-8');
 
-					$arrResponse = array('status' => true, 'data' => $arrData);
-				}
-				echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+		try {
+
+			$arrData = $this->model->selectDistribuidores();
+
+			if (!is_array($arrData)) {
+				$arrData = [];
 			}
+
+			echo json_encode(
+				$arrData,
+				JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+			);
+
+		} catch (Throwable $error) {
+
+			http_response_code(500);
+
+			echo json_encode([
+				'status' => false,
+				'message' => 'Error al consultar los clientes.',
+				'error' => $error->getMessage()
+			], JSON_UNESCAPED_UNICODE);
 		}
-		die();
+
+		exit;
 	}
 
-	public function destroy()
+	/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS CLIENTES INTERNOS
+	|--------------------------------------------------------------------------
+	*/
+	public function getInternos()
 	{
-		if ($_POST) {
-			if ($_SESSION['permisosMod']['d']) {
-				$iddistribuidor = intval($_POST['iddistribuidor']);
-				$requestDelete = $this->model->deleteDistribuidor($iddistribuidor);
-				if ($requestDelete) {
-					$arrResponse = array('status' => true, 'msg' => 'El registro fue eliminado satisfactoriamente.');
-				} else {
-					$arrResponse = array('status' => false, 'msg' => 'Error al eliminar el registro.');
-				}
-				echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+		header('Content-Type: application/json; charset=utf-8');
+
+		try {
+
+			$arrData = $this->model->selectInternos();
+
+			if (!is_array($arrData)) {
+				$arrData = [];
 			}
+
+			echo json_encode(
+				$arrData,
+				JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+			);
+
+		} catch (Throwable $error) {
+
+			http_response_code(500);
+
+			echo json_encode([
+				'status' => false,
+				'message' => 'Error al consultar los clientes.',
+				'error' => $error->getMessage()
+			], JSON_UNESCAPED_UNICODE);
 		}
-		die();
+
+		exit;
 	}
 
-	public function getSelectRegionales()
+	/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS CLIENTES EXTERNOS
+	|--------------------------------------------------------------------------
+	*/
+	public function getExternos()
 	{
-		$htmlOptions = '';
-		$arrData = $this->model->selectOptionRegionales();
-		if (count($arrData) > 0) {
-			for ($i = 0; $i < count($arrData); $i++) {
-				if ($arrData[$i]['estado'] == 2) {
-					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre']  . ' ' . $arrData[$i]['apellido_paterno'] . ' ' . $arrData[$i]['apellido_materno'] .  '</option>';
-				}
+		header('Content-Type: application/json; charset=utf-8');
+
+		try {
+
+			$arrData = $this->model->selectExternos();
+
+			if (!is_array($arrData)) {
+				$arrData = [];
 			}
+
+			echo json_encode(
+				$arrData,
+				JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+			);
+
+		} catch (Throwable $error) {
+
+			http_response_code(500);
+
+			echo json_encode([
+				'status' => false,
+				'message' => 'Error al consultar los clientes.',
+				'error' => $error->getMessage()
+			], JSON_UNESCAPED_UNICODE);
 		}
-		echo $htmlOptions;
-		die();
+
+		exit;
 	}
 
-	public function getSelectMatrizDistribuidores()
+	/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA OBTENER TODOS LOS CLIENTES GUBERNAMENTALES
+	|--------------------------------------------------------------------------
+	*/
+	public function getGubernamentales()
 	{
-		$htmlOptions = '<option value="">--Seleccione--</option>';
-		$arrData = $this->model->selectOptionMatrizDistribuidores();
-		if (count($arrData) > 0) {
-			for ($i = 0; $i < count($arrData); $i++) {
-				if ($arrData[$i]['estado'] == 2) {
-					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['razon_social'] . '</option>';
-				}
+		header('Content-Type: application/json; charset=utf-8');
+
+		try {
+
+			$arrData = $this->model->selectGubernamentales();
+
+			if (!is_array($arrData)) {
+				$arrData = [];
 			}
+
+			echo json_encode(
+				$arrData,
+				JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+			);
+
+		} catch (Throwable $error) {
+
+			http_response_code(500);
+
+			echo json_encode([
+				'status' => false,
+				'message' => 'Error al consultar los clientes.',
+				'error' => $error->getMessage()
+			], JSON_UNESCAPED_UNICODE);
 		}
-		echo $htmlOptions;
-		die();
+
+		exit;
 	}
 
-	public function getSelectTipoClientes()
+	/*
+	|--------------------------------------------------------------------------
+	| FUNCIÓN PARA REDIRIGIR A LA VISTA DE CREAR NUEVO CLIENTE INCLUYENDO EL ARCHIVO JS
+	|--------------------------------------------------------------------------
+	*/
+	public function create()
 	{
-		$htmlOptions = '<option value="">--Seleccione--</option>';
-		$arrData = $this->model->selectOptionTipoClientes();
-		if (count($arrData) > 0) {
-			for ($i = 0; $i < count($arrData); $i++) {
-				if ($arrData[$i]['estado'] == 2) {
-					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre'] . '</option>';
-				}
-			}
+		if (empty($_SESSION['permisosMod']['r'])) {
+			header("Location:" . base_url() . '/dashboard');
 		}
-		echo $htmlOptions;
-		die();
+		$data['page_tag'] = "Clientes";
+		$data['page_title'] = "Clientes";
+		$data['page_name'] = "bom";
+		$data['page_functions_js'] = "/clientes/create.js";
+		$this->views->getView($this, "create", $data);
 	}
 
-	public function getSelectGrupos()
+	/*
+|--------------------------------------------------------------------------
+| FUNCIÓN PARA REDIRIGIR A LA VISTA DE ACCESOS A CLIENTES INCLUYENDO SU ARCHIVO JS
+|--------------------------------------------------------------------------
+*/
+	public function accesos($idcliente)
 	{
-		$htmlOptions = '<option value="">--Seleccione--</option>';
-		$arrData = $this->model->selectOptionGrupos();
-		if (count($arrData) > 0) {
-			for ($i = 0; $i < count($arrData); $i++) {
-				if ($arrData[$i]['estado'] == 2) {
-					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre']   .   '</option>';
-				}
-			}
+
+		if (empty($_SESSION['permisosMod']['r'])) {
+			header("Location:" . base_url() . '/dashboard');
 		}
-		echo $htmlOptions;
-		die();
+		$data['page_tag'] = "Clientes";
+		$data['page_title'] = "Clientes";
+		$data['page_functions_js'] = "/clientes/accesos.js";
+
+		// Enviar el id del cliente a la vista
+		$data['idcliente'] = $idcliente;
+		$this->views->getView($this, "accesos", $data);
 	}
+
+
+
+	
+	/*
+|--------------------------------------------------------------------------
+| FUNCIÓN PARA VER EL HISTORICO DE ACCESOS DE CLIENTES AL PORTAL DE DISTRIBUIDORES 
+|--------------------------------------------------------------------------
+*/
+public function getAccesoCliente($idcliente)
+{
+    if (empty($_SESSION['permisosMod']['r'])) {
+        $this->responseJson(false, 'No tiene permisos para consultar.');
+    }
+
+    $idcliente = intval($idcliente);
+
+    if ($idcliente <= 0) {
+        $this->responseJson(false, 'El cliente no es válido.');
+    }
+
+    $cliente = $this->model->selectClienteAcceso($idcliente);
+
+    if (empty($cliente)) {
+        $this->responseJson(false, 'No se encontró el cliente.');
+    }
+
+    if (empty($cliente['correo'])) {
+        $this->responseJson(
+            false,
+            'El cliente no tiene un correo registrado.'
+        );
+    }
+
+    $acceso = $this->model->selectUsuarioAccesoPorCliente($idcliente);
+
+    $correo = strtolower(trim($cliente['correo']));
+
+    $usuarioSugerido = explode('@', $correo)[0];
+
+    $data = [
+        'idcliente' => $idcliente,
+        'tipo_cliente' => $cliente['tipo_cliente'],
+        'nombre_cliente' => $cliente['nombre_comercial']
+            ?: $cliente['razon_social'],
+
+        'idusuario_acceso' => intval(
+            $acceso['idusuario_acceso'] ?? 0
+        ),
+
+        'usuario_acceso' => $acceso['nombre_usuario']
+            ?? $usuarioSugerido,
+
+        'correo_acceso' => $correo,
+
+        'liga_acceso' => $acceso['url_portal']
+            ?? base_url() . '/orders/login',
+
+        'doble_autenticacion' => intval(
+            $acceso['doble_autenticacion'] ?? 0
+        ),
+
+        'requiere_cambio_password' => intval(
+            $acceso['requiere_cambio_password'] ?? 1
+        ),
+
+        'fecha_cambio_password' =>
+            $acceso['fecha_cambio_password'] ?? null,
+
+        'ultimo_login' =>
+            $acceso['ultimo_login'] ?? null,
+
+        'ultimo_envio_accesos' =>
+            $acceso['ultimo_envio_accesos'] ?? null,
+
+        'estado_acceso' => intval(
+            $acceso['estado'] ?? 0
+        )
+    ];
+
+    $this->responseJson(
+        true,
+        'Información obtenida correctamente.',
+        $data
+    );
+}
+
+public function responseJson(
+    bool $status,
+    string $message,
+    $data = null
+) {
+    header('Content-Type: application/json; charset=utf-8');
+
+    $response = [
+        'status' => $status,
+        'message' => $message
+    ];
+
+    if ($data !== null) {
+        $response['data'] = $data;
+    }
+
+    echo json_encode(
+        $response,
+        JSON_UNESCAPED_UNICODE
+    );
+
+    die();
+}
+
+
+
+public function setAccesoCliente()
+{
+    if (empty($_SESSION['permisosMod']['w'])) {
+        $this->responseJson(
+            false,
+            'No tiene permisos para guardar accesos.'
+        );
+    }
+
+    $idcliente = intval($_POST['idcliente'] ?? 0);
+    $idusuarioAcceso = intval(
+        $_POST['idusuario_acceso'] ?? 0
+    );
+
+    $usuarioAcceso = trim(
+        $_POST['usuario_acceso'] ?? ''
+    );
+
+    $correoAcceso = strtolower(trim(
+        $_POST['correo_acceso'] ?? ''
+    ));
+
+    $passwordTemporal = trim(
+        $_POST['password_temporal'] ?? ''
+    );
+
+    $ligaAcceso = trim(
+        $_POST['liga_acceso'] ?? ''
+    );
+
+    $dobleAutenticacion = intval(
+        $_POST['doble_autenticacion'] ?? 0
+    );
+
+    if (
+        $idcliente <= 0
+        || empty($usuarioAcceso)
+        || empty($correoAcceso)
+        || empty($passwordTemporal)
+        || empty($ligaAcceso)
+    ) {
+        $this->responseJson(
+            false,
+            'Todos los campos son obligatorios.'
+        );
+    }
+
+    if (!filter_var($correoAcceso, FILTER_VALIDATE_EMAIL)) {
+        $this->responseJson(
+            false,
+            'El correo no tiene un formato válido.'
+        );
+    }
+
+    if (!$this->validarPasswordTemporal($passwordTemporal)) {
+        $this->responseJson(
+            false,
+            'La contraseña debe tener 15 caracteres, mayúscula, minúscula, número y símbolo.'
+        );
+    }
+
+    $cliente = $this->model->selectClienteAcceso($idcliente);
+
+    if (empty($cliente)) {
+        $this->responseJson(
+            false,
+            'No se encontró el cliente.'
+        );
+    }
+
+    /*
+     * No confíes en el correo readonly del navegador.
+     * Se vuelve a tomar desde la base de datos.
+     */
+    $correoAcceso = strtolower(trim($cliente['correo']));
+
+    $passwordHash = password_hash(
+        $passwordTemporal,
+        PASSWORD_DEFAULT
+    );
+
+    $usuarioAdmin = intval(
+        $_SESSION['idUser'] ?? 0
+    );
+
+    if ($idusuarioAcceso > 0) {
+        $guardado = $this->model->updateUsuarioAcceso(
+            $idusuarioAcceso,
+            $idcliente,
+            $usuarioAcceso,
+            $correoAcceso,
+            $passwordHash,
+            $ligaAcceso,
+            $dobleAutenticacion,
+            $usuarioAdmin
+        );
+    } else {
+        $guardado = $this->model->insertUsuarioAcceso(
+            $idcliente,
+            $usuarioAcceso,
+            $cliente['nombre_comercial']
+                ?: $cliente['razon_social'],
+            '',
+            $correoAcceso,
+            $passwordHash,
+            $cliente['telefono'] ?? '',
+            $ligaAcceso,
+            $dobleAutenticacion,
+            $usuarioAdmin
+        );
+
+        $idusuarioAcceso = intval($guardado);
+    }
+
+    if (!$guardado) {
+        $this->responseJson(
+            false,
+            'No fue posible guardar las credenciales.'
+        );
+    }
+
+	$esNuevoAcceso = $idusuarioAcceso <= 0;
+
+	$nombreCliente = !empty($cliente['nombre_comercial'])
+    ? $cliente['nombre_comercial']
+    : $cliente['razon_social'];
+
+$datosCorreo = [
+    /*
+     * Datos utilizados por tu función de correo.
+     * Ajusta estas claves si sendMailLocalCron usa otros nombres.
+     */
+    'email' => $correoAcceso,
+    'nombre_destinatario' => $nombreCliente,
+    'asunto' => $esNuevoAcceso
+        ? 'Accesos al Portal de Pedidos'
+        : 'Actualización de accesos al Portal de Pedidos',
+
+    /*
+     * Datos visuales de la plantilla.
+     */
+    'nombre_cliente' => $nombreCliente,
+    'codigo_cliente' => $cliente['codigo_cliente'] ?? '',
+    'usuario_acceso' => $correoAcceso,
+    'password_temporal' => $passwordTemporal,
+    'liga_acceso' => $ligaAcceso,
+    'doble_autenticacion' => $dobleAutenticacion,
+    'fecha_notificacion' => date('d/m/Y H:i'),
+    'anio' => date('Y'),
+
+    /*
+     * Puedes cambiar esta liga por la ubicación real de tu logotipo.
+     */
+    'logo_url' => 'https://viaticos.ldrhumanresources.com/viaticos/Assets/images/Logotipo_Naranja.png'
+];
+
+$cc = 'carlos.cruz@ldrsolutions.com.mx';
+
+$correoEnviado = sendMailLocalCron(
+    $datosCorreo,
+    'email_clientes_accesos',
+    $cc
+);
+
+$this->model->insertEnvioAcceso(
+    $idusuarioAcceso,
+    $idcliente,
+    $correoAcceso,
+    $esNuevoAcceso
+        ? 'CREDENCIALES'
+        : 'REENVIO_CREDENCIALES',
+    $datosCorreo['asunto'],
+    $correoEnviado ? 'ENVIADO' : 'FALLIDO',
+    $correoEnviado
+        ? 'Credenciales enviadas correctamente.'
+        : 'Las credenciales se guardaron, pero no fue posible enviar el correo.',
+    $usuarioAdmin
+);
+
+    $this->model->insertLogAcceso(
+        $idusuarioAcceso,
+        $idcliente,
+        'CREDENCIALES_GENERADAS',
+        $correoEnviado ? 'EXITOSO' : 'FALLIDO',
+        $correoAcceso,
+        $this->getClientIp(),
+        'Panel administrativo',
+        'Escritorio',
+        null,
+        null,
+        null,
+        null,
+        session_id(),
+        $_SERVER['HTTP_USER_AGENT'] ?? null,
+        $correoEnviado
+            ? 'Se generó y envió una contraseña temporal.'
+            : 'Se guardó la contraseña, pero el correo no pudo enviarse.'
+    );
+
+    if (!$correoEnviado) {
+        $this->responseJson(
+            false,
+            'Las credenciales se guardaron, pero no fue posible enviar el correo.',
+            [
+                'idusuario_acceso' => $idusuarioAcceso
+            ]
+        );
+    }
+
+    $this->model->updateFechaEnvioAccesos(
+        $idusuarioAcceso
+    );
+
+    $this->responseJson(
+        true,
+        'Las credenciales fueron guardadas y enviadas correctamente.',
+        [
+            'idusuario_acceso' => $idusuarioAcceso
+        ]
+    );
+}
+
+
+
+public function validarPasswordTemporal(string $password)
+{
+    if (strlen($password) !== 15) {
+        return false;
+    }
+
+    return preg_match('/[A-Z]/', $password)
+        && preg_match('/[a-z]/', $password)
+        && preg_match('/[0-9]/', $password)
+        && preg_match('/[!@#$%&*+\-_?]/', $password);
+}
+
+
+public function getClientIp()
+{
+    return $_SERVER['HTTP_X_FORWARDED_FOR']
+        ?? $_SERVER['REMOTE_ADDR']
+        ?? '0.0.0.0';
+}
+
+
+
+public function getLogsAcceso($idcliente)
+{
+    if (empty($_SESSION['permisosMod']['r'])) {
+        $this->responseJson(
+            false,
+            'No tiene permisos para consultar el histórico.'
+        );
+    }
+
+    $idcliente = intval($idcliente);
+
+    if ($idcliente <= 0) {
+        $this->responseJson(
+            false,
+            'El cliente no es válido.'
+        );
+    }
+
+    $logs = $this->model->selectLogsAcceso(
+        $idcliente
+    );
+
+    $this->responseJson(
+        true,
+        'Histórico obtenido correctamente.',
+        $logs
+    );
+}
+
+
+
+public function cambiarPasswordPortal()
+{
+    if (empty($_SESSION['portal_idusuario_acceso'])) {
+        $this->responseJson(
+            false,
+            'La sesión no es válida.'
+        );
+    }
+
+    $idusuarioAcceso = intval(
+        $_SESSION['portal_idusuario_acceso']
+    );
+
+    $passwordActual = trim(
+        $_POST['password_actual'] ?? ''
+    );
+
+    $passwordNueva = trim(
+        $_POST['password_nueva'] ?? ''
+    );
+
+    $usuario = $this->model->selectUsuarioAccesoPorId(
+        $idusuarioAcceso
+    );
+
+    if (empty($usuario)) {
+        $this->responseJson(
+            false,
+            'No se encontró el usuario.'
+        );
+    }
+
+    if (!password_verify(
+        $passwordActual,
+        $usuario['password_hash']
+    )) {
+        $this->responseJson(
+            false,
+            'La contraseña actual no es correcta.'
+        );
+    }
+
+    if (
+        strlen($passwordNueva) < 10
+        || !preg_match('/[A-Z]/', $passwordNueva)
+        || !preg_match('/[a-z]/', $passwordNueva)
+        || !preg_match('/[0-9]/', $passwordNueva)
+        || !preg_match('/[^A-Za-z0-9]/', $passwordNueva)
+    ) {
+        $this->responseJson(
+            false,
+            'La nueva contraseña no cumple con los requisitos de seguridad.'
+        );
+    }
+
+    $nuevoHash = password_hash(
+        $passwordNueva,
+        PASSWORD_DEFAULT
+    );
+
+    $actualizado = $this->model->updatePasswordDefinitiva(
+        $idusuarioAcceso,
+        $nuevoHash
+    );
+
+    if (!$actualizado) {
+        $this->responseJson(
+            false,
+            'No fue posible cambiar la contraseña.'
+        );
+    }
+
+    $this->model->insertLogAcceso(
+        $idusuarioAcceso,
+        intval($usuario['idcliente']),
+        'PASSWORD_CAMBIADA',
+        'EXITOSO',
+        $usuario['correo'],
+        $this->getClientIp(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        session_id(),
+        $_SERVER['HTTP_USER_AGENT'] ?? null,
+        'El distribuidor cambió su contraseña temporal.'
+    );
+
+    $this->responseJson(
+        true,
+        'La contraseña fue actualizada correctamente.'
+    );
+}
+
+
+
+
+
+
 
 	public function getSelectRegimenFiscal($tipoPersona = null)
 	{
@@ -473,20 +754,7 @@ class Cli_clientes extends Controllers
 		die();
 	}
 
-	public function getSelectModelos()
-	{
-		$htmlOptions = '';
-		$arrData = $this->model->selectOptionModelos();
-		if (count($arrData) > 0) {
-			for ($i = 0; $i < count($arrData); $i++) {
-				if ($arrData[$i]['estado'] == 2) {
-					$htmlOptions .= '<option value="' . $arrData[$i]['idlineaproducto'] . '">' . $arrData[$i]['cve_linea_producto']  . '</option>';
-				}
-			}
-		}
-		echo $htmlOptions;
-		die();
-	}
+
 
 	public function getSelectPaises()
 	{
@@ -495,7 +763,7 @@ class Cli_clientes extends Controllers
 		if (count($arrData) > 0) {
 			for ($i = 0; $i < count($arrData); $i++) {
 				if ($arrData[$i]['estado'] == 2) {
-					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre']  . '</option>';
+					$htmlOptions .= '<option value="' . $arrData[$i]['id'] . '">' . $arrData[$i]['nombre'] . '</option>';
 				}
 			}
 		}

@@ -250,7 +250,22 @@ public function login()
 			die();
 		}
  
+	/**
+	 * Punto de entrada manual para login vía RRHH.
+	 * Útil cuando el usuario cerró sesión pero quiere volver a entrar vía SSO.
+	 */
+	public function sso_login(): void
+	{
+		// 1. Borramos la cookie de bloqueo inmediatamente
+		if (isset($_COOKIE['mrp_forced_logout'])) {
+			setcookie('mrp_forced_logout', '', time() - 3600, '/', COOKIE_DOMAIN);
+		}
 
+		// 2. Redirigimos a la raíz del sistema
+		// El IdentityService en index.php detectará que ya no hay bloqueo y lo logueará.
+		header('Location: ' . BASE_URL . '/login');
+		exit;
+	}
 
 
 

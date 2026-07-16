@@ -3,20 +3,29 @@
 declare(strict_types=1);
 
 use Requests\Supplier\StoreBankAccountRequest;
+use Requests\Supplier\StoreSupplierRequest;
+use Com_ordenCompraModel;
+use AccountsPayableInvoiceModel;
 
 class SupplierService
 {
-    use \Loggable;
+    use \Loggable, \Notifiable;
 
     private readonly \Prv_proveedorModel $proveedorModel;
     private readonly \Prv_detExpedienteModel $expedienteModel;
     private readonly \Prv_detCuentaBancariaModel $bankModel;
+    private readonly Com_ordenCompraModel $poModel;
+    private readonly AccountsPayableInvoiceModel $cxpModel;
+    private readonly \UsuariosModel $usuarioModel;
     private object $db;
 
     public function __construct() {
         $this->proveedorModel = new \Prv_proveedorModel();
         $this->expedienteModel = new \Prv_detExpedienteModel();
         $this->bankModel = new \Prv_detCuentaBancariaModel();
+        $this->usuarioModel = new \UsuariosModel();
+        $this->poModel = new Com_ordenCompraModel;
+        $this->cxpModel = new AccountsPayableInvoiceModel;
         $this->db = $this->proveedorModel->getConexion();
     }
 
@@ -79,6 +88,7 @@ class SupplierService
         $id = $this->proveedorModel->insertSupplier($data, $userId);
         if (!$id) throw new \Exception("No se pudo crear el maestro.");
 
+        $data['limite_credito'] = (float)$data['limite_credito'] ?? null;
         $this->proveedorModel->insertAddress($data, $id, $userId);
         $this->proveedorModel->insertFinancialConfig($data, $id, $userId);
         $this->proveedorModel->insertContact($data, $id, $userId);
@@ -91,8 +101,12 @@ class SupplierService
 
     /**
      * Lógica de actualización: Dirty Checking sobre el esquema.
+     * @param int $id
+     * @param array $data
+     * @param StoreSupplierRequest $request
+     * @param int $userId
      */
-    private function processUpdate(int $id, array $data, $request, int $userId): ServiceResponse
+    private function processUpdate(int $id, array $data, StoreSupplierRequest $request, int $userId): ServiceResponse
     {
         $current = $request->getCurrentSupplier();
         $dirtyData = [];
@@ -112,7 +126,7 @@ class SupplierService
         foreach ($this->proveedorModel::SCHEMA as $table => $allowedColumns) {
             $tableData = array_intersect_key($dirtyData, array_flip($allowedColumns));
             if (!empty($tableData)) {
-                $this->proveedorModel->updateDynamic($table, $tableData, $id);
+                $this->proveedorModel->updateDynamic($table, $tableData, (int)$id);
             }
         }
 
@@ -133,7 +147,18 @@ class SupplierService
             $validated = $request->all();
             $file = $request->files()['archivo'];
             
-            $supplierId = (int)$validated['id_proveedor'];
+            // --- INICIO DE CIRUGÍA: Prevención de IDOR ---
+            $isVendor = ($userContext['role'] ?? '') === 'VENDOR' || !empty($userContext['vendor_id']);
+            
+            if ($isVendor) {
+                // Si es proveedor, forzamos que sea su propio ID (Seguridad SRM)
+                $supplierId = (int)$userContext['vendor_id'];
+            } else {
+                // Si es administrador interno, tomamos el del Request validado
+                $supplierId = (int)$validated['id_proveedor'];
+            }
+            // --- FIN DE CIRUGÍA ---
+            
             $docType    = $validated['tipo_documento'];
             $userId     = (int)$userContext['id'];
 
@@ -170,7 +195,7 @@ class SupplierService
             $this->expedienteModel->upsertDocument($dbData);
 
             // 5. Auditoría
-            $this->proveedorModel->logAudit($supplierId, AuditAction::UPLOAD_FILE, "Subida de documento: {$docType}", $userId);
+            $this->expedienteModel->logAudit($supplierId, AuditAction::UPLOAD_FILE, "Subida de documento: {$docType}", $userId);
 
             $this->db->commit();
 
@@ -179,8 +204,43 @@ class SupplierService
                 unlink($oldFilePath);
             }
 
-            // 6. Recalcular Progreso de Onboarding
+            // 7. Recalcular Progreso de Onboarding
             $newProgress = $this->calculateOnboardingProgress($supplierId);
+
+            // --- INICIO DE INTEGRACIÓN DE NOTIFICACIÓN ---
+            /**
+             * Lógica de Disparo: Solo notificamos si el expediente llegó al 100%.
+             * Usamos el motor dinámico de distribución para no hardcodear correos.
+             */
+            if ($newProgress === 100) {
+                $supplier = $this->proveedorModel->getById($supplierId);
+
+                // Resolvemos quiénes deben recibir el correo
+                $recipients = $this->usuarioModel->resolveRecipients('supplier_ready_for_approval', $supplier['id_planta'] ?? 0);
+                
+                if (empty($recipients)) {
+                    $recipients = [MAIL_WEBMASTER];
+                }
+                
+                // Preparamos los datos para el template "LDR Premium" que diseñamos
+                $emailData = [
+                    'razon_social'    => $supplier['razon_social'],
+                    'rfc'             => $supplier['rfc'],
+                    'origen'          => $supplier['origen'],
+                    'tipo'            => $supplier['tipo'],
+                    'created_at'      => date('d/m/Y', strtotime($supplier['created_at'])),
+                    'link_expediente' => base_url() . "/prv_proveedor/edit?id=" . $supplierId
+                ];
+
+                // El método sendNotification buscará en 'sys_notification_distribution' 
+                // a quién avisarle según el evento y la planta del proveedor.
+                $this->sendNotification(
+                    'supplier_ready_for_approval', 
+                    $emailData, 
+                    $recipients
+                );
+            }
+            // --- FIN DE INTEGRACIÓN ---
 
             return ServiceResponse::success(
                 ['progress' => $newProgress], 
@@ -190,6 +250,16 @@ class SupplierService
         } catch (\InvalidArgumentException $i) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             return \ServiceResponse::validation(errors: $i->getMessage());
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'auditDocument',
+                'id_user' => $userContext['id']
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            
         } catch (Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             return ServiceResponse::error($e->getMessage());
@@ -271,6 +341,9 @@ class SupplierService
             $supplierId = (int)$data['id_proveedor'];
             $userId = (int)$userContext['id'];
 
+            $supplierData  = $this->proveedorModel->getById($supplierId);
+            if (!$supplierData) throw new \Exception("No se encontró el proveedor.", 404);
+
             // 1. Actualizar el estatus del documento
             $updated = $this->expedienteModel->updateDocumentStatus($idDoc, $status, $motivo, $userId);
             if (!$updated) throw new \Exception("No se encontró el documento para auditar.", 404);
@@ -279,12 +352,34 @@ class SupplierService
             $auditAction = ($status === 1) ? AuditAction::APPROVE_L1 : AuditAction::REJECTED;
             $logMsg = ($status === 1) ? "Documento verificado correctamente." : "Documento rechazado: " . $motivo;
 
-            $this->proveedorModel->logAudit($supplierId, $auditAction, $logMsg, $userId);
+            $this->expedienteModel->logAudit($supplierId, $auditAction, $logMsg, $userId);
 
             // 3. LÓGICA PRO: Verificar si el Onboarding se completó con esta aprobación
             $onboardingComplete = false;
             if ($status === 1) {
                 $onboardingComplete = $this->checkAndActivateSupplier($supplierId, $userId);
+
+                if ($onboardingComplete) {
+                    // 1. Resolvemos quiénes deben recibir el correo
+                    $recipients = $this->usuarioModel->resolveRecipients('supplier_onboarding_complete', $supplierData['id_planta']);
+                    
+                    if (empty($recipients)) {
+                       ['erick.pulido@ldrsolutions.com.mx'];
+                    }
+                    // NOTIFICACIÓN: Documentos Listos
+                    $this->sendNotification(
+                        'supplier_onboarding_complete',
+                        [
+                            'razon_social'    => $supplierData['razon_social'],
+                            'rfc'             => $supplierData['rfc'],
+                            'origen'          => $supplierData['origen'],
+                            'tipo'            => $supplierData['tipo'],
+                            'created_at'      => date('d/m/Y', strtotime($supplierData['created_at'])),
+                            'link_expediente' => base_url() . "/prv_proveedor/edit?id=" . $supplierId
+                        ],
+                        $recipients
+                    );
+                }
             }
 
             $this->db->commit();
@@ -298,6 +393,16 @@ class SupplierService
             if ($this->db->inTransaction()) $this->db->rollBack();
             return ServiceResponse::validation(errors: $e->getMessage());
 
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'auditDocument',
+                'id_user' => $userContext['id']
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             return ServiceResponse::error($e->getMessage(), (int)$e->getCode() ?: 500);
@@ -409,6 +514,26 @@ class SupplierService
             $userId = (int)$userContext['id'];
             $supplierId = (int)$validated['id_proveedor']; // Validado en el request
 
+            // Obtenemos el archivo ya validado de forma segura del request
+            $file = $request->files()['caratula_pdf'];
+
+            // 2. Mover archivo al almacenamiento físico (Hostinger)
+            $relativeDir = "Assets/uploads/expedientes/prov_{$supplierId}/";
+            $uploadPath  = __DIR__ . '/../' . $relativeDir; // Ajustar según estructura de carpetas de tu WSL
+
+            if (!is_dir($uploadPath)) {
+                mkdir($uploadPath, 0755, true);
+            }
+
+            $fileName = "caratula_bancaria_" . bin2hex(random_bytes(4)) . ".pdf";
+            $fullPath = $uploadPath . $fileName;
+
+            if (!move_uploaded_file($file['tmp_name'], $fullPath)) {
+                throw new \Exception("Error técnico al mover el archivo de carátula al servidor.", 500);
+            }
+
+            $urlPdf = $relativeDir . $fileName;
+
             $this->db->beginTransaction();
 
             // 2. Lógica de Cuenta Principal
@@ -430,6 +555,7 @@ class SupplierService
                 'clabe'              => $nullify($validated['clabe'] ?? null), // <--- AQUÍ ESTÁ EL FIX
                 'swift_bic'          => $nullify($validated['swift_bic'] ?? null),
                 'iban'               => $nullify($validated['iban'] ?? null),
+                'url_pdf'            => $urlPdf,
                 'es_principal'       => (int)($validated['banco_es_principal'] ?? 0),
                 'estatus_aprobacion' => 'PENDIENTE',
                 'created_by'         => $userId
@@ -457,6 +583,16 @@ class SupplierService
             if ($this->db->inTransaction()) $this->db->rollBack();
             return ServiceResponse::validation(errors: $e->getMessage());
 
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'storeBank',
+                'id_user' => $userContext['id']
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             return ServiceResponse::error($e->getMessage(), (int)$e->getCode() ?: 500);
@@ -478,7 +614,7 @@ class SupplierService
 
             // 1. Solo ciertos roles pueden aprobar bancos (Seguridad RBAC)
             $role = RoleEnum::tryFrom((int)$userContext['rolid']);
-            if ($role !== RoleEnum::ADMINISTRADOR && $role !== RoleEnum::GERENTE) {
+            if ($role !== RoleEnum::SYS_ADMIN && $role !== RoleEnum::ADMINISTRADOR && $role !== RoleEnum::GERENTE) {
                 return ServiceResponse::error("Solo el área de Finanzas/Tesoreria puede autorizar cuentas bancarias.", 403);
             }
 
@@ -571,5 +707,131 @@ class SupplierService
             'Datos obtenidos correctamente.',
             200
         );
+    }
+
+    /**
+     * Obtiene el reporte analítico del progreso del onboarding de todos los proveedores.
+     * Diseñado para la visualización y auditoría del CEO.
+     */
+    public function getOnboardingReport(array $filters, array $userContext): ServiceResponse
+    {
+        try {
+            // Protección de privilegios: Excluir proveedores del reporte
+            if (($userContext['rol'] ?? '') === 'VENDOR') {
+                return ServiceResponse::error("Acceso denegado. Rol insuficiente.", 403);
+            }
+
+            $rawReport = $this->proveedorModel->getOnboardingReportData($filters);
+            $processedReport = [];
+
+            foreach ($rawReport as $row) {
+                $processedReport[] = $this->mapOnboardingRow($row);
+            }
+
+            return ServiceResponse::success($processedReport, "Reporte de onboarding compilado con éxito.");
+
+        } catch (\Exception $e) {
+            return ServiceResponse::error("Error al compilar el reporte: " . $e->getMessage(), 500);
+        }
+    }
+
+    public function getSummary(int $supplierId): ServiceResponse
+    {
+        try {
+            // 1. Procesar Órdenes de Compra (Viene como array de grupos por estatus)
+            $rawPOs = $this->poModel->getDashboardKpis(['proveedorid' => $supplierId]);
+            $ordenesActivas = 0;
+            
+            // Definimos qué estatus consideramos "Activos" para el Dashboard
+            $estatusActivos = ['emitida', 'en_transito', 'recibida_parcial'];
+            foreach ($rawPOs as $row) {
+                if (in_array($row['estatus'], $estatusActivos)) {
+                    $ordenesActivas += (int)$row['cantidad'];
+                }
+            }
+
+            // 2. Procesar Facturas y Montos
+            $metricsInvoices = $this->cxpModel->getDashboardKpis(['proveedorid' => $supplierId]);
+            
+            // 3. REUTILIZACIÓN: Obtener Onboarding (Compliance)
+            // Pedimos los datos del reporte pero filtrados solo para este proveedor
+            $onboardingDataRaw = $this->proveedorModel->getOnboardingReportData(['id_proveedor' => $supplierId]);
+            $complianceData = !empty($onboardingDataRaw) 
+                ? $this->mapOnboardingRow($onboardingDataRaw[0]) 
+                : null;
+            
+            // // 4. Actividad Reciente
+            $recentActivity = $this->proveedorModel->getRecentActivity($supplierId);
+
+            // Armamos el payload final estandarizado para la UI
+            $data = [
+                'ordenes_activas'  => $ordenesActivas,
+                'facturas_proceso' => (int)($metricsInvoices['congeladas'] + $metricsInvoices['aprobadas']),
+                'monto_pendiente'  => (float)$metricsInvoices['monto_pendiente'],
+                'compliance'       => $complianceData,
+                'recientes'        => $recentActivity
+            ];
+
+            return ServiceResponse::success($data, "Métricas sincronizadas.");
+            
+        } catch (\PDOException $p) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage($p, \LogLevel::CRITICAL, [
+                'action' => 'storeBank',
+                'id_proveedor' => $supplierId
+            ]);
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            
+        } catch (\Exception $e) {
+            return ServiceResponse::error("Error al compilar el dashboard: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Procesa una fila de la base de datos para convertirla en el objeto de negocio de Onboarding.
+     * REUTILIZABLE: CEO Report y Supplier Dashboard.
+     */
+    private function mapOnboardingRow(array $row): array
+    {
+        $requiredDocs = \DocumentTypeEnum::getRequiredList(
+            $row['id_tipo_persona'],
+            $row['origen']
+        );
+        
+        $requiredCount = count($requiredDocs);
+        $approvedCount = (int)$row['approved_docs_count'];
+
+        // 2. Calcular el porcentaje matemático real de progreso del expediente
+        $progressPercent = $requiredCount > 0 
+            ? (int)round(($approvedCount / $requiredCount) * 100) 
+            : 0;
+
+        return [
+            'id_proveedor'      => (int)$row['id_proveedor'],
+            'razon_social'      => $row['razon_social'],
+            'nombre_comercial'  => $row['nombre_comercial'] ?: $row['razon_social'],
+            'rfc'               => $row['rfc'],
+            'origen'            => $row['origen'],
+            'estatus_onboarding'=> $row['estatus_onboarding'],
+            'estatus_operativo' => (int)$row['estatus_operativo'],
+            'created_at'        => $row['created_at'],
+            
+            // Métricas de Progreso de Expediente
+            'expediente' => [
+                'aprobados'  => $approvedCount,
+                'requeridos' => $requiredCount,
+                'porcentaje' => $progressPercent
+            ],
+            
+            // Datos Satélite (Booleans y Enums para UI badges)
+            'satelites' => [
+                'bancos'             => $row['estatus_bancario'], // 'SIN_REGISTRAR', 'PENDIENTE', 'APROBADO'
+                'direccion'          => (int)$row['tiene_direccion'] === 1,
+                'contacto'           => (int)$row['tiene_contacto'] === 1,
+                'config_financiera'  => (int)$row['tiene_config_financiera'] === 1
+            ]
+        ];
     }
 }

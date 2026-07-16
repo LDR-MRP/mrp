@@ -1139,31 +1139,31 @@
                                                                     <div class="station-info-box station-dark mb-3">
                                                                         <div class="row g-3" id="detalleInfoEstacion">
 
-                                                                            <div class="col-md-3">
+                                                                            <!-- <div class="col-md-3">
                                                                                 <label
                                                                                     class="small text-body-secondary">Código</label>
                                                                                 <div class="fw-semibold text-body"
                                                                                     id="detCodigoEstacion">-</div>
-                                                                            </div>
+                                                                            </div> -->
 
-                                                                            <div class="col-md-2">
+                                                                            <div class="col-md-4">
                                                                                 <label
-                                                                                    class="small text-body-secondary">Área</label>
+                                                                                    class="small text-body-secondary">Nombre</label>
                                                                                 <div class="fw-semibold text-body"
                                                                                     id="detAreaEstacion">-</div>
                                                                             </div>
 
-                                                                            <div class="col-md-3">
+                                                                            <!-- <div class="col-md-3">
                                                                                 <label
                                                                                     class="small text-body-secondary">Tipo</label>
                                                                                 <div class="fw-semibold text-body"
                                                                                     id="detTipoEstacion">Estación de
                                                                                     Ensamble</div>
-                                                                            </div>
+                                                                            </div> -->
 
-                                                                            <div class="col-md-4">
+                                                                            <div class="col-md-8">
                                                                                 <label
-                                                                                    class="small text-body-secondary">Descripción</label>
+                                                                                    class="small text-body-secondary">Proceso</label>
                                                                                 <div class="fw-semibold text-body"
                                                                                     id="detDescEstacion">-</div>
                                                                             </div>
@@ -1204,30 +1204,30 @@
                                                                                 </div>
                                                                             </div>
                                                                         </div>
-                                                                        <div class="col-md-3 col-6">
+                                                                        <!-- <div class="col-md-3 col-6">
                                                                             <div class="metric-card">
                                                                                 <div class="metric-icon text-info"><i
                                                                                         class="bi bi-diagram-3"></i>
                                                                                 </div>
                                                                                 <div class="metric-value"
                                                                                     id="metricSubensambles">0</div>
-                                                                                <div class="metric-label">Subensambles
+                                                                                <div class="metric-label">Esp. Críticas
                                                                                 </div>
                                                                             </div>
-                                                                        </div>
+                                                                        </div> -->
                                                                     </div>
 
                                                                     <div class="d-flex flex-wrap gap-2 mb-3">
                                                                         <button type="button"
                                                                             class="btn btn-primary btn-sm rounded-pill"
                                                                             id="btnAbrirHerramientasPanel">
-                                                                            <i class="bi bi-tools me-1"></i> Agregar
+                                                                            <i class="bi bi-tools me-1"></i> 
                                                                             herramientas
                                                                         </button>
                                                                         <button type="button"
                                                                             class="btn btn-success btn-sm rounded-pill"
                                                                             id="btnAbrirComponentesPanel">
-                                                                            <i class="bi bi-box-seam me-1"></i> Agregar
+                                                                            <i class="bi bi-box-seam me-1"></i> 
                                                                             componentes
                                                                         </button>
                                                                         <button type="button"
@@ -1235,8 +1235,17 @@
                                                                             id="btnEspPanelTop">
                                                                             <i
                                                                                 class="bi bi-gear-wide-connected me-1"></i>
-                                                                            Agregar operaciones
+                                                                             operaciones
                                                                         </button>
+
+                                                                        <button type="button"
+                                                                            class="btn btn-danger btn-sm rounded-pill"
+                                                                            id="btnEspCriticasPanelTop">
+                                                                            <i
+                                                                                class="bi bi-exclamation-triangle me-1"></i>
+                                                                            Especificaciones críticas
+                                                                        </button>
+
 
 
                                                                         <div
@@ -1357,7 +1366,8 @@
                                                                         Esta estación no tiene subensamble configurado.
                                                                     </div>
 
-                                                                    <input type="hidden" id="id_subensamble_actual" value="">
+                                                                    <input type="hidden" id="id_subensamble_actual"
+                                                                        value="">
 
                                                                     <div id="panelSubensambleUnico" class="d-none">
                                                                         <div
@@ -1380,26 +1390,29 @@
 
                                                                         <div class="station-info-box station-dark mb-3">
                                                                             <div class="row g-3">
-                                                                                <div class="col-md-4">
+
+                                                                                        <div class="col-md-4">
+                                                                                    <label
+                                                                                        class="small text-body-secondary">Nombre</label>
+                                                                                    <div class="fw-semibold text-body"
+                                                                                        id="detSubNombre">-</div>
+                                                                                </div>
+
+
+                                                                                <div class="col-md-8">
                                                                                     <label
                                                                                         class="small text-body-secondary">Proceso</label>
                                                                                     <div class="fw-semibold text-body"
                                                                                         id="detSubProceso">-</div>
                                                                                 </div>
-                                                                                <div class="col-md-3">
-                                                                                    <label
-                                                                                        class="small text-body-secondary">Tiempo
-                                                                                        / estándar</label>
-                                                                                    <div class="fw-semibold text-body"
-                                                                                        id="detSubEstandar">-</div>
-                                                                                </div>
-                                                                                <div class="col-md-3">
+             
+                                                                                <!-- <div class="col-md-3">
                                                                                     <label
                                                                                         class="small text-body-secondary">Tiempo
                                                                                         ajuste</label>
                                                                                     <div class="fw-semibold text-body"
                                                                                         id="detSubTiempo">-</div>
-                                                                                </div>
+                                                                                </div> -->
                                                                             </div>
                                                                         </div>
 
@@ -1432,7 +1445,7 @@
                                                                                         Componentes</div>
                                                                                 </div>
                                                                             </div>
-                                                                            <div class="col-md-3 col-6">
+                                                                            <!-- <div class="col-md-3 col-6">
                                                                                 <div
                                                                                     class="metric-card metric-card-dark">
                                                                                     <div
@@ -1446,20 +1459,22 @@
                                                                                     <div class="metric-label">
                                                                                         Operaciones</div>
                                                                                 </div>
-                                                                            </div>
-                                                                            <div class="col-md-3 col-6">
+                                                                            </div> -->
+                                                                            <!-- <div class="col-md-3 col-6">
                                                                                 <div
                                                                                     class="metric-card metric-card-dark">
                                                                                     <div class="metric-icon text-info">
                                                                                         <i class="bi bi-diagram-3"></i>
                                                                                     </div>
-                                                                                    <div class="metric-value"
-                                                                                        id="metricSubSubensambles">0
-                                                                                    </div>
-                                                                                    <div class="metric-label">
-                                                                                        Subensambles</div>
+                                                                                 <div class="metric-value"
+                                                                                    id="metricSubensamblesCriticos">0</div>
+                                                                                <div class="metric-label">Esp. Críticas
                                                                                 </div>
-                                                                            </div>
+
+
+
+                                                                                </div>
+                                                                            </div> -->
                                                                         </div>
 
                                                                         <div class="d-flex flex-wrap gap-2">
@@ -1475,15 +1490,25 @@
                                                                                 <i class="bi bi-box-seam me-1"></i>
                                                                                 Componentes
                                                                             </button>
-                                                                            <button type="button"
+                                                                            <!-- <button type="button"
                                                                                 class="btn btn-warning btn-sm rounded-pill"
                                                                                 id="btnSubOperaciones">
                                                                                 <i
                                                                                     class="bi bi-gear-wide-connected me-1"></i>
                                                                                 Operaciones
-                                                                            </button>
+                                                                            </button> -->
+
+                                                                            <!-- <button type="button"
+                                                                                class="btn btn-danger btn-sm rounded-pill"
+                                                                                id="btnSubEspCriticas">
+                                                                                <i
+                                                                                    class="bi bi-exclamation-triangle me-1"></i>
+                                                                                Especificaciones críticasSS
+                                                                            </button> -->
+
 
                                                                         </div>
+
 
 
 
@@ -1533,11 +1558,16 @@
                                                                                             class="form-select">
                                                                                             <option value="">Selecciona
                                                                                             </option>
-                                                                                            <option value="Ayuda visual">Ayuda visual
+                                                                                            <option
+                                                                                                value="Ayuda visual">
+                                                                                                Ayuda visual
                                                                                             </option>
-                                                                                            <option value="Intrucciones de trabajo">
-                                                                                                Intrucciones de trabajo</option>
-                                                                                            <option value="Diagrama">Diagrama
+                                                                                            <option
+                                                                                                value="Intrucciones de trabajo">
+                                                                                                Intrucciones de trabajo
+                                                                                            </option>
+                                                                                            <option value="Diagrama">
+                                                                                                Diagrama
                                                                                             </option>
                                                                                         </select>
                                                                                     </div>
@@ -1585,7 +1615,7 @@
                                                             </div>
 
 
-                                                        </div>
+                                                        </div> 
                                                     </div>
                                                 </div>
                                             </div>
@@ -1807,10 +1837,15 @@
                             value="0">
                         <input type="hidden" id="tipo_contexto_especificacion" name="tipo_contexto_especificacion"
                             value="estacion">
+
+                                    <input type="hidden" id="iddetalle" name="iddetalle"
+                            value="">
                         <!-- 
 <input type="hidden" id="idproducto_especificacion_sub" name="idproducto_especificacion"> -->
                         <input type="hidden" id="idespecificacionsubensamble" name="idespecificacionsubensamble">
                         <!-- <input type="hidden" id="idsubensamble_especificacion" name="idsubensamble"> -->
+
+                        <input type="hidden" id="es_critica_especificacion" name="es_critica" value="">
 
                         <div class="row gy-5">
                             <!-- FORMULARIO DOCUMENTOS -->
@@ -1820,7 +1855,7 @@
                                         <div class="tab-pane fade show active" id="v-pills-bill-address"
                                             role="tabpanel">
                                             <div>
-                                                <h5>Registro de operaciones</h5>
+                                                <!-- <h5>Registro de operaciones</h5> -->
                                                 <p class="text-muted">
                                                     Captura las operaciones para esta estación
                                                 </p>
@@ -1872,7 +1907,7 @@
                                         <div class="tab-pane fade show active" id="v-pills-bill-address-list"
                                             role="tabpanel">
                                             <div>
-                                                <h5>Listado de operaciones</h5>
+                                                <h5>Listado</h5>
                                             </div>
 
                                             <div id="listEspecificaciones" role="tabpanel">
@@ -2376,7 +2411,7 @@
 
                             <div class="table-responsive">
                                 <table class="table table-sm align-middle table-bordered mb-0">
-                                    <thead class="table-light text-center">
+                                    <!-- <thead class="table-light text-center">
                                         <tr>
                                             <th style="width: 60px;">No.</th>
                                             <th style="min-width: 320px;">Punto a inspeccionar</th>
@@ -2388,7 +2423,23 @@
                                             <th style="width: 70px;">I4</th>
                                             <th style="width: 150px;">Opciones</th>
                                         </tr>
-                                    </thead>
+                                    </thead> -->
+
+                                    <thead class="table-light text-center">
+    <tr>
+        <th style="width: 60px;">No.</th>
+        <th style="min-width: 320px;">Punto a inspeccionar</th>
+
+        <th class="d-none">CHI</th>
+        <th class="d-none">MEX</th>
+        <th class="d-none">I1</th>
+        <th class="d-none">I2</th>
+        <th class="d-none">I3</th>
+        <th class="d-none">I4</th>
+
+        <th style="width: 150px;">Opciones</th>
+    </tr>
+</thead>
                                     <tbody id="tbodyModalPdi"></tbody>
                                 </table>
                             </div>

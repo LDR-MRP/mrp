@@ -34,7 +34,7 @@ class StoreSupplierRequest extends Requests
     {
         $requiredFields = [
             // Datos Maestros (prv_cat_proveedores)
-            'id_empresa'        => 'La empresa origen es obligatoria para el multi-tenant.',
+            // 'id_empresa'        => 'La empresa origen es obligatoria para el multi-tenant.',
             'rfc'               => 'El RFC es obligatorio para la validación fiscal.',
             'razon_social'      => 'La Razón Social es requerida según la Constancia de Situación Fiscal.',
             'nombre_comercial'  => 'El Nombre Comercial es necesario para identificar al proveedor.',
@@ -46,14 +46,14 @@ class StoreSupplierRequest extends Requests
             'tipo'              => 'Especifique el tipo de dirección (Fiscal, Bodega, etc.).',
             'calle'             => 'El nombre de la calle es obligatorio.',
             'num_ext'           => 'El número exterior es requerido.',
-            'num_int'           => 'Indique el número interior (use N/A si no aplica).',
+            // 'num_int'           => 'Indique el número interior (use N/A si no aplica).',
             'colonia'           => 'La colonia debe coincidir con el Código Postal.',
             'cp'                => 'El Código Postal es obligatorio para la geolocalización.',
 
             // Finanzas (prv_det_config_financiera)
             'id_condicion_pago' => 'Debe asignar una condición de pago predeterminada.',
-            'cuenta_contable'=> 'La cuenta contable es obligatoria para la integración con ERP.',
-            'limite_credito'    => 'El límite de crédito debe ser un valor numérico.',
+            // 'cuenta_contable'=> 'La cuenta contable es obligatoria para la integración con ERP.',
+            // 'limite_credito'    => 'El límite de crédito debe ser un valor numérico.',
             'id_moneda_defecto' => 'Especifique la moneda principal de operación (MXN/USD).',
             'tasa_iva_default'  => 'Indique la tasa de IVA aplicable (ej. 16.00).',
 

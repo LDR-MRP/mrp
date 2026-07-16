@@ -8,7 +8,8 @@ const Sys_Core = {
         brandName: 'System',
         baseUrl: '',
         defaultLocale: 'es-MX',
-        defaultCurrency: 'MXN'
+        defaultCurrency: 'MXN',
+        tokenName: 'mrp_token' // Valor por defecto (ERP)
     },
 
     /**
@@ -16,6 +17,38 @@ const Sys_Core = {
      * @description Gestión de seguridad y validación de permisos por rol/módulo.
      */
     Auth: {
+         /**
+         * Helper interno para recuperar una cookie por su nombre.
+         * @param {string} name - Nombre de la cookie (ej: 'mrp_token')
+         * @returns {string|null}
+         */
+        getCookie: function(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        },
+
+        setCookie: function(name, value, days = 1) {
+            let expires = "";
+            if (days) {
+                let date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            const host = window.location.hostname;
+            const baseDomain = host.includes('ldrhumanresources') 
+                               ? host.substring(host.lastIndexOf(".", host.lastIndexOf(".") - 1)) 
+                               : host;
+
+            // Directivas de seguridad modernas (Lax y Secure) para protección CSRF
+            document.cookie = `${name}=${value || ""}${expires}; path=/; domain=${baseDomain}; SameSite=Lax; Secure`;
+        },
+
         /**
          * Consulta si el usuario cuenta con un permiso específico.
          * @param {number} moduleId - ID del módulo (ej: MODS.COM_REQUISICIONES)
@@ -41,6 +74,93 @@ const Sys_Core = {
                     $(this).remove(); 
                 }
             });
+        },
+        
+        /**
+         * Descifra el payload del JWT almacenado en COOKIES de forma dinámica.
+         * @param {string} [tokenName] - Opcional. Nombre de la cookie a decodificar.
+         * @returns {Object|null} Payload decodificado o null si el token no existe.
+         */
+        decodeJWT: function(tokenName = null) {
+            // INFERENCIA INTELIGENTE: Si se omite, deducimos el token por la ruta de URL
+            const actualToken = tokenName || (window.location.pathname.includes('/srm') ? 'srm_token' : 'mrp_token');
+            const token = Sys_Core.Auth.getCookie(actualToken);
+            
+            if (!token) return null;
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                console.error(`Error decodificando JWT de la cookie [${actualToken}]:`, e);
+                return null;
+            }
+        },
+
+        /**
+         * Valida síncronamente que la sesión esté activa, no haya expirado y pertenezca al rol.
+         * @param {string} [roleRequired] - Opcional. Filtro de rol (ej: 'VENDOR')
+         * @param {string} [tokenName] - Opcional. Nombre específico del token a validar.
+         */
+        validateSession: function(roleRequired = null, tokenName = null) {
+            const actualToken = tokenName || (window.location.pathname.includes('/srm') ? 'srm_token' : 'mrp_token');
+            const payload = Sys_Core.Auth.decodeJWT(actualToken);
+            
+            // Determinar la ruta de redirección correcta según el dominio
+            const isSrm = window.location.pathname.includes('/srm');
+            const redirectPath = isSrm ? '/srm/login' : '/login';
+
+            // A. Si no existe token en la cookie, expulsar
+            if (!payload || !payload.exp) {
+                Sys_Core.Auth.logout(redirectPath, actualToken);
+                return false;
+            }
+
+            // B. Validación de expiración (Client-side sync)
+            const now = Math.floor(Date.now() / 1000);
+            if (payload.exp < now) {
+                Sys_Core.Auth.logout(redirectPath, actualToken);
+                return false;
+            }
+
+            // C. Validar correspondencia de rol
+            const userRole = payload.data?.rol || payload.data?.role;
+            if (roleRequired && userRole !== roleRequired) {
+                Sys_Core.Auth.logout(redirectPath, actualToken);
+                return false;
+            }
+
+            return true;
+        },
+
+        /**
+         * Destruye la sesión eliminando cookies de forma dinámica y limpiando almacenamiento.
+         * @param {string} [redirectPath='/login'] - Ruta destino
+         * @param {string} [tokenName] - Nombre de la cookie a destruir
+         */
+        logout: function(redirectPath = '/login', tokenName = null) {
+            const actualToken = tokenName || (window.location.pathname.includes('/srm') ? 'srm_token' : 'mrp_token');
+            
+            // Extraer el dominio base para limpiar la wildcard cookie (.ldrhumanresources.local/com)
+            const host = window.location.hostname;
+            const baseDomain = host.includes('ldrhumanresources') 
+                               ? host.substring(host.lastIndexOf(".", host.lastIndexOf(".") - 1)) 
+                               : host;
+
+            // Borrar de forma parametrizada la cookie configurada
+            document.cookie = `${actualToken}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${baseDomain}`;
+            
+            // Borrar mrp_forced_logout (si existiera)
+            document.cookie = `mrp_forced_logout=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${baseDomain}`;
+
+            // Limpieza preventiva de localStorage antiguos
+            localStorage.removeItem(actualToken);
+
+            // Redirección segura
+            window.location.href = `${Sys_Core.Config.baseUrl}${redirectPath}`;
         }
     },
 
@@ -163,16 +283,31 @@ const Sys_Core = {
              * @param {string} id - ID del elemento HTML.
              * @param {number} value - Valor final.
              */
-            animateCounter: function(id, value) {
+            animateCounter: function(id, value, isCurrency = false) {
                 const $el = $(`#${id}`);
-                const startValue = parseInt($el.text()) || 0;
-                if (startValue === value) return;
+                
+                // Convertimos el texto actual a número (limpiando $ y comas si existen)
+                const startValue = Sys_Core.Format.toNumber($el.text());
 
                 $({ countNum: startValue }).animate({ countNum: value }, {
                     duration: 1000,
                     easing: 'swing',
-                    step: function() { $el.text(Math.ceil(this.countNum)); },
-                    complete: function() { $el.text(this.countNum); }
+                    step: function() {
+                        // Decidimos el formato en cada frame de la animación
+                        let displayVal = isCurrency 
+                            ? Sys_Core.Format.toCurrency(this.countNum) 
+                            : Math.ceil(this.countNum);
+                            
+                        $el.text(displayVal);
+                    },
+                    complete: function() {
+                        // Aseguramos el valor final exacto
+                        let finalVal = isCurrency 
+                            ? Sys_Core.Format.toCurrency(value) 
+                            : value;
+                            
+                        $el.text(finalVal);
+                    }
                 });
             },
 
@@ -278,6 +413,7 @@ const Sys_Core = {
          * Petición GET con soporte para recursividad.
          * @param {Object} options 
          * @param {string} options.url
+         * @param {string} [options.tokenName] - Opcional. Nombre específico del token a inyectar en las cabeceras.
          * @param {function} [options.onSuccess] - Callback en caso de éxito (200 OK).
          * @param {function} [options.onComplete] - Callback que se ejecuta SIEMPRE (éxito o error).
          * @param {boolean} [options.recurrent=false]
@@ -286,7 +422,8 @@ const Sys_Core = {
          */
         get: function(options) {
             const { url, onSuccess, onComplete, recurrent, interval = 30000, silent } = options;
-            const token = localStorage.getItem('mrp_token');
+            const actualTokenName = options.tokenName || (window.location.pathname.includes('/srm') ? 'srm_token' : 'mrp_token');
+            const token = Sys_Core.Auth.getCookie(actualTokenName);
             
             const execute = () => {
                 $.ajax({
@@ -294,7 +431,7 @@ const Sys_Core = {
                     method: 'GET',
                     dataType: 'json',
                     headers: {
-                        // --- INYECCIÓN AUTOMÁTICA DEL TOKEN ---
+                        // Inyección automática del token de seguridad correspondiente
                         'Authorization': token ? `Bearer ${token}` : ''
                     },
                     success: (res) => { if (onSuccess) onSuccess(res); },
@@ -311,6 +448,7 @@ const Sys_Core = {
         /**
          * @param {Object} options 
          * @param {string} options.url
+         * @param {string} [options.tokenName] - Opcional. Nombre específico del token a inyectar en las cabeceras.
          * @param {any} options.payload
          * @param {string} [options.method='POST'] - Verbo HTTP (POST, PUT, DELETE, PATCH)
          * @param {jQuery} [options.$btn] - Botón que disparó la acción (para el spinner)
@@ -321,7 +459,8 @@ const Sys_Core = {
          */
         post: function(options) {
             const { url, payload, successMsg, onDone } = options;
-            const token = localStorage.getItem('mrp_token');
+            const actualTokenName = options.tokenName || (window.location.pathname.includes('/srm') ? 'srm_token' : 'mrp_token');
+            const token = Sys_Core.Auth.getCookie(actualTokenName);
             
             // 1. SOPORTE RESTful: Si no mandan method, asumimos POST por retrocompatibilidad
             const httpMethod = (options.method || 'POST').toUpperCase();
@@ -380,14 +519,23 @@ const Sys_Core = {
             });
         },
 
+        /**
+         * Descarga física y segura de archivos PDF de solo lectura (Dompdf binario).
+         * @param {Object} options 
+         * @param {string} options.url
+         * @param {string} [options.filename]
+         * @param {string} [options.tokenName] - Opcional. Nombre específico del token a inyectar en las cabeceras.
+         */
         downloadPdf: function(options) {
             const { url, filename } = options;
-            const token = localStorage.getItem('mrp_token');
+            const actualTokenName = options.tokenName || (window.location.pathname.includes('/srm') ? 'srm_token' : 'mrp_token');
+            const token = Sys_Core.Auth.getCookie(actualTokenName);
+            
             Sys_Core.UI.toggleLoader('.page-content', true);
 
             fetch(url, {
                 method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': token ? `Bearer ${token}` : '' }
             })
             .then(async response => {
                 const contentType = response.headers.get('content-type');
@@ -428,72 +576,122 @@ const Sys_Core = {
          * @param {Object} xhr El objeto XMLHttpRequest devuelto por jQuery.
          */
         handleError: function(xhr) {
-            // Analizar la respuesta JSON si existe
-            let res = null;
-            try {
-                res = xhr.responseJSON || JSON.parse(xhr.responseText);
-            } catch (e) {
-                res = {}; // Fallback si no es JSON válido
+            let res = {};
+            try { 
+                res = xhr.responseJSON || JSON.parse(xhr.responseText); 
+            } catch (e) { 
+                res = {}; 
             }
 
-            if (xhr.status === 422) {
-                // Extracción de Errores de Validación (HTTP 422)
-                let mainMessage = res.message || 'Se encontraron datos inválidos:';
-                let html = `<div class="text-start small"><p class="fw-bold text-danger mb-2">${mainMessage}</p><ul class="mb-0">`;
-                
-                let errorList = null;
+            const status = xhr.status;
+            let title = `Error (${status})`;
+            let icon = 'error';
+            let html = res.message || res.error || "Ocurrió un error inesperado.";
 
-                // --- NAVEGADOR INTELIGENTE DE ESTRUCTURA ---
-                if (res.errors) {
-                    if (res.errors.errors && typeof res.errors.errors === 'object') {
-                        // Caso: { "errors": { "status": false, "errors": { "campo": "msg" } } }
-                        errorList = res.errors.errors;
-                    } else if (typeof res.errors === 'object' && !res.errors.status) {
-                        // Estructura plana: { "errors": { "campo": "msg" } }
-                        errorList = res.errors;
-                    } else if (typeof res.errors === 'string') {
-                        // Doble codificación JSON (a veces pasa en los traits)
-                        try {
-                            const decoded = JSON.parse(res.errors);
-                            errorList = decoded.errors || decoded;
-                        } catch(e) {}
+            switch (status) {
+                case 401: // UNAUTHORIZED (Sesión Expirada vs Credenciales Incorrectas)
+                    // Detectamos si la petición falló estando en las vistas de Login
+                    const isLoginPage = window.location.pathname.toLowerCase().includes('login');
+                    
+                    if (isLoginPage) {
+                        title = 'Acceso Denegado';
+                        icon = 'warning';
+                        html = res.message || 'El usuario o la contraseña es incorrecto.';
+                        // Rompemos el switch para que use el alert global al final sin recargar la página
+                        break; 
+                    } else {
+                        title = 'Sesión Expirada';
+                        icon = 'info';
+                        html = 'Tu identidad no pudo ser validada. Por seguridad, ingresa nuevamente.';
+                        Sys_Core.UI.alert(title, html, icon).then(() => {
+                            localStorage.removeItem('mrp_token');
+                            // --- INICIO AJUSTE: Redirección defensiva y retrocompatible ---
+                            // 1. Resolvemos la URL base de forma segura (ERP vs Core)
+                            const rootUrl = typeof base_url !== 'undefined' ? base_url : Sys_Core.Config.baseUrl;
+                            
+                            // 2. Identificamos si expiró en el SRM o en el ERP Interno
+                            const isSrmPage = window.location.pathname.toLowerCase().includes('srm');
+                            const redirectPath = isSrmPage ? '/srm/login' : '/login';
+                            
+                            // 3. Forzamos redirección física inmediata al login correspondiente
+                            window.location.href = rootUrl + redirectPath;
+                            // --- FIN AJUSTE -
+                        });
+                        return; // Retornamos temprano para evitar doble modal
                     }
-                }
 
-                // Generar el HTML iterando sobre los mensajes encontrados
-                if (errorList && Object.keys(errorList).length > 0) {
-                    $.each(errorList, (campo, mensaje) => {
-                        // Asegurarnos de imprimir solo strings, no objetos internos raros
-                        if (typeof mensaje === 'string') {
-                            html += `<li><b>${campo}:</b> ${mensaje}</li>`;
-                        } else if (Array.isArray(mensaje)) {
-                            // Si Laravel/Framework manda un array de mensajes por campo
-                            mensaje.forEach(m => html += `<li><b>${campo}:</b> ${m}</li>`);
-                        }
-                    });
-                } else {
-                    // Fallback visual si el buscador falla pero sabemos que es un 422
-                    html += `<li>Por favor, revise los campos del formulario. Verifique la consola (F12) para más detalles.</li>`;
-                    console.warn("Estructura de error 422 desconocida:", res);
-                }
+                case 403: // FORBIDDEN (The PM's concern)
+                    title = 'Acceso Restringido';
+                    icon = 'warning';
+                    html = `
+                        <div class="text-center">
+                            <i class="ri-shield-user-line fs-1 text-warning mb-3 d-block"></i>
+                            <p class="fw-bold mb-1">${res.message || 'Privilegios insuficientes.'}</p>
+                            <p class="text-muted small">Esta acción está limitada por tu perfil actual. Contacta a tu jefe directo para revisar tus permisos.</p>
+                        </div>`;
+                    break;
 
-                html += '</ul></div>';
-                
-                // Mostrar el popup
-                Sys_Core.UI.alert('Datos Inválidos', html, 'error');
-                
-            } else {
-                // Manejo de Errores Genéricos (500, 404, 403, 401)
-                let errorMsg = `El servidor respondió con código ${xhr.status}.`;
-                
-                if (res && res.message) {
-                    errorMsg = res.message;
-                } else if (res && res.error) {
-                    errorMsg = res.error;
-                }
+                case 404: // NOT FOUND
+                    title = 'No Encontrado';
+                    icon = 'question';
+                    html = res.message || 'El recurso solicitado no existe o pertenece a otra planta.';
+                    break;                
+                case 409: // REGLA DE NEGOCIO / CONFLICTO
+                    title = 'Validación de Proceso';
+                    icon = 'info'; // Icono de información (Azul) para que sea menos agresivo
+                    html = `
+                        <div class="text-center">
+                            <i class="ri-git-repository-commits-line fs-1 text-info mb-3 d-block"></i>
+                            <p class="fw-bold mb-1">Requisito Incumplido</p>
+                            <p class="text-muted">${res.message || 'El estado actual del proceso no permite continuar.'}</p>
+                            <hr class="border-light">
+                            <p class="small text-primary">Consulte el manual de procedimientos de Sourcing.</p>
+                        </div>`;
+                    break;
+                case 422: // VALIDATION
+                    title = 'Datos Inválidos';
+                    icon = 'warning';
+                    // Llamamos al método interno de este mismo objeto
+                    html = this._extractValidationHtml(res);
+                    break;
 
-                Sys_Core.UI.alert(`Error de Sistema (${xhr.status})`, errorMsg, 'error');
+                case 500: // SERVER ERROR
+                    title = 'Falla de Sistema';
+                    icon = 'error';
+                    html = `
+                        <div class="text-start">
+                            <p class="fw-bold">El servidor no pudo procesar la solicitud.</p>
+                            <p class="small text-muted mb-0">ID de Auditoría: <span class="font-monospace">${Date.now()}</span></p>
+                        </div>`;
+                    break;
             }
+
+            Sys_Core.UI.alert(title, html, icon);
+        },
+
+        /**
+         * MÉTODO INTERNO (Helper): Aplanar errores de validación.
+         * Se mantiene dentro de Net para no dejar "funciones sueltas".
+         * @private
+         */
+        _extractValidationHtml: function(res) {
+            let rawErrors = res.errors?.errors || res.errors || {};
+            
+            if (typeof rawErrors === 'string') {
+                try { 
+                    rawErrors = JSON.parse(rawErrors).errors || JSON.parse(rawErrors);
+                } catch(e) { rawErrors = {}; }
+            }
+
+            if (Object.keys(rawErrors).length === 0) return res.message || 'Revise el formulario.';
+
+            let list = '<div class="text-start small"><ul class="mb-0">';
+            $.each(rawErrors, (campo, mensaje) => {
+                if (campo === 'status') return;
+                const text = Array.isArray(mensaje) ? mensaje[0] : mensaje;
+                list += `<li><b>${campo.replace('_', ' ')}:</b> ${text}</li>`;
+            });
+            return list + '</ul></div>';
         }
     },
 
@@ -528,6 +726,28 @@ const Sys_Core = {
  * Event Listeners Globales
  * Manejo de eventos delegados para atributos de datos Sys_Core.
  */
+// --- INICIO AGREGADO: Auto-hidratación de Cabecera Global (JWT) ---
+$(document).ready(function() {
+    Sys_Core.Auth.applyUIPermissions();
+    
+    const payload = Sys_Core.Auth.decodeJWT();
+    if (payload && payload.data) {
+        const user = payload.data;
+        
+        // Hidratar nombre de usuario en cabecera si el elemento existe en el DOM
+        if ($('#lbl-user-name').length) {
+            $('#lbl-user-name').text(user.nombre);
+        }
+        
+        // Hidratar iniciales del avatar si el elemento existe en el DOM
+        if ($('#lbl-user-avatar').length) {
+            const iniciales = user.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            $('#lbl-user-avatar').text(iniciales);
+        }
+    }
+});
+// --- FIN AGREGADO ---
+
 $(document).on('click', '[data-redirect]', function(e) {
     e.preventDefault();
     const target = $(this).data('redirect');

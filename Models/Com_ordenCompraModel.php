@@ -1,7 +1,4 @@
 <?php
-//namespace Models;
-
-use Mysql; // Asumiendo que tu clase base está en el namespace global o ajusta según tu autoloader
 
 class Com_ordenCompraModel extends Mysql {
 
@@ -49,15 +46,18 @@ class Com_ordenCompraModel extends Mysql {
         $query = "SELECT 
                     oc.idcompra,
                     oc.requisicionid,
+                    oc.plantaid,
                     oc.estatus,
                     oc.total,
                     oc.moneda,
                     oc.created_at,
                     p.nombre_comercial AS proveedor_nombre,
-                    u.nombres AS comprador_nombre
+                    u.nombres AS comprador_nombre,
+                    a.cve_almacen
                   FROM com_ordenes_compra oc
                   LEFT JOIN prv_cat_proveedores p ON oc.proveedorid = p.id_proveedor
                   LEFT JOIN usuarios u ON oc.created_by = u.idusuario
+                  LEFT JOIN wms_almacenes a ON oc.almacenid = a.idalmacen
                   $where
                   ORDER BY oc.idcompra DESC";
 
@@ -71,13 +71,14 @@ class Com_ordenCompraModel extends Mysql {
     public function createHeader(array $data): int {
         // Se ha eliminado 'usuarioid' de la lista de campos y se ha quitado un '?'
         $query = "INSERT INTO com_ordenes_compra 
-                  (requisicionid, proveedorid, almacenid, estatus, moneda, tipo_cambio, observaciones, created_by) 
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                  (requisicionid, proveedorid, plantaid, almacenid, estatus, moneda, tipo_cambio, observaciones, created_by) 
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         // Se ha eliminado $data['usuarioid'] del array de valores
         $values = [
             $data['requisicionid'],
             $data['proveedorid'],
+            $data['plantaid'],
             $data['almacenid'],
             $data['estatus'],
             $data['moneda'],
@@ -125,9 +126,18 @@ class Com_ordenCompraModel extends Mysql {
     }
 
     public function getById(int $id): ?array {
-        $query = "SELECT oc.idcompra, oc.requisicionid, oc.proveedorid, oc.almacenid, oc.estatus, 
+        $query = "SELECT oc.idcompra, oc.requisicionid, oc.proveedorid, oc.plantaid, oc.almacenid, oc.estatus, 
                          oc.moneda, oc.tipo_cambio, oc.subtotal, oc.iva, oc.total, oc.observaciones, oc.created_at,
-                         p.nombre_comercial AS proveedor_nombre, a.cve_almacen AS almacen_nombre
+                         p.nombre_comercial AS proveedor_nombre, a.cve_almacen AS almacen_nombre,
+                         -- SUBCONSULTA DINÁMICA DE COMPLIANCE (3-Way Match)
+                        COALESCE(
+                            (SELECT SUM(f.monto_total) 
+                            FROM cxp_tra_facturas f 
+                            WHERE f.id_compra = oc.idcompra 
+                            AND f.estatus_validacion = 1 -- 1 = Validada/Aprobada en CxP
+                            AND f.deleted_at IS NULL
+                            ), 0
+                        ) AS total_facturado
                   FROM com_ordenes_compra oc
                   LEFT JOIN prv_cat_proveedores p ON oc.proveedorid = p.id_proveedor
                   LEFT JOIN wms_almacenes a ON oc.almacenid = a.idalmacen
@@ -275,6 +285,54 @@ class Com_ordenCompraModel extends Mysql {
                 GROUP BY rd.idrequisicionarticulo";
 
         return $this->select_all($sql, [$ocId]) ?: [];
+    }
+
+    /**
+     * Recupera las Órdenes de Compra generadas a partir de una requisición específica.
+     */
+    public function getRelatedPOsByRequisition(int $requisitionId): array
+    {
+        $sql = "SELECT idcompra, total, estatus, created_at 
+                FROM com_ordenes_compra 
+                WHERE requisicionid = ? 
+                AND deleted_at IS NULL 
+                ORDER BY created_at DESC";
+
+        return $this->select_all($sql, [$requisitionId]) ?: [];
+    }
+
+    /**
+     * Obtiene los contadores de órdenes de compra agrupados por estatus,
+     * respetando estrictamente los filtros de seguridad inyectados por el servicio.
+     */
+    public function getDashboardKpis(array $filters): array
+    {
+        $query = "SELECT estatus, COUNT(*) AS cantidad 
+                  FROM com_ordenes_compra 
+                  WHERE deleted_at IS NULL";
+        
+        $params = [];
+
+        // Inyección de Seguridad (Query-Level Security)
+        if (!empty($filters['created_by'])) {
+            $query .= " AND created_by = :created_by";
+            $params[':created_by'] = (int)$filters['created_by'];
+        }
+
+        if (!empty($filters['plantaid'])) {
+            $query .= " AND plantaid = :plantaid";
+            $params[':plantaid'] = (int)$filters['plantaid'];
+        }
+
+        if (!empty($filters['proveedorid'])) {
+            $query .= " AND proveedorid = :proveedorid";
+            $params[':proveedorid'] = (int)$filters['proveedorid'];
+        }
+
+        $query .= " GROUP BY estatus";
+
+        // Asumiendo tu método select_all() del Core
+        return $this->select_all($query, $params) ?? [];
     }
 }
 ?>

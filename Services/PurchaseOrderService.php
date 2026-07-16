@@ -9,6 +9,7 @@ class PurchaseOrderService
 
     protected Com_requisicionModel $requisicionModel;
     protected Com_ordenCompraModel $ordenCompraModel;
+    protected InventoryReceptionService $inventoryReceptionService;
     protected object $db;
 
     public function __construct()
@@ -16,71 +17,100 @@ class PurchaseOrderService
         // Instanciamos ambos modelos para orquestar la transacción
         $this->requisicionModel = new Com_requisicionModel;
         $this->ordenCompraModel = new Com_ordenCompraModel;
+        $this->inventoryReceptionService = new InventoryReceptionService;
         $this->db = $this->ordenCompraModel->getConexion();
     }
 
-    public function index(array $filters, array $userContext): \ServiceResponse {
+    /**
+     * Recupera las POs aplicando filtros seguros de Query-Level Security.
+     * Soporta de forma híbrida e integrada tanto a Empleados (ERP) como a Proveedores (SRM).
+     */
+    public function index(array $filters, array $userContext): ServiceResponse
+    {
         try {
-            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
-            $scope = $role?->getScope() ?? 'propio';
+            // 1. Identificar si el usuario autenticado es un Proveedor Externo (SRM)
+            $isVendor = ($userContext['rol'] ?? '') === 'VENDOR' || !empty($userContext['vendor_id']);
 
-            $po = $this->ordenCompraModel->getAll($filters);
+            if ($isVendor) {
+                // SEGURIDAD IMPLACABLE (Anti-IDOR): Forzamos que el filtro de proveedor 
+                // sea estrictamente el ID de su JWT, ignorando cualquier cosa enviada por GET.
+                $filters['proveedorid'] = (int) $userContext['vendor_id'];
+            } else {
+                // 2. Si es Empleado Interno, aplicamos la Matriz de Visibilidad (RBAC)
+                $role = RoleEnum::tryFrom((int) $userContext['rolid']);
+                $scope = $role?->getScope() ?? 'propio';
 
-            // Validación de Seguridad (IDOR de Lectura), APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
-            if (
-                !match($scope) {
-                'propio' => (int)$po['created_by'] === (int)$userContext['id'],
-                'planta'  => (int)$po['plantaid'] === (int)$userContext['plantaid'],
-                'total'  => true,
-                default  => false
+                // Inyectamos el alcance de seguridad como un filtro directo para la consulta SQL
+                switch ($scope) {
+                    case 'propio':
+                        $filters['created_by'] = (int) $userContext['id'];
+                        break;
+                    case 'planta':
+                        $filters['plantaid'] = (int) $userContext['plantaid'];
+                        break;
+                    case 'total':
+                        // Sin restricciones adicionales en la consulta SQL (Ver todo)
+                        break;
+                    default:
+                        return ServiceResponse::error("Security Error: Alcance de visibilidad no configurado.", 403);
+                }
             }
-            ) {
-                return ServiceResponse::error("Security Error: No tienes permisos para ver este módulo.", 403);
-            }
 
-            return \ServiceResponse::success($po, "Listado de Órdenes de Compra recuperado.");
+            // 3. El modelo ejecuta la consulta SQL filtrando de origen en BD de forma ultra rápida
+            $poList = $this->ordenCompraModel->getAll($filters);
+
+            return ServiceResponse::success($poList, "Listado de Órdenes de Compra recuperado.");
+
         } catch (\Exception $e) {
-            return \ServiceResponse::error("Error al obtener el listado: " . $e->getMessage());
+            return ServiceResponse::error("Error al obtener el listado: " . $e->getMessage(), 500);
         }
     }
 
-    public function store(array $userContext): \ServiceResponse
+    public function store(array $userContext, ?array $manualPayload = null): \ServiceResponse
     {
         $request = new StorePurchaseOrderRequest();
 
         try {
             $userId = $userContext['id'];
-            $request->validate();
-            $payload = $request->all();
+            $plantaId = $userContext['plantaid'];
+            // AJUSTE 1: Priorizar payload manual si existe (para automatización)
+            if (!$manualPayload) $request->validate();
+            $payload = $manualPayload ?? $request->all();
+            
             $reqId = (int)$payload['requisicionid'];
 
-            $this->db->beginTransaction();
+            $isInternalCall = $this->db->inTransaction(); 
+            if (!$isInternalCall) {
+                $this->db->beginTransaction();
+            }
 
             // 1. VALIDAR REQUISICIÓN ORIGEN
             $requisition = $this->requisicionModel->getRequisition($reqId);
             if (!$requisition) {
                 throw new \Exception("La requisición origen #{$reqId} no existe.", 404);
             }
+
+            // --- INICIO AJUSTE 2: Identificar flujo Directo ---
+            $isSpotBuy = ($requisition['tipo_requisicion'] === 'spot_buy');
+            $ocStatus = $isSpotBuy ? PurchaseOrderEnum::CERRADA->value : PurchaseOrderEnum::EMITIDA->value;
+            $receptionItems = []; // Para WMS automático
+            // --- FIN AJUSTE 2 ---
+
             if (!in_array($requisition['estatus'], ['aprobada', 'en compra'])) {
                 throw new \Exception("No se pueden generar compras para una requisición en estado '{$requisition['estatus']}'.", 403);
-            }
+            }            
 
-            // 2. OBTENER SALDOS PENDIENTES (La fuente de la verdad)
-            // Reutilizamos el método de la US 1 para saber exactamente cuánto podemos comprar
+            // 2. OBTENER SALDOS PENDIENTES
             $pendingItemsData = $this->requisicionModel->calculatePendingItems($reqId);
-            
-            // Convertimos el array a un diccionario [id_articulo => cantidad_pendiente] para búsqueda rápida O(1)
-            $saldosPendientes = [];
-            foreach ($pendingItemsData as $pItem) {
-                $saldosPendientes[$pItem['idrequisicionarticulo']] = (float)$pItem['cantidad_pendiente'];
-            }
+            $saldosPendientes = array_column($pendingItemsData, 'cantidad_pendiente', 'idrequisicionarticulo');
 
             // 3. CREAR CABECERA DE LA ORDEN DE COMPRA
             $ocHeaderData = [
                 'requisicionid' => $reqId,
                 'proveedorid'   => $payload['proveedorid'],
+                'plantaid'      => $plantaId,
                 'almacenid'     => $payload['almacenid'],
-                'estatus'       => 'emitida',
+                'estatus'       => $ocStatus,
                 'moneda'        => $payload['moneda'] ?? 'MXN',
                 'tipo_cambio'   => $payload['tipo_cambio'] ?? 1.000000,
                 'observaciones' => $payload['observaciones'] ?? '',
@@ -132,14 +162,35 @@ class PurchaseOrderService
 
                 $this->ordenCompraModel->createDetail($ocId, $ocDetailData);
 
+                // AJUSTE 3: Recolectar para auto-recepción si es directa
+                if ($isSpotBuy) {
+                    $receptionItems[] = [
+                        'idrequisicionarticulo' => $idReqArticulo,
+                        'inventarioid' => $item['inventarioid'],
+                        'cantidad_recibida' => $cantidadAComprar
+                    ];
+                }
+
                 // Acumular para la cabecera
                 $subtotalOC += $subtotalPartida;
                 $ivaOC += $impuestoPartida;
             }
 
             // 5. ACTUALIZAR TOTALES DE LA OC
-            $totalOC = $subtotalOC + $ivaOC;
-            $this->ordenCompraModel->updateTotals($ocId, $subtotalOC, $ivaOC, $totalOC);
+            $this->ordenCompraModel->updateTotals($ocId, $subtotalOC, $ivaOC, $subtotalOC + $ivaOC);
+
+            // --- INICIO AJUSTE 3: Disparar Recepción Automática ---
+            if ($isSpotBuy) {
+                $receptionRes = $this->inventoryReceptionService->store($userContext, [
+                    'idcompra' => $ocId,
+                    'num_remision' => 'STP-SPOT-BUY',
+                    'observaciones' => 'Entrada generada automáticamente por flujo de Pago Inmediato.',
+                    'articulos' => $receptionItems
+                ]);
+
+                if (!$receptionRes->success) throw new \Exception("Error en auto-recepción: " . $receptionRes->message);
+            }
+            // --- FIN AJUSTE 3 ---
 
             // 6. MÁQUINA DE ESTADOS: Actualización dinámica
             // Recalculamos los saldos pendientes DESPUÉS de haber insertado la OC actual
@@ -177,7 +228,9 @@ class PurchaseOrderService
                 }
             }
 
-            $this->db->commit();
+            if (!$isInternalCall) {
+                $this->db->commit();
+            }
 
             return \ServiceResponse::success(
                 ['orden_compra_id' => $ocId],
@@ -202,24 +255,37 @@ class PurchaseOrderService
 
     public function getWithDetails(int $ocId, array $userContext): \ServiceResponse {
         try {
-            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
-            $scope = $role?->getScope() ?? 'propio';
-
             // 1. Obtener cabecera de la OC
             $oc = $this->ordenCompraModel->getById($ocId);
             if (!$oc) throw new \Exception("Orden de Compra no encontrada.", 404);
 
-            // 2. Validación de Seguridad (Matriz de Visibilidad)
-            $isAllowed = match($scope) {
-                'propio' => (int)$oc['created_by'] === (int)$userContext['id'],
-                'planta' => (int)$oc['plantaid'] === (int)$userContext['plantaid'],
-                'total'  => true,
-                default  => false
-            };
+            // =================================================================
+            // 2. CIRUGÍA DE MÍNIMA INVASIÓN: Soporte de Seguridad Híbrido
+            // =================================================================
+            $isVendor = ($userContext['role'] ?? '') === 'VENDOR' || !empty($userContext['vendor_id']);
+
+            if ($isVendor) {
+                // Seguridad SRM (Anti-IDOR): Validamos que la OC pertenezca a este proveedor
+                $isAllowed = (int)($oc['proveedorid'] ?? $oc['proveedor_id'] ?? 0) === (int)$userContext['vendor_id'];
+            } else {
+                // Seguridad ERP Interno: Matriz de Visibilidad para Empleados
+                $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+                $scope = $role?->getScope() ?? 'propio';
+
+                $isAllowed = match($scope) {
+                    'propio' => (int)$oc['created_by'] === (int)$userContext['id'],
+                    'planta' => (int)$oc['plantaid'] === (int)$userContext['plantaid'],
+                    'total'  => true,
+                    default  => false
+                };
+            }
 
             if (!$isAllowed) {
                 return ServiceResponse::error("Security Error: No tienes permisos para ver esta orden.", 403);
             }
+            // =================================================================
+            // FIN DE LA CIRUGÍA (El resto del código se mantiene intacto)
+            // =================================================================
 
             // 3. Obtener partidas base de la OC
             $items = $this->ordenCompraModel->getDetails($ocId);
@@ -427,6 +493,100 @@ class PurchaseOrderService
 
         // 5. REGISTRAR AUDITORÍA
         $this->ordenCompraModel->logAudit($id, $auditAction, $comment, $userContext['id']);
+    }
+
+    /**
+     * Método puente para procesar requisiciones de Pago Inmediato.
+     */
+    public function processSpotBuyAutomation(int $reqId, array $userContext): void
+    {
+        // 1. Obtener la requisición con sus saldos (usando el query que refactorizamos)
+        $items = $this->requisicionModel->calculatePendingItems($reqId);
+        
+        if (empty($items)) return;
+
+        // 2. Preparar el payload para el método 'store'
+        // Como es directa, asumimos el proveedor sugerido y almacén por defecto
+        $payload = [
+            'requisicionid' => $reqId,
+            'proveedorid'   => 1, // Ejemplo: ID de Amazon/Clara
+            'almacenid'     => 1, // Almacén general o de oficina
+            'moneda'        => 'MXN',
+            'tipo_cambio'   => 1.0,
+            'observaciones' => "Generado automáticamente por flujo de Compra Directa.",
+            'articulos'     => []
+        ];
+
+        foreach ($items as $item) {
+            $payload['articulos'][] = [
+                'idrequisicionarticulo' => $item['idrequisicionarticulo'],
+                'inventarioid'          => $item['inventarioid'],
+                'cantidad'              => $item['cantidad_pendiente'],
+                'costo_unitario'        => $item['precio_unitario_estimado'],
+                'porcentaje_descuento'  => 0,
+                'descuento_partida'     => 0
+            ];
+        }
+
+        /**
+         * IMPORTANTE: Llamamos al método store() que ya tiene la lógica de:
+         * - Crear OC (Cerrada)
+         * - Crear Recepción (WMS)
+         * - Actualizar Kardex
+         */
+        $res = $this->store($userContext, $payload); // Asegúrate de que store acepte el payload opcional
+
+        if (!$res->success) {
+            throw new \Exception("Fallo en la creación de OC Directa: " . $res->message);
+        }
+    }
+
+    /**
+     * Calcula los KPIs para el dashboard administrativo o SRM, aplicando 
+     * de forma híbrida la matriz de visibilidad de datos.
+     */
+    public function getKpiSummary(array $userContext): ServiceResponse
+    {
+        try {
+            $isVendor = ($userContext['role'] ?? '') === 'VENDOR' || !empty($userContext['vendor_id']);
+            $filters = [];
+
+            if ($isVendor) {
+                // Proveedores externos (SRM) solo ven sus propios números
+                $filters['proveedorid'] = (int) $userContext['vendor_id'];
+            } else {
+                // Empleados internos (ERP) aplican su alcance por rol
+                $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+                $scope = $role?->getScope() ?? 'propio';
+
+                switch ($scope) {
+                    case 'propio':
+                        $filters['created_by'] = (int)$userContext['id'];
+                        break;
+                    case 'planta':
+                        $filters['plantaid'] = (int)$userContext['plantaid'];
+                        break;
+                    case 'total':
+                        // Ver todo
+                        break;
+                    default:
+                        return ServiceResponse::error("Security Error: Alcance de visibilidad no configurado.", 403);
+                }
+            }
+
+            $kpis = $this->ordenCompraModel->getDashboardKpis($filters);
+
+            // Casteo de tipos estricto para PHP 8.3 / Laravel 13 Ready
+            foreach ($kpis as &$kpi) {
+                $kpi['cantidad'] = (int)$kpi['cantidad'];
+                $kpi['estatus']  = (string)$kpi['estatus'];
+            }
+
+            return ServiceResponse::success($kpis, "KPIs calculados de forma segura.");
+
+        } catch (\Exception $e) {
+            return ServiceResponse::error("Error al calcular KPIs: " . $e->getMessage(), 500);
+        }
     }
 }
 ?>

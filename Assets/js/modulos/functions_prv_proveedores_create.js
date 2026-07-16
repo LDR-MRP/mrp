@@ -6,6 +6,7 @@ const supplierManager = {
     currentId: null,
 
     init: function() {
+        Sys_Core.Auth.validateSession();
 
         this.currentId = Sys_Core.URL.getParam('id');
         
@@ -29,6 +30,11 @@ const supplierManager = {
             const data = new FormData(this);
             const payload = Object.fromEntries(data.entries());
             payload.id = self.currentId || null;
+
+            // LIMPIEZA: Antes de enviar, convertimos a número real
+            if (payload.limite_credito) {
+                payload.limite_credito = Sys_Core.Format.toNumber(payload.limite_credito);
+            }
             
             Sys_Core.Net.post({
                 url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers`,
@@ -133,10 +139,22 @@ const supplierManager = {
                         });
                     }
 
-                    // 3. Cargamos Colonias y al terminar, seleccionamos
-                    if (data.cp) {
+                    // 3. CORRECCIÓN: Cargamos Colonias con comparador insensible a mayúsculas/minúsculas
+                    if (data.cp && data.colonia) {
                         cascadeCatalogs.searchCP(data.cp, () => {
-                            $('[name="colonia"]').val(data.colonia).trigger('change');
+                            const valToSearch = data.colonia.toLowerCase().trim();
+                            let exactValue = data.colonia; // Fallback por defecto
+
+                            // Escaneamos las opciones cargadas en el select de forma insensible a mayúsculas [4]
+                            $('#colonia option').each(function() {
+                                if ($(this).val().toLowerCase().trim() === valToSearch) {
+                                    exactValue = $(this).val(); // Obtenemos el valor exacto del option (Mayúsculas)
+                                    return false; // Break loop de jQuery
+                                }
+                            });
+
+                            // Asignamos el valor exacto que el navegador sí reconoce
+                            $('[name="colonia"]').val(exactValue).trigger('change');
                         });
                     }
                 }
@@ -694,6 +712,18 @@ const bankingManager = {
             
             // 3. Botones Dinámicos
             let actionButtons = '';
+
+            // --- INICIO ADICIÓN: Botón para ver la Carátula Bancaria (PDF) ---
+            // Si la cuenta tiene un archivo PDF registrado, mostramos el visor seguro [4]
+            if (c.url_pdf) {
+                const absolutePdfUrl = `${base_url}/${c.url_pdf}`;
+                actionButtons += `
+                    <a href="${absolutePdfUrl}" target="_blank" class="btn btn-sm btn-soft-danger btn-icon shadow-none" title="Ver Carátula Bancaria (PDF)">
+                        <i class="ri-file-pdf-line"></i>
+                    </a>
+                `;
+            }
+            // --- FIN ADICIÓN ---
 
             // Si está pendiente y el usuario es auditor -> Mostrar botones de Visto Bueno
             if (status === 'PENDIENTE' && canAudit) {

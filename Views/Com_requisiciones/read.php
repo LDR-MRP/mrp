@@ -1,46 +1,55 @@
 <?php headerAdmin($data); ?>
 
-<div class="main-content">
+<div class="main-content bg-light">
     <div class="page-content">
         <div class="container-fluid">
             <section id="view-read-requisicion">
-                <!-- Breadcrumb -->
-                <div class="row align-items-center mb-4">
-                    <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2">
-                            <div class="page-title-right">
-                                <ol class="breadcrumb m-0">
-                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
-                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/com_requisicion">Requisiciones</a></li>
-                                    <li class="breadcrumb-item active">Ver Solicitud</li>
-                                </ol>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Título Principal y Estatus -->
-                <div class="row mb-3">
-                    <div class="col-12">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div class="d-flex align-items-center">
-                                <div class="avatar-md me-3">
-                                    <span class="avatar-title bg-primary text-white rounded-circle fs-3 shadow-sm">
-                                        <i class="ri-file-list-3-line"></i>
-                                    </span>
-                                </div>
-                                <div>
-                                    <h4 class="mb-1 fw-bold ls-05 d-flex align-items-center">
-                                        Solicitud de Compra #<span id="lbl-idrequisicion" class="ms-1">...</span>
-                                        <span id="lbl-estatus" class="ms-3 badge bg-light text-muted fs-12 fw-normal">Cargando...</span>
-                                    </h4>
-                                    <p class="text-muted mb-0 fs-13">Expediente de requisición de solo lectura.</p>
+                <!-- HEADER FUSIONADO (Regreso al Dashboard + Contexto) -->
+                <div class="card shadow-sm border-0 mb-4" style="border-radius: 4px;">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center">
+
+                            <!-- SECCIÓN IZQUIERDA: IDENTIDAD Y NAVEGACIÓN -->
+                            <div class="col-md-7">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-md flex-shrink-0 me-3">
+                                        <div class="avatar-title rounded-2 bg-dark-subtle text-muted fs-1 border border-light-subtle shadow-sm">
+                                            <i class="ri-file-list-3-line"></i>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <nav aria-label="breadcrumb">
+                                            <ol class="breadcrumb breadcrumb-dot mb-1 fs-12 fw-medium">
+                                                <li class="breadcrumb-item"><a href="javascript: void(0);" onclick="window.history.back();" class="text-muted">Requisiciones</a></li>
+                                                <li class="breadcrumb-item active text-primary">Detalle de Requisición</li>
+                                            </ol>
+                                        </nav>
+                                        <h3 class="mb-0 fw-bold text-uppercase ls-1 text-body">
+                                            Solicitud de Compra #<span id="lbl-idrequisicion" class="ms-1">...</span>
+                                        </h3>
+                                        <p class="text-muted mb-0 fs-13 mt-1 fw-medium opacity-75">Expediente de requisición de solo lectura.</p>
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <div class="text-end">
-                                <span class="text-uppercase fs-11 fw-bold text-muted d-block mb-1">Prioridad</span>
-                                <span id="lbl-prioridad" class="badge bg-light fs-12 px-3 py-1 shadow-sm">...</span>
+
+                            <!-- SECCIÓN DERECHA: INDICADORES DE ESTADO (KPI STACK) -->
+                            <div class="col-md-5 mt-3 mt-md-0">
+                                <div class="d-flex justify-content-md-end align-items-center">  
+                                    
+                                    <!-- 1. PRIORIDAD (Semántica de Urgencia) -->
+                                    <div class="text-md-center border-end pe-3 border-light-subtle">
+                                        <small class="text-muted text-uppercase fw-bold fs-10 ls-1 d-block mb-1">Prioridad</small>
+                                        <span id="lbl-prioridad">ALTA</span>
+                                    </div>
+
+                                    <!-- 2. ESTATUS (Semántica de Fase) -->
+                                    <div class="text-md-center ps-3">
+                                        <small class="text-muted text-uppercase fw-bold fs-10 ls-1 d-block mb-1">Estado</small>
+                                        <span id="lbl-estatus">Pendiente</span>
+                                    </div>
+
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -72,6 +81,19 @@
                                         <div class="read-only-field d-flex align-items-center">
                                             <i class="ri-calendar-event-line text-muted me-2"></i> 
                                             <span id="lbl-fecha-requerida">...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mt-3 d-none" id="section-direct-info">
+                                    <div class="col-md-6">
+                                        <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Método de Pago</label>
+                                        <div class="read-only-field" id="lbl-pago-sugerido">...</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Referencia Digital</label>
+                                        <div class="read-only-field">
+                                            <i class="ri-external-link-line text-primary me-2"></i>
+                                            <a href="#" id="link-referencia" target="_blank" class="fw-medium">Ver producto</a>
                                         </div>
                                     </div>
                                 </div>

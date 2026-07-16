@@ -10,7 +10,7 @@
     html, body {
       margin:0 !important;
       padding:0 !important;
-      height:100% !important;
+      height:100% !important; 
       width:100% !important;
       background:#f4f6f8;
       font-family: Arial, Helvetica, sans-serif;

@@ -4,29 +4,31 @@
     <div class="page-content">
         <div class="container-fluid">
             <section id="view-index-proveedores">
+                <!-- 1. BREADCRUMBS (Estilo EMR) -->
                 <div class="row align-items-center mb-4">
                     <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2">
+                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-transparent">
                             <div class="page-title-right">
-                                <ol class="breadcrumb m-0">
+                                <ol class="breadcrumb m-0 fs-13">
                                     <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
-                                    <li class="breadcrumb-item active">Proveedores</li>
+                                    <li class="breadcrumb-item active text-primary">Proveedores</li>
                                 </ol>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- 2. HEADER CON DESCRIPCIÓN Y ACCIÓN -->
                 <div class="row align-items-center mb-4">
                     <div class="col-md-7">
                         <div class="d-flex align-items-center">
                             <div class="avatar-md me-4">
-                                <span class="avatar-title text-primary rounded-circle fs-2 shadow-lg border border-light">
+                                <span class="avatar-title text-primary rounded-circle fs-2 shadow-lg border border-light" style="background-color: #C46623 !important; color: #ffffff !important;">
                                     <i class="ri-truck-line"></i>
                                 </span>
                             </div>
                             <div>
-                                <h3 class="mb-1 fw-bold text-uppercase ls-1">Gestión de Proveedores</h3>
+                                <h3 class="mb-1 fw-bold text-uppercase ls-1 text-body">Gestión de Proveedores</h3>
                                 <p class="text-muted mb-0 fs-14">
                                     Administración del directorio de empresas y socios comerciales.
                                 </p>
@@ -34,7 +36,6 @@
                         </div>
                     </div>
                     <div class="col-md-5 d-flex justify-content-md-end justify-content-start mt-4 mt-md-0">
-                        <!-- Attention! -->
                         <?php if (hasPermissions(PRV_PROVEEDORES, 'w')): ?>
                             <button type="button" class="btn btn-primary btn-lg btn-label waves-effect waves-light shadow-md"
                                 data-redirect="prv_proveedor/create">
@@ -44,70 +45,62 @@
                     </div>
                 </div>
 
+                <!-- 3. BLOQUE DE KPIS CIRCULARES PREMIUM (SOBREESCRIBIBLE PARA MODO OSCURO) -->
                 <div class="row mb-4">
+                    <!-- KPI 1: Total Proveedores -->
                     <div class="col-xl-4 col-md-6">
-                        <div class="card card-animate border-0 shadow-sm border-start border-primary border-3" style="border-radius: 10px;">
+                        <div class="card card-animate border-0 shadow-sm rounded-3">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-0 fs-12 ls-1">Total Proveedores</p>
-                                    </div>
-                                    <div class="flex-shrink-0">
-                                        <h5 class="text-primary fs-14 mb-0">
-                                            <i class="ri-building-line fs-22 align-middle"></i>
-                                        </h5>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-end justify-content-between mt-3">
-                                    <div>
-                                        <h4 class="fs-24 fw-bold mb-2"><span class="counter-value" id="kpi-total">0</span></h4>
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Total Proveedores</p>
+                                        <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="kpi-total">0</span></h4>
                                         <span class="badge bg-soft-primary text-primary fw-medium mb-0 px-2 py-1">Directorio completo</span>
                                     </div>
+                                    <div class="avatar-sm flex-shrink-0">
+                                        <span class="avatar-title bg-primary-subtle text-primary rounded-circle fs-3">
+                                            <i class="ri-building-line"></i>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
+                    <!-- KPI 2: Activos & Operativos -->
                     <div class="col-xl-4 col-md-6">
-                        <div class="card card-animate border-0 shadow-sm border-start border-success border-3" style="border-radius: 10px;">
+                        <div class="card card-animate border-0 shadow-sm rounded-3">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-0 fs-12 ls-1">Activos & Operativos</p>
-                                    </div>
-                                    <div class="flex-shrink-0">
-                                        <h5 class="text-success fs-14 mb-0">
-                                            <i class="ri-check-double-line fs-22 align-middle"></i>
-                                        </h5>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-end justify-content-between mt-3">
-                                    <div>
-                                        <h4 class="fs-24 fw-bold mb-2"><span class="counter-value" id="kpi-activos">0</span></h4>
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Activos &amp; Operativos</p>
+                                        <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="kpi-activos">0</span></h4>
                                         <span class="badge bg-soft-success text-success fw-medium mb-0 px-2 py-1">Listos para compra</span>
                                     </div>
+                                    <div class="avatar-sm flex-shrink-0">
+                                        <span class="avatar-title bg-success-subtle text-success rounded-circle fs-3">
+                                            <i class="ri-check-double-line"></i>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
+                    <!-- KPI 3: Bloqueados / Inactivos -->
                     <div class="col-xl-4 col-md-6">
-                        <div class="card card-animate border-0 shadow-sm border-start border-danger border-3" style="border-radius: 10px;">
+                        <div class="card card-animate border-0 shadow-sm rounded-3">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-0 fs-12 ls-1">Bloqueados / Inactivos</p>
-                                    </div>
-                                    <div class="flex-shrink-0">
-                                        <h5 class="text-danger fs-14 mb-0">
-                                            <i class="ri-spam-line fs-22 align-middle"></i>
-                                        </h5>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-end justify-content-between mt-3">
-                                    <div>
-                                        <h4 class="fs-24 fw-bold mb-2"><span class="counter-value" id="kpi-inactivos">0</span></h4>
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Bloqueados / Inactivos</p>
+                                        <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="kpi-inactivos">0</span></h4>
                                         <span class="badge bg-soft-danger text-danger fw-medium mb-0 px-2 py-1">Requieren Atención</span>
+                                    </div>
+                                    <div class="avatar-sm flex-shrink-0">
+                                        <span class="avatar-title bg-danger-subtle text-danger rounded-circle fs-3">
+                                            <i class="ri-spam-line"></i>
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -115,7 +108,8 @@
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-xl overflow-hidden" style="border-radius: 12px;">
+                <!-- 4. TABLA PRINCIPAL CARD -->
+                <div class="card border-0 shadow-xl">
                     <div class="bg-primary" style="height: 4px;"></div>
 
                     <div class="card-body">
@@ -142,6 +136,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="border-top-0">
+                                    <!-- Tu JS de datatables inyectará las filas de forma idéntica -->
                                 </tbody>
                             </table>
                         </div>
@@ -158,6 +153,8 @@
             </section>
         </div>
     </div>
+    
+    <!-- Footer -->
     <footer class="footer">
         <div class="container-fluid">
             <div class="row">

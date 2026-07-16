@@ -26,6 +26,12 @@ class StoreRequisitionRequest extends Requests {
         } else {
             $this->applyLaxRules();
         }
+
+        $tipo = (string)$this->input('tipo_requisicion', 'standard');
+
+        if ($tipo === 'directa') {
+            $this->applyDirectPurchaseRules();
+        }
     }
 
     private function applyStrictRules(): void {
@@ -48,14 +54,26 @@ class StoreRequisitionRequest extends Requests {
             $this->addError('articulos', 'La requisición debe contener al menos un artículo.');
         } else {
             foreach ($items as $index => $item) {
-                if (empty($item['inventarioid'])) {
-                    $this->addError("partida_$index", "El artículo en la fila ".($index+1)." es obligatorio.");
+                // 1. Determinar si es una partida de Sourcing
+                // Es sourcing si no tiene inventarioid pero tiene ficha técnica (specs)
+                // o si es una partida ya guardada que sabemos que es sourcing (id existe, invId es null)
+                $isSourcing = empty($item['inventarioid']) && (!empty($item['specs']) || !empty($item['idrequisicionarticulo']));
+               
+                // 2. Validación de Identidad del Artículo
+                // Solo marcamos error si NO tiene inventario Y NO es un caso válido de Sourcing
+                if (empty($item['inventarioid']) && !$isSourcing) {
+                    $this->addError("partida_$index", "El artículo en la fila " . ($index + 1) . " es obligatorio.");
                 }
-                if ($item['cantidad'] <= 0) {
-                    $this->addError("cantidad_$index", "La cantidad en la fila ".($index+1)." debe ser mayor a cero.");
+                
+                // 3. Validaciones numéricas comunes
+                $cantidad = (float)($item['cantidad'] ?? 0);
+                if ($cantidad <= 0) {
+                    $this->addError("cantidad_$index", "La cantidad en la fila " . ($index + 1) . " debe ser mayor a cero.");
                 }
-                if ($item['precio_unitario_estimado'] <= 0) {
-                    $this->addError("costo_$index", "El costo unitario en la fila ".($index+1)." no puede ser cero.");
+
+                $precio = (float)($item['precio_unitario_estimado'] ?? 0);
+                if ($precio <= 0) {
+                    $this->addError("costo_$index", "El costo unitario en la fila " . ($index + 1) . " no puede ser cero.");
                 }
             }
         }
@@ -63,6 +81,19 @@ class StoreRequisitionRequest extends Requests {
 
     private function applyLaxRules(): void {
         // Para DRAFT, no hay reglas adicionales obligatorias.
+    }
+
+    private function applyDirectPurchaseRules(): void {
+        if (empty($this->data['idmetodopago'])) {
+            $this->addError('idmetodopago', 'Para compras directas, el método de pago es obligatorio.');
+        }
+        
+        $url = (string)($this->data['url_referencia'] ?? '');
+        if (empty($url)) {
+            $this->addError('url_referencia', 'Debe proporcionar el enlace del producto (Amazon/ML).');
+        } elseif (!filter_var($url, FILTER_VALIDATE_URL)) {
+            $this->addError('url_referencia', 'El formato de la URL no es válido.');
+        }
     }
 }
 ?>
