@@ -279,11 +279,11 @@
                                           </li>
                                       <?php } ?>
 
-                                      <?php  if (!empty($_SESSION['permisos'][25]['r'])) { ?>
+                                      <?php /* if (!empty($_SESSION['permisos'][25]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_lotespedimentos" class="nav-link" data-key="t-detached">Lotes y pedimentos</a>
                                           </li>
-                                      <?php }  ?>
+                                      <?php } */ ?>
 
                                       <?php if (!empty($_SESSION['permisos'][22]['r']) || !empty($_SESSION['permisos'][73]['r'])) { ?>
                                           <li class="nav-item">
