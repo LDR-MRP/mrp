@@ -157,6 +157,10 @@
                             <td id="celDescripcion"></td>
                         </tr>
                         <tr>
+                            <td>Descripción:</td>
+                            <td id="celNotas"></td>
+                        </tr>
+                        <tr>
                             <td>Tipo:</td>
                             <td id="celTipo"></td>
                         </tr>
@@ -285,11 +289,6 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" href="#tabImpuesto">Impuesto</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" href="#tabLtpd">
-                            Lote / Pedimento
-                        </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" href="#tabLinea">Línea</a>

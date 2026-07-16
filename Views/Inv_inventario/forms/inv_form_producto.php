@@ -99,6 +99,18 @@
             </div>
         </div>
 
+        <!-- NOTAS -->
+        <div class="mb-3">
+            <label class="form-label" for="notas">NOTAS</label>
+            <div class="input-group mb-3">
+                <span class="input-group-text" id="notas-inventario-addon">Not.</span>
+                <textarea class="form-control" id="notas" name="notas"
+                    placeholder="Agrega una nota adicional" rows="3"
+                    aria-describedby="notas-inventario-addon"></textarea>
+
+            </div>
+        </div>
+
         <!-- UNIDAD DE ENTRADA -->
         <div class="col-lg-4 col-sm-6">
             <div class="mb-3">
@@ -215,6 +227,30 @@
                         placeholder="Ingresa el ultimo costo" id="ultimo_costo" name="ultimo_costo"
                         aria-describedby="ultimo_costo-addon" required>
                     <div class="invalid-feedback">El campo ultimo costo es obligatorio</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- UNICACIÓN -->
+        <div class="col-lg-4 col-sm-6">
+            <div class="mb-3">
+                <label class="form-label" for="ubicacion">UBICACIÓN</label>
+                <div class="input-group mb-3">
+                    <span class="input-group-text" id="ubicacion-addon">Ubic.</span>
+                    <input type="text" class="form-control"
+                        placeholder="Ingresa el ultimo costo" id="ubicacion" name="ubicacion"
+                        aria-describedby="ubicacion-addon">
+                </div>
+            </div>
+        </div>
+
+        <!-- MARCAS -->
+        <div class="col-lg-4 col-sm-6">
+            <div class="mb-3">
+                <label class="form-label" for="marca">MARCA</label>
+                <div class="input-group mb-3">
+                    <span class="input-group-text" id="nombre-linea-addon">Imp.</span>
+                    <select class="form-control" id="idmarca" name="idmarca"></select>
                 </div>
             </div>
         </div>

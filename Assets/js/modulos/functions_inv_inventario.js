@@ -7,8 +7,8 @@ let inventarioIdReal = null;
 
 const rutas = {
   lineas: base_url + "/Inv_lineasdproducto/getSelectLineasProductos",
-  almacenes: base_url + "/Inv_almacenes/getSelectAlmacenes",
   impuestos: base_url + "/Inv_inventario/getSelectImpuestos",
+  marcas: base_url + "/Inv_inventario/getSelectMarcas",
   save: base_url + "/Inv_inventario/setInventario",
 };
 
@@ -121,9 +121,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const t4 = document.getElementById("tbodyLineasAsignadas");
     if (t4) t4.innerHTML = "";
 
-    const t5 = document.getElementById("tbodyLtpd");
-    if (t5) t5.innerHTML = "";
-
     const t6 = document.getElementById("tbodyProveedoresCfg");
     if (t6) t6.innerHTML = "";
 
@@ -215,6 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
       resetFormularioInventario();
       cargarAlmacenes("#almacenid");
       cargarImpuestos("#idimpuesto"); //
+      cargarMarcas("#idmarca"); //
       cargarProveedores("#id_proveedor"); //
     });
 
@@ -279,6 +277,24 @@ document.addEventListener("DOMContentLoaded", () => {
   // 🔹 HACERLA GLOBAL
   window.cargarImpuestos = cargarImpuestos;
 
+  function cargarMarcas(selectId, selectedValue = "") {
+    const select = document.querySelector(selectId);
+    if (!select) return;
+
+    const request = new XMLHttpRequest();
+    request.open("GET", rutas.marcas, true);
+    request.send();
+
+    request.onreadystatechange = () => {
+      if (request.readyState === 4 && request.status === 200) {
+        select.innerHTML = request.responseText;
+        if (selectedValue) select.value = selectedValue;
+      }
+    };
+  }
+  // 🔹 HACERLA GLOBAL
+  window.cargarMarcas = cargarMarcas;
+
   function cargarProveedores(selectId, selectedValue = "") {
     const select = document.querySelector(selectId);
     if (!select) return;
@@ -323,6 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         cargarImpuestos("#idimpuesto");
+        cargarMarcas("#idmarca");
         cargarProveedores("#id_proveedor");
       }
 
@@ -738,6 +755,7 @@ function fntViewInventario(idinventario) {
 
         document.querySelector("#celClave").innerHTML = data.cve_articulo;
         document.querySelector("#celDescripcion").innerHTML = data.descripcion;
+        document.querySelector("#celNotas").innerHTML = data.notas;
         document.querySelector("#celTipo").innerHTML = tipoTxt;
         document.querySelector("#celUnidadEntrada").innerHTML =
           data.unidad_entrada;
@@ -1023,6 +1041,7 @@ function llenarFormularioInventario(data) {
   set('[name="idinventario"]', data.idinventario);
   set('[name="cve_articulo"]', data.cve_articulo);
   set('[name="descripcion"]', data.descripcion);
+  set('[name="notas"]', data.notas);
   set('[name="unidad_entrada"]', data.unidad_entrada);
   set('[name="unidad_salida"]', data.unidad_salida);
   set('[name="factor_unidades"]', data.factor_unidades);
@@ -1031,7 +1050,11 @@ function llenarFormularioInventario(data) {
   set('[name="volumen"]', data.volumen);
   set('[name="unidad_empaque"]', data.unidad_empaque);
   set('[name="ultimo_costo"]', data.ultimo_costo);
+  set('[name="ubicacion"]', data.ubicacion);
   set('[name="estado"]', data.estado);
+
+  // CARGAR MARCA SELECCIONADA
+  cargarMarcas("#idmarca", data.idmarca);
 
   //  CHECKS
   document.getElementById("serie").checked = data.serie === "S";

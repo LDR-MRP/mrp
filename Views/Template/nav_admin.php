@@ -117,27 +117,23 @@
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/pbom" class="nav-link" data-key="t-horizontal">BOM - Control</a>
                                           </li>
+                                      <?php } ?>
+                                      <?php if (!empty($_SESSION['permisos'][8]['r'])) { ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/pla_productos" class="nav-link" data-key="t-detached">Productos Terminados - PT</a>
+                                          </li>
                                       <?php } ?> -->
-                
                                       <?php if (!empty($_SESSION['permisos'][9]['r'])) { ?>
                                           <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/plan_planeacionv1" class="nav-link" data-key="t-two-column">Plan de producción</a>
+                                              <a href="<?= base_url(); ?>/plan_planeacion" class="nav-link" data-key="t-two-column">Plan de producción</a>
 
                                           </li>
                                       <?php } ?>
-
-                                      
                                       <!-- <?php if (!empty($_SESSION['permisos'][10]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/pordenes" class="nav-link" data-key="t-hovered">Ordenes</a>
                                           </li>
                                       <?php } ?> -->
-
-                                                            <?php if (!empty($_SESSION['permisos'][8]['r'])) { ?>
-                                          <li class="nav-item">
-                                              <a href="<?= base_url(); ?>/pla_productost" class="nav-link" data-key="t-detached">Productos Terminados - PT</a>
-                                          </li>
-                                      <?php } ?> 
 
                                       <?php if (!empty($_SESSION['permisos'][11]['r'])) { ?>
 
@@ -189,10 +185,10 @@
                                           </li>
                                       <?php } ?>
 
-                                      <?php if (!empty($_SESSION['permisos'][19]['r']) || !empty($_SESSION['permisos'][23]['r']) || !empty($_SESSION['permisos'][21]['r']) || !empty($_SESSION['permisos'][16]['r'])  || !empty($_SESSION['permisos'][70]['r'])  || !empty($_SESSION['permisos'][17]['r'])) { ?>
+                                      <?php if (!empty($_SESSION['permisos'][19]['r']) || !empty($_SESSION['permisos'][23]['r']) || !empty($_SESSION['permisos'][21]['r']) || !empty($_SESSION['permisos'][16]['r'])  || !empty($_SESSION['permisos'][70]['r'])  || !empty($_SESSION['permisos'][17]['r']) || !empty($_SESSION['permisos'][40]['r']) || !empty($_SESSION['permisos'][63]['r']) ) { ?>
                                           <li class="nav-item">
                                               <a href="javascript:void(0)" class="nav-link flex-grow-1" data-key="t-detached" data-bs-toggle="collapse" data-bs-target="#subCatalogos" aria-expanded="false" aria-controls="subCatalogos">
-                                                  Catalogos
+                                                  Catálogos
                                               </a>
                                               <div class="collapse ms-3" id="subCatalogos">
                                                   <ul class="nav nav-sm flex-column">
@@ -208,6 +204,12 @@
                                                           </li>
                                                       <?php } ?>
 
+                                                      <?php if (!empty($_SESSION['permisos'][63]['r'])) { ?>
+                                                          <li class="nav-item">
+                                                              <a href="<?= base_url(); ?>/inv_descuentos" class="nav-link" data-key="t-detached">Descuentos</a>
+                                                          </li>
+                                                      <?php } ?>
+
                                                       <?php if (!empty($_SESSION['permisos'][21]['r'])) { ?>
                                                           <li class="nav-item">
                                                               <a href="<?= base_url(); ?>/inv_esquemaimpuestos" class="nav-link" data-key="t-detached">Impuestos</a>
@@ -217,6 +219,12 @@
                                                       <?php if (!empty($_SESSION['permisos'][16]['r'])) { ?>
                                                           <li class="nav-item">
                                                               <a href="<?= base_url(); ?>/inv_lineasdproducto" class="nav-link" data-key="t-detached">Líneas de producto</a>
+                                                          </li>
+                                                      <?php } ?>
+
+                                                      <?php if (!empty($_SESSION['permisos'][40]['r'])) { ?>
+                                                          <li class="nav-item">
+                                                              <a href="<?= base_url(); ?>/cli_marcas" class="nav-link" data-key="t-detached">Marcas</a>
                                                           </li>
                                                       <?php } ?>
 
@@ -331,11 +339,11 @@
                                           </li>
                                       <?php } ?>
 
-                                      <?php if (!empty($_SESSION['permisos'][72]['r'])) { ?>
+                                      <?php /* if (!empty($_SESSION['permisos'][72]['r'])) { ?>
                                           <li class="nav-item">
                                               <a href="<?= base_url(); ?>/inv_reportes" class="nav-link" data-key="t-detached">Reportes</a>
                                           </li>
-                                      <?php } ?>
+                                      <?php } */?>
 
                                       <?php if (!empty($_SESSION['permisos'][66]['r'])) { ?>
                                           <li class="nav-item">
@@ -404,97 +412,45 @@
                           </li>
                       <?php } ?>
 
-                      <!-- ==============================================================================
-                        CATEGORÍA 1: COMPRAS (OPERATIVO)
-                        ============================================================================== -->
-                      <li class="nav-item" data-permiso="COM_COMPRAS|r">
-                          <a class="nav-link menu-link" href="#sidebarCompras" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarCompras">
-                              <i class="ri-shopping-cart-2-line icon-dual"></i> <span data-key="t-layouts">Compras</span>
-                          </a>
-                          <div class="collapse menu-dropdown" id="sidebarCompras">
-                              <ul class="nav nav-sm flex-column">
-
-                                  <!-- Requisiciones (Bandeja actual) -->
-                                  <li class="nav-item" data-permiso="COM_REQUISICIONES|r">
-                                      <a href="<?= base_url(); ?>/com_requisicion" class="nav-link" data-key="t-reqs">
-                                          <i class="ri-file-list-3-line align-bottom me-1"></i> Requisiciones
-                                          <span class="badge badge-pill bg-danger" data-key="t-hot">Hot</span>
-                                      </a>
-                                  </li>
-
-                                  <!-- Cotizaciones -->
-                                  <li class="nav-item" data-permiso="COM_NEGOCIACIONES|r">
-                                      <a href="<?= base_url(); ?>/com_sourcing" class="nav-link" data-key="t-reqs">
-                                          <i class="ri-file-list-3-line align-bottom me-1"></i> Negociaciones
-                                      </a>
-                                  </li>
-
-                                  <!-- Órdenes de Compra -->
-                                  <li class="nav-item" data-permiso="COM_ORDENES|r">
-                                      <a href="<?= base_url(); ?>/com_orden" class="nav-link" data-key="t-ordenes">
-                                          <i class="ri-shopping-bag-3-line align-bottom me-1"></i> Órdenes de Compra
-                                      </a>
-                                  </li>
-
-                              </ul>
-                          </div>
-                      </li>
-
-                      <!-- ==============================================================================
-                        CATEGORÍA 2: PROVEEDORES (CATÁLOGOS / ONBOARDING)
-                        ============================================================================== -->
-                      <li class="nav-item" data-permiso="PRV_PROVEEDORES|r">
-                          <a class="nav-link menu-link" href="#sidebarProveedores" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarProveedores">
-                              <i class="ri-building-line icon-dual"></i> <span>Proveedores</span>
-                          </a>
-                          <div class="collapse menu-dropdown" id="sidebarProveedores">
-                              <ul class="nav nav-sm flex-column">
-
-                                  <!-- Directorio de Proveedores (Acceso a la bandeja maestra con sus pestañas) -->
-                                  <li class="nav-item" data-permiso="PRV_PROVEEDORES|r">
-                                      <a href="<?= base_url(); ?>/prv_proveedor" class="nav-link">
-                                          <i class="ri-truck-line align-bottom me-1"></i> Directorio de Proveedores
-                                      </a>
-                                  </li>
-
-                                  <!-- Reporte Ejecutivo de Proveedores -->
-                                  <li class="nav-item" data-permiso="PRV_PROVEEDORES|r">
-                                      <a href="<?= base_url(); ?>/prv_proveedor/reporte" class="nav-link">
-                                          <i class="ri-shield-check-line align-bottom me-1"></i> Reporte Análitico de Onboarding
-                                      </a>
-                                  </li>
-
-                              </ul>
-                          </div>
-                      </li>
-
-                      <!-- ==============================================================================
-                        CATEGORÍA 3: CUENTAS POR PAGAR - CXP (FINANZAS)
-                        ============================================================================== -->
-                      <li class="nav-item" data-permiso="CXP_FACTURAS|r">
-                          <a class="nav-link menu-link" href="#sidebarCxP" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarCxP">
-                              <i class="ri-bank-card-2-line icon-dual"></i> <span>Cuentas por Pagar</span>
-                          </a>
-                          <div class="collapse menu-dropdown" id="sidebarCxP">
-                              <ul class="nav nav-sm flex-column">
-
-                                  <!-- Bandeja de Facturas (Conciliación) -->
-                                  <li class="nav-item" data-permiso="CXP_FACTURAS|r">
-                                      <a href="<?= base_url(); ?>/accountspayableinvoice/index" class="nav-link">
-                                          <i class="ri-calculator-line align-bottom me-1"></i> Bandeja de Facturas
-                                      </a>
-                                  </li>
-
-                                  <!-- Programación de Pagos (Dispersión #153) -->
-                                  <li class="nav-item" data-permiso="CXP_PAGOS|r">
-                                      <a href="<?= base_url(); ?>/accountspayablepayment/index" class="nav-link">
-                                          <i class="ri-refund-2-line align-bottom me-1"></i> Programación de Pagos
-                                      </a>
-                                  </li>
-
-                              </ul>
-                          </div>
-                      </li>
+                      <?php if (hasPermissions(COM_COMPRAS, 'r') || hasPermissions(COM_REQUISICIONES, 'r') || hasPermissions(PRV_PROVEEDORES, 'r')): ?>
+                          <li class="nav-item">
+                              <a class="nav-link menu-link" href="#sidebarCompras" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarCompras">
+                                  <i class="ri-shopping-cart-2-line icon-dual"></i> <span data-key="t-layouts">Compras</span>
+                              </a>
+                              <div class="collapse menu-dropdown" id="sidebarCompras">
+                                  <ul class="nav nav-sm flex-column">
+                                      <?php if (hasPermissions(COM_REQUISICIONES, 'r')): ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/com_requisicion" class="nav-link" data-key="t-reqs">
+                                                  <i class="ri-file-list-3-line align-bottom me-1"></i> Requisiciones
+                                                  <span class="badge badge-pill bg-danger" data-key="t-hot">Hot</span>
+                                              </a>
+                                          </li>
+                                      <?php endif; ?>
+                                      <?php if (hasPermissions(COM_COMPRAS, 'r')): ?>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/com_orden" class="nav-link" data-key="t-ordenes">
+                                                  <i class="ri-shopping-bag-3-line align-bottom me-1"></i> Órdenes de Compra
+                                              </a>
+                                          </li>
+                                      <?php endif; ?>
+                                      <?php if (hasPermissions(PRV_PROVEEDORES, 'r')): ?>
+                                          <li class="nav-item my-2">
+                                              <hr class="text-muted opacity-25 my-1" style="margin-left: 20px; margin-right: 20px;">
+                                              <span class="d-block text-muted fs-10 fw-bold text-uppercase mt-2" style="padding-left: 35px; letter-spacing: 0.8px;">
+                                                  Catálogos
+                                              </span>
+                                          </li>
+                                          <li class="nav-item">
+                                              <a href="<?= base_url(); ?>/prv_proveedor" class="nav-link" data-key="t-proveedores">
+                                                  <i class="ri-truck-line align-bottom me-1"></i> Proveedores
+                                              </a>
+                                          </li>
+                                      <?php endif; ?>
+                                  </ul>
+                              </div>
+                          </li>
+                      <?php endif; ?>
 
                       <?php if (!empty($_SESSION['permisos'][39]['r']) || !empty($_SESSION['permisos'][40]['r'])) { ?>
                           <li class="nav-item">
@@ -505,11 +461,6 @@
                               </a>
                               <div class="collapse menu-dropdown" id="sidebarMateriales">
                                   <ul class="nav nav-sm flex-column">
-                                      <?php if (!empty($_SESSION['permisos'][40]['r'])) { ?>
-                                          <li class="nav-itemQ">
-                                              <a href="<?= base_url(); ?>/cli_marcas" class="nav-link">Marcas</a>
-                                          </li>
-                                      <?php } ?>
 
                                       <?php if (!empty($_SESSION['permisos'][39]['r'])) { ?>
                                           <li class="nav-item">
