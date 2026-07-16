@@ -17,12 +17,20 @@ class PromoteToCatalogRequest extends Requests {
             $this->addError('cve_articulo', 'Debe asignar un SKU / Clave de artículo oficial.');
         }
 
+        if (!empty($this->data['cve_articulo']) && strlen($this->data['cve_articulo']) > 20) {
+            $this->addError('cve_articulo', 'No debe ser mayor a 20 caracteres.');
+        }
+
         if (empty($this->data['lineaproductoid'])) {
             $this->addError('lineaproductoid', 'Debe seleccionar una línea de producto del catálogo.');
         }
 
         if (empty($this->data['tipo_elemento'])) {
             $this->addError('tipo_elemento', 'Especifique si es Producto o Servicio.');
+        }
+
+        if (empty($this->data['descripcion_final'])) {
+            $this->addError('descripcion_final', 'Especifique la descripción del Producto o Servicio.');
         }
     }
 }

@@ -283,16 +283,31 @@ const Sys_Core = {
              * @param {string} id - ID del elemento HTML.
              * @param {number} value - Valor final.
              */
-            animateCounter: function(id, value) {
+            animateCounter: function(id, value, isCurrency = false) {
                 const $el = $(`#${id}`);
-                const startValue = parseInt($el.text()) || 0;
-                if (startValue === value) return;
+                
+                // Convertimos el texto actual a número (limpiando $ y comas si existen)
+                const startValue = Sys_Core.Format.toNumber($el.text());
 
                 $({ countNum: startValue }).animate({ countNum: value }, {
                     duration: 1000,
                     easing: 'swing',
-                    step: function() { $el.text(Math.ceil(this.countNum)); },
-                    complete: function() { $el.text(this.countNum); }
+                    step: function() {
+                        // Decidimos el formato en cada frame de la animación
+                        let displayVal = isCurrency 
+                            ? Sys_Core.Format.toCurrency(this.countNum) 
+                            : Math.ceil(this.countNum);
+                            
+                        $el.text(displayVal);
+                    },
+                    complete: function() {
+                        // Aseguramos el valor final exacto
+                        let finalVal = isCurrency 
+                            ? Sys_Core.Format.toCurrency(value) 
+                            : value;
+                            
+                        $el.text(finalVal);
+                    }
                 });
             },
 

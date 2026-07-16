@@ -16,11 +16,35 @@ class SourcingController
     }
 
     /**
+     * Obtiene la lista global de eventos de negociación para la bandeja principal.
+     * GET /api/v1/sourcing/events
+     */
+    public function index(): string 
+    {
+        $response = $this->sourcingService->getActiveEvents($this->request['auth_user']);
+        return $this->apiResponse($response);
+    }
+
+    /**
+     * Recupera el espacio de trabajo completo de una negociación (Header + Items + Comparativa Inicial).
+     * GET /api/v1/sourcing/events/{id}/workspace
+     * 
+     * @param int $id ID del evento de sourcing.
+     */
+    public function showWorkspace(int $id): string
+    {
+        // El SourcingService orquestará la unión de modelos
+        $response = $this->sourcingService->getEventWorkspace($id, $this->request['auth_user']);
+        
+        return $this->apiResponse($response);
+    }
+
+    /**
      * Obtiene la ficha técnica y todas las cotizaciones de una partida.
      * GET /api/v1/sourcing/comparison/{id_partida}
      */
     public function getComparison(int $idPartida): string {
-        $response = $this->sourcingService->getComparisonData($idPartida, $this->request['auth_user']);
+        $response = $this->sourcingService->getComparisonData($idPartida);
         return $this->apiResponse($response);
     }
 
@@ -61,6 +85,28 @@ class SourcingController
 
     public function deleteQuotation(int $id): string {
         $response = $this->sourcingService->deleteQuotation($id, $this->request['auth_user']);
+        return $this->apiResponse($response);
+    }
+
+    /**
+     * Obtiene las partidas de requisiciones aprobadas pendientes de asignar a un evento.
+     * GET /api/v1/sourcing/pending-items
+     */
+    public function getPendingItems(): string
+    {
+        // Se asume que el Service filtra por plantaid del usuario
+        $response = $this->sourcingService->getPendingSourcingItems($this->request['auth_user']);
+        return $this->apiResponse($response);
+    }
+
+    /**
+     * Crea un nuevo evento de negociación y agrupa las partidas seleccionadas.
+     * POST /api/v1/sourcing/events
+     */
+    public function createEvent(): string
+    {
+        // El payload llega sanitizado desde el Router/Middleware al array $request
+        $response = $this->sourcingService->createEvent($this->request['auth_user']);
         return $this->apiResponse($response);
     }
 }

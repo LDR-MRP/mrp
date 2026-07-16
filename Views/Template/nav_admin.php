@@ -423,9 +423,9 @@
                                   </li>
 
                                   <!-- Cotizaciones -->
-                                  <li class="nav-item" data-permiso="COM_COTIZACIONES|r">
+                                  <li class="nav-item" data-permiso="COM_NEGOCIACIONES|r">
                                       <a href="<?= base_url(); ?>/com_sourcing" class="nav-link" data-key="t-reqs">
-                                          <i class="ri-file-list-3-line align-bottom me-1"></i> Cotizaciones
+                                          <i class="ri-file-list-3-line align-bottom me-1"></i> Negociaciones
                                       </a>
                                   </li>
 

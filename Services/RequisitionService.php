@@ -195,7 +195,8 @@ class RequisitionService
                         'inventarioid'             => $invId, // <-- Ahora enviamos NULL real o un entero
                         'cantidad'                 => (float)($item['cantidad'] ?? 0),
                         'precio_unitario_estimado' => (float)($item['precio_unitario_estimado'] ?? 0),
-                        'notas'                    => $item['notas'] ?? ''
+                        'notas'                    => $item['notas'] ?? '',
+                        'user_id'                  => $userContext['id']
                     ];
                     
                     // 1. Insertamos la partida y obtenemos su ID
@@ -207,6 +208,7 @@ class RequisitionService
                         $specData = $item['specs'];
                         $specData['requisicionid'] = $requisitionId;
                         $specData['idrequisicionarticulo'] = $idReqArticulo;
+                        $specData['user_id'] = $userContext['id'];
 
                         // Llamamos al método que ya procesa el guardado en 'com_requisicion_items_nuevos'
                         // Nota: Se debe asegurar que este método no cierre la transacción
@@ -273,6 +275,9 @@ class RequisitionService
         $request = new \Requests\Requisition\StoreRequisitionRequest();
 
         try {
+            $userId = (int)$userContext['id'];
+            $userPlantaId = (int)$userContext['plantaid'];
+            $userRolId = (int)$userContext['rolid'];
             $request->validate();
             $payload = $request->all();
             $this->db->beginTransaction();
@@ -287,13 +292,13 @@ class RequisitionService
                 throw new \Exception("Compliance Error: No se puede editar una requisición que ya no es un borrador.", 403);
             }
 
-            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
+            $role = RoleEnum::tryFrom($userRolId);
             $scope = $role?->getScope() ?? 'propio';
             
             // Aplicación de la matriz de visibilidad
             $isAllowed = match($scope) {
-                'propio' => (int)$existingReq['usuarioid'] === (int)$userContext['id'],
-                'planta'  => (int)$existingReq['plantaid'] === (int)$userContext['plantaid'],
+                'propio' => (int)$existingReq['usuarioid'] === $userId,
+                'planta'  => (int)$existingReq['plantaid'] === $userPlantaId,
                 'total'  => true,
                 default  => false
             };
@@ -363,6 +368,7 @@ class RequisitionService
                         $specData['precio_objetivo'] = $itemData['precio_unitario_estimado'];
                         $specData['requisicionid'] = $requisitionId;
                         $specData['idrequisicionarticulo'] = $currentIdArt;
+                        $specData['user_id'] = $userId;
                         $this->persistSpecialSpecs($specData);
                     }
                     // ----------------------------------------
@@ -378,7 +384,7 @@ class RequisitionService
 
             // Log de auditoría
             $auditMsg = $isSubmit ? 'Editada y enviada a aprobación.' : 'Borrador actualizado.';
-            $this->requisicionModel->logAudit($requisitionId, AuditAction::UPDATED, $auditMsg, $userContext['id']);
+            $this->requisicionModel->logAudit($requisitionId, AuditAction::UPDATED, $auditMsg, $userId);
 
             $this->db->commit();
 
@@ -393,7 +399,7 @@ class RequisitionService
             return ServiceResponse::validation(errors: $i->getMessage());
         } catch (\PDOException $p) {
             if ($this->db->inTransaction()) $this->db->rollBack();
-            $this->logMessage($p, \LogLevel::CRITICAL, ['action' => 'updateRequisition', 'id_user' => $userContext['id']]);
+            $this->logMessage($p, \LogLevel::CRITICAL, ['action' => 'updateRequisition', 'id_user' => $userId]);
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();

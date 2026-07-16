@@ -99,32 +99,31 @@ Route::delete('api/v1/requisitions/{id}', [RequisitionController::class, 'destro
 Route::get('api/v1/requisitions/{id}/pdf', [RequisitionController::class, 'generatePdf'])->middleware([AuthMiddleware::class]);
 // Obtener las partidas pendientes de compra de una requisición
 Route::get('api/v1/requisitions/{id}/pending-items', [RequisitionController::class, 'getPendingItems'])->middleware([AuthMiddleware::class]);
+// Guarda o actualiza la ficha técnica y precio objetivo de una partida que no existe en el catálogo maestro.
+Route::post('api/v1/requisitions/special-specs', [RequisitionController::class, 'storeSpecialSpecs'])->middleware([AuthMiddleware::class]);
 
 /**
  * ==============================================================================
  * RUTAS DE SOURCING
  * ==============================================================================
  */
-// Guarda o actualiza la ficha técnica y precio objetivo de una partida que no existe en el catálogo maestro.
-Route::post('api/v1/requisitions/special-specs', [RequisitionController::class, 'storeSpecialSpecs'])->middleware([AuthMiddleware::class]);
+// Lista principal de Negociaciones (Eventos)
+Route::get('api/v1/sourcing/events', [SourcingController::class, 'index'])->middleware([AuthMiddleware::class]);
+// Listar partidas aprobadas que no tienen evento (Para el Hub Inbox)
+Route::get('api/v1/sourcing/pending-items', [SourcingController::class, 'getPendingItems'])->middleware([AuthMiddleware::class]);
+// Crear evento
+Route::post('api/v1/sourcing/events', [SourcingController::class, 'createEvent'])->middleware([AuthMiddleware::class]);
+// Obtener el Workspace completo del evento (Para la carga inicial de la pantalla de detalle)
+Route::get('api/v1/sourcing/events/{id}/workspace', [SourcingController::class, 'showWorkspace'])->middleware([AuthMiddleware::class]);
 // Obtener tabla comparativa
 Route::get('api/v1/sourcing/comparison/{id}', [SourcingController::class, 'getComparison'])->middleware([AuthMiddleware::class]);
 // Guardar nueva cotización (Inyecta archivo PDF)
 Route::post('api/v1/sourcing/quotations', [SourcingController::class, 'addQuotation'])->middleware([AuthMiddleware::class]);
-/**
- * Marca una cotización específica como la ganadora para una partida de sourcing.
- * Actualiza automáticamente el precio negociado en la requisición original.
- */
+// Marca una cotización específica como la ganadora para una partida de sourcing. Actualiza automáticamente el precio negociado en la requisición original.
 Route::post('api/v1/sourcing/quotations/{id}/select-winner', [SourcingController::class, 'selectWinner'])->middleware([AuthMiddleware::class]);
-/**
- * Realiza el borrado lógico de una cotización de sourcing.
- * DELETE /api/v1/sourcing/quotations/{id}
- */
+// Realiza el borrado lógico de una cotización de sourcing. DELETE /api/v1/sourcing/quotations/{id}
 Route::delete('api/v1/sourcing/quotations/{id}', [SourcingController::class, 'deleteQuotation'])->middleware([AuthMiddleware::class]);
-/**
- * Convierte una partida de sourcing en un artículo oficial del catálogo maestro.
- * Requiere que previamente se haya seleccionado una cotización ganadora.
- */
+// Convierte una partida de sourcing en un artículo oficial del catálogo maestro. Requiere que previamente se haya seleccionado una cotización ganadora.
 Route::post('api/v1/sourcing/promote-to-catalog', [SourcingController::class, 'promoteToCatalog'])->middleware([AuthMiddleware::class]);
 
 /**

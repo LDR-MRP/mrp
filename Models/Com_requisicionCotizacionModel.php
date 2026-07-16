@@ -30,6 +30,7 @@ class Com_requisicionCotizacionModel extends Mysql
                     c.idcotizacion,
                     c.idrequisicionarticulo,
                     c.id_proveedor,
+                    c.tipo_fuente,
                     -- RESOLUCIÓN DE NOMBRE: Prioriza catálogo, de lo contrario usa el prospecto
                     COALESCE(p.razon_social, c.nombre_prospecto) as razon_social,
                     -- ESTATUS DE CUMPLIMIENTO: Si es prospecto, marcamos como Pendiente Onboarding
@@ -38,6 +39,8 @@ class Com_requisicionCotizacionModel extends Mysql
                     c.specs_particulares_proveedor,
                     c.moneda,
                     c.tipo_cambio,
+                    c.iva_inc,
+                    c.precio_base_mxn,
                     c.precio_unitario,
                     -- NUEVOS CAMPOS DE INTELIGENCIA RETAIL
                     c.pago_inmediato,
@@ -45,6 +48,7 @@ class Com_requisicionCotizacionModel extends Mysql
                     c.url_pdf_cotizacion,
                     c.url_foto_producto,
                     c.es_ganadora,
+                    c.adjudicado_por,
                     c.created_at,
                     -- CONTACTOS: Subconsultas optimizadas
                     (SELECT email FROM prv_det_contactos WHERE id_proveedor = p.id_proveedor LIMIT 1) as contacto_email,
@@ -83,18 +87,23 @@ class Com_requisicionCotizacionModel extends Mysql
     {
         $sql = "INSERT INTO com_requisicion_cotizaciones (
                     idrequisicionarticulo, 
+                    src_evento_sourcing_id,
                     id_proveedor, 
+                    tipo_fuente,
                     nombre_prospecto,
                     precio_unitario, 
                     moneda, 
-                    tipo_cambio, 
+                    tipo_cambio,
+                    iva_inc,
+                    precio_base_mxn,
                     url_pdf_cotizacion,
                     url_foto_producto,
                     comentarios_comprador,
                     specs_particulares_proveedor,
                     pago_inmediato,
-                    url_referencia
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    url_referencia,
+                    created_by
+                ) VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         /**
          * MAPEO SEGURO: 
@@ -103,18 +112,23 @@ class Com_requisicionCotizacionModel extends Mysql
          */
         $params = [
             (int)$data['idrequisicionarticulo'],
+            (int)$data['src_evento_sourcing_id'],
             // Si no hay id_proveedor, enviamos null (requiere que el DDL permita null en la FK)
             !empty($data['id_proveedor']) ? (int)$data['id_proveedor'] : null,
+            $data['tipo_fuente'],
             $data['nombre_prospecto'] ?? null,
             (float)$data['precio_unitario'],
             $data['moneda'] ?? 'MXN',
             (float)($data['tipo_cambio'] ?? 1.0),
+            $data['iva_inc'] ?? null,
+            $data['precio_base_mxn'] ?? null,
             $data['url_pdf_cotizacion'] ?? null,
             $data['url_foto_producto'] ?? null,
             $data['comentarios_comprador'] ?? null,
             $data['specs_particulares_proveedor'] ?? '',
             (int)($data['pago_inmediato'] ?? 0),
-            $data['url_referencia'] ?? null
+            $data['url_referencia'] ?? null,
+            $data['created_by'] ?? null
         ];
 
         return (int)$this->insert($sql, $params) ?? 0;
@@ -125,7 +139,7 @@ class Com_requisicionCotizacionModel extends Mysql
      */
     public function resetWinnersByPartida(int $idReqArt): bool
     {
-        $sql = "UPDATE com_requisicion_cotizaciones SET es_ganadora = 0 WHERE idrequisicionarticulo = ?";
+        $sql = "UPDATE com_requisicion_cotizaciones SET es_ganadora = 0, estatus_cotizacion = 'BORRADOR' WHERE idrequisicionarticulo = ?";
         return $this->update($sql, [$idReqArt]);
     }
 
@@ -134,7 +148,7 @@ class Com_requisicionCotizacionModel extends Mysql
      */
     public function setWinner(int $idCotizacion): bool
     {
-        $sql = "UPDATE com_requisicion_cotizaciones SET es_ganadora = 1 WHERE idcotizacion = ?";
+        $sql = "UPDATE com_requisicion_cotizaciones SET es_ganadora = 1, estatus_cotizacion = 'GANADORA' WHERE idcotizacion = ?";
         return $this->update($sql, [$idCotizacion]);
     }
 
@@ -153,8 +167,8 @@ class Com_requisicionCotizacionModel extends Mysql
     public function getWinnerQuotation(int $idReqArt): ?array {
         $sql = "SELECT c.*, p.razon_social, rd.requisicionid 
                 FROM com_requisicion_cotizaciones c
-                INNER JOIN prv_cat_proveedores p ON c.id_proveedor = p.id_proveedor
-                INNER JOIN com_requisiciones_detalle rd ON c.idrequisicionarticulo = rd.idrequisicionarticulo
+                LEFT JOIN prv_cat_proveedores p ON c.id_proveedor = p.id_proveedor
+                LEFT JOIN com_requisiciones_detalle rd ON c.idrequisicionarticulo = rd.idrequisicionarticulo
                 WHERE c.idrequisicionarticulo = ? AND c.es_ganadora = 1 LIMIT 1";
         return $this->select($sql, [$idReqArt]) ?: null;
     }
@@ -188,5 +202,30 @@ class Com_requisicionCotizacionModel extends Mysql
                 SET deleted_at = NOW() 
                 WHERE idcotizacion = ?";
         return $this->update($sql, [$id]);
+    }
+
+    /**
+     * Actualiza el vínculo de una cotización con un ID de proveedor oficial.
+     * Se usa cuando un prospecto es pre-registrado en el catálogo.
+     * 
+     * @param int $idCotizacion ID de la cotización.
+     * @param int $idProveedor  ID del proveedor generado en el catálogo.
+     * @return bool
+     */
+    public function updateProviderLink(int $idCotizacion, int $idProveedor): bool
+    {
+        $query = "UPDATE com_requisicion_cotizaciones 
+                SET id_proveedor = ?, 
+                    updated_at = ? 
+                WHERE idcotizacion = ?";
+
+        $params = [
+            $idProveedor,
+            date('Y-m-d H:i:s'),
+            $idCotizacion
+        ];
+
+        // Usamos updateAffected para confirmar que el registro existía y cambió
+        return $this->updateAffected($query, $params) > 0;
     }
 }

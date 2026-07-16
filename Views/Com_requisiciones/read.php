@@ -1,46 +1,55 @@
 <?php headerAdmin($data); ?>
 
-<div class="main-content">
+<div class="main-content bg-light">
     <div class="page-content">
         <div class="container-fluid">
             <section id="view-read-requisicion">
-                <!-- 1. BREADCRUMBS -->
-                <div class="row align-items-center mb-4">
-                    <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-transparent">
-                            <div class="page-title-right">
-                                <ol class="breadcrumb m-0 fs-13">
-                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
-                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/com_requisicion">Requisiciones</a></li>
-                                    <li class="breadcrumb-item active text-primary">Ver Solicitud</li>
-                                </ol>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Título Principal y Estatus -->
-                <div class="row mb-3">
-                    <div class="col-12">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div class="d-flex align-items-center">
-                                <div class="avatar-md me-3">
-                                    <span class="avatar-title bg-primary text-white rounded-circle fs-3 shadow-sm">
-                                        <i class="ri-file-list-3-line"></i>
-                                    </span>
-                                </div>
-                                <div>
-                                    <h4 class="mb-1 fw-bold ls-05 d-flex align-items-center">
-                                        Solicitud de Compra #<span id="lbl-idrequisicion" class="ms-1">...</span>
-                                        <span id="lbl-estatus" class="ms-3 badge bg-light text-muted fs-12 fw-normal">Cargando...</span>
-                                    </h4>
-                                    <p class="text-muted mb-0 fs-13">Expediente de requisición de solo lectura.</p>
+                <!-- HEADER FUSIONADO (Regreso al Dashboard + Contexto) -->
+                <div class="card shadow-sm border-0 mb-4" style="border-radius: 4px;">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center">
+
+                            <!-- SECCIÓN IZQUIERDA: IDENTIDAD Y NAVEGACIÓN -->
+                            <div class="col-md-7">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-md flex-shrink-0 me-3">
+                                        <div class="avatar-title rounded-2 bg-dark-subtle text-muted fs-1 border border-light-subtle shadow-sm">
+                                            <i class="ri-file-list-3-line"></i>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <nav aria-label="breadcrumb">
+                                            <ol class="breadcrumb breadcrumb-dot mb-1 fs-12 fw-medium">
+                                                <li class="breadcrumb-item"><a href="javascript: void(0);" onclick="window.history.back();" class="text-muted">Requisiciones</a></li>
+                                                <li class="breadcrumb-item active text-primary">Detalle de Requisición</li>
+                                            </ol>
+                                        </nav>
+                                        <h3 class="mb-0 fw-bold text-uppercase ls-1 text-body">
+                                            Solicitud de Compra #<span id="lbl-idrequisicion" class="ms-1">...</span>
+                                        </h3>
+                                        <p class="text-muted mb-0 fs-13 mt-1 fw-medium opacity-75">Expediente de requisición de solo lectura.</p>
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <div class="text-end">
-                                <span class="text-uppercase fs-11 fw-bold text-muted d-block mb-1">Prioridad</span>
-                                <span id="lbl-prioridad" class="badge bg-light fs-12 px-3 py-1 shadow-sm">...</span>
+
+                            <!-- SECCIÓN DERECHA: INDICADORES DE ESTADO (KPI STACK) -->
+                            <div class="col-md-5 mt-3 mt-md-0">
+                                <div class="d-flex justify-content-md-end align-items-center">  
+                                    
+                                    <!-- 1. PRIORIDAD (Semántica de Urgencia) -->
+                                    <div class="text-md-center border-end pe-3 border-light-subtle">
+                                        <small class="text-muted text-uppercase fw-bold fs-10 ls-1 d-block mb-1">Prioridad</small>
+                                        <span id="lbl-prioridad">ALTA</span>
+                                    </div>
+
+                                    <!-- 2. ESTATUS (Semántica de Fase) -->
+                                    <div class="text-md-center ps-3">
+                                        <small class="text-muted text-uppercase fw-bold fs-10 ls-1 d-block mb-1">Estado</small>
+                                        <span id="lbl-estatus">Pendiente</span>
+                                    </div>
+
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -220,183 +229,6 @@
             </div>
         </div>
     </footer>
-
-    <div class="modal fade" id="modalSourcing" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-fullscreen modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
-                <div class="modal-header bg-soft-primary p-3">
-                    <h5 class="modal-title text-primary fw-bold fs-15"><i class="ri-scales-3-line me-2"></i>Cuadro Comparativo de Sourcing</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-0">
-                    <!-- Resumen de Meta (Directiva Tito) -->
-                    <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1 fw-bold text-dark" id="sourcing-item-name">Cargando artículo...</h6>
-                            <p class="mb-0 text-muted fs-12" id="sourcing-item-specs">Ficha técnica del requerimiento.</p>
-                        </div>
-                        <div class="text-end">
-                            <span class="text-uppercase fs-10 fw-bold text-muted d-block">Precio Objetivo</span>
-                            <h4 class="mb-0 fw-bold text-primary" id="sourcing-target-price">$0.00</h4>
-                        </div>
-                    </div>
-
-                    <div class="row g-0">
-                        <!-- Izquierda: Formulario de Nueva Cotización -->
-                        <div class="col-lg-4 border-end p-4">
-                            <h6 class="fw-bold mb-3 text-uppercase fs-11 ls-1">Registrar Cotización</h6>
-                            <form id="formNuevaCotizacion" enctype="multipart/form-data">
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <label class="form-label fs-11 fw-bold mb-0">Proveedor Potencial</label>
-                                        <div class="form-check form-switch form-switch-sm">
-                                            <input class="form-check-input" type="checkbox" id="chk-es-prospecto">
-                                            <label class="form-check-label fs-10 text-primary fw-bold" for="chk-es-prospecto">¿ES PROSPECTO / RETAIL?</label>
-                                        </div>
-                                    </div>
-                                    <!-- Select estándar -->
-                                    <div id="container-select-proveedor">
-                                        <select name="id_proveedor" class="form-select form-select-sm" required></select>
-                                    </div>
-                                    <!-- Input para prospectos (Oculto por defecto) -->
-                                    <div id="container-input-prospecto" class="d-none">
-                                        <input type="text" name="nombre_prospecto" class="form-control form-control-sm border-primary" placeholder="Nombre de la Tienda o Proveedor Nuevo">
-                                    </div>
-                                </div>
-                                <!-- Sección de Inteligencia de Pago (Nueva) -->
-                                <div class="p-2 mb-3 rounded bg-soft-info border border-info-subtle">
-                                    <div class="form-check form-switch mb-2">
-                                        <input class="form-check-input" type="checkbox" name="pago_inmediato" id="chk-pago-inmediato-cot">
-                                        <label class="form-check-label fs-11 fw-bold text-info" for="chk-pago-inmediato-cot">
-                                            <i class="ri-flashlight-line me-1"></i> REQUIERE PAGO INMEDIATO (SPOT BUY)
-                                        </label>
-                                    </div>
-                                    <div id="section-url-cotizacion" class="d-none">
-                                        <input type="url" name="url_referencia" class="form-control form-control-sm" placeholder="https://amazon.com.mx/...">
-                                        <small class="text-muted fs-10">URL obligatoria para compras en línea o retail.</small>
-                                    </div>
-                                </div>
-                                <!-- Fila de Precio y Moneda actualizada -->
-                                <div class="row g-2 mb-3">
-                                    <div class="col-4">
-                                        <label class="form-label fs-11 fw-bold">Precio Unit.</label>
-                                        <input type="number" name="precio_unitario" class="form-control form-control-sm" step="0.01" required>
-                                    </div>
-                                    <div class="col-4">
-                                        <label class="form-label fs-11 fw-bold">Moneda</label>
-                                        <select name="moneda" id="sel-moneda-cotizacion" class="form-select form-select-sm" required>
-                                            <!-- Dinámico -->
-                                        </select>
-                                    </div>
-                                    <div class="col-4">
-                                        <label class="form-label fs-11 fw-bold">T. Cambio</label>
-                                        <input type="number" name="tipo_cambio" id="txt-tc-cotizacion" class="form-control form-control-sm bg-light" value="1.000000" step="0.000001" readonly>
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label fs-11 fw-bold text-uppercase">Evidencia (PDF de Cotización) <span class="text-danger">*</span></label>
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-light"><i class="ri-file-pdf-line"></i></span>
-                                        <input type="file" name="cotizacion_pdf" class="form-control" accept=".pdf" required>
-                                    </div>
-                                </div>
-                                <!-- NEW FIELD: Product Photo -->
-                                <div class="mb-3">
-                                    <label class="form-label fs-11 fw-bold text-uppercase">Fotografía del Producto / Referencia</label>
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-light"><i class="ri-image-add-line"></i></span>
-                                        <input type="file" name="foto_producto" class="form-control" accept="image/*">
-                                    </div>
-                                    <small class="text-muted fs-10">Opcional. Formatos permitidos: JPG, PNG.</small>
-                                </div>
-                                <!-- NEW FIELD: Particular Specs -->
-                                <div class="mb-3">
-                                    <label class="form-label fs-11 fw-bold text-uppercase">Especificaciones Particulares del Proveedor <span class="text-danger">*</span></label>
-                                    <textarea name="specs_particulares_proveedor" class="form-control fs-12 bg-light-subtle" rows="3" 
-                                            placeholder="Describa aquí si el proveedor ofrece una alternativa o cambios técnicos..." required></textarea>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label fs-11 fw-bold text-uppercase">Notas Internas (Comprador)</label>
-                                    <textarea name="comentarios_comprador" class="form-control fs-12" rows="2" 
-                                            placeholder="Notas para el equipo de finanzas..."></textarea>
-                                </div>
-
-                                <button type="submit" class="btn btn-primary btn-sm w-100 shadow-sm fw-bold">
-                                    <i class="ri-add-line align-middle"></i> Agregar al Cuadro
-                                </button>
-                            </form>
-                        </div>
-
-                        <!-- Derecha: Tabla Comparativa -->
-                        <div class="col-lg-8 p-4 bg-soft-light">
-                            <h6 class="fw-bold mb-3 text-uppercase fs-11 ls-1">Análisis de Propuestas</h6>
-                            <div class="table-responsive">
-                                <!-- Tabla Comparativa con columna T.C. -->
-                                <table class="table table-nowrap align-middle mb-0" id="tblComparativa">
-                                    <thead class="bg-white">
-                                        <tr>
-                                            <th>Proveedor / Compliance</th>
-                                            <th class="text-center">T.C.</th> <!-- NUEVA COLUMNA -->
-                                            <th class="text-end">Precio MXN</th>
-                                            <th class="text-center">Ahorro / Déficit</th>
-                                            <th class="text-center">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="modalPromoverCatalog" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
-                <div class="modal-header bg-soft-success p-3">
-                    <h5 class="modal-title text-success fw-bold fs-15"><i class="ri-price-tag-3-line me-2"></i>Alta en Catálogo Maestro</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <form id="formPromoverCatalog">
-                        <input type="hidden" name="idrequisicionarticulo">
-                        <div class="row g-3">
-                            <div class="col-12">
-                                <label class="form-label fs-11 fw-bold text-uppercase">SKU / Clave Oficial <span class="text-danger">*</span></label>
-                                <input type="text" name="cve_articulo" class="form-control fw-bold text-primary" placeholder="Ej: LLAN-RAD-001" required>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="form-label fs-11 fw-bold text-uppercase">Línea de Producto <span class="text-danger">*</span></label>
-                                <select name="lineaproductoid" class="form-select" required>
-                                    <!-- Llenar con catálogo -->
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fs-11 fw-bold text-uppercase">Tipo</label>
-                                <select name="tipo_elemento" class="form-select">
-                                    <option value="P">Producto</option>
-                                    <option value="S">Servicio</option>
-                                    <option value="H">Herramienta</option>
-                                    <option value="C">Componente</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fs-11 fw-bold text-uppercase">Unidad</label>
-                                <input type="text" name="unidad_salida" class="form-control" value="PIEZA" required>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer bg-light-subtle">
-                    <button type="button" id="btn-ejecutar-promocion" class="btn btn-success w-100 shadow-sm fw-bold">
-                        <i class="ri-check-line align-middle me-1"></i> Crear SKU y Vincular
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <?php footerAdmin($data); ?>

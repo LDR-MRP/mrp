@@ -526,4 +526,30 @@ class Prv_proveedorModel extends Mysql
 
         return $this->select_all($query, $params);
     }
+
+    /**
+     * Realiza un pre-registro minimalista de un proveedor prospecto.
+     * Permite obtener un ID válido para cumplir con la integridad referencial.
+     * 
+     * @param array $data ['razon_social', 'estatus_onboarding']
+     * @return int ID del nuevo proveedor generado.
+     */
+    public function insertLite(array $data): int
+    {
+        $query = "INSERT INTO prv_cat_proveedores (
+                    razon_social, 
+                    rfc, 
+                    estatus_onboarding, 
+                    created_at
+                ) VALUES (?, ?, ?, ?)";
+
+        $params = [
+            $data['razon_social'],
+            $data['rfc'], // RFC temporal para evitar errores de esquema
+            $data['estatus_onboarding'] ?? 'Prospecto',
+            date('Y-m-d H:i:s')
+        ];
+
+        return (int)$this->insert($query, $params);
+    }
 }

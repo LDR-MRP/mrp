@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Requests\Requisition;
+namespace Requests\Sourcing;
 
 use Requests;
 
@@ -41,6 +41,16 @@ class StoreQuotationRequest extends Requests
         if ($precio <= 0) {
             $this->addError('precio_unitario', 'El precio unitario cotizado debe ser mayor a cero.');
         }
+
+        // --- INICIO: LÓGICA DE IMPUESTOS (NUEVO) ---
+        // Validamos que el switch de IVA sea estrictamente binario
+        if (isset($this->data['iva_inc'])) {
+            $ivaInc = $this->data['iva_inc'];
+            if (!in_array($ivaInc, ['0', '1', 0, 1], true)) {
+                $this->addError('iva_inc', 'El indicador de IVA incluido tiene un formato inválido.');
+            }
+        }
+        // --- FIN: LÓGICA DE IMPUESTOS ---
 
         if (empty($this->data['moneda'])) {
             $this->addError('moneda', 'Especifique la moneda de la cotización (MXN/USD).');
@@ -89,11 +99,13 @@ class StoreQuotationRequest extends Requests
             }
         }
 
-        // 6. NUEVO: Especificaciones Particulares
-        if (($this->data['pago_inmediato'] ?? '0') === '1') {
-            if (empty($this->data['url_referencia'])) {
-                $this->addError('url_referencia', 'Para pagos inmediatos, la URL de referencia es obligatoria.');
-            }
+        // 6. VALIDACIÓN DE URL (Lógica Selectiva)
+        // Solo exigimos URL si el tipo de fuente es estrictamente RETAIL.
+        // Para Prospectos manuales, el PDF es evidencia suficiente.
+        $tipoFuente = $this->data['tipo_fuente'] ?? 'REGISTRADO';
+
+        if ($tipoFuente === 'RETAIL' && empty($this->data['url_referencia'])) {
+            $this->addError('url_referencia', 'Para cotizaciones de Retail (Amazon, ML, etc.), la URL de referencia es obligatoria.');
         }
     }
 }

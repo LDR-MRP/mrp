@@ -152,6 +152,7 @@ class Com_requisicionModel extends Mysql
             SELECT 
                 rd.idrequisicionarticulo,
                 rd.requisicionid,
+                rd.src_evento_sourcing_id,
                 rd.inventarioid,
                 rd.cantidad,
                 rd.precio_unitario_estimado,
@@ -250,15 +251,17 @@ class Com_requisicionModel extends Mysql
             inventarioid,
             cantidad,
             precio_unitario_estimado,
-            notas)
+            notas,
+            created_by)
             VALUES
-            (?,?,?,?,?)",
+            (?,?,?,?,?,?)",
             [
                 $requisitionId,
                 $item['inventarioid'],
                 $item['cantidad'],
                 $item['precio_unitario_estimado'],
                 $item['notas'] ?? '',
+                $item['user_id'],
             ]
         ) ?? 0;
     }
@@ -601,8 +604,8 @@ class Com_requisicionModel extends Mysql
         $sql = "INSERT INTO com_requisicion_items_nuevos (
                     idrequisicionarticulo, justificacion_proyecto, categoria, descripcion_sourcing, especificaciones_tecnicas, 
                     dimensiones_principales, normas_requeridas, volumen_anual, 
-                    precio_objetivo, fecha_inicio_negociacion, fecha_limite_acuerdo
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    precio_objetivo, fecha_inicio_negociacion, fecha_limite_acuerdo, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE 
                     justificacion_proyecto = VALUES(justificacion_proyecto),
                     categoria = VALUES(categoria),
@@ -613,7 +616,8 @@ class Com_requisicionModel extends Mysql
                     volumen_anual = VALUES(volumen_anual),
                     precio_objetivo = VALUES(precio_objetivo),
                     fecha_inicio_negociacion = VALUES(fecha_inicio_negociacion),
-                    fecha_limite_acuerdo = VALUES(fecha_limite_acuerdo)";
+                    fecha_limite_acuerdo = VALUES(fecha_limite_acuerdo),
+                    created_by = VALUES(created_by)";
 
         $fechaInicio = !empty($data['fecha_inicio_negociacion']) ? $data['fecha_inicio_negociacion'] : null;
         $fechaLimite = !empty($data['fecha_limite_acuerdo']) ? $data['fecha_limite_acuerdo'] : null;
@@ -630,18 +634,55 @@ class Com_requisicionModel extends Mysql
             $data['volumen_anual'],
             (float)$data['precio_objetivo'],
             $fechaInicio,
-            $fechaLimite
+            $fechaLimite,
+            $data['user_id'],
         ];
 
         return (bool)$this->update($sql, $params);
     }
 
     /**
-     * Recupera la ficha técnica vinculada a una partida.
+     * Obtiene el contexto administrativo de la partida.
+     */
+    public function getLineItemContext(int $idReqArt): ?array
+    {
+        $sql = "SELECT 
+                    rd.idrequisicionarticulo,
+                    rd.requisicionid,
+                    r.folio as folio_requisicion,
+                    r.usuarioid,
+                    r.plantaid,
+                    rd.cantidad,
+                    rd.src_evento_sourcing_id, -- Link al Hub
+                    rd.inventarioid,
+                    ev.folio as folio_sourcing,  -- Folio del Evento (si existe)
+                    ev.estatus_evento
+                FROM com_requisiciones_detalle rd
+                INNER JOIN com_requisiciones r ON rd.requisicionid = r.idrequisicion
+                LEFT JOIN src_eventos_sourcing ev ON rd.src_evento_sourcing_id = ev.id
+                WHERE rd.idrequisicionarticulo = ?";
+                
+        return $this->select($sql, [$idReqArt]) ?: null;
+    }
+
+    /**
+     * Recupera la ficha técnica enriquecida con el estatus de inventario.
+     * Une la especificación técnica con la partida real de la requisición.
      */
     public function getItemSpecs(int $idReqArticulo): ?array
     {
-        $sql = "SELECT * FROM com_requisicion_items_nuevos WHERE idrequisicionarticulo = ?";
+        $sql = "SELECT 
+                    in_nue.*, 
+                    rd.inventarioid,
+                    rd.src_evento_sourcing_id,
+                    inv.cve_articulo as sku_oficial -- Para mostrar qué SKU se le asignó
+                FROM com_requisicion_items_nuevos in_nue
+                INNER JOIN com_requisiciones_detalle rd 
+                    ON in_nue.idrequisicionarticulo = rd.idrequisicionarticulo
+                LEFT JOIN wms_inventario inv 
+                    ON rd.inventarioid = inv.idinventario
+                WHERE in_nue.idrequisicionarticulo = ?";
+
         return $this->select($sql, [$idReqArticulo]) ?: null;
     }
 
@@ -657,9 +698,9 @@ class Com_requisicionModel extends Mysql
         return $this->update($sql, [$nuevoPrecio, $idReqArt]);
     }
 
-    public function linkOfficialInventoryItem(int $idReqArt, int $idInv): bool {
-        $sql = "UPDATE com_requisiciones_detalle SET inventarioid = ? WHERE idrequisicionarticulo = ?";
-        return $this->update($sql, [$idInv, $idReqArt]);
+    public function linkOfficialInventoryItem(int $idReqArt, int $providerId, int $idInv): bool {
+        $sql = "UPDATE com_requisiciones_detalle SET inventarioid = ?, id_proveedor = ? WHERE idrequisicionarticulo = ?";
+        return $this->update($sql, [$idInv, $providerId, $idReqArt]);
     }
 
     /**
@@ -768,5 +809,28 @@ class Com_requisicionModel extends Mysql
                       SET idrequisicionarticulo = ? 
                       WHERE idrequisicionarticulo = ?";
         $this->update($sqlQuotes, [$newItemId, $oldItemId]);
+    }
+
+    /**
+     * Vincula una partida de requisición específica a un evento de sourcing.
+     * 
+     * @param int $idReqArt ID de la partida (PK de com_requisiciones_detalle).
+     * @param int $eventId  ID del evento de sourcing generado.
+     * @return bool
+     */
+    public function updateEventLink(int $idReqArt, int $eventId): bool
+    {
+        // Usamos el nombre de columna 'src_evento_sourcing_id' definido en el DDL Eloquent-ready
+        $query = "UPDATE com_requisiciones_detalle 
+                SET src_evento_sourcing_id = ?
+                WHERE idrequisicionarticulo = ?";
+
+        $params = [
+            $eventId,
+            $idReqArt
+        ];
+
+        $affected = $this->updateAffected($query, $params);
+        return $affected > 0;
     }
 }
