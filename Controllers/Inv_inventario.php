@@ -63,25 +63,28 @@ class Inv_inventario extends Controllers
 			$idinventario     = intval($_POST['idinventario'] ?? 0);
 			$cve_articulo     = strClean($_POST['cve_articulo']);
 			$descripcion      = strClean($_POST['descripcion']);
+			$notas      	  = strClean($_POST['notas']);
 			$tipo_elemento    = strClean($_POST['tipo_elemento']); // P S K
 			$unidad_entrada   = strClean($_POST['unidad_entrada'] ?? '');
 			$unidad_salida    = strClean($_POST['unidad_salida'] ?? '');
-			$unidad_empaque = strClean($_POST['unidad_empaque'] ?? '');
-			$ultimo_costo = floatval($_POST['ultimo_costo'] ?? 0);
+			$unidad_empaque   = strClean($_POST['unidad_empaque'] ?? '');
+			$ultimo_costo     = floatval($_POST['ultimo_costo'] ?? 0);
+			$ubicacion     	  = strClean($_POST['ubicacion']);
 			$factor_unidades  = floatval($_POST['factor_unidades'] ?? 1);
-			$tiempo_surtido = intval($_POST['tiempo_surtido'] ?? 0);
+			$tiempo_surtido   = intval($_POST['tiempo_surtido'] ?? 0);
 			$serie            = strClean($_POST['serie'] ?? 'N');
 			$lote             = strClean($_POST['lote'] ?? 'N');
 			$pedimiento       = strClean($_POST['pedimiento'] ?? 'N');
 			$peso             = floatval($_POST['peso'] ?? 0);
 			$volumen          = floatval($_POST['volumen'] ?? 0);
-			$clave_alterna   = strClean($_POST['clave_alterna'] ?? '');
-			$tipo_asignacion = strClean($_POST['tipo_asignacion'] ?? '');
+			$clave_alterna    = strClean($_POST['clave_alterna'] ?? '');
+			$tipo_asignacion  = strClean($_POST['tipo_asignacion'] ?? '');
 			$almacenid        = intval($_POST['almacenid'] ?? 0);
 			$cantidadInicial  = floatval($_POST['cantidad_inicial'] ?? 0);
 			$costoUnitario    = floatval($_POST['costo'] ?? 0);
 			$precioUnitario   = floatval($_POST['precio'] ?? 0);
-			$idimpuesto = intval($_POST['idimpuesto'] ?? 1);
+			$idimpuesto       = intval($_POST['idimpuesto'] ?? 1);
+			$idmarca          = intval($_POST['idmarca'] ?? 0);
 
 			// =========================
 			// INSERT / UPDATE
@@ -93,10 +96,13 @@ class Inv_inventario extends Controllers
 					$request = $this->model->insertInventario(
 						$cve_articulo,
 						$descripcion,
+						$notas,
 						$unidad_entrada,
 						$unidad_salida,
 						$unidad_empaque,
 						$ultimo_costo,
+						$ubicacion,
+						$idmarca,
 						$tipo_elemento,
 						$factor_unidades,
 						$tiempo_surtido,
@@ -150,10 +156,13 @@ class Inv_inventario extends Controllers
 						$idinventario,
 						$cve_articulo,
 						$descripcion,
+						$notas,
 						$unidad_entrada,
 						$unidad_salida,
 						$unidad_empaque,
 						$ultimo_costo,
+						$ubicacion,
+						$idmarca,
 						$tipo_elemento,
 						$factor_unidades,
 						$tiempo_surtido,
@@ -584,24 +593,42 @@ class Inv_inventario extends Controllers
 		die();
 	}
 
-//----------------------------------------------------------------------IMPUESTOS
-public function getSelectImpuestos()
-{
-    $data = $this->model->selectImpuestosCfg();
+	//----------------------------------------------------------------------IMPUESTOS
+	public function getSelectImpuestos()
+	{
+		$data = $this->model->selectImpuestosCfg();
 
-    $html = '<option value="">Seleccione impuesto</option>';
+		$html = '<option value="">Seleccione impuesto</option>';
 
-    foreach ($data as $row) {
-        $selected = ($row['idimpuesto'] == 1) ? 'selected' : '';
+		foreach ($data as $row) {
+			$selected = ($row['idimpuesto'] == 1) ? 'selected' : '';
 
-        $html .= '<option value="' . $row['idimpuesto'] . '" ' . $selected . '>'
-            . $row['descripcion'] .
-            '</option>';
-    }
+			$html .= '<option value="' . $row['idimpuesto'] . '" ' . $selected . '>'
+				. $row['descripcion'] .
+				'</option>';
+		}
 
-    echo $html;
-    die();
-}
+		echo $html;
+		die();
+	}
+
+	//----------------------------------------------------------------------MARCAS
+	public function getSelectMarcas()
+	{
+		$data = $this->model->selectMarcas();
+
+		$html = '<option value="">Seleccione una marca</option>';
+
+		foreach ($data as $row) {
+
+			$html .= '<option value="' . $row['id'] . '" ' . $selected . '>'
+				. $row['nombre'] .
+				'</option>';
+		}
+
+		echo $html;
+		die();
+	}
 
 	//----------------------------------------------------------------------MONEDAS
 	public function getSelectMonedas()

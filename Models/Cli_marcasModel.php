@@ -13,7 +13,7 @@ class Cli_marcasModel extends Mysql
 
     public function selectMarcas()
     {
-        $sql = "SELECT * FROM  cli_marcas 
+        $sql = "SELECT * FROM  wms_marcas 
 					WHERE estado != 0 ";
         $request = $this->select_all($sql);
         return $request;
@@ -22,7 +22,7 @@ class Cli_marcasModel extends Mysql
     public function selectMarca(int $idmarca)
     {
         $this->intIdmarca = $idmarca;
-        $sql = "SELECT * FROM cli_marcas WHERE id = $this->intIdmarca";
+        $sql = "SELECT * FROM wms_marcas WHERE id = $this->intIdmarca";
         $request = $this->select($sql);
         return $request;
     }
@@ -30,7 +30,7 @@ class Cli_marcasModel extends Mysql
     public function deleteMarca(int $idmarca)
     {
         $this->intIdmarca = $idmarca;
-        $sql = "UPDATE cli_marcas SET estado = ? WHERE id = $this->intIdmarca ";
+        $sql = "UPDATE wms_marcas SET estado = ? WHERE id = $this->intIdmarca ";
         $arrData = array(0);
         $request = $this->update($sql, $arrData);
         return $request;
@@ -41,11 +41,11 @@ class Cli_marcasModel extends Mysql
         $this->strNombre = $marca;
         $this->strCodigo = $codigo;
 
-        $sql = "SELECT * FROM cli_marcas WHERE nombre = '{$this->strNombre}' OR codigo = '{$this->strCodigo}'";
+        $sql = "SELECT * FROM wms_marcas WHERE nombre = '{$this->strNombre}' OR codigo = '{$this->strCodigo}'";
         $request = $this->select_all($sql);
 
         if (empty($request)) {
-            $query_insert = "INSERT INTO cli_marcas(nombre, codigo) VALUES(?,?)";
+            $query_insert = "INSERT INTO wms_marcas(nombre, codigo) VALUES(?,?)";
             $arrData = array(
                 $this->strNombre,
                 $this->strCodigo,
@@ -63,14 +63,14 @@ class Cli_marcasModel extends Mysql
         $this->strNombre = $marca;
         $this->strCodigo = $codigo;
 
-        $sql = "SELECT * FROM cli_marcas 
+        $sql = "SELECT * FROM wms_marcas 
         WHERE (nombre = '$this->strNombre' 
         OR codigo = '$this->strCodigo') 
         AND id != $this->intIdmarca";
         $request = $this->select_all($sql);
 
         if (empty($request)) {
-            $sql = "UPDATE cli_marcas 
+            $sql = "UPDATE wms_marcas 
             SET nombre = ?, 
                 codigo = ? 
             WHERE id = $this->intIdmarca ";
