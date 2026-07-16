@@ -9,6 +9,7 @@ const rutas = {
   lineas: base_url + "/Inv_lineasdproducto/getSelectLineasProductos",
   impuestos: base_url + "/Inv_inventario/getSelectImpuestos",
   marcas: base_url + "/Inv_inventario/getSelectMarcas",
+  almacenes: base_url + "/Inv_inventario/getSelectAlmacenes",
   save: base_url + "/Inv_inventario/setInventario",
 };
 
@@ -238,27 +239,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // 🔥 ESTA LÍNEA ES LA CLAVE
   window.cargarLineas = cargarLineas;
 
-  /* =============================
-     CARGA SELECT ALMACENES
-  ============================= */
-  function cargarAlmacenes(selectId, selectedValue = "") {
-    const select = document.querySelector(selectId);
-    if (!select) return;
-
-    const request = new XMLHttpRequest();
-    request.open("GET", rutas.almacenes, true);
-    request.send();
-
-    request.onreadystatechange = () => {
-      if (request.readyState === 4 && request.status === 200) {
-        select.innerHTML = request.responseText;
-        if (selectedValue) select.value = selectedValue;
-      }
-    };
-  }
-  // 🔹 HACERLA GLOBAL
-  window.cargarAlmacenes = cargarAlmacenes;
-
   function cargarImpuestos(selectId, selectedValue = "") {
     const select = document.querySelector(selectId);
     if (!select) return;
@@ -334,9 +314,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       //  CARGAS NORMALES
       if (config) {
-        if (config.selectAlmacen) {
-          cargarAlmacenes(config.selectAlmacen);
-        }
 
         cargarImpuestos("#idimpuesto");
         cargarMarcas("#idmarca");

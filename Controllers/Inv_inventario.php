@@ -84,7 +84,9 @@ class Inv_inventario extends Controllers
 			$costoUnitario    = floatval($_POST['costo'] ?? 0);
 			$precioUnitario   = floatval($_POST['precio'] ?? 0);
 			$idimpuesto       = intval($_POST['idimpuesto'] ?? 1);
-			$idmarca          = intval($_POST['idmarca'] ?? 0);
+			$idmarca = !empty($_POST['idmarca'])
+				? intval($_POST['idmarca'])
+				: null;
 
 			// =========================
 			// INSERT / UPDATE
