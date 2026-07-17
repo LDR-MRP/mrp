@@ -158,40 +158,4 @@ const COMPRAS_TESORERO = 58;
 
 
 const STATUS = array('Completo', 'Aprobado', 'Cancelado', 'Reembolsado', 'Pendiente', 'Entregado');
-
-/**
- * --------------------------------------------------------------------------
- * CONFIGURACIÓN DE COOKIES Y SESIÓN (SSO)
- * --------------------------------------------------------------------------
- */
-
-// 1. Detectar el Host actual
-$httpHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
-
-// 2. Determinar si estamos en entorno local
-// Buscamos si el host termina en .localhost o es una IP de red local
-$isLocal = preg_match('/(\.localhost)$|^127\.0\.0\.1$/', $httpHost);
-
-if ($isLocal) {
-    /**
-     * ENTORNO: LOCAL (WSL)
-     * Dominio: .ldrhumanresources.localhost (Permite compartir entre subdominios locales)
-     * Secure: false (Porque usualmente no usas HTTPS/SSL en WSL)
-     */
-    define('COOKIE_DOMAIN', '.ldrhumanresources.localhost');
-    // define('COOKIE_DOMAIN', '.mrp.com');
-    define('COOKIE_SECURE', false);
-} else {
-    /**
-     * ENTORNO: PRODUCCIÓN (Hostinger)
-     * Dominio: .ldrhumanresources.com (Permite compartir entre rrhh. y mrp.)
-     * Secure: true (Obligatorio ya que Hostinger usa Certificados SSL)
-     */
-    define('COOKIE_DOMAIN', '.ldrhumanresources.com');
-    define('COOKIE_SECURE', true);
-}
-
-// Opcional: Tiempo de vida estándar (10 horas = 36000 seg)
-define('COOKIE_EXPIRE', time() + 36000);
-
 ?>

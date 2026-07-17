@@ -12,3 +12,8 @@ Logs/
 # Debug
 debug_local.log
 
+Config/Config_local.php
+.scannerwork/*
+sonar-project.properties
+ddagent-install.log
+Assets/uploads/
