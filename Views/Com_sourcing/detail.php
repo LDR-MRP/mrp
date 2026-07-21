@@ -90,7 +90,7 @@
                                     <div id="wrapper-select-provider">
                                         <select class="form-select border-light shadow-sm" id="sel-provider" name="id_proveedor">
                                             <option value="">Seleccione proveedor...</option>
-                                            <option value="1000000003">COMPUREDES Y SERVICIO</option>
+                                            <option value="101">COMPUREDES Y SERVICIO</option>
                                             <option value="102">ABASTEO</option>
                                         </select>
                                     </div>
