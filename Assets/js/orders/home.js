@@ -1,13 +1,19 @@
+// const base_url = "<?= media(); ?>/images/vehiculos/";
+
+
+
 const products = [
-  {id:1,nombre:'SUV Alpha X',cat:'suv',precio:'$685,000',img:'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?auto=format&fit=crop&w=900&q=80',desc:'SUV automática, gasolina, ideal para familias y ejecutivos.'},
-  {id:2,nombre:'Sedán Nova 1.6',cat:'sedan',precio:'$389,000',img:'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=900&q=80',desc:'Sedán de alto desplazamiento comercial para flotillas.'},
-  {id:3,nombre:'Pickup Titan Pro',cat:'pickup',precio:'$742,000',img:'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=900&q=80',desc:'Pickup para trabajo, carga y operación diaria.'},
-  {id:4,nombre:'Van Cargo Max',cat:'van',precio:'$620,000',img:'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&w=900&q=80',desc:'Van comercial para reparto y transporte de personal.'},
-  {id:5,nombre:'E-Drive City',cat:'electrico',precio:'$810,000',img:'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?auto=format&fit=crop&w=900&q=80',desc:'Unidad eléctrica para movilidad urbana eficiente.'},
-  {id:6,nombre:'SUV Terra Plus',cat:'suv',precio:'$715,000',img:'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=900&q=80',desc:'SUV amplia con equipamiento premium.'},
-  {id:7,nombre:'Sedán Executive',cat:'sedan',precio:'$445,000',img:'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=80',desc:'Sedán ejecutivo para clientes corporativos.'},
-  {id:8,nombre:'Pickup Work 4x2',cat:'pickup',precio:'$689,000',img:'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=900&q=80',desc:'Pickup práctica para trabajo pesado.'}
+  {id:1,nombre:'Tunland V7',cat:'suv',precio:'$685,000',img: `${base_url}/Assets/images/unidades/1.jpg`,desc:'SUV automática, gasolina, ideal para familias y ejecutivos.'},
+  {id:2,nombre:'Sedán Nova 1.6',cat:'sedan',precio:'$389,000',img:`${base_url}/Assets/images/unidades/2.jpg`,desc:'Sedán de alto desplazamiento comercial para flotillas.'},
+  {id:3,nombre:'S3',cat:'pickup',precio:'$742,000',img:`${base_url}/Assets/images/unidades/3.jpg`,desc:'Pickup para trabajo, carga y operación diaria.'},
+  {id:4,nombre:'Van Cargo Max',cat:'van',precio:'$620,000',img:`${base_url}/Assets/images/unidades/4.PNG`,desc:'Van comercial para reparto y transporte de personal.'},
+  {id:5,nombre:'E-Drive City',cat:'electrico',precio:'$810,000',img:`${base_url}/Assets/images/unidades/5.jpg`,desc:'Unidad eléctrica para movilidad urbana eficiente.'},
+  {id:6,nombre:'SUV Terra Plus',cat:'suv',precio:'$715,000',img:`${base_url}/Assets/images/unidades/6.png`,desc:'SUV amplia con equipamiento premium.'},
+  {id:7,nombre:'Sedán Executive',cat:'sedan',precio:'$445,000',img:`${base_url}/Assets/images/unidades/7.jpg`,desc:'Sedán ejecutivo para clientes corporativos.'},
+  {id:8,nombre:'Pickup Work 4x2',cat:'pickup',precio:'$689,000',img:`${base_url}/Assets/images/unidades/8.png`,desc:'Pickup práctica para trabajo pesado.'}
 ];
+
+// url = <?= media(); ?> /'tulnada7.png'
 
 function getCart(){
   return JSON.parse(localStorage.getItem('cartAD') || '[]');
@@ -134,4 +140,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('searchInput')?.addEventListener('input', filterProducts);
   document.getElementById('categoryFilter')?.addEventListener('change', filterProducts);
+
+  // console.log(urlMedia);
+
+  // console.log(media);
 });

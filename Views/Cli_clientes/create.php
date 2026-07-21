@@ -131,56 +131,64 @@
             </div>
 
             <form id="formCliente" autocomplete="off" novalidate>
-                <input type="hidden" id="idcliente" name="idcliente" value="0">
+                <input type="text" id="idcliente" name="idcliente" value="<?= intval($data['idcliente'] ?? 0); ?>">
 
                 <div class="card client-form-card">
                     <div class="card-body">
 
                         <ul class="nav nav-tabs client-tabs mb-4" id="clientTabs" role="tablist">
                             <li class="nav-item">
-                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-general" type="button">
+                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-general"
+                                    type="button">
                                     <i class="ri-user-line me-1"></i> General
                                 </button>
                             </li>
 
                             <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-fiscal" type="button">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-fiscal"
+                                    type="button">
                                     <i class="ri-file-list-3-line me-1"></i> Fiscal
                                 </button>
                             </li>
 
                             <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-contactos" type="button">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-contactos"
+                                    type="button">
                                     <i class="ri-contacts-book-line me-1"></i> Contactos
                                 </button>
                             </li>
 
                             <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-sucursales" type="button">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-sucursales"
+                                    type="button">
                                     <i class="ri-building-2-line me-1"></i> Sucursales
                                 </button>
                             </li>
 
                             <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-direcciones" type="button">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-direcciones"
+                                    type="button">
                                     <i class="ri-map-pin-line me-1"></i> Direcciones
                                 </button>
                             </li>
 
                             <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-comercial" type="button">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-comercial"
+                                    type="button">
                                     <i class="ri-briefcase-4-line me-1"></i> Comercial
                                 </button>
                             </li>
 
                             <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-bancos" type="button">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-bancos"
+                                    type="button">
                                     <i class="ri-bank-line me-1"></i> Bancos
                                 </button>
                             </li>
 
                             <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-documentos" type="button">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-documentos"
+                                    type="button">
                                     <i class="ri-folder-upload-line me-1"></i> Documentos
                                 </button>
                             </li>
@@ -202,13 +210,15 @@
                                             <span class="input-group-text">
                                                 <i class="ri-group-line"></i>
                                             </span>
-                                            <select class="form-select" id="idtipo_cliente" name="idtipo_cliente" required>
+                                            <select class="form-select" id="idtipo_cliente" name="idtipo_cliente"
+                                                required>
                                                 <option value="">Selecciona un tipo</option>
-                                                <option value="CLIENTE">Cliente</option>
-                                                <option value="DISTRIBUIDOR">Distribuidor</option>
-                                                <option value="INTERNO">Cliente interno</option>
-                                                <option value="EXTERNO">Cliente externo</option>
-                                                <option value="GUBERNAMENTAL">Cliente gubernamental</option>
+                                                <!-- <option value="CLIENTE">Cliente</option> -->
+                                                <option value="1">Distribuidor</option>
+                                                <option value="2">Cliente interno</option>
+                                                <option value="3">Cliente externo</option>
+                                                <option value="4                            ">Cliente gubernamental
+                                                </option>
                                             </select>
                                         </div>
                                     </div>
@@ -233,15 +243,11 @@
                                             <span class="input-group-text">
                                                 <i class="ri-barcode-line"></i>
                                             </span>
-                                            <input
-                                                type="text"
-                                                class="form-control"
-                                                id="codigo_cliente"
-                                                name="codigo_cliente"
-                                                placeholder="Ej. CLI-000001"
-                                                maxlength="30">
+                                            <input type="text" class="form-control" id="codigo_cliente"
+                                                name="codigo_cliente" placeholder="Ej. CLI-000001" maxlength="30"
+                                                readonly>
                                         </div>
-                                        <small class="text-muted">Puede generarse automáticamente.</small>
+                                        <small class="text-muted">Código generado automáticamente.</small>
                                     </div>
 
                                     <div class="col-lg-6 col-md-6">
@@ -250,31 +256,23 @@
                                             <span class="input-group-text">
                                                 <i class="ri-building-line"></i>
                                             </span>
-                                            <input
-                                                type="text"
-                                                class="form-control"
-                                                id="razon_social"
+                                            <input type="text" class="form-control" id="razon_social"
                                                 name="razon_social"
                                                 placeholder="Ej. Comercializadora del Centro, S.A. de C.V."
-                                                maxlength="200"
-                                                required>
+                                                maxlength="200" required>
                                         </div>
                                     </div>
 
                                     <div class="col-lg-6 col-md-6">
-                                        <label for="nombre_comercial" class="form-label required">Nombre comercial</label>
+                                        <label for="nombre_comercial" class="form-label required">Nombre
+                                            comercial</label>
                                         <div class="input-group">
                                             <span class="input-group-text">
                                                 <i class="ri-store-2-line"></i>
                                             </span>
-                                            <input
-                                                type="text"
-                                                class="form-control"
-                                                id="nombre_comercial"
-                                                name="nombre_comercial"
-                                                placeholder="Ej. Autos del Centro"
-                                                maxlength="150"
-                                                required>
+                                            <input type="text" class="form-control" id="nombre_comercial"
+                                                name="nombre_comercial" placeholder="Ej. Autos del Centro"
+                                                maxlength="150" required>
                                         </div>
                                     </div>
 
@@ -284,13 +282,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-phone-line"></i>
                                             </span>
-                                            <input
-                                                type="tel"
-                                                class="form-control"
-                                                id="telefono"
-                                                name="telefono"
-                                                placeholder="Ej. 7221234567"
-                                                maxlength="15">
+                                            <input type="tel" class="form-control" id="telefono" name="telefono"
+                                                placeholder="Ej. 7221234567" maxlength="15">
                                         </div>
                                     </div>
 
@@ -300,13 +293,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-smartphone-line"></i>
                                             </span>
-                                            <input
-                                                type="tel"
-                                                class="form-control"
-                                                id="celular"
-                                                name="celular"
-                                                placeholder="Ej. 7229876543"
-                                                maxlength="15">
+                                            <input type="tel" class="form-control" id="celular" name="celular"
+                                                placeholder="Ej. 7229876543" maxlength="15">
                                         </div>
                                     </div>
 
@@ -316,14 +304,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-mail-line"></i>
                                             </span>
-                                            <input
-                                                type="email"
-                                                class="form-control"
-                                                id="correo"
-                                                name="correo"
-                                                placeholder="Ej. contacto@empresa.com"
-                                                maxlength="150"
-                                                required>
+                                            <input type="email" class="form-control" id="correo" name="correo"
+                                                placeholder="Ej. contacto@empresa.com" maxlength="150" required>
                                         </div>
                                     </div>
 
@@ -333,11 +315,7 @@
                                             <span class="input-group-text">
                                                 <i class="ri-global-line"></i>
                                             </span>
-                                            <input
-                                                type="url"
-                                                class="form-control"
-                                                id="sitio_web"
-                                                name="sitio_web"
+                                            <input type="url" class="form-control" id="sitio_web" name="sitio_web"
                                                 placeholder="https://www.empresa.com">
                                         </div>
                                     </div>
@@ -348,11 +326,7 @@
                                             <span class="input-group-text">
                                                 <i class="ri-calendar-line"></i>
                                             </span>
-                                            <input
-                                                type="date"
-                                                class="form-control"
-                                                id="fecha_alta"
-                                                name="fecha_alta"
+                                            <input type="date" class="form-control" id="fecha_alta" name="fecha_alta"
                                                 value="<?= date('Y-m-d'); ?>">
                                         </div>
                                     </div>
@@ -386,11 +360,8 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-key-2-line"></i>
                                                 </span>
-                                                <input
-                                                    type="text"
-                                                    class="form-control dynamic-required"
-                                                    name="clave_distribuidor"
-                                                    placeholder="Ej. DIST-001">
+                                                <input type="text" class="form-control dynamic-required"
+                                                    name="clave_distribuidor" placeholder="Ej. DIST-001">
                                             </div>
                                         </div>
 
@@ -400,10 +371,7 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-map-2-line"></i>
                                                 </span>
-                                                <input
-                                                    type="text"
-                                                    class="form-control"
-                                                    name="zona_comercial"
+                                                <input type="text" class="form-control" name="zona_comercial"
                                                     placeholder="Ej. Centro">
                                             </div>
                                         </div>
@@ -414,10 +382,7 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-road-map-line"></i>
                                                 </span>
-                                                <input
-                                                    type="text"
-                                                    class="form-control"
-                                                    name="territorio"
+                                                <input type="text" class="form-control" name="territorio"
                                                     placeholder="Ej. Estado de México">
                                             </div>
                                         </div>
@@ -428,10 +393,7 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-user-star-line"></i>
                                                 </span>
-                                                <input
-                                                    type="text"
-                                                    class="form-control"
-                                                    name="responsable_comercial"
+                                                <input type="text" class="form-control" name="responsable_comercial"
                                                     placeholder="Nombre del ejecutivo">
                                             </div>
                                         </div>
@@ -455,10 +417,7 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-mail-lock-line"></i>
                                                 </span>
-                                                <input
-                                                    type="email"
-                                                    class="form-control"
-                                                    name="correo_acceso"
+                                                <input type="email" class="form-control" name="correo_acceso"
                                                     placeholder="usuario@distribuidor.com">
                                             </div>
                                         </div>
@@ -479,11 +438,8 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-id-card-line"></i>
                                                 </span>
-                                                <input
-                                                    type="text"
-                                                    class="form-control dynamic-required"
-                                                    name="numero_empleado"
-                                                    placeholder="Ej. EMP-1025">
+                                                <input type="text" class="form-control dynamic-required"
+                                                    name="numero_empleado" placeholder="Ej. EMP-1025">
                                             </div>
                                         </div>
 
@@ -493,10 +449,7 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-organization-chart"></i>
                                                 </span>
-                                                <input
-                                                    type="text"
-                                                    class="form-control"
-                                                    name="departamento"
+                                                <input type="text" class="form-control" name="departamento"
                                                     placeholder="Ej. Administración">
                                             </div>
                                         </div>
@@ -507,10 +460,7 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-funds-line"></i>
                                                 </span>
-                                                <input
-                                                    type="text"
-                                                    class="form-control"
-                                                    name="centro_costos"
+                                                <input type="text" class="form-control" name="centro_costos"
                                                     placeholder="Ej. CC-1001">
                                             </div>
                                         </div>
@@ -521,10 +471,7 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-user-follow-line"></i>
                                                 </span>
-                                                <input
-                                                    type="text"
-                                                    class="form-control"
-                                                    name="jefe_inmediato"
+                                                <input type="text" class="form-control" name="jefe_inmediato"
                                                     placeholder="Nombre del responsable">
                                             </div>
                                         </div>
@@ -535,10 +482,7 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-mail-send-line"></i>
                                                 </span>
-                                                <input
-                                                    type="email"
-                                                    class="form-control"
-                                                    name="correo_corporativo"
+                                                <input type="email" class="form-control" name="correo_corporativo"
                                                     placeholder="usuario@empresa.com">
                                             </div>
                                         </div>
@@ -576,10 +520,7 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-user-received-line"></i>
                                                 </span>
-                                                <input
-                                                    type="text"
-                                                    class="form-control"
-                                                    name="ejecutivo_asignado"
+                                                <input type="text" class="form-control" name="ejecutivo_asignado"
                                                     placeholder="Nombre del ejecutivo">
                                             </div>
                                         </div>
@@ -590,10 +531,7 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-pie-chart-line"></i>
                                                 </span>
-                                                <input
-                                                    type="text"
-                                                    class="form-control"
-                                                    name="segmento_mercado"
+                                                <input type="text" class="form-control" name="segmento_mercado"
                                                     placeholder="Ej. Automotriz">
                                             </div>
                                         </div>
@@ -614,11 +552,8 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-government-line"></i>
                                                 </span>
-                                                <input
-                                                    type="text"
-                                                    class="form-control dynamic-required"
-                                                    name="dependencia"
-                                                    placeholder="Nombre de la dependencia">
+                                                <input type="text" class="form-control dynamic-required"
+                                                    name="dependencia" placeholder="Nombre de la dependencia">
                                             </div>
                                         </div>
 
@@ -628,10 +563,7 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-building-4-line"></i>
                                                 </span>
-                                                <input
-                                                    type="text"
-                                                    class="form-control"
-                                                    name="unidad_administrativa"
+                                                <input type="text" class="form-control" name="unidad_administrativa"
                                                     placeholder="Ej. Dirección de Recursos Materiales">
                                             </div>
                                         </div>
@@ -657,10 +589,7 @@
                                                 <span class="input-group-text">
                                                     <i class="ri-file-chart-line"></i>
                                                 </span>
-                                                <input
-                                                    type="text"
-                                                    class="form-control"
-                                                    name="partida_presupuestal"
+                                                <input type="text" class="form-control" name="partida_presupuestal"
                                                     placeholder="Ej. 54101">
                                             </div>
                                         </div>
@@ -688,7 +617,8 @@
                             <div class="tab-pane fade" id="tab-fiscal">
                                 <div class="section-title">Información fiscal</div>
                                 <div class="section-description">
-                                    Registra los datos fiscales exactamente como aparecen en la Constancia de Situación Fiscal.
+                                    Registra los datos fiscales exactamente como aparecen en la Constancia de Situación
+                                    Fiscal.
                                 </div>
 
                                 <div class="row g-3">
@@ -698,14 +628,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-file-user-line"></i>
                                             </span>
-                                            <input
-                                                type="text"
-                                                class="form-control text-uppercase"
-                                                id="rfc"
-                                                name="rfc"
-                                                placeholder="Ej. ABC123456T12"
-                                                maxlength="13"
-                                                required>
+                                            <input type="text" class="form-control text-uppercase" id="rfc" name="rfc"
+                                                placeholder="Ej. ABC123456T12" maxlength="13" required>
                                             <button class="btn btn-outline-secondary" type="button" id="btnValidarRFC">
                                                 <i class="ri-shield-check-line"></i>
                                             </button>
@@ -719,13 +643,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-fingerprint-line"></i>
                                             </span>
-                                            <input
-                                                type="text"
-                                                class="form-control text-uppercase"
-                                                id="curp"
-                                                name="curp"
-                                                placeholder="Ej. CUCX900101HMCRRL09"
-                                                maxlength="18">
+                                            <input type="text" class="form-control text-uppercase" id="curp" name="curp"
+                                                placeholder="Ej. CUCX900101HMCRRL09" maxlength="18">
                                         </div>
                                     </div>
 
@@ -735,13 +654,16 @@
                                             <span class="input-group-text">
                                                 <i class="ri-file-list-2-line"></i>
                                             </span>
-                                            <select class="form-select" id="regimen_fiscal" name="regimen_fiscal" required>
+                                            <select class="form-select" id="regimen_fiscal" name="regimen_fiscal"
+                                                required>
                                                 <option value="">Selecciona un régimen</option>
                                                 <option value="601">601 - General de Ley Personas Morales</option>
-                                                <option value="603">603 - Personas Morales con Fines no Lucrativos</option>
+                                                <option value="603">603 - Personas Morales con Fines no Lucrativos
+                                                </option>
                                                 <option value="605">605 - Sueldos y Salarios</option>
                                                 <option value="606">606 - Arrendamiento</option>
-                                                <option value="612">612 - Personas Físicas con Actividades Empresariales</option>
+                                                <option value="612">612 - Personas Físicas con Actividades Empresariales
+                                                </option>
                                                 <option value="616">616 - Sin obligaciones fiscales</option>
                                                 <option value="621">621 - Incorporación Fiscal</option>
                                                 <option value="626">626 - Régimen Simplificado de Confianza</option>
@@ -767,18 +689,14 @@
                                     </div>
 
                                     <div class="col-lg-4 col-md-6">
-                                        <label for="codigo_postal_fiscal" class="form-label required">Código postal fiscal</label>
+                                        <label for="codigo_postal_fiscal" class="form-label required">Código postal
+                                            fiscal</label>
                                         <div class="input-group">
                                             <span class="input-group-text">
                                                 <i class="ri-map-pin-2-line"></i>
                                             </span>
-                                            <input
-                                                type="text"
-                                                class="form-control"
-                                                id="codigo_postal_fiscal"
-                                                name="codigo_postal_fiscal"
-                                                placeholder="Ej. 50000"
-                                                maxlength="5"
+                                            <input type="text" class="form-control" id="codigo_postal_fiscal"
+                                                name="codigo_postal_fiscal" placeholder="Ej. 50000" maxlength="5"
                                                 required>
                                         </div>
                                     </div>
@@ -789,12 +707,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-mail-check-line"></i>
                                             </span>
-                                            <input
-                                                type="email"
-                                                class="form-control"
-                                                id="correo_facturacion"
-                                                name="correo_facturacion"
-                                                placeholder="facturacion@empresa.com">
+                                            <input type="email" class="form-control" id="correo_facturacion"
+                                                name="correo_facturacion" placeholder="facturacion@empresa.com">
                                         </div>
                                     </div>
 
@@ -819,7 +733,8 @@
                                     <div>
                                         <div class="section-title">Contactos</div>
                                         <div class="section-description mb-0">
-                                            Registra uno o varios contactos administrativos, comerciales o de facturación.
+                                            Registra uno o varios contactos administrativos, comerciales o de
+                                            facturación.
                                         </div>
                                     </div>
 
@@ -896,7 +811,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-road-map-line"></i>
                                             </span>
-                                            <input type="text" class="form-control" name="calle" placeholder="Nombre de la calle" required>
+                                            <input type="text" class="form-control" name="calle"
+                                                placeholder="Nombre de la calle" required>
                                         </div>
                                     </div>
 
@@ -906,7 +822,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-home-4-line"></i>
                                             </span>
-                                            <input type="text" class="form-control" name="numero_exterior" placeholder="Ej. 125" required>
+                                            <input type="text" class="form-control" name="numero_exterior"
+                                                placeholder="Ej. 125" required>
                                         </div>
                                     </div>
 
@@ -916,7 +833,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-home-gear-line"></i>
                                             </span>
-                                            <input type="text" class="form-control" name="numero_interior" placeholder="Ej. Local 3">
+                                            <input type="text" class="form-control" name="numero_interior"
+                                                placeholder="Ej. Local 3">
                                         </div>
                                     </div>
 
@@ -926,7 +844,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-community-line"></i>
                                             </span>
-                                            <input type="text" class="form-control" name="colonia" placeholder="Nombre de la colonia" required>
+                                            <input type="text" class="form-control" name="colonia"
+                                                placeholder="Nombre de la colonia" required>
                                         </div>
                                     </div>
 
@@ -936,7 +855,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-mail-open-line"></i>
                                             </span>
-                                            <input type="text" class="form-control" name="codigo_postal" placeholder="Ej. 50000" maxlength="5" required>
+                                            <input type="text" class="form-control" name="codigo_postal"
+                                                placeholder="Ej. 50000" maxlength="5" required>
                                         </div>
                                     </div>
 
@@ -946,7 +866,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-building-line"></i>
                                             </span>
-                                            <input type="text" class="form-control" name="municipio" placeholder="Ej. Toluca" required>
+                                            <input type="text" class="form-control" name="municipio"
+                                                placeholder="Ej. Toluca" required>
                                         </div>
                                     </div>
 
@@ -956,7 +877,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-map-line"></i>
                                             </span>
-                                            <input type="text" class="form-control" name="estado_republica" placeholder="Ej. Estado de México" required>
+                                            <input type="text" class="form-control" name="estado_republica"
+                                                placeholder="Ej. Estado de México" required>
                                         </div>
                                     </div>
 
@@ -976,10 +898,7 @@
                                             <span class="input-group-text">
                                                 <i class="ri-map-pin-time-line"></i>
                                             </span>
-                                            <textarea
-                                                class="form-control"
-                                                name="referencias"
-                                                rows="3"
+                                            <textarea class="form-control" name="referencias" rows="3"
                                                 placeholder="Entre calles, color del edificio, referencias de acceso, etc."></textarea>
                                         </div>
                                     </div>
@@ -1046,13 +965,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-wallet-3-line"></i>
                                             </span>
-                                            <input
-                                                type="number"
-                                                class="form-control"
-                                                name="limite_credito"
-                                                placeholder="0.00"
-                                                min="0"
-                                                step="0.01">
+                                            <input type="number" class="form-control" name="limite_credito"
+                                                placeholder="0.00" min="0" step="0.01">
                                         </div>
                                     </div>
 
@@ -1062,13 +976,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-calendar-check-line"></i>
                                             </span>
-                                            <input
-                                                type="number"
-                                                class="form-control"
-                                                name="dias_credito"
-                                                placeholder="Ej. 30"
-                                                min="0"
-                                                max="365">
+                                            <input type="number" class="form-control" name="dias_credito"
+                                                placeholder="Ej. 30" min="0" max="365">
                                         </div>
                                     </div>
 
@@ -1078,14 +987,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-percent-line"></i>
                                             </span>
-                                            <input
-                                                type="number"
-                                                class="form-control"
-                                                name="descuento_autorizado"
-                                                placeholder="Ej. 5"
-                                                min="0"
-                                                max="100"
-                                                step="0.01">
+                                            <input type="number" class="form-control" name="descuento_autorizado"
+                                                placeholder="Ej. 5" min="0" max="100" step="0.01">
                                         </div>
                                     </div>
 
@@ -1095,10 +998,7 @@
                                             <span class="input-group-text">
                                                 <i class="ri-user-star-line"></i>
                                             </span>
-                                            <input
-                                                type="text"
-                                                class="form-control"
-                                                name="ejecutivo_cuenta"
+                                            <input type="text" class="form-control" name="ejecutivo_cuenta"
                                                 placeholder="Nombre del ejecutivo">
                                         </div>
                                     </div>
@@ -1142,10 +1042,7 @@
                                             <span class="input-group-text">
                                                 <i class="ri-sticky-note-line"></i>
                                             </span>
-                                            <textarea
-                                                class="form-control"
-                                                name="observaciones_comerciales"
-                                                rows="3"
+                                            <textarea class="form-control" name="observaciones_comerciales" rows="3"
                                                 placeholder="Acuerdos especiales, restricciones, condiciones o comentarios comerciales."></textarea>
                                         </div>
                                     </div>
@@ -1166,11 +1063,7 @@
                                             <span class="input-group-text">
                                                 <i class="ri-bank-card-line"></i>
                                             </span>
-                                            <input
-                                                type="text"
-                                                class="form-control"
-                                                name="banco"
-                                                placeholder="Ej. BBVA">
+                                            <input type="text" class="form-control" name="banco" placeholder="Ej. BBVA">
                                         </div>
                                     </div>
 
@@ -1180,10 +1073,7 @@
                                             <span class="input-group-text">
                                                 <i class="ri-user-3-line"></i>
                                             </span>
-                                            <input
-                                                type="text"
-                                                class="form-control"
-                                                name="titular_cuenta"
+                                            <input type="text" class="form-control" name="titular_cuenta"
                                                 placeholder="Nombre o razón social">
                                         </div>
                                     </div>
@@ -1194,10 +1084,7 @@
                                             <span class="input-group-text">
                                                 <i class="ri-hashtag"></i>
                                             </span>
-                                            <input
-                                                type="text"
-                                                class="form-control"
-                                                name="numero_cuenta"
+                                            <input type="text" class="form-control" name="numero_cuenta"
                                                 placeholder="Número de cuenta">
                                         </div>
                                     </div>
@@ -1208,13 +1095,8 @@
                                             <span class="input-group-text">
                                                 <i class="ri-lock-password-line"></i>
                                             </span>
-                                            <input
-                                                type="text"
-                                                class="form-control"
-                                                id="clabe"
-                                                name="clabe"
-                                                placeholder="18 dígitos"
-                                                maxlength="18">
+                                            <input type="text" class="form-control" id="clabe" name="clabe"
+                                                placeholder="18 dígitos" maxlength="18">
                                         </div>
                                     </div>
 
@@ -1237,10 +1119,7 @@
                                             <span class="input-group-text">
                                                 <i class="ri-file-code-line"></i>
                                             </span>
-                                            <input
-                                                type="text"
-                                                class="form-control"
-                                                name="referencia_bancaria"
+                                            <input type="text" class="form-control" name="referencia_bancaria"
                                                 placeholder="Referencia asignada">
                                         </div>
                                     </div>
@@ -1263,7 +1142,8 @@
                                             </span>
                                             <select class="form-select" name="tipo_documento">
                                                 <option value="">Selecciona una opción</option>
-                                                <option value="CONSTANCIA_FISCAL">Constancia de situación fiscal</option>
+                                                <option value="CONSTANCIA_FISCAL">Constancia de situación fiscal
+                                                </option>
                                                 <option value="OPINION_CUMPLIMIENTO">Opinión de cumplimiento</option>
                                                 <option value="ACTA_CONSTITUTIVA">Acta constitutiva</option>
                                                 <option value="IDENTIFICACION">Identificación oficial</option>
@@ -1281,30 +1161,31 @@
                                         <div class="document-card">
                                             <i class="ri-upload-cloud-2-line fs-1 text-muted"></i>
                                             <p class="mb-2">Selecciona un archivo PDF, XML, JPG o PNG</p>
-                                            <input
-                                                type="file"
-                                                class="form-control"
-                                                name="documento"
+                                            <input type="file" class="form-control" name="documento"
                                                 accept=".pdf,.xml,.jpg,.jpeg,.png">
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="form-actions mt-4">
-                            <div class="d-flex justify-content-end gap-2">
-                                <button type="reset" class="btn btn-light" id="btnLimpiar">
+
+
+                            <div class="form-actions mt-4">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <!-- <button type="reset" class="btn btn-light" id="btnLimpiar">
                                     <i class="ri-eraser-line me-1"></i>
                                     Limpiar
-                                </button>
+                                </button> -->
 
-                                <button type="submit" class="btn btn-primary btn-label">
-                                    <i class="ri-save-3-line label-icon align-middle fs-16 me-2"></i>
-                                    Guardar cliente
-                                </button>
+                                    <button type="submit" class="btn btn-primary btn-label">
+                                        <i class="ri-save-3-line label-icon align-middle fs-16 me-2"></i>
+                                        Guardar cliente
+                                    </button>
+                                </div>
                             </div>
                         </div>
+
+
                     </div>
                 </div>
             </form>
