@@ -4084,31 +4084,53 @@ function obtenerCampoDireccion(nombre) {
  */
 function obtenerDatosDireccion() {
   const valor = function (nombre) {
-    return obtenerCampoDireccion(nombre)?.value?.trim() || "";
+    return (
+      obtenerCampoDireccion(nombre)
+        ?.value
+        ?.trim() || ""
+    );
   };
 
+  const iddireccion = Number(
+    estadoDireccionesCliente.iddireccionActual || 0,
+  );
+
   return {
-    iddireccion: estadoDireccionesCliente.iddireccionActual,
+    iddireccion:
+      Number.isInteger(iddireccion) &&
+      iddireccion > 0
+        ? iddireccion
+        : 0,
 
-    tipo_direccion: valor("tipo_direccion"),
+    tipo_direccion:
+      valor("tipo_direccion"),
 
-    calle: valor("calle"),
+    calle:
+      valor("calle"),
 
-    numero_exterior: valor("numero_exterior"),
+    numero_exterior:
+      valor("numero_exterior"),
 
-    numero_interior: valor("numero_interior"),
+    numero_interior:
+      valor("numero_interior"),
 
-    colonia: valor("colonia"),
+    colonia:
+      valor("colonia"),
 
-    codigo_postal: valor("codigo_postal"),
+    codigo_postal:
+      valor("codigo_postal"),
 
-    municipio: valor("municipio"),
+    municipio:
+      valor("municipio"),
 
-    estado_republica: valor("estado_republica"),
+    estado_republica:
+      valor("estado_republica"),
 
-    pais: valor("pais"),
+    pais:
+      valor("pais"),
 
-    referencias: valor("referencias"),
+    referencias:
+      valor("referencias"),
   };
 }
 
@@ -4162,58 +4184,161 @@ async function guardarDireccion() {
 
   const datos = obtenerDatosDireccion();
 
+  /*
+   * Convertimos explícitamente el ID a número.
+   * Si estamos editando debe ser mayor a cero.
+   */
+  const iddireccion = Number(datos.iddireccion || 0);
+
+  const esEdicion =
+    Number.isInteger(iddireccion) &&
+    iddireccion > 0;
+
   const confirmado = await confirmarAccion(
-    datos.iddireccion > 0
+    esEdicion
       ? "¿Desea actualizar esta dirección?"
       : "¿Desea guardar esta dirección?",
-    datos.iddireccion > 0 ? "Actualizar dirección" : "Guardar dirección",
+    esEdicion
+      ? "Actualizar dirección"
+      : "Guardar dirección",
   );
 
   if (!confirmado) {
     return;
   }
 
-  const boton = document.querySelector("#btnGuardarDireccion");
+  const boton = document.querySelector(
+    "#btnGuardarDireccion",
+  );
 
-  const contenidoOriginal = boton?.innerHTML || "";
+  const contenidoOriginal =
+    boton?.innerHTML || "";
 
   estadoDireccionesCliente.guardando = true;
 
-  establecerEstadoBoton(boton, true, "Guardando...");
+  establecerEstadoBoton(
+    boton,
+    true,
+    esEdicion
+      ? "Actualizando..."
+      : "Guardando...",
+  );
 
   try {
     const formData = new FormData();
 
-    formData.append("idcliente", String(obtenerIdCliente()));
+    formData.set(
+      "idcliente",
+      String(obtenerIdCliente()),
+    );
 
-    Object.entries(datos).forEach(function ([clave, valor]) {
-      formData.append(clave, String(valor ?? ""));
-    });
+    /*
+     * Este valor es el que determina si el backend
+     * debe insertar o actualizar.
+     */
+    formData.set(
+      "iddireccion",
+      String(iddireccion),
+    );
 
-    const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarDireccion, {
-      method: "POST",
-      body: formData,
-    });
+    formData.set(
+      "tipo_direccion",
+      datos.tipo_direccion,
+    );
+
+    formData.set(
+      "calle",
+      datos.calle,
+    );
+
+    formData.set(
+      "numero_exterior",
+      datos.numero_exterior,
+    );
+
+    formData.set(
+      "numero_interior",
+      datos.numero_interior,
+    );
+
+    formData.set(
+      "colonia",
+      datos.colonia,
+    );
+
+    formData.set(
+      "codigo_postal",
+      datos.codigo_postal,
+    );
+
+    formData.set(
+      "municipio",
+      datos.municipio,
+    );
+
+    formData.set(
+      "estado_republica",
+      datos.estado_republica,
+    );
+
+    formData.set(
+      "pais",
+      datos.pais,
+    );
+
+    formData.set(
+      "referencias",
+      datos.referencias,
+    );
+
+    const respuesta = await peticionJson(
+      CLIENTES_ENDPOINTS.guardarDireccion,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
 
     if (!respuesta.status) {
       throw new Error(
-        respuesta.message || "No fue posible guardar la dirección.",
+        respuesta.message ||
+        (
+          esEdicion
+            ? "No fue posible actualizar la dirección."
+            : "No fue posible guardar la dirección."
+        ),
       );
     }
 
-    mostrarExito(respuesta.message || "La dirección se guardó correctamente.");
+    mostrarExito(
+      respuesta.message ||
+      (
+        esEdicion
+          ? "La dirección se actualizó correctamente."
+          : "La dirección se guardó correctamente."
+      ),
+    );
 
     limpiarFormularioDireccion();
 
     await cargarDireccionesCliente(true);
   } catch (error) {
-    console.error("Error al guardar dirección:", error);
+    console.error(
+      "Error al guardar dirección:",
+      error,
+    );
 
-    mostrarError(error.message || "Ocurrió un error al guardar la dirección.");
+    mostrarError(
+      error.message ||
+      "Ocurrió un error al guardar la dirección.",
+    );
   } finally {
     estadoDireccionesCliente.guardando = false;
 
-    restaurarBoton(boton, contenidoOriginal);
+    restaurarBoton(
+      boton,
+      contenidoOriginal,
+    );
   }
 }
 
@@ -4400,67 +4525,127 @@ function manejarAccionesDireccion(event) {
 }
 
 /**
- * Carga una dirección en el formulario.
+ * Carga una dirección en el formulario para editarla.
  *
  * @param {number} iddireccion
  */
 function editarDireccion(iddireccion) {
-  const direccion = estadoDireccionesCliente.registros.find(
-    function (registro) {
-      return Number(registro.iddireccion || registro.id) === iddireccion;
-    },
-  );
+  const id = Number(iddireccion);
 
-  if (!direccion) {
-    mostrarError("No se encontró la dirección seleccionada.");
+  if (
+    !Number.isInteger(id) ||
+    id <= 0
+  ) {
+    mostrarError(
+      "El ID de la dirección no es válido.",
+    );
 
     return;
   }
 
-  estadoDireccionesCliente.iddireccionActual = iddireccion;
+  const direccion =
+    estadoDireccionesCliente.registros.find(
+      function (registro) {
+        return Number(
+          registro.iddireccion ||
+          registro.id ||
+          0,
+        ) === id;
+      },
+    );
+
+  if (!direccion) {
+    mostrarError(
+      "No se encontró la dirección seleccionada.",
+    );
+
+    return;
+  }
+
+  /*
+   * Este valor debe conservarse hasta que el usuario
+   * guarde o presione Nueva dirección.
+   */
+  estadoDireccionesCliente.iddireccionActual = id;
 
   const campos = {
-    tipo_direccion: direccion.tipo_direccion,
+    tipo_direccion:
+      direccion.tipo_direccion || "",
 
-    calle: direccion.calle,
+    calle:
+      direccion.calle || "",
 
-    numero_exterior: direccion.numero_exterior,
+    numero_exterior:
+      direccion.numero_exterior || "",
 
-    numero_interior: direccion.numero_interior,
+    numero_interior:
+      direccion.numero_interior || "",
 
-    colonia: direccion.colonia,
+    colonia:
+      direccion.colonia || "",
 
-    codigo_postal: direccion.codigo_postal,
+    codigo_postal:
+      direccion.codigo_postal || "",
 
-    municipio: direccion.municipio,
+    municipio:
+      direccion.municipio || "",
 
-    estado_republica: direccion.estado_republica,
+    estado_republica:
+      direccion.estado_republica || "",
 
-    pais: direccion.pais,
+    pais:
+      direccion.pais || "México",
 
-    referencias: direccion.referencias,
+    referencias:
+      direccion.referencias || "",
   };
 
-  Object.entries(campos).forEach(function ([nombre, valor]) {
-    const campo = obtenerCampoDireccion(nombre);
+  Object.entries(campos).forEach(
+    function ([nombre, valor]) {
+      const campo =
+        obtenerCampoDireccion(nombre);
 
-    if (campo) {
-      campo.value = valor || "";
-    }
-  });
+      if (!campo) {
+        return;
+      }
 
-  document.querySelector("#btnGuardarDireccion").innerHTML = `
-        <i
-            class="ri-save-3-line label-icon align-middle fs-16 me-2">
-        </i>
+      campo.value = valor;
 
-        Actualizar dirección
+      campo.classList.remove(
+        "is-valid",
+        "is-invalid",
+      );
+    },
+  );
+
+  const botonGuardar =
+    document.querySelector(
+      "#btnGuardarDireccion",
+    );
+
+  if (botonGuardar) {
+    botonGuardar.innerHTML = `
+      <i
+        class="ri-save-3-line label-icon align-middle fs-16 me-2">
+      </i>
+      Actualizar dirección
     `;
 
-  document.querySelector(SELECTORES_CLIENTE.tabDirecciones)?.scrollIntoView({
-    behavior: "smooth",
-    block: "start",
-  });
+    botonGuardar.dataset.modo =
+      "editar";
+
+    botonGuardar.dataset.iddireccion =
+      String(id);
+  }
+
+  document
+    .querySelector(
+      SELECTORES_CLIENTE.tabDirecciones,
+    )
+    ?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
 }
 
 /**
@@ -4515,7 +4700,7 @@ async function eliminarDireccion(iddireccion) {
 }
 
 /**
- * Limpia el formulario de dirección.
+ * Limpia el formulario y lo coloca en modo nueva dirección.
  */
 function limpiarFormularioDireccion() {
   estadoDireccionesCliente.iddireccionActual = 0;
@@ -4534,27 +4719,39 @@ function limpiarFormularioDireccion() {
   ];
 
   nombres.forEach(function (nombre) {
-    const campo = obtenerCampoDireccion(nombre);
+    const campo =
+      obtenerCampoDireccion(nombre);
 
     if (!campo) {
       return;
     }
 
-    campo.value = nombre === "pais" ? "México" : "";
+    campo.value =
+      nombre === "pais"
+        ? "México"
+        : "";
 
-    campo.classList.remove("is-valid", "is-invalid");
+    campo.classList.remove(
+      "is-valid",
+      "is-invalid",
+    );
   });
 
-  const boton = document.querySelector("#btnGuardarDireccion");
+  const boton =
+    document.querySelector(
+      "#btnGuardarDireccion",
+    );
 
   if (boton) {
     boton.innerHTML = `
-            <i
-                class="ri-save-3-line label-icon align-middle fs-16 me-2">
-            </i>
+      <i
+        class="ri-save-3-line label-icon align-middle fs-16 me-2">
+      </i>
+      Guardar dirección
+    `;
 
-            Guardar dirección
-        `;
+    boton.dataset.modo = "nuevo";
+    boton.dataset.iddireccion = "0";
   }
 }
 
@@ -4919,7 +5116,7 @@ function obtenerDatosComerciales() {
 
     porcentaje_descuento: obtenerValor("porcentaje_descuento") || "0",
 
-    ejecutivo_asignado: obtenerValor("ejecutivo_asignado"),
+    ejecutivo_asignado: obtenerValor("ejecutivo_cuenta"),
 
     zona_comercial: obtenerValor("zona_comercial"),
 
@@ -5076,10 +5273,12 @@ async function guardarInformacionComercial() {
 /**
  * Estado interno de la sección Bancos.
  */
+
 const estadoBancosCliente = {
   inicializado: false,
   guardando: false,
   cargando: false,
+  cargado: false,
   idbancoActual: 0,
   registros: [],
 };
@@ -5231,39 +5430,50 @@ function obtenerCampoBanco(nombre) {
  */
 function obtenerDatosBanco() {
   const valor = function (nombre) {
-    const campo = obtenerCampoBanco(nombre);
+    const campo =
+      obtenerCampoBanco(nombre);
 
     if (!campo) {
       return "";
     }
 
-    if (campo.type === "checkbox") {
-      return campo.checked ? "1" : "0";
-    }
-
-    return campo.value?.trim() || "";
+    return (
+      campo.value?.trim() || ""
+    );
   };
 
+  const idbanco = Number(
+    estadoBancosCliente.idbancoActual || 0,
+  );
+
   return {
-    idbanco: estadoBancosCliente.idbancoActual,
+    idbanco:
+      Number.isInteger(idbanco) &&
+      idbanco > 0
+        ? idbanco
+        : 0,
 
-    banco: valor("banco"),
+    banco:
+      valor("banco"),
 
-    titular: valor("titular"),
+    titular_cuenta:
+      valor("titular_cuenta"),
 
-    numero_cuenta: valor("numero_cuenta"),
+    numero_cuenta:
+      valor("numero_cuenta"),
 
-    clabe: valor("clabe"),
+    clabe:
+      valor("clabe"),
 
-    moneda: valor("moneda") || "MXN",
+    moneda_cuenta:
+      valor("moneda_cuenta") ||
+      "MXN",
 
-    sucursal_bancaria: valor("sucursal_bancaria"),
+    referencia_bancaria:
+      valor("referencia_bancaria"),
 
-    tipo_cuenta: valor("tipo_cuenta"),
-
-    es_principal: valor("es_principal") || "0",
-
-    estado: valor("estado") || "2",
+    estado:
+      "2",
   };
 }
 
@@ -5316,7 +5526,10 @@ function validarClabeBanco() {
  * @returns {boolean}
  */
 function validarDatosBanco() {
-  const contenedor = document.querySelector(SELECTORES_CLIENTE.tabBancos);
+  const contenedor =
+    document.querySelector(
+      SELECTORES_CLIENTE.tabBancos,
+    );
 
   if (!contenedor) {
     return false;
@@ -5326,38 +5539,83 @@ function validarDatosBanco() {
     return false;
   }
 
-  const datos = obtenerDatosBanco();
+  const datos =
+    obtenerDatosBanco();
 
-  if (datos.numero_cuenta && datos.numero_cuenta.length < 6) {
-    const campo = obtenerCampoBanco("numero_cuenta");
+  if (!datos.banco) {
+    mostrarAdvertencia(
+      "Capture el nombre del banco.",
+    );
 
-    campo?.classList.add("is-invalid");
+    obtenerCampoBanco("banco")?.focus();
+
+    return false;
+  }
+
+  if (!datos.titular_cuenta) {
+    mostrarAdvertencia(
+      "Capture el titular de la cuenta.",
+    );
+
+    (
+      obtenerCampoBanco("titular_cuenta") ||
+      obtenerCampoBanco("titular")
+    )?.focus();
+
+    return false;
+  }
+
+  if (
+    datos.numero_cuenta &&
+    datos.numero_cuenta.length < 6
+  ) {
+    const campo =
+      obtenerCampoBanco("numero_cuenta");
+
+    campo?.classList.add(
+      "is-invalid",
+    );
+
     campo?.focus();
 
-    mostrarAdvertencia("El número de cuenta debe contener al menos 6 dígitos.");
+    mostrarAdvertencia(
+      "El número de cuenta debe contener al menos 6 dígitos.",
+    );
 
     return false;
   }
 
-  if (datos.clabe && !validarClabeBanco()) {
-    obtenerCampoBanco("clabe")?.focus();
+  if (
+    datos.clabe &&
+    !validarClabeBanco()
+  ) {
+    obtenerCampoBanco("clabe")
+      ?.focus();
 
-    mostrarAdvertencia("La CLABE capturada no es válida.");
+    mostrarAdvertencia(
+      "La CLABE capturada no es válida.",
+    );
 
     return false;
   }
 
-  if (!datos.numero_cuenta && !datos.clabe) {
-    mostrarAdvertencia("Capture el número de cuenta o la CLABE bancaria.");
+  if (
+    !datos.numero_cuenta &&
+    !datos.clabe
+  ) {
+    mostrarAdvertencia(
+      "Capture el número de cuenta o la CLABE bancaria.",
+    );
 
-    obtenerCampoBanco("numero_cuenta")?.focus();
+    obtenerCampoBanco(
+      "numero_cuenta",
+    )?.focus();
 
     return false;
   }
 
   return true;
 }
-
 /**
  * Guarda o actualiza una cuenta bancaria.
  */
@@ -5376,62 +5634,141 @@ async function guardarBanco() {
 
   const datos = obtenerDatosBanco();
 
+  const idbanco = Number(
+    datos.idbanco || 0,
+  );
+
+  const esEdicion =
+    Number.isInteger(idbanco) &&
+    idbanco > 0;
+
   const confirmado = await confirmarAccion(
-    datos.idbanco > 0
+    esEdicion
       ? "¿Desea actualizar esta cuenta bancaria?"
       : "¿Desea guardar esta cuenta bancaria?",
-    datos.idbanco > 0 ? "Actualizar cuenta" : "Guardar cuenta",
+    esEdicion
+      ? "Actualizar cuenta"
+      : "Guardar cuenta",
   );
 
   if (!confirmado) {
     return;
   }
 
-  const boton = document.querySelector("#btnGuardarBanco");
+  const boton =
+    document.querySelector(
+      "#btnGuardarBanco",
+    );
 
-  const contenidoOriginal = boton?.innerHTML || "";
+  const contenidoOriginal =
+    boton?.innerHTML || "";
 
   estadoBancosCliente.guardando = true;
 
-  establecerEstadoBoton(boton, true, "Guardando...");
+  establecerEstadoBoton(
+    boton,
+    true,
+    esEdicion
+      ? "Actualizando..."
+      : "Guardando...",
+  );
 
   try {
     const formData = new FormData();
 
-    formData.append("idcliente", String(obtenerIdCliente()));
+    formData.set(
+      "idcliente",
+      String(obtenerIdCliente()),
+    );
 
-    Object.entries(datos).forEach(function ([clave, valor]) {
-      formData.append(clave, String(valor ?? ""));
-    });
+    formData.set(
+      "idbanco",
+      String(idbanco),
+    );
 
-    const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarBanco, {
-      method: "POST",
-      body: formData,
-    });
+    formData.set(
+      "banco",
+      datos.banco,
+    );
+
+    formData.set(
+      "titular_cuenta",
+      datos.titular_cuenta,
+    );
+
+    formData.set(
+      "numero_cuenta",
+      datos.numero_cuenta,
+    );
+
+    formData.set(
+      "clabe",
+      datos.clabe,
+    );
+
+    formData.set(
+      "moneda_cuenta",
+      datos.moneda_cuenta,
+    );
+
+    formData.set(
+      "referencia_bancaria",
+      datos.referencia_bancaria,
+    );
+
+    formData.set(
+      "estado",
+      datos.estado,
+    );
+
+    const respuesta = await peticionJson(
+      CLIENTES_ENDPOINTS.guardarBanco,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
 
     if (!respuesta.status) {
       throw new Error(
-        respuesta.message || "No fue posible guardar la cuenta bancaria.",
+        respuesta.message ||
+        (
+          esEdicion
+            ? "No fue posible actualizar la cuenta bancaria."
+            : "No fue posible guardar la cuenta bancaria."
+        ),
       );
     }
 
     mostrarExito(
-      respuesta.message || "La cuenta bancaria se guardó correctamente.",
+      respuesta.message ||
+      (
+        esEdicion
+          ? "La cuenta bancaria se actualizó correctamente."
+          : "La cuenta bancaria se registró correctamente."
+      ),
     );
 
     limpiarFormularioBanco();
 
     await cargarBancosCliente(true);
   } catch (error) {
-    console.error("Error al guardar cuenta bancaria:", error);
+    console.error(
+      "Error al guardar cuenta bancaria:",
+      error,
+    );
 
     mostrarError(
-      error.message || "Ocurrió un error al guardar la cuenta bancaria.",
+      error.message ||
+      "Ocurrió un error al guardar la cuenta bancaria.",
     );
   } finally {
     estadoBancosCliente.guardando = false;
 
-    restaurarBoton(boton, contenidoOriginal);
+    restaurarBoton(
+      boton,
+      contenidoOriginal,
+    );
   }
 }
 
@@ -5440,18 +5777,31 @@ async function guardarBanco() {
  *
  * @param {boolean} forzar
  */
-async function cargarBancosCliente(forzar = false) {
-  const idcliente = obtenerIdCliente();
 
-  if (idcliente <= 0 || estadoBancosCliente.cargando) {
+async function cargarBancosCliente(
+  forzar = false,
+) {
+  const idcliente =
+    obtenerIdCliente();
+
+  if (
+    idcliente <= 0 ||
+    estadoBancosCliente.cargando
+  ) {
     return;
   }
 
-  if (estadoBancosCliente.registros.length > 0 && !forzar) {
+  if (
+    estadoBancosCliente.cargado &&
+    !forzar
+  ) {
     return;
   }
 
-  const contenedor = document.querySelector("#contenedorListadoBancos");
+  const contenedor =
+    document.querySelector(
+      "#contenedorListadoBancos",
+    );
 
   if (!contenedor) {
     return;
@@ -5460,155 +5810,211 @@ async function cargarBancosCliente(forzar = false) {
   estadoBancosCliente.cargando = true;
 
   contenedor.innerHTML = `
-        <div class="col-12 text-center py-4">
-            <span
-                class="spinner-border spinner-border-sm me-2">
-            </span>
-
-            Cargando cuentas bancarias...
-        </div>
-    `;
+    <div class="col-12 text-center py-4">
+      <span
+        class="spinner-border spinner-border-sm me-2">
+      </span>
+      Cargando cuentas bancarias...
+    </div>
+  `;
 
   try {
     const url =
-      `${CLIENTES_ENDPOINTS.listarBancos}/` + encodeURIComponent(idcliente);
+      `${CLIENTES_ENDPOINTS.listarBancos}/` +
+      encodeURIComponent(idcliente);
 
-    const respuesta = await peticionJson(url, {
-      method: "GET",
-    });
+    const respuesta =
+      await peticionJson(
+        url,
+        {
+          method: "GET",
+        },
+      );
 
     if (!respuesta.status) {
       throw new Error(
-        respuesta.message || "No fue posible consultar las cuentas bancarias.",
+        respuesta.message ||
+        "No fue posible consultar las cuentas bancarias.",
       );
     }
 
-    estadoBancosCliente.registros = Array.isArray(respuesta.data)
-      ? respuesta.data
-      : Array.isArray(respuesta.data?.bancos)
-        ? respuesta.data.bancos
-        : [];
+    estadoBancosCliente.registros =
+      Array.isArray(respuesta.data)
+        ? respuesta.data
+        : Array.isArray(
+              respuesta.data?.bancos,
+            )
+          ? respuesta.data.bancos
+          : [];
+
+    estadoBancosCliente.cargado = true;
 
     renderizarBancos();
   } catch (error) {
-    console.error("Error al cargar bancos:", error);
+    console.error(
+      "Error al cargar bancos:",
+      error,
+    );
 
     contenedor.innerHTML = `
-            <div class="col-12 text-center text-danger py-4">
-                ${escaparHtml(
-                  error.message ||
-                    "No fue posible cargar las cuentas bancarias.",
-                )}
-            </div>
-        `;
+      <div class="col-12 text-center text-danger py-4">
+        ${escaparHtml(
+          error.message ||
+          "No fue posible cargar las cuentas bancarias.",
+        )}
+
+        <div class="mt-2">
+          <button
+            type="button"
+            class="btn btn-sm btn-light"
+            id="btnReintentarBancos">
+
+            <i class="ri-refresh-line me-1"></i>
+            Reintentar
+          </button>
+        </div>
+      </div>
+    `;
+
+    document
+      .querySelector(
+        "#btnReintentarBancos",
+      )
+      ?.addEventListener(
+        "click",
+        function () {
+          cargarBancosCliente(true);
+        },
+      );
   } finally {
     estadoBancosCliente.cargando = false;
   }
 }
 
-/**
- * Renderiza las cuentas bancarias.
- */
 function renderizarBancos() {
-  const contenedor = document.querySelector("#contenedorListadoBancos");
+  const contenedor =
+    document.querySelector(
+      "#contenedorListadoBancos",
+    );
 
   if (!contenedor) {
     return;
   }
 
-  if (estadoBancosCliente.registros.length === 0) {
+  if (
+    estadoBancosCliente.registros.length === 0
+  ) {
     contenedor.innerHTML = `
-            <div class="col-12 text-center text-muted py-4">
-                <i class="ri-bank-line fs-3 d-block mb-2"></i>
-                No hay cuentas bancarias registradas.
-            </div>
-        `;
+      <div class="col-12 text-center text-muted py-4">
+        <i class="ri-bank-line fs-3 d-block mb-2"></i>
+        No hay cuentas bancarias registradas.
+      </div>
+    `;
 
     actualizarContadorBancos();
 
     return;
   }
 
-  contenedor.innerHTML = estadoBancosCliente.registros
-    .map(function (banco) {
-      const idbanco = Number(banco.idbanco || banco.id || 0);
+  contenedor.innerHTML =
+    estadoBancosCliente.registros
+      .map(function (banco) {
+        const idbanco = Number(
+          banco.idbanco ||
+          banco.id ||
+          0,
+        );
 
-      const clabeProtegida = protegerCuentaBancaria(
-        banco.clabe || banco.numero_cuenta || "",
-      );
+        const cuentaProtegida =
+          protegerCuentaBancaria(
+            banco.clabe ||
+            banco.numero_cuenta ||
+            "",
+          );
 
-      return `
-                    <div class="col-lg-6">
-                        <div class="card border shadow-none h-100">
-                            <div class="card-body">
-                                <div
-                                    class="d-flex justify-content-between gap-3">
+        return `
+          <div class="col-lg-6">
+            <div class="card border shadow-none h-100">
 
-                                    <div>
-                                        <div class="d-flex gap-2 align-items-center">
-                                            <h6 class="mb-0">
-                                                ${escaparHtml(
-                                                  banco.banco || "",
-                                                )}
-                                            </h6>
+              <div class="card-body">
 
-                                            ${
-                                              String(banco.es_principal) === "1"
-                                                ? `
-                                                        <span
-                                                            class="badge bg-success-subtle text-success">
-                                                            Principal
-                                                        </span>
-                                                    `
-                                                : ""
-                                            }
-                                        </div>
+                <div
+                  class="d-flex justify-content-between gap-3">
 
-                                        <p class="text-muted mb-1 mt-2">
-                                            ${escaparHtml(banco.titular || "")}
-                                        </p>
+                  <div>
 
-                                        <div class="fw-medium">
-                                            ${escaparHtml(clabeProtegida)}
-                                        </div>
+                    <h6 class="mb-0">
+                      ${escaparHtml(
+                        banco.banco || "",
+                      )}
+                    </h6>
 
-                                        <small class="text-muted">
-                                            ${escaparHtml(
-                                              banco.tipo_cuenta || "",
-                                            )}
-                                            ·
-                                            ${escaparHtml(
-                                              banco.moneda || "MXN",
-                                            )}
-                                        </small>
-                                    </div>
+                    <p class="text-muted mb-1 mt-2">
+                      ${escaparHtml(
+                        banco.titular_cuenta || "",
+                      )}
+                    </p>
 
-                                    <div class="text-nowrap">
-                                        <button
-                                            type="button"
-                                            class="btn btn-sm btn-soft-info btn-editar-banco"
-                                            data-id="${idbanco}"
-                                            title="Editar">
-
-                                            <i class="ri-edit-line"></i>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            class="btn btn-sm btn-soft-danger btn-eliminar-banco"
-                                            data-id="${idbanco}"
-                                            title="Eliminar">
-
-                                            <i class="ri-delete-bin-line"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="fw-medium">
+                      ${escaparHtml(
+                        cuentaProtegida,
+                      )}
                     </div>
-                `;
-    })
-    .join("");
+
+                    <small class="text-muted">
+                      ${escaparHtml(
+                        banco.moneda_cuenta || "MXN",
+                      )}
+                    </small>
+
+                    ${
+                      banco.referencia_bancaria
+                        ? `
+                          <div class="small text-muted mt-2">
+                            Referencia:
+                            ${escaparHtml(
+                              banco.referencia_bancaria,
+                            )}
+                          </div>
+                        `
+                        : ""
+                    }
+
+                  </div>
+
+                  <div class="text-nowrap">
+
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-soft-info btn-editar-banco"
+                      data-id="${idbanco}"
+                      title="Editar">
+
+                      <i class="ri-edit-line"></i>
+
+                    </button>
+
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-soft-danger btn-eliminar-banco"
+                      data-id="${idbanco}"
+                      title="Eliminar">
+
+                      <i class="ri-delete-bin-line"></i>
+
+                    </button>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        `;
+      })
+      .join("");
 
   actualizarContadorBancos();
 }
@@ -5639,60 +6045,130 @@ function manejarAccionesBanco(event) {
  *
  * @param {number} idbanco
  */
+/**
+ * Carga una cuenta bancaria en el formulario para editarla.
+ *
+ * @param {number} idbanco
+ */
 function editarBanco(idbanco) {
-  const banco = estadoBancosCliente.registros.find(function (registro) {
-    return Number(registro.idbanco || registro.id) === idbanco;
-  });
+  const id = Number(idbanco);
 
-  if (!banco) {
-    mostrarError("No se encontró la cuenta bancaria seleccionada.");
+  if (
+    !Number.isInteger(id) ||
+    id <= 0
+  ) {
+    mostrarError(
+      "El ID de la cuenta bancaria no es válido.",
+    );
 
     return;
   }
 
-  estadoBancosCliente.idbancoActual = idbanco;
+  const banco =
+    estadoBancosCliente.registros.find(
+      function (registro) {
+        return Number(
+          registro.idbanco ||
+          registro.id ||
+          0,
+        ) === id;
+      },
+    );
 
-  const campos = {
-    banco: banco.banco,
-    titular: banco.titular,
-    numero_cuenta: banco.numero_cuenta,
-    clabe: banco.clabe,
-    moneda: banco.moneda,
-    sucursal_bancaria: banco.sucursal_bancaria,
-    tipo_cuenta: banco.tipo_cuenta,
-    estado: banco.estado,
-  };
+  if (!banco) {
+    mostrarError(
+      "No se encontró la cuenta bancaria seleccionada.",
+    );
 
-  Object.entries(campos).forEach(function ([nombre, valor]) {
-    const campo = obtenerCampoBanco(nombre);
-
-    if (campo) {
-      campo.value = valor ?? "";
-    }
-  });
-
-  const principal = obtenerCampoBanco("es_principal");
-
-  if (principal) {
-    principal.checked = String(banco.es_principal) === "1";
+    return;
   }
 
-  const boton = document.querySelector("#btnGuardarBanco");
+  /*
+   * Guardamos el ID del banco que se está editando.
+   */
+  estadoBancosCliente.idbancoActual = id;
+
+  /*
+   * Los nombres deben coincidir EXACTAMENTE
+   * con los name="" de tu HTML.
+   */
+  const campos = {
+    banco:
+      banco.banco || "",
+
+    titular_cuenta:
+      banco.titular_cuenta || "",
+
+    numero_cuenta:
+      banco.numero_cuenta || "",
+
+    clabe:
+      banco.clabe || "",
+
+    moneda_cuenta:
+      banco.moneda_cuenta || "MXN",
+
+    referencia_bancaria:
+      banco.referencia_bancaria || "",
+  };
+
+  Object.entries(campos).forEach(
+    function ([nombre, valor]) {
+      const campo =
+        obtenerCampoBanco(nombre);
+
+      if (!campo) {
+        console.warn(
+          `No se encontró el campo bancario: ${nombre}`,
+        );
+
+        return;
+      }
+
+      campo.value =
+        valor ?? "";
+
+      campo.classList.remove(
+        "is-valid",
+        "is-invalid",
+      );
+    },
+  );
+
+  /*
+   * Actualizamos el texto del botón.
+   */
+  const boton =
+    document.querySelector(
+      "#btnGuardarBanco",
+    );
 
   if (boton) {
     boton.innerHTML = `
-            <i
-                class="ri-save-3-line label-icon align-middle fs-16 me-2">
-            </i>
+      <i
+        class="ri-save-3-line label-icon align-middle fs-16 me-2">
+      </i>
 
-            Actualizar cuenta bancaria
-        `;
+      Actualizar cuenta bancaria
+    `;
+
+    boton.dataset.modo = "editar";
+
+    boton.dataset.idbanco =
+      String(id);
   }
 
-  document.querySelector(SELECTORES_CLIENTE.tabBancos)?.scrollIntoView({
-    behavior: "smooth",
-    block: "start",
-  });
+  /*
+   * Nos posicionamos en el formulario.
+   */
+  document
+    .querySelector(
+      SELECTORES_CLIENTE.tabBancos,
+    )
+    ?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
 }
 
 /**
@@ -5758,49 +6234,51 @@ function limpiarFormularioBanco() {
 
   const nombres = [
     "banco",
-    "titular",
+    "titular_cuenta",
     "numero_cuenta",
     "clabe",
-    "moneda",
-    "sucursal_bancaria",
-    "tipo_cuenta",
-    "estado",
+    "moneda_cuenta",
+    "referencia_bancaria",
   ];
 
   nombres.forEach(function (nombre) {
-    const campo = obtenerCampoBanco(nombre);
+    const campo =
+      obtenerCampoBanco(nombre);
 
     if (!campo) {
       return;
     }
 
-    if (nombre === "moneda") {
+    if (
+      nombre === "moneda_cuenta"
+    ) {
       campo.value = "MXN";
-    } else if (nombre === "estado") {
-      campo.value = "2";
     } else {
       campo.value = "";
     }
 
-    campo.classList.remove("is-valid", "is-invalid");
+    campo.classList.remove(
+      "is-valid",
+      "is-invalid",
+    );
   });
 
-  const principal = obtenerCampoBanco("es_principal");
-
-  if (principal) {
-    principal.checked = false;
-  }
-
-  const boton = document.querySelector("#btnGuardarBanco");
+  const boton =
+    document.querySelector(
+      "#btnGuardarBanco",
+    );
 
   if (boton) {
     boton.innerHTML = `
-            <i
-                class="ri-save-3-line label-icon align-middle fs-16 me-2">
-            </i>
+      <i
+        class="ri-save-3-line label-icon align-middle fs-16 me-2">
+      </i>
 
-            Guardar cuenta bancaria
-        `;
+      Guardar cuenta bancaria
+    `;
+
+    boton.dataset.modo = "nuevo";
+    boton.dataset.idbanco = "0";
   }
 }
 

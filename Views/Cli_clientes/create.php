@@ -131,7 +131,7 @@
             </div>
 
             <form id="formCliente" autocomplete="off" novalidate>
-                <input type="text" id="idcliente" name="idcliente" value="<?= intval($data['idcliente'] ?? 0); ?>">
+                <input type="hidden" id="idcliente" name="idcliente" value="<?= intval($data['idcliente'] ?? 0); ?>">
 
                 <div class="card client-form-card">
                     <div class="card-body">

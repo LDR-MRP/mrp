@@ -252,7 +252,7 @@ class Cli_clientes extends Controllers
     if (empty($cliente)) {
         header("Location: " . base_url() . '/cli_clientes');
         exit;
-    }
+    } 
 
     $data['page_tag'] = "Editar cliente";
     $data['page_title'] = "Editar cliente";
@@ -1576,36 +1576,305 @@ class Cli_clientes extends Controllers
     }
 
 
-        /** Registra una dirección adicional del cliente. */
-    public function setDireccion(): void
-    {
-        try {
-            // $this->validarPermiso('w');
-            $idcliente = (int)$this->post('idcliente', '0');
-            // $this->validarCliente($idcliente);
-            foreach (['tipo_direccion','calle','numero_exterior','colonia','codigo_postal','municipio','estado_republica','pais'] as $campo) {
-                if ($this->post($campo) === '') $this->json(false, 'Completa los campos obligatorios de la dirección.', [], 400);
-            }
-            $data = [
-                'tipo_direccion' => $this->post('tipo_direccion'),
-                'calle' => $this->post('calle'),
-                'numero_exterior' => $this->post('numero_exterior'),
-                'numero_interior' => $this->post('numero_interior'),
-                'colonia' => $this->post('colonia'),
-                'codigo_postal' => $this->post('codigo_postal'),
-                'municipio' => $this->post('municipio'),
-                'estado_republica' => $this->post('estado_republica'),
-                'pais' => $this->post('pais'),
-                'referencias' => $this->post('referencias'),
-                'usuarioid' => (int)($_SESSION['idUser'] ?? 0)
-            ];
-            $iddireccion = $this->model->insertDireccion($idcliente, $data);
-            if (!$iddireccion) $this->json(false, 'No fue posible guardar la dirección.', [], 500);
-            $this->json(true, 'La dirección se guardó correctamente.', ['iddireccion' => (int)$iddireccion]);
-        } catch (Throwable $e) {
-            $this->json(false, 'Ocurrió un error al guardar la dirección.', [], 500);
-        }
+ public function setDireccion()
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        echo json_encode([
+            'status' => false,
+            'message' => 'Método no permitido.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
     }
+
+    if (empty($_SESSION['permisosMod']['w'])) {
+        echo json_encode([
+            'status' => false,
+            'message' => 'No tiene permisos para guardar direcciones.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    $idcliente = intval(
+        $_POST['idcliente'] ?? 0
+    );
+
+    $iddireccion = intval(
+        $_POST['iddireccion'] ?? 0
+    );
+
+    $tipoDireccion = strClean(
+        $_POST['tipo_direccion'] ?? ''
+    );
+
+    $calle = strClean(
+        $_POST['calle'] ?? ''
+    );
+
+    $numeroExterior = strClean(
+        $_POST['numero_exterior'] ?? ''
+    );
+
+    $numeroInterior = strClean(
+        $_POST['numero_interior'] ?? ''
+    );
+
+    $colonia = strClean(
+        $_POST['colonia'] ?? ''
+    );
+
+    $codigoPostal = strClean(
+        $_POST['codigo_postal'] ?? ''
+    );
+
+    $municipio = strClean(
+        $_POST['municipio'] ?? ''
+    );
+
+    $estadoRepublica = strClean(
+        $_POST['estado_republica'] ?? ''
+    );
+
+    $pais = strClean(
+        $_POST['pais'] ?? 'México'
+    );
+
+    $referencias = strClean(
+        $_POST['referencias'] ?? ''
+    );
+
+    $usuarioid = intval(
+        $_SESSION['idUser'] ?? 0
+    );
+
+    if ($idcliente <= 0) {
+        echo json_encode([
+            'status' => false,
+            'message' => 'El cliente no es válido.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    if (
+        empty($tipoDireccion) ||
+        empty($calle) ||
+        empty($numeroExterior) ||
+        empty($colonia) ||
+        empty($codigoPostal) ||
+        empty($municipio) ||
+        empty($estadoRepublica) ||
+        empty($pais)
+    ) {
+        echo json_encode([
+            'status' => false,
+            'message' => 'Complete los campos obligatorios de la dirección.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    if (!preg_match('/^[0-9]{5}$/', $codigoPostal)) {
+        echo json_encode([
+            'status' => false,
+            'message' => 'El código postal debe contener exactamente 5 números.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    $datos = [
+        'tipo_direccion' => $tipoDireccion,
+        'calle' => $calle,
+        'numero_exterior' => $numeroExterior,
+        'numero_interior' => $numeroInterior,
+        'colonia' => $colonia,
+        'codigo_postal' => $codigoPostal,
+        'municipio' => $municipio,
+        'estado_republica' => $estadoRepublica,
+        'pais' => $pais,
+        'referencias' => $referencias,
+        'usuarioid' => $usuarioid
+    ];
+
+    /*
+     * ACTUALIZAR
+     */
+    if ($iddireccion > 0) {
+        $direccionActual =
+            $this->model->selectDireccionPorId(
+                $iddireccion,
+                $idcliente
+            );
+
+        if (empty($direccionActual)) {
+            echo json_encode([
+                'status' => false,
+                'message' => 'La dirección que intenta actualizar no existe.',
+                'data' => null
+            ], JSON_UNESCAPED_UNICODE);
+
+            die();
+        }
+
+        $request =
+            $this->model->updateDireccion(
+                $iddireccion,
+                $idcliente,
+                $datos
+            );
+
+        if (!$request) {
+            echo json_encode([
+                'status' => false,
+                'message' => 'No fue posible actualizar la dirección.',
+                'data' => null
+            ], JSON_UNESCAPED_UNICODE);
+
+            die();
+        }
+
+        echo json_encode([
+            'status' => true,
+            'message' => 'La dirección se actualizó correctamente.',
+            'data' => [
+                'iddireccion' => $iddireccion,
+                'accion' => 'actualizar'
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    /*
+     * INSERTAR
+     */
+    $request =
+        $this->model->insertDireccion(
+            $idcliente,
+            $datos
+        );
+
+    $nuevaDireccion = intval($request);
+
+    if ($nuevaDireccion <= 0) {
+        echo json_encode([
+            'status' => false,
+            'message' => 'No fue posible registrar la dirección.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    echo json_encode([
+        'status' => true,
+        'message' => 'La dirección se registró correctamente.',
+        'data' => [
+            'iddireccion' => $nuevaDireccion,
+            'accion' => 'insertar'
+        ]
+    ], JSON_UNESCAPED_UNICODE);
+
+    die();
+}
+
+public function delDireccion()
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        echo json_encode([
+            'status' => false,
+            'message' => 'Método no permitido.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    if (empty($_SESSION['permisosMod']['d'])) {
+        echo json_encode([
+            'status' => false,
+            'message' => 'No tiene permisos para eliminar direcciones.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    $idcliente = intval(
+        $_POST['idcliente'] ?? 0
+    );
+
+    $iddireccion = intval(
+        $_POST['iddireccion'] ?? 0
+    );
+
+    $usuarioid = intval(
+        $_SESSION['idUser'] ?? 0
+    );
+
+    if (
+        $idcliente <= 0 ||
+        $iddireccion <= 0
+    ) {
+        echo json_encode([
+            'status' => false,
+            'message' => 'Los datos de la dirección no son válidos.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    $direccion =
+        $this->model->selectDireccionPorId(
+            $iddireccion,
+            $idcliente
+        );
+
+    if (empty($direccion)) {
+        echo json_encode([
+            'status' => false,
+            'message' => 'La dirección no existe o ya fue eliminada.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    $request =
+        $this->model->deleteDireccion(
+            $iddireccion,
+            $idcliente,
+            $usuarioid
+        );
+
+    if (!$request) {
+        echo json_encode([
+            'status' => false,
+            'message' => 'No fue posible eliminar la dirección.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    echo json_encode([
+        'status' => true,
+        'message' => 'La dirección se eliminó correctamente.',
+        'data' => [
+            'iddireccion' => $iddireccion
+        ]
+    ], JSON_UNESCAPED_UNICODE);
+
+    die();
+}
 
     
     /** Guarda las condiciones comerciales; solo existe un registro por cliente. */
@@ -1622,7 +1891,7 @@ class Cli_clientes extends Controllers
                 'limite_credito' => max(0, (float)$this->post('limite_credito', '0')),
                 'dias_credito' => max(0, (int)$this->post('dias_credito', '0')),
                 'descuento_autorizado' => min(100, max(0, (float)$this->post('descuento_autorizado', '0'))),
-                'ejecutivo_cuenta' => $this->post('ejecutivo_cuenta'),
+                'ejecutivo_asignado' => $this->post('ejecutivo_asignado'),
                 'canal_venta' => $this->post('canal_venta'),
                 'clasificacion_comercial' => $this->post('clasificacion_comercial'),
                 'observaciones_comerciales' => $this->post('observaciones_comerciales'),
@@ -1637,32 +1906,360 @@ class Cli_clientes extends Controllers
         }
     }
 
-    /** Guarda o actualiza la cuenta bancaria principal del cliente. */
-    public function setBanco(): void
-    {
-        try {
-            // $this->validarPermiso('w');
-            $idcliente = (int)$this->post('idcliente', '0');
-            // $this->validarCliente($idcliente);
-            $clabe = preg_replace('/\D+/', '', $this->post('clabe'));
-            if ($clabe !== '' && strlen($clabe) !== 18) $this->json(false, 'La CLABE debe contener 18 dígitos.', [], 400);
-            $data = [
-                'banco' => $this->post('banco'),
-                'titular_cuenta' => $this->post('titular_cuenta'),
-                'numero_cuenta' => $this->post('numero_cuenta'),
-                'clabe' => $clabe,
-                'moneda_cuenta' => $this->post('moneda_cuenta', 'MXN'),
-                'referencia_bancaria' => $this->post('referencia_bancaria'),
-                'usuarioid' => (int)($_SESSION['idUser'] ?? 0)
-            ];
-            if (!$this->model->upsertBanco($idcliente, $data)) {
-                $this->json(false, 'No fue posible guardar la información bancaria.', [], 500);
-            }
-            $this->json(true, 'La información bancaria se guardó correctamente.');
-        } catch (Throwable $e) {
-            $this->json(false, 'Ocurrió un error al guardar la información bancaria.', [], 500);
+/**
+ * Guarda o actualiza una cuenta bancaria.
+ */
+/**
+ * Guarda o actualiza una cuenta bancaria.
+ */
+public function setBanco()
+{
+    try {
+
+        $idcliente = (int) $this->post(
+            'idcliente',
+            '0'
+        );
+
+        $idbanco = (int) $this->post(
+            'idbanco',
+            '0'
+        );
+
+        if ($idcliente <= 0) {
+
+            return $this->json(
+                false,
+                'El cliente no es válido.',
+                [],
+                400
+            );
         }
+
+        $banco = trim(
+            $this->post(
+                'banco',
+                ''
+            )
+        );
+
+        $titularCuenta = trim(
+            $this->post(
+                'titular_cuenta',
+                ''
+            )
+        );
+
+        /*
+         * Sin espacios después de numero_cuenta.
+         */
+        $numeroCuenta = preg_replace(
+            '/\D+/',
+            '',
+            $this->post(
+                'numero_cuenta',
+                ''
+            )
+        );
+
+        $clabe = preg_replace(
+            '/\D+/',
+            '',
+            $this->post(
+                'clabe',
+                ''
+            )
+        );
+
+        $monedaCuenta = trim(
+            $this->post(
+                'moneda_cuenta',
+                'MXN'
+            )
+        );
+
+        $referenciaBancaria = trim(
+            $this->post(
+                'referencia_bancaria',
+                ''
+            )
+        );
+
+        $estado = (int) $this->post(
+            'estado',
+            '2'
+        );
+
+        $usuarioid = (int) (
+            $_SESSION['idUser'] ?? 0
+        );
+
+        if ($banco === '') {
+
+            return $this->json(
+                false,
+                'Capture el nombre del banco.',
+                [],
+                400
+            );
+        }
+
+        if ($titularCuenta === '') {
+
+            return $this->json(
+                false,
+                'Capture el titular de la cuenta.',
+                [],
+                400
+            );
+        }
+
+        if (
+            $numeroCuenta === '' &&
+            $clabe === ''
+        ) {
+
+            return $this->json(
+                false,
+                'Capture el número de cuenta o la CLABE bancaria.',
+                [],
+                400
+            );
+        }
+
+        if (
+            $numeroCuenta !== '' &&
+            strlen($numeroCuenta) < 6
+        ) {
+
+            return $this->json(
+                false,
+                'El número de cuenta debe contener al menos 6 dígitos.',
+                [],
+                400
+            );
+        }
+
+        if (
+            $clabe !== '' &&
+            strlen($clabe) !== 18
+        ) {
+
+            return $this->json(
+                false,
+                'La CLABE debe contener exactamente 18 dígitos.',
+                [],
+                400
+            );
+        }
+
+        if (
+            !in_array(
+                $estado,
+                [1, 2],
+                true
+            )
+        ) {
+            $estado = 2;
+        }
+
+        $data = [
+            'banco' => $banco,
+            'titular_cuenta' => $titularCuenta,
+            'numero_cuenta' => $numeroCuenta,
+            'clabe' => $clabe,
+            'moneda_cuenta' => (
+                $monedaCuenta !== ''
+                    ? $monedaCuenta
+                    : 'MXN'
+            ),
+            'referencia_bancaria' => $referenciaBancaria,
+            'estado' => $estado,
+            'usuarioid' => $usuarioid
+        ];
+
+        /*
+         * ACTUALIZAR
+         */
+        if ($idbanco > 0) {
+
+            $bancoActual = $this->model->selectBancoPorId(
+                $idbanco,
+                $idcliente
+            );
+
+            if (empty($bancoActual)) {
+
+                return $this->json(
+                    false,
+                    'La cuenta bancaria que intenta actualizar no existe.',
+                    [],
+                    404
+                );
+            }
+
+            $requestBanco = $this->model->updateBanco(
+                $idbanco,
+                $idcliente,
+                $data
+            );
+
+            if (!$requestBanco) {
+
+                return $this->json(
+                    false,
+                    'No fue posible actualizar la cuenta bancaria.',
+                    [],
+                    500
+                );
+            }
+
+            return $this->json(
+                true,
+                'La cuenta bancaria se actualizó correctamente.',
+                [
+                    'idbanco' => $idbanco,
+                    'accion' => 'actualizar'
+                ]
+            );
+        }
+
+        /*
+         * INSERTAR
+         */
+        $requestBanco = $this->model->insertBanco(
+            $idcliente,
+            $data
+        );
+
+        $idbancoNuevo = intval(
+            $requestBanco
+        );
+
+        if ($idbancoNuevo <= 0) {
+
+            return $this->json(
+                false,
+                'No fue posible registrar la cuenta bancaria.',
+                [],
+                500
+            );
+        }
+
+        return $this->json(
+            true,
+            'La cuenta bancaria se registró correctamente.',
+            [
+                'idbanco' => $idbancoNuevo,
+                'accion' => 'insertar'
+            ]
+        );
+
+    } catch (Throwable $e) {
+
+        error_log(
+            'Error en setBanco: ' .
+            $e->getMessage() .
+            ' | Archivo: ' .
+            $e->getFile() .
+            ' | Línea: ' .
+            $e->getLine()
+        );
+
+        return $this->json(
+            false,
+            'Ocurrió un error al guardar la información bancaria.',
+            [],
+            500
+        );
     }
+}
+
+/**
+ * Elimina lógicamente una cuenta bancaria.
+ */
+public function delBanco()
+{
+    try {
+
+        $idcliente = (int) $this->post(
+            'idcliente',
+            '0'
+        );
+
+        $idbanco = (int) $this->post(
+            'idbanco',
+            '0'
+        );
+
+        $usuarioid = (int) (
+            $_SESSION['idUser'] ?? 0
+        );
+
+        if (
+            $idcliente <= 0 ||
+            $idbanco <= 0
+        ) {
+            $this->json(
+                false,
+                'Los datos de la cuenta bancaria no son válidos.',
+                [],
+                400
+            );
+        }
+
+        $bancoActual =
+            $this->model
+                ->selectBancoPorId(
+                    $idbanco,
+                    $idcliente
+                );
+
+        if (empty($bancoActual)) {
+            $this->json(
+                false,
+                'La cuenta bancaria no existe o ya fue eliminada.',
+                [],
+                404
+            );
+        }
+
+        $request =
+            $this->model
+                ->deleteBanco(
+                    $idbanco,
+                    $idcliente,
+                    $usuarioid
+                );
+
+        if (!$request) {
+            $this->json(
+                false,
+                'No fue posible eliminar la cuenta bancaria.',
+                [],
+                500
+            );
+        }
+
+        $this->json(
+            true,
+            'La cuenta bancaria se eliminó correctamente.',
+            [
+                'idbanco' =>
+                    $idbanco
+            ]
+        );
+
+    } catch (Throwable $e) {
+
+        $this->json(
+            false,
+            'Ocurrió un error al eliminar la cuenta bancaria.',
+            [],
+            500
+        );
+    }
+}
 
     /** Valida, mueve y registra un documento del cliente. */
     public function setDocumento(): void
@@ -1721,6 +2318,291 @@ class Cli_clientes extends Controllers
         }
     }
 
+
+
+    public function getGeneral($idcliente = 0)
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+        echo json_encode([
+            'status' => false,
+            'message' => 'Método no permitido.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    $idcliente = intval($idcliente);
+
+
+
+    if ($idcliente <= 0) {
+        echo json_encode([
+            'status' => false,
+            'message' => 'El ID del cliente no es válido.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    } 
+
+    $arrData = $this->model->selectGeneralCliente($idcliente);
+
+    if (empty($arrData)) {
+        echo json_encode([
+            'status' => false,
+            'message' => 'No se encontró la información general del cliente.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    echo json_encode([
+        'status' => true,
+        'message' => 'Información general obtenida correctamente.',
+        'data' => $arrData
+    ], JSON_UNESCAPED_UNICODE);
+
+    die();
+}
+
+
+public function getFiscal($idcliente = 0)
+{
+    $idcliente = intval($idcliente);
+
+    if ($idcliente <= 0) {
+
+        echo json_encode([
+            'status' => false,
+            'message' => 'El ID del cliente no es válido.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    $arrData = $this->model->selectFiscalCliente($idcliente);
+
+    /*
+     * Fiscal puede no existir todavía.
+     * Eso NO debe considerarse un error.
+     */
+    if (empty($arrData)) {
+
+        $arrData = [];
+
+    }
+
+    echo json_encode([
+        'status' => true,
+        'message' => 'Información fiscal obtenida correctamente.',
+        'data' => $arrData
+    ], JSON_UNESCAPED_UNICODE);
+
+    die();
+}
+
+
+
+public function getContactos($idcliente = 0)
+{
+    $idcliente = intval($idcliente);
+
+    if ($idcliente <= 0) {
+
+        echo json_encode([
+            'status' => false,
+            'message' => 'El ID del cliente no es válido.',
+            'data' => []
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    $arrData = $this->model->selectContactosCliente($idcliente);
+
+    echo json_encode([
+        'status' => true,
+        'message' => 'Contactos obtenidos correctamente.',
+        'data' => $arrData ?: []
+    ], JSON_UNESCAPED_UNICODE);
+
+    die();
+}
+
+public function getSucursales($idcliente = 0)
+{
+    $idcliente = intval($idcliente);
+
+    if ($idcliente <= 0) {
+
+        echo json_encode([
+            'status' => false,
+            'message' => 'El ID del cliente no es válido.',
+            'data' => []
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    $arrData = $this->model->selectSucursalesCliente($idcliente);
+
+    echo json_encode([
+        'status' => true,
+        'message' => 'Sucursales obtenidas correctamente.',
+        'data' => $arrData ?: []
+    ], JSON_UNESCAPED_UNICODE);
+
+    die();
+}
+
+public function getDirecciones($idcliente = 0)
+{
+    $idcliente = intval($idcliente);
+
+    if ($idcliente <= 0) {
+
+        echo json_encode([
+            'status' => false,
+            'message' => 'El ID del cliente no es válido.',
+            'data' => []
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    $arrData = $this->model->selectDireccionesCliente($idcliente);
+
+    echo json_encode([
+        'status' => true,
+        'message' => 'Direcciones obtenidas correctamente.',
+        'data' => $arrData ?: []
+    ], JSON_UNESCAPED_UNICODE);
+
+    die();
+}
+
+public function getComercial($idcliente = 0)
+{
+    $idcliente = intval($idcliente);
+
+    if ($idcliente <= 0) {
+
+        echo json_encode([
+            'status' => false,
+            'message' => 'El ID del cliente no es válido.',
+            'data' => null
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    $arrData = $this->model->selectComercialCliente($idcliente);
+
+    if (empty($arrData)) {
+        $arrData = [];
+    }
+
+    echo json_encode([
+        'status' => true,
+        'message' => 'Información comercial obtenida correctamente.',
+        'data' => $arrData
+    ], JSON_UNESCAPED_UNICODE);
+
+    die();
+}
+
+
+public function getBancos(
+    $idcliente = 0
+) {
+    try {
+
+        $idcliente =
+            (int) $idcliente;
+
+        if ($idcliente <= 0) {
+            $this->json(
+                false,
+                'El cliente no es válido.',
+                [],
+                400
+            );
+        }
+
+        $bancos =
+            $this->model
+                ->selectBancosCliente(
+                    $idcliente
+                );
+
+        $this->json(
+            true,
+            'Cuentas bancarias obtenidas correctamente.',
+            $bancos ?: []
+        );
+
+    } catch (Throwable $e) {
+
+        $this->json(
+            false,
+            'Ocurrió un error al consultar las cuentas bancarias.',
+            [],
+            500
+        );
+    }
+}
+
+
+public function getDocumentos($idcliente = 0)
+{
+    $idcliente = intval($idcliente);
+
+    if ($idcliente <= 0) {
+
+        echo json_encode([
+            'status' => false,
+            'message' => 'El ID del cliente no es válido.',
+            'data' => []
+        ], JSON_UNESCAPED_UNICODE);
+
+        die();
+    }
+
+    $arrData = $this->model->selectDocumentosCliente($idcliente);
+
+    /*
+     * Podemos construir aquí una URL pública si la necesita el JS.
+     */
+    foreach ($arrData as &$documento) {
+
+        $documento['url'] = '';
+
+        if (!empty($documento['ruta_archivo'])) {
+
+            $documento['url'] =
+                base_url() . '/' .
+                ltrim(
+                    $documento['ruta_archivo'],
+                    '/'
+                );
+
+        }
+
+    }
+
+    unset($documento);
+
+    echo json_encode([
+        'status' => true,
+        'message' => 'Documentos obtenidos correctamente.',
+        'data' => $arrData ?: []
+    ], JSON_UNESCAPED_UNICODE);
+
+    die();
+}
 
 
 

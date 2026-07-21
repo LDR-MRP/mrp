@@ -1472,12 +1472,9 @@ class Cli_clientesModel extends Mysql
         $actual = $this->select(
             "SELECT idfiscal
          FROM cli_clientes_fiscal
-         WHERE idcliente = ?
+         WHERE idcliente = $idcliente
            AND estado <> 0
-         LIMIT 1",
-            [
-                $idcliente
-            ]
+         LIMIT 1"
         );
 
         /*
@@ -1717,25 +1714,25 @@ class Cli_clientesModel extends Mysql
 
 
 
-/**
- * Registra una nueva sucursal relacionada con un cliente.
- *
- * @param int   $idcliente ID del cliente propietario de la sucursal.
- * @param array $d         Datos de la sucursal.
- *
- * @return int|false ID de la sucursal registrada o false si ocurrió un error.
- */
-public function insertSucursal(
-    int $idcliente,
-    array $d
-) {
-    /*
-     * Consulta para insertar una nueva sucursal.
+    /**
+     * Registra una nueva sucursal relacionada con un cliente.
      *
-     * fecha_creacion y fecha_actualizacion se generan
-     * automáticamente con NOW().
+     * @param int   $idcliente ID del cliente propietario de la sucursal.
+     * @param array $d         Datos de la sucursal.
+     *
+     * @return int|false ID de la sucursal registrada o false si ocurrió un error.
      */
-    $sql = "INSERT INTO cli_clientes_sucursales
+    public function insertSucursal(
+        int $idcliente,
+        array $d
+    ) {
+        /*
+         * Consulta para insertar una nueva sucursal.
+         *
+         * fecha_creacion y fecha_actualizacion se generan
+         * automáticamente con NOW().
+         */
+        $sql = "INSERT INTO cli_clientes_sucursales
             (
                 idcliente,
                 nombre_sucursal,
@@ -1776,65 +1773,65 @@ public function insertSucursal(
                 NOW()
             )";
 
-    /*
-     * Los valores deben respetar exactamente el orden
-     * de los signos de interrogación de la consulta.
-     */
-    $arrData = [
-        $idcliente,
-        $d['nombre_sucursal'],
-        $d['responsable'],
-        $d['correo'],
-        $d['telefono'],
-        $d['calle'],
-        $d['numero_exterior'],
-        $d['numero_interior'],
-        $d['colonia'],
-        $d['codigo_postal'],
-        $d['municipio'],
-        $d['estado_republica'],
-        $d['pais'],
-        $d['estado'],
-        $d['usuarioid']
-    ];
+        /*
+         * Los valores deben respetar exactamente el orden
+         * de los signos de interrogación de la consulta.
+         */
+        $arrData = [
+            $idcliente,
+            $d['nombre_sucursal'],
+            $d['responsable'],
+            $d['correo'],
+            $d['telefono'],
+            $d['calle'],
+            $d['numero_exterior'],
+            $d['numero_interior'],
+            $d['colonia'],
+            $d['codigo_postal'],
+            $d['municipio'],
+            $d['estado_republica'],
+            $d['pais'],
+            $d['estado'],
+            $d['usuarioid']
+        ];
 
-    /*
-     * La función insert() debe devolver el ID autoincremental
-     * generado por MySQL.
-     */
-    return $this->insert(
-        $sql,
-        $arrData
-    );
-}
+        /*
+         * La función insert() debe devolver el ID autoincremental
+         * generado por MySQL.
+         */
+        return $this->insert(
+            $sql,
+            $arrData
+        );
+    }
 
 
-/**
- * Actualiza una sucursal existente.
- *
- * La condición utiliza idsucursal e idcliente para asegurar
- * que la sucursal pertenezca al cliente indicado.
- *
- * @param int   $idsucursal ID de la sucursal.
- * @param int   $idcliente  ID del cliente.
- * @param array $d          Nuevos datos de la sucursal.
- *
- * @return bool true si la consulta se ejecutó correctamente.
- */
-public function updateSucursal(
-    int $idsucursal,
-    int $idcliente,
-    array $d
-) {
-    /*
-     * No se actualizan:
+    /**
+     * Actualiza una sucursal existente.
      *
-     * - idcliente
-     * - fecha_creacion
+     * La condición utiliza idsucursal e idcliente para asegurar
+     * que la sucursal pertenezca al cliente indicado.
      *
-     * fecha_actualizacion se establece automáticamente.
+     * @param int   $idsucursal ID de la sucursal.
+     * @param int   $idcliente  ID del cliente.
+     * @param array $d          Nuevos datos de la sucursal.
+     *
+     * @return bool true si la consulta se ejecutó correctamente.
      */
-    $sql = "UPDATE cli_clientes_sucursales
+    public function updateSucursal(
+        int $idsucursal,
+        int $idcliente,
+        array $d
+    ) {
+        /*
+         * No se actualizan:
+         *
+         * - idcliente
+         * - fecha_creacion
+         *
+         * fecha_actualizacion se establece automáticamente.
+         */
+        $sql = "UPDATE cli_clientes_sucursales
             SET
                 nombre_sucursal = ?,
                 responsable = ?,
@@ -1855,56 +1852,56 @@ public function updateSucursal(
               AND idcliente = ?
               AND estado <> 0";
 
-    $arrData = [
-        $d['nombre_sucursal'],
-        $d['responsable'],
-        $d['correo'],
-        $d['telefono'],
-        $d['calle'],
-        $d['numero_exterior'],
-        $d['numero_interior'],
-        $d['colonia'],
-        $d['codigo_postal'],
-        $d['municipio'],
-        $d['estado_republica'],
-        $d['pais'],
-        $d['estado'],
-        $d['usuarioid'],
-        $idsucursal,
-        $idcliente
-    ];
+        $arrData = [
+            $d['nombre_sucursal'],
+            $d['responsable'],
+            $d['correo'],
+            $d['telefono'],
+            $d['calle'],
+            $d['numero_exterior'],
+            $d['numero_interior'],
+            $d['colonia'],
+            $d['codigo_postal'],
+            $d['municipio'],
+            $d['estado_republica'],
+            $d['pais'],
+            $d['estado'],
+            $d['usuarioid'],
+            $idsucursal,
+            $idcliente
+        ];
 
-    return (bool) $this->update(
-        $sql,
-        $arrData
-    );
-}
+        return (bool) $this->update(
+            $sql,
+            $arrData
+        );
+    }
 
 
-/**
- * Realiza una eliminación lógica de una sucursal.
- *
- * La sucursal no se borra físicamente de la base de datos.
- * Solamente se cambia su estado a 0.
- *
- * Estados sugeridos:
- *
- * 2 = Activa
- * 1 = Inactiva
- * 0 = Eliminada
- *
- * @param int $idsucursal ID de la sucursal.
- * @param int $idcliente  ID del cliente.
- * @param int $usuarioid  Usuario que realizó la eliminación.
- *
- * @return bool true si la consulta se ejecutó correctamente.
- */
-public function deleteSucursal(
-    int $idsucursal,
-    int $idcliente,
-    int $usuarioid
-){
-    $sql = "UPDATE cli_clientes_sucursales
+    /**
+     * Realiza una eliminación lógica de una sucursal.
+     *
+     * La sucursal no se borra físicamente de la base de datos.
+     * Solamente se cambia su estado a 0.
+     *
+     * Estados sugeridos:
+     *
+     * 2 = Activa
+     * 1 = Inactiva
+     * 0 = Eliminada
+     *
+     * @param int $idsucursal ID de la sucursal.
+     * @param int $idcliente  ID del cliente.
+     * @param int $usuarioid  Usuario que realizó la eliminación.
+     *
+     * @return bool true si la consulta se ejecutó correctamente.
+     */
+    public function deleteSucursal(
+        int $idsucursal,
+        int $idcliente,
+        int $usuarioid
+    ) {
+        $sql = "UPDATE cli_clientes_sucursales
             SET
                 estado = 0,
                 usuarioid = ?,
@@ -1913,40 +1910,134 @@ public function deleteSucursal(
               AND idcliente = ?
               AND estado <> 0";
 
-    $arrData = [
-        $usuarioid,
-        $idsucursal,
-        $idcliente
-    ];
+        $arrData = [
+            $usuarioid,
+            $idsucursal,
+            $idcliente
+        ];
 
-    return (bool) $this->update(
-        $sql,
-        $arrData
-    );
-}
+        return (bool) $this->update(
+            $sql,
+            $arrData
+        );
+    }
 
 
 
-/**
- * Registra una nueva dirección para un cliente.
- *
- * La dirección puede ser:
- *
- * - FISCAL
- * - ENTREGA
- * - COBRANZA
- * - CORRESPONDENCIA
- *
- * @param int   $idcliente ID del cliente.
- * @param array $d         Datos de la dirección.
- *
- * @return int|false ID generado o false si ocurrió un error.
- */
-public function insertDireccion(
-    int $idcliente,
-    array $d
-): int|false {
-    $sql = "INSERT INTO cli_direcciones
+    /**
+     * Registra una nueva dirección para un cliente.
+     *
+     * La dirección puede ser:
+     *
+     * - FISCAL
+     * - ENTREGA
+     * - COBRANZA
+     * - CORRESPONDENCIA
+     *
+     * @param int   $idcliente ID del cliente.
+     * @param array $d         Datos de la dirección.
+     *
+     * @return int|false ID generado o false si ocurrió un error.
+     */
+    // public function insertDireccion(
+//     int $idcliente,
+//     array $d
+// ): int|false {
+//     $sql = "INSERT INTO cli_direcciones
+//             (
+//                 idcliente,
+//                 tipo_direccion,
+//                 calle,
+//                 numero_exterior,
+//                 numero_interior,
+//                 colonia,
+//                 codigo_postal,
+//                 municipio,
+//                 estado_republica,
+//                 pais,
+//                 referencias,
+//                 estado,
+//                 usuarioid,
+//                 fecha_creacion,
+//                 fecha_actualizacion
+//             )
+//             VALUES
+//             (
+//                 ?,
+//                 ?,
+//                 ?,
+//                 ?,
+//                 ?,
+//                 ?,
+//                 ?,
+//                 ?,
+//                 ?,
+//                 ?,
+//                 ?,
+//                 2,
+//                 ?,
+//                 NOW(),
+//                 NOW()
+//             )";
+
+    //     $arrData = [
+//         $idcliente,
+//         trim($d['tipo_direccion']),
+//         trim($d['calle']),
+//         trim($d['numero_exterior']),
+//         trim($d['numero_interior'] ?? ''),
+//         trim($d['colonia']),
+//         trim($d['codigo_postal']),
+//         trim($d['municipio']),
+//         trim($d['estado_republica']),
+//         trim($d['pais'] ?? 'México'),
+//         trim($d['referencias'] ?? ''),
+//         intval($d['usuarioid'])
+//     ];
+
+    //     return $this->insert(
+//         $sql,
+//         $arrData
+//     );
+// }
+
+
+
+    public function selectDireccionPorId(
+        int $iddireccion,
+        int $idcliente
+    ) {
+        $sql = "SELECT
+                iddireccion,
+                idcliente,
+                tipo_direccion,
+                calle,
+                numero_exterior,
+                numero_interior,
+                colonia,
+                codigo_postal,
+                municipio,
+                estado_republica,
+                pais,
+                referencias,
+                estado
+            FROM cli_direcciones
+            WHERE iddireccion = $iddireccion
+              AND idcliente = $idcliente
+              AND estado <> 0
+            LIMIT 1";
+
+        return $this->select(
+            $sql
+        );
+    }
+
+
+    public function insertDireccion(
+        int $idcliente,
+        array $datos
+    ) {
+        $sql = "INSERT INTO cli_direcciones
             (
                 idcliente,
                 tipo_direccion,
@@ -1966,64 +2057,52 @@ public function insertDireccion(
             )
             VALUES
             (
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                2,
-                ?,
-                NOW(),
-                NOW()
+                ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?,
+                2, ?, NOW(), NOW()
             )";
 
-    $arrData = [
-        $idcliente,
-        trim($d['tipo_direccion']),
-        trim($d['calle']),
-        trim($d['numero_exterior']),
-        trim($d['numero_interior'] ?? ''),
-        trim($d['colonia']),
-        trim($d['codigo_postal']),
-        trim($d['municipio']),
-        trim($d['estado_republica']),
-        trim($d['pais'] ?? 'México'),
-        trim($d['referencias'] ?? ''),
-        intval($d['usuarioid'])
-    ];
+        $arrData = [
+            $idcliente,
+            $datos['tipo_direccion'],
+            $datos['calle'],
+            $datos['numero_exterior'],
+            $datos['numero_interior'],
+            $datos['colonia'],
+            $datos['codigo_postal'],
+            $datos['municipio'],
+            $datos['estado_republica'],
+            $datos['pais'],
+            $datos['referencias'],
+            $datos['usuarioid']
+        ];
 
-    return $this->insert(
-        $sql,
-        $arrData
-    );
-}
+        return $this->insert(
+            $sql,
+            $arrData
+        );
+    }
 
 
 
-/**
- * Actualiza una dirección existente.
- *
- * La condición usa iddireccion e idcliente para asegurar que
- * la dirección pertenezca al cliente.
- *
- * @param int   $iddireccion ID de la dirección.
- * @param int   $idcliente   ID del cliente.
- * @param array $d           Datos nuevos.
- *
- * @return bool
- */
-public function updateDireccion(
-    int $iddireccion,
-    int $idcliente,
-    array $d
-): bool {
-    $sql = "UPDATE cli_direcciones
+    /**
+     * Actualiza una dirección existente.
+     *
+     * La condición usa iddireccion e idcliente para asegurar que
+     * la dirección pertenezca al cliente.
+     *
+     * @param int   $iddireccion ID de la dirección.
+     * @param int   $idcliente   ID del cliente.
+     * @param array $d           Datos nuevos.
+     *
+     * @return bool
+     */
+    public function updateDireccion(
+        int $iddireccion,
+        int $idcliente,
+        array $datos
+    ) {
+        $sql = "UPDATE cli_direcciones
             SET
                 tipo_direccion = ?,
                 calle = ?,
@@ -2041,162 +2120,185 @@ public function updateDireccion(
               AND idcliente = ?
               AND estado <> 0";
 
-    $arrData = [
-        trim($d['tipo_direccion']),
-        trim($d['calle']),
-        trim($d['numero_exterior']),
-        trim($d['numero_interior'] ?? ''),
-        trim($d['colonia']),
-        trim($d['codigo_postal']),
-        trim($d['municipio']),
-        trim($d['estado_republica']),
-        trim($d['pais'] ?? 'México'),
-        trim($d['referencias'] ?? ''),
-        intval($d['usuarioid']),
-        $iddireccion,
-        $idcliente
-    ];
+        $arrData = [
+            $datos['tipo_direccion'],
+            $datos['calle'],
+            $datos['numero_exterior'],
+            $datos['numero_interior'],
+            $datos['colonia'],
+            $datos['codigo_postal'],
+            $datos['municipio'],
+            $datos['estado_republica'],
+            $datos['pais'],
+            $datos['referencias'],
+            $datos['usuarioid'],
+            $iddireccion,
+            $idcliente
+        ];
 
-    return (bool) $this->update(
-        $sql,
-        $arrData
-    );
-}
+        return (bool) $this->update(
+            $sql,
+            $arrData
+        );
+    }
 
+    public function deleteDireccion(
+        int $iddireccion,
+        int $idcliente,
+        int $usuarioid
+    ) {
+        $sql = "UPDATE cli_direcciones
+            SET
+                estado = 0,
+                usuarioid = ?,
+                fecha_actualizacion = NOW()
+            WHERE iddireccion = ?
+              AND idcliente = ?
+              AND estado <> 0";
 
-
-/**
- * Consulta las direcciones de un cliente.
- *
- * @param int $idcliente ID del cliente.
- *
- * @return array
- */
-public function selectDireccionesCliente(
-    int $idcliente
-): array {
-    $sql = "SELECT
-                iddireccion,
-                idcliente,
-                tipo_direccion,
-                calle,
-                numero_exterior,
-                numero_interior,
-                colonia,
-                codigo_postal,
-                municipio,
-                estado_republica,
-                pais,
-                referencias,
-                estado,
-                usuarioid,
-                fecha_creacion,
-                fecha_actualizacion
-            FROM cli_direcciones
-            WHERE idcliente = ?
-              AND estado <> 0
-            ORDER BY
-                tipo_direccion ASC,
-                iddireccion DESC";
-
-    $resultado = $this->select_all(
-        $sql,
-        [$idcliente]
-    );
-
-    return is_array($resultado)
-        ? $resultado
-        : [];
-}
+        return (bool) $this->update(
+            $sql,
+            [
+                $usuarioid,
+                $iddireccion,
+                $idcliente
+            ]
+        );
+    }
 
 
-
-/**
- * Inserta o actualiza la información comercial de un cliente.
- *
- * Solo se conserva un registro comercial activo por cliente.
- *
- * Si ya existe:
- * - actualiza.
- *
- * Si no existe:
- * - inserta.
- *
- * @param int   $idcliente ID del cliente.
- * @param array $d         Datos comerciales.
- *
- * @return bool
- */
-public function upsertComercial(
-    int $idcliente,
-    array $d
-) {
-    /*
-     * Primero verificamos si ya existe un registro comercial
-     * activo para el cliente.
+    /**
+     * Consulta las direcciones de un cliente.
+     *
+     * @param int $idcliente ID del cliente.
+     *
+     * @return array
      */
-    $actual = $this->select(
-        "SELECT
+    // public function selectDireccionesCliente(
+//     int $idcliente
+// ): array {
+//     $sql = "SELECT
+//                 iddireccion,
+//                 idcliente,
+//                 tipo_direccion,
+//                 calle,
+//                 numero_exterior,
+//                 numero_interior,
+//                 colonia,
+//                 codigo_postal,
+//                 municipio,
+//                 estado_republica,
+//                 pais,
+//                 referencias,
+//                 estado,
+//                 usuarioid,
+//                 fecha_creacion,
+//                 fecha_actualizacion
+//             FROM cli_direcciones
+//             WHERE idcliente = ?
+//               AND estado <> 0
+//             ORDER BY
+//                 tipo_direccion ASC,
+//                 iddireccion DESC";
+
+    //     $resultado = $this->select_all(
+//         $sql,
+//         [$idcliente]
+//     );
+
+    //     return is_array($resultado)
+//         ? $resultado
+//         : [];
+// }
+
+
+
+    /**
+     * Inserta o actualiza la información comercial de un cliente.
+     *
+     * Solo se conserva un registro comercial activo por cliente.
+     *
+     * Si ya existe:
+     * - actualiza.
+     *
+     * Si no existe:
+     * - inserta.
+     *
+     * @param int   $idcliente ID del cliente.
+     * @param array $d         Datos comerciales.
+     *
+     * @return bool
+     */
+    public function upsertComercial(
+        int $idcliente,
+        array $d
+    ) {
+        /*
+         * Primero verificamos si ya existe un registro comercial
+         * activo para el cliente.
+         */
+        $actual = $this->select(
+            "SELECT
             idcomercial
          FROM cli_clientes_comercial
          WHERE idcliente = ?
            AND estado <> 0
          LIMIT 1",
-        [$idcliente]
-    );
+            [$idcliente]
+        );
 
-    /*
-     * Valores normalizados.
-     */
-    $listaPrecio = trim(
-        $d['lista_precio'] ?? ''
-    );
+        /*
+         * Valores normalizados.
+         */
+        $listaPrecio = trim(
+            $d['lista_precio'] ?? ''
+        );
 
-    $moneda = trim(
-        $d['moneda'] ?? 'MXN'
-    );
+        $moneda = trim(
+            $d['moneda'] ?? 'MXN'
+        );
 
-    $formaPago = trim(
-        $d['forma_pago'] ?? ''
-    );
+        $formaPago = trim(
+            $d['forma_pago'] ?? ''
+        );
 
-    $limiteCredito = floatval(
-        $d['limite_credito'] ?? 0
-    );
+        $limiteCredito = floatval(
+            $d['limite_credito'] ?? 0
+        );
 
-    $diasCredito = intval(
-        $d['dias_credito'] ?? 0
-    );
+        $diasCredito = intval(
+            $d['dias_credito'] ?? 0
+        );
 
-    $descuentoAutorizado = floatval(
-        $d['descuento_autorizado'] ?? 0
-    );
+        $descuentoAutorizado = floatval(
+            $d['descuento_autorizado'] ?? 0
+        );
 
-    $ejecutivoCuenta = trim(
-        $d['ejecutivo_cuenta'] ?? ''
-    );
+        $ejecutivoCuenta = trim(
+            $d['ejecutivo_asignado'] ?? ''
+        );
 
-    $canalVenta = trim(
-        $d['canal_venta'] ?? ''
-    );
+        $canalVenta = trim(
+            $d['canal_venta'] ?? ''
+        );
 
-    $clasificacionComercial = trim(
-        $d['clasificacion_comercial'] ?? ''
-    );
+        $clasificacionComercial = trim(
+            $d['clasificacion_comercial'] ?? ''
+        );
 
-    $observaciones = trim(
-        $d['observaciones_comerciales'] ?? ''
-    );
+        $observaciones = trim(
+            $d['observaciones_comerciales'] ?? ''
+        );
 
-    $usuarioid = intval(
-        $d['usuarioid']
-    );
+        $usuarioid = intval(
+            $d['usuarioid']
+        );
 
-    /*
-     * Si existe, actualizamos el registro.
-     */
-    if (!empty($actual)) {
-        $sql = "UPDATE cli_clientes_comercial
+        /*
+         * Si existe, actualizamos el registro.
+         */
+        if (!empty($actual)) {
+            $sql = "UPDATE cli_clientes_comercial
                 SET
                     lista_precio = ?,
                     moneda = ?,
@@ -2214,32 +2316,32 @@ public function upsertComercial(
                   AND idcliente = ?
                   AND estado <> 0";
 
-        $arrData = [
-            $listaPrecio,
-            $moneda,
-            $formaPago,
-            $limiteCredito,
-            $diasCredito,
-            $descuentoAutorizado,
-            $ejecutivoCuenta,
-            $canalVenta,
-            $clasificacionComercial,
-            $observaciones,
-            $usuarioid,
-            intval($actual['idcomercial']),
-            $idcliente
-        ];
+            $arrData = [
+                $listaPrecio,
+                $moneda,
+                $formaPago,
+                $limiteCredito,
+                $diasCredito,
+                $descuentoAutorizado,
+                $ejecutivoCuenta,
+                $canalVenta,
+                $clasificacionComercial,
+                $observaciones,
+                $usuarioid,
+                intval($actual['idcomercial']),
+                $idcliente
+            ];
 
-        return (bool) $this->update(
-            $sql,
-            $arrData
-        );
-    }
+            return (bool) $this->update(
+                $sql,
+                $arrData
+            );
+        }
 
-    /*
-     * Si no existe, insertamos un nuevo registro comercial.
-     */
-    $sql = "INSERT INTO cli_clientes_comercial
+        /*
+         * Si no existe, insertamos un nuevo registro comercial.
+         */
+        $sql = "INSERT INTO cli_clientes_comercial
             (
                 idcliente,
                 lista_precio,
@@ -2276,79 +2378,112 @@ public function upsertComercial(
                 NOW()
             )";
 
-    $arrData = [
-        $idcliente,
-        $listaPrecio,
-        $moneda,
-        $formaPago,
-        $limiteCredito,
-        $diasCredito,
-        $descuentoAutorizado,
-        $ejecutivoCuenta,
-        $canalVenta,
-        $clasificacionComercial,
-        $observaciones,
-        $usuarioid
-    ];
+        $arrData = [
+            $idcliente,
+            $listaPrecio,
+            $moneda,
+            $formaPago,
+            $limiteCredito,
+            $diasCredito,
+            $descuentoAutorizado,
+            $ejecutivoCuenta,
+            $canalVenta,
+            $clasificacionComercial,
+            $observaciones,
+            $usuarioid
+        ];
 
-    return (bool) $this->insert(
-        $sql,
-        $arrData
-    );
-}
-
-
-
-
-/**
- * Registra o actualiza la información bancaria de un cliente.
- *
- * Si el cliente ya tiene un registro bancario activo, lo actualiza.
- * Si no existe, crea un nuevo registro.
- *
- * Estados utilizados:
- * 2 = Activo
- * 1 = Inactivo
- * 0 = Eliminado
- *
- * @param int   $idcliente ID del cliente.
- * @param array $d         Información bancaria.
- *
- * @return bool
- */
-public function upsertBanco(
-    int $idcliente,
-    array $d
-){
-
-    /*
-     * Buscamos si el cliente ya tiene una cuenta bancaria
-     * que no esté eliminada.
-     */
-    $sqlBanco = "SELECT
-            idbanco
-        FROM cli_clientes_bancos
-        WHERE idcliente = ?
-          AND estado <> 0
-        LIMIT 1
-    ";
-
-    $bancoActual = $this->select(
-        $sqlBanco,
-        [$idcliente]
-    );
-
-    /*
-     * Si ya existe información bancaria,
-     * actualizamos el registro encontrado.
-     */
-    if (!empty($bancoActual)) {
-
-        $idbanco = intval(
-            $bancoActual['idbanco']
+        return (bool) $this->insert(
+            $sql,
+            $arrData
         );
+    }
 
-        $sqlUpdate = "UPDATE cli_clientes_bancos
+
+
+
+
+
+
+    public function selectBancoPorId(
+        int $idbanco,
+        int $idcliente
+    ) {
+        $sql = "SELECT
+                idbanco,
+                idcliente,
+                banco,
+                titular_cuenta,
+                numero_cuenta,
+                clabe,
+                moneda_cuenta,
+                referencia_bancaria,
+                estado,
+                usuarioid,
+                fecha_creacion,
+                fecha_actualizacion
+            FROM cli_clientes_bancos
+            WHERE idbanco = $idbanco
+              AND idcliente = $idcliente
+              AND estado <> 0
+            LIMIT 1";
+
+        return $this->select(
+            $sql
+        );
+    }
+
+    public function insertBanco(
+        int $idcliente,
+        array $d
+    ) {
+        $sql = "INSERT INTO cli_clientes_bancos
+            (
+                idcliente,
+                banco,
+                titular_cuenta,
+                numero_cuenta,
+                clabe,
+                moneda_cuenta,
+                referencia_bancaria,
+                estado,
+                usuarioid,
+                fecha_creacion,
+                fecha_actualizacion
+            )
+            VALUES
+            (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                NOW(),
+                NOW()
+            )";
+
+        $arrData = [
+            $idcliente,
+            $d['banco'],
+            $d['titular_cuenta'],
+            $d['numero_cuenta'],
+            $d['clabe'],
+            $d['moneda_cuenta'],
+            $d['referencia_bancaria'],
+            $d['estado'],
+            $d['usuarioid']
+        ];
+
+        // dep($d);
+
+        return $this->insert(
+            $sql,
+            $arrData
+        );
+    }
+
+    public function updateBanco(
+        int $idbanco,
+        int $idcliente,
+        array $d
+    ) {
+        $sql = "UPDATE cli_clientes_bancos
             SET
                 banco = ?,
                 titular_cuenta = ?,
@@ -2356,13 +2491,12 @@ public function upsertBanco(
                 clabe = ?,
                 moneda_cuenta = ?,
                 referencia_bancaria = ?,
-                estado = 2,
+                estado = ?,
                 usuarioid = ?,
                 fecha_actualizacion = NOW()
             WHERE idbanco = ?
               AND idcliente = ?
-              AND estado <> 0
-        ";
+              AND estado <> 0";
 
         $arrData = [
             $d['banco'],
@@ -2371,83 +2505,57 @@ public function upsertBanco(
             $d['clabe'],
             $d['moneda_cuenta'],
             $d['referencia_bancaria'],
+            $d['estado'],
             $d['usuarioid'],
             $idbanco,
             $idcliente
         ];
 
         return (bool) $this->update(
-            $sqlUpdate,
+            $sql,
             $arrData
         );
     }
 
-    /*
-     * Si el cliente todavía no tiene una cuenta bancaria,
-     * insertamos un nuevo registro.
+    public function deleteBanco(
+        int $idbanco,
+        int $idcliente,
+        int $usuarioid
+    ) {
+        $sql = "UPDATE cli_clientes_bancos
+            SET
+                estado = 0,
+                usuarioid = ?,
+                fecha_actualizacion = NOW()
+            WHERE idbanco = ?
+              AND idcliente = ?
+              AND estado <> 0";
+
+        return (bool) $this->update(
+            $sql,
+            [
+                $usuarioid,
+                $idbanco,
+                $idcliente
+            ]
+        );
+    }
+
+
+    /**
+     * Registra un documento asociado a un cliente.
+     *
+     * @param int   $idcliente ID del cliente.
+     * @param array $d         Información del archivo cargado.
+     *
+     * @return int|false ID del documento registrado o false si ocurre un error.
      */
-    $sqlInsert = "INSERT INTO cli_clientes_bancos
-        (
-            idcliente,
-            banco,
-            titular_cuenta,
-            numero_cuenta,
-            clabe,
-            moneda_cuenta,
-            referencia_bancaria,
-            estado,
-            usuarioid,
-            fecha_creacion,
-            fecha_actualizacion
-        )
-        VALUES
-        (
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            2,
-            ?,
-            NOW(),
-            NOW()
-        )
-    ";
+    public function insertDocumento(
+        int $idcliente,
+        array $d
+    ) {
 
-    $arrData = [
-        $idcliente,
-        $d['banco'],
-        $d['titular_cuenta'],
-        $d['numero_cuenta'],
-        $d['clabe'],
-        $d['moneda_cuenta'],
-        $d['referencia_bancaria'],
-        $d['usuarioid']
-    ];
-
-    return (bool) $this->insert(
-        $sqlInsert,
-        $arrData
-    );
-}
-
-
-/**
- * Registra un documento asociado a un cliente.
- *
- * @param int   $idcliente ID del cliente.
- * @param array $d         Información del archivo cargado.
- *
- * @return int|false ID del documento registrado o false si ocurre un error.
- */
-public function insertDocumento(
-    int $idcliente,
-    array $d
-){
-
-    $sql = "INSERT INTO cli_clientes_documentos
+        $sql = "INSERT INTO cli_clientes_documentos
         (
             idcliente,
             tipo_documento,
@@ -2477,29 +2585,29 @@ public function insertDocumento(
         )
     ";
 
-    $arrData = [
-        $idcliente,
-        $d['tipo_documento'],
-        $d['nombre_original'],
-        $d['nombre_archivo'],
-        $d['ruta_archivo'],
-        $d['mime_type'],
-        $d['tamano_bytes'],
-        $d['usuarioid']
-    ];
+        $arrData = [
+            $idcliente,
+            $d['tipo_documento'],
+            $d['nombre_original'],
+            $d['nombre_archivo'],
+            $d['ruta_archivo'],
+            $d['mime_type'],
+            $d['tamano_bytes'],
+            $d['usuarioid']
+        ];
 
-    return $this->insert(
-        $sql,
-        $arrData
-    );
-}
-
-
+        return $this->insert(
+            $sql,
+            $arrData
+        );
+    }
 
 
-public function selectClienteById(int $idcliente)
-{
-    $sql = "SELECT
+
+
+    public function selectClienteById(int $idcliente)
+    {
+        $sql = "SELECT
                 idcliente,
                 idtipo_cliente,
                 codigo_cliente,
@@ -2512,8 +2620,196 @@ public function selectClienteById(int $idcliente)
               AND estado <> 0
             LIMIT 1";
 
-    return $this->select($sql);
-}
+        return $this->select($sql);
+    }
+
+
+
+    public function selectGeneralCliente(int $idcliente)
+    {
+        $sql = "SELECT *
+            FROM cli_clientes c
+            WHERE c.idcliente = $idcliente
+              AND c.estado <> 0
+            LIMIT 1";
+
+        return $this->select($sql);
+    }
+
+    public function selectFiscalCliente(int $idcliente)
+    {
+        $sql = "SELECT
+                idfiscal,
+                idcliente,
+                rfc,
+                curp,
+                regimen_fiscal,
+                uso_cfdi,
+                codigo_postal_fiscal 
+                AS codigo_postal_fiscal,
+                correo_facturacion,
+                requiere_factura,
+                estado,
+                fecha_creacion,
+                fecha_actualizacion
+            FROM cli_clientes_fiscal
+            WHERE idcliente = $idcliente
+              AND estado <> 0
+            LIMIT 1";
+
+        return $this->select($sql);
+    }
+
+    public function selectContactosCliente(int $idcliente)
+    {
+        $sql = "SELECT
+                idcontacto,
+                idcliente,
+                nombre,
+                puesto,
+                correo,
+                telefono,
+                tipo,
+                notificar,
+                estado,
+                usuarioid,
+                fecha_creacion,
+                fecha_actualizacion
+            FROM cli_clientes_contactos
+            WHERE idcliente = $idcliente
+              AND estado <> 0
+            ORDER BY idcontacto DESC";
+
+        return $this->select_all($sql);
+    }
+
+    public function selectSucursalesCliente(int $idcliente)
+    {
+        $sql = "SELECT
+                idsucursal,
+                idcliente,
+                nombre_sucursal,
+                responsable,
+                correo,
+                telefono,
+                calle,
+                numero_exterior,
+                numero_interior,
+                colonia,
+                codigo_postal,
+                municipio,
+                estado_republica,
+                pais,
+                estado,
+                usuarioid,
+                fecha_creacion,
+                fecha_actualizacion
+            FROM cli_clientes_sucursales
+            WHERE idcliente = ?
+              AND estado <> 0
+            ORDER BY idsucursal DESC";
+
+        return $this->select_all($sql, [$idcliente]);
+    }
+
+    public function selectDireccionesCliente(int $idcliente)
+    {
+        $sql = "SELECT
+                iddireccion,
+                idcliente,
+                tipo_direccion,
+                calle,
+                numero_exterior,
+                numero_interior,
+                colonia,
+                codigo_postal,
+                municipio,
+                estado_republica,
+                pais,
+                referencias,
+                estado,
+                usuarioid,
+                fecha_creacion,
+                fecha_actualizacion
+            FROM cli_direcciones
+            WHERE idcliente = $idcliente
+              AND estado <> 0
+            ORDER BY
+                tipo_direccion ASC,
+                iddireccion DESC";
+
+        return $this->select_all($sql);
+    }
+
+    public function selectComercialCliente(int $idcliente)
+    {
+        $sql = "SELECT
+                idcliente,
+                lista_precio,
+                moneda,
+                forma_pago,
+                limite_credito,
+                dias_credito,
+                descuento_autorizado,
+                ejecutivo_cuenta,
+                canal_venta,
+                clasificacion_comercial,
+                observaciones_comerciales
+            FROM cli_clientes_comercial
+            WHERE idcliente = $idcliente
+              AND estado <> 0
+            LIMIT 1";
+
+        return $this->select($sql);
+    }
+
+
+    public function selectBancosCliente(int $idcliente)
+    {
+        $sql = "SELECT
+                idbanco,
+                idcliente,
+                banco,
+                titular_cuenta,
+                numero_cuenta,
+                clabe,
+                moneda_cuenta,
+                referencia_bancaria,
+                estado,
+                usuarioid,
+                fecha_creacion,
+                fecha_actualizacion
+            FROM cli_clientes_bancos
+            WHERE idcliente = $idcliente
+              AND estado <> 0
+            ORDER BY idbanco DESC";
+
+        return $this->select_all($sql);
+    }
+
+
+    public function selectDocumentosCliente(int $idcliente)
+    {
+        $sql = "SELECT
+                iddocumento,
+                idcliente,
+                tipo_documento,
+                nombre_original,
+                nombre_archivo,
+                ruta_archivo,
+                mime_type,
+                tamano_bytes,
+                estado,
+                usuarioid,
+                fecha_creacion,
+                fecha_actualizacion
+            FROM cli_clientes_documentos
+            WHERE idcliente = $idcliente
+              AND estado <> 0
+            ORDER BY iddocumento DESC";
+
+        return $this->select_all($sql);
+    }
 
 
 }
