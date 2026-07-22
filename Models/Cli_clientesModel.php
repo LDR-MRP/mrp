@@ -10,69 +10,141 @@ class Cli_clientesModel extends Mysql
     }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | FUNCIÓN PARA OBTENER TODOS LOS CLIENTES
-    |--------------------------------------------------------------------------
-    */
-    public function selectTodos()
-    {
-        $sql = "SELECT * FROM cli_clientes";
+/*
+|--------------------------------------------------------------------------
+| FUNCIÓN PARA OBTENER TODOS LOS CLIENTES
+|--------------------------------------------------------------------------
+*/
+public function selectTodos()
+{
+    $sql = "SELECT 
+                c.*,
+                cc.limite_credito,
+                cc.dias_credito,
+                cf.rfc,
+                cf.regimen_fiscal
+            FROM cli_clientes AS c
+            LEFT JOIN cli_clientes_comercial AS cc
+                ON cc.idcliente = c.idcliente
+                AND cc.estado <> 0
+            LEFT JOIN cli_clientes_fiscal AS cf
+                ON cf.idcliente = c.idcliente
+                AND cf.estado <> 0
+            WHERE c.estado <> 0
+            ORDER BY c.idcliente DESC";
 
-        return $this->select_all($sql);
-    }
+    return $this->select_all($sql);
+}
+/*
+|--------------------------------------------------------------------------
+| FUNCIÓN PARA OBTENER TODOS LOS DISTRIBUIDORES
+|--------------------------------------------------------------------------
+*/
+public function selectDistribuidores()
+{
+    $sql = "SELECT 
+                c.*,
+                cc.limite_credito,
+                cc.dias_credito,
+                cf.rfc,
+                cf.regimen_fiscal
+            FROM cli_clientes AS c
+            LEFT JOIN cli_clientes_comercial AS cc
+                ON cc.idcliente = c.idcliente
+                AND cc.estado <> 0
+            LEFT JOIN cli_clientes_fiscal AS cf
+                ON cf.idcliente = c.idcliente
+                AND cf.estado <> 0
+            WHERE c.idtipo_cliente = 1
+                AND c.estado <> 0
+            ORDER BY c.idcliente DESC";
 
-    /*
-    |--------------------------------------------------------------------------
-    | FUNCIÓN PARA OBTENER TODOS LOS DISTRIBUIDORES
-    |--------------------------------------------------------------------------
-    */
+    return $this->select_all($sql);
+}
 
-    public function selectDistribuidores()
-    {
-        $sql = "SELECT * FROM cli_clientes WHERE idtipo_cliente = 1";
 
-        return $this->select_all($sql);
-    }
-
-    /*
+/*
 |--------------------------------------------------------------------------
 | FUNCIÓN PARA OBTENER TODOS LOS CLIENTES INTERNOS
 |--------------------------------------------------------------------------
 */
+public function selectInternos()
+{
+    $sql = "SELECT 
+                c.*,
+                cc.limite_credito,
+                cc.dias_credito,
+                cf.rfc,
+                cf.regimen_fiscal
+            FROM cli_clientes AS c
+            LEFT JOIN cli_clientes_comercial AS cc
+                ON cc.idcliente = c.idcliente
+                AND cc.estado <> 0
+            LEFT JOIN cli_clientes_fiscal AS cf
+                ON cf.idcliente = c.idcliente
+                AND cf.estado <> 0
+            WHERE c.idtipo_cliente = 2
+                AND c.estado <> 0
+            ORDER BY c.idcliente DESC";
 
-    public function selectInternos()
-    {
-        $sql = "SELECT * FROM cli_clientes WHERE idtipo_cliente = 2";
+    return $this->select_all($sql);
+}
 
-        return $this->select_all($sql);
-    }
 
-    /*
+/*
 |--------------------------------------------------------------------------
 | FUNCIÓN PARA OBTENER TODOS LOS CLIENTES EXTERNOS
 |--------------------------------------------------------------------------
 */
+public function selectExternos()
+{
+    $sql = "SELECT 
+                c.*,
+                cc.limite_credito,
+                cc.dias_credito,
+                cf.rfc,
+                cf.regimen_fiscal
+            FROM cli_clientes AS c
+            LEFT JOIN cli_clientes_comercial AS cc
+                ON cc.idcliente = c.idcliente
+                AND cc.estado <> 0
+            LEFT JOIN cli_clientes_fiscal AS cf
+                ON cf.idcliente = c.idcliente
+                AND cf.estado <> 0
+            WHERE c.idtipo_cliente = 3
+                AND c.estado <> 0
+            ORDER BY c.idcliente DESC";
 
-    public function selectExternos()
-    {
-        $sql = "SELECT * FROM cli_clientes WHERE idtipo_cliente = 3";
+    return $this->select_all($sql);
+}
 
-        return $this->select_all($sql);
-    }
 
-    /*
+/*
 |--------------------------------------------------------------------------
 | FUNCIÓN PARA OBTENER TODOS LOS CLIENTES GUBERNAMENTALES
 |--------------------------------------------------------------------------
 */
+public function selectGubernamentales()
+{
+    $sql = "SELECT 
+                c.*,
+                cc.limite_credito,
+                cc.dias_credito,
+                cf.rfc,
+                cf.regimen_fiscal
+            FROM cli_clientes AS c
+            LEFT JOIN cli_clientes_comercial AS cc
+                ON cc.idcliente = c.idcliente
+                AND cc.estado <> 0
+            LEFT JOIN cli_clientes_fiscal AS cf
+                ON cf.idcliente = c.idcliente
+                AND cf.estado <> 0
+            WHERE c.idtipo_cliente = 4
+                AND c.estado <> 0
+            ORDER BY c.idcliente DESC";
 
-    public function selectGubernamentales()
-    {
-        $sql = "SELECT * FROM cli_clientes WHERE idtipo_cliente = 4";
-
-        return $this->select_all($sql);
-    }
+    return $this->select_all($sql);
+}
 
     ////////////////////////////////////////////////////////////////////
 
@@ -1447,6 +1519,93 @@ class Cli_clientesModel extends Mysql
             $d['usuarioid']
         ]);
     }
+
+
+    public function updateGeneral(
+    int $idcliente,
+    array $d
+) {
+    $sql = "UPDATE cli_clientes
+            SET
+                idtipo_cliente = ?,
+                tipo_persona = ?,
+                codigo_cliente = ?,
+                razon_social = ?,
+                nombre_comercial = ?,
+                telefono = ?,
+                celular = ?,
+                correo = ?,
+                sitio_web = ?,
+                fecha_alta = ?,
+                estado = ?,
+                clave_distribuidor = ?,
+                zona_comercial = ?,
+                territorio = ?,
+                responsable_comercial = ?,
+                requiere_acceso_portal = ?,
+                correo_acceso = ?,
+                numero_empleado = ?,
+                departamento = ?,
+                centro_costos = ?,
+                jefe_inmediato = ?,
+                correo_corporativo = ?,
+                origen_cliente = ?,
+                ejecutivo_asignado = ?,
+                segmento_mercado = ?,
+                dependencia = ?,
+                unidad_administrativa = ?,
+                nivel_gobierno = ?,
+                partida_presupuestal = ?,
+                tipo_contratacion = ?,
+                usuarioid = ?,
+                fecha_actualizacion = CONVERT_TZ(
+                    UTC_TIMESTAMP(),
+                    '+00:00',
+                    '-06:00'
+                )
+            WHERE idcliente = ?
+              AND estado <> 0";
+
+    $arrData = [
+        $d['idtipo_cliente'],
+        $d['tipo_persona'],
+        $d['codigo_cliente'],
+        $d['razon_social'],
+        $d['nombre_comercial'],
+        $d['telefono'],
+        $d['celular'],
+        $d['correo'],
+        $d['sitio_web'],
+        $d['fecha_alta'],
+        $d['estado'],
+        $d['clave_distribuidor'],
+        $d['zona_comercial'],
+        $d['territorio'],
+        $d['responsable_comercial'],
+        $d['requiere_acceso_portal'],
+        $d['correo_acceso'],
+        $d['numero_empleado'],
+        $d['departamento'],
+        $d['centro_costos'],
+        $d['jefe_inmediato'],
+        $d['correo_corporativo'],
+        $d['origen_cliente'],
+        $d['ejecutivo_asignado'],
+        $d['segmento_mercado'],
+        $d['dependencia'],
+        $d['unidad_administrativa'],
+        $d['nivel_gobierno'],
+        $d['partida_presupuestal'],
+        $d['tipo_contratacion'],
+        $d['usuarioid'],
+        $idcliente
+    ];
+
+    return (bool) $this->update(
+        $sql,
+        $arrData
+    );
+}
 
 
 

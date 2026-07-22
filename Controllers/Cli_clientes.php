@@ -37,7 +37,7 @@ class Cli_clientes extends Controllers
     */
 
     public function getTodos()
-    {
+    { 
         header('Content-Type: application/json; charset=utf-8');
 
         try {

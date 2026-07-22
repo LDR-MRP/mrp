@@ -1177,7 +1177,7 @@
                                     Limpiar
                                 </button> -->
 
-                                    <button type="submit" class="btn btn-primary btn-label">
+                                    <button type="submit" class="btn btn-primary btn-label" id="btnGuardarCliente">
                                         <i class="ri-save-3-line label-icon align-middle fs-16 me-2"></i>
                                         Guardar cliente
                                     </button>

@@ -218,36 +218,75 @@ function inicializarModuloClientes() {
  * una pestaña dependiente antes de guardar la información general.
  */
 function configurarPestanasCliente() {
-  const contenedorTabs = document.querySelector(SELECTORES_CLIENTE.tabs);
+  const contenedorTabs = document.querySelector(
+    SELECTORES_CLIENTE.tabs
+  );
+
+  const btnGuardarCliente = document.querySelector(
+    "#btnGuardarCliente"
+  );
 
   if (!contenedorTabs) {
     return;
   }
 
+  /*
+   * Control existente para bloquear pestañas
+   * hasta guardar primero el cliente.
+   */
   contenedorTabs.addEventListener(
     "click",
     function (event) {
-      const botonTab = event.target.closest('[data-bs-toggle="tab"]');
+      const botonTab = event.target.closest(
+        '[data-bs-toggle="tab"]'
+      );
 
       if (!botonTab) {
         return;
       }
 
-      const destino = botonTab.getAttribute("data-bs-target");
+      const destino = botonTab.getAttribute(
+        "data-bs-target"
+      );
 
-      if (PESTANAS_DEPENDIENTES.includes(destino) && obtenerIdCliente() <= 0) {
+      if (
+        PESTANAS_DEPENDIENTES.includes(destino) &&
+        obtenerIdCliente() <= 0
+      ) {
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
 
         mostrarAdvertencia(
-          "Primero debe guardar la información general del cliente.",
+          "Primero debe guardar la información general del cliente."
         );
 
         abrirPestana("#tab-general");
       }
     },
-    true,
+    true
+  );
+
+  /*
+   * Mostrar Guardar cliente únicamente en General.
+   */
+  contenedorTabs.addEventListener(
+    "shown.bs.tab",
+    function (event) {
+      const destino = event.target.getAttribute(
+        "data-bs-target"
+      );
+
+      if (!btnGuardarCliente) {
+        return;
+      }
+
+      if (destino === "#tab-general") {
+        btnGuardarCliente.classList.remove("d-none");
+      } else {
+        btnGuardarCliente.classList.add("d-none");
+      }
+    }
   );
 }
 
