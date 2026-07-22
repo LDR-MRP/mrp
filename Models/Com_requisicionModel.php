@@ -721,45 +721,56 @@ class Com_requisicionModel extends Mysql
                 IFNULL(i.cve_articulo, 'SOURCING') AS cve_articulo,
                 IFNULL(i.descripcion, (SELECT categoria FROM com_requisicion_items_nuevos WHERE idrequisicionarticulo = rd.idrequisicionarticulo LIMIT 1)) AS descripcion,
                 IFNULL(i.unidad_salida, 'PZA') AS unidad_salida,
+                i.tipo_elemento, -- P, S, H, K (Criterio de Splitting #2)
 
-                -- LÓGICA DE SOURCING (Ganador detectado)
-                cot.id_proveedor AS id_proveedor_ganador,
-                p.razon_social AS proveedor_nombre_ganador,
-                IFNULL(cot.precio_unitario * cot.tipo_cambio, rd.precio_unitario_estimado) AS precio_pactado,
+                -- 2. LÓGICA DE PROVEEDOR Y COMPLIANCE
+                -- Priorizamos el id_proveedor de la partida (ya sellado) o el de la cotización ganadora
+                COALESCE(rd.id_proveedor, cot.id_proveedor) AS id_proveedor_final, 
+                COALESCE(p.razon_social, cot.nombre_prospecto, 'SIN ADJUDICAR') AS proveedor_nombre,
+                p.estatus_onboarding, -- Vital para el bloqueo visual
+                p.is_retail, -- Para heredar reglas de pago inmediato
 
-                -- SUMATORIA DE COMPRAS PREVIAS
+                -- 3. PRECIO SELLADO (Inmutable si viene de Sourcing)
+                -- Si hay id_proveedor en la partida, el precio pactado es ley
+                COALESCE(cot.precio_base_mxn, rd.precio_unitario_estimado) AS costo_base_pactado,
+                IF(rd.id_proveedor IS NOT NULL, 1, 0) AS is_price_locked,
+
+                -- 4. SEMÁFORO DE OPERACIÓN
+                CASE 
+                    -- Caso 1: Ni siquiera se ha elegido ganador en el cuadro comparativo
+                    WHEN COALESCE(rd.id_proveedor, cot.id_proveedor) IS NULL AND rd.inventarioid IS NULL 
+                        THEN 'IN_SOURCING'
+                    
+                    -- Caso 2: Ya eligieron ganador pero el BO no ha dado clic en 'Promover' a SKU
+                    WHEN COALESCE(rd.id_proveedor, cot.id_proveedor) IS NOT NULL AND rd.inventarioid IS NULL 
+                        THEN 'PENDING_PROMOTION'
+                    
+                    -- Caso 3: Ya es SKU pero el proveedor está 'congelado' (Onboarding)
+                    WHEN p.estatus_onboarding != 'Aprobado' AND rd.inventarioid IS NOT NULL 
+                        THEN 'BLOCKED_ONBOARDING'
+                    
+                    -- Caso 4: Vía libre
+                    ELSE 'READY'
+                END AS operation_status,
+
+                -- 5. CÁLCULO DE SALDOS (Mantenido)
                 IFNULL(oc_comprado.total_comprado, 0) AS cantidad_ya_comprada,
-                
-                -- CÁLCULO DE SALDO PENDIENTE
                 (rd.cantidad - IFNULL(oc_comprado.total_comprado, 0)) AS cantidad_pendiente
                 
             FROM com_requisiciones_detalle rd
-            
-            -- Join 1: Inventario (Si ya fue promovido o existía)
             LEFT JOIN wms_inventario i ON rd.inventarioid = i.idinventario
-            
-            -- Join 2: Sourcing (Buscamos si hay una cotización marcada como ganadora)
             LEFT JOIN com_requisicion_cotizaciones cot 
                 ON rd.idrequisicionarticulo = cot.idrequisicionarticulo AND cot.es_ganadora = 1 AND cot.deleted_at IS NULL
-                
-            -- Join 3: Datos del Proveedor Ganador
-            LEFT JOIN prv_cat_proveedores p ON cot.id_proveedor = p.id_proveedor
-            
-            -- Join 4: Subconsulta de Compras Reales
+            LEFT JOIN prv_cat_proveedores p ON COALESCE(rd.id_proveedor, cot.id_proveedor) = p.id_proveedor
             LEFT JOIN (
-                SELECT 
-                    ocd.idrequisicionarticulo, 
-                    SUM(ocd.cantidad) AS total_comprado
+                SELECT ocd.idrequisicionarticulo, SUM(ocd.cantidad) AS total_comprado
                 FROM com_ordenes_compra_detalle ocd
                 INNER JOIN com_ordenes_compra oc ON ocd.compraid = oc.idcompra
                 WHERE oc.estatus != 'cancelada' AND ocd.deleted_at IS NULL
                 GROUP BY ocd.idrequisicionarticulo
             ) AS oc_comprado ON rd.idrequisicionarticulo = oc_comprado.idrequisicionarticulo
-            
-            WHERE rd.requisicionid = ? 
-            AND rd.deleted_at IS NULL
-            
-            -- Filtro de integridad: Solo lo que falta por comprar
+
+            WHERE rd.requisicionid = ? AND rd.deleted_at IS NULL
             HAVING cantidad_pendiente > 0;
         ";
 
