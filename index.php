@@ -96,8 +96,8 @@ $firstSegment = explode('/', $uriPath)[0] ?? '';
 $isExternalPortal = in_array($firstSegment, ['srm', 'orders'], true);
 
 // Peticiones técnicas (.well-known, devtools, etc) o archivos estáticos
-$isSystemRequest = str_starts_with($firstSegment, '.') 
-    || $firstSegment === 'Assets' 
+$isSystemRequest = str_starts_with($firstSegment, '.')
+    || $firstSegment === 'Assets'
     || preg_match('/\.(?:json|ico|css|js|png|jpg|jpeg|gif|webp|svg|map)$/i', $url);
 
 /*

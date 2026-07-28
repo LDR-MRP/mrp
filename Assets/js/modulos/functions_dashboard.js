@@ -1,11 +1,11 @@
-/**
- * Admin Dashboard Controller
- * Desacoplado de PHP, utiliza Sys_Core para toda la lógica de red e hidratación.
- */
 const AdminDashboard = {
-
     init: function() {
-        Sys_Core.Auth.validateSession()
+        if (typeof Sys_Core !== 'undefined' && Sys_Core.Auth) {
+            // Solo validar si la cookie existe para no chocar con la sesión PHP legacy
+            if (document.cookie.includes('mrp_token=')) {
+                Sys_Core.Auth.validateSession();
+            }
+        }
     }
 };
 
