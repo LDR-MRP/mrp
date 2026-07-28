@@ -21,3 +21,8 @@ ddagent-install.log
 AGENTS.md
 FLUJO_DE_TRABAJO.md
 GUIA_FRAMEWORK.md
+
+# Archivos de respaldo de Base de Datos y Contexto DB
+db info/
+db_info/
+*.sql
