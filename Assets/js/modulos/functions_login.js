@@ -49,8 +49,8 @@ document.addEventListener('DOMContentLoaded', function(){
 								if(requestApi.status == 200 || requestApi.status == 201) {
 									var objDataApi = JSON.parse(requestApi.responseText);
 
-									// ¡AMBAS EXITOSAS! Recargamos
-									window.location.reload(false);
+									// ¡AMBAS EXITOSAS! Redirigimos al dashboard
+									window.location.href = base_url + '/dashboard';
 								} else {
 									// Si la API falla pero el legacy entró, avisamos pero dejamos pasar? 
 									// Mejor forzar error para mantener sincronía.

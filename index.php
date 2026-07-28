@@ -31,11 +31,12 @@ $isLocal = (bool)preg_match('/(^localhost|\.localhost)|^127\.0\.0\.1/', $httpHos
 if ($isLocal) {
     /**
      * ENTORNO: LOCAL
-     * Dominio: .ldrhumanresources.localhost (Permite compartir entre subdominios locales)
-     * Secure: false (Porque usualmente no usas HTTPS/SSL en WSL)
+     * Si se accede directamente via 'localhost' o IP, el dominio de la cookie debe ser vacuo '' 
+     * para que el navegador acepte la cookie de sesión/JWT sin rechazarla.
      */
+    $cookieDomain = (str_contains($httpHost, 'ldrhumanresources.localhost')) ? '.ldrhumanresources.localhost' : '';
     define('ENV_TYPE', 'local');
-    define('COOKIE_DOMAIN', '.ldrhumanresources.localhost');
+    define('COOKIE_DOMAIN', $cookieDomain);
     define('COOKIE_SECURE', false);
     define('CONFIG_FILE', __DIR__ . "/Config/Config_local.php");
 } else {

@@ -124,7 +124,35 @@ public function login()
 							$fecha_creacion = date('Y-m-d H:i:s');
                             $this->model->registrarAcceso($_SESSION['idUser'],$evento, $ip, $detalle, $fecha_creacion);
 
-							sessionUser($_SESSION['idUser']);							
+							sessionUser($_SESSION['idUser']);
+
+							// Generar JWT para Sys_Core frontend
+							$now = time();
+							$tokenPayload = [
+								'iat'  => $now,
+								'exp'  => $now + (60 * 60 * 10),
+								'data' => [
+									'id'       => $arrData['idusuario'],
+									'nombre'   => $arrData['nombres'] . ' ' . $arrData['apellidos'],
+									'rolid'    => $arrData['rolid'],
+									'plantaid' => $arrData['plantaid'] ?? 1,
+									'rol'      => $arrData['rol_nombre'] ?? 'Administrador',
+									'avatar'   => $arrData['avatar_file'] ?? 'avatar_default.svg',
+									'is_vendor'=> false
+								]
+							];
+							if (class_exists('\Firebase\JWT\JWT') && defined('JWT_SECRET')) {
+								$jwt = \Firebase\JWT\JWT::encode($tokenPayload, JWT_SECRET, 'HS256');
+								setcookie('mrp_token', $jwt, [
+									'expires'  => time() + 36000,
+									'path'     => '/',
+									'domain'   => COOKIE_DOMAIN,
+									'secure'   => COOKIE_SECURE,
+									'httponly' => false,
+									'samesite' => 'Lax'
+								]);
+							}
+
 							$arrResponse = array('status' => true, 'msg' => 'ok');
 						}else{
 							$arrResponse = array('status' => false, 'msg' => 'Usuario inactivo.');
