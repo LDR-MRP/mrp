@@ -449,6 +449,41 @@
                       </li>
 
                       <!-- ==============================================================================
+                        CATEGORÍA: LOGÍSTICA (TRASLADISTAS, MADRINAS, CHOFERES)
+                        ============================================================================== -->
+                      <li class="nav-item">
+                          <a class="nav-link menu-link" href="#sidebarLogistica" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarLogistica">
+                              <i class="ri-truck-line icon-dual"></i> <span data-key="t-logistica">Logística</span>
+                          </a>
+                          <div class="collapse menu-dropdown" id="sidebarLogistica">
+                              <ul class="nav nav-sm flex-column">
+
+                                  <!-- Trasladistas -->
+                                  <li class="nav-item">
+                                      <a href="<?= base_url(); ?>/prv_trasladistas" class="nav-link" data-key="t-trasladistas">
+                                          <i class="ri-user-shared-line align-bottom me-1"></i> Trasladistas
+                                      </a>
+                                  </li>
+
+                                  <!-- Madrinas -->
+                                  <li class="nav-item">
+                                      <a href="<?= base_url(); ?>/prv_madrinas" class="nav-link" data-key="t-madrinas">
+                                          <i class="ri-truck-fill align-bottom me-1"></i> Madrinas
+                                      </a>
+                                  </li>
+
+                                  <!-- Choferes -->
+                                  <li class="nav-item">
+                                      <a href="<?= base_url(); ?>/prv_choferes" class="nav-link" data-key="t-choferes">
+                                          <i class="ri-steering-2-line align-bottom me-1"></i> Choferes
+                                      </a>
+                                  </li>
+
+                              </ul>
+                          </div>
+                      </li>
+
+                      <!-- ==============================================================================
                         CATEGORÍA 2: PROVEEDORES (CATÁLOGOS / ONBOARDING)
                         ============================================================================== -->
                       <li class="nav-item" data-permiso="PRV_PROVEEDORES|r">
