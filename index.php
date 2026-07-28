@@ -25,8 +25,8 @@ error_reporting(E_ERROR | E_PARSE | E_COMPILE_ERROR);
 $httpHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
 // 2. Determinar si estamos en entorno local
-// Buscamos si el host termina en .localhost o es una IP de red local
-$isLocal = preg_match('/(\.localhost)$|^127\.0\.0\.1$/', $httpHost);
+// Buscamos si el host es localhost, termina en .localhost o es una IP de red local
+$isLocal = (bool)preg_match('/(^localhost|\.localhost)|^127\.0\.0\.1/', $httpHost);
 
 if ($isLocal) {
     /**
@@ -70,9 +70,17 @@ require_once("Libraries/Core/Autoload.php");
 
 $url = !empty($_GET['url'])
     ? $_GET['url']
-    : 'home/home';
+    : 'login';
 
 $url = ltrim($url, '/');
+
+if (str_starts_with($url, 'mrp/')) {
+    $url = substr($url, 4);
+}
+
+if (empty($url) || $url === 'mrp' || $url === 'index.php') {
+    $url = 'login';
+}
 
 /*
 |--------------------------------------------------------------------------
