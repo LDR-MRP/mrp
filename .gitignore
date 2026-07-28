@@ -16,4 +16,8 @@ Config/Config_local.php
 .scannerwork/*
 sonar-project.properties
 ddagent-install.log
-Assets/uploads/
+
+# Guías y documentación local
+AGENTS.md
+FLUJO_DE_TRABAJO.md
+GUIA_FRAMEWORK.md
