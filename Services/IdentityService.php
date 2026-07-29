@@ -46,8 +46,11 @@ class IdentityService
                 new Key(JWT_SECRET_RRHH, 'HS256')
             );
 
+            // Convertir de stdClass a array asociativo para garantizar acceso por clave
+            $decodedArray = json_decode(json_encode($decoded), true);
+
             // 4. Delegar el intercambio de tokens y JIT Provisioning al AuthService
-            $ssoResponse = $this->authService->authenticateViaSso((array) $decoded);
+            $ssoResponse = $this->authService->authenticateViaSso($decodedArray);
 
             if ($ssoResponse->success) {
                 $this->hydrateLegacySession($ssoResponse->data['user']);

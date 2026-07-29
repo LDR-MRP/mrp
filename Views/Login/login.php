@@ -268,5 +268,15 @@
     }
   </script>
 
+  <?php if (!empty($data['error_sso'])): ?>
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        if (typeof notifyToast === 'function') {
+          notifyToast("<?= addslashes($data['error_sso']); ?>", "warning", 5000);
+        }
+      });
+    </script>
+  <?php endif; ?>
+
 </body>
 </html>

@@ -45,6 +45,11 @@ class Login extends Controllers
 		$data['page_name'] = "login";
 		$data['page_functions_js'] = "functions_login.js";
 
+		if (!empty($_SESSION['error_sso'])) {
+			$data['error_sso'] = $_SESSION['error_sso'];
+			unset($_SESSION['error_sso']);
+		}
+
 
 		$raw = $_GET['numerocolaborador'] ?? '';
 		$raw = trim((string)$raw);
@@ -312,14 +317,35 @@ class Login extends Controllers
 	 */
 	public function sso_login(): void
 	{
-		// 1. Borramos la cookie de bloqueo inmediatamente
+		// 1. Limpiar cookie de bloqueo si existía
 		if (isset($_COOKIE['mrp_forced_logout'])) {
 			setcookie('mrp_forced_logout', '', time() - 3600, '/', COOKIE_DOMAIN);
 		}
 
-		// 2. Redirigimos a la raíz del sistema
-		// El IdentityService en index.php detectará que ya no hay bloqueo y lo logueará.
-		header('Location: ' . BASE_URL . '/login');
+		// 2. Intentar la sincronización SSO inmediatamente
+		if (class_exists(\Services\IdentityService::class)) {
+			$identity = new \Services\IdentityService();
+			$succeeded = $identity->attemptSsoSync();
+
+			if ($succeeded || !empty($_SESSION['login'])) {
+				$target = base_url() . '/dashboard';
+				if (ob_get_length()) ob_clean();
+				if (!headers_sent()) {
+					header('Location: ' . $target);
+				}
+				echo "<script>window.location.href = '" . $target . "';</script>";
+				exit;
+			}
+		}
+
+		// 3. Si no hay cookie 'token' o la firma del JWT falló:
+		$_SESSION['error_sso'] = "No se detectó una sesión activa válida en el Portal de RRHH o el token fue rechazado. Asegúrate de iniciar sesión primero en el Portal corporativo.";
+		$target = base_url() . '/login';
+		if (ob_get_length()) ob_clean();
+		if (!headers_sent()) {
+			header('Location: ' . $target);
+		}
+		echo "<script>window.location.href = '" . $target . "';</script>";
 		exit;
 	}
 }

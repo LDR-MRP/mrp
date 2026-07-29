@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+ob_start();
+
 // Ocultar errores al público
 ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);

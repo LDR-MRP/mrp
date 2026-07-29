@@ -282,10 +282,10 @@ public function updateAvatarUsuario(int $usuarioid, string $filename, string $se
                        u.nombres, u.apellidos, r.nombrerol as rol_nombre
                 FROM {$this->table} u
                 LEFT JOIN rol r ON u.rolid = r.idrol
-                WHERE u.email_user = :email 
+                WHERE u.email_user = ? 
                 LIMIT 1";
         
-        $params = [':email' => strtolower($email)];
+        $params = [strtolower($email)];
         $request = $this->select($sql, $params);
         
         return $request ?: null;

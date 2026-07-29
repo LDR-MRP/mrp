@@ -50,38 +50,20 @@ document.addEventListener(
           request.onreadystatechange = function () {
             if (request.readyState != 4) return;
             if (request.status == 200) {
-              var objData = JSON.parse(request.responseText);
-              if (objData.status) {
-                // --- PETICIÓN 2: API-DRIVEN (JWT) ---
-                var requestApi = new XMLHttpRequest();
-                var ajaxUrlApi = base_url + "/api/v1/login";
-
-                requestApi.open("POST", ajaxUrlApi, true);
-                requestApi.setRequestHeader("Content-Type", "application/json");
-
-                requestApi.send(
-                  JSON.stringify({
-                    txtEmail: strEmail,
-                    txtPassword: strPassword,
-                  }),
-                );
-
-                requestApi.onreadystatechange = function () {
-                  if (requestApi.readyState != 4) return;
-
-                  if (requestApi.status == 200 || requestApi.status == 201) {
-                    notifyToast("¡Acceso correcto! Redirigiendo...", "success", 1500);
-                    setTimeout(function () {
-                      window.location.reload(false);
-                    }, 800);
-                  } else {
-                    notifyToast("Error al generar token de acceso API.", "error");
-                    divLoading.style.display = "none";
-                  }
-                };
-              } else {
-                notifyToast(objData.msg || "Usuario o contraseña incorrecto.", "error");
-                document.querySelector("#txtPassword").value = "";
+              try {
+                var objData = JSON.parse(request.responseText);
+                if (objData.status) {
+                  notifyToast("¡Acceso correcto! Redirigiendo...", "success", 1500);
+                  setTimeout(function () {
+                    window.location.href = base_url + "/dashboard";
+                  }, 600);
+                } else {
+                  notifyToast(objData.msg || "Usuario o contraseña incorrecto.", "error");
+                  document.querySelector("#txtPassword").value = "";
+                }
+              } catch (err) {
+                console.error("Error procesando respuesta:", request.responseText);
+                notifyToast("Error al procesar la respuesta del servidor.", "error");
               }
             } else {
               notifyToast("Error en el proceso de autenticación.", "error");
