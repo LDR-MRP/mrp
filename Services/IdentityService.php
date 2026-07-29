@@ -40,9 +40,11 @@ class IdentityService
         }
 
         try {
-            // 3. Validar Token de RRHH
+            // 3. Validar Token de RRHH (Limpiando prefijo Bearer si existiera)
+            $rawToken = trim(str_replace('Bearer ', '', (string)$_COOKIE['token']));
+
             $decoded = JWT::decode(
-                $_COOKIE['token'], 
+                $rawToken, 
                 new Key(JWT_SECRET_RRHH, 'HS256')
             );
 
