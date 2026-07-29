@@ -5,8 +5,6 @@
 > **Fecha de creación**: 29 de Julio 2026  
 > **Rama de trabajo**: `feature/crud-trasladistas-madrinas-choferes` → merge a `devcr`
 
----
-
 ## 1. 📐 Arquitectura del Framework MRP (cómo funciona el código)
 
 El proyecto usa un **framework PHP personalizado con 4 capas**:
@@ -123,19 +121,19 @@ sat_cat_regimen_fiscal           — Catálogo SAT regímenes
 
 | Tabla | Estado | Descripción |
 |---|---|---|
-| `log_envios` | ❌ No existe | Envíos individuales de traslado (EN-000001) |
-| `log_envios_unidades` | ❌ No existe | Asignación de VINs a un envío |
-| `log_envios_choferes` | ❌ No existe | Chofer(es) asignados a un envío |
-| `log_envios_madrinas` | ❌ No existe | Madrina(s) asignadas a un envío |
-| `log_expedientes` | ❌ No existe | Agrupador de envíos para aprobación (EX-000001) |
-| `log_expedientes_envios` | ❌ No existe | Relación N:M expediente ↔ envío |
-| `log_aprobadores_expedientes` | ❌ No existe | Usuarios que pueden aprobar expedientes |
-| `log_unidades` | ❌ No existe | Estado lógico de cada VIN dentro del módulo de logística |
-| `log_unidades_entrega_interna` | ❌ No existe | Control de entrega interna Producción → Logística (solo Origen Planta) |
-| `log_evidencias` | ❌ No existe | Fotos/videos de salida y llegada por unidad |
-| `log_costos_proveedor_segmento` | ❌ No existe | Tarifa por km según proveedor y segmento de unidad |
-| `log_tipo_envio` | ❌ No existe (o verificar) | Catálogo: Individual, Múltiple, etc. |
-| `log_motivo_movimiento` | ❌ No existe (o verificar) | Catálogo: Traslado Normal, Traslado Carrocero, etc. |
+| `lgs_envios` | ❌ No existe | Envíos individuales de traslado (EN-000001) |
+| `lgs_envios_unidades` | ❌ No existe | Asignación de VINs a un envío |
+| `lgs_envios_choferes` | ❌ No existe | Chofer(es) asignados a un envío |
+| `lgs_envios_madrinas` | ❌ No existe | Madrina(s) asignadas a un envío |
+| `lgs_expedientes` | ❌ No existe | Agrupador de envíos para aprobación (EX-000001) |
+| `lgs_expedientes_envios` | ❌ No existe | Relación N:M expediente ↔ envío |
+| `lgs_aprobadores_expedientes` | ❌ No existe | Usuarios que pueden aprobar expedientes |
+| `lgs_unidades` | ❌ No existe | Estado lógico de cada VIN dentro del módulo de logística |
+| `lgs_unidades_entrega_interna` | ❌ No existe | Control de entrega interna Producción → Logística (solo Origen Planta) |
+| `lgs_evidencias` | ❌ No existe | Fotos/videos de salida y llegada por unidad |
+| `lgs_costos_proveedor_segmento` | ❌ No existe | Tarifa por km según proveedor y segmento de unidad |
+| `lgs_tipo_envio` | ❌ No existe (o verificar) | Catálogo: Individual, Múltiple, etc. |
+| `lgs_motivo_movimiento` | ❌ No existe (o verificar) | Catálogo: Traslado Normal, Traslado Carrocero, etc. |
 
 ---
 
@@ -164,31 +162,31 @@ sat_cat_regimen_fiscal           — Catálogo SAT regímenes
 
 | Archivo | Tipo | Qué necesita hacer |
 |---|---|---|
-| `Controllers/Log_bandeja.php` | Controller | Bandeja principal: listar VINs en proceso logístico con los filtros de negocio. |
-| `Controllers/Log_envios.php` | Controller | CRUD de Envíos individuales (crear, editar, ver detalle). |
-| `Controllers/Log_expedientes.php` | Controller | CRUD de Expedientes + acción "Enviar a Aprobación". |
-| `Controllers/Log_aprobaciones.php` | Controller | Panel de aprobación: ver expedientes enviados, aprobar/rechazar. |
-| `Controllers/Log_panelrutas.php` | Controller | Pantalla del mapa de rutas activas. |
-| `Services/Log_enviosService.php` | Service | Lógica de: crear envío, asignar VINs, calcular costos, generar folio EN-. |
-| `Services/Log_expedientesService.php` | Service | Lógica de: crear expediente, agrupar envíos, flujo de aprobación, notificación por correo. |
-| `Services/Log_bandejaService.php` | Service | Lógica de: consultar VINs elegibles según reglas de negocio, filtros operativos. |
+| `Controllers/Lgs_bandeja.php` | Controller | Bandeja principal: listar VINs en proceso logístico con los filtros de negocio. |
+| `Controllers/Lgs_envios.php` | Controller | CRUD de Envíos individuales (crear, editar, ver detalle). |
+| `Controllers/Lgs_expedientes.php` | Controller | CRUD de Expedientes + acción "Enviar a Aprobación". |
+| `Controllers/Lgs_aprobaciones.php` | Controller | Panel de aprobación: ver expedientes enviados, aprobar/rechazar. |
+| `Controllers/Lgs_panelrutas.php` | Controller | Pantalla del mapa de rutas activas. |
+| `Services/Lgs_enviosService.php` | Service | Lógica de: crear envío, asignar VINs, calcular costos, generar folio EN-. |
+| `Services/Lgs_expedientesService.php` | Service | Lógica de: crear expediente, agrupar envíos, flujo de aprobación, notificación por correo. |
+| `Services/Lgs_bandejaService.php` | Service | Lógica de: consultar VINs elegibles según reglas de negocio, filtros operativos. |
 | `Services/Log_evidenciasService.php` | Service | Lógica de: subir archivo, guardar referencia en BD, borrar archivo físico. |
-| `Models/Log_enviosModel.php` | Model | SQL: insert/update de `log_envios`, consulta de VINs asignados, cálculo de costos. |
-| `Models/Log_expedientesModel.php` | Model | SQL: insert/update de `log_expedientes`, cambio de estado en cascada. |
-| `Models/Log_bandejaModel.php` | Model | SQL: consulta maestra de VINs en logística con JOINs complejos y filtros. |
+| `Models/Lgs_enviosModel.php` | Model | SQL: insert/update de `lgs_envios`, consulta de VINs asignados, cálculo de costos. |
+| `Models/Lgs_expedientesModel.php` | Model | SQL: insert/update de `lgs_expedientes`, cambio de estado en cascada. |
+| `Models/Lgs_bandejaModel.php` | Model | SQL: consulta maestra de VINs en logística con JOINs complejos y filtros. |
 | `Models/Log_evidenciasModel.php` | Model | SQL: insert/delete de evidencias fotográficas y de video. |
-| `Requests/Log_enviosRequest.php` | Request | Validación de campos de creación/edición de envío. |
-| `Requests/Log_expedientesRequest.php` | Request | Validación de campos de creación de expediente. |
-| `Views/Log_bandeja/index.php` | View | Tabla de VINs + filtros operativos + botones de acción + modal de detalle. |
-| `Views/Log_envios/index.php` | View | DataTable de envíos + modal de creación + subpanel de VINs asignados. |
-| `Views/Log_expedientes/index.php` | View | DataTable de expedientes + modal de agrupación de envíos + detalle de costos. |
-| `Views/Log_aprobaciones/index.php` | View | DataTable de expedientes pendientes + modal de aprobación/rechazo. |
-| `Views/Log_panelrutas/index.php` | View | Mapa interactivo con rutas activas. |
-| `Assets/js/modulos/functions_log_bandeja.js` | JS | AJAX para filtros, solicitud de entrega, acción "Siguiente Área". |
-| `Assets/js/modulos/functions_log_envios.js` | JS | AJAX para CRUD de envíos y asignación de VINs. |
-| `Assets/js/modulos/functions_log_expedientes.js` | JS | AJAX para CRUD de expedientes y envío a aprobación. |
-| `Assets/js/modulos/functions_log_aprobaciones.js` | JS | AJAX para aprobar/rechazar expedientes. |
-| `Assets/js/modulos/functions_log_evidencias.js` | JS | Dropzone para subida múltiple de fotos/videos. |
+| `Requests/Lgs_enviosRequest.php` | Request | Validación de campos de creación/edición de envío. |
+| `Requests/Lgs_expedientesRequest.php` | Request | Validación de campos de creación de expediente. |
+| `Views/Lgs_bandeja/index.php` | View | Tabla de VINs + filtros operativos + botones de acción + modal de detalle. |
+| `Views/Lgs_envios/index.php` | View | DataTable de envíos + modal de creación + subpanel de VINs asignados. |
+| `Views/Lgs_expedientes/index.php` | View | DataTable de expedientes + modal de agrupación de envíos + detalle de costos. |
+| `Views/Lgs_aprobaciones/index.php` | View | DataTable de expedientes pendientes + modal de aprobación/rechazo. |
+| `Views/Lgs_panelrutas/index.php` | View | Mapa interactivo con rutas activas. |
+| `Assets/js/modulos/functions_lgs_bandeja.js` | JS | AJAX para filtros, solicitud de entrega, acción "Siguiente Área". |
+| `Assets/js/modulos/functions_lgs_envios.js` | JS | AJAX para CRUD de envíos y asignación de VINs. |
+| `Assets/js/modulos/functions_lgs_expedientes.js` | JS | AJAX para CRUD de expedientes y envío a aprobación. |
+| `Assets/js/modulos/functions_lgs_aprobaciones.js` | JS | AJAX para aprobar/rechazar expedientes. |
+| `Assets/js/modulos/functions_lgs_evidencias.js` | JS | Dropzone para subida múltiple de fotos/videos. |
 
 ---
 
@@ -251,11 +249,11 @@ sat_cat_regimen_fiscal           — Catálogo SAT regímenes
 
 | Item | Estado | Detalle |
 |---|---|---|
-| Tabla `log_unidades` | ❌ No existe | Satélite que registra estado de cada VIN en logística |
-| Tabla `log_unidades_entrega_interna` | ❌ No existe | Para unidades de Origen Planta |
-| Controller `Log_bandeja.php` | ❌ No existe | — |
-| View `Views/Log_bandeja/index.php` | ❌ No existe | — |
-| JS `functions_log_bandeja.js` | ❌ No existe | — |
+| Tabla `lgs_unidades` | ❌ No existe | Satélite que registra estado de cada VIN en logística |
+| Tabla `lgs_unidades_entrega_interna` | ❌ No existe | Para unidades de Origen Planta |
+| Controller `Lgs_bandeja.php` | ❌ No existe | — |
+| View `Views/Lgs_bandeja/index.php` | ❌ No existe | — |
+| JS `functions_lgs_bandeja.js` | ❌ No existe | — |
 | Ruta en nav para Bandeja | ❌ No existe | Falta agregar al menú Logística |
 | Ruta en nav para Envíos | ❌ No existe | — |
 | Ruta en nav para Expedientes | ❌ No existe | — |
@@ -265,13 +263,13 @@ sat_cat_regimen_fiscal           — Catálogo SAT regímenes
 
 | Item | Estado | Detalle |
 |---|---|---|
-| Tabla `log_envios` | ❌ No existe | — |
-| Tabla `log_envios_unidades` | ❌ No existe | — |
-| Tabla `log_envios_choferes` | ❌ No existe | — |
-| Tabla `log_envios_madrinas` | ❌ No existe | — |
-| Tabla `log_costos_proveedor_segmento` | ❌ No existe | — |
-| Catálogos `log_tipo_envio` / `log_motivo_movimiento` | ❓ Verificar | Puede que existan con otro nombre |
-| Controller `Log_envios.php` | ❌ No existe | — |
+| Tabla `lgs_envios` | ❌ No existe | — |
+| Tabla `lgs_envios_unidades` | ❌ No existe | — |
+| Tabla `lgs_envios_choferes` | ❌ No existe | — |
+| Tabla `lgs_envios_madrinas` | ❌ No existe | — |
+| Tabla `lgs_costos_proveedor_segmento` | ❌ No existe | — |
+| Catálogos `lgs_tipo_envio` / `lgs_motivo_movimiento` | ❓ Verificar | Puede que existan con otro nombre |
+| Controller `Lgs_envios.php` | ❌ No existe | — |
 | Service/Model/View/JS | ❌ No existe | — |
 | Generador folio `EN-000001` | ❌ No existe | — |
 | Motor de cálculo de costo | ❌ No existe | — |
@@ -280,11 +278,11 @@ sat_cat_regimen_fiscal           — Catálogo SAT regímenes
 
 | Item | Estado | Detalle |
 |---|---|---|
-| Tabla `log_expedientes` | ❌ No existe | — |
-| Tabla `log_expedientes_envios` | ❌ No existe | — |
-| Tabla `log_aprobadores_expedientes` | ❌ No existe | — |
-| Controller `Log_expedientes.php` | ❌ No existe | — |
-| Controller `Log_aprobaciones.php` | ❌ No existe | — |
+| Tabla `lgs_expedientes` | ❌ No existe | — |
+| Tabla `lgs_expedientes_envios` | ❌ No existe | — |
+| Tabla `lgs_aprobadores_expedientes` | ❌ No existe | — |
+| Controller `Lgs_expedientes.php` | ❌ No existe | — |
+| Controller `Lgs_aprobaciones.php` | ❌ No existe | — |
 | Generador folio `EX-000001` | ❌ No existe | — |
 | Plantilla correo de aprobación | ❌ No existe | Falta vista en `Views/Emails/` |
 | Helper `sendMailLocal()` | ✅ Existe | Funciona con PHPMailer |
@@ -293,7 +291,7 @@ sat_cat_regimen_fiscal           — Catálogo SAT regímenes
 
 | Item | Estado | Detalle |
 |---|---|---|
-| Tabla `log_evidencias` | ❌ No existe | — |
+| Tabla `lgs_evidencias` | ❌ No existe | — |
 | Controller de evidencias | ❌ No existe | — |
 | Directorio de uploads | ✅ Existe | `Assets/uploads/` |
 | Lógica "Siguiente Área" | ❌ No existe | — |
@@ -303,9 +301,9 @@ sat_cat_regimen_fiscal           — Catálogo SAT regímenes
 
 | Item | Estado | Detalle |
 |---|---|---|
-| Controller `Log_panelrutas.php` | ❌ No existe | — |
+| Controller `Lgs_panelrutas.php` | ❌ No existe | — |
 | Librería de mapas | ⚠️ Parcial | Existe `jsvectormap`, pero NO Leaflet ni Google Maps API |
-| View `Views/Log_panelrutas/index.php` | ❌ No existe | — |
+| View `Views/Lgs_panelrutas/index.php` | ❌ No existe | — |
 
 ---
 
@@ -313,34 +311,34 @@ sat_cat_regimen_fiscal           — Catálogo SAT regímenes
 
 ```sql
 -- 1. Catálogos base
-CREATE TABLE log_tipo_envio (
+CREATE TABLE lgs_tipo_envio (
     id_tipo_envio   TINYINT PK AUTO_INCREMENT,
     nombre          VARCHAR(100) NOT NULL,  -- Ej: Individual, Múltiple, Masivo
     activo          TINYINT DEFAULT 1
 );
 
-CREATE TABLE log_motivo_movimiento (
+CREATE TABLE lgs_motivo_movimiento (
     id_motivo       TINYINT PK AUTO_INCREMENT,
     nombre          VARCHAR(100) NOT NULL,  -- Ej: Traslado Normal, Traslado Carrocero
     activo          TINYINT DEFAULT 1
 );
 
 -- 2. Tarifas por proveedor + segmento
-CREATE TABLE log_costos_proveedor_segmento (
+CREATE TABLE lgs_costos_proveedor_segmento (
     id              BIGINT PK AUTO_INCREMENT,
     id_proveedor    BIGINT FK→prv_cat_proveedores,
     id_segmento     INT,                    -- Segmento del vehículo (ligero, mediano, pesado)
-    id_tipo_envio   TINYINT FK→log_tipo_envio,
+    id_tipo_envio   TINYINT FK→lgs_tipo_envio,
     costo_por_km    DECIMAL(10,4) NOT NULL, -- Costo por kilómetro
     created_at/updated_at TIMESTAMP
 );
 
 -- 3. Envíos
-CREATE TABLE log_envios (
+CREATE TABLE lgs_envios (
     id_envio            BIGINT PK AUTO_INCREMENT,
     folio               VARCHAR(20) UNIQUE NOT NULL,  -- EN-000001
-    id_tipo_envio       TINYINT FK→log_tipo_envio,
-    id_motivo           TINYINT FK→log_motivo_movimiento,
+    id_tipo_envio       TINYINT FK→lgs_tipo_envio,
+    id_motivo           TINYINT FK→lgs_motivo_movimiento,
     id_proveedor        BIGINT FK→prv_cat_proveedores,
     origen_descripcion  VARCHAR(255) NULL,
     id_destino          INT NULL,                     -- FK a tabla distribuidores
@@ -358,9 +356,9 @@ CREATE TABLE log_envios (
 );
 
 -- 4. Asignación VINs a Envío
-CREATE TABLE log_envios_unidades (
+CREATE TABLE lgs_envios_unidades (
     id              BIGINT PK AUTO_INCREMENT,
-    id_envio        BIGINT FK→log_envios ON DELETE CASCADE,
+    id_envio        BIGINT FK→lgs_envios ON DELETE CASCADE,
     id_unidad       BIGINT NOT NULL,                  -- FK a tabla de VINs del sistema
     costo_unidad    DECIMAL(12,2) NULL,               -- calculado automáticamente
     id_estado       TINYINT DEFAULT 1,
@@ -370,24 +368,24 @@ CREATE TABLE log_envios_unidades (
 );
 
 -- 5. Choferes y Madrinas asignados a Envío
-CREATE TABLE log_envios_choferes (
+CREATE TABLE lgs_envios_choferes (
     id          BIGINT PK AUTO_INCREMENT,
-    id_envio    BIGINT FK→log_envios ON DELETE CASCADE,
+    id_envio    BIGINT FK→lgs_envios ON DELETE CASCADE,
     id_chofer   BIGINT FK→prv_det_choferes,
     UNIQUE (id_envio, id_chofer),
     created_at  TIMESTAMP
 );
 
-CREATE TABLE log_envios_madrinas (
+CREATE TABLE lgs_envios_madrinas (
     id          BIGINT PK AUTO_INCREMENT,
-    id_envio    BIGINT FK→log_envios ON DELETE CASCADE,
+    id_envio    BIGINT FK→lgs_envios ON DELETE CASCADE,
     id_madrina  BIGINT FK→prv_det_madrinas,
     UNIQUE (id_envio, id_madrina),
     created_at  TIMESTAMP
 );
 
 -- 6. Expedientes de aprobación
-CREATE TABLE log_expedientes (
+CREATE TABLE lgs_expedientes (
     id_expediente       BIGINT PK AUTO_INCREMENT,
     folio               VARCHAR(20) UNIQUE NOT NULL,  -- EX-000001
     kilometraje_total   DECIMAL(10,2) NULL,
@@ -402,15 +400,15 @@ CREATE TABLE log_expedientes (
     created_at/updated_at TIMESTAMP
 );
 
-CREATE TABLE log_expedientes_envios (
+CREATE TABLE lgs_expedientes_envios (
     id              BIGINT PK AUTO_INCREMENT,
-    id_expediente   BIGINT FK→log_expedientes ON DELETE CASCADE,
-    id_envio        BIGINT FK→log_envios,
+    id_expediente   BIGINT FK→lgs_expedientes ON DELETE CASCADE,
+    id_envio        BIGINT FK→lgs_envios,
     UNIQUE (id_expediente, id_envio),
     created_at      TIMESTAMP
 );
 
-CREATE TABLE log_aprobadores_expedientes (
+CREATE TABLE lgs_aprobadores_expedientes (
     id          BIGINT PK AUTO_INCREMENT,
     id_usuario  BIGINT FK→usuarios ON DELETE CASCADE,
     activo      TINYINT DEFAULT 1,
@@ -418,10 +416,10 @@ CREATE TABLE log_aprobadores_expedientes (
 );
 
 -- 7. Estado de VINs en Logística (satélite)
-CREATE TABLE log_unidades (
+CREATE TABLE lgs_unidades (
     id_log_unidad           BIGINT PK AUTO_INCREMENT,
     id_unidad               BIGINT NOT NULL,          -- FK al VIN del sistema
-    id_envio                BIGINT NULL FK→log_envios,
+    id_envio                BIGINT NULL FK→lgs_envios,
     id_estado_proceso       TINYINT DEFAULT 1,
     -- 1=En espera, 2=En proceso, 3=Finalizado
     carrocero               TINYINT DEFAULT 0,        -- 1=requiere carrocero
@@ -430,7 +428,7 @@ CREATE TABLE log_unidades (
     created_at/updated_at   TIMESTAMP
 );
 
-CREATE TABLE log_unidades_entrega_interna (
+CREATE TABLE lgs_unidades_entrega_interna (
     id                  BIGINT PK AUTO_INCREMENT,
     id_unidad           BIGINT NOT NULL,
     solicitado_entrega  TINYINT DEFAULT 0,
@@ -440,9 +438,9 @@ CREATE TABLE log_unidades_entrega_interna (
 );
 
 -- 8. Evidencias multimedia
-CREATE TABLE log_evidencias (
+CREATE TABLE lgs_evidencias (
     id_evidencia        BIGINT PK AUTO_INCREMENT,
-    id_log_unidad       BIGINT FK→log_unidades ON DELETE CASCADE,
+    id_log_unidad       BIGINT FK→lgs_unidades ON DELETE CASCADE,
     nombre_archivo      VARCHAR(255) NOT NULL,        -- ruta relativa del archivo
     tipo_archivo        VARCHAR(10) NULL,             -- jpg, png, mp4, etc
     motivo              TINYINT NOT NULL,             -- 1=Salida, 2=Llegada
@@ -457,8 +455,8 @@ CREATE TABLE log_evidencias (
 
 Antes de crear código nuevo, verificar con una consulta o revisión manual:
 
-1. **¿Existe tabla de distribuidores?** → Necesaria como destino en `log_envios`.
-2. **¿Existe tabla de segmentos de vehículo?** → Necesaria para `log_costos_proveedor_segmento`.
+1. **¿Existe tabla de distribuidores?** → Necesaria como destino en `lgs_envios`.
+2. **¿Existe tabla de segmentos de vehículo?** → Necesaria para `lgs_costos_proveedor_segmento`.
 3. **¿Cuál es la tabla principal de VINs?** → Revisar si es `inv_captura_vin`, `mrp_unidades_terminadas` o una join entre ambas.
 4. **¿Cuáles son los procesos IDs 6, 13 y 20?** → Necesarios para la query maestra de la bandeja.
 5. **¿Existe ya tabla `tipo_motivos_movimientos` y `tipo_envios`?** → Según docs técnicos, las mencionan, revisar si ya existen en DB.
@@ -470,11 +468,11 @@ Antes de crear código nuevo, verificar con una consulta o revisión manual:
 ```
 Paso 1: Prerequisitos (verificar tablas de distribuidores, segmentos, VINs)
     │
-Paso 2: Crear catálogos base (log_tipo_envio, log_motivo_movimiento)
+Paso 2: Crear catálogos base (lgs_tipo_envio, lgs_motivo_movimiento)
     │
-Paso 3: Crear tabla de tarifas (log_costos_proveedor_segmento)
+Paso 3: Crear tabla de tarifas (lgs_costos_proveedor_segmento)
     │
-Paso 4: Crear tabla log_unidades + log_unidades_entrega_interna
+Paso 4: Crear tabla lgs_unidades + lgs_unidades_entrega_interna
     │
 Paso 5: Bandeja Principal (Controller + Service + Model + View + JS)
     │       ← PRIMER módulo visible para el usuario de logística
@@ -482,19 +480,19 @@ Paso 5: Bandeja Principal (Controller + Service + Model + View + JS)
 Paso 6: Agregar campos faltantes en tablas existentes
     │       (licencia_file en prv_det_choferes)
     │
-Paso 7: Crear tablas de Envíos (log_envios + relacionadas)
+Paso 7: Crear tablas de Envíos (lgs_envios + relacionadas)
     │
 Paso 8: Módulo de Envíos (Controller + Service + Model + View + JS)
     │       ← incluye generador de folio EN- y motor de costos
     │
-Paso 9: Crear tablas de Expedientes (log_expedientes + relacionadas)
+Paso 9: Crear tablas de Expedientes (lgs_expedientes + relacionadas)
     │
 Paso 10: Módulo de Expedientes (Controller + Service + Model + View + JS)
     │        ← incluye generador de folio EX- y notificación de correo
     │
 Paso 11: Módulo de Aprobaciones (Controller + Service + Model + View + JS)
     │
-Paso 12: Crear tabla log_evidencias
+Paso 12: Crear tabla lgs_evidencias
     │
 Paso 13: Módulo de Evidencias + Botón "Siguiente Área"
     │

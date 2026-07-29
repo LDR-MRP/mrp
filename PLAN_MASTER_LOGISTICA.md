@@ -57,8 +57,8 @@ Mié 29 Jul  ──►  Vie 31 Jul  ──►  Lun 3 Ago  ──►  Vie 7 Ago  
 
 #### 📍 Lunes 03 de Agosto, 2026
 - **ÉPICA 2: Bandeja Principal de Unidades, Entrega Interna y Regla del Carrocero**
-  - **ST-2.3: Controlador y Vista de la Bandeja Principal de Logística (`Logistica.php`)**
-    - *Descripción*: Crear `Controllers/Logistica.php` y `Views/Logistica/index.php`. Construir la consulta SQL aplicando las 4 reglas de visibilidad operativa.
+  - **ST-2.3: Controlador y Vista de la Bandeja Principal de Logística (`Lgs_bandeja.php`)**
+    - *Descripción*: Crear `Controllers/Lgs_bandeja.php` y `Views/Logistica/index.php`. Construir la consulta SQL aplicando las 4 reglas de visibilidad operativa.
   - **ST-2.4: Implementación de Filtros Operativos en Bandeja**
     - *Descripción*: Construir los 10 filtros de la bandeja (Liberado, Sin Plan, En mi área, En espera, En proceso, Finalizado, Retroceso, Por Origen, Ordenamiento y Paginación +50).
 
@@ -76,8 +76,8 @@ Mié 29 Jul  ──►  Vie 31 Jul  ──►  Lun 3 Ago  ──►  Vie 7 Ago  
 
 #### 📍 Jueves 06 de Agosto, 2026
 - **ÉPICA 3: Envíos Individuales y Cálculo de Costos**
-  - **ST-3.3: Módulo y CRUD de Envíos Individuales (`Logistica_envios.php`)**
-    - *Descripción*: Crear `Controllers/Logistica_envios.php` y vista para definir origen, destino, kilometraje total, chofer, madrina y fecha tentativa.
+  - **ST-3.3: Módulo y CRUD de Envíos Individuales (`Lgs_envios.php`)**
+    - *Descripción*: Crear `Controllers/Lgs_envios.php` y vista para definir origen, destino, kilometraje total, chofer, madrina y fecha tentativa.
   - **ST-3.4: Asignación de VINs a Envíos y Motor de Cálculo de Costos**
     - *Descripción*: Funcionalidad para vincular VINs a envíos y calcular automáticamente `Costo = (Tarifa/km por segmento) × (Kilometraje)` actualizando el total del envío.
 
@@ -85,7 +85,7 @@ Mié 29 Jul  ──►  Vie 31 Jul  ──►  Lun 3 Ago  ──►  Vie 7 Ago  
 - **ÉPICA 4: Agrupación de Expedientes, Flujo de Aprobaciones y Notificaciones**
   - **ST-4.1: Estructura de Base de Datos para Expedientes y Aprobadores**
     - *Descripción*: Crear las tablas `expedientes_aprobacion`, `asignacion_envios_expedientes` y `aprobadores_expedientes`.
-  - **ST-4.2: Agrupador de Envíos en Expedientes (`Logistica_expedientes.php`)**
+  - **ST-4.2: Agrupador de Envíos en Expedientes (`Lgs_expedientes.php`)**
     - *Descripción*: Interfaz donde el operador selecciona envíos creados y los consolida en un expediente (Folio `EX-000001`), calculando la suma total de kilometraje y costos.
 
 ---
@@ -96,8 +96,8 @@ Mié 29 Jul  ──►  Vie 31 Jul  ──►  Lun 3 Ago  ──►  Vie 7 Ago  
 - **ÉPICA 4: Agrupación de Expedientes, Flujo de Aprobaciones y Notificaciones**
   - **ST-4.3: Flujo de "Enviar a Aprobación" y Notificación por Correo**
     - *Descripción*: Al accionar la petición, cambiar el estado del expediente a `Enviado` (ID 2) y enviar correo HTML automático usando PHPMailer a los aprobadores registrados.
-  - **ST-4.4: Módulo de Aprobaciones para Finanzas (`Logistica_aprobaciones.php`)**
-    - *Descripción*: Crear `Controllers/Logistica_aprobaciones.php` y vista dedicada para que el aprobador consulte los expedientes en estado `Enviado` (2) o `Regresado` (3) y los pueda **Aprobar** o **Rechazar/Regresar** con observaciones.
+  - **ST-4.4: Módulo de Aprobaciones para Finanzas (`Lgs_aprobaciones.php`)**
+    - *Descripción*: Crear `Controllers/Lgs_aprobaciones.php` y vista dedicada para que el aprobador consulte los expedientes en estado `Enviado` (2) o `Regresado` (3) y los pueda **Aprobar** o **Rechazar/Regresar** con observaciones.
 
 #### 📍 Martes 11 de Agosto, 2026
 - **ÉPICA 4: Agrupación de Expedientes, Flujo de Aprobaciones y Notificaciones**
