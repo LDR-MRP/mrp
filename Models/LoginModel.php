@@ -58,9 +58,8 @@
 
 		public function getUserEmail(string $strEmail){
 			$this->strUsuario = $strEmail;
-			$sql = "SELECT idusuario,nombres,apellidos,status FROM usuarios WHERE 
-					email_user = '$this->strUsuario' and  
-					status = 1 ";
+			$sql = "SELECT idusuario,nombres,apellidos,status,password FROM usuarios WHERE 
+					email_user = '$this->strUsuario'";
 			$request = $this->select($sql);
 			return $request;
 		}

@@ -43,19 +43,14 @@ class AuthService{
             // FLUJO A: LOGIN PROVEEDORES (SRM) - Cifrado Moderno
             // =================================================================
             if ($loginType === 'VENDOR') {
-                // Buscamos solo por email para evitar Timing Attacks en la DB
                 $user = $this->vendorModel->findByEmail($strUsuario);
 
-                // Prevención de Enumeración de Usuarios y Timing Attacks
-                // Si no existe, hasheamos un string dummy para tardar el mismo tiempo
                 if (!$user) {
-                    password_verify('dummy_string', '$2y$10$dummyhashdummyhashdummyhashdu');
-                    return \ServiceResponse::error("El usuario o la contraseña es incorrecto.", 401);
+                    return \ServiceResponse::error("El usuario no se encuentra registrado.", 401);
                 }
 
-                // Verificación BCRYPT/ARGON2 (El estándar actual)
                 if (!password_verify($rawPassword, $user['password'])) {
-                    return \ServiceResponse::error("El usuario o la contraseña es incorrecto.", 401);
+                    return \ServiceResponse::error("La contraseña ingresada es incorrecta.", 401);
                 }
 
                 if ($user['estatus'] !== 'ACTIVE') {
@@ -68,7 +63,7 @@ class AuthService{
                     'exp'  => $now + (60 * 60 * 10), // 10 horas
                     'data' => [
                         'id'        => $user['id'],
-                        'vendor_id' => $user['proveedor_id'], // CLAVE PARA PREVENIR IDOR EN EL FUTURO
+                        'vendor_id' => $user['proveedor_id'],
                         'nombre'    => $user['nombre_contacto'],
                         'rol'       => 'VENDOR',
                         'is_vendor' => true
@@ -83,16 +78,20 @@ class AuthService{
             // =================================================================
             } else {
                 $userModel = new UsuariosModel();
-                $strPasswordHash = hash("SHA256", $rawPassword);
-
-                $user = $userModel->loginUser($strUsuario, $strPasswordHash);
+                $user = $userModel->findByEmail($strUsuario);
 
                 if (!$user) {
-                    return \ServiceResponse::error("El usuario o la contraseña es incorrecto.", 401);
+                    return \ServiceResponse::error("El usuario no se encuentra registrado.", 401);
+                }
+
+                $strPasswordHash = hash("SHA256", $rawPassword);
+
+                if (strtolower($user['password']) !== strtolower($strPasswordHash)) {
+                    return \ServiceResponse::error("La contraseña ingresada es incorrecta.", 401);
                 }
 
                 if ($user['status'] != 1) {
-                    return \ServiceResponse::error("Usuario inactivo. Contacte al administrador.", 403);
+                    return \ServiceResponse::error("El usuario se encuentra inactivo. Contacte al administrador.", 403);
                 }
 
                 // Auditoría interna

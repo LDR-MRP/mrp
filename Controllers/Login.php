@@ -101,14 +101,21 @@ class Login extends Controllers
 		//dep($_POST);
 		if ($_POST) {
 			if (empty($_POST['txtEmail']) || empty($_POST['txtPassword'])) {
-				$arrResponse = array('status' => false, 'msg' => 'Error de datos');
+				$arrResponse = array('status' => false, 'msg' => 'Error de datos. Ingrese usuario y contraseña.');
 			} else {
 				$strUsuario  =  strtolower(strClean($_POST['txtEmail']));
 				$strPassword = hash("SHA256", $_POST['txtPassword']);
-				$requestUser = $this->model->loginUser($strUsuario, $strPassword);
-				if (empty($requestUser)) {
-					$arrResponse = array('status' => false, 'msg' => 'El usuario o la contraseña es incorrecto.');
+
+				$userCheck = $this->model->getUserEmail($strUsuario);
+
+				if (empty($userCheck)) {
+					$arrResponse = array('status' => false, 'msg' => 'El usuario no se encuentra registrado.');
+				} else if (strtolower($userCheck['password']) !== strtolower($strPassword)) {
+					$arrResponse = array('status' => false, 'msg' => 'La contraseña ingresada es incorrecta.');
+				} else if ($userCheck['status'] != 1) {
+					$arrResponse = array('status' => false, 'msg' => 'El usuario se encuentra inactivo. Contacte al administrador.');
 				} else {
+					$requestUser = $this->model->loginUser($strUsuario, $strPassword);
 					$arrData = $requestUser;
 					if ($arrData['status'] == 1) {
 						$_SESSION['idUser'] = $arrData['idusuario'];
