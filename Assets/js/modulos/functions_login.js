@@ -116,14 +116,24 @@ document.addEventListener(
             if (request.readyState != 4) return;
 
             if (request.status == 200) {
-              var objData = JSON.parse(request.responseText);
-              if (objData.status) {
-                notifyToast(objData.msg, "success");
-                setTimeout(function () {
-                  window.location = base_url;
-                }, 2000);
-              } else {
-                notifyToast(objData.msg, "error");
+              try {
+                var objData = JSON.parse(request.responseText);
+                if (objData.status) {
+                  notifyToast(objData.msg, "success", 4000);
+                  document.querySelector("#txtEmailReset").value = "";
+                  setTimeout(function () {
+                    if (typeof flipCard === "function") {
+                      flipCard();
+                    } else {
+                      window.location = base_url + "/login";
+                    }
+                  }, 1800);
+                } else {
+                  notifyToast(objData.msg, "error");
+                }
+              } catch (err) {
+                console.error("Error procesando respuesta:", request.responseText);
+                notifyToast("Error en el servidor al solicitar restablecimiento.", "error");
               }
             } else {
               notifyToast("Error en el proceso de recuperación.", "error");
@@ -168,14 +178,19 @@ document.addEventListener(
           request.onreadystatechange = function () {
             if (request.readyState != 4) return;
             if (request.status == 200) {
-              var objData = JSON.parse(request.responseText);
-              if (objData.status) {
-                notifyToast(objData.msg, "success");
-                setTimeout(function () {
-                  window.location = base_url + "/login";
-                }, 2000);
-              } else {
-                notifyToast(objData.msg, "error");
+              try {
+                var objData = JSON.parse(request.responseText);
+                if (objData.status) {
+                  notifyToast(objData.msg || "Contraseña actualizada con éxito.", "success", 3000);
+                  setTimeout(function () {
+                    window.location = base_url + "/login";
+                  }, 1500);
+                } else {
+                  notifyToast(objData.msg, "error");
+                }
+              } catch (err) {
+                console.error("Error procesando respuesta:", request.responseText);
+                notifyToast("Error en el servidor al actualizar la contraseña.", "error");
               }
             } else {
               notifyToast("Error en el proceso.", "error");
