@@ -458,13 +458,6 @@
                           <div class="collapse menu-dropdown" id="sidebarLogistica">
                               <ul class="nav nav-sm flex-column">
 
-                                  <!-- Trasladistas -->
-                                  <li class="nav-item">
-                                      <a href="<?= base_url(); ?>/prv_trasladistas" class="nav-link" data-key="t-trasladistas">
-                                          <i class="ri-user-shared-line align-bottom me-1"></i> Trasladistas
-                                      </a>
-                                  </li>
-
                                   <!-- Madrinas -->
                                   <li class="nav-item">
                                       <a href="<?= base_url(); ?>/prv_madrinas" class="nav-link" data-key="t-madrinas">

@@ -48,4 +48,21 @@ class Prv_madrinasService {
     public function delete(int $id, int $userId): bool {
         return $this->model->deleteMadrina($id, $userId);
     }
+
+    public function getHistorialChoferes(int $idMadrina): array {
+        return $this->model->getHistorialChoferes($idMadrina);
+    }
+
+    public function asignarChofer(int $idMadrina, int $idChofer, ?string $observaciones, int $userId): bool {
+        $db = $this->model->getConexion();
+        try {
+            $db->beginTransaction();
+            $res = $this->model->asignarChofer($idMadrina, $idChofer, $observaciones, $userId);
+            $db->commit();
+            return $res;
+        } catch (Exception $e) {
+            if (isset($db)) $db->rollBack();
+            throw $e;
+        }
+    }
 }

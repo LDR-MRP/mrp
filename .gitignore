@@ -18,11 +18,15 @@ sonar-project.properties
 ddagent-install.log
 
 # Guías y documentación local
-AGENTS.md
 FLUJO_DE_TRABAJO.md
 GUIA_FRAMEWORK.md
+CHANGELOG_DB_SCHEMA.md
 
 # Archivos de respaldo de Base de Datos y Contexto DB
 db info/
 db_info/
 *.sql
+
+# vscode config
+.vscode/
+

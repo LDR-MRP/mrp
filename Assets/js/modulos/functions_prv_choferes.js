@@ -1,3 +1,14 @@
+function fntSwitchTab(tabId) {
+    let tabEl = document.querySelector(tabId);
+    if (tabEl) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tab && typeof bootstrap.Tab.getOrCreateInstance === 'function') {
+            bootstrap.Tab.getOrCreateInstance(tabEl).show();
+        } else {
+            tabEl.click();
+        }
+    }
+}
+
 let tableChoferes;
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -13,27 +24,25 @@ document.addEventListener('DOMContentLoaded', function() {
             { "data": "trasladista" },
             { "data": "nombre_completo" },
             { "data": "num_licencia" },
-            { 
+            {
                 "data": "tipo_licencia",
                 "render": function(data) {
                     return '<span class="badge bg-secondary">Lic. Tipo ' + (data || 'N/A') + '</span>';
                 }
             },
-            { 
+            {
                 "data": "vigencia_licencia",
                 "render": function(data) {
                     return data ? data : 'Sin fecha';
                 }
             },
             { "data": "telefono" },
-            { 
+            {
                 "data": "estatus_operativo",
                 "render": function(data) {
-                    if (data == 1) {
-                        return '<span class="badge bg-success">Activo</span>';
-                    } else {
-                        return '<span class="badge bg-danger">Inactivo</span>';
-                    }
+                    return data == 1
+                        ? '<span class="badge bg-success">Activo</span>'
+                        : '<span class="badge bg-danger">Inactivo</span>';
                 }
             },
             { "data": "options" }
@@ -44,98 +53,118 @@ document.addEventListener('DOMContentLoaded', function() {
         "order": [[0, "desc"]]
     });
 
+    // ── FORM CHOFER ───────────────────────────────────────────────
     let formChofer = document.querySelector("#formChofer");
-    formChofer.onsubmit = function(e) {
+    formChofer.addEventListener("submit", function(e) {
         e.preventDefault();
-        let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+        let request = new XMLHttpRequest();
         let ajaxUrl = base_url + '/prv_choferes/store';
         let formData = new FormData(formChofer);
         request.open("POST", ajaxUrl, true);
         request.send(formData);
         request.onreadystatechange = function() {
-            if (request.readyState == 4 && request.status == 200) {
+            if (request.readyState !== 4) return;
+            if (request.status === 200 || request.status === 201) {
                 let objData = JSON.parse(request.responseText);
                 if (objData.status === "success") {
-                    $('#modalFormChofer').modal("hide");
                     formChofer.reset();
-                    swal("Choferes", objData.message, "success");
                     tableChoferes.ajax.reload();
+                    Swal.fire({
+                        title: "Choferes",
+                        text: objData.message || "Guardado exitosamente",
+                        icon: "success",
+                        confirmButtonText: "OK",
+                        confirmButtonColor: "#28a745"
+                    }).then(() => {
+                        fntSwitchTab('#tabList');
+                    });
                 } else {
-                    swal("Error", objData.message || "Error al procesar", "error");
+                    Swal.fire("Error", objData.message || "Error al procesar", "error");
+                }
+            } else {
+                try {
+                    let objData = JSON.parse(request.responseText);
+                    Swal.fire("Error", objData.message || "Error en la petición", "error");
+                } catch(err) {
+                    Swal.fire("Error", "Error al procesar la solicitud (" + request.status + ")", "error");
                 }
             }
-        }
-    }
+        };
+    });
 });
 
-function openModal() {
+// ── NUEVO ─────────────────────────────────────────────────────────
+function fntNewChofer() {
     document.querySelector('#id_chofer').value = "";
-    document.querySelector('.modal-header').classList.replace("headerUpdate", "headerRegister");
     document.querySelector('#btnActionForm').classList.replace("btn-info", "btn-primary");
     document.querySelector('#btnText').innerHTML = "Guardar";
-    document.querySelector('#titleModal').innerHTML = "Nuevo Chofer";
+    document.querySelector('#tabForm').innerHTML = "NUEVO CHOFER";
     document.querySelector("#formChofer").reset();
-    $('#modalFormChofer').modal('show');
 }
 
+// ── CANCELAR ──────────────────────────────────────────────────────
+function cancelForm() {
+    document.querySelector("#formChofer").reset();
+    fntSwitchTab('#tabList');
+}
+
+// ── EDITAR ────────────────────────────────────────────────────────
 function fntEditChofer(id) {
-    document.querySelector('#titleModal').innerHTML = "Actualizar Chofer";
-    document.querySelector('.modal-header').classList.replace("headerRegister", "headerUpdate");
+    document.querySelector('#tabForm').innerHTML = "EDITAR CHOFER";
     document.querySelector('#btnActionForm').classList.replace("btn-primary", "btn-info");
     document.querySelector('#btnText').innerHTML = "Actualizar";
 
-    let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+    let request = new XMLHttpRequest();
     let ajaxUrl = base_url + '/prv_choferes/getChofer/' + id;
     request.open("GET", ajaxUrl, true);
     request.send();
     request.onreadystatechange = function() {
-        if (request.readyState == 4 && request.status == 200) {
-            let objData = JSON.parse(request.responseText);
-            if (objData.status === "success") {
-                let data = objData.data;
-                document.querySelector("#id_chofer").value = data.id_chofer;
-                document.querySelector("#id_proveedor").value = data.id_proveedor;
-                document.querySelector("#nombre").value = data.nombre;
-                document.querySelector("#apellidos").value = data.apellidos;
-                document.querySelector("#num_licencia").value = data.num_licencia;
-                document.querySelector("#tipo_licencia").value = data.tipo_licencia;
-                document.querySelector("#vigencia_licencia").value = data.vigencia_licencia;
-                document.querySelector("#telefono").value = data.telefono;
-                $('#modalFormChofer').modal('show');
-            } else {
-                swal("Error", objData.message, "error");
-            }
+        if (request.readyState !== 4 || request.status !== 200) return;
+        let objData = JSON.parse(request.responseText);
+        if (objData.status === "success") {
+            let d = objData.data;
+            document.querySelector("#id_chofer").value         = d.id_chofer;
+            document.querySelector("#id_proveedor").value      = d.id_proveedor;
+            document.querySelector("#nombre").value            = d.nombre;
+            document.querySelector("#apellidos").value         = d.apellidos;
+            document.querySelector("#num_licencia").value      = d.num_licencia;
+            document.querySelector("#tipo_licencia").value     = d.tipo_licencia;
+            document.querySelector("#vigencia_licencia").value = d.vigencia_licencia;
+            document.querySelector("#telefono").value          = d.telefono;
+            fntSwitchTab('#tabForm');
+        } else {
+            Swal.fire("Error", objData.message, "error");
         }
-    }
+    };
 }
 
+// ── ELIMINAR ──────────────────────────────────────────────────────
 function fntDelChofer(id) {
-    swal({
-        title: "Eliminar Chofer",
-        text: "¿Realmente desea eliminar este chofer?",
-        type: "warning",
+    Swal.fire({
+        title: "¿Eliminar Chofer?",
+        text: "¿Realmente deseas eliminar este chofer? Esta acción no se puede deshacer.",
+        icon: "warning",
         showCancelButton: true,
         confirmButtonText: "Sí, eliminar",
-        cancelButtonText: "No, cancelar",
-        closeOnConfirm: false,
-        closeOnCancel: true
-    }, function(isConfirm) {
-        if (isConfirm) {
-            let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#dc3545",
+        cancelButtonColor: "#6c757d"
+    }).then((result) => {
+        if (result.isConfirmed) {
+            let request = new XMLHttpRequest();
             let ajaxUrl = base_url + '/prv_choferes/delete/' + id;
             request.open("POST", ajaxUrl, true);
             request.send();
             request.onreadystatechange = function() {
-                if (request.readyState == 4 && request.status == 200) {
-                    let objData = JSON.parse(request.responseText);
-                    if (objData.status === "success") {
-                        swal("Eliminado!", objData.message, "success");
-                        tableChoferes.ajax.reload();
-                    } else {
-                        swal("Error", objData.message, "error");
-                    }
+                if (request.readyState !== 4 || request.status !== 200) return;
+                let objData = JSON.parse(request.responseText);
+                if (objData.status === "success") {
+                    Swal.fire("Eliminado", objData.message, "success");
+                    tableChoferes.ajax.reload();
+                } else {
+                    Swal.fire("Error", objData.message, "error");
                 }
-            }
+            };
         }
     });
 }

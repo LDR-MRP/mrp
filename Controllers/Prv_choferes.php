@@ -20,9 +20,16 @@ class Prv_choferes extends Controllers {
         $data['page_name'] = "prv_choferes";
         $data['page_functions_js'] = "functions_prv_choferes.js";
 
-        // Obtener lista de trasladistas para el combo
-        $trasladistasModel = new Prv_trasladistasModel();
-        $data['trasladistas'] = $trasladistasModel->getTrasladistas();
+        // Obtener proveedores clasificados con la actividad de Trasladista (cve_actividad = 'TRASLADO_UNIDADES')
+        $proveedorModel = new Prv_proveedorModel();
+        $sql = "SELECT p.id_proveedor, p.razon_social, p.rfc 
+                FROM prv_cat_proveedores p
+                INNER JOIN prv_rel_proveedores_actividades r ON r.id_proveedor = p.id_proveedor
+                INNER JOIN prv_cat_actividades a ON a.id_actividad = r.id_actividad
+                WHERE a.cve_actividad = 'TRASLADO_UNIDADES' 
+                  AND p.deleted_at IS NULL
+                ORDER BY p.razon_social ASC";
+        $data['trasladistas'] = $proveedorModel->select_all($sql);
 
         $this->views->getView($this, "../Prv_choferes/index", $data);
     }
