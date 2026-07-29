@@ -1,3 +1,23 @@
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer);
+    toast.addEventListener('mouseleave', Swal.resumeTimer);
+  }
+});
+
+function notifyToast(message, icon = 'info', timer = 3000) {
+  if (typeof Sys_Core !== 'undefined' && Sys_Core.UI && Sys_Core.UI.notify) {
+    Sys_Core.UI.notify(message, icon, 'top-end', timer);
+  } else {
+    Toast.fire({ icon: icon, title: message, timer: timer });
+  }
+}
+
 $('.login-content [data-toggle="flip"]').click(function () {
   $(".login-box").toggleClass("flipped");
   return false;
@@ -16,7 +36,7 @@ document.addEventListener(
         let strPassword = document.querySelector("#txtPassword").value;
 
         if (strEmail == "" || strPassword == "") {
-          swal("Por favor", "Introduce tus credenciales de acceso", "error");
+          notifyToast("Introduce tus credenciales de acceso", "warning");
           return false;
         } else {
           divLoading.style.display = "flex";
@@ -34,10 +54,9 @@ document.addEventListener(
               if (objData.status) {
                 // --- PETICIÓN 2: API-DRIVEN (JWT) ---
                 var requestApi = new XMLHttpRequest();
-                var ajaxUrlApi = base_url + "/api/v1/login"; // Nuevo endpoint REST
+                var ajaxUrlApi = base_url + "/api/v1/login";
 
                 requestApi.open("POST", ajaxUrlApi, true);
-                // Importante: La API espera JSON
                 requestApi.setRequestHeader("Content-Type", "application/json");
 
                 requestApi.send(
@@ -51,27 +70,21 @@ document.addEventListener(
                   if (requestApi.readyState != 4) return;
 
                   if (requestApi.status == 200 || requestApi.status == 201) {
-                    var objDataApi = JSON.parse(requestApi.responseText);
-
-                    // ¡AMBAS EXITOSAS! Recargamos
-                    window.location.reload(false);
+                    notifyToast("¡Acceso correcto! Redirigiendo...", "success", 1500);
+                    setTimeout(function () {
+                      window.location.reload(false);
+                    }, 800);
                   } else {
-                    // Si la API falla pero el legacy entró, avisamos pero dejamos pasar?
-                    // Mejor forzar error para mantener sincronía.
-                    swal(
-                      "Error de Sincronía",
-                      "Error al generar token de acceso API.",
-                      "error",
-                    );
+                    notifyToast("Error al generar token de acceso API.", "error");
                     divLoading.style.display = "none";
                   }
                 };
               } else {
-                swal("Atención", objData.msg, "error");
+                notifyToast(objData.msg || "Usuario o contraseña incorrecto.", "error");
                 document.querySelector("#txtPassword").value = "";
               }
             } else {
-              swal("Atención", "Error en el proceso", "error");
+              notifyToast("Error en el proceso de autenticación.", "error");
             }
             divLoading.style.display = "none";
             return false;
@@ -87,7 +100,7 @@ document.addEventListener(
 
         let strEmail = document.querySelector("#txtEmailReset").value;
         if (strEmail == "") {
-          swal("Por favor", "Escribe tu correo electrónico.", "error");
+          notifyToast("Escribe tu correo electrónico.", "warning");
           return false;
         } else {
           divLoading.style.display = "flex";
@@ -105,25 +118,15 @@ document.addEventListener(
             if (request.status == 200) {
               var objData = JSON.parse(request.responseText);
               if (objData.status) {
-                swal(
-                  {
-                    title: "",
-                    text: objData.msg,
-                    type: "success",
-                    confirmButtonText: "Aceptar",
-                    closeOnConfirm: false,
-                  },
-                  function (isConfirm) {
-                    if (isConfirm) {
-                      window.location = base_url;
-                    }
-                  },
-                );
+                notifyToast(objData.msg, "success");
+                setTimeout(function () {
+                  window.location = base_url;
+                }, 2000);
               } else {
-                swal("Atención", objData.msg, "error");
+                notifyToast(objData.msg, "error");
               }
             } else {
-              swal("Atención", "Error en el proceso", "error");
+              notifyToast("Error en el proceso de recuperación.", "error");
             }
             divLoading.style.display = "none";
             return false;
@@ -141,22 +144,17 @@ document.addEventListener(
         let strPasswordConfirm = document.querySelector(
           "#txtPasswordConfirm",
         ).value;
-        let idUsuario = document.querySelector("#idUsuario").value;
 
         if (strPassword == "" || strPasswordConfirm == "") {
-          swal("Por favor", "Escribe la nueva contraseña.", "error");
+          notifyToast("Escribe la nueva contraseña.", "warning");
           return false;
         } else {
           if (strPassword.length < 5) {
-            swal(
-              "Atención",
-              "La contraseña debe tener un mínimo de 5 caracteres.",
-              "info",
-            );
+            notifyToast("La contraseña debe tener un mínimo de 5 caracteres.", "info");
             return false;
           }
           if (strPassword != strPasswordConfirm) {
-            swal("Atención", "Las contraseñas no son iguales.", "error");
+            notifyToast("Las contraseñas no coinciden.", "error");
             return false;
           }
           divLoading.style.display = "flex";
@@ -172,25 +170,15 @@ document.addEventListener(
             if (request.status == 200) {
               var objData = JSON.parse(request.responseText);
               if (objData.status) {
-                swal(
-                  {
-                    title: "",
-                    text: objData.msg,
-                    type: "success",
-                    confirmButtonText: "Iniciar sessión",
-                    closeOnConfirm: false,
-                  },
-                  function (isConfirm) {
-                    if (isConfirm) {
-                      window.location = base_url + "/login";
-                    }
-                  },
-                );
+                notifyToast(objData.msg, "success");
+                setTimeout(function () {
+                  window.location = base_url + "/login";
+                }, 2000);
               } else {
-                swal("Atención", objData.msg, "error");
+                notifyToast(objData.msg, "error");
               }
             } else {
-              swal("Atención", "Error en el proceso", "error");
+              notifyToast("Error en el proceso.", "error");
             }
             divLoading.style.display = "none";
           };
