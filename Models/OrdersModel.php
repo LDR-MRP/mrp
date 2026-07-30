@@ -640,4 +640,589 @@ class OrdersModel extends Mysql
             ]
         );
     }
+
+
+    /**
+ * Obtiene las unidades activas publicadas
+ * en el portal de distribuidores.
+ */
+public function selectUnidadesWeb()
+{
+    $sql = "SELECT
+                idunidad,
+                modelo,
+                clave_modelo,
+                nombre,
+                version,
+                descripcion,
+                anio,
+                marca,
+                motor,
+                stock,
+                precio_estimado,
+                imagen_caratula
+            FROM web_unidades
+            WHERE estado = 2
+            ORDER BY
+                marca ASC,
+                modelo ASC,
+                nombre ASC";
+
+    return $this->select_all($sql);
+}
+
+
+/**
+ * Obtiene la información completa de una unidad activa.
+ */
+public function selectUnidadDetalle(int $idunidad)
+{
+    $idunidad = intval($idunidad);
+
+    $sql = "SELECT
+                idunidad,
+                modelo,
+                clave_modelo,
+                nombre,
+                version,
+                descripcion,
+                anio,
+                marca,
+                motor,
+                stock,
+                precio_estimado,
+                imagen_caratula,
+                estado,
+                fecha_creacion,
+                fecha_actualizacion
+            FROM web_unidades
+            WHERE idunidad = {$idunidad}
+              AND estado = 2
+            LIMIT 1";
+
+    return $this->select($sql);
+}
+
+
+/**
+ * Obtiene las imágenes activas de la unidad.
+ *
+ * La imagen principal aparece primero y después
+ * se respeta el campo orden.
+ */
+public function selectImagenesUnidad(int $idunidad)
+{
+    $idunidad = intval($idunidad);
+
+    $sql = "SELECT
+                idimagen,
+                idunidad,
+                nombre_original,
+                nombre_archivo,
+                ruta_archivo,
+                orden,
+                es_principal,
+                estado
+            FROM web_unidades_imagenes
+            WHERE idunidad = {$idunidad}
+              AND estado = 2
+            ORDER BY
+                es_principal DESC,
+                orden ASC,
+                idimagen ASC";
+
+    return $this->select_all($sql);
+}
+
+
+
+
+
+ /**
+     * Obtiene las sucursales activas pertenecientes
+     * exclusivamente al distribuidor autenticado.
+     */
+    public function selectSucursalesCliente(int $idcliente)
+    {
+        $sql = "SELECT
+                    idsucursal,
+                    idcliente,
+                    nombre_sucursal,
+                    responsable,
+                    correo,
+                    telefono,
+                    calle,
+                    numero_exterior,
+                    numero_interior,
+                    colonia,
+                    codigo_postal,
+                    municipio,
+                    estado_republica,
+                    pais
+                FROM cli_clientes_sucursales
+                WHERE idcliente = $idcliente
+                  AND estado = 2
+                ORDER BY
+                    nombre_sucursal ASC,
+                    idsucursal ASC";
+
+        $request = $this->select_all($sql);
+
+        return is_array($request)
+            ? $request
+            : [];
+    }
+
+
+
+    /**
+     * Asigna el folio definitivo después de conocer
+     * el identificador del pedido.
+     */
+    public function updateFolioPedido(
+        int $idpedido,
+        string $folio
+    ): bool {
+        $sql = "UPDATE ped_pedidos
+                SET
+                    folio_pedido = ?,
+                    fecha_actualizacion = NOW()
+                WHERE idpedido = ?
+                  AND estado <> 0";
+
+        return (bool) $this->update(
+            $sql,
+            [
+                $folio,
+                $idpedido
+            ]
+        );
+    }
+
+
+public function generarFolioPedido(): string
+{
+    $fechaActual = date('Y-m-d');
+
+    /* ============================================================
+     * 1. CREAR EL REGISTRO DEL DÍA SI NO EXISTE
+     * ============================================================ */
+
+    $sql = "INSERT INTO ped_folios_diarios (
+                fecha_folio,
+                ultimo_consecutivo,
+                fecha_creacion,
+                fecha_actualizacion
+            ) VALUES (
+                ?,
+                0,
+                NOW(),
+                NOW()
+            )
+            ON DUPLICATE KEY UPDATE
+                fecha_actualizacion = fecha_actualizacion";
+
+    $arrData = [
+        $fechaActual
+    ];
+
+    $this->insert(
+        $sql,
+        $arrData
+    );
+
+    /* ============================================================
+     * 2. OBTENER Y BLOQUEAR EL CONSECUTIVO ACTUAL
+     * ============================================================ */
+
+    $sql = "SELECT
+                fecha_folio,
+                ultimo_consecutivo
+            FROM ped_folios_diarios
+            WHERE fecha_folio = ?
+            LIMIT 1
+            FOR UPDATE";
+
+    $arrData = [
+        $fechaActual
+    ];
+
+    $registro = $this->select(
+        $sql,
+        $arrData
+    );
+
+    /*
+     * Algunos métodos select() regresan:
+     *
+     * [
+     *     'ultimo_consecutivo' => 0
+     * ]
+     *
+     * Otros regresan:
+     *
+     * [
+     *     0 => [
+     *         'ultimo_consecutivo' => 0
+     *     ]
+     * ]
+     *
+     * Aquí soportamos ambos formatos.
+     */
+    if (
+        is_array($registro)
+        && isset($registro[0])
+        && is_array($registro[0])
+    ) {
+        $registro = $registro[0];
+    }
+
+    /*
+     * También soportamos el caso en que PDO
+     * devuelva un objeto.
+     */
+    if (is_object($registro)) {
+        $registro = (array) $registro;
+    }
+
+    if (
+        !is_array($registro)
+        || !array_key_exists(
+            'ultimo_consecutivo',
+            $registro
+        )
+    ) {
+        error_log(
+            'Resultado generarFolioPedido: '
+            . print_r(
+                $registro,
+                true
+            )
+        );
+
+        throw new RuntimeException(
+            'No fue posible obtener el consecutivo del pedido.'
+        );
+    }
+
+    $consecutivoActual = (int) (
+        $registro['ultimo_consecutivo']
+        ?? 0
+    );
+
+    $nuevoConsecutivo =
+        $consecutivoActual + 1;
+
+    /* ============================================================
+     * 3. ACTUALIZAR EL CONSECUTIVO
+     * ============================================================ */
+
+    $sql = "UPDATE ped_folios_diarios
+            SET
+                ultimo_consecutivo = ?,
+                fecha_actualizacion = NOW()
+            WHERE fecha_folio = ?";
+
+    $arrData = [
+        $nuevoConsecutivo,
+        $fechaActual
+    ];
+
+    $requestUpdate = $this->update(
+        $sql,
+        $arrData
+    );
+
+    /*
+     * Dependiendo de tu método update(), puede devolver:
+     * true, 1 o la cantidad de registros afectados.
+     */
+    if (
+        $requestUpdate === false
+        || $requestUpdate === null
+    ) {
+        throw new RuntimeException(
+            'No fue posible actualizar el consecutivo del pedido.'
+        );
+    }
+
+    /* ============================================================
+     * 4. CREAR EL FOLIO
+     * ============================================================ */
+
+    return sprintf(
+        'PED-%s-%04d',
+        date('Ymd'),
+        $nuevoConsecutivo
+    );
+}
+
+
+
+ /* ============================================================
+     * VALIDACIONES
+     * ============================================================ */
+
+    /**
+     * Verifica que la sucursal pertenezca al distribuidor.
+     */
+    public function selectSucursalCliente(
+        int $idsucursal,
+        int $idcliente
+    ){
+        $sql = "SELECT
+                idsucursal,
+                idcliente,
+                nombre_sucursal,
+                calle,
+                numero_exterior,
+                numero_interior,
+                colonia,
+                codigo_postal,
+                municipio,
+                estado_republica,
+                pais
+            FROM cli_clientes_sucursales
+            WHERE idsucursal = ?
+              AND idcliente = ?
+              AND estado = 2
+            LIMIT 1
+        ";
+
+        $request = $this->select(
+            $sql,
+            [
+                $idsucursal,
+                $idcliente
+            ]
+        );
+
+        return is_array($request)
+            ? $request
+            : [];
+    }
+
+    /**
+     * Obtiene la unidad y su precio desde la base de datos.
+     */
+    public function selectUnidadPedido(
+        int $idunidad
+    ){
+        $sql = "
+            SELECT
+                idunidad,
+                modelo,
+                clave_modelo,
+                nombre,
+                version,
+                anio,
+                marca,
+                motor,
+                stock,
+                precio_estimado,
+                estado
+            FROM web_unidades
+            WHERE idunidad = ?
+              AND estado = 2
+            LIMIT 1
+        ";
+
+        $request = $this->select(
+            $sql,
+            [$idunidad]
+        );
+
+        return is_array($request)
+            ? $request
+            : [];
+    }
+
+    /* ============================================================
+     * INSERTAR PEDIDO
+     * ============================================================ */
+
+    public function insertPedido(array $data)
+    {
+        $sql = "INSERT INTO ped_pedidos (
+                idcliente,
+                idsede,
+                idusuario_acceso,
+                folio_pedido,
+                fecha_pedido,
+                fecha_requerida,
+                mes_facturacion_deseado,
+                prioridad,
+                subtotal,
+                descuento,
+                iva,
+                total,
+                observaciones,
+                estatus,
+                estado,
+                fecha_creacion,
+                fecha_actualizacion
+            ) VALUES (
+                ?,
+                ?,
+                ?,
+                ?,
+                NOW(),
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                2,
+                NOW(),
+                NOW()
+            )
+        ";
+
+        $arrData = [
+            $data['idcliente'],
+            $data['idsede'],
+            $data['idusuario_acceso'],
+            $data['folio_pedido'],
+            $data['fecha_requerida'],
+            $data['mes_facturacion_deseado'],
+            $data['prioridad'],
+            $data['subtotal'],
+            $data['descuento'],
+            $data['iva'],
+            $data['total'],
+            $data['observaciones'],
+            $data['estatus']
+        ];
+
+        $request = $this->insert(
+            $sql,
+            $arrData
+        );
+
+        return (int) $request;
+    }
+
+    /* ============================================================
+     * INSERTAR DETALLE
+     * ============================================================ */
+
+    public function insertPedidoDetalle(
+        array $data
+    ) {
+        $sql = "INSERT INTO ped_pedidos_detalle (
+                idpedido,
+                idunidad,
+                tipo_entrega,
+                idsucursal_entrega,
+                direccion_entrega,
+                cantidad_solicitada,
+                cantidad_autorizada,
+                cantidad_facturada,
+                cantidad_pendiente,
+                precio_unitario,
+                descuento,
+                subtotal,
+                iva,
+                total,
+                estatus,
+                fecha_creacion,
+                fecha_actualizacion
+            ) VALUES (
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                0,
+                0,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                NOW(),
+                NOW()
+            )
+        ";
+
+        $arrData = [
+            $data['idpedido'],
+            $data['idproducto'],
+            $data['tipo_entrega'],
+            $data['idsucursal_entrega'],
+            $data['direccion_entrega'],
+            $data['cantidad_solicitada'],
+            $data['cantidad_pendiente'],
+            $data['precio_unitario'],
+            $data['descuento'],
+            $data['subtotal'],
+            $data['iva'],
+            $data['total'],
+            $data['estatus']
+        ];
+
+        $request = $this->insert(
+            $sql,
+            $arrData
+        );
+
+        return (int) $request;
+    }
+
+    /* ============================================================
+     * BITÁCORA
+     * ============================================================ */
+
+    public function insertBitacoraEvento(
+        array $data
+    ) {
+        $sql = "INSERT INTO ped_bitacora_eventos (
+                idpedido,
+                tipo_evento,
+                descripcion,
+                estatus_anterior,
+                estatus_nuevo,
+                usuario_registro,
+                origen,
+                fecha_creacion,
+                fecha_actualizacion
+            ) VALUES (
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                NOW(),
+                NOW()
+            )
+        ";
+
+        $arrData = [
+            $data['idpedido'],
+            $data['tipo_evento'],
+            $data['descripcion'],
+            $data['estatus_anterior'],
+            $data['estatus_nuevo'],
+            $data['usuario_registro'],
+            $data['origen']
+        ];
+
+        $request = $this->insert(
+            $sql,
+            $arrData
+        );
+
+        return (int) $request;
+    }
+
+
 }
