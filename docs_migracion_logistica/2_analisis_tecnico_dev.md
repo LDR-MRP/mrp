@@ -1,676 +1,752 @@
-# Análisis Técnico para Desarrolladores – Módulo de Logística
-### Stack: Laravel (API REST) + React (Frontend) · TRUFoton
+# 📐 Análisis Técnico para Desarrolladores — Módulo de Logística
+### Stack: PHP 8 + PDO/MySQL (4 capas) · 04 Agosto 2026
+
+> **Lectura complementaria:** [5_flujo_operativo_logistica.md](5_flujo_operativo_logistica.md) · [PLAN_DESARROLLO_TECNICO_LOGISTICA.md](../PLAN_DESARROLLO_TECNICO_LOGISTICA.md)
 
 ---
 
-## 1. Base de Datos — Estructura Completa (Migraciones Laravel)
+## 1. Arquitectura del Framework
 
-> Crear en este orden exacto por dependencias de FKs.
-
-### 1.1 `proveedores` (reemplaza `trasladistas`)
-
-```php
-Schema::create('proveedores', function (Blueprint $table) {
-    $table->id();
-    $table->string('nombre_comercial');
-    $table->string('razon_social');
-    $table->string('rfc', 13)->unique();
-    $table->enum('tipo_persona', ['Fisica', 'Moral']);
-    $table->text('direccion_fiscal');
-    $table->string('tipo_proveedor')->default('transporte');
-    $table->string('correo_contacto')->nullable();
-    $table->string('telefono_contacto', 20)->nullable();
-    $table->boolean('activo')->default(true);
-    $table->timestamps();
-    $table->index('rfc');
-});
+```
+index.php  (Router)
+    ├── URL: base_url / Controlador / Metodo / Params
+    │         ↓
+    ├── Controllers/{Nombre}.php
+    │       → Recibe $_POST/$_GET, llama al Service, renderiza vista o responde JSON
+    │         ↓
+    ├── Services/{Nombre}.php
+    │       → Lógica de negocio, transacciones PDO, validaciones de dominio
+    │         ↓
+    ├── Models/{Nombre}.php   (extiende Mysql)
+    │       → SQL raw con PDO. Métodos: select(), select_all(), insert(), update(), delete()
+    │         ↓
+    └── Base de Datos MySQL
 ```
 
-### 1.2 `choferes`
+**Convenciones:**
+- Los Controllers usan el trait `ApiResponser` → `$this->successResponse($data, $msg, $code)` y `$this->errorResponse($msg, $code)`.
+- Los Models tienen `$this->getConexion()` para obtener el PDO y hacer transacciones.
+- Las Views cargan con `$this->views->getView($this, "../Controlador/index", $data)`.
+- El JS hace `fetch(base_url + '/Controlador/metodo', { method: 'POST', body: formData })`.
+- La respuesta JSON siempre tiene: `{ "success": bool, "message": "...", "data": {...}, "code": 200 }`.
 
-```php
-Schema::create('choferes', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('proveedor_id')->constrained('proveedores')->onDelete('cascade');
-    $table->string('nombre_chofer');
-    $table->string('licencia_chofer'); // path relativo al archivo subido
-    $table->string('telefono_chofer', 20);
-    $table->timestamps();
-});
+---
+
+## 2. Tablas Existentes (Épica 1 — Ya en Producción)
+
+### `prv_cat_proveedores` (Trasladistas)
+```sql
+id_proveedor, nombre_comercial, razon_social, rfc, id_tipo_persona,
+id_regimen_fiscal, correo_contacto, telefono_contacto, activo,
+created_by, updated_by, created_at, updated_at, deleted_at
 ```
 
-### 1.3 `madrinas`
-
-```php
-Schema::create('madrinas', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('proveedor_id')->constrained('proveedores')->onDelete('cascade');
-    $table->string('nombre_madrina');
-    $table->string('placa_tracto', 15);
-    $table->string('placa_caja', 15);
-    $table->unsignedSmallInteger('capacidad_unidades');
-    $table->string('num_eco', 30);
-    $table->foreignId('id_creador')->constrained('users'); // Relacionado a la tabla users
-    $table->timestamps();
-});
+### `prv_det_choferes`
+```sql
+id_chofer, id_proveedor, nombre_completo, num_licencia,
+tipo_licencia, vigencia_licencia, telefono, estatus_operativo,
+created_by, updated_by, created_at, updated_at, deleted_at
 ```
 
-### 1.3.1 `madrina_chofer_historial` (Historial de Choferes de Madrinas)
-
-```php
-Schema::create('madrina_chofer_historial', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('madrina_id')->constrained('madrinas')->onDelete('cascade');
-    $table->foreignId('chofer_id')->constrained('choferes')->onDelete('cascade');
-    $table->dateTime('fecha_inicio');
-    $table->dateTime('fecha_fin')->nullable();
-    $table->boolean('activo')->default(true); // true = chofer conduciendo actualmente la madrina
-    $table->timestamps();
-});
+### `prv_det_madrinas`
+```sql
+id_madrina, id_proveedor, nombre_madrina, placa_tracto,
+placa_caja, capacidad_unidades, num_eco, estatus_operativo,
+created_by, updated_by, created_at, updated_at, deleted_at
 ```
 
-### 1.4 `envios`
-
-```php
-Schema::create('envios', function (Blueprint $table) {
-    $table->id();
-    $table->string('nombre_envio', 20)->unique(); // formato EN-000001
-    $table->foreignId('id_motivo_movimiento')->constrained('tipo_motivos_movimientos');
-    $table->foreignId('id_tipo_envio')->constrained('tipo_envios');
-    $table->foreignId('proveedor_id')->constrained('proveedores');   // antes id_trasladista
-    $table->foreignId('id_origen_envio')->nullable()->constrained('origenes_envios');
-    $table->string('origen_abierto')->nullable();
-    $table->foreignId('id_destino_envio')->nullable()->constrained('distribuidores');
-    $table->string('destino_abierto')->nullable();
-    $table->decimal('kilometraje_total', 8, 2)->default(0);
-    $table->decimal('costo_total', 12, 2)->nullable();
-    $table->date('fecha_tentativa_envio')->nullable();
-    $table->date('fecha_tentativa_llegada')->nullable();
-    $table->date('fecha_llegada')->nullable();
-    $table->text('observaciones')->nullable();
-    $table->foreignId('id_creador_envio')->constrained('usuarios');
-    $table->unsignedTinyInteger('id_estado_envio')->default(1);
-    // 1=Creado, 2=Asignado, 3=Aprobado, 4=Rechazado, 5=En tránsito, 6=Completado
-    $table->timestamps();
-});
+### `prv_det_madrina_chofer_historial`
+```sql
+id_historial, id_madrina, id_chofer, fecha_inicio, fecha_fin,
+activo (1=activo, 0=inactivo), observaciones,
+created_by, updated_by, created_at, updated_at
 ```
 
-### 1.5 `asignacion_envios_unidades`
+### `prv_cat_actividades` + `prv_rel_proveedores_actividades`
+Catálogo de actividades. `cve_actividad = 'TRASLADO_UNIDADES'` identifica a los trasladistas.
 
-```php
-Schema::create('asignacion_envios_unidades', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('id_envio')->constrained('envios')->onDelete('cascade');
-    $table->foreignId('id_unidad')->constrained('unidades');
-    $table->timestamp('fecha_asignacion')->useCurrent();
-    $table->decimal('costo_x_unidad', 12, 2)->nullable(); // calculado automáticamente
-    $table->unsignedTinyInteger('id_estado_asignacion_envio')->default(1);
-    $table->foreignId('id_asignador_envio')->constrained('usuarios');
-    $table->unique(['id_envio', 'id_unidad']); // no duplicar asignaciones
-    $table->timestamps();
-});
-```
+---
 
-### 1.6 `expedientes_aprobacion`
+## 3. Tablas a Crear (DDL completo en orden de dependencias FK)
 
-```php
-Schema::create('expedientes_aprobacion', function (Blueprint $table) {
-    $table->id();
-    $table->string('nombre_expediente', 20)->unique(); // formato EX-000001
-    $table->decimal('kilometraje_total', 10, 2)->nullable();
-    $table->decimal('costo_total', 12, 2)->nullable();
-    $table->date('fecha_expediente')->nullable();
-    $table->unsignedTinyInteger('id_estado_expediente')->default(1);
-    // 1=Creado, 2=Enviado a aprobación, 3=Regresado, 4=Rechazado, 5=Aprobado
-    $table->foreignId('id_creador_expediente')->constrained('users'); // Relacionado a users
-    $table->foreignId('id_aprobador')->nullable()->constrained('users'); // Relacionado a users
-    $table->text('observaciones_creador')->nullable();
-    $table->text('observaciones_aprobador')->nullable();
-    $table->timestamps();
-});
-```
+```sql
+-- ================================================================
+-- ÉPICA 2: CATÁLOGOS CONFIGURABLES
+-- ================================================================
 
-### 1.7 `asignacion_envios_expedientes`
+CREATE TABLE IF NOT EXISTS lgs_cat_tipo_traslado (
+    id_tipo_traslado TINYINT AUTO_INCREMENT PRIMARY KEY,
+    nombre           VARCHAR(100) NOT NULL,
+    activo           TINYINT(1) DEFAULT 1,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-```php
-Schema::create('asignacion_envios_expedientes', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('id_expediente')->constrained('expedientes_aprobacion')->onDelete('cascade');
-    $table->foreignId('id_envio')->constrained('envios');
-    $table->unique(['id_expediente', 'id_envio']);
-    $table->timestamps();
-});
-```
+INSERT IGNORE INTO lgs_cat_tipo_traslado (nombre) VALUES
+('Madrina'), ('Chofer (Rodando)');
 
-### 1.8 `info_unidad_logistica`
+-- ──────────────────────────────────────────────────────────────────
 
-```php
-Schema::create('info_unidad_logistica', function (Blueprint $table) {
-    $table->id('id_info_unidad_logistica');
-    $table->foreignId('id_unidad')->constrained('unidades');
-    $table->foreignId('id_envio')->nullable()->constrained('envios');
-    $table->unsignedTinyInteger('id_estado_proceso')->default(1);
-    // 1=En espera, 2=En proceso, 3=Finalizado
-    $table->tinyInteger('carrocero')->default(0); // 1=Requiere carrocero
-    $table->unsignedTinyInteger('id_estado_unidad_logistica')->nullable();
-    $table->date('fecha_salida')->nullable();
-    $table->date('fecha_llegada')->nullable();
-    $table->timestamps();
-});
-```
+CREATE TABLE IF NOT EXISTS lgs_cat_motivo_envio (
+    id_motivo   INT AUTO_INCREMENT PRIMARY KEY,
+    cve_motivo  VARCHAR(40) NOT NULL UNIQUE,
+    descripcion VARCHAR(150) NOT NULL,
+    activo      TINYINT(1) DEFAULT 1,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-### 1.9 `evidencias_logistica`
+INSERT IGNORE INTO lgs_cat_motivo_envio (cve_motivo, descripcion) VALUES
+('ENTREGA_DIST',        'Entrega a Distribuidor'),
+('TRASLADO_CARROCERIA', 'Traslado a Carrocería'),
+('MARKETING',           'Marketing / Exposición'),
+('DEMO',                'Unidad Demo'),
+('PRUEBAS',             'Unidad de Pruebas'),
+('PILOTO',              'Unidad Piloto'),
+('DEVOLUCION',          'Devolución'),
+('OTRO',                'Otro motivo');
 
-```php
-Schema::create('evidencias_logistica', function (Blueprint $table) {
-    $table->id('id_evidencia');
-    $table->foreignId('id_info_unidad_logistica')
-          ->constrained('info_unidad_logistica')->onDelete('cascade');
-    $table->string('evidencia'); // nombre del archivo almacenado
-    $table->tinyInteger('motivo_evidencia'); // 1=Salida, 2=Llegada
-    $table->timestamps();
-});
-```
+-- ──────────────────────────────────────────────────────────────────
 
-### 1.10 `asignacion_envio_choferes`
+CREATE TABLE IF NOT EXISTS lgs_cat_tipo_destino (
+    id_tipo_destino TINYINT AUTO_INCREMENT PRIMARY KEY,
+    cve_destino     VARCHAR(40) NOT NULL UNIQUE,
+    descripcion     VARCHAR(150) NOT NULL,
+    activo          TINYINT(1) DEFAULT 1,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-```php
-Schema::create('asignacion_envio_choferes', function (Blueprint $table) {
-    $table->id('id_asignacion_envio_chofer');
-    $table->foreignId('id_envio')->constrained('envios')->onDelete('cascade');
-    $table->foreignId('id_chofer')->constrained('choferes');
-    $table->unique(['id_envio', 'id_chofer']);
-    $table->timestamps();
-});
-```
+INSERT IGNORE INTO lgs_cat_tipo_destino (cve_destino, descripcion) VALUES
+('DISTRIBUIDOR',  'Distribuidor / Concesionario'),
+('CARROCERO',     'Carrocero / Adaptaciones'),
+('CLIENTE_FINAL', 'Cliente Final'),
+('ALMACEN',       'Almacén'),
+('PLANTA',        'Planta'),
+('OTRO',          'Otro destino');
 
-### 1.11 `asignacion_envio_madrina`
+-- ──────────────────────────────────────────────────────────────────
 
-```php
-Schema::create('asignacion_envio_madrina', function (Blueprint $table) {
-    $table->id('id_asignacion_envio_madrina');
-    $table->foreignId('id_envio')->constrained('envios')->onDelete('cascade');
-    $table->foreignId('id_madrina')->constrained('madrinas');
-    $table->unique(['id_envio', 'id_madrina']);
-    $table->timestamps();
-});
-```
+CREATE TABLE IF NOT EXISTS lgs_cat_origenes (
+    id_origen  INT AUTO_INCREMENT PRIMARY KEY,
+    nombre     VARCHAR(150) NOT NULL,
+    direccion  VARCHAR(255) NULL,
+    lat        DECIMAL(10,7) NULL COMMENT 'Latitud para API de km',
+    lng        DECIMAL(10,7) NULL COMMENT 'Longitud para API de km',
+    activo     TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-### 1.12 `costos_trasladistas_tipo_unidades`
+INSERT IGNORE INTO lgs_cat_origenes (nombre) VALUES
+('Planta 1'), ('Planta 2'), ('Planta 3'), ('Planta 4'), ('Planta 5'),
+('Almacén Montenegro');
 
-```php
-Schema::create('costos_proveedores_tipo_unidades', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('proveedor_id')->constrained('proveedores');
-    $table->foreignId('id_segmento')->constrained('segmentos');
-    $table->foreignId('id_tipo_envio')->constrained('tipo_envios');
-    $table->decimal('costo', 10, 2); // costo por km o por unidad
-    $table->timestamps();
-});
-```
+-- ──────────────────────────────────────────────────────────────────
 
-### 1.13 `info_logistica_interna` (Solo Origen Planta)
+CREATE TABLE IF NOT EXISTS lgs_cat_destinos (
+    id_destino      INT AUTO_INCREMENT PRIMARY KEY,
+    nombre          VARCHAR(150) NOT NULL,
+    nombre_libre    VARCHAR(255) NULL COMMENT 'Alias personalizado',
+    id_tipo_destino TINYINT NULL,
+    direccion       VARCHAR(255) NULL,
+    lat             DECIMAL(10,7) NULL,
+    lng             DECIMAL(10,7) NULL,
+    activo          TINYINT(1) DEFAULT 1,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_tipo_destino) REFERENCES lgs_cat_tipo_destino(id_tipo_destino) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-```php
-Schema::create('info_logistica_interna', function (Blueprint $table) {
-    $table->id('id_logistica_interna');
-    $table->foreignId('id_unidad')->constrained('unidades');
-    $table->tinyInteger('solicitado_entrega')->default(0); // 0=No, 1=Sí
-    $table->unsignedTinyInteger('id_estado_entrega')->default(1); // 1=Pendiente, 2=Completada
-    $table->timestamp('fecha_entrega_interna')->nullable();
-    $table->timestamps();
-});
-```
+-- ================================================================
+-- ÉPICA 2: ENVÍOS
+-- ================================================================
 
-### 1.14 `aprobadores_expedientes`
+CREATE TABLE IF NOT EXISTS lgs_envios (
+    id_envio                BIGINT AUTO_INCREMENT PRIMARY KEY,
+    folio                   VARCHAR(20) UNIQUE NOT NULL COMMENT 'EN-000001',
+    id_tipo_traslado        TINYINT NULL,
+    id_motivo               INT NULL,
+    id_proveedor            BIGINT NOT NULL COMMENT 'FK prv_cat_proveedores',
+    id_origen               INT NULL COMMENT 'FK lgs_cat_origenes',
+    id_destino              INT NULL COMMENT 'FK lgs_cat_destinos',
+    destino_nombre_libre    VARCHAR(255) NULL COMMENT 'Nombre libre del destino si no está en catálogo',
+    km_total                DECIMAL(10,2) DEFAULT 0,
+    costo_total             DECIMAL(12,2) NULL COMMENT 'Calculado dinámicamente según VINs/Madrinas/Choferes',
+    fecha_tentativa_envio   DATE NULL,
+    fecha_tentativa_llegada DATE NULL,
+    fecha_salida_real       DATETIME NULL,
+    fecha_llegada_real      DATETIME NULL,
+    recibe_nombre           VARCHAR(150) NULL COMMENT 'Nombre de quien recibe en destino',
+    observaciones           TEXT NULL,
+    id_estado               TINYINT DEFAULT 1
+        COMMENT '1=Creado 2=En Revisión 3=Aprobado 4=Regresado 5=En Ejecución 6=En Tránsito 7=Entregado 8=Cancelado',
+    created_by              BIGINT UNSIGNED NULL,
+    updated_by              BIGINT UNSIGNED NULL,
+    created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at              TIMESTAMP NULL,
+    FOREIGN KEY (id_tipo_traslado) REFERENCES lgs_cat_tipo_traslado(id_tipo_traslado) ON DELETE SET NULL,
+    FOREIGN KEY (id_motivo)        REFERENCES lgs_cat_motivo_envio(id_motivo) ON DELETE SET NULL,
+    FOREIGN KEY (id_origen)        REFERENCES lgs_cat_origenes(id_origen) ON DELETE SET NULL,
+    FOREIGN KEY (id_destino)       REFERENCES lgs_cat_destinos(id_destino) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-```php
-Schema::create('aprobadores_expedientes', function (Blueprint $table) {
-    $table->id();
-    $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-    $table->timestamps();
-});
+-- ──────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS lgs_envios_vins (
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_envio         BIGINT NOT NULL,
+    id_unidad        BIGINT NOT NULL COMMENT 'FK mrp_unidades_terminadas',
+    id_destino       INT NULL COMMENT 'Parada/Destino donde se bajará este VIN',
+    id_madrina       BIGINT NULL COMMENT 'Madrina en la que viaja (si tipo = Madrina)',
+    id_chofer        BIGINT NULL COMMENT 'Chofer que maneja (si tipo = Chofer Rodando)',
+    posicion_acomodo TINYINT UNSIGNED NULL
+        COMMENT 'Orden de carga en la madrina. 1 = primero en subir. NULL si es Chofer Rodando',
+    costo_unidad     DECIMAL(12,2) NULL COMMENT 'Calculado automáticamente',
+    id_estado        TINYINT DEFAULT 1,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_envio_vin (id_envio, id_unidad),
+    FOREIGN KEY (id_envio) REFERENCES lgs_envios(id_envio) ON DELETE CASCADE,
+    FOREIGN KEY (id_destino) REFERENCES lgs_cat_destinos(id_destino) ON DELETE SET NULL
+    /* FOREIGN KEY (id_madrina) REFERENCES prv_det_madrinas(id_madrina) ON DELETE SET NULL */
+    /* FOREIGN KEY (id_chofer) REFERENCES prv_det_choferes(id_chofer) ON DELETE SET NULL */
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ──────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS lgs_costos_proveedor_segmento (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_proveedor BIGINT NOT NULL COMMENT 'FK prv_cat_proveedores',
+    id_segmento  INT NULL COMMENT 'Segmento del vehículo',
+    num_vins_min TINYINT DEFAULT 1,
+    num_vins_max TINYINT DEFAULT 99,
+    costo_por_km DECIMAL(10,4) NOT NULL,
+    factor       DECIMAL(5,2) DEFAULT 1.00,
+    activo       TINYINT(1) DEFAULT 1,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ================================================================
+-- ÉPICA 3: PLANEACIONES Y APROBACIONES
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS lgs_planeaciones (
+    id_planeacion BIGINT AUTO_INCREMENT PRIMARY KEY,
+    folio         VARCHAR(20) UNIQUE NOT NULL COMMENT 'EX-000001',
+    descripcion   VARCHAR(255) NULL,
+    km_total      DECIMAL(10,2) NULL,
+    costo_total   DECIMAL(12,2) NULL,
+    id_estado     TINYINT DEFAULT 1 COMMENT '1=Creada 2=Enviada 3=Regresada 5=Aprobada',
+    obs_operador  TEXT NULL,
+    obs_aprobador TEXT NULL,
+    created_by    BIGINT UNSIGNED NULL,
+    aprobado_by   BIGINT UNSIGNED NULL,
+    aprobado_at   DATETIME NULL,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS lgs_planeaciones_envios (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_planeacion BIGINT NOT NULL,
+    id_envio      BIGINT NOT NULL,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_plan_envio (id_planeacion, id_envio),
+    FOREIGN KEY (id_planeacion) REFERENCES lgs_planeaciones(id_planeacion) ON DELETE CASCADE,
+    FOREIGN KEY (id_envio)      REFERENCES lgs_envios(id_envio) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS lgs_aprobadores (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_usuario BIGINT NOT NULL,
+    activo     TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ================================================================
+-- ÉPICA 4: EJECUCIÓN Y SOLICITUDES DE ENTREGA
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS lgs_solicitudes_entrega (
+    id_solicitud     BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_envio         BIGINT NOT NULL,
+    id_unidad        BIGINT NOT NULL COMMENT 'VIN FK mrp_unidades_terminadas',
+    posicion_acomodo TINYINT UNSIGNED DEFAULT 1,
+    id_estado        TINYINT DEFAULT 1
+        COMMENT '1=Solicitada 2=Entregada a Trasladista 3=Cancelada',
+    solicitado_by    BIGINT UNSIGNED NULL,
+    confirmado_by    BIGINT UNSIGNED NULL,
+    solicitado_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    confirmado_at    DATETIME NULL,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_envio) REFERENCES lgs_envios(id_envio) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ================================================================
+-- ÉPICA 5: EVIDENCIAS MULTIMEDIA
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS lgs_evidencias (
+    id_evidencia   BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_envio       BIGINT NOT NULL,
+    tipo           TINYINT NOT NULL COMMENT '1=Salida (Recepción) 2=Llegada (Entrega)',
+    nombre_archivo VARCHAR(255) NOT NULL COMMENT 'Ruta relativa: Assets/uploads/logistica/',
+    tipo_archivo   VARCHAR(10) NULL COMMENT 'jpg, png, mp4, mov, etc.',
+    created_by     BIGINT UNSIGNED NULL,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_envio) REFERENCES lgs_envios(id_envio) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 ---
 
-## 2. Modelos Eloquent y Relaciones
+## 4. Lógica de Negocio Crítica — PHP Puro (PDO)
+
+### 4.1 Generador de Folio `EN-000001` con bloqueo transaccional
 
 ```php
-// Proveedor.php
-class Proveedor extends Model {
-    protected $table = 'proveedores';
-    public function choferes() { return $this->hasMany(Chofer::class, 'proveedor_id'); }
-    public function madrinas() { return $this->hasMany(Madrina::class, 'proveedor_id'); }
-    public function envios()   { return $this->hasMany(Envio::class, 'proveedor_id'); }
+// En Lgs_enviosModel.php
+public function generarFolio(PDO $db): string {
+    // SELECT FOR UPDATE para evitar duplicados en concurrencia
+    $stmt = $db->prepare("SELECT folio FROM lgs_envios ORDER BY id_envio DESC LIMIT 1 FOR UPDATE");
+    $stmt->execute();
+    $ultimo = $stmt->fetchColumn();
+    if (!$ultimo) {
+        return 'EN-000001';
+    }
+    $num = intval(substr($ultimo, 3)) + 1;
+    return 'EN-' . str_pad($num, 6, '0', STR_PAD_LEFT);
 }
 
-// Chofer.php
-class Chofer extends Model {
-    protected $table = 'choferes';
-    public function proveedor() { return $this->belongsTo(Proveedor::class, 'proveedor_id'); }
-    public function historialMadrinas() { return $this->hasMany(MadrinaChoferHistorial::class, 'chofer_id'); }
-}
-
-// Madrina.php
-class Madrina extends Model {
-    protected $table = 'madrinas';
-    public function proveedor() { return $this->belongsTo(Proveedor::class, 'proveedor_id'); }
-    public function creador() { return $this->belongsTo(User::class, 'id_creador'); }
-    public function historialChoferes() { return $this->hasMany(MadrinaChoferHistorial::class, 'madrina_id'); }
-    public function choferActivo() { return $this->hasOne(MadrinaChoferHistorial::class, 'madrina_id')->where('activo', true); }
-}
-
-// MadrinaChoferHistorial.php
-class MadrinaChoferHistorial extends Model {
-    protected $table = 'madrina_chofer_historial';
-    public function madrina() { return $this->belongsTo(Madrina::class, 'madrina_id'); }
-    public function chofer() { return $this->belongsTo(Chofer::class, 'chofer_id'); }
-}
-
-// Envio.php
-class Envio extends Model {
-    public function proveedor() { return $this->belongsTo(Proveedor::class, 'proveedor_id'); }
-    public function unidades()  { return $this->belongsToMany(Unidad::class, 'asignacion_envios_unidades', 'id_envio', 'id_unidad')
-                                               ->withPivot('costo_x_unidad', 'fecha_asignacion'); }
-    public function expedientes() { return $this->belongsToMany(ExpedienteAprobacion::class, 'asignacion_envios_expedientes', 'id_envio', 'id_expediente'); }
-    public function choferes()  { return $this->belongsToMany(Chofer::class, 'asignacion_envio_choferes', 'id_envio', 'id_chofer'); }
-    public function madrinas()  { return $this->belongsToMany(Madrina::class, 'asignacion_envio_madrina', 'id_envio', 'id_madrina'); }
-}
-
-// ExpedienteAprobacion.php
-class ExpedienteAprobacion extends Model {
-    protected $table = 'expedientes_aprobacion';
-    public function envios()    { return $this->belongsToMany(Envio::class, 'asignacion_envios_expedientes', 'id_expediente', 'id_envio'); }
-    public function creador()   { return $this->belongsTo(User::class, 'id_creador_expediente'); }
-    public function aprobador() { return $this->belongsTo(User::class, 'id_aprobador'); }
+// Uso en Lgs_enviosService::create()
+public function create(array $data, int $userId): int {
+    $db = $this->model->getConexion();
+    try {
+        $db->beginTransaction();
+        $folio = $this->model->generarFolio($db);
+        $data['folio'] = $folio;
+        $id = $this->model->insertEnvio($data, $userId);
+        $db->commit();
+        return $id;
+    } catch (Exception $e) {
+        $db->rollBack();
+        throw $e;
+    }
 }
 ```
 
----
-
-## 3. Lógica de Negocio Crítica a Reimplementar en Laravel
-
-### 3.1 Cálculo de Costo al Asignar Unidad a Envío
+### 4.2 Motor de Cálculo de Costo
 
 ```php
-// EnvioController::agregarUnidad()
-public function agregarUnidad(Envio $envio, Request $request) {
-    $unidad = Unidad::findOrFail($request->id_unidad);
+// En Lgs_enviosService.php
+public function calcularCostoUnidad(int $idEnvio, int $idVin): float {
+    $envio = $this->model->getEnvio($idEnvio);
+    $vin   = $this->model->getVin($idVin);
+    
+    // Si es Rodando (Chofer): tarifa directa por KM
+    if ($envio['id_tipo_traslado'] == 2) { // Asumiendo 2 = Chofer (Rodando)
+        $tarifa = $this->model->getTarifaRodando($envio['id_proveedor']);
+        return round(floatval($envio['km_total']) * $tarifa['costo_por_km'], 2);
+    }
+    
+    // Si es Madrina: depende de cuántos VINs van en esa misma Madrina
+    $numVinsMadrina = $this->model->countVinsEnMadrina($idEnvio, $vin['id_madrina']);
+    $tarifa = $this->model->getTarifaMadrina($envio['id_proveedor'], $numVinsMadrina);
+    
+    if (!$tarifa) return 0.0;
+    
+    // El costo total de la madrina se divide entre los VINs o se aplica unitario según negocio
+    $costoTotalMadrina = floatval($envio['km_total']) * $tarifa['costo_por_km'] * $tarifa['factor'];
+    return round($costoTotalMadrina / $numVinsMadrina, 2);
+}
 
-    // 1. Obtener segmento de la unidad
-    $segmento_id = $unidad->infoCompras->id_segmento;
+public function recalcularCostoTotal(int $idEnvio): float {
+    // Sumar el costo_unidad de todos los VINs en el envío
+    $vins = $this->model->getVinsDeEnvio($idEnvio);
+    $costoTotal = 0;
+    foreach ($vins as $vin) {
+        $costoVin = $this->calcularCostoUnidad($idEnvio, $vin['id_unidad']);
+        $this->model->updateCostoVin($idEnvio, $vin['id_unidad'], $costoVin);
+        $costoTotal += $costoVin;
+    }
+    $this->model->updateCostoTotal($idEnvio, $costoTotal);
+    return $costoTotal;
+}
+```
 
-    // 2. Buscar costo según segmento y tipo de envío
-    $costoRow = CostosProveedorTipoUnidad::where('id_segmento', $segmento_id)
-                ->where('id_tipo_envio', $envio->id_tipo_envio)->first();
-    $costo_x_unidad = $costoRow ? $costoRow->costo * $envio->kilometraje_total : 0;
+### 4.3 Asignar VIN con posición de acomodo
 
-    // 3. Insertar asignación
-    $envio->unidades()->syncWithoutDetaching([
-        $unidad->id => ['costo_x_unidad' => $costo_x_unidad, 'fecha_asignacion' => now(), 'id_asignador_envio' => auth()->id()]
-    ]);
+```php
+// Lgs_enviosService::asignarVin()
+public function asignarVin(int $idEnvio, int $idUnidad, array $params, int $userId): bool {
+    $db = $this->model->getConexion();
+    try {
+        $db->beginTransaction();
+        // Insertar VIN con su id_madrina o id_chofer y posicion si aplica
+        $this->model->insertVin($idEnvio, $idUnidad, $params, $userId);
+        // Recalcular costo total del envío y unitario
+        $this->recalcularCostoTotal($idEnvio);
+        $db->commit();
+        return true;
+    } catch (Exception $e) {
+        $db->rollBack();
+        throw $e;
+    }
+}
 
-    // 4. Recalcular costo total del envío
-    $envio->costo_total = $envio->unidades()->sum('costo_x_unidad');
-    $envio->save();
+// Reordenar posiciones (drag-and-drop)
+public function reordenarVins(int $idEnvio, array $orden): bool {
+    // $orden = [ ['id_envio_vin' => 5, 'posicion_acomodo' => 1], ... ]
+    $db = $this->model->getConexion();
+    $db->beginTransaction();
+    try {
+        foreach ($orden as $item) {
+            $this->model->updatePosicionVin(
+                intval($item['id']),
+                intval($item['posicion_acomodo'])
+            );
+        }
+        $db->commit();
+        return true;
+    } catch (Exception $e) {
+        $db->rollBack();
+        throw $e;
+    }
+}
+```
 
-    // 5. Si el motivo de movimiento es TRASLADO CARROCERO (ID 6), marcar flag carrocero
-    if ($envio->id_motivo_movimiento == 6) {
-        InfoUnidadLogistica::updateOrCreate(
-            ['id_unidad' => $unidad->id],
-            ['carrocero' => 1, 'id_estado_proceso' => 1]
+### 4.4 Enviar Planeación a Aprobación + Correo
+
+```php
+// Lgs_planeacionesService::enviarAprobacion()
+public function enviarAprobacion(int $idPlaneacion, int $userId): bool {
+    $db = $this->model->getConexion();
+    try {
+        $db->beginTransaction();
+        // Estado planeación → 2 (Enviada)
+        $this->model->updateEstadoPlaneacion($idPlaneacion, 2, $userId);
+        // Estado todos los envíos vinculados → 2 (En Revisión)
+        $this->model->updateEstadoEnviosDeP laneacion($idPlaneacion, 2);
+        $db->commit();
+
+        // Correo fuera de la transacción (no bloquea rollback si falla el mail)
+        $aprobadores = $this->model->getAprobadores();
+        $planeacion  = $this->model->getPlaneacion($idPlaneacion);
+        foreach ($aprobadores as $apr) {
+            sendMailLocal(
+                $apr['email'],
+                'Planeación de Logística pendiente de aprobación',
+                $this->_buildEmailAprobacion($planeacion, $apr)
+            );
+        }
+        return true;
+    } catch (Exception $e) {
+        $db->rollBack();
+        throw $e;
+    }
+}
+```
+
+### 4.5 Aprobar / Regresar Planeación
+
+```php
+// Lgs_aprobacionesService::aprobar()
+public function aprobar(int $idPlaneacion, int $userId): bool {
+    $db = $this->model->getConexion();
+    try {
+        $db->beginTransaction();
+        $this->model->updateEstadoPlaneacion($idPlaneacion, 5, $userId); // 5=Aprobada
+        $this->model->updateEstadoEnviosDePlaneacion($idPlaneacion, 3);  // 3=Aprobado
+        $db->commit();
+
+        // Correo al operador creador
+        $planeacion = $this->model->getPlaneacion($idPlaneacion);
+        $creador    = $this->model->getUsuario($planeacion['created_by']);
+        sendMailLocal($creador['email'], 'Planeación aprobada', $this->_buildEmailAprobado($planeacion));
+        return true;
+    } catch (Exception $e) {
+        $db->rollBack();
+        throw $e;
+    }
+}
+
+// Lgs_aprobacionesService::regresar()
+public function regresar(int $idPlaneacion, string $observaciones, int $userId): bool {
+    $db = $this->model->getConexion();
+    try {
+        $db->beginTransaction();
+        $this->model->updateEstadoPlaneacionConObs($idPlaneacion, 3, $observaciones, $userId); // 3=Regresada
+        $this->model->updateEstadoEnviosDePlaneacion($idPlaneacion, 4); // 4=Regresado
+        $db->commit();
+
+        $planeacion = $this->model->getPlaneacion($idPlaneacion);
+        $creador    = $this->model->getUsuario($planeacion['created_by']);
+        sendMailLocal($creador['email'], 'Planeación regresada con observaciones', $this->_buildEmailRegresado($planeacion));
+        return true;
+    } catch (Exception $e) {
+        $db->rollBack();
+        throw $e;
+    }
+}
+```
+
+### 4.6 Cálculo de km por API
+
+```php
+// Lgs_enviosService::calcularKm()
+public function calcularKm(int $idOrigen, int $idDestino): float {
+    $origen  = $this->model->getOrigen($idOrigen);
+    $destino = $this->model->getDestino($idDestino);
+
+    // Si ambos tienen lat/lng → API de Google o Haversine
+    if ($origen['lat'] && $origen['lng'] && $destino['lat'] && $destino['lng']) {
+        // Opción A: Google Maps Distance Matrix API
+        // $km = $this->_googleDistanceMatrix($origen, $destino);
+
+        // Opción B: Haversine (geodésico, sin API key, aproximado)
+        $km = $this->_haversine(
+            floatval($origen['lat']),  floatval($origen['lng']),
+            floatval($destino['lat']), floatval($destino['lng'])
         );
+        return round($km, 2);
+    }
+    return 0.0;
+}
+
+private function _haversine(float $lat1, float $lon1, float $lat2, float $lon2): float {
+    $R = 6371; // Radio de la Tierra en km
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLon = deg2rad($lon2 - $lon1);
+    $a = sin($dLat/2)**2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon/2)**2;
+    return $R * 2 * atan2(sqrt($a), sqrt(1 - $a));
+}
+```
+
+---
+
+## 5. Rutas del Sistema (index.php — patrón URL)
+
+```
+GET  base_url/Lgs_envios                    → Vista principal de Envíos
+GET  base_url/Lgs_envios/getEnvios          → JSON: DataTable de envíos (filtros por $_GET)
+GET  base_url/Lgs_envios/getEnvio/{id}      → JSON: Detalle de un envío
+POST base_url/Lgs_envios/store              → Crear/Editar envío ($_POST)
+POST base_url/Lgs_envios/delete/{id}        → Soft delete
+POST base_url/Lgs_envios/asignarVin         → Asignar VIN al envío
+POST base_url/Lgs_envios/quitarVin          → Quitar VIN del envío
+POST base_url/Lgs_envios/reordenarVins      → Reordenar posición de acomodo (JSON array)
+GET  base_url/Lgs_envios/getVinsDisponibles → JSON: VINs disponibles para asignar
+GET  base_url/Lgs_envios/calcularKm         → JSON: km calculado de origen→destino
+GET  base_url/Lgs_envios/calcularCosto      → JSON: costo estimado
+
+GET  base_url/Lgs_planeaciones              → Vista de Planeaciones
+GET  base_url/Lgs_planeaciones/getPlaneaciones     → JSON: DataTable
+POST base_url/Lgs_planeaciones/store               → Crear/Editar planeación
+POST base_url/Lgs_planeaciones/agregarEnvio        → Agregar envío a planeación
+POST base_url/Lgs_planeaciones/quitarEnvio         → Quitar envío de planeación
+POST base_url/Lgs_planeaciones/enviarAprobacion    → Enviar planeación + correo
+
+GET  base_url/Lgs_aprobaciones             → Vista del panel de aprobaciones
+GET  base_url/Lgs_aprobaciones/getPendientes → JSON: planeaciones en estado 2 o 3
+POST base_url/Lgs_aprobaciones/aprobar/{id} → Aprobar + cascada de estados + correo
+POST base_url/Lgs_aprobaciones/regresar/{id}→ Regresar con observaciones + correo
+
+POST base_url/Lgs_ejecucion/iniciar        → Iniciar despacho (estado 5 + solicitudes)
+POST base_url/Lgs_ejecucion/confirmarVin   → Área Entregas confirma salida de VIN
+POST base_url/Lgs_ejecucion/confirmarLlegada → Confirmar llegada (estado 7 + fecha real)
+
+POST base_url/Lgs_evidencias/upload        → Subir foto/video (multipart/form-data)
+POST base_url/Lgs_evidencias/delete/{id}   → Eliminar evidencia + archivo físico
+GET  base_url/Lgs_evidencias/getByEnvio/{id} → JSON: evidencias de un envío
+
+GET  base_url/Lgs_panelrutas              → Vista del mapa
+GET  base_url/Lgs_panelrutas/getRutasActivas → JSON: envíos en estado 6 con lat/lng
+```
+
+---
+
+## 6. Validaciones de Formulario — Patrón `Requests/`
+
+```php
+// Requests/Lgs_enviosRequest.php
+class Lgs_enviosRequest {
+    public static function validate(array $data): array {
+        $errors = [];
+        if (empty($data['id_proveedor']))            $errors[] = 'Trasladista requerido.';
+        if (empty($data['id_origen']))               $errors[] = 'Origen requerido.';
+        if (empty($data['id_destino']) && empty($data['destino_nombre_libre']))
+                                                     $errors[] = 'Destino requerido.';
+        if (empty($data['fecha_tentativa_envio']))   $errors[] = 'Fecha tentativa de envío requerida.';
+        if (empty($data['fecha_tentativa_llegada'])) $errors[] = 'Fecha tentativa de llegada requerida.';
+        if (!empty($data['fecha_tentativa_llegada']) && !empty($data['fecha_tentativa_envio'])) {
+            if (strtotime($data['fecha_tentativa_llegada']) <= strtotime($data['fecha_tentativa_envio'])) {
+                $errors[] = 'La fecha de llegada debe ser posterior a la de envío.';
+            }
+        }
+        return $errors;
+    }
+}
+
+// Requests/Lgs_planeacionesRequest.php
+class Lgs_planeacionesRequest {
+    public static function validate(array $data): array {
+        $errors = [];
+        if (empty($data['descripcion'])) $errors[] = 'Descripción requerida.';
+        return $errors;
+    }
+}
+```
+
+---
+
+## 7. Estructura de Archivos por Módulo
+
+```
+Controllers/
+    Lgs_envios.php
+    Lgs_planeaciones.php
+    Lgs_aprobaciones.php
+    Lgs_ejecucion.php
+    Lgs_evidencias.php
+    Lgs_panelrutas.php
+
+Services/
+    Lgs_enviosService.php
+    Lgs_planeacionesService.php
+    Lgs_aprobacionesService.php
+    Lgs_ejecucionService.php
+    Lgs_evidenciasService.php
+
+Models/
+    Lgs_enviosModel.php
+    Lgs_planeacionesModel.php
+    Lgs_aprobacionesModel.php
+    Lgs_ejecucionModel.php
+    Lgs_evidenciasModel.php
+    Lgs_panelrutasModel.php
+
+Requests/
+    Lgs_enviosRequest.php
+    Lgs_planeacionesRequest.php
+
+Views/
+    Lgs_envios/index.php
+    Lgs_planeaciones/index.php
+    Lgs_aprobaciones/index.php
+    Lgs_ejecucion/index.php
+    Lgs_panelrutas/index.php
+
+Assets/js/modulos/
+    functions_lgs_envios.js
+    functions_lgs_planeaciones.js
+    functions_lgs_aprobaciones.js
+    functions_lgs_ejecucion.js
+    functions_lgs_evidencias.js
+    functions_lgs_panelrutas.js
+
+Assets/uploads/logistica/
+    evidencias/          ← Fotos y videos de salida/llegada
+```
+
+---
+
+## 8. Almacenamiento de Evidencias
+
+```php
+// En Lgs_evidenciasService.php
+public function subirEvidencia(int $idEnvio, int $tipo, array $file, int $userId): int {
+    // Validar tipo de archivo
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $permitidos = ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'webm', 'mov'];
+    if (!in_array($ext, $permitidos, true)) {
+        throw new Exception("Tipo de archivo no permitido: {$ext}");
     }
 
-    return response()->json(['ok' => true, 'costo_total' => $envio->costo_total]);
-}
-```
-
-### 3.2 Enviar Expediente a Aprobación
-
-```php
-// ExpedienteController::enviarAprobacion()
-public function enviarAprobacion(ExpedienteAprobacion $expediente) {
-    $expediente->update(['id_estado_expediente' => 2]);
-
-    $aprobadores = AprobadorExpediente::with('usuario')->get(); // O tabla aprobadores_expedientes
-
-    foreach ($aprobadores as $aprobador) {
-        Mail::to($aprobador->usuario->email)
-            ->send(new ExpedienteEnviadoMail($expediente, $aprobador->usuario));
+    // Validar tamaño máximo (20MB)
+    if ($file['size'] > 20971520) {
+        throw new Exception("El archivo supera el límite de 20MB.");
     }
 
-    return response()->json(['ok' => true]);
-}
-```
+    // Nombre único
+    $nombreArchivo = uniqid("lgs_{$idEnvio}_") . '.' . $ext;
+    $destino = __DIR__ . '/../Assets/uploads/logistica/evidencias/' . $nombreArchivo;
 
-### 3.3 Aprobar Expediente
-
-```php
-// ExpedienteController::aprobar()
-public function aprobar(ExpedienteAprobacion $expediente) {
-    DB::transaction(function () use ($expediente) {
-        $expediente->update(['id_estado_expediente' => 5, 'id_aprobador' => auth()->id()]);
-
-        // Aprobar todos los envíos vinculados
-        $expediente->envios()->update(['id_estado_envio' => 3]);
-
-        // Notificar al creador
-        Mail::to($expediente->creador->email)
-            ->send(new ExpedienteAprobadoMail($expediente));
-    });
-
-    return response()->json(['ok' => true]);
-}
-```
-
-### 3.4 Finalizar Unidad en Logística (Avanzar Subproceso)
-
-```php
-// LogisticaController::finalizarUnidad()
-public function finalizarUnidad(Request $request) {
-    $unidad    = Unidad::findOrFail($request->id_unidad);
-    $id_origen = $unidad->id_origen;
-    $subproceso = $unidad->id_sub_proceso;
-    $carrocero = InfoUnidadLogistica::where('id_unidad', $unidad->id)->value('carrocero');
-
-    $mapa = [
-        // [id_origen][carrocero][sub_actual] => sub_siguiente
-        1 => [
-            1 => [7 => 38,  40 => 8],
-            0 => [7 => 8],
-        ],
-        2 => [
-            1 => [17 => 18, 20 => 21],
-            0 => [17 => 21],
-        ],
-        3 => [
-            1 => [30 => 31, 33 => 34],
-            0 => [30 => 34],
-        ],
-    ];
-
-    $sub_siguiente = $mapa[$id_origen][$carrocero][$subproceso] ?? null;
-
-    if (!$sub_siguiente) {
-        return response()->json(['error' => 'No se encontró transición válida'], 422);
+    if (!move_uploaded_file($file['tmp_name'], $destino)) {
+        throw new Exception("Error al mover el archivo subido.");
     }
 
-    $unidad->update(['id_sub_proceso' => $sub_siguiente]);
+    return $this->model->insertEvidencia($idEnvio, $tipo, $nombreArchivo, $ext, $userId);
+}
 
-    return response()->json(['ok' => true, 'sub_siguiente' => $sub_siguiente]);
+public function eliminarEvidencia(int $idEvidencia, int $userId): bool {
+    $ev = $this->model->getEvidencia($idEvidencia);
+    if (!$ev) throw new Exception("Evidencia no encontrada.");
+
+    $ruta = __DIR__ . '/../Assets/uploads/logistica/evidencias/' . $ev['nombre_archivo'];
+    if (file_exists($ruta)) @unlink($ruta);
+
+    return $this->model->deleteEvidencia($idEvidencia);
 }
 ```
 
 ---
 
-## 4. API Endpoints (`routes/api.php`)
+## 9. Notificaciones de Correo
+
+El proyecto usa `sendMailLocal()` (helper de PHPMailer ya existente).
 
 ```php
-Route::middleware(['auth:sanctum'])->prefix('logistica')->group(function () {
-
-    // ── Catálogos ──────────────────────────────────────────────
-    Route::apiResource('proveedores', ProveedorController::class);
-    Route::apiResource('choferes', ChoferController::class);
-    Route::apiResource('madrinas', MadrinaController::class);
-    Route::post('madrinas/{madrina}/asignar-chofer', [MadrinaController::class, 'asignarChofer']);
-
-    // ── Bandeja de Unidades ────────────────────────────────────
-    Route::get('unidades', [LogisticaController::class, 'index']);
-    Route::post('unidades/{unidad}/solicitar', [LogisticaController::class, 'solicitar']);
-    Route::post('unidades/{unidad}/cancelar-solicitud', [LogisticaController::class, 'cancelarSolicitud']);
-    Route::post('unidades/{unidad}/solicitar-entrega-interna', [LogisticaController::class, 'solicitarEntregaInterna']); // Solo Planta
-    Route::post('unidades/{unidad}/finalizar', [LogisticaController::class, 'finalizarUnidad']);
-
-    // ── Evidencias ─────────────────────────────────────────────
-    Route::post('unidades/{unidad}/evidencias', [EvidenciaController::class, 'subir']);
-    Route::delete('evidencias/{evidencia}', [EvidenciaController::class, 'eliminar']);
-    Route::get('unidades/{unidad}/evidencias', [EvidenciaController::class, 'index']);
-
-    // ── Fechas Logísticas ──────────────────────────────────────
-    Route::post('unidades/{unidad}/fechas', [LogisticaController::class, 'guardarFechas']);
-
-    // ── Envíos ─────────────────────────────────────────────────
-    Route::apiResource('envios', EnvioController::class);
-    Route::post('envios/{envio}/unidades', [EnvioController::class, 'agregarUnidad']);
-    Route::delete('envios/{envio}/unidades/{unidad}', [EnvioController::class, 'quitarUnidad']);
-    Route::get('envios/{envio}/unidades-disponibles', [EnvioController::class, 'unidadesDisponibles']);
-    Route::post('envios/{envio}/choferes', [EnvioController::class, 'asignarChofer']);
-    Route::delete('envios/{envio}/choferes/{chofer}', [EnvioController::class, 'quitarChofer']);
-    Route::post('envios/{envio}/madrinas', [EnvioController::class, 'asignarMadrina']);
-    Route::delete('envios/{envio}/madrinas/{madrina}', [EnvioController::class, 'quitarMadrina']);
-
-    // ── Expedientes de Aprobación ──────────────────────────────
-    Route::apiResource('expedientes', ExpedienteController::class);
-    Route::post('expedientes/{expediente}/envios', [ExpedienteController::class, 'agregarEnvio']);
-    Route::delete('expedientes/{expediente}/envios/{envio}', [ExpedienteController::class, 'quitarEnvio']);
-    Route::post('expedientes/{expediente}/enviar', [ExpedienteController::class, 'enviarAprobacion']);
-    Route::post('expedientes/{expediente}/aprobar', [ExpedienteController::class, 'aprobar']);
-    Route::post('expedientes/{expediente}/rechazar', [ExpedienteController::class, 'rechazar']);
-    Route::post('expedientes/{expediente}/regresar', [ExpedienteController::class, 'regresar']);
-    Route::get('expedientes/{expediente}/envios-disponibles', [ExpedienteController::class, 'enviosDisponibles']);
-    Route::get('expedientes/aprobaciones', [ExpedienteController::class, 'aprobaciones']); // Solo enviados y regresados
-
-    // ── Panel de Rutas ─────────────────────────────────────────
-    Route::get('rutas/transito', [RutasController::class, 'obtenerRutasTransito']);
-});
+// Uso estándar en Services
+sendMailLocal(
+    $destinatario,        // string: email del destinatario
+    $asunto,              // string
+    $cuerpoHtml           // string: HTML del correo
+);
 ```
+
+**Correos del módulo de Logística:**
+
+| Evento | Destinatario | Asunto |
+|---|---|---|
+| Planeación enviada a aprobación | Todos los `lgs_aprobadores` (activo=1) | "Planeación {folio} pendiente de aprobación" |
+| Planeación aprobada | Operador creador | "Planeación {folio} aprobada ✅" |
+| Planeación regresada | Operador creador | "Planeación {folio} regresada con observaciones" |
 
 ---
 
-## 5. Form Requests (Validaciones)
+## 10. Tabla de Referencia — Procesos e IDs
 
-### `StoreProveedorRequest`
+### Procesos que ponen una unidad en Logística
 
-```php
-public function rules(): array {
-    return [
-        'nombre_comercial'  => 'required|string|max:255',
-        'razon_social'      => 'required|string|max:255',
-        'rfc'               => ['required', 'string', 'unique:proveedores,rfc', Rule::when(
-            $this->tipo_persona === 'Moral',
-            'regex:/^[A-Z&Ñ]{3}[0-9]{6}[A-Z0-9]{3}$/',
-            'regex:/^[A-Z&Ñ]{4}[0-9]{6}[A-Z0-9]{3}$/'
-        )],
-        'tipo_persona'      => 'required|in:Fisica,Moral',
-        'direccion_fiscal'  => 'required|string',
-        'tipo_proveedor'    => 'required|string',
-        'correo_contacto'   => 'nullable|email',
-        'telefono_contacto' => 'nullable|string|max:20',
-    ];
-}
-```
+| `id_proceso` | Área | Origen |
+|---|---|---|
+| 6 | Logística | Puerto |
+| 13 | Logística | Planta |
+| 20 | Logística | Almacén |
 
-### `StoreChoferRequest`
+### Estados del Envío (`lgs_envios.id_estado`)
 
-```php
-public function rules(): array {
-    return [
-        'proveedor_id'   => 'required|exists:proveedores,id',
-        'nombre_chofer'  => 'required|string|max:255',
-        'licencia_chofer'=> 'required|file|mimes:jpg,jpeg,png,pdf|max:5120', // 5MB
-        'telefono_chofer'=> 'required|string|max:20',
-    ];
-}
-```
+| ID | Estado | Módulo que lo activa |
+|:---:|---|---|
+| 1 | 🟡 Creado | Formulario de creación |
+| 2 | 🔵 En Revisión | "Enviar a Aprobación" |
+| 3 | 🟢 Aprobado | Aprobador confirma |
+| 4 | 🔴 Regresado | Aprobador regresa |
+| 5 | ⚡ En Ejecución | "Iniciar Despacho" |
+| 6 | 🚛 En Tránsito | Área de Entregas confirma todos los VINs |
+| 7 | ✅ Entregado | "Confirmar Llegada" |
+| 8 | ⛔ Cancelado | Cancelación manual |
 
-### `StoreMadrinaRequest`
+### Estados de Planeación (`lgs_planeaciones.id_estado`)
 
-```php
-public function rules(): array {
-    return [
-        'proveedor_id'        => 'required|exists:proveedores,id',
-        'nombre_madrina'      => 'required|string|max:255',
-        'placa_tracto'        => 'required|string|max:15',
-        'placa_caja'          => 'required|string|max:15',
-        'capacidad_unidades'  => 'required|integer|min:1|max:20',
-        'num_eco'             => 'required|string|max:30',
-        'chofer_id'           => 'nullable|exists:choferes,id', // Opcional al crear, representa la asignación inicial del chofer
-    ];
-}
-```
+| ID | Estado |
+|:---:|---|
+| 1 | Creada |
+| 2 | Enviada a Aprobación |
+| 3 | Regresada |
+| 5 | Aprobada |
 
-### `StoreEnvioRequest`
+### Estados Solicitud de Entrega (`lgs_solicitudes_entrega.id_estado`)
 
-```php
-public function rules(): array {
-    return [
-        'id_motivo_movimiento'    => 'required|exists:tipo_motivos_movimientos,id',
-        'id_tipo_envio'           => 'required|exists:tipo_envios,id',
-        'proveedor_id'            => 'required|exists:proveedores,id',
-        'fecha_tentativa_envio'   => 'required|date',
-        'fecha_tentativa_llegada' => 'required|date|after:fecha_tentativa_envio',
-        'kilometraje_total'       => 'required|numeric|min:0',
-        'observaciones'           => 'nullable|string',
-        // Origen: exclusión mutua entre id y texto abierto
-        'id_origen_envio'         => 'nullable|exists:origenes_envios,id',
-        'origen_abierto'          => 'nullable|string|required_without:id_origen_envio',
-        'id_destino_envio'        => 'nullable|exists:distribuidores,id',
-        'destino_abierto'         => 'nullable|string|required_without:id_destino_envio',
-    ];
-}
-```
-
----
-
-## 6. Estructura de Componentes React
-
-```
-src/
-├── pages/
-│   └── logistica/
-│       ├── LogisticaDashboard.jsx       ← Bandeja principal con filtros y tabla
-│       ├── LogisticaEnvios.jsx          ← Gestión de envíos individuales
-│       ├── LogisticaExpedientes.jsx     ← Gestión de expedientes de aprobación
-│       ├── LogisticaAprobaciones.jsx    ← Panel aprobador de expedientes
-│       ├── LogisticaChoferes.jsx        ← CRUD choferes
-│       ├── LogisticaMadrinas.jsx        ← CRUD madrinas
-│       ├── LogisticaProveedores.jsx     ← CRUD proveedores fiscales
-│       └── LogisticaPanelRutas.jsx      ← Mapa Google Maps
-│
-├── components/logistica/
-│   ├── UnidadRow.jsx                   ← Fila de la tabla de unidades
-│   ├── FiltrosBandeja.jsx              ← Panel de filtros (dropdown)
-│   ├── ModalEditarUnidad.jsx           ← Modal de gestión de la unidad
-│   ├── FormularioEvidencias.jsx        ← Carga y visualización de fotos/videos
-│   ├── BotoneraSiguienteArea.jsx       ← Lógica del botón "Siguiente área"
-│   ├── ProveedorFormModal.jsx          ← Formulario fiscal con validación RFC
-│   ├── EnvioWizard.jsx                 ← Creador de envíos paso a paso
-│   ├── ExpedienteCard.jsx              ← Tarjeta de resumen de expediente
-│   └── MapTracker.jsx                  ← Mapa de rutas activas
-│
-├── hooks/
-│   ├── useLogisticaUnidades.js         ← Fetching con filtros
-│   ├── useEnvios.js
-│   ├── useExpedientes.js
-│   └── useProveedores.js
-│
-└── services/
-    └── logisticaService.js             ← Axios wrapper para todos los endpoints
-```
-
----
-
-## 7. Lógica Especial del Frontend a Implementar
-
-### 7.1 Validación de RFC según Tipo de Persona
-
-```javascript
-// utils/validaciones.js
-export const validateRFC = (rfc, tipoPersona) => {
-  const moralRegex  = /^[A-ZÑ&]{3}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{3}$/;
-  const fisicaRegex = /^[A-ZÑ&]{4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{3}$/;
-  if (tipoPersona === 'Moral')  return moralRegex.test(rfc);
-  if (tipoPersona === 'Fisica') return fisicaRegex.test(rfc);
-  return false;
-};
-```
-
-### 7.2 Habilitación del Botón "Siguiente Área"
-
-```javascript
-// utils/logistica.js
-const subprocesosLogistica = {
-  1: { conCarrocero: [7, 40], sinCarrocero: [7] },
-  2: { conCarrocero: [17, 20], sinCarrocero: [17] },
-  3: { conCarrocero: [30, 33], sinCarrocero: [30] },
-};
-
-export const puedeFinalizarLogistica = ({ id_origen, id_sub_proceso, carrocero, fecha_salida, fecha_llegada }) => {
-  const tieneFechas = !!fecha_salida && !!fecha_llegada;
-  if (!tieneFechas) return false;
-
-  const config = subprocesosLogistica[id_origen];
-  if (!config) return false;
-
-  const subprocesosValidos = carrocero ? config.conCarrocero : config.sinCarrocero;
-  return subprocesosValidos.includes(id_sub_proceso);
-};
-```
-
-### 7.3 Conteo de Unidades Visible en Header
-
-```javascript
-// El badge "Unidades: N" se actualiza reactivamente desde el response de la API
-const { data } = useLogisticaUnidades(filtros);
-// data.meta.total → número de unidades filtradas
-```
-
----
-
-## 8. Almacenamiento de Archivos (Laravel Storage)
-
-```php
-// config: filesystems.php
-// Disco 'logistica' apuntando a storage/app/logistica/
-
-// Evidencias
-Storage::disk('logistica')->put("evidencias/{$filename}", file_get_contents($request->file('evidencia')));
-
-// Licencias de choferes
-Storage::disk('logistica')->put("documentos/choferes/{$filename}", file_get_contents($request->file('licencia_chofer')));
-
-// Exponer con enlace simbólico:
-// php artisan storage:link
-```
-
----
-
-## 9. Notificaciones por Correo (Laravel Mail + PHPMailer → Mailables)
-
-Crear 2 Mailables:
-
-1. **`ExpedienteEnviadoMail`** — Se envía a todos los `aprobadores_expedientes`.
-   - Contiene: nombre de expediente, nombre del creador, link a la pantalla de aprobación.
-
-2. **`ExpedienteAprobadoMail`** — Se envía al creador del expediente.
-   - Contiene: nombre de expediente, nombre del aprobador, observaciones, link al expediente.
-
-Usar `Mail::to($email)->send(new ExpedienteEnviadoMail($expediente))` dentro de una **Job** (Cola) para no bloquear la respuesta de la API.
-
----
-
-## 10. Tabla de Referencia: `id_proceso` → Área en el Sistema
-
-| `id_proceso` | Área |
-|---|---|
-| 6 | Logística (Origen Puerto) |
-| 13 | Logística (Origen Planta) |
-| 20 | Logística (Origen Almacén) |
-
----
-
-## 11. Lista de Tablas de Catálogos Requeridos (Sólo Lectura desde Logística)
-
-| Tabla | Uso |
-|---|---|
-| `tipo_motivos_movimientos` | Select al crear envío (motivo del traslado) |
-| `tipo_envios` | Select al crear envío (tipo de transporte) |
-| `origenes_envios` | Select de origen del envío |
-| `distribuidores` | Select de destino del envío |
-| `segmentos` | Para calcular costos por tipo de unidad |
-| `costos_proveedores_tipo_unidades` | Para calcular costo por km según segmento |
-| `estados_expedientes` | Para mostrar badge de estado en expedientes |
-| `estados_envios` | Para mostrar badge de estado en envíos |
-| `estados_procesos` | Para colores y badges en tabla de unidades |
+| ID | Estado |
+|:---:|---|
+| 1 | Solicitada |
+| 2 | Entregada a Trasladista |
+| 3 | Cancelada |

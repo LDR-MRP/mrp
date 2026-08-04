@@ -1,128 +1,211 @@
-# 🚚 Plan Maestro del Proyecto de Logística (Épicas, Subtareas y Calendario Hábil)
+# 📋 Plan de Épicas y Subtareas — Módulo de Logística
+### Versión Rediseñada y Validada · 04 Agosto 2026
 
-Este documento contiene la estructura completa del proyecto de **Migración e Implementación del Módulo de Logística**, organizado en **Épicas**, **Subtareas**, **Descripciones Técnicas/Negocio** y un **Cronograma Diario por Días Hábiles (Lunes a Viernes)** iniciando hoy **Miércoles 29 de Julio de 2026**.
-
----
-
-## 📅 Cronograma General de Entrega (Lunes a Viernes)
-
-```
-Mié 29 Jul  ──►  Vie 31 Jul  ──►  Lun 3 Ago  ──►  Vie 7 Ago  ──►  Lun 10 Ago ──► Vie 14 Ago
-[  Épica 1  ]   [ Épicas 1 y 2 ]  [  Épica 2  ]  [  Épica 3  ]   [ Épicas 4 y 5 ] [ Épicas 5 y 6 ]
-```
+> **Flujo de referencia:** [5_flujo_operativo_logistica.md](5_flujo_operativo_logistica.md)  
+> **Inicio:** Martes 04 de Agosto 2026 · Horario: Lunes–Viernes 8:00–17:00
 
 ---
 
-## 📊 Resumen Ejecutivo de Épicas
+## ✅ ÉPICA 1 — Catálogos Base de Transporte
+**Estado:** 🟢 100% COMPLETADO (29–30 Jul 2026)
 
-| # | Épica | Estado Base | Fecha Inicio | Fecha Término |
-|---|---|---|---|---|
-| **E1** | Catálogos Base de Transporte (Proveedores, Choferes, Madrinas e Historial) | 🟢 80% Avance (CRUDs base creados) | Miércoles 29 Jul 2026 | Jueves 30 Jul 2026 |
-| **E2** | Bandeja Principal de Unidades, Entrega Interna y Regla de Carrocero ("Sándwich") | 🟡 10% Avance (Estructura `unidades` existente) | Viernes 31 Jul 2026 | Martes 04 Ago 2026 |
-| **E3** | Gestión de Envíos Individuales y Cálculo Automático de Costos | 🔴 0% Avance | Miércoles 05 Ago 2026 | Jueves 06 Ago 2026 |
-| **E4** | Agrupación de Expedientes, Flujo de Aprobación y Notificaciones | 🔴 0% Avance | Viernes 07 Ago 2026 | Martes 11 Ago 2026 |
-| **E5** | Control de Evidencias Multimedia y Cierre de Área ("Siguiente Área") | 🔴 0% Avance | Miércoles 12 Ago 2026 | Jueves 13 Ago 2026 |
-| **E6** | Panel de Rutas Geográficas e Integración de Mapas | 🔴 0% Avance | Viernes 14 Ago 2026 | Viernes 14 Ago 2026 |
-
----
-
-## 📆 Calendario Diario Detallado por Subtareas
-
-### 🗓️ SEMANA 1: 29 de Julio – 31 de Julio 2026
-
-#### 📍 Miércoles 29 de Julio, 2026 (HOY)
-- **ÉPICA 1: Catálogos Base de Transporte**
-  - **ST-1.1: Reforzamiento y Validación Fiscal de Proveedores**
-    - *Descripción*: Extender la validación en `Prv_trasladistasRequest` para asegurar sintaxis de RFC según el tipo de persona (12 caracteres para Moral, 13 para Física), agregando campos opcionales de contacto (correo y teléfono directo).
-  - **ST-1.2: Gestión de Licencia Digital de Choferes (Subida de Archivos)**
-    - *Descripción*: Implementar la carga y almacenamiento seguro de la licencia digital en `prv_det_choferes` (`licencia_chofer_file`) con su botón de previsualización/descarga en la vista de Choferes.
-
-#### 📍 Jueves 30 de Julio, 2026
-- **ÉPICA 1: Catálogos Base de Transporte**
-  - **ST-1.3: Tabla e Historial Dinámico Chofer-Madrina (`madrina_chofer_historial`)**
-    - *Descripción*: Crear la tabla `madrina_chofer_historial` (`id`, `id_madrina`, `id_chofer`, `fecha_inicio`, `fecha_fin`, `activo`). Desarrollar el servicio backend para inactivar la asignación previa cuando se reasigne un nuevo chofer a una nodriza.
-  - **ST-1.4: Interfaz de Reasignación e Historial de Conductores en Madrinas**
-    - *Descripción*: Agregar en el modal de Madrinas la reasignación de chofer activo y la línea de tiempo de conductores históricos.
-
-#### 📍 Viernes 31 de Julio, 2026
-- **ÉPICA 2: Bandeja Principal de Unidades, Entrega Interna y Regla del Carrocero**
-  - **ST-2.1: Tabla Satélite `info_unidad_logistica`**
-    - *Descripción*: Crear la tabla `info_unidad_logistica` (`id_info_unidad_logistica`, `id_unidad`, `id_envio`, `id_estado_proceso`, `carrocero`, `fecha_salida`, `fecha_llegada`).
-  - **ST-2.2: Tabla y Flujo de Entrega Interna (`info_logistica_interna`)**
-    - *Descripción*: Crear la tabla `info_logistica_interna` y endpoints `POST /logistica/solicitar-entrega` y `POST /logistica/cancelar-entrega` para coordinar unidades de Origen Planta (2).
+| ST | Descripción | Estado |
+|---|---|:---:|
+| ST-1.1 | Validación fiscal de Proveedores (RFC por tipo persona), CRUD de Proveedores y Actividades | ✅ |
+| ST-1.2 | CRUD de Choferes con licencia vinculada a proveedor | ✅ |
+| ST-1.3 | Tabla `prv_det_madrina_chofer_historial` + servicio `asignarChofer` con transacción | ✅ |
+| ST-1.4 | Vista de Madrinas con modal de historial de choferes y reasignación | ✅ |
+| ST-1.5 | Menú de Logística en `nav_admin.php` con rutas de Madrinas, Choferes y Bandeja | ✅ |
 
 ---
 
-### 🗓️ SEMANA 2: 03 de Agosto – 07 de Agosto 2026
+## 🟡 ÉPICA 2 — Catálogos de Logística y Módulo de Envíos
+**Estado:** 🟡 EN DESARROLLO (04–07 Ago 2026)  
+**Objetivo:** Operador puede crear envíos con VINs, acomodo de carga, trasladista, origen, destino, km y costo calculado.
 
-#### 📍 Lunes 03 de Agosto, 2026
-- **ÉPICA 2: Bandeja Principal de Unidades, Entrega Interna y Regla del Carrocero**
-  - **ST-2.3: Controlador y Vista de la Bandeja Principal de Logística (`Lgs_bandeja.php`)**
-    - *Descripción*: Crear `Controllers/Lgs_bandeja.php` y `Views/Logistica/index.php`. Construir la consulta SQL aplicando las 4 reglas de visibilidad operativa.
-  - **ST-2.4: Implementación de Filtros Operativos en Bandeja**
-    - *Descripción*: Construir los 10 filtros de la bandeja (Liberado, Sin Plan, En mi área, En espera, En proceso, Finalizado, Retroceso, Por Origen, Ordenamiento y Paginación +50).
+### 📍 Martes 04 de Agosto, 2026 (HOY)
 
-#### 📍 Martes 04 de Agosto, 2026
-- **ÉPICA 2: Bandeja Principal de Unidades, Entrega Interna y Regla del Carrocero**
-  - **ST-2.5: Lógica Automática del Flujo "Sándwich" (Carrocero)**
-    - *Descripción*: Programar la regla donde asignar motivo "Traslado Carrocero" (ID 6) activa `carrocero = 1` y transiciona el subproceso a la pierna intermedia (Puerto: Sub 7 → 38, Planta: Sub 17 → 18, Almacén: Sub 30 → 31).
+#### ST-2.1 — Catálogos configurables de Logística (SQL)
+- **Tipo:** SQL / Migración BD  
+- Crear tablas:
+  - `lgs_cat_tipo_traslado` — Normal, Urgente, Demo, Piloto, Programado
+  - `lgs_cat_motivo_envio` — Entrega Dist., Carrocería, Marketing, Demo, Pruebas, Piloto, Devolución, Otro
+  - `lgs_cat_tipo_destino` — Distribuidor, Carrocero, Cliente Final, Almacén, Planta, Otro
+  - `lgs_cat_origenes` — Planta 1/2/3/4/5, Almacén Montenegro (con lat/lng)
+  - `lgs_cat_destinos` — Clientes con lat/lng + campo nombre libre
+- Insertar valores iniciales en todos los catálogos.
 
-#### 📍 Miércoles 05 de Agosto, 2026
-- **ÉPICA 3: Envíos Individuales y Cálculo de Costos**
-  - **ST-3.1: Estructura de Base de Datos para Envíos y Tarifas**
-    - *Descripción*: Crear las tablas `envios`, `asignacion_envios_unidades`, `asignacion_envio_choferes`, `asignacion_envio_madrina` y `costos_proveedores_tipo_unidades`.
-  - **ST-3.2: Generador de Folios Automáticos (`EN-000001`)**
-    - *Descripción*: Desarrollar el generador de secuencias numéricas con prefijo `EN-` rellenadas a 6 dígitos con ceros a la izquierda.
+#### ST-2.2 — Tabla principal `lgs_envios` (SQL)
+- **Tipo:** SQL / Migración BD  
+- Campos clave: `folio` (EN-000001), `id_tipo_traslado`, `id_motivo`, `id_proveedor`, `id_chofer`, `id_madrina`, `id_origen`, `id_destino`, `destino_nombre_libre`, `km_total`, `costo_por_km`, `factor_unidades`, `costo_total`, `fecha_tentativa_envio`, `fecha_tentativa_llegada`, `fecha_salida_real`, `fecha_llegada_real`, `recibe_nombre`, `observaciones`, `id_estado` (8 estados), auditoría.
 
-#### 📍 Jueves 06 de Agosto, 2026
-- **ÉPICA 3: Envíos Individuales y Cálculo de Costos**
-  - **ST-3.3: Módulo y CRUD de Envíos Individuales (`Lgs_envios.php`)**
-    - *Descripción*: Crear `Controllers/Lgs_envios.php` y vista para definir origen, destino, kilometraje total, chofer, madrina y fecha tentativa.
-  - **ST-3.4: Asignación de VINs a Envíos y Motor de Cálculo de Costos**
-    - *Descripción*: Funcionalidad para vincular VINs a envíos y calcular automáticamente `Costo = (Tarifa/km por segmento) × (Kilometraje)` actualizando el total del envío.
+### 📍 Miércoles 05 de Agosto, 2026
 
-#### 📍 Viernes 07 de Agosto, 2026
-- **ÉPICA 4: Agrupación de Expedientes, Flujo de Aprobaciones y Notificaciones**
-  - **ST-4.1: Estructura de Base de Datos para Expedientes y Aprobadores**
-    - *Descripción*: Crear las tablas `expedientes_aprobacion`, `asignacion_envios_expedientes` y `aprobadores_expedientes`.
-  - **ST-4.2: Agrupador de Envíos en Expedientes (`Lgs_expedientes.php`)**
-    - *Descripción*: Interfaz donde el operador selecciona envíos creados y los consolida en un expediente (Folio `EX-000001`), calculando la suma total de kilometraje y costos.
+#### ST-2.3 — Tablas de detalle del Envío (SQL)
+- **Tipo:** SQL / Migración BD  
+- `lgs_envios_vins`: VINs asignados con campo `posicion_acomodo` (orden de carga en madrina) y `costo_unidad`.
+- `lgs_envios_choferes`, `lgs_envios_madrinas`: relaciones del envío.
+
+#### ST-2.4 — Tabla de tarifas `lgs_costos_proveedor_segmento` (SQL)
+- **Tipo:** SQL / Migración BD  
+- Relaciona proveedor + segmento de unidad + rango de VINs (min/max) con `costo_por_km` y `factor`.
+- Base del motor de cálculo automático de costos.
+
+### 📍 Jueves 06 de Agosto, 2026
+
+#### ST-2.5 — Controller + Service + Model de Envíos (PHP)
+- **Tipo:** Programación  
+- `Controllers/Lgs_envios.php`: vista index, getEnvios (DataTable), getEnvio(id), store (crear/editar), delete, asignarVin, quitarVin, getVinsDisponibles.
+- `Services/Lgs_enviosService.php`: lógica de negocio, generador de folio `EN-` con bloqueo transaccional, motor de cálculo de costo total.
+- `Models/Lgs_enviosModel.php`: queries SQL de envíos y VINs.
+- `Requests/Lgs_enviosRequest.php`: validación de campos.
+
+#### ST-2.6 — Vista y JS de Envíos (PHP + JS)
+- **Tipo:** Programación  
+- `Views/Lgs_envios/index.php`: DataTable de envíos + modal de creación con selects de catálogos + subpanel de VINs asignados con drag-and-drop para reordenar acomodo.
+- `Assets/js/modulos/functions_lgs_envios.js`: AJAX completo + librería de drag-and-drop para posicion_acomodo.
+
+### 📍 Viernes 07 de Agosto, 2026
+
+#### ST-2.7 — Integración API de cálculo de km (PHP + JS)
+- **Tipo:** Programación  
+- Endpoint interno que recibe `id_origen` e `id_destino`, obtiene lat/lng de los catálogos y llama a la API de distancias (Google Maps Distance Matrix o Haversine geodésico como fallback).
+- Retorna km y tiempo estimado. Se dispara automáticamente al seleccionar origen y destino en el formulario.
+
+#### ST-2.8 — Pruebas y ajustes Épica 2
+- **Tipo:** Programación / QA  
+- Prueba del flujo completo: crear envío → asignar VINs → reordenar acomodo → ver costos calculados.
+- Agregar ruta en menú de navegación: `Mis Envíos`.
 
 ---
 
-### 🗓️ SEMANA 3: 10 de Agosto – 14 de Agosto 2026
+## 🔴 ÉPICA 3 — Planeaciones y Aprobaciones de Envíos
+**Estado:** 🔴 PENDIENTE (10–14 Ago 2026)  
+**Objetivo:** Operador agrupa envíos, envía a aprobación en batch o individual. Aprobador resuelve con correo automático.
 
-#### 📍 Lunes 10 de Agosto, 2026
-- **ÉPICA 4: Agrupación de Expedientes, Flujo de Aprobaciones y Notificaciones**
-  - **ST-4.3: Flujo de "Enviar a Aprobación" y Notificación por Correo**
-    - *Descripción*: Al accionar la petición, cambiar el estado del expediente a `Enviado` (ID 2) y enviar correo HTML automático usando PHPMailer a los aprobadores registrados.
-  - **ST-4.4: Módulo de Aprobaciones para Finanzas (`Lgs_aprobaciones.php`)**
-    - *Descripción*: Crear `Controllers/Lgs_aprobaciones.php` y vista dedicada para que el aprobador consulte los expedientes en estado `Enviado` (2) o `Regresado` (3) y los pueda **Aprobar** o **Rechazar/Regresar** con observaciones.
+### 📍 Lunes 10 de Agosto, 2026
 
-#### 📍 Martes 11 de Agosto, 2026
-- **ÉPICA 4: Agrupación de Expedientes, Flujo de Aprobaciones y Notificaciones**
-  - **ST-4.5: Transición de Estados en Cascada Expediente → Envíos**
-    - *Descripción*: Programar la transacción SQL que, al ser aprobado un expediente, cambie en cascada el estado de todos sus envíos vinculados a `Aprobado` (ID 3) y notifique por correo al operador creador.
+#### ST-3.1 — Tablas de Planeaciones (SQL)
+- **Tipo:** SQL / Migración BD  
+- `lgs_planeaciones`: folio EX-, descripción, km/costo totales, estados (1=Creada, 2=Enviada, 3=Regresada, 5=Aprobada), observaciones operador/aprobador.
+- `lgs_planeaciones_envios`: relación N:M.
+- `lgs_aprobadores`: usuarios aprobadores con activo/inactivo.
 
-#### 📍 Miércoles 12 de Agosto, 2026
-- **ÉPICA 5: Control de Evidencias Multimedia y Cierre de Área**
-  - **ST-5.1: Estructura de Base de Datos y Almacenamiento `evidencias_logistica`**
-    - *Descripción*: Crear la tabla `evidencias_logistica` (`id_evidencia`, `id_info_unidad_logistica`, `evidencia`, `motivo_evidencia` [1=Salida, 2=Llegada]).
-  - **ST-5.2: Gestor AJAX de Carga y Eliminación de Fotos/Videos**
-    - *Descripción*: Desarrollar endpoints para subir múltiples archivos multimedia clasificados por motivo (Salida o Llegada) y eliminar físicamente archivos del disco cuando se desechen.
+#### ST-3.2 — Controller + Service + Model de Planeaciones (PHP)
+- **Tipo:** Programación  
+- `Controllers/Lgs_planeaciones.php`: vista index, getPlaneaciones, store, enviarAprobacion, getEnviosDisponibles.
+- `Services/Lgs_planeacionesService.php`: generador folio EX-, sumatorio de km y costos, envío de correo a aprobadores vía PHPMailer.
+- `Models/Lgs_planeacionesModel.php`.
 
-#### 📍 Jueves 13 de Agosto, 2026
-- **ÉPICA 5: Control de Evidencias Multimedia y Cierre de Área**
-  - **ST-5.3: Componente de Galería y Visor Multimedia en Modal**
-    - *Descripción*: Construir en la vista de la bandeja un modal interactivo con pestañas "Evidencia de Salida" y "Evidencia de Llegada", con lightbox para fotos y reproductor para videos.
-  - **ST-5.4: Lógica de Validación y Botón "Siguiente Área"**
-    - *Descripción*: Programar el botón "Siguiente Área" en la bandeja. Validar que la unidad tenga `fecha_salida` y `fecha_llegada` registradas. Al avanzar, actualizar el subproceso del VIN hacia su destino (Distribuidor o Carrocero) y marcar el estado de proceso como `Finalizado` (3).
+### 📍 Martes 11 de Agosto, 2026
 
-#### 📍 Viernes 14 de Agosto, 2026
-- **ÉPICA 6: Panel de Rutas Geográficas e Integración de Mapas**
-  - **ST-6.1: Integración de Motor de Mapas en la Vista (`Logistica_panelrutas.php`)**
-    - *Descripción*: Crear `Controllers/Logistica_panelrutas.php` e integrar el contenedor del mapa interactivo con Leaflet/Google Maps.
-  - **ST-6.2: Endpoint de Geodatos de Envíos Activos (`GET /logistica/rutas-activas`)**
-    - *Descripción*: Desarrollar el servicio backend que retorna la lista de envíos en estado `En tránsito` (ID 5) con las coordenadas Latitud/Longitud de origen y destino, chofer, madrina y cantidad de VINs.
-  - **ST-6.3: Renderizado Dinámico de Marcadores y Rutas en Mapa & Pruebas E2E Finales**
-    - *Descripción*: Programar el script de frontend para dibujar los pines de mapa personalizados, trazar las líneas de trayectoria y realizar la validación general de integración del módulo de logística.
+#### ST-3.3 — Vista y JS de Planeaciones (PHP + JS)
+- **Tipo:** Programación  
+- `Views/Lgs_planeaciones/index.php`: DataTable + modal de creación con selección múltiple de envíos + sumatorio en tiempo real de km y costo.
+- `Assets/js/modulos/functions_lgs_planeaciones.js`.
+
+#### ST-3.4 — Acción "Enviar a Aprobación" + Correo automático
+- **Tipo:** Programación  
+- Cambio de estado en cascada: Planeación → Enviada + todos sus Envíos → En Revisión.
+- Correo vía PHPMailer a todos los registros en `lgs_aprobadores` con link directo al expediente.
+
+### 📍 Miércoles 12 de Agosto, 2026
+
+#### ST-3.5 — Controller + Vista de Aprobaciones (PHP)
+- **Tipo:** Programación  
+- `Controllers/Lgs_aprobaciones.php`: vista index, getPlaneacionesPendientes, aprobar(id), regresar(id).
+- `Views/Lgs_aprobaciones/index.php`: DataTable con planeaciones en estado Enviada o Regresada + modal de resolución con campo de observaciones.
+
+#### ST-3.6 — Lógica de Aprobar / Regresar
+- **Tipo:** Programación  
+- **Aprobar:** Estado Planeación = 5, Estado todos los Envíos = 3 (Aprobado). Correo de confirmación al operador creador.
+- **Regresar:** Estado Planeación = 3, Estado Envíos = 4 (Regresado). Correo con observaciones del aprobador.
+
+### 📍 Jueves 13 de Agosto, 2026
+
+#### ST-3.7 — JS de Aprobaciones + Pruebas integración (JS + QA)
+- **Tipo:** Programación / QA  
+- `Assets/js/modulos/functions_lgs_aprobaciones.js`.
+- Prueba del ciclo completo: Crear Envío → Planeación → Enviar → Aprobar/Regresar → Verificar estados y correos.
+
+### 📍 Viernes 14 de Agosto, 2026
+
+#### ST-3.8 — Ajustes y rutas de menú Épica 3
+- **Tipo:** Programación / QA  
+- Agregar `Mis Planeaciones` y `Aprobaciones` al menú de Logística en `nav_admin.php`.
+- Revisión de flujo completo Épica 2 + Épica 3.
+
+---
+
+## 🔴 ÉPICA 4 — Ejecución del Envío y Confirmación de Entrega
+**Estado:** 🔴 PENDIENTE (17–18 Ago 2026)  
+**Objetivo:** Operador inicia despacho con evidencias, Área de Entregas confirma salida, operador confirma llegada.
+
+### 📍 Lunes 17 de Agosto, 2026
+
+#### ST-4.1 — Tabla `lgs_solicitudes_entrega` (SQL)
+- **Tipo:** SQL / Migración BD  
+- Campos: `id_envio`, `id_unidad` (VIN), `posicion_acomodo`, `id_estado` (1=Solicitada, 2=Entregada a Trasladista, 3=Cancelada), `solicitado_by`, `confirmado_by`, fechas.
+
+#### ST-4.2 — Funcionalidad "Iniciar Ejecución" del Envío (PHP + JS)
+- **Tipo:** Programación  
+- Solo para envíos en estado Aprobado (3).
+- Registra `fecha_salida_real`, crea registros en `lgs_solicitudes_entrega` con `posicion_acomodo` de los VINs.
+- Estado Envío → 5 (En Ejecución).
+
+### 📍 Martes 18 de Agosto, 2026
+
+#### ST-4.3 — Panel del Área de Entregas (PHP + JS)
+- **Tipo:** Programación  
+- Vista con VINs solicitados ordenados por `posicion_acomodo` (el primero en bajar de la madrina al final, el último primero).
+- Botón "Confirmar Entrega de Unidad" por VIN.
+
+#### ST-4.4 — Confirmación de salida → Envío En Tránsito
+- **Tipo:** Programación  
+- Cuando todos los VINs de un envío estén en estado 2 (Entregada a Trasladista) → Envío → 6 (En Tránsito). Inicia monitoreo en Panel de Rutas.
+
+---
+
+## 🔴 ÉPICA 5 — Evidencias Multimedia
+**Estado:** 🔴 PENDIENTE (19–20 Ago 2026)  
+**Objetivo:** Subida de fotos/video en dos momentos del traslado. Galería con lightbox y reproductor.
+
+### 📍 Miércoles 19 de Agosto, 2026
+
+#### ST-4.5 — Confirmación de Llegada y Entrega Final
+- Formulario: `fecha_llegada_real`, `recibe_nombre`, `observaciones`.
+- Estado Envío → 7 (Entregado). Se detiene monitoreo.
+
+#### ST-5.1 — Tabla `lgs_evidencias` + Endpoint AJAX (SQL + PHP)
+- Crear tabla `lgs_evidencias` (id_envio, tipo 1=Salida 2=Llegada, nombre_archivo, tipo_archivo, created_by).
+- `Controllers/Lgs_evidencias.php`: upload (múltiple), delete.
+- `Services/Lgs_evidenciasService.php`: almacenamiento en `Assets/uploads/logistica/`.
+
+### 📍 Jueves 20 de Agosto, 2026
+
+#### ST-5.2 — Componente de Galería + Lightbox + Reproductor
+- Modal con pestañas: "Evidencia de Salida" / "Evidencia de Llegada".
+- Lightbox para imágenes, reproductor HTML5 para videos.
+
+#### ST-5.3 — Integración de Evidencias en el Flujo
+- Las evidencias de Salida se capturan al iniciar ejecución (ST-4.2).
+- Las evidencias de Llegada se capturan antes de confirmar entrega final (ST-4.5).
+
+---
+
+## 🔴 ÉPICA 6 — Panel de Rutas Geográficas
+**Estado:** 🔴 PENDIENTE (21 Ago 2026)  
+**Objetivo:** Mapa interactivo con todos los envíos en tránsito.
+
+### 📍 Viernes 21 de Agosto, 2026
+
+#### ST-6.1 — Integración de Motor de Mapas
+- `Controllers/Lgs_panelrutas.php`.
+- `Views/Lgs_panelrutas/index.php` con contenedor del mapa (Leaflet.js o Google Maps API).
+
+#### ST-6.2 — Endpoint de Geodatos de Envíos En Tránsito
+- `GET /Lgs_panelrutas/getRutasActivas`: devuelve envíos en estado 6 con `lat`/`lng` de origen y destino, folio, trasladista, chofer, madrina, # VINs.
+
+#### ST-6.3 — Renderizado Dinámico y Pruebas E2E Finales
+- `Assets/js/modulos/functions_lgs_panelrutas.js`: pines personalizados por envío, línea de ruta, panel lateral con datos.
+- Pruebas E2E del módulo completo de Logística.

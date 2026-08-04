@@ -1,163 +1,173 @@
-# Levantamiento de Requerimientos – Módulo de Logística
-### Versión Consultor/Negocio · TRUFoton
+# Levantamiento de Requerimientos — Módulo de Logística
+### Versión Rediseñada · 04 Agosto 2026
 
 ---
 
 ## 1. Propósito y Alcance del Módulo
 
-El Módulo de Logística tiene como objetivo gestionar de extremo a extremo el traslado físico de vehículos (unidades/VINs) desde que son liberadas por el área de Calidad hasta su entrega formal al Distribuidor. Controla:
+El Módulo de Logística gestiona de extremo a extremo el traslado físico de vehículos (VINs) desde que son liberados por el área correspondiente hasta su entrega formal en destino. Controla:
 
-- El registro y administración de **Proveedores de Transporte** (empresas trasladistas) con datos fiscales completos.
-- El catálogo de **Choferes** (conductores) y **Madrinas** (vehículos portadores tipo nodriza/torton).
-- La creación y gestión de **Envíos** individuales con asignación de unidades y planificación del traslado (madrina y chofer).
-- La agrupación de envíos en **Expedientes** para el flujo de revisión y aprobación formal de costos.
-- El despacho físico con carga de **evidencias fotográficas o en video** de salida y llegada.
-- La **visualización geográfica** de rutas en tránsito mediante Google Maps.
+- El registro de **Proveedores de Transporte** (Trasladistas) con datos fiscales completos.
+- El catálogo de **Choferes** y **Madrinas** vinculados a un proveedor.
+- La creación de **Envíos** con asignación de VINs, acomodo de carga, trasladista, origen, destino, km calculado por API y costo automático.
+- La agrupación de envíos en **Planeaciones** para aprobación en batch o individual.
+- El **despacho** con evidencias multimedia de salida (como recibe el trasladista) y llegada (como se entrega en destino).
+- La **solicitud al Área de Entregas** con el acomodo de unidades para evitar sobrecostos por reorganización en campo.
+- El **monitoreo geográfico** de rutas activas en tránsito.
+- El **cierre de entrega** con confirmación, evidencias y fecha real de llegada.
 
 ---
 
-## 2. Actores del Sistema y sus Responsabilidades
+## 2. Actores del Sistema
 
-| Rol | Quién es | Qué puede hacer |
-|---|---|---|
-| **Operador de Logística** | Personal de logística | Ver unidades disponibles, crear envíos, asignar VINs, registrar choferes/madrinas, cargar evidencias, solicitar entregas internas, crear expedientes, enviarlos a revisión. |
-| **Aprobador de Logística** | Administrador / Gerente de Finanzas | Ver expedientes pendientes de aprobación, aprobar o rechazar con comentarios, recibir notificación por correo. |
-| **Supervisor LOGISTICA_1** | Perfil con permiso especial (`LOGISTICA_1`) | Ver unidades de todos los orígenes en la bandeja. |
-| **Visualizador** | Distribuidor u otros roles | Consultar rastreo de rutas en panel de mapas. |
+| Rol | Responsabilidades |
+|---|---|
+| **Operador de Logística** | Crear envíos, asignar VINs, definir acomodo de carga, agrupar en planeaciones, enviar a aprobación, iniciar ejecución, registrar evidencias, confirmar entrega. |
+| **Área de Entregas (Planta)** | Ver solicitudes de entrega, preparar unidades en orden de acomodo, confirmar salida de planta. |
+| **Aprobador de Logística** | Revisar planeaciones enviadas, aprobar o regresar con observaciones. Recibe correo automático. |
+| **Supervisor (`LOGISTICA_1`)** | Visibilidad total de envíos y bandeja sin restricción por origen/planta. |
 
 ---
 
 ## 3. Reglas de Negocio
 
-### 3.1. Condiciones para que una Unidad Aparezca en Logística
+### 3.1 Condiciones para que un VIN aparezca como disponible para envío
 
-Una unidad sólo es visible y accionable en la bandeja de logística si cumple **todas** las condiciones siguientes:
+Un VIN es elegible para ser asignado a un envío si:
+1. Proceso activo = Logística (IDs: 6, 13 o 20 según flujo/origen).
+2. `liberada = 1` (liberado por Producción/Calidad).
+3. `solicitado = 1`.
+4. `id_estado_proceso_finanzas = 3` (Finanzas completado).
 
-1. El **proceso activo** de la unidad es Logística (proceso IDs: 6, 13 o 20, según el flujo/origen).
-2. La unidad está **liberada** por Producción (`liberada = 1`).
-3. La unidad está **solicitada** por el operador de logística (`solicitado = 1`).
-4. El **estado del proceso en Finanzas** está completado (`id_estado_proceso_finanzas = 3`).
+### 3.2 Creación del Envío (`lgs_envios`)
 
-Unidades que cumplan con estar liberadas pero aún no fueron solicitadas muestran el botón **"Solicitar"** en la tabla.
+Cada envío captura:
+- **Folio:** `EN-000001` (auto-generado, secuencial).
+- **Tipo de Traslado:** catálogo configurable (Madrina, Chofer/Rodando).
+- **Motivo / Razón:** catálogo configurable (Entrega Distribuidora, Traslado Carrocería, Marketing, Demo, Pruebas, Unidad Piloto, Devolución, Otro).
+- **Trasladista, Chofer, Madrina:**
+  - Si es **Madrina**: Se asignan las madrinas necesarias y sus choferes.
+  - Si es **Chofer (Rodando)**: Se asignan directamente los choferes.
+- **Origen:** catálogo con ubicación GPS (Planta 1/2/3/4/5, Almacén Montenegro, etc.).
+- **Destino:** catálogo con ubicación GPS (Cliente 1, Cliente 2…) + campo libre para nombre/dirección + Tipo de Destino (Distribuidor, Carrocero, Almacén, Otro).
+- **Km Total:** calculado automáticamente por API (Google Maps / distancia geodésica) desde coordenadas de origen y destino.
+- **Costo Total:** `Km × Costo/km del trasladista × Factor por número de VINs`.
+- **Fechas tentativas** de envío y llegada.
+- **Comentarios** del envío (campo libre).
 
-### 3.2. Flujo de Solicitud de Entrega Interna (Solo Origen Planta)
+### 3.3 Asignación de VINs y Regla de Acomodo
 
-Las unidades de **Origen Planta (2)** tienen un paso adicional previo al envío: la *Entrega Interna desde Producción a Logística* dentro de las instalaciones físicas.
+> **Esta es la regla operativa más importante de la Épica 2.**
 
-- El Operador de Logística pulsa **"Solicitar Entrega"** para notificar a Producción.
-- Producción actualiza el estado de entrega a `Completada`.
-- Solo cuando el estado de entrega interna es `Completada`, el botón de edición/acción de la unidad en logística se habilita completamente.
-- Si el operador cancela la solicitud, Producción vuelve a su estado anterior.
+**A) Para envíos tipo Madrina:**
+El operador asigna cada VIN a una madrina específica y define el **orden de carga** (acomodo) siguiendo esta lógica:
+- El VIN que se **descarga primero** en destino se coloca **al último** en subir (más accesible).
+- El VIN que se **descarga al final** se carga **primero** (más al fondo).
 
-### 3.3. Carrocero: El Flujo "Sándwich"
+Esto evita que el chofer reorganice unidades en campo, lo que genera sobrecostos y tiempo muerto.
+El sistema permite ajustar el orden manualmente (drag-and-drop).
 
-Cuando una unidad llega a Logística, el operador evalúa si requiere intervención de **Carrocero** (carroza/adaptación del vehículo). Esto genera una bifurcación crítica:
+**B) Para envíos tipo Chofer (Rodando):**
+Cada VIN se asigna directamente a un Chofer específico. Como van rodando (conduciendo la unidad), no aplica la regla de acomodo ni posición.
 
-- **Sin Carrocero:** La unidad pasa directo a Distribuidor al finalizar en Logística.
-- **Con Carrocero:** La unidad pasa a Carrocero → Calidad inspecciona → Calidad devuelve la unidad a Logística → Logística envía a Distribuidor.
+### 3.4 Flujo de Planeaciones y Aprobaciones (`lgs_planeaciones`)
 
-La bandera `carrocero = 1` en la tabla `info_unidad_logistica` es lo que controla este bifurcamiento. **Se activa automáticamente al asignar una unidad a un envío cuyo motivo de movimiento sea "Traslado Carrocero" (motivo ID 6).**
+1. **Creación:** El operador agrupa uno o más envíos en una Planeación (`EX-000001`).
+2. **Envío a Aprobación:** El operador presiona "Enviar a Aprobación". Estado → Enviada (2). Correo automático a aprobadores.
+3. **Resolución:**
+   - ✅ **Aprobar** → Estado Planeación = Aprobada (5). Todos los envíos → Aprobado (3). Correo al operador.
+   - ❌ **Regresar** → Estado Planeación = Regresada (3). Operador corrige y reenvía.
 
-La tabla `sub_procesos` controla el subproceso en que está la unidad. Los valores clave son:
+### 3.5 Ejecución del Envío (Despacho)
 
-| Origen | 1ª Pierna (con carrocero) | 2ª Pierna (sin carrocero / post-carrocero) |
+Solo disponible para envíos con estado Aprobado (3):
+1. Operador registra fecha real de salida.
+2. Toma evidencias de **recepción** (como recibe el trasladista los VINs): fotos/video.
+3. Se crean solicitudes en `lgs_solicitudes_entrega` para el Área de Entregas, con el orden de acomodo.
+4. El Área de Entregas confirma salida de cada VIN → estado "Entregado a Trasladista".
+5. Al confirmarse todos los VINs → Estado Envío = En Tránsito (6). Monitoreo activo.
+
+### 3.6 Entrega Final en Destino
+
+1. Operador (o responsable en destino) registra fecha real de llegada.
+2. Toma evidencias de **entrega** (como se entrega en destino): fotos/video.
+3. Confirma entrega → Estado Envío = Entregado (7). Se detiene monitoreo.
+
+### 3.7 Cálculo de Costos
+
+- **Madrina:** `Costo Total = Km Total × Costo por Km (madrina) × Factor (según número de VINs en esa madrina)`
+- **Chofer (Rodando):** `Costo Total = Km Total × Costo por Km (rodando)`
+
+- El costo se recalcula automáticamente al agregar, quitar o reasignar VINs.
+
+### 3.8 Evidencias Multimedia
+
+| Momento | Tipo | Descripción |
 |---|---|---|
-| Puerto (1) | Sub 7 → Sub 38 (Carrocero) | Sub 7 ó 40 → Sub 8 (Distribuidor) |
-| Planta (2) | Sub 17 → Sub 18 (Carrocero) | Sub 17 ó 20 → Sub 21 (Distribuidor) |
-| Almacén (3) | Sub 30 → Sub 31 (Carrocero) | Sub 30 ó 33 → Sub 34 (Distribuidor) |
+| Salida de Planta | `tipo = 1` | Estado de los VINs al ser cargados en la madrina |
+| Llegada a Destino | `tipo = 2` | Estado de los VINs al ser descargados en destino |
 
-### 3.4. El Botón "Siguiente Área" (Finalizar en Logística)
+- Formatos: JPG, JPEG, PNG (imágenes) y MP4, WEBM, MOV (video).
+- Carga múltiple por tipo; eliminación individual.
 
-El botón para avanzar la unidad al siguiente proceso (`"Siguiente área"`) sólo se activa si:
-1. La unidad tiene **fecha de salida y fecha de llegada** registradas (`tiene_fechas = true`).
-2. El subproceso actual coincide con el que corresponde (según origen y presencia de carrocero).
+### 3.9 Nomenclatura de Identificadores
 
-### 3.5. Nomenclatura de Identificadores
-
-El sistema genera nombres con formato auto-incremental:
-- **Envíos**: `EN-000001`, `EN-000002`, etc.
-- **Expedientes**: `EX-000001`, `EX-000002`, etc.
-
-### 3.6. Cálculo de Costos de Envío
-
-El costo de incluir una unidad en un envío **se calcula automáticamente** al asignarla:
-- `Costo = (Costo por Km según segmento de unidad) × (Kilometraje del Envío)`
-- La tabla `costos_trasladistas_tipo_unidades` relaciona el segmento de la unidad con el tipo de envío para obtener el costo por kilómetro.
-- El costo total del envío se recalcula como la suma de todos los costos de las unidades asignadas.
-
-### 3.7. Flujo de Envíos, Expedientes y Aprobaciones
-
-El proceso operativo y de aprobación funciona de la siguiente manera:
-1. **Creación de Envíos**: El operador crea de manera individual cada **Envío** (planificando su ruta, kilometraje, chofer, madrina y asignando sus unidades/VINs). El envío nace en estado `Creado`.
-2. **Agrupación en Expediente**: Una vez creados los envíos individuales, el operador los agrupa en un **Expediente** (agrupador para aprobación grupal) que inicia en estado `Creado`.
-3. **Envío a Aprobación**: El operador presiona "Enviar a Aprobación" desde el Expediente → El estado del Expediente cambia a `Enviado` (ID 2).
-4. **Notificación**: El sistema envía un **correo electrónico automático** a todos los usuarios en la tabla `aprobadores_planeaciones` (aprobadores de expedientes) con un link directo al expediente.
-5. **Resolución del Aprobador**: El Aprobador puede:
-   - **Aprobar**: El estado del Expediente cambia a `Aprobado` (ID 5). Todos los envíos vinculados a ese expediente cambian automáticamente a estado `Aprobado` (ID 3). Se envía un correo de notificación al creador.
-   - **Rechazar/Regresar**: El estado del Expediente cambia a `Regresado` para que el operador realice correcciones operativas.
-6. **Visibilidad en Aprobaciones**: Solo los expedientes con estado `Enviado` (ID 2) o `Regresado` (ID 5) aparecen en el panel de Aprobaciones del aprobador.
-
-### 3.8. Proveedores de Transporte (Anteriormente Trasladistas)
-
-Todo chofer y madrina debe estar vinculado a un **Proveedor activo**. Los datos del proveedor incluyen:
-- Nombre Comercial, Razón Social.
-- RFC con validación según Tipo de Persona (Física o Moral).
-- Dirección Fiscal.
-- Contacto (correo y teléfono).
-
-### 3.9. Evidencias Multimedia
-
-El sistema acepta y almacena evidencias en dos momentos del traslado:
-- **Evidencia de Salida** (motivo 1): Foto/video del estado de la unidad al momento de despacharla.
-- **Evidencia de Llegada** (motivo 2): Foto/video del estado de la unidad al recibirla en destino.
-- Formatos soportados: Imágenes (JPG, JPEG, PNG, GIF) y video (MP4, WEBM, MOV).
-- Se pueden **cargar múltiples archivos** por tipo y **eliminar** individualmente.
+- **Envíos:** `EN-000001`, `EN-000002`…
+- **Planeaciones:** `EX-000001`, `EX-000002`…
 
 ---
 
-## 4. Filtros Disponibles en la Bandeja de Unidades
+## 4. Estados del Sistema
 
-| Filtro | Descripción |
-|---|---|
-| **Liberado** | Unidades con `liberada = 1` y sub-proceso 4, 14 o 27 |
-| **Sin Plan** | Unidades en logística (sub 7, 17, 30) sin estado de proceso (pendientes de planificar) |
-| **En mi área** | Unidades con sub-proceso 7, 17 o 30 (directamente en logística) |
-| **En espera** | Unidades con `id_estado_proceso = 1` |
-| **En proceso** | Unidades con `id_estado_proceso = 2` |
-| **Finalizado** | Unidades con `id_estado_proceso = 3` |
-| **Retroceso** | Unidades con `id_estado_unidad = 4` |
-| **Activos / Inactivos** | Filtro por estatus de la unidad |
-| **Por Origen** | Puerto / Planta / Almacén |
-| **Más recientes / Más antiguos** | Orden por ID de unidad DESC/ASC |
-| **+50 / Todos** | Paginación y límite de registros |
+### Estados de un Envío (`lgs_envios.id_estado`)
+
+| ID | Estado | Descripción |
+|:---:|---|---|
+| 1 | 🟡 Creado | En planeación, no enviado a aprobación |
+| 2 | 🔵 En Revisión | Enviado a aprobación, pendiente |
+| 3 | 🟢 Aprobado | Aprobado, listo para ejecutar |
+| 4 | 🔴 Regresado | Rechazado, requiere corrección |
+| 5 | ⚡ En Ejecución | Despacho iniciado |
+| 6 | 🚛 En Tránsito | Unidad en camino |
+| 7 | ✅ Entregado | Entrega confirmada en destino |
+| 8 | ⛔ Cancelado | Cancelado |
+
+### Estados de una Planeación (`lgs_planeaciones.id_estado`)
+
+| ID | Estado |
+|:---:|---|
+| 1 | Creada |
+| 2 | Enviada a Aprobación |
+| 3 | Regresada |
+| 5 | Aprobada |
 
 ---
 
-## 5. Sub-módulos de la Interfaz de Logística
+## 5. Módulos del Sistema (Pantallas)
 
-| Sub-módulo | URL | Propósito |
+| Módulo | Ruta | Función |
 |---|---|---|
-| **Bandeja Principal** | `Logistica.php` | Ver y gestionar unidades en proceso logístico |
-| **Mis Envíos** | `Logistica_Envios.php` | CRUD de envíos individuales (planificación unitaria) |
-| **Mis Expedientes** | `Logistica_Expedientes.php` | Crear, gestionar y enviar expedientes de aprobación |
-| **Mis Aprobaciones** | `Logistica_Aprobaciones.php` | Ver y resolver expedientes de aprobación pendientes |
-| **Choferes** | `Logistica_Chofer.php` | CRUD del catálogo de choferes |
-| **Madrinas** | `Logistica_Madrinas.php` | CRUD del catálogo de madrinas |
-| **Panel de Rutas** | `Logistica_Panelrutas.php` | Mapa de rutas activas en tránsito |
+| **Mis Envíos** | `/Lgs_envios` | Crear envíos, asignar VINs con acomodo, calcular costos |
+| **Mis Planeaciones** | `/Lgs_planeaciones` | Agrupar envíos, enviar a aprobación |
+| **Aprobaciones** | `/Lgs_aprobaciones` | Revisar y resolver planeaciones pendientes |
+| **Ejecución / Despacho** | (dentro de Lgs_envios) | Iniciar despacho, evidencias de salida, notificar entregas |
+| **Panel de Rutas** | `/Lgs_panelrutas` | Mapa de envíos en tránsito |
+| **Histórico** | (dentro de Lgs_envios) | Envíos completados con trazabilidad completa |
+| **Trasladistas** | `/Prv_proveedor` | Proveedores de transporte (**ya existe**) |
+| **Madrinas** | `/Prv_madrinas` | Vehículos nodrizas (**ya existe**) |
+| **Choferes** | `/Prv_choferes` | Conductores (**ya existe**) |
 
 ---
 
-## 6. Criterio de Éxito (Entregables del Módulo Migrado)
+## 6. Criterio de Éxito
 
 La migración se considerará exitosa cuando:
 
-- [ ] El operador puede ver, filtrar y buscar unidades en la bandeja de logística.
-- [ ] El operador puede solicitar y cancelar entregas internas (Origen Planta).
-- [ ] Se pueden crear, editar y eliminar Proveedores con datos fiscales completos.
-- [ ] Se pueden crear, editar choferes con carga de licencia en archivo.
-- [ ] Se pueden crear, editar madrinas (nodriza) vinculadas a un proveedor.
-- [ ] Se pueden crear envíos individuales, asignar unidades, configurar chofer y madrina, y calcular costos automáticamente.
-- [ ] Se pueden crear expedientes agrupando envíos y mandarlos a aprobación. El flujo de Expediente → Envío a Aprobación → Aprobación/Rechazo funciona con notificaciones por correo.
-- [ ] Se pueden subir y eliminar evidencias multimedia en dos etapas (salida y llegada).
-- [ ] El botón "Siguiente área" avanza la unidad correctamente según origen y presencia de carrocero.
-- [ ] El Panel de Rutas muestra las unidades en tránsito en un mapa interactivo.
+- [ ] El operador puede crear envíos con VINs asignados, acomodo de carga, chofer, madrina, origen, destino y costos automáticos.
+- [ ] El operador puede agrupar envíos en planeaciones y enviarlos a aprobación.
+- [ ] El aprobador recibe correo y puede aprobar/regresar planeaciones con observaciones.
+- [ ] El operador puede iniciar la ejecución del envío con evidencias de salida y solicitudes al Área de Entregas.
+- [ ] El Área de Entregas confirma salida de cada VIN según el orden de acomodo.
+- [ ] El Panel de Rutas muestra en mapa los envíos en tránsito con origen, destino y datos del trasladista.
+- [ ] El operador puede confirmar entrega en destino con evidencias de llegada y fecha real.
+- [ ] Todo el historial de un envío (estados, fechas, costos, evidencias) queda registrado y consultable.
