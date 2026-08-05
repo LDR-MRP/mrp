@@ -86,4 +86,23 @@ class Lgs_envios extends Controllers
             echo $this->errorResponse($e->getMessage(), 500);
         }
     }
+
+    /**
+     * Renderiza la vista de detalle para el acomodo de VINs
+     * URL: {{base_url}}/Lgs_envios/detalle/123
+     */
+    public function detalle(int $idEnvio): void
+    {
+        $this->views->getView(
+            $this,
+            "../Lgs_envios/detalle",
+            [
+                'page_tag' => "Acomodo de Unidades",
+                'page_title' => "Detalle de Envío",
+                'page_name' => "lgs_envios_detalle",
+                'page_functions_js' => "functions_lgs_envios_detalle.js",
+                'id_envio' => $idEnvio
+            ]
+        );
+    }
 }
