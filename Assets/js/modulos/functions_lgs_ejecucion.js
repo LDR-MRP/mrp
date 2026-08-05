@@ -66,9 +66,26 @@ document.addEventListener('DOMContentLoaded', function () {
         "respose": "true",
         "bDestroy": true,
         "iDisplayLength": 10,
-        "order": [[0, "desc"]]
+        "order": [[0, "desc"]],
+        "drawCallback": function(settings) {
+            actualizarMetricasEjecucion(settings.json || []);
+        }
     });
 });
+
+function actualizarMetricasEjecucion(data) {
+    if (!Array.isArray(data)) return;
+    
+    let pendientes = data.filter(e => parseInt(e.id_estado) === 3).length;
+    let transito = data.filter(e => parseInt(e.id_estado) === 6).length;
+    let vinsEntregadosSum = data.reduce((acc, e) => acc + (parseInt(e.vins_entregados) || 0), 0);
+    let completados = data.filter(e => parseInt(e.id_estado) === 6 && parseInt(e.vins_entregados) === parseInt(e.total_vins)).length;
+
+    if (document.getElementById('cardDespPendientes')) document.getElementById('cardDespPendientes').innerText = pendientes;
+    if (document.getElementById('cardDespTransito')) document.getElementById('cardDespTransito').innerText = transito;
+    if (document.getElementById('cardVinsEntregados')) document.getElementById('cardVinsEntregados').innerText = vinsEntregadosSum;
+    if (document.getElementById('cardDespCompletados')) document.getElementById('cardDespCompletados').innerText = completados;
+}
 
 function fntDespachar(idEnvio, folio, fechaSalida) {
     document.getElementById('id_envio_despacho').value = idEnvio;

@@ -60,9 +60,30 @@ document.addEventListener('DOMContentLoaded', function () {
         "respose": "true",
         "bDestroy": true,
         "iDisplayLength": 10,
-        "order": [[0, "desc"]]
+        "order": [[0, "desc"]],
+        "drawCallback": function(settings) {
+            actualizarMetricasAprobaciones(settings.json || []);
+        }
     });
 });
+
+function actualizarMetricasAprobaciones(data) {
+    if (!Array.isArray(data)) return;
+    
+    let pendientes = data.filter(p => parseInt(p.id_estado) === 2);
+    let autorizadas = data.filter(p => parseInt(p.id_estado) === 5);
+
+    let countPendientes = pendientes.length;
+    let countAutorizadas = autorizadas.length;
+
+    let montoPendiente = pendientes.reduce((acc, p) => acc + (parseFloat(p.costo_total) || 0), 0);
+    let montoAutorizado = autorizadas.reduce((acc, p) => acc + (parseFloat(p.costo_total) || 0), 0);
+
+    if (document.getElementById('cardAprobPendientes')) document.getElementById('cardAprobPendientes').innerText = countPendientes;
+    if (document.getElementById('cardMontoPendiente')) document.getElementById('cardMontoPendiente').innerText = '$' + montoPendiente.toFixed(2);
+    if (document.getElementById('cardAprobAutorizadas')) document.getElementById('cardAprobAutorizadas').innerText = countAutorizadas;
+    if (document.getElementById('cardMontoAutorizado')) document.getElementById('cardMontoAutorizado').innerText = '$' + montoAutorizado.toFixed(2);
+}
 
 function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
     // 1. Limpiar Modal

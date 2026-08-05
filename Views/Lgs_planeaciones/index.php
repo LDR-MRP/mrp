@@ -34,6 +34,78 @@
                     </div>
                 </div>
 
+                <!-- CARDS DE MÉTRICAS -->
+                <div class="row mb-4">
+                    <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+                        <div class="card shadow-sm border-0 rounded-3 h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm flex-shrink-0">
+                                        <span class="avatar-title bg-primary-subtle text-primary rounded-circle fs-3">
+                                            <i class="ri-file-list-3-line"></i>
+                                        </span>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <p class="text-uppercase fw-semibold fs-12 text-muted mb-1">Total Planeaciones</p>
+                                        <h4 class="mb-0 text-dark fw-bold" id="cardTotalPlaneaciones">0</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+                        <div class="card shadow-sm border-0 rounded-3 h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm flex-shrink-0">
+                                        <span class="avatar-title bg-warning-subtle text-warning rounded-circle fs-3">
+                                            <i class="ri-time-line"></i>
+                                        </span>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <p class="text-uppercase fw-semibold fs-12 text-muted mb-1">Pendientes Revisión</p>
+                                        <h4 class="mb-0 text-dark fw-bold" id="cardPlanPendientes">0</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
+                        <div class="card shadow-sm border-0 rounded-3 h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm flex-shrink-0">
+                                        <span class="avatar-title bg-success-subtle text-success rounded-circle fs-3">
+                                            <i class="ri-check-double-line"></i>
+                                        </span>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <p class="text-uppercase fw-semibold fs-12 text-muted mb-1">Planeaciones Aprobadas</p>
+                                        <h4 class="mb-0 text-dark fw-bold" id="cardPlanAprobadas">0</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card shadow-sm border-0 rounded-3 h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm flex-shrink-0">
+                                        <span class="avatar-title bg-info-subtle text-info rounded-circle fs-3">
+                                            <i class="ri-money-dollar-circle-line"></i>
+                                        </span>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <p class="text-uppercase fw-semibold fs-12 text-muted mb-1">Monto Total Planeado</p>
+                                        <h4 class="mb-0 text-dark fw-bold" id="cardPlanPresupuesto">$0.00</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- DATATABLE PLANEACIONES -->
                 <div class="row">
                     <div class="col-lg-12">

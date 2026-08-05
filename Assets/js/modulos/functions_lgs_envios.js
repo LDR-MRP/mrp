@@ -59,13 +59,30 @@ document.addEventListener('DOMContentLoaded', function () {
         "respose": "true",
         "bDestroy": true,
         "iDisplayLength": 10,
-        "order": [[0, "desc"]]
+        "order": [[0, "desc"]],
+        "drawCallback": function(settings) {
+            actualizarMetricasEnvios(settings.json || []);
+        }
     });
 
     // Cargar Catálogos Iniciales
     cargarProveedoresTrasladistas();
     cargarOrigenes();
 });
+
+function actualizarMetricasEnvios(data) {
+    if (!Array.isArray(data)) return;
+    
+    let total = data.length;
+    let creados = data.filter(e => parseInt(e.id_estado) === 1).length;
+    let transito = data.filter(e => parseInt(e.id_estado) === 6).length;
+    let entregados = data.filter(e => parseInt(e.id_estado) === 7).length;
+
+    if (document.getElementById('cardTotalEnvios')) document.getElementById('cardTotalEnvios').innerText = total;
+    if (document.getElementById('cardEnviosCreados')) document.getElementById('cardEnviosCreados').innerText = creados;
+    if (document.getElementById('cardEnviosTransito')) document.getElementById('cardEnviosTransito').innerText = transito;
+    if (document.getElementById('cardEnviosEntregados')) document.getElementById('cardEnviosEntregados').innerText = entregados;
+}
 
 function openModal() {
     document.querySelector('#id_envio').value = "";

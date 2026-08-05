@@ -53,7 +53,10 @@ document.addEventListener('DOMContentLoaded', function () {
         "respose": "true",
         "bDestroy": true,
         "iDisplayLength": 10,
-        "order": [[0, "desc"]]
+        "order": [[0, "desc"]],
+        "drawCallback": function(settings) {
+            actualizarMetricasPlaneaciones(settings.json || []);
+        }
     });
 
     // Evento de Check All para la tabla del modal
@@ -63,6 +66,20 @@ document.addEventListener('DOMContentLoaded', function () {
         calcularTotalesPlan();
     });
 });
+
+function actualizarMetricasPlaneaciones(data) {
+    if (!Array.isArray(data)) return;
+    
+    let total = data.length;
+    let pendientes = data.filter(p => parseInt(p.id_estado) === 2).length;
+    let aprobadas = data.filter(p => parseInt(p.id_estado) === 5).length;
+    let montoTotal = data.reduce((acc, p) => acc + (parseFloat(p.costo_total) || 0), 0);
+
+    if (document.getElementById('cardTotalPlaneaciones')) document.getElementById('cardTotalPlaneaciones').innerText = total;
+    if (document.getElementById('cardPlanPendientes')) document.getElementById('cardPlanPendientes').innerText = pendientes;
+    if (document.getElementById('cardPlanAprobadas')) document.getElementById('cardPlanAprobadas').innerText = aprobadas;
+    if (document.getElementById('cardPlanPresupuesto')) document.getElementById('cardPlanPresupuesto').innerText = '$' + montoTotal.toFixed(2);
+}
 
 function openModalPlan() {
     document.querySelector("#formPlaneacion").reset();

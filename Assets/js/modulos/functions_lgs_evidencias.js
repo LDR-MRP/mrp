@@ -53,9 +53,29 @@ document.addEventListener('DOMContentLoaded', function () {
         "respose": "true",
         "bDestroy": true,
         "iDisplayLength": 10,
-        "order": [[0, "desc"]]
+        "order": [[0, "desc"]],
+        "drawCallback": function(settings) {
+            actualizarMetricasEvidencias(settings.json || []);
+        }
     });
 });
+
+function actualizarMetricasEvidencias(data) {
+    if (!Array.isArray(data)) return;
+    
+    let transito = data.filter(e => parseInt(e.id_estado) === 6).length;
+    let entregadas = data.filter(e => parseInt(e.id_estado) === 7).length;
+    let totalArchivos = data.reduce((acc, e) => acc + (parseInt(e.total_evidencias) || 0), 0);
+    
+    let total = data.length;
+    let conEvidencia = data.filter(e => parseInt(e.total_evidencias) > 0).length;
+    let cobertura = total > 0 ? Math.round((conEvidencia / total) * 100) : 0;
+
+    if (document.getElementById('cardEvidTransito')) document.getElementById('cardEvidTransito').innerText = transito;
+    if (document.getElementById('cardEvidTotalArchivos')) document.getElementById('cardEvidTotalArchivos').innerText = totalArchivos;
+    if (document.getElementById('cardEvidEntregadas')) document.getElementById('cardEvidEntregadas').innerText = entregadas;
+    if (document.getElementById('cardEvidCobertura')) document.getElementById('cardEvidCobertura').innerText = cobertura + '%';
+}
 
 function fntAbrirEvidencias(idEnvio, folio, idEstado) {
     document.getElementById('id_envio_evidencia').value = idEnvio;
