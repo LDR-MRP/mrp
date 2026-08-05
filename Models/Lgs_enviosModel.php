@@ -6,6 +6,14 @@ class Lgs_enviosModel extends Mysql
 
     protected string $table = 'lgs_envios';
 
+    public function getTableName(): string {
+        return $this->table;
+    }
+
+    public function getConexion(): PDO {
+        return $this->conexion;
+    }
+
     const SCHEMA = [
         'lgs_envios' => [
             'id_envio',
@@ -123,6 +131,24 @@ class Lgs_enviosModel extends Mysql
         $stmt->execute($campos);
         
         return $db->lastInsertId();
+    }
+
+    /**
+     * Obtiene los catálogos para alimentar los selects del modal
+     */
+    public function getSelectCatalogos(): array
+    {
+        $tiposTraslado = $this->select_all("SELECT id_tipo_traslado AS id, nombre FROM lgs_cat_tipo_traslado WHERE activo = 1");
+        $motivos = $this->select_all("SELECT id_motivo AS id, nombre FROM lgs_cat_motivo_envio WHERE activo = 1");
+        $proveedores = $this->select_all("SELECT id_proveedor AS id, razon_social AS nombre FROM prv_cat_proveedores WHERE deleted_at IS NULL");
+        $origenes = $this->select_all("SELECT id_origen AS id, nombre FROM lgs_cat_origenes WHERE activo = 1");
+
+        return [
+            'tipos_traslado' => $tiposTraslado,
+            'motivos' => $motivos,
+            'proveedores' => $proveedores,
+            'origenes' => $origenes
+        ];
     }
 
     /**

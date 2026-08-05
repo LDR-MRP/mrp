@@ -119,13 +119,51 @@ function saveEnvio() {
     }
 }
 
-// Helpers para Selects (Asumen endpoints en la API o el controlador Catalogo)
+// Helpers para Selects alimentados por el backend
 function cargarProveedoresTrasladistas() {
-    // Ejemplo de fetch a un endpoint de proveedores
+    let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+    let ajaxUrl = base_url + '/Lgs_envios/getCatalogos';
+    
+    request.open("GET", ajaxUrl, true);
+    request.send();
+    request.onreadystatechange = function () {
+        if (request.readyState == 4 && request.status == 200) {
+            let objData = JSON.parse(request.responseText);
+            if (objData.status) {
+                // Llenar Trasladistas
+                let htmlProv = '<option value="">Seleccione Trasladista...</option>';
+                objData.data.proveedores.forEach(p => {
+                    htmlProv += `<option value="${p.id}">${p.nombre}</option>`;
+                });
+                document.getElementById('id_proveedor').innerHTML = htmlProv;
+
+                // Llenar Orígenes
+                let htmlOrig = '<option value="">Seleccione Origen...</option>';
+                objData.data.origenes.forEach(o => {
+                    htmlOrig += `<option value="${o.id}">${o.nombre}</option>`;
+                });
+                document.getElementById('id_origen').innerHTML = htmlOrig;
+
+                // Llenar Tipos Traslado
+                let htmlTipos = '<option value="">Seleccione Tipo...</option>';
+                objData.data.tipos_traslado.forEach(t => {
+                    htmlTipos += `<option value="${t.id}">${t.nombre}</option>`;
+                });
+                document.getElementById('id_tipo_traslado').innerHTML = htmlTipos;
+
+                // Llenar Motivos
+                let htmlMotivos = '<option value="">Seleccione Motivo...</option>';
+                objData.data.motivos.forEach(m => {
+                    htmlMotivos += `<option value="${m.id}">${m.nombre}</option>`;
+                });
+                document.getElementById('id_motivo').innerHTML = htmlMotivos;
+            }
+        }
+    }
 }
 
 function cargarOrigenes() {
-    // Ejemplo de fetch a un endpoint de cat_origenes
+    // Ya agrupado en cargarProveedoresTrasladistas arriba
 }
 
 function fntViewEnvio(idEnvio) {

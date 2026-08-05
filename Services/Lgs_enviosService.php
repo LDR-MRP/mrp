@@ -15,6 +15,10 @@ class Lgs_enviosService {
         return $this->model->getEnviosDataTable();
     }
 
+    public function getCatalogosSelect(): array {
+        return $this->model->getSelectCatalogos();
+    }
+
     /**
      * Crea la cabecera de un envío nuevo (Transaction con bloqueo)
      */

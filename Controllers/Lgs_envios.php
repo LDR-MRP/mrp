@@ -51,6 +51,20 @@ class Lgs_envios extends Controllers
     }
 
     /**
+     * Devuelve los catálogos en JSON para alimentar los dropdowns del modal
+     * URL: {{base_url}}/Lgs_envios/getCatalogos
+     */
+    public function getCatalogos(): void
+    {
+        try {
+            $data = $this->service->getCatalogosSelect();
+            echo $this->successResponse($data, "Catálogos obtenidos correctamente");
+        } catch (Exception $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
      * POST: Guarda o actualiza la cabecera de un envío
      * URL: {{base_url}}/Lgs_envios/store
      */
