@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         "ajax": {
             "url": base_url + "/Lgs_evidencias/getEnviosEvidencias",
-            "dataSrc": "data"
+            "dataSrc": ""
         },
         "columns": [
             { "data": "folio" },

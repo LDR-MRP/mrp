@@ -472,13 +472,6 @@
                                       </a>
                                   </li>
 
-                                   <!-- Bandeja de Logística (Pool de VINs) -->
-                                   <li class="nav-item">
-                                       <a href="<?= base_url(); ?>/Lgs_bandeja" class="nav-link" data-key="t-lgs-bandeja">
-                                           <i class="ri-inbox-line align-bottom me-1"></i> Pool VINs Liberados
-                                       </a>
-                                   </li>
-
                                    <!-- Mis Envíos -->
                                    <li class="nav-item">
                                        <a href="<?= base_url(); ?>/Lgs_envios" class="nav-link" data-key="t-lgs-envios">

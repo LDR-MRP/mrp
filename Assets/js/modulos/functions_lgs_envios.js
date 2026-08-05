@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         "ajax": {
             "url": base_url + "/Lgs_envios/getEnvios",
-            "dataSrc": "data"
+            "dataSrc": ""
         },
         "columns": [
             { "data": "id_envio" },

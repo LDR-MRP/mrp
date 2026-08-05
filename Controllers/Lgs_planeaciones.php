@@ -39,9 +39,11 @@ class Lgs_planeaciones extends Controllers
     {
         try {
             $data = $this->service->getAllPlaneaciones();
-            echo $this->successResponse($data, "Listado de planeaciones obtenido");
-        } catch (Exception $e) {
-            echo $this->errorResponse($e->getMessage(), 500);
+            echo json_encode($data, JSON_UNESCAPED_UNICODE);
+            exit;
+        } catch (Throwable $e) {
+            echo json_encode([]);
+            exit;
         }
     }
 

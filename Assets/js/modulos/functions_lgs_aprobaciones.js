@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         "ajax": {
             "url": base_url + "/Lgs_aprobaciones/getPlaneacionesAprobacion",
-            "dataSrc": "data"
+            "dataSrc": ""
         },
         "columns": [
             { "data": "folio" },
