@@ -4,12 +4,12 @@ document.addEventListener('DOMContentLoaded', function () {
     // Inicializar DataTable Ejecución
     tableEjecucion = $('#tableEjecucion').DataTable({
         "aProcessing": true,
-        "aServerSide": true,
+        "aServerSide": false,
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.10.20/i18n/Spanish.json"
         },
         "ajax": {
-            "url": " " + base_url + "/Lgs_ejecucion/getEnviosDespacho",
+            "url": base_url + "/Lgs_ejecucion/getEnviosDespacho",
             "dataSrc": "data"
         },
         "columns": [

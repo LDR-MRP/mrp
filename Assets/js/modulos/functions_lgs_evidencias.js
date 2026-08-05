@@ -4,12 +4,12 @@ document.addEventListener('DOMContentLoaded', function () {
     // Inicializar DataTable Evidencias
     tableEvidencias = $('#tableEvidencias').DataTable({
         "aProcessing": true,
-        "aServerSide": true,
+        "aServerSide": false,
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.10.20/i18n/Spanish.json"
         },
         "ajax": {
-            "url": " " + base_url + "/Lgs_evidencias/getEnviosEvidencias",
+            "url": base_url + "/Lgs_evidencias/getEnviosEvidencias",
             "dataSrc": "data"
         },
         "columns": [
