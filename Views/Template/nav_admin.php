@@ -514,6 +514,13 @@
                                        </a>
                                    </li>
 
+                                   <!-- Monitoreo GPS y Rutas -->
+                                   <li class="nav-item">
+                                       <a href="<?= base_url(); ?>/Lgs_panelrutas" class="nav-link" data-key="t-lgs-panelrutas">
+                                           <i class="ri-map-pin-user-line align-bottom me-1"></i> Monitoreo GPS
+                                       </a>
+                                   </li>
+
                               </ul>
                           </div>
                       </li>
