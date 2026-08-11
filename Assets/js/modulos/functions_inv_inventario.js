@@ -41,47 +41,80 @@ document.addEventListener("DOMContentLoaded", () => {
     },
   });
 
-  //imagenes
+  // ================================
+  // IMÁGENES
+  // ================================
+
   const contenedor = document.getElementById("contenedorImagenes");
   const btnAgregar = document.getElementById("btnAgregarImagen");
 
-  let maxImagenes = 3;
+  let maxImagenes = 5;
 
-  // 🔹 AGREGAR NUEVA IMAGEN
-  btnAgregar.addEventListener("click", () => {
-    const total = contenedor.querySelectorAll(".input-imagen").length;
+  if (contenedor && btnAgregar) {
+    const actuales = document.querySelectorAll(
+      "#imagenesActuales .imagen-existente",
+    ).length;
 
-    if (total >= maxImagenes) {
-      Swal.fire(
-        "Límite alcanzado",
-        "Solo puedes subir máximo 3 imágenes",
-        "warning",
-      );
-      return;
-    }
+    const nuevas = contenedor.querySelectorAll(".input-imagen").length;
 
-    const div = document.createElement("div");
-    div.classList.add("input-group", "mb-2");
+    // ================================
+    // AGREGAR NUEVA IMAGEN
+    // ================================
 
-    div.innerHTML = `
-      <input type="file" name="imagenes[]" 
-        class="form-control input-imagen"
-        accept="image/*" capture="environment">
+    btnAgregar.addEventListener("click", () => {
+      const totalActual = document.querySelectorAll(
+        "#imagenesActuales .imagen-existente",
+      ).length;
 
-      <button class="btn btn-danger btnEliminarImagen" type="button">
-        <i class="bi bi-trash"></i>
-      </button>
-    `;
+      const totalNuevas = contenedor.querySelectorAll(".input-imagen").length;
 
-    contenedor.appendChild(div);
-  });
+      if (totalActual + totalNuevas >= maxImagenes) {
+        Swal.fire(
+          "Límite alcanzado",
+          "Solo puedes subir máximo 5 imágenes",
+          "warning",
+        );
 
-  // 🔹 ELIMINAR IMAGEN
-  contenedor.addEventListener("click", (e) => {
-    if (e.target.closest(".btnEliminarImagen")) {
-      e.target.closest(".input-group").remove();
-    }
-  });
+        return;
+      }
+
+      const div = document.createElement("div");
+
+      div.classList.add("input-group", "mb-2");
+
+      div.innerHTML = `
+            <input
+                type="file"
+                name="imagenes[]"
+                class="form-control input-imagen"
+                accept="image/*"
+                capture="environment"
+            >
+
+            <button
+                class="btn btn-danger btnEliminarImagen"
+                type="button">
+
+                <i class="bi bi-trash"></i>
+
+            </button>
+        `;
+
+      contenedor.appendChild(div);
+    });
+
+    // ================================
+    // ELIMINAR NUEVA IMAGEN
+    // ================================
+
+    contenedor.addEventListener("click", (e) => {
+      const boton = e.target.closest(".btnEliminarImagen");
+
+      if (!boton) return;
+
+      boton.closest(".input-group")?.remove();
+    });
+  }
 
   //limpiar modal
   function limpiarModalInventario() {
@@ -857,6 +890,47 @@ function fntEditInventario(idinventario) {
 
     const data = res.data;
 
+    // IMÁGENES EXISTENTES
+    const contenedorActuales = document.getElementById("imagenesActuales");
+
+    if (contenedorActuales) {
+      let html = "";
+
+      if (data.imagenes && data.imagenes.length > 0) {
+        data.imagenes.forEach((img) => {
+          console.log("IMAGEN:", img);
+          console.log("ID FOTOINVENTARIO:", img.idfotoinventario);
+          html += `
+                    <div class="imagen-existente border rounded p-2 mb-2 d-flex justify-content-between align-items-center">
+
+                        <span>${img.foto}</span>
+
+                        <div>
+
+                            <a href="${base_url}/Assets/uploads/inventario_imagenes/${img.foto}"
+                               target="_blank"
+                               class="btn btn-primary btn-sm">
+                                Ver
+                            </a>
+
+                            <button
+    type="button"
+    class="btn btn-danger btn-sm btnEliminarImagenExistente"
+    data-id="${img.idfotoinventario}"
+    onclick="console.log('ID IMAGEN:', this.dataset.id)">
+    Eliminar
+</button>
+
+                        </div>
+
+                    </div>
+                `;
+        });
+      }
+
+      contenedorActuales.innerHTML = html;
+    }
+
     abrirTabEdicion(data.tipo_elemento);
     llenarFormularioInventario(data);
 
@@ -864,10 +938,120 @@ function fntEditInventario(idinventario) {
       cargarKitParaEdicion(data.idinventario);
     }
 
-    // 🔥 FORZAR BOTÓN
     document.querySelector("#btnText").textContent = "ACTUALIZAR";
   };
 }
+
+// =====================================================
+// ELIMINAR IMAGEN EXISTENTE
+// =====================================================
+
+document.addEventListener("click", function (e) {
+  const boton = e.target.closest(".btnEliminarImagenExistente");
+
+  // No fue un click sobre el botón
+  if (!boton) return;
+
+  const id = boton.dataset.id;
+
+  if (!id) {
+    console.error("No se encontró idfotoinventario");
+    return;
+  }
+
+  Swal.fire({
+    title: "¿Eliminar imagen?",
+    text: "La imagen será eliminada permanentemente.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#d33",
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+
+    // Deshabilitar botón mientras procesa
+    boton.disabled = true;
+
+    fetch(base_url + "/Inv_inventario/deleteImagen", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      },
+      body: new URLSearchParams({
+        idfotoinventario: id,
+      }),
+    })
+.then((response) => {
+
+    return response.text().then((text) => {
+
+        console.log("STATUS HTTP:", response.status);
+        console.log("RESPUESTA DELETE:", text);
+
+        if (!response.ok) {
+
+            throw new Error(
+                "HTTP " + response.status + ": " + text
+            );
+        }
+
+        return text;
+    });
+})
+
+      .then((text) => {
+        console.log("RESPUESTA deleteImagen:", text);
+
+        let res;
+
+        try {
+          res = JSON.parse(text);
+        } catch (error) {
+          console.error("La respuesta no es JSON:", text);
+
+          throw new Error("El servidor no devolvió JSON válido.");
+        }
+
+        if (res.status) {
+          Swal.fire({
+            icon: "success",
+            title: "Imagen eliminada",
+            text: res.msg || "La imagen fue eliminada correctamente.",
+            timer: 1500,
+            showConfirmButton: false,
+          });
+
+          // Eliminar visualmente la imagen
+          const contenedor =
+            boton.closest(".imagen-existente") || boton.closest(".border");
+
+          if (contenedor) {
+            contenedor.remove();
+          }
+        } else {
+          boton.disabled = false;
+
+          Swal.fire(
+            "Error",
+            res.msg || "No se pudo eliminar la imagen.",
+            "error",
+          );
+        }
+      })
+      .catch((error) => {
+        console.error("ERROR ELIMINANDO IMAGEN:", error);
+
+        boton.disabled = false;
+
+        Swal.fire(
+          "Error",
+          error.message || "No se pudo conectar con el servidor.",
+          "error",
+        );
+      });
+  });
+});
 
 function cargarKitParaEdicion(idinventario) {
   inventarioIdReal = idinventario; // 🔥 IMPORTANTE

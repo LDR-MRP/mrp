@@ -9,7 +9,25 @@
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0"><?= $data['page_title'] ?></h4>
+                        <div class="d-flex align-items-center">
+
+                            <div class="avatar-sm me-3">
+                                <div class="avatar-title rounded-circle bg-primary-subtle">
+                                    <i class="ri-stack-line text-primary fs-3"></i>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 class="mb-0">
+                                    <?= $data['page_title'] ?>
+                                </h4>
+
+                                <small class="text-muted">
+                                    Gestión de trazabilidad e importaciones
+                                </small>
+                            </div>
+
+                        </div>
 
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
@@ -25,27 +43,52 @@
 
 
             <div class="card">
-                <div class="card-header">
-                    <ul class="nav nav-tabs-custom card-header-tabs border-bottom-0" id="nav-tab" role="tablist">
+                <div class="card-header bg-white border-0">
+
+                    <ul class="nav nav-pills nav-justified gap-3" id="nav-tab" role="tablist">
+
                         <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#listLotesPedimentos" role="tab">
-                                VER
+                            <a class="nav-link active shadow-sm"
+                                data-bs-toggle="tab"
+                                href="#listLotesPedimentos">
+
+                                <i class="ri-file-list-3-line me-2"></i>
+                                Registros
+
                             </a>
                         </li>
+
                         <?php if ($_SESSION['permisosMod']['w']) { ?>
+
                             <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#agregarLote" role="tab">
-                                    +LOTE
+                                <a class="nav-link shadow-sm"
+                                    data-bs-toggle="tab"
+                                    href="#agregarLote">
+
+                                    <i class="ri-inbox-line me-2"></i>
+                                    Nuevo Lote
+
                                 </a>
                             </li>
+
                             <li class="nav-item">
-                                <a class="nav-link" data-bs-toggle="tab" href="#agregarPedimento" role="tab">
-                                    +PEDIMENTO
+                                <a class="nav-link shadow-sm"
+                                    data-bs-toggle="tab"
+                                    href="#agregarPedimento">
+
+                                    <i class="ri-government-line me-2"></i>
+                                    Nuevo Pedimento
+
                                 </a>
                             </li>
+
                         <?php } ?>
+
                     </ul>
+
                 </div>
+
+
                 <!-- end card header -->
                 <div class="card-body">
                     <div class="tab-content">

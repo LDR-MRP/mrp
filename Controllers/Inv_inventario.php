@@ -420,6 +420,101 @@ class Inv_inventario extends Controllers
 		die();
 	}
 
+	public function deleteImagen()
+{
+    header('Content-Type: application/json; charset=utf-8');
+
+    try {
+
+        $id = intval($_POST['idfotoinventario'] ?? 0);
+
+        if ($id <= 0) {
+            echo json_encode([
+                'status' => false,
+                'msg' => 'ID de imagen inválido'
+            ]);
+            die();
+        }
+
+        // ==========================================
+        // BUSCAR IMAGEN
+        // ==========================================
+
+        $imagen = $this->model->selectImagenInventario($id);
+
+        if (!$imagen) {
+
+            echo json_encode([
+                'status' => false,
+                'msg' => 'No se encontró la imagen'
+            ]);
+            die();
+        }
+
+        $nombreArchivo = $imagen['foto'];
+
+        // ==========================================
+        // RUTA FÍSICA DE LA IMAGEN
+        // ==========================================
+
+        $ruta = $_SERVER['DOCUMENT_ROOT']
+              . "/mrp-ldr/Assets/uploads/inventario_imagenes/"
+              . $nombreArchivo;
+
+        // ==========================================
+        // ELIMINAR ARCHIVO FÍSICO
+        // ==========================================
+
+        if (file_exists($ruta)) {
+
+            if (!unlink($ruta)) {
+
+                echo json_encode([
+                    'status' => false,
+                    'msg' => 'No se pudo eliminar el archivo físico'
+                ]);
+                die();
+            }
+        }
+
+        // ==========================================
+        // ELIMINAR REGISTRO BD
+        // ==========================================
+
+        $eliminado = $this->model->deleteImagenInventario($id);
+
+        if (!$eliminado) {
+
+            echo json_encode([
+                'status' => false,
+                'msg' => 'No se pudo eliminar el registro de la base de datos'
+            ]);
+            die();
+        }
+
+        // ==========================================
+        // RESPUESTA
+        // ==========================================
+
+        echo json_encode([
+            'status' => true,
+            'msg' => 'Imagen eliminada correctamente'
+        ]);
+
+    } catch (Throwable $e) {
+
+        http_response_code(500);
+
+        echo json_encode([
+            'status' => false,
+            'msg' => $e->getMessage(),
+            'line' => $e->getLine()
+        ]);
+    }
+
+    die();
+}
+
 	public function buscarProductoKit()
 	{
 		// Blindaje total para AJAX

@@ -8,7 +8,7 @@
             <div class="row">
                 <div class="col-12">
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 class="mb-sm-0"><?= $data['page_title'] ?></h4>
+                        <h5 class="mb-sm-0"><?= $data['page_title'] ?></h5>
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="javascript:void(0);">MRP</a></li>
@@ -20,17 +20,17 @@
             </div>
 
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="card">
                         <div class="card-header">
-                            <h5 class="mb-1 fw-bold">1. Ordenes de compra - Recepciones</h5>
+                            <h5 class="mb-0">1. Ordenes de compra - Recepciones</h5>
                         </div>
 
                         <div class="card-body">
                             <input type="text" id="buscarRecepcion" class="form-control mb-3"
                                 placeholder="Buscar OC o proveedor...">
 
-                            <ul class="nav nav-tabs mb-3" id="tabsRecepcion" role="tablist">
+                            <ul class="nav nav-tabs mb-2" id="tabsRecepcion" role="tablist">
                                 <li class="nav-item">
                                     <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#abiertas" type="button">
                                         Abiertas
@@ -71,11 +71,11 @@
                     </div>
                 </div>
 
-                <div class="col-md-8">
+                <div class="col-md-9">
 
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <div>
-                            <h4 class="mb-1 fw-bold">2. Recepción de materiales</h4>
+                            <h5 class="mb-0">2. Recepción de materiales</h5>
                             <p class="text-muted mb-0">Visualiza información de la orden de compra y el almacén destino.</p>
                         </div>
                     </div>
@@ -144,7 +144,9 @@
                                             <th class="text-center">Recibido</th>
                                             <th class="text-center">Pendiente</th>
                                             <th class="text-center">Unidad</th>
-                                            <th>Obs.</th>
+                                            <th>Observaciones</th>
+                                            <th>Evidencias</th>
+                                            <th>Ver</th>
                                         </tr>
                                     </thead>
                                     <tbody id="detalleRecepcion">
@@ -174,13 +176,37 @@
                         </div>
                     </div>
 
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <strong>Evidencias / Documentos</strong>
+                        </div>
+                        <div id="contenedorDocumentos">
+
+                            <div class="documento-item mb-2">
+                                <input type="file"
+                                    class="form-control documento">
+                            </div>
+
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn btn-outline-primary btn-sm mt-2"
+                            onclick="agregarDocumento()">
+
+                            <i class="ri-add-line"></i>
+                            Agregar documento
+
+                        </button>
+                    </div>
+
                     <!-- Sticky footer -->
                     <div class="save-bar">
                         <div>
                             <small class="text-muted d-block">Último paso</small>
                             <strong>Confirma y registra la recepción</strong>
                         </div>
-                        <button class="btn btn-success btn-save" onclick="guardarRecepcion()">
+                        <button class="btn btn-success btn-save" id="btnGuardarRecepcion" onclick="guardarRecepcion()">
                             <i class="ri-check-line me-1"></i> Registrar recepción
                         </button>
                     </div>
@@ -188,6 +214,51 @@
             </div>
         </div>
     </div>
+</div>
+
+<div class="modal fade"
+     id="modalEvidencias"
+     tabindex="-1">
+
+    <div class="modal-dialog modal-xl">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title">
+                    Evidencias del producto
+                </h5>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <h6>Fotografías</h6>
+
+                <div class="row"
+                     id="galeriaProducto">
+                </div>
+
+                <hr>
+
+                <h6>Documentos recepción</h6>
+
+                <div id="listaDocumentos">
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
 </div>
 
 <?php footerAdmin($data); ?>
