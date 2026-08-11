@@ -32,6 +32,7 @@ Este documento registra el progreso de desarrollo del módulo de Logística. Aqu
 *   **Motor de Costos (PHP):** Lógica matemática programada en `Lgs_enviosService->recalcularCostoTotal()`. Iteración inteligente que diferencia si es "Chofer Rodando" (costo directo x km) o "Madrina" (agrupa VINs por madrina, busca la tarifa exacta por volumen de autos y segmento, y aplica la multiplicación con el factor).
 *   **Frontend (Bandeja):** Creada `Views/Lgs_envios/index.php` con la tabla DataTables y el modal para dar de alta cabeceras de envíos.
 *   **Interfaz Drag-and-Drop (Acomodo):** Implementado `Views/Lgs_envios/detalle.php` utilizando **SortableJS**. Permite arrastrar VINs desde un *pool* de disponibles hacia camiones/madrinas, reordenarlos, calculando automáticamente su `posicion_acomodo`.
+*   **Tabla Ficticia de Unidades y Secuencia de Carga:** Se integró la tabla `lgs_unidades_envios` con campos de Origen y Destino, y se actualizaron los componentes visuales de acomodo para proyectar explícitamente la insignia **`1º EN CARGAR`**, **`2º EN CARGAR`**, etc., indicando cuál unidad se sube primero al vehículo y su ruta completa.
 
 *(Todo el código base para la creación, costeo y asignación de Envíos de la Épica 2 está construido).*
 

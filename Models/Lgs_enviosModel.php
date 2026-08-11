@@ -334,15 +334,78 @@ class Lgs_enviosModel extends Mysql
     }
 
     /**
+     * Asegura la existencia de la tabla ficticia lgs_unidades_envios y sus registros iniciales
+     */
+    private function asegurarTablaFicticiaUnidades(): void
+    {
+        try {
+            $sqlCheck = "SHOW TABLES LIKE 'lgs_unidades_envios'";
+            $res = $this->select_all($sqlCheck);
+            if (empty($res)) {
+                $sqlCreate = "CREATE TABLE IF NOT EXISTS `lgs_unidades_envios` (
+                  `id_unidad` int(11) NOT NULL AUTO_INCREMENT,
+                  `vin` varchar(50) NOT NULL UNIQUE,
+                  `num_serie` varchar(50) DEFAULT NULL,
+                  `modelo` varchar(100) DEFAULT NULL,
+                  `origen` varchar(150) DEFAULT NULL,
+                  `destino` varchar(150) DEFAULT NULL,
+                  `estatus` varchar(50) DEFAULT 'disponible',
+                  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id_unidad`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+                $this->insert($sqlCreate, []);
+
+                $sqlSeed = "INSERT INTO `lgs_unidades_envios` (`vin`, `num_serie`, `modelo`, `origen`, `destino`, `estatus`) VALUES
+                ('VIN-2026-TOL-001', 'SN-8801', 'Camión Eléctrico E-Truck 4x2', 'Planta Toluca', 'Distribuidor CDMX Sur', 'disponible'),
+                ('VIN-2026-TOL-002', 'SN-8802', 'Tractocamión Heavy Duty 6x4', 'Planta Toluca', 'Agencia Monterrey', 'disponible'),
+                ('VIN-2026-TOL-003', 'SN-8803', 'Van Carga Urbana 3.5T', 'Planta Toluca', 'Puebla Centro', 'disponible'),
+                ('VIN-2026-TOL-004', 'SN-8804', 'Chasis Cabina Diesel', 'Planta Toluca', 'Guadalajara Norte', 'disponible'),
+                ('VIN-2026-TOL-005', 'SN-8805', 'Autobús Urbano 30 Pasajeros', 'Planta Toluca', 'Querétaro Parque Ind.', 'disponible'),
+                ('VIN-2026-TOL-006', 'SN-8806', 'Camión de Volteo 14m3', 'Planta Toluca', 'León Guanajuato', 'disponible'),
+                ('VIN-2026-TOL-007', 'SN-8807', 'Pickup 4x4 Doble Cabina', 'Planta Toluca', 'Veracruz Puerto', 'disponible'),
+                ('VIN-2026-TOL-008', 'SN-8808', 'Panel Repartidor 2.0L', 'Planta Toluca', 'San Luis Potosí', 'disponible')
+                ON DUPLICATE KEY UPDATE `estatus` = VALUES(`estatus`)";
+                $this->insert($sqlSeed, []);
+            }
+        } catch (Throwable $e) {
+            // Manejo silencioso en caso de excepción
+        }
+    }
+
+    /**
      * Obtiene VINs disponibles en el origen que no estén asignados a otros envíos activos
      */
     public function getVinsDisponiblesOrigen(int $idOrigen = 0, int $idEnvioActual = 0): array
     {
+        $this->asegurarTablaFicticiaUnidades();
+
+        try {
+            $sql = "SELECT 
+                        u.id_unidad,
+                        u.vin,
+                        u.num_serie,
+                        u.modelo,
+                        u.origen,
+                        u.destino
+                    FROM lgs_unidades_envios u
+                    WHERE u.id_unidad NOT IN (
+                        SELECT id_unidad FROM lgs_envios_vins WHERE id_envio != ?
+                    )
+                    ORDER BY u.id_unidad ASC
+                    LIMIT 50";
+            $res = $this->select_all($sql, [$idEnvioActual]);
+            if (!empty($res)) return $res;
+        } catch (Throwable $e) {
+            // Fallback
+        }
+
         $sql = "SELECT 
                     u.idunidad AS id_unidad,
                     u.clave AS vin,
                     u.num_unidad AS num_serie,
-                    'Unidad Terminada' AS modelo
+                    'Unidad Terminada' AS modelo,
+                    'Planta Toluca' AS origen,
+                    'Destino General' AS destino
                 FROM mrp_unidades_terminadas u
                 WHERE u.estado <> 0
                   AND u.idunidad NOT IN (
@@ -359,12 +422,44 @@ class Lgs_enviosModel extends Mysql
      */
     public function getAcomodoExistenteEnvio(int $idEnvio): array
     {
+        $this->asegurarTablaFicticiaUnidades();
+
+        try {
+            $sql = "SELECT 
+                        v.id,
+                        v.id_envio,
+                        v.id_unidad,
+                        u.vin,
+                        u.num_serie,
+                        u.modelo,
+                        u.origen,
+                        u.destino,
+                        v.id_madrina,
+                        v.id_chofer,
+                        v.posicion_acomodo,
+                        m.numero_economico AS madrina_nombre,
+                        CONCAT(c.nombre, ' ', c.apellidos) AS chofer_nombre
+                    FROM lgs_envios_vins v
+                    INNER JOIN lgs_unidades_envios u ON v.id_unidad = u.id_unidad
+                    LEFT JOIN prv_det_madrinas m ON v.id_madrina = m.id_madrina
+                    LEFT JOIN prv_det_choferes c ON v.id_chofer = c.id_chofer
+                    WHERE v.id_envio = ?
+                    ORDER BY v.id_madrina ASC, v.id_chofer ASC, v.posicion_acomodo ASC";
+            $res = $this->select_all($sql, [$idEnvio]);
+            if (!empty($res)) return $res;
+        } catch (Throwable $e) {
+            // Fallback
+        }
+
         $sql = "SELECT 
                     v.id,
                     v.id_envio,
                     v.id_unidad,
                     u.clave AS vin,
                     u.num_unidad AS num_serie,
+                    'Unidad Terminada' AS modelo,
+                    'Planta Toluca' AS origen,
+                    'Destino General' AS destino,
                     v.id_madrina,
                     v.id_chofer,
                     v.posicion_acomodo,
@@ -379,13 +474,5 @@ class Lgs_enviosModel extends Mysql
         $res = $this->select_all($sql, [$idEnvio]);
         return $res ?: [];
     }
-
-    /**
-     * Elimina el acomodo de VINs existente para volverlo a guardar
-     */
-    public function deleteAcomodoEnvio(PDO $db, int $idEnvio): void
-    {
-        $stmt = $db->prepare("DELETE FROM lgs_envios_vins WHERE id_envio = ?");
-        $stmt->execute([$idEnvio]);
-    }
 }
+

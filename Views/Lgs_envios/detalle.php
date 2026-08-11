@@ -33,6 +33,15 @@
                 </div>
             </div>
 
+            <!-- LEYENDA INFORMATIVA ORDEN DE CARGA -->
+            <div class="alert alert-info border-0 shadow-sm rounded-3 mb-4 d-flex align-items-center">
+                <i class="ri-information-fill fs-20 me-3 text-info"></i>
+                <div class="fs-13">
+                    <strong class="text-dark">Secuencia de Carga y Descarga:</strong>
+                    La unidad en la <strong>Posición #1</strong> es la <span class="badge bg-success px-2 py-1">1º en Cargar</span> (primera en subir al vehículo). Cada tarjeta muestra su <strong>Modelo</strong>, <strong>Origen ➔ Destino</strong> y su número de secuencia de carga.
+                </div>
+            </div>
+
             <input type="hidden" id="id_envio" value="<?= $data['id_envio'] ?>">
 
             <div class="row">
