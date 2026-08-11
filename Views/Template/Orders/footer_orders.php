@@ -19,6 +19,26 @@ if (!empty($data['page_functions_js']) && is_array($data['page_functions_js'])) 
 }
 ?>
 
+<script>
+  window.ordersPortal = {
+    idcliente: <?= (int) (
+      $_SESSION['portal_idcliente']
+      ?? 0
+    ); ?>,
+
+    idusuarioAcceso: <?= (int) (
+      $_SESSION['portal_idusuario_acceso']
+      ?? 0
+    ); ?>,
+
+    baseUrl: <?= json_encode(
+      base_url(),
+      JSON_UNESCAPED_UNICODE
+      | JSON_UNESCAPED_SLASHES
+    ); ?>
+  };
+</script>
+
 </body>
 
 </html>
