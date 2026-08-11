@@ -496,6 +496,7 @@
                                        </a>
                                    </li>
 
+                                   <?php /* 
                                    <!-- Mis Planeaciones -->
                                    <li class="nav-item">
                                        <a href="<?= base_url(); ?>/Lgs_planeaciones" class="nav-link" data-key="t-lgs-planeaciones">
@@ -530,6 +531,7 @@
                                            <i class="ri-map-pin-user-line align-bottom me-1"></i> Monitoreo GPS
                                        </a>
                                    </li>
+                                   */ ?>
 
                               </ul>
                           </div>

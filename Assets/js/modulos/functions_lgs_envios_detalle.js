@@ -76,15 +76,32 @@ function renderPoolVins(vins) {
 
     let html = '';
     vins.forEach(v => {
+        const mod = v.modelo || 'Unidad';
+        const orig = v.origen || 'Origen';
+        const dest = v.destino || 'Destino';
         html += `
-        <li class="list-group-item cursor-move shadow-sm mb-2 rounded border-start border-3 border-primary bg-white" data-id-unidad="${v.id_unidad}">
+        <li class="list-group-item cursor-move shadow-sm mb-2 rounded border-start border-3 border-primary bg-white" 
+            data-id-unidad="${v.id_unidad}"
+            data-vin="${v.vin}"
+            data-num-serie="${v.num_serie || ''}"
+            data-modelo="${mod}"
+            data-origen="${orig}"
+            data-destino="${dest}">
             <div class="d-flex align-items-center">
-                <div class="flex-shrink-0 me-3">
+                <div class="flex-shrink-0 me-2">
                     <i class="ri-draggable fs-18 text-muted"></i>
                 </div>
                 <div class="flex-grow-1">
-                    <h6 class="mb-0 fs-13">VIN: <span class="text-primary fw-bold">${v.vin}</span></h6>
-                    <p class="text-muted mb-0 fs-11">N/S: ${v.num_serie || 'N/A'}</p>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h6 class="mb-0 fs-13 text-primary fw-bold">${v.vin}</h6>
+                        <span class="badge bg-soft-info text-info fs-11">${mod}</span>
+                    </div>
+                    <p class="text-dark mb-0 fs-11 fw-semibold">
+                        <i class="ri-map-pin-line text-danger me-1"></i>${orig} 
+                        <i class="ri-arrow-right-line mx-1 text-muted"></i> 
+                        <i class="ri-map-pin-2-fill text-success me-1"></i>${dest}
+                    </p>
+                    <small class="text-muted fs-11">N/S: ${v.num_serie || 'N/A'}</small>
                 </div>
             </div>
         </li>`;
@@ -133,11 +150,16 @@ function renderAcomodoExistente(existentes) {
 function initSortables() {
     // 1. Contenedor de VINs Disponibles
     const pool = document.getElementById('vins-disponibles');
-    if (pool) {
+    if (pool && !pool.getAttribute('data-sortable-init')) {
+        pool.setAttribute('data-sortable-init', 'true');
         new Sortable(pool, {
             group: 'shared',
             animation: 150,
-            ghostClass: 'sortable-ghost'
+            ghostClass: 'sortable-ghost',
+            onAdd: function (evt) {
+                actualizarConteoYSecuencia(evt.from);
+                limpiarBadgesPool(evt.item);
+            }
         });
     }
 
@@ -151,27 +173,103 @@ function initSortables() {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
                 onAdd: function (evt) {
-                    actualizarConteo(evt.to);
+                    actualizarConteoYSecuencia(evt.to);
                 },
                 onRemove: function (evt) {
-                    actualizarConteo(evt.from);
+                    actualizarConteoYSecuencia(evt.from);
+                },
+                onEnd: function (evt) {
+                    actualizarConteoYSecuencia(evt.to);
                 }
             });
         }
     });
+
+    document.querySelectorAll('.vehiculo-list').forEach(actualizarConteoYSecuencia);
 }
 
-function actualizarConteo(listaUl) {
-    if (!listaUl) return;
+function actualizarConteoYSecuencia(listaUl) {
+    if (!listaUl || listaUl.id === 'vins-disponibles') return;
+
     const container = listaUl.closest('div.border');
+    const items = listaUl.querySelectorAll('li');
+    const cap = listaUl.getAttribute('data-capacidad') || 99;
+
     if (container) {
         const badge = container.querySelector('.badge');
-        const items = listaUl.querySelectorAll('li').length;
-        const cap = listaUl.getAttribute('data-capacidad') || 99;
         if (badge) {
-            badge.innerHTML = items + ' / ' + cap + ' VINs';
+            badge.innerHTML = items.length + ' / ' + cap + ' VINs';
         }
     }
+
+    items.forEach((li, idx) => {
+        li.classList.remove('border-primary');
+        li.classList.add('border-success');
+
+        const vin = li.getAttribute('data-vin') || li.querySelector('h6')?.innerText.replace('VIN:', '').trim() || '';
+        const numSerie = li.getAttribute('data-num-serie') || '';
+        const modelo = li.getAttribute('data-modelo') || 'Unidad';
+        const origen = li.getAttribute('data-origen') || 'Origen';
+        const destino = li.getAttribute('data-destino') || 'Destino';
+
+        const posIndex = idx + 1;
+        let badgeSecuencia = (posIndex === 1)
+            ? `<span class="badge bg-success px-2 py-1 fs-11 me-1"><i class="ri-number-1 me-1"></i>1º EN CARGAR</span>`
+            : `<span class="badge bg-info px-2 py-1 fs-11 me-1"><i class="ri-truck-line me-1"></i>${posIndex}º EN CARGAR</span>`;
+
+        li.innerHTML = `
+        <div class="d-flex align-items-center">
+            <div class="flex-shrink-0 me-2">
+                <i class="ri-draggable fs-18 text-muted"></i>
+            </div>
+            <div class="flex-grow-1">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <h6 class="mb-0 fs-13 text-success fw-bold">VIN: ${vin}</h6>
+                    <div>
+                        ${badgeSecuencia}
+                        <span class="badge bg-soft-secondary text-dark fs-11">${modelo}</span>
+                    </div>
+                </div>
+                <p class="text-dark mb-0 fs-11 fw-semibold">
+                    <i class="ri-map-pin-line text-danger me-1"></i>${origen} 
+                    <i class="ri-arrow-right-line mx-1 text-muted"></i> 
+                    <i class="ri-map-pin-2-fill text-success me-1"></i>${destino}
+                </p>
+                <small class="text-muted fs-11">N/S: ${numSerie || 'N/A'}</small>
+            </div>
+        </div>`;
+    });
+}
+
+function limpiarBadgesPool(li) {
+    if (!li) return;
+    li.classList.remove('border-success');
+    li.classList.add('border-primary');
+
+    const vin = li.getAttribute('data-vin') || li.querySelector('h6')?.innerText.replace('VIN:', '').trim() || '';
+    const numSerie = li.getAttribute('data-num-serie') || '';
+    const modelo = li.getAttribute('data-modelo') || 'Unidad';
+    const origen = li.getAttribute('data-origen') || 'Origen';
+    const destino = li.getAttribute('data-destino') || 'Destino';
+
+    li.innerHTML = `
+    <div class="d-flex align-items-center">
+        <div class="flex-shrink-0 me-2">
+            <i class="ri-draggable fs-18 text-muted"></i>
+        </div>
+        <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <h6 class="mb-0 fs-13 text-primary fw-bold">${vin}</h6>
+                <span class="badge bg-soft-info text-info fs-11">${modelo}</span>
+            </div>
+            <p class="text-dark mb-0 fs-11 fw-semibold">
+                <i class="ri-map-pin-line text-danger me-1"></i>${origen} 
+                <i class="ri-arrow-right-line mx-1 text-muted"></i> 
+                <i class="ri-map-pin-2-fill text-success me-1"></i>${destino}
+            </p>
+            <small class="text-muted fs-11">N/S: ${numSerie || 'N/A'}</small>
+        </div>
+    </div>`;
 }
 
 function agregarVehiculo() {
@@ -316,16 +414,41 @@ function inyectarContenedorVehiculo(vehiculo, vinsIniciales = []) {
     divCard.className = 'border rounded p-3 mb-4 bg-light shadow-sm';
     
     let htmlVins = '';
-    vinsIniciales.forEach(v => {
+    vinsIniciales.forEach((v, idx) => {
+        const mod = v.modelo || 'Unidad';
+        const orig = v.origen || 'Origen';
+        const dest = v.destino || 'Destino';
+        const posIndex = idx + 1;
+        const badgeSecuencia = (posIndex === 1) 
+            ? `<span class="badge bg-success px-2 py-1 fs-11 me-1"><i class="ri-number-1 me-1"></i>1º EN CARGAR</span>`
+            : `<span class="badge bg-info px-2 py-1 fs-11 me-1"><i class="ri-truck-line me-1"></i>${posIndex}º EN CARGAR</span>`;
+
         htmlVins += `
-        <li class="list-group-item cursor-move shadow-sm mb-2 rounded border-start border-3 border-success bg-white" data-id-unidad="${v.id_unidad}">
+        <li class="list-group-item cursor-move shadow-sm mb-2 rounded border-start border-3 border-success bg-white" 
+            data-id-unidad="${v.id_unidad}"
+            data-vin="${v.vin}"
+            data-num-serie="${v.num_serie || ''}"
+            data-modelo="${mod}"
+            data-origen="${orig}"
+            data-destino="${dest}">
             <div class="d-flex align-items-center">
-                <div class="flex-shrink-0 me-3">
+                <div class="flex-shrink-0 me-2">
                     <i class="ri-draggable fs-18 text-muted"></i>
                 </div>
                 <div class="flex-grow-1">
-                    <h6 class="mb-0 fs-13">VIN: <span class="text-success fw-bold">${v.vin}</span></h6>
-                    <p class="text-muted mb-0 fs-11">N/S: ${v.num_serie || 'N/A'}</p>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h6 class="mb-0 fs-13 text-success fw-bold">VIN: ${v.vin}</h6>
+                        <div>
+                            ${badgeSecuencia}
+                            <span class="badge bg-soft-secondary text-dark fs-11">${mod}</span>
+                        </div>
+                    </div>
+                    <p class="text-dark mb-0 fs-11 fw-semibold">
+                        <i class="ri-map-pin-line text-danger me-1"></i>${orig} 
+                        <i class="ri-arrow-right-line mx-1 text-muted"></i> 
+                        <i class="ri-map-pin-2-fill text-success me-1"></i>${dest}
+                    </p>
+                    <small class="text-muted fs-11">N/S: ${v.num_serie || 'N/A'}</small>
                 </div>
             </div>
         </li>`;
