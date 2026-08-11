@@ -60,9 +60,9 @@
                                 <h6 class="card-title mb-0 fw-bold text-secondary"><i class="ri-truck-line me-1"></i> Asignación a Vehículos</h6>
                                 <small class="text-muted">Arrastre aquí para cargar (El de arriba se baja al último)</small>
                             </div>
-                            <!-- Botón para agregar más madrinas a este envío -->
-                            <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="agregarVehiculo();">
-                                <i class="ri-add-line me-1"></i> Agregar Vehículo / Madrina
+                            <!-- Botón para agregar más madrinas/choferes a este envío -->
+                            <button class="btn btn-sm btn-outline-primary rounded-pill px-3" id="btn-agregar-vehiculo" onclick="agregarVehiculo();">
+                                <i class="ri-add-line me-1"></i> Agregar Vehículo
                             </button>
                         </div>
                         <div class="card-body" id="contenedor-vehiculos">
@@ -97,14 +97,14 @@
                     Empresa Trasladista: <strong id="lbl-trasladista-nombre">Cargando...</strong>
                 </div>
 
-                <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active" data-bs-toggle="tab" href="#tab-madrinas" role="tab">
+                <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" role="tablist" id="modal-vehiculo-nav-tabs">
+                    <li class="nav-item" id="nav-tab-madrinas">
+                        <a class="nav-link active" id="link-tab-madrinas" data-bs-toggle="tab" href="#tab-madrinas" role="tab">
                             <i class="ri-truck-line me-1"></i> Madrinas del Catálogo
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" href="#tab-choferes" role="tab">
+                    <li class="nav-item" id="nav-tab-choferes">
+                        <a class="nav-link" id="link-tab-choferes" data-bs-toggle="tab" href="#tab-choferes" role="tab">
                             <i class="ri-steering-2-line me-1"></i> Choferes (Rodando)
                         </a>
                     </li>

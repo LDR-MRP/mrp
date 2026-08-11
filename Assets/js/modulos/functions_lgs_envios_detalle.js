@@ -30,10 +30,20 @@ function cargarDatosDetalle() {
                     g_madrinasProveedor = objData.data.madrinas || [];
                     g_choferesProveedor = objData.data.choferes || [];
 
-                    // 1. Mostrar nombre de la empresa trasladista
+                    // 1. Mostrar nombre de la empresa trasladista y personalizar botón
                     const lblProv = document.getElementById('lbl-trasladista-nombre');
                     if (lblProv) {
                         lblProv.innerText = g_envioData.trasladista || 'Sin Trasladista Asignado';
+                    }
+
+                    const idTipoTraslado = parseInt(g_envioData.id_tipo_traslado || 1);
+                    const btnAdd = document.getElementById('btn-agregar-vehiculo');
+                    if (btnAdd) {
+                        if (idTipoTraslado === 1) {
+                            btnAdd.innerHTML = '<i class="ri-truck-line me-1"></i> Agregar Madrina';
+                        } else {
+                            btnAdd.innerHTML = '<i class="ri-steering-2-line me-1"></i> Seleccionar Chofer (Rodando)';
+                        }
                     }
 
                     // 2. Renderizar VINs Disponibles en el pool izquierdo
@@ -212,6 +222,40 @@ function agregarVehiculo() {
             });
             tbodyC.innerHTML = htmlC;
         }
+    }
+
+    // Filtrar pestañas según Tipo de Traslado (1 = Madrina, 2 = Chofer Rodando)
+    const idTipoTraslado = parseInt(g_envioData ? g_envioData.id_tipo_traslado : 1);
+    const tabMadrinasNav = document.getElementById('nav-tab-madrinas');
+    const tabChoferesNav = document.getElementById('nav-tab-choferes');
+    const linkMadrinas  = document.getElementById('link-tab-madrinas');
+    const linkChoferes  = document.getElementById('link-tab-choferes');
+    const paneMadrinas  = document.getElementById('tab-madrinas');
+    const paneChoferes  = document.getElementById('tab-choferes');
+    const modalTitle    = document.getElementById('modalVehiculoLabel');
+
+    if (idTipoTraslado === 1) {
+        // Es Traslado en Madrina: Mostrar solo pestaña de Madrinas
+        if (tabMadrinasNav) tabMadrinasNav.style.display = 'block';
+        if (tabChoferesNav) tabChoferesNav.style.display = 'none';
+
+        if (linkMadrinas) linkMadrinas.classList.add('active');
+        if (linkChoferes) linkChoferes.classList.remove('active');
+        if (paneMadrinas) paneMadrinas.classList.add('show', 'active');
+        if (paneChoferes) paneChoferes.classList.remove('show', 'active');
+
+        if (modalTitle) modalTitle.innerHTML = '<i class="ri-truck-line me-2"></i> Seleccionar Madrina del Trasladista';
+    } else {
+        // Es Traslado por Chofer (Rodando): Mostrar solo pestaña de Choferes
+        if (tabMadrinasNav) tabMadrinasNav.style.display = 'none';
+        if (tabChoferesNav) tabChoferesNav.style.display = 'block';
+
+        if (linkChoferes) linkChoferes.classList.add('active');
+        if (linkMadrinas) linkMadrinas.classList.remove('active');
+        if (paneChoferes) paneChoferes.classList.add('show', 'active');
+        if (paneMadrinas) paneMadrinas.classList.remove('show', 'active');
+
+        if (modalTitle) modalTitle.innerHTML = '<i class="ri-steering-2-line me-2"></i> Seleccionar Conductor (Rodando) del Trasladista';
     }
 
     // Abrir Modal
