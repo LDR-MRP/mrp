@@ -13,6 +13,7 @@ Logs/
 debug_local.log
 
 Config/Config_local.php
+Config/Config_local.example.php
 .scannerwork/*
 sonar-project.properties
 ddagent-install.log
