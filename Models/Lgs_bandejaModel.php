@@ -161,7 +161,7 @@ class Lgs_bandejaModel extends Mysql {
     }
 
     public function getDestinos(): array {
-        return $this->select_all("SELECT id_destino, cve_destino, descripcion FROM lgs_cat_destino WHERE activo = 1 ORDER BY descripcion ASC");
+        return $this->select_all("SELECT id_tipo_destino AS id_destino, cve_destino, descripcion FROM lgs_cat_tipo_destino WHERE activo = 1 ORDER BY descripcion ASC");
     }
 
     // ---------- Entrega Interna ----------
