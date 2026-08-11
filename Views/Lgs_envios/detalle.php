@@ -46,29 +46,7 @@
                         <div class="card-body bg-light" style="min-height: 500px;">
                             <!-- Lista Sortable -->
                             <ul id="vins-disponibles" class="list-group list-group-flush sortable-list rounded" style="min-height: 400px; border: 2px dashed #ccc;">
-                                <!-- Ejemplo de ítem estático -->
-                                <li class="list-group-item cursor-move shadow-sm mb-2 rounded border-start border-3 border-primary" data-id-unidad="1">
-                                    <div class="d-flex align-items-center">
-                                        <div class="flex-shrink-0 me-3">
-                                            <i class="ri-draggable fs-18 text-muted"></i>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0">VIN: <span class="text-primary">3VW1234567890</span></h6>
-                                            <p class="text-muted mb-0 fs-12">Destino: Cliente Final A</p>
-                                        </div>
-                                    </div>
-                                </li>
-                                <li class="list-group-item cursor-move shadow-sm mb-2 rounded border-start border-3 border-primary" data-id-unidad="2">
-                                    <div class="d-flex align-items-center">
-                                        <div class="flex-shrink-0 me-3">
-                                            <i class="ri-draggable fs-18 text-muted"></i>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0">VIN: <span class="text-primary">3VW0987654321</span></h6>
-                                            <p class="text-muted mb-0 fs-12">Destino: Carrocero B</p>
-                                        </div>
-                                    </div>
-                                </li>
+                                <!-- Se llena dinámicamente desde JS -->
                             </ul>
                         </div>
                     </div>
@@ -82,29 +60,93 @@
                                 <h6 class="card-title mb-0 fw-bold text-secondary"><i class="ri-truck-line me-1"></i> Asignación a Vehículos</h6>
                                 <small class="text-muted">Arrastre aquí para cargar (El de arriba se baja al último)</small>
                             </div>
-                            <!-- Botón para agregar más madrinas a este envío si es necesario -->
-                            <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="agregarVehiculo();">
-                                <i class="ri-add-line"></i> Agregar Madrina
+                            <!-- Botón para agregar más madrinas a este envío -->
+                            <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="agregarVehiculo();">
+                                <i class="ri-add-line me-1"></i> Agregar Vehículo / Madrina
                             </button>
                         </div>
                         <div class="card-body" id="contenedor-vehiculos">
-                            
-                            <!-- EJEMPLO DE MADRINA 1 -->
-                            <div class="border rounded p-3 mb-4 bg-light">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h6 class="fw-bold text-dark mb-0">Madrina 1 (Tracto: T-01 / Nodriza: N-05)</h6>
-                                    <span class="badge bg-primary rounded-pill">0/9 VINs</span>
-                                </div>
-                                <ul class="list-group sortable-list vehiculo-list" data-id-madrina="1" style="min-height: 100px; border: 2px dashed #999;">
-                                    <!-- Aquí caen los VINs -->
-                                </ul>
+                            <!-- Se inyecta dinámicamente las madrinas/choferes asignados -->
+                            <div class="text-center text-muted py-5" id="empty-vehiculos-msg">
+                                <i class="ri-truck-line fs-1 display-4 text-muted opacity-50"></i>
+                                <p class="mt-2 mb-0">No se han asignado vehículos a este envío.</p>
+                                <small class="text-muted">Haga clic en <strong>"Agregar Vehículo / Madrina"</strong> para seleccionar del catálogo del trasladista.</small>
                             </div>
-
                         </div>
                     </div>
                 </div>
             </div>
 
+        </div>
+    </div>
+</div>
+
+<!-- MODAL AGREGAR VEHÍCULO / MADRINA DEL PROVEEDOR -->
+<div class="modal fade" id="modalAgregarVehiculo" tabindex="-1" aria-labelledby="modalVehiculoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-light border-bottom-0">
+                <h5 class="modal-title fw-bold text-primary" id="modalVehiculoLabel">
+                    <i class="ri-truck-line me-2"></i> Seleccionar Vehículo / Conductor del Trasladista
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-info border-0 shadow-sm mb-4">
+                    <i class="ri-information-line me-1 fs-15 align-middle"></i> 
+                    Empresa Trasladista: <strong id="lbl-trasladista-nombre">Cargando...</strong>
+                </div>
+
+                <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#tab-madrinas" role="tab">
+                            <i class="ri-truck-line me-1"></i> Madrinas del Catálogo
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#tab-choferes" role="tab">
+                            <i class="ri-steering-2-line me-1"></i> Choferes (Rodando)
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="tab-content text-muted">
+                    <!-- Pestaña Madrinas -->
+                    <div class="tab-pane active" id="tab-madrinas" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="tblModalMadrinas">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th>Económico</th>
+                                        <th>Placas</th>
+                                        <th>Capacidad</th>
+                                        <th>Chofer Asignado</th>
+                                        <th class="text-end">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyModalMadrinas"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Pestaña Choferes -->
+                    <div class="tab-pane" id="tab-choferes" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="tblModalChoferes">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th>Nombre del Conductor</th>
+                                        <th>N° Licencia</th>
+                                        <th>Tipo Licencia</th>
+                                        <th class="text-end">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyModalChoferes"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -116,7 +158,6 @@
     .sortable-ghost { opacity: 0.4; background-color: #e9ecef; }
 </style>
 
-<!-- Suponiendo que el proyecto usa SortableJS, lo cargamos si no está global -->
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 
 <?php footerAdmin($data); ?>

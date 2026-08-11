@@ -1,11 +1,22 @@
-function fntSwitchTab(tabId) {
-    let tabEl = document.querySelector(tabId);
-    if (tabEl) {
-        if (typeof bootstrap !== 'undefined' && bootstrap.Tab && typeof bootstrap.Tab.getOrCreateInstance === 'function') {
-            bootstrap.Tab.getOrCreateInstance(tabEl).show();
-        } else {
-            tabEl.click();
-        }
+function fntSwitchView(view) {
+    const secGrid = document.querySelector("#view-index-madrinas");
+    const secForm = document.querySelector("#view-form-madrinas");
+
+    if (view === 'form') {
+        if (secGrid) secGrid.style.display = "none";
+        if (secForm) secForm.style.display = "block";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+        if (secForm) secForm.style.display = "none";
+        if (secGrid) secGrid.style.display = "block";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+function updateCapacidadDisplay(val) {
+    const lbl = document.querySelector('#lbl-capacidad-display');
+    if (lbl) {
+        lbl.textContent = val || '0';
     }
 }
 
@@ -17,18 +28,48 @@ document.addEventListener('DOMContentLoaded', function() {
         "aServerSide": false,
         "ajax": {
             "url": base_url + "/prv_madrinas/getMadrinas",
-            "dataSrc": ""
+            "dataSrc": function(json) {
+                let data = json || [];
+                
+                // Actualizar KPIs de Madrinas de forma dinámica
+                let total = data.length;
+                let asignadas = data.filter(d => d.chofer_actual && d.chofer_actual.trim() !== '').length;
+                let sinChofer = total - asignadas;
+                let capacidadTotal = data.reduce((acc, curr) => acc + (parseInt(curr.capacidad_vehiculos) || 0), 0);
+
+                let kpiTotal = document.querySelector('#kpi-total-madrinas');
+                let kpiAsignadas = document.querySelector('#kpi-asignadas');
+                let kpiSinChofer = document.querySelector('#kpi-sin-chofer');
+                let kpiCapacidad = document.querySelector('#kpi-capacidad-total');
+
+                if (kpiTotal) kpiTotal.textContent = total;
+                if (kpiAsignadas) kpiAsignadas.textContent = asignadas;
+                if (kpiSinChofer) kpiSinChofer.textContent = sinChofer;
+                if (kpiCapacidad) kpiCapacidad.textContent = capacidadTotal;
+
+                return data;
+            }
         },
         "columns": [
             { "data": "id_madrina" },
-            { "data": "trasladista" },
-            { "data": "numero_economico" },
+            { 
+                "data": "trasladista",
+                "render": function(data) {
+                    return '<span class="fw-medium text-body">' + (data || '-') + '</span>';
+                }
+            },
+            { 
+                "data": "numero_economico",
+                "render": function(data) {
+                    return '<span class="badge bg-soft-primary text-primary fs-12 fw-bold">' + (data || '-') + '</span>';
+                }
+            },
             {
                 "data": null,
                 "render": function(data) {
                     let tracto = data.placas || 'S/P';
                     let caja = data.placa_caja ? ' <small class="text-muted">(Caja: ' + data.placa_caja + ')</small>' : '';
-                    return '<b>' + tracto + '</b>' + caja;
+                    return '<span class="fw-bold">' + tracto + '</span>' + caja;
                 }
             },
             {
@@ -43,15 +84,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 "data": "chofer_actual",
                 "render": function(data) {
                     if (data) {
-                        return '<span class="badge bg-info"><i class="ri-steering-fill me-1"></i>' + data + '</span>';
+                        return '<span class="badge bg-soft-success text-success fs-12"><i class="ri-steering-fill me-1"></i>' + data + '</span>';
                     }
-                    return '<span class="text-muted fs-12">Sin asignar</span>';
+                    return '<span class="badge bg-soft-warning text-warning fs-12">Sin asignar</span>';
                 }
             },
             {
                 "data": "capacidad_vehiculos",
                 "render": function(data) {
-                    return '<span class="badge bg-primary">' + data + ' vehs.</span>';
+                    return '<span class="badge bg-primary fs-12">' + data + ' vehs.</span>';
                 }
             },
             { "data": "options" }
@@ -64,42 +105,44 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ── FORM MADRINA ──────────────────────────────────────────────
     let formMadrina = document.querySelector("#formMadrina");
-    formMadrina.addEventListener("submit", function(e) {
-        e.preventDefault();
-        let request = new XMLHttpRequest();
-        let ajaxUrl = base_url + '/prv_madrinas/store';
-        let formData = new FormData(formMadrina);
-        request.open("POST", ajaxUrl, true);
-        request.send(formData);
-        request.onreadystatechange = function() {
-            if (request.readyState !== 4) return;
-            if (request.status === 200 || request.status === 201) {
-                let objData = JSON.parse(request.responseText);
-                if (objData.status === "success") {
-                    formMadrina.reset();
-                    tableMadrinas.ajax.reload();
-                    Swal.fire({
-                        title: "Madrinas",
-                        text: objData.message || "Guardado exitosamente",
-                        icon: "success",
-                        confirmButtonText: "OK",
-                        confirmButtonColor: "#28a745"
-                    }).then(() => {
-                        fntSwitchTab('#tabList');
-                    });
-                } else {
-                    Swal.fire("Error", objData.message || "Error al procesar", "error");
-                }
-            } else {
-                try {
+    if (formMadrina) {
+        formMadrina.addEventListener("submit", function(e) {
+            e.preventDefault();
+            let request = new XMLHttpRequest();
+            let ajaxUrl = base_url + '/prv_madrinas/store';
+            let formData = new FormData(formMadrina);
+            request.open("POST", ajaxUrl, true);
+            request.send(formData);
+            request.onreadystatechange = function() {
+                if (request.readyState !== 4) return;
+                if (request.status === 200 || request.status === 201) {
                     let objData = JSON.parse(request.responseText);
-                    Swal.fire("Error", objData.message || "Error en la petición", "error");
-                } catch(err) {
-                    Swal.fire("Error", "Error al procesar la solicitud (" + request.status + ")", "error");
+                    if (objData.status === "success") {
+                        formMadrina.reset();
+                        tableMadrinas.ajax.reload();
+                        Swal.fire({
+                            title: "Madrinas",
+                            text: objData.message || "Guardado exitosamente",
+                            icon: "success",
+                            confirmButtonText: "OK",
+                            confirmButtonColor: "#28a745"
+                        }).then(() => {
+                            fntSwitchView('grid');
+                        });
+                    } else {
+                        Swal.fire("Error", objData.message || "Error al procesar", "error");
+                    }
+                } else {
+                    try {
+                        let objData = JSON.parse(request.responseText);
+                        Swal.fire("Error", objData.message || "Error en la petición", "error");
+                    } catch(err) {
+                        Swal.fire("Error", "Error al procesar la solicitud (" + request.status + ")", "error");
+                    }
                 }
-            }
-        };
-    });
+            };
+        });
+    }
 
     // ── FORM ASIGNAR CHOFER ───────────────────────────────────────
     let formAsignarChofer = document.querySelector("#formAsignarChofer");
@@ -146,23 +189,25 @@ document.addEventListener('DOMContentLoaded', function() {
 // ── NUEVO ─────────────────────────────────────────────────────────
 function fntNewMadrina() {
     document.querySelector('#id_madrina').value = "";
-    document.querySelector('#btnActionForm').classList.replace("btn-info", "btn-primary");
-    document.querySelector('#btnText').innerHTML = "Guardar";
-    document.querySelector('#tabForm').innerHTML = "NUEVA MADRINA";
+    document.querySelector('#form-madrina-title').textContent = "Registrar Nueva Madrina";
+    document.querySelector('#breadcrumb-form-madrina').textContent = "Nueva Madrina";
+    document.querySelector('#btnText').textContent = "Guardar Madrina";
     document.querySelector("#formMadrina").reset();
+    updateCapacidadDisplay(8);
+    fntSwitchView('form');
 }
 
 // ── CANCELAR ──────────────────────────────────────────────────────
 function cancelForm() {
     document.querySelector("#formMadrina").reset();
-    fntSwitchTab('#tabList');
+    fntSwitchView('grid');
 }
 
 // ── EDITAR ────────────────────────────────────────────────────────
 function fntEditMadrina(id) {
-    document.querySelector('#tabForm').innerHTML = "EDITAR MADRINA";
-    document.querySelector('#btnActionForm').classList.replace("btn-primary", "btn-info");
-    document.querySelector('#btnText').innerHTML = "Actualizar";
+    document.querySelector('#form-madrina-title').textContent = "Actualizar Madrina";
+    document.querySelector('#breadcrumb-form-madrina').textContent = "Editar Madrina";
+    document.querySelector('#btnText').textContent = "Actualizar Madrina";
 
     let request = new XMLHttpRequest();
     let ajaxUrl = base_url + '/prv_madrinas/getMadrina/' + id;
@@ -184,7 +229,8 @@ function fntEditMadrina(id) {
             document.querySelector("#anio").value                = d.anio || '';
             document.querySelector("#color").value               = d.color || '';
             document.querySelector("#capacidad_vehiculos").value = d.capacidad_vehiculos;
-            fntSwitchTab('#tabForm');
+            updateCapacidadDisplay(d.capacidad_vehiculos);
+            fntSwitchView('form');
         } else {
             Swal.fire("Error", objData.message, "error");
         }
@@ -201,7 +247,7 @@ function fntHistorialMadrina(id) {
         if (request.readyState !== 4 || request.status !== 200) return;
         let objData = JSON.parse(request.responseText);
         if (objData.status === "success") {
-            let madrina  = objData.data.madrina;
+            let madrina   = objData.data.madrina;
             let historial = objData.data.historial;
 
             document.querySelector("#historial_id_madrina").value   = madrina.id_madrina;

@@ -21,11 +21,11 @@ Mié 29 Jul ─► Jue 30 Jul │ Mar 04 Ago ─► Vie 07 Ago │ Lun 10 Ago �
 | # | Épica | Estado | Fecha Inicio | Fecha Término |
 |---|---|:---:|---|---|
 | **E1** | Catálogos Base de Transporte (Proveedores, Choferes, Madrinas e Historial) | 🟢 100% Completado | 29 Jul 2026 | 30 Jul 2026 |
-| **E2** | Catálogos de Logística + Módulo de Envíos (Planeación, VINs, Acomodo, Costos, Km API) | 🟡 En Desarrollo | 04 Ago 2026 | 07 Ago 2026 |
-| **E3** | Planeaciones y Aprobaciones de Envíos (Agrupador EX-, Notificación Mail, Panel) | 🔴 Pendiente | 10 Ago 2026 | 14 Ago 2026 |
-| **E4** | Ejecución del Envío, Despacho y Solicitudes al Área de Entregas (Orden Acomodo) | 🔴 Pendiente | 17 Ago 2026 | 18 Ago 2026 |
-| **E5** | Evidencias Multimedia (Salida/Llegada) y Confirmación de Entrega en Destino | 🔴 Pendiente | 19 Ago 2026 | 20 Ago 2026 |
-| **E6** | Panel de Rutas Geográficas (Monitoreo En Tránsito con Mapa) | 🔴 Pendiente | 21 Ago 2026 | 21 Ago 2026 |
+| **E2** | Catálogos de Logística + Módulo de Envíos (Planeación, VINs, Acomodo, Costos, Km API) | 🟢 100% Completado | 04 Ago 2026 | 07 Ago 2026 |
+| **E3** | Planeaciones y Aprobaciones de Envíos (Agrupador EX-, Notificación Mail, Panel) | 🟢 100% Completado | 10 Ago 2026 | 14 Ago 2026 |
+| **E4** | Ejecución del Envío, Despacho y Solicitudes al Área de Entregas (Orden Acomodo) | 🟢 100% Completado | 17 Ago 2026 | 18 Ago 2026 |
+| **E5** | Evidencias Multimedia (Salida/Llegada) y Confirmación de Entrega en Destino | 🟢 100% Completado | 19 Ago 2026 | 20 Ago 2026 |
+| **E6** | Panel de Rutas Geográficas (Monitoreo En Tránsito con Mapa) | 🟢 100% Completado | 21 Ago 2026 | 21 Ago 2026 |
 
 
 ## 📆 Calendario Diario Detallado por Subtareas

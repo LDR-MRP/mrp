@@ -22,6 +22,8 @@ class Lgs_enviosModel extends Mysql
             'id_motivo',
             'id_proveedor',
             'id_origen',
+            'id_destino',
+            'destino_nombre_libre',
             'km_total',
             'costo_total',
             'fecha_tentativa_envio',
@@ -67,7 +69,6 @@ class Lgs_enviosModel extends Mysql
             return 'EN-000001';
         }
         
-        // Extraer número y sumar 1
         $num = intval(substr($ultimo, 3)) + 1;
         return 'EN-' . str_pad($num, 6, '0', STR_PAD_LEFT);
     }
@@ -84,6 +85,7 @@ class Lgs_enviosModel extends Mysql
                     mo.descripcion AS motivo,
                     pr.razon_social AS trasladista,
                     o.nombre AS origen,
+                    COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social, d.nombre, e.destino_nombre_libre, 'Sin Destino') AS destino,
                     e.km_total,
                     e.costo_total,
                     e.fecha_tentativa_envio,
@@ -94,11 +96,13 @@ class Lgs_enviosModel extends Mysql
                 LEFT JOIN lgs_cat_motivo_envio mo ON e.id_motivo = mo.id_motivo
                 LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
                 LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
+                LEFT JOIN cli_clientes c ON e.id_destino = c.idcliente
+                LEFT JOIN lgs_cat_destinos d ON e.id_destino = d.id_destino
                 WHERE e.deleted_at IS NULL
                 ORDER BY e.id_envio DESC";
         
         $request = $this->select_all($sql);
-        return $request;
+        return $request ?: [];
     }
 
     /**
@@ -134,20 +138,114 @@ class Lgs_enviosModel extends Mysql
     }
 
     /**
-     * Obtiene los catálogos para alimentar los selects del modal
+     * Obtiene los catálogos para alimentar los selects del modal/formulario
      */
     public function getSelectCatalogos(): array
     {
-        $tiposTraslado = $this->select_all("SELECT id_tipo_traslado AS id, nombre FROM lgs_cat_tipo_traslado WHERE activo = 1");
-        $motivos = $this->select_all("SELECT id_motivo AS id, nombre FROM lgs_cat_motivo_envio WHERE activo = 1");
-        $proveedores = $this->select_all("SELECT id_proveedor AS id, razon_social AS nombre FROM prv_cat_proveedores WHERE deleted_at IS NULL");
-        $origenes = $this->select_all("SELECT id_origen AS id, nombre FROM lgs_cat_origenes WHERE activo = 1");
+        // 1. Tipos de Traslado
+        try {
+            $tiposTraslado = $this->select_all("SELECT id_tipo_traslado AS id, nombre FROM lgs_cat_tipo_traslado WHERE activo = 1");
+            if (empty($tiposTraslado)) {
+                $tiposTraslado = [
+                    ['id' => 1, 'nombre' => 'Madrina'],
+                    ['id' => 2, 'nombre' => 'Chofer (Rodando)']
+                ];
+            }
+        } catch (Throwable $e) {
+            $tiposTraslado = [
+                ['id' => 1, 'nombre' => 'Madrina'],
+                ['id' => 2, 'nombre' => 'Chofer (Rodando)']
+            ];
+        }
+
+        // 2. Motivos
+        try {
+            $motivos = $this->select_all("SELECT id_motivo AS id, descripcion AS nombre FROM lgs_cat_motivo_envio WHERE activo = 1 ORDER BY descripcion ASC");
+            if (empty($motivos)) {
+                $motivos = [
+                    ['id' => 1, 'nombre' => 'Entrega a Distribuidor'],
+                    ['id' => 2, 'nombre' => 'Traslado a Carrocería'],
+                    ['id' => 3, 'nombre' => 'Traslado entre Almacenes'],
+                    ['id' => 4, 'nombre' => 'Traslado a Planta'],
+                    ['id' => 5, 'nombre' => 'Devolución de Unidad'],
+                    ['id' => 6, 'nombre' => 'Otro motivo']
+                ];
+            }
+        } catch (Throwable $e) {
+            $motivos = [
+                ['id' => 1, 'nombre' => 'Entrega a Distribuidor'],
+                ['id' => 2, 'nombre' => 'Traslado a Carrocería'],
+                ['id' => 3, 'nombre' => 'Traslado entre Almacenes'],
+                ['id' => 4, 'nombre' => 'Traslado a Planta'],
+                ['id' => 5, 'nombre' => 'Devolución de Unidad'],
+                ['id' => 6, 'nombre' => 'Otro motivo']
+            ];
+        }
+
+        // 3. Proveedores / Trasladistas
+        try {
+            $sqlProv = "SELECT p.id_proveedor AS id, CONCAT(p.razon_social, ' (', p.rfc, ')') AS nombre 
+                        FROM prv_cat_proveedores p
+                        INNER JOIN prv_rel_proveedores_actividades r ON r.id_proveedor = p.id_proveedor
+                        INNER JOIN prv_cat_actividades a ON a.id_actividad = r.id_actividad
+                        WHERE a.cve_actividad = 'TRASLADO_UNIDADES' AND p.deleted_at IS NULL
+                        ORDER BY p.razon_social ASC";
+            $proveedores = $this->select_all($sqlProv);
+            if (empty($proveedores)) {
+                $proveedores = $this->select_all("SELECT id_proveedor AS id, razon_social AS nombre FROM prv_cat_proveedores WHERE deleted_at IS NULL ORDER BY razon_social ASC");
+            }
+        } catch (Throwable $e) {
+            try {
+                $proveedores = $this->select_all("SELECT id_proveedor AS id, razon_social AS nombre FROM prv_cat_proveedores WHERE deleted_at IS NULL ORDER BY razon_social ASC");
+            } catch (Throwable $e2) {
+                $proveedores = [];
+            }
+        }
+
+        // 4. Orígenes
+        try {
+            $origenes = $this->select_all("SELECT id_origen AS id, nombre FROM lgs_cat_origenes WHERE activo = 1 ORDER BY nombre ASC");
+            if (empty($origenes)) {
+                $origenes = [
+                    ['id' => 1, 'nombre' => 'Planta Tlajomulco 1'],
+                    ['id' => 2, 'nombre' => 'Planta Tlajomulco 2'],
+                    ['id' => 3, 'nombre' => 'Patio Central Logística']
+                ];
+            }
+        } catch (Throwable $e) {
+            $origenes = [
+                ['id' => 1, 'nombre' => 'Planta Tlajomulco 1'],
+                ['id' => 2, 'nombre' => 'Planta Tlajomulco 2'],
+                ['id' => 3, 'nombre' => 'Patio Central Logística']
+            ];
+        }
+
+        // 5. Destinos (Clientes y Distribuidores desde cli_clientes + lgs_cat_destinos)
+        try {
+            $sqlDest = "SELECT idcliente AS id, 
+                               CONCAT(COALESCE(NULLIF(nombre_comercial, ''), razon_social), 
+                                      IF(clave_distribuidor IS NOT NULL AND clave_distribuidor != '', CONCAT(' (', clave_distribuidor, ')'), '')) AS nombre
+                        FROM cli_clientes 
+                        WHERE estado <> 0 
+                        ORDER BY razon_social ASC";
+            $destinos = $this->select_all($sqlDest);
+            if (empty($destinos)) {
+                $destinos = $this->select_all("SELECT id_destino AS id, nombre FROM lgs_cat_destinos WHERE activo = 1 ORDER BY nombre ASC");
+            }
+        } catch (Throwable $e) {
+            try {
+                $destinos = $this->select_all("SELECT id_destino AS id, nombre FROM lgs_cat_destinos WHERE activo = 1 ORDER BY nombre ASC");
+            } catch (Throwable $e2) {
+                $destinos = [];
+            }
+        }
 
         return [
             'tipos_traslado' => $tiposTraslado,
-            'motivos' => $motivos,
-            'proveedores' => $proveedores,
-            'origenes' => $origenes
+            'motivos'        => $motivos,
+            'proveedores'    => $proveedores,
+            'origenes'       => $origenes,
+            'destinos'       => $destinos
         ];
     }
 
@@ -163,5 +261,131 @@ class Lgs_enviosModel extends Mysql
             }
         }
         return $campos;
+    }
+
+    /**
+     * Obtiene la cabecera completa de un envío por su ID
+     */
+    public function getEnvioCabecera(int $idEnvio): array
+    {
+        $sql = "SELECT 
+                    e.id_envio,
+                    e.folio,
+                    e.id_tipo_traslado,
+                    e.id_motivo,
+                    e.id_proveedor,
+                    pr.razon_social AS trasladista,
+                    e.id_origen,
+                    o.nombre AS origen,
+                    e.id_destino,
+                    COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social, d.nombre, e.destino_nombre_libre, 'Sin Destino') AS destino,
+                    e.km_total,
+                    e.costo_total,
+                    e.id_estado
+                FROM lgs_envios e
+                LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
+                LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
+                LEFT JOIN cli_clientes c ON e.id_destino = c.idcliente
+                LEFT JOIN lgs_cat_destinos d ON e.id_destino = d.id_destino
+                WHERE e.id_envio = ? AND e.deleted_at IS NULL";
+        $res = $this->select($sql, [$idEnvio]);
+        return $res ?: [];
+    }
+
+    /**
+     * Obtiene las madrinas activas pertenecientes al proveedor del envío
+     */
+    public function getMadrinasPorProveedor(int $idProveedor): array
+    {
+        $sql = "SELECT 
+                    m.id_madrina,
+                    m.numero_economico,
+                    m.placas,
+                    m.placa_caja,
+                    m.marca,
+                    m.modelo,
+                    m.capacidad_vehiculos,
+                    (SELECT CONCAT(c.nombre, ' ', c.apellidos) 
+                     FROM prv_det_madrina_chofer_historial h
+                     INNER JOIN prv_det_choferes c ON c.id_chofer = h.id_chofer
+                     WHERE h.id_madrina = m.id_madrina AND h.activo = 1 LIMIT 1) AS chofer_asignado
+                FROM prv_det_madrinas m
+                WHERE (m.id_proveedor = ? OR ? = 0) AND m.deleted_at IS NULL
+                ORDER BY m.numero_economico ASC";
+        $res = $this->select_all($sql, [$idProveedor, $idProveedor]);
+        return $res ?: [];
+    }
+
+    /**
+     * Obtiene los choferes activos pertenecientes al proveedor del envío
+     */
+    public function getChoferesPorProveedor(int $idProveedor): array
+    {
+        $sql = "SELECT 
+                    c.id_chofer,
+                    CONCAT(c.nombre, ' ', c.apellidos) AS nombre_completo,
+                    c.num_licencia,
+                    c.tipo_licencia
+                FROM prv_det_choferes c
+                WHERE (c.id_proveedor = ? OR ? = 0) AND c.deleted_at IS NULL
+                ORDER BY c.nombre ASC";
+        $res = $this->select_all($sql, [$idProveedor, $idProveedor]);
+        return $res ?: [];
+    }
+
+    /**
+     * Obtiene VINs disponibles en el origen que no estén asignados a otros envíos activos
+     */
+    public function getVinsDisponiblesOrigen(int $idOrigen = 0, int $idEnvioActual = 0): array
+    {
+        $sql = "SELECT 
+                    u.idunidad AS id_unidad,
+                    u.clave AS vin,
+                    u.num_unidad AS num_serie,
+                    'Unidad Terminada' AS modelo
+                FROM mrp_unidades_terminadas u
+                WHERE u.estado <> 0
+                  AND u.idunidad NOT IN (
+                      SELECT id_unidad FROM lgs_envios_vins WHERE id_envio != ?
+                  )
+                ORDER BY u.idunidad DESC
+                LIMIT 50";
+        $res = $this->select_all($sql, [$idEnvioActual]);
+        return $res ?: [];
+    }
+
+    /**
+     * Obtiene las asignaciones/acomodo existentes en un envío
+     */
+    public function getAcomodoExistenteEnvio(int $idEnvio): array
+    {
+        $sql = "SELECT 
+                    v.id,
+                    v.id_envio,
+                    v.id_unidad,
+                    u.clave AS vin,
+                    u.num_unidad AS num_serie,
+                    v.id_madrina,
+                    v.id_chofer,
+                    v.posicion_acomodo,
+                    m.numero_economico AS madrina_nombre,
+                    CONCAT(c.nombre, ' ', c.apellidos) AS chofer_nombre
+                FROM lgs_envios_vins v
+                INNER JOIN mrp_unidades_terminadas u ON v.id_unidad = u.idunidad
+                LEFT JOIN prv_det_madrinas m ON v.id_madrina = m.id_madrina
+                LEFT JOIN prv_det_choferes c ON v.id_chofer = c.id_chofer
+                WHERE v.id_envio = ?
+                ORDER BY v.id_madrina ASC, v.id_chofer ASC, v.posicion_acomodo ASC";
+        $res = $this->select_all($sql, [$idEnvio]);
+        return $res ?: [];
+    }
+
+    /**
+     * Elimina el acomodo de VINs existente para volverlo a guardar
+     */
+    public function deleteAcomodoEnvio(PDO $db, int $idEnvio): void
+    {
+        $stmt = $db->prepare("DELETE FROM lgs_envios_vins WHERE id_envio = ?");
+        $stmt->execute([$idEnvio]);
     }
 }

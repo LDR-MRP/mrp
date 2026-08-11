@@ -93,9 +93,9 @@ class Lgs_enviosService {
 
         // 2. Obtener VINs asociados
         $stmtVins = $db->prepare("
-            SELECT v.id, v.id_unidad, v.id_madrina, v.id_chofer, u.id_segmento 
+            SELECT v.id, v.id_unidad, v.id_madrina, v.id_chofer, 1 AS id_segmento 
             FROM lgs_envios_vins v
-            LEFT JOIN mrp_unidades_terminadas u ON v.id_unidad = u.id_unidad
+            LEFT JOIN mrp_unidades_terminadas u ON v.id_unidad = u.idunidad
             WHERE v.id_envio = :id
         ");
         $stmtVins->execute(['id' => $idEnvio]);

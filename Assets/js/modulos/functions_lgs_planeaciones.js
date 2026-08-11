@@ -1,7 +1,27 @@
+function fntSwitchView(view) {
+    const secGrid = document.querySelector("#view-index-planeaciones");
+    const secForm = document.querySelector("#view-form-planeaciones");
+
+    if (view === 'form') {
+        if (secGrid) secGrid.style.display = "none";
+        if (secForm) secForm.style.display = "block";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+        if (secForm) secForm.style.display = "none";
+        if (secGrid) secGrid.style.display = "block";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+function cancelFormPlan() {
+    let form = document.querySelector("#formPlan");
+    if (form) form.reset();
+    fntSwitchView('grid');
+}
+
 let tablePlaneaciones;
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Inicializar DataTable Planeaciones
     tablePlaneaciones = $('#tablePlaneaciones').DataTable({
         "aProcessing": true,
         "aServerSide": false,
@@ -13,57 +33,65 @@ document.addEventListener('DOMContentLoaded', function () {
             "dataSrc": ""
         },
         "columns": [
-            { "data": "folio" },
-            { "data": "descripcion" },
-            { "data": "total_rutas" },
-            { "data": "km_total" },
+            { "data": "id_planeacion" },
+            { 
+                "data": "folio",
+                "render": function(data) {
+                    return '<span class="badge bg-soft-primary text-primary fs-12 fw-bold">' + (data || 'S/F') + '</span>';
+                }
+            },
+            { 
+                "data": "descripcion",
+                "render": function(data) {
+                    return '<span class="fw-medium text-dark">' + (data || '-') + '</span>';
+                }
+            },
+            { 
+                "data": "total_rutas",
+                "render": function(data) {
+                    return '<span class="badge bg-primary fs-12">' + (data || 0) + ' Envíos</span>';
+                }
+            },
             { 
                 "data": "costo_total",
-                "render": function (data, type, row) {
+                "render": function (data) {
                     if (data == null) return '$0.00';
-                    return '$' + parseFloat(data).toFixed(2);
+                    return '<span class="fw-bold text-success">$' + parseFloat(data).toFixed(2) + '</span>';
                 }
             },
             { "data": "created_at" },
             { 
                 "data": "id_estado",
-                "render": function (data, type, row) {
+                "render": function (data) {
                     let badge = '';
                     switch(parseInt(data)) {
-                        case 1: badge = '<span class="badge bg-secondary">Borrador</span>'; break;
-                        case 2: badge = '<span class="badge bg-warning text-dark">Pendiente Aprobación</span>'; break;
-                        case 3: badge = '<span class="badge bg-danger">Rechazada</span>'; break;
-                        case 5: badge = '<span class="badge bg-success">Aprobada</span>'; break;
-                        default: badge = '<span class="badge bg-light text-dark">Estado ' + data + '</span>'; break;
+                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12">Borrador</span>'; break;
+                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12">Pendiente Aprobación</span>'; break;
+                        case 3: badge = '<span class="badge bg-soft-danger text-danger fs-12">Rechazada</span>'; break;
+                        case 5: badge = '<span class="badge bg-soft-success text-success fs-12">Aprobada</span>'; break;
+                        default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
                     }
                     return badge;
                 }
             },
             {
                 "data": "id_planeacion",
-                "render": function (data, type, row) {
-                    return `<div class="text-center">
-                                <button class="btn btn-sm btn-outline-primary" onClick="fntViewPlan(${data})" title="Ver Detalle">
-                                    <i class="ri-eye-line"></i>
+                "render": function (data) {
+                    return `<div class="text-end">
+                                <button class="btn btn-sm btn-soft-primary" onClick="fntViewPlan(${data})" title="Ver Detalle">
+                                    <i class="ri-eye-line me-1"></i> Detalle
                                 </button>
                             </div>`;
                 }
             }
         ],
-        "respose": "true",
+        "responsive": true,
         "bDestroy": true,
         "iDisplayLength": 10,
         "order": [[0, "desc"]],
         "drawCallback": function(settings) {
             actualizarMetricasPlaneaciones(settings.json || []);
         }
-    });
-
-    // Evento de Check All para la tabla del modal
-    document.getElementById('checkAllEnvios').addEventListener('change', function(e) {
-        let checkboxes = document.querySelectorAll('.chk-envio');
-        checkboxes.forEach(chk => chk.checked = e.target.checked);
-        calcularTotalesPlan();
     });
 });
 
@@ -78,22 +106,22 @@ function actualizarMetricasPlaneaciones(data) {
     if (document.getElementById('cardTotalPlaneaciones')) document.getElementById('cardTotalPlaneaciones').innerText = total;
     if (document.getElementById('cardPlanPendientes')) document.getElementById('cardPlanPendientes').innerText = pendientes;
     if (document.getElementById('cardPlanAprobadas')) document.getElementById('cardPlanAprobadas').innerText = aprobadas;
-    if (document.getElementById('cardPlanPresupuesto')) document.getElementById('cardPlanPresupuesto').innerText = '$' + montoTotal.toFixed(2);
+    if (document.getElementById('cardPlanMontoTotal')) document.getElementById('cardPlanMontoTotal').innerText = '$' + montoTotal.toFixed(2);
 }
 
 function openModalPlan() {
-    document.querySelector("#formPlaneacion").reset();
-    document.getElementById('bodyEnviosDisponibles').innerHTML = '<tr><td colspan="7" class="text-center"><div class="spinner-border text-primary spinner-border-sm" role="status"></div> Cargando envíos...</td></tr>';
-    document.getElementById('checkAllEnvios').checked = false;
-    resetTotales();
-    
-    $('#modalFormPlaneacion').modal('show');
-    
+    let form = document.querySelector("#formPlan");
+    if (form) form.reset();
+    let container = document.getElementById('containerEnviosDisponibles');
+    if (container) {
+        container.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm" role="status"></div> Cargando envíos...</div>';
+    }
+    fntSwitchView('form');
     cargarEnviosDisponibles();
 }
 
 function cargarEnviosDisponibles() {
-    let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+    let request = new XMLHttpRequest();
     let ajaxUrl = base_url + '/Lgs_planeaciones/getEnviosDisponibles';
     
     request.open("GET", ajaxUrl, true);
@@ -104,55 +132,51 @@ function cargarEnviosDisponibles() {
             let htmlBody = '';
             
             if (objData.status && objData.data.length > 0) {
+                htmlBody = '<div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="bg-light"><tr><th width="40"><input class="form-check-input" type="checkbox" id="checkAllEnvios" onchange="toggleAllEnvios(this);"></th><th>Folio</th><th>Origen</th><th>Trasladista</th><th>VINs</th><th>Costo Est.</th></tr></thead><tbody>';
                 objData.data.forEach(envio => {
                     htmlBody += `
                         <tr>
-                            <td class="text-center">
-                                <input class="form-check-input chk-envio shadow-none" type="checkbox" value="${envio.id_envio}" data-km="${envio.km_total}" data-costo="${envio.costo_total}" data-vins="${envio.total_vins}" onchange="calcularTotalesPlan();">
+                            <td>
+                                <input class="form-check-input chk-envio" type="checkbox" value="${envio.id_envio}" data-costo="${envio.costo_total}" onchange="calcularTotalesPlan();">
                             </td>
                             <td class="fw-bold">${envio.folio}</td>
                             <td>${envio.origen}</td>
                             <td>${envio.trasladista}</td>
-                            <td>${envio.total_vins}</td>
-                            <td>${parseFloat(envio.km_total).toFixed(2)}</td>
-                            <td>$${parseFloat(envio.costo_total).toFixed(2)}</td>
+                            <td><span class="badge bg-soft-info text-info">${envio.total_vins} VINs</span></td>
+                            <td class="fw-bold text-success">$${parseFloat(envio.costo_total).toFixed(2)}</td>
                         </tr>
                     `;
                 });
+                htmlBody += '</tbody></table></div>';
             } else {
-                htmlBody = '<tr><td colspan="7" class="text-center text-muted py-4"><i class="ri-error-warning-line fs-20"></i><br>No hay envíos en Estado "Creado" listos para planear.</td></tr>';
+                htmlBody = '<div class="text-center text-muted py-4"><i class="ri-error-warning-line fs-20 me-1"></i>No hay envíos en estado "Creado" pendientes de agrupar.</div>';
             }
             
-            document.getElementById('bodyEnviosDisponibles').innerHTML = htmlBody;
+            let container = document.getElementById('containerEnviosDisponibles');
+            if (container) container.innerHTML = htmlBody;
         }
     }
 }
 
-function calcularTotalesPlan() {
-    let checkboxes = document.querySelectorAll('.chk-envio:checked');
-    let totalKm = 0.0;
-    let totalCosto = 0.0;
-    let totalVins = 0;
-    
-    checkboxes.forEach(chk => {
-        totalKm += parseFloat(chk.getAttribute('data-km')) || 0;
-        totalCosto += parseFloat(chk.getAttribute('data-costo')) || 0;
-        totalVins += parseInt(chk.getAttribute('data-vins')) || 0;
-    });
-    
-    document.getElementById('lblTotalVins').innerText = totalVins;
-    document.getElementById('lblTotalKm').innerText = totalKm.toFixed(2);
-    document.getElementById('lblTotalCosto').innerText = '$' + totalCosto.toFixed(2);
+function toggleAllEnvios(masterChk) {
+    let checkboxes = document.querySelectorAll('.chk-envio');
+    checkboxes.forEach(chk => chk.checked = masterChk.checked);
+    calcularTotalesPlan();
 }
 
-function resetTotales() {
-    document.getElementById('lblTotalVins').innerText = '0';
-    document.getElementById('lblTotalKm').innerText = '0.00';
-    document.getElementById('lblTotalCosto').innerText = '$0.00';
+function calcularTotalesPlan() {
+    let checkboxes = document.querySelectorAll('.chk-envio:checked');
+    let totalCosto = 0.0;
+    
+    checkboxes.forEach(chk => {
+        totalCosto += parseFloat(chk.getAttribute('data-costo')) || 0;
+    });
+    
+    let lbl = document.getElementById('lbl-monto-plan-display');
+    if (lbl) lbl.innerText = '$' + totalCosto.toFixed(2);
 }
 
 function savePlaneacion() {
-    // 1. Recolectar IDs seleccionados
     let checkboxes = document.querySelectorAll('.chk-envio:checked');
     if (checkboxes.length === 0) {
         Swal.fire("Atención", "Debes seleccionar al menos un envío para crear la planeación.", "warning");
@@ -160,15 +184,12 @@ function savePlaneacion() {
     }
     
     let idsArr = [];
-    checkboxes.forEach(chk => {
-        idsArr.push(chk.value);
-    });
-    
-    document.getElementById('envios_ids').value = idsArr.join(',');
-    
-    let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+    checkboxes.forEach(chk => idsArr.push(chk.value));
+
+    let request = new XMLHttpRequest();
     let ajaxUrl = base_url + '/Lgs_planeaciones/store';
-    let formData = new FormData(document.querySelector("#formPlaneacion"));
+    let formData = new FormData(document.querySelector("#formPlan"));
+    formData.append('envios_ids', idsArr.join(','));
 
     Swal.fire({
         title: 'Enviando a Aprobación...',
@@ -183,16 +204,16 @@ function savePlaneacion() {
         if (request.readyState == 4 && request.status == 200) {
             let objData = JSON.parse(request.responseText);
             if (objData.status) {
-                $('#modalFormPlaneacion').modal("hide");
-                Swal.fire("¡Planeación Creada!", objData.msg, "success");
+                Swal.fire("¡Planeación Creada!", objData.msg || "Planeación enviada a aprobación correctamente", "success");
                 tablePlaneaciones.ajax.reload();
+                fntSwitchView('grid');
             } else {
-                Swal.fire("Error", objData.msg, "error");
+                Swal.fire("Error", objData.msg || "Error al guardar la planeación", "error");
             }
         }
     }
 }
 
 function fntViewPlan(idPlaneacion) {
-    Swal.fire('Detalle', 'El detalle de la planeación ' + idPlaneacion + ' se mostrará aquí.', 'info');
+    Swal.fire('Detalle', 'El detalle de la planeación ' + idPlaneacion + ' se mostrará en el visor de planeación.', 'info');
 }

@@ -4,7 +4,7 @@
     <div class="page-content">
         <div class="container-fluid">
             <section id="view-index-evidencias">
-                <!-- BREADCRUMBS -->
+                <!-- 1. BREADCRUMBS -->
                 <div class="row align-items-center mb-4">
                     <div class="col-12">
                         <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-transparent">
@@ -19,81 +19,97 @@
                     </div>
                 </div>
 
-                <!-- ENCABEZADO -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <h4 class="mb-1 text-primary fw-bold">
-                            <i class="ri-camera-lens-line me-2"></i> Evidencias Multimedia y Cierre de Entrega
-                        </h4>
-                        <p class="text-muted fs-14 mb-0">Carga fotos y videos de recepción/llegada y confirma la entrega final en destino.</p>
+                <!-- 2. HEADER CON DESCRIPCIÓN -->
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-md me-4">
+                                <span class="avatar-title text-white rounded-circle fs-2 shadow-lg border border-light" style="background-color: #C46623 !important;">
+                                    <i class="ri-camera-lens-line"></i>
+                                </span>
+                            </div>
+                            <div>
+                                <h3 class="mb-1 fw-bold text-uppercase ls-1 text-body">Evidencias y Cierre de Entrega</h3>
+                                <p class="text-muted mb-0 fs-14">
+                                    Carga multimedia de recepción/llegada y confirmación de entrega final en destino.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- CARDS DE MÉTRICAS EVIDENCIAS -->
+                <!-- 3. BLOQUE DE KPIS CIRCULARES -->
                 <div class="row mb-4">
                     <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                        <div class="card shadow-sm border-0 rounded-3 h-100">
+                        <div class="card card-animate border-0 shadow-sm rounded-3">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Rutas en Tránsito</p>
+                                        <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="cardEvidTransito">0</span></h4>
+                                        <span class="badge bg-soft-primary text-primary fw-medium mb-0 px-2 py-1">En curso</span>
+                                    </div>
                                     <div class="avatar-sm flex-shrink-0">
                                         <span class="avatar-title bg-primary-subtle text-primary rounded-circle fs-3">
                                             <i class="ri-truck-line"></i>
                                         </span>
                                     </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <p class="text-uppercase fw-semibold fs-12 text-muted mb-1">Rutas en Tránsito</p>
-                                        <h4 class="mb-0 text-dark fw-bold" id="cardEvidTransito">0</h4>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+
                     <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                        <div class="card shadow-sm border-0 rounded-3 h-100">
+                        <div class="card card-animate border-0 shadow-sm rounded-3">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Archivos Adjuntos</p>
+                                        <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="cardEvidTotalArchivos">0</span></h4>
+                                        <span class="badge bg-soft-info text-info fw-medium mb-0 px-2 py-1">Evidencias cargadas</span>
+                                    </div>
                                     <div class="avatar-sm flex-shrink-0">
                                         <span class="avatar-title bg-info-subtle text-info rounded-circle fs-3">
                                             <i class="ri-camera-lens-line"></i>
                                         </span>
                                     </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <p class="text-uppercase fw-semibold fs-12 text-muted mb-1">Total Archivos Adjuntos</p>
-                                        <h4 class="mb-0 text-dark fw-bold" id="cardEvidTotalArchivos">0</h4>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+
                     <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                        <div class="card shadow-sm border-0 rounded-3 h-100">
+                        <div class="card card-animate border-0 shadow-sm rounded-3">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Entregas Cerradas</p>
+                                        <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="cardEvidEntregadas">0</span></h4>
+                                        <span class="badge bg-soft-success text-success fw-medium mb-0 px-2 py-1">Finalizadas</span>
+                                    </div>
                                     <div class="avatar-sm flex-shrink-0">
                                         <span class="avatar-title bg-success-subtle text-success rounded-circle fs-3">
                                             <i class="ri-checkbox-circle-line"></i>
                                         </span>
                                     </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <p class="text-uppercase fw-semibold fs-12 text-muted mb-1">Entregas Cerradas</p>
-                                        <h4 class="mb-0 text-dark fw-bold" id="cardEvidEntregadas">0</h4>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+
                     <div class="col-xl-3 col-md-6">
-                        <div class="card shadow-sm border-0 rounded-3 h-100">
+                        <div class="card card-animate border-0 shadow-sm rounded-3">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Cobertura Evidencias</p>
+                                        <h4 class="fs-22 fw-bold text-body mb-2" id="cardEvidCobertura">0%</h4>
+                                        <span class="badge bg-soft-secondary text-secondary fw-medium mb-0 px-2 py-1">Completes</span>
+                                    </div>
                                     <div class="avatar-sm flex-shrink-0">
                                         <span class="avatar-title bg-secondary-subtle text-secondary rounded-circle fs-3">
                                             <i class="ri-shield-check-line"></i>
                                         </span>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <p class="text-uppercase fw-semibold fs-12 text-muted mb-1">Cobertura Evidencias</p>
-                                        <h4 class="mb-0 text-dark fw-bold" id="cardEvidCobertura">0%</h4>
                                     </div>
                                 </div>
                             </div>
@@ -101,28 +117,32 @@
                     </div>
                 </div>
 
-                <!-- DATATABLE EVIDENCIAS -->
-                <div class="row">
-                    <div class="col-lg-12">
-                        <div class="card shadow-sm border-0 rounded-3">
-                            <div class="card-body px-4 py-4">
-                                <table id="tableEvidencias" class="table table-hover table-striped align-middle table-nowrap mb-0 w-100">
-                                    <thead class="table-light text-muted">
-                                        <tr>
-                                            <th>Folio Envío</th>
-                                            <th>Trasladista</th>
-                                            <th>Origen</th>
-                                            <th>Total VINs</th>
-                                            <th>Total Evidencias</th>
-                                            <th>Estado</th>
-                                            <th class="text-center">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- DataTables -->
-                                    </tbody>
-                                </table>
-                            </div>
+                <!-- 4. DATATABLE CARD ESTILIZADA -->
+                <div class="card border-0 shadow-xl">
+                    <div class="bg-primary" style="height: 4px;"></div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table id="tableEvidencias" class="table table-hover table-lg align-middle mb-0" style="width:100% !important;">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">ID</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Folio Envío</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Trasladista</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Evidencias Adjuntas</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado</th>
+                                        <th scope="col" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer border-top-0 py-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted fw-medium">
+                                <i class="ri-shield-check-line text-success me-1"></i> Evidencias respaldadas y sincronizadas
+                            </small>
                         </div>
                     </div>
                 </div>
@@ -131,97 +151,52 @@
     </div>
 </div>
 
-<!-- MODAL GESTIÓN DE EVIDENCIAS Y CONFIRMACIÓN LLEGADA -->
-<div class="modal fade" id="modalEvidencias" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-xl">
+<!-- MODAL EVIDENCIAS Y CIERRE -->
+<div class="modal fade" id="modalSubirEvidencia" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-3">
             <div class="modal-header bg-light border-bottom-0 pb-3">
-                <h5 class="modal-title fw-bold text-primary"><i class="ri-gallery-line me-1"></i> Evidencias de Envío <span id="lblFolioEvidencia"></span></h5>
+                <h5 class="modal-title fw-bold text-primary" id="titleModalEvidencia"><i class="ri-camera-lens-line me-1"></i> Cargar Evidencia de Entrega</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4 bg-light">
-                
-                <!-- AGREGAR EVIDENCIA -->
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-body">
-                        <h6 class="fw-bold text-dark mb-3"><i class="ri-upload-cloud-line me-1"></i> Cargar Nueva Evidencia</h6>
-                        <form id="formEvidencia">
-                            <input type="hidden" id="id_envio_evidencia" name="id_envio">
-                            <div class="row g-3 align-items-end">
-                                <div class="col-md-3">
-                                    <label class="form-label fw-medium text-secondary">Momento de Evidencia</label>
-                                    <select class="form-select" id="tipo_evidencia" name="tipo_evidencia" required>
-                                        <option value="1">1. Salida de Planta / Recepción</option>
-                                        <option value="2">2. Llegada / Entrega en Destino</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-5">
-                                    <label class="form-label fw-medium text-secondary">URL o Archivo Multimedia (Foto / Video)</label>
-                                    <input type="text" class="form-control" id="ruta_archivo" name="ruta_archivo" placeholder="Ej: https://servidor.com/fotos/vin123-llegada.jpg" required>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label fw-medium text-secondary">Observaciones</label>
-                                    <input type="text" class="form-control" id="observaciones_ev" name="observaciones" placeholder="Ej: Rayón menor en fascia trasera">
-                                </div>
-                                <div class="col-md-12 text-end mt-3">
-                                    <button type="button" class="btn btn-primary px-4" onclick="guardarEvidencia();">
-                                        <i class="ri-add-circle-line me-1"></i> Adjuntar Evidencia
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- GALERÍA / LISTADO DE EVIDENCIAS -->
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-body">
-                        <h6 class="fw-bold text-dark mb-3"><i class="ri-image-line me-1"></i> Evidencias Registradas</h6>
-                        <div class="table-responsive bg-white rounded border p-2">
-                            <table class="table table-hover table-sm align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Tipo</th>
-                                        <th>Archivo / URL</th>
-                                        <th>Observaciones</th>
-                                        <th>Fecha Carga</th>
-                                        <th class="text-center">Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="bodyListaEvidencias">
-                                    <!-- Llenado por AJAX -->
-                                </tbody>
-                            </table>
+            <div class="modal-body p-4">
+                <form id="formEvidencia" enctype="multipart/form-data">
+                    <input type="hidden" id="evid_id_envio" name="id_envio" value="">
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Folio Envío</label>
+                            <input type="text" class="form-control bg-light border-0 fw-bold" id="evid_folio" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Tipo de Documento / Evidencia</label>
+                            <select class="form-select" id="evid_tipo" name="tipo_evidencia" required>
+                                <option value="Foto Recepción">Foto Recepción en Patio</option>
+                                <option value="Firma Conformidad">Firma de Conformidad</option>
+                                <option value="Reporte Daños">Reporte / Hallazgo</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Seleccionar Archivo (Imagen / PDF)</label>
+                            <input type="file" class="form-control" id="evid_archivo" name="archivo" accept="image/*,application/pdf" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Notas o Comentarios</label>
+                            <textarea class="form-control" id="evid_notas" name="notas" rows="2" placeholder="Detalles sobre la recepción..."></textarea>
                         </div>
                     </div>
-                </div>
-
-                <!-- SECCIÓN CONFIRMAR ENTREGA FINAL -->
-                <div class="card border-0 shadow-sm border-start border-4 border-success" id="cardCierreDestino">
-                    <div class="card-body">
-                        <h6 class="fw-bold text-success mb-2"><i class="ri-checkbox-circle-line me-1"></i> Confirmar Entrega Final en Destino</h6>
-                        <p class="text-muted fs-13 mb-3">Marcar este envío como Entregado finalizará el monitoreo y registrará la hora real de llegada.</p>
-                        <form id="formCierre">
-                            <div class="row g-3 align-items-end">
-                                <div class="col-md-6">
-                                    <label class="form-label fw-medium text-secondary">Fecha y Hora Real de Llegada a Destino</label>
-                                    <input type="datetime-local" class="form-control" id="fecha_llegada_real" name="fecha_llegada_real" required>
-                                </div>
-                                <div class="col-md-6 text-md-end">
-                                    <button type="button" class="btn btn-success px-4 rounded-pill shadow-sm" onclick="confirmarCierreFinal();">
-                                        <i class="ri-check-double-line me-1"></i> Confirmar Entrega Final
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
+                </form>
             </div>
-            <div class="modal-footer bg-light border-top-0 pt-3">
-                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">
-                    <i class="ri-close-line me-1"></i> Cerrar
+            <div class="modal-footer bg-light border-top-0 pt-3 d-flex justify-content-between">
+                <button type="button" class="btn btn-success px-4 shadow-sm" onclick="cerrarEntregaFinal();">
+                    <i class="ri-checkbox-circle-line me-1"></i> Cerrar Entrega Definitiva
                 </button>
+                <div>
+                    <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary px-4 shadow-sm" onclick="subirArchivoEvidencia();">
+                        <i class="ri-upload-2-line me-1"></i> Subir Archivo
+                    </button>
+                </div>
             </div>
         </div>
     </div>

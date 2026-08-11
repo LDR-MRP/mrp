@@ -1,11 +1,37 @@
-function fntSwitchTab(tabId) {
-    let tabEl = document.querySelector(tabId);
-    if (tabEl) {
-        if (typeof bootstrap !== 'undefined' && bootstrap.Tab && typeof bootstrap.Tab.getOrCreateInstance === 'function') {
-            bootstrap.Tab.getOrCreateInstance(tabEl).show();
-        } else {
-            tabEl.click();
-        }
+function fntSwitchView(view) {
+    const secGrid = document.querySelector("#view-index-choferes");
+    const secForm = document.querySelector("#view-form-choferes");
+
+    if (view === 'form') {
+        if (secGrid) secGrid.style.display = "none";
+        if (secForm) secForm.style.display = "block";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+        if (secForm) secForm.style.display = "none";
+        if (secGrid) secGrid.style.display = "block";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+function updateLicenciaDisplay(tipo) {
+    const lbl = document.querySelector('#lbl-tipo-licencia-display');
+    if (!lbl) return;
+
+    switch ((tipo || '').toUpperCase()) {
+        case 'A':
+            lbl.textContent = "Licencia Tipo A (Particular)";
+            break;
+        case 'B':
+            lbl.textContent = "Licencia Tipo B (Carga)";
+            break;
+        case 'C':
+            lbl.textContent = "Licencia Tipo C (Pesado)";
+            break;
+        case 'E':
+            lbl.textContent = "Licencia Tipo E (Federal)";
+            break;
+        default:
+            lbl.textContent = "Licencia Tipo " + (tipo || 'B');
     }
 }
 
@@ -17,32 +43,72 @@ document.addEventListener('DOMContentLoaded', function() {
         "aServerSide": false,
         "ajax": {
             "url": base_url + "/prv_choferes/getChoferes",
-            "dataSrc": ""
+            "dataSrc": function(json) {
+                let data = json || [];
+
+                // Actualizar KPIs de Choferes
+                let total = data.length;
+                let activos = data.filter(d => d.estatus_operativo == 1).length;
+                let inactivos = total - activos;
+                let licencias = data.filter(d => ['B', 'C', 'E'].includes((d.tipo_licencia || '').toUpperCase())).length;
+
+                let kpiTotal = document.querySelector('#kpi-total-choferes');
+                let kpiActivos = document.querySelector('#kpi-activos');
+                let kpiInactivos = document.querySelector('#kpi-inactivos');
+                let kpiLicencias = document.querySelector('#kpi-licencias');
+
+                if (kpiTotal) kpiTotal.textContent = total;
+                if (kpiActivos) kpiActivos.textContent = activos;
+                if (kpiInactivos) kpiInactivos.textContent = inactivos;
+                if (kpiLicencias) kpiLicencias.textContent = licencias;
+
+                return data;
+            }
         },
         "columns": [
             { "data": "id_chofer" },
-            { "data": "trasladista" },
-            { "data": "nombre_completo" },
-            { "data": "num_licencia" },
+            { 
+                "data": "trasladista",
+                "render": function(data) {
+                    return '<span class="fw-medium text-body">' + (data || '-') + '</span>';
+                }
+            },
+            { 
+                "data": "nombre_completo",
+                "render": function(data) {
+                    return '<span class="fw-bold text-dark">' + (data || '-') + '</span>';
+                }
+            },
+            { 
+                "data": "num_licencia",
+                "render": function(data) {
+                    return '<span class="badge bg-soft-primary text-primary fs-12 fw-bold">' + (data || '-') + '</span>';
+                }
+            },
             {
                 "data": "tipo_licencia",
                 "render": function(data) {
-                    return '<span class="badge bg-secondary">Lic. Tipo ' + (data || 'N/A') + '</span>';
+                    return '<span class="badge bg-soft-info text-info fs-12">Lic. Tipo ' + (data || 'N/A') + '</span>';
                 }
             },
             {
                 "data": "vigencia_licencia",
                 "render": function(data) {
-                    return data ? data : 'Sin fecha';
+                    return data ? '<span class="fs-13"><i class="ri-calendar-line me-1 text-muted"></i>' + data + '</span>' : '<span class="text-muted fs-12">Sin fecha</span>';
                 }
             },
-            { "data": "telefono" },
+            { 
+                "data": "telefono",
+                "render": function(data) {
+                    return data ? '<span class="fs-13"><i class="ri-phone-line me-1 text-muted"></i>' + data + '</span>' : '-';
+                }
+            },
             {
                 "data": "estatus_operativo",
                 "render": function(data) {
                     return data == 1
-                        ? '<span class="badge bg-success">Activo</span>'
-                        : '<span class="badge bg-danger">Inactivo</span>';
+                        ? '<span class="badge bg-soft-success text-success fs-12">Activo</span>'
+                        : '<span class="badge bg-soft-danger text-danger fs-12">Inactivo</span>';
                 }
             },
             { "data": "options" }
@@ -55,64 +121,68 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ── FORM CHOFER ───────────────────────────────────────────────
     let formChofer = document.querySelector("#formChofer");
-    formChofer.addEventListener("submit", function(e) {
-        e.preventDefault();
-        let request = new XMLHttpRequest();
-        let ajaxUrl = base_url + '/prv_choferes/store';
-        let formData = new FormData(formChofer);
-        request.open("POST", ajaxUrl, true);
-        request.send(formData);
-        request.onreadystatechange = function() {
-            if (request.readyState !== 4) return;
-            if (request.status === 200 || request.status === 201) {
-                let objData = JSON.parse(request.responseText);
-                if (objData.status === "success") {
-                    formChofer.reset();
-                    tableChoferes.ajax.reload();
-                    Swal.fire({
-                        title: "Choferes",
-                        text: objData.message || "Guardado exitosamente",
-                        icon: "success",
-                        confirmButtonText: "OK",
-                        confirmButtonColor: "#28a745"
-                    }).then(() => {
-                        fntSwitchTab('#tabList');
-                    });
-                } else {
-                    Swal.fire("Error", objData.message || "Error al procesar", "error");
-                }
-            } else {
-                try {
+    if (formChofer) {
+        formChofer.addEventListener("submit", function(e) {
+            e.preventDefault();
+            let request = new XMLHttpRequest();
+            let ajaxUrl = base_url + '/prv_choferes/store';
+            let formData = new FormData(formChofer);
+            request.open("POST", ajaxUrl, true);
+            request.send(formData);
+            request.onreadystatechange = function() {
+                if (request.readyState !== 4) return;
+                if (request.status === 200 || request.status === 201) {
                     let objData = JSON.parse(request.responseText);
-                    Swal.fire("Error", objData.message || "Error en la petición", "error");
-                } catch(err) {
-                    Swal.fire("Error", "Error al procesar la solicitud (" + request.status + ")", "error");
+                    if (objData.status === "success") {
+                        formChofer.reset();
+                        tableChoferes.ajax.reload();
+                        Swal.fire({
+                            title: "Choferes",
+                            text: objData.message || "Guardado exitosamente",
+                            icon: "success",
+                            confirmButtonText: "OK",
+                            confirmButtonColor: "#28a745"
+                        }).then(() => {
+                            fntSwitchView('grid');
+                        });
+                    } else {
+                        Swal.fire("Error", objData.message || "Error al procesar", "error");
+                    }
+                } else {
+                    try {
+                        let objData = JSON.parse(request.responseText);
+                        Swal.fire("Error", objData.message || "Error en la petición", "error");
+                    } catch(err) {
+                        Swal.fire("Error", "Error al procesar la solicitud (" + request.status + ")", "error");
+                    }
                 }
-            }
-        };
-    });
+            };
+        });
+    }
 });
 
 // ── NUEVO ─────────────────────────────────────────────────────────
 function fntNewChofer() {
     document.querySelector('#id_chofer').value = "";
-    document.querySelector('#btnActionForm').classList.replace("btn-info", "btn-primary");
-    document.querySelector('#btnText').innerHTML = "Guardar";
-    document.querySelector('#tabForm').innerHTML = "NUEVO CHOFER";
+    document.querySelector('#form-chofer-title').textContent = "Registrar Nuevo Chofer";
+    document.querySelector('#breadcrumb-form-chofer').textContent = "Nuevo Chofer";
+    document.querySelector('#btnText').textContent = "Guardar Chofer";
     document.querySelector("#formChofer").reset();
+    updateLicenciaDisplay('B');
+    fntSwitchView('form');
 }
 
 // ── CANCELAR ──────────────────────────────────────────────────────
 function cancelForm() {
     document.querySelector("#formChofer").reset();
-    fntSwitchTab('#tabList');
+    fntSwitchView('grid');
 }
 
 // ── EDITAR ────────────────────────────────────────────────────────
 function fntEditChofer(id) {
-    document.querySelector('#tabForm').innerHTML = "EDITAR CHOFER";
-    document.querySelector('#btnActionForm').classList.replace("btn-primary", "btn-info");
-    document.querySelector('#btnText').innerHTML = "Actualizar";
+    document.querySelector('#form-chofer-title').textContent = "Actualizar Chofer";
+    document.querySelector('#breadcrumb-form-chofer').textContent = "Editar Chofer";
+    document.querySelector('#btnText').textContent = "Actualizar Chofer";
 
     let request = new XMLHttpRequest();
     let ajaxUrl = base_url + '/prv_choferes/getChofer/' + id;
@@ -131,7 +201,8 @@ function fntEditChofer(id) {
             document.querySelector("#tipo_licencia").value     = d.tipo_licencia;
             document.querySelector("#vigencia_licencia").value = d.vigencia_licencia;
             document.querySelector("#telefono").value          = d.telefono;
-            fntSwitchTab('#tabForm');
+            updateLicenciaDisplay(d.tipo_licencia);
+            fntSwitchView('form');
         } else {
             Swal.fire("Error", objData.message, "error");
         }

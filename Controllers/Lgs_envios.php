@@ -23,6 +23,11 @@ class Lgs_envios extends Controllers
      */
     public function Lgs_envios(): void
     {
+        $catalogos = [];
+        try {
+            $catalogos = $this->service->getCatalogosSelect();
+        } catch (Throwable $e) {}
+
         $this->views->getView(
             $this,
             "../Lgs_envios/index",
@@ -31,6 +36,7 @@ class Lgs_envios extends Controllers
                 'page_title' => "Bandeja de Envíos",
                 'page_name' => "lgs_envios",
                 'page_functions_js' => "functions_lgs_envios.js",
+                'catalogos' => $catalogos,
             ]
         );
     }
@@ -80,9 +86,11 @@ class Lgs_envios extends Controllers
                 'id_motivo'        => intval($_POST['id_motivo'] ?? 0),
                 'id_proveedor'     => intval($_POST['id_proveedor'] ?? 0),
                 'id_origen'        => intval($_POST['id_origen'] ?? 0),
+                'id_destino'       => intval($_POST['id_destino'] ?? 0),
+                'destino_nombre_libre' => $_POST['destino_nombre_libre'] ?? '',
                 'km_total'         => floatval($_POST['km_total'] ?? 0),
-                'fecha_tentativa_envio'   => $_POST['fecha_tentativa_envio'] ?? null,
-                'fecha_tentativa_llegada' => $_POST['fecha_tentativa_llegada'] ?? null,
+                'fecha_tentativa_envio'   => !empty($_POST['fecha_tentativa_envio']) ? $_POST['fecha_tentativa_envio'] : null,
+                'fecha_tentativa_llegada' => !empty($_POST['fecha_tentativa_llegada']) ? $_POST['fecha_tentativa_llegada'] : null,
                 'observaciones'    => $_POST['observaciones'] ?? '',
             ];
 
@@ -97,7 +105,7 @@ class Lgs_envios extends Controllers
                 echo $this->successResponse(['id_envio' => $idEnvio], "Envío actualizado exitosamente");
             }
 
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo $this->errorResponse($e->getMessage(), 500);
         }
     }
@@ -119,5 +127,101 @@ class Lgs_envios extends Controllers
                 'id_envio' => $idEnvio
             ]
         );
+    }
+
+    /**
+     * Devuelve los datos necesarios para la vista de Acomodo de VINs en JSON:
+     * - Datos de la cabecera del envío
+     * - Madrinas del trasladista asignado
+     * - Choferes del trasladista asignado
+     * - VINs disponibles en el origen
+     * - Asignaciones existentes
+     * URL: {{base_url}}/Lgs_envios/getDetalleEnvioData/123
+     */
+    public function getDetalleEnvioData(int $idEnvio): void
+    {
+        try {
+            $model = new Lgs_enviosModel();
+            $envio = $model->getEnvioCabecera($idEnvio);
+            if (empty($envio)) {
+                echo $this->errorResponse("El envío especificado no existe.", 404);
+                return;
+            }
+
+            $idProveedor = intval($envio['id_proveedor'] ?? 0);
+            $idOrigen    = intval($envio['id_origen'] ?? 0);
+
+            $madrinas  = $model->getMadrinasPorProveedor($idProveedor);
+            $choferes  = $model->getChoferesPorProveedor($idProveedor);
+            $vins      = $model->getVinsDisponiblesOrigen($idOrigen, $idEnvio);
+            $existentes= $model->getAcomodoExistenteEnvio($idEnvio);
+
+            $data = [
+                'envio'      => $envio,
+                'madrinas'   => $madrinas,
+                'choferes'   => $choferes,
+                'vins'       => $vins,
+                'existentes' => $existentes
+            ];
+
+            echo $this->successResponse($data, "Datos de acomodo obtenidos correctamente");
+        } catch (Throwable $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Guarda la distribución/acomodo de VINs asignados a Madrinas/Choferes
+     * URL: {{base_url}}/Lgs_envios/storeAcomodo
+     */
+    public function storeAcomodo(): void
+    {
+        try {
+            $rawInput = file_get_contents('php://input');
+            $dataJson = json_decode($rawInput, true);
+
+            $idEnvio     = intval($dataJson['id_envio'] ?? $_POST['id_envio'] ?? 0);
+            $asignaciones= $dataJson['asignaciones'] ?? [];
+
+            if ($idEnvio <= 0) {
+                echo $this->errorResponse("ID de envío no válido.", 400);
+                return;
+            }
+
+            $model = new Lgs_enviosModel();
+            $db = $model->getConexion();
+            $db->beginTransaction();
+
+            // 1. Limpiar acomodo previo de este envío
+            $model->deleteAcomodoEnvio($db, $idEnvio);
+
+            // 2. Insertar las nuevas asignaciones
+            foreach ($asignaciones as $asig) {
+                $model->insertVin($db, [
+                    'id_envio'         => $idEnvio,
+                    'id_unidad'        => intval($asig['id_unidad']),
+                    'id_madrina'       => !empty($asig['id_madrina']) ? intval($asig['id_madrina']) : null,
+                    'id_chofer'        => !empty($asig['id_chofer']) ? intval($asig['id_chofer']) : null,
+                    'posicion_acomodo' => !empty($asig['posicion_acomodo']) ? intval($asig['posicion_acomodo']) : null,
+                ]);
+            }
+
+            $db->commit();
+
+            // 3. Recalcular costos
+            $service = new Lgs_enviosService();
+            $costoTotal = $service->recalcularCostoTotal($idEnvio);
+
+            echo $this->successResponse([
+                'id_envio' => $idEnvio,
+                'costo_total' => $costoTotal
+            ], "Acomodo de unidades guardado exitosamente");
+
+        } catch (Throwable $e) {
+            if (isset($db) && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
     }
 }
