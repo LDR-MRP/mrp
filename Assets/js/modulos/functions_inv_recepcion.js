@@ -1,4 +1,6 @@
 let currentRecepcion = null;
+let recepcionActual = null;
+let recepcionCerrada = false;
 
 /* =========================
    ALERTAS VISUALES
@@ -84,39 +86,33 @@ document.addEventListener("DOMContentLoaded", function () {
     .addEventListener("keyup", filtrarRecepciones);
 });
 
-function cargarRecepciones() {
-  fetch(base_url + "/Inv_recepcion/getOrdenesActivas")
-    .then((res) => res.json())
-    .then((data) => {
-      let html = "";
-
-      data.forEach((p) => {
-        let clase = p.estatus === "parcial" ? "parcial" : "activa";
-        let badge =
-          p.estatus === "parcial"
-            ? `<span class="badge bg-warning text-dark badge-estatus">Parcial</span>`
-            : `<span class="badge bg-info text-dark badge-estatus">Abierta</span>`;
-
-        html += `
-          <li class="list-group-item recepcion-item ${clase}"
-              data-search="${p.folio} ${p.proveedor}"
-              onclick="cargarDetalle(${p.idcompra})">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <strong>${p.folio}</strong><br>
-                <small>${p.proveedor}</small>
-              </div>
-              ${badge}
-            </div>
-          </li>`;
-      });
-
-      document.getElementById("listaRecepcion").innerHTML = html;
-    });
-}
-
 function cargarDetalle(id) {
   currentRecepcion = id;
+
+  fetch(base_url + "/Inv_recepcion/getRecepcionCompra/" + id)
+  .then((r) => r.json())
+  .then((r) => {
+
+    if (r && r.idrecepcion) {
+
+      recepcionActual = r.idrecepcion;
+      recepcionCerrada = r.estatus === "cerrada";
+
+      document.getElementById("observacionesRecepcion").value =
+        r.observaciones || "";
+
+    } else {
+
+      recepcionActual = null;
+      recepcionCerrada = false;
+
+      document.getElementById("observacionesRecepcion").value = "";
+    }
+
+    aplicarBloqueoRecepcion();
+
+  });
+
   cargarHeader(id);
 
   fetch(base_url + "/Inv_recepcion/getDetalleOC/" + id)
@@ -135,13 +131,81 @@ function cargarDetalle(id) {
             <td><input type="number" class="form-control form-control-sm recibido" data-id="${item.iddetalle}" data-inv="${item.inventarioid}" data-codigo="${item.codigo}" min="0" max="${item.cantidad_pendiente}" value="0"></td>
             <td><span class="cantidad-pendiente">${item.cantidad_pendiente}</span></td>
             <td>${item.unidad}</td>
-            <td><input type="text" class="form-control form-control-sm obs" value=""></td>
+            <td><input type="text" class="form-control form-control-sm obs" value="${item.observaciones || ""}"></td>
+            <td>
+    <div class="evidencias-container"
+         data-id="${item.iddetalle}"
+         data-inv="${item.inventarioid}">
+
+        <div class="evidencia-item mb-1">
+            <input type="file"
+                   class="form-control form-control-sm evidencia"
+                   accept="image/*">
+        </div>
+
+        <button type="button"
+                class="btn btn-sm btn-outline-primary mt-1"
+                onclick="agregarEvidenciaProducto(this)">
+            <i class="ri-add-line"></i> Agregar foto
+        </button>
+
+        <small class="text-muted d-block">
+            Máximo 5 fotografías
+        </small>
+
+    </div>
+</td>
+<td>
+${
+  parseInt(item.total_evidencias) > 0
+    ? `
+    <button
+        class="btn btn-outline-primary btn-sm"
+        onclick="verEvidencias(${item.inventarioid})">
+
+        <i class="ri-image-line"></i>
+        Evidencias
+    </button>
+    `
+    : `<span class="text-muted">Sin evidencias</span>`
+}
+</td>
           </tr>`;
       });
 
       document.getElementById("detalleRecepcion").innerHTML = html;
       document.getElementById("scannerInput").focus();
+      aplicarBloqueoRecepcion();
     });
+}
+function aplicarBloqueoRecepcion() {
+
+  // observaciones generales
+  document.getElementById("observacionesRecepcion").readOnly = recepcionCerrada;
+
+  // documentos generales
+  document.querySelectorAll(".documento").forEach((el) => {
+    el.disabled = recepcionCerrada;
+  });
+
+  // campos tabla
+  document
+    .querySelectorAll(".lote, .recibido, .obs, .evidencia")
+    .forEach((el) => {
+      el.disabled = recepcionCerrada;
+    });
+
+  // botones agregar evidencia
+  document
+    .querySelectorAll('[onclick="agregarEvidenciaProducto(this)"]')
+    .forEach((btn) => {
+      btn.style.display = recepcionCerrada ? "none" : "";
+    });
+
+  // botón agregar documento
+  document.querySelectorAll('[onclick="agregarDocumento()"]').forEach((btn) => {
+    btn.style.display = recepcionCerrada ? "none" : "";
+  });
 }
 
 async function procesarEscaneo(code) {
@@ -208,9 +272,6 @@ function guardarRecepcion() {
     let cantidad = parseFloat(input.value) || 0;
     let max = parseFloat(input.max) || 0;
 
-    row.classList.remove("table-danger");
-
-    // Validar que no exceda lo pendiente
     if (cantidad > max) {
       row.classList.add("table-danger");
       error = true;
@@ -230,60 +291,105 @@ function guardarRecepcion() {
   });
 
   if (error) {
+    alertaModal("warning", "Error", "Cantidades inválidas");
+    return;
+  }
+
+  let tieneCantidades = detalle.some(
+    (item) => parseFloat(item.cantidad_recibida) > 0,
+  );
+
+  if (!tieneCantidades) {
     alertaModal(
       "warning",
-      "Cantidad inválida",
-      "No puedes recibir más cantidad de la solicitada en la orden de compra.",
+      "Información requerida",
+      "Debes capturar al menos una cantidad recibida.",
     );
     return;
   }
 
+  let formData = new FormData();
+
+  formData.append("compraid", currentRecepcion);
+  formData.append(
+    "observaciones",
+    document.getElementById("observacionesRecepcion").value,
+  );
+  formData.append("detalle", JSON.stringify(detalle));
+
+  // =========================
+  // DOCUMENTOS GENERALES
+  // =========================
+  document.querySelectorAll(".documento").forEach((input) => {
+    if (input.files.length > 0) {
+      formData.append("documentos[]", input.files[0]);
+    }
+  });
+
+  // =========================
+  // EVIDENCIAS POR PRODUCTO (CORRECTO)
+  // =========================
+  document.querySelectorAll("#detalleRecepcion tr").forEach((row) => {
+    let input = row.querySelector(".recibido");
+
+    if (!input) return;
+
+    let detalleid = input.dataset.id;
+    let inventarioid = input.dataset.inv;
+
+    row.querySelectorAll(".evidencia").forEach((fileInput) => {
+      if (fileInput.files.length > 0) {
+        formData.append(`evidencias[${detalleid}][]`, fileInput.files[0]);
+      }
+    });
+
+    formData.append(
+      `evidencias_meta[${detalleid}][inventarioid]`,
+      inventarioid,
+    );
+  });
+
   fetch(base_url + "/Inv_recepcion/setRecepcion", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      compraid: currentRecepcion,
-      observaciones: document.getElementById("observacionesRecepcion").value,
-      detalle: detalle,
-    }),
+    body: formData,
   })
     .then((res) => res.json())
     .then((res) => {
-      alertaModal("success", "Recepción guardada", res.msg);
-
-      // Limpiar formulario visual
-      currentRecepcion = null;
-      document.getElementById("observacionesRecepcion").value = "";
-      document.getElementById("detalleRecepcion").innerHTML = `
-  <tr>
-    <td colspan="9">
-      <div class="empty-state">
-        <i class="ri-inbox-archive-line"></i>
-        <h6>Selecciona una recepción para comenzar</h6>
-        <p>Aquí podrás escanear productos y registrar entradas.</p>
-      </div>
-    </td>
-  </tr>
-`;
-      document.getElementById("headerOrigen").innerHTML = "";
-      document.getElementById("headerDestino").innerHTML = "";
-
-      // Recargar listas
-      cargarRecepcionesAbiertas();
-      cargarRecepcionesParciales();
-      cargarRecepcionesCerradas();
-
-      document.getElementById("scannerInput").value = "";
-      document.getElementById("scannerInput").focus();
+      alertaModal("success", "OK", res.msg).then(() => limpiarRecepcion());
     })
     .catch((err) => {
-      console.error("Error guardando recepción:", err);
-      alertaModal(
-        "error",
-        "Error",
-        "Ocurrió un problema al guardar la recepción.",
-      );
+      console.error(err);
     });
+}
+
+function limpiarRecepcion() {
+  currentRecepcion = null;
+
+  document.getElementById("detalleRecepcion").innerHTML = "";
+  document.getElementById("headerOrigen").innerHTML = "";
+  document.getElementById("headerDestino").innerHTML = "";
+  document.getElementById("observacionesRecepcion").value = "";
+  document.getElementById("buscarRecepcion").value = "";
+  // LIMPIAR INPUTS FILE (documentos generales)
+  document.querySelectorAll(".documento").forEach((input) => {
+    input.value = "";
+  });
+
+  // LIMPIAR EVIDENCIAS POR PRODUCTO
+  document.querySelectorAll(".evidencia").forEach((input) => {
+    input.value = "";
+  });
+
+  cargarRecepcionesAbiertas();
+  cargarRecepcionesParciales();
+  cargarRecepcionesCerradas();
+
+  const scanner = document.getElementById("scannerInput");
+
+  if (scanner) {
+    scanner.value = "";
+    scanner.focus();
+  }
 }
 
 function cargarHeader(id) {
@@ -301,29 +407,6 @@ function cargarHeader(id) {
       `;
     })
     .catch((err) => console.error("Error cargando header:", err));
-}
-
-function cargarRecepciones() {
-  fetch(base_url + "/Inv_recepcion/getOrdenesActivas")
-    .then((res) => res.json())
-    .then((data) => {
-      let html = "";
-
-      data.forEach((p) => {
-        let clase =
-          p.estatus === "parcial"
-            ? "list-group-item-warning"
-            : "list-group-item-info";
-
-        html += `
-          <li class="list-group-item ${clase} recepcion-item"
-              onclick="cargarDetalle(${p.idcompra})">
-            ${p.folio} - ${p.proveedor}
-          </li>`;
-      });
-
-      document.getElementById("listaRecepcion").innerHTML = html;
-    });
 }
 function cargarRecepcionesAbiertas() {
   fetch(base_url + "/Inv_recepcion/getOrdenesAbiertas")
@@ -408,4 +491,133 @@ function filtrarRecepciones() {
     let texto = (item.dataset.search || "").toLowerCase();
     item.style.display = texto.includes(filtro) ? "" : "none";
   });
+}
+
+function agregarEvidenciaProducto(btn) {
+  const container = btn.closest(".evidencias-container");
+
+  const total = container.querySelectorAll(".evidencia-item").length;
+
+  if (total >= 5) {
+    alertaModal(
+      "warning",
+      "Límite alcanzado",
+      "Solo puedes adjuntar hasta 5 fotografías.",
+    );
+    return;
+  }
+
+  const div = document.createElement("div");
+
+  div.className = "evidencia-item mb-1";
+
+  div.innerHTML = `
+        <div class="d-flex gap-1">
+            <input type="file"
+                   class="form-control form-control-sm evidencia"
+                   accept="image/*">
+
+            <button type="button"
+                    class="btn btn-sm btn-danger"
+                    onclick="this.parentElement.parentElement.remove()">
+                <i class="ri-delete-bin-line"></i>
+            </button>
+        </div>
+    `;
+
+  btn.before(div);
+}
+function agregarDocumento() {
+  const cont = document.getElementById("contenedorDocumentos");
+
+  const div = document.createElement("div");
+
+  div.className = "documento-item mb-2";
+
+  div.innerHTML = `
+        <div class="d-flex gap-1">
+
+            <input type="file"
+                   class="form-control documento">
+
+            <button type="button"
+                    class="btn btn-danger btn-sm"
+                    onclick="this.parentElement.parentElement.remove()">
+
+                <i class="ri-delete-bin-line"></i>
+
+            </button>
+
+        </div>
+    `;
+
+  cont.appendChild(div);
+}
+
+function verEvidencias(inventarioid) {
+  cargarGaleria(inventarioid);
+
+  const modal = new bootstrap.Modal(document.getElementById("modalEvidencias"));
+
+  modal.show();
+}
+
+function cargarGaleria(inventarioid) {
+  fetch(
+    base_url +
+      "/Inv_recepcion/getEvidenciasProducto" +
+      "?recepcionid=" +
+      recepcionActual +
+      "&inventarioid=" +
+      inventarioid,
+  )
+    .then((r) => r.json())
+    .then((data) => {
+      let html = "";
+
+      data.forEach((foto) => {
+        html += `
+                <div class="col-md-3 mb-3">
+
+                    <a href="${base_url}/Assets/uploads/recepciones/evidencias/${foto.ruta}"
+                       target="_blank">
+
+                        <img
+                            src="${base_url}/Assets/uploads/recepciones/evidencias/${foto.ruta}"
+                            class="img-fluid rounded shadow">
+
+                    </a>
+
+                </div>
+            `;
+      });
+
+      document.getElementById("galeriaProducto").innerHTML = html;
+    });
+
+  fetch(
+    base_url +
+      "/Inv_recepcion/getDocumentosRecepcion" +
+      "?recepcionid=" +
+      recepcionActual,
+  )
+    .then((r) => r.json())
+    .then((data) => {
+      let html = "";
+
+      data.forEach((doc) => {
+        html += `
+                <a
+                    class="list-group-item list-group-item-action"
+                    href="${base_url}/Assets/uploads/recepciones/documentos/${doc.ruta}"
+                    target="_blank">
+
+                    ${doc.nombre}
+
+                </a>
+            `;
+      });
+
+      document.getElementById("listaDocumentos").innerHTML = html;
+    });
 }

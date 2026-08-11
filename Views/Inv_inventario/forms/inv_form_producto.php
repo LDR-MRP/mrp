@@ -271,11 +271,18 @@
         <!-- IMÁGENES -->
         <div class="col-lg-12">
             <div class="mb-3">
-                <label class="form-label">IMÁGENES (Máx. 3)</label>
+                <label class="form-label">IMÁGENES (Máx. 5)</label>
+
+                <div id="imagenesActuales"></div>
+
+                <hr>
 
                 <div id="contenedorImagenes">
                     <div class="input-group mb-2">
-                        <input type="file" name="imagenes[]" class="form-control input-imagen" accept="image/*" capture="environment">
+                        <input type="file"
+                            name="imagenes[]"
+                            class="form-control input-imagen"
+                            accept="image/*">
                     </div>
                 </div>
 
@@ -284,7 +291,7 @@
                 </button>
 
                 <small class="text-muted d-block mt-1">
-                    Puedes tomar foto o subir desde tu dispositivo (máximo 3)
+                    Puedes tomar foto o subir desde tu dispositivo (máximo 5)
                 </small>
             </div>
         </div>

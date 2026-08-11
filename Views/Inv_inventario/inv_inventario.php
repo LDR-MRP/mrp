@@ -157,7 +157,7 @@
                             <td id="celDescripcion"></td>
                         </tr>
                         <tr>
-                            <td>Descripción:</td>
+                            <td>Notas:</td>
                             <td id="celNotas"></td>
                         </tr>
                         <tr>

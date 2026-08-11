@@ -19,7 +19,7 @@ class Inv_inventarioModel extends Mysql
         string $unidad_empaque,
         float  $ultimo_costo,
         string $ubicacion,
-        int    $idmarca,
+        ?int   $idmarca,
         string $tipo_elemento,
         float  $factor_unidades,
         int    $tiempo_surtido,
@@ -74,7 +74,7 @@ VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),2)";
             $notas,
             $unidad_entrada,
             $unidad_salida,
-            $unidad_empaque,  
+            $unidad_empaque,
             $ultimo_costo,
             $ubicacion,
             $idmarca,
@@ -159,10 +159,10 @@ VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),2)";
         string $notas,
         string $unidad_entrada,
         string $unidad_salida,
-        string $unidad_empaque, 
+        string $unidad_empaque,
         float  $ultimo_costo,
         string $ubicacion,
-        int    $idmarca,
+        ?int   $idmarca,
         string $tipo_elemento,
         float  $factor_unidades,
         int    $tiempo_surtido,
@@ -457,6 +457,10 @@ WHERE idinventario = ?";
         return $this->select($sql);
     }
 
+    // =====================================================
+    // IMÁGENES INVENTARIO
+    // =====================================================
+
     public function insertImagenInventario($inventarioid, $nombre)
     {
         $sql = "INSERT INTO wms_fotos_inventario (inventarioid, foto) VALUES (?, ?)";
@@ -466,11 +470,34 @@ WHERE idinventario = ?";
 
     public function selectImagenesInventario(int $inventarioid)
     {
-        $sql = "SELECT foto 
-            FROM wms_fotos_inventario 
+        $sql = "SELECT 
+                idfotoinventario,
+                inventarioid,
+                foto
+            FROM wms_fotos_inventario
             WHERE inventarioid = $inventarioid";
 
         return $this->select_all($sql);
+    }
+
+    public function selectImagenInventario(int $idfotoinventario)
+    {
+        $sql = "SELECT
+                idfotoinventario,
+                inventarioid,
+                foto
+            FROM wms_fotos_inventario
+            WHERE idfotoinventario = $idfotoinventario";
+
+        return $this->select($sql);
+    }
+
+    public function deleteImagenInventario(int $idfotoinventario)
+    {
+        $sql = "DELETE FROM wms_fotos_inventario
+            WHERE idfotoinventario = $idfotoinventario";
+
+        return $this->delete($sql);
     }
 
 
@@ -915,7 +942,7 @@ WHERE idinventario = ?";
         $sql = "UPDATE wms_inventario 
                 SET ultimo_costo = ? 
                 WHERE idinventario = ?";
-                
+
         return $this->update($sql, [$costo, $idinventario]);
     }
 
@@ -934,7 +961,7 @@ WHERE idinventario = ?";
                 AND estado = 2"; // Estado 2 = Movimiento Activo
 
         $result = $this->select($sql, [$idinventario, $almacenid]);
-        
+
         return (float)($result['stock'] ?? 0);
     }
 
@@ -956,7 +983,7 @@ WHERE idinventario = ?";
                     fecha_movimiento,
                     estado
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 2)";
-                
+
         return $this->insert($sql, [
             $data['inventarioid'],
             $data['almacenid'],

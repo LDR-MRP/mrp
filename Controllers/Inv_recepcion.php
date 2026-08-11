@@ -58,14 +58,64 @@ class Inv_recepcion extends Controllers
         die();
     }
 
+
     public function setRecepcion()
     {
-        $data = json_decode(file_get_contents("php://input"), true);
+        $idCompra = intval($_POST['compraid']);
 
-        $idCompra       = $data['compraid'];
-        $detalle        = $data['detalle'];
-        $observaciones  = $data['observaciones'] ?? '';
-        $usuarioId      = $_SESSION['idUser'];
+        $recepcion = $this->model->getRecepcionByCompra($idCompra);
+
+        if (!empty($recepcion) && $recepcion['estatus'] == 'cerrada') {
+
+            echo json_encode([
+                "status" => false,
+                "msg" => "La recepción ya se encuentra cerrada y no puede modificarse."
+            ]);
+            die();
+        }
+
+        $detalle = json_decode($_POST['detalle'], true);
+        $observaciones = $_POST['observaciones'] ?? '';
+        $usuarioId = $_SESSION['idUser'];
+
+        $almacenCompra =
+            $this->model->getAlmacenCompra($idCompra);
+
+        if (empty($almacenCompra)) {
+
+            echo json_encode([
+                "status" => false,
+                "msg" => "No se encontró almacén para la orden de compra."
+            ]);
+            die();
+        }
+
+        $almacenid = intval(
+            $almacenCompra['almacenid']
+        );
+
+        // =====================================
+        // VALIDAR QUE EXISTA MATERIAL RECIBIDO
+        // =====================================
+
+        $tieneCantidades = false;
+
+        foreach ($detalle as $item) {
+
+            if (floatval($item['cantidad_recibida']) > 0) {
+                $tieneCantidades = true;
+                break;
+            }
+        }
+
+        if (!$tieneCantidades) {
+
+            echo json_encode([
+                "status" => false,
+                "msg" => "Debes capturar al menos una cantidad recibida."
+            ]);
+            die();
+        }
 
         $recepcion = $this->model->getRecepcionByCompra($idCompra);
 
@@ -76,47 +126,206 @@ class Inv_recepcion extends Controllers
             $this->model->updateRecepcionHeader($recepcionid, $observaciones);
         }
 
+        // =========================
+        // DETALLE
+        // =========================
+
+        $almacenCompra = $this->model->getAlmacenCompra($idCompra);
+
+        if (empty($almacenCompra)) {
+            echo json_encode([
+                "status" => false,
+                "msg" => "La OC no tiene almacén asignado."
+            ]);
+            die();
+        }
+
+        $almacenid = intval($almacenCompra['almacenid']);
         foreach ($detalle as $item) {
-            $sol = floatval($item['cantidad_solicitada']);
-            $rec = floatval($item['cantidad_recibida']);
 
-            if ($rec <= 0) {
-                continue;
-            }
-
-            if ($rec > $sol) {
-                echo json_encode([
-                    "status" => false,
-                    "msg" => "No puedes recibir más de lo solicitado."
-                ]);
-                die();
-            }
+            if ($item['cantidad_recibida'] <= 0) continue;
 
             $this->model->insertDetalleRecepcion(
                 $recepcionid,
                 $item['inventarioid'],
                 $item['codigo'],
                 $item['lote'],
-                $sol,
-                $rec,
+                $item['cantidad_solicitada'],
+                $item['cantidad_recibida'],
                 $item['observaciones']
+            );
+
+            $cantidadRecibida = floatval(
+                $item['cantidad_recibida']
+            );
+
+            $detalleCompra =
+                $this->model->getDetalleCompraProducto(
+                    $idCompra,
+                    $item['inventarioid']
+                );
+
+            $costoUnitario =
+                floatval($detalleCompra['costo_unitario']);
+
+            $multi =
+                $this->model->getMultiAlmacen(
+                    $item['inventarioid'],
+                    $almacenid
+                );
+
+            if ($multi) {
+
+                $this->model->updateExistenciaMultiAlmacen(
+                    $multi['idmultialmacen'],
+                    $cantidadRecibida
+                );
+            } else {
+
+                $this->model->insertMultiAlmacen(
+                    $item['inventarioid'],
+                    $almacenid,
+                    $cantidadRecibida
+                );
+            }
+
+            $existencia =
+                $this->model->getExistenciaActual(
+                    $item['inventarioid'],
+                    $almacenid
+                );
+
+            $existenciaFinal = 0;
+
+            if ($existencia) {
+                $existenciaFinal =
+                    floatval($existencia['existencia']);
+            }
+
+            $this->model->insertMovimientoInventario(
+                $item['inventarioid'],
+                $almacenid,
+                'RC-' . str_pad(
+                    $recepcionid,
+                    6,
+                    '0',
+                    STR_PAD_LEFT
+                ),
+                'OC-' . $idCompra,
+                $cantidadRecibida,
+                $costoUnitario,
+                $existenciaFinal
             );
         }
 
-        $completa = $this->model->recepcionCompleta($idCompra);
+        // =========================
+        // EVIDENCIAS / DOCUMENTOS
+        // =========================
+        if (!empty($_FILES['documentos']['name'][0])) {
 
-        $this->model->updateRecepcionStatus(
-            $recepcionid,
-            $completa ? 'cerrada' : 'parcial'
-        );
+            $rutaBase = __DIR__ . "/../Assets/uploads/recepciones/documentos/";
+
+            if (!file_exists($rutaBase)) {
+                mkdir($rutaBase, 0777, true);
+            }
+
+            foreach ($_FILES['documentos']['tmp_name'] as $key => $tmp) {
+
+                $nombreOriginal = $_FILES['documentos']['name'][$key];
+
+                $extension = strtolower(
+                    pathinfo($nombreOriginal, PATHINFO_EXTENSION)
+                );
+
+                $nombreFinal =
+                    uniqid('doc_') .
+                    "_" .
+                    time() .
+                    "." .
+                    $extension;
+
+                $rutaFisica = $rutaBase . $nombreFinal;
+
+                if (move_uploaded_file($tmp, $rutaFisica)) {
+
+                    $this->model->insertDocumentoRecepcion(
+                        $recepcionid,
+                        $nombreFinal,
+                        $nombreFinal
+                    );
+                }
+            }
+        }
+
+        if ($this->model->recepcionCompleta($idCompra)) {
+
+            $this->model->updateRecepcionStatus(
+                $recepcionid,
+                'cerrada'
+            );
+        } else {
+
+            $this->model->updateRecepcionStatus(
+                $recepcionid,
+                'parcial'
+            );
+        }
+
+        // =========================
+        // EVIDENCIAS POR PRODUCTO
+        // =========================
+        if (!empty($_FILES['evidencias'])) {
+
+            $rutaBase = __DIR__ . "/../Assets/uploads/recepciones/evidencias/";
+
+            if (!file_exists($rutaBase)) {
+                mkdir($rutaBase, 0777, true);
+            }
+
+            foreach ($_FILES['evidencias']['tmp_name'] as $detalleid => $files) {
+
+                foreach ($files as $key => $tmp) {
+
+                    if (empty($tmp)) {
+                        continue;
+                    }
+
+                    $inventarioid = $_POST['evidencias_meta'][$detalleid]['inventarioid'] ?? null;
+
+                    $nombreOriginal = $_FILES['evidencias']['name'][$detalleid][$key];
+
+                    $extension = strtolower(
+                        pathinfo($nombreOriginal, PATHINFO_EXTENSION)
+                    );
+
+                    $nombreArchivo =
+                        uniqid('evi_') .
+                        "_" .
+                        time() .
+                        "." .
+                        $extension;
+
+                    $rutaFinal = $rutaBase . $nombreArchivo;
+
+                    if (move_uploaded_file($tmp, $rutaFinal)) {
+
+                        $this->model->insertEvidenciaRecepcion(
+                            $recepcionid,
+                            $inventarioid,
+                            $detalleid,
+                            $nombreArchivo,
+                            'foto',
+                            $nombreArchivo
+                        );
+                    }
+                }
+            }
+        }
 
         echo json_encode([
             "status" => true,
-            "msg" => $completa
-                ? "Recepción registrada correctamente"
-                : "Recepción parcial registrada correctamente"
+            "msg" => "Recepción registrada con evidencias"
         ]);
-        die();
     }
 
     public function getOrdenesActivas()
@@ -135,11 +344,46 @@ class Inv_recepcion extends Controllers
         echo json_encode($this->model->selectOrdenesAbiertas(), JSON_UNESCAPED_UNICODE);
         die();
     }
-    
+
     public function getOrdenesParciales()
     {
         echo json_encode($this->model->selectOrdenesParciales(), JSON_UNESCAPED_UNICODE);
         die();
+    }
 
+    public function getEvidenciasProducto()
+    {
+        $recepcionid = intval($_GET['recepcionid']);
+        $inventarioid = intval($_GET['inventarioid']);
+
+        echo json_encode(
+            $this->model->getEvidenciasProducto(
+                $recepcionid,
+                $inventarioid
+            ),
+            JSON_UNESCAPED_UNICODE
+        );
+        die();
+    }
+
+    public function getDocumentosRecepcion()
+    {
+        $recepcionid = intval($_GET['recepcionid']);
+
+        echo json_encode(
+            $this->model->getDocumentosRecepcion(
+                $recepcionid
+            ),
+            JSON_UNESCAPED_UNICODE
+        );
+        die();
+    }
+    public function getRecepcionCompra($idCompra)
+    {
+        echo json_encode(
+            $this->model->getRecepcionByCompra($idCompra),
+            JSON_UNESCAPED_UNICODE
+        );
+        die();
     }
 }
