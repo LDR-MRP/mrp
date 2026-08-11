@@ -1,25 +1,24 @@
 <?php
-//const BASE_URL = "http://localhost/mrp-ldr";
-const BASE_URL = "https://culminate-olive-livable.ngrok-free.dev/mrp-ldr";
-//const BASE_URL ="http://pruebasmrp.ldrhumanresources.com";
+//const BASE_URL = "http://mrp.com";
+const BASE_URL ="http://pruebasmrp.ldrhumanresources.com";
 //Zona horaria
 date_default_timezone_set('America/Mexico_City');
 
 
 //Datos de conexión a Base de Datos
- const DB_HOST = "localhost";
- const DB_NAME = "mrp_1";
- const DB_USER = "root";
- const DB_PASSWORD = "";
- const DB_CHARSET = "utf8";
-
-
-
 // const DB_HOST = "localhost";
-// const DB_NAME = "u546825723_dbmrp";
-// const DB_USER = "u546825723_mrpuser";
-// const DB_PASSWORD = "L=9xlH6~e";
+// const DB_NAME = "db_mrp";
+// const DB_USER = "root";
+// const DB_PASSWORD = "";
 // const DB_CHARSET = "utf8";
+
+
+
+const DB_HOST = "localhost";
+const DB_NAME = "u546825723_dbmrp";
+const DB_USER = "u546825723_mrpuser";
+const DB_PASSWORD = "L=9xlH6~e";
+const DB_CHARSET = "utf8";
 
 //Configuración Email local
 const ENVIRONMENT = 0;
@@ -134,8 +133,8 @@ const MCLI_TIPOS_CLIENTES = 46;
 
 //Submodulos Compras
 const COM_COMPRAS = 50;
-const COM_REQUISICIONES = 51;
 const COM_NEGOCIACIONES = 56;
+const COM_REQUISICIONES = 51;
 const COM_ORDENES = 52;
 //-----------------------------
 const PRV_PROVEEDORES = 53;
@@ -161,40 +160,4 @@ const COMPRAS_TESORERO = 58;
 
 
 const STATUS = array('Completo', 'Aprobado', 'Cancelado', 'Reembolsado', 'Pendiente', 'Entregado');
-
-/**
- * --------------------------------------------------------------------------
- * CONFIGURACIÓN DE COOKIES Y SESIÓN (SSO)
- * --------------------------------------------------------------------------
- */
-
-// 1. Detectar el Host actual
-$httpHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
-
-// 2. Determinar si estamos en entorno local
-// Buscamos si el host termina en .localhost o es una IP de red local
-$isLocal = preg_match('/(\.localhost)$|^127\.0\.0\.1$/', $httpHost);
-
-if ($isLocal) {
-    /**
-     * ENTORNO: LOCAL (WSL)
-     * Dominio: .ldrhumanresources.localhost (Permite compartir entre subdominios locales)
-     * Secure: false (Porque usualmente no usas HTTPS/SSL en WSL)
-     */
-    define('COOKIE_DOMAIN', '.ldrhumanresources.localhost');
-    // define('COOKIE_DOMAIN', '.mrp.com');
-    define('COOKIE_SECURE', false);
-} else {
-    /**
-     * ENTORNO: PRODUCCIÓN (Hostinger)
-     * Dominio: .ldrhumanresources.com (Permite compartir entre rrhh. y mrp.)
-     * Secure: true (Obligatorio ya que Hostinger usa Certificados SSL)
-     */
-    define('COOKIE_DOMAIN', '.ldrhumanresources.com');
-    define('COOKIE_SECURE', true);
-}
-
-// Opcional: Tiempo de vida estándar (10 horas = 36000 seg)
-define('COOKIE_EXPIRE', time() + 36000);
-
 ?>

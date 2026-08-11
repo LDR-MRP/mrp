@@ -15,6 +15,7 @@ const SourcingDetail = {
             selectWinner: (id) => `${Sys_Core.Config.baseUrl}/api/v1/sourcing/quotations/${id}/select-winner`,
             promote: `${Sys_Core.Config.baseUrl}/api/v1/sourcing/promote-to-catalog`,
             productLines: `${Sys_Core.Config.baseUrl}/api/v1/catalogs/product-lines`,
+            suppliers: `${Sys_Core.Config.baseUrl}/api/v1/suppliers`,
         }
     },
 
@@ -24,7 +25,8 @@ const SourcingDetail = {
         targetPrice: 0,
         quotes: [],
         sidebarItems: [],
-        productLines: []
+        productLines: [],
+        suppliers: []
     },
 
     dom: {},
@@ -138,6 +140,15 @@ const SourcingDetail = {
                 self.renderProductLines();
             }
         });
+
+        Sys_Core.Net.get({
+            url: this.config.endpoints.suppliers,
+            onSuccess: function (res) {
+                self.state.suppliers = res.data;
+                // Una vez cargados, poblamos el select del modal
+                self.renderSuppliers();
+            }
+        });
     },
 
     /**
@@ -147,7 +158,19 @@ const SourcingDetail = {
         // Usamos el helper de Sys_Core para poblar el select de forma limpia
         Sys_Core.UI.fillSelect('#mdl-sel-line', this.state.productLines, {
             valueField: 'idlineaproducto',
-            textField: 'descripcion', // Puedes usar 'cve_linea_producto' si prefieres el código
+            textField: 'descripcion',
+            placeholder: 'Seleccione línea de producto...'
+        });
+    },
+
+    /**
+     * Puebla el select del modal de catalogación
+     */
+    renderSuppliers: function() {
+        // Usamos el helper de Sys_Core para poblar el select de forma limpia
+        Sys_Core.UI.fillSelect('#sel-provider', this.state.suppliers, {
+            valueField: 'id',
+            textField: 'razon_social',
             placeholder: 'Seleccione línea de producto...'
         });
     },

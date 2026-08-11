@@ -63,28 +63,20 @@ class RequisitionService
     public function getRequisitionWithDetails(int $requisitionId, array $userContext): ServiceResponse
     {
         try {
-            $role = RoleEnum::tryFrom((int)$userContext['rolid']);
-            $scope = $role?->getScope() ?? 'propio';
+            $userRolId = (int)$userContext['rolid'];
 
             // 1. Obtener la cabecera
             $requisition = $this->requisicionModel->getRequisitionForUpdate($requisitionId);
 
-            // 2. Validación de Existencia
+            // 2. Validación de existencia
             if (!$requisition) {
                 throw new \Exception("La requisición #{$requisitionId} no existe.", 404);
             }
 
-            // APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
-            $isAllowed = match($scope) {
-                'propio' => (int)$requisition['usuarioid'] === (int)$userContext['id'],
-                'planta'  => (int)$requisition['plantaid'] === (int)$userContext['plantaid'],
-                'total'  => true,
-                default  => false
-            };
-
-            // 3. Validación de Seguridad (IDOR de Lectura)
-            if (!$isAllowed) {
-                return ServiceResponse::error("Security Error: No tienes permisos para ver esta requisición.", 403);
+            // 3. Validación del alcance de visualización
+            $role = RoleEnum::tryFrom($userRolId);
+            if (!$role?->canView($userContext, $requisition)) {
+                return ServiceResponse::error("No tienes permisos para ver esta requisición.", 403);
             }
 
             // 4. Obtener las partidas
@@ -342,7 +334,8 @@ class RequisitionService
                         'inventarioid'             => $invId, // <-- Ahora enviamos NULL real o un entero
                         'cantidad'                 => (float)($item['cantidad'] ?? 0),
                         'precio_unitario_estimado' => (float)($item['precio_unitario_estimado'] ?? 0),
-                        'notas'                    => $item['notas'] ?? ''
+                        'notas'                    => $item['notas'] ?? '',
+                        'user_id'                  => $userId
                     ];
 
                     if (!empty($itemId)) {
@@ -680,25 +673,16 @@ class RequisitionService
 
         $requisition = $this->requisicionModel->getRequisition($requisitionId);
 
-        // 2. Validación de Scope (Jefe Depto/Planta solo aprueba lo suyo)
-        if ($role === RoleEnum::JEFE_DEPARTAMENTO && $requisition['plantaid'] !== $userContext['plantaid']) {
-            return ServiceResponse::error("Solo puedes aprobar requisiciones de tu propio departamento/planta.", 403);
+         // 2. Validación de Contexto (Scope)
+        if (!$role->canView($userContext, $requisition)) {
+            return ServiceResponse::error("No puedes aprobar una requisición de otra planta.", 403);
         }
 
-        // 3. Máquina de Estados L1 -> L2
-        // TODO: Determinamos el estado origen y destino basado en quién firma
-        $config = match($level) {
-            'L1' => [
-                'from' => ['pendiente'], 
-                'to'   => 'pendiente_l2', // Siguiente nivel
-                'msg'  => 'Aprobación L1 (Jefe Depto) completada.'
-            ],
-            'L2' => [
-                'from' => ['pendiente', 'pendiente_l2'], // Puede aprobar directo o tras L1
-                'to'   => 'aprobada', 
-                'msg'  => 'Aprobación final L2 completada exitosamente.'
-            ]
-        };
+        // 3. Configuración de Transición (Viene del Enum)
+        $config = $role->getTransitionConfig('requisition');
+        if (empty($config)) {
+            return ServiceResponse::error("Nivel de firma inválido.", 403);
+        }
         
         // 4. EJECUTAR CAMBIO DE ESTADO
         $response = $this->changeStatus(
@@ -917,28 +901,21 @@ class RequisitionService
                 200
             );
 
-        } catch (\PDOException $p) {
-            // Manejo de errores a nivel de Base de Datos
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+        } catch (\InvalidArgumentException $i) {
+            // Nivel 1: Errores de validación (422). No se loguean.
+            return ServiceResponse::validation($i->getMessage());
 
-            $this->logMessage($p, \LogLevel::CRITICAL, [
-                'action' => 'getPendingItemsToPurchase',
-                'requisition_id' => $requisitionId,
-                'id_user' => $userContext['id']
-            ]);
-
-            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos al intentar eliminar la solicitud.");
-            
         } catch (\Exception $e) {
-            $this->logMessage($e, \LogLevel::WARNING, [
-                'action' => 'getPendingItemsToPurchase',
-                'requisition_id' => $requisitionId,
-                'id_user' => $userContext['id']
-            ]);
-            $code = $e->getCode() !== 0 ? $e->getCode() : 500;
-            return ServiceResponse::error(message: $e->getMessage(), code: $code);
+            // Nivel 2: Reglas de Negocio (403, 404, 409). Log nivel WARNING.
+            $this->logMessage($e, \LogLevel::WARNING, ['id_user' => $userContext['id']]);
+            $code = ($e->getCode() >= 400 && $e->getCode() < 600) ? $e->getCode() : 500;
+            return ServiceResponse::error($e->getMessage(), (int)$code);
+
+        } catch (\PDOException | \Error $p) {
+            // Nivel 3: Fallas de Infraestructura/DB. Log nivel CRITICAL.
+            $this->logMessage($p, \LogLevel::CRITICAL, ['action' => 'read_pending_items']);
+            // Mensaje genérico al usuario por seguridad, detalle técnico en el log.
+            return ServiceResponse::error("Error interno de integridad en la base de datos.", 500);
         }
     }
 
@@ -947,27 +924,10 @@ class RequisitionService
      */
     public function getKpis(array $userContext): ServiceResponse
     {
-        $filters = [];
         $role = RoleEnum::tryFrom((int)$userContext['rolid']);
-        $scope = $role?->getScope() ?? 'propio';
-
-        // APLICACIÓN DE LA MATRIZ DE VISIBILIDAD
-        $scopeFilters = match($scope) {
-            'propio' => ['usuarioid' => (int)$userContext['id']],
-            'planta'  => ['plantaid' => (int)$userContext['plantaid']],
-            'total'  => true,
-            default  => false
-        };
-
-        if(!empty($scopeFilters) && is_array($scopeFilters)) {
-            $filters = $scopeFilters;
-        }
-        
-        return ServiceResponse::success(
-            $this->requisicionModel->getKpi($filters),
-            'Datos obtenidos correctamente.',
-            200
-        );
+        $filters = $role?->getSQLFilters($userContext);
+        if ($filters === false) return ServiceResponse::error("Acceso denegado", 403);
+        return ServiceResponse::success($this->requisicionModel->getKpi($filters));
     }
 
     /**

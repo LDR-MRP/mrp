@@ -1085,4 +1085,65 @@ WHERE idinventario = ?";
 
         return $this->select_all($sql, [$inventarioid]);
     }
+
+    /**
+     * Inserta un nuevo artículo en el catálogo maestro.
+     * Basado estrictamente en el DDL de wms_inventario.
+     */
+    public function insertOfficialItem(array $data): int
+    {
+        $sql = "INSERT INTO wms_inventario (
+                    cve_articulo, descripcion, lineaproductoid, serie, 
+                    unidad_salida, unidad_empaque, control_almacen, tiempo_surtido, 
+                    ultimo_costo, tipo_elemento, unidad_entrada, factor_unidades, 
+                    lote, pedimiento, peso, volumen, fecha_creacion, estado
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)";
+
+        // Mapeo exacto para evitar errores de integridad
+        $params = [
+            $data['cve_articulo'],
+            $data['descripcion'],
+            (int)$data['lineaproductoid'],
+            $data['serie'] ?? 'N',                // S=si, N=NO
+            $data['unidad_salida'],
+            (float)($data['unidad_empaque'] ?? 1),
+            $data['control_almacen'] ?? 'FIFO',
+            (int)($data['tiempo_surtido'] ?? 0),
+            (float)$data['ultimo_costo'],
+            $data['tipo_elemento'],               // K,P,S,H,C
+            $data['unidad_entrada'] ?? $data['unidad_salida'],
+            (float)($data['factor_unidades'] ?? 1),
+            $data['lote'] ?? 'N',                 // S=Si, N=No
+            $data['pedimiento'] ?? 'N',           // S=Si, N=No
+            (float)($data['peso'] ?? 0),
+            (float)($data['volumen'] ?? 0),
+            '2'                                   // 2 = Activa
+        ];
+
+        return $this->insert($sql, $params) ?? 0;
+    }
+
+    /**
+     * Registra al proveedor como fuente autorizada para un artículo.
+     * Implementa 'ON DUPLICATE KEY UPDATE' para actualizar el precio si el vínculo ya existe.
+     */
+    public function linkSupplierToItem(array $data): bool
+    {
+        $sql = "INSERT INTO wms_proveedor_articulos (
+                    id_proveedor, idinventario, precio_referencia, id_moneda, 
+                    fecha_acuerdo, created_by
+                ) VALUES (?, ?, ?, ?, CURRENT_DATE, ?)
+                ON DUPLICATE KEY UPDATE 
+                    precio_referencia = VALUES(precio_referencia),
+                    id_moneda = VALUES(id_moneda),
+                    updated_at = CURRENT_TIMESTAMP";
+
+        return $this->insert($sql, [
+            (int)$data['id_proveedor'],
+            (int)$data['idinventario'],
+            (float)$data['precio_referencia'],
+            $data['id_moneda'],
+            (int)$data['created_by']
+        ]);
+    }
 }

@@ -60,4 +60,53 @@ enum RoleEnum: int
             self::COMPRADOR         => false,
         };
     }
+
+    /**
+     * Traduce el scope del rol en filtros reales para el modelo.
+     */
+    public function getSQLFilters(array $userContext): array|bool
+    {
+        return match($this->getScope()) {
+            'propio' => ['usuarioid' => (int)$userContext['id']],
+            'planta' => ['plantaid' => (int)$userContext['plantaid']],
+            'total'  => [], // Sin filtros, ve todo
+            default  => false // Acceso denegado
+        };
+    }
+
+    /**
+     * Valida si el usuario tiene permiso de ver un registro específico (IDOR Protection)
+     */
+    public function canView(array $userContext, array $record): bool
+    {
+        return match($this->getScope()) {
+            'propio' => (int)$record['usuarioid'] === (int)$userContext['id'],
+            'planta' => (int)$record['plantaid'] === (int)$userContext['plantaid'],
+            'total'  => true,
+            default  => false
+        };
+    }
+
+    /**
+     * Determina el flujo de estados basado en el nivel de firma.
+     * Útil para estandarizar 'approve' en cualquier Service.
+     */
+    public function getTransitionConfig(string $entityType): array
+    {
+        $level = $this->getApprovalLevel();
+        
+        return match($entityType) {
+            'requisition' => match($level) {
+                'L1' => ['from' => ['pendiente'], 'to' => 'pendiente_l2'],
+                'L2' => ['from' => ['pendiente', 'pendiente_l2'], 'to' => 'aprobada'],
+                default => []
+            },
+            'bank_account' => match($level) {
+                'L1' => ['from' => ['revision_pendiente'], 'to' => 'validada_tesoreria'],
+                'L2' => ['from' => ['validada_tesoreria'], 'to' => 'activa'],
+                default => []
+            },
+            default => []
+        };
+    }
 }

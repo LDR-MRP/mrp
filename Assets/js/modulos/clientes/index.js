@@ -972,14 +972,20 @@ function fntAccesosCliente(idcliente) {
 
 
 function fntEditCliente(idcliente) {
-    console.log('Editar cliente:', idcliente);
+    idcliente = Number(idcliente);
 
-    /*
-    Ejemplo futuro:
+    if (!Number.isInteger(idcliente) || idcliente <= 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Cliente inválido',
+            text: 'No fue posible identificar al cliente seleccionado.'
+        });
+
+        return;
+    }
 
     window.location.href =
         `${base_url}/cli_clientes/editar/${idcliente}`;
-    */
 }
 
 

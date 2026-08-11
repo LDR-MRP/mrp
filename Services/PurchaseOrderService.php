@@ -10,6 +10,7 @@ class PurchaseOrderService
     protected Com_requisicionModel $requisicionModel;
     protected Com_ordenCompraModel $ordenCompraModel;
     protected InventoryReceptionService $inventoryReceptionService;
+    protected Com_requisicionCotizacionModel $requisicionCotizacionModel;
     protected object $db;
 
     public function __construct()
@@ -18,6 +19,7 @@ class PurchaseOrderService
         $this->requisicionModel = new Com_requisicionModel;
         $this->ordenCompraModel = new Com_ordenCompraModel;
         $this->inventoryReceptionService = new InventoryReceptionService;
+        $this->requisicionCotizacionModel = new Com_requisicionCotizacionModel;
         $this->db = $this->ordenCompraModel->getConexion();
     }
 
@@ -68,189 +70,179 @@ class PurchaseOrderService
 
     public function store(array $userContext, ?array $manualPayload = null): \ServiceResponse
     {
-        $request = new StorePurchaseOrderRequest();
+        $request = new \Requests\PurchaseOrder\StorePurchaseOrderRequest();
 
         try {
-            $userId = $userContext['id'];
-            $plantaId = $userContext['plantaid'];
-            // AJUSTE 1: Priorizar payload manual si existe (para automatización)
+            $userId = (int)$userContext['id'];
+            $plantaId = (int)$userContext['plantaid'];
+
             if (!$manualPayload) $request->validate();
             $payload = $manualPayload ?? $request->all();
-            
             $reqId = (int)$payload['requisicionid'];
 
-            $isInternalCall = $this->db->inTransaction(); 
-            if (!$isInternalCall) {
-                $this->db->beginTransaction();
-            }
-
-            // 1. VALIDAR REQUISICIÓN ORIGEN
+            // 1. VALIDACIÓN DE INTEGRIDAD DE LA REQUISICIÓN
             $requisition = $this->requisicionModel->getRequisition($reqId);
-            if (!$requisition) {
-                throw new \Exception("La requisición origen #{$reqId} no existe.", 404);
-            }
-
-            // --- INICIO AJUSTE 2: Identificar flujo Directo ---
-            $isSpotBuy = ($requisition['tipo_requisicion'] === 'spot_buy');
-            $ocStatus = $isSpotBuy ? PurchaseOrderEnum::CERRADA->value : PurchaseOrderEnum::EMITIDA->value;
-            $receptionItems = []; // Para WMS automático
-            // --- FIN AJUSTE 2 ---
-
+            if (!$requisition) throw new \Exception("La requisición origen #{$reqId} no existe.", 404);
             if (!in_array($requisition['estatus'], ['aprobada', 'en compra'])) {
-                throw new \Exception("No se pueden generar compras para una requisición en estado '{$requisition['estatus']}'.", 403);
-            }            
-
-            // 2. OBTENER SALDOS PENDIENTES
-            $pendingItemsData = $this->requisicionModel->calculatePendingItems($reqId);
-            $saldosPendientes = array_column($pendingItemsData, 'cantidad_pendiente', 'idrequisicionarticulo');
-
-            // 3. CREAR CABECERA DE LA ORDEN DE COMPRA
-            $ocHeaderData = [
-                'requisicionid' => $reqId,
-                'proveedorid'   => $payload['proveedorid'],
-                'plantaid'      => $plantaId,
-                'almacenid'     => $payload['almacenid'],
-                'estatus'       => $ocStatus,
-                'moneda'        => $payload['moneda'] ?? 'MXN',
-                'tipo_cambio'   => $payload['tipo_cambio'] ?? 1.000000,
-                'observaciones' => $payload['observaciones'] ?? '',
-                'created_by'    => $userId // El comprador que genera la OC
-            ];
-
-            $ocId = $this->ordenCompraModel->createHeader($ocHeaderData);
-            if ($ocId <= 0) throw new \Exception('Error al generar el folio de la Orden de Compra.', 500);
-
-            // 4. PROCESAR PARTIDAS Y VALIDAR SALDOS (Anti-Fraude)
-            $subtotalOC = 0;
-            $ivaOC = 0;
-
-            foreach ($payload['articulos'] as $item) {
-                $idReqArticulo = (int)$item['idrequisicionarticulo'];
-                $cantidadAComprar = (float)$item['cantidad'];
-                $costoUnitario = (float)$item['costo_unitario'];
-                $pct = (float)$item['porcentaje_descuento'];
-
-                // A) Verificar que la partida exista en los saldos pendientes
-                if (!isset($saldosPendientes[$idReqArticulo])) {
-                    throw new \Exception("La partida #{$idReqArticulo} no pertenece a esta requisición o ya fue comprada en su totalidad.", 400);
-                }
-
-                // B) Verificar que no intente comprar más de lo permitido
-                $saldoDisponible = $saldosPendientes[$idReqArticulo];
-                if ($cantidadAComprar > $saldoDisponible) {
-                    throw new \Exception("Inventario Error: Intentas comprar {$cantidadAComprar} unidades de la partida #{$idReqArticulo}, pero solo quedan {$saldoDisponible} pendientes por comprar.", 400);
-                }
-
-                // C) Cálculos Financieros por Partida
-                $descuento = (float)($item['descuento_partida'] ?? 0);
-                $subtotalPartida = ($cantidadAComprar * $costoUnitario) - $descuento;
-                
-                // Asumiendo un IVA estándar del 16% si no se especifica (Ajusta según tu regla de negocio)
-                $impuestoPartida = $subtotalPartida * 0.16; 
-
-                $ocDetailData = [
-                    'compraid'              => $ocId,
-                    'idrequisicionarticulo' => $idReqArticulo,
-                    'inventarioid'          => $item['inventarioid'],
-                    'cantidad'              => $cantidadAComprar,
-                    'costo_unitario'        => $costoUnitario,
-                    'porcentaje_descuento'  => $pct,
-                    'descuento_partida'     => $descuento,
-                    'impuesto_partida'      => $impuestoPartida,
-                    'subtotal_partida'      => $subtotalPartida
-                ];
-
-                $this->ordenCompraModel->createDetail($ocId, $ocDetailData);
-
-                // AJUSTE 3: Recolectar para auto-recepción si es directa
-                if ($isSpotBuy) {
-                    $receptionItems[] = [
-                        'idrequisicionarticulo' => $idReqArticulo,
-                        'inventarioid' => $item['inventarioid'],
-                        'cantidad_recibida' => $cantidadAComprar
-                    ];
-                }
-
-                // Acumular para la cabecera
-                $subtotalOC += $subtotalPartida;
-                $ivaOC += $impuestoPartida;
+                throw new \Exception("Estado de requisición inválido para compra.", 409);
             }
 
-            // 5. ACTUALIZAR TOTALES DE LA OC
-            $this->ordenCompraModel->updateTotals($ocId, $subtotalOC, $ivaOC, $subtotalOC + $ivaOC);
+            // --- INICIO LÓGICA DE SPLITTING (Proveedor + Naturaleza) ---
+            $articulosAgrupados = array_reduce($payload['articulos'], function($carry, $item) {
+                $tipo = $item['tipo_elemento'] ?? 'P'; 
+                $key = $item['proveedorid'] . '_' . $tipo;
+                $carry[$key][] = $item;
+                return $carry;
+            }, []);
 
-            // --- INICIO AJUSTE 3: Disparar Recepción Automática ---
-            if ($isSpotBuy) {
-                $receptionRes = $this->inventoryReceptionService->store($userContext, [
-                    'idcompra' => $ocId,
-                    'num_remision' => 'STP-SPOT-BUY',
-                    'observaciones' => 'Entrada generada automáticamente por flujo de Pago Inmediato.',
-                    'articulos' => $receptionItems
+            $isInternalCall = $this->db->inTransaction(); 
+            if (!$isInternalCall) $this->db->beginTransaction();
+
+            $generatedOcIds = [];
+            $freshBalances = $this->requisicionModel->getPendingItemsWithSourcing($reqId);
+            $dbMap = array_column($freshBalances, null, 'idrequisicionarticulo');
+
+            // 2. ITERACIÓN MAESTRA DE SPLITTING
+            foreach ($articulosAgrupados as $splitKey => $partidas) {
+                
+                $idProveedor = (int) explode('_', $splitKey)[0];
+                $tipoGrupo = $partidas[0]['tipo_elemento'] ?? 'P';
+                $isSpotBuy = ($requisition['tipo_requisicion'] === 'spot_buy' || $idProveedor === 999);
+                
+                // TODAS las OCs nacen como EMITIDA para permitir Three-Way Match (Factura/Ticket)
+                $ocStatus = PurchaseOrderEnum::EMITIDA->value;
+
+                // 3. CREAR CABECERA (Transaccional)
+                $labelTipo = ($tipoGrupo === 'S') ? '[SERVICIOS]' : '[PRODUCTOS]';
+                $ocId = $this->ordenCompraModel->createHeader([
+                    'requisicionid' => $reqId,
+                    'proveedorid'   => $idProveedor,
+                    'plantaid'      => $plantaId,
+                    'almacenid'     => $payload['almacenid'],
+                    'estatus'       => $ocStatus,
+                    'moneda'        => $payload['moneda'] ?? 'MXN',
+                    'tipo_cambio'   => $payload['tipo_cambio'] ?? 1.0,
+                    'observaciones' => trim($labelTipo . ' ' . ($payload['observaciones'] ?? '')),
+                    'created_by'    => $userId
                 ]);
 
-                if (!$receptionRes->success) throw new \Exception("Error en auto-recepción: " . $receptionRes->message);
-            }
-            // --- FIN AJUSTE 3 ---
+                if ($ocId <= 0) throw new \Exception("Error al generar cabecera OC.");
 
-            // 6. MÁQUINA DE ESTADOS: Actualización dinámica
-            // Recalculamos los saldos pendientes DESPUÉS de haber insertado la OC actual
-            $finalPendingBalance = $this->requisicionModel->calculatePendingItems($reqId);
+                $subtotalOC = 0;
+                $ivaOC = 0;
+                $autoProcessItems = [];
 
-            if (empty($finalPendingBalance)) {
-                /**
-                 * CASO A: Cumplimiento Total.
-                 * Esta OC (o la suma de esta con anteriores) ya cubrió el 100% de lo solicitado.
-                 */
-                $this->requisicionModel->updateStatus($reqId, 'finalizada', $userId);
-                
-                // Registramos en auditoría el cierre automático
-                $this->requisicionModel->logAudit(
-                    $reqId, 
-                    AuditAction::FINALIZED, 
-                    "Requisición finalizada automáticamente por cumplimiento total de partidas (OC #{$ocId}).", 
-                    $userId
-                );
-            } else {
-                /**
-                 * CASO B: Cumplimiento Parcial.
-                 * Aún quedan saldos pendientes, por lo que solo nos aseguramos de que pase
-                 * de 'aprobada' a 'en compra' si es la primera compra que se le hace.
-                 */
-                if ($requisition['estatus'] === 'aprobada') {
-                    $this->requisicionModel->updateStatus($reqId, 'en compra', $userId);
-                    
-                    $this->requisicionModel->logAudit(
-                        $reqId, 
-                        AuditAction::UPDATED, 
-                        "Estado cambiado a 'en compra' tras generación de OC #{$ocId} (Surtido Parcial).", 
-                        $userId
-                    );
+                // 4. INSERTAR DETALLES Y VALIDAR COMPLIANCE
+                foreach ($partidas as $item) {
+                    $idReqArt = (int)$item['idrequisicionarticulo'];
+                    $dbItem = $dbMap[$idReqArt] ?? null;
+
+                    // VALIDACIÓN RED TEAM: Semáforo y Precios
+                    if (!$dbItem || $dbItem['operation_status'] !== 'READY') {
+                        throw new \Exception("Partida #{$idReqArt} bloqueada por integridad (Onboarding/SKU).", 403);
+                    }
+                    if ($dbItem['is_price_locked'] == 1 && (float)$item['costo_unitario'] > (float)$dbItem['costo_base_pactado']) {
+                        throw new \Exception("Bypass de precio detectado en partida #{$idReqArt}.", 403);
+                    }
+
+                    $subtotalPartida = ((float)$item['cantidad'] * (float)$item['costo_unitario']) - (float)($item['descuento_partida'] ?? 0);
+                    $impuestoPartida = $subtotalPartida * 0.16; // TODO: Dinámico por SKU
+
+                    $this->ordenCompraModel->createDetail($ocId, [
+                        'compraid'              => $ocId,
+                        'idrequisicionarticulo' => $idReqArt,
+                        'inventarioid'          => $item['inventarioid'],
+                        'tipo_elemento'         => $item['tipo_elemento'] ?? 'P',
+                        'cantidad'              => $item['cantidad'],
+                        'costo_unitario'        => $item['costo_unitario'],
+                        'porcentaje_descuento'  => $item['porcentaje_descuento'] ?? 0,
+                        'descuento_partida'     => $item['descuento_partida'] ?? 0,
+                        'impuesto_partida'      => $impuestoPartida,
+                        'subtotal_partida'      => $subtotalPartida,
+                        'created_by'            => $userId
+                    ]);
+
+                    // Coleccionamos para auto-recepción/aceptación si es Spot Buy (Casos 2 y 4)
+                    if ($isSpotBuy) {
+                        $autoProcessItems[] = [
+                            'idrequisicionarticulo' => $idReqArt,
+                            'inventarioid' => $item['inventarioid'],
+                            'cantidad_recibida' => $item['cantidad']
+                        ];
+                    }
+
+                    $subtotalOC += $subtotalPartida;
+                    $ivaOC += $impuestoPartida;
+
+                    // --- CIERRE DE PINZA SOURCING ---
+                    // Vinculamos la oferta ganadora con la OC generada para reporte de ahorros
+                    $this->requisicionCotizacionModel->linkPurchaseOrder($idReqArt, $ocId);
                 }
+
+                $this->ordenCompraModel->updateTotals($ocId, $subtotalOC, $ivaOC, $subtotalOC + $ivaOC);
+
+                // 5. PROCESAMIENTO OPERATIVO (Casos 2 y 4)
+                if ($isSpotBuy && !empty($autoProcessItems)) {
+                    if ($tipoGrupo === 'P') {
+                        // CASO 2: Producto + Ticket -> Auto-WMS
+                        $res = $this->inventoryReceptionService->store($userContext, [
+                            'idcompra' => $ocId,
+                            'num_remision' => 'AUTO-SPOT-BUY',
+                            'articulos' => $autoProcessItems
+                        ]);
+                        if (!$res->success) throw new \Exception("Falla en Auto-WMS: " . $res->message);
+                    } else {
+                        // CASO 4: Servicio + Ticket -> Auto-Aceptación (Virtual)
+                        // Este método marca la OC como RECIBIDA/CUMPLIDA sin afectar stock
+                        $this->ordenCompraModel->markAsReceived($ocId, $userId, "Aceptación automática por flujo Spot Buy.");
+                    }
+                }
+
+                $generatedOcIds[] = $ocId;
             }
 
-            if (!$isInternalCall) {
-                $this->db->commit();
-            }
+            // 6. CIERRE DE REQUISICIÓN PADRE
+            $this->updateParentRequisitionStatus($reqId, $userId, $generatedOcIds);
+
+            if (!$isInternalCall) $this->db->commit();
 
             return \ServiceResponse::success(
-                ['orden_compra_id' => $ocId],
-                "Orden de Compra #{$ocId} generada exitosamente.",
+                ['ordenes_generadas' => $generatedOcIds],
+                count($generatedOcIds) . " Orden(es) generada(s) exitosamente.",
                 201
             );
 
         } catch (\InvalidArgumentException $i) {
             if ($this->db->inTransaction()) $this->db->rollBack();
-            return \ServiceResponse::validation(errors: $i->getMessage());
-        } catch (\PDOException $p) {
-            if ($this->db->inTransaction()) $this->db->rollBack();
-            $this->logMessage($p, \LogLevel::CRITICAL, ['action' => 'storePurchaseOrder', 'id_user' => $userId]);
-            return \ServiceResponse::error(message: "Error de integridad en la base de datos al generar la OC.");
+            return \ServiceResponse::validation($i->getMessage());
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
-            $this->logMessage($e, \LogLevel::WARNING, ['action' => 'storePurchaseOrder', 'payload' => $payload ?? []]);
-            $code = $e->getCode() !== 0 ? $e->getCode() : 500;
-            return \ServiceResponse::error(message: $e->getMessage(), code: $code);
+            $this->logMessage($e, \LogLevel::WARNING, ['payload' => $payload ?? []]);
+            $code = ($e->getCode() >= 400 && $e->getCode() < 600) ? $e->getCode() : 500;
+            return \ServiceResponse::error($e->getMessage(), (int)$code);
+        } catch (\PDOException | \Error $p) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            $this->logMessage($p, \LogLevel::CRITICAL, ['action' => 'splitting_po_critical']);
+            return \ServiceResponse::error("Error de integridad en el Splitting.", 500);
         }
+    }
+
+    /**
+     * Método auxiliar para gestionar la máquina de estados de la Requisición original.
+     */
+    private function updateParentRequisitionStatus(int $reqId, int $userId, array $ocIds): void
+    {
+        $finalBalance = $this->requisicionModel->calculatePendingItems($reqId);
+        $status = empty($finalBalance) ? 'finalizada' : 'en compra';
+        $action = empty($finalBalance) ? \AuditAction::FINALIZED : \AuditAction::UPDATED;
+        
+        $this->requisicionModel->updateStatus($reqId, $status, $userId);
+        $this->requisicionModel->logAudit(
+            $reqId, 
+            $action, 
+            "Se generaron las siguientes OCs: #" . implode(', #', $ocIds), 
+            $userId
+        );
     }
 
     public function getWithDetails(int $ocId, array $userContext): \ServiceResponse {
@@ -301,13 +293,25 @@ class PurchaseOrderService
 
             // 4. Enriquecer cada item con su estado de surtido real
             foreach ($items as &$item) {
-                $idPartida = $item['idrequisicionarticulo'];
-                
-                // Cantidad que ya entró al almacén según las tablas de recepción
-                $item['cantidad_recibida'] = (float)($receivedMap[$idPartida] ?? 0);
-                
-                // Cantidad total que se pidió en esta OC
+                $idPartida = $item['idrequisicionarticulo'];                
                 $qtyTotal = (float)$item['cantidad'];
+                $tipo = $item['tipo_elemento'] ?? 'P'; // P=Producto, S=Servicio
+
+                if ($tipo === 'S') {
+                    /**
+                     * LÓGICA PARA SERVICIOS:
+                     * Si la OC ya fue aceptada administrativamente (estatus 'recibida' o 'cerrada'),
+                     * reflejamos el cumplimiento total en la UI.
+                     */
+                    $isAccepted = in_array($oc['estatus'], ['recibida', 'cerrada']);
+                    $item['cantidad_recibida'] = $isAccepted ? $qtyTotal : 0.00;
+                } else {
+                    /**
+                     * LÓGICA PARA PRODUCTOS:
+                     * Mantenemos la consulta estricta al WMS (recepciones físicas).
+                     */
+                    $item['cantidad_recibida'] = (float)($receivedMap[$idPartida] ?? 0);
+                }
 
                 // Cálculo del porcentaje para la barra de progreso del Frontend
                 $item['progreso_recepcion'] = ($qtyTotal > 0) 

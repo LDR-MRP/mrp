@@ -334,7 +334,7 @@ public function updateAvatarUsuario(int $usuarioid, string $filename, string $se
                     plantaid, 
                     status, 
                     avatar_file, 
-                    fecha_creacion
+                    datecreated
                 ) VALUES (
                     :nom, 
                     :ape, 

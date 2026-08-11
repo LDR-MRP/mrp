@@ -228,4 +228,30 @@ class Com_requisicionCotizacionModel extends Mysql
         // Usamos updateAffected para confirmar que el registro existía y cambió
         return $this->updateAffected($query, $params) > 0;
     }
+
+    /**
+     * Vincula la cotización ganadora con la Orden de Compra que la ejecutó.
+     * 
+     * @param int $idReqArt ID de la partida de la requisición.
+     * @param int $ocId ID de la Orden de Compra generada.
+     * @return bool
+     */
+    public function linkPurchaseOrder(int $idReqArt, int $ocId): bool
+    {
+        $query = "UPDATE com_requisicion_cotizaciones 
+                SET id_orden_compra_final = ?, 
+                    updated_at = ? 
+                WHERE idrequisicionarticulo = ? 
+                AND es_ganadora = 1 
+                AND deleted_at IS NULL";
+
+        $params = [
+            $ocId,
+            date('Y-m-d H:i:s'),
+            $idReqArt
+        ];
+
+        // Usamos updateAffected para asegurar consistencia
+        return $this->updateAffected($query, $params) > 0;
+    }
 }

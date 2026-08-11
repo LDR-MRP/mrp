@@ -1,36 +1,42 @@
 <?php headerAdmin($data); ?>
 
-<div class="main-content">
+<div class="main-content bg-light">
     <div class="page-content">
         <div class="container-fluid">
             <section id="id-create-oc">
-                <!-- 1. BREADCRUMBS -->
-                <div class="row align-items-center mb-4">
-                    <div class="col-12">
-                        <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-transparent">
-                            <div class="page-title-right">
-                                <ol class="breadcrumb m-0 fs-13">
-                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
-                                    <li class="breadcrumb-item"><a href="<?= base_url(); ?>/com_orden">Órdenes</a></li>
-                                    <li class="breadcrumb-item active text-primary">Generar Orden</li>
-                                </ol>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Título Principal y Estatus -->
-                <div class="row mb-3">
-                    <div class="col-12">
+                <!-- HEADER FUSIONADO (Regreso al Dashboard + Contexto) -->
+                <div class="card shadow-sm border-0 mb-4" style="border-radius: 4px;">
+                    <div class="card-body p-3">
                         <div class="d-flex align-items-center">
-                            <div class="avatar-md me-3">
-                                <span class="avatar-title bg-primary text-white rounded-circle fs-3 shadow-lg">
-                                    <i class="ri-shopping-cart-2-line"></i>
-                                </span>
+
+                            <!-- SECCIÓN IZQUIERDA: IDENTIDAD Y NAVEGACIÓN -->
+                            <div class="col-md-7">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-md flex-shrink-0 me-3">
+                                        <div class="avatar-title rounded-2 bg-dark-subtle text-muted fs-1 border border-light-subtle shadow-sm">
+                                            <i class="ri-file-list-3-line"></i>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <nav aria-label="breadcrumb">
+                                            <ol class="breadcrumb breadcrumb-dot mb-1 fs-12 fw-medium">
+                                                <li class="breadcrumb-item"><a href="javascript: void(0);" onclick="window.history.back();" class="text-muted">Requisición</a></li>
+                                                <li class="breadcrumb-item active text-primary">Generar Órden</li>
+                                            </ol>
+                                        </nav>
+                                        <h3 class="mb-0 fw-bold text-uppercase ls-1 text-body">
+                                            Generar Orden de Compra
+                                        </h3>
+                                        <p class="text-muted mb-0 fs-13 mt-1 fw-medium opacity-75">Basada en la Requisición Aprobada <b id="lbl-req-id" class="text-primary">#...</b></p>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <h4 class="mb-1 fw-bold ls-05">Generar Orden de Compra</h4>
-                                <p class="text-muted mb-0 fs-13">Basada en la Requisición Aprobada <b id="lbl-req-id" class="text-primary">#...</b></p>
+
+                            <!-- SECCIÓN DERECHA: INDICADORES DE ESTADO (KPI STACK) -->
+                            <div class="col-md-5 mt-3 mt-md-0">
+                                <div class="d-flex justify-content-md-end align-items-center">  
+
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -51,6 +57,7 @@
                                         <table id="tblPartidasOC" class="table table-nowrap align-middle mb-0 table-hover">
                                             <thead class="bg-light">
                                                 <tr>
+                                                    <th></th>
                                                     <th class="ps-4">Artículo</th>
                                                     <th width="50" class="text-center" title="Saldo Pendiente por Comprar">Pendiente</th>
                                                     <th width="50" class="text-center">Cant. a Comprar</th>
@@ -58,7 +65,6 @@
                                                     <th width="50" class="text-end">Descuento %</th>
                                                     <th width="50" class="text-end">Descuento $</th>
                                                     <th width="50" class="text-end">Subtotal</th>
-                                                    <th width="50"></th>
                                                 </tr>
                                             </thead>
                                             <tbody>

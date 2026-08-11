@@ -51,15 +51,20 @@ class Com_ordenCompraModel extends Mysql {
                     oc.total,
                     oc.moneda,
                     oc.created_at,
-                    p.nombre_comercial AS proveedor_nombre,
-                    u.nombres AS comprador_nombre,
-                    a.cve_almacen
-                  FROM com_ordenes_compra oc
-                  LEFT JOIN prv_cat_proveedores p ON oc.proveedorid = p.id_proveedor
-                  LEFT JOIN usuarios u ON oc.created_by = u.idusuario
-                  LEFT JOIN wms_almacenes a ON oc.almacenid = a.idalmacen
-                  $where
-                  ORDER BY oc.idcompra DESC";
+                    -- Resolvemos el nombre: si hay prospecto en la cotización, lo tomamos
+                    COALESCE(MAX(cot.nombre_prospecto), MAX(p.nombre_comercial), MAX(p.razon_social)) AS proveedor_nombre,
+                    MAX(u.nombres) AS comprador_nombre,
+                    MAX(a.cve_almacen) AS cve_almacen,
+                    MAX(r.folio) AS folio_requisicion
+                FROM com_ordenes_compra oc
+                LEFT JOIN prv_cat_proveedores p ON oc.proveedorid = p.id_proveedor
+                LEFT JOIN usuarios u ON oc.created_by = u.idusuario
+                LEFT JOIN wms_almacenes a ON oc.almacenid = a.idalmacen
+                LEFT JOIN com_requisiciones r ON oc.requisicionid = r.idrequisicion
+                LEFT JOIN com_requisicion_cotizaciones cot ON cot.id_orden_compra_final = oc.idcompra
+                $where
+                GROUP BY oc.idcompra
+                ORDER BY oc.idcompra DESC";
 
         return $this->select_all($query, $params);
     }
@@ -95,19 +100,21 @@ class Com_ordenCompraModel extends Mysql {
      */
     public function createDetail(int $ocId, array $data): bool {
         $query = "INSERT INTO com_ordenes_compra_detalle 
-                  (compraid, idrequisicionarticulo, inventarioid, cantidad, costo_unitario, porcentaje_descuento, descuento_partida, impuesto_partida, subtotal_partida) 
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                  (compraid, idrequisicionarticulo, inventarioid, tipo_elemento, cantidad, costo_unitario, porcentaje_descuento, descuento_partida, impuesto_partida, subtotal_partida, created_by) 
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $values = [
             $ocId,
             $data['idrequisicionarticulo'],
             $data['inventarioid'],
+            $data['tipo_elemento'],
             $data['cantidad'],
             $data['costo_unitario'],
             $data['porcentaje_descuento'],
             $data['descuento_partida'],
             $data['impuesto_partida'],
-            $data['subtotal_partida']
+            $data['subtotal_partida'],
+            $data['created_by']
         ];
 
         // Usamos insert porque devuelve el ID, si es > 0 fue exitoso.
@@ -153,7 +160,7 @@ class Com_ordenCompraModel extends Mysql {
     }
 
     public function getDetails(int $id): array {
-        $query = "SELECT ocd.*, i.descripcion, i.cve_articulo
+        $query = "SELECT ocd.*, i.descripcion, i.cve_articulo, i.tipo_elemento
                   FROM com_ordenes_compra_detalle ocd
                   INNER JOIN wms_inventario i ON ocd.inventarioid = i.idinventario
                   WHERE ocd.compraid = ?";
@@ -333,6 +340,40 @@ class Com_ordenCompraModel extends Mysql {
 
         // Asumiendo tu método select_all() del Core
         return $this->select_all($query, $params) ?? [];
+    }
+
+    /**
+     * Marca la Orden de Compra como recibida/cumplida administrativamente.
+     * Se utiliza para flujos de Servicios o Spot Buy que no afectan stock físico.
+     * 
+     * @param int $ocId ID de la Orden de Compra.
+     * @param int $userId ID del usuario que autoriza.
+     * @param string $message Motivo o nota de la recepción.
+     * @return bool
+     */
+    public function markAsReceived(int $ocId, int $userId, string $message = ""): bool
+    {
+        // 1. Actualización de Estatus
+        $query = "UPDATE com_ordenes_compra 
+                SET estatus = 'recibida', 
+                    updated_by = ?, 
+                    updated_at = ? 
+                WHERE idcompra = ?";
+
+        $params = [
+            $userId,
+            date('Y-m-d H:i:s'),
+            $ocId
+        ];
+
+        $affected = $this->updateAffected($query, $params);
+
+        if ($affected > 0) {
+            // 2. Registro en Auditorías
+            $this->logAudit($ocId, \AuditAction::RECEIVED, $message, $userId);
+        }
+
+        return $affected > 0;
     }
 }
 ?>

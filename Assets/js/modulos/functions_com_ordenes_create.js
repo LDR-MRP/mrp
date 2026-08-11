@@ -91,6 +91,11 @@ const PurchaseOrderForm = {
             const $row = $(e.target).closest('.partida-row');
             this.updateRowSubtotal($row, $(e.target)); // Pasamos el target para saber qué cambió
         });
+
+        this.dom.$tblBody.on('change', '.check-item', () => {
+            this.calculateGrandTotals();
+            this.checkSplittingNeeds(); // Función para advertir sobre múltiples órdenes
+        });
     },
 
     loadCatalogs: function () {
@@ -149,58 +154,105 @@ const PurchaseOrderForm = {
         this.dom.$tblBody.empty();
 
         this.state.pendingItems.forEach(item => {
-            // El backend nos mandó cantidad_pendiente y precio_unitario_estimado
             const maxQty = parseFloat(item.cantidad_pendiente);
-            const hasWinner = item.id_proveedor_ganador !== null;
-            const price = hasWinner ? parseFloat(item.precio_pactado) : parseFloat(item.precio_unitario_estimado);
+            
+            // 1. DETERMINACIÓN DE ESTADOS (Bifurcación Comercial)
+            const isReady = item.operation_status === 'READY';
+            const isSourcing = item.id_provider_final !== null;
+            const isPriceLocked = item.is_price_locked == 1;
+            
+            // El precio base viene normalizado del backend (Sin IVA)
+            const price = parseFloat(item.costo_base_pactado || item.precio_unitario_estimado);
 
+            // 2. SEMÁFORO DE OPERACIÓN (Configuración Visual)
+            let lockBadge = '';
+            let rowClass = '';
+            let checkDisabled = isReady ? '' : 'disabled';
+
+            switch (item.operation_status) {
+                case 'IN_SOURCING':
+                    lockBadge = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fs-10"><i class="ri-search-eye-line me-1"></i>EN NEGOCIACIÓN</span>`;
+                    rowClass = 'opacity-75 bg-light-subtle';
+                    break;
+                case 'PENDING_PROMOTION':
+                    lockBadge = `<span class="badge bg-warning-subtle text-warning border border-warning-subtle fs-10"><i class="ri-rocket-2-line me-1"></i>REQUERIR CATALOGACIÓN</span>`;
+                    rowClass = 'opacity-75';
+                    break;
+                case 'BLOCKED_ONBOARDING':
+                    lockBadge = `<span class="badge bg-info-subtle text-info border border-info-subtle fs-10"><i class="ri-shield-user-line me-1"></i>PROVEEDOR EN ONBOARDING</span>`;
+                    rowClass = 'opacity-75';
+                    break;
+                case 'READY':
+                    lockBadge = `<span class="badge bg-success-subtle text-success fs-10"><i class="ri-check-line me-1"></i>LISTO</span>`;
+                    rowClass = ''; // Sin opacidad para los que están listos
+                    break;
+            }
+
+            // 3. IDENTIDAD DEL PROVEEDOR (Evitar el 'null' visual)
+            const vendorName = item.proveedor_nombre || 'POR DEFINIR';
+            const vendorBadge = `<span class="badge bg-light text-muted border fs-10" title="Estatus Comercial">
+                                    <i class="ri-user-follow-line me-1 ${isSourcing ? 'text-primary' : ''}"></i> ${vendorName}
+                                </span>`;           
+
+            // 4. CONSTRUCCIÓN DEL HTML
             const html = `
-                <tr class="partida-row" 
+                <tr class="partida-row ${rowClass}" 
                     data-idreqart="${item.idrequisicionarticulo}" 
-                    data-invid="${item.inventarioid}">
+                    data-invid="${item.inventarioid}"
+                    data-id-proveedor="${item.id_proveedor_final || ''}"
+                    data-tipo-elemento="${item.tipo_elemento || 'P'}">
                     
-                    <td class="ps-4">
-                        <div class="fw-bold">ID Inv: ${item.inventarioid}</div>
-                        <small class="text-muted">${item.notas || 'Sin notas'}</small>
-                    </td>
-                    
-                    <td class="text-center bg-light fw-bold text-secondary">
-                        ${maxQty.toFixed(2)}
-                    </td>
-                    
-                    <td>
-                        <!-- El max evita visualmente que pongan más del saldo pendiente -->
-                        <input type="number" class="form-control form-control-sm text-end input-calc input-qty fw-bold text-primary" 
-                               value="${maxQty}" min="0.01" max="${maxQty}" step="0.01">
-                    </td>
-                    
-                    <td>
-                        <input type="number" class="form-control form-control-sm text-end input-calc input-price" 
-                               value="${price.toFixed(2)}" min="0" step="0.01">
-                    </td>
-
-                    <!-- COLUMNA NUEVA: PORCENTAJE -->
-                    <td>
-                        <div class="input-group input-group-sm">
-                            <input type="number" class="form-control text-end input-calc input-pct-discount text-danger" 
-                                value="0" min="0" max="100" step="0.1">
-                            <span class="input-group-text">%</span>
+                    <td class="ps-4" style="width: 40px;">
+                        <div class="form-check">
+                            <input class="form-check-input check-item" type="checkbox" 
+                                ${checkDisabled} 
+                                ${isReady ? 'checked' : ''}>
                         </div>
                     </td>
                     
                     <td>
-                        <input type="number" class="form-control form-control-sm text-end input-calc input-discount text-danger" 
-                               value="0.00" min="0" step="0.01">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <h6 class="fs-13 mb-1 text-body fw-bold text-uppercase">${item.descripcion}</h6>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <small class="text-muted">SKU: <b class="text-dark">${item.cve_articulo}</b></small>
+                                    ${lockBadge}
+                                    ${vendorBadge}
+                                </div>
+                            </div>
+                        </div>
                     </td>
                     
-                    <td class="text-end pe-4 fw-bold row-subtotal">
+                    <td class="text-center bg-light-subtle fw-bold text-muted fs-12">
+                        ${maxQty.toFixed(2)}
+                    </td>
+                    
+                    <td>
+                        <input type="number" class="form-control form-control-sm text-end input-calc input-qty fw-bold text-primary border-light shadow-sm" 
+                            value="${maxQty}" min="0.01" max="${maxQty}" step="0.01" ${!isReady ? 'disabled' : ''}>
+                    </td>
+                    
+                    <td>
+                        <input type="number" class="form-control form-control-sm text-end input-calc input-price ${isPriceLocked ? 'bg-light fw-bold text-dark' : ''}" 
+                            value="${price.toFixed(2)}" min="0" step="0.01" 
+                            ${isPriceLocked || !isReady ? 'readonly' : ''}>
+                    </td>
+
+                    <td>
+                        <div class="input-group input-group-sm shadow-sm">
+                            <input type="number" class="form-control text-end input-calc input-pct-discount text-danger" 
+                                value="0" min="0" max="100" step="0.1" ${!isReady ? 'disabled' : ''}>
+                            <span class="input-group-text bg-light border-0 fs-10">%</span>
+                        </div>
+                    </td>
+                    
+                    <td>
+                        <input type="number" class="form-control form-control-sm text-end input-calc input-discount text-danger border-light" 
+                            value="0.00" min="0" step="0.01" ${!isReady ? 'disabled' : ''}>
+                    </td>
+                    
+                    <td class="text-end pe-4 fw-bold row-subtotal fs-14 text-body">
                         ${Sys_Core.Format.toCurrency(maxQty * price)}
-                    </td>
-                    
-                    <td class="text-center">
-                        <button type="button" class="btn btn-link btn-sm text-danger p-0 btn-quitar" title="No comprar ahora">
-                            <i class="ri-close-circle-line fs-5"></i>
-                        </button>
                     </td>
                 </tr>
             `;
@@ -247,14 +299,24 @@ const PurchaseOrderForm = {
     calculateGrandTotals: function () {
         let grandSubtotal = 0;
 
+        // Solo recorremos las filas que tienen el checkbox marcado
         this.dom.$tblBody.find('.partida-row').each((i, el) => {
             const $row = $(el);
-            const qty = parseFloat($row.find('.input-qty').val()) || 0;
-            const price = parseFloat($row.find('.input-price').val()) || 0;
-            const discount = parseFloat($row.find('.input-discount').val()) || 0;
+            const $checkbox = $row.find('.check-item');
             
-            let rowSub = (qty * price) - discount;
-            if (rowSub > 0) grandSubtotal += rowSub;
+            if ($checkbox.is(':checked')) {
+                const qty = parseFloat($row.find('.input-qty').val()) || 0;
+                const price = parseFloat($row.find('.input-price').val()) || 0;
+                const discount = parseFloat($row.find('.input-discount').val()) || 0;
+                
+                let rowSub = (qty * price) - discount;
+                if (rowSub > 0) grandSubtotal += rowSub;
+                
+                // Efecto visual: Resaltar fila seleccionada
+                $row.addClass('table-active');
+            } else {
+                $row.removeClass('table-active');
+            }
         });
 
         const iva = grandSubtotal * this.config.taxRate;
@@ -263,48 +325,110 @@ const PurchaseOrderForm = {
         this.dom.$lblSubtotal.text(Sys_Core.Format.toCurrency(grandSubtotal));
         this.dom.$lblIva.text(Sys_Core.Format.toCurrency(iva));
         this.dom.$lblTotal.text(Sys_Core.Format.toCurrency(total));
+        
+        // Validar si el botón de generar debe estar habilitado
+        this.dom.$btnSubmit.prop('disabled', this.dom.$tblBody.find('.check-item:checked').length === 0);
+    },
+
+    checkSplittingNeeds: function () {
+        const selectedProviders = [];
+        const globalProvider = this.dom.$selectProveedor.val();
+
+        this.dom.$tblBody.find('.partida-row').each((i, el) => {
+            const $row = $(el);
+            if ($row.find('.check-item').is(':checked')) {
+                // Si la fila tiene proveedor fijo (Sourcing), usamos ese. 
+                // Si no, usamos el global del select.
+                const pId = $row.data('id-proveedor') || globalProvider;
+                if (pId && !selectedProviders.includes(pId)) {
+                    selectedProviders.push(pId);
+                }
+            }
+        });
+
+        if (selectedProviders.length > 1) {
+            // Mostrar alerta de Splitting (Puedes crear un div específico en el HTML)
+            $('#splitting-alert').removeClass('d-none').html(`
+                <div class="alert alert-info border-0 shadow-sm mb-3 animate__animated animate__headShake">
+                    <i class="ri-information-line me-1"></i> <b>Aviso de Splitting:</b> 
+                    Se generarán ${selectedProviders.length} Órdenes de Compra independientes debido a la mezcla de proveedores.
+                </div>
+            `);
+        } else {
+            $('#splitting-alert').addClass('d-none');
+        }
     },
 
     submitPurchaseOrder: function () {
-        if (this.dom.$tblBody.find('.partida-row').length === 0) {
-            Sys_Core.UI.alert('Orden Vacía', 'Debe incluir al menos un artículo para generar la OC.', 'warning');
+        const $selectedRows = this.dom.$tblBody.find('.partida-row').filter(function() {
+            return $(this).find('.check-item').is(':checked');
+        });
+
+        if ($selectedRows.length === 0) {
+            Sys_Core.UI.alert('Selección Vacía', 'Debe marcar al menos un artículo para generar la(s) orden(es) de compra.', 'warning');
             return;
         }
 
-        // Construir Payload idéntico al que probaste en Postman
+        const globalProvider = this.dom.$selectProveedor.val();
+        
+        // Construir Payload para Splitting
         const payload = {
             requisicionid: this.state.reqId,
-            proveedorid: this.dom.$selectProveedor.val(),
             almacenid: this.dom.$selectAlmacen.val(),
-            moneda: $('select[name="moneda"]').val(),
-            tipo_cambio: $('input[name="tipo_cambio"]').val(),
+            moneda: this.dom.$selectMoneda.val(),
+            tipo_cambio: this.dom.$inputTipoCambio.val(),
             observaciones: $('textarea[name="observaciones"]').val(),
             articulos: []
         };
 
-        this.dom.$tblBody.find('.partida-row').each((i, el) => {
+        let validationError = false;
+
+        $selectedRows.each((i, el) => {
             const $row = $(el);
+            // Prioridad: 1. Proveedor de Sourcing (data-id-proveedor) | 2. Proveedor Global (Select)
+            const itemProvider = $row.data('id-proveedor') || globalProvider;
+
+            if (!itemProvider) {
+                validationError = true;
+                $row.addClass('table-danger');
+            }
+
             payload.articulos.push({
                 idrequisicionarticulo: $row.data('idreqart'),
                 inventarioid: $row.data('invid'),
+                proveedorid: itemProvider, // Inyectamos el proveedor por partida
                 cantidad: $row.find('.input-qty').val(),
                 costo_unitario: $row.find('.input-price').val(),
-                porcentaje_descuento: parseFloat($row.find('.input-pct-discount').val()),
-                descuento_partida: $row.find('.input-discount').val()
+                porcentaje_descuento: parseFloat($row.find('.input-pct-discount').val()) || 0,
+                descuento_partida: $row.find('.input-discount').val() || 0,
+                tipo_elemento: $row.data('tipo-elemento')
             });
         });
 
-        // Usamos el Sys_Core.Net.post mejorado
+        if (validationError) {
+            Sys_Core.UI.notify('Hay partidas sin proveedor asignado. Por favor seleccione un proveedor global.', 'error');
+            return;
+        }
+
         Sys_Core.Net.post({
             url: this.config.apiPOs,
             method: 'POST',
             payload: payload,
             $btn: this.dom.$btnSubmit,
             onDone: (res) => {
+                // El backend ahora devuelve un array de IDs generados por el splitting
+                const ids = res.data.ordenes_generadas; // Ej: [101, 102]
+                
+                Sys_Core.UI.notify(`${ids.length} Orden(es) de compra generada(s) correctamente.`, 'success');
+
                 setTimeout(() => {
-                    // Redirigir a la vista de la OC generada (o de vuelta a requisiciones)
-                    Sys_Core.Navigation.to(`com_orden/read/${res.data.orden_compra_id}`);
-                }, 1500);
+                    // Si es una sola, vamos al detalle. Si son varias, volvemos al listado.
+                    if (ids.length === 1) {
+                        Sys_Core.Navigation.to(`com_orden/read/${ids[0]}`);
+                    } else {
+                        Sys_Core.Navigation.to(`com_orden`);
+                    }
+                }, 2000);
             }
         });
     }

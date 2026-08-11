@@ -1,137 +1,1840 @@
-const products = [
-  {id:1,nombre:'SUV Alpha X',cat:'suv',precio:'$685,000',img:'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?auto=format&fit=crop&w=900&q=80',desc:'SUV automática, gasolina, ideal para familias y ejecutivos.'},
-  {id:2,nombre:'Sedán Nova 1.6',cat:'sedan',precio:'$389,000',img:'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=900&q=80',desc:'Sedán de alto desplazamiento comercial para flotillas.'},
-  {id:3,nombre:'Pickup Titan Pro',cat:'pickup',precio:'$742,000',img:'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=900&q=80',desc:'Pickup para trabajo, carga y operación diaria.'},
-  {id:4,nombre:'Van Cargo Max',cat:'van',precio:'$620,000',img:'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&w=900&q=80',desc:'Van comercial para reparto y transporte de personal.'},
-  {id:5,nombre:'E-Drive City',cat:'electrico',precio:'$810,000',img:'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?auto=format&fit=crop&w=900&q=80',desc:'Unidad eléctrica para movilidad urbana eficiente.'},
-  {id:6,nombre:'SUV Terra Plus',cat:'suv',precio:'$715,000',img:'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=900&q=80',desc:'SUV amplia con equipamiento premium.'},
-  {id:7,nombre:'Sedán Executive',cat:'sedan',precio:'$445,000',img:'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=80',desc:'Sedán ejecutivo para clientes corporativos.'},
-  {id:8,nombre:'Pickup Work 4x2',cat:'pickup',precio:'$689,000',img:'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=900&q=80',desc:'Pickup práctica para trabajo pesado.'}
-];
+'use strict';
 
-function getCart(){
-  return JSON.parse(localStorage.getItem('cartAD') || '[]');
+/* ============================================================
+ * CONFIGURACIÓN
+ * ============================================================ */
+
+let products = [];
+
+let filteredProducts = [];
+
+let currentPage = 1;
+
+const PRODUCTS_PER_PAGE = 15;
+
+
+
+function getPortalClientId() {
+
+  return Number(
+    window.ordersPortal?.idcliente
+    || 0
+  );
 }
 
-function setCart(cart){
-  localStorage.setItem('cartAD', JSON.stringify(cart));
-  updateCartCount();
+
+function getCartStorageKey() {
+
+  const idcliente =
+    getPortalClientId();
+
+  if (idcliente <= 0) {
+
+    return null;
+  }
+
+  return `cartAD_cliente_${idcliente}`;
 }
 
-function updateCartCount(){
-  const el = document.getElementById('cartCount');
-  if(el){
-    el.textContent = getCart().reduce((total,item) => total + item.qty, 0);
+
+/* ============================================================
+ * CARRITO
+ * ============================================================ */
+
+function getCart() {
+
+  const storageKey =
+    getCartStorageKey();
+
+  if (!storageKey) {
+
+    return [];
+  }
+
+  try {
+
+    const storedCart =
+      localStorage.getItem(
+        storageKey
+      );
+
+    if (!storedCart) {
+
+      return [];
+    }
+
+    const cart =
+      JSON.parse(
+        storedCart
+      );
+
+    return Array.isArray(cart)
+      ? cart
+      : [];
+
+  } catch (error) {
+
+    console.error(
+      'Error leyendo carrito:',
+      error
+    );
+
+    return [];
   }
 }
 
-function addToCart(id){
-  const item = products.find(p => p.id === Number(id));
-  if(!item) return;
 
-  const cart = getCart();
-  const found = cart.find(p => p.id === item.id);
+function setCart(cart) {
 
-  if(found){
-    found.qty++;
-  }else{
-    cart.push({...item, qty: 1});
+  const storageKey =
+    getCartStorageKey();
+
+  if (!storageKey) {
+
+    console.error(
+      'No fue posible guardar el carrito porque no existe un distribuidor autenticado.'
+    );
+
+    mostrarMensajeCarrito(
+      'error',
+      'Sesión no válida',
+      'No fue posible identificar al distribuidor. Inicia sesión nuevamente.'
+    );
+
+    return false;
   }
 
-  setCart(cart);
-  alert('Unidad agregada al carrito');
-}
+  const carritoValido =
+    Array.isArray(cart)
+      ? cart
+      : [];
 
-function setupMenu(){
-  document.getElementById('menuToggle')?.addEventListener('click', () => {
-    document.getElementById('navMenu')?.classList.toggle('open');
-  });
-}
-
-function renderProducts(list = products){
-  const grid = document.getElementById('productsGrid');
-  if(!grid) return;
-
-  grid.innerHTML = list.map(p => `
-    <article class="product-card">
-      <img src="${p.img}" alt="${p.nombre}">
-      <div class="product-body">
-        <h3>${p.nombre}</h3>
-        <p>${p.desc}</p>
-        <div class="product-meta">
-          <span>${p.cat.toUpperCase()}</span>
-          <span>${p.precio}</span>
-        </div>
-        <div class="product-actions">
-          <a class="btn btn-outline btn-small" href="detalle.html?id=${p.id}">Ver detalle</a>
-          <button class="btn btn-primary btn-small" onclick="addToCart(${p.id})">Agregar</button>
-        </div>
-      </div>
-    </article>
-  `).join('');
-}
-
-function filterProducts(){
-  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
-  const c = document.getElementById('categoryFilter')?.value || 'todos';
-
-  const list = products.filter(p =>
-    (c === 'todos' || p.cat === c) &&
-    (p.nombre.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q) || p.cat.includes(q))
+  localStorage.setItem(
+    storageKey,
+    JSON.stringify(
+      carritoValido
+    )
   );
 
-  renderProducts(list);
+  updateCartCount();
+
+  return true;
 }
 
-function setupModelLinks(){
-  document.querySelectorAll('.modelo-link').forEach(a => {
-    a.addEventListener('click', () => {
-      const filter = a.dataset.filter;
-      const select = document.getElementById('categoryFilter');
-      if(select){
-        select.value = filter;
-        setTimeout(filterProducts, 50);
-      }
+
+function updateCartCount() {
+
+  const element =
+    document.getElementById(
+      'cartCount'
+    );
+
+  if (!element) {
+    return;
+  }
+
+  const totalUnidades =
+    getCart().reduce(
+      (total, item) => {
+
+        const cantidad =
+          Math.max(
+            1,
+            Number(item.qty || 1)
+          );
+
+        return total + cantidad;
+      },
+      0
+    );
+
+  element.textContent =
+    String(totalUnidades);
+}
+
+
+function addToCart(id) {
+
+  const idcliente =
+    getPortalClientId();
+
+  if (idcliente <= 0) {
+
+    mostrarMensajeCarrito(
+      'warning',
+      'Inicia sesión',
+      'Debes iniciar sesión para agregar unidades al carrito.'
+    ).then(() => {
+
+      window.location.href =
+        `${base_url}/orders/login`;
     });
-  });
+
+    return;
+  }
+
+  const item =
+    products.find(
+      product =>
+        Number(product.id)
+        === Number(id)
+    );
+
+  if (!item) {
+
+    mostrarMensajeCarrito(
+      'error',
+      'Unidad no disponible',
+      'No fue posible localizar la unidad seleccionada.'
+    );
+
+    return;
+  }
+
+  if (Number(item.stock || 0) <= 0) {
+
+    mostrarMensajeCarrito(
+      'warning',
+      'Sin disponibilidad',
+      'Esta unidad no cuenta con disponibilidad actualmente.'
+    );
+
+    return;
+  }
+
+  const cart =
+    getCart();
+
+  const found =
+    cart.find(
+      product =>
+        Number(product.id)
+        === Number(item.id)
+    );
+
+  if (found) {
+
+    found.qty =
+      Math.max(
+        1,
+        Number(found.qty || 1)
+      ) + 1;
+
+  } else {
+
+    cart.push({
+
+      id:
+        Number(item.id),
+
+      idunidad:
+        Number(item.idunidad),
+
+      modelo:
+        String(item.modelo || ''),
+
+      clave_modelo:
+        String(item.clave_modelo || ''),
+
+      nombre:
+        String(item.nombre || ''),
+
+      version:
+        String(item.version || ''),
+
+      marca:
+        String(item.marca || ''),
+
+      anio:
+        Number(item.anio || 0),
+
+      motor:
+        String(item.motor || ''),
+
+      stock:
+        Number(item.stock || 0),
+
+      cat:
+        String(
+          item.modelo || 'unidad'
+        ).toLowerCase(),
+
+      precio:
+        Number(item.precio || 0),
+
+      precio_estimado:
+        Number(item.precio || 0),
+
+      img:
+        String(item.img || ''),
+
+      desc:
+        String(item.descripcion || ''),
+
+      qty:
+        1,
+
+      tipo_entrega:
+        '',
+
+      idsucursal_entrega:
+        null,
+
+      direccion_entrega:
+        ''
+    });
+  }
+
+  const guardado =
+    setCart(cart);
+
+  if (!guardado) {
+    return;
+  }
+
+  mostrarMensajeCarrito(
+    'success',
+    'Unidad agregada',
+    `${item.nombre} fue agregada al carrito.`,
+    {
+      timer: 1400,
+      showConfirmButton: false
+    }
+  );
 }
 
-function setupDetail(){
-  const detail = document.getElementById('detailProduct');
-  if(!detail) return;
 
-  const id = new URLSearchParams(location.search).get('id') || 1;
-  const p = products.find(x => x.id === Number(id)) || products[0];
+function mostrarMensajeCarrito(
+  icon,
+  title,
+  text,
+  options = {}
+) {
 
-  detail.innerHTML = `
-    <div class="hero-card">
-      <img id="zoomImg" src="${p.img}" alt="${p.nombre}">
-    </div>
-    <div>
-      <span class="tag">${p.cat.toUpperCase()}</span>
-      <h1>${p.nombre}</h1>
-      <p>${p.desc}</p>
-      <h2>${p.precio}</h2>
-      <button class="btn btn-primary" onclick="addToCart(${p.id})">Agregar al carrito</button>
-    </div>
+  if (
+    typeof Swal !== 'undefined'
+    && Swal.fire
+  ) {
+
+    return Swal.fire({
+      icon,
+      title,
+      text,
+      confirmButtonText:
+        'Aceptar',
+      ...options
+    });
+  }
+
+  alert(text);
+
+  return Promise.resolve();
+}
+
+
+/* ============================================================
+ * UTILIDADES
+ * ============================================================ */
+
+function escapeHtml(value) {
+
+  return String(
+    value ?? ''
+  )
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+
+function formatMoney(value) {
+
+  return new Intl.NumberFormat(
+    'es-MX',
+    {
+      style:
+        'currency',
+
+      currency:
+        'MXN',
+
+      minimumFractionDigits:
+        2
+    }
+  ).format(
+    Number(value || 0)
+  );
+}
+
+
+function obtenerRutaImagen(ruta) {
+
+  const imagen =
+    String(
+      ruta || ''
+    ).trim();
+
+  if (!imagen) {
+
+    return `${base_url}/Assets/images/no-image.png`;
+  }
+
+  if (
+    imagen.startsWith('http://')
+    || imagen.startsWith('https://')
+  ) {
+
+    return imagen;
+  }
+
+  return `${base_url}/${imagen.replace(/^\/+/, '')}`;
+}
+
+
+/* ============================================================
+ * NORMALIZAR PRODUCTO
+ * ============================================================ */
+
+function normalizarProducto(unidad) {
+
+  return {
+
+    id:
+      Number(
+        unidad.idunidad
+      ),
+
+    idunidad:
+      Number(
+        unidad.idunidad
+      ),
+
+    modelo:
+      String(
+        unidad.modelo || ''
+      ).trim(),
+
+    clave_modelo:
+      String(
+        unidad.clave_modelo || ''
+      ).trim(),
+
+    nombre:
+      String(
+        unidad.nombre || ''
+      ).trim(),
+
+    version:
+      String(
+        unidad.version || ''
+      ).trim(),
+
+    descripcion:
+      String(
+        unidad.descripcion || ''
+      ).trim(),
+
+    anio:
+      Number(
+        unidad.anio || 0
+      ),
+
+    marca:
+      String(
+        unidad.marca || ''
+      ).trim(),
+
+    motor:
+      String(
+        unidad.motor || ''
+      ).trim(),
+
+    stock:
+      Number(
+        unidad.stock || 0
+      ),
+
+    precio:
+      Number(
+        unidad.precio_estimado || 0
+      ),
+
+    img:
+      obtenerRutaImagen(
+        unidad.imagen_caratula
+      )
+
+  };
+}
+
+
+/* ============================================================
+ * CARGAR PRODUCTOS
+ * ============================================================ */
+
+async function cargarProductos() {
+
+  const grid =
+    document.getElementById(
+      'productsGrid'
+    );
+
+  if (grid) {
+
+    grid.innerHTML = `
+      <div class="catalog-loading">
+
+        <strong>
+          Cargando catálogo...
+        </strong>
+
+        <span>
+          Consultando unidades disponibles.
+        </span>
+
+      </div>
+    `;
+  }
+
+  try {
+
+    const response =
+      await fetch(
+        `${base_url}/orders/getUnidades`,
+        {
+          method:
+            'GET',
+
+          headers: {
+            'Accept':
+              'application/json'
+          },
+
+          cache:
+            'no-store'
+        }
+      );
+
+    const text =
+      await response.text();
+
+    let result;
+
+    try {
+
+      result =
+        JSON.parse(text);
+
+    } catch (error) {
+
+      console.error(
+        text
+      );
+
+      throw new Error(
+        'La respuesta del servidor no tiene formato JSON.'
+      );
+    }
+
+    if (
+      !response.ok
+      || !result.status
+    ) {
+
+      throw new Error(
+        result.message
+        || 'No fue posible cargar las unidades.'
+      );
+    }
+
+    products =
+      Array.isArray(result.data)
+        ? result.data.map(
+            normalizarProducto
+          )
+        : [];
+
+    cargarOpcionesFiltros();
+
+    aplicarFiltros();
+
+  } catch (error) {
+
+    console.error(
+      error
+    );
+
+    products = [];
+
+    filteredProducts = [];
+
+    mostrarErrorCatalogo(
+      error.message
+    );
+  }
+}
+
+
+/* ============================================================
+ * CARGAR OPCIONES DINÁMICAS DE FILTROS
+ * ============================================================ */
+
+function cargarOpcionesFiltros() {
+
+  cargarSelectUnico(
+    'brandFilter',
+    products.map(
+      item => item.marca
+    ),
+    'Todas las marcas'
+  );
+
+  cargarSelectUnico(
+    'modelFilter',
+    products.map(
+      item => item.modelo
+    ),
+    'Todos los modelos'
+  );
+
+  cargarFiltroAnios();
+}
+
+
+function cargarSelectUnico(
+  elementId,
+  values,
+  defaultLabel
+) {
+
+  const select =
+    document.getElementById(
+      elementId
+    );
+
+  if (!select) {
+    return;
+  }
+
+  const unique =
+    [...new Set(
+      values
+        .filter(Boolean)
+        .map(
+          value =>
+            String(value).trim()
+        )
+    )]
+      .sort(
+        (a, b) =>
+          a.localeCompare(
+            b,
+            'es'
+          )
+      );
+
+  select.innerHTML = `
+
+    <option value="todos">
+      ${defaultLabel}
+    </option>
+
+    ${
+      unique.map(
+        value => `
+
+          <option
+            value="${escapeHtml(
+              value.toLowerCase()
+            )}">
+
+            ${escapeHtml(value)}
+
+          </option>
+
+        `
+      ).join('')
+    }
+  `;
+}
+
+
+function cargarFiltroAnios() {
+
+  const years =
+    [...new Set(
+      products
+        .map(
+          item =>
+            Number(item.anio)
+        )
+        .filter(
+          year =>
+            year > 0
+        )
+    )]
+      .sort(
+        (a, b) =>
+          b - a
+      );
+
+  const from =
+    document.getElementById(
+      'yearFromFilter'
+    );
+
+  const to =
+    document.getElementById(
+      'yearToFilter'
+    );
+
+  const options =
+    years.map(
+      year =>
+        `<option value="${year}">
+           ${year}
+         </option>`
+    )
+    .join('');
+
+  if (from) {
+
+    from.innerHTML = `
+
+      <option value="">
+        Desde
+      </option>
+
+      ${options}
+    `;
+  }
+
+  if (to) {
+
+    to.innerHTML = `
+
+      <option value="">
+        Hasta
+      </option>
+
+      ${options}
+    `;
+  }
+}
+
+
+/* ============================================================
+ * FILTROS
+ * ============================================================ */
+
+function aplicarFiltros(
+  resetPage = true
+) {
+
+  if (resetPage) {
+
+    currentPage = 1;
+  }
+
+  const search =
+    (
+      document
+        .getElementById(
+          'searchInput'
+        )
+        ?.value
+      || ''
+    )
+      .trim()
+      .toLowerCase();
+
+  const marca =
+    document
+      .getElementById(
+        'brandFilter'
+      )
+      ?.value
+    || 'todos';
+
+  const modelo =
+    document
+      .getElementById(
+        'modelFilter'
+      )
+      ?.value
+    || 'todos';
+
+  const yearFrom =
+    Number(
+      document
+        .getElementById(
+          'yearFromFilter'
+        )
+        ?.value
+      || 0
+    );
+
+  const yearTo =
+    Number(
+      document
+        .getElementById(
+          'yearToFilter'
+        )
+        ?.value
+      || 0
+    );
+
+  const priceFrom =
+    Number(
+      document
+        .getElementById(
+          'priceFromFilter'
+        )
+        ?.value
+      || 0
+    );
+
+  const priceTo =
+    Number(
+      document
+        .getElementById(
+          'priceToFilter'
+        )
+        ?.value
+      || 0
+    );
+
+  const stock =
+    document
+      .getElementById(
+        'stockFilter'
+      )
+      ?.value
+    || 'todos';
+
+  filteredProducts =
+    products.filter(
+      item => {
+
+        const searchable =
+          [
+            item.nombre,
+            item.modelo,
+            item.version,
+            item.marca,
+            item.motor,
+            item.clave_modelo,
+            item.descripcion,
+            item.anio
+          ]
+            .join(' ')
+            .toLowerCase();
+
+        if (
+          search
+          && !searchable.includes(
+            search
+          )
+        ) {
+
+          return false;
+        }
+
+        if (
+          marca !== 'todos'
+          && item.marca
+            .toLowerCase()
+            !== marca
+        ) {
+
+          return false;
+        }
+
+        if (
+          modelo !== 'todos'
+          && item.modelo
+            .toLowerCase()
+            !== modelo
+        ) {
+
+          return false;
+        }
+
+        if (
+          yearFrom
+          && item.anio < yearFrom
+        ) {
+
+          return false;
+        }
+
+        if (
+          yearTo
+          && item.anio > yearTo
+        ) {
+
+          return false;
+        }
+
+        if (
+          priceFrom
+          && item.precio < priceFrom
+        ) {
+
+          return false;
+        }
+
+        if (
+          priceTo
+          && item.precio > priceTo
+        ) {
+
+          return false;
+        }
+
+        if (
+          stock === 'disponible'
+          && item.stock <= 0
+        ) {
+
+          return false;
+        }
+
+        if (
+          stock === 'sin_stock'
+          && item.stock > 0
+        ) {
+
+          return false;
+        }
+
+        return true;
+      }
+    );
+
+  ordenarProductos();
+
+  renderCatalogPage();
+}
+
+
+/* ============================================================
+ * ORDENAMIENTO
+ * ============================================================ */
+
+function ordenarProductos() {
+
+  const sort =
+    document
+      .getElementById(
+        'sortProducts'
+      )
+      ?.value
+    || 'nombre';
+
+  filteredProducts.sort(
+    (a, b) => {
+
+      switch (sort) {
+
+        case 'precio_asc':
+
+          return (
+            a.precio
+            - b.precio
+          );
+
+        case 'precio_desc':
+
+          return (
+            b.precio
+            - a.precio
+          );
+
+        case 'anio_desc':
+
+          return (
+            b.anio
+            - a.anio
+          );
+
+        case 'stock_desc':
+
+          return (
+            b.stock
+            - a.stock
+          );
+
+        default:
+
+          return a.nombre.localeCompare(
+            b.nombre,
+            'es'
+          );
+      }
+    }
+  );
+}
+
+
+/* ============================================================
+ * PAGINACIÓN
+ * ============================================================ */
+
+function renderCatalogPage() {
+
+  const total =
+    filteredProducts.length;
+
+  const totalPages =
+    Math.max(
+      1,
+      Math.ceil(
+        total
+        / PRODUCTS_PER_PAGE
+      )
+    );
+
+  if (
+    currentPage > totalPages
+  ) {
+
+    currentPage =
+      totalPages;
+  }
+
+  const start =
+    (
+      currentPage - 1
+    )
+    * PRODUCTS_PER_PAGE;
+
+  const end =
+    start
+    + PRODUCTS_PER_PAGE;
+
+  const pageItems =
+    filteredProducts.slice(
+      start,
+      end
+    );
+
+  renderProducts(
+    pageItems
+  );
+
+  renderPagination(
+    totalPages
+  );
+
+  actualizarContadorResultados(
+    total,
+    start,
+    end
+  );
+}
+
+
+function cambiarPagina(page) {
+
+  const totalPages =
+    Math.ceil(
+      filteredProducts.length
+      / PRODUCTS_PER_PAGE
+    );
+
+  if (
+    page < 1
+    || page > totalPages
+  ) {
+
+    return;
+  }
+
+  currentPage =
+    page;
+
+  renderCatalogPage();
+
+  document
+    .getElementById(
+      'catalogo'
+    )
+    ?.scrollIntoView({
+      behavior:
+        'smooth',
+
+      block:
+        'start'
+    });
+}
+
+
+function renderPagination(
+  totalPages
+) {
+
+  const container =
+    document.getElementById(
+      'catalogPagination'
+    );
+
+  if (!container) {
+    return;
+  }
+
+  if (
+    totalPages <= 1
+  ) {
+
+    container.innerHTML = '';
+
+    return;
+  }
+
+  let html = `
+
+    <button
+      type="button"
+      class="pagination-btn"
+      onclick="cambiarPagina(
+        ${currentPage - 1}
+      )"
+      ${
+        currentPage === 1
+          ? 'disabled'
+          : ''
+      }>
+
+      ‹
+
+    </button>
   `;
 
-  const img = document.getElementById('zoomImg');
-  img?.addEventListener('mousemove', e => {
-    const r = img.getBoundingClientRect();
-    img.style.transformOrigin = `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`;
-    img.style.transform = 'scale(1.8)';
-  });
-  img?.addEventListener('mouseleave', () => img.style.transform = 'scale(1)');
+  const pages =
+    calcularPaginasVisibles(
+      totalPages,
+      currentPage
+    );
+
+  pages.forEach(
+    page => {
+
+      if (
+        page === '...'
+      ) {
+
+        html += `
+
+          <span
+            class="pagination-dots">
+
+            ...
+
+          </span>
+        `;
+
+        return;
+      }
+
+      html += `
+
+        <button
+          type="button"
+          class="
+            pagination-btn
+            ${
+              page === currentPage
+                ? 'active'
+                : ''
+            }
+          "
+          onclick="
+            cambiarPagina(
+              ${page}
+            )
+          ">
+
+          ${page}
+
+        </button>
+      `;
+    }
+  );
+
+  html += `
+
+    <button
+      type="button"
+      class="pagination-btn"
+      onclick="
+        cambiarPagina(
+          ${currentPage + 1}
+        )
+      "
+      ${
+        currentPage === totalPages
+          ? 'disabled'
+          : ''
+      }>
+
+      ›
+
+    </button>
+  `;
+
+  container.innerHTML =
+    html;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  updateCartCount();
-  setupMenu();
-  renderProducts();
-  setupModelLinks();
-  setupDetail();
 
-  document.getElementById('searchInput')?.addEventListener('input', filterProducts);
-  document.getElementById('categoryFilter')?.addEventListener('change', filterProducts);
-});
+function calcularPaginasVisibles(
+  totalPages,
+  current
+) {
+
+  if (
+    totalPages <= 7
+  ) {
+
+    return Array.from(
+      {
+        length:
+          totalPages
+      },
+      (_, index) =>
+        index + 1
+    );
+  }
+
+  const pages = [1];
+
+  if (
+    current > 4
+  ) {
+
+    pages.push(
+      '...'
+    );
+  }
+
+  const start =
+    Math.max(
+      2,
+      current - 1
+    );
+
+  const end =
+    Math.min(
+      totalPages - 1,
+      current + 1
+    );
+
+  for (
+    let page = start;
+    page <= end;
+    page++
+  ) {
+
+    pages.push(
+      page
+    );
+  }
+
+  if (
+    current
+    < totalPages - 3
+  ) {
+
+    pages.push(
+      '...'
+    );
+  }
+
+  pages.push(
+    totalPages
+  );
+
+  return pages;
+}
+
+
+/* ============================================================
+ * CONTADOR
+ * ============================================================ */
+
+function actualizarContadorResultados(
+  total,
+  start,
+  end
+) {
+
+  const results =
+    document.getElementById(
+      'catalogResults'
+    );
+
+  const info =
+    document.getElementById(
+      'catalogPageInfo'
+    );
+
+  if (results) {
+
+    results.textContent =
+      `${total} ${
+        total === 1
+          ? 'unidad encontrada'
+          : 'unidades encontradas'
+      }`;
+  }
+
+  if (info) {
+
+    if (!total) {
+
+      info.textContent =
+        'Sin resultados disponibles';
+
+      return;
+    }
+
+    info.textContent =
+      `Mostrando ${
+        start + 1
+      } - ${
+        Math.min(
+          end,
+          total
+        )
+      } de ${total}`;
+  }
+}
+
+
+/* ============================================================
+ * RENDER PRODUCTOS
+ * ============================================================ */
+
+function renderProducts(
+  list
+) {
+
+  const grid =
+    document.getElementById(
+      'productsGrid'
+    );
+
+  if (!grid) {
+    return;
+  }
+
+  if (!list.length) {
+
+    grid.innerHTML = `
+
+      <div class="catalog-empty">
+
+        <div class="catalog-empty-icon">
+          🚘
+        </div>
+
+        <h3>
+          No encontramos unidades
+        </h3>
+
+        <p>
+          Intenta modificar los filtros
+          de búsqueda.
+        </p>
+
+      </div>
+    `;
+
+    return;
+  }
+
+  grid.innerHTML =
+    list.map(
+      item => {
+
+        const stockDisponible =
+          item.stock > 0;
+
+        return `
+
+          <article class="product-card">
+
+            <div class="product-image-wrapper">
+
+              <img
+                src="${item.img}"
+                alt="${
+                  escapeHtml(
+                    item.nombre
+                  )
+                }"
+                loading="lazy"
+                onerror="
+                  this.onerror=null;
+                  this.src=
+                    '${base_url}/Assets/images/no-image.png';
+                "
+              >
+
+              <span
+                class="
+                  product-stock-badge
+                  ${
+                    stockDisponible
+                      ? 'available'
+                      : 'unavailable'
+                  }
+                ">
+
+                ${
+                  stockDisponible
+                    ? `${item.stock} disponibles`
+                    : 'Sin disponibilidad'
+                }
+
+              </span>
+
+            </div>
+
+
+            <div class="product-body">
+
+              <div class="product-card-top">
+
+                <span class="product-brand">
+                  ${
+                    escapeHtml(
+                      item.marca
+                    )
+                  }
+                </span>
+
+                ${
+                  item.anio
+                    ? `
+                      <span class="product-year">
+                        ${item.anio}
+                      </span>
+                    `
+                    : ''
+                }
+
+              </div>
+
+
+              <h3>
+
+                ${
+                  escapeHtml(
+                    item.nombre
+                  )
+                }
+
+              </h3>
+
+
+              <span class="product-version">
+
+                ${
+                  escapeHtml(
+                    item.version
+                  )
+                }
+
+              </span>
+
+
+              <p>
+
+                ${
+                  escapeHtml(
+                    item.descripcion
+                  )
+                }
+
+              </p>
+
+
+              <div class="product-summary-data">
+
+                <div>
+
+                  <span>
+                    Modelo
+                  </span>
+
+                  <strong>
+
+                    ${
+                      escapeHtml(
+                        item.modelo
+                      )
+                    }
+
+                  </strong>
+
+                </div>
+
+
+                <div>
+
+                  <span>
+                    Motor
+                  </span>
+
+                  <strong>
+
+                    ${
+                      escapeHtml(
+                        item.motor
+                        || 'Consultar'
+                      )
+                    }
+
+                  </strong>
+
+                </div>
+
+              </div>
+
+
+              <div class="product-price">
+
+                <span>
+                  Precio estimado
+                </span>
+
+                <strong>
+
+                  ${
+                    formatMoney(
+                      item.precio
+                    )
+                  }
+
+                </strong>
+
+              </div>
+
+
+              <div class="product-actions">
+
+                <a
+                  href="${base_url}/orders/detalle/${item.id}"
+                  class="
+                    btn
+                    btn-outline
+                    btn-small
+                  ">
+
+                  Ver detalle
+
+                </a>
+
+
+                <button
+                  type="button"
+                  class="
+                    btn
+                    btn-primary
+                    btn-small
+                  "
+                  onclick="
+                    addToCart(
+                      ${item.id}
+                    )
+                  ">
+
+                  Agregar
+
+                </button>
+
+              </div>
+
+            </div>
+
+          </article>
+        `;
+
+      }
+    ).join('');
+}
+
+
+/* ============================================================
+ * LIMPIAR FILTROS
+ * ============================================================ */
+
+function limpiarFiltros() {
+
+  const ids = [
+
+    'searchInput',
+
+    'priceFromFilter',
+
+    'priceToFilter'
+
+  ];
+
+  ids.forEach(
+    id => {
+
+      const element =
+        document.getElementById(
+          id
+        );
+
+      if (element) {
+
+        element.value = '';
+      }
+    }
+  );
+
+  const selects = [
+
+    'brandFilter',
+
+    'modelFilter',
+
+    'stockFilter'
+
+  ];
+
+  selects.forEach(
+    id => {
+
+      const element =
+        document.getElementById(
+          id
+        );
+
+      if (element) {
+
+        element.value =
+          'todos';
+      }
+    }
+  );
+
+  const yearFrom =
+    document.getElementById(
+      'yearFromFilter'
+    );
+
+  const yearTo =
+    document.getElementById(
+      'yearToFilter'
+    );
+
+  if (yearFrom) {
+
+    yearFrom.value = '';
+  }
+
+  if (yearTo) {
+
+    yearTo.value = '';
+  }
+
+  const sort =
+    document.getElementById(
+      'sortProducts'
+    );
+
+  if (sort) {
+
+    sort.value =
+      'nombre';
+  }
+
+  currentPage = 1;
+
+  aplicarFiltros();
+}
+
+
+/* ============================================================
+ * ERROR
+ * ============================================================ */
+
+function mostrarErrorCatalogo(
+  mensaje
+) {
+
+  const grid =
+    document.getElementById(
+      'productsGrid'
+    );
+
+  if (!grid) {
+    return;
+  }
+
+  grid.innerHTML = `
+
+    <div class="catalog-empty">
+
+      <h3>
+        No fue posible cargar el catálogo
+      </h3>
+
+      <p>
+
+        ${
+          escapeHtml(
+            mensaje
+          )
+        }
+
+      </p>
+
+      <button
+        type="button"
+        class="btn btn-primary"
+        onclick="cargarProductos()">
+
+        Intentar nuevamente
+
+      </button>
+
+    </div>
+  `;
+}
+
+
+/* ============================================================
+ * MENÚ
+ * ============================================================ */
+
+function setupMenu() {
+
+  document
+    .getElementById(
+      'menuToggle'
+    )
+    ?.addEventListener(
+      'click',
+      () => {
+
+        document
+          .getElementById(
+            'navMenu'
+          )
+          ?.classList
+          .toggle(
+            'open'
+          );
+      }
+    );
+}
+
+
+/* ============================================================
+ * EVENTOS
+ * ============================================================ */
+
+function configurarEventosFiltros() {
+
+  document
+    .getElementById(
+      'btnApplyFilters'
+    )
+    ?.addEventListener(
+      'click',
+      () =>
+        aplicarFiltros()
+    );
+
+
+  document
+    .getElementById(
+      'btnClearFilters'
+    )
+    ?.addEventListener(
+      'click',
+      limpiarFiltros
+    );
+
+
+  document
+    .getElementById(
+      'searchInput'
+    )
+    ?.addEventListener(
+      'input',
+      () =>
+        aplicarFiltros()
+    );
+
+
+  [
+    'brandFilter',
+
+    'modelFilter',
+
+    'yearFromFilter',
+
+    'yearToFilter',
+
+    'stockFilter'
+
+  ].forEach(
+    id => {
+
+      document
+        .getElementById(id)
+        ?.addEventListener(
+          'change',
+          () =>
+            aplicarFiltros()
+        );
+    }
+  );
+
+
+  document
+    .getElementById(
+      'sortProducts'
+    )
+    ?.addEventListener(
+      'change',
+      () => {
+
+        currentPage = 1;
+
+        ordenarProductos();
+
+        renderCatalogPage();
+      }
+    );
+}
+
+
+/* ============================================================
+ * INICIALIZAR
+ * ============================================================ */
+
+document.addEventListener(
+  'DOMContentLoaded',
+  async () => {
+
+    updateCartCount();
+
+    setupMenu();
+
+    configurarEventosFiltros();
+
+    await cargarProductos();
+
+  }
+);
