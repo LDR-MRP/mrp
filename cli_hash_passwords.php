@@ -11,13 +11,20 @@ if (php_sapi_name() !== 'cli') {
 }
 
 // Carga las configuraciones base de tu framework
-require_once __DIR__ . '/Config/Config_dev.php';
+if (file_exists(__DIR__ . '/Config/Config_local.php')) {
+    require_once __DIR__ . '/Config/Config_local.php';
+} else {
+    require_once __DIR__ . '/Config/Config.php';
+}
 require_once __DIR__ . '/Helpers/Helpers.php';
 
-// 1. Cargamos el Autoloader de Composer (para que encuentre la clase Mysql)
-require_once __DIR__ . '/vendor/autoload.php';
+// Cargamos el Autoloader de Composer y el autoloader del framework para clases Core (Mysql, etc.)
+if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+}
+require_once __DIR__ . '/Libraries/Core/Autoload.php';
 
-// 2. FORZAMOS la carga del script temporal saltándonos el PSR-4
+// FORZAMOS la carga del script temporal saltándonos el PSR-4
 require_once __DIR__ . '/Scripts/MassPasswordHasher.php';
 
 use Scripts\MassPasswordHasher;

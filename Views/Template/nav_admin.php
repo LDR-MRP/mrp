@@ -36,6 +36,7 @@
                               <a class="nav-link menu-link" href="#sidebarDashboards" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarDashboards">
                                   <i data-feather="home" class="icon-dual"></i> <span data-key="t-dashboards">Dashboard</span>
                               </a>
+                              
                               <div class="collapse menu-dropdown" id="sidebarDashboards">
                                   <ul class="nav nav-sm flex-column">
                                       <li class="nav-item">
@@ -459,6 +460,76 @@
                                           <i class="ri-shopping-bag-3-line align-bottom me-1"></i> Órdenes de Compra
                                       </a>
                                   </li>
+
+                              </ul>
+                          </div>
+                      </li>
+
+                      <!-- ==============================================================================
+                        CATEGORÍA: LOGÍSTICA (TRASLADISTAS, MADRINAS, CHOFERES)
+                        ============================================================================== -->
+                      <li class="nav-item">
+                          <a class="nav-link menu-link" href="#sidebarLogistica" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarLogistica">
+                              <i class="ri-truck-line icon-dual"></i> <span data-key="t-logistica">Logística</span>
+                          </a>
+                          <div class="collapse menu-dropdown" id="sidebarLogistica">
+                              <ul class="nav nav-sm flex-column">
+
+                                  <!-- Madrinas -->
+                                  <li class="nav-item">
+                                      <a href="<?= base_url(); ?>/prv_madrinas" class="nav-link" data-key="t-madrinas">
+                                          <i class="ri-truck-fill align-bottom me-1"></i> Madrinas
+                                      </a>
+                                  </li>
+
+                                  <!-- Choferes -->
+                                  <li class="nav-item">
+                                      <a href="<?= base_url(); ?>/prv_choferes" class="nav-link" data-key="t-choferes">
+                                          <i class="ri-steering-2-line align-bottom me-1"></i> Choferes
+                                      </a>
+                                  </li>
+
+                                   <!-- Mis Envíos -->
+                                   <li class="nav-item">
+                                       <a href="<?= base_url(); ?>/Lgs_envios" class="nav-link" data-key="t-lgs-envios">
+                                           <i class="ri-route-line align-bottom me-1"></i> Mis Envíos
+                                       </a>
+                                   </li>
+
+                                   <!-- Mis Planeaciones -->
+                                   <li class="nav-item">
+                                       <a href="<?= base_url(); ?>/Lgs_planeaciones" class="nav-link" data-key="t-lgs-planeaciones">
+                                           <i class="ri-file-list-3-line align-bottom me-1"></i> Mis Planeaciones
+                                       </a>
+                                   </li>
+
+                                   <!-- Panel de Aprobaciones -->
+                                   <li class="nav-item">
+                                       <a href="<?= base_url(); ?>/Lgs_aprobaciones" class="nav-link" data-key="t-lgs-aprobaciones">
+                                           <i class="ri-checkbox-circle-line align-bottom me-1"></i> Aprobaciones
+                                       </a>
+                                   </li>
+
+                                   <!-- Mesa de Despacho -->
+                                   <li class="nav-item">
+                                       <a href="<?= base_url(); ?>/Lgs_ejecucion" class="nav-link" data-key="t-lgs-ejecucion">
+                                           <i class="ri-ship-line align-bottom me-1"></i> Mesa de Despacho
+                                       </a>
+                                   </li>
+
+                                   <!-- Evidencias y Cierre -->
+                                   <li class="nav-item">
+                                       <a href="<?= base_url(); ?>/Lgs_evidencias" class="nav-link" data-key="t-lgs-evidencias">
+                                           <i class="ri-camera-lens-line align-bottom me-1"></i> Evidencias y Cierre
+                                       </a>
+                                   </li>
+
+                                   <!-- Monitoreo GPS y Rutas -->
+                                   <li class="nav-item">
+                                       <a href="<?= base_url(); ?>/Lgs_panelrutas" class="nav-link" data-key="t-lgs-panelrutas">
+                                           <i class="ri-map-pin-user-line align-bottom me-1"></i> Monitoreo GPS
+                                       </a>
+                                   </li>
 
                               </ul>
                           </div>

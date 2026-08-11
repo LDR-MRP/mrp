@@ -106,7 +106,7 @@ function sendMailLocal($data, $template, $correos_copia)
         $mail->send();
         return true;
     } catch (Exception $e) {
-        echo "Error en el envío del mensaje: {$mail->ErrorInfo}";
+        error_log("Error en el envío del mensaje: {$mail->ErrorInfo}");
         return false;
     }
 }

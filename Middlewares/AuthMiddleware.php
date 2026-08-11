@@ -19,11 +19,18 @@ class AuthMiddleware implements MiddlewareInterface {
         // 1. Obtener el Header de Autorización
         $headers = function_exists('apache_request_headers') ? apache_request_headers() : [];
         
-        // Buscamos en el array de Apache o, como respaldo, en $_SERVER
+        // Buscamos en el array de Apache, $_SERVER (incluyendo rewrites de FastCGI) o fallback en Cookies
         $authHeader = $headers['Authorization'] ?? 
                       $headers['authorization'] ?? 
                       $_SERVER['HTTP_AUTHORIZATION'] ?? 
+                      $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ??
                       '';
+
+        if (empty($authHeader) && !empty($_COOKIE['mrp_token'])) {
+            $authHeader = 'Bearer ' . $_COOKIE['mrp_token'];
+        } elseif (empty($authHeader) && !empty($_COOKIE['srm_token'])) {
+            $authHeader = 'Bearer ' . $_COOKIE['srm_token'];
+        }
 
         if (empty($authHeader) || !preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
             $this->unauthorized("Token de acceso no proporcionado o formato inválido.");

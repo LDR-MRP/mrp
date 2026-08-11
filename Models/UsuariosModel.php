@@ -278,12 +278,14 @@ public function updateAvatarUsuario(int $usuarioid, string $filename, string $se
      */
     public function findByEmail(string $email): ?array
     {
-        $sql = "SELECT idusuario, email_user, status, rolid, plantaid
-                FROM {$this->table} 
-                WHERE email_user = :email 
+        $sql = "SELECT u.idusuario, u.email_user, u.password, u.status, u.rolid, u.plantaid, u.avatar_file,
+                       u.nombres, u.apellidos, r.nombrerol as rol_nombre
+                FROM {$this->table} u
+                LEFT JOIN rol r ON u.rolid = r.idrol
+                WHERE u.email_user = ? 
                 LIMIT 1";
         
-        $params = [':email' => strtolower($email)];
+        $params = [strtolower($email)];
         $request = $this->select($sql, $params);
         
         return $request ?: null;

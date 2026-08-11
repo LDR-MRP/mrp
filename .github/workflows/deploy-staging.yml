@@ -1,0 +1,43 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - staging
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Staging Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          port: ${{ secrets.STAGING_SSH_PORT || 22 }}
+          script: |
+            echo "Starting deployment to Staging environment..."
+            cd ${{ secrets.STAGING_TARGET_DIR }}
+
+            # Pull latest changes from staging branch
+            git fetch origin staging
+            git reset --hard origin/staging
+
+            # Install or update composer dependencies
+            if [ -f "composer.json" ]; then
+                composer install --no-dev --optimize-autoloader --no-interaction
+            fi
+
+            # If Docker is used in staging server, restart containers or apply updates
+            if [ -f "docker-compose.yml" ]; then
+                docker compose down && docker compose up -d || docker-compose down && docker-compose up -d
+            fi
+
+            echo "Deployment to Staging completed successfully!"

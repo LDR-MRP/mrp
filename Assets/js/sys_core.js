@@ -88,7 +88,9 @@ const Sys_Core = {
             
             if (!token) return null;
             try {
-                const base64Url = token.split('.')[1];
+                const cleanToken = token.replace(/^Bearer\s+/i, '');
+                const base64Url = cleanToken.split('.')[1];
+                if (!base64Url) return null;
                 const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
                 const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
                     return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
@@ -209,18 +211,37 @@ const Sys_Core = {
      */
     UI: {
         /**
-         * @param {string} message 
-         * @param {string} [type='info'] 
+         * Instancia de Toast global basada en SweetAlert2
          */
-        notify: function(message, type = 'info') {
-            const Toast = Swal.mixin({
+        getToast: function(position = 'top-end', timer = 3000) {
+            if (typeof Swal === 'undefined') return null;
+            return Swal.mixin({
                 toast: true,
-                position: 'bottom-end',
+                position: position,
                 showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true
+                timer: timer,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer);
+                    toast.addEventListener('mouseleave', Swal.resumeTimer);
+                }
             });
-            Toast.fire({ icon: type, title: `${Sys_Core.Config.brandName}: ${message}` });
+        },
+
+        /**
+         * Notificación Toast Global
+         * @param {string} message 
+         * @param {string} [type='info'] 'success' | 'error' | 'warning' | 'info'
+         * @param {string} [position='top-end']
+         * @param {number} [timer=3000]
+         */
+        notify: function(message, type = 'info', position = 'top-end', timer = 3000) {
+            const toast = this.getToast(position, timer);
+            if (toast) {
+                toast.fire({ icon: type, title: message });
+            } else {
+                console.log(`[Toast ${type}]: ${message}`);
+            }
         },
 
         /**

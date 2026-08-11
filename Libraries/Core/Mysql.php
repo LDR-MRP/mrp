@@ -2,7 +2,7 @@
 	
 	class Mysql extends Conexion
 	{
-		private $conexion;
+		protected $conexion;
 		private $strquery;
 		private $arrValues;
 

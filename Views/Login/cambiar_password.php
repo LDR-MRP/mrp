@@ -8,6 +8,8 @@
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" type="text/css" href="<?= media();?>/css/main.css">
+  <!-- SweetAlert2 CSS -->
+  <link href="<?= media(); ?>/minimal/libs/sweetalert2/sweetalert2.min.css" rel="stylesheet" type="text/css" />
 
 
   <style>
@@ -215,7 +217,9 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
    <script src="<?= media(); ?>/js/jquery-3.3.1.min.js"></script>
-  <script type="text/javascript" src="<?= media();?>/js/plugins/sweetalert.min.js"></script>
+  <!-- SweetAlert2 & Sys_Core -->
+  <script src="<?= media(); ?>/minimal/libs/sweetalert2/sweetalert2.min.js"></script>
+  <script src="<?= media(); ?>/js/sys_core.js"></script>
   <script src="<?= media(); ?>/js/modulos/<?= $data['page_functions_js']; ?>"></script>
 
 

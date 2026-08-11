@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+ob_start();
+
 // Ocultar errores al público
 ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);
@@ -25,17 +27,18 @@ error_reporting(E_ERROR | E_PARSE | E_COMPILE_ERROR);
 $httpHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
 // 2. Determinar si estamos en entorno local
-// Buscamos si el host termina en .localhost o es una IP de red local
-$isLocal = preg_match('/(\.localhost)$|^127\.0\.0\.1$/', $httpHost);
+// Buscamos si el host es localhost, termina en .localhost o es una IP de red local
+$isLocal = (bool)preg_match('/(^localhost|\.localhost)|^127\.0\.0\.1/', $httpHost);
 
 if ($isLocal) {
     /**
      * ENTORNO: LOCAL
-     * Dominio: .ldrhumanresources.localhost (Permite compartir entre subdominios locales)
-     * Secure: false (Porque usualmente no usas HTTPS/SSL en WSL)
+     * Si se accede directamente via 'localhost' o IP, el dominio de la cookie debe ser vacuo '' 
+     * para que el navegador acepte la cookie de sesión/JWT sin rechazarla.
      */
+    $cookieDomain = (str_contains($httpHost, 'ldrhumanresources.localhost')) ? '.ldrhumanresources.localhost' : '';
     define('ENV_TYPE', 'local');
-    define('COOKIE_DOMAIN', '.ldrhumanresources.localhost');
+    define('COOKIE_DOMAIN', $cookieDomain);
     define('COOKIE_SECURE', false);
     define('CONFIG_FILE', __DIR__ . "/Config/Config_local.php");
 } else {
@@ -70,9 +73,17 @@ require_once("Libraries/Core/Autoload.php");
 
 $url = !empty($_GET['url'])
     ? $_GET['url']
-    : 'home/home';
+    : 'login';
 
 $url = ltrim($url, '/');
+
+if (str_starts_with($url, 'mrp/')) {
+    $url = substr($url, 4);
+}
+
+if (empty($url) || $url === 'mrp' || $url === 'index.php') {
+    $url = 'login';
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -87,8 +98,8 @@ $firstSegment = explode('/', $uriPath)[0] ?? '';
 $isExternalPortal = in_array($firstSegment, ['srm', 'orders'], true);
 
 // Peticiones técnicas (.well-known, devtools, etc) o archivos estáticos
-$isSystemRequest = str_starts_with($firstSegment, '.') 
-    || $firstSegment === 'Assets' 
+$isSystemRequest = str_starts_with($firstSegment, '.')
+    || $firstSegment === 'Assets'
     || preg_match('/\.(?:json|ico|css|js|png|jpg|jpeg|gif|webp|svg|map)$/i', $url);
 
 /*
@@ -178,7 +189,7 @@ if (session_status() === PHP_SESSION_NONE) {
 |
 */
 $isInternalContext = !$isExternalPortal && !$isSystemRequest;
-$needsSsoSync      = !isset($_COOKIE['mrp_token']) && isset($_COOKIE['token']);
+$needsSsoSync      = empty($_SESSION['login']) && isset($_COOKIE['token']) && !isset($_COOKIE['mrp_forced_logout']);
 
 if ($isInternalContext && $needsSsoSync) {
     /**

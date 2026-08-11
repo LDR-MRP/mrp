@@ -40,14 +40,19 @@ class IdentityService
         }
 
         try {
-            // 3. Validar Token de RRHH
+            // 3. Validar Token de RRHH (Limpiando prefijo Bearer si existiera)
+            $rawToken = trim(str_replace('Bearer ', '', (string)$_COOKIE['token']));
+
             $decoded = JWT::decode(
-                $_COOKIE['token'], 
+                $rawToken, 
                 new Key(JWT_SECRET_RRHH, 'HS256')
             );
 
+            // Convertir de stdClass a array asociativo para garantizar acceso por clave
+            $decodedArray = json_decode(json_encode($decoded), true);
+
             // 4. Delegar el intercambio de tokens y JIT Provisioning al AuthService
-            $ssoResponse = $this->authService->authenticateViaSso((array) $decoded);
+            $ssoResponse = $this->authService->authenticateViaSso($decodedArray);
 
             if ($ssoResponse->success) {
                 $this->hydrateLegacySession($ssoResponse->data['user']);

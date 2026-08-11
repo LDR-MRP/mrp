@@ -43,19 +43,14 @@ class AuthService{
             // FLUJO A: LOGIN PROVEEDORES (SRM) - Cifrado Moderno
             // =================================================================
             if ($loginType === 'VENDOR') {
-                // Buscamos solo por email para evitar Timing Attacks en la DB
                 $user = $this->vendorModel->findByEmail($strUsuario);
 
-                // Prevención de Enumeración de Usuarios y Timing Attacks
-                // Si no existe, hasheamos un string dummy para tardar el mismo tiempo
                 if (!$user) {
-                    password_verify('dummy_string', '$2y$10$dummyhashdummyhashdummyhashdu');
-                    return \ServiceResponse::error("El usuario o la contraseña es incorrecto.", 401);
+                    return \ServiceResponse::error("El usuario no se encuentra registrado.", 401);
                 }
 
-                // Verificación BCRYPT/ARGON2 (El estándar actual)
                 if (!password_verify($rawPassword, $user['password'])) {
-                    return \ServiceResponse::error("El usuario o la contraseña es incorrecto.", 401);
+                    return \ServiceResponse::error("La contraseña ingresada es incorrecta.", 401);
                 }
 
                 if ($user['estatus'] !== 'ACTIVE') {
@@ -68,7 +63,7 @@ class AuthService{
                     'exp'  => $now + (60 * 60 * 10), // 10 horas
                     'data' => [
                         'id'        => $user['id'],
-                        'vendor_id' => $user['proveedor_id'], // CLAVE PARA PREVENIR IDOR EN EL FUTURO
+                        'vendor_id' => $user['proveedor_id'],
                         'nombre'    => $user['nombre_contacto'],
                         'rol'       => 'VENDOR',
                         'is_vendor' => true
@@ -83,24 +78,28 @@ class AuthService{
             // =================================================================
             } else {
                 $userModel = new UsuariosModel();
-                $strPasswordHash = hash("SHA256", $rawPassword);
-
-                $user = $userModel->loginUser($strUsuario, $strPasswordHash);
+                $user = $userModel->findByEmail($strUsuario);
 
                 if (!$user) {
-                    return \ServiceResponse::error("El usuario o la contraseña es incorrecto.", 401);
+                    return \ServiceResponse::error("El usuario no se encuentra registrado.", 401);
+                }
+
+                $strPasswordHash = hash("SHA256", $rawPassword);
+
+                if (strtolower($user['password']) !== strtolower($strPasswordHash)) {
+                    return \ServiceResponse::error("La contraseña ingresada es incorrecta.", 401);
                 }
 
                 if ($user['status'] != 1) {
-                    return \ServiceResponse::error("Usuario inactivo. Contacte al administrador.", 403);
+                    return \ServiceResponse::error("El usuario se encuentra inactivo. Contacte al administrador.", 403);
                 }
 
                 // Auditoría interna
                 $userModel->registrarAcceso(
-                    $user['idusuario'], 
+                    (int)$user['idusuario'], 
                     'Inicio de Sesión API', 
-                    $_SERVER['REMOTE_ADDR'], 
-                    $_SERVER['HTTP_USER_AGENT']
+                    $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1', 
+                    $_SERVER['HTTP_USER_AGENT'] ?? 'API'
                 );
 
                 // Payload específico para Empleado
@@ -184,13 +183,25 @@ class AuthService{
      * Implementa Just-In-Time Provisioning para usuarios validados por el sistema ajeno.
      * @param array $data Datos decodificados del JWT de RRHH
      */
-    public function authenticateViaSso(array $data): \ServiceResponse 
+    public function authenticateViaSso(array $rawPayload): \ServiceResponse 
     {
         $userModel = new UsuariosModel();
         
         try {
-            $email = strtolower(trim($data['correo'] ?? ''));
-            if (empty($email)) throw new \Exception("Identidad incompleta.", 400);
+            // Extraer el payload real (en caso de venir anidado en 'data' o 'user')
+            $data = $rawPayload['data'] ?? $rawPayload['user'] ?? $rawPayload;
+
+            // Extraer email probando las claves habituales (correo, email, email_user, sub)
+            $email = strtolower(trim(
+                $data['correo'] ?? 
+                $data['email'] ?? 
+                $data['email_user'] ?? 
+                $data['sub'] ?? ''
+            ));
+
+            if (empty($email)) {
+                throw new \Exception("Identidad incompleta: no se encontró correo en el token JWT de RRHH.", 400);
+            }
 
             $this->db->beginTransaction();
 
@@ -201,29 +212,25 @@ class AuthService{
             if (!$userBase) {
                 // 2. JIT Provisioning (Solo si no existe)
                 $userId = $this->provisionUserFromSso($data, $userModel);
-                $this->logMessage("SSO: Usuario provicionado: {$email}", \LogLevel::INFO);
+                $this->logMessage("SSO: Usuario provisionado: {$email}", \LogLevel::INFO);
             } else {
                 // 3. Ya existe, tomamos su ID local
                 $userId = (int)$userBase['idusuario'];
             }
 
-            // ---------------------------------------------------------
-            // AQUÍ ESTÁ EL CAMBIO CLAVE:
-            // ---------------------------------------------------------
-            // Fuera del IF, recuperamos el perfil ENRIQUECIDO (con JOINs) 
-            // para TODOS los casos (nuevo o existente).
+            // 4. Recuperar el perfil enriquecido con JOINs
             $userFull = $userModel->loginUserById($userId);
 
             if (!$userFull) {
                 throw new \Exception("No se pudo recuperar el perfil operativo en MRP.");
             }
 
-            // 4. Validar Estatus (Ahora sobre el perfil completo)
+            // 5. Validar Estatus (Sobre el perfil completo)
             if ((int)$userFull['status'] !== 1) {
                 return \ServiceResponse::error("Acceso denegado: Usuario inactivo.", 403);
             }
 
-            // 5. Preparar Payload con datos enriquecidos (rol_nombre, planta_nombre, etc.)
+            // 6. Preparar Payload con datos enriquecidos (rol_nombre, planta_nombre, etc.)
             $now = time();
             $tokenPayload = [
                 'iat'  => $now,
@@ -233,24 +240,20 @@ class AuthService{
                     'nombre'   => $userFull['nombres'] . ' ' . $userFull['apellidos'],
                     'rolid'    => $userFull['rolid'],
                     'plantaid' => $userFull['plantaid'],
-                    'rol'      => $userFull['rol_nombre'], // Viene del JOIN
-                    'planta'   => $userFull['planta_nombre'], // Viene del JOIN
+                    'rol'      => $userFull['rol_nombre'],
+                    'planta'   => $userFull['planta_nombre'],
                     'avatar'   => $userFull['avatar_file'],
                     'is_vendor'=> false,
                     'auth_type'=> 'SSO_RRHH'
                 ]
             ];
 
-            $userModel->registrarAcceso($userFull['idusuario'], 'SSO Exchange (RRHH)', $_SERVER['REMOTE_ADDR'], $_SERVER['HTTP_USER_AGENT']);
+            $userModel->registrarAcceso($userFull['idusuario'], 'SSO Exchange (RRHH)', $_SERVER['REMOTE_ADDR'] ?? '', $_SERVER['HTTP_USER_AGENT'] ?? '');
             $this->db->commit();
 
-            // --- INICIO AGREGADO: LIMPIEZA DE BLOQUEO SSO ---
-            // Si el intercambio es exitoso (porque el usuario activó el SSO manualmente), 
-            // eliminamos la cookie de bloqueo.
             if (isset($_COOKIE['mrp_forced_logout'])) {
                 setcookie('mrp_forced_logout', '', time() - 3600, '/', COOKIE_DOMAIN);
             }
-            // --- FIN AGREGADO ---
 
             $jwt = \Firebase\JWT\JWT::encode($tokenPayload, JWT_SECRET, 'HS256');
 
@@ -260,15 +263,9 @@ class AuthService{
             ], "Sincronización SSO exitosa.");
 
         } catch (\PDOException $p) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
-            $this->logMessage($p, \LogLevel::CRITICAL, [
-                'action' => 'authenticateViaSso',
-                'id_user' => $email
-            ]);
-            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
-            
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            $this->logMessage($p, \LogLevel::CRITICAL, ['action' => 'authenticateViaSso', 'id_user' => $email ?? '']);
+            return \ServiceResponse::error("Ocurrió un error de integridad en la base de datos.");
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             $this->logMessage($e, \LogLevel::ERROR, ['context' => 'SSO_EXCHANGE']);
@@ -282,18 +279,26 @@ class AuthService{
     private function provisionUserFromSso(array $data, UsuariosModel $model): int 
     {
         // Mapeo de Sede (RRHH) a Planta (MRP)
-        $plantaId = match($data['nombre_sede'] ?? '') {
+        $plantaId = match($data['nombre_sede'] ?? $data['planta'] ?? '') {
             'CORPORATIVO' => 50,
             default       => 50
         };
 
         // Separación simple de nombre completo
-        $parts = explode(' ', $data['nombre'], 2);
+        $fullName = $data['nombre'] ?? $data['nombres'] ?? $data['name'] ?? 'Usuario SSO';
+        $parts = explode(' ', $fullName, 2);
         
+        $email = strtolower(trim(
+            $data['correo'] ?? 
+            $data['email'] ?? 
+            $data['email_user'] ?? 
+            $data['sub'] ?? ''
+        ));
+
         return $model->insertUserFromSso([
             'nombres'     => $parts[0],
             'apellidos'   => $parts[1] ?? '',
-            'email'       => strtolower($data['correo']),
+            'email'       => $email,
             'rolid'       => 3, // Rol 'Empleado' por defecto
             'plantaid'    => $plantaId,
             'status'      => 1,
