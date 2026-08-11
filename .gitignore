@@ -33,3 +33,9 @@ db_info/
 # vscode config
 .vscode/
 
+# Docker
+docker/
+docker-compose.yml
+
+# Archivos de interfaz de ejemplo
+interfaz ejemplo*
