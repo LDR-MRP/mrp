@@ -4,6 +4,16 @@ class Lgs_aprobacionesModel extends Mysql
 {
     use Auditable;
 
+    protected string $table = 'lgs_aprobaciones'; // dummy, ya que las vistas manejan lgs_planeaciones y lgs_envios
+
+    public function getTableName(): string {
+        return $this->table;
+    }
+
+    public function getConexion(): PDO {
+        return $this->conexion;
+    }
+
     /**
      * Obtiene el listado de planeaciones pendientes de revisión o ya revisadas
      * Sólo trae estados 2 (Enviada/Pendiente), 3 (Regresada) y 5 (Aprobada)
@@ -50,7 +60,7 @@ class Lgs_aprobacionesModel extends Mysql
                 LEFT JOIN lgs_cat_tipo_traslado tt ON e.id_tipo_traslado = tt.id_tipo_traslado
                 WHERE pe.id_planeacion = :id_planeacion";
         
-        $stmt = $this->conexion->prepare($sql);
+        $stmt = $this->getConexion()->prepare($sql);
         $stmt->execute(['id_planeacion' => $idPlaneacion]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

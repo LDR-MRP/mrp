@@ -30,6 +30,14 @@ class Lgs_planeacionesModel extends Mysql
         ]
     ];
 
+    public function getTableName(): string {
+        return $this->table;
+    }
+
+    public function getConexion(): PDO {
+        return $this->conexion;
+    }
+
     /**
      * Genera un nuevo folio transaccional EX-000001
      */
