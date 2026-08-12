@@ -154,7 +154,7 @@ function cargarInfoProducto(inventarioid) {
 
       document.querySelector("#unidad_salida").value = p.unidad_salida;
       document.querySelector("#unidad_entrada").value = p.unidad_entrada;
-      document.querySelector("#ubicacion").value = p.control_almacen;
+      document.querySelector("#ubicacion").value = p.ubicacion;
 
       document.querySelector("#fecha_ultima_compra").value =
         r.fecha_ultima_compra ?? "";

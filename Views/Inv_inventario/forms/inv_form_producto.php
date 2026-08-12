@@ -154,7 +154,8 @@
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="factor-unidades-addon">Fac. Un</span>
                     <input type="number" class="form-control"
-                        placeholder="Ingresa el factor entre unidades" id="factor_unidades" name="factor_unidades"
+                        placeholder="Ingresa el factor entre unidades" id="factor_unidades" step="0.000001"
+                        min="0" name="factor_unidades"
                         aria-describedby="factor-unidades-addon" required>
                     <div class="invalid-feedback">El campo factor entre unidades es obligatorio</div>
                 </div>
@@ -168,7 +169,8 @@
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="tiempo-surtido-addon">Tiem. Sur</span>
                     <input type="number" class="form-control"
-                        placeholder="Ingresa el tiempo de surtido" id="tiempo_surtido" name="tiempo_surtido"
+                        placeholder="Ingresa el tiempo de surtido" id="tiempo_surtido" step="0.000001"
+                        min="0" name="tiempo_surtido"
                         aria-describedby="tiempo-surtido-addon" required>
                     <div class="invalid-feedback">El campo tiempo de surtido es obligatorio</div>
                 </div>
@@ -182,7 +184,8 @@
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="volumen-addon">Vol.</span>
                     <input type="number" class="form-control"
-                        placeholder="Ingresa el volumen" id="volumen" name="volumen"
+                        placeholder="Ingresa el volumen" id="volumen" step="0.000001"
+                        min="0" name="volumen"
                         aria-describedby="volumen-addon" required>
                     <div class="invalid-feedback">El campo volumen es obligatorio</div>
                 </div>
@@ -194,9 +197,10 @@
             <div class="mb-3">
                 <label class="form-label" for="peso">PESO</label>
                 <div class="input-group mb-3">
-                    <span class="input-group-text" id="peso-addon">Peso</span>
+                    <span class="input-group-text" id="peso-addon">Peso (Kg)</span>
                     <input type="number" class="form-control"
-                        placeholder="Ingresa el peso" id="peso" name="peso"
+                        placeholder="Ingresa el peso" id="peso" step="0.000001"
+                        min="0" name="peso"
                         aria-describedby="peso-addon" required>
                     <div class="invalid-feedback">El campo peso es obligatorio</div>
                 </div>
@@ -210,7 +214,8 @@
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="unidad_empaque-addon">Unidad</span>
                     <input type="number" class="form-control"
-                        placeholder="Ingresa la unidad de empaque" id="unidad_empaque" name="unidad_empaque"
+                        placeholder="Ingresa la unidad de empaque" id="unidad_empaque" step="0.000001"
+                        min="0" name="unidad_empaque"
                         aria-describedby="unidad_empaque-addon" required>
                     <div class="invalid-feedback">El campo unidad de empaque es obligatorio</div>
                 </div>
@@ -224,14 +229,15 @@
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="ultimo_costo-addon">Costo</span>
                     <input type="number" class="form-control"
-                        placeholder="Ingresa el ultimo costo" id="ultimo_costo" name="ultimo_costo"
+                        placeholder="Ingresa el ultimo costo" id="ultimo_costo" step="0.000001"
+                        min="0" name="ultimo_costo"
                         aria-describedby="ultimo_costo-addon" required>
                     <div class="invalid-feedback">El campo ultimo costo es obligatorio</div>
                 </div>
             </div>
         </div>
 
-        <!-- UNICACIÓN -->
+        <!-- UBICACIÓN -->
         <div class="col-lg-4 col-sm-6">
             <div class="mb-3">
                 <label class="form-label" for="ubicacion">UBICACIÓN</label>
@@ -271,28 +277,30 @@
         <!-- IMÁGENES -->
         <div class="col-lg-12">
             <div class="mb-3">
-                <label class="form-label">IMÁGENES (Máx. 5)</label>
 
-                <div id="imagenesActuales"></div>
+                <label class="form-label fw-bold">
+                    Imágenes del producto
+                </label>
 
-                <hr>
+                <!-- IMÁGENES QUE YA EXISTEN -->
+                <div
+                    id="imagenesActuales"
+                    class="d-flex flex-wrap gap-3"></div>
 
-                <div id="contenedorImagenes">
-                    <div class="input-group mb-2">
-                        <input type="file"
-                            name="imagenes[]"
-                            class="form-control input-imagen"
-                            accept="image/*">
-                    </div>
-                </div>
+                <!-- NUEVOS INPUTS -->
+                <div id="contenedorImagenes"></div>
 
-                <button type="button" class="btn btn-primary btn-sm" id="btnAgregarImagen">
-                    <i class="bi bi-plus-circle"></i> Agregar otra imagen
+                <!-- BOTÓN -->
+                <button
+                    type="button"
+                    id="btnAgregarImagen"
+                    class="btn btn-outline-primary mt-2">
+
+                    <i class="bi bi-plus-circle"></i>
+                    Agregar imagen
+
                 </button>
 
-                <small class="text-muted d-block mt-1">
-                    Puedes tomar foto o subir desde tu dispositivo (máximo 5)
-                </small>
             </div>
         </div>
 

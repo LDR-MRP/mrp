@@ -12,7 +12,7 @@ class Inv_kardexModel extends Mysql
     {
         $sql = "SELECT idinventario, cve_articulo, descripcion
             FROM wms_inventario
-            WHERE estado = 2 AND tipo_elemento IN ('P', 'H', 'C')";
+            WHERE estado = 2 AND tipo_elemento IN ('P', 'H', 'C', 'R')";
         return $this->select_all($sql);
     }
 
@@ -24,7 +24,7 @@ class Inv_kardexModel extends Mysql
             i.descripcion,
             i.unidad_salida,
             i.unidad_entrada,
-            i.control_almacen,
+            i.ubicacion,
             i.ultimo_costo,
             f.foto
         FROM wms_inventario i
@@ -32,7 +32,7 @@ class Inv_kardexModel extends Mysql
             ON f.inventarioid = i.idinventario
         WHERE i.idinventario = $inventarioid
         AND i.estado = 2
-        AND i.tipo_elemento IN ('P', 'H', 'C')
+        AND i.tipo_elemento IN ('P', 'H', 'C', 'R')
         LIMIT 1";
 
         return $this->select($sql);
