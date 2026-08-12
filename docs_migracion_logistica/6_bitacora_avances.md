@@ -79,5 +79,27 @@ Este documento registra el progreso de desarrollo del módulo de Logística. Aqu
 
 ---
 
+## 🚀 Actualizaciones del 12 de Agosto 2026 (Mejoras Operativas)
+
+### 1. **Filtrado y Búsqueda por VIN en Bandeja de Envíos**
+- **Filtrado por Origen y Destino:** El pool de VINs disponibles en `getVinsDisponiblesOrigen` filtra automáticamente para mostrar únicamente unidades cuyo origen y destino coincidan con el envío.
+- **Buscador Rápido de VINs:** Se agregó un input de búsqueda interactiva en tiempo real sobre la tabla de envíos (`tableEnvios.search()`) y en el pool de acomodo para ubicar unidades por VIN, número de serie o modelo.
+
+### 2. **Soporte Multi-Destino / Paradas de Ruta (`lgs_envios_paradas`)**
+- **Tabla `lgs_envios_paradas`:** Permite definir $N$ paradas ordenadas por viaje (camión/madrina realiza recorrido continuo en una sola ruta).
+- **Asignación de Parada por VIN (`lgs_envios_vins.id_parada`):** En la vista de acomodo (`detalle.php`), cada VIN asignado a una madrina cuenta con un selector individual de parada.
+- **Auto-selección Inteligente:** Al asignar un VIN a una madrina, el sistema compara automáticamente el destino de su pedido original y pre-selecciona la parada correspondiente con insignia `🎯 Auto desde pedido`.
+- **Manejo de Paradas Compartidas (Cero Duplicación):** Si múltiples VINs en la misma madrina bajan en el mismo destino, comparten la parada y muestran la insignia `👥 Parada Compartida`, evitando sumar kilómetros duplicados al recorrido real de la madrina.
+- **Redirección Operativa:** Al guardar el acomodo de unidades, el sistema emite una confirmación modal y redirige automáticamente de vuelta a la bandeja principal de envíos.
+
+### 3. **Integración con Google Maps API y Georreferenciación**
+- **Direcciones Físicas y Coordenadas (`lat`, `lng`):** Se actualizaron los catálogos `lgs_cat_origenes` y `lgs_cat_destinos` con direcciones completas y coordenadas GPS precisas.
+- **Servicio PHP `GoogleMapsService`:** Realiza consultas a la **Google Distance Matrix API** (`maps.googleapis.com/maps/api/distancematrix/json`) con fallback matemático Haversine terrestre (1.25x) para calcular distancias exactas por tramo (`km_tramo`) y ruta total (`km_total`).
+- **Desglose Tramo a Tramo y Total Total:** Muestra la distancia paso a paso entre sub-paradas (ej: `Origen ➔ P1 (+65km) ➔ P2 (+130km) ➔ P3 (+280km)`) y la distancia total del viaje en badges en la tabla principal (`index.php`) y en el acomodo (`detalle.php`).
+- **Recálculo en Tiempo Real:** Botón **`⚡ Recalcular Ruta (Google Maps)`** en la creación/edición de envíos que invoca `/Lgs_envios/calcularDistanciaRuta`, llena las distancias por parada y actualiza automáticamente la matriz de costo total estimado.
+
+---
+
 ## 🏆 Resumen Final del Proyecto
 El desarrollo completo del módulo de **Logística** (PHP puro + PDO MVC) se ha culminado al 100% siguiendo todas las reglas de negocio planteadas. Todos los cambios se encuentran respaldados en git y documentados en los artefactos correspondientes.
+

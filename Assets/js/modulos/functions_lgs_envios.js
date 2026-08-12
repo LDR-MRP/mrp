@@ -36,8 +36,13 @@ document.addEventListener('DOMContentLoaded', function () {
             { "data": "id_envio" },
             { 
                 "data": "folio",
-                "render": function(data) {
-                    return '<span class="badge bg-soft-primary text-primary fs-12 fw-bold">' + (data || 'S/F') + '</span>';
+                "render": function(data, type, row) {
+                    let html = '<span class="badge bg-soft-primary text-primary fs-12 fw-bold">' + (data || 'S/F') + '</span>';
+                    if (row.vins_list) {
+                        const vins = row.vins_list.split(', ');
+                        html += '<div class="mt-1">' + vins.map(v => '<span class="badge bg-soft-secondary text-secondary me-1 fs-10">' + v + '</span>').join('') + '</div>';
+                    }
+                    return html;
                 }
             },
             { "data": "tipo_traslado" },
@@ -56,9 +61,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             },
             { 
+                "data": "km_total",
+                "render": function(data, type, row) {
+                    const kmVal = parseFloat(data || 0).toFixed(1);
+                    const nParadas = row.total_paradas || 1;
+                    return '<span class="badge bg-soft-info text-info fs-12 fw-bold"><i class="ri-route-line me-1"></i>' + kmVal + ' km</span>' +
+                           '<div class="text-muted fs-11 mt-1">' + nParadas + ' parada(s)</div>';
+                }
+            },
+            { 
                 "data": "total_vins",
-                "render": function(data) {
-                    return '<span class="badge bg-primary fs-12">' + (data || 0) + ' VINs</span>';
+                "render": function(data, type, row) {
+                    if (!row.vins_list || !row.vins_list.trim()) {
+                        return '<span class="badge bg-soft-secondary text-muted fs-12">Sin VINs</span>';
+                    }
+                    const vins = row.vins_list.split(', ').filter(v => v.trim());
+                    let html = vins.map(v => '<span class="badge bg-primary me-1 fs-10" style="font-size:10px;">' + v + '</span>').join('');
+                    html += '<div class="text-muted fs-11 mt-1">' + vins.length + ' unidad(es)</div>';
+                    return html;
                 }
             },
             { 
@@ -109,6 +129,16 @@ document.addEventListener('DOMContentLoaded', function () {
     cargarProveedoresTrasladistas();
 });
 
+/**
+ * Filtra el DataTable de envíos en tiempo real.
+ * Busca en columnas de folio, VINs, origen, destino.
+ */
+function filtrarTablaPorVin(term) {
+    if (tableEnvios) {
+        tableEnvios.search(term).draw();
+    }
+}
+
 function actualizarMetricasEnvios(data) {
     if (!Array.isArray(data)) return;
     
@@ -123,24 +153,238 @@ function actualizarMetricasEnvios(data) {
     if (document.getElementById('cardEnviosEntregados')) document.getElementById('cardEnviosEntregados').innerText = entregados;
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// PARADAS MULTI-DESTINO
+// ──────────────────────────────────────────────────────────────────────────────
+
+/** Lee los destinos del catlogo embebido en el HTML */
+function getCatalogoDestinos() {
+    const el = document.getElementById('catalogoDestinos');
+    if (!el) return [];
+    try { return JSON.parse(el.textContent); } catch { return []; }
+}
+
+/** Construye el HTML de options para el select de destino de una parada */
+function buildDestinoOptions(selectedId) {
+    const destinos = getCatalogoDestinos();
+    let html = '<option value="">Seleccione distribuidor / destino...</option>';
+    destinos.forEach(d => {
+        const sel = (d.id == selectedId) ? 'selected' : '';
+        const addr = d.direccion ? ` — ${d.direccion}` : '';
+        html += `<option value="${d.id}" data-direccion="${d.direccion || ''}" ${sel}>${d.nombre}${addr}</option>`;
+    });
+    return html;
+}
+
+let _paradaCounter = 0;
+
+/** Agrega un nuevo bloque de parada al formulario */
+function agregarParadaForm(data) {
+    _paradaCounter++;
+    const n = _paradaCounter;
+    const msg = document.getElementById('msg-sin-paradas');
+    if (msg) msg.style.display = 'none';
+
+    const cont = document.getElementById('contenedor-paradas');
+    if (!cont) return;
+
+    const div = document.createElement('div');
+    div.className = 'card border shadow-sm p-3 mb-0 parada-item';
+    div.setAttribute('data-n', n);
+    div.innerHTML = `
+        <div class="d-flex align-items-center mb-2">
+            <span class="badge bg-primary me-2">Parada <span class="num-parada">${cont.querySelectorAll('.parada-item').length + 1}</span></span>
+            <span class="text-muted fs-11">Define el destino y los kilómetros de este tramo</span>
+            <button type="button" class="btn btn-sm btn-soft-danger ms-auto" onclick="eliminarParada(this)">
+                <i class="ri-delete-bin-line"></i> Quitar
+            </button>
+        </div>
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label fs-11 text-muted mb-1">Destino (Distribuidor / Cliente)</label>
+                <select class="form-select form-select-sm parada-id-destino" onchange="recalcularRutaGoogleMaps(); serializarParadas();">
+                    ${buildDestinoOptions(data ? data.id_destino_cat : '')}
+                </select>
+                <small class="text-muted fs-10 d-block mt-1 parada-direccion-info"></small>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fs-11 text-muted mb-1">Nombre libre / Dirección manual</label>
+                <input type="text" class="form-control form-control-sm parada-nombre-libre"
+                    value="${data ? (data.destino_nombre_libre || '') : ''}"
+                    placeholder="Ej: Av. Juárez 100, Puebla"
+                    oninput="serializarParadas()">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fs-11 text-muted mb-1">Km tramo <small class="text-info">(Google Maps)</small></label>
+                <input type="number" class="form-control form-control-sm parada-km" min="0" step="0.1"
+                    value="${data ? (data.km_tramo || 0) : 0}"
+                    oninput="serializarParadas()">
+            </div>
+        </div>`;
+    cont.appendChild(div);
+    actualizarNumerosParadas();
+    serializarParadas();
+    recalcularRutaGoogleMaps();
+}
+
+/** Elimina una parada y renumera */
+function eliminarParada(btn) {
+    const item = btn.closest('.parada-item');
+    if (item) item.remove();
+    actualizarNumerosParadas();
+    serializarParadas();
+    recalcularRutaGoogleMaps();
+    const cont = document.getElementById('contenedor-paradas');
+    const msg  = document.getElementById('msg-sin-paradas');
+    if (msg && cont && cont.querySelectorAll('.parada-item').length === 0) {
+        msg.style.display = '';
+        const alertTotal = document.getElementById('badge-distancia-total-container');
+        if (alertTotal) alertTotal.style.setProperty('display', 'none', 'important');
+    }
+}
+
+/** Reasigna los números visuales de paradas */
+function actualizarNumerosParadas() {
+    const items = document.querySelectorAll('#contenedor-paradas .parada-item');
+    items.forEach((el, idx) => {
+        const badge = el.querySelector('.num-parada');
+        if (badge) badge.textContent = idx + 1;
+    });
+}
+
+/** Serializa las paradas al campo oculto paradas_json */
+function serializarParadas() {
+    const items = document.querySelectorAll('#contenedor-paradas .parada-item');
+    const result = [];
+    items.forEach((el, idx) => {
+        const idDestCat  = el.querySelector('.parada-id-destino') ? el.querySelector('.parada-id-destino').value : '';
+        const nombreLibre= el.querySelector('.parada-nombre-libre') ? el.querySelector('.parada-nombre-libre').value.trim() : '';
+        const km         = el.querySelector('.parada-km') ? parseFloat(el.querySelector('.parada-km').value) || 0 : 0;
+        result.push({
+            orden: idx + 1,
+            id_destino_cat: idDestCat || null,
+            destino_nombre_libre: nombreLibre,
+            km_tramo: km
+        });
+    });
+    const campo = document.getElementById('paradas_json');
+    if (campo) campo.value = JSON.stringify(result);
+}
+
+/**
+ * Recalcula distancias de ruta en tiempo real llamando a Google Maps Service
+ */
+function recalcularRutaGoogleMaps() {
+    const idOrigen = document.getElementById('id_origen') ? parseInt(document.getElementById('id_origen').value) || 0 : 0;
+    const items = document.querySelectorAll('#contenedor-paradas .parada-item');
+    
+    if (items.length === 0) return;
+
+    const paradasList = [];
+    items.forEach((el, idx) => {
+        const idDestCat   = el.querySelector('.parada-id-destino') ? el.querySelector('.parada-id-destino').value : '';
+        const nombreLibre = el.querySelector('.parada-nombre-libre') ? el.querySelector('.parada-nombre-libre').value.trim() : '';
+        const kmActual    = el.querySelector('.parada-km') ? parseFloat(el.querySelector('.parada-km').value) || 0 : 0;
+        
+        // Actualizar subtitulo de direccion
+        const selObj = el.querySelector('.parada-id-destino');
+        const optSelected = selObj && selObj.selectedIndex >= 0 ? selObj.options[selObj.selectedIndex] : null;
+        const dir = optSelected ? optSelected.getAttribute('data-direccion') : '';
+        const infoSpan = el.querySelector('.parada-direccion-info');
+        if (infoSpan) {
+            infoSpan.innerHTML = dir ? `<i class="ri-map-pin-line text-danger me-1"></i>${dir}` : '';
+        }
+
+        paradasList.push({
+            orden: idx + 1,
+            id_destino_cat: idDestCat || null,
+            destino_nombre_libre: nombreLibre,
+            km_tramo: kmActual
+        });
+    });
+
+    let request = new XMLHttpRequest();
+    let ajaxUrl = base_url + '/Lgs_envios/calcularDistanciaRuta';
+
+    request.open("POST", ajaxUrl, true);
+    request.setRequestHeader("Content-Type", "application/json");
+    request.send(JSON.stringify({
+        id_origen: idOrigen,
+        paradas: paradasList
+    }));
+
+    request.onreadystatechange = function () {
+        if (request.readyState == 4 && request.status == 200) {
+            try {
+                let objData = JSON.parse(request.responseText);
+                if (objData.status && objData.data) {
+                    const paradasRes = objData.data.paradas || [];
+                    const kmTotal    = objData.data.km_total || 0;
+
+                    // Actualizar inputs de km_tramo en la UI
+                    items.forEach((el, idx) => {
+                        if (paradasRes[idx] && typeof paradasRes[idx].km_tramo !== 'undefined') {
+                            const inputKm = el.querySelector('.parada-km');
+                            if (inputKm) inputKm.value = paradasRes[idx].km_tramo;
+                        }
+                    });
+
+                    serializarParadas();
+
+                    // Mostrar badge total
+                    const alertTotal = document.getElementById('badge-distancia-total-container');
+                    const spanVal    = document.getElementById('badge-km-total-val');
+                    if (alertTotal && spanVal) {
+                        alertTotal.style.setProperty('display', 'flex', 'important');
+                        spanVal.innerText = kmTotal.toFixed(2) + ' km (Google Maps)';
+                    }
+                }
+            } catch (e) {
+                console.error("Error al recalcular ruta: ", e);
+            }
+        }
+    };
+}
+
 function openModal() {
     document.querySelector('#id_envio').value = "";
     document.querySelector('#btnText').innerHTML = "Guardar Envío";
     document.querySelector('#form-envio-title').innerHTML = "Crear Solicitud de Traslado";
     document.querySelector("#formEnvio").reset();
+    // Limpiar paradas
+    const cont = document.getElementById('contenedor-paradas');
+    if (cont) cont.innerHTML = '';
+    const msg = document.getElementById('msg-sin-paradas');
+    if (msg) msg.style.display = '';
+    serializarParadas();
     fntSwitchView('form');
 }
 
 function saveEnvio() {
     let id_tipo_traslado = document.querySelector('#id_tipo_traslado').value;
-    let id_motivo = document.querySelector('#id_motivo').value;
+    let id_motivo = document.querySelector('#id_motivo') ? document.querySelector('#id_motivo').value : '';
     let id_proveedor = document.querySelector('#id_proveedor').value;
     let id_origen = document.querySelector('#id_origen').value;
-    let id_destino = document.querySelector('#id_destino') ? document.querySelector('#id_destino').value : '';
 
-    if (id_tipo_traslado == '' || id_motivo == '' || id_proveedor == '' || id_origen == '' || id_destino == '') {
+    // Serializar paradas antes de validar
+    serializarParadas();
+    const paradasJson = document.getElementById('paradas_json') ? document.getElementById('paradas_json').value : '[]';
+    const paradas = JSON.parse(paradasJson);
+
+    if (id_tipo_traslado == '' || id_motivo == '' || id_proveedor == '' || id_origen == '') {
         Swal.fire("Atención", "Todos los campos marcados con (*) son obligatorios.", "error");
         return false;
+    }
+    if (paradas.length === 0) {
+        Swal.fire("Atención", "Debe agregar al menos una parada destino en la ruta.", "warning");
+        return false;
+    }
+    // Validar que cada parada tenga al menos nombre o destino cat
+    for (let i = 0; i < paradas.length; i++) {
+        if (!paradas[i].id_destino_cat && !paradas[i].destino_nombre_libre) {
+            Swal.fire("Atención", `La parada ${i + 1} debe tener un destino seleccionado o un nombre libre.`, "warning");
+            return false;
+        }
     }
 
     let request = new XMLHttpRequest();

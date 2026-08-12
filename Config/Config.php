@@ -56,7 +56,8 @@ const NOMBRE_REMITENTE = "LDR - SOLUTIONS";
 const EMAIL_REMITENTE = "carlosbunti97@gmail.com";
 const NOMBRE_EMPESA = "LDR - SOLUTIONS";
 const WEB_EMPRESA = "https://www.ldrsolutions.mx/";
-
+// Google Maps API Key
+const GOOGLE_MAPS_API_KEY = "";
 
 const SHAREDHASH = "ldrsolutions";
 

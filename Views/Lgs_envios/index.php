@@ -128,6 +128,25 @@
                 <div class="card border-0 shadow-xl">
                     <div class="bg-primary" style="height: 4px;"></div>
                     <div class="card-body">
+
+                        <!-- Buscador rápido de VIN -->
+                        <div class="row align-items-center mb-3">
+                            <div class="col-md-5">
+                                <div class="input-group input-group-lg shadow-sm">
+                                    <span class="input-group-text bg-light border-end-0 text-primary">
+                                        <i class="ri-search-line fs-18"></i>
+                                    </span>
+                                    <input type="text" id="buscarVinBandeja" class="form-control border-start-0 bg-light ps-0"
+                                           placeholder="Buscar por VIN, folio o destino..."
+                                           oninput="filtrarTablaPorVin(this.value)">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="filtrarTablaPorVin(''); document.getElementById('buscarVinBandeja').value='';" title="Limpiar búsqueda">
+                                        <i class="ri-close-line"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted fs-11 mt-1 d-block"><i class="ri-information-line me-1"></i>Filtra los envíos de la tabla en tiempo real por VIN, folio u origen/destino</small>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table id="tableEnvios" class="table table-hover table-lg align-middle mb-0" style="width:100% !important;">
                                 <thead class="bg-light">
@@ -139,7 +158,8 @@
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Trasladista</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Origen</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Destino</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">VINs</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Distancia (KM)</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">VINs Asignados</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Costo Est.</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado</th>
                                         <th scope="col" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
@@ -240,23 +260,74 @@
 
                                         <div class="col-md-6">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Origen <span class="text-danger">*</span></label>
-                                            <select class="form-select" id="id_origen" name="id_origen" required>
+                                            <select class="form-select" id="id_origen" name="id_origen" onchange="recalcularRutaGoogleMaps()" required>
                                                 <option value="">Seleccione Origen...</option>
                                                 <?php foreach ($data['catalogos']['origenes'] ?? [] as $o): ?>
-                                                    <option value="<?= $o['id']; ?>"><?= htmlspecialchars($o['nombre'], ENT_QUOTES, 'UTF-8'); ?></option>
+                                                    <option value="<?= $o['id']; ?>" data-direccion="<?= htmlspecialchars($o['direccion'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <?= htmlspecialchars($o['nombre'], ENT_QUOTES, 'UTF-8'); ?>
+                                                        <?= !empty($o['direccion']) ? ' ('.htmlspecialchars($o['direccion'], ENT_QUOTES, 'UTF-8').')' : ''; ?>
+                                                    </option>
                                                 <?php endforeach; ?>
                                             </select>
                                         </div>
 
-                                        <div class="col-md-6">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Destino (Cliente / Distribuidor) <span class="text-danger">*</span></label>
-                                            <select class="form-select" id="id_destino" name="id_destino" required>
-                                                <option value="">Seleccione Destino...</option>
-                                                <?php foreach ($data['catalogos']['destinos'] ?? [] as $d): ?>
-                                                    <option value="<?= $d['id']; ?>"><?= htmlspecialchars($d['nombre'], ENT_QUOTES, 'UTF-8'); ?></option>
-                                                <?php endforeach; ?>
-                                            </select>
+                                        <!-- ── SECCIÓN MULTI-DESTINO / PARADAS ── -->
+                                        <div class="col-12">
+                                            <hr class="my-3">
+                                            <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                                                <div>
+                                                    <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-0">
+                                                        <i class="ri-route-line me-1 text-primary"></i>
+                                                        Paradas de la Ruta <span class="text-danger">*</span>
+                                                    </label>
+                                                    <small class="text-muted d-block fs-11">El camión recorre las paradas en el orden indicado. Las distancias y costos se calculan via Google Maps API.</small>
+                                                </div>
+                                                <div class="d-flex gap-2">
+                                                    <button type="button" class="btn btn-sm btn-soft-info shadow-sm" onclick="recalcularRutaGoogleMaps()" title="Calcular distancias con Google Maps">
+                                                        <i class="ri-map-pin-distance-line me-1"></i> ⚡ Recalcular Ruta (Google Maps)
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-primary shadow-sm" onclick="agregarParadaForm()">
+                                                        <i class="ri-add-line me-1"></i> Agregar Parada
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <!-- Badge Resumen Distancia Total -->
+                                            <div id="badge-distancia-total-container" class="alert alert-soft-primary d-flex align-items-center justify-content-between p-2 mb-3 rounded-3" style="display:none !important;">
+                                                <span class="fs-12 fw-medium"><i class="ri-google-fill text-primary me-1"></i>Distancia Total Calculada:</span>
+                                                <span id="badge-km-total-val" class="badge bg-primary fs-13">0 km</span>
+                                            </div>
+
+                                            <!-- Contenedor dinámico de paradas -->
+                                            <div id="contenedor-paradas" class="d-flex flex-column gap-2">
+                                                <!-- Las paradas se agregan aquí dinámicamente -->
+                                            </div>
+
+                                            <div id="msg-sin-paradas" class="text-center py-3 border border-dashed rounded-3 text-muted" style="border-style: dashed !important;">
+                                                <i class="ri-map-pin-add-line fs-24 d-block mb-1 text-primary opacity-50"></i>
+                                                <span class="fs-12">Sin paradas. Haz clic en <strong>"Agregar Parada"</strong> para definir la ruta.</span>
+                                            </div>
+
+                                            <!-- Campo oculto donde se guarda el JSON de paradas -->
+                                            <input type="hidden" id="paradas_json" name="paradas" value="[]">
                                         </div>
+
+                                        <!-- Destinos disponibles como JSON para el JS -->
+                                        <script id="catalogoDestinos" type="application/json">
+                                            <?php
+                                            $destinosJson = [];
+                                            foreach ($data['catalogos']['destinos'] ?? [] as $d) {
+                                                $destinosJson[] = [
+                                                    'id'        => (int)$d['id'],
+                                                    'nombre'    => htmlspecialchars($d['nombre'], ENT_QUOTES, 'UTF-8'),
+                                                    'direccion' => htmlspecialchars($d['direccion'] ?? '', ENT_QUOTES, 'UTF-8'),
+                                                    'lat'       => floatval($d['lat'] ?? 0),
+                                                    'lng'       => floatval($d['lng'] ?? 0)
+                                                ];
+                                            }
+                                            echo json_encode($destinosJson, JSON_UNESCAPED_UNICODE);
+                                            ?>
+                                        </script>
 
                                         <div class="col-md-12">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Fecha Tentativa Salida</label>
