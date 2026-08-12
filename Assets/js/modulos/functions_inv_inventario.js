@@ -51,11 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let maxImagenes = 5;
 
   if (contenedor && btnAgregar) {
-    const actuales = document.querySelectorAll(
-      "#imagenesActuales .imagen-existente",
-    ).length;
-
-    const nuevas = contenedor.querySelectorAll(".input-imagen").length;
+    let maxImagenes = 5;
 
     // ================================
     // AGREGAR NUEVA IMAGEN
@@ -80,7 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const div = document.createElement("div");
 
-      div.classList.add("input-group", "mb-2");
+      div.classList.add("input-group", "mb-2", "input-imagen-wrapper");
 
       div.innerHTML = `
             <input
@@ -112,7 +108,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!boton) return;
 
-      boton.closest(".input-group")?.remove();
+      const wrapper = boton.closest(".input-imagen-wrapper");
+
+      if (wrapper) {
+        wrapper.remove();
+      }
     });
   }
 
@@ -334,32 +334,48 @@ document.addEventListener("DOMContentLoaded", () => {
       const targetId = e.target.getAttribute("href").replace("#", "");
       const config = tabsConfig[targetId];
 
-      //  SI CAMBIAS DE TAB → SIEMPRE LIMPIA
-      resetFormularioInventario();
+      // =====================================================
+      // SOLO LIMPIAR SI NO ESTAMOS EDITANDO
+      // =====================================================
 
-      //  SI CAMBIAS DE TAB → OCULTAR KIT SI NO ES KIT
+      if (!modoEdicion) {
+        resetFormularioInventario();
+      }
+
+      // =====================================================
+      // OCULTAR KIT SI NO ES KIT
+      // =====================================================
+
       if (targetId !== "agregarKit") {
         const kitContainer = document.getElementById("kit_config_container");
+
         if (kitContainer) {
           kitContainer.style.display = "none";
         }
       }
 
-      //  CARGAS NORMALES
-      if (config) {
+      // =====================================================
+      // CARGAR SELECTS
+      // =====================================================
 
+      if (config) {
         cargarImpuestos("#idimpuesto");
         cargarMarcas("#idmarca");
         cargarProveedores("#id_proveedor");
       }
 
-      //  CONTROL DEL BOTÓN
+      // =====================================================
+      // BOTÓN
+      // =====================================================
+
       const btnText = document.querySelector("#btnText");
 
-      if (modoEdicion) {
-        btnText.textContent = "ACTUALIZAR";
-      } else {
-        btnText.textContent = "GUARDAR";
+      if (btnText) {
+        if (modoEdicion) {
+          btnText.textContent = "ACTUALIZAR";
+        } else {
+          btnText.textContent = "GUARDAR";
+        }
       }
     });
   });
@@ -402,13 +418,42 @@ document.addEventListener("DOMContentLoaded", () => {
               res.tipo === "H" ||
               res.tipo === "R"
             ) {
-              // Limpiar formularios
+              // ================================
+              // LIMPIAR FORMULARIO
+              // ================================
+
               form.reset();
 
-              // 🔁 Volver a la pestaña de tabla
+              // ================================
+              // LIMPIAR INPUTS DE IMÁGENES
+              // ================================
+
+              const contenedorImagenes =
+                document.getElementById("contenedorImagenes");
+
+              if (contenedorImagenes) {
+                contenedorImagenes.innerHTML = "";
+              }
+
+              // ================================
+              // LIMPIAR IMÁGENES EXISTENTES
+              // ================================
+
+              const imagenesActuales =
+                document.getElementById("imagenesActuales");
+
+              if (imagenesActuales) {
+                imagenesActuales.innerHTML = "";
+              }
+
+              // ================================
+              // VOLVER A LISTADO
+              // ================================
+
               const tabTabla = document.querySelector(
                 'a[href="#listInventarios"]',
               );
+
               if (tabTabla) {
                 new bootstrap.Tab(tabTabla).show();
               }
@@ -867,17 +912,19 @@ function abrirImagenGrande(ruta) {
 }
 
 function fntEditInventario(idinventario) {
-  modoEdicion = true; // 🔥 ACTIVAR MODO EDICIÓN
+  modoEdicion = true;
 
   bloquearTipoElemento();
   ocultarMovimientoInicial();
 
   const request = new XMLHttpRequest();
+
   request.open(
     "GET",
     base_url + "/Inv_inventario/getInventario/" + idinventario,
     true,
   );
+
   request.send();
 
   request.onload = () => {
@@ -890,53 +937,93 @@ function fntEditInventario(idinventario) {
 
     const data = res.data;
 
+    // =====================================================
     // IMÁGENES EXISTENTES
+    // =====================================================
+
     const contenedorActuales = document.getElementById("imagenesActuales");
 
     if (contenedorActuales) {
-      let html = "";
+      contenedorActuales.innerHTML = "";
 
       if (data.imagenes && data.imagenes.length > 0) {
         data.imagenes.forEach((img) => {
+          const ruta =
+            base_url + "/Assets/uploads/inventario_imagenes/" + img.foto;
+
           console.log("IMAGEN:", img);
           console.log("ID FOTOINVENTARIO:", img.idfotoinventario);
-          html += `
-                    <div class="imagen-existente border rounded p-2 mb-2 d-flex justify-content-between align-items-center">
 
-                        <span>${img.foto}</span>
+          contenedorActuales.innerHTML += `
+                        <div
+                            class="imagen-existente border rounded p-2"
+                            style="width:180px;"
+                        >
 
-                        <div>
+                            <img
+                                src="${ruta}"
+                                alt="${img.foto}"
+                                class="img-fluid rounded border mb-2"
+                                style="
+                                    width:150px;
+                                    height:150px;
+                                    object-fit:cover;
+                                    cursor:pointer;
+                                "
+                                onclick="abrirImagenGrande('${ruta}')"
+                            >
 
-                            <a href="${base_url}/Assets/uploads/inventario_imagenes/${img.foto}"
-                               target="_blank"
-                               class="btn btn-primary btn-sm">
-                                Ver
-                            </a>
+                            <div
+                                class="small text-muted text-truncate mb-2"
+                                title="${img.foto}"
+                            >
+                                ${img.foto}
+                            </div>
 
                             <button
-    type="button"
-    class="btn btn-danger btn-sm btnEliminarImagenExistente"
-    data-id="${img.idfotoinventario}"
-    onclick="console.log('ID IMAGEN:', this.dataset.id)">
-    Eliminar
-</button>
+                                type="button"
+                                class="btn btn-danger btn-sm w-100 btnEliminarImagenExistente"
+                                data-id="${img.idfotoinventario}"
+                            >
+                                <i class="bi bi-trash"></i>
+                                Eliminar
+                            </button>
 
                         </div>
-
-                    </div>
-                `;
+                    `;
         });
+      } else {
+        contenedorActuales.innerHTML = `
+                    <span class="text-muted">
+                        Sin imágenes
+                    </span>
+                `;
       }
-
-      contenedorActuales.innerHTML = html;
     }
 
+    // =====================================================
+    // ABRIR TAB
+    // =====================================================
+
     abrirTabEdicion(data.tipo_elemento);
+
+    // =====================================================
+    // LLENAR FORMULARIO
+    // =====================================================
+
     llenarFormularioInventario(data);
+
+    // =====================================================
+    // KIT
+    // =====================================================
 
     if (data.tipo_elemento === "K") {
       cargarKitParaEdicion(data.idinventario);
     }
+
+    // =====================================================
+    // BOTÓN
+    // =====================================================
 
     document.querySelector("#btnText").textContent = "ACTUALIZAR";
   };
@@ -982,23 +1069,18 @@ document.addEventListener("click", function (e) {
         idfotoinventario: id,
       }),
     })
-.then((response) => {
+      .then((response) => {
+        return response.text().then((text) => {
+          console.log("STATUS HTTP:", response.status);
+          console.log("RESPUESTA DELETE:", text);
 
-    return response.text().then((text) => {
+          if (!response.ok) {
+            throw new Error("HTTP " + response.status + ": " + text);
+          }
 
-        console.log("STATUS HTTP:", response.status);
-        console.log("RESPUESTA DELETE:", text);
-
-        if (!response.ok) {
-
-            throw new Error(
-                "HTTP " + response.status + ": " + text
-            );
-        }
-
-        return text;
-    });
-})
+          return text;
+        });
+      })
 
       .then((text) => {
         console.log("RESPUESTA deleteImagen:", text);
@@ -1202,6 +1284,13 @@ function llenarFormularioInventario(data) {
   set('[name="idinventario"]', data.idinventario);
   set('[name="cve_articulo"]', data.cve_articulo);
   set('[name="descripcion"]', data.descripcion);
+  // 🔒 BLOQUEAR SKU/CLAVE EN EDICIÓN
+  const inputCve = form.querySelector('[name="cve_articulo"]');
+
+  if (inputCve) {
+    inputCve.readOnly = true;
+    inputCve.classList.add("bg-light");
+  }
   set('[name="notas"]', data.notas);
   set('[name="unidad_entrada"]', data.unidad_entrada);
   set('[name="unidad_salida"]', data.unidad_salida);
@@ -1258,6 +1347,24 @@ function resetFormularioInventario() {
     )
     .forEach((form) => form.reset());
 
+  // =====================================================
+  // LIMPIAR IMÁGENES
+  // =====================================================
+
+  // Limpiar inputs de imágenes nuevas
+  const contenedorImagenes = document.getElementById("contenedorImagenes");
+
+  if (contenedorImagenes) {
+    contenedorImagenes.innerHTML = "";
+  }
+
+  // Limpiar imágenes existentes
+  const imagenesActuales = document.getElementById("imagenesActuales");
+
+  if (imagenesActuales) {
+    imagenesActuales.innerHTML = "";
+  }
+
   // 🔹 Limpiar IDs (modo edición)
   document
     .querySelectorAll('[name="idinventario"]')
@@ -1305,6 +1412,11 @@ function resetFormularioInventario() {
   if (contenedorTipo) {
     contenedorTipo.style.display = "none";
   }
+  // 🔓 HABILITAR SKU/CLAVE PARA NUEVO REGISTRO
+  document.querySelectorAll('[name="cve_articulo"]').forEach((el) => {
+    el.readOnly = false;
+    el.classList.remove("bg-light");
+  });
 }
 
 function setValue(selector, value) {
