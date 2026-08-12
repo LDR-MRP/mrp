@@ -78,9 +78,8 @@ class Lgs_envios extends Controllers
     public function store(): void
     {
         try {
-            $userId = $_SESSION['idUser'] ?? 1; // Ajustar según tu manejo de sesión
+            $userId = $_SESSION['idUser'] ?? 1;
             
-            // Aquí iría la validación de Lgs_enviosRequest
             $data = [
                 'id_tipo_traslado' => intval($_POST['id_tipo_traslado'] ?? 0),
                 'id_motivo'        => intval($_POST['id_motivo'] ?? 0),
@@ -88,24 +87,52 @@ class Lgs_envios extends Controllers
                 'id_origen'        => intval($_POST['id_origen'] ?? 0),
                 'id_destino'       => intval($_POST['id_destino'] ?? 0),
                 'destino_nombre_libre' => $_POST['destino_nombre_libre'] ?? '',
-                'km_total'         => floatval($_POST['km_total'] ?? 0),
+                'km_total'         => 0, // Se calculará desde paradas
                 'fecha_tentativa_envio'   => !empty($_POST['fecha_tentativa_envio']) ? $_POST['fecha_tentativa_envio'] : null,
                 'fecha_tentativa_llegada' => !empty($_POST['fecha_tentativa_llegada']) ? $_POST['fecha_tentativa_llegada'] : null,
                 'observaciones'    => $_POST['observaciones'] ?? '',
             ];
 
-            // Si es 0 es un insert (nuevo envío)
+            // Paradas recibidas del formulario como JSON string
+            $paradasRaw = $_POST['paradas'] ?? '[]';
+            $paradas = json_decode($paradasRaw, true) ?: [];
+
             $idEnvio = intval($_POST['id_envio'] ?? 0);
 
+            $model = new Lgs_enviosModel();
+            $db    = $model->getConexion();
+            $db->beginTransaction();
+
             if ($idEnvio === 0) {
-                $id = $this->service->createEnvio($data, $userId);
-                echo $this->successResponse(['id_envio' => $id], "Envío creado exitosamente");
-            } else {
-                // $this->service->updateEnvio($idEnvio, $data, $userId);
-                echo $this->successResponse(['id_envio' => $idEnvio], "Envío actualizado exitosamente");
+                // Nuevo envío
+                $folio = $model->generarFolioTransaccional($db);
+                $data['folio']      = $folio;
+                $data['created_by'] = $userId;
+                $idEnvio = $model->insertEnvio($db, $data);
             }
 
+            // Guardar paradas (reemplazar siempre)
+            $model->deleteParadasEnvio($db, $idEnvio);
+            foreach ($paradas as $idx => $p) {
+                $model->insertParada($db, [
+                    'id_envio'             => $idEnvio,
+                    'orden'                => $idx + 1,
+                    'id_destino_cat'       => !empty($p['id_destino_cat']) ? intval($p['id_destino_cat']) : null,
+                    'destino_nombre_libre' => htmlspecialchars(trim($p['destino_nombre_libre'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                    'km_tramo'             => floatval($p['km_tramo'] ?? 0),
+                    'observaciones'        => htmlspecialchars(trim($p['observaciones'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                ]);
+            }
+
+            // Recalcular km_total desde las paradas y actualizar destino final
+            $model->actualizarKmTotalDesdeParadas($db, $idEnvio);
+
+            $db->commit();
+
+            echo $this->successResponse(['id_envio' => $idEnvio], "Envío guardado exitosamente");
+
         } catch (Throwable $e) {
+            if (isset($db) && $db->inTransaction()) $db->rollBack();
             echo $this->errorResponse($e->getMessage(), 500);
         }
     }
@@ -155,13 +182,15 @@ class Lgs_envios extends Controllers
             $choferes  = $model->getChoferesPorProveedor($idProveedor);
             $vins      = $model->getVinsDisponiblesOrigen($idOrigen, $idEnvio);
             $existentes= $model->getAcomodoExistenteEnvio($idEnvio);
+            $paradas   = $model->getParadasEnvio($idEnvio);
 
             $data = [
                 'envio'      => $envio,
                 'madrinas'   => $madrinas,
                 'choferes'   => $choferes,
                 'vins'       => $vins,
-                'existentes' => $existentes
+                'existentes' => $existentes,
+                'paradas'    => $paradas,
             ];
 
             echo $this->successResponse($data, "Datos de acomodo obtenidos correctamente");
@@ -200,6 +229,7 @@ class Lgs_envios extends Controllers
                 $model->insertVin($db, [
                     'id_envio'         => $idEnvio,
                     'id_unidad'        => intval($asig['id_unidad']),
+                    'id_parada'        => !empty($asig['id_parada']) ? intval($asig['id_parada']) : null,
                     'id_madrina'       => !empty($asig['id_madrina']) ? intval($asig['id_madrina']) : null,
                     'id_chofer'        => !empty($asig['id_chofer']) ? intval($asig['id_chofer']) : null,
                     'posicion_acomodo' => !empty($asig['posicion_acomodo']) ? intval($asig['posicion_acomodo']) : null,
@@ -224,4 +254,93 @@ class Lgs_envios extends Controllers
             echo $this->errorResponse($e->getMessage(), 500);
         }
     }
+
+    /**
+     * Endpoint AJAX para calcular distancias y tramos de ruta con Google Maps Service
+     * URL: {{base_url}}/Lgs_envios/calcularDistanciaRuta
+     */
+    public function calcularDistanciaRuta(): void
+    {
+        try {
+            $rawInput = file_get_contents('php://input');
+            $reqData  = json_decode($rawInput, true) ?: $_POST;
+
+            $idOrigen = intval($reqData['id_origen'] ?? 0);
+            $paradas  = $reqData['paradas'] ?? [];
+
+            if (!is_array($paradas) || empty($paradas)) {
+                echo $this->successResponse(['paradas' => [], 'km_total' => 0], "Sin paradas.");
+                return;
+            }
+
+            require_once "Services/GoogleMapsService.php";
+            $googleMaps = new GoogleMapsService();
+            $model = new Lgs_enviosModel();
+
+            // Buscar coordenadas del Origen
+            $origenInfo = null;
+            if ($idOrigen > 0) {
+                $origenesList = $model->getSelectCatalogos()['origenes'] ?? [];
+                foreach ($origenesList as $o) {
+                    if ((int)$o['id'] === $idOrigen) { $origenInfo = $o; break; }
+                }
+            }
+
+            $currentLat = $origenInfo ? floatval($origenInfo['lat'] ?? 0) : 0;
+            $currentLng = $origenInfo ? floatval($origenInfo['lng'] ?? 0) : 0;
+            $currentText = $origenInfo ? ($origenInfo['direccion'] ?? $origenInfo['nombre'] ?? '') : '';
+
+            $destinosList = $model->getSelectCatalogos()['destinos'] ?? [];
+            $destinosMap  = [];
+            foreach ($destinosList as $d) {
+                $destinosMap[(int)$d['id']] = $d;
+            }
+
+            $kmTotal = 0.0;
+            $paradasCalculadas = [];
+
+            foreach ($paradas as $idx => $p) {
+                $idDestCat = !empty($p['id_destino_cat']) ? intval($p['id_destino_cat']) : null;
+                $destInfo  = $idDestCat ? ($destinosMap[$idDestCat] ?? null) : null;
+
+                $nextLat = $destInfo ? floatval($destInfo['lat'] ?? 0) : 0;
+                $nextLng = $destInfo ? floatval($destInfo['lng'] ?? 0) : 0;
+                $nextText= $destInfo ? ($destInfo['direccion'] ?? $destInfo['nombre'] ?? '') : ($p['destino_nombre_libre'] ?? '');
+
+                $kmTramo = 0.0;
+
+                if ($currentLat != 0 && $currentLng != 0 && $nextLat != 0 && $nextLng != 0) {
+                    $kmTramo = $googleMaps->calcularDistanciaCoords($currentLat, $currentLng, $nextLat, $nextLng);
+                } else if (!empty($currentText) && !empty($nextText)) {
+                    $kmTramo = $googleMaps->calcularDistanciaTexto($currentText, $nextText);
+                } else {
+                    $kmTramo = floatval($p['km_tramo'] ?? 150.0);
+                }
+
+                $kmTotal += $kmTramo;
+
+                $p['km_tramo'] = $kmTramo;
+                $p['direccion'] = $nextText;
+                $paradasCalculadas[] = $p;
+
+                // El punto actual para el siguiente tramo pasa a ser esta parada
+                if ($nextLat != 0 && $nextLng != 0) {
+                    $currentLat = $nextLat;
+                    $currentLng = $nextLng;
+                }
+                if (!empty($nextText)) {
+                    $currentText = $nextText;
+                }
+            }
+
+            echo $this->successResponse([
+                'paradas' => $paradasCalculadas,
+                'km_total' => round($kmTotal, 2)
+            ], "Ruta y distancias calculadas via Google Maps API");
+
+        } catch (Throwable $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
 }
+

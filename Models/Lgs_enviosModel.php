@@ -43,6 +43,7 @@ class Lgs_enviosModel extends Mysql
             'id_envio',
             'id_unidad',
             'id_destino',
+            'id_parada',
             'destino_nombre_libre',
             'id_madrina',
             'id_chofer',
@@ -52,6 +53,15 @@ class Lgs_enviosModel extends Mysql
             'recibe_nombre',
             'id_estado',
             'created_at',
+        ],
+        'lgs_envios_paradas' => [
+            'id_parada',
+            'id_envio',
+            'orden',
+            'id_destino_cat',
+            'destino_nombre_libre',
+            'km_tramo',
+            'observaciones',
         ]
     ];
 
@@ -90,7 +100,19 @@ class Lgs_enviosModel extends Mysql
                     e.costo_total,
                     e.fecha_tentativa_envio,
                     e.id_estado,
-                    (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) AS total_vins
+                    (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) AS total_vins,
+                    (SELECT COUNT(*) FROM lgs_envios_paradas WHERE id_envio = e.id_envio) AS total_paradas,
+                    COALESCE(
+                        (SELECT GROUP_CONCAT(u.vin SEPARATOR ', ') 
+                         FROM lgs_envios_vins ev 
+                         INNER JOIN lgs_unidades_envios u ON ev.id_unidad = u.id_unidad 
+                         WHERE ev.id_envio = e.id_envio),
+                        (SELECT GROUP_CONCAT(ut.clave SEPARATOR ', ') 
+                         FROM lgs_envios_vins ev 
+                         INNER JOIN mrp_unidades_terminadas ut ON ev.id_unidad = ut.idunidad 
+                         WHERE ev.id_envio = e.id_envio),
+                        ''
+                    ) AS vins_list
                 FROM lgs_envios e
                 LEFT JOIN lgs_cat_tipo_traslado tt ON e.id_tipo_traslado = tt.id_tipo_traslado
                 LEFT JOIN lgs_cat_motivo_envio mo ON e.id_motivo = mo.id_motivo
@@ -135,6 +157,15 @@ class Lgs_enviosModel extends Mysql
         $stmt->execute($campos);
         
         return $db->lastInsertId();
+    }
+
+    /**
+     * Elimina todas las asignaciones de VINs (acomodo) de un envío
+     */
+    public function deleteAcomodoEnvio(PDO $db, int $idEnvio): void
+    {
+        $stmt = $db->prepare("DELETE FROM lgs_envios_vins WHERE id_envio = ?");
+        $stmt->execute([$idEnvio]);
     }
 
     /**
@@ -204,40 +235,27 @@ class Lgs_enviosModel extends Mysql
 
         // 4. Orígenes
         try {
-            $origenes = $this->select_all("SELECT id_origen AS id, nombre FROM lgs_cat_origenes WHERE activo = 1 ORDER BY nombre ASC");
-            if (empty($origenes)) {
-                $origenes = [
-                    ['id' => 1, 'nombre' => 'Planta Tlajomulco 1'],
-                    ['id' => 2, 'nombre' => 'Planta Tlajomulco 2'],
-                    ['id' => 3, 'nombre' => 'Patio Central Logística']
-                ];
-            }
+            $origenes = $this->select_all("SELECT id_origen AS id, nombre, direccion, lat, lng FROM lgs_cat_origenes WHERE activo = 1 ORDER BY nombre ASC");
         } catch (Throwable $e) {
-            $origenes = [
-                ['id' => 1, 'nombre' => 'Planta Tlajomulco 1'],
-                ['id' => 2, 'nombre' => 'Planta Tlajomulco 2'],
-                ['id' => 3, 'nombre' => 'Patio Central Logística']
-            ];
+            $origenes = [];
         }
 
-        // 5. Destinos (Clientes y Distribuidores desde cli_clientes + lgs_cat_destinos)
+        // 5. Destinos (lgs_cat_destinos + cli_clientes)
         try {
-            $sqlDest = "SELECT idcliente AS id, 
-                               CONCAT(COALESCE(NULLIF(nombre_comercial, ''), razon_social), 
-                                      IF(clave_distribuidor IS NOT NULL AND clave_distribuidor != '', CONCAT(' (', clave_distribuidor, ')'), '')) AS nombre
-                        FROM cli_clientes 
-                        WHERE estado <> 0 
-                        ORDER BY razon_social ASC";
-            $destinos = $this->select_all($sqlDest);
+            $destinos = $this->select_all("SELECT id_destino AS id, nombre, direccion, lat, lng FROM lgs_cat_destinos WHERE activo = 1 ORDER BY nombre ASC");
             if (empty($destinos)) {
-                $destinos = $this->select_all("SELECT id_destino AS id, nombre FROM lgs_cat_destinos WHERE activo = 1 ORDER BY nombre ASC");
+                $sqlDest = "SELECT c.idcliente AS id, 
+                                   COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social) AS nombre,
+                                   CONCAT(COALESCE(d.calle,''), ' ', COALESCE(d.numero_exterior,''), ', ', COALESCE(d.colonia,''), ', ', COALESCE(d.municipio,''), ', ', COALESCE(d.estado_republica,'')) AS direccion,
+                                   19.3012400 AS lat, -99.1843200 AS lng
+                            FROM cli_clientes c
+                            LEFT JOIN cli_direcciones d ON c.idcliente = d.idcliente
+                            WHERE c.estado <> 0 
+                            ORDER BY c.razon_social ASC";
+                $destinos = $this->select_all($sqlDest);
             }
         } catch (Throwable $e) {
-            try {
-                $destinos = $this->select_all("SELECT id_destino AS id, nombre FROM lgs_cat_destinos WHERE activo = 1 ORDER BY nombre ASC");
-            } catch (Throwable $e2) {
-                $destinos = [];
-            }
+            $destinos = [];
         }
 
         return [
@@ -379,6 +397,17 @@ class Lgs_enviosModel extends Mysql
     {
         $this->asegurarTablaFicticiaUnidades();
 
+        $origenNombre = '';
+        $destinoNombre = '';
+
+        if ($idEnvioActual > 0) {
+            $envio = $this->getEnvioCabecera($idEnvioActual);
+            if (!empty($envio)) {
+                $origenNombre = $envio['origen'] ?? '';
+                $destinoNombre = $envio['destino'] ?? '';
+            }
+        }
+
         try {
             $sql = "SELECT 
                         u.id_unidad,
@@ -390,10 +419,21 @@ class Lgs_enviosModel extends Mysql
                     FROM lgs_unidades_envios u
                     WHERE u.id_unidad NOT IN (
                         SELECT id_unidad FROM lgs_envios_vins WHERE id_envio != ?
-                    )
-                    ORDER BY u.id_unidad ASC
-                    LIMIT 50";
-            $res = $this->select_all($sql, [$idEnvioActual]);
+                    )";
+            
+            $params = [$idEnvioActual];
+
+            if (!empty($origenNombre)) {
+                $sql .= " AND LOWER(u.origen) LIKE ?";
+                $params[] = '%' . strtolower(trim($origenNombre)) . '%';
+            }
+            if (!empty($destinoNombre)) {
+                $sql .= " AND LOWER(u.destino) LIKE ?";
+                $params[] = '%' . strtolower(trim($destinoNombre)) . '%';
+            }
+
+            $sql .= " ORDER BY u.id_unidad ASC LIMIT 50";
+            $res = $this->select_all($sql, $params);
             if (!empty($res)) return $res;
         } catch (Throwable $e) {
             // Fallback
@@ -474,5 +514,77 @@ class Lgs_enviosModel extends Mysql
         $res = $this->select_all($sql, [$idEnvio]);
         return $res ?: [];
     }
+
+    /**
+     * Sincroniza el motivo del envío si es necesario
+     */
+    public function actualizarMotivoDesdeVins(PDO $db, int $idEnvio): void
+    {
+        // Motivo es seleccionado manualmente en el envío
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // PARADAS / MULTI-DESTINO
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * Obtiene las paradas ordenadas de un envío
+     */
+    public function getParadasEnvio(int $idEnvio): array
+    {
+        $sql = "SELECT 
+                    p.id_parada,
+                    p.id_envio,
+                    p.orden,
+                    p.id_destino_cat,
+                    COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social, p.destino_nombre_libre, 'Sin Nombre') AS destino_nombre,
+                    p.destino_nombre_libre,
+                    p.km_tramo,
+                    p.observaciones
+                FROM lgs_envios_paradas p
+                LEFT JOIN cli_clientes c ON p.id_destino_cat = c.idcliente
+                WHERE p.id_envio = ?
+                ORDER BY p.orden ASC";
+        $res = $this->select_all($sql, [$idEnvio]);
+        return $res ?: [];
+    }
+
+    /**
+     * Inserta una parada de envío
+     */
+    public function insertParada(PDO $db, array $data): int
+    {
+        $campos = $this->prepararCampos(self::SCHEMA['lgs_envios_paradas'], $data);
+        $keys = implode(', ', array_keys($campos));
+        $placeholders = ':' . implode(', :', array_keys($campos));
+        $sql = "INSERT INTO lgs_envios_paradas ({$keys}) VALUES ({$placeholders})";
+        $stmt = $db->prepare($sql);
+        $stmt->execute($campos);
+        return (int) $db->lastInsertId();
+    }
+
+    /**
+     * Elimina todas las paradas de un envío (para re-insertar)
+     */
+    public function deleteParadasEnvio(PDO $db, int $idEnvio): void
+    {
+        $stmt = $db->prepare("DELETE FROM lgs_envios_paradas WHERE id_envio = ?");
+        $stmt->execute([$idEnvio]);
+    }
+
+    /**
+     * Recalcula km_total del envío sumando todos los km_tramo de sus paradas
+     * y actualiza id_destino con la última parada
+     */
+    public function actualizarKmTotalDesdeParadas(PDO $db, int $idEnvio): void
+    {
+        $sql = "UPDATE lgs_envios
+                SET km_total   = COALESCE((SELECT SUM(km_tramo) FROM lgs_envios_paradas WHERE id_envio = ?), 0),
+                    id_destino = COALESCE((SELECT id_destino_cat FROM lgs_envios_paradas WHERE id_envio = ? ORDER BY orden DESC LIMIT 1), id_destino)
+                WHERE id_envio = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$idEnvio, $idEnvio, $idEnvio]);
+    }
+>>>>>>> feature/crud-trasladistas-madrinas-choferes
 }
 

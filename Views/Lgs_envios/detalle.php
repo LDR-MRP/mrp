@@ -42,6 +42,34 @@
                 </div>
             </div>
 
+            <!-- RESUMEN EJECUTIVO DE LA RUTA Y KM -->
+            <div class="row mb-4" id="card-resumen-ruta-envio">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm rounded-3 bg-soft-primary border-start border-4 border-primary">
+                        <div class="card-body py-3">
+                            <div class="row align-items-center">
+                                <div class="col-md-3 border-end">
+                                    <span class="text-muted fs-11 text-uppercase fw-bold d-block"><i class="ri-map-pin-line text-danger me-1"></i> Origen Salida</span>
+                                    <strong class="fs-13 text-dark" id="lbl-resumen-origen">Cargando...</strong>
+                                </div>
+                                <div class="col-md-3 border-end">
+                                    <span class="text-muted fs-11 text-uppercase fw-bold d-block"><i class="ri-route-line text-primary me-1"></i> Distancia Ruta Total</span>
+                                    <span class="badge bg-primary fs-13" id="lbl-resumen-km-total">0 km</span>
+                                    <small class="text-muted fs-11 ms-1">(Google Maps)</small>
+                                </div>
+                                <div class="col-md-3 border-end">
+                                    <span class="text-muted fs-11 text-uppercase fw-bold d-block"><i class="ri-flag-line text-success me-1"></i> Paradas de la Ruta</span>
+                                    <strong class="fs-13 text-dark" id="lbl-resumen-paradas">0 paradas</strong>
+                                </div>
+                                <div class="col-md-3">
+                                    <span class="text-muted fs-11 text-uppercase fw-bold d-block"><i class="ri-money-dollar-circle-line text-success me-1"></i> Costo Est. Envío</span>
+                                    <strong class="fs-14 text-success fw-bold" id="lbl-resumen-costo">$0.00</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <input type="hidden" id="id_envio" value="<?= $data['id_envio'] ?>">
 
             <div class="row">
@@ -51,6 +79,9 @@
                         <div class="card-header bg-light border-bottom-0 pt-3 pb-2">
                             <h6 class="card-title mb-0 fw-bold text-secondary"><i class="ri-car-line me-1"></i> VINs Disponibles</h6>
                             <small class="text-muted">Unidades listas en el origen del envío</small>
+                            <div class="mt-2">
+                                <input type="text" id="buscar-vin-pool" class="form-control form-control-sm rounded-pill" placeholder="🔍 Buscar por VIN o N/S...">
+                            </div>
                         </div>
                         <div class="card-body bg-light" style="min-height: 500px;">
                             <!-- Lista Sortable -->
@@ -69,9 +100,9 @@
                                 <h6 class="card-title mb-0 fw-bold text-secondary"><i class="ri-truck-line me-1"></i> Asignación a Vehículos</h6>
                                 <small class="text-muted">Arrastre aquí para cargar (El de arriba se baja al último)</small>
                             </div>
-                            <!-- Botón para agregar más madrinas a este envío -->
-                            <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="agregarVehiculo();">
-                                <i class="ri-add-line me-1"></i> Agregar Vehículo / Madrina
+                            <!-- Botón para agregar más madrinas/choferes a este envío -->
+                            <button class="btn btn-sm btn-outline-primary rounded-pill px-3" id="btn-agregar-vehiculo" onclick="agregarVehiculo();">
+                                <i class="ri-add-line me-1"></i> Agregar Vehículo
                             </button>
                         </div>
                         <div class="card-body" id="contenedor-vehiculos">
@@ -106,14 +137,14 @@
                     Empresa Trasladista: <strong id="lbl-trasladista-nombre">Cargando...</strong>
                 </div>
 
-                <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active" data-bs-toggle="tab" href="#tab-madrinas" role="tab">
+                <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" role="tablist" id="modal-vehiculo-nav-tabs">
+                    <li class="nav-item" id="nav-tab-madrinas">
+                        <a class="nav-link active" id="link-tab-madrinas" data-bs-toggle="tab" href="#tab-madrinas" role="tab">
                             <i class="ri-truck-line me-1"></i> Madrinas del Catálogo
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" href="#tab-choferes" role="tab">
+                    <li class="nav-item" id="nav-tab-choferes">
+                        <a class="nav-link" id="link-tab-choferes" data-bs-toggle="tab" href="#tab-choferes" role="tab">
                             <i class="ri-steering-2-line me-1"></i> Choferes (Rodando)
                         </a>
                     </li>
