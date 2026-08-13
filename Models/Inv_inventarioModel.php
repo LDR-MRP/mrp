@@ -385,7 +385,7 @@ WHERE idinventario = ?";
     {
         $sql = "SELECT idinventario, cve_articulo, descripcion 
             FROM wms_inventario
-            WHERE tipo_elemento IN ('P','C','H') 
+            WHERE tipo_elemento IN ('P','C','H', 'R') 
             AND estado != 0";
         return $this->select_all($sql);
     }

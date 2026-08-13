@@ -1002,30 +1002,27 @@ function fntEditInventario(idinventario) {
     }
 
     // =====================================================
-    // ABRIR TAB
-    // =====================================================
+// ABRIR TAB
+// =====================================================
 
-    abrirTabEdicion(data.tipo_elemento);
+abrirTabEdicion(data.tipo_elemento);
 
-    // =====================================================
-    // LLENAR FORMULARIO
-    // =====================================================
+// =====================================================
+// ESPERAR A QUE BOOTSTRAP CAMBIE EL TAB
+// Y DESPUÉS LLENAR FORMULARIO
+// =====================================================
+
+setTimeout(() => {
 
     llenarFormularioInventario(data);
 
-    // =====================================================
-    // KIT
-    // =====================================================
-
     if (data.tipo_elemento === "K") {
-      cargarKitParaEdicion(data.idinventario);
+        cargarKitParaEdicion(data.idinventario);
     }
 
-    // =====================================================
-    // BOTÓN
-    // =====================================================
-
     document.querySelector("#btnText").textContent = "ACTUALIZAR";
+
+}, 100);
   };
 }
 
@@ -1292,8 +1289,36 @@ function llenarFormularioInventario(data) {
     inputCve.classList.add("bg-light");
   }
   set('[name="notas"]', data.notas);
-  set('[name="unidad_entrada"]', data.unidad_entrada);
-  set('[name="unidad_salida"]', data.unidad_salida);
+// =====================================================
+// UNIDADES
+// =====================================================
+
+console.log("UNIDAD ENTRADA BD:", data.unidad_entrada);
+console.log("UNIDAD SALIDA BD:", data.unidad_salida);
+
+const selectEntrada = form.querySelector('[name="unidad_entrada"]');
+const selectSalida = form.querySelector('[name="unidad_salida"]');
+
+console.log("SELECT ENTRADA:", selectEntrada);
+console.log("SELECT SALIDA:", selectSalida);
+
+if (selectEntrada) {
+    selectEntrada.value = data.unidad_entrada || "";
+}
+
+if (selectSalida) {
+    selectSalida.value = data.unidad_salida || "";
+}
+
+console.log(
+    "VALOR FINAL ENTRADA:",
+    selectEntrada ? selectEntrada.value : "NO ENCONTRADO"
+);
+
+console.log(
+    "VALOR FINAL SALIDA:",
+    selectSalida ? selectSalida.value : "NO ENCONTRADO"
+);
   set('[name="factor_unidades"]', data.factor_unidades);
   set('[name="tiempo_surtido"]', data.tiempo_surtido);
   set('[name="peso"]', data.peso);
@@ -1327,6 +1352,18 @@ function llenarFormularioInventario(data) {
       tipoSelect.value = clave.tipo;
     }
   }
+
+  console.log("===== FINAL LLENAR FORMULARIO =====");
+
+console.log(
+    "Entrada FINAL:",
+    document.getElementById("unidad_entrada")?.value
+);
+
+console.log(
+    "Salida FINAL:",
+    document.getElementById("unidad_salida")?.value
+);
 }
 
 function bloquearTipoElemento() {
