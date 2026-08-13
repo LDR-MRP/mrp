@@ -56,8 +56,12 @@ document.addEventListener('DOMContentLoaded', function () {
             { "data": "origen" },
             { 
                 "data": "destino",
-                "render": function(data) {
-                    return '<span class="fw-medium text-dark">' + (data || 'Sin Destino') + '</span>';
+                "render": function(data, type, row) {
+                    let html = '<span class="fw-medium text-dark">' + (data || 'Sin Destino') + '</span>';
+                    if (row.paradas_list) {
+                        html += '<div class="mt-1 fs-11 text-muted"><i class="ri-route-line text-info me-1"></i>Ruta: ' + row.paradas_list + '</div>';
+                    }
+                    return html;
                 }
             },
             { 
@@ -493,7 +497,46 @@ function fntDelEnvio(idEnvio) {
         confirmButtonText: 'Sí, eliminar'
     }).then((result) => {
         if (result.isConfirmed) {
-            Swal.fire('Eliminado!', 'El registro ha sido eliminado.', 'success');
+            let request = new XMLHttpRequest();
+            let ajaxUrl = base_url + '/Lgs_envios/delete';
+            let formData = new FormData();
+            formData.append('id_envio', idEnvio);
+
+            Swal.fire({
+                title: 'Eliminando...',
+                text: 'Por favor espere.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading()
+                }
+            });
+
+            request.open("POST", ajaxUrl, true);
+            request.send(formData);
+            request.onreadystatechange = function () {
+                if (request.readyState == 4) {
+                    if (request.status == 200) {
+                        try {
+                            let objData = JSON.parse(request.responseText);
+                            if (objData.status === 'success' || objData.code === 200) {
+                                Swal.fire('Eliminado!', objData.message || 'El registro ha sido eliminado.', 'success');
+                                if (typeof tableEnvios !== 'undefined' && tableEnvios) tableEnvios.ajax.reload();
+                            } else {
+                                Swal.fire("Error", objData.message || "Error al eliminar el envío", "error");
+                            }
+                        } catch (e) {
+                            Swal.fire("Error", "Respuesta no válida del servidor.", "error");
+                        }
+                    } else {
+                        try {
+                            let objData = JSON.parse(request.responseText);
+                            Swal.fire("Error (" + request.status + ")", objData.message || "Ocurrió un error en el servidor.", "error");
+                        } catch (e) {
+                            Swal.fire("Error (" + request.status + ")", "Error en el servidor al procesar la solicitud.", "error");
+                        }
+                    }
+                }
+            }
         }
     });
 }

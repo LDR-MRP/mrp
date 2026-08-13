@@ -368,41 +368,8 @@ function actualizarConteoYSecuencia(listaUl) {
                 ? ` | 🛣️ ${kmRecorridoRealVehiculo.toFixed(1)} km (${nParadasUnicas} parada${nParadasUnicas > 1 ? 's' : ''} única${nParadasUnicas > 1 ? 's' : ''})` 
                 : '';
             badge.innerHTML = items.length + ' / ' + cap + ' VINs' + kmTxt;
-        li.classList.add('border-success');
-
-        const vin = li.getAttribute('data-vin') || li.querySelector('h6')?.innerText.replace('VIN:', '').trim() || '';
-        const numSerie = li.getAttribute('data-num-serie') || '';
-        const modelo = li.getAttribute('data-modelo') || 'Unidad';
-        const origen = li.getAttribute('data-origen') || 'Origen';
-        const destino = li.getAttribute('data-destino') || 'Destino';
-
-        const posIndex = idx + 1;
-        let badgeSecuencia = (posIndex === 1)
-            ? `<span class="badge bg-success px-2 py-1 fs-11 me-1"><i class="ri-number-1 me-1"></i>1º EN CARGAR</span>`
-            : `<span class="badge bg-info px-2 py-1 fs-11 me-1"><i class="ri-truck-line me-1"></i>${posIndex}º EN CARGAR</span>`;
-
-        li.innerHTML = `
-        <div class="d-flex align-items-center">
-            <div class="flex-shrink-0 me-2">
-                <i class="ri-draggable fs-18 text-muted"></i>
-            </div>
-            <div class="flex-grow-1">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <h6 class="mb-0 fs-13 text-success fw-bold">VIN: ${vin}</h6>
-                    <div>
-                        ${badgeSecuencia}
-                        <span class="badge bg-soft-secondary text-dark fs-11">${modelo}</span>
-                    </div>
-                </div>
-                <p class="text-dark mb-0 fs-11 fw-semibold">
-                    <i class="ri-map-pin-line text-danger me-1"></i>${origen} 
-                    <i class="ri-arrow-right-line mx-1 text-muted"></i> 
-                    <i class="ri-map-pin-2-fill text-success me-1"></i>${destino}
-                </p>
-                <small class="text-muted fs-11">N/S: ${numSerie || 'N/A'}</small>
-            </div>
-        </div>`;
-    });
+        }
+    }
 }
 
 function limpiarBadgesPool(li) {

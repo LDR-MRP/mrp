@@ -342,5 +342,43 @@ class Lgs_envios extends Controllers
             echo $this->errorResponse($e->getMessage(), 500);
         }
     }
+
+    /**
+     * POST: Elimina lógicamente un envío y libera sus paradas/acomodo
+     * URL: {{base_url}}/Lgs_envios/delete
+     */
+    public function delete(): void
+    {
+        try {
+            $idEnvio = intval($_POST['id_envio'] ?? 0);
+            if ($idEnvio <= 0) {
+                echo $this->errorResponse("ID de envío no válido.", 400);
+                return;
+            }
+
+            $model = new Lgs_enviosModel();
+            $db = $model->getConexion();
+            $db->beginTransaction();
+
+            // 1. Borrado lógico de la cabecera
+            $stmt = $db->prepare("UPDATE lgs_envios SET deleted_at = NOW(), id_estado = 0 WHERE id_envio = ?");
+            $stmt->execute([$idEnvio]);
+
+            // 2. Liberar el acomodo (eliminar relaciones de lgs_envios_vins)
+            $model->deleteAcomodoEnvio($db, $idEnvio);
+
+            // 3. Eliminar paradas
+            $model->deleteParadasEnvio($db, $idEnvio);
+
+            $db->commit();
+
+            echo $this->successResponse(null, "Envío eliminado exitosamente");
+        } catch (Throwable $e) {
+            if (isset($db) && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
 }
 

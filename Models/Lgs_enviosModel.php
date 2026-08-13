@@ -112,7 +112,21 @@ class Lgs_enviosModel extends Mysql
                          INNER JOIN mrp_unidades_terminadas ut ON ev.id_unidad = ut.idunidad 
                          WHERE ev.id_envio = e.id_envio),
                         ''
-                    ) AS vins_list
+                    ) AS vins_list,
+                    (SELECT GROUP_CONCAT(
+                        COALESCE(
+                            NULLIF(pc.nombre_comercial, ''), 
+                            pc.razon_social, 
+                            pd.nombre, 
+                            p.destino_nombre_libre, 
+                            'Sin Nombre'
+                        ) 
+                        ORDER BY p.orden ASC SEPARATOR ' ➔ '
+                     )
+                     FROM lgs_envios_paradas p
+                     LEFT JOIN cli_clientes pc ON p.id_destino_cat = pc.idcliente
+                     LEFT JOIN lgs_cat_destinos pd ON p.id_destino_cat = pd.id_destino
+                     WHERE p.id_envio = e.id_envio) AS paradas_list
                 FROM lgs_envios e
                 LEFT JOIN lgs_cat_tipo_traslado tt ON e.id_tipo_traslado = tt.id_tipo_traslado
                 LEFT JOIN lgs_cat_motivo_envio mo ON e.id_motivo = mo.id_motivo
@@ -418,18 +432,19 @@ class Lgs_enviosModel extends Mysql
                         u.destino
                     FROM lgs_unidades_envios u
                     WHERE u.id_unidad NOT IN (
-                        SELECT id_unidad FROM lgs_envios_vins WHERE id_envio != ?
+                        SELECT ev.id_unidad 
+                        FROM lgs_envios_vins ev
+                        INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
+                        WHERE e.deleted_at IS NULL AND ev.id_envio != ?
                     )";
             
             $params = [$idEnvioActual];
 
             if (!empty($origenNombre)) {
-                $sql .= " AND LOWER(u.origen) LIKE ?";
-                $params[] = '%' . strtolower(trim($origenNombre)) . '%';
-            }
-            if (!empty($destinoNombre)) {
-                $sql .= " AND LOWER(u.destino) LIKE ?";
-                $params[] = '%' . strtolower(trim($destinoNombre)) . '%';
+                $sql .= " AND (LOWER(u.origen) LIKE ? OR ? LIKE CONCAT('%', LOWER(u.origen), '%'))";
+                $cleanedOrigen = strtolower(trim($origenNombre));
+                $params[] = '%' . $cleanedOrigen . '%';
+                $params[] = $cleanedOrigen;
             }
 
             $sql .= " ORDER BY u.id_unidad ASC LIMIT 50";
@@ -449,7 +464,10 @@ class Lgs_enviosModel extends Mysql
                 FROM mrp_unidades_terminadas u
                 WHERE u.estado <> 0
                   AND u.idunidad NOT IN (
-                      SELECT id_unidad FROM lgs_envios_vins WHERE id_envio != ?
+                      SELECT ev.id_unidad 
+                      FROM lgs_envios_vins ev
+                      INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
+                      WHERE e.deleted_at IS NULL AND ev.id_envio != ?
                   )
                 ORDER BY u.idunidad DESC
                 LIMIT 50";
@@ -537,12 +555,19 @@ class Lgs_enviosModel extends Mysql
                     p.id_envio,
                     p.orden,
                     p.id_destino_cat,
-                    COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social, p.destino_nombre_libre, 'Sin Nombre') AS destino_nombre,
+                    COALESCE(
+                        NULLIF(c.nombre_comercial, ''), 
+                        c.razon_social, 
+                        d.nombre, 
+                        p.destino_nombre_libre, 
+                        'Sin Nombre'
+                    ) AS destino_nombre,
                     p.destino_nombre_libre,
                     p.km_tramo,
                     p.observaciones
                 FROM lgs_envios_paradas p
                 LEFT JOIN cli_clientes c ON p.id_destino_cat = c.idcliente
+                LEFT JOIN lgs_cat_destinos d ON p.id_destino_cat = d.id_destino
                 WHERE p.id_envio = ?
                 ORDER BY p.orden ASC";
         $res = $this->select_all($sql, [$idEnvio]);
@@ -585,6 +610,5 @@ class Lgs_enviosModel extends Mysql
         $stmt = $db->prepare($sql);
         $stmt->execute([$idEnvio, $idEnvio, $idEnvio]);
     }
->>>>>>> feature/crud-trasladistas-madrinas-choferes
 }
 
