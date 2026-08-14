@@ -306,125 +306,105 @@ class Inv_recepcionModel extends Mysql
     }
 
     public function getDetalleCompraProducto($idCompra, $inventarioid)
-{
-    $sql = "SELECT
+    {
+        $sql = "SELECT
                 costo_unitario
             FROM com_ordenes_compra_detalle
             WHERE compraid = ?
             AND inventarioid = ?
             LIMIT 1";
 
-    return $this->select($sql, [
-        $idCompra,
-        $inventarioid
-    ]);
-}
+        return $this->select($sql, [
+            $idCompra,
+            $inventarioid
+        ]);
+    }
 
-public function getAlmacenCompra($idCompra)
-{
-    $sql = "SELECT almacenid
+    public function getAlmacenCompra($idCompra)
+    {
+        $sql = "SELECT almacenid
             FROM com_ordenes_compra
             WHERE idcompra = ?";
 
-    return $this->select($sql, [$idCompra]);
-}
+        return $this->select($sql, [$idCompra]);
+    }
 
-public function getMultiAlmacen(
-    $inventarioid,
-    $almacenid
-)
-{
-    $sql = "SELECT *
+    public function getMultiAlmacen(
+        $inventarioid,
+        $almacenid
+    ) {
+        $sql = "SELECT *
             FROM wms_multialmacen
             WHERE inventarioid = ?
             AND almacenid = ?";
 
-    return $this->select($sql, [
-        $inventarioid,
-        $almacenid
-    ]);
-}
+        return $this->select($sql, [
+            $inventarioid,
+            $almacenid
+        ]);
+    }
 
-public function updateExistenciaMultiAlmacen(
-    $idmultialmacen,
-    $cantidad
-)
-{
-    $sql = "UPDATE wms_multialmacen
+    public function updateExistenciaMultiAlmacen(
+        $idmultialmacen,
+        $cantidad
+    ) {
+        $sql = "UPDATE wms_multialmacen
             SET existencia = existencia + ?
             WHERE idmultialmacen = ?";
 
-    return $this->update($sql, [
-        $cantidad,
-        $idmultialmacen
-    ]);
-}
+        return $this->update($sql, [
+            $cantidad,
+            $idmultialmacen
+        ]);
+    }
 
-public function insertMultiAlmacen(
-    $inventarioid,
-    $almacenid,
-    $cantidad
-)
-{
-    $producto = $this->select(
-        "SELECT
-            ubicacion,
-            stock_minimo,
-            stock_maximo
+    public function insertMultiAlmacen($inventarioid, $almacenid, $cantidad)
+    {
+        $producto = $this->select(
+            "SELECT stock_minimo, stock_maximo
          FROM wms_inventario
          WHERE idinventario = ?",
-        [$inventarioid]
-    );
+            [$inventarioid]
+        );
 
-    $sql = "INSERT INTO wms_multialmacen
-            (
-                inventarioid,
-                almacenid,
-                ubicacion,
-                existencia,
-                stock_minimo,
-                stock_maximo
-            )
-            VALUES
-            (?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO wms_multialmacen
+            (inventarioid, almacenid, existencia, stock_minimo, stock_maximo)
+            VALUES (?, ?, ?, ?, ?)";
 
-    return $this->insert($sql, [
+        return $this->insert($sql, [
+            $inventarioid,
+            $almacenid,
+            $cantidad,
+            $producto['stock_minimo'],
+            $producto['stock_maximo']
+        ]);
+    }
+
+    public function getExistenciaActual(
         $inventarioid,
-        $almacenid,
-        $producto['ubicacion'],
-        $cantidad,
-        $producto['stock_minimo'],
-        $producto['stock_maximo']
-    ]);
-}
-
-public function getExistenciaActual(
-    $inventarioid,
-    $almacenid
-)
-{
-    $sql = "SELECT existencia
+        $almacenid
+    ) {
+        $sql = "SELECT existencia
             FROM wms_multialmacen
             WHERE inventarioid = ?
             AND almacenid = ?";
 
-    return $this->select($sql, [
-        $inventarioid,
-        $almacenid
-    ]);
-}
+        return $this->select($sql, [
+            $inventarioid,
+            $almacenid
+        ]);
+    }
 
-public function insertMovimientoInventario(
-    $inventarioid,
-    $almacenid,
-    $numeroMovimiento,
-    $referencia,
-    $cantidad,
-    $costoUnitario,
-    $existencia
-)
-{
-    $sql = "INSERT INTO wms_movimientos_inventario
+    public function insertMovimientoInventario(
+        $inventarioid,
+        $almacenid,
+        $numeroMovimiento,
+        $referencia,
+        $cantidad,
+        $costoUnitario,
+        $existencia
+    ) {
+        $sql = "INSERT INTO wms_movimientos_inventario
             (
                 inventarioid,
                 almacenid,
@@ -446,18 +426,16 @@ public function insertMovimientoInventario(
                 NOW(), 2
             )";
 
-    return $this->insert($sql, [
-        $inventarioid,
-        $almacenid,
-        $numeroMovimiento,
-        $referencia,
-        $cantidad,
-        $cantidad * $costoUnitario,
-        $costoUnitario,
-        $costoUnitario,
-        $existencia
-    ]);
-}
-
-
+        return $this->insert($sql, [
+            $inventarioid,
+            $almacenid,
+            $numeroMovimiento,
+            $referencia,
+            $cantidad,
+            $cantidad * $costoUnitario,
+            $costoUnitario,
+            $costoUnitario,
+            $existencia
+        ]);
+    }
 }
