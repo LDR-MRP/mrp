@@ -496,6 +496,13 @@
                                        </a>
                                    </li>
 
+                                   <!-- Tarifas y Costos -->
+                                   <li class="nav-item">
+                                       <a href="<?= base_url(); ?>/Lgs_costos" class="nav-link" data-key="t-lgs-costos">
+                                           <i class="ri-money-dollar-circle-line align-bottom me-1"></i> Tarifas y Costos
+                                       </a>
+                                   </li>
+
                                    <?php /* 
                                    <!-- Mis Planeaciones -->
                                    <li class="nav-item">

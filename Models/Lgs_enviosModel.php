@@ -435,10 +435,10 @@ class Lgs_enviosModel extends Mysql
                         SELECT ev.id_unidad 
                         FROM lgs_envios_vins ev
                         INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
-                        WHERE e.deleted_at IS NULL AND ev.id_envio != ?
+                        WHERE e.deleted_at IS NULL
                     )";
             
-            $params = [$idEnvioActual];
+            $params = [];
 
             if (!empty($origenNombre)) {
                 $sql .= " AND (LOWER(u.origen) LIKE ? OR ? LIKE CONCAT('%', LOWER(u.origen), '%'))";
@@ -467,11 +467,11 @@ class Lgs_enviosModel extends Mysql
                       SELECT ev.id_unidad 
                       FROM lgs_envios_vins ev
                       INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
-                      WHERE e.deleted_at IS NULL AND ev.id_envio != ?
+                      WHERE e.deleted_at IS NULL
                   )
                 ORDER BY u.idunidad DESC
                 LIMIT 50";
-        $res = $this->select_all($sql, [$idEnvioActual]);
+        $res = $this->select_all($sql, []);
         return $res ?: [];
     }
 

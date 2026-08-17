@@ -712,6 +712,9 @@ function guardarAcomodo() {
             if (sel && sel.value) idParada = sel.value;
 
             if (idUnidad) {
+                if (asignaciones.some(a => a.id_unidad == idUnidad)) {
+                    return;
+                }
                 asignaciones.push({
                     id_unidad: idUnidad,
                     id_parada: idParada,
