@@ -71,9 +71,9 @@
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">En Borrador</p>
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">En Planeación</p>
                                         <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="cardEnviosCreados">0</span></h4>
-                                        <span class="badge bg-soft-warning text-warning fw-medium mb-0 px-2 py-1">Pendiente envío</span>
+                                        <span class="badge bg-soft-warning text-warning fw-medium mb-0 px-2 py-1">Sin consolidar</span>
                                     </div>
                                     <div class="avatar-sm flex-shrink-0">
                                         <span class="avatar-title bg-warning-subtle text-warning rounded-circle fs-3">

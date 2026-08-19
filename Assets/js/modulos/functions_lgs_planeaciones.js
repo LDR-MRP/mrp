@@ -160,7 +160,7 @@ function cargarEnviosDisponibles() {
                 });
                 htmlBody += '</tbody></table></div>';
             } else {
-                htmlBody = '<div class="text-center text-muted py-4"><i class="ri-error-warning-line fs-20 me-1"></i>No hay envíos en estado "Creado" pendientes de agrupar.</div>';
+                htmlBody = '<div class="text-center text-muted py-4"><i class="ri-error-warning-line fs-20 me-1"></i>No hay envíos en estado "En Planeación" pendientes de agrupar.</div>';
             }
             
             let container = document.getElementById('containerEnviosDisponibles');

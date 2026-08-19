@@ -97,11 +97,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 "render": function (data) {
                     let badge = '';
                     switch(parseInt(data)) {
-                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>Creado</span>'; break;
-                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>En Revisión (Plan)</span>'; break;
-                        case 3: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-checkbox-circle-line me-1"></i>Aprobado</span>'; break;
-                        case 4: badge = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Rechazado</span>'; break;
-                        case 5: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-ship-line me-1"></i>En Despacho</span>'; break;
+                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>En Planeación</span>'; break;
+                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>En Revisión</span>'; break;
+                        case 3: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-checkbox-circle-line me-1"></i>Envío Aprobado</span>'; break;
+                        case 4: badge = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Planeación Rechazada</span>'; break;
+                        case 5: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-calendar-check-line me-1"></i>Programado</span>'; break;
                         case 6: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-truck-line me-1"></i>En Tránsito</span>'; break;
                         case 7: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-double-line me-1"></i>Entregado</span>'; break;
                         default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
@@ -554,7 +554,7 @@ function fntDelEnvio(idEnvio) {
 function fntReabrirEnvio(idEnvio) {
     Swal.fire({
         title: '¿Reabrir / Desbloquear Envío?',
-        text: 'El envío regresará a estado Creado (Borrador) para que puedas editar su acomodo, paradas y costos.',
+        text: 'El envío regresará a estado En Planeación para que puedas editar su acomodo, paradas y costos.',
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#ffc107',
