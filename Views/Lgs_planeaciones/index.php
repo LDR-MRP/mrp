@@ -186,7 +186,7 @@
                             </div>
                             <div>
                                 <h4 class="mb-1 fw-bold ls-05" id="form-plan-title">Agrupar Envíos en Nueva Planeación</h4>
-                                <p class="text-muted mb-0 fs-13">Seleccione los envíos individuales para consolidar su envío a gerencia.</p>
+                                <p class="text-muted mb-0 fs-13">Seleccione los envíos individuales para consolidar su envío a aprobación.</p>
                             </div>
                         </div>
                     </div>
