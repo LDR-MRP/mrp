@@ -265,8 +265,10 @@ function fntViewPlan(idPlaneacion) {
 
                     setTxt('vdp_creador', plan.creador || 'Operador de Logística');
                     setTxt('vdp_fecha', plan.created_at || '-');
-                    setTxt('vdp_obs_operador', plan.obs_operador || 'Sin observaciones registradas.');
-                    setTxt('vdp_obs_aprobador', plan.obs_aprobador || 'Pendiente de dictamen.');
+                    setTxt('vdp_obs_operador', (plan.obs_operador && plan.obs_operador !== 'null') ? plan.obs_operador : 'Sin observaciones registradas.');
+                    const st = parseInt(plan.id_estado);
+                    let defaultObsAprobador = (st === 1 || st === 2) ? 'Pendiente de dictamen.' : 'Sin observaciones del aprobador.';
+                    setTxt('vdp_obs_aprobador', (plan.obs_aprobador && plan.obs_aprobador !== 'null') ? plan.obs_aprobador : defaultObsAprobador);
 
                     let badgeEstado = '';
                     switch(parseInt(plan.id_estado)) {
