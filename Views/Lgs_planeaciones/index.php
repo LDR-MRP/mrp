@@ -293,25 +293,27 @@
                         </span>
                     </div>
                     <div>
-                        <h5 class="modal-title fw-bold text-body mb-0" id="vdp_folio">Detalle de Planeación: --</h5>
-                        <small class="text-muted" id="vdp_estado">Estado: --</small>
+                        <h5 class="modal-title fw-bold text-body mb-0"><span id="vdp_folio">PL-000</span></h5>
+                        <div class="mt-1" id="vdp_estado_badge">
+                            <span class="badge bg-soft-secondary text-secondary fs-12">Estado</span>
+                        </div>
                     </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
                 <!-- 1. KPIs del Expediente -->
-                <div class="row g-3 mb-4">
+                <div class="row g-3 mb-3">
                     <div class="col-md-3">
                         <div class="p-3 bg-light rounded-3 text-center border">
                             <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Costo Total</span>
-                            <h4 class="fw-bold text-success mb-0" id="vdp_costo">$0.00</h4>
+                            <h4 class="fw-bold text-success mb-0" id="vdp_costo_total">$0.00</h4>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="p-3 bg-light rounded-3 text-center border">
                             <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Distancia Total</span>
-                            <h4 class="fw-bold text-primary mb-0" id="vdp_km">0 km</h4>
+                            <h4 class="fw-bold text-primary mb-0"><span id="vdp_km_total">0</span> km</h4>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -328,7 +330,32 @@
                     </div>
                 </div>
 
-                <!-- 2. Acordeón de Envíos y Unidades -->
+                <!-- 2. Metadatos de Creación y Dictamen -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="fs-12 text-muted fw-bold text-uppercase"><i class="ri-user-line me-1"></i>Creado por:</span>
+                                <strong class="fs-12 text-dark" id="vdp_creador">Operador</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="fs-12 text-muted fw-bold text-uppercase"><i class="ri-calendar-line me-1"></i>Fecha:</span>
+                                <span class="fs-12 text-dark" id="vdp_fecha">-</span>
+                            </div>
+                            <hr class="my-2">
+                            <span class="fs-11 text-muted fw-bold text-uppercase d-block mb-1">Observaciones de Operador:</span>
+                            <p class="fs-12 text-dark mb-0 fst-italic" id="vdp_obs_operador">Sin observaciones.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <span class="fs-11 text-muted fw-bold text-uppercase d-block mb-1"><i class="ri-shield-check-line me-1 text-primary"></i>Dictamen / Observaciones Aprobador:</span>
+                            <p class="fs-12 text-dark mb-0 fst-italic" id="vdp_obs_aprobador">Pendiente de dictamen.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Desglose de Envíos y Unidades -->
                 <h6 class="fw-bold text-uppercase fs-12 text-muted mb-2"><i class="ri-car-line me-1 text-primary"></i> Desglose de Envíos, Madrinas y VINs Asignados</h6>
                 <div id="vdp_contenedor_envios" class="d-flex flex-column gap-3">
                     <!-- Inyectado dinámicamente -->

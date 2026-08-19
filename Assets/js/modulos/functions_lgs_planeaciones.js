@@ -246,15 +246,27 @@ function fntViewPlan(idPlaneacion) {
                 if (objData.status && objData.data) {
                     const plan = objData.data;
 
+                    const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+                    const setHtml = (id, val) => { const el = document.getElementById(id); if (el) el.innerHTML = val; };
+
                     // 1. Cabecera y KPIs
-                    document.getElementById('vdp_folio').innerText = plan.folio || ('PL-' + plan.id_planeacion);
-                    document.getElementById('vdp_costo_total').innerText = '$' + (parseFloat(plan.costo_total) || 0).toFixed(2);
-                    document.getElementById('vdp_km_total').innerText = (parseFloat(plan.km_total) || 0).toFixed(1);
-                    document.getElementById('vdp_total_envios').innerText = (plan.envios || []).length;
-                    document.getElementById('vdp_creador').innerText = plan.creador || 'Operador de Logística';
-                    document.getElementById('vdp_fecha').innerText = plan.created_at || '-';
-                    document.getElementById('vdp_obs_operador').innerText = plan.obs_operador || 'Sin observaciones registradas.';
-                    document.getElementById('vdp_obs_aprobador').innerText = plan.obs_aprobador || 'Pendiente de dictamen por gerencia.';
+                    setTxt('vdp_folio', plan.folio || ('PL-' + plan.id_planeacion));
+                    setTxt('vdp_costo_total', '$' + (parseFloat(plan.costo_total) || 0).toFixed(2));
+                    setTxt('vdp_km_total', (parseFloat(plan.km_total) || 0).toFixed(1));
+                    setTxt('vdp_total_envios', (plan.envios || []).length);
+                    
+                    let totalVinsCount = 0;
+                    if (plan.envios) {
+                        plan.envios.forEach(e => {
+                            totalVinsCount += parseInt(e.total_vins || (e.vins ? e.vins.length : 0));
+                        });
+                    }
+                    setTxt('vdp_total_vins', totalVinsCount);
+
+                    setTxt('vdp_creador', plan.creador || 'Operador de Logística');
+                    setTxt('vdp_fecha', plan.created_at || '-');
+                    setTxt('vdp_obs_operador', plan.obs_operador || 'Sin observaciones registradas.');
+                    setTxt('vdp_obs_aprobador', plan.obs_aprobador || 'Pendiente de dictamen por gerencia.');
 
                     let badgeEstado = '';
                     switch(parseInt(plan.id_estado)) {
@@ -264,15 +276,16 @@ function fntViewPlan(idPlaneacion) {
                         case 5: badgeEstado = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-checkbox-circle-line me-1"></i>Aprobada</span>'; break;
                         default: badgeEstado = '<span class="badge bg-light text-dark fs-12">Estado ' + plan.id_estado + '</span>'; break;
                     }
-                    document.getElementById('vdp_estado_badge').innerHTML = badgeEstado;
+                    setHtml('vdp_estado_badge', badgeEstado);
 
                     // 2. Renderizar Envíos y Unidades
                     const contEnvios = document.getElementById('vdp_contenedor_envios');
-                    contEnvios.innerHTML = '';
+                    if (contEnvios) {
+                        contEnvios.innerHTML = '';
 
-                    if (!plan.envios || plan.envios.length === 0) {
-                        contEnvios.innerHTML = '<div class="alert alert-soft-secondary text-center py-3">No hay envíos vinculados a esta planeación.</div>';
-                    } else {
+                        if (!plan.envios || plan.envios.length === 0) {
+                            contEnvios.innerHTML = '<div class="alert alert-soft-secondary text-center py-3">No hay envíos vinculados a esta planeación.</div>';
+                        } else {
                         plan.envios.forEach((env, idx) => {
                             let rowsVins = '';
                             if (env.vins && env.vins.length > 0) {
@@ -338,6 +351,7 @@ function fntViewPlan(idPlaneacion) {
 
                             contEnvios.innerHTML += cardEnvHtml;
                         });
+                        }
                     }
 
                     // 3. Botones dinámicos del Footer del Modal
