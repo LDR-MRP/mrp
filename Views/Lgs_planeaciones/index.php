@@ -39,8 +39,8 @@
                         </div>
                     </div>
                     <div class="col-md-5 d-flex justify-content-md-end justify-content-start mt-4 mt-md-0">
-                        <button type="button" class="btn btn-primary btn-lg btn-label waves-effect waves-light shadow-md" onclick="openModalPlan();">
-                            <i class="ri-add-line label-icon align-middle fs-18 me-2"></i> Agrupar Envíos (Nuevo Plan)
+                        <button type="button" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm" onclick="openModalPlan();">
+                            <i class="ri-add-line align-middle fs-16 me-1"></i> Agrupar Envíos (Nuevo Plan)
                         </button>
                     </div>
                 </div>
@@ -230,40 +230,120 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="d-grid gap-2">
-                                        <button type="button" id="btnActionFormPlan" class="btn btn-success btn-lg shadow-md" onclick="savePlaneacion();">
+                                        <button type="button" id="btnActionFormPlan" class="btn btn-primary rounded-pill py-2 shadow-sm fw-semibold" onclick="savePlaneacion();">
                                             <i class="ri-send-plane-fill align-middle me-1"></i> <span id="btnTextPlan">Enviar a Revisión</span>
                                         </button>
-                                        <button type="button" class="btn btn-light btn-label" onclick="cancelFormPlan();">
-                                            <i class="ri-arrow-go-back-line label-icon align-middle fs-16 me-2"></i> Cancelar y Volver
+                                        <button type="button" class="btn btn-light border rounded-pill py-2 fw-semibold" onclick="cancelFormPlan();">
+                                            <i class="ri-arrow-go-back-line align-middle fs-16 me-1"></i> Cancelar y Volver
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Card Métrica: Costo Total -->
-                            <div class="card border-0 shadow-lg mb-4 bg-primary" style="border-radius: 10px; background: linear-gradient(135deg, #405189 0%, #0ab39c 100%);">
+                            <div class="card border-0 shadow-lg mb-4 text-white" style="border-radius: 14px; background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);">
                                 <div class="card-body">
                                     <div class="d-flex align-items-center">
-                                        <div class="flex-grow-1">
-                                            <h6 class="text-white text-uppercase fs-11 fw-bold opacity-75 mb-1">
-                                                Monto Estimado Total
-                                            </h6>
-                                            <h3 class="text-white mb-0 fw-bold" id="lbl-monto-plan-display">
-                                                $0.00
-                                            </h3>
+                                        <div class="avatar-sm flex-shrink-0">
+                                            <span class="avatar-title bg-white-subtle text-white rounded-circle fs-3" style="background: rgba(255,255,255,0.15) !important;">
+                                                <i class="ri-money-dollar-circle-line"></i>
+                                            </span>
                                         </div>
-                                        <div class="flex-shrink-0">
-                                            <i class="ri-money-dollar-circle-line text-white fs-24 opacity-50"></i>
+                                        <div class="flex-grow-1 ms-3">
+                                            <p class="text-white-50 text-uppercase fw-bold fs-11 mb-1 ls-1">Costo Estimado Plan</p>
+                                            <h3 class="text-white fw-bold mb-0" id="lblTotalCostoForm">$0.00</h3>
                                         </div>
                                     </div>
-                                    <div class="text-white-50 fs-10 mt-1">Sumatoria estimada de los envíos seleccionados</div>
+                                </div>
+                            </div>
+
+                            <!-- Card Métrica: Kilómetros Totales -->
+                            <div class="card border-0 shadow-lg mb-4 text-white" style="border-radius: 14px; background: linear-gradient(135deg, #C46623 0%, #E07A2C 100%);">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm flex-shrink-0">
+                                            <span class="avatar-title bg-white-subtle text-white rounded-circle fs-3" style="background: rgba(255,255,255,0.15) !important;">
+                                                <i class="ri-map-pin-distance-line"></i>
+                                            </span>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <p class="text-white-50 text-uppercase fw-bold fs-11 mb-1 ls-1">Distancia Total Plan</p>
+                                            <h3 class="text-white fw-bold mb-0" id="lblTotalKmForm">0 km</h3>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </form>
             </section>
+        </div>
+    </div>
+</div>
 
+<!-- MODAL VER DETALLE DE PLANEACIÓN (SOLO LECTURA / AUDITORÍA) -->
+<div class="modal fade" id="modalViewDetallePlan" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header bg-light border-bottom-0 pb-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm me-3">
+                        <span class="avatar-title bg-primary-subtle text-primary rounded-circle fs-3">
+                            <i class="ri-file-list-3-line"></i>
+                        </span>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-body mb-0" id="vdp_folio">Detalle de Planeación: --</h5>
+                        <small class="text-muted" id="vdp_estado">Estado: --</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- 1. KPIs del Expediente -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="p-3 bg-light rounded-3 text-center border">
+                            <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Costo Total</span>
+                            <h4 class="fw-bold text-success mb-0" id="vdp_costo">$0.00</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3 bg-light rounded-3 text-center border">
+                            <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Distancia Total</span>
+                            <h4 class="fw-bold text-primary mb-0" id="vdp_km">0 km</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3 bg-light rounded-3 text-center border">
+                            <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Total Envíos</span>
+                            <h4 class="fw-bold text-dark mb-0" id="vdp_total_envios">0</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3 bg-light rounded-3 text-center border">
+                            <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Total VINs</span>
+                            <h4 class="fw-bold text-dark mb-0" id="vdp_total_vins">0</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Acordeón de Envíos y Unidades -->
+                <h6 class="fw-bold text-uppercase fs-12 text-muted mb-2"><i class="ri-car-line me-1 text-primary"></i> Desglose de Envíos, Madrinas y VINs Asignados</h6>
+                <div id="vdp_contenedor_envios" class="d-flex flex-column gap-3">
+                    <!-- Inyectado dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top-0 pt-3 d-flex justify-content-between">
+                <button type="button" class="btn btn-sm btn-light border px-3 rounded-pill fw-semibold" data-bs-dismiss="modal">
+                    <i class="ri-close-line me-1"></i> Cerrar
+                </button>
+                <div id="vdp_modal_footer_actions">
+                    <a href="<?= base_url(); ?>/Lgs_aprobaciones" class="btn btn-sm btn-primary px-4 rounded-pill fw-semibold shadow-sm">
+                        <i class="ri-shield-check-line me-1"></i> Ir al Panel de Aprobaciones
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 </div>

@@ -38,10 +38,10 @@
                     </div>
                     <div class="col-md-6 d-flex justify-content-md-end justify-content-start mt-4 mt-md-0">
                         <div class="btn-group me-2">
-                            <button type="button" class="btn btn-outline-secondary dropdown-toggle btn-label waves-effect waves-light shadow-sm" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="ri-download-2-line label-icon align-middle fs-18 me-2"></i> Descargar Tarifarios CSV
+                            <button type="button" class="btn btn-light border dropdown-toggle rounded-pill px-3 py-2 fw-semibold shadow-sm" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="ri-download-2-line align-middle fs-16 me-1 text-primary"></i> Descargar Tarifarios
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow">
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 14px;">
                                 <li>
                                     <a class="dropdown-item py-2" href="<?= base_url(); ?>/Lgs_costos/descargarPlantillaCSV?tipo=2">
                                         <i class="ri-steering-2-line text-warning me-2 fs-16"></i> <b>Tarifario Rodando (Chofer)</b>
@@ -63,11 +63,11 @@
                                 </li>
                             </ul>
                         </div>
-                        <button type="button" class="btn btn-secondary btn-label waves-effect waves-light shadow-md me-2" onclick="openImportModal();">
-                            <i class="ri-upload-cloud-2-line label-icon align-middle fs-18 me-2"></i> Importar CSV
+                        <button type="button" class="btn btn-soft-primary rounded-pill px-3 py-2 fw-semibold me-2 shadow-xs" onclick="openImportModal();">
+                            <i class="ri-upload-cloud-2-line align-middle fs-16 me-1"></i> Importar CSV
                         </button>
-                        <button type="button" class="btn btn-primary btn-label waves-effect waves-light shadow-md" onclick="openNuevaRutaModal();">
-                            <i class="ri-add-line label-icon align-middle fs-18 me-2"></i> Nueva Ruta
+                        <button type="button" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm" onclick="openNuevaRutaModal();">
+                            <i class="ri-add-line align-middle fs-16 me-1"></i> Nueva Ruta
                         </button>
                     </div>
                 </div>
@@ -282,7 +282,7 @@
                                             <th style="width: 240px;">Segmento / Categoría</th>
                                             <th style="width: 150px;">Costo Base / KM ($)</th>
                                             <th style="width: 150px;">Costo Base Estimado</th>
-                                            <th style="width: 130px;">Costo Fijo ($)</th>
+                                            <th style="width: 130px; display: none;">Costo Fijo ($)</th>
                                             <th>Desglose de Precios por Factor (Factor 1 a 15)</th>
                                         </tr>
                                     </thead>
@@ -299,7 +299,7 @@
                                 <i class="ri-information-line fs-22 text-warning me-3"></i>
                                 <div>
                                     <h6 class="mb-1 text-warning fw-bold">Tarifas de Traslado por Chofer (1 Sola Unidad)</h6>
-                                    <small class="text-muted">El chofer conduce 1 solo vehículo por viaje. Ingrese el costo por kilómetro y el costo fijo por tramo.</small>
+                                    <small class="text-muted">El chofer conduce 1 solo vehículo por viaje. Ingrese el costo por kilómetro.</small>
                                 </div>
                             </div>
 
@@ -309,7 +309,7 @@
                                         <tr class="text-uppercase fs-12">
                                             <th style="width: 250px;">Segmento / Categoría</th>
                                             <th style="width: 180px;">Costo por KM ($)</th>
-                                            <th style="width: 180px;">Costo Fijo / Tramo ($)</th>
+                                            <th style="width: 180px; display: none;">Costo Fijo / Tramo ($)</th>
                                             <th style="width: 200px;" class="text-end">Costo Total por VIN ($)</th>
                                         </tr>
                                     </thead>
@@ -401,7 +401,7 @@
                                     <th style="width: 250px;">Segmento</th>
                                     <th style="width: 170px;">Costo / KM ($)</th>
                                     <th style="width: 170px;">Costo Estimado (1 VIN)</th>
-                                    <th style="width: 150px;">Costo Fijo ($)</th>
+                                    <th style="width: 150px; display: none;">Costo Fijo ($)</th>
                                     <th>Factor Base</th>
                                 </tr>
                             </thead>
@@ -424,7 +424,7 @@
                                         <td>
                                             <span class="badge bg-success-subtle text-success fs-13 fw-bold p-2 d-block text-end new-costo-total">$ 0.00</span>
                                         </td>
-                                        <td>
+                                        <td style="display: none;">
                                             <div class="input-group input-group-sm">
                                                 <span class="input-group-text">$</span>
                                                 <input type="number" step="0.01" class="form-control text-end" name="segmentos[<?= $idx ?>][precio_plano]" value="0.00">

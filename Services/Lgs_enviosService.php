@@ -93,10 +93,13 @@ class Lgs_enviosService {
         $idDestino      = (int)($envio['id_destino'] ?? 0);
         $kmTotal        = (float)$envio['km_total'];
 
-        // 2. Obtener VINs asociados
+        // 2. Obtener VINs asociados con sus paradas y kilómetros
         $stmtVins = $db->prepare("
-            SELECT v.id, v.id_unidad, v.id_madrina, v.id_chofer 
+            SELECT v.id, v.id_unidad, v.id_madrina, v.id_chofer, v.id_parada, 
+                   p.id_destino_cat AS parada_destino_id,
+                   p.km_tramo AS parada_km
             FROM lgs_envios_vins v
+            LEFT JOIN lgs_envios_paradas p ON v.id_parada = p.id_parada
             WHERE v.id_envio = :id
         ");
         $stmtVins->execute(['id' => $idEnvio]);
@@ -115,12 +118,18 @@ class Lgs_enviosService {
         // TIPO 2: CHOFER (RODANDO)
         if ($idTipoTraslado === 2) {
             foreach ($vins as $vin) {
+                $destinoTarifa = !empty($vin['parada_destino_id']) ? (int)$vin['parada_destino_id'] : $idDestino;
+                $kmParada = (!empty($vin['parada_km']) && (float)$vin['parada_km'] > 0) ? (float)$vin['parada_km'] : $kmTotal;
+
                 // Buscamos tarifa de ruta para 1 unidad
-                $tarifa = $this->getTarifaRuta($db, 2, $idOrigen, $idDestino, $vin['id_segmento'], 1, $idProveedor, $kmTotal);
+                $tarifa = $this->getTarifaRuta($db, 2, $idOrigen, $destinoTarifa, $vin['id_segmento'], 1, $idProveedor, $kmParada);
                 
-                // Usamos la distancia de la ruta si está configurada, de lo contrario usamos la general
-                $distancia = ($tarifa['km'] > 0) ? $tarifa['km'] : $kmTotal;
-                $costoVin = ($distancia * $tarifa['costo_por_km'] + $tarifa['precio_plano']) * $tarifa['factor'];
+                $distancia = ((float)$tarifa['km'] > 0) ? (float)$tarifa['km'] : $kmParada;
+                $costoPorKm = (float)$tarifa['costo_por_km'];
+                $factor = ((float)$tarifa['factor'] > 0) ? (float)$tarifa['factor'] : 1.0;
+                $costoPlano = (float)($tarifa['precio_plano'] ?? 0);
+
+                $costoVin = ($distancia * $costoPorKm + $costoPlano) * $factor;
 
                 $this->updateCostoVin($db, $vin['id'], $costoVin);
                 $costoTotalEnvio += $costoVin;
@@ -139,10 +148,17 @@ class Lgs_enviosService {
                 $volumen = min(count($vinsMadrina), 15); // Tope máximo: 15 unidades por madrina
                 
                 foreach ($vinsMadrina as $vin) {
-                    $tarifa = $this->getTarifaRuta($db, 1, $idOrigen, $idDestino, $vin['id_segmento'], $volumen, $idProveedor, $kmTotal);
+                    $destinoTarifa = !empty($vin['parada_destino_id']) ? (int)$vin['parada_destino_id'] : $idDestino;
+                    $kmParada = (!empty($vin['parada_km']) && (float)$vin['parada_km'] > 0) ? (float)$vin['parada_km'] : $kmTotal;
+
+                    $tarifa = $this->getTarifaRuta($db, 1, $idOrigen, $destinoTarifa, $vin['id_segmento'], $volumen, $idProveedor, $kmParada);
                     
-                    $distancia = ($tarifa['km'] > 0) ? $tarifa['km'] : $kmTotal;
-                    $costoVin = ($distancia * $tarifa['costo_por_km'] + $tarifa['precio_plano']) * $tarifa['factor'];
+                    $distancia = ((float)$tarifa['km'] > 0) ? (float)$tarifa['km'] : $kmParada;
+                    $costoPorKm = (float)$tarifa['costo_por_km'];
+                    $factor = ((float)$tarifa['factor'] > 0) ? (float)$tarifa['factor'] : 1.0;
+                    $costoPlano = (float)($tarifa['precio_plano'] ?? 0);
+
+                    $costoVin = ($distancia * $costoPorKm + $costoPlano) * $factor;
                     
                     $this->updateCostoVin($db, $vin['id'], $costoVin);
                     $costoTotalEnvio += $costoVin;
@@ -210,16 +226,16 @@ class Lgs_enviosService {
 
         // 3. Fallback: Parsear por nombre del modelo
         $modeloLower = strtolower($modelo);
-        if (strpos($modeloLower, 'miller') !== false || strpos($modeloLower, 's3') !== false || strpos($modeloLower, 's5') !== false || strpos($modeloLower, 's6') !== false) {
+        if (strpos($modeloLower, 'miller') !== false || strpos($modeloLower, 's3') !== false || strpos($modeloLower, 's5') !== false || strpos($modeloLower, 's6') !== false || strpos($modeloLower, 'van') !== false || strpos($modeloLower, 'pickup') !== false || strpos($modeloLower, 'panel') !== false) {
             return 1; // LIGEROS
         }
-        if (strpos($modeloLower, 's8') !== false || strpos($modeloLower, 's12') !== false || strpos($modeloLower, 's20') !== false) {
+        if (strpos($modeloLower, 's8') !== false || strpos($modeloLower, 's12') !== false || strpos($modeloLower, 's20') !== false || strpos($modeloLower, 'chasis') !== false) {
             return 2; // MEDIANO
         }
-        if (strpos($modeloLower, 'est') !== false || strpos($modeloLower, 'galaxy') !== false || strpos($modeloLower, 's35') !== false || strpos($modeloLower, 's38') !== false || strpos($modeloLower, 'isg') !== false) {
+        if (strpos($modeloLower, 'est') !== false || strpos($modeloLower, 'galaxy') !== false || strpos($modeloLower, 's35') !== false || strpos($modeloLower, 's38') !== false || strpos($modeloLower, 'isg') !== false || strpos($modeloLower, 'tracto') !== false || strpos($modeloLower, 'volteo') !== false) {
             return 3; // PESADO
         }
-        if (strpos($modeloLower, 'auv') !== false || strpos($modeloLower, 'araña') !== false || strpos($modeloLower, 'bus') !== false) {
+        if (strpos($modeloLower, 'auv') !== false || strpos($modeloLower, 'araña') !== false || strpos($modeloLower, 'bus') !== false || strpos($modeloLower, 'autob') !== false) {
             return 4; // BUSES
         }
         if (strpos($modeloLower, 'lowboy') !== false) {
@@ -230,9 +246,10 @@ class Lgs_enviosService {
     }
 
     /**
-     * Helper: Busca la tarifa por Ruta -> Transporte -> Segmento -> Rango de VINs
+     * Helper: Busca la tarifa por Ruta -> Transporte -> Segmento -> Rango de VINs con cascada de búsqueda
      */
-    private function getTarifaRuta(PDO $db, int $idTipoTraslado, int $idOrigen, int $idDestino, int $idSegmento, int $volumenVins, int $idProveedor, float $kmTotal): array {
+    private function getTarifaRuta(PDO $db, int $idTipoTraslado, int $idOrigen, int $idDestino, int $idSegmento, int $volumenVins, int $idProveedor, float $kmDefault): array {
+        // Nivel 1: Búsqueda exacta por Tipo, Origen, Destino, Segmento y Rango de Volumen
         $sql = "SELECT km, costo_por_km, precio_plano, factor 
                 FROM lgs_costos_rutas 
                 WHERE id_tipo_traslado = :id_tipo_traslado 
@@ -240,7 +257,7 @@ class Lgs_enviosService {
                   AND id_destino = :id_destino 
                   AND id_segmento = :id_segmento
                   AND :volumen BETWEEN num_vins_min AND num_vins_max
-                  AND activo = 2
+                  AND activo != 0
                 LIMIT 1";
         
         $stmt = $db->prepare($sql);
@@ -254,23 +271,65 @@ class Lgs_enviosService {
         
         $tarifa = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if ($tarifa) {
+        // Nivel 2: Búsqueda por Ruta y Segmento (cualquier volumen)
+        if (!$tarifa) {
+            $sql2 = "SELECT km, costo_por_km, precio_plano, factor 
+                     FROM lgs_costos_rutas 
+                     WHERE id_tipo_traslado = ? AND id_origen = ? AND id_destino = ? AND id_segmento = ? AND activo != 0
+                     ORDER BY num_vins_min ASC LIMIT 1";
+            $stmt2 = $db->prepare($sql2);
+            $stmt2->execute([$idTipoTraslado, $idOrigen, $idDestino, $idSegmento]);
+            $tarifa = $stmt2->fetch(PDO::FETCH_ASSOC);
+        }
+
+        // Nivel 3: Búsqueda por Ruta (cualquier segmento)
+        if (!$tarifa) {
+            $sql3 = "SELECT km, costo_por_km, precio_plano, factor 
+                     FROM lgs_costos_rutas 
+                     WHERE id_tipo_traslado = ? AND id_origen = ? AND id_destino = ? AND activo != 0
+                     ORDER BY id_segmento ASC LIMIT 1";
+            $stmt3 = $db->prepare($sql3);
+            $stmt3->execute([$idTipoTraslado, $idOrigen, $idDestino]);
+            $tarifa = $stmt3->fetch(PDO::FETCH_ASSOC);
+        }
+
+        // Nivel 4: Búsqueda por Destino (para obtener tarifa de ese destino)
+        if (!$tarifa) {
+            $sql4 = "SELECT km, costo_por_km, precio_plano, factor 
+                     FROM lgs_costos_rutas 
+                     WHERE id_destino = ? AND activo != 0 AND costo_por_km > 0
+                     ORDER BY id DESC LIMIT 1";
+            $stmt4 = $db->prepare($sql4);
+            $stmt4->execute([$idDestino]);
+            $tarifa = $stmt4->fetch(PDO::FETCH_ASSOC);
+        }
+
+        if ($tarifa && ((float)$tarifa['costo_por_km'] > 0 || (float)$tarifa['precio_plano'] > 0)) {
+            $kmVal = (float)$tarifa['km'];
             return [
-                'km'           => (float)$tarifa['km'],
+                'km'           => ($kmVal > 0) ? $kmVal : $kmDefault,
                 'costo_por_km' => (float)$tarifa['costo_por_km'],
                 'precio_plano' => (float)$tarifa['precio_plano'],
-                'factor'       => (float)$tarifa['factor']
+                'factor'       => ((float)$tarifa['factor'] > 0) ? (float)$tarifa['factor'] : 1.0
             ];
         }
         
-        // Fallback: Si no hay tarifa de ruta configurada, buscar en la tarifa global de proveedor/segmento
+        // Fallback Nivel 5: Tarifa global de proveedor/segmento
         $tarifaProv = $this->getTarifaProveedor($db, $idProveedor, $idSegmento, $volumenVins);
         
+        $costoProv = (float)$tarifaProv['costo_por_km'];
+        if ($costoProv <= 0) {
+            // Si el proveedor no tiene costo por km configurado, buscar el costo promedio del tarifario general
+            $stmtAvg = $db->query("SELECT AVG(costo_por_km) as avg_costo FROM lgs_costos_rutas WHERE activo != 0 AND costo_por_km > 0");
+            $avgRow = $stmtAvg->fetch(PDO::FETCH_ASSOC);
+            $costoProv = $avgRow && floatval($avgRow['avg_costo']) > 0 ? floatval($avgRow['avg_costo']) : 25.0;
+        }
+
         return [
-            'km'           => $kmTotal,
-            'costo_por_km' => $tarifaProv['costo_por_km'],
+            'km'           => $kmDefault,
+            'costo_por_km' => $costoProv,
             'precio_plano' => 0.0,
-            'factor'       => $tarifaProv['factor']
+            'factor'       => ((float)$tarifaProv['factor'] > 0) ? (float)$tarifaProv['factor'] : 1.0
         ];
     }
 

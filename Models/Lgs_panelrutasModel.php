@@ -17,8 +17,15 @@ class Lgs_panelrutasModel extends Mysql
     /**
      * Obtiene los envíos activos en tránsito (Estado 6) con coordenadas GPS de origen y destino
      */
-    public function getRutasEnTransito(): array
+    public function getRutasEnTransito(?int $plantaId = null): array
     {
+        $wherePlanta = "";
+        $params = [];
+        if ($plantaId !== null && $plantaId > 0) {
+            $wherePlanta = " AND e.id_origen = :planta_id ";
+            $params['planta_id'] = $plantaId;
+        }
+
         $sql = "SELECT 
                     e.id_envio,
                     e.folio,
@@ -35,10 +42,12 @@ class Lgs_panelrutasModel extends Mysql
                 LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
                 LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
                 LEFT JOIN lgs_cat_tipo_traslado tt ON e.id_tipo_traslado = tt.id_tipo_traslado
-                WHERE e.id_estado = 6 AND e.deleted_at IS NULL
+                WHERE e.id_estado = 6 AND e.deleted_at IS NULL {$wherePlanta}
                 ORDER BY e.id_envio DESC";
         
-        return $this->select_all($sql);
+        $stmt = $this->getConexion()->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     /**

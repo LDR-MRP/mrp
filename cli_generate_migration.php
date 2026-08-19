@@ -72,6 +72,7 @@ function cleanString(string $val): string {
  * Sanitiza y escapa strings para evitar errores de sintaxis SQL.
  * Convierte cualquier comilla simple ' en '' (estándar SQL para escapar).
  */
+
 function escapeSql(string $val): string {
     // 1. Limpiamos espacios y saltos de línea basura
     $cleaned = preg_replace('/\s+/', ' ', $val);

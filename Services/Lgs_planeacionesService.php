@@ -70,4 +70,38 @@ class Lgs_planeacionesService {
             throw $e;
         }
     }
+
+    public function getDetalleCompletoPlan(int $idPlaneacion): array {
+        return $this->model->getDetalleCompletoPlan($idPlaneacion);
+    }
+
+    /**
+     * Reabre una planeación regresándola a borrador y desbloqueando sus envíos
+     */
+    public function reabrirPlaneacion(int $idPlaneacion, int $userId): void {
+        $db = $this->model->getConexion();
+        try {
+            $db->beginTransaction();
+            $this->model->reabrirPlaneacion($db, $idPlaneacion);
+            $db->commit();
+        } catch (Exception $e) {
+            $db->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Envía una planeación existente en borrador a aprobación
+     */
+    public function enviarAprobacion(int $idPlaneacion, int $userId): void {
+        $db = $this->model->getConexion();
+        try {
+            $db->beginTransaction();
+            $this->model->enviarAprobacion($db, $idPlaneacion);
+            $db->commit();
+        } catch (Exception $e) {
+            $db->rollBack();
+            throw $e;
+        }
+    }
 }

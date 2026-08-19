@@ -28,7 +28,7 @@
                 </div>
                 <div class="col-md-4 text-md-end mt-3 mt-md-0">
                     <button class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="guardarAcomodo();">
-                        <i class="ri-save-3-line me-1"></i> Guardar Distribución
+                        <i class="ri-check-double-line me-1"></i> Finalizar y Volver
                     </button>
                 </div>
             </div>
@@ -55,7 +55,7 @@
                                 <div class="col-md-3 border-end">
                                     <span class="text-muted fs-11 text-uppercase fw-bold d-block"><i class="ri-route-line text-primary me-1"></i> Distancia Ruta Total</span>
                                     <span class="badge bg-primary fs-13" id="lbl-resumen-km-total">0 km</span>
-                                    <small class="text-muted fs-11 ms-1">(Google Maps)</small>
+                                    <small class="text-muted fs-11 ms-1">(Tarifario)</small>
                                 </div>
                                 <div class="col-md-3 border-end">
                                     <span class="text-muted fs-11 text-uppercase fw-bold d-block"><i class="ri-flag-line text-success me-1"></i> Paradas de la Ruta</span>

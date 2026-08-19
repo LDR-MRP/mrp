@@ -4,19 +4,29 @@ document.addEventListener('DOMContentLoaded', function () {
     // Inicializar DataTable Ejecución
     tableEjecucion = $('#tableEjecucion').DataTable({
         "aProcessing": true,
-        "aServerSide": false,
-        "language": {
-            "url": "//cdn.datatables.net/plug-ins/1.10.20/i18n/Spanish.json"
+        "aServerSide": false,        "language": {
+            "url": "https://cdn.datatables.net/plug-ins/1.10.20/i18n/Spanish.json"
         },
         "ajax": {
             "url": base_url + "/Lgs_ejecucion/getEnviosDespacho",
             "dataSrc": ""
         },
         "columns": [
-            { "data": "folio" },
-            { "data": "tipo_traslado" },
+            { "data": "id_envio" },
+            { 
+                "data": "folio",
+                "render": function(data) {
+                    return '<strong class="text-primary">' + data + '</strong>';
+                }
+            },
             { "data": "origen" },
             { "data": "trasladista" },
+            { 
+                "data": "tipo_traslado",
+                "render": function(data) {
+                    return '<span class="badge bg-soft-info text-info border">' + (data || 'Madrina') + '</span>';
+                }
+            },
             { 
                 "data": null,
                 "render": function (data, type, row) {
@@ -24,30 +34,28 @@ document.addEventListener('DOMContentLoaded', function () {
                     let entregados = parseInt(row.vins_entregados) || 0;
                     let porcentaje = total > 0 ? Math.round((entregados / total) * 100) : 0;
                     
-                    let bgClass = porcentaje === 100 ? 'bg-success' : 'bg-info';
+                    let bgClass = porcentaje === 100 ? 'bg-success' : 'bg-primary';
 
                     return `<div>
-                                <small class="fw-semibold">${entregados} / ${total} VINs (${porcentaje}%)</small>
-                                <div class="progress progress-sm mt-1">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small class="fw-semibold text-dark">${entregados}/${total} VINs</small>
+                                    <small class="text-muted">${porcentaje}%</small>
+                                </div>
+                                <div class="progress progress-sm" style="height: 6px;">
                                     <div class="progress-bar ${bgClass}" role="progressbar" style="width: ${porcentaje}%"></div>
                                 </div>
                             </div>`;
                 }
             },
             { 
-                "data": "fecha_salida_real",
-                "render": function (data, type, row) {
-                    return data ? data : '<span class="text-muted italic">Pendiente de salida</span>';
-                }
-            },
-            { 
                 "data": "id_estado",
-                "render": function (data, type, row) {
+                "render": function (data) {
                     let badge = '';
                     switch(parseInt(data)) {
-                        case 3: badge = '<span class="badge bg-success">Aprobado (Listo para Despacho)</span>'; break;
-                        case 6: badge = '<span class="badge bg-primary">En Tránsito</span>'; break;
-                        default: badge = '<span class="badge bg-light text-dark">Estado ' + data + '</span>'; break;
+                        case 3: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-checkbox-check-line me-1"></i>Aprobado</span>'; break;
+                        case 5: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-calendar-event-line me-1"></i>Confirmado Recolección</span>'; break;
+                        case 6: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-truck-line me-1"></i>En Tránsito</span>'; break;
+                        default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
                     }
                     return badge;
                 }
@@ -55,9 +63,17 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 "data": "id_envio",
                 "render": function (data, type, row) {
-                    return `<div class="text-center">
-                                <button class="btn btn-sm btn-primary" onClick="fntDespachar(${data}, '${row.folio}', '${row.fecha_salida_real || ''}')" title="Mesa de Despacho">
-                                    <i class="ri-truck-line"></i> Despachar / Entregas
+                    if (parseInt(row.id_estado) === 3) {
+                        return `<div class="text-end pe-3">
+                                    <button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold" onClick="fntProgramarRecoleccion(${data})" title="Programar Recolección">
+                                        <i class="ri-calendar-event-line me-1"></i> Programar Recolección
+                                    </button>
+                                </div>`;
+                    }
+                    
+                    return `<div class="text-end pe-3">
+                                <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold shadow-sm" onClick="fntDespachar(${data}, '${row.folio}', '${row.fecha_salida_real || ''}')" title="Mesa de Despacho">
+                                    <i class="ri-truck-line me-1"></i> Despacho / Salida
                                 </button>
                             </div>`;
                 }
@@ -105,7 +121,9 @@ function fntDespachar(idEnvio, folio, fechaSalida) {
 }
 
 function cargarAcomodoPlanta(idEnvio) {
-    document.getElementById('bodyAcomodoPlanta').innerHTML = '<tr><td colspan="6" class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm" role="status"></div> Cargando planilla de acomodo...</td></tr>';
+    const bodyEl = document.getElementById('bodyAcomodoPlanta');
+    if (!bodyEl) return;
+    bodyEl.innerHTML = '<tr><td colspan="6" class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm" role="status"></div> Cargando planilla de acomodo...</td></tr>';
 
     let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
     let ajaxUrl = base_url + '/Lgs_ejecucion/getDetalleDespacho/' + idEnvio;
@@ -113,38 +131,49 @@ function cargarAcomodoPlanta(idEnvio) {
     request.open("GET", ajaxUrl, true);
     request.send();
     request.onreadystatechange = function () {
-        if (request.readyState == 4 && request.status == 200) {
-            let objData = JSON.parse(request.responseText);
-            let htmlBody = '';
-            
-            if (objData.status && objData.data.length > 0) {
-                objData.data.forEach(vin => {
-                    let statusConfirm = vin.confirmado == 1 
-                        ? `<span class="badge bg-success-subtle text-success border border-success"><i class="ri-check-line me-1"></i> Entregado (${vin.fecha_confirmacion || 'Ok'})</span>` 
-                        : `<span class="badge bg-warning-subtle text-warning border border-warning"><i class="ri-time-line me-1"></i> En Espera</span>`;
+        if (request.readyState == 4) {
+            if (request.status == 200) {
+                try {
+                    let objData = JSON.parse(request.responseText);
+                    let htmlBody = '';
+                    let isSuccess = (objData.status === 'success' || objData.status === true || objData.code === 200);
+                    let vins = (isSuccess && Array.isArray(objData.data)) ? objData.data : [];
                     
-                    let btnConfirm = vin.confirmado == 1
-                        ? `<button class="btn btn-sm btn-light text-muted" disabled><i class="ri-check-double-line"></i> Confirmado</button>`
-                        : `<button class="btn btn-sm btn-outline-success" onclick="confirmarEntregaVin(${idEnvio}, ${vin.id_unidad});"><i class="ri-check-line"></i> Entregar a Trasladista</button>`;
+                    if (vins.length > 0) {
+                        vins.forEach(vin => {
+                            let statusConfirm = vin.confirmado == 1 
+                                ? `<span class="badge bg-soft-success text-success border border-success px-3 py-2 rounded-pill fs-12"><i class="ri-check-line me-1"></i> Entregado (${vin.fecha_confirmacion || 'Ok'})</span>` 
+                                : `<span class="badge bg-soft-warning text-warning border border-warning px-3 py-2 rounded-pill fs-12"><i class="ri-time-line me-1"></i> En Patio</span>`;
+                            
+                            let btnConfirm = vin.confirmado == 1
+                                ? `<span class="badge bg-soft-secondary text-muted px-3 py-2 rounded-pill"><i class="ri-check-double-line me-1"></i> En Madrina</span>`
+                                : `<button class="btn btn-sm btn-outline-primary px-3 rounded-pill fw-semibold" onclick="confirmarEntregaVin(${idEnvio}, ${vin.id_unidad});"><i class="ri-checkbox-circle-line me-1"></i> Validar Carga</button>`;
 
-                    htmlBody += `
-                        <tr>
-                            <td class="text-center"><span class="badge bg-primary rounded-circle px-2 py-1 fs-13">Pos #${vin.posicion_acomodo}</span></td>
-                            <td class="fw-bold text-dark">${vin.vin}</td>
-                            <td>${vin.modelo || 'N/A'}</td>
-                            <td>${vin.color || 'N/A'}</td>
-                            <td>${statusConfirm}</td>
-                            <td class="text-center">${btnConfirm}</td>
-                        </tr>
-                    `;
-                });
+                            htmlBody += `
+                                <tr>
+                                    <td class="text-center"><span class="badge bg-primary fs-11 px-2 py-1">Pos #${vin.posicion_acomodo || 1}</span></td>
+                                    <td><strong class="text-primary fs-12">${vin.vin}</strong></td>
+                                    <td><span class="badge bg-soft-secondary text-dark">${vin.modelo || 'Unidad'}</span></td>
+                                    <td>${vin.color || 'Blanco'}</td>
+                                    <td>${statusConfirm}</td>
+                                    <td class="text-center">${btnConfirm}</td>
+                                </tr>
+                            `;
+                        });
+                    } else {
+                        htmlBody = '<tr><td colspan="6" class="text-center text-muted py-3"><i class="ri-information-line me-1"></i> No hay VINs pendientes de validación en este envío.</td></tr>';
+                    }
+                    
+                    bodyEl.innerHTML = htmlBody;
+                } catch (e) {
+                    console.error(e);
+                    bodyEl.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error al procesar la respuesta del servidor.</td></tr>';
+                }
             } else {
-                htmlBody = '<tr><td colspan="6" class="text-center text-muted py-3">No hay VINs registrados en este envío.</td></tr>';
+                bodyEl.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error al consultar el servidor (Código ' + request.status + ').</td></tr>';
             }
-            
-            document.getElementById('bodyAcomodoPlanta').innerHTML = htmlBody;
         }
-    }
+    };
 }
 
 function guardarDespacho() {
@@ -161,7 +190,8 @@ function guardarDespacho() {
     let formData = new FormData(document.querySelector("#formDespacho"));
 
     Swal.fire({
-        title: 'Guardando Despacho...',
+        title: 'Registrando Salida a Ruta...',
+        text: 'Actualizando estatus del envío a En Tránsito',
         allowOutsideClick: false,
         didOpen: () => { Swal.showLoading() }
     });
@@ -170,15 +200,21 @@ function guardarDespacho() {
     request.send(formData);
     request.onreadystatechange = function () {
         if (request.readyState == 4 && request.status == 200) {
-            let objData = JSON.parse(request.responseText);
-            if (objData.status) {
-                Swal.fire("¡Despacho Registrado!", objData.msg, "success");
-                tableEjecucion.ajax.reload();
-            } else {
-                Swal.fire("Error", objData.msg, "error");
+            try {
+                let objData = JSON.parse(request.responseText);
+                let isSuccess = (objData.status === 'success' || objData.status === true || objData.code === 200);
+                if (isSuccess) {
+                    $('#modalDespachoPlanilla').modal('hide');
+                    Swal.fire("¡Despacho Registrado!", objData.message || objData.msg || "El envío ahora se encuentra En Tránsito", "success");
+                    tableEjecucion.ajax.reload();
+                } else {
+                    Swal.fire("Error", objData.message || objData.msg || "Error al registrar el despacho", "error");
+                }
+            } catch (e) {
+                Swal.fire("Error", "Respuesta inesperada del servidor", "error");
             }
         }
-    }
+    };
 }
 
 function confirmarEntregaVin(idEnvio, idUnidad) {
@@ -193,19 +229,67 @@ function confirmarEntregaVin(idEnvio, idUnidad) {
     request.send(formData);
     request.onreadystatechange = function () {
         if (request.readyState == 4 && request.status == 200) {
-            let objData = JSON.parse(request.responseText);
-            if (objData.status) {
-                if (objData.data && objData.data.en_transito) {
-                    Swal.fire("¡Envío En Tránsito!", objData.msg, "success");
-                    $('#modalDespachoPlanilla').modal('hide');
+            try {
+                let objData = JSON.parse(request.responseText);
+                let isSuccess = (objData.status === 'success' || objData.status === true || objData.code === 200);
+                if (isSuccess) {
+                    if (objData.data && objData.data.en_transito) {
+                        Swal.fire("¡Todos los VINs cargados!", objData.message || objData.msg, "success");
+                        $('#modalDespachoPlanilla').modal('hide');
+                    } else {
+                        cargarAcomodoPlanta(idEnvio);
+                    }
+                    tableEjecucion.ajax.reload();
                 } else {
-                    Swal.fire("VIN Entregado", objData.msg, "success");
-                    cargarAcomodoPlanta(idEnvio);
+                    Swal.fire("Error", objData.message || objData.msg || "Error al confirmar", "error");
                 }
-                tableEjecucion.ajax.reload();
-            } else {
-                Swal.fire("Error", objData.msg, "error");
+            } catch (e) {
+                console.error(e);
             }
         }
+    };
+}
+
+function fntProgramarRecoleccion(idEnvio) {
+    document.getElementById('rec_id_envio').value = idEnvio;
+    document.getElementById('fecha_recoleccion').value = new Date().toISOString().split('T')[0];
+    $('#modalProgramarRecoleccion').modal('show');
+}
+
+function guardarProgramacionRecoleccion() {
+    const idEnvio = document.getElementById('rec_id_envio').value;
+    const fecha = document.getElementById('fecha_recoleccion').value;
+
+    if (!fecha) {
+        Swal.fire("Atención", "Seleccione la fecha de recolección.", "warning");
+        return;
     }
+
+    let formData = new FormData();
+    formData.append('id_envio', idEnvio);
+    formData.append('fecha_recoleccion', fecha);
+
+    Swal.fire({
+        title: 'Programando Recolección...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    fetch(base_url + '/Lgs_ejecucion/confirmarRecoleccion', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(res => {
+        if (res.status === 'success' || res.status === true) {
+            Swal.fire("¡Programado!", "Fecha confirmada. Las unidades ahora se preparan en el área de entregas del patio origen.", "success");
+            $('#modalProgramarRecoleccion').modal('hide');
+            tableEjecucion.ajax.reload();
+        } else {
+            Swal.fire("Error", res.message || "No se pudo registrar la recolección.", "error");
+        }
+    })
+    .catch(err => {
+        Swal.fire("Error", "Error de comunicación con el servidor.", "error");
+    });
 }

@@ -97,10 +97,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 "render": function (data) {
                     let badge = '';
                     switch(parseInt(data)) {
-                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12">Creado</span>'; break;
-                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12">En Revisión</span>'; break;
-                        case 6: badge = '<span class="badge bg-soft-info text-info fs-12">En Tránsito</span>'; break;
-                        case 7: badge = '<span class="badge bg-soft-success text-success fs-12">Entregado</span>'; break;
+                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>Creado</span>'; break;
+                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>En Revisión (Plan)</span>'; break;
+                        case 3: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-checkbox-circle-line me-1"></i>Aprobado</span>'; break;
+                        case 4: badge = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Rechazado</span>'; break;
+                        case 5: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-ship-line me-1"></i>En Despacho</span>'; break;
+                        case 6: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-truck-line me-1"></i>En Tránsito</span>'; break;
+                        case 7: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-double-line me-1"></i>Entregado</span>'; break;
                         default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
                     }
                     return badge;
@@ -108,13 +111,20 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             {
                 "data": "id_envio",
-                "render": function (data) {
+                "render": function (data, type, row) {
+                    let btnReabrir = '';
+                    if (parseInt(row.id_estado) === 4 || parseInt(row.id_estado) === 2) {
+                        btnReabrir = `<button class="btn btn-sm btn-soft-warning rounded-pill px-3 fw-semibold me-1" onClick="fntReabrirEnvio(${data})" title="Reabrir / Desbloquear Envío">
+                                        <i class="ri-restart-line me-1"></i> Reabrir
+                                      </button>`;
+                    }
                     return `<div class="text-end">
-                                <button class="btn btn-sm btn-soft-info me-1" onClick="fntViewEnvio(${data})" title="Ver / Acomodar VINs">
+                                ${btnReabrir}
+                                <button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold me-1" onClick="fntViewEnvio(${data})" title="Ver / Acomodar VINs">
                                     <i class="ri-truck-line me-1"></i> Acomodo
                                 </button>
-                                <button class="btn btn-sm btn-soft-danger" onClick="fntDelEnvio(${data})" title="Eliminar">
-                                    <i class="ri-delete-bin-line"></i>
+                                <button class="btn btn-sm btn-soft-danger rounded-pill px-3 fw-semibold" onClick="fntDelEnvio(${data})" title="Eliminar">
+                                    <i class="ri-delete-bin-line me-1"></i> Eliminar
                                 </button>
                             </div>`;
                 }
@@ -219,7 +229,7 @@ function agregarParadaForm(data) {
                     oninput="serializarParadas()">
             </div>
             <div class="col-md-2">
-                <label class="form-label fs-11 text-muted mb-1">Km tramo <small class="text-info">(Google Maps)</small></label>
+                <label class="form-label fs-11 text-muted mb-1">Km tramo <small class="text-primary">(Tarifario)</small></label>
                 <input type="number" class="form-control form-control-sm parada-km" min="0" step="0.1"
                     value="${data ? (data.km_tramo || 0) : 0}"
                     oninput="serializarParadas()">
@@ -276,7 +286,7 @@ function serializarParadas() {
 }
 
 /**
- * Recalcula distancias de ruta en tiempo real llamando a Google Maps Service
+ * Recalcula distancias de ruta consultando directamente el Tarifario
  */
 function recalcularRutaGoogleMaps() {
     const idOrigen = document.getElementById('id_origen') ? parseInt(document.getElementById('id_origen').value) || 0 : 0;
@@ -340,7 +350,7 @@ function recalcularRutaGoogleMaps() {
                     const spanVal    = document.getElementById('badge-km-total-val');
                     if (alertTotal && spanVal) {
                         alertTotal.style.setProperty('display', 'flex', 'important');
-                        spanVal.innerText = kmTotal.toFixed(2) + ' km (Google Maps)';
+                        spanVal.innerText = kmTotal.toFixed(1) + ' km (Tarifario)';
                     }
                 }
             } catch (e) {
@@ -537,6 +547,51 @@ function fntDelEnvio(idEnvio) {
                     }
                 }
             }
+        }
+    });
+}
+
+function fntReabrirEnvio(idEnvio) {
+    Swal.fire({
+        title: '¿Reabrir / Desbloquear Envío?',
+        text: 'El envío regresará a estado Creado (Borrador) para que puedas editar su acomodo, paradas y costos.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#ffc107',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="ri-restart-line me-1"></i> Sí, reabrir',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Reabriendo Envío...',
+                text: 'Por favor espere.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading() }
+            });
+
+            let request = new XMLHttpRequest();
+            let ajaxUrl = base_url + '/Lgs_envios/reabrir';
+            let formData = new FormData();
+            formData.append('id_envio', idEnvio);
+
+            request.open("POST", ajaxUrl, true);
+            request.send(formData);
+            request.onreadystatechange = function () {
+                if (request.readyState == 4 && request.status == 200) {
+                    try {
+                        let objData = JSON.parse(request.responseText);
+                        if (objData.status) {
+                            Swal.fire("¡Envío Reabierto!", objData.msg, "success");
+                            if (typeof tableEnvios !== 'undefined' && tableEnvios) tableEnvios.ajax.reload();
+                        } else {
+                            Swal.fire("Error", objData.msg || "No se pudo reabrir el envío", "error");
+                        }
+                    } catch (e) {
+                        Swal.fire("Error", "Error al procesar la respuesta del servidor", "error");
+                    }
+                }
+            };
         }
     });
 }

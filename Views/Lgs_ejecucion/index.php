@@ -153,51 +153,88 @@
     </div>
 </div>
 
-<!-- MODAL DESPACHAR ENVÍO -->
-<div class="modal fade" id="modalDespacharEnvio" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+<!-- MODAL DESPACHO / PLANILLA DE ACOMODO -->
+<div class="modal fade" id="modalDespachoPlanilla" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0 shadow-lg rounded-3">
             <div class="modal-header bg-light border-bottom-0 pb-3">
-                <h5 class="modal-title fw-bold text-primary" id="titleModalDespacho"><i class="ri-ship-line me-1"></i> Registrar Salida / Despacho</h5>
+                <h5 class="modal-title fw-bold text-primary" id="titleModalDespacho">
+                    <i class="ri-ship-line me-1"></i> Despacho y Entrega a Trasladista: <span id="lblFolioDespacho" class="badge bg-primary fs-14"></span>
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
                 <form id="formDespacho">
-                    <input type="hidden" id="desp_id_envio" name="id_envio" value="">
+                    <input type="hidden" id="id_envio_despacho" name="id_envio" value="">
                     
-                    <div class="row g-3">
+                    <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Folio del Envío</label>
-                            <input type="text" class="form-control bg-light border-0 fw-bold" id="desp_folio" readonly>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Empresa Trasladista</label>
-                            <input type="text" class="form-control bg-light border-0 fw-bold text-primary" id="desp_trasladista" readonly>
+                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Fecha y Hora Real de Salida de Patio <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control fw-bold text-primary" id="fecha_salida_real" name="fecha_salida_real" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Asignar Madrina</label>
-                            <select class="form-select" id="desp_id_madrina" name="id_madrina">
-                                <option value="">Seleccione Madrina...</option>
-                            </select>
+                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Observaciones de Patio / Inspección</label>
+                            <input type="text" class="form-control" id="desp_observaciones" name="observaciones" placeholder="Odómetro inicial, condiciones climatológicas, etc.">
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Asignar Chofer</label>
-                            <select class="form-select" id="desp_id_chofer" name="id_chofer">
-                                <option value="">Seleccione Chofer...</option>
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Observaciones de Salida</label>
-                            <textarea class="form-control" id="desp_observaciones" name="observaciones" rows="2" placeholder="Notas sobre condiciones de salida, odómetro, inspección..."></textarea>
-                        </div>
+                    </div>
+                </form>
+
+                <!-- Planilla de Verificación de VINs para Carga -->
+                <h6 class="fw-bold text-uppercase fs-12 text-muted mb-2"><i class="ri-checkbox-multiple-line me-1 text-primary"></i> Verificación y Carga de VINs en Madrina</h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm align-middle mb-0">
+                        <thead class="table-light fs-11 text-uppercase text-muted">
+                            <tr>
+                                <th class="text-center" style="width: 130px;">Acomodo</th>
+                                <th>VIN / Chasis</th>
+                                <th>Modelo</th>
+                                <th>Color</th>
+                                <th>Estatus en Patio</th>
+                                <th class="text-center" style="width: 200px;">Acción Patio</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bodyAcomodoPlanta" class="fs-12">
+                            <!-- Inyectado dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top-0 pt-3 d-flex justify-content-between">
+                <button type="button" class="btn btn-sm btn-light border px-3 rounded-pill fw-semibold" data-bs-dismiss="modal">
+                    <i class="ri-close-line me-1"></i> Cerrar
+                </button>
+                <button type="button" class="btn btn-sm btn-primary px-4 rounded-pill fw-semibold shadow-sm" onclick="guardarDespacho();">
+                    <i class="ri-truck-line me-1"></i> Confirmar Salida y Poner en Tránsito
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PROGRAMAR RECOLECCIÓN (ADMINISTRATIVO) -->
+<div class="modal fade" id="modalProgramarRecoleccion" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header bg-light border-bottom-0 pb-3">
+                <h5 class="modal-title fw-bold text-primary">
+                    <i class="ri-calendar-event-line me-1"></i> Programar Día de Recolección
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formProgramarRecoleccion">
+                    <input type="hidden" id="rec_id_envio" name="id_envio" value="">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted fs-11 text-uppercase">Fecha y Hora Pactada de Recolección <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control fw-bold text-primary" id="fecha_recoleccion" name="fecha_recoleccion" required>
+                        <small class="text-muted d-block mt-2">Al confirmar, el traslado pasará a estado <strong>Confirmado Recolección</strong> y las unidades se marcarán como listas para entregar en el patio de origen.</small>
                     </div>
                 </form>
             </div>
             <div class="modal-footer bg-light border-top-0 pt-3">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success px-4 shadow-sm" onclick="confirmarDespacho();">
-                    <i class="ri-truck-line me-1"></i> Confirmar Salida a Ruta
-                </button>
+                <button type="button" class="btn btn-sm btn-light border px-3 rounded-pill fw-semibold me-2" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-sm btn-primary px-4 rounded-pill fw-semibold shadow-sm" onclick="guardarProgramacionRecoleccion();">Confirmar Programación</button>
             </div>
         </div>
     </div>

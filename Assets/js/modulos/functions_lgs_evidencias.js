@@ -40,11 +40,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 "render": function (data, type, row) {
                     let btnText = row.id_estado == 6 ? 'Gestionar / Entregar' : 'Ver Evidencias';
                     let btnIcon = row.id_estado == 6 ? 'ri-camera-lens-line' : 'ri-eye-line';
-                    let btnClass = row.id_estado == 6 ? 'btn-primary' : 'btn-outline-secondary';
+                    let btnClass = row.id_estado == 6 ? 'btn-primary rounded-pill px-3 fw-semibold shadow-sm' : 'btn-soft-primary rounded-pill px-3 fw-semibold';
 
-                    return `<div class="text-center">
+                    return `<div class="text-end pe-3">
                                 <button class="btn btn-sm ${btnClass}" onClick="fntAbrirEvidencias(${data}, '${row.folio}', ${row.id_estado})" title="${btnText}">
-                                    <i class="${btnIcon}"></i> ${btnText}
+                                    <i class="${btnIcon} me-1"></i> ${btnText}
                                 </button>
                             </div>`;
                 }

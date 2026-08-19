@@ -188,12 +188,12 @@
                 </form>
             </div>
             <div class="modal-footer bg-light border-top-0 pt-3 d-flex justify-content-between">
-                <button type="button" class="btn btn-success px-4 shadow-sm" onclick="cerrarEntregaFinal();">
+                <button type="button" class="btn btn-sm btn-primary rounded-pill px-4 fw-semibold shadow-sm" onclick="cerrarEntregaFinal();">
                     <i class="ri-checkbox-circle-line me-1"></i> Cerrar Entrega Definitiva
                 </button>
                 <div>
-                    <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary px-4 shadow-sm" onclick="subirArchivoEvidencia();">
+                    <button type="button" class="btn btn-sm btn-light border px-3 rounded-pill fw-semibold me-2" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-sm btn-soft-primary rounded-pill px-4 fw-semibold shadow-xs" onclick="subirArchivoEvidencia();">
                         <i class="ri-upload-2-line me-1"></i> Subir Archivo
                     </button>
                 </div>

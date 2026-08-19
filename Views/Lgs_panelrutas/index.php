@@ -40,8 +40,8 @@
                         </div>
                     </div>
                     <div class="col-md-5 d-flex justify-content-md-end justify-content-start mt-4 mt-md-0">
-                        <button type="button" class="btn btn-primary btn-lg btn-label waves-effect waves-light shadow-md" onclick="cargarRutasMapa();">
-                            <i class="ri-refresh-line label-icon align-middle fs-18 me-2"></i> Actualizar GPS
+                        <button type="button" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm" onclick="cargarRutasMapa();">
+                            <i class="ri-refresh-line align-middle fs-16 me-1"></i> Actualizar GPS
                         </button>
                     </div>
                 </div>

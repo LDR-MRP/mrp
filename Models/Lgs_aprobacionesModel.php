@@ -32,7 +32,7 @@ class Lgs_aprobacionesModel extends Mysql
                     u.nombres AS creador,
                     (SELECT COUNT(*) FROM lgs_planeaciones_envios WHERE id_planeacion = p.id_planeacion) AS total_rutas
                 FROM lgs_planeaciones p
-                LEFT JOIN persona u ON p.created_by = u.idpersona
+                LEFT JOIN usuarios u ON p.created_by = u.idusuario
                 WHERE p.id_estado IN (2, 3, 5)
                 ORDER BY p.id_estado ASC, p.id_planeacion DESC";
         

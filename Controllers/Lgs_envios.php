@@ -273,22 +273,8 @@ class Lgs_envios extends Controllers
                 return;
             }
 
-            require_once "Services/GoogleMapsService.php";
-            $googleMaps = new GoogleMapsService();
             $model = new Lgs_enviosModel();
-
-            // Buscar coordenadas del Origen
-            $origenInfo = null;
-            if ($idOrigen > 0) {
-                $origenesList = $model->getSelectCatalogos()['origenes'] ?? [];
-                foreach ($origenesList as $o) {
-                    if ((int)$o['id'] === $idOrigen) { $origenInfo = $o; break; }
-                }
-            }
-
-            $currentLat = $origenInfo ? floatval($origenInfo['lat'] ?? 0) : 0;
-            $currentLng = $origenInfo ? floatval($origenInfo['lng'] ?? 0) : 0;
-            $currentText = $origenInfo ? ($origenInfo['direccion'] ?? $origenInfo['nombre'] ?? '') : '';
+            $db = $model->getConexion();
 
             $destinosList = $model->getSelectCatalogos()['destinos'] ?? [];
             $destinosMap  = [];
@@ -298,45 +284,44 @@ class Lgs_envios extends Controllers
 
             $kmTotal = 0.0;
             $paradasCalculadas = [];
+            $currentOrigenId = $idOrigen;
 
             foreach ($paradas as $idx => $p) {
                 $idDestCat = !empty($p['id_destino_cat']) ? intval($p['id_destino_cat']) : null;
                 $destInfo  = $idDestCat ? ($destinosMap[$idDestCat] ?? null) : null;
-
-                $nextLat = $destInfo ? floatval($destInfo['lat'] ?? 0) : 0;
-                $nextLng = $destInfo ? floatval($destInfo['lng'] ?? 0) : 0;
-                $nextText= $destInfo ? ($destInfo['direccion'] ?? $destInfo['nombre'] ?? '') : ($p['destino_nombre_libre'] ?? '');
+                $nextText  = $destInfo ? ($destInfo['direccion'] ?? $destInfo['nombre'] ?? '') : ($p['destino_nombre_libre'] ?? '');
 
                 $kmTramo = 0.0;
 
-                if ($currentLat != 0 && $currentLng != 0 && $nextLat != 0 && $nextLng != 0) {
-                    $kmTramo = $googleMaps->calcularDistanciaCoords($currentLat, $currentLng, $nextLat, $nextLng);
-                } else if (!empty($currentText) && !empty($nextText)) {
-                    $kmTramo = $googleMaps->calcularDistanciaTexto($currentText, $nextText);
+                // Buscar los KM directamente en el Tarifario (lgs_costos_rutas)
+                if ($currentOrigenId > 0 && $idDestCat > 0) {
+                    $stmtKm = $db->prepare("SELECT km FROM lgs_costos_rutas WHERE id_origen = ? AND id_destino = ? AND km > 0 LIMIT 1");
+                    $stmtKm->execute([$currentOrigenId, $idDestCat]);
+                    $kmRow = $stmtKm->fetch(PDO::FETCH_ASSOC);
+                    if ($kmRow && floatval($kmRow['km']) > 0) {
+                        $kmTramo = floatval($kmRow['km']);
+                    } else {
+                        // Si no hay ruta directa origen->destino actual, intentar buscar cualquier tarifa con ese destino
+                        $stmtKmDest = $db->prepare("SELECT km FROM lgs_costos_rutas WHERE id_destino = ? AND km > 0 LIMIT 1");
+                        $stmtKmDest->execute([$idDestCat]);
+                        $kmDestRow = $stmtKmDest->fetch(PDO::FETCH_ASSOC);
+                        $kmTramo = $kmDestRow ? floatval($kmDestRow['km']) : floatval($p['km_tramo'] ?? 0);
+                    }
                 } else {
-                    $kmTramo = floatval($p['km_tramo'] ?? 150.0);
+                    $kmTramo = floatval($p['km_tramo'] ?? 0);
                 }
 
                 $kmTotal += $kmTramo;
 
-                $p['km_tramo'] = $kmTramo;
+                $p['km_tramo'] = round($kmTramo, 2);
                 $p['direccion'] = $nextText;
                 $paradasCalculadas[] = $p;
-
-                // El punto actual para el siguiente tramo pasa a ser esta parada
-                if ($nextLat != 0 && $nextLng != 0) {
-                    $currentLat = $nextLat;
-                    $currentLng = $nextLng;
-                }
-                if (!empty($nextText)) {
-                    $currentText = $nextText;
-                }
             }
 
             echo $this->successResponse([
                 'paradas' => $paradasCalculadas,
                 'km_total' => round($kmTotal, 2)
-            ], "Ruta y distancias calculadas via Google Maps API");
+            ], "Ruta y distancias cargadas desde Tarifario");
 
         } catch (Throwable $e) {
             echo $this->errorResponse($e->getMessage(), 500);
@@ -377,6 +362,28 @@ class Lgs_envios extends Controllers
             if (isset($db) && $db->inTransaction()) {
                 $db->rollBack();
             }
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST: Reabre / desbloquea un envío regresándolo a estado 1 (Creado / Borrador)
+     * URL: {{base_url}}/Lgs_envios/reabrir
+     */
+    public function reabrir(): void
+    {
+        try {
+            $idEnvio = intval($_POST['id_envio'] ?? 0);
+            if ($idEnvio <= 0) {
+                echo $this->errorResponse("ID de envío no válido.", 400);
+                return;
+            }
+
+            $model = new Lgs_enviosModel();
+            $model->reabrirEnvio($idEnvio);
+
+            echo $this->successResponse(null, "Envío reabierto y desbloqueado exitosamente.");
+        } catch (Throwable $e) {
             echo $this->errorResponse($e->getMessage(), 500);
         }
     }

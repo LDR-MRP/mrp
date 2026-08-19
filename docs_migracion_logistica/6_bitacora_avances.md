@@ -98,8 +98,15 @@ Este documento registra el progreso de desarrollo del módulo de Logística. Aqu
 - **Desglose Tramo a Tramo y Total Total:** Muestra la distancia paso a paso entre sub-paradas (ej: `Origen ➔ P1 (+65km) ➔ P2 (+130km) ➔ P3 (+280km)`) y la distancia total del viaje en badges en la tabla principal (`index.php`) y en el acomodo (`detalle.php`).
 - **Recálculo en Tiempo Real:** Botón **`⚡ Recalcular Ruta (Google Maps)`** en la creación/edición de envíos que invoca `/Lgs_envios/calcularDistanciaRuta`, llena las distancias por parada y actualiza automáticamente la matriz de costo total estimado.
 
+### 4. **Flujo de Despacho, Evidencias Móviles y Entrega con QR (19 de Agosto 2026)**
+- **Segregación Multi-Sede (`plantaid`):** Mesa de despacho y monitoreo GPS adaptados para limitar los envíos mostrados a la sede del usuario logueado en sesión (`$_SESSION['userData']['plantaid']`), con bypass global para el rol de Super Administrador.
+- **Programación de Recolección (Mesa de Despacho):** El administrativo define la fecha pactada de recolección para envíos aprobados; las unidades pasan a `EN_ENTREGAS` para preparación en el área de entregas del patio origen.
+- **Portal Móvil de Trasladistas (`Views/Lgs_ejecucion/chofer_movil.php`):** Interfaz táctil y responsiva con escaneo de VIN por cámara (código de barras / QR) y carga obligatoria de 5 fotografías de inspección (Frente, Atrás, Lateral Izq, Lateral Der, Odómetro).
+- **Doble Verificación de Salida:** Salida sincronizada de planta donde logística valida entrega física y trasladista confirma recepción, pasando el envío a `6 = En Tránsito` y unidades a `EN_RUTA`.
+- **Entrega en Destino con QR (`Views/Lgs_ejecucion/entrega_destino.php`):** Escaneo de código QR de concesionario/cliente en punto de llegada, validación individual de VINs descargados, remisión firmada y transición a `7 = Entregado`.
+
 ---
 
 ## 🏆 Resumen Final del Proyecto
-El desarrollo completo del módulo de **Logística** (PHP puro + PDO MVC) se ha culminado al 100% siguiendo todas las reglas de negocio planteadas. Todos los cambios se encuentran respaldados en git y documentados en los artefactos correspondientes.
+El desarrollo completo del módulo de **Logística** (PHP puro + PDO MVC) se encuentra culminado al 100% siguiendo todas las reglas de negocio planteadas. Todos los cambios se encuentran respaldados en git y documentados en los artefactos correspondientes.
 

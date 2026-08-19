@@ -39,8 +39,8 @@
                         </div>
                     </div>
                     <div class="col-md-5 d-flex justify-content-md-end justify-content-start mt-4 mt-md-0">
-                        <button type="button" class="btn btn-primary btn-lg btn-label waves-effect waves-light shadow-md" onclick="openModal();">
-                            <i class="ri-add-line label-icon align-middle fs-18 me-2"></i> Nuevo Envío
+                        <button type="button" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm" onclick="openModal();">
+                            <i class="ri-add-line align-middle fs-16 me-1"></i> Nuevo Envío
                         </button>
                     </div>
                 </div>
@@ -280,11 +280,11 @@
                                                         <i class="ri-route-line me-1 text-primary"></i>
                                                         Paradas de la Ruta <span class="text-danger">*</span>
                                                     </label>
-                                                    <small class="text-muted d-block fs-11">El camión recorre las paradas en el orden indicado. Las distancias y costos se calculan via Google Maps API.</small>
+                                                    <small class="text-muted d-block fs-11">El camión recorre las paradas en el orden indicado. Las distancias se cargan automáticamente desde el <strong>Tarifario de Rutas</strong>.</small>
                                                 </div>
                                                 <div class="d-flex gap-2">
-                                                    <button type="button" class="btn btn-sm btn-soft-info shadow-sm" onclick="recalcularRutaGoogleMaps()" title="Calcular distancias con Google Maps">
-                                                        <i class="ri-map-pin-distance-line me-1"></i> ⚡ Recalcular Ruta (Google Maps)
+                                                    <button type="button" class="btn btn-sm btn-soft-primary shadow-sm" onclick="recalcularRutaGoogleMaps()" title="Consultar distancias en Tarifario">
+                                                        <i class="ri-money-dollar-circle-line me-1"></i> ⚡ Cargar desde Tarifario
                                                     </button>
                                                     <button type="button" class="btn btn-sm btn-primary shadow-sm" onclick="agregarParadaForm()">
                                                         <i class="ri-add-line me-1"></i> Agregar Parada
@@ -294,7 +294,7 @@
 
                                             <!-- Badge Resumen Distancia Total -->
                                             <div id="badge-distancia-total-container" class="alert alert-soft-primary d-flex align-items-center justify-content-between p-2 mb-3 rounded-3" style="display:none !important;">
-                                                <span class="fs-12 fw-medium"><i class="ri-google-fill text-primary me-1"></i>Distancia Total Calculada:</span>
+                                                <span class="fs-12 fw-medium"><i class="ri-road-map-line text-primary me-1"></i>Distancia Total (Tarifario):</span>
                                                 <span id="badge-km-total-val" class="badge bg-primary fs-13">0 km</span>
                                             </div>
 
@@ -355,18 +355,18 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="d-grid gap-2">
-                                        <button type="button" id="btnActionForm" class="btn btn-success btn-lg shadow-md" onclick="saveEnvio();">
+                                        <button type="button" id="btnActionForm" class="btn btn-success rounded-pill py-2 shadow-sm fw-semibold" onclick="saveEnvio();">
                                             <i class="ri-save-3-line align-middle me-1"></i> <span id="btnText">Guardar Envío</span>
                                         </button>
-                                        <button type="button" class="btn btn-light btn-label" onclick="cancelFormEnvio();">
-                                            <i class="ri-arrow-go-back-line label-icon align-middle fs-16 me-2"></i> Cancelar y Volver
+                                        <button type="button" class="btn btn-light border rounded-pill py-2 fw-semibold" onclick="cancelFormEnvio();">
+                                            <i class="ri-arrow-go-back-line align-middle fs-16 me-1"></i> Cancelar y Volver
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Card: Resumen de Traslado -->
-                            <div class="card border-0 shadow-lg mb-4 bg-primary" style="border-radius: 10px; background: linear-gradient(135deg, #405189 0%, #0ab39c 100%);">
+                            <div class="card border-0 shadow-lg mb-4 text-white" style="border-radius: 14px; background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);">
                                 <div class="card-body">
                                     <div class="d-flex align-items-center">
                                         <div class="flex-grow-1">

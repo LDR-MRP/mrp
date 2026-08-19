@@ -11,8 +11,8 @@ class Lgs_panelrutasService {
     /**
      * Obtiene el listado de rutas activas con sus coordenadas mapeadas
      */
-    public function getRutasActivasMapa(): array {
-        $rutas = $this->model->getRutasEnTransito();
+    public function getRutasActivasMapa(?int $plantaId = null): array {
+        $rutas = $this->model->getRutasEnTransito($plantaId);
         
         foreach ($rutas as &$ruta) {
             $destinos = $this->model->getDetalleDestinosRuta($ruta['id_envio']);

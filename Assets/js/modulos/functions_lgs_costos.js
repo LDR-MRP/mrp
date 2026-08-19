@@ -173,14 +173,14 @@ function fntOpenMatrizModal(idTipoTraslado, idOrigen, idDestino, origenNombre, d
                 tdEstimado.innerHTML = `
                     <span class="badge bg-success-subtle text-success fs-13 fw-bold p-2 d-block text-end" id="madrina_total_base_${idx}">$ 0.00</span>
                 `;
-
                 const tdPlano = document.createElement("td");
+                tdPlano.style.display = "none";
                 tdPlano.innerHTML = `
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-light">$</span>
                         <input type="number" step="0.01" class="form-control text-end" 
-                               name="madrina_segmentos[${idx}][precio_plano]" 
-                               value="${parseFloat(item.precio_plano || 0).toFixed(2)}">
+                                name="madrina_segmentos[${idx}][precio_plano]" 
+                                value="${parseFloat(item.precio_plano || 0).toFixed(2)}">
                     </div>
                 `;
 
@@ -295,20 +295,21 @@ function fntOpenMatrizModal(idTipoTraslado, idOrigen, idDestino, origenNombre, d
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-light">$</span>
                         <input type="number" step="0.01" class="form-control text-end fw-bold chofer-costo-km" 
-                               data-idx="${cIdx}" name="chofer_segmentos[${cIdx}][costo_por_km]" 
-                               value="${parseFloat(cItem.costo_por_km || 0).toFixed(2)}" 
-                               oninput="recalcularTotalesDual();">
+                                data-idx="${cIdx}" name="chofer_segmentos[${cIdx}][costo_por_km]" 
+                                value="${parseFloat(cItem.costo_por_km || 0).toFixed(2)}" 
+                                oninput="recalcularTotalesDual();">
                     </div>
                 `;
 
                 const tdCPlano = document.createElement("td");
+                tdCPlano.style.display = "none";
                 tdCPlano.innerHTML = `
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-light">$</span>
                         <input type="number" step="0.01" class="form-control text-end chofer-precio-plano" 
-                               data-idx="${cIdx}" name="chofer_segmentos[${cIdx}][precio_plano]" 
-                               value="${parseFloat(cItem.precio_plano || 0).toFixed(2)}"
-                               oninput="recalcularTotalesDual();">
+                                data-idx="${cIdx}" name="chofer_segmentos[${cIdx}][precio_plano]" 
+                                value="${parseFloat(cItem.precio_plano || 0).toFixed(2)}"
+                                oninput="recalcularTotalesDual();">
                     </div>
                 `;
 

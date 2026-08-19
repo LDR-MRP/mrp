@@ -155,44 +155,78 @@
 
 <!-- MODAL EVALUAR PLANEACIÓN -->
 <div class="modal fade" id="modalEvaluarPlan" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0 shadow-lg rounded-3">
             <div class="modal-header bg-light border-bottom-0 pb-3">
-                <h5 class="modal-title fw-bold text-primary" id="titleModalEvaluar"><i class="ri-shield-user-line me-1"></i> Evaluar Planeación</h5>
+                <h5 class="modal-title fw-bold text-primary" id="titleModalEvaluar">
+                    <i class="ri-shield-user-line me-1"></i> Evaluar y Autorizar Planeación: <span id="lblFolioModal" class="badge bg-primary fs-14"></span>
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
-                <form id="formEvaluarPlan">
-                    <input type="hidden" id="eval_id_planeacion" name="id_planeacion" value="">
+                <!-- Resumen de Costos y KM -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="card bg-soft-success border-0 rounded-3 p-3 text-center">
+                            <span class="text-muted fs-11 text-uppercase fw-bold"><i class="ri-money-dollar-circle-line me-1"></i> Costo Total Solicitado</span>
+                            <h3 class="fw-bold text-success mb-0 mt-1" id="lblCostoModal">$0.00</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-soft-primary border-0 rounded-3 p-3 text-center">
+                            <span class="text-muted fs-11 text-uppercase fw-bold"><i class="ri-route-line me-1"></i> Distancia Acumulada</span>
+                            <h3 class="fw-bold text-primary mb-0 mt-1"><span id="lblKmModal">0</span> km</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-soft-secondary border-0 rounded-3 p-3">
+                            <span class="text-muted fs-11 text-uppercase fw-bold"><i class="ri-chat-1-line me-1"></i> Nota del Planeador</span>
+                            <p class="fs-12 text-dark mb-0 mt-1" id="lblObsOperador">Sin observaciones.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de Envíos/Rutas Agrupadas -->
+                <h6 class="fw-bold text-uppercase fs-12 text-muted mb-2"><i class="ri-truck-line me-1 text-primary"></i> Envíos y Madrinas Incluidas en este Plan</h6>
+                <div class="table-responsive mb-4">
+                    <table class="table table-bordered table-sm align-middle mb-0">
+                        <thead class="table-light fs-11 text-uppercase text-muted">
+                            <tr>
+                                <th>Folio Envío</th>
+                                <th>Modalidad</th>
+                                <th>Origen</th>
+                                <th>Trasladista</th>
+                                <th class="text-center">Total VINs</th>
+                                <th>Costo Envío</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bodyDetalleRutas" class="fs-12">
+                            <!-- Inyectado dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Formulario de Dictamen -->
+                <form id="formAprobacion">
+                    <input type="hidden" id="id_planeacion" name="id_planeacion" value="">
+                    <input type="hidden" id="decision" name="decision" value="">
                     
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Folio de la Planeación</label>
-                            <input type="text" class="form-control bg-light border-0 fw-bold" id="eval_folio" readonly>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Costo Total Estimado</label>
-                            <input type="text" class="form-control bg-light border-0 fw-bold text-success fs-15" id="eval_costo" readonly>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Descripción / Concepto</label>
-                            <input type="text" class="form-control bg-light border-0" id="eval_descripcion" readonly>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Comentarios u Observaciones de la Evaluación</label>
-                            <textarea class="form-control" id="eval_comentarios" name="comentarios" rows="3" placeholder="Ingrese comentarios justificativos de la aprobación o rechazo..."></textarea>
-                        </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-muted fs-11 text-uppercase">
+                            <i class="ri-edit-line me-1"></i> Observaciones del Dictamen / Motivo (Requerido en caso de rechazo)
+                        </label>
+                        <textarea class="form-control" id="obs_aprobador" name="obs_aprobador" rows="3" placeholder="Ingrese comentarios para el operador de logística..."></textarea>
                     </div>
                 </form>
             </div>
             <div class="modal-footer bg-light border-top-0 pt-3 d-flex justify-content-between">
-                <button type="button" class="btn btn-danger px-4 shadow-sm" onclick="resolverPlaneacion(3);">
-                    <i class="ri-close-circle-line me-1"></i> Rechazar
+                <button type="button" id="btnRechazarModal" class="btn btn-sm btn-soft-danger rounded-pill px-4 fw-semibold shadow-sm" onclick="enviarDecision('rechazar');">
+                    <i class="ri-close-circle-line me-1"></i> Rechazar Plan
                 </button>
                 <div>
-                    <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-success px-4 shadow-sm" onclick="resolverPlaneacion(5);">
-                        <i class="ri-checkbox-circle-line me-1"></i> Autorizar Planeación
+                    <button type="button" class="btn btn-sm btn-light border px-3 rounded-pill fw-semibold me-2" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" id="btnAprobarModal" class="btn btn-sm btn-success px-4 rounded-pill fw-semibold shadow-sm" onclick="enviarDecision('aprobar');">
+                        <i class="ri-checkbox-circle-line me-1"></i> Autorizar para seguir
                     </button>
                 </div>
             </div>

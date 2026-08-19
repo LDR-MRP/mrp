@@ -32,13 +32,50 @@ class Lgs_ejecucion extends Controllers
     }
 
     /**
-     * Devuelve el JSON para alimentar el DataTable de Envíos Aprobados/En Tránsito
+     * Renderiza la vista móvil para el chofer trasladista
+     * URL: {{base_url}}/Lgs_ejecucion/chofer_movil
+     */
+    public function chofer_movil(): void
+    {
+        $this->views->getView(
+            $this,
+            "../Lgs_ejecucion/chofer_movil",
+            [
+                'page_tag' => "Inspección Móvil",
+                'page_title' => "Inspección Trasladista",
+                'page_name' => "lgs_chofer_movil",
+                'page_functions_js' => "functions_lgs_chofer.js",
+            ]
+        );
+    }
+
+    /**
+     * Renderiza la vista de confirmación de entrega en destino con QR
+     * URL: {{base_url}}/Lgs_ejecucion/entrega_destino
+     */
+    public function entrega_destino(): void
+    {
+        $this->views->getView(
+            $this,
+            "../Lgs_ejecucion/entrega_destino",
+            [
+                'page_tag' => "Confirmación de Entrega",
+                'page_title' => "Entrega Destino",
+                'page_name' => "lgs_entrega_destino",
+                'page_functions_js' => "functions_lgs_entrega.js",
+            ]
+        );
+    }
+
+    /**
+     * Devuelve el JSON para alimentar el DataTable de Envíos Aprobados/En Tránsito, filtrando por planta si no es administrador
      * URL: {{base_url}}/Lgs_ejecucion/getEnviosDespacho
      */
     public function getEnviosDespacho(): void
     {
         try {
-            $data = $this->service->getEnviosDespacho();
+            $plantaId = ($_SESSION['userData']['idrol'] ?? 0) == 1 ? null : ($_SESSION['userData']['plantaid'] ?? null);
+            $data = $this->service->getEnviosDespacho($plantaId);
             echo json_encode($data, JSON_UNESCAPED_UNICODE);
             exit;
         } catch (Throwable $e) {
@@ -56,6 +93,27 @@ class Lgs_ejecucion extends Controllers
         try {
             $data = $this->service->getDetalleDespacho($idEnvio);
             echo $this->successResponse($data, "Detalle de VINs obtenido");
+        } catch (Exception $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST: Confirma la fecha pactada de recolección por el administrador
+     * URL: {{base_url}}/Lgs_ejecucion/confirmarRecoleccion
+     */
+    public function confirmarRecoleccion(): void
+    {
+        try {
+            $idEnvio = intval($_POST['id_envio'] ?? 0);
+            $fechaRecoleccion = $_POST['fecha_recoleccion'] ?? '';
+
+            if ($idEnvio === 0 || empty($fechaRecoleccion)) {
+                throw new Exception("El ID de envío y la fecha de recolección son obligatorios.");
+            }
+
+            $this->service->confirmarFechaRecoleccion($idEnvio, $fechaRecoleccion);
+            echo $this->successResponse(null, "Fecha de recolección programada y unidades listas en área de entregas.");
         } catch (Exception $e) {
             echo $this->errorResponse($e->getMessage(), 500);
         }
@@ -82,7 +140,7 @@ class Lgs_ejecucion extends Controllers
             
             echo $this->successResponse(null, "Despacho de envío registrado correctamente. Solicitud enviada a entregas.");
         } catch (Exception $e) {
-            echo $this->errorResponse($e->getMessage(), 500);
+            $this->errorResponse($e->getMessage(), 500);
         }
     }
 
@@ -109,6 +167,62 @@ class Lgs_ejecucion extends Controllers
                 : "VIN confirmado e entregado al trasladista exitosamente.";
 
             echo $this->successResponse(['en_transito' => $enTransito], $msg);
+        } catch (Exception $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * GET: Obtiene los envíos del chofer logueado
+     * URL: {{base_url}}/Lgs_ejecucion/getEnviosChofer
+     */
+    public function getEnviosChofer(): void
+    {
+        try {
+            // El ID del chofer/usuario se obtiene de la sesión
+            $idUsuario = $_SESSION['idUser'] ?? 0;
+            if ($idUsuario === 0) {
+                throw new Exception("Sesión inválida.");
+            }
+
+            $data = $this->service->getEnviosChofer($idUsuario);
+            echo $this->successResponse($data, "Envíos obtenidos correctamente.");
+        } catch (Exception $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST: Registra el checklist del trasladista o personal de planta
+     * URL: {{base_url}}/Lgs_ejecucion/guardarChecklistTrasladista
+     */
+    public function guardarChecklistTrasladista(): void
+    {
+        try {
+            $userId = $_SESSION['idUser'] ?? 1;
+            
+            $idEnvio = intval($_POST['id_envio'] ?? 0);
+            $idUnidad = intval($_POST['id_unidad'] ?? 0);
+            $tipoChecklist = $_POST['tipo_checklist'] ?? '';
+            $vin = $_POST['vin'] ?? '';
+            $comentarios = $_POST['comentarios'] ?? '';
+
+            if ($idEnvio === 0 || $idUnidad === 0 || empty($tipoChecklist) || empty($vin)) {
+                throw new Exception("Parámetros incompletos para guardar el checklist.");
+            }
+
+            // Sanitizar archivos cargados
+            $fotos = [];
+            if (!empty($_FILES)) {
+                foreach ($_FILES as $key => $file) {
+                    if ($file['error'] === UPLOAD_ERR_OK) {
+                        $fotos[$key] = $file;
+                    }
+                }
+            }
+
+            $this->service->registrarChecklistTrasladista($idEnvio, $idUnidad, $tipoChecklist, $vin, $userId, $comentarios, $fotos);
+            echo $this->successResponse(null, "Checklist e inspección registrados exitosamente.");
         } catch (Exception $e) {
             echo $this->errorResponse($e->getMessage(), 500);
         }

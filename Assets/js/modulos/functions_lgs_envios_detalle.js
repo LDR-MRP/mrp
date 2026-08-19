@@ -94,6 +94,11 @@ function cargarDatosDetalle() {
 
                     // 4. Inicializar Sortables
                     initSortables();
+
+                    // 5. Recalcular costo si ya existen asignaciones cargadas
+                    if (objData.data.existentes && objData.data.existentes.length > 0) {
+                        guardarAcomodoAuto();
+                    }
                 }
             } catch (e) {
                 console.error("Error al procesar datos de detalle: ", e);
@@ -185,6 +190,11 @@ function renderAcomodoExistente(existentes) {
             }, grupo.vins);
         }
     });
+
+    document.querySelectorAll('.vehiculo-list').forEach(ul => {
+        actualizarConteoYSecuencia(ul);
+        agruparYOrdenarParadas(ul);
+    });
 }
 
 function initSortables() {
@@ -214,18 +224,33 @@ function initSortables() {
                 ghostClass: 'sortable-ghost',
                 onAdd: function (evt) {
                     actualizarConteoYSecuencia(evt.to);
+                    agruparYOrdenarParadas(evt.to);
+                    guardarAcomodoAuto();
                 },
                 onRemove: function (evt) {
                     actualizarConteoYSecuencia(evt.from);
+                    guardarAcomodoAuto();
+                },
+                onUpdate: function (evt) {
+                    actualizarConteoYSecuencia(evt.to);
+                    agruparYOrdenarParadas(evt.to);
+                    guardarAcomodoAuto();
                 },
                 onEnd: function (evt) {
-                    actualizarConteoYSecuencia(evt.to);
+                    if (evt.to && evt.to.id !== 'vins-disponibles') {
+                        actualizarConteoYSecuencia(evt.to);
+                        agruparYOrdenarParadas(evt.to);
+                        guardarAcomodoAuto();
+                    }
                 }
             });
         }
     });
 
-    document.querySelectorAll('.vehiculo-list').forEach(actualizarConteoYSecuencia);
+    document.querySelectorAll('.vehiculo-list').forEach(ul => {
+        actualizarConteoYSecuencia(ul);
+        agruparYOrdenarParadas(ul);
+    });
 }
 
 function actualizarConteoYSecuencia(listaUl) {
@@ -424,7 +449,66 @@ function li_setParada(selectEl) {
     }
 
     const ul = li.closest('ul');
-    if (ul) actualizarConteoYSecuencia(ul);
+    if (ul) {
+        actualizarConteoYSecuencia(ul);
+        agruparYOrdenarParadas(ul);
+        guardarAcomodoAuto();
+    } else {
+        guardarAcomodoAuto();
+    }
+}
+
+function agruparYOrdenarParadas(ul) {
+    if (!ul || ul.id === 'vins-disponibles') return;
+    const items = Array.from(ul.querySelectorAll('li'));
+    if (items.length <= 1) return;
+
+    // Obtener orden de cada parada asignada
+    let listOrder = items.map(li => {
+        let pId = li.getAttribute('data-id-parada');
+        if (!pId) {
+            let sel = li.querySelector('.parada-vin-select');
+            if (sel && sel.value) pId = sel.value;
+        }
+        let pObj = (g_paradasEnvio || []).find(p => String(p.id_parada) === String(pId));
+        return {
+            li: li,
+            orden: pObj ? parseInt(pObj.orden || 0) : 0,
+            idParada: pId || ''
+        };
+    });
+
+    // Ordenar de Mayor Parada a Menor Parada (ej: Parada 3 -> Parada 2 -> Parada 1)
+    // Para que la última parada se cargue primero (1º EN CARGAR) y todas las paradas iguales queden juntas
+    listOrder.sort((a, b) => {
+        if (b.orden !== a.orden) {
+            return b.orden - a.orden;
+        }
+        return 0;
+    });
+
+    let cambio = false;
+    listOrder.forEach((item, idx) => {
+        if (items[idx] !== item.li) {
+            cambio = true;
+        }
+    });
+
+    if (cambio) {
+        listOrder.forEach(item => ul.appendChild(item.li));
+        actualizarConteoYSecuencia(ul);
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'info',
+                title: 'Unidades agrupadas por Parada automáticamente',
+                showConfirmButton: false,
+                timer: 2500
+            });
+        }
+    }
 }
 
 function limpiarBadgesPool(li) {
@@ -685,6 +769,74 @@ function removerContenedorVehiculo(btn) {
     if (contenedor && contenedor.querySelectorAll('div.border').length === 0) {
         const msgEmpty = document.getElementById('empty-vehiculos-msg');
         if (msgEmpty) msgEmpty.style.display = 'block';
+    }
+
+    guardarAcomodoAuto();
+}
+
+function guardarAcomodoAuto() {
+    const idEnvio = document.getElementById('id_envio') ? document.getElementById('id_envio').value : 0;
+    if (!idEnvio) return;
+
+    const asignaciones = [];
+    const vehiculos = document.querySelectorAll('.vehiculo-list');
+
+    vehiculos.forEach(v => {
+        const idMadrina = v.getAttribute('data-id-madrina') || null;
+        const idChofer  = v.getAttribute('data-id-chofer') || null;
+        const items     = v.querySelectorAll('li');
+
+        let posicion = 1;
+        items.forEach(li => {
+            let idUnidad = li.getAttribute('data-id-unidad');
+            let idParada = li.getAttribute('data-id-parada') || null;
+            const sel = li.querySelector('.parada-vin-select');
+            if (sel && sel.value) idParada = sel.value;
+
+            if (idUnidad) {
+                if (!asignaciones.some(a => a.id_unidad == idUnidad)) {
+                    asignaciones.push({
+                        id_unidad: idUnidad,
+                        id_parada: idParada,
+                        id_madrina: idMadrina,
+                        id_chofer: idChofer,
+                        posicion_acomodo: posicion
+                    });
+                    posicion++;
+                }
+            }
+        });
+    });
+
+    const lblCosto = document.getElementById('lbl-resumen-costo');
+    if (lblCosto) lblCosto.innerHTML = '<i class="spinner-border spinner-border-sm me-1"></i> Calculando...';
+
+    let request = new XMLHttpRequest();
+    let ajaxUrl = base_url + '/Lgs_envios/storeAcomodo';
+
+    request.open("POST", ajaxUrl, true);
+    request.setRequestHeader("Content-Type", "application/json");
+    request.send(JSON.stringify({
+        id_envio: idEnvio,
+        asignaciones: asignaciones
+    }));
+
+    request.onreadystatechange = function () {
+        if (request.readyState == 4 && request.status == 200) {
+            try {
+                let objData = JSON.parse(request.responseText);
+                if (objData.status === 'success' || objData.code === 200) {
+                    if (lblCosto) {
+                        let costoTxt = objData.data && objData.data.costo_total ? '$' + parseFloat(objData.data.costo_total).toFixed(2) : '$0.00';
+                        lblCosto.innerText = costoTxt;
+                    }
+                } else {
+                    if (lblCosto) lblCosto.innerText = 'Error';
+                }
+            } catch (e) {
+                if (lblCosto) lblCosto.innerText = 'Error';
+            }
+        }
     }
 }
 
