@@ -1,15 +1,25 @@
 let tableEjecucion;
+let rawDataEjecucion = [];
+let filtroActual = 'pendientes'; // 'pendientes' o 'historico'
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Inicializar DataTable Ejecución
+    initTableEjecucion();
+});
+
+function initTableEjecucion() {
     tableEjecucion = $('#tableEjecucion').DataTable({
         "aProcessing": true,
-        "aServerSide": false,        "language": {
+        "aServerSide": false,
+        "language": {
             "url": "https://cdn.datatables.net/plug-ins/1.10.20/i18n/Spanish.json"
         },
         "ajax": {
             "url": base_url + "/Lgs_ejecucion/getEnviosDespacho",
-            "dataSrc": ""
+            "dataSrc": function (json) {
+                rawDataEjecucion = json || [];
+                actualizarMetricasEjecucion(rawDataEjecucion);
+                return filtrarDatosPorPestana(rawDataEjecucion, filtroActual);
+            }
         },
         "columns": [
             { "data": "id_envio" },
@@ -33,7 +43,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     let total = parseInt(row.total_vins) || 0;
                     let entregados = parseInt(row.vins_entregados) || 0;
                     let porcentaje = total > 0 ? Math.round((entregados / total) * 100) : 0;
-                    
                     let bgClass = porcentaje === 100 ? 'bg-success' : 'bg-primary';
 
                     return `<div>
@@ -47,6 +56,20 @@ document.addEventListener('DOMContentLoaded', function () {
                             </div>`;
                 }
             },
+            {
+                "data": null,
+                "render": function(data, type, row) {
+                    if (filtroActual === 'historico') {
+                        const fReal = row.fecha_salida_real;
+                        if (!fReal || fReal === 'null') return '<span class="text-muted fs-11">Sin fecha</span>';
+                        return '<span class="fs-12 text-success fw-bold"><i class="ri-calendar-check-line me-1"></i>' + fReal.replace('T', ' ') + '</span>';
+                    } else {
+                        const fProg = row.fecha_programada || row.fecha_confirmada_recoleccion;
+                        if (!fProg || fProg === 'null') return '<span class="text-muted fs-11">Por programar</span>';
+                        return '<span class="fs-12 text-primary fw-medium"><i class="ri-calendar-event-line me-1"></i>' + fProg.replace('T', ' ') + '</span>';
+                    }
+                }
+            },
             { 
                 "data": "id_estado",
                 "render": function (data) {
@@ -55,6 +78,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         case 3: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-checkbox-check-line me-1"></i>Envío Aprobado</span>'; break;
                         case 5: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-calendar-event-line me-1"></i>Programado</span>'; break;
                         case 6: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-truck-line me-1"></i>En Tránsito</span>'; break;
+                        case 7: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-double-line me-1"></i>Entregado</span>'; break;
                         default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
                     }
                     return badge;
@@ -63,44 +87,77 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 "data": "id_envio",
                 "render": function (data, type, row) {
-                    if (parseInt(row.id_estado) === 3) {
+                    if (parseInt(row.id_estado) === 3 || parseInt(row.id_estado) === 5) {
                         return `<div class="text-end pe-3">
-                                    <button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold" onClick="fntProgramarRecoleccion(${data})" title="Programar Recolección">
-                                        <i class="ri-calendar-event-line me-1"></i> Programar Recolección
+                                    <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold shadow-sm" onClick="fntDespachar(${data}, '${row.folio}', '${row.fecha_salida_real || ''}')" title="Mesa de Despacho">
+                                        <i class="ri-truck-line me-1"></i> Despacho / Salida
                                     </button>
                                 </div>`;
                     }
                     
                     return `<div class="text-end pe-3">
-                                <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold shadow-sm" onClick="fntDespachar(${data}, '${row.folio}', '${row.fecha_salida_real || ''}')" title="Mesa de Despacho">
-                                    <i class="ri-truck-line me-1"></i> Despacho / Salida
-                                </button>
+                                <a href="${base_url}/Lgs_evidencias" class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold" title="Ver Histórico y Evidencias">
+                                    <i class="ri-file-list-3-line me-1"></i> Manifiesto / Evidencias
+                                </a>
                             </div>`;
                 }
             }
         ],
-        "respose": "true",
+        "responsive": true,
         "bDestroy": true,
         "iDisplayLength": 10,
-        "order": [[0, "desc"]],
-        "drawCallback": function(settings) {
-            actualizarMetricasEjecucion(settings.json || []);
-        }
+        "order": [[0, "desc"]]
     });
-});
+}
+
+function filtrarDatosPorPestana(data, tipo) {
+    if (!Array.isArray(data)) return [];
+    if (tipo === 'historico') {
+        return data.filter(e => parseInt(e.id_estado) === 6 || parseInt(e.id_estado) === 7);
+    }
+    // Pendientes por despachar (Aprobados 3 o Programados 5)
+    return data.filter(e => parseInt(e.id_estado) === 3 || parseInt(e.id_estado) === 5);
+}
+
+function filtrarMesaDespacho(tipo) {
+    filtroActual = tipo;
+    const btnPend = document.getElementById('tab-btn-pendientes');
+    const btnHist = document.getElementById('tab-btn-historico');
+    const thFecha = document.getElementById('thFechaEjecucion');
+
+    if (tipo === 'historico') {
+        if (btnHist) { btnHist.classList.add('active', 'btn-primary'); btnHist.classList.remove('btn-outline-secondary'); }
+        if (btnPend) { btnPend.classList.remove('active', 'btn-primary'); btnPend.classList.add('btn-outline-primary'); }
+        if (thFecha) thFecha.innerText = 'Fecha Real Salida';
+    } else {
+        if (btnPend) { btnPend.classList.add('active', 'btn-primary'); btnPend.classList.remove('btn-outline-primary'); }
+        if (btnHist) { btnHist.classList.remove('active', 'btn-primary'); btnHist.classList.add('btn-outline-secondary'); }
+        if (thFecha) thFecha.innerText = 'Fecha Programada';
+    }
+
+    if (tableEjecucion) {
+        tableEjecucion.clear();
+        tableEjecucion.rows.add(filtrarDatosPorPestana(rawDataEjecucion, filtroActual));
+        tableEjecucion.draw();
+    }
+}
 
 function actualizarMetricasEjecucion(data) {
     if (!Array.isArray(data)) return;
     
-    let pendientes = data.filter(e => parseInt(e.id_estado) === 3).length;
+    let pendientes = data.filter(e => parseInt(e.id_estado) === 3 || parseInt(e.id_estado) === 5).length;
     let transito = data.filter(e => parseInt(e.id_estado) === 6).length;
+    let historicoCount = data.filter(e => parseInt(e.id_estado) === 6 || parseInt(e.id_estado) === 7).length;
     let vinsEntregadosSum = data.reduce((acc, e) => acc + (parseInt(e.vins_entregados) || 0), 0);
-    let completados = data.filter(e => parseInt(e.id_estado) === 6 && parseInt(e.vins_entregados) === parseInt(e.total_vins)).length;
+    let completados = data.filter(e => parseInt(e.id_estado) === 7 || (parseInt(e.id_estado) === 6 && parseInt(e.vins_entregados) === parseInt(e.total_vins))).length;
 
     if (document.getElementById('cardDespPendientes')) document.getElementById('cardDespPendientes').innerText = pendientes;
     if (document.getElementById('cardDespTransito')) document.getElementById('cardDespTransito').innerText = transito;
     if (document.getElementById('cardVinsEntregados')) document.getElementById('cardVinsEntregados').innerText = vinsEntregadosSum;
     if (document.getElementById('cardDespCompletados')) document.getElementById('cardDespCompletados').innerText = completados;
+
+    if (document.getElementById('badgeCountPendientes')) document.getElementById('badgeCountPendientes').innerText = pendientes;
+    if (document.getElementById('badgeCountHistorico')) document.getElementById('badgeCountHistorico').innerText = historicoCount;
 }
 
 function fntDespachar(idEnvio, folio, fechaSalida) {

@@ -161,6 +161,7 @@
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Distancia (KM)</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">VINs Asignados</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Costo Est.</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Fecha Prog.</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado</th>
                                         <th scope="col" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
                                     </tr>
@@ -269,6 +270,16 @@
                                                     </option>
                                                 <?php endforeach; ?>
                                             </select>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1"><i class="ri-calendar-event-line me-1 text-primary"></i>Fecha/Hora Programada de Salida <span class="text-danger">*</span></label>
+                                            <input type="datetime-local" class="form-control" id="fecha_tentativa_envio" name="fecha_tentativa_envio" required>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1"><i class="ri-calendar-check-line me-1 text-muted"></i>Fecha Estimada de Llegada</label>
+                                            <input type="datetime-local" class="form-control" id="fecha_tentativa_llegada" name="fecha_tentativa_llegada">
                                         </div>
 
                                         <!-- ── SECCIÓN MULTI-DESTINO / PARADAS ── -->

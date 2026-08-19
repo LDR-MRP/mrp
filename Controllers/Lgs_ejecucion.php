@@ -140,7 +140,7 @@ class Lgs_ejecucion extends Controllers
             
             echo $this->successResponse(null, "Despacho de envío registrado correctamente. Solicitud enviada a entregas.");
         } catch (Exception $e) {
-            $this->errorResponse($e->getMessage(), 500);
+            echo $this->errorResponse($e->getMessage(), 500);
         }
     }
 

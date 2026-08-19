@@ -117,7 +117,21 @@
                     </div>
                 </div>
 
-                <!-- 4. DATATABLE CARD ESTILIZADA -->
+                <!-- 4. PESTAÑAS: PENDIENTES DE DESPACHO VS HISTÓRICO -->
+                <ul class="nav nav-pills mb-3 gap-2" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="btn btn-sm btn-outline-primary active rounded-pill px-4 fw-semibold shadow-sm" id="tab-btn-pendientes" onclick="filtrarMesaDespacho('pendientes')">
+                            <i class="ri-truck-line me-1"></i> Por Despachar (<span id="badgeCountPendientes">0</span>)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="btn btn-sm btn-outline-secondary rounded-pill px-4 fw-semibold shadow-sm" id="tab-btn-historico" onclick="filtrarMesaDespacho('historico')">
+                            <i class="ri-history-line me-1"></i> Histórico de Despachos (<span id="badgeCountHistorico">0</span>)
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- 5. DATATABLE CARD ESTILIZADA -->
                 <div class="card border-0 shadow-xl">
                     <div class="bg-primary" style="height: 4px;"></div>
                     <div class="card-body">
@@ -127,10 +141,11 @@
                                     <tr>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">ID</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Folio Envío</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Origen</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Origen (Sede)</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Trasladista</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Chofer / Madrina</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Total VINs</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3" id="thFechaEjecucion">Fecha Programada</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado</th>
                                         <th scope="col" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
                                     </tr>

@@ -35,6 +35,7 @@ class Lgs_ejecucionModel extends Mysql
             $sql = "SELECT 
                         e.id_envio,
                         e.folio,
+                        e.fecha_tentativa_envio AS fecha_programada,
                         e.fecha_salida_real,
                         e.id_estado,
                         e.km_total,
@@ -49,8 +50,8 @@ class Lgs_ejecucionModel extends Mysql
                     LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
                     LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
                     LEFT JOIN lgs_cat_tipo_traslado tt ON e.id_tipo_traslado = tt.id_tipo_traslado
-                    WHERE e.id_estado IN (3, 5, 6) AND e.deleted_at IS NULL {$wherePlanta}
-                    ORDER BY e.id_estado ASC, e.id_envio DESC";
+                    WHERE e.id_estado IN (3, 5, 6, 7) AND e.deleted_at IS NULL {$wherePlanta}
+                    ORDER BY e.id_estado ASC, e.fecha_tentativa_envio ASC, e.id_envio DESC";
             
             $stmt = $this->getConexion()->prepare($sql);
             $stmt->execute($params);
@@ -65,6 +66,7 @@ class Lgs_ejecucionModel extends Mysql
             $sqlFallback = "SELECT 
                         e.id_envio,
                         e.folio,
+                        e.fecha_tentativa_envio AS fecha_programada,
                         e.fecha_salida_real,
                         e.id_estado,
                         e.km_total,
@@ -79,8 +81,8 @@ class Lgs_ejecucionModel extends Mysql
                     LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
                     LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
                     LEFT JOIN lgs_cat_tipo_traslado tt ON e.id_tipo_traslado = tt.id_tipo_traslado
-                    WHERE e.id_estado IN (3, 5, 6) AND e.deleted_at IS NULL {$wherePlanta}
-                    ORDER BY e.id_estado ASC, e.id_envio DESC";
+                    WHERE e.id_estado IN (3, 5, 6, 7) AND e.deleted_at IS NULL {$wherePlanta}
+                    ORDER BY e.id_estado ASC, e.fecha_tentativa_envio ASC, e.id_envio DESC";
             $stmt = $this->getConexion()->prepare($sqlFallback);
             $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -159,7 +161,8 @@ class Lgs_ejecucionModel extends Mysql
     public function registrarDespachoEnvio(PDO $db, int $idEnvio, string $fechaSalida, ?string $evidenciasJson): void
     {
         $sql = "UPDATE lgs_envios 
-                SET fecha_salida_real = :fecha_salida
+                SET fecha_salida_real = :fecha_salida,
+                    id_estado = 6
                 WHERE id_envio = :id_envio";
         
         $stmt = $db->prepare($sql);

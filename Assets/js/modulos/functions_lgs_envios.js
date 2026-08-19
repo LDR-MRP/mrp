@@ -92,6 +92,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     return '<span class="fw-bold text-success">$' + parseFloat(data).toFixed(2) + '</span>';
                 }
             },
+            {
+                "data": "fecha_tentativa_envio",
+                "render": function (data) {
+                    if (!data || data === 'null') return '<span class="text-muted fs-11">No definida</span>';
+                    return '<span class="fs-12 text-dark fw-medium"><i class="ri-calendar-event-line text-primary me-1"></i>' + data.replace('T', ' ') + '</span>';
+                }
+            },
             { 
                 "data": "id_estado",
                 "render": function (data) {
@@ -379,14 +386,15 @@ function saveEnvio() {
     let id_motivo = document.querySelector('#id_motivo') ? document.querySelector('#id_motivo').value : '';
     let id_proveedor = document.querySelector('#id_proveedor').value;
     let id_origen = document.querySelector('#id_origen').value;
+    let fecha_tentativa_envio = document.querySelector('#fecha_tentativa_envio') ? document.querySelector('#fecha_tentativa_envio').value : '';
 
     // Serializar paradas antes de validar
     serializarParadas();
     const paradasJson = document.getElementById('paradas_json') ? document.getElementById('paradas_json').value : '[]';
     const paradas = JSON.parse(paradasJson);
 
-    if (id_tipo_traslado == '' || id_motivo == '' || id_proveedor == '' || id_origen == '') {
-        Swal.fire("Atención", "Todos los campos marcados con (*) son obligatorios.", "error");
+    if (id_tipo_traslado == '' || id_motivo == '' || id_proveedor == '' || id_origen == '' || fecha_tentativa_envio == '') {
+        Swal.fire("Atención", "Todos los campos marcados con (*) son obligatorios, incluyendo la Fecha/Hora Programada de Salida.", "error");
         return false;
     }
     if (paradas.length === 0) {
