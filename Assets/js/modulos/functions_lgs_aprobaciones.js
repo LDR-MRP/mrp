@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                         <i class="ri-search-eye-line me-1"></i> Evaluar
                                      </button>`;
                     } else {
-                        btnAction = `<button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold" onClick="fntViewDetalle(${data})" title="Ver Detalle">
+                        btnAction = `<button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold" onClick="fntViewDetalle(${data}, '${row.folio}', ${row.costo_total}, ${row.km_total}, '${obsEsc}')" title="Ver Detalle">
                                         <i class="ri-eye-line me-1"></i> Detalle
                                      </button>`;
                     }
@@ -103,10 +103,10 @@ function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
     // 1. Limpiar Modal
     document.querySelector("#formAprobacion").reset();
     document.getElementById('id_planeacion').value = idPlaneacion;
-    document.getElementById('lblFolioModal').innerText = folio;
-    document.getElementById('lblCostoModal').innerText = '$' + parseFloat(costo).toFixed(2);
-    document.getElementById('lblKmModal').innerText = parseFloat(km).toFixed(2);
-    document.getElementById('lblObsOperador').innerText = (obs == 'null' || obs == '') ? 'Sin observaciones del operador.' : obs;
+    document.getElementById('lblFolioModal').innerText = folio || ('PL-' + idPlaneacion);
+    document.getElementById('lblCostoModal').innerText = '$' + (parseFloat(costo) || 0).toFixed(2);
+    document.getElementById('lblKmModal').innerText = (parseFloat(km) || 0).toFixed(2) + ' km';
+    document.getElementById('lblObsOperador').innerText = (obs == 'null' || !obs) ? 'Sin observaciones del operador.' : obs;
     
     document.getElementById('bodyDetalleRutas').innerHTML = '<tr><td colspan="6" class="text-center"><div class="spinner-border text-primary spinner-border-sm" role="status"></div> Cargando rutas...</td></tr>';
     
@@ -129,7 +129,13 @@ function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
             let htmlBody = '';
             
             if (objData.status && objData.data.length > 0) {
+                let calcCosto = 0;
+                let calcKm = 0;
+
                 objData.data.forEach(ruta => {
+                    calcCosto += parseFloat(ruta.costo_total) || 0;
+                    calcKm += parseFloat(ruta.km_total) || 0;
+
                     htmlBody += `
                         <tr>
                             <td class="fw-bold text-primary">${ruta.folio}</td>
@@ -141,6 +147,14 @@ function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
                         </tr>
                     `;
                 });
+
+                // Si no venía costo o km en cabecera, actualizar con la suma de las rutas
+                if (!costo || parseFloat(costo) === 0) {
+                    document.getElementById('lblCostoModal').innerText = '$' + calcCosto.toFixed(2);
+                }
+                if (!km || parseFloat(km) === 0) {
+                    document.getElementById('lblKmModal').innerText = calcKm.toFixed(2) + ' km';
+                }
             } else {
                 htmlBody = '<tr><td colspan="6" class="text-center text-muted">No se encontraron rutas asociadas.</td></tr>';
             }
@@ -150,8 +164,8 @@ function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
     }
 }
 
-function fntViewDetalle(idPlaneacion) {
-    fntEvaluarPlan(idPlaneacion, 'PL-' + idPlaneacion, 0, 0, '');
+function fntViewDetalle(idPlaneacion, folio, costo, km, obs) {
+    fntEvaluarPlan(idPlaneacion, folio, costo, km, obs);
     const btnApprove = document.getElementById('btnAprobarModal');
     const btnReject = document.getElementById('btnRechazarModal');
     if (btnApprove) btnApprove.style.display = 'none';
