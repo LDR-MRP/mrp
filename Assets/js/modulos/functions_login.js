@@ -1,605 +1,187 @@
 const Toast = Swal.mixin({
   toast: true,
-  position: "top-end",
+  position: 'top-end',
   showConfirmButton: false,
   timer: 3000,
   timerProgressBar: true,
   didOpen: (toast) => {
-    toast.addEventListener("mouseenter", Swal.stopTimer);
-    toast.addEventListener("mouseleave", Swal.resumeTimer);
+    toast.addEventListener('mouseenter', Swal.stopTimer);
+    toast.addEventListener('mouseleave', Swal.resumeTimer);
   }
 });
 
-
-/**
- * ==========================================================
- * NOTIFICACIONES
- * ==========================================================
- */
-function notifyToast(message, icon = "info", timer = 3000) {
-  if (
-    typeof Sys_Core !== "undefined" &&
-    Sys_Core.UI &&
-    typeof Sys_Core.UI.notify === "function"
-  ) {
-    Sys_Core.UI.notify(
-      message,
-      icon,
-      "top-end",
-      timer
-    );
-
-    return;
+function notifyToast(message, icon = 'info', timer = 3000) {
+  if (typeof Sys_Core !== 'undefined' && Sys_Core.UI && Sys_Core.UI.notify) {
+    Sys_Core.UI.notify(message, icon, 'top-end', timer);
+  } else {
+    Toast.fire({ icon: icon, title: message, timer: timer });
   }
-
-  Toast.fire({
-    icon: icon,
-    title: message,
-    timer: timer
-  });
 }
 
-
-/**
- * ==========================================================
- * FLIP LOGIN / RECUPERAR CONTRASEÑA
- * ==========================================================
- *
- */
-$(".login-content [data-toggle='flip']").click(function () {
+$('.login-content [data-toggle="flip"]').click(function () {
   $(".login-box").toggleClass("flipped");
   return false;
 });
 
-
-/**
- * ==========================================================
- * LOADING
- * ==========================================================
- */
-const divLoading = document.querySelector("#divLoading");
-
-
-function mostrarLoading() {
-  if (divLoading) {
-    divLoading.style.display = "flex";
-  }
-}
-
-
-function ocultarLoading() {
-  if (divLoading) {
-    divLoading.style.display = "none";
-  }
-}
-
-
-/**
- * ==========================================================
- * PETICIÓN AJAX GENÉRICA
- * ==========================================================
- */
-function enviarFormulario(url, formData, callback) {
-
-  const request = window.XMLHttpRequest
-    ? new XMLHttpRequest()
-    : new ActiveXObject("Microsoft.XMLHTTP");
-
-
-  request.open(
-    "POST",
-    url,
-    true
-  );
-
-
-  request.onreadystatechange = function () {
-
-    if (request.readyState !== 4) {
-      return;
-    }
-
-
-    ocultarLoading();
-
-
-    if (request.status !== 200) {
-
-      console.error(
-        "Error HTTP:",
-        request.status,
-        request.responseText
-      );
-
-
-      notifyToast(
-        "Ocurrió un error en el servidor.",
-        "error"
-      );
-
-      return;
-    }
-
-
-    try {
-
-      const objData =
-        JSON.parse(
-          request.responseText
-        );
-
-
-      callback(
-        objData
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "Error procesando JSON:",
-        request.responseText
-      );
-
-
-      notifyToast(
-        "Error al procesar la respuesta del servidor.",
-        "error"
-      );
-    }
-  };
-
-
-  request.onerror = function () {
-
-    ocultarLoading();
-
-
-    notifyToast(
-      "No fue posible conectar con el servidor.",
-      "error"
-    );
-  };
-
-
-  request.send(
-    formData
-  );
-}
-
-
-/**
- * ==========================================================
- * DOM READY
- * ==========================================================
- */
+var divLoading = document.querySelector("#divLoading");
 document.addEventListener(
   "DOMContentLoaded",
   function () {
+    if (document.querySelector("#formLogin")) {
+      let formLogin = document.querySelector("#formLogin");
+      formLogin.onsubmit = function (e) {
+        e.preventDefault();
 
+        let strEmail = document.querySelector("#txtEmail").value;
+        let strPassword = document.querySelector("#txtPassword").value;
 
-    /**
-     * ======================================================
-     * LOGIN TRADICIONAL
-     * ======================================================
-     *
-     * IMPORANTE:
-     *
-     * Este login solamente se utiliza cuando:
-     *
-     * - no existe cookie SSO
-     * - el token SSO está vencido
-     * - el token SSO es inválido
-     *
-     * Si existe un token válido, el contrlador PHP redirige
-     * automáticmente al dashboard antes de mostrar esta vista.
-     */
-    const formLogin =
-      document.querySelector(
-        "#formLogin"
-      );
-
-
-    if (formLogin) {
-
-      formLogin.addEventListener(
-        "submit",
-        function (e) {
-
-          e.preventDefault();
-
-
-          const inputEmail =
-            document.querySelector(
-              "#txtEmail"
-            );
-
-
-          const inputPassword =
-            document.querySelector(
-              "#txtPassword"
-            );
-
-
-          if (
-            !inputEmail ||
-            !inputPassword
-          ) {
-
-            notifyToast(
-              "No fue posible cargar el formulario de acceso.",
-              "error"
-            );
-
-            return;
-          }
-
-
-          const strEmail =
-            inputEmail.value.trim();
-
-
-          const strPassword =
-            inputPassword.value;
-
-
-          /**
-           * Validar campos
-           */
-          if (
-            strEmail === "" ||
-            strPassword === ""
-          ) {
-
-            notifyToast(
-              "Introduce tus credenciales de acceso.",
-              "warning"
-            );
-
-            return;
-          }
-
-
-          mostrarLoading();
-
-
-          const ajaxUrl =
-            base_url +
-            "/Login/loginUser";
-
-
-          const formData =
-            new FormData(
-              formLogin
-            );
-
-
-          enviarFormulario(
-            ajaxUrl,
-            formData,
-            function (objData) {
-
-              if (objData.status) {
-
-                notifyToast(
-                  "¡Acceso correcto! Redirigiendo...",
-                  "success",
-                  1500
-                );
-
-
-                setTimeout(
-                  function () {
-
-                    window.location.href =
-                      base_url +
-                      "/dashboard";
-
-                  },
-                  600
-                );
-
-                return;
+        if (strEmail == "" || strPassword == "") {
+          notifyToast("Introduce tus credenciales de acceso", "warning");
+          return false;
+        } else {
+          divLoading.style.display = "flex";
+          var request = window.XMLHttpRequest
+            ? new XMLHttpRequest()
+            : new ActiveXObject("Microsoft.XMLHTTP");
+          var ajaxUrl = base_url + "/Login/loginUser";
+          var formData = new FormData(formLogin);
+          request.open("POST", ajaxUrl, true);
+          request.send(formData);
+          request.onreadystatechange = function () {
+            if (request.readyState != 4) return;
+            if (request.status == 200) {
+              try {
+                var objData = JSON.parse(request.responseText);
+                if (objData.status) {
+                  notifyToast("¡Acceso correcto! Redirigiendo...", "success", 1500);
+                  setTimeout(function () {
+                    window.location.href = base_url + "/dashboard";
+                  }, 600);
+                } else {
+                  notifyToast(objData.msg || "Usuario o contraseña incorrecto.", "error");
+                  document.querySelector("#txtPassword").value = "";
+                }
+              } catch (err) {
+                console.error("Error procesando respuesta:", request.responseText);
+                notifyToast("Error al procesar la respuesta del servidor.", "error");
               }
-
-
-              notifyToast(
-                objData.msg ||
-                "Usuario o contraseña incorrectos.",
-                "error"
-              );
-
-
-              inputPassword.value = "";
-
-              inputPassword.focus();
+            } else {
+              notifyToast("Error en el proceso de autenticación.", "error");
             }
-          );
+            divLoading.style.display = "none";
+            return false;
+          };
         }
-      );
+      };
     }
 
+    if (document.querySelector("#formRecetPass")) {
+      let formRecetPass = document.querySelector("#formRecetPass");
+      formRecetPass.onsubmit = function (e) {
+        e.preventDefault();
 
-    /**
-     * ======================================================
-     * RECUPERAR CONTRASEÑA
-     * ======================================================
-     */
-    const formRecetPass =
-      document.querySelector(
-        "#formRecetPass"
-      );
+        let strEmail = document.querySelector("#txtEmailReset").value;
+        if (strEmail == "") {
+          notifyToast("Escribe tu correo electrónico.", "warning");
+          return false;
+        } else {
+          divLoading.style.display = "flex";
+          var request = window.XMLHttpRequest
+            ? new XMLHttpRequest()
+            : new ActiveXObject("Microsoft.XMLHTTP");
 
+          var ajaxUrl = base_url + "/Login/resetPass";
+          var formData = new FormData(formRecetPass);
+          request.open("POST", ajaxUrl, true);
+          request.send(formData);
+          request.onreadystatechange = function () {
+            if (request.readyState != 4) return;
 
-    if (formRecetPass) {
-
-      formRecetPass.addEventListener(
-        "submit",
-        function (e) {
-
-          e.preventDefault();
-
-
-          const inputEmailReset =
-            document.querySelector(
-              "#txtEmailReset"
-            );
-
-
-          if (!inputEmailReset) {
-
-            notifyToast(
-              "No fue posible cargar el formulario de recuperación.",
-              "error"
-            );
-
-            return;
-          }
-
-
-          const strEmail =
-            inputEmailReset.value.trim();
-
-
-          if (strEmail === "") {
-
-            notifyToast(
-              "Escribe tu correo electrónico.",
-              "warning"
-            );
-
-            return;
-          }
-
-
-          mostrarLoading();
-
-
-          const ajaxUrl =
-            base_url +
-            "/Login/resetPass";
-
-
-          const formData =
-            new FormData(
-              formRecetPass
-            );
-
-
-          enviarFormulario(
-            ajaxUrl,
-            formData,
-            function (objData) {
-
-              if (objData.status) {
-
-                notifyToast(
-                  objData.msg ||
-                  "Solicitud procesada correctamente.",
-                  "success",
-                  4000
-                );
-
-
-                inputEmailReset.value =
-                  "";
-
-
-                setTimeout(
-                  function () {
-
-                    if (
-                      typeof flipCard ===
-                      "function"
-                    ) {
-
+            if (request.status == 200) {
+              try {
+                var objData = JSON.parse(request.responseText);
+                if (objData.status) {
+                  notifyToast(objData.msg, "success", 4000);
+                  document.querySelector("#txtEmailReset").value = "";
+                  setTimeout(function () {
+                    if (typeof flipCard === "function") {
                       flipCard();
-
                     } else {
-
-                      window.location.href =
-                        base_url +
-                        "/login";
+                      window.location = base_url + "/login";
                     }
-
-                  },
-                  1800
-                );
-
-
-                return;
+                  }, 1800);
+                } else {
+                  notifyToast(objData.msg, "error");
+                }
+              } catch (err) {
+                console.error("Error procesando respuesta:", request.responseText);
+                notifyToast("Error en el servidor al solicitar restablecimiento.", "error");
               }
-
-
-              notifyToast(
-                objData.msg ||
-                "No fue posible realizar la recuperación.",
-                "error"
-              );
+            } else {
+              notifyToast("Error en el proceso de recuperación.", "error");
             }
-          );
+            divLoading.style.display = "none";
+            return false;
+          };
         }
-      );
+      };
     }
 
+    if (document.querySelector("#formCambiarPass")) {
+      let formCambiarPass = document.querySelector("#formCambiarPass");
+      formCambiarPass.onsubmit = function (e) {
+        e.preventDefault();
 
-    /**
-     * ======================================================
-     * CAMBIAR CONTRASEÑA
-     * ======================================================
-     */
-    const formCambiarPass =
-      document.querySelector(
-        "#formCambiarPass"
-      );
+        let strPassword = document.querySelector("#txtPassword").value;
+        let strPasswordConfirm = document.querySelector(
+          "#txtPasswordConfirm",
+        ).value;
 
-
-    if (formCambiarPass) {
-
-      formCambiarPass.addEventListener(
-        "submit",
-        function (e) {
-
-          e.preventDefault();
-
-
-          const inputPassword =
-            document.querySelector(
-              "#txtPassword"
-            );
-
-
-          const inputPasswordConfirm =
-            document.querySelector(
-              "#txtPasswordConfirm"
-            );
-
-
-          if (
-            !inputPassword ||
-            !inputPasswordConfirm
-          ) {
-
-            notifyToast(
-              "No fue posible cargar el formulario.",
-              "error"
-            );
-
-            return;
+        if (strPassword == "" || strPasswordConfirm == "") {
+          notifyToast("Escribe la nueva contraseña.", "warning");
+          return false;
+        } else {
+          if (strPassword.length < 5) {
+            notifyToast("La contraseña debe tener un mínimo de 5 caracteres.", "info");
+            return false;
           }
-
-
-          const strPassword =
-            inputPassword.value;
-
-
-          const strPasswordConfirm =
-            inputPasswordConfirm.value;
-
-
-          /**
-           * Campos vacíos
-           */
-          if (
-            strPassword === "" ||
-            strPasswordConfirm === ""
-          ) {
-
-            notifyToast(
-              "Escribe la nueva contraseña.",
-              "warning"
-            );
-
-            return;
+          if (strPassword != strPasswordConfirm) {
+            notifyToast("Las contraseñas no coinciden.", "error");
+            return false;
           }
-
-
-          /**
-           * Longitud mínima
-           */
-          if (
-            strPassword.length < 5
-          ) {
-
-            notifyToast(
-              "La contraseña debe tener un mínimo de 5 caracteres.",
-              "info"
-            );
-
-            return;
-          }
-
-
-          /**
-           * Confirmación
-           */
-          if (
-            strPassword !==
-            strPasswordConfirm
-          ) {
-
-            notifyToast(
-              "Las contraseñas no coinciden.",
-              "error"
-            );
-
-            return;
-          }
-
-
-          mostrarLoading();
-
-
-          const ajaxUrl =base_url +"/Login/setPassword";
-
-
-          const formData =
-            new FormData(
-              formCambiarPass
-            );
-
-
-          enviarFormulario(
-            ajaxUrl,
-            formData,
-            function (objData) {
-
-              if (objData.status) {
-
-                notifyToast(
-                  objData.msg ||
-                  "Contraseña actualizada con éxito.",
-                  "success",
-                  3000
-                );
-
-
-                setTimeout(
-                  function () {
-
-                    window.location.href =
-                      base_url +
-                      "/login";
-
-                  },
-                  1500
-                );
-
-
-                return;
+          divLoading.style.display = "flex";
+          var request = window.XMLHttpRequest
+            ? new XMLHttpRequest()
+            : new ActiveXObject("Microsoft.XMLHTTP");
+          var ajaxUrl = base_url + "/Login/setPassword";
+          var formData = new FormData(formCambiarPass);
+          request.open("POST", ajaxUrl, true);
+          request.send(formData);
+          request.onreadystatechange = function () {
+            if (request.readyState != 4) return;
+            if (request.status == 200) {
+              try {
+                var objData = JSON.parse(request.responseText);
+                if (objData.status) {
+                  notifyToast(objData.msg || "Contraseña actualizada con éxito.", "success", 3000);
+                  setTimeout(function () {
+                    window.location = base_url + "/login";
+                  }, 1500);
+                } else {
+                  notifyToast(objData.msg, "error");
+                }
+              } catch (err) {
+                console.error("Error procesando respuesta:", request.responseText);
+                notifyToast("Error en el servidor al actualizar la contraseña.", "error");
               }
-
-
-              notifyToast(
-                objData.msg ||
-                "No fue posible actualizar la contraseña.",
-                "error"
-              );
+            } else {
+              notifyToast("Error en el proceso.", "error");
             }
-          );
+            divLoading.style.display = "none";
+          };
         }
-      );
+      };
     }
   },
-  false
+  false,
 );
