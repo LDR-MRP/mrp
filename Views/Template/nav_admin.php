@@ -503,54 +503,53 @@
                                        </a>
                                    </li>
 
-                                   <!-- Mis Planeaciones -->
-                                   <li class="nav-item">
-                                       <a href="<?= base_url(); ?>/Lgs_planeaciones" class="nav-link" data-key="t-lgs-planeaciones">
-                                           <i class="ri-file-list-3-line align-bottom me-1"></i> Mis Planeaciones
-                                       </a>
-                                   </li>
+                                    <!-- Mis Planeaciones -->
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/Lgs_planeaciones" class="nav-link" data-key="t-lgs-planeaciones">
+                                            <i class="ri-file-list-3-line align-bottom me-1"></i> Mis Planeaciones
+                                        </a>
+                                    </li>
 
-                                   <!-- Panel de Aprobaciones -->
-                                   <li class="nav-item">
-                                       <a href="<?= base_url(); ?>/Lgs_aprobaciones" class="nav-link" data-key="t-lgs-aprobaciones">
-                                           <i class="ri-checkbox-circle-line align-bottom me-1"></i> Aprobaciones
-                                       </a>
-                                   </li>
+                                    <!-- ==========================================================
+                                         MÓDULOS DE LOGÍSTICA PENDIENTES DE ENTREGA (COMENTADOS)
+                                    ========================================================== -->
+                                    <!--
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/Lgs_aprobaciones" class="nav-link" data-key="t-lgs-aprobaciones">
+                                            <i class="ri-checkbox-circle-line align-bottom me-1"></i> Aprobaciones
+                                        </a>
+                                    </li>
 
-                                   <!-- Mesa de Despacho -->
-                                   <li class="nav-item">
-                                       <a href="<?= base_url(); ?>/Lgs_ejecucion" class="nav-link" data-key="t-lgs-ejecucion">
-                                           <i class="ri-ship-line align-bottom me-1"></i> Mesa de Despacho
-                                       </a>
-                                   </li>
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/Lgs_ejecucion" class="nav-link" data-key="t-lgs-ejecucion">
+                                            <i class="ri-ship-line align-bottom me-1"></i> Mesa de Despacho
+                                        </a>
+                                    </li>
 
-                                   <!-- Evidencias y Cierre -->
-                                   <li class="nav-item">
-                                       <a href="<?= base_url(); ?>/Lgs_evidencias" class="nav-link" data-key="t-lgs-evidencias">
-                                           <i class="ri-camera-lens-line align-bottom me-1"></i> Evidencias y Cierre
-                                       </a>
-                                   </li>
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/Lgs_evidencias" class="nav-link" data-key="t-lgs-evidencias">
+                                            <i class="ri-camera-lens-line align-bottom me-1"></i> Evidencias y Cierre
+                                        </a>
+                                    </li>
 
-                                   <!-- Monitoreo GPS y Rutas -->
-                                   <li class="nav-item">
-                                       <a href="<?= base_url(); ?>/Lgs_panelrutas" class="nav-link" data-key="t-lgs-panelrutas">
-                                           <i class="ri-map-pin-user-line align-bottom me-1"></i> Monitoreo GPS
-                                       </a>
-                                   </li>
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/Lgs_panelrutas" class="nav-link" data-key="t-lgs-panelrutas">
+                                            <i class="ri-map-pin-user-line align-bottom me-1"></i> Monitoreo GPS
+                                        </a>
+                                    </li>
 
-                                   <!-- Inspección Móvil Trasladista -->
-                                   <li class="nav-item">
-                                       <a href="<?= base_url(); ?>/Lgs_ejecucion/chofer_movil" target="_blank" class="nav-link text-warning" data-key="t-lgs-chofer-movil">
-                                           <i class="ri-smartphone-line align-bottom me-1"></i> Portal Trasladista
-                                       </a>
-                                   </li>
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/Lgs_ejecucion/chofer_movil" target="_blank" class="nav-link text-warning" data-key="t-lgs-chofer-movil">
+                                            <i class="ri-smartphone-line align-bottom me-1"></i> Portal Trasladista
+                                        </a>
+                                    </li>
 
-                                   <!-- Confirmación Entrega Destino (QR) -->
-                                   <li class="nav-item">
-                                       <a href="<?= base_url(); ?>/Lgs_ejecucion/entrega_destino" target="_blank" class="nav-link text-success" data-key="t-lgs-entrega-qr">
-                                           <i class="ri-qr-code-line align-bottom me-1"></i> Entrega en Destino (QR)
-                                       </a>
-                                   </li>
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/Lgs_ejecucion/entrega_destino" target="_blank" class="nav-link text-success" data-key="t-lgs-entrega-qr">
+                                            <i class="ri-qr-code-line align-bottom me-1"></i> Entrega en Destino (QR)
+                                        </a>
+                                    </li>
+                                    -->
 
                               </ul>
                           </div>
