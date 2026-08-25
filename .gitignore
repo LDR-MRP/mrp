@@ -1,5 +1,6 @@
 # Archivos subidos por usuarios / temporales
 Assets/uploads/
+Assets/images/uploads/
 
 # Plantillas locales
 
@@ -30,6 +31,7 @@ PLAN_DESARROLLO_TECNICO_LOGISTICA.md
 db info/
 db_info/
 *.sql
+docs_migracion_logistica/
 
 # vscode config
 .vscode/
@@ -38,5 +40,6 @@ db_info/
 docker/
 docker-compose.yml
 
-# Archivos de interfaz de ejemplo
+# Archivos de interfaz y datos de ejemplo
 interfaz ejemplo*
+ejemplo precios*

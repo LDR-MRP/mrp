@@ -103,7 +103,11 @@ Este documento registra el progreso de desarrollo del módulo de Logística. Aqu
 - **Programación de Recolección (Mesa de Despacho):** El administrativo define la fecha pactada de recolección para envíos aprobados; las unidades pasan a `EN_ENTREGAS` para preparación en el área de entregas del patio origen.
 - **Portal Móvil de Trasladistas (`Views/Lgs_ejecucion/chofer_movil.php`):** Interfaz táctil y responsiva con escaneo de VIN por cámara (código de barras / QR) y carga obligatoria de 5 fotografías de inspección (Frente, Atrás, Lateral Izq, Lateral Der, Odómetro).
 - **Doble Verificación de Salida:** Salida sincronizada de planta donde logística valida entrega física y trasladista confirma recepción, pasando el envío a `6 = En Tránsito` y unidades a `EN_RUTA`.
-- **Entrega en Destino con QR (`Views/Lgs_ejecucion/entrega_destino.php`):** Escaneo de código QR de concesionario/cliente en punto de llegada, validación individual de VINs descargados, remisión firmada y transición a `7 = Entregado`.
+### 5. **Monitoreo GPS y Desembarque Secuencial (25 de Agosto 2026)**
+- **Resolución Integral de Destinos por VIN:** Se optimizó `Lgs_panelrutasModel::getDetalleDestinosRuta` para resolver con prioridad el destino asignado en parada (`ev.id_parada`), vinculando con clientes (`cli_clientes`), catálogos (`lgs_cat_destinos`), destinos libres o destinos del envío, resolviendo nombres comerciales y coordenadas GPS sin mostrar "Destino no especificado".
+- **Orden de Desembarque en Itinerario:** Se configuró el ordenamiento de los VINs según la secuencia de paradas de la ruta (`ORDER BY COALESCE(ep.orden, 999) ASC, ev.posicion_acomodo ASC, ev.id ASC`), garantizando que las unidades asignadas a la primera parada aparezcan primero con sus insignias de secuencia (`#1`, `#2`, etc.).
+- **Estados Dinámicos de Unidad (`En Madrina` / `Entregado`):** En `functions_lgs_panelrutas.js`, se integraron badges visuales que muestran si la unidad está en tránsito a bordo (`En Madrina`) o si ya completó su entrega física en destino (`Entregado`), con integración en el buscador en vivo.
+- **Módulo de Evidencias Multimedia y Limpieza:** Refactorización en `Lgs_evidenciasModel.php`, `Lgs_evidencias.php` y vistas asociadas para el registro, consulta y eliminación transaccional de evidencias.
 
 ---
 

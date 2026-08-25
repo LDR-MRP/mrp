@@ -475,33 +475,40 @@
                           <div class="collapse menu-dropdown" id="sidebarLogistica">
                               <ul class="nav nav-sm flex-column">
 
-                                   <!-- Tarifas y Costos -->
-                                   <li class="nav-item">
-                                       <a href="<?= base_url(); ?>/Lgs_costos" class="nav-link" data-key="t-lgs-costos">
-                                           <i class="ri-money-dollar-circle-line align-bottom me-1"></i> Tarifas y Costos
-                                       </a>
-                                   </li>
+                                    <!-- Bandeja de Logística -->
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/Lgs_bandeja" class="nav-link" data-key="t-lgs-bandeja">
+                                            <i class="ri-inbox-archive-line align-bottom me-1"></i> Bandeja de Unidades
+                                        </a>
+                                    </li>
 
-                                   <!-- Madrinas -->
-                                   <li class="nav-item">
-                                       <a href="<?= base_url(); ?>/prv_madrinas" class="nav-link" data-key="t-madrinas">
-                                           <i class="ri-truck-fill align-bottom me-1"></i> Madrinas
-                                       </a>
-                                   </li>
+                                    <!-- Tarifas y Costos -->
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/Lgs_costos" class="nav-link" data-key="t-lgs-costos">
+                                            <i class="ri-money-dollar-circle-line align-bottom me-1"></i> Tarifas y Costos
+                                        </a>
+                                    </li>
 
-                                   <!-- Choferes -->
-                                   <li class="nav-item">
-                                       <a href="<?= base_url(); ?>/prv_choferes" class="nav-link" data-key="t-choferes">
-                                           <i class="ri-steering-2-line align-bottom me-1"></i> Choferes
-                                       </a>
-                                   </li>
+                                    <!-- Madrinas -->
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/prv_madrinas" class="nav-link" data-key="t-madrinas">
+                                            <i class="ri-truck-fill align-bottom me-1"></i> Madrinas
+                                        </a>
+                                    </li>
 
-                                   <!-- Mis Envíos -->
-                                   <li class="nav-item">
-                                       <a href="<?= base_url(); ?>/Lgs_envios" class="nav-link" data-key="t-lgs-envios">
-                                           <i class="ri-route-line align-bottom me-1"></i> Mis Envíos
-                                       </a>
-                                   </li>
+                                    <!-- Choferes -->
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/prv_choferes" class="nav-link" data-key="t-choferes">
+                                            <i class="ri-steering-2-line align-bottom me-1"></i> Choferes
+                                        </a>
+                                    </li>
+
+                                    <!-- Mis Envíos -->
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/Lgs_envios" class="nav-link" data-key="t-lgs-envios">
+                                            <i class="ri-route-line align-bottom me-1"></i> Mis Envíos
+                                        </a>
+                                    </li>
 
                                     <!-- Mis Planeaciones -->
                                     <li class="nav-item">
@@ -510,46 +517,47 @@
                                         </a>
                                     </li>
 
-                                    <!-- ==========================================================
-                                         MÓDULOS DE LOGÍSTICA PENDIENTES DE ENTREGA (COMENTADOS)
-                                    ========================================================== -->
-                                    <!--
+                                    <!-- Aprobaciones -->
                                     <li class="nav-item">
                                         <a href="<?= base_url(); ?>/Lgs_aprobaciones" class="nav-link" data-key="t-lgs-aprobaciones">
                                             <i class="ri-checkbox-circle-line align-bottom me-1"></i> Aprobaciones
                                         </a>
                                     </li>
 
+                                    <!-- Mesa de Despacho -->
                                     <li class="nav-item">
                                         <a href="<?= base_url(); ?>/Lgs_ejecucion" class="nav-link" data-key="t-lgs-ejecucion">
                                             <i class="ri-ship-line align-bottom me-1"></i> Mesa de Despacho
                                         </a>
                                     </li>
 
+                                    <!-- Evidencias y Cierre -->
                                     <li class="nav-item">
                                         <a href="<?= base_url(); ?>/Lgs_evidencias" class="nav-link" data-key="t-lgs-evidencias">
                                             <i class="ri-camera-lens-line align-bottom me-1"></i> Evidencias y Cierre
                                         </a>
                                     </li>
 
+                                    <!-- Monitoreo GPS -->
                                     <li class="nav-item">
                                         <a href="<?= base_url(); ?>/Lgs_panelrutas" class="nav-link" data-key="t-lgs-panelrutas">
                                             <i class="ri-map-pin-user-line align-bottom me-1"></i> Monitoreo GPS
                                         </a>
                                     </li>
 
+                                    <!-- Portal Trasladista (Móvil) -->
                                     <li class="nav-item">
                                         <a href="<?= base_url(); ?>/Lgs_ejecucion/chofer_movil" target="_blank" class="nav-link text-warning" data-key="t-lgs-chofer-movil">
                                             <i class="ri-smartphone-line align-bottom me-1"></i> Portal Trasladista
                                         </a>
                                     </li>
 
+                                    <!-- Entrega en Destino (QR) -->
                                     <li class="nav-item">
                                         <a href="<?= base_url(); ?>/Lgs_ejecucion/entrega_destino" target="_blank" class="nav-link text-success" data-key="t-lgs-entrega-qr">
-                                            <i class="ri-qr-code-line align-bottom me-1"></i> Entrega en Destino (QR)
+                                            <i class="ri-qr-code-line align-bottom me-1"></i> Recepción Destino (QR)
                                         </a>
                                     </li>
-                                    -->
 
                               </ul>
                           </div>

@@ -81,6 +81,12 @@ function cargarDetalleEntrega(idEnvio) {
 }
 
 function iniciarEscaneoQR() {
+    const idEnvio = document.getElementById('ent_id_envio').value;
+    if (!idEnvio) {
+        Swal.fire("Atención", "Seleccione primero un viaje para validar su entrega.", "warning");
+        return;
+    }
+
     const escaneoContainer = document.getElementById('qr-escaneo-container');
     escaneoContainer.classList.remove('d-none');
 
@@ -95,19 +101,52 @@ function iniciarEscaneoQR() {
     );
 
     activeHtml5QrcodeScanner.render((decodedText, decodedResult) => {
-        // En un caso real, validaríamos que el QR coincida con el ID del cliente o token del viaje.
-        // Aquí simulamos validación exitosa.
-        document.getElementById('qr_cliente_validado').value = "1";
-        
-        const statusEl = document.getElementById('lblStatusQR');
-        statusEl.innerHTML = '<i class="ri-checkbox-circle-line me-1"></i>QR de Cliente Validado';
-        statusEl.className = 'text-success fw-bold fs-13 mt-2';
-
-        activeHtml5QrcodeScanner.clear();
+        // Pausar/limpiar cámara
+        if (activeHtml5QrcodeScanner) {
+            try { activeHtml5QrcodeScanner.clear(); } catch(e){}
+        }
         escaneoContainer.classList.add('d-none');
-        Swal.fire("Cliente Validado", "Identidad y localización de entrega validadas correctamente.", "success");
+
+        Swal.fire({
+            title: 'Validando QR...',
+            text: 'Verificando con el servidor',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        let formData = new FormData();
+        formData.append('id_envio', idEnvio);
+        formData.append('texto_qr', decodedText);
+
+        fetch(base_url + '/Lgs_ejecucion/validarQrCliente', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(res => {
+            if (res.status === 'success' || res.status === true) {
+                document.getElementById('qr_cliente_validado').value = "1";
+                
+                const statusEl = document.getElementById('lblStatusQR');
+                statusEl.innerHTML = `<i class="ri-checkbox-circle-line me-1"></i>${res.message || 'QR Validado Correctamente'}`;
+                statusEl.className = 'text-success fw-bold fs-13 mt-2';
+
+                Swal.fire("¡Cliente / Destino Validado!", res.message || "Identidad y localización validadas correctamente.", "success");
+            } else {
+                document.getElementById('qr_cliente_validado').value = "0";
+                const statusEl = document.getElementById('lblStatusQR');
+                statusEl.innerHTML = '<i class="ri-close-circle-line me-1"></i>QR Inválido o No Coincide';
+                statusEl.className = 'text-danger fw-bold fs-13 mt-2';
+
+                Swal.fire("QR Inválido", res.message || "El código escaneado no corresponde a este viaje o destino.", "error");
+            }
+        })
+        .catch(err => {
+            document.getElementById('qr_cliente_validado').value = "0";
+            Swal.fire("Error", "Falla de comunicación al validar el código QR.", "error");
+        });
     }, (error) => {
-        // Ignorar
+        // Ignorar errores de frame
     });
 }
 

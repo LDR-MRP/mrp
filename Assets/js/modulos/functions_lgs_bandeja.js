@@ -29,7 +29,11 @@ function initTableBandeja() {
                 + '&destino=' + encodeURIComponent(destino)
                 + '&motivo=' + encodeURIComponent(motivo)
                 + '&busqueda=' + encodeURIComponent(busqueda),
-            dataSrc: ''
+            dataSrc: function (json) {
+                const list = Array.isArray(json) ? json : (json.data || []);
+                actualizarKpisBandeja(list);
+                return list;
+            }
         },
         columns: [
             { data: 'id_lgs_unidad' },
@@ -82,6 +86,24 @@ function initTableBandeja() {
 
 function recargarBandeja() {
     initTableBandeja();
+}
+
+function actualizarKpisBandeja(list) {
+    if (!Array.isArray(list)) return;
+    const total = list.length;
+    const pendientes = list.filter(r => parseInt(r.id_estado_proceso) === 1).length;
+    const transito   = list.filter(r => parseInt(r.id_estado_proceso) === 2).length;
+    const entregados = list.filter(r => parseInt(r.id_estado_proceso) === 3).length;
+
+    const elTotal = document.getElementById('kpi-total-bandeja');
+    const elPend  = document.getElementById('kpi-pendientes-bandeja');
+    const elTran  = document.getElementById('kpi-transito-bandeja');
+    const elEntr  = document.getElementById('kpi-entregados-bandeja');
+
+    if (elTotal) elTotal.textContent = total;
+    if (elPend)  elPend.textContent  = pendientes;
+    if (elTran)  elTran.textContent  = transito;
+    if (elEntr)  elEntr.textContent  = entregados;
 }
 
 // ─── Ver Detalle ─────────────────────────────────────────────────────────────

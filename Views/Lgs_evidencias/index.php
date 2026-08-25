@@ -125,9 +125,10 @@
                             <table id="tableEvidencias" class="table table-hover table-lg align-middle mb-0" style="width:100% !important;">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">ID</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Folio Envío</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Trasladista</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Origen</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Total VINs</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Evidencias Adjuntas</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado</th>
                                         <th scope="col" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
@@ -152,51 +153,95 @@
 </div>
 
 <!-- MODAL EVIDENCIAS Y CIERRE -->
-<div class="modal fade" id="modalSubirEvidencia" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+<div class="modal fade" id="modalEvidencias" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0 shadow-lg rounded-3">
             <div class="modal-header bg-light border-bottom-0 pb-3">
-                <h5 class="modal-title fw-bold text-primary" id="titleModalEvidencia"><i class="ri-camera-lens-line me-1"></i> Cargar Evidencia de Entrega</h5>
+                <div>
+                    <h5 class="modal-title fw-bold text-primary mb-0" id="titleModalEvidencia">
+                        <i class="ri-camera-lens-line me-1"></i> Evidencias del Envío <span id="lblFolioEvidencia" class="badge bg-primary text-white fs-13 ms-2"></span>
+                    </h5>
+                    <small class="text-muted">Registro unificado de evidencias (Patio, Chofer Móvil y Recepción en Destino)</small>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
-                <form id="formEvidencia" enctype="multipart/form-data">
-                    <input type="hidden" id="evid_id_envio" name="id_envio" value="">
-                    
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Folio Envío</label>
-                            <input type="text" class="form-control bg-light border-0 fw-bold" id="evid_folio" readonly>
+                <!-- FORMULARIO DE CARGA DE EVIDENCIA -->
+                <div class="card border rounded-3 p-3 mb-4 bg-light">
+                    <h6 class="fw-bold fs-13 text-dark mb-3"><i class="ri-upload-cloud-line me-1 text-primary"></i> Subir Nueva Evidencia</h6>
+                    <form id="formEvidencia" enctype="multipart/form-data">
+                        <input type="hidden" id="id_envio_evidencia" name="id_envio" value="">
+                        
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-muted fs-11 text-uppercase">Unidad / VIN (Opcional)</label>
+                                <select class="form-select fs-13" id="select_evid_unidad" name="id_unidad">
+                                    <option value="">General del Envío (Todos)</option>
+                                    <!-- Inyectado dinámicamente -->
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-muted fs-11 text-uppercase">Tipo de Evidencia</label>
+                                <select class="form-select fs-13" id="evid_tipo" name="tipo_evidencia" required>
+                                    <option value="1">1. Salida / Inspección en Patio</option>
+                                    <option value="2">2. Llegada / Entrega en Destino</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-muted fs-11 text-uppercase">Archivo (Imagen / PDF)</label>
+                                <input type="file" class="form-control fs-13" id="evid_archivo" name="archivo" accept="image/*,application/pdf" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold text-muted fs-11 text-uppercase">Notas u Observaciones</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control fs-13" id="observaciones_ev" name="observaciones" placeholder="Descripción de la evidencia...">
+                                    <button type="button" class="btn btn-primary px-4 fw-semibold fs-13" onclick="guardarEvidencia();">
+                                        <i class="ri-upload-2-line me-1"></i> Subir Evidencia
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Tipo de Documento / Evidencia</label>
-                            <select class="form-select" id="evid_tipo" name="tipo_evidencia" required>
-                                <option value="Foto Recepción">Foto Recepción en Patio</option>
-                                <option value="Firma Conformidad">Firma de Conformidad</option>
-                                <option value="Reporte Daños">Reporte / Hallazgo</option>
-                            </select>
+                    </form>
+                </div>
+
+                <!-- TABLA DE EVIDENCIAS EXISTENTES -->
+                <h6 class="fw-bold fs-13 text-dark mb-2"><i class="ri-gallery-line me-1 text-primary"></i> Evidencias Registradas</h6>
+                <div class="table-responsive border rounded-3 mb-4">
+                    <table class="table table-hover align-middle mb-0 fs-13">
+                        <thead class="bg-light">
+                            <tr>
+                                <th style="width: 140px;">Momento</th>
+                                <th style="width: 180px;">Unidad / VIN</th>
+                                <th>Archivo / Vista Previa</th>
+                                <th>Observaciones</th>
+                                <th style="width: 150px;">Fecha</th>
+                                <th class="text-center" style="width: 80px;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bodyListaEvidencias">
+                            <!-- Inyectado dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- CIERRE DE ENTREGA FINAL (SI ESTÁ EN TRÁNSITO) -->
+                <div id="cardCierreDestino" class="card border border-success bg-soft-success p-3 rounded-3">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div>
+                            <h6 class="fw-bold text-success mb-1"><i class="ri-checkbox-circle-line me-1"></i> Cierre Definitivo de Entrega</h6>
+                            <small class="text-muted">Marcar el envío como completado y cerrar el viaje.</small>
                         </div>
-                        <div class="col-12">
-                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Seleccionar Archivo (Imagen / PDF)</label>
-                            <input type="file" class="form-control" id="evid_archivo" name="archivo" accept="image/*,application/pdf" required>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-bold text-muted fs-11 text-uppercase">Notas o Comentarios</label>
-                            <textarea class="form-control" id="evid_notas" name="notas" rows="2" placeholder="Detalles sobre la recepción..."></textarea>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="datetime-local" class="form-control form-control-sm" id="fecha_llegada_real">
+                            <button type="button" class="btn btn-sm btn-success px-4 rounded-pill fw-bold text-white shadow-sm" onclick="confirmarCierreFinal();">
+                                <i class="ri-check-double-line me-1"></i> Finalizar Envío
+                            </button>
                         </div>
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer bg-light border-top-0 pt-3 d-flex justify-content-between">
-                <button type="button" class="btn btn-sm btn-primary rounded-pill px-4 fw-semibold shadow-sm" onclick="cerrarEntregaFinal();">
-                    <i class="ri-checkbox-circle-line me-1"></i> Cerrar Entrega Definitiva
-                </button>
-                <div>
-                    <button type="button" class="btn btn-sm btn-light border px-3 rounded-pill fw-semibold me-2" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-sm btn-soft-primary rounded-pill px-4 fw-semibold shadow-xs" onclick="subirArchivoEvidencia();">
-                        <i class="ri-upload-2-line me-1"></i> Subir Archivo
-                    </button>
                 </div>
+            </div>
+            <div class="modal-footer bg-light border-top-0 pt-2">
+                <button type="button" class="btn btn-light border px-4 rounded-pill fw-semibold" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>

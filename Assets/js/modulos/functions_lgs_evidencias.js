@@ -85,46 +85,81 @@ function fntAbrirEvidencias(idEnvio, folio, idEstado) {
     // Setea fecha actual en el campo de fecha de llegada
     let now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    document.getElementById('fecha_llegada_real').value = now.toISOString().slice(0, 16);
+    const inputFecha = document.getElementById('fecha_llegada_real');
+    if (inputFecha) inputFecha.value = now.toISOString().slice(0, 16);
 
     // Ocultar sección de cierre si ya está entregado
-    if (parseInt(idEstado) === 7) {
-        document.getElementById('cardCierreDestino').style.display = 'none';
-    } else {
-        document.getElementById('cardCierreDestino').style.display = 'block';
+    const cardCierre = document.getElementById('cardCierreDestino');
+    if (cardCierre) {
+        if (parseInt(idEstado) === 7) {
+            cardCierre.style.display = 'none';
+        } else {
+            cardCierre.style.display = 'block';
+        }
     }
 
+    // Cargar selector de VINs del envío
+    cargarVinsEnSelector(idEnvio);
+
+    // Cargar evidencias asociadas
     cargarEvidenciasLista(idEnvio);
     $('#modalEvidencias').modal('show');
 }
 
-function cargarEvidenciasLista(idEnvio) {
-    document.getElementById('bodyListaEvidencias').innerHTML = '<tr><td colspan="5" class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm" role="status"></div> Cargando evidencias...</td></tr>';
+function cargarVinsEnSelector(idEnvio) {
+    const select = document.getElementById('select_evid_unidad');
+    if (!select) return;
 
-    let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-    let ajaxUrl = base_url + '/Lgs_evidencias/getEvidenciasEnvio/' + idEnvio;
-    
-    request.open("GET", ajaxUrl, true);
-    request.send();
-    request.onreadystatechange = function () {
-        if (request.readyState == 4 && request.status == 200) {
-            let objData = JSON.parse(request.responseText);
+    select.innerHTML = '<option value="">Cargando VINs...</option>';
+
+    fetch(base_url + '/Lgs_ejecucion/getDetalleDespacho/' + idEnvio)
+        .then(response => response.json())
+        .then(res => {
+            let html = '<option value="">General del Envío (Todos)</option>';
+            const vins = res.data || [];
+            vins.forEach(v => {
+                html += `<option value="${v.id_unidad}">${v.vin} (${v.modelo || 'Unidad'}) - Pos #${v.posicion_acomodo || 1}</option>`;
+            });
+            select.innerHTML = html;
+        })
+        .catch(() => {
+            select.innerHTML = '<option value="">General del Envío (Todos)</option>';
+        });
+}
+
+function cargarEvidenciasLista(idEnvio) {
+    const tbody = document.getElementById('bodyListaEvidencias');
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm" role="status"></div> Cargando evidencias...</td></tr>';
+
+    fetch(base_url + '/Lgs_evidencias/getEvidenciasEnvio/' + idEnvio)
+        .then(response => response.json())
+        .then(objData => {
             let htmlBody = '';
+            const evidencias = objData.data || [];
             
-            if (objData.status && objData.data.length > 0) {
-                objData.data.forEach(ev => {
+            if (objData.status && evidencias.length > 0) {
+                evidencias.forEach(ev => {
                     let tipoBadge = parseInt(ev.tipo_evidencia) === 1 
-                        ? '<span class="badge bg-info">Salida Planta</span>' 
-                        : '<span class="badge bg-success">Llegada Destino</span>';
+                        ? '<span class="badge bg-info-subtle text-info border border-info px-2 py-1"><i class="ri-login-box-line me-1"></i>Salida / Patio</span>' 
+                        : '<span class="badge bg-success-subtle text-success border border-success px-2 py-1"><i class="ri-checkbox-circle-line me-1"></i>Llegada / Destino</span>';
+
+                    let vinBadge = ev.vin && ev.vin !== 'General de Envío'
+                        ? `<span class="badge bg-light text-dark border font-monospace fs-12"><i class="ri-car-line me-1 text-primary"></i>${ev.vin}</span>`
+                        : `<span class="badge bg-secondary-subtle text-muted fs-12">General Envío</span>`;
+
+                    // Enlace / vista previa
+                    let fileLink = ev.ruta_archivo.startsWith('http') ? ev.ruta_archivo : (base_url + '/' + ev.ruta_archivo.replace(/^\/+/, ''));
+                    let previewBtn = `<a href="${fileLink}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1 fs-12" title="Abrir archivo"><i class="ri-external-link-line me-1"></i>Ver Archivo</a>`;
 
                     htmlBody += `
                         <tr>
                             <td>${tipoBadge}</td>
-                            <td><a href="${ev.ruta_archivo}" target="_blank" class="text-primary text-truncate d-inline-block" style="max-width: 250px;"><i class="ri-link me-1"></i>${ev.ruta_archivo}</a></td>
-                            <td>${ev.observaciones || '-'}</td>
-                            <td><small>${ev.created_at}</small></td>
+                            <td>${vinBadge}</td>
+                            <td>${previewBtn}</td>
+                            <td><span class="text-dark">${ev.observaciones || '-'}</span></td>
+                            <td><small class="text-muted">${ev.created_at || '-'}</small></td>
                             <td class="text-center">
-                                <button class="btn btn-sm btn-outline-danger" onclick="borrarEvidencia(${ev.id_evidencia}, ${idEnvio});">
+                                <button class="btn btn-sm btn-outline-danger rounded-circle p-1" style="width: 28px; height: 28px;" onclick="borrarEvidencia(${ev.id_evidencia}, ${idEnvio});" title="Eliminar">
                                     <i class="ri-delete-bin-line"></i>
                                 </button>
                             </td>
@@ -132,42 +167,63 @@ function cargarEvidenciasLista(idEnvio) {
                     `;
                 });
             } else {
-                htmlBody = '<tr><td colspan="5" class="text-center text-muted py-3">No hay evidencias registradas para este envío.</td></tr>';
+                htmlBody = '<tr><td colspan="6" class="text-center text-muted py-4"><i class="ri-image-line fs-2 d-block mb-1 opacity-50"></i>No hay evidencias registradas para este envío.</td></tr>';
             }
             
-            document.getElementById('bodyListaEvidencias').innerHTML = htmlBody;
-        }
-    }
+            tbody.innerHTML = htmlBody;
+        })
+        .catch(() => {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error al consultar evidencias.</td></tr>';
+        });
 }
 
 function guardarEvidencia() {
-    const ruta = document.getElementById('ruta_archivo').value.trim();
-    if (!ruta) {
-        Swal.fire("Atención", "Ingrese la URL o ruta del archivo de evidencia.", "warning");
+    const fileInput = document.getElementById('evid_archivo');
+    const idEnvio = document.getElementById('id_envio_evidencia').value;
+
+    if (!idEnvio) {
+        Swal.fire("Atención", "No se ha seleccionado un envío válido.", "warning");
         return;
     }
 
-    let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-    let ajaxUrl = base_url + '/Lgs_evidencias/store';
-    let formData = new FormData(document.querySelector("#formEvidencia"));
-
-    request.open("POST", ajaxUrl, true);
-    request.send(formData);
-    request.onreadystatechange = function () {
-        if (request.readyState == 4 && request.status == 200) {
-            let objData = JSON.parse(request.responseText);
-            if (objData.status) {
-                Swal.fire("¡Evidencia Registrada!", objData.msg, "success");
-                let idEnvio = document.getElementById('id_envio_evidencia').value;
-                document.getElementById('ruta_archivo').value = '';
-                document.getElementById('observaciones_ev').value = '';
-                cargarEvidenciasLista(idEnvio);
-                tableEvidencias.ajax.reload();
-            } else {
-                Swal.fire("Error", objData.msg, "error");
-            }
-        }
+    if (!fileInput || fileInput.files.length === 0) {
+        Swal.fire("Atención", "Debe seleccionar un archivo (imagen o PDF) para subir.", "warning");
+        return;
     }
+
+    const form = document.getElementById('formEvidencia');
+    const formData = new FormData(form);
+
+    Swal.fire({
+        title: 'Subiendo Evidencia...',
+        text: 'Guardando archivo en el servidor',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    fetch(base_url + '/Lgs_evidencias/store', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(objData => {
+        if (objData.status === 'success' || objData.status === true) {
+            Swal.fire("¡Evidencia Registrada!", objData.message || "Archivo subido correctamente.", "success");
+            
+            // Limpiar inputs
+            fileInput.value = '';
+            const obs = document.getElementById('observaciones_ev');
+            if (obs) obs.value = '';
+
+            cargarEvidenciasLista(idEnvio);
+            if (tableEvidencias) tableEvidencias.ajax.reload();
+        } else {
+            Swal.fire("Error", objData.message || objData.msg || "No se pudo registrar la evidencia.", "error");
+        }
+    })
+    .catch(() => {
+        Swal.fire("Error", "Falla de comunicación al subir la evidencia.", "error");
+    });
 }
 
 function borrarEvidencia(idEvidencia, idEnvio) {
@@ -178,26 +234,26 @@ function borrarEvidencia(idEvidencia, idEnvio) {
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, eliminar'
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-            let ajaxUrl = base_url + '/Lgs_evidencias/delete/' + idEvidencia;
-
-            request.open("POST", ajaxUrl, true);
-            request.send();
-            request.onreadystatechange = function () {
-                if (request.readyState == 4 && request.status == 200) {
-                    let objData = JSON.parse(request.responseText);
-                    if (objData.status) {
-                        Swal.fire("Eliminado", objData.msg, "success");
-                        cargarEvidenciasLista(idEnvio);
-                        tableEvidencias.ajax.reload();
-                    } else {
-                        Swal.fire("Error", objData.msg, "error");
-                    }
+            fetch(base_url + '/Lgs_evidencias/delete/' + idEvidencia, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(objData => {
+                if (objData.status === 'success' || objData.status === true) {
+                    Swal.fire("Eliminado", objData.message || "Evidencia eliminada correctamente.", "success");
+                    cargarEvidenciasLista(idEnvio);
+                    if (tableEvidencias) tableEvidencias.ajax.reload();
+                } else {
+                    Swal.fire("Error", objData.message || "No se pudo eliminar la evidencia.", "error");
                 }
-            }
+            })
+            .catch(() => {
+                Swal.fire("Error", "Error de red al eliminar la evidencia.", "error");
+            });
         }
     });
 }
@@ -218,30 +274,31 @@ function confirmarCierreFinal() {
         showCancelButton: true,
         confirmButtonColor: '#198754',
         cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, finalizar envío'
+        confirmButtonText: 'Sí, finalizar envío',
+        cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
             let formData = new FormData();
             formData.append('id_envio', idEnvio);
             formData.append('fecha_llegada_real', fechaLlegada);
 
-            let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-            let ajaxUrl = base_url + '/Lgs_evidencias/confirmarEntrega';
-
-            request.open("POST", ajaxUrl, true);
-            request.send(formData);
-            request.onreadystatechange = function () {
-                if (request.readyState == 4 && request.status == 200) {
-                    let objData = JSON.parse(request.responseText);
-                    if (objData.status) {
-                        $('#modalEvidencias').modal('hide');
-                        Swal.fire("¡Envío Completado!", objData.msg, "success");
-                        tableEvidencias.ajax.reload();
-                    } else {
-                        Swal.fire("Error", objData.msg, "error");
-                    }
+            fetch(base_url + '/Lgs_evidencias/confirmarEntrega', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(objData => {
+                if (objData.status === 'success' || objData.status === true) {
+                    $('#modalEvidencias').modal('hide');
+                    Swal.fire("¡Envío Completado!", objData.message || "El envío ha sido completado exitosamente.", "success");
+                    if (tableEvidencias) tableEvidencias.ajax.reload();
+                } else {
+                    Swal.fire("Error", objData.message || "No se pudo confirmar la entrega.", "error");
                 }
-            }
+            })
+            .catch(() => {
+                Swal.fire("Error", "Falla de red al confirmar entrega final.", "error");
+            });
         }
     });
 }

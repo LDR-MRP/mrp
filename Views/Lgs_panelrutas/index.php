@@ -1,8 +1,5 @@
 <?php headerAdmin($data); ?>
 
-<!-- Cargar Leaflet CSS para Mapas -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
@@ -127,25 +124,38 @@
 
                 <!-- 4. CONTENEDOR DE MONITOREO Y MAPA -->
                 <div class="row">
-                    <!-- LISTA DE RUTAS ACTIVAS (Izquierda 30%) -->
-                    <div class="col-lg-4">
+                    <!-- LISTA DE RUTAS ACTIVAS (Izquierda 35%) -->
+                    <div class="col-lg-5">
                         <div class="card border-0 shadow-xl h-100">
                             <div class="bg-primary" style="height: 4px;"></div>
-                            <div class="card-header bg-light border-bottom-0 pt-3 pb-2">
-                                <h6 class="card-title mb-0 fw-bold text-body"><i class="ri-truck-line me-1 text-primary"></i> Unidades en Tránsito</h6>
+                            <div class="card-header bg-light border-bottom pt-3 pb-2 px-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="card-title mb-0 fw-bold text-body"><i class="ri-truck-line me-1 text-primary"></i> Unidades en Tránsito</h6>
+                                    <span class="badge bg-primary rounded-pill px-2 py-1" id="badge-total-rutas">0 en ruta</span>
+                                </div>
+                                <div class="position-relative mt-2">
+                                    <input type="text" class="form-control form-control-sm pe-4 rounded-pill shadow-xs" id="inputBuscarRuta" placeholder="Buscar por Envío (EN-), Planeación (EX-) o VIN..." onkeyup="filtrarListaRutas();">
+                                    <i class="ri-search-line position-absolute top-50 end-0 translate-middle-y me-3 text-muted"></i>
+                                </div>
                             </div>
-                            <div class="card-body p-2" style="max-height: 600px; overflow-y: auto;">
-                                <div class="list-group list-group-flush" id="listaRutasActivas">
+                            <div class="card-body p-2" style="max-height: 650px; overflow-y: auto;">
+                                <div id="listaRutasActivas">
                                     <!-- Carga por JS -->
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- MAPA INTERACTIVO (Derecha 70%) -->
-                    <div class="col-lg-8">
+                    <!-- MAPA INTERACTIVO (Derecha 65%) -->
+                    <div class="col-lg-7">
                         <div class="card border-0 shadow-xl h-100">
                             <div class="bg-primary" style="height: 4px;"></div>
+                            <div class="card-header bg-light py-2 px-3 d-flex justify-content-between align-items-center">
+                                <span class="fs-13 fw-bold text-dark"><i class="ri-google-fill me-1 text-primary"></i> Mapa Satelital y Vial Google</span>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-toggle-traffic" onclick="toggleGoogleTraffic();"><i class="ri-traffic-light-line me-1"></i> Tráfico</button>
+                                </div>
+                            </div>
                             <div class="card-body p-0 rounded-3 overflow-hidden">
                                 <div id="mapaGPS" style="height: 600px; width: 100%;"></div>
                             </div>
@@ -158,7 +168,7 @@
     </div>
 </div>
 
-<!-- Cargar Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<!-- Cargar Google Maps JavaScript API -->
+<script src="https://maps.googleapis.com/maps/api/js?key=<?= defined('GOOGLE_MAPS_API_KEY') ? GOOGLE_MAPS_API_KEY : '' ?>&callback=initGoogleMap&libraries=geometry" async defer></script>
 
 <?php footerAdmin($data); ?>

@@ -49,11 +49,15 @@ class Lgs_aprobaciones extends Controllers
 
     /**
      * Obtiene las rutas/envíos dentro de un plan para evaluarlas
-     * URL: {{base_url}}/Lgs_aprobaciones/getDetallePlan/EX-000001
+     * URL: {{base_url}}/Lgs_aprobaciones/getDetallePlan/1
      */
-    public function getDetallePlan(int $idPlaneacion): void
+    public function getDetallePlan($idPlaneacion = 0): void
     {
         try {
+            $idPlaneacion = intval($idPlaneacion);
+            if ($idPlaneacion <= 0) {
+                throw new Exception("ID de planeación no válido.");
+            }
             $data = $this->service->getDetallePlan($idPlaneacion);
             echo $this->successResponse($data, "Detalle del plan obtenido");
         } catch (Exception $e) {

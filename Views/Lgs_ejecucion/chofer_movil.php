@@ -343,8 +343,16 @@
                                 </div>
                             </div>
 
+                            <!-- Contenedor dinámico de extras -->
+                            <div id="contenedor_extras_chofer" class="row g-2 mb-3"></div>
+                            <div class="text-center mb-3">
+                                <button type="button" class="btn btn-sm btn-outline-secondary w-100 rounded-pill border-dashed py-2 fw-semibold" onclick="agregarEvidenciaExtraChofer();">
+                                    <i class="ri-add-circle-line me-1"></i> Agregar Fotografía Adicional
+                                </button>
+                            </div>
+
                             <div class="mb-2">
-                                <label class="form-label fs-12 text-muted fw-bold">Observaciones / Daños Preexistentes</label>
+                                <label class="form-label fs-12 text-muted fw-bold">Observaciones / Comentarios</label>
                                 <textarea class="form-control fs-13 rounded-3" id="chk_comentarios" name="comentarios" rows="2" placeholder="Describa rayones, faltantes o detalles físicos..."></textarea>
                             </div>
                         </div>

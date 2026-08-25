@@ -124,11 +124,17 @@ function abrirInspeccionVin(idEnvio, idUnidad, vin) {
     document.getElementById('lblVinInspeccion').innerText = vin;
     document.getElementById('vin_confirmado').value = '';
     
-    // Ocultar previsualizaciones de imágenes
+    // Ocultar previsualizaciones de imágenes obligatorias
     ['frente', 'atras', 'lateral_izq', 'lateral_der', 'odometro'].forEach(pos => {
-        document.getElementById(`img_${pos}`).classList.add('d-none');
-        document.getElementById(`ico_${pos}`).classList.remove('d-none');
+        let imgEl = document.getElementById(`img_${pos}`);
+        let icoEl = document.getElementById(`ico_${pos}`);
+        if(imgEl) { imgEl.classList.add('d-none'); imgEl.src = ''; }
+        if(icoEl) icoEl.classList.remove('d-none');
     });
+
+    // Limpiar extras dinámicos
+    document.getElementById('contenedor_extras_chofer').innerHTML = '';
+    window.extraEvidenciaCountChofer = 0;
 
     const modal = new bootstrap.Modal(document.getElementById('modalInspeccionVin'));
     modal.show();
@@ -229,4 +235,26 @@ function guardarInspeccion() {
     .catch(err => {
         Swal.fire("Error", "Falla de red o de servidor.", "error");
     });
+}
+
+function agregarEvidenciaExtraChofer() {
+    window.extraEvidenciaCountChofer = (window.extraEvidenciaCountChofer || 0) + 1;
+    let count = window.extraEvidenciaCountChofer;
+    let posId = 'extra_' + count;
+    
+    let html = `
+        <div class="col-6 mt-2" id="div_${posId}">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fs-11 text-muted fw-bold">Adicional ${count}</span>
+                <button type="button" class="btn btn-sm btn-link text-danger p-0 m-0 text-decoration-none fs-13" onclick="document.getElementById('div_${posId}').remove();"><i class="ri-close-circle-line"></i></button>
+            </div>
+            <div class="photo-preview text-muted" onclick="triggerFile('file_${posId}')">
+                <img id="img_${posId}" class="d-none">
+                <i id="ico_${posId}" class="ri-image-add-line fs-2 text-muted opacity-50"></i>
+            </div>
+            <input type="file" id="file_${posId}" name="${posId}" accept="image/*" capture="environment" class="d-none" onchange="previewImage(this, '${posId}')">
+        </div>
+    `;
+    
+    document.getElementById('contenedor_extras_chofer').insertAdjacentHTML('beforeend', html);
 }

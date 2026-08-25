@@ -16,17 +16,27 @@ class Lgs_ejecucionService {
         return $this->model->getVinsAcomodoConSolicitud($idEnvio);
     }
 
+    public function resetEnvioParaPrueba(int $idEnvio = 16): void {
+        $this->model->resetEnvioParaPrueba($idEnvio);
+    }
+
     /**
      * Confirma la fecha de recolección programada por el administrativo
      */
     public function confirmarFechaRecoleccion(int $idEnvio, string $fechaRecoleccion): void {
         $db = $this->model->getConexion();
         try {
-            $db->beginTransaction();
+            if (!$db->inTransaction()) {
+                $db->beginTransaction();
+            }
             $this->model->confirmarFechaRecoleccion($db, $idEnvio, $fechaRecoleccion);
-            $db->commit();
-        } catch (Exception $e) {
-            $db->rollBack();
+            if ($db->inTransaction()) {
+                $db->commit();
+            }
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
             throw $e;
         }
     }
@@ -37,7 +47,9 @@ class Lgs_ejecucionService {
     public function registrarDespacho(int $idEnvio, string $fechaSalida, ?string $evidenciasJson, int $userId): void {
         $db = $this->model->getConexion();
         try {
-            $db->beginTransaction();
+            if (!$db->inTransaction()) {
+                $db->beginTransaction();
+            }
 
             // 1. Guardar fecha de salida real y evidencias
             $this->model->registrarDespachoEnvio($db, $idEnvio, $fechaSalida, $evidenciasJson);
@@ -45,9 +57,13 @@ class Lgs_ejecucionService {
             // 2. Generar las solicitudes de entrega para el área de planta/almacén con el orden de acomodo
             $this->model->crearSolicitudesEntrega($db, $idEnvio);
 
-            $db->commit();
-        } catch (Exception $e) {
-            $db->rollBack();
+            if ($db->inTransaction()) {
+                $db->commit();
+            }
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
             throw $e;
         }
     }
@@ -58,7 +74,9 @@ class Lgs_ejecucionService {
     public function confirmarSalidaVin(int $idEnvio, int $idUnidad, int $userId): bool {
         $db = $this->model->getConexion();
         try {
-            $db->beginTransaction();
+            if (!$db->inTransaction()) {
+                $db->beginTransaction();
+            }
 
             // 1. Confirmar entrega del VIN
             $this->model->confirmarEntregaVinPlanta($db, $idEnvio, $idUnidad, $userId);
@@ -72,10 +90,14 @@ class Lgs_ejecucionService {
                 $this->model->updateEstadoUnidadesFisico($db, $idEnvio, 'EN_RUTA');
             }
 
-            $db->commit();
+            if ($db->inTransaction()) {
+                $db->commit();
+            }
             return $todosCompletos;
-        } catch (Exception $e) {
-            $db->rollBack();
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
             throw $e;
         }
     }
@@ -93,7 +115,9 @@ class Lgs_ejecucionService {
     public function registrarChecklistTrasladista(int $idEnvio, int $idUnidad, string $tipoChecklist, string $vin, int $userId, ?string $comentarios, array $fotosFiles): void {
         $db = $this->model->getConexion();
         try {
-            $db->beginTransaction();
+            if (!$db->inTransaction()) {
+                $db->beginTransaction();
+            }
 
             // 1. Crear registro de checklist
             $idChecklist = $this->model->registrarChecklist($db, $idEnvio, $idUnidad, $tipoChecklist, $vin, $userId, $comentarios);
@@ -101,10 +125,18 @@ class Lgs_ejecucionService {
             // 2. Crear directorio de evidencias si no existe
             $uploadDir = 'Assets/images/uploads/evidencias/';
             if (!file_exists($uploadDir)) {
-                mkdir($uploadDir, 0777, true);
+                if (!mkdir($uploadDir, 0777, true)) {
+                    error_log("No se pudo crear el directorio de evidencias: " . $uploadDir);
+                }
             }
 
-            // 3. Procesar y guardar cada archivo fotográfico
+            // 3. Procesar y guardar cada archivo fotográfico (en checklist y sincronizado en lgs_evidencias)
+            $tipoEvidenciaNum = ($tipoChecklist === 'entrega_destino') ? 2 : 1; // 1=Salida/Patio, 2=Llegada/Destino
+
+            if (empty($fotosFiles)) {
+                error_log("Checklist sin fotos subidas en _FILES o con error (error > 0) para el VIN: $vin");
+            }
+
             foreach ($fotosFiles as $key => $file) {
                 if (isset($file['tmp_name']) && !empty($file['tmp_name'])) {
                     $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
@@ -113,6 +145,12 @@ class Lgs_ejecucionService {
 
                     if (move_uploaded_file($file['tmp_name'], $destFile)) {
                         $this->model->registrarChecklistEvidencia($db, $idChecklist, $key, $destFile);
+                        
+                        // Guardar en tabla unificada de evidencias
+                        $obsEvidencia = "Foto " . ucfirst($key) . " (" . $vin . ")" . ($comentarios ? " - " . $comentarios : "");
+                        $this->model->insertarEvidenciaUnificada($db, $idEnvio, $idUnidad, $tipoEvidenciaNum, $destFile, $obsEvidencia, $userId);
+                    } else {
+                        error_log("Fallo move_uploaded_file para " . $file['tmp_name'] . " hacia " . $destFile);
                     }
                 }
             }
@@ -145,8 +183,46 @@ class Lgs_ejecucionService {
                 }
             }
 
+            if ($db->inTransaction()) {
+                $db->commit();
+            }
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Valida el código QR escaneado en destino contra los datos reales del viaje.
+     */
+    public function validarQrCliente(int $idEnvio, string $textoQr): array {
+        return $this->model->validarQrContraDestinoEnvio($idEnvio, $textoQr);
+    }
+
+    public function getEvidenciasPorUnidad(int $idEnvio, int $idUnidad): array {
+        return $this->model->getEvidenciasPorUnidad($idEnvio, $idUnidad);
+    }
+
+    public function revertirConfirmacionVin(int $idEnvio, int $idUnidad): bool {
+        $db = $this->model->getConexion();
+        if (!$db->inTransaction()) {
+            $db->beginTransaction();
+        }
+        try {
+            // Eliminar archivos físicos antes de borrar los registros
+            $evidencias = $this->model->getEvidenciasPorUnidad($idEnvio, $idUnidad);
+            foreach ($evidencias as $ev) {
+                if (!empty($ev['ruta_archivo']) && file_exists($ev['ruta_archivo'])) {
+                    unlink($ev['ruta_archivo']);
+                }
+            }
+
+            $res = $this->model->revertirConfirmacionVin($db, $idEnvio, $idUnidad);
             $db->commit();
-        } catch (Exception $e) {
+            return $res;
+        } catch (Throwable $e) {
             $db->rollBack();
             throw $e;
         }
