@@ -87,18 +87,22 @@ function initTableEjecucion() {
             {
                 "data": "id_envio",
                 "render": function (data, type, row) {
+                    let folioStr = row.folio ? String(row.folio).replace(/'/g, "\\'") : '';
+                    let fechaSalidaStr = row.fecha_salida_real ? String(row.fecha_salida_real).replace(/'/g, "\\'") : '';
+                    let obsEncoded = row.observaciones ? encodeURIComponent(row.observaciones) : '';
+
                     if (parseInt(row.id_estado) === 3 || parseInt(row.id_estado) === 5) {
                         return `<div class="text-end pe-3">
-                                    <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold shadow-sm" onClick="fntDespachar(${data}, '${row.folio}', '${row.fecha_salida_real || ''}')" title="Mesa de Despacho">
+                                    <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold shadow-sm" onClick="fntDespachar(${data}, '${folioStr}', '${fechaSalidaStr}', '${obsEncoded}')" title="Mesa de Despacho">
                                         <i class="ri-truck-line me-1"></i> Despacho / Salida
                                     </button>
                                 </div>`;
                     }
                     
                     return `<div class="text-end pe-3">
-                                <a href="${base_url}/Lgs_evidencias" class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold" title="Ver Histórico y Evidencias">
-                                    <i class="ri-file-list-3-line me-1"></i> Manifiesto / Evidencias
-                                </a>
+                                <button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold shadow-sm" onClick="fntVerHistoricoDespacho(${data}, '${folioStr}', '${fechaSalidaStr}', '${obsEncoded}')" title="Ver Salida, Evidencias y Observaciones">
+                                    <i class="ri-eye-line me-1"></i> Ver Salida / Evidencias
+                                </button>
                             </div>`;
                 }
             }
@@ -160,20 +164,82 @@ function actualizarMetricasEjecucion(data) {
     if (document.getElementById('badgeCountHistorico')) document.getElementById('badgeCountHistorico').innerText = historicoCount;
 }
 
-function fntDespachar(idEnvio, folio, fechaSalida) {
+function fntDespachar(idEnvio, folio, fechaSalida, obsEncoded) {
     document.getElementById('id_envio_despacho').value = idEnvio;
     document.getElementById('lblFolioDespacho').innerText = folio;
     
-    // Setea fecha salida si ya existe o la fecha actual
-    if (fechaSalida && fechaSalida !== '') {
-        document.getElementById('fecha_salida_real').value = fechaSalida.replace(' ', 'T');
-    } else {
-        let now = new Date();
-        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        document.getElementById('fecha_salida_real').value = now.toISOString().slice(0, 16);
+    const titleEl = document.getElementById('titleModalDespacho');
+    if (titleEl) {
+        titleEl.innerHTML = `<i class="ri-ship-line me-1"></i> Despacho y Entrega a Trasladista: <span class="badge bg-primary fs-14">${folio}</span>`;
     }
+
+    const inputFecha = document.getElementById('fecha_salida_real');
+    if (inputFecha) {
+        inputFecha.removeAttribute('readonly');
+        inputFecha.disabled = false;
+        if (fechaSalida && fechaSalida !== '') {
+            inputFecha.value = fechaSalida.replace(' ', 'T');
+        } else {
+            let now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            inputFecha.value = now.toISOString().slice(0, 16);
+        }
+    }
+
+    const inputObs = document.getElementById('desp_observaciones');
+    if (inputObs) {
+        let obs = '';
+        try { obs = decodeURIComponent(obsEncoded || ''); } catch(e) { obs = obsEncoded || ''; }
+        inputObs.value = obs;
+        inputObs.removeAttribute('readonly');
+        inputObs.disabled = false;
+    }
+
+    const btnGuardar = document.getElementById('btnGuardarDespachoSalida');
+    const btnReset = document.getElementById('btnResetPruebaSalida');
+    if (btnGuardar) btnGuardar.classList.remove('d-none');
+    if (btnReset) btnReset.classList.remove('d-none');
+
+    cargarAcomodoPlanta(idEnvio, false);
     
-    cargarAcomodoPlanta(idEnvio);
+    // Cambiar vista en lugar de modal
+    document.getElementById('view-index-ejecucion').classList.add('d-none');
+    document.getElementById('section-despacho-planilla').classList.remove('d-none');
+}
+
+function fntVerHistoricoDespacho(idEnvio, folio, fechaSalida, obsEncoded) {
+    document.getElementById('id_envio_despacho').value = idEnvio;
+    document.getElementById('lblFolioDespacho').innerText = folio;
+    
+    const titleEl = document.getElementById('titleModalDespacho');
+    if (titleEl) {
+        titleEl.innerHTML = `<i class="ri-history-line me-1 text-primary"></i> Histórico de Despacho y Salida: <span class="badge bg-primary fs-14">${folio}</span>`;
+    }
+
+    const inputFecha = document.getElementById('fecha_salida_real');
+    if (inputFecha) {
+        if (fechaSalida && fechaSalida !== '') {
+            inputFecha.value = fechaSalida.replace(' ', 'T');
+        }
+        inputFecha.setAttribute('readonly', 'readonly');
+        inputFecha.disabled = true;
+    }
+
+    const inputObs = document.getElementById('desp_observaciones');
+    if (inputObs) {
+        let obs = '';
+        try { obs = decodeURIComponent(obsEncoded || ''); } catch(e) { obs = obsEncoded || ''; }
+        inputObs.value = obs;
+        inputObs.setAttribute('readonly', 'readonly');
+        inputObs.disabled = true;
+    }
+
+    const btnGuardar = document.getElementById('btnGuardarDespachoSalida');
+    const btnReset = document.getElementById('btnResetPruebaSalida');
+    if (btnGuardar) btnGuardar.classList.add('d-none');
+    if (btnReset) btnReset.classList.add('d-none');
+
+    cargarAcomodoPlanta(idEnvio, true);
     
     // Cambiar vista en lugar de modal
     document.getElementById('view-index-ejecucion').classList.add('d-none');
@@ -181,12 +247,27 @@ function fntDespachar(idEnvio, folio, fechaSalida) {
 }
 
 function cerrarDespachoPlanilla() {
+    const inputFecha = document.getElementById('fecha_salida_real');
+    if (inputFecha) {
+        inputFecha.removeAttribute('readonly');
+        inputFecha.disabled = false;
+    }
+    const inputObs = document.getElementById('desp_observaciones');
+    if (inputObs) {
+        inputObs.removeAttribute('readonly');
+        inputObs.disabled = false;
+    }
+    const btnGuardar = document.getElementById('btnGuardarDespachoSalida');
+    const btnReset = document.getElementById('btnResetPruebaSalida');
+    if (btnGuardar) btnGuardar.classList.remove('d-none');
+    if (btnReset) btnReset.classList.remove('d-none');
+
     document.getElementById('section-despacho-planilla').classList.add('d-none');
     document.getElementById('view-index-ejecucion').classList.remove('d-none');
     tableEjecucion.ajax.reload(null, false);
 }
 
-function cargarAcomodoPlanta(idEnvio) {
+function cargarAcomodoPlanta(idEnvio, isHistorico = false) {
     const bodyEl = document.getElementById('bodyAcomodoPlanta');
     if (!bodyEl) return;
     bodyEl.innerHTML = '<tr><td colspan="6" class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm" role="status"></div> Cargando planilla de acomodo...</td></tr>';
@@ -209,12 +290,24 @@ function cargarAcomodoPlanta(idEnvio) {
                         vins.forEach(vin => {
                             let isConfirmed = (parseInt(vin.confirmado) === 1 || vin.estado_unidad_fisico === 'EN_ENTREGAS' || vin.estado_unidad_fisico === 'EN_RUTA' || vin.estado_unidad_fisico === 'ENTREGADO');
 
-                            let statusConfirm = isConfirmed 
-                                ? `<span class="badge bg-soft-success text-success border border-success px-3 py-2 rounded-pill fs-12"><i class="ri-check-line me-1"></i> En Madrina</span>` 
-                                : `<span class="badge bg-soft-warning text-warning border border-warning px-3 py-2 rounded-pill fs-12"><i class="ri-time-line me-1"></i> En Patio</span>`;
+                            let statusConfirm = '';
+                            if (vin.estado_unidad_fisico === 'ENTREGADO') {
+                                statusConfirm = `<span class="badge bg-soft-success text-success border border-success px-3 py-2 rounded-pill fs-12"><i class="ri-checkbox-circle-fill me-1"></i> Entregado</span>`;
+                            } else if (isConfirmed) {
+                                statusConfirm = `<span class="badge bg-soft-primary text-primary border border-primary px-3 py-2 rounded-pill fs-12"><i class="ri-truck-line me-1"></i> En Madrina</span>`;
+                            } else {
+                                statusConfirm = `<span class="badge bg-soft-warning text-warning border border-warning px-3 py-2 rounded-pill fs-12"><i class="ri-time-line me-1"></i> En Patio</span>`;
+                            }
                             
-                            let btnConfirm = isConfirmed
-                                ? `
+                            let btnConfirm = '';
+                            if (isHistorico) {
+                                btnConfirm = `
+                                    <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold shadow-sm" onclick="verEvidencias(${idEnvio}, ${vin.id_unidad}, '${vin.vin}');" title="Ver Evidencias y Observaciones de Salida">
+                                        <i class="ri-camera-lens-fill me-1"></i> Ver Evidencias
+                                    </button>
+                                `;
+                            } else if (isConfirmed) {
+                                btnConfirm = `
                                 <div class="d-flex flex-column gap-1 align-items-center">
                                     <span class="badge bg-soft-secondary text-muted px-3 py-1 rounded-pill mb-1"><i class="ri-check-double-line me-1"></i> Validado</span>
                                     <div class="d-flex gap-1">
@@ -226,8 +319,10 @@ function cargarAcomodoPlanta(idEnvio) {
                                         </button>
                                     </div>
                                 </div>
-                                `
-                                : `<button class="btn btn-sm btn-outline-primary px-3 rounded-pill fw-semibold" id="btn-val-${vin.id_unidad}" onclick="abrirInspeccionAdmin(${idEnvio}, ${vin.id_unidad}, '${vin.vin}');"><i class="ri-camera-lens-line me-1"></i> Evidencia / Validar</button>`;
+                                `;
+                            } else {
+                                btnConfirm = `<button class="btn btn-sm btn-outline-primary px-3 rounded-pill fw-semibold" id="btn-val-${vin.id_unidad}" onclick="abrirInspeccionAdmin(${idEnvio}, ${vin.id_unidad}, '${vin.vin}');"><i class="ri-camera-lens-line me-1"></i> Evidencia / Validar</button>`;
+                            }
 
                             let evidBadge = (parseInt(vin.total_evidencias) > 0)
                                 ? `<span class="badge bg-soft-info text-info border border-info rounded-pill px-2 py-1 ms-1" title="Evidencias fotográficas registradas"><i class="ri-camera-lens-line me-1"></i>${vin.total_evidencias} fotos</span>`
@@ -245,7 +340,7 @@ function cargarAcomodoPlanta(idEnvio) {
                             `;
                         });
                     } else {
-                        htmlBody = '<tr><td colspan="6" class="text-center text-muted py-3"><i class="ri-information-line me-1"></i> No hay VINs pendientes de validación en este envío.</td></tr>';
+                        htmlBody = '<tr><td colspan="6" class="text-center text-muted py-3"><i class="ri-information-line me-1"></i> No hay VINs registrados en este envío.</td></tr>';
                     }
                     
                     bodyEl.innerHTML = htmlBody;

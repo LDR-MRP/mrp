@@ -212,11 +212,11 @@
                     </div>
                     <div class="card-footer bg-light border-top-0 pt-3 d-flex justify-content-between">
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-soft-warning border border-warning px-3 rounded-pill fw-semibold" onclick="fntResetPrueba();">
+                            <button type="button" class="btn btn-sm btn-soft-warning border border-warning px-3 rounded-pill fw-semibold" id="btnResetPruebaSalida" onclick="fntResetPrueba();">
                                 <i class="ri-restart-line me-1"></i> Reiniciar Estatus (Prueba)
                             </button>
                         </div>
-                        <button type="button" class="btn btn-sm btn-primary px-4 rounded-pill fw-semibold shadow-sm" onclick="guardarDespacho();">
+                        <button type="button" class="btn btn-sm btn-primary px-4 rounded-pill fw-semibold shadow-sm" id="btnGuardarDespachoSalida" onclick="guardarDespacho();">
                             <i class="ri-truck-line me-1"></i> Confirmar Salida y Poner en Tránsito
                         </button>
                     </div>
