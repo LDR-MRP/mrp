@@ -2,44 +2,22 @@
 Assets/uploads/
 Assets/images/uploads/
 
-# Plantillas locales
-
-# Dependencies
+# Dependencias
 vendor/
 
-# Storage
+# Logs y almacenamiento temporal
 Logs/
-
-# Debug
 debug_local.log
-
-Config/Config_local.php
-Config/Config_local.example.php
-.scannerwork/*
-sonar-project.properties
 ddagent-install.log
 
-# Guías y documentación local
-FLUJO_DE_TRABAJO.md
-GUIA_FRAMEWORK.md
-CHANGELOG_DB_SCHEMA.md
-HISTORIAL_COMMITS.md
-PLAN_MASTER_LOGISTICA.md
-PLAN_DESARROLLO_TECNICO_LOGISTICA.md
+# Scanner / Sonar
+.scannerwork/*
+sonar-project.properties
 
-# Archivos de respaldo de Base de Datos y Contexto DB
-db info/
-db_info/
-*.sql
-docs_migracion_logistica/
+# Archivos del sistema
+.DS_Store
+Thumbs.db
 
-# vscode config
+# Configuración de editor
 .vscode/
 
-# Docker
-docker/
-docker-compose.yml
-
-# Archivos de interfaz y datos de ejemplo
-interfaz ejemplo*
-ejemplo precios*
