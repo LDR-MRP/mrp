@@ -68,21 +68,6 @@ class Lgs_bandejaModel extends Mysql {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
             $this->insert($sqlUnidadesEnvios, []);
 
-            $checkUnidades = $this->select_all("SELECT id_unidad FROM lgs_unidades_envios LIMIT 1");
-            if (empty($checkUnidades)) {
-                $seedUnidades = "INSERT INTO `lgs_unidades_envios` (`vin`, `num_serie`, `modelo`, `origen`, `destino`, `estatus`) VALUES
-                ('VIN-2026-TOL-001', 'SN-8801', 'Camión Eléctrico E-Truck 4x2', 'Planta Toluca', 'Distribuidor CDMX Sur', 'disponible'),
-                ('VIN-2026-TOL-002', 'SN-8802', 'Tractocamión Heavy Duty 6x4', 'Planta Toluca', 'Agencia Monterrey', 'disponible'),
-                ('VIN-2026-TOL-003', 'SN-8803', 'Van Carga Urbana 3.5T', 'Planta Toluca', 'Puebla Centro', 'disponible'),
-                ('VIN-2026-TOL-004', 'SN-8804', 'Chasis Cabina Diesel', 'Planta Toluca', 'Guadalajara Norte', 'disponible'),
-                ('VIN-2026-TOL-005', 'SN-8805', 'Autobús Urbano 30 Pasajeros', 'Planta Toluca', 'Querétaro Parque Ind.', 'disponible'),
-                ('VIN-2026-TOL-006', 'SN-8806', 'Camión de Volteo 14m3', 'Planta Toluca', 'León Guanajuato', 'disponible'),
-                ('VIN-2026-TOL-007', 'SN-8807', 'Pickup 4x4 Doble Cabina', 'Planta Toluca', 'Veracruz Puerto', 'disponible'),
-                ('VIN-2026-TOL-008', 'SN-8808', 'Panel Repartidor 2.0L', 'Planta Toluca', 'San Luis Potosí', 'disponible')
-                ON DUPLICATE KEY UPDATE `estatus` = VALUES(`estatus`)";
-                $this->insert($seedUnidades, []);
-            }
-
             // 4. Tabla principal lgs_unidades
             $sqlBandeja = "CREATE TABLE IF NOT EXISTS `lgs_unidades` (
               `id_lgs_unidad` int(11) NOT NULL AUTO_INCREMENT,
@@ -101,14 +86,6 @@ class Lgs_bandejaModel extends Mysql {
               KEY `idx_lgs_id_unidad` (`id_unidad`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
             $this->insert($sqlBandeja, []);
-
-            // Sembrar lgs_unidades con unidades de prueba si está vacía
-            $checkBandeja = $this->select_all("SELECT id_lgs_unidad FROM lgs_unidades LIMIT 1");
-            if (empty($checkBandeja)) {
-                $seedBandeja = "INSERT INTO `lgs_unidades` (`id_unidad`, `id_motivo`, `id_destino`, `destino_descripcion`, `id_estado_proceso`, `created_by`)
-                SELECT `id_unidad`, 1, 1, `destino`, 1, 1 FROM `lgs_unidades_envios`";
-                $this->insert($seedBandeja, []);
-            }
 
             // 5. Tabla entrega interna
             $sqlEntrega = "CREATE TABLE IF NOT EXISTS `lgs_unidades_entrega_interna` (
