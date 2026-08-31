@@ -9,15 +9,46 @@ vendor/
 Logs/
 debug_local.log
 ddagent-install.log
+Config/Config_local.php
 
 # Scanner / Sonar
 .scannerwork/*
 sonar-project.properties
 
-# Archivos del sistema
+# Archivos del sistema y editor
 .DS_Store
 Thumbs.db
-
-# Configuración de editor
 .vscode/
+
+# ----------------------------------------------------
+# Base de datos, Dumps y Scripts SQL
+# ----------------------------------------------------
+*.sql
+db_info/
+Scripts/
+docs_migracion_logistica/
+
+# Archivos CSV e imágenes temporales en raíz
+/*.csv
+/*.jpeg
+/*.jpg
+/*.png
+cli_generate_migration.php
+HISTORIAL_COMMITS.md
+GUIA_FRAMEWORK.md
+CHANGELOG_DB_SCHEMA.md
+
+# ----------------------------------------------------
+# AI, Agentes y Asistentes
+# ----------------------------------------------------
+.agents/
+.gemini/
+.claude/
+.cursor/
+.windsurf/
+.antigravity/
+.ai/
+AGENTS.md
+GEMINI.md
+CLAUDE.md
 
