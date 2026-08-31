@@ -19,6 +19,7 @@ class Lgs_costosService
             'origenes'       => $this->model->selectOrigenes(),
             'destinos'       => $this->model->selectDestinos(),
             'segmentos'      => $this->model->selectSegmentos(),
+            'proveedores'    => $this->model->selectProveedores(),
             'kpis'           => $this->model->getKpis()
         ];
     }
@@ -65,7 +66,9 @@ class Lgs_costosService
             throw new Exception("Debe incluir la configuración de al menos un segmento.", 400);
         }
 
-        return $this->model->saveRutaMatriz($idTipoTraslado, $idOrigen, $idDestino, $km, $segmentos);
+        $idProveedor = !empty($data['id_proveedor']) ? intval($data['id_proveedor']) : null;
+
+        return $this->model->saveRutaMatriz($idTipoTraslado, $idOrigen, $idDestino, $km, $segmentos, $idProveedor);
     }
 
     /**

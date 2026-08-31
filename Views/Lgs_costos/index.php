@@ -390,6 +390,20 @@
                                 <input type="number" step="0.01" class="form-control fw-bold" id="new_km" name="km" value="0.00" oninput="recalcularTotalesNuevaRuta();" required>
                             </div>
                         </div>
+                        <div class="col-md-12 mt-3">
+                            <label for="new_id_proveedor" class="form-label fw-bold"><i class="ri-truck-line text-primary me-1"></i> Aplicación de la Tarifa (Proveedor)</label>
+                            <select class="form-select" id="new_id_proveedor" name="id_proveedor">
+                                <option value="0">🌐 Tarifa Base General (Aplica a todos los proveedores trasladistas por defecto)</option>
+                                <?php if (!empty($data['catalogs']['proveedores'])): ?>
+                                    <optgroup label="── Trato Específico por Proveedor ──">
+                                        <?php foreach ($data['catalogs']['proveedores'] as $prv): ?>
+                                            <option value="<?= $prv['id_proveedor'] ?>">🚚 <?= htmlspecialchars($prv['razon_social']) ?></option>
+                                        <?php endforeach; ?>
+                                    </optgroup>
+                                <?php endif; ?>
+                            </select>
+                            <small class="text-muted fs-11">Seleccione "Tarifa Base General" para que todos compartan el mismo costo, o un trasladista en específico si tiene un precio/trato diferente.</small>
+                        </div>
                     </div>
 
                     <!-- TABLA MATRIZ DE SEGMENTOS -->

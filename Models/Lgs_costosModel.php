@@ -136,11 +136,14 @@ class Lgs_costosModel extends Mysql
     /**
      * Guarda o actualiza la matriz completa de tarifas para una ruta soportando los 15 factores
      */
-    public function saveRutaMatriz(int $idTipoTraslado, int $idOrigen, int $idDestino, float $km, array $segmentosData): bool
+    public function saveRutaMatriz(int $idTipoTraslado, int $idOrigen, int $idDestino, float $km, array $segmentosData, ?int $idProveedor = null): bool
     {
         $db = $this->getConexion();
         try {
             $db->beginTransaction();
+
+            $provVal = ($idProveedor !== null && $idProveedor > 0) ? $idProveedor : null;
+            $whereProvSql = ($provVal !== null) ? " AND id_proveedor = {$provVal} " : " AND (id_proveedor IS NULL OR id_proveedor = 0) ";
 
             foreach ($segmentosData as $seg) {
                 $idSegmento = intval($seg['id_segmento']);
@@ -150,34 +153,34 @@ class Lgs_costosModel extends Mysql
                 // MODALIDAD 2: CHOFER (RODANDO) -> Solo 1 unidad/factor fija
                 if ($idTipoTraslado === 2) {
                     $stmtDel = $db->prepare("DELETE FROM lgs_costos_rutas 
-                                             WHERE id_tipo_traslado = ? AND id_origen = ? AND id_destino = ? AND id_segmento = ?");
+                                             WHERE id_tipo_traslado = ? AND id_origen = ? AND id_destino = ? AND id_segmento = ? $whereProvSql");
                     $stmtDel->execute([$idTipoTraslado, $idOrigen, $idDestino, $idSegmento]);
 
                     $stmtIns = $db->prepare("INSERT INTO lgs_costos_rutas (
-                                                id_tipo_traslado, id_origen, id_destino, id_segmento, 
+                                                id_tipo_traslado, id_origen, id_destino, id_segmento, id_proveedor,
                                                 num_vins_min, num_vins_max, km, costo_por_km, precio_plano, factor, activo
-                                             ) VALUES (?, ?, ?, ?, 1, 1, ?, ?, ?, 1.00, 2)");
-                    $stmtIns->execute([$idTipoTraslado, $idOrigen, $idDestino, $idSegmento, $km, $costoPorKm, $precioPlano]);
+                                             ) VALUES (?, ?, ?, ?, ?, 1, 1, ?, ?, ?, 1.00, 2)");
+                    $stmtIns->execute([$idTipoTraslado, $idOrigen, $idDestino, $idSegmento, $provVal, $km, $costoPorKm, $precioPlano]);
                 }
                 // MODALIDAD 1: MADRINA -> Soporta factores del 1 al 15
                 else {
                     // Si viene el desglose de los 15 factores
                     if (isset($seg['factores']) && is_array($seg['factores']) && count($seg['factores']) > 0) {
                         $stmtDel = $db->prepare("DELETE FROM lgs_costos_rutas 
-                                                 WHERE id_tipo_traslado = ? AND id_origen = ? AND id_destino = ? AND id_segmento = ?");
+                                                 WHERE id_tipo_traslado = ? AND id_origen = ? AND id_destino = ? AND id_segmento = ? $whereProvSql");
                         $stmtDel->execute([$idTipoTraslado, $idOrigen, $idDestino, $idSegmento]);
 
                         $stmtIns = $db->prepare("INSERT INTO lgs_costos_rutas (
-                                                    id_tipo_traslado, id_origen, id_destino, id_segmento, 
+                                                    id_tipo_traslado, id_origen, id_destino, id_segmento, id_proveedor,
                                                     num_vins_min, num_vins_max, km, costo_por_km, precio_plano, factor, activo
-                                                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 2)");
+                                                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 2)");
 
                         foreach ($seg['factores'] as $unidad => $factorVal) {
                             $u = intval($unidad);
                             $f = floatval($factorVal);
                             if ($u >= 1 && $u <= 15) {
                                 $stmtIns->execute([
-                                    $idTipoTraslado, $idOrigen, $idDestino, $idSegmento,
+                                    $idTipoTraslado, $idOrigen, $idDestino, $idSegmento, $provVal,
                                     $u, $u, $km, $costoPorKm, $precioPlano, $f
                                 ]);
                             }
@@ -189,9 +192,9 @@ class Lgs_costosModel extends Mysql
                         $max = intval($seg['num_vins_max'] ?? 15);
 
                         $sqlUpsert = "INSERT INTO lgs_costos_rutas (
-                                        id_tipo_traslado, id_origen, id_destino, id_segmento, 
+                                        id_tipo_traslado, id_origen, id_destino, id_segmento, id_proveedor,
                                         num_vins_min, num_vins_max, km, costo_por_km, precio_plano, factor, activo
-                                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 2)
+                                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 2)
                                       ON DUPLICATE KEY UPDATE 
                                         km = VALUES(km), 
                                         costo_por_km = VALUES(costo_por_km), 
@@ -200,7 +203,7 @@ class Lgs_costosModel extends Mysql
                                         activo = 2";
                         $stmt = $db->prepare($sqlUpsert);
                         $stmt->execute([
-                            $idTipoTraslado, $idOrigen, $idDestino, $idSegmento,
+                            $idTipoTraslado, $idOrigen, $idDestino, $idSegmento, $provVal,
                             $min, $max, $km, $costoPorKm, $precioPlano, $factor
                         ]);
                     }
@@ -267,6 +270,21 @@ class Lgs_costosModel extends Mysql
     public function selectSegmentos(): array
     {
         return $this->select_all("SELECT id_segmento, nombre, descripcion FROM lgs_cat_segmentos WHERE activo = 2 ORDER BY id_segmento ASC") ?: [];
+    }
+
+    public function selectProveedores(): array
+    {
+        $sql = "SELECT DISTINCT
+                    p.id_proveedor,
+                    p.razon_social,
+                    p.nombre_comercial
+                FROM prv_cat_proveedores p
+                INNER JOIN prv_rel_proveedores_actividades r ON p.id_proveedor = r.id_proveedor
+                INNER JOIN prv_cat_actividades a ON a.id_actividad = r.id_actividad
+                WHERE a.cve_actividad = 'TRASLADO_UNIDADES' 
+                  AND p.deleted_at IS NULL
+                ORDER BY p.razon_social ASC";
+        return $this->select_all($sql) ?: [];
     }
 
     /**

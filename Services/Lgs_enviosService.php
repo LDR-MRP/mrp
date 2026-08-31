@@ -249,27 +249,81 @@ class Lgs_enviosService {
      * Helper: Busca la tarifa por Ruta -> Transporte -> Segmento -> Rango de VINs con cascada de búsqueda
      */
     private function getTarifaRuta(PDO $db, int $idTipoTraslado, int $idOrigen, int $idDestino, int $idSegmento, int $volumenVins, int $idProveedor, float $kmDefault): array {
-        // Nivel 1: Búsqueda exacta por Tipo, Origen, Destino, Segmento y Rango de Volumen
-        $sql = "SELECT km, costo_por_km, precio_plano, factor 
-                FROM lgs_costos_rutas 
-                WHERE id_tipo_traslado = :id_tipo_traslado 
-                  AND id_origen = :id_origen 
-                  AND id_destino = :id_destino 
-                  AND id_segmento = :id_segmento
-                  AND :volumen BETWEEN num_vins_min AND num_vins_max
-                  AND activo != 0
-                LIMIT 1";
-        
-        $stmt = $db->prepare($sql);
-        $stmt->execute([
-            'id_tipo_traslado' => $idTipoTraslado,
-            'id_origen'        => $idOrigen,
-            'id_destino'       => $idDestino,
-            'id_segmento'      => $idSegmento,
-            'volumen'          => $volumenVins
-        ]);
-        
-        $tarifa = $stmt->fetch(PDO::FETCH_ASSOC);
+        $tarifa = null;
+
+        // Nivel 0: Búsqueda exacta con tarifa personalizada por Proveedor (si tiene trato especial)
+        if ($idProveedor > 0) {
+            try {
+                $sql0 = "SELECT km, costo_por_km, precio_plano, factor 
+                        FROM lgs_costos_rutas 
+                        WHERE id_proveedor = :id_proveedor
+                          AND id_tipo_traslado = :id_tipo_traslado 
+                          AND id_origen = :id_origen 
+                          AND id_destino = :id_destino 
+                          AND id_segmento = :id_segmento
+                          AND :volumen BETWEEN num_vins_min AND num_vins_max
+                          AND activo != 0
+                        LIMIT 1";
+                $stmt0 = $db->prepare($sql0);
+                $stmt0->execute([
+                    'id_proveedor'     => $idProveedor,
+                    'id_tipo_traslado' => $idTipoTraslado,
+                    'id_origen'        => $idOrigen,
+                    'id_destino'       => $idDestino,
+                    'id_segmento'      => $idSegmento,
+                    'volumen'          => $volumenVins
+                ]);
+                $tarifa = $stmt0->fetch(PDO::FETCH_ASSOC);
+            } catch (PDOException $e) {
+                // Columna id_proveedor opcional / fallback silencioso
+                $tarifa = null;
+            }
+        }
+
+        // Nivel 1: Búsqueda de tarifa general compartida (Tipo, Origen, Destino, Segmento y Volumen)
+        if (!$tarifa) {
+            $sql = "SELECT km, costo_por_km, precio_plano, factor 
+                    FROM lgs_costos_rutas 
+                    WHERE id_tipo_traslado = :id_tipo_traslado 
+                      AND id_origen = :id_origen 
+                      AND id_destino = :id_destino 
+                      AND id_segmento = :id_segmento
+                      AND :volumen BETWEEN num_vins_min AND num_vins_max
+                      AND activo != 0
+                      AND (id_proveedor IS NULL OR id_proveedor = 0)
+                    LIMIT 1";
+            try {
+                $stmt = $db->prepare($sql);
+                $stmt->execute([
+                    'id_tipo_traslado' => $idTipoTraslado,
+                    'id_origen'        => $idOrigen,
+                    'id_destino'       => $idDestino,
+                    'id_segmento'      => $idSegmento,
+                    'volumen'          => $volumenVins
+                ]);
+                $tarifa = $stmt->fetch(PDO::FETCH_ASSOC);
+            } catch (PDOException $e) {
+                // Fallback sin filtro de id_proveedor si no existe la columna en tablas previas
+                $sqlFallback = "SELECT km, costo_por_km, precio_plano, factor 
+                                FROM lgs_costos_rutas 
+                                WHERE id_tipo_traslado = :id_tipo_traslado 
+                                  AND id_origen = :id_origen 
+                                  AND id_destino = :id_destino 
+                                  AND id_segmento = :id_segmento
+                                  AND :volumen BETWEEN num_vins_min AND num_vins_max
+                                  AND activo != 0
+                                LIMIT 1";
+                $stmtFallback = $db->prepare($sqlFallback);
+                $stmtFallback->execute([
+                    'id_tipo_traslado' => $idTipoTraslado,
+                    'id_origen'        => $idOrigen,
+                    'id_destino'       => $idDestino,
+                    'id_segmento'      => $idSegmento,
+                    'volumen'          => $volumenVins
+                ]);
+                $tarifa = $stmtFallback->fetch(PDO::FETCH_ASSOC);
+            }
+        }
         
         // Nivel 2: Búsqueda por Ruta y Segmento (cualquier volumen)
         if (!$tarifa) {
