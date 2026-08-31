@@ -54,7 +54,9 @@ class Lgs_costos extends Controllers
     public function getRutas(): void
     {
         try {
-            $data = $this->service->listRutasAgrupadas();
+            $idProveedor = isset($_GET['id_proveedor']) && $_GET['id_proveedor'] !== '' ? intval($_GET['id_proveedor']) : null;
+            $model = new Lgs_costosModel();
+            $data = $model->selectRutasAgrupadas($idProveedor);
             for ($i = 0; $i < count($data); $i++) {
                 $row = $data[$i];
                 
@@ -63,6 +65,13 @@ class Lgs_costos extends Controllers
                     $data[$i]['tipo_traslado_html'] = '<span class="badge bg-primary-subtle text-primary fs-12 px-2 py-1"><i class="ri-truck-line me-1"></i>Madrina</span>';
                 } else {
                     $data[$i]['tipo_traslado_html'] = '<span class="badge bg-warning-subtle text-warning fs-12 px-2 py-1"><i class="ri-steering-2-line me-1"></i>Chofer (Rodando)</span>';
+                }
+
+                // Proveedor / Aplicación Badge
+                if (!empty($row['id_proveedor']) && !empty($row['proveedor_nombre']) && $row['proveedor_nombre'] !== 'Tarifa Base General') {
+                    $data[$i]['proveedor_html'] = '<span class="badge bg-info-subtle text-info fs-12 px-2 py-1 fw-semibold"><i class="ri-truck-line me-1"></i>' . htmlspecialchars($row['proveedor_nombre']) . '</span>';
+                } else {
+                    $data[$i]['proveedor_html'] = '<span class="badge bg-secondary-subtle text-secondary fs-12 px-2 py-1"><i class="ri-global-line me-1"></i>Base General</span>';
                 }
 
                 // Ruta Visual
@@ -92,7 +101,9 @@ class Lgs_costos extends Controllers
                 $data[$i]['segmentos_html'] = '<div class="d-flex flex-wrap">' . $segmentosTags . '</div>';
 
                 // Botones de acción
-                $btnEdit = '<button class="btn btn-sm btn-primary shadow-sm me-1" title="Gestionar Tarifas y Factores" onClick="fntOpenMatrizModal(' . $row['id_tipo_traslado'] . ', ' . $row['id_origen'] . ', ' . $row['id_destino'] . ', \'' . addslashes($row['origen']) . '\', \'' . addslashes($row['destino']) . '\', \'' . addslashes($row['tipo_traslado']) . '\')"><i class="ri-settings-4-line align-middle me-1"></i> Tarifas</button>';
+                $idProvVal = intval($row['id_proveedor'] ?? 0);
+                $provNombreVal = addslashes($row['proveedor_nombre'] ?? 'Tarifa Base General');
+                $btnEdit = '<button class="btn btn-sm btn-primary shadow-sm me-1" title="Gestionar Tarifas y Factores" onClick="fntOpenMatrizModal(' . $row['id_tipo_traslado'] . ', ' . $row['id_origen'] . ', ' . $row['id_destino'] . ', \'' . addslashes($row['origen']) . '\', \'' . addslashes($row['destino']) . '\', \'' . addslashes($row['tipo_traslado']) . '\', ' . $idProvVal . ', \'' . $provNombreVal . '\')"><i class="ri-settings-4-line align-middle me-1"></i> Tarifas</button>';
                 $btnDelete = '<button class="btn btn-sm btn-soft-danger" title="Eliminar Ruta Completa" onClick="fntDeleteRuta(' . $row['id_tipo_traslado'] . ', ' . $row['id_origen'] . ', ' . $row['id_destino'] . ', \'' . addslashes($row['origen'] . ' ➔ ' . $row['destino']) . '\')"><i class="ri-delete-bin-fill align-middle"></i></button>';
                 
                 $data[$i]['options'] = '<div class="text-center">' . $btnEdit . $btnDelete . '</div>';
@@ -113,8 +124,10 @@ class Lgs_costos extends Controllers
             $idTipoTraslado = intval($_GET['id_tipo_traslado'] ?? 0);
             $idOrigen = intval($_GET['id_origen'] ?? 0);
             $idDestino = intval($_GET['id_destino'] ?? 0);
+            $idProveedor = isset($_GET['id_proveedor']) ? intval($_GET['id_proveedor']) : null;
 
-            $data = $this->service->getRutaMatriz($idTipoTraslado, $idOrigen, $idDestino);
+            $model = new Lgs_costosModel();
+            $data = $model->selectRutaMatriz($idTipoTraslado, $idOrigen, $idDestino, $idProveedor);
             echo $this->successResponse($data, "Matriz de tarifas obtenida con éxito.");
         } catch (Throwable $t) {
             echo $this->errorResponse($t->getMessage(), 400);
@@ -130,6 +143,7 @@ class Lgs_costos extends Controllers
         try {
             $idOrigen = intval($_GET['id_origen'] ?? 0);
             $idDestino = intval($_GET['id_destino'] ?? 0);
+            $idProveedor = isset($_GET['id_proveedor']) && $_GET['id_proveedor'] !== '' ? intval($_GET['id_proveedor']) : null;
 
             if ($idOrigen <= 0 || $idDestino <= 0) {
                 echo $this->errorResponse("Parámetros de trayecto inválidos.", 400);
@@ -137,7 +151,7 @@ class Lgs_costos extends Controllers
             }
 
             $model = new Lgs_costosModel();
-            $data = $model->selectRutaDual($idOrigen, $idDestino);
+            $data = $model->selectRutaDual($idOrigen, $idDestino, $idProveedor);
             echo $this->successResponse($data, "Tarifas de trayecto obtenidas con éxito.");
         } catch (Throwable $t) {
             echo $this->errorResponse($t->getMessage(), 500);
@@ -160,6 +174,7 @@ class Lgs_costos extends Controllers
             $idOrigen = intval($data['id_origen'] ?? 0);
             $idDestino = intval($data['id_destino'] ?? 0);
             $km = floatval($data['km'] ?? 0);
+            $idProveedor = !empty($data['id_proveedor']) ? intval($data['id_proveedor']) : null;
             $madrinaSegs = $data['madrina_segmentos'] ?? [];
             $choferSegs = $data['chofer_segmentos'] ?? [];
 
@@ -170,10 +185,10 @@ class Lgs_costos extends Controllers
 
             $model = new Lgs_costosModel();
             if (!empty($madrinaSegs)) {
-                $model->saveRutaMatriz(1, $idOrigen, $idDestino, $km, $madrinaSegs);
+                $model->saveRutaMatriz(1, $idOrigen, $idDestino, $km, $madrinaSegs, $idProveedor);
             }
             if (!empty($choferSegs)) {
-                $model->saveRutaMatriz(2, $idOrigen, $idDestino, $km, $choferSegs);
+                $model->saveRutaMatriz(2, $idOrigen, $idDestino, $km, $choferSegs, $idProveedor);
             }
 
             echo $this->successResponse(null, "Tarifas del trayecto (Madrina y Chofer) guardadas con éxito.");

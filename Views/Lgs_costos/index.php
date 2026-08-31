@@ -161,16 +161,32 @@
                         <div class="card shadow-sm border-0 rounded-3">
                             <div class="card-header border-0 bg-light-subtle py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                                 <h5 class="card-title mb-0 fw-bold"><i class="ri-route-line align-middle text-primary me-2"></i> Catálogo de Rutas y Matriz de Precios</h5>
-                                <div class="btn-group btn-group-sm" role="group" id="filterModalidadButtons">
-                                    <button type="button" class="btn btn-outline-primary active" id="btnFilterAll" onclick="filterTableByModalidad('');">
-                                        <i class="ri-apps-line me-1"></i> Todas las Rutas (82)
-                                    </button>
-                                    <button type="button" class="btn btn-outline-primary" id="btnFilterMadrina" onclick="filterTableByModalidad('Madrina');">
-                                        <i class="ri-truck-line me-1 text-primary"></i> 🚛 Madrinas (41)
-                                    </button>
-                                    <button type="button" class="btn btn-outline-warning text-dark" id="btnFilterChofer" onclick="filterTableByModalidad('Chofer');">
-                                        <i class="ri-steering-2-line me-1 text-warning"></i> 🚗 Choferes / Rodando (41)
-                                    </button>
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <div class="d-flex align-items-center me-md-2">
+                                        <label for="filter_proveedor_select" class="me-2 fs-12 text-muted fw-bold text-uppercase mb-0"><i class="ri-filter-3-line text-primary"></i> Proveedor:</label>
+                                        <select class="form-select form-select-sm" id="filter_proveedor_select" style="min-width: 230px;" onchange="onFilterProveedorChange(this.value);">
+                                            <option value="">Todos (Base + Proveedores)</option>
+                                            <option value="0">🌐 Tarifa Base General</option>
+                                            <?php if (!empty($data['catalogs']['proveedores'])): ?>
+                                                <optgroup label="── Proveedores Trasladistas ──">
+                                                    <?php foreach ($data['catalogs']['proveedores'] as $prv): ?>
+                                                        <option value="<?= $prv['id_proveedor'] ?>">🚚 <?= htmlspecialchars($prv['razon_social']) ?></option>
+                                                    <?php endforeach; ?>
+                                                </optgroup>
+                                            <?php endif; ?>
+                                        </select>
+                                    </div>
+                                    <div class="btn-group btn-group-sm" role="group" id="filterModalidadButtons">
+                                        <button type="button" class="btn btn-outline-primary active" id="btnFilterAll" onclick="filterTableByModalidad('');">
+                                            <i class="ri-apps-line me-1"></i> Todas
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary" id="btnFilterMadrina" onclick="filterTableByModalidad('Madrina');">
+                                            <i class="ri-truck-line me-1 text-primary"></i> Madrinas
+                                        </button>
+                                        <button type="button" class="btn btn-outline-warning text-dark" id="btnFilterChofer" onclick="filterTableByModalidad('Chofer');">
+                                            <i class="ri-steering-2-line me-1 text-warning"></i> Choferes
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             <div class="card-body p-4">
@@ -178,11 +194,12 @@
                                     <table id="tableRutas" class="table table-hover align-middle table-nowrap mb-0" style="width:100%">
                                         <thead class="table-light">
                                             <tr>
-                                                <th style="width: 140px;">Modalidad</th>
+                                                <th style="width: 120px;">Modalidad</th>
+                                                <th style="width: 170px;">Aplicación / Proveedor</th>
                                                 <th>Ruta (Origen ➔ Destino)</th>
-                                                <th style="width: 130px;">Distancia</th>
+                                                <th style="width: 120px;">Distancia</th>
                                                 <th>Tarifas por Segmento ($/KM)</th>
-                                                <th class="text-center" style="width: 160px;">Acciones</th>
+                                                <th class="text-center" style="width: 140px;">Acciones</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -222,13 +239,14 @@
             <form id="formRutaMatriz" onsubmit="saveRutaMatrizDual(event);">
                 <input type="hidden" id="matriz_id_origen" name="id_origen" value="">
                 <input type="hidden" id="matriz_id_destino" name="id_destino" value="">
+                <input type="hidden" id="matriz_id_proveedor" name="id_proveedor" value="0">
 
                 <div class="modal-body p-4">
                     <!-- CABECERA RESUMEN DE LA RUTA -->
                     <div class="card border border-light-subtle shadow-none bg-light-subtle rounded-3 mb-3">
                         <div class="card-body py-3">
                             <div class="row align-items-center">
-                                <div class="col-md-6 mb-2 mb-md-0">
+                                <div class="col-md-5 mb-2 mb-md-0">
                                     <span class="text-muted fs-12 text-uppercase fw-semibold d-block">Trayecto Logístico</span>
                                     <div class="d-flex align-items-center">
                                         <span class="fw-bold text-dark fs-16" id="label_origen_nombre">Lagos de Moreno</span>
@@ -236,11 +254,15 @@
                                         <span class="fw-bold text-primary fs-16" id="label_destino_nombre">Aguascalientes</span>
                                     </div>
                                 </div>
-                                <div class="col-md-6 d-flex align-items-center justify-content-md-end">
-                                    <div class="me-3 text-end">
+                                <div class="col-md-4 text-md-center mb-2 mb-md-0">
+                                    <span class="text-muted fs-12 text-uppercase fw-semibold d-block">Tipo de Tarifa</span>
+                                    <span id="label_proveedor_badge" class="badge bg-secondary-subtle text-secondary fs-13 px-3 py-1"><i class="ri-global-line me-1"></i>Tarifa Base General</span>
+                                </div>
+                                <div class="col-md-3 d-flex align-items-center justify-content-md-end">
+                                    <div class="me-2 text-end">
                                         <label for="matriz_km" class="form-label fw-bold text-uppercase fs-12 text-muted mb-0">Distancia (KM) *</label>
                                     </div>
-                                    <div class="input-group input-group-sm" style="width: 160px;">
+                                    <div class="input-group input-group-sm" style="width: 140px;">
                                         <span class="input-group-text bg-white"><i class="ri-dashboard-3-line"></i></span>
                                         <input type="number" step="0.01" class="form-control fw-bold fs-14 text-dark text-end" id="matriz_km" name="km" value="0.00" oninput="recalcularTotalesDual();" required>
                                     </div>

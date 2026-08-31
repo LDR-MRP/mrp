@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
         },
         "columns": [
             { "data": "tipo_traslado_html" },
+            { "data": "proveedor_html" },
             { "data": "ruta_html" },
             { "data": "km_html" },
             { "data": "segmentos_html" },
@@ -18,7 +19,7 @@ document.addEventListener("DOMContentLoaded", function () {
         ],
         "responsive": true,
         "iDisplayLength": 10,
-        "order": [[1, "asc"]],
+        "order": [[2, "asc"]],
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.10.20/i18n/Spanish.json"
         }
@@ -26,11 +27,24 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 /**
+ * Filtra el listado de rutas por proveedor (o tarifa base general)
+ */
+function onFilterProveedorChange(idProveedor) {
+    const url = base_url + "/Lgs_costos/getRutas" + (idProveedor !== "" ? "?id_proveedor=" + encodeURIComponent(idProveedor) : "");
+    if (tableRutas) {
+        tableRutas.ajax.url(url).load();
+    }
+}
+
+/**
  * Abre el modal para crear una nueva ruta
  */
 function openNuevaRutaModal() {
     document.getElementById("formNuevaRuta").reset();
     document.getElementById("new_km").value = "0.00";
+    if (document.getElementById("new_id_proveedor")) {
+        document.getElementById("new_id_proveedor").value = "0";
+    }
     recalcularTotalesNuevaRuta();
     $('#modalNuevaRuta').modal('show');
 }
@@ -107,11 +121,23 @@ function filterTableByModalidad(term) {
 /**
  * Abre el Modal Dual para consultar/editar tanto Madrina como Chofer del mismo trayecto
  */
-function fntOpenMatrizModal(idTipoTraslado, idOrigen, idDestino, origenNombre, destinoNombre, tipoTrasladoNombre) {
+function fntOpenMatrizModal(idTipoTraslado, idOrigen, idDestino, origenNombre, destinoNombre, tipoTrasladoNombre, idProveedor = 0, proveedorNombre = 'Tarifa Base General') {
     document.getElementById("matriz_id_origen").value = idOrigen;
     document.getElementById("matriz_id_destino").value = idDestino;
+    document.getElementById("matriz_id_proveedor").value = idProveedor || 0;
     document.getElementById("label_origen_nombre").textContent = origenNombre;
     document.getElementById("label_destino_nombre").textContent = destinoNombre;
+
+    const badgeProv = document.getElementById("label_proveedor_badge");
+    if (badgeProv) {
+        if (idProveedor && idProveedor > 0 && proveedorNombre !== 'Tarifa Base General') {
+            badgeProv.className = "badge bg-info-subtle text-info fs-13 px-3 py-1";
+            badgeProv.innerHTML = '<i class="ri-truck-line me-1"></i> ' + proveedorNombre;
+        } else {
+            badgeProv.className = "badge bg-secondary-subtle text-secondary fs-13 px-3 py-1";
+            badgeProv.innerHTML = '<i class="ri-global-line me-1"></i> Tarifa Base General';
+        }
+    }
 
     // Activar la pestaña correspondiente al tipo de fila seleccionada
     if (idTipoTraslado == 2) {
@@ -136,7 +162,8 @@ function fntOpenMatrizModal(idTipoTraslado, idOrigen, idDestino, origenNombre, d
         }
     });
 
-    fetch(base_url + "/Lgs_costos/getRutaDual?id_origen=" + idOrigen + "&id_destino=" + idDestino)
+    const queryProv = (idProveedor && idProveedor > 0) ? "&id_proveedor=" + idProveedor : "";
+    fetch(base_url + "/Lgs_costos/getRutaDual?id_origen=" + idOrigen + "&id_destino=" + idDestino + queryProv)
     .then(response => response.json())
     .then(data => {
         Swal.close();

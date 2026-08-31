@@ -10,8 +10,15 @@ class Lgs_costosModel extends Mysql
     /**
      * Obtiene el listado de rutas agrupadas con sus métricas y preview de segmentos
      */
-    public function selectRutasAgrupadas(): array
+    public function selectRutasAgrupadas(?int $idProveedor = null): array
     {
+        $whereProv = "";
+        $params = [];
+        if ($idProveedor !== null && $idProveedor > 0) {
+            $whereProv = " AND r.id_proveedor = ? ";
+            $params[] = $idProveedor;
+        }
+
         $sql = "SELECT 
                     r.id_tipo_traslado,
                     tt.nombre AS tipo_traslado,
@@ -19,6 +26,8 @@ class Lgs_costosModel extends Mysql
                     o.nombre AS origen,
                     r.id_destino,
                     d.nombre AS destino,
+                    r.id_proveedor,
+                    COALESCE(p.razon_social, 'Tarifa Base General') AS proveedor_nombre,
                     MAX(r.km) AS km,
                     COUNT(DISTINCT r.id_segmento) AS total_segmentos,
                     GROUP_CONCAT(
@@ -32,27 +41,37 @@ class Lgs_costosModel extends Mysql
                 INNER JOIN lgs_cat_origenes o ON r.id_origen = o.id_origen
                 INNER JOIN lgs_cat_destinos d ON r.id_destino = d.id_destino
                 INNER JOIN lgs_cat_segmentos s ON r.id_segmento = s.id_segmento
+                LEFT JOIN prv_cat_proveedores p ON r.id_proveedor = p.id_proveedor
                 WHERE r.activo != 0
-                GROUP BY r.id_tipo_traslado, r.id_origen, r.id_destino
-                ORDER BY o.nombre ASC, d.nombre ASC";
-        return $this->select_all($sql) ?: [];
+                $whereProv
+                GROUP BY r.id_tipo_traslado, r.id_origen, r.id_destino, r.id_proveedor, p.razon_social
+                ORDER BY o.nombre ASC, d.nombre ASC, r.id_proveedor ASC";
+        return $this->select_all($sql, $params) ?: [];
     }
 
     /**
      * Obtiene la matriz completa de tarifas de una ruta para todos los segmentos y sus 15 factores
      */
-    public function selectRutaMatriz(int $idTipoTraslado, int $idOrigen, int $idDestino): array
+    public function selectRutaMatriz(int $idTipoTraslado, int $idOrigen, int $idDestino, ?int $idProveedor = null): array
     {
         // 1. Obtener datos de segmentos activos
         $sqlSegmentos = "SELECT id_segmento, nombre, descripcion FROM lgs_cat_segmentos WHERE activo = 2 ORDER BY id_segmento ASC";
         $segmentos = $this->select_all($sqlSegmentos) ?: [];
 
         // 2. Obtener tarifas existentes
-        $sqlTarifas = "SELECT id, id_segmento, num_vins_min, num_vins_max, km, costo_por_km, precio_plano, factor, activo
+        $whereProv = " AND (id_proveedor IS NULL OR id_proveedor = 0) ";
+        $params = [$idTipoTraslado, $idOrigen, $idDestino];
+        if ($idProveedor !== null && $idProveedor > 0) {
+            $whereProv = " AND id_proveedor = ? ";
+            $params[] = $idProveedor;
+        }
+
+        $sqlTarifas = "SELECT id, id_segmento, id_proveedor, num_vins_min, num_vins_max, km, costo_por_km, precio_plano, factor, activo
                        FROM lgs_costos_rutas
                        WHERE id_tipo_traslado = ? AND id_origen = ? AND id_destino = ? AND activo != 0
+                       $whereProv
                        ORDER BY num_vins_min ASC";
-        $tarifas = $this->select_all($sqlTarifas, [$idTipoTraslado, $idOrigen, $idDestino]) ?: [];
+        $tarifas = $this->select_all($sqlTarifas, $params) ?: [];
 
         // Mapear tarifas por id_segmento
         $tarifasMap = [];
@@ -109,6 +128,7 @@ class Lgs_costosModel extends Mysql
             'id_tipo_traslado' => $idTipoTraslado,
             'id_origen' => $idOrigen,
             'id_destino' => $idDestino,
+            'id_proveedor' => $idProveedor,
             'km' => $kmRuta,
             'matriz' => $matriz
         ];
@@ -117,16 +137,17 @@ class Lgs_costosModel extends Mysql
     /**
      * Obtiene los datos de tarifas tanto para Madrina (1) como para Chofer (2) del mismo trayecto
      */
-    public function selectRutaDual(int $idOrigen, int $idDestino): array
+    public function selectRutaDual(int $idOrigen, int $idDestino, ?int $idProveedor = null): array
     {
-        $madrina = $this->selectRutaMatriz(1, $idOrigen, $idDestino);
-        $chofer = $this->selectRutaMatriz(2, $idOrigen, $idDestino);
+        $madrina = $this->selectRutaMatriz(1, $idOrigen, $idDestino, $idProveedor);
+        $chofer = $this->selectRutaMatriz(2, $idOrigen, $idDestino, $idProveedor);
 
         $km = max($madrina['km'] ?? 0, $chofer['km'] ?? 0);
 
         return [
             'id_origen' => $idOrigen,
             'id_destino' => $idDestino,
+            'id_proveedor' => $idProveedor,
             'km' => $km,
             'madrina' => $madrina['matriz'],
             'chofer' => $chofer['matriz']
