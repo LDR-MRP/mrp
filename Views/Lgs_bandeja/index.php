@@ -215,7 +215,7 @@
                 </div>
 
                 <div class="mb-3">
-                    <label for="asig_id_destino" class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Destino <span class="text-danger">*</span></label>
+                    <label for="asig_id_destino" class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Tipo de Destino <span class="text-danger">*</span></label>
                     <select id="asig_id_destino" class="form-select">
                         <option value="">-- Seleccionar --</option>
                         <?php foreach ($data['destinos'] as $d): ?>
@@ -223,10 +223,68 @@
                         <?php endforeach; ?>
                     </select>
                 </div>
+
+                <div class="mb-3">
+                    <label for="asig_destino_descripcion" class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Distribuidor / Destino Específico</label>
+                    <input type="text" id="asig_destino_descripcion" class="form-control" list="listaDistribuidores" placeholder="Ej: ARG BROKER, XIAN MOTORS, etc.">
+                    <datalist id="listaDistribuidores">
+                        <?php if (!empty($data['distribuidores'])): ?>
+                            <?php foreach ($data['distribuidores'] as $dist): ?>
+                                <option value="<?= htmlspecialchars($dist['nombre'], ENT_QUOTES, 'UTF-8'); ?>">
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </datalist>
+                    <small class="text-muted fs-11">Seleccione o escriba el nombre del distribuidor / agencia destino.</small>
+                </div>
             </div>
             <div class="modal-footer bg-light border-top-0 pt-3">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success px-4 shadow-sm" onclick="guardarAsignacionDestino()"><i class="ri-save-line me-1"></i> Guardar Asignación</button>
+                <button type="button" class="btn btn-success px-4 shadow-sm" id="btnGuardarDestino" onclick="fntGuardarDestino()"><i class="ri-save-line me-1"></i> Guardar Asignación</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL VER DETALLE UNIDAD -->
+<div class="modal fade" id="modalDetalleUnidad" tabindex="-1" aria-labelledby="labelModalDetalle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header bg-light border-bottom-0 pb-3">
+                <h5 class="modal-title fw-bold text-primary" id="labelModalDetalle"><i class="ri-car-line me-2"></i>Detalle de Unidad en Logística</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="detalleUnidadBody">
+                <div class="text-center py-4"><div class="spinner-border text-info" role="status"></div></div>
+            </div>
+            <div class="modal-footer bg-light border-top-0 pt-3">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL REGISTRAR FECHAS -->
+<div class="modal fade" id="modalFechas" tabindex="-1" aria-labelledby="labelModalFechas" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header bg-light border-bottom-0 pb-3">
+                <h5 class="modal-title fw-bold text-warning" id="labelModalFechas"><i class="ri-calendar-check-line me-2"></i>Registrar Fechas de Traslado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="fec_id_lgs_unidad">
+                <div class="mb-3">
+                    <label for="fec_fecha_salida" class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Fecha y Hora de Salida</label>
+                    <input type="datetime-local" id="fec_fecha_salida" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label for="fec_fecha_llegada" class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Fecha y Hora de Llegada</label>
+                    <input type="datetime-local" id="fec_fecha_llegada" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top-0 pt-3">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning px-4 shadow-sm" onclick="fntGuardarFechas()"><i class="ri-save-line me-1"></i> Guardar Fechas</button>
             </div>
         </div>
     </div>

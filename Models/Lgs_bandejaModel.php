@@ -158,6 +158,16 @@ class Lgs_bandejaModel extends Mysql {
                         WHEN 3 THEN 'Entregado'
                         ELSE 'Desconocido'
                     END AS estado_proceso_texto,
+                    (SELECT e.folio 
+                     FROM lgs_envios_vins ev 
+                     INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio 
+                     WHERE ev.id_unidad = lu.id_unidad AND e.deleted_at IS NULL AND e.id_estado <> 0 
+                     ORDER BY ev.id DESC LIMIT 1) AS envio_folio,
+                    (SELECT e.id_envio 
+                     FROM lgs_envios_vins ev 
+                     INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio 
+                     WHERE ev.id_unidad = lu.id_unidad AND e.deleted_at IS NULL AND e.id_estado <> 0 
+                     ORDER BY ev.id DESC LIMIT 1) AS envio_id,
                     lu.fecha_salida,
                     lu.fecha_llegada,
                     lu.created_at
@@ -170,6 +180,20 @@ class Lgs_bandejaModel extends Mysql {
                 ORDER BY lu.id_lgs_unidad DESC";
 
         $res = $this->select_all($sql, $params);
+        return $res ?: [];
+    }
+
+    /**
+     * Obtiene la lista unificada de distribuidores para autocompletar en la bandeja
+     */
+    public function getListaDistribuidores(): array {
+        $sql = "SELECT DISTINCT TRIM(nombre) AS nombre FROM lgs_cat_destinos WHERE activo = 1 AND nombre IS NOT NULL AND TRIM(nombre) <> ''
+                UNION
+                SELECT DISTINCT TRIM(destino_descripcion) AS nombre FROM lgs_unidades WHERE destino_descripcion IS NOT NULL AND TRIM(destino_descripcion) <> ''
+                UNION
+                SELECT DISTINCT TRIM(destino) AS nombre FROM lgs_unidades_envios WHERE destino IS NOT NULL AND TRIM(destino) <> ''
+                ORDER BY nombre ASC";
+        $res = $this->select_all($sql);
         return $res ?: [];
     }
 

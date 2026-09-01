@@ -189,11 +189,25 @@ function getCatalogoDestinos() {
 function buildDestinoOptions(selectedId) {
     const destinos = getCatalogoDestinos();
     let html = '<option value="">Seleccione distribuidor / destino...</option>';
+    
+    // Agrupar por categoría
+    const grupos = {};
     destinos.forEach(d => {
-        const sel = (d.id == selectedId) ? 'selected' : '';
-        const addr = d.direccion ? ` — ${d.direccion}` : '';
-        html += `<option value="${d.id}" data-direccion="${d.direccion || ''}" ${sel}>${d.nombre}${addr}</option>`;
+        const cat = d.tipo_destino || 'Destinos y Distribuidores';
+        if (!grupos[cat]) grupos[cat] = [];
+        grupos[cat].push(d);
     });
+
+    Object.keys(grupos).forEach(catName => {
+        html += `<optgroup label="${catName}">`;
+        grupos[catName].forEach(d => {
+            const sel = (String(d.id) === String(selectedId)) ? 'selected' : '';
+            const addr = d.direccion ? ` — ${d.direccion}` : '';
+            html += `<option value="${d.id}" data-direccion="${d.direccion || ''}" data-nombre="${d.nombre}" ${sel}>${d.nombre}${addr}</option>`;
+        });
+        html += `</optgroup>`;
+    });
+
     return html;
 }
 

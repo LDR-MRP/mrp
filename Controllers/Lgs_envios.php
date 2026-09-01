@@ -225,16 +225,40 @@ class Lgs_envios extends Controllers
             $model->deleteAcomodoEnvio($db, $idEnvio);
 
             // 2. Insertar las nuevas asignaciones
+            $assignedUnitIds = [];
             foreach ($asignaciones as $asig) {
-                $model->insertVin($db, [
-                    'id_envio'         => $idEnvio,
-                    'id_unidad'        => intval($asig['id_unidad']),
-                    'id_parada'        => !empty($asig['id_parada']) ? intval($asig['id_parada']) : null,
-                    'id_madrina'       => !empty($asig['id_madrina']) ? intval($asig['id_madrina']) : null,
-                    'id_chofer'        => !empty($asig['id_chofer']) ? intval($asig['id_chofer']) : null,
-                    'posicion_acomodo' => !empty($asig['posicion_acomodo']) ? intval($asig['posicion_acomodo']) : null,
-                ]);
+                $uId = intval($asig['id_unidad'] ?? 0);
+                if ($uId > 0) {
+                    $assignedUnitIds[] = $uId;
+                    $model->insertVin($db, [
+                        'id_envio'         => $idEnvio,
+                        'id_unidad'        => $uId,
+                        'id_parada'        => !empty($asig['id_parada']) ? intval($asig['id_parada']) : null,
+                        'id_madrina'       => !empty($asig['id_madrina']) ? intval($asig['id_madrina']) : null,
+                        'id_chofer'        => !empty($asig['id_chofer']) ? intval($asig['id_chofer']) : null,
+                        'posicion_acomodo' => !empty($asig['posicion_acomodo']) ? intval($asig['posicion_acomodo']) : null,
+                    ]);
+                }
             }
+
+            // 3. Sincronizar estados en la bandeja de salida (lgs_unidades)
+            if (!empty($assignedUnitIds)) {
+                $placeholders = implode(',', array_fill(0, count($assignedUnitIds), '?'));
+                $stmtState = $db->prepare("UPDATE lgs_unidades SET id_estado_proceso = 2, updated_at = NOW() WHERE id_unidad IN ({$placeholders})");
+                $stmtState->execute($assignedUnitIds);
+            }
+
+            // Unidades que no estén en ningún envío activo regresan a Pendiente (1)
+            $stmtReset = $db->prepare("UPDATE lgs_unidades 
+                                       SET id_estado_proceso = 1, updated_at = NOW() 
+                                       WHERE id_estado_proceso = 2 
+                                         AND id_unidad NOT IN (
+                                             SELECT ev.id_unidad 
+                                             FROM lgs_envios_vins ev 
+                                             INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio 
+                                             WHERE e.deleted_at IS NULL AND e.id_estado NOT IN (0, 7)
+                                         )");
+            $stmtReset->execute();
 
             $db->commit();
 

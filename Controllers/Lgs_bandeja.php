@@ -23,6 +23,7 @@ class Lgs_bandeja extends Controllers {
         $data['page_functions_js'] = "functions_lgs_bandeja.js";
         $data['motivos']           = $this->service->getMotivos();
         $data['destinos']          = $this->service->getDestinos();
+        $data['distribuidores']    = $this->service->getListaDistribuidores();
 
         $this->views->getView($this, "../Lgs_bandeja/index", $data);
     }

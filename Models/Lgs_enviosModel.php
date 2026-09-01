@@ -254,20 +254,21 @@ class Lgs_enviosModel extends Mysql
             $origenes = [];
         }
 
-        // 5. Destinos (lgs_cat_destinos + cli_clientes)
+        // 5. Destinos y Distribuidores Unificados
         try {
-            $destinos = $this->select_all("SELECT id_destino AS id, nombre, direccion, lat, lng FROM lgs_cat_destinos WHERE activo = 1 ORDER BY nombre ASC");
-            if (empty($destinos)) {
-                $sqlDest = "SELECT c.idcliente AS id, 
-                                   COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social) AS nombre,
-                                   CONCAT(COALESCE(d.calle,''), ' ', COALESCE(d.numero_exterior,''), ', ', COALESCE(d.colonia,''), ', ', COALESCE(d.municipio,''), ', ', COALESCE(d.estado_republica,'')) AS direccion,
-                                   19.3012400 AS lat, -99.1843200 AS lng
-                            FROM cli_clientes c
-                            LEFT JOIN cli_direcciones d ON c.idcliente = d.idcliente
-                            WHERE c.estado <> 0 
-                            ORDER BY c.razon_social ASC";
-                $destinos = $this->select_all($sqlDest);
-            }
+            $this->sincronizarDistribuidoresDestinos();
+            $sqlDest = "SELECT d.id_destino AS id, 
+                               d.nombre, 
+                               COALESCE(d.direccion, '') AS direccion, 
+                               d.lat, 
+                               d.lng,
+                               COALESCE(td.descripcion, 'Distribuidor / Destino') AS tipo_destino,
+                               COALESCE(d.id_tipo_destino, 1) AS id_tipo_destino
+                        FROM lgs_cat_destinos d
+                        LEFT JOIN lgs_cat_tipo_destino td ON d.id_tipo_destino = td.id_tipo_destino
+                        WHERE d.activo = 1 
+                        ORDER BY d.id_tipo_destino ASC, d.nombre ASC";
+            $destinos = $this->select_all($sqlDest) ?: [];
         } catch (Throwable $e) {
             $destinos = [];
         }
@@ -279,6 +280,60 @@ class Lgs_enviosModel extends Mysql
             'origenes'       => $origenes,
             'destinos'       => $destinos
         ];
+    }
+
+    /**
+     * Sincroniza automáticamente los distribuidores de la bandeja y clientes en lgs_cat_destinos
+     */
+    public function sincronizarDistribuidoresDestinos(): void
+    {
+        try {
+            // 1. Distribuidores de la bandeja de salida (lgs_unidades y lgs_unidades_envios)
+            $sqlBandeja = "SELECT DISTINCT TRIM(destino_descripcion) AS nombre FROM lgs_unidades WHERE destino_descripcion IS NOT NULL AND TRIM(destino_descripcion) <> ''
+                           UNION
+                           SELECT DISTINCT TRIM(destino) AS nombre FROM lgs_unidades_envios WHERE destino IS NOT NULL AND TRIM(destino) <> ''";
+            $distribs = $this->select_all($sqlBandeja) ?: [];
+
+            // 2. Clientes y Distribuidores de cli_clientes
+            $sqlCli = "SELECT DISTINCT COALESCE(NULLIF(TRIM(c.nombre_comercial), ''), TRIM(c.razon_social)) AS nombre,
+                              CONCAT_WS(' ', d.calle, d.numero_exterior, d.colonia, d.municipio, d.estado_republica) AS direccion
+                       FROM cli_clientes c
+                       LEFT JOIN cli_direcciones d ON c.idcliente = d.idcliente
+                       WHERE c.estado <> 0";
+            $cliRows = $this->select_all($sqlCli) ?: [];
+
+            $lista = [];
+            foreach ($distribs as $d) {
+                $n = trim($d['nombre'] ?? '');
+                if (!empty($n) && !isset($lista[mb_strtolower($n)])) {
+                    $lista[mb_strtolower($n)] = ['nombre' => $n, 'direccion' => null, 'tipo' => 1];
+                }
+            }
+            foreach ($cliRows as $c) {
+                $n = trim($c['nombre'] ?? '');
+                if (!empty($n)) {
+                    $key = mb_strtolower($n);
+                    if (!isset($lista[$key])) {
+                        $lista[$key] = ['nombre' => $n, 'direccion' => $c['direccion'] ?? null, 'tipo' => 1];
+                    } elseif (!empty($c['direccion']) && empty($lista[$key]['direccion'])) {
+                        $lista[$key]['direccion'] = $c['direccion'];
+                    }
+                }
+            }
+
+            // 3. Insertar los faltantes en lgs_cat_destinos
+            foreach ($lista as $item) {
+                $nom  = $item['nombre'];
+                $dir  = $item['direccion'];
+                $tipo = $item['tipo'];
+                $exist = $this->select("SELECT id_destino FROM lgs_cat_destinos WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?)) LIMIT 1", [$nom]);
+                if (empty($exist)) {
+                    $this->insert("INSERT INTO lgs_cat_destinos (nombre, id_tipo_destino, direccion, activo) VALUES (?, ?, ?, 1)", [$nom, $tipo, $dir]);
+                }
+            }
+        } catch (Throwable $e) {
+            // Manejo silencioso
+        }
     }
 
     /**
@@ -356,8 +411,7 @@ class Lgs_enviosModel extends Mysql
         $sql = "SELECT 
                     c.id_chofer,
                     CONCAT(c.nombre, ' ', c.apellidos) AS nombre_completo,
-                    c.num_licencia,
-                    c.tipo_licencia
+                                       c.tipo_licencia
                 FROM prv_det_choferes c
                 WHERE (c.id_proveedor = ? OR ? = 0) AND c.deleted_at IS NULL
                 ORDER BY c.nombre ASC";
@@ -366,68 +420,17 @@ class Lgs_enviosModel extends Mysql
     }
 
     /**
-     * Asegura la existencia de la tabla ficticia lgs_unidades_envios y sus registros iniciales
-     */
-    private function asegurarTablaFicticiaUnidades(): void
-    {
-        try {
-            $sqlCheck = "SHOW TABLES LIKE 'lgs_unidades_envios'";
-            $res = $this->select_all($sqlCheck);
-            if (empty($res)) {
-                $sqlCreate = "CREATE TABLE IF NOT EXISTS `lgs_unidades_envios` (
-                  `id_unidad` int(11) NOT NULL AUTO_INCREMENT,
-                  `vin` varchar(50) NOT NULL UNIQUE,
-                  `num_serie` varchar(50) DEFAULT NULL,
-                  `modelo` varchar(100) DEFAULT NULL,
-                  `origen` varchar(150) DEFAULT NULL,
-                  `destino` varchar(150) DEFAULT NULL,
-                  `estatus` varchar(50) DEFAULT 'disponible',
-                  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-                  PRIMARY KEY (`id_unidad`)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
-                $this->insert($sqlCreate, []);
-
-                $sqlSeed = "INSERT INTO `lgs_unidades_envios` (`vin`, `num_serie`, `modelo`, `origen`, `destino`, `estatus`) VALUES
-                ('VIN-2026-TOL-001', 'SN-8801', 'Camión Eléctrico E-Truck 4x2', 'Planta Toluca', 'Distribuidor CDMX Sur', 'disponible'),
-                ('VIN-2026-TOL-002', 'SN-8802', 'Tractocamión Heavy Duty 6x4', 'Planta Toluca', 'Agencia Monterrey', 'disponible'),
-                ('VIN-2026-TOL-003', 'SN-8803', 'Van Carga Urbana 3.5T', 'Planta Toluca', 'Puebla Centro', 'disponible'),
-                ('VIN-2026-TOL-004', 'SN-8804', 'Chasis Cabina Diesel', 'Planta Toluca', 'Guadalajara Norte', 'disponible'),
-                ('VIN-2026-TOL-005', 'SN-8805', 'Autobús Urbano 30 Pasajeros', 'Planta Toluca', 'Querétaro Parque Ind.', 'disponible'),
-                ('VIN-2026-TOL-006', 'SN-8806', 'Camión de Volteo 14m3', 'Planta Toluca', 'León Guanajuato', 'disponible'),
-                ('VIN-2026-TOL-007', 'SN-8807', 'Pickup 4x4 Doble Cabina', 'Planta Toluca', 'Veracruz Puerto', 'disponible'),
-                ('VIN-2026-TOL-008', 'SN-8808', 'Panel Repartidor 2.0L', 'Planta Toluca', 'San Luis Potosí', 'disponible')
-                ON DUPLICATE KEY UPDATE `estatus` = VALUES(`estatus`)";
-                $this->insert($sqlSeed, []);
-            }
-        } catch (Throwable $e) {
-            // Manejo silencioso en caso de excepción
-        }
-    }
-
-    /**
      * Obtiene VINs disponibles en el origen que no estén asignados a otros envíos activos
      */
     public function getVinsDisponiblesOrigen(int $idOrigen = 0, int $idEnvioActual = 0): array
     {
-        $this->asegurarTablaFicticiaUnidades();
-
         $origenNombre = '';
-        $paradasNombres = [];
 
         if ($idEnvioActual > 0) {
             $envio = $this->getEnvioCabecera($idEnvioActual);
             if (!empty($envio)) {
                 $idOrigen = intval($envio['id_origen'] ?? $idOrigen);
                 $origenNombre = trim($envio['origen'] ?? '');
-            }
-
-            // Obtener destinos de las paradas del envío para asociar las unidades disponibles
-            $paradasEnvio = $this->getParadasEnvio($idEnvioActual);
-            foreach ($paradasEnvio as $p) {
-                $nom = trim($p['destino_nombre'] ?? $p['destino_nombre_libre'] ?? '');
-                if (!empty($nom)) {
-                    $paradasNombres[] = $nom;
-                }
             }
         }
 
@@ -438,79 +441,56 @@ class Lgs_enviosModel extends Mysql
             }
         }
 
-        if (empty($origenNombre)) {
-            $origenNombre = 'Almacén Montenegro Central';
-        }
-
-        if (empty($paradasNombres)) {
-            $paradasNombres = ['Distribuidora León Guanajuato', 'Agencia Monterrey (Gonzalitos)', 'Agencia Guadalajara Norte', 'Distribuidor CDMX Sur', 'Puebla Centro'];
-        }
-
         try {
-            // 1. Consultar unidades disponibles que pertenezcan a este origen
-            $sql = "SELECT 
-                        u.id_unidad,
-                        u.vin,
-                        u.num_serie,
-                        u.modelo,
-                        u.origen,
-                        u.destino
-                    FROM lgs_unidades_envios u
-                    WHERE (LOWER(TRIM(u.origen)) = LOWER(TRIM(?)) OR ? LIKE CONCAT('%', LOWER(TRIM(u.origen)), '%') OR LOWER(TRIM(u.origen)) LIKE CONCAT('%', LOWER(TRIM(?)), '%'))
-                      AND u.id_unidad NOT IN (
-                        SELECT ev.id_unidad 
-                        FROM lgs_envios_vins ev
-                        INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
-                        WHERE e.deleted_at IS NULL AND e.id_estado <> 0
-                    )
-                    ORDER BY u.id_unidad ASC
-                    LIMIT 50";
+            // Excluir unidades asignadas a otros envíos activos no eliminados
+            $sqlExclude = "SELECT ev.id_unidad 
+                           FROM lgs_envios_vins ev
+                           INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
+                           WHERE e.deleted_at IS NULL AND e.id_estado <> 0";
             
-            $res = $this->select_all($sql, [$origenNombre, $origenNombre, $origenNombre]);
+            // Excluir también las que ya están en el acomodo de este envío para no duplicarlas en el pool disponible
+            $sqlExcludeThis = ($idEnvioActual > 0) 
+                ? "SELECT ev2.id_unidad FROM lgs_envios_vins ev2 WHERE ev2.id_envio = " . intval($idEnvioActual)
+                : "SELECT 0";
 
-            // 2. Si no hay suficientes unidades disponibles para este origen, generar un set de prueba
-            if (empty($res) || count($res) < 8) {
-                $modelosMuestra = [
-                    'Camión Eléctrico E-Truck 4x2',
-                    'Tractocamión Heavy Duty 6x4',
-                    'Van Carga Urbana 3.5T',
-                    'Chasis Cabina Diesel',
-                    'Autobús Urbano 30 Pasajeros',
-                    'Camión de Volteo 14m3',
-                    'Pickup 4x4 Doble Cabina',
-                    'Panel Repartidor 2.0L',
-                    'Tractocamión Galaxy S35',
-                    'Chasis Miller S5'
-                ];
+            // 1. Consultar unidades desde la bandeja operativa (lgs_unidades) combinando con lgs_unidades_envios y mrp_unidades_terminadas
+            $sql = "SELECT 
+                        COALESCE(u.id_unidad, lu.id_unidad, ut.idunidad) AS id_unidad,
+                        COALESCE(u.vin, ut.clave, CONCAT('VIN-', lu.id_unidad)) AS vin,
+                        COALESCE(u.num_serie, ut.num_unidad, 'S/N') AS num_serie,
+                        COALESCE(u.modelo, 'Unidad Terminada') AS modelo,
+                        COALESCE(u.origen, 'Planta Lagos de Moreno') AS origen,
+                        COALESCE(NULLIF(TRIM(lu.destino_descripcion), ''), NULLIF(TRIM(u.destino), ''), 'Sin Asignar') AS destino
+                    FROM lgs_unidades lu
+                    LEFT JOIN lgs_unidades_envios u ON u.id_unidad = lu.id_unidad
+                    LEFT JOIN mrp_unidades_terminadas ut ON ut.idunidad = lu.id_unidad
+                    WHERE (lu.id_estado_proceso = 1 OR lu.id_estado_proceso IS NULL)
+                      AND lu.id_unidad NOT IN ({$sqlExclude})
+                      AND lu.id_unidad NOT IN ({$sqlExcludeThis})
+                    ORDER BY lu.id_lgs_unidad ASC";
 
-                $prefijoOrigen = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $origenNombre), 0, 4));
-                if (strlen($prefijoOrigen) < 3) $prefijoOrigen = 'ORIG';
+            $res = $this->select_all($sql) ?: [];
 
-                for ($i = 1; $i <= 10; $i++) {
-                    $vinCode = sprintf("VIN-2026-%s-%03d", $prefijoOrigen, $i);
-                    $numSerie = sprintf("SN-%s-%04d", $prefijoOrigen, 1000 + $i);
-                    $modelo = $modelosMuestra[($i - 1) % count($modelosMuestra)];
-                    $destIndex = ($i - 1) % count($paradasNombres);
-                    $destino = $paradasNombres[$destIndex];
-
-                    $sqlInsert = "INSERT INTO lgs_unidades_envios (vin, num_serie, modelo, origen, destino, estatus)
-                                  VALUES (?, ?, ?, ?, ?, 'disponible')
-                                  ON DUPLICATE KEY UPDATE 
-                                      origen = VALUES(origen),
-                                      destino = VALUES(destino),
-                                      modelo = VALUES(modelo)";
-                    $this->insert($sqlInsert, [$vinCode, $numSerie, $modelo, $origenNombre, $destino]);
-                }
-
-                $res = $this->select_all($sql, [$origenNombre, $origenNombre, $origenNombre]);
+            // 2. Si no hay en lgs_unidades, buscar en lgs_unidades_envios
+            if (empty($res)) {
+                $sql2 = "SELECT 
+                            u.id_unidad,
+                            u.vin,
+                            u.num_serie,
+                            u.modelo,
+                            COALESCE(u.origen, 'Planta Lagos de Moreno') AS origen,
+                            COALESCE(NULLIF(TRIM(u.destino), ''), 'Sin Asignar') AS destino
+                        FROM lgs_unidades_envios u
+                        WHERE u.id_unidad NOT IN ({$sqlExclude})
+                          AND u.id_unidad NOT IN ({$sqlExcludeThis})
+                        ORDER BY u.id_unidad ASC";
+                $res = $this->select_all($sql2) ?: [];
             }
 
-            if (!empty($res)) return $res;
+            return $res;
         } catch (Throwable $e) {
-            // Manejo de error
+            return [];
         }
-
-        return [];
     }
 
     /**
@@ -518,61 +498,40 @@ class Lgs_enviosModel extends Mysql
      */
     public function getAcomodoExistenteEnvio(int $idEnvio): array
     {
-        $this->asegurarTablaFicticiaUnidades();
-
         try {
             $sql = "SELECT 
                         v.id,
                         v.id_envio,
                         v.id_unidad,
-                        u.vin,
-                        u.num_serie,
-                        u.modelo,
-                        u.origen,
-                        u.destino,
+                        COALESCE(u.vin, ut.clave, CONCAT('VIN-', v.id_unidad)) AS vin,
+                        COALESCE(u.num_serie, ut.num_unidad, 'S/N') AS num_serie,
+                        COALESCE(u.modelo, 'Unidad Terminada') AS modelo,
+                        COALESCE(u.origen, 'Origen') AS origen,
+                        COALESCE(
+                            NULLIF(TRIM(v.destino_nombre_libre), ''), 
+                            NULLIF(TRIM(lu.destino_descripcion), ''), 
+                            NULLIF(TRIM(u.destino), ''), 
+                            'Destino'
+                        ) AS destino,
                         v.id_madrina,
                         v.id_chofer,
+                        v.id_parada,
                         v.posicion_acomodo,
                         m.numero_economico AS madrina_nombre,
                         CONCAT(c.nombre, ' ', c.apellidos) AS chofer_nombre
                     FROM lgs_envios_vins v
-                    INNER JOIN lgs_unidades_envios u ON v.id_unidad = u.id_unidad
+                    LEFT JOIN lgs_unidades_envios u ON v.id_unidad = u.id_unidad
+                    LEFT JOIN lgs_unidades lu ON lu.id_unidad = v.id_unidad
+                    LEFT JOIN mrp_unidades_terminadas ut ON v.id_unidad = ut.idunidad
                     LEFT JOIN prv_det_madrinas m ON v.id_madrina = m.id_madrina
                     LEFT JOIN prv_det_choferes c ON v.id_chofer = c.id_chofer
                     WHERE v.id_envio = ?
                     ORDER BY v.id_madrina ASC, v.id_chofer ASC, v.posicion_acomodo ASC";
             $res = $this->select_all($sql, [$idEnvio]);
-            if (!empty($res)) return $res;
+            return $res ?: [];
         } catch (Throwable $e) {
-            // Fallback
+            return [];
         }
-
-        $envio = $this->getEnvioCabecera($idEnvio);
-        $origenEnvio = !empty($envio['origen']) ? $envio['origen'] : 'Origen';
-        $destinoEnvio = !empty($envio['destino']) ? $envio['destino'] : 'Destino';
-
-        $sql = "SELECT 
-                    v.id,
-                    v.id_envio,
-                    v.id_unidad,
-                    u.clave AS vin,
-                    u.num_unidad AS num_serie,
-                    'Unidad Terminada' AS modelo,
-                    '{$origenEnvio}' AS origen,
-                    '{$destinoEnvio}' AS destino,
-                    v.id_madrina,
-                    v.id_chofer,
-                    v.posicion_acomodo,
-                    m.numero_economico AS madrina_nombre,
-                    CONCAT(c.nombre, ' ', c.apellidos) AS chofer_nombre
-                FROM lgs_envios_vins v
-                INNER JOIN mrp_unidades_terminadas u ON v.id_unidad = u.idunidad
-                LEFT JOIN prv_det_madrinas m ON v.id_madrina = m.id_madrina
-                LEFT JOIN prv_det_choferes c ON v.id_chofer = c.id_chofer
-                WHERE v.id_envio = ?
-                ORDER BY v.id_madrina ASC, v.id_chofer ASC, v.posicion_acomodo ASC";
-        $res = $this->select_all($sql, [$idEnvio]);
-        return $res ?: [];
     }
 
     /**
