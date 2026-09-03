@@ -501,6 +501,324 @@ WHERE idinventario = ?";
     }
 
 
+    // =====================================================
+    // PORTAL WEB -> tabla del portal (web_unidades / web_unidades_imagenes)
+    // =====================================================
+    // web_unidades ahora tiene su propia columna inventarioid (agregada con
+    // permiso del desarrollador del portal), asi que ya no se necesita una
+    // tabla de enlace de nuestro lado para los productos tipo unidad (P).
+    // Refaccion (R) usa su propia tabla, ver mas abajo
+    // (getPortalWebRefaccionByInventario / wms_refacciones_portalweb).
+
+    public function getWebUnidadByInventario(int $inventarioid)
+    {
+        $sql = "SELECT * FROM web_unidades WHERE inventarioid = $inventarioid";
+        return $this->select($sql);
+    }
+
+    public function getWebUnidad(int $idunidad)
+    {
+        $sql = "SELECT * FROM web_unidades WHERE idunidad = $idunidad";
+        return $this->select($sql);
+    }
+
+    public function insertWebUnidad($data)
+    {
+        $sql = "INSERT INTO web_unidades
+            (inventarioid, modelo, clave_modelo, nombre, version, descripcion, anio, marca, motor, stock, precio_estimado, imagen_caratula, estado, fecha_creacion, fecha_actualizacion)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())";
+
+        return $this->insert($sql, [
+            $data['inventarioid'],
+            $data['modelo'],
+            $data['clave_modelo'],
+            $data['nombre'],
+            $data['version'],
+            $data['descripcion'],
+            $data['anio'],
+            $data['marca'],
+            $data['motor'],
+            $data['stock'],
+            $data['precio_estimado'],
+            $data['imagen_caratula'],
+            $data['estado'],
+        ]);
+    }
+
+    public function updateWebUnidad(int $idunidad, $data)
+    {
+        $sql = "UPDATE web_unidades SET
+            modelo = ?,
+            clave_modelo = ?,
+            nombre = ?,
+            version = ?,
+            descripcion = ?,
+            anio = ?,
+            marca = ?,
+            motor = ?,
+            stock = ?,
+            precio_estimado = ?,
+            estado = ?,
+            fecha_actualizacion = NOW()
+            WHERE idunidad = ?";
+
+        return $this->update($sql, [
+            $data['modelo'],
+            $data['clave_modelo'],
+            $data['nombre'],
+            $data['version'],
+            $data['descripcion'],
+            $data['anio'],
+            $data['marca'],
+            $data['motor'],
+            $data['stock'],
+            $data['precio_estimado'],
+            $data['estado'],
+            $idunidad,
+        ]);
+    }
+
+    public function updateImagenCaratulaWebUnidad(int $idunidad, string $rutaArchivo)
+    {
+        $sql = "UPDATE web_unidades SET imagen_caratula = ?, fecha_actualizacion = NOW() WHERE idunidad = ?";
+        return $this->update($sql, [$rutaArchivo, $idunidad]);
+    }
+
+    // -------- Autocompletado (marca / precio / stock) --------
+
+    public function getMarcaAutoPorLinea(int $inventarioid)
+    {
+        $sql = "SELECT sp.cve_sublinea_producto
+            FROM wms_inventario_linea il
+            INNER JOIN wms_sublinea_producto sp ON sp.idsublineaproducto = il.sublineaproductoid
+            WHERE il.inventarioid = $inventarioid AND il.estado = 2
+            ORDER BY il.id_inv_linea DESC
+            LIMIT 1";
+
+        $r = $this->select($sql);
+        return $r['cve_sublinea_producto'] ?? '';
+    }
+
+    public function getPrecioPublicoAuto(int $inventarioid)
+    {
+        $sql = "SELECT ip.precio
+            FROM wms_inventario_precios ip
+            INNER JOIN wms_precios p ON p.idprecio = ip.idprecio
+            WHERE ip.inventarioid = $inventarioid
+            AND p.cve_precio = 'Precio público'
+            AND ip.estado = 2
+            ORDER BY ip.id_inv_precio DESC
+            LIMIT 1";
+
+        $r = $this->select($sql);
+
+        if (!empty($r['precio'])) {
+            return (float) $r['precio'];
+        }
+
+        $sql2 = "SELECT ultimo_costo FROM wms_inventario WHERE idinventario = $inventarioid";
+        $r2 = $this->select($sql2);
+
+        return (float) ($r2['ultimo_costo'] ?? 0);
+    }
+
+    public function getStockTotalAuto(int $inventarioid)
+    {
+        $sql = "SELECT COALESCE(SUM(existencia), 0) AS total
+            FROM wms_multialmacen
+            WHERE inventarioid = $inventarioid";
+
+        $r = $this->select($sql);
+        return (int) round($r['total'] ?? 0);
+    }
+
+    // -------- Imágenes (web_unidades_imagenes) --------
+
+    public function insertImagenWebUnidad($idunidad, $nombreOriginal, $nombreArchivo, $rutaArchivo, $orden, $esPrincipal)
+    {
+        $sql = "INSERT INTO web_unidades_imagenes
+            (idunidad, nombre_original, nombre_archivo, ruta_archivo, orden, es_principal, estado, fecha_creacion)
+            VALUES (?,?,?,?,?,?,2,NOW())";
+
+        return $this->insert($sql, [$idunidad, $nombreOriginal, $nombreArchivo, $rutaArchivo, $orden, $esPrincipal]);
+    }
+
+    public function countImagenesWebUnidad(int $idunidad)
+    {
+        $sql = "SELECT COUNT(*) AS total FROM web_unidades_imagenes WHERE idunidad = $idunidad AND estado != 0";
+        $r = $this->select($sql);
+        return (int) ($r['total'] ?? 0);
+    }
+
+    public function selectImagenesWebUnidad(int $idunidad)
+    {
+        $sql = "SELECT idimagen, idunidad, nombre_original, nombre_archivo, ruta_archivo, orden, es_principal
+            FROM web_unidades_imagenes
+            WHERE idunidad = $idunidad AND estado != 0
+            ORDER BY orden ASC, idimagen ASC";
+
+        return $this->select_all($sql);
+    }
+
+    public function selectImagenWebUnidad(int $idimagen)
+    {
+        $sql = "SELECT idimagen, idunidad, nombre_original, nombre_archivo, ruta_archivo, orden, es_principal
+            FROM web_unidades_imagenes
+            WHERE idimagen = $idimagen";
+
+        return $this->select($sql);
+    }
+
+    public function deleteImagenWebUnidad(int $idimagen)
+    {
+        $sql = "DELETE FROM web_unidades_imagenes WHERE idimagen = $idimagen";
+        return $this->delete($sql);
+    }
+
+    public function limpiarPrincipalImagenesWebUnidad(int $idunidad)
+    {
+        $sql = "UPDATE web_unidades_imagenes SET es_principal = 0 WHERE idunidad = ?";
+        return $this->update($sql, [$idunidad]);
+    }
+
+    public function marcarPrincipalImagenWebUnidad(int $idimagen, int $idunidad)
+    {
+        $this->limpiarPrincipalImagenesWebUnidad($idunidad);
+
+        $sql = "UPDATE web_unidades_imagenes SET es_principal = 1 WHERE idimagen = ?";
+        return $this->update($sql, [$idimagen]);
+    }
+
+
+    // =====================================================
+    // PORTAL WEB -> tabla propia (wms_refacciones_portalweb / wms_refacciones_portalweb_imagenes)
+    // Exclusiva para tipo_elemento = 'R' (Refaccion). Herramienta, Componente,
+    // Kit y Servicio ya no tienen Portal Web. Mismas columnas que produce el
+    // modo unidad (web_unidades / web_unidades_imagenes), pero en las tablas
+    // propias del sistema (no las del desarrollador del portal).
+    // =====================================================
+
+    public function getPortalWebRefaccionByInventario(int $inventarioid)
+    {
+        $sql = "SELECT * FROM wms_refacciones_portalweb WHERE inventarioid = $inventarioid";
+        return $this->select($sql);
+    }
+
+    public function insertPortalWebRefaccion($data)
+    {
+        $sql = "INSERT INTO wms_refacciones_portalweb
+            (inventarioid, modelo, clave_modelo, nombre, descripcion, marca, stock, precio_estimado, imagen_caratula, estado)
+            VALUES (?,?,?,?,?,?,?,?,?,?)";
+
+        return $this->insert($sql, [
+            $data['inventarioid'],
+            $data['modelo'],
+            $data['clave_modelo'],
+            $data['nombre'],
+            $data['descripcion'],
+            $data['marca'],
+            $data['stock'],
+            $data['precio_estimado'],
+            $data['imagen_caratula'],
+            $data['estado'],
+        ]);
+    }
+
+    public function updatePortalWebRefaccion(int $idportalweb, $data)
+    {
+        $sql = "UPDATE wms_refacciones_portalweb SET
+            modelo = ?,
+            clave_modelo = ?,
+            nombre = ?,
+            descripcion = ?,
+            marca = ?,
+            stock = ?,
+            precio_estimado = ?,
+            estado = ?,
+            fecha_actualizacion = NOW()
+            WHERE idportalweb = ?";
+
+        return $this->update($sql, [
+            $data['modelo'],
+            $data['clave_modelo'],
+            $data['nombre'],
+            $data['descripcion'],
+            $data['marca'],
+            $data['stock'],
+            $data['precio_estimado'],
+            $data['estado'],
+            $idportalweb,
+        ]);
+    }
+
+    public function updateImagenCaratulaPortalWebRefaccion(int $idportalweb, string $rutaArchivo)
+    {
+        $sql = "UPDATE wms_refacciones_portalweb SET imagen_caratula = ?, fecha_actualizacion = NOW() WHERE idportalweb = ?";
+        return $this->update($sql, [$rutaArchivo, $idportalweb]);
+    }
+
+    // -------- Imagenes (wms_refacciones_portalweb_imagenes) --------
+    // Enlazadas por idportalweb (la PK de wms_refacciones_portalweb), igual
+    // que web_unidades_imagenes se enlaza por idunidad.
+
+    public function insertImagenPortalWebRefaccion($idportalweb, $nombreOriginal, $nombreArchivo, $rutaArchivo, $orden, $esPrincipal)
+    {
+        $sql = "INSERT INTO wms_refacciones_portalweb_imagenes
+            (idportalweb, nombre_original, nombre_archivo, ruta_archivo, orden, es_principal, estado, fecha_creacion)
+            VALUES (?,?,?,?,?,?,2,NOW())";
+
+        return $this->insert($sql, [$idportalweb, $nombreOriginal, $nombreArchivo, $rutaArchivo, $orden, $esPrincipal]);
+    }
+
+    public function countImagenesPortalWebRefaccion(int $idportalweb)
+    {
+        $sql = "SELECT COUNT(*) AS total FROM wms_refacciones_portalweb_imagenes
+            WHERE idportalweb = $idportalweb AND estado != 0";
+
+        $r = $this->select($sql);
+        return (int) ($r['total'] ?? 0);
+    }
+
+    public function selectImagenesPortalWebRefaccion(int $idportalweb)
+    {
+        $sql = "SELECT idfotoportalweb, idportalweb, nombre_original, nombre_archivo, ruta_archivo, orden, es_principal
+            FROM wms_refacciones_portalweb_imagenes
+            WHERE idportalweb = $idportalweb AND estado != 0
+            ORDER BY orden ASC, idfotoportalweb ASC";
+
+        return $this->select_all($sql);
+    }
+
+    public function selectImagenPortalWebRefaccion(int $idfotoportalweb)
+    {
+        $sql = "SELECT idfotoportalweb, idportalweb, nombre_original, nombre_archivo, ruta_archivo, orden, es_principal
+            FROM wms_refacciones_portalweb_imagenes
+            WHERE idfotoportalweb = $idfotoportalweb";
+
+        return $this->select($sql);
+    }
+
+    public function deleteImagenPortalWebRefaccion(int $idfotoportalweb)
+    {
+        $sql = "DELETE FROM wms_refacciones_portalweb_imagenes WHERE idfotoportalweb = $idfotoportalweb";
+        return $this->delete($sql);
+    }
+
+    public function limpiarPrincipalImagenesPortalWebRefaccion(int $idportalweb)
+    {
+        $sql = "UPDATE wms_refacciones_portalweb_imagenes SET es_principal = 0 WHERE idportalweb = ?";
+        return $this->update($sql, [$idportalweb]);
+    }
+
+    public function marcarPrincipalImagenPortalWebRefaccion(int $idfotoportalweb, int $idportalweb)
+    {
+        $this->limpiarPrincipalImagenesPortalWebRefaccion($idportalweb);
+
+        $sql = "UPDATE wms_refacciones_portalweb_imagenes SET es_principal = 1 WHERE idfotoportalweb = ?";
+        return $this->update($sql, [$idfotoportalweb]);
+    }
+
+
     //--------------------------------------------INVENTARIO MONEDAS
     public function setMonedaInventario(int $inventarioid, int $idmoneda)
     {

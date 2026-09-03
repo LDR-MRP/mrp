@@ -1,17 +1,24 @@
 let unidadesCache = [];
 
 document.addEventListener("DOMContentLoaded", function () {
-
   /* =====================================================
        CARGAR ALMACENES
     ===================================================== */
 
-  fetch(base_url + "/Inv_traslados/getSelectAlmacenes")
+  // Origen: solo los almacenes de la planta del usuario que está
+  // capturando la solicitud.
+  fetch(base_url + "/Inv_traslados/getSelectAlmacenesOrigen")
     .then((res) => res.text())
 
     .then((html) => {
       document.querySelector("#almacen_origenid").innerHTML = html;
+    });
 
+  // Destino: todos los almacenes (el traslado puede ir a otra planta).
+  fetch(base_url + "/Inv_traslados/getSelectAlmacenes")
+    .then((res) => res.text())
+
+    .then((html) => {
       document.querySelector("#almacen_destinoid").innerHTML = html;
     });
 
@@ -110,49 +117,72 @@ document.addEventListener("DOMContentLoaded", function () {
     form.addEventListener("submit", function (e) {
       e.preventDefault();
 
+      let nombreTrasladista = form
+        .querySelector('[name="nombre_trasladista"]')
+        .value.trim();
+
       let unidades = [];
+      let faltaTipoLlave = false;
+      let algunaConLlave = false;
 
       document.querySelectorAll("#tableUnidades tbody tr").forEach((tr) => {
         let vinid = tr.querySelector(".vinid").value;
+        if (!vinid) return;
 
-        if (vinid) {
-          unidades.push({
-            vinid: vinid,
+        let entrega = tr.querySelector(".entrega_llave").value === "1";
+        let tipoLlave = tr.querySelector(".tipo_llave").value;
 
-            inventarioid: tr.querySelector(".inventarioid").value,
-
-            vin: tr.querySelector(".vin").value,
-
-            almacenid: tr.querySelector(".almacenid").value,
-          });
+        if (entrega) {
+          algunaConLlave = true;
+          if (!tipoLlave) faltaTipoLlave = true;
         }
+
+        unidades.push({
+          vinid: vinid,
+          inventarioid: tr.querySelector(".inventarioid").value,
+          vin: tr.querySelector(".vin").value,
+          almacenid: tr.querySelector(".almacenid").value,
+          entrega_llave: entrega ? 1 : 0,
+          tipo_llave: tipoLlave,
+        });
       });
 
       if (unidades.length == 0) {
         Swal.fire("Atención", "Debe agregar al menos una unidad", "warning");
+        return;
+      }
 
+      if (faltaTipoLlave) {
+        Swal.fire(
+          "Atención",
+          "Indique el tipo de llave en cada unidad que entrega llave",
+          "warning",
+        );
+        return;
+      }
+
+      if (algunaConLlave && !nombreTrasladista) {
+        Swal.fire(
+          "Atención",
+          "Se requiere el nombre del trasladista para entregar llaves",
+          "warning",
+        );
         return;
       }
 
       let formData = new FormData(form);
-
       formData.append("unidades", JSON.stringify(unidades));
 
       fetch(base_url + "/Inv_traslados/setTraslado", {
         method: "POST",
-
         body: formData,
       })
         .then((res) => res.json())
-
         .then((data) => {
           if (data.status) {
             Swal.fire("Correcto", data.msg, "success");
-
             form.reset();
-
             document.querySelector("#tableUnidades tbody").innerHTML = "";
-
           } else {
             Swal.fire("Error", data.msg, "error");
           }
@@ -160,139 +190,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 });
-
-document.addEventListener("input", function (e) {
-  if (!e.target.classList.contains("vinSearch")) return;
-
-  let input = e.target;
-
-  let valor = input.value.toLowerCase();
-
-  cerrarLista();
-
-  if (valor == "") return;
-
-  let lista = document.createElement("div");
-
-  lista.className = "autocomplete-items list-group position-absolute w-100";
-
-  input.parentNode.appendChild(lista);
-
-  unidadesCache
-    .filter(
-      (u) =>
-        (u.vin && u.vin.toLowerCase().includes(valor)) ||
-        (u.num_unidad && String(u.num_unidad).toLowerCase().includes(valor)) ||
-        (u.unidad && u.unidad.toLowerCase().includes(valor)),
-    )
-
-    .slice(0, 10)
-
-    .forEach((u) => {
-      let item = document.createElement("div");
-
-      item.className = "list-group-item list-group-item-action";
-
-      item.innerHTML = `
-<strong>${u.vin}</strong>
-<br>
-${u.unidad}
-`;
-
-      item.onclick = function () {
-        let tr = input.closest("tr");
-
-        input.value = u.vin + " - " + u.unidad;
-
-        tr.querySelector(".vin").value = u.vin;
-
-        tr.querySelector(".unidad").value = u.unidad;
-
-        tr.querySelector('[name="vinid[]"]').value = u.vinid;
-
-        tr.querySelector('[name="inventarioid[]"]').value = u.inventarioid;
-
-        cerrarLista();
-      };
-
-      lista.appendChild(item);
-    });
-});
-
-/* =====================================================
-   CREAR FILA
-===================================================== */
-
-function agregarFilaUnidad() {
-  let filaVacia = document.querySelector("#rowSinUnidades");
-
-  if (filaVacia) {
-    filaVacia.remove();
-  }
-  let tbody = document.querySelector("#tableUnidades tbody");
-
-  let tr = document.createElement("tr");
-
-  tr.innerHTML = `
-
-<td>
-
-<input 
-class="form-control unidadSearch"
-placeholder="Buscar VIN">
-
-<input 
-type="hidden"
-class="almacenid"
-name="almacenid[]">
-
-
-<input 
-type="hidden"
-class="vinid"
-name="vinid[]">
-
-
-<input 
-type="hidden"
-class="inventarioid"
-name="inventarioid[]">
-
-
-<input 
-type="hidden"
-class="vin"
-name="vin[]">
-
-</td>
-
-
-<td class="modelo">
-
-</td>
-
-
-<td class="almacen">
-
-</td>
-
-
-<td>
-
-<button 
-type="button"
-class="btn btn-danger btn-sm btnEliminar">
-
-<i class="ri-delete-bin-line"></i>
-
-</button>
-
-</td>
-
-`;
-
-  tbody.appendChild(tr);
-}
 
 /* =====================================================
    AUTOCOMPLETE VIN
@@ -313,9 +210,23 @@ document.addEventListener("input", function (e) {
 
   let lista = document.createElement("div");
 
-  lista.className = "autocomplete-items list-group position-absolute w-100";
+  // Se agrega al <body> (no dentro de la celda/tabla) y se posiciona con
+  // "fixed" según las coordenadas del input. Dentro de la tabla el
+  // contenedor ".table-responsive" recorta cualquier elemento que se
+  // salga de su área, por lo que la lista quedaba oculta/cortada.
+  lista.className = "autocomplete-items list-group";
 
-  input.parentNode.appendChild(lista);
+  const posicionarLista = () => {
+    const rect = input.getBoundingClientRect();
+    lista.style.position = "fixed";
+    lista.style.left = rect.left + "px";
+    lista.style.top = rect.bottom + "px";
+    lista.style.width = rect.width + "px";
+  };
+
+  posicionarLista();
+
+  document.body.appendChild(lista);
 
   unidadesCache
 
@@ -430,6 +341,22 @@ document.addEventListener("click", function (e) {
   }
 });
 
+// Como la lista ahora vive en el <body> con posición "fixed", si el
+// usuario hace scroll (de la página o del contenedor de la tabla) hay
+// que cerrarla para que no quede flotando en un lugar equivocado.
+// OJO: la propia lista es scrolleable (max-height + overflow-y: auto),
+// así que hay que ignorar el scroll que ocurre DENTRO de ella; si no,
+// se cerraba apenas el usuario intentaba bajar para ver más resultados.
+window.addEventListener(
+  "scroll",
+  function (e) {
+    if (e.target.closest && e.target.closest(".autocomplete-items")) return;
+    cerrarListaVIN();
+  },
+  true,
+);
+window.addEventListener("resize", cerrarListaVIN);
+
 /* =====================================================
    ELIMINAR FILA
 ===================================================== */
@@ -440,3 +367,61 @@ document.addEventListener("click", function (e) {
   }
 });
 
+/* =====================================================
+   AGREGAR FILA UNIDAD
+===================================================== */
+function agregarFilaUnidad() {
+  let filaVacia = document.querySelector("#rowSinUnidades");
+  if (filaVacia) filaVacia.remove();
+
+  let tbody = document.querySelector("#tableUnidades tbody");
+  let tr = document.createElement("tr");
+
+  tr.innerHTML = `
+
+<td style="position:relative">
+  <input class="form-control unidadSearch" placeholder="Buscar VIN">
+  <input type="hidden" class="almacenid" name="almacenid[]">
+  <input type="hidden" class="vinid" name="vinid[]">
+  <input type="hidden" class="inventarioid" name="inventarioid[]">
+  <input type="hidden" class="vin" name="vin[]">
+</td>
+
+<td class="modelo"></td>
+<td class="almacen"></td>
+
+<td>
+  <select class="form-select entrega_llave">
+    <option value="0">No</option>
+    <option value="1">Sí</option>
+  </select>
+</td>
+
+<td>
+  <select class="form-select tipo_llave" disabled>
+    <option value="">--</option>
+    <option value="principal">Principal</option>
+    <option value="duplicado">Duplicado</option>
+  </select>
+</td>
+
+<td>
+  <button type="button" class="btn btn-danger btn-sm btnEliminar">
+    <i class="ri-delete-bin-line"></i>
+  </button>
+</td>
+
+`;
+
+  tbody.appendChild(tr);
+}
+document.addEventListener("change", function (e) {
+  if (!e.target.classList.contains("entrega_llave")) return;
+
+  let tr = e.target.closest("tr");
+  let selectTipo = tr.querySelector(".tipo_llave");
+
+  let entrega = e.target.value === "1";
+  selectTipo.disabled = !entrega;
+  if (!entrega) selectTipo.value = "";
+});

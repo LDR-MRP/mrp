@@ -39,7 +39,7 @@
 							p.status,
 							p.avatar,
 							p.plantaid,
-							p.rolid 
+							p.rolid
 					FROM usuarios p
 					INNER JOIN rol r
 					ON p.rolid = r.idrol

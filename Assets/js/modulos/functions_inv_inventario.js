@@ -128,6 +128,35 @@ document.addEventListener("DOMContentLoaded", () => {
     const hidProv = document.getElementById("prov_inventarioid");
     if (hidProv) hidProv.value = "";
 
+    // ---------- HIDDEN de portal web ----------
+    const hidPw = document.getElementById("pw_inventarioid");
+    if (hidPw) hidPw.value = "";
+
+    const hidPwUnidad = document.getElementById("pw_idunidad");
+    if (hidPwUnidad) hidPwUnidad.value = "";
+
+    const avisoPw = document.getElementById("avisoGuardarAntesImagenesPw");
+    if (avisoPw) avisoPw.style.display = "none";
+
+    pwTipoElementoActual = null;
+    pwModoActual = null;
+    const liTabPortalWebReset = document.getElementById("liTabPortalWeb");
+    if (liTabPortalWebReset) liTabPortalWebReset.hidden = true;
+    const seccionUnidadReset = document.getElementById("pw_seccionUnidad");
+    if (seccionUnidadReset) seccionUnidadReset.hidden = true;
+
+    const caratulaInputReset = document.getElementById("pw_imagen_caratula");
+    if (caratulaInputReset) {
+      caratulaInputReset.value = "";
+      caratulaInputReset.style.display = "";
+    }
+
+    const caratulaActualReset = document.getElementById("pw_caratula_actual");
+    toggleCaratulaActualPw(caratulaActualReset, false);
+
+    const caratulaPreviewReset = document.getElementById("pw_caratula_preview");
+    if (caratulaPreviewReset) caratulaPreviewReset.src = "";
+
     // ---------- SELECT impuesto ----------
     const selImp = document.getElementById("cfg_impuesto");
     if (selImp) {
@@ -157,6 +186,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const t6 = document.getElementById("tbodyProveedoresCfg");
     if (t6) t6.innerHTML = "";
+
+    // ---------- PORTAL WEB: galería e inputs nuevos ----------
+    const galeriaPw = document.getElementById("galeriaPortalWeb");
+    if (galeriaPw) galeriaPw.innerHTML = "";
+
+    const contNuevasPw = document.getElementById("contenedorNuevasImagenesPortalWeb");
+    if (contNuevasPw) {
+      contNuevasPw.innerHTML = `
+        <div class="col-md-4 col-sm-6 input-imagen-pw-wrapper">
+          <input type="file" class="form-control input-imagen-pw" accept="image/*">
+        </div>
+      `;
+    }
 
     // ---------- FORMS ----------
     document
@@ -1493,6 +1535,7 @@ function fntConfigInventario(idinventario) {
         cargarTabImpuestos(idinventario);
         cargarTabUbicaciones(idinventario);
         cargarTabProveedores(idinventario);
+        cargarTabPortalWeb(idinventario, d.tipo_elemento);
       }, 150);
     });
 }
@@ -3038,3 +3081,536 @@ document
     if (!currentInventarioId) return;
     cargarCantidades(currentInventarioId);
   });
+
+//-----------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------PORTAL WEB (web_unidades)------------------------------------
+//-----------------------------------------------------------------------------------------------------------------
+
+const MAX_IMAGENES_PORTAL_WEB = 5;
+
+function buildRutaCaratulaPortalWeb(ruta) {
+  if (!ruta) return "";
+  if (ruta.indexOf("Assets/") === 0) {
+    return base_url + "/" + ruta;
+  }
+  return base_url + "/Assets/" + ruta;
+}
+
+function toggleCaratulaActualPw(el, mostrar) {
+  if (!el) return;
+  el.classList.toggle("d-flex", mostrar);
+  el.classList.toggle("d-none", !mostrar);
+}
+
+let pwTipoElementoActual = null;
+let pwModoActual = null;
+
+function cargarTabPortalWeb(idinventario, tipoElemento) {
+  if (tipoElemento !== undefined) {
+    pwTipoElementoActual = tipoElemento;
+  }
+
+  // Solo 'P' (Producto = unidad ensamblada) y 'R' (Refaccion) tienen pestaña
+  // Portal Web. Herramienta, Componente, Kit y Servicio ya no la ven.
+  const liPortalWeb = document.getElementById("liTabPortalWeb");
+
+  if (pwTipoElementoActual === "P") {
+    pwModoActual = "unidad";
+  } else if (pwTipoElementoActual === "R") {
+    pwModoActual = "refaccion";
+  } else {
+    pwModoActual = null;
+  }
+
+  if (liPortalWeb) {
+    liPortalWeb.hidden = pwModoActual === null;
+  }
+
+  if (pwModoActual === null) {
+    return;
+  }
+
+  const seccionUnidad = document.getElementById("pw_seccionUnidad");
+  if (seccionUnidad) {
+    seccionUnidad.hidden = false;
+  }
+
+  // Version, motor y año solo aplican a Producto (unidad ensamblada);
+  // Refaccion no los usa.
+  const soloUnidad = ["pw_wrap_version", "pw_wrap_motor", "pw_wrap_anio"];
+  soloUnidad.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.hidden = pwModoActual !== "unidad";
+  });
+
+  const hid = document.getElementById("pw_inventarioid");
+  if (hid) hid.value = idinventario;
+
+  fetch(base_url + "/Inv_inventario/getPortalWeb/" + idinventario)
+    .then((r) => r.json())
+    .then((res) => {
+      if (!res.status) return;
+
+      pwModoActual = res.data.modo || pwModoActual;
+
+      const idUnidadInput = document.getElementById("pw_idunidad");
+      const claveModelo = document.getElementById("pw_clave_modelo");
+      const nombre = document.getElementById("pw_nombre");
+      const version = document.getElementById("pw_version");
+      const marca = document.getElementById("pw_marca");
+      const motor = document.getElementById("pw_motor");
+      const anio = document.getElementById("pw_anio");
+      const precio = document.getElementById("pw_precio_estimado");
+      const descripcion = document.getElementById("pw_descripcion");
+      const chk = document.getElementById("pw_web_distribuidores");
+      const radioActivo = document.getElementById("pw_estatus_activo");
+      const radioInactivo = document.getElementById("pw_estatus_inactivo");
+      const stock = document.getElementById("pw_stock");
+      const aviso = document.getElementById("avisoGuardarAntesImagenesPw");
+      const caratulaInput = document.getElementById("pw_imagen_caratula");
+      const caratulaPreview = document.getElementById("pw_caratula_preview");
+      const caratulaActual = document.getElementById("pw_caratula_actual");
+
+      if (caratulaInput) {
+        caratulaInput.value = "";
+        caratulaInput.style.display = "";
+      }
+
+      const registro = res.data.unidad;
+      const sugerencias = res.data.sugerencias || {};
+
+      if (registro) {
+        if (idUnidadInput) idUnidadInput.value = registro.idunidad || registro.idportalweb || "";
+        if (claveModelo) claveModelo.value = registro.clave_modelo || "";
+        if (nombre) nombre.value = registro.nombre || "";
+        if (version) version.value = registro.version || "";
+        if (marca) marca.value = registro.marca || "";
+        if (motor) motor.value = registro.motor || "";
+        if (anio) anio.value = registro.anio || "";
+        if (precio) precio.value = registro.precio_estimado || "";
+        if (descripcion) descripcion.value = registro.descripcion || "";
+
+        const estadoRegistro = parseInt(registro.estado, 10);
+        if (chk) chk.checked = estadoRegistro === 1 || estadoRegistro === 2;
+        if (estadoRegistro === 1) {
+          if (radioInactivo) radioInactivo.checked = true;
+        } else {
+          if (radioActivo) radioActivo.checked = true;
+        }
+      } else {
+        if (idUnidadInput) idUnidadInput.value = "";
+        if (claveModelo) claveModelo.value = sugerencias.clave_modelo || "";
+        if (nombre) nombre.value = sugerencias.nombre || "";
+        if (version) version.value = "";
+        if (marca) marca.value = sugerencias.marca || "";
+        if (motor) motor.value = "";
+        if (anio) anio.value = new Date().getFullYear();
+        if (precio) precio.value = sugerencias.precio_estimado || "";
+        if (descripcion) descripcion.value = "";
+        if (chk) chk.checked = false;
+        if (radioActivo) radioActivo.checked = true;
+      }
+
+      if (stock) stock.value = res.data.stock_actual ?? 0;
+      if (aviso) aviso.style.display = registro ? "none" : "block";
+
+      if (registro && registro.imagen_caratula) {
+        if (caratulaPreview) caratulaPreview.src = buildRutaCaratulaPortalWeb(registro.imagen_caratula);
+        toggleCaratulaActualPw(caratulaActual, true);
+        if (caratulaInput) caratulaInput.style.display = "none";
+      } else {
+        if (caratulaPreview) caratulaPreview.src = "";
+        toggleCaratulaActualPw(caratulaActual, false);
+        if (caratulaInput) caratulaInput.style.display = "";
+      }
+
+      renderGaleriaPortalWeb(res.data.imagenes || [], pwModoActual);
+    })
+    .catch((err) => console.error(err));
+}
+
+function renderGaleriaPortalWeb(imagenes, modo) {
+  const cont = document.getElementById("galeriaPortalWeb");
+  if (!cont) return;
+
+  const modoActual = modo || pwModoActual;
+
+  if (!imagenes.length) {
+    cont.innerHTML = `<div class="col-12 text-muted small">Sin evidencias fotográficas todavía.</div>`;
+    return;
+  }
+
+  let html = "";
+
+  imagenes.forEach((img) => {
+    const esPrincipal = parseInt(img.es_principal, 10) === 1;
+    const idImg = modoActual === "unidad" ? img.idimagen : img.idfotoportalweb;
+
+    html += `
+      <div class="col-md-3 col-sm-4 col-6 text-center imagen-portalweb-existente">
+        <div class="border rounded p-1 ${esPrincipal ? "border-warning border-2" : ""}">
+          <img src="${base_url}/Assets/${img.ruta_archivo}"
+               class="img-fluid rounded mb-1" style="max-height:120px;object-fit:cover;">
+          <div class="d-flex justify-content-center gap-1">
+            <button type="button" class="btn btn-sm ${esPrincipal ? "btn-warning" : "btn-outline-warning"}"
+              title="${esPrincipal ? "Imagen principal" : "Marcar como principal"}"
+              onclick="marcarImagenPrincipalPortalWeb(${idImg}, '${modoActual}')">
+              <i class="bi bi-star${esPrincipal ? "-fill" : ""}">Principal</i>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger"
+              onclick="eliminarImagenPortalWeb(${idImg}, '${modoActual}')">
+              <i class="bi bi-trash">Eliminar</i>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  cont.innerHTML = html;
+}
+
+function contarInputsImagenPortalWebPendientes() {
+  return document.querySelectorAll(
+    "#contenedorNuevasImagenesPortalWeb .input-imagen-pw",
+  ).length;
+}
+
+function contarImagenesExistentesPortalWeb() {
+  return document.querySelectorAll(
+    "#galeriaPortalWeb .imagen-portalweb-existente",
+  ).length;
+}
+
+const btnPortalWebForm = document.getElementById("formPortalWeb");
+if (btnPortalWebForm) {
+  btnPortalWebForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    guardarPortalWeb();
+  });
+}
+
+const btnActualizarCaratulaPw = document.getElementById("pw_btn_actualizar_caratula");
+if (btnActualizarCaratulaPw) {
+  btnActualizarCaratulaPw.addEventListener("click", function () {
+    const input = document.getElementById("pw_imagen_caratula");
+    const actual = document.getElementById("pw_caratula_actual");
+    toggleCaratulaActualPw(actual, false);
+    if (input) {
+      input.style.display = "";
+      input.click();
+    }
+  });
+}
+
+const btnEliminarCaratulaPw = document.getElementById("pw_btn_eliminar_caratula");
+if (btnEliminarCaratulaPw) {
+  btnEliminarCaratulaPw.addEventListener("click", function () {
+    const inventarioid = document.getElementById("pw_inventarioid")?.value;
+    if (!inventarioid) return;
+
+    Swal.fire({
+      title: "¿Eliminar imagen principal?",
+      text: "Se quitará la imagen principal de este registro.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#d33",
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+
+      const fd = new FormData();
+      fd.append("inventarioid", inventarioid);
+
+      fetch(base_url + "/Inv_inventario/eliminarCaratulaPortalWeb", {
+        method: "POST",
+        body: fd,
+      })
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.status) {
+            Swal.fire("OK", res.msg, "success");
+
+            const preview = document.getElementById("pw_caratula_preview");
+            const actual = document.getElementById("pw_caratula_actual");
+            const input = document.getElementById("pw_imagen_caratula");
+
+            if (preview) preview.src = "";
+            toggleCaratulaActualPw(actual, false);
+            if (input) {
+              input.value = "";
+              input.style.display = "";
+            }
+          } else {
+            Swal.fire("Error", res.msg, "error");
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          Swal.fire("Error", "No se pudo eliminar la imagen principal", "error");
+        });
+    });
+  });
+}
+
+const btnAgregarImagenPw = document.getElementById("btnAgregarImagenPortalWeb");
+if (btnAgregarImagenPw) {
+  btnAgregarImagenPw.addEventListener("click", function () {
+    const totalActual = contarImagenesExistentesPortalWeb();
+    const totalPendiente = contarInputsImagenPortalWebPendientes();
+
+    if (totalActual + totalPendiente >= MAX_IMAGENES_PORTAL_WEB) {
+      Swal.fire(
+        "Límite alcanzado",
+        `Solo puedes tener máximo ${MAX_IMAGENES_PORTAL_WEB} evidencias`,
+        "warning",
+      );
+      return;
+    }
+
+    const cont = document.getElementById("contenedorNuevasImagenesPortalWeb");
+    const div = document.createElement("div");
+    div.classList.add("col-md-4", "col-sm-6", "input-imagen-pw-wrapper");
+    div.innerHTML = `
+      <div class="input-group">
+        <input type="file" class="form-control input-imagen-pw" accept="image/*">
+        <button class="btn btn-outline-danger btnEliminarInputImagenPw" type="button">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    `;
+    cont.appendChild(div);
+  });
+}
+
+const contNuevasImagenesPw = document.getElementById("contenedorNuevasImagenesPortalWeb");
+if (contNuevasImagenesPw) {
+  contNuevasImagenesPw.addEventListener("click", function (e) {
+    const boton = e.target.closest(".btnEliminarInputImagenPw");
+    if (!boton) return;
+
+    const wrapper = boton.closest(".input-imagen-pw-wrapper");
+    if (wrapper) wrapper.remove();
+  });
+}
+
+const btnSubirImagenesPw = document.getElementById("btnSubirImagenesPortalWeb");
+if (btnSubirImagenesPw) {
+  btnSubirImagenesPw.addEventListener("click", function () {
+    subirImagenesPortalWeb();
+  });
+}
+
+function guardarPortalWeb() {
+  const idinventario = document.getElementById("pw_inventarioid").value;
+
+  if (!idinventario) {
+    Swal.fire("Aviso", "No se identificó el producto", "warning");
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("inventarioid", idinventario);
+
+  if (pwModoActual === "unidad" || pwModoActual === "refaccion") {
+    const claveModelo = document.getElementById("pw_clave_modelo").value.trim();
+
+    if (!claveModelo) {
+      Swal.fire("Aviso", "Captura el SKU / clave de modelo", "warning");
+      return;
+    }
+
+    fd.append("clave_modelo", claveModelo);
+    fd.append("nombre", document.getElementById("pw_nombre").value || "");
+    fd.append("marca", document.getElementById("pw_marca").value || "");
+    fd.append(
+      "precio_estimado",
+      document.getElementById("pw_precio_estimado").value || 0,
+    );
+
+    if (pwModoActual === "unidad") {
+      fd.append("version", document.getElementById("pw_version").value || "");
+      fd.append("motor", document.getElementById("pw_motor").value || "");
+      fd.append("anio", document.getElementById("pw_anio").value || "");
+    }
+
+    const caratulaInput = document.getElementById("pw_imagen_caratula");
+    if (caratulaInput && caratulaInput.files && caratulaInput.files[0]) {
+      fd.append("imagen_caratula", caratulaInput.files[0]);
+    }
+  }
+
+  fd.append(
+    "descripcion",
+    document.getElementById("pw_descripcion").value || "",
+  );
+  fd.append(
+    "web_distribuidores",
+    document.getElementById("pw_web_distribuidores").checked ? 1 : 0,
+  );
+
+  const estatusSeleccionado = document.querySelector(
+    '#tabPortalWeb input[name="estatus"]:checked',
+  );
+  fd.append("estatus", estatusSeleccionado ? estatusSeleccionado.value : 2);
+
+  fetch(base_url + "/Inv_inventario/setPortalWeb", {
+    method: "POST",
+    body: fd,
+  })
+    .then((r) => r.json())
+    .then((res) => {
+      if (res.status) {
+        Swal.fire("OK", res.msg, "success");
+        cargarTabPortalWeb(idinventario);
+      } else {
+        Swal.fire("Error", res.msg, "error");
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      Swal.fire(
+        "Error",
+        "No se pudo guardar la configuración de portal web",
+        "error",
+      );
+    });
+}
+
+function subirImagenesPortalWeb() {
+  const idinventario = document.getElementById("pw_inventarioid").value;
+  const idunidad = document.getElementById("pw_idunidad").value;
+
+  if (!idinventario) {
+    Swal.fire("Aviso", "No se identificó el producto", "warning");
+    return;
+  }
+
+  if ((pwModoActual === "unidad" || pwModoActual === "refaccion") && !idunidad) {
+    Swal.fire(
+      "Aviso",
+      "Guarda la configuración de portal web antes de subir imágenes",
+      "warning",
+    );
+    return;
+  }
+
+  const inputs = document.querySelectorAll(
+    "#contenedorNuevasImagenesPortalWeb .input-imagen-pw",
+  );
+  const fd = new FormData();
+  let totalArchivos = 0;
+
+  inputs.forEach((input) => {
+    if (input.files && input.files[0]) {
+      fd.append("imagenes[]", input.files[0]);
+      totalArchivos++;
+    }
+  });
+
+  if (totalArchivos === 0) {
+    Swal.fire("Aviso", "Selecciona al menos una imagen", "warning");
+    return;
+  }
+
+  fd.append("inventarioid", idinventario);
+
+  fetch(base_url + "/Inv_inventario/subirImagenPortalWeb", {
+    method: "POST",
+    body: fd,
+  })
+    .then((r) => r.json())
+    .then((res) => {
+      if (res.status) {
+        Swal.fire("OK", res.msg, "success");
+        renderGaleriaPortalWeb(res.imagenes || [], pwModoActual);
+
+        const cont = document.getElementById(
+          "contenedorNuevasImagenesPortalWeb",
+        );
+        if (cont) {
+          cont.innerHTML = `
+            <div class="col-md-4 col-sm-6 input-imagen-pw-wrapper">
+              <input type="file" class="form-control input-imagen-pw" accept="image/*">
+            </div>
+          `;
+        }
+      } else {
+        Swal.fire("Error", res.msg, "error");
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      Swal.fire("Error", "No se pudieron subir las imágenes", "error");
+    });
+}
+
+function eliminarImagenPortalWeb(idimagen, modo) {
+  const modoActual = modo || pwModoActual;
+
+  Swal.fire({
+    title: "¿Eliminar imagen?",
+    text: "Esta evidencia se eliminará del portal web.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#d33",
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+
+    const fd = new FormData();
+    if (modoActual === "unidad") {
+      fd.append("idimagen", idimagen);
+    } else {
+      fd.append("idfotoportalweb", idimagen);
+    }
+
+    fetch(base_url + "/Inv_inventario/deleteImagenPortalWeb", {
+      method: "POST",
+      body: fd,
+    })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.status) {
+          Swal.fire("OK", res.msg, "success");
+          renderGaleriaPortalWeb(res.imagenes || [], modoActual);
+        } else {
+          Swal.fire("Error", res.msg, "error");
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        Swal.fire("Error", "No se pudo eliminar la imagen", "error");
+      });
+  });
+}
+
+function marcarImagenPrincipalPortalWeb(idimagen, modo) {
+  const modoActual = modo || pwModoActual;
+  const fd = new FormData();
+
+  if (modoActual === "unidad") {
+    fd.append("idimagen", idimagen);
+  } else {
+    fd.append("idfotoportalweb", idimagen);
+  }
+
+  fetch(base_url + "/Inv_inventario/marcarImagenPrincipalPortalWeb", {
+    method: "POST",
+    body: fd,
+  })
+    .then((r) => r.json())
+    .then((res) => {
+      if (res.status) {
+        renderGaleriaPortalWeb(res.imagenes || [], modoActual);
+      } else {
+        Swal.fire("Error", res.msg, "error");
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      Swal.fire("Error", "No se pudo marcar la imagen como principal", "error");
+    });
+}

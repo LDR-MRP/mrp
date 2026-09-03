@@ -343,16 +343,42 @@
                         <div class="col-md-6 d-grid">
 
                             <button
+                                class="btn btn-info btn-lg d-none"
+                                id="btnRegistrarIngreso">
+
+                                <i class="ri-door-open-line me-1"></i>
+
+                                Registrar Ingreso (Seguridad)
+
+                            </button>
+
+                        </div>
+
+                        <div class="col-md-6 d-grid">
+
+                            <button
                                 class="btn btn-success btn-lg d-none"
                                 id="btnRegistrarRecepcion">
 
                                 <i class="ri-checkbox-circle-line me-1"></i>
 
-                                Registrar Recepción
+                                Registrar Recepción Interna
 
                             </button>
 
                         </div>
+
+                    </div>
+
+                    <div
+                        id="avisoIngreso"
+                        class="alert alert-info mt-3 d-none">
+
+                        <i class="ri-information-line me-2"></i>
+
+                        La unidad ya ingresó al patio (registrado por seguridad).
+                        Falta que una persona interna confirme la recepción y,
+                        en su caso, la entrega de la llave.
 
                     </div>
 
