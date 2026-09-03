@@ -11,6 +11,9 @@
 
 <script src="<?= media(); ?>/js/orders/home.js"></script>
    <script src="<?= media(); ?>/minimal/libs/sweetalert2/sweetalert2.min.js"></script>
+
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
 <?php
 if (!empty($data['page_functions_js']) && is_array($data['page_functions_js'])) {
   foreach ($data['page_functions_js'] as $js) {
@@ -37,6 +40,17 @@ if (!empty($data['page_functions_js']) && is_array($data['page_functions_js'])) 
       | JSON_UNESCAPED_SLASHES
     ); ?>
   };
+
+
+
+
+
+
+
+
+
+
+
 </script>
 
 </body>

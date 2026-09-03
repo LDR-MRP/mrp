@@ -2,26 +2,13 @@
 
 class OrdersModel extends Mysql
 {
-    /**
-     * Inicializa el modelo de acceso del portal de pedidos
-     * y ejecuta el constructor de la clase principal Mysql.
-     */
+
     public function __construct()
     {
         parent::__construct();
     }
 
-    /**
-     * Obtiene la información de acceso de un usuario mediante
-     * su correo electrónico, siempre que el cliente esté activo.
-     *
-     * @param string $correo Correo electrónico del usuario.
-     *
-     * @return mixed
-     */
-    public function selectUsuarioPorCorreo(
-        string $correo
-    ) {
+    public function selectUsuarioPorCorreo(string $correo) {
         $sql = "SELECT
                 ua.idusuario_acceso,
                 ua.idcliente,
@@ -49,18 +36,7 @@ class OrdersModel extends Mysql
             $sql
         );
     }
-
-    /**
-     * Obtiene la información completa de acceso de un usuario
-     * mediante su identificador.
-     *
-     * @param int $idusuarioAcceso Identificador del usuario de acceso.
-     *
-     * @return mixed
-     */
-    public function selectUsuarioAccesoPorId(
-        int $idusuarioAcceso
-    ) {
+    public function selectUsuarioAccesoPorId(int $idusuarioAcceso) {
         $sql = "SELECT
                 idusuario_acceso,
                 idcliente,
@@ -77,31 +53,14 @@ class OrdersModel extends Mysql
                 bloqueado_hasta,
                 estado
             FROM cli_usuarios_acceso
-            WHERE idusuario_acceso = ?
+            WHERE idusuario_acceso = $idusuarioAcceso
             LIMIT 1
         ";
 
-        return $this->select(
-            $sql,
-            [$idusuarioAcceso]
-        );
+        return $this->select($sql);
     }
 
-    /**
-     * Actualiza el número de intentos fallidos de inicio de sesión
-     * y establece, cuando corresponda, la fecha de bloqueo de la cuenta.
-     *
-     * @param int         $idusuarioAcceso Identificador del usuario.
-     * @param int         $intentos Número de intentos fallidos.
-     * @param string|null $bloqueadoHasta Fecha límite del bloqueo.
-     *
-     * @return mixed
-     */
-    public function updateIntentosFallidos(
-        int $idusuarioAcceso,
-        int $intentos,
-        ?string $bloqueadoHasta
-    ) {
+    public function updateIntentosFallidos(int $idusuarioAcceso,int $intentos,?string $bloqueadoHasta) {
         $sql = "UPDATE cli_usuarios_acceso
             SET
                 intentos_fallidos = ?,
@@ -124,16 +83,11 @@ class OrdersModel extends Mysql
     }
 
     /**
-     * Registra la fecha y hora del último inicio de sesión exitoso,
-     * reinicia los intentos fallidos y elimina cualquier bloqueo activo.
-     *
      * @param int $idusuarioAcceso Identificador del usuario.
      *
      * @return mixed
      */
-    public function updateUltimoLogin(
-        int $idusuarioAcceso
-    ) {
+    public function updateUltimoLogin(int $idusuarioAcceso) {
         $sql = "UPDATE cli_usuarios_acceso
             SET
                 ultimo_login = CONVERT_TZ(
@@ -158,7 +112,7 @@ class OrdersModel extends Mysql
     }
 
     /**
-     * Actualiza la contraseña definitiva del usuario, elimina los datos
+     * Actualizms la contraseña definitiva del usuario, elimina los datos
      * de recuperación y restablece los intentos fallidos y bloqueos.
      *
      * @param int    $idusuarioAcceso Identificador del usuario.
@@ -166,10 +120,7 @@ class OrdersModel extends Mysql
      *
      * @return mixed
      */
-    public function updatePasswordDefinitiva(
-        int $idusuarioAcceso,
-        string $passwordHash
-    ) {
+    public function updatePasswordDefinitiva(int $idusuarioAcceso,string $passwordHash) {
         $sql = "UPDATE cli_usuarios_acceso
             SET
                 password_hash = ?,
@@ -224,8 +175,8 @@ class OrdersModel extends Mysql
     }
 
     /**
-     * Registra un PIN de doble autenticación con su código cifrado,
-     * challenge, expiración e información de la sesión.
+     * Registramoss un PIN de doble autenticación con su código cifrado,
+     * challenge, expiración e informacin de la sesión.
      *
      * @param int    $idusuarioAcceso Identificador del usuario.
      * @param string $codigoHash Código PIN cifrado.
@@ -292,7 +243,7 @@ class OrdersModel extends Mysql
     }
 
     /**
-     * Obtiene el PIN activo más reciente relacionado con un usuario
+     * Obtienemos el PIN activo más reciente relacionado con un usuario
      * y un challenge específico.
      *
      * @param int    $idusuarioAcceso Identificador del usuario.
@@ -340,10 +291,7 @@ class OrdersModel extends Mysql
      *
      * @return mixed
      */
-    public function updateIntentoPin(
-        int $idpin,
-        int $intentos
-    ) {
+    public function updateIntentoPin(int $idpin,int $intentos) {
         $sql = "UPDATE cli_usuarios_acceso_pines
             SET intentos = ?
             WHERE idpin = ?
@@ -366,9 +314,7 @@ class OrdersModel extends Mysql
      *
      * @return mixed
      */
-    public function validarPinCorrecto(
-        int $idpin
-    ) {
+    public function validarPinCorrecto(int $idpin) {
         $sql = "UPDATE cli_usuarios_acceso_pines
             SET
                 utilizado = 1,
@@ -408,8 +354,8 @@ class OrdersModel extends Mysql
     }
 
     /**
-     * Registra en la bitácora los eventos relacionados con el acceso
-     * de los usuarios, incluyendo el resultado, dispositivo, navegador,
+     * Registramos en la bitácor los eventos relacionados con el acceso
+     * de los usuaridos, incluyendo el resultado, dispositivo, navegador,
      * dirección IP, sesión y motivo del evento.
      *
      * @param int|null    $idusuarioAcceso Identificador del usuario.
@@ -551,9 +497,9 @@ class OrdersModel extends Mysql
     }
 
     /**
-     * Obtiene un usuario mediante un token de recuperación y valida
+     * Obtienemos un usuario mediante un token de recuperación y valida
      * que el token exista, no haya expirado y que tanto el usuario
-     * como el cliente se encuentren activos.
+     * como el cliente se encuentren activos.d
      *
      * @param string $tokenHash Token de recuperación cifrado.
      *
@@ -598,7 +544,7 @@ class OrdersModel extends Mysql
     }
 
     /**
-     * Actualiza la contraseña mediante el proceso de recuperación,
+     * Actualizar la contraseña mediante el proceso de recuperación,
      * elimina el token utilizado, reinicia los intentos fallidos
      * y registra la fecha del cambio de contraseña.
      *
@@ -642,7 +588,7 @@ class OrdersModel extends Mysql
     }
 
 
-    /**
+/**
  * Obtiene las unidades activas publicadas
  * en el portal de distribuidores.
  */
@@ -735,10 +681,7 @@ public function selectImagenesUnidad(int $idunidad)
 }
 
 
-
-
-
- /**
+    /**
      * Obtiene las sucursales activas pertenecientes
      * exclusivamente al distribuidor autenticado.
      */
@@ -776,7 +719,7 @@ public function selectImagenesUnidad(int $idunidad)
 
 
     /**
-     * Asigna el folio definitivo después de conocer
+     * Asignamos el folio definitivo después de conocer
      * el identificador del pedido.
      */
     public function updateFolioPedido(
@@ -805,7 +748,7 @@ public function generarFolioPedido(): string
     $fechaActual = date('Y-m-d');
 
     /* ============================================================
-     * 1. CREAR EL REGISTRO DEL DÍA SI NO EXISTE
+     *  CREAR EL REGISTRO DEL DÍA SI NO EXISTE
      * ============================================================ */
 
     $sql = "INSERT INTO ped_folios_diarios (
@@ -832,7 +775,7 @@ public function generarFolioPedido(): string
     );
 
     /* ============================================================
-     * 2. OBTENER Y BLOQUEAR EL CONSECUTIVO ACTUAL
+     * OBTENER Y BLOQUEAR EL CONSECUTIVO ACTUAL
      * ============================================================ */
 
     $sql = "SELECT
@@ -877,10 +820,6 @@ public function generarFolioPedido(): string
         $registro = $registro[0];
     }
 
-    /*
-     * También soportamos el caso en que PDO
-     * devuelva un objeto.
-     */
     if (is_object($registro)) {
         $registro = (array) $registro;
     }
@@ -914,7 +853,7 @@ public function generarFolioPedido(): string
         $consecutivoActual + 1;
 
     /* ============================================================
-     * 3. ACTUALIZAR EL CONSECUTIVO
+     * ACTUALIZAR EL CONSECUTIVO
      * ============================================================ */
 
     $sql = "UPDATE ped_folios_diarios
@@ -935,7 +874,7 @@ public function generarFolioPedido(): string
 
     /*
      * Dependiendo de tu método update(), puede devolver:
-     * true, 1 o la cantidad de registros afectados.
+     * true, 1 o la cantidad de registros afectado
      */
     if (
         $requestUpdate === false
@@ -947,7 +886,7 @@ public function generarFolioPedido(): string
     }
 
     /* ============================================================
-     * 4. CREAR EL FOLIO
+     * CREAR EL FOLIO
      * ============================================================ */
 
     return sprintf(
@@ -966,10 +905,7 @@ public function generarFolioPedido(): string
     /**
      * Verifica que la sucursal pertenezca al distribuidor.
      */
-    public function selectSucursalCliente(
-        int $idsucursal,
-        int $idcliente
-    ){
+    public function selectSucursalCliente(int $idsucursal,int $idcliente){
         $sql = "SELECT
                 idsucursal,
                 idcliente,
@@ -983,23 +919,15 @@ public function generarFolioPedido(): string
                 estado_republica,
                 pais
             FROM cli_clientes_sucursales
-            WHERE idsucursal = ?
-              AND idcliente = ?
+            WHERE idsucursal = $idsucursal
+              AND idcliente = $idcliente
               AND estado = 2
             LIMIT 1
         ";
 
-        $request = $this->select(
-            $sql,
-            [
-                $idsucursal,
-                $idcliente
-            ]
-        );
+        $request = $this->select($sql);
 
-        return is_array($request)
-            ? $request
-            : [];
+        return is_array($request) ? $request: [];
     }
 
     /**
@@ -1008,13 +936,13 @@ public function generarFolioPedido(): string
     public function selectUnidadPedido(
         int $idunidad
     ){
-        $sql = "
-            SELECT
+        $sql = "SELECT
                 idunidad,
                 modelo,
                 clave_modelo,
                 nombre,
                 version,
+                descripcion,
                 anio,
                 marca,
                 motor,
@@ -1022,19 +950,14 @@ public function generarFolioPedido(): string
                 precio_estimado,
                 estado
             FROM web_unidades
-            WHERE idunidad = ?
+            WHERE idunidad = $idunidad
               AND estado = 2
             LIMIT 1
         ";
 
-        $request = $this->select(
-            $sql,
-            [$idunidad]
-        );
+        $request = $this->select($sql);
 
-        return is_array($request)
-            ? $request
-            : [];
+        return is_array($request) ? $request : [];
     }
 
     /* ============================================================
@@ -1048,6 +971,7 @@ public function generarFolioPedido(): string
                 idsede,
                 idusuario_acceso,
                 folio_pedido,
+                clave,
                 fecha_pedido,
                 fecha_requerida,
                 mes_facturacion_deseado,
@@ -1062,6 +986,7 @@ public function generarFolioPedido(): string
                 fecha_creacion,
                 fecha_actualizacion
             ) VALUES (
+                ?,
                 ?,
                 ?,
                 ?,
@@ -1087,6 +1012,7 @@ public function generarFolioPedido(): string
             $data['idsede'],
             $data['idusuario_acceso'],
             $data['folio_pedido'],
+            $data['clave'],
             $data['fecha_requerida'],
             $data['mes_facturacion_deseado'],
             $data['prioridad'],
@@ -1110,71 +1036,133 @@ public function generarFolioPedido(): string
      * INSERTAR DETALLE
      * ============================================================ */
 
-    public function insertPedidoDetalle(
-        array $data
-    ) {
-        $sql = "INSERT INTO ped_pedidos_detalle (
-                idpedido,
-                idunidad,
-                tipo_entrega,
-                idsucursal_entrega,
-                direccion_entrega,
-                cantidad_solicitada,
-                cantidad_autorizada,
-                cantidad_facturada,
-                cantidad_pendiente,
-                precio_unitario,
-                descuento,
-                subtotal,
-                iva,
-                total,
-                estatus,
-                fecha_creacion,
-                fecha_actualizacion
-            ) VALUES (
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                0,
-                0,
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                NOW(),
-                NOW()
-            )
-        ";
+public function insertPedidoDetalle(array $data) {
+    $sql = "INSERT INTO ped_pedidos_detalle (
+            idpedido,
+            idunidad,
+            tipo_entrega,
+            idsucursal_entrega,
+            direccion_entrega,
+            cantidad_solicitada,
+            cantidad_autorizada,
+            cantidad_facturada,
+            cantidad_pendiente,
+            precio_unitario,
+            descuento,
+            subtotal,
+            iva,
+            total,
+            estatus,
+            estado,
+            fecha_creacion,
+            fecha_actualizacion
+        )
+        VALUES (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            0,
+            0,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            2,
+            NOW(),
+            NOW()
+        )
+    ";
 
-        $arrData = [
-            $data['idpedido'],
-            $data['idproducto'],
-            $data['tipo_entrega'],
-            $data['idsucursal_entrega'],
-            $data['direccion_entrega'],
-            $data['cantidad_solicitada'],
-            $data['cantidad_pendiente'],
-            $data['precio_unitario'],
-            $data['descuento'],
-            $data['subtotal'],
-            $data['iva'],
-            $data['total'],
-            $data['estatus']
-        ];
+    $arrData = [
 
-        $request = $this->insert(
+        intval(
+            $data[
+                'idpedido'
+            ]
+        ),
+
+        intval(
+            $data[
+                'idunidad'
+            ]
+        ),
+
+        $data[
+            'tipo_entrega'
+        ],
+
+        $data[
+            'idsucursal_entrega'
+        ],
+
+        $data[
+            'direccion_entrega'
+        ],
+
+        intval(
+            $data[
+                'cantidad_solicitada'
+            ]
+        ),
+
+        intval(
+            $data[
+                'cantidad_pendiente'
+            ]
+        ),
+
+        floatval(
+            $data[
+                'precio_unitario'
+            ]
+        ),
+
+        floatval(
+            $data[
+                'descuento'
+            ]
+        ),
+
+        floatval(
+            $data[
+                'subtotal'
+            ]
+        ),
+
+        floatval(
+            $data[
+                'iva'
+            ]
+        ),
+
+        floatval(
+            $data[
+                'total'
+            ]
+        ),
+
+        $data[
+            'estatus'
+        ]
+        ?? 'PENDIENTE'
+    ];
+
+    $request =
+        $this->insert(
             $sql,
             $arrData
         );
 
-        return (int) $request;
-    }
+    return intval(
+        $request
+    );
+}
 
     /* ============================================================
      * BITÁCORA
@@ -1223,6 +1211,873 @@ public function generarFolioPedido(): string
 
         return (int) $request;
     }
+
+
+    public function existeClavePublicaPedido(string $clavePublica)
+{
+    $sql = "SELECT idpedido
+        FROM ped_pedidos
+        WHERE clave = '{$clavePublica}'
+        LIMIT 1
+    ";
+
+    $request = $this->select($sql);
+
+    return !empty($request);
+}
+
+
+
+/**
+ * Obtienemoa la información principal del distribuidor
+ * autenticado en el portal.
+ */
+public function selectClientePortal(int $idcliente)
+{
+    $sql = "SELECT
+            c.idcliente,
+            c.idtipo_cliente,
+            c.tipo_persona,
+            c.codigo_cliente,
+            c.razon_social,
+            c.nombre_comercial,
+            c.telefono,
+            c.celular,
+            c.correo,
+            c.correo_acceso,
+            c.sitio_web,
+            c.fecha_alta,
+            c.estado,
+            c.clave_distribuidor,
+            c.zona_comercial,
+            c.territorio,
+            c.responsable_comercial,
+            c.segmento_mercado
+        FROM cli_clientes c
+        WHERE c.idcliente = $idcliente
+          AND c.estado = 2
+        LIMIT 1
+    ";
+
+    return $this->select($sql);
+}
+
+
+/**
+ * Obtiener todos los pedidos activos pertenecientes
+ * al distribuidor autenticado.
+ */
+public function selectPedidosCliente(int $idcliente)
+{
+    $sql = "SELECT
+            p.idpedido,
+            p.idcliente,
+            p.idsede,
+            p.idusuario_acceso,
+            p.folio_pedido,
+            p.clave,
+            p.fecha_pedido,
+            p.fecha_requerida,
+            p.mes_facturacion_deseado,
+            p.prioridad,
+            p.subtotal,
+            p.descuento,
+            p.iva,
+            p.total,
+            p.observaciones,
+            p.estatus,
+            p.estado,
+            p.fecha_creacion,
+            p.fecha_actualizacion,
+
+            ua.nombre_usuario,
+
+            ua.nombre AS usuario_nombre,
+
+            ua.apellido AS usuario_apellido,
+
+            ua.correo AS usuario_correo,
+
+            TRIM(
+                CONCAT(
+                    COALESCE(ua.nombre, ''),
+                    ' ',
+                    COALESCE(ua.apellido, '')
+                )
+            ) AS registrado_por,
+
+            s.nombre_sucursal,
+
+            COALESCE(
+                detalle.total_unidades,
+                0
+            ) AS total_unidades,
+
+            COALESCE(
+                detalle.total_modelos,
+                0
+            ) AS total_modelos
+
+        FROM ped_pedidos p
+
+        INNER JOIN cli_usuarios_acceso ua
+            ON ua.idusuario_acceso =
+               p.idusuario_acceso
+
+        LEFT JOIN cli_clientes_sucursales s
+            ON s.idsucursal = p.idsede
+           AND s.idcliente = p.idcliente
+           AND s.estado = 2
+
+        LEFT JOIN
+        (
+            SELECT
+                pd.idpedido,
+
+                SUM(
+                    pd.cantidad_solicitada
+                ) AS total_unidades,
+
+                COUNT(
+                    DISTINCT pd.idunidad
+                ) AS total_modelos
+
+            FROM ped_pedidos_detalle pd
+
+            GROUP BY
+                pd.idpedido
+
+        ) AS detalle
+            ON detalle.idpedido =
+               p.idpedido
+
+        WHERE p.idcliente =  $idcliente
+          AND p.estado = 2
+
+        ORDER BY
+            p.fecha_pedido DESC,
+            p.idpedido DESC
+    ";
+
+    return $this->select_all($sql);
+}
+
+/**
+ * Obtiene las métricas generales del distribuidor.
+ */
+public function selectMetricasPedidosCliente(int $idcliente)
+{
+    $sql = "SELECT
+
+            (
+                SELECT
+                    COUNT(*)
+
+                FROM ped_pedidos p
+
+                WHERE p.idcliente = $idcliente
+                  AND p.estado = 2
+
+            ) AS pedidos,
+
+            (
+                SELECT
+                    COALESCE(
+                        SUM(
+                            pd.cantidad_solicitada
+                        ),
+                        0
+                    )
+
+                FROM ped_pedidos_detalle pd
+
+                INNER JOIN ped_pedidos p
+                    ON p.idpedido =
+                       pd.idpedido
+
+                WHERE p.idcliente = $idcliente
+                  AND p.estado = 2
+
+            ) AS unidades,
+
+            (
+                SELECT
+                    COUNT(
+                        DISTINCT pd.idunidad
+                    )
+
+                FROM ped_pedidos_detalle pd
+
+                INNER JOIN ped_pedidos p
+                    ON p.idpedido =
+                       pd.idpedido
+
+                WHERE p.idcliente = $idcliente
+                  AND p.estado = 2
+
+            ) AS modelos,
+
+            (
+                SELECT
+                    COALESCE(
+                        SUM(p.total),
+                        0
+                    )
+
+                FROM ped_pedidos p
+
+                WHERE p.idcliente = $idcliente
+                  AND p.estado = 2
+
+            ) AS total
+    ";
+
+    return $this->select($sql);
+}
+
+
+
+/**
+ * Obtenemos cuántos pedidos existen por estatus.
+ */
+public function selectConteoEstatusPedidosCliente(
+    int $idcliente
+)
+{
+    $sql = "SELECT
+            estatus,
+            COUNT(*) AS total
+        FROM ped_pedidos
+        WHERE idcliente = $idcliente
+          AND estado = 2
+        GROUP BY
+            estatus
+    ";
+
+    return $this->select_all($sql);
+}
+
+///////////////////// FUNCIONES PARA EDITAR LOS EPDIDOS
+
+
+
+public function selectPedidoEditable(string $clave, int $idcliente) {
+    $sql = "SELECT
+            p.idpedido,
+            p.idcliente,
+            p.idsede,
+            p.idusuario_acceso,
+            p.folio_pedido,
+            p.clave,
+            p.fecha_pedido,
+            p.fecha_requerida,
+            p.mes_facturacion_deseado,
+            p.prioridad,
+            p.subtotal,
+            p.descuento,
+            p.iva,
+            p.total,
+            p.observaciones,
+            p.estatus,
+            p.version,
+            p.ultima_modificacion_por,
+            p.fecha_ultima_modificacion,
+            p.estado,
+            p.fecha_creacion,
+            p.fecha_actualizacion
+        FROM ped_pedidos p
+        WHERE p.clave = '{$clave}'
+          AND p.idcliente = $idcliente
+          AND p.estado = 2
+          AND p.estatus = 'PENDIENTE'
+        LIMIT 1
+    ";
+
+    return $this->select($sql);
+}
+
+public function selectDetallesPedidoEditar(int $idpedido) {
+    $sql = "SELECT
+            pd.idpedido_detalle,
+            pd.idpedido,
+            pd.idunidad,
+            pd.tipo_entrega,
+            pd.idsucursal_entrega,
+            pd.direccion_entrega,
+            pd.cantidad_solicitada,
+            pd.cantidad_autorizada,
+            pd.cantidad_facturada,
+            pd.cantidad_pendiente,
+            pd.precio_unitario,
+            pd.descuento,
+            pd.subtotal,
+            pd.iva,
+            pd.total,
+            pd.estatus,
+            pd.estado,
+            pd.fecha_creacion,
+            pd.fecha_actualizacion,
+
+            wu.modelo,
+            wu.clave_modelo,
+            wu.nombre,
+            wu.version AS version_unidad,
+            wu.descripcion,
+            wu.anio,
+            wu.marca,
+            wu.motor,
+            wu.stock,
+            wu.precio_estimado,
+            wu.imagen_caratula
+
+        FROM ped_pedidos_detalle pd
+
+        INNER JOIN web_unidades wu
+            ON wu.idunidad = pd.idunidad
+           AND wu.estado = 2
+
+        WHERE pd.idpedido = $idpedido
+          AND pd.estado = 2
+
+        ORDER BY
+            pd.idpedido_detalle ASC
+    ";
+
+    return $this->select_all($sql);
+}
+
+
+
+public function validarPedidoEditable(string $clave,int $idcliente) {
+    $sql = "SELECT
+            idpedido,
+            idcliente,
+            folio_pedido,
+            clave,
+            estatus,
+            version,
+            estado
+        FROM ped_pedidos
+        WHERE clave = '{$clave}'
+          AND idcliente = $idcliente
+          AND estado = 2
+          AND estatus = 'PENDIENTE'
+        LIMIT 1
+    ";
+
+    return $this->select($sql);
+}
+
+// public function selectSucursalesCliente(
+//     int $idcliente
+// ) {
+//     $sql = "
+//         SELECT
+//             idsucursal,
+//             idcliente,
+//             nombre_sucursal,
+//             codigo_sucursal,
+//             telefono,
+//             correo,
+//             estado
+//         FROM cli_clientes_sucursales
+//         WHERE idcliente = ?
+//           AND estado = 2
+//         ORDER BY
+//             nombre_sucursal ASC
+//     ";
+
+//     return $this->select_all(
+//         $sql,
+//         [
+//             $idcliente
+//         ]
+//     );
+// }
+
+
+// public function selectUnidadPedido(
+//     int $idunidad
+// ) {
+//     $sql = "
+//         SELECT
+//             idunidad,
+//             modelo,
+//             clave_modelo,
+//             nombre,
+//             version,
+//             descripcion,
+//             anio,
+//             marca,
+//             motor,
+//             stock,
+//             precio_estimado,
+//             imagen_caratula
+//         FROM web_unidades
+//         WHERE idunidad = ?
+//           AND estado = 2
+//         LIMIT 1
+//     ";
+
+//     return $this->select(
+//         $sql,
+//         [
+//             $idunidad
+//         ]
+//     );
+// }
+
+
+
+public function updatePedidoCabecera(int $idpedido,array $data) {
+    $sql = "UPDATE ped_pedidos
+        SET
+            fecha_requerida = ?,
+            mes_facturacion_deseado = ?,
+            prioridad = ?,
+            subtotal = ?,
+            descuento = ?,
+            iva = ?,
+            total = ?,
+            observaciones = ?,
+            version = version + 1,
+            ultima_modificacion_por = ?,
+            fecha_ultima_modificacion = NOW(),
+            fecha_actualizacion = NOW()
+        WHERE idpedido = $idpedido
+          AND estado = 2
+          AND estatus = 'PENDIENTE'
+    ";
+
+    $arrData = [
+        $data['fecha_requerida'],
+        $data['mes_facturacion_deseado'],
+        $data['prioridad'],
+        $data['subtotal'],
+        $data['descuento'],
+        $data['iva'],
+        $data['total'],
+        $data['observaciones'],
+        $data['idusuario_modificacion']
+    ];
+
+    return $this->update($sql,$arrData);
+}
+
+
+public function updatePedidoDetalle(int $idpedidoDetalle,int $idpedido,array $data) {
+    $sql = "UPDATE ped_pedidos_detalle
+        SET
+            tipo_entrega = ?,
+            idsucursal_entrega = ?,
+            direccion_entrega = ?,
+            cantidad_solicitada = ?,
+            cantidad_pendiente = ?,
+            precio_unitario = ?,
+            descuento = ?,
+            subtotal = ?,
+            iva = ?,
+            total = ?,
+            fecha_actualizacion = NOW()
+        WHERE idpedido_detalle = $idpedidoDetalle
+          AND idpedido =  $idpedido
+          AND estado = 2
+          AND estatus = 'PENDIENTE'
+    ";
+
+    $arrData = [
+        $data['tipo_entrega'],
+        $data['idsucursal_entrega'],
+        $data['direccion_entrega'],
+        $data['cantidad_solicitada'],
+        $data['cantidad_pendiente'],
+        $data['precio_unitario'],
+        $data['descuento'],
+        $data['subtotal'],
+        $data['iva'],
+        $data['total'] 
+    ];
+
+    return $this->update($sql,$arrData);
+}
+
+
+public function desactivarPedidoDetalle(int $idpedidoDetalle,int $idpedido) {
+    $sql = " UPDATE ped_pedidos_detalle
+        SET
+            estado = ?,
+            fecha_actualizacion = NOW()
+        WHERE idpedido_detalle = $idpedidoDetalle
+          AND idpedido = $idpedido
+          AND estado = 2
+          AND estatus = 'PENDIENTE'
+    ";
+
+    return $this->update(
+        $sql,
+        [0]
+    );
+}
+
+
+public function selectPedidoDetallePorId(int $idpedidoDetalle,int $idpedido
+) {
+    $sql = "SELECT
+            pd.*,
+            wu.nombre,
+            wu.modelo,
+            wu.version AS version_unidad
+        FROM ped_pedidos_detalle pd
+
+        INNER JOIN web_unidades wu
+            ON wu.idunidad = pd.idunidad
+
+        WHERE pd.idpedido_detalle = $idpedidoDetalle
+          AND pd.idpedido = $idpedido
+          AND pd.estado = 2
+        LIMIT 1
+    ";
+
+    return $this->select($sql);
+}
+
+
+// public function insertPedidoDetalle(array $data)
+// {
+//     $sql = "INSERT INTO ped_pedidos_detalle
+//         (
+//             idpedido,
+//             idunidad,
+//             tipo_entrega,
+//             idsucursal_entrega,
+//             direccion_entrega,
+//             cantidad_solicitada,
+//             cantidad_autorizada,
+//             cantidad_facturada,
+//             cantidad_pendiente,
+//             precio_unitario,
+//             descuento,
+//             subtotal,
+//             iva,
+//             total,
+//             estatus,
+//             estado,
+//             fecha_creacion,
+//             fecha_actualizacion
+//         )
+//         VALUES
+//         (
+//             ?, ?, ?, ?, ?,
+//             ?, ?, ?, ?, ?,
+//             ?, ?, ?, ?, ?,
+//             2,
+//             NOW(),
+//             NOW()
+//         )
+//     ";
+
+//     $arrData = [
+//         $data['idpedido'],
+//         $data['idunidad'],
+//         $data['tipo_entrega'],
+//         $data['idsucursal_entrega'],
+//         $data['direccion_entrega'],
+//         $data['cantidad_solicitada'],
+//         0,
+//         0,
+//         $data['cantidad_pendiente'],
+//         $data['precio_unitario'],
+//         $data['descuento'],
+//         $data['subtotal'],
+//         $data['iva'],
+//         $data['total'],
+//         'PENDIENTE'
+//     ];
+
+//     return $this->insert(
+//         $sql,
+//         $arrData
+//     );
+// }
+
+public function selectDatosCorreoPedido(int $idpedido) {
+    $sql = "SELECT
+            p.idpedido,
+            p.folio_pedido,
+            p.clave,
+            p.fecha_pedido,
+            p.fecha_requerida,
+            p.mes_facturacion_deseado,
+            p.prioridad,
+            p.subtotal,
+            p.descuento,
+            p.iva,
+            p.total,
+            p.observaciones,
+            p.estatus,
+
+            c.idcliente,
+            c.codigo_cliente,
+            c.clave_distribuidor,
+            c.razon_social,
+            c.nombre_comercial,
+            c.telefono AS telefono_cliente,
+            c.celular AS celular_cliente,
+            c.correo AS correo_cliente,
+
+            ua.idusuario_acceso,
+            ua.nombre,
+            ua.apellido,
+            ua.correo AS correo_usuario,
+            ua.telefono AS telefono_usuario
+
+        FROM ped_pedidos AS p
+
+        INNER JOIN cli_clientes AS c
+            ON c.idcliente = p.idcliente
+
+        INNER JOIN cli_usuarios_acceso AS ua
+            ON ua.idusuario_acceso = p.idusuario_acceso
+
+        WHERE p.idpedido = $idpedido
+          AND p.estado = 2
+
+        LIMIT 1
+    ";
+
+    return $this->select($sql);
+}
+
+
+
+public function selectPedidoDetalle(string $clave) {
+
+    $sql = "SELECT
+
+            /* ============================================
+             * PEDIDO
+             * ============================================ */
+
+            p.idpedido,
+            p.idcliente,
+            p.idsede,
+            p.idusuario_acceso,
+
+            p.folio_pedido,
+            p.clave,
+
+            p.fecha_pedido,
+            p.fecha_requerida,
+            p.mes_facturacion_deseado,
+
+            p.prioridad,
+
+            p.subtotal,
+            p.descuento,
+            p.iva,
+            p.total,
+
+            p.observaciones,
+
+            p.estatus,
+            p.estado,
+
+            p.fecha_creacion,
+            p.fecha_actualizacion,
+
+            p.version,
+            p.fecha_ultima_modificacion,
+
+
+            /* ============================================
+             * CLIENTE / DISTRIBUIDOR
+             * ============================================ */
+
+            c.codigo_cliente,
+            c.clave_distribuidor,
+
+            c.razon_social,
+            c.nombre_comercial,
+
+            c.telefono AS telefono_cliente,
+            c.celular AS celular_cliente,
+            c.correo AS correo_cliente,
+
+
+            /* ============================================
+             * USUARIO PORTAL
+             * ============================================ */
+
+            ua.nombre AS nombre_usuario,
+            ua.apellido AS apellido_usuario,
+            ua.correo AS correo_usuario,
+            ua.telefono AS telefono_usuario
+
+
+        FROM ped_pedidos AS p
+
+
+        INNER JOIN cli_clientes AS c
+            ON c.idcliente = p.idcliente
+
+
+        LEFT JOIN cli_usuarios_acceso AS ua
+            ON ua.idusuario_acceso = p.idusuario_acceso
+
+
+        WHERE p.clave = '{$clave}'
+        --   AND p.idcliente = $idcliente
+          AND p.estado = 2
+
+        LIMIT 1
+    ";
+
+
+    return $this->select($sql);
+}
+
+
+
+
+public function selectDetallesPedido(int $idpedido) {
+
+    $sql = "SELECT
+
+            /* ============================================
+             * DETALLE
+             * ============================================ */
+
+            d.idpedido_detalle,
+            d.idpedido,
+            d.idunidad,
+
+            d.tipo_entrega,
+            d.idsucursal_entrega,
+            d.direccion_entrega,
+
+            d.cantidad_solicitada,
+            d.cantidad_autorizada,
+            d.cantidad_facturada,
+            d.cantidad_pendiente,
+
+            d.precio_unitario,
+            d.descuento,
+            d.subtotal,
+            d.iva,
+            d.total,
+
+            d.estatus,
+
+            d.fecha_creacion,
+            d.fecha_actualizacion,
+
+
+            /* ============================================
+             * UNIDAD
+             * ============================================ */
+
+            u.modelo,
+            u.clave_modelo,
+            u.nombre,
+            u.version,
+            u.descripcion,
+            u.anio,
+            u.marca,
+            u.motor,
+            u.imagen_caratula,
+
+
+            /* ============================================
+             * SUCURSAL
+             * ============================================ */
+
+            s.nombre_sucursal
+
+
+        FROM ped_pedidos_detalle AS d
+
+
+        INNER JOIN web_unidades AS u
+            ON u.idunidad = d.idunidad
+
+
+        LEFT JOIN cli_clientes_sucursales AS s
+            ON s.idsucursal = d.idsucursal_entrega
+
+
+        WHERE d.idpedido = $idpedido
+          AND d.estado = 2
+
+        ORDER BY
+            d.idpedido_detalle ASC
+    ";
+
+
+    return $this->select_all($sql);
+}
+
+
+
+
+
+public function selectPedidoParaCancelar(string $clave,int $idcliente) {
+
+    $sql = "SELECT
+            idpedido,
+            idcliente,
+            idusuario_acceso,
+            folio_pedido,
+            clave,
+            estatus,
+            estado
+        FROM ped_pedidos
+        WHERE clave = '{$clave}'
+          AND idcliente = $idcliente
+          AND estado = 2
+        LIMIT 1
+    ";
+    return $this->select($sql);
+
+}
+
+
+public function cancelarPedidoModel(
+    int $idpedido,
+    int $idcliente,
+    int $idusuarioAcceso
+) {
+
+    $sql = "UPDATE ped_pedidos
+
+        SET
+            estatus = 'CANCELADO',
+            ultima_modificacion_por = ?,
+            fecha_ultima_modificacion = NOW(),
+            fecha_actualizacion = NOW(),
+            version = version + 1
+        WHERE idpedido = $idpedido
+          AND idcliente = $idcliente
+          AND estado = 2
+          AND estatus = 'PENDIENTE'
+    ";
+
+    $arrData = [$idusuarioAcceso];
+    $request =
+        $this->update(
+            $sql,
+            $arrData
+        );
+
+    return $request;
+
+}
+
+
+
+
+
+
+
 
 
 }

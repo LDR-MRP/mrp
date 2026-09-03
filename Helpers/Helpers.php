@@ -179,8 +179,220 @@ function formatFechaLargaEs(string $value, bool $incluirHora = false): string
 
 
 
+function sendMailLocalCron(
+    $data,
+    $template,
+    $correos_copia = ''
+) {
 
-function sendMailLocalCron($data, $template, $correos_copia = '')
+    $mail = new PHPMailer(true);
+
+    try {
+
+        /*
+         * ========================================================
+         * VALIDAR CORREO DESTINATARIO
+         * ========================================================
+         */
+
+        if (
+            empty($data['email'])
+            || !filter_var(
+                $data['email'],
+                FILTER_VALIDATE_EMAIL
+            )
+        ) {
+            throw new Exception(
+                'Correo destinatario inválido.'
+            );
+        }
+
+
+        /*
+         * ========================================================
+         * CARGAR PLANTILLA
+         * ========================================================
+         */
+
+        $rutaTemplate ="Views/Template/Email/". $template. ".php";
+
+
+        if (!file_exists($rutaTemplate)) {
+
+            throw new Exception(
+                'No existe la plantilla de correo: '
+                . $rutaTemplate
+            );
+        }
+
+
+        ob_start();
+
+        require($rutaTemplate);
+
+        $mensaje =
+            ob_get_clean();
+
+
+        if (trim($mensaje)=== '') {
+
+            throw new Exception(
+                'La plantilla de correo se encuentra vacía.'
+            );
+        }
+
+
+        /*
+         * ========================================================
+         * CONFIGURACIÓN SMTP
+         * ========================================================
+         */
+
+        $mail->isSMTP();
+
+        $mail->Host ='smtp.gmail.com';
+
+        $mail->SMTPAuth =true;
+
+        $mail->Username ='notificacion@ldrsolutions.com.mx';
+
+        $mail->Password = 'ppiz zylc bpod tczi';
+
+        $mail->SMTPSecure =PHPMailer::ENCRYPTION_SMTPS;
+
+        $mail->Port =
+            465;
+
+
+        /*
+         * ========================================================
+         * REMITENTE
+         * ========================================================
+         */
+
+        $mail->setFrom('notificacion@ldrsolutions.com.mx','Notificaciones LDR');
+
+
+        /*
+         * ========================================================
+         * DESTINATARIO
+         * ========================================================
+         */
+
+        $mail->addAddress(trim($data['email']));
+
+
+        /*
+         * ========================================================
+         * COPIAS BCC
+         * ========================================================
+         */
+
+        $cc =is_array($correos_copia) ? $correos_copia : explode(',',(string) $correos_copia);
+
+
+        foreach ($cc as $correo) {
+
+            $correo =trim($correo);
+
+
+            if ($correo !== '' && filter_var($correo,FILTER_VALIDATE_EMAIL)) {
+
+                $mail->addBCC($correo);
+            }
+        }
+
+
+        /*
+         * ========================================================
+         * CONTENIDO
+         * ========================================================
+         */
+
+        $mail->isHTML(true);
+
+        $mail->CharSet ='UTF-8';
+
+        $mail->Encoding ='base64';
+
+
+        $mail->Subject =
+            trim(
+                (
+                    $data['asunto']
+                    ?? 'Notificación'
+                )
+                . (
+                    !empty(
+                        $data['num_orden']
+                    )
+                        ? ' | '
+                        . $data['num_orden']
+                        : ''
+                )
+            );
+
+
+        $mail->Body =$mensaje;
+
+
+        /*
+         * Versión texto plano del correo.
+         */
+        $mail->AltBody =
+            strip_tags(
+                preg_replace(
+                    '/<br\s*\/?>/i',
+                    "\n",
+                    $mensaje
+                )
+            );
+
+
+        /*
+         * ========================================================
+         * ENVÍO
+         * ========================================================
+         */
+
+        $mail->send();
+
+
+        return true;
+
+
+    } catch (Throwable $e) {
+
+        /*
+         * Si quedó un buffer abierto,
+         * lo limpiamos.
+         */
+        if (ob_get_level() > 0) {
+
+            @ob_end_clean();
+        }
+
+
+        error_log(
+            'Error al enviar correo a '
+            . (
+                $data['email']
+                ?? 'SIN CORREO'
+            )
+            . ': '
+            . $e->getMessage()
+            . ' | PHPMailer: '
+            . $mail->ErrorInfo
+        );
+
+
+        return false;
+    }
+}
+
+
+
+function sendMailLocalCronOLD($data, $template, $correos_copia = '')
 {
     $mail = new PHPMailer(true);
     ob_start();
@@ -224,6 +436,7 @@ function sendMailLocalCron($data, $template, $correos_copia = '')
         return false;
     }
 }
+
 
 
 

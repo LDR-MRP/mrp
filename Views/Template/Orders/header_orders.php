@@ -41,6 +41,53 @@ $esVistaPublica = in_array($pageName, ['login', 'restablecer-password'], true);
 <body class="page-<?= htmlspecialchars($pageName, ENT_QUOTES, 'UTF-8'); ?>">
 
     <header class="top-header">
+
+
+    <div
+    class="order-edit-mode-banner"
+    id="orderEditModeBanner"
+    
+>
+    <div class="container order-edit-mode-content">
+
+        <div class="order-edit-mode-info">
+
+            <span class="order-edit-mode-icon">
+                <i class="ri-edit-2-line"></i>
+            </span>
+
+            <div>
+                <small>Modo edición activo</small>
+
+                <strong id="orderEditModeText">Editando pedido</strong>
+            </div>
+
+        </div>
+
+
+        <div class="order-edit-mode-actions">
+
+            <a href="#" id="btnReturnEditOrder" class="btn btn-light btn-small">
+                <i class="ri-arrow-go-back-line"></i>
+                Volver al pedido
+            </a>
+
+            <button
+                type="button"
+                class="btn btn-outline btn-small"
+                id="btnExitEditMode">
+                <i class="ri-close-line"></i>
+                Salir de edición
+            </button>
+
+        </div>
+
+    </div>
+</div>
+
+
+
+
         <div class="container header-content">
 
             <a href="<?= $portalAutenticado ? base_url() . '/orders/home' : base_url() . '/orders/login'; ?>" class="logo">

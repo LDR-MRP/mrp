@@ -1,337 +1,364 @@
 <?php
+
 headerOrders($data);
 
 /*
- * Datos temporales.
- * Después se reemplazarán con información del controlador.
+ * ============================================
+ * DATA
+ * ============================================
  */
-$distribuidor = [
-    'iniciales' => 'DN',
-    'nombre' => 'Distribuidora Demo Norte',
-    'clave' => 'DIST-00045',
-    'correo' => 'compras@distribuidora.com',
-    'estado' => 'Cuenta activa'
+
+$distribuidor = $data['distribuidor'] ?? [];
+
+$metricas = $data['metricas'] ?? [
+    'pedidos' => 0,
+    'unidades' => 0,
+    'modelos' => 0,
+    'total' => 0
 ];
 
-$metricas = [
-    'pedidos' => 24,
-    'unidades' => 352,
-    'modelos' => 18,
-    'total' => 24860800
-];
+$pedidos = $data['pedidos'] ?? [];
 
-$pedidosDemo = [
-    [
-        'folio' => 'PED-20260705-0001',
-        'clave' => 'DIST-00045',
-        'fecha' => '05 Jul 2026',
-        'registrado_por' => 'Carlos Cruz',
-        'unidades' => 11,
-        'modelos' => 3,
-        'subtotal' => 5534482.76,
-        'iva' => 885517.24,
-        'total' => 6420000,
-        'estatus' => 'EN_REVISION',
-        'estatus_texto' => 'En revisión'
-    ],
-    [
-        'folio' => 'PED-20260630-0002',
-        'clave' => 'DIST-00045',
-        'fecha' => '30 Jun 2026',
-        'registrado_por' => 'Ana Martínez',
-        'unidades' => 6,
-        'modelos' => 2,
-        'subtotal' => 3612068.97,
-        'iva' => 577931.03,
-        'total' => 4190000,
-        'estatus' => 'INVENTARIO_ASIGNADO',
-        'estatus_texto' => 'Inventario asignado'
-    ],
-    [
-        'folio' => 'PED-20260625-0003',
-        'clave' => 'DIST-00045',
-        'fecha' => '25 Jun 2026',
-        'registrado_por' => 'Carlos Cruz',
-        'unidades' => 14,
-        'modelos' => 4,
-        'subtotal' => 7254310.34,
-        'iva' => 1160689.66,
-        'total' => 8415000,
-        'estatus' => 'EN_TRANSITO',
-        'estatus_texto' => 'En tránsito'
-    ],
-    [
-        'folio' => 'PED-20260618-0004',
-        'clave' => 'DIST-00045',
-        'fecha' => '18 Jun 2026',
-        'registrado_por' => 'Luis Ramírez',
-        'unidades' => 8,
-        'modelos' => 3,
-        'subtotal' => 4137931.03,
-        'iva' => 662068.97,
-        'total' => 4800000,
-        'estatus' => 'PENDIENTE',
-        'estatus_texto' => 'Pendiente'
-    ],
-    [
-        'folio' => 'PED-20260612-0005',
-        'clave' => 'DIST-00045',
-        'fecha' => '12 Jun 2026',
-        'registrado_por' => 'Ana Martínez',
-        'unidades' => 10,
-        'modelos' => 3,
-        'subtotal' => 4827586.21,
-        'iva' => 772413.79,
-        'total' => 5600000,
-        'estatus' => 'RECIBIDO',
-        'estatus_texto' => 'Recibido'
-    ]
-];
+// dep($pedidos);
 
-function moneyOrders(float $amount): string
-{
-    return '$' . number_format(
-        $amount,
-        2,
-        '.',
-        ','
-    );
+$conteoEstatus = $data['conteo_estatus'] ?? [];
+
+/*
+ * ============================================
+ * FUNCIONES VISUALES
+ * ============================================
+ */
+
+if (!function_exists('moneyOrders')) {
+
+    function moneyOrders(float $amount)
+    {
+
+        return '$'
+            . number_format(
+                $amount,
+                2,
+                '.',
+                ','
+            );
+    }
 }
+
+
+if (!function_exists('statusPedidoTexto')) {
+
+    function statusPedidoTexto(string $estatus)
+    {
+
+        $estatus = strtoupper(trim($estatus));
+
+        $estatusMap = [
+
+            'PENDIENTE' => 'Pendiente',
+
+            'RECIBIDO' => 'Recibido',
+
+            'EN_REVISION' => 'En revisión',
+
+            'INVENTARIO_ASIGNADO' => 'Inventario asignado',
+
+            'BACK_ORDER' => 'Back Order',
+
+            'BO' => 'Back Order',
+
+            'EN_TRANSITO' => 'En tránsito',
+
+            'EN_ENTREGA' => 'En entrega',
+
+            'ENTREGADO' => 'Entregado',
+
+            'FACTURADO' => 'Facturado',
+
+            'CANCELADO' => 'Cancelado'
+        ];
+
+
+        return $estatusMap[$estatus]
+            ?? ucfirst(
+                strtolower(
+                    str_replace(
+                        '_',
+                        ' ',
+                        $estatus
+                    )
+                )
+            );
+    }
+}
+
+
+if (!function_exists('statusPedidoNormalizado')) {
+
+    function statusPedidoNormalizado(string $estatus)
+    {
+
+        $estatus = strtoupper(trim($estatus));
+
+        if ($estatus === 'BO') {
+            return 'BACK_ORDER';
+        }
+
+        return $estatus;
+    }
+}
+
 ?>
+
 
 <main class="account-page">
 
     <div class="account-container">
 
+
         <!-- =====================================================
-         * COLUMNA LATERAL
-         * ===================================================== -->
+             SIDEBAR
+        ====================================================== -->
+
         <aside class="account-sidebar">
 
             <!-- DISTRIBUIDOR -->
+
             <section class="account-card distributor-card">
 
                 <div class="distributor-avatar">
-                    <?= htmlspecialchars(
-                        $distribuidor['iniciales']
-                    ); ?>
+
+                    <?= htmlspecialchars($distribuidor['iniciales'] ?? 'DR', ENT_QUOTES, 'UTF-8'); ?>
+
                 </div>
 
                 <h2>
-                    <?= htmlspecialchars(
-                        $distribuidor['nombre']
-                    ); ?>
+
+                    <?= htmlspecialchars($distribuidor['nombre'] ?? '', ENT_QUOTES, 'UTF-8'); ?>
+
                 </h2>
 
                 <strong class="distributor-key">
+
                     Clave:
-                    <?= htmlspecialchars(
-                        $distribuidor['clave']
-                    ); ?>
+
+                    <?= htmlspecialchars($distribuidor['clave'] ?? '', ENT_QUOTES, 'UTF-8'); ?>
+
                 </strong>
 
-                <a
-                    href="mailto:<?= htmlspecialchars(
-                        $distribuidor['correo']
-                    ); ?>"
-                    class="distributor-email"
-                >
-                    <?= htmlspecialchars(
-                        $distribuidor['correo']
-                    ); ?>
-                </a>
+                <?php if (!empty($distribuidor['correo'])): ?>
+
+                    <a href="mailto:<?= htmlspecialchars($distribuidor['correo'], ENT_QUOTES, 'UTF-8'); ?>"
+                        class="distributor-email">
+                        <?= htmlspecialchars($distribuidor['correo'], ENT_QUOTES, 'UTF-8'); ?>
+                    </a>
+
+                <?php endif; ?>
 
                 <div class="distributor-status">
                     <span></span>
-
-                    <?= htmlspecialchars(
-                        $distribuidor['estado']
-                    ); ?>
+                    <?= htmlspecialchars($distribuidor['estado'] ?? '', ENT_QUOTES, 'UTF-8'); ?>
                 </div>
 
             </section>
 
-            <!-- MENÚ LATERAL -->
-            <nav
-                class="account-card account-menu"
-                aria-label="Menú de mi cuenta"
-            >
 
-                <a
-                    href="<?= base_url(); ?>/orders/micuenta"
-                    class="account-menu-item"
-                >
+            <!-- MENÚ -->
+
+            <nav class="account-card account-menu" aria-label="Menú de mi cuenta">
+
+                <a href="<?= base_url(); ?>/orders/micuenta" class="account-menu-item active">
                     <i class="ri-home-5-line"></i>
-                    <span>Resumen</span>
+                    <span> Resumen</span>
                 </a>
 
-                <a
-                    href="<?= base_url(); ?>/orders/sedes"
-                    class="account-menu-item"
-                >
+                <a href="<?= base_url(); ?>/orders/sedes" class="account-menu-item">
                     <i class="ri-map-pin-line"></i>
-                    <span>Sedes</span>
+                    <span> Sedes</span>
                 </a>
 
-                <a
-                    href="<?= base_url(); ?>/orders/micuenta"
-                    class="account-menu-item active"
-                >
+
+                <a href="<?= base_url(); ?>/orders/micuenta" class="account-menu-item">
                     <i class="ri-file-list-3-line"></i>
                     <span>Mis pedidos</span>
                 </a>
 
-                <a
-                    href="<?= base_url(); ?>/orders/trazabilidad"
-                    class="account-menu-item"
-                >
+
+                <a href="<?= base_url(); ?>/orders/trazabilidad" class="account-menu-item">
                     <i class="ri-line-chart-line"></i>
                     <span>Trazabilidad</span>
                 </a>
 
-                <a
-                    href="<?= base_url(); ?>/orders/documentos"
-                    class="account-menu-item"
-                >
+
+                <a href="<?= base_url(); ?>/orders/documentos" class="account-menu-item">
                     <i class="ri-folder-line"></i>
                     <span>Documentos</span>
                 </a>
 
-                <a
-                    href="<?= base_url(); ?>/orders/perfil"
-                    class="account-menu-item"
-                >
+
+                <a href="<?= base_url(); ?>/orders/perfil" class="account-menu-item">
                     <i class="ri-user-settings-line"></i>
                     <span>Perfil y accesos</span>
                 </a>
 
-                <a
-                    href="<?= base_url(); ?>/orders/configuracion"
-                    class="account-menu-item"
-                >
-                    <i class="ri-settings-3-line"></i>
-                    <span>Configuración</span>
-                </a>
-
             </nav>
 
-            <!-- SOPORTE -->
-            <section class="account-card support-card">
 
+            <!-- SOPORTE -->
+
+            <section class="account-card support-card">
                 <div class="support-icon">
                     <i class="ri-customer-service-2-line"></i>
                 </div>
-
                 <div class="support-content">
-                    <h3>¿Necesitas ayuda?</h3>
-
+                    <h3>
+                        ¿Necesitas ayuda?
+                    </h3>
                     <p>
                         Nuestro equipo está disponible para apoyarte.
                     </p>
                 </div>
 
-                <a
-                    href="mailto:soporte@ldrsolutions.com"
-                    class="support-button"
-                >
+                <a href="mailto:soporte@ldrsolutions.com" class="support-button">
+
                     Contactar soporte
 
                     <i class="ri-arrow-right-s-line"></i>
+
                 </a>
 
             </section>
 
         </aside>
 
+
         <!-- =====================================================
-         * CONTENIDO PRINCIPAL
-         * ===================================================== -->
+             CONTENIDO
+        ====================================================== -->
+
         <section class="account-content">
 
-            <!-- BANNER -->
+
+            <!-- HERO -->
+
             <section class="account-hero">
 
                 <div class="account-hero-overlay"></div>
 
+
                 <div class="account-hero-content">
 
                     <div class="account-hero-icon">
+
                         <i class="ri-file-list-3-line"></i>
+
                     </div>
 
                     <div>
-                        <h1>Mis pedidos</h1>
+
+                        <h1>Resumen de pedidos</h1>
 
                         <p>
-                            Consulta todos tus pedidos de unidades,
-                            su estado actual y da seguimiento a cada
-                            solicitud.
+                            Consulta todas las solicitudes generadas
+                            por tu distribuidora y da seguimiento
+                            al estatus de cada pedido.
                         </p>
+
                     </div>
 
                 </div>
 
             </section>
 
-            <!-- MÉTRICAS -->
+
+            <!-- =================================================
+                 MÉTRICAS
+            ================================================== -->
+
             <section class="account-metrics">
 
                 <article class="metric-card">
 
                     <div class="metric-icon">
+
                         <i class="ri-file-list-3-line"></i>
+
                     </div>
 
                     <div class="metric-content">
+
                         <strong>
-                            <?= number_format(
-                                $metricas['pedidos']
-                            ); ?>
+
+                            876
+
                         </strong>
 
-                        <h3>Pedidos totales</h3>
+                        <h3>
+                            Pedidos totales
+                        </h3>
 
-                        <span>Todos los tiempos</span>
+                        <span>
+                            Todos los tiempos
+                        </span>
+
                     </div>
 
                 </article>
 
+
                 <article class="metric-card">
 
                     <div class="metric-icon">
+
                         <i class="ri-box-3-line"></i>
+
                     </div>
 
+
                     <div class="metric-content">
+
                         <strong>
-                            <?= number_format(
-                                $metricas['unidades']
-                            ); ?>
+
+                            38
+
                         </strong>
 
-                        <h3>Unidades solicitadas</h3>
+                        <h3>
+                            Unidades solicitadas
+                        </h3>
 
-                        <span>Total acumulado</span>
+                        <span>
+                            Total acumulado
+                        </span>
+
                     </div>
 
                 </article>
 
+
                 <article class="metric-card">
 
                     <div class="metric-icon">
+
                         <i class="ri-car-line"></i>
+
                     </div>
 
                     <div class="metric-content">
+
                         <strong>
-                            <?= number_format(
-                                $metricas['modelos']
-                            ); ?>
+
+                          29
+
                         </strong>
 
-                        <h3>Modelos diferentes</h3>
+                        <h3>
+                            Modelos diferentes
+                        </h3>
 
-                        <span>Total solicitados</span>
+                        <span>
+                            Total solicitados
+                        </span>
+
                     </div>
 
                 </article>
@@ -339,42 +366,53 @@ function moneyOrders(float $amount): string
                 <article class="metric-card metric-total">
 
                     <div class="metric-icon">
+
                         <i class="ri-money-dollar-circle-line"></i>
+
                     </div>
 
+
                     <div class="metric-content">
+
                         <strong>
-                            <?= moneyOrders(
-                                $metricas['total']
-                            ); ?>
+
+                          $23,327,600.00
+
                         </strong>
 
-                        <h3>Valor total estimado</h3>
+                        <h3>
+                            Valor total estimado
+                        </h3>
 
-                        <span>Incluye IVA</span>
+                        <span>
+                            Incluye IVA
+                        </span>
+
                     </div>
 
                 </article>
 
             </section>
 
-            <!-- FILTROS -->
+
+            <!-- =================================================
+                 FILTROS
+            ================================================== -->
+
             <section class="account-filters">
+
 
                 <div class="filter-group filter-search">
 
                     <label for="orderSearch">
+
                         Buscar pedido
+
                     </label>
 
                     <div class="input-icon-wrapper">
 
-                        <input
-                            type="search"
-                            id="orderSearch"
-                            class="account-input"
-                            placeholder="Buscar por folio, clave o registrado por..."
-                        >
+                        <input type="search" id="orderSearch" class="account-input" placeholder="Folio...">
 
                         <i class="ri-search-line"></i>
 
@@ -389,43 +427,36 @@ function moneyOrders(float $amount): string
                     <div class="date-range">
 
                         <div class="input-icon-wrapper">
-                            <input
-                                type="date"
-                                id="dateFrom"
-                                class="account-input"
-                                aria-label="Fecha inicial"
-                            >
 
-                            <i class="ri-calendar-line"></i>
+                            <input type="date" id="dateFrom" class="account-input">
+
                         </div>
 
-                        <div class="input-icon-wrapper">
-                            <input
-                                type="date"
-                                id="dateTo"
-                                class="account-input"
-                                aria-label="Fecha final"
-                            >
 
-                            <i class="ri-calendar-line"></i>
+                        <div class="input-icon-wrapper">
+
+                            <input type="date" id="dateTo" class="account-input">
+
                         </div>
 
                     </div>
 
                 </div>
 
+
                 <div class="filter-group">
 
                     <label for="statusFilter">
+
                         Estatus
+
                     </label>
 
-                    <select
-                        id="statusFilter"
-                        class="account-input"
-                    >
+
+                    <select id="statusFilter" class="account-input">
+
                         <option value="">
-                            Todos los estatus
+                            Todos
                         </option>
 
                         <option value="PENDIENTE">
@@ -440,6 +471,14 @@ function moneyOrders(float $amount): string
                             En revisión
                         </option>
 
+                        <option value="INVENTARIO_ASIGNADO">
+                            Inventario asignado
+                        </option>
+
+                        <option value="BACK_ORDER">
+                            Back Order
+                        </option>
+
                         <option value="EN_TRANSITO">
                             En tránsito
                         </option>
@@ -452,216 +491,342 @@ function moneyOrders(float $amount): string
                             Entregado
                         </option>
 
+                        <option value="FACTURADO">
+                            Facturado
+                        </option>
+
                         <option value="CANCELADO">
                             Cancelado
                         </option>
+
                     </select>
 
                 </div>
 
                 <div class="filter-actions">
 
-                    <button
-                        type="button"
-                        class="button-clear-filters"
-                        id="btnClearOrderFilters"
-                    >
+                    <button type="button" class="button-clear-filters" id="btnClearOrderFilters">
+
                         <i class="ri-restart-line"></i>
+
                         Limpiar filtros
+
                     </button>
 
                 </div>
 
             </section>
 
-            <!-- LISTADO -->
+            <!-- =================================================
+                 PEDIDOS
+            ================================================== -->
+
             <section class="orders-panel">
 
-                <!-- PESTAÑAS -->
+
+                <!-- TABS -->
+
                 <div class="orders-status-tabs">
 
-                    <button
-                        type="button"
-                        class="status-tab active"
-                        data-status=""
-                    >
+
+                    <button type="button" class="status-tab active" data-status="">
+
                         Todos
-                        <span>24</span>
+
+                        <span><?= number_format(intval($metricas['pedidos'])); ?></span>
+
                     </button>
 
-                    <button
-                        type="button"
-                        class="status-tab"
-                        data-status="PENDIENTE"
-                    >
+
+                    <button type="button" class="status-tab" data-status="PENDIENTE">
+
                         Pendiente
-                        <span class="status-count pending">6</span>
+
+                        <span>
+
+                            <?= number_format(intval($conteoEstatus['PENDIENTE'] ?? 0)); ?>
+
+                        </span>
+
                     </button>
 
-                    <button
-                        type="button"
-                        class="status-tab"
-                        data-status="RECIBIDO"
-                    >
-                        Recibido
-                        <span class="status-count received">5</span>
+                    <button type="button" class="status-tab" data-status="EN_REVISION">
+
+                        En revisión
+
+                        <span>
+
+                            <?= number_format(intval($conteoEstatus['EN_REVISION'] ?? 0)); ?>
+
+                        </span>
+
                     </button>
 
-                    <button
-                        type="button"
-                        class="status-tab"
-                        data-status="EN_TRANSITO"
-                    >
-                        En tránsito
-                        <span class="status-count transit">4</span>
+                    <button type="button" class="status-tab" data-status="BACK_ORDER">
+
+                        Back Order
+
+                        <span>
+
+                            <?= number_format(intval($conteoEstatus['BACK_ORDER'] ?? 0)); ?>
+
+                        </span>
+
                     </button>
 
-                    <button
-                        type="button"
-                        class="status-tab"
-                        data-status="EN_ENTREGA"
-                    >
-                        En entrega
-                        <span class="status-count delivery">3</span>
+                    <button type="button" class="status-tab" data-status="FACTURADO">
+
+                        Facturado
+
+                        <span>
+
+                            <?= number_format(intval($conteoEstatus['FACTURADO'] ?? 0)); ?>
+
+                        </span>
+
                     </button>
 
-                    <button
-                        type="button"
-                        class="status-tab"
-                        data-status="ENTREGADO"
-                    >
-                        Entregado
-                        <span class="status-count delivered">6</span>
+                    <button type="button" class="status-tab" data-status="CANCELADO">
+
+                        Cancelado
+
+                        <span>
+
+                            <?= number_format(intval($conteoEstatus['CANCELADO'] ?? 0)); ?>
+
+                        </span>
+
                     </button>
 
                 </div>
 
+
                 <!-- TABLA -->
+
                 <div class="orders-table-wrapper">
 
                     <table class="orders-table">
 
                         <thead>
+
                             <tr>
+
                                 <th>Folio</th>
-                                <th>Clave</th>
-                                <th>Fecha del pedido</th>
-                                <th>Registrado por</th>
+                                <!-- <th>Clave</th> -->
+                                <th>Fecha</th>
+                                <!-- <th>Registrado por</th> -->
                                 <th>Unidades</th>
                                 <th>Modelos</th>
                                 <th>Subtotal</th>
                                 <th>IVA</th>
                                 <th>Total</th>
                                 <th>Estatus</th>
-                                <th>Acciones</th>
+                                <th style="text-align: center;">Acciones</th>
                             </tr>
+
                         </thead>
+
 
                         <tbody id="ordersTableBody">
 
-                            <?php foreach ($pedidosDemo as $pedido): ?>
+                            <?php if (!empty($pedidos)): ?>
 
-                                <tr>
+                                <?php foreach ($pedidos as $pedido): ?>
 
-                                    <td data-label="Folio">
-                                        <strong class="order-folio">
-                                            <?= htmlspecialchars(
-                                                $pedido['folio']
-                                            ); ?>
-                                        </strong>
-                                    </td>
+                                    <?php
+                                    $estatus = statusPedidoNormalizado($pedido['estatus'] ?? 'PENDIENTE');
+                                    $fechaPedido = '';
 
-                                    <td data-label="Clave">
-                                        <?= htmlspecialchars(
-                                            $pedido['clave']
-                                        ); ?>
-                                    </td>
+                                    if (!empty($pedido['fecha_pedido'])) {
 
-                                    <td data-label="Fecha del pedido">
-                                        <?= htmlspecialchars(
-                                            $pedido['fecha']
-                                        ); ?>
-                                    </td>
+                                        $timestamp = strtotime($pedido['fecha_pedido']);
 
-                                    <td data-label="Registrado por">
+                                        if ($timestamp !== false) {
 
-                                        <span class="registered-user">
-                                            <i class="ri-account-circle-line"></i>
+                                            $fechaPedido = date('d/m/Y', $timestamp);
+                                        }
+                                    }
 
-                                            <?= htmlspecialchars(
-                                                $pedido['registrado_por']
-                                            ); ?>
-                                        </span>
+                                    ?>
 
-                                    </td>
+                                    <tr class="order-row" data-status="<?= htmlspecialchars(
+                                        $estatus,
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ); ?>" data-date="<?= htmlspecialchars(
+                                         substr(
+                                             $pedido[
+                                                 'fecha_pedido'
+                                             ] ?? '',
+                                             0,
+                                             10
+                                         ),
+                                         ENT_QUOTES,
+                                         'UTF-8'
+                                     ); ?>">
 
-                                    <td data-label="Unidades">
-                                        <?= number_format(
-                                            $pedido['unidades']
-                                        ); ?>
-                                    </td>
 
-                                    <td data-label="Modelos">
-                                        <?= number_format(
-                                            $pedido['modelos']
-                                        ); ?>
-                                    </td>
+                                        <td data-label="Folio">
 
-                                    <td data-label="Subtotal">
-                                        <?= moneyOrders(
-                                            $pedido['subtotal']
-                                        ); ?>
-                                    </td>
+                                            <strong class="order-folio">
 
-                                    <td data-label="IVA">
-                                        <?= moneyOrders(
-                                            $pedido['iva']
-                                        ); ?>
-                                    </td>
+                                                <?= htmlspecialchars($pedido['folio_pedido'], ENT_QUOTES, 'UTF-8'); ?>
 
-                                    <td data-label="Total">
-                                        <strong>
-                                            <?= moneyOrders(
-                                                $pedido['total']
-                                            ); ?>
-                                        </strong>
-                                    </td>
+                                            </strong>
 
-                                    <td data-label="Estatus">
+                                        </td>
 
-                                        <span
-                                            class="order-status status-<?= strtolower(
-                                                $pedido['estatus']
-                                            ); ?>"
-                                        >
-                                            <?= htmlspecialchars(
-                                                $pedido['estatus_texto']
-                                            ); ?>
-                                        </span>
 
-                                    </td>
+                                        <!-- <td data-label="Clave">
 
-                                    <td data-label="Acciones">
+                                            <span class="order-public-key">
 
-                                        <div class="order-actions">
+                                                <?= htmlspecialchars($pedido['clave'], ENT_QUOTES, 'UTF-8'); ?>
 
-                                            <a
-                                                href="<?= base_url(); ?>/orders/detallepedido/<?= urlencode(
-                                                    $pedido['folio']
-                                                ); ?>"
-                                                class="button-order-detail"
-                                            >
-                                                <i class="ri-eye-line"></i>
-                                                Ver detalle
+                                            </span>
+
+                                        </td> -->
+
+                                        <td data-label="Fecha">
+
+                                            <?= htmlspecialchars($fechaPedido, ENT_QUOTES, 'UTF-8'); ?>
+
+                                        </td>
+
+                                        <!-- <td data-label="Registrado por">
+
+                                            <span class="registered-user">
+
+                                                <i class="ri-account-circle-line"></i>
+
+                                                <?= htmlspecialchars(trim($pedido['registrado_por'] ?? '') ?: ($pedido['nombre_usuario'] ?? 'Usuario del portal'), ENT_QUOTES, 'UTF-8'); ?>
+
+                                            </span>
+
+                                        </td> -->
+
+                                        <td data-label="Unidades">
+
+                                            <?= number_format(intval($pedido['total_unidades'])); ?>
+
+                                        </td>
+
+                                        <td data-label="Modelos">
+
+                                            <?= number_format(intval($pedido['total_modelos'])); ?>
+
+                                        </td>
+
+                                        <td data-label="Subtotal">
+
+                                            <?= moneyOrders(floatval($pedido['subtotal'])); ?>
+
+                                        </td>
+
+                                        <td data-label="IVA">
+
+                                            <?= moneyOrders(floatval($pedido['iva'])); ?>
+
+                                        </td>
+
+                                        <td data-label="Total">
+
+                                            <strong>
+
+                                                <?= moneyOrders(floatval($pedido['total'])); ?>
+
+                                            </strong>
+
+                                        </td>
+
+                                        <td data-label="Estatus">
+
+                                            <span
+                                                class="order-status status-<?= strtolower(str_replace('_', '-', $estatus)); ?>">
+
+                                                <?= htmlspecialchars(statusPedidoTexto($estatus), ENT_QUOTES, 'UTF-8'); ?>
+
+                                            </span>
+
+                                        </td>
+
+                                        <td data-label="Acciones">
+
+                                            <?php
+                                            /*
+                                             * ==========================================================
+                                             * CONFIGURACIÓN DE ACCIONES
+                                             * ==========================================================
+                                             */
+                                            $estatusPedido = strtoupper(trim($pedido['estatus'] ?? ''));
+                                            $clavePedido = $pedido['clave'] ?? '';
+                                            /*
+                                             * Solamete se puede editar/cancelar
+                                             * mientras el pedido esté PENDIENTE.
+                                             */
+                                            $puedeEditar = $estatusPedido === 'PENDIENTE';
+                                            $puedeCancelar = $estatusPedido === 'PENDIENTE';
+
+                                            ?>
+                                            <div class="order-actions">
+
+
+                                                <a href="<?= base_url(); ?>/orders/detallepedido/<?= rawurlencode($clavePedido); ?>"
+                                                    class="button-order-action button-order-view" title="Consultar pedido">
+                                                    <i class="ri-eye-line"></i>
+                                                    <span>
+                                                        Ver detalle
+                                                    </span>
+                                                </a>
+
+                                                
+
+                                                <button type="button" class="button-order-action button-order-print"
+                                                    data-action="print-order"
+                                                    data-clave="<?= htmlspecialchars($clavePedido, ENT_QUOTES, 'UTF-8'); ?>"
+                                                    data-folio="<?= htmlspecialchars($pedido['folio_pedido'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                                                    title="Imprimir hoja de pedido">
+                                                    <i class="ri-printer-line"></i>
+                                                    <span>
+                                                        Imprimir
+                                                    </span>
+
+                                                </button>
+
+                                            </div>
+
+                                        </td>
+
+                                    </tr>
+
+                                <?php endforeach; ?>
+
+
+                            <?php else: ?>
+
+
+                                <tr id="emptyOrdersRow">
+
+                                    <td colspan="11" class="orders-empty">
+
+                                        <div class="orders-empty-content">
+
+                                            <i class="ri-file-list-3-line"></i>
+
+                                            <strong>
+                                                Aún no tienes pedidos
+                                            </strong>
+
+                                            <span>
+                                                Cuando generes una solicitud,
+                                                aparecerá aquí.
+                                            </span>
+
+                                            <a href="<?= base_url(); ?>/orders/home#catalogo" class="btn btn-primary">
+
+                                                Consultar catálogo
+
                                             </a>
-
-                                            <button
-                                                type="button"
-                                                class="button-order-menu"
-                                                aria-label="Más acciones"
-                                            >
-                                                <i class="ri-arrow-down-s-line"></i>
-                                            </button>
 
                                         </div>
 
@@ -669,7 +834,9 @@ function moneyOrders(float $amount): string
 
                                 </tr>
 
-                            <?php endforeach; ?>
+
+                            <?php endif; ?>
+
 
                         </tbody>
 
@@ -677,71 +844,33 @@ function moneyOrders(float $amount): string
 
                 </div>
 
-                <!-- PIE Y PAGINACIÓN -->
-                <div class="orders-footer">
+                <!-- SIN RESULTADOS POR FILTRO -->
 
-                    <p>
-                        Mostrando
-                        <strong>1</strong>
-                        a
-                        <strong>5</strong>
-                        de
-                        <strong>24</strong>
-                        pedidos
+                <div id="ordersNoResults" class="orders-no-results" hidden>
+
+                    <i class="ri-search-line"></i>
+
+                    <strong>
+                        No encontramos pedidos
+                    </strong>
+
+                    <span>
+                        Modifica los filtros de búsqueda.
+                    </span>
+
+                </div>
+
+                <!-- FOOTER -->
+
+                <div class="orders-footer" id="ordersFooter">
+
+                    <p id="ordersPaginationInfo">
+
+                        Mostrando pedidos
+
                     </p>
 
-                    <nav
-                        class="orders-pagination"
-                        aria-label="Paginación de pedidos"
-                    >
-
-                        <button
-                            type="button"
-                            class="pagination-button"
-                            disabled
-                        >
-                            <i class="ri-arrow-left-line"></i>
-                        </button>
-
-                        <button
-                            type="button"
-                            class="pagination-button active"
-                        >
-                            1
-                        </button>
-
-                        <button
-                            type="button"
-                            class="pagination-button"
-                        >
-                            2
-                        </button>
-
-                        <button
-                            type="button"
-                            class="pagination-button"
-                        >
-                            3
-                        </button>
-
-                        <span class="pagination-dots">
-                            ...
-                        </span>
-
-                        <button
-                            type="button"
-                            class="pagination-button"
-                        >
-                            5
-                        </button>
-
-                        <button
-                            type="button"
-                            class="pagination-button"
-                        >
-                            <i class="ri-arrow-right-line"></i>
-                        </button>
-
+                    <nav class="orders-pagination" id="ordersPagination" aria-label="Paginación de pedidos">
                     </nav>
 
                 </div>
@@ -755,5 +884,7 @@ function moneyOrders(float $amount): string
 </main>
 
 <?php
+
 footerOrders($data);
+
 ?>
