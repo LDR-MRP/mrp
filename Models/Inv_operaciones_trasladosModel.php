@@ -50,22 +50,21 @@ class Inv_operaciones_trasladosModel extends Mysql
         $idtraslado = $traslado['idtraslado'];
 
         $sqlDetalle = "
-
     SELECT
-
+        d.iddetalle,
         d.vinid,
         d.vin,
-
-        i.descripcion AS modelo
-
+        i.descripcion AS modelo,
+        tl.estado_llave,
+        tl.fecha_entrega,
+        tl.fecha_recepcion,
+        tl.entrega_llave,
+        tl.tipo_llave
     FROM wms_traslados_unidades_detalle d
-
-    INNER JOIN wms_inventario i
-        ON i.idinventario = d.inventarioid
-
+    INNER JOIN wms_inventario i ON i.idinventario = d.inventarioid
+    LEFT JOIN wms_traslados_llaves tl ON tl.iddetalle = d.iddetalle
     WHERE d.trasladoid = $idtraslado
-
-    ";
+";
 
         $traslado['unidades'] =
             $this->select_all($sqlDetalle);
@@ -79,22 +78,24 @@ class Inv_operaciones_trasladosModel extends Mysql
     public function registrarSalida($folio, $usuario)
     {
 
+        $pdo = $this->getConexion();
 
         try {
 
+            // Bloquea el renglón del traslado durante toda la operación:
+            // si llega una segunda petición (doble clic / doble envío) para
+            // el mismo folio, se queda esperando aquí hasta que esta
+            // transacción termine, y al reintentar ya verá estado != 1.
+            $pdo->beginTransaction();
 
             /*
  Buscar traslado
 */
 
-            $sql = "
-SELECT *
-FROM wms_traslados_unidades
-WHERE folio='$folio'
-";
-
-
-            $traslado = $this->select($sql);
+            $traslado = $this->select(
+                "SELECT * FROM wms_traslados_unidades WHERE folio = ? FOR UPDATE",
+                [$folio]
+            );
 
 
             if (!$traslado) {
@@ -184,6 +185,36 @@ FOR UPDATE
                     ]
                 );
 
+                $llave = $this->select(
+                    "SELECT idllave_traslado, llaveid
+     FROM wms_traslados_llaves
+     WHERE iddetalle = ? AND entrega_llave = 1",
+                    [$u['iddetalle']]
+                );
+
+                if (!empty($llave)) {
+
+                    $this->update(
+                        "UPDATE wms_traslados_llaves
+         SET estado_llave = 2, fecha_entrega = NOW()
+         WHERE idllave_traslado = ?",
+                        [$llave['idllave_traslado']]
+                    );
+
+                    $this->update(
+                        "UPDATE wms_llaves_inventario SET estado = 3 WHERE idllave = ?",
+                        [$llave['llaveid']]
+                    );
+
+                    $this->insert(
+                        "INSERT INTO wms_llaves_movimientos
+         (llaveid, tipo_movimiento, referenciaid, tipo_accion,
+          almacen_origenid, almacen_destinoid, usuarioid)
+         VALUES (?, 'traslado', ?, 'salida', ?, ?, ?)",
+                        [$llave['llaveid'], $idtraslado, $almacenOrigen, $traslado['almacen_destinoid'], $usuario]
+                    );
+                }
+
 
 
                 /*
@@ -271,11 +302,17 @@ FOR UPDATE
 
 
 
+            $pdo->commit();
+
             return [
                 "status" => true,
                 "msg" => "Salida registrada"
             ];
         } catch (Exception $e) {
+
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
 
             return [
                 "status" => false,
@@ -284,267 +321,303 @@ FOR UPDATE
         }
     }
 
-    public function registrarRecepcion($folio, $usuario)
-    {
+    /* =====================================================
+       REGISTRO DE INGRESO (Seguridad / caseta)
 
+       Paso intermedio entre la salida (estado 2) y la recepción
+       interna (estado 4). Únicamente confirma que la unidad llegó
+       físicamente al almacén destino: NO mueve inventario ni toca
+       las llaves, y NO cierra el traslado. La recepción formal
+       (incluyendo la confirmación de la llave) la debe hacer
+       después una persona interna mediante registrarRecepcion().
+    ===================================================== */
+    public function registrarIngresoUnidad($folio, $usuario)
+    {
+        $pdo = $this->getConexion();
 
         try {
 
+            $pdo->beginTransaction();
 
-            /*
-        Buscar traslado
-        */
-
-            $sql = "
-        SELECT *
-        FROM wms_traslados_unidades
-        WHERE folio='$folio'
-        ";
-
-
-            $traslado = $this->select($sql);
-
-
+            $traslado = $this->select(
+                "SELECT * FROM wms_traslados_unidades WHERE folio = ? FOR UPDATE",
+                [$folio]
+            );
 
             if (!$traslado) {
-
-                throw new Exception(
-                    "Traslado no encontrado"
-                );
+                throw new Exception("Traslado no encontrado");
             }
-
-
-
-            /*
-        Validar estado correcto
-        */
 
             if ($traslado['estado'] != 2) {
-
-
                 throw new Exception(
-                    "El traslado no está pendiente de recepción"
+                    $traslado['estado'] == 1
+                        ? "El traslado aún no registra salida"
+                        : "El traslado ya no está pendiente de ingreso (probablemente ya fue recibido, cancelado, o el ingreso ya se había registrado)"
                 );
             }
-
-
 
             $idtraslado = $traslado['idtraslado'];
 
-
-            $almacenDestino =
-                $traslado['almacen_destinoid'];
-
-
-
-            /*
-        Obtener unidades
-        */
-
-
-            $sql = "
-        SELECT *
-        FROM wms_traslados_unidades_detalle
-        WHERE trasladoid=$idtraslado
-        ";
-
-
-            $unidades = $this->select_all($sql);
-
-
-
-
-            foreach ($unidades as $u) {
-
-
-
-                /*
-            Buscar existencia destino
-            */
-
-
-                $sql = "
-            SELECT existencia
-            FROM wms_multialmacen
-            WHERE inventarioid={$u['inventarioid']}
-            AND almacenid=$almacenDestino
-            ";
-
-
-                $exist = $this->select($sql);
-
-
-
-                if ($exist) {
-
-
-                    $nuevaExistencia =
-                        $exist['existencia'] + 1;
-
-
-
-                    $this->update(
-                        "
-                    UPDATE wms_multialmacen
-                    SET existencia = existencia + 1
-                    WHERE inventarioid=?
-                    AND almacenid=?
-                    ",
-                        [
-                            $u['inventarioid'],
-                            $almacenDestino
-                        ]
-                    );
-                } else {
-
-
-                    $nuevaExistencia = 1;
-
-
-
-                    $this->insert(
-                        "
-                    INSERT INTO wms_multialmacen
-                    (
-                        inventarioid,
-                        almacenid,
-                        existencia
-                    )
-                    VALUES
-                    (
-                        ?,
-                        ?,
-                        ?
-                    )
-                    ",
-                        [
-                            $u['inventarioid'],
-                            $almacenDestino,
-                            1
-                        ]
-                    );
-                }
-
-
-
-
-                /*
-            Movimiento entrada
-            */
-
-
-                $movimiento =
-                    "MOV-" . date("YmdHis") . "-" . rand(100, 999);
-
-
-                $resultMovimiento = $this->insert(
-
-                    "
-INSERT INTO wms_movimientos_inventario
-(
-    inventarioid,
-    almacenid,
-    numero_movimiento,
-    concepmovid,
-    referencia,
-    cantidad,
-    costo_cantidad,
-    existencia,
-    signo,
-    fecha_movimiento,
-    estado
-)
-
-VALUES
-(
-    ?,
-    ?,
-    ?,
-    ?,
-    ?,
-    ?,
-    ?,
-    ?,
-    ?,
-    NOW(),
-    ?
-)
-",
-
-                    [
-                        $u['inventarioid'],
-                        $almacenDestino,
-                        $movimiento,
-                        7, // ✅ Entrada x traspaso
-                        $folio,
-                        1,
-                        0,
-                        $nuevaExistencia,
-                        1,
-                        2
-                    ]
-
-                );
-
-
-                if (!$resultMovimiento) {
-
-                    throw new Exception(
-                        "Error registrando movimiento de entrada"
-                    );
-                }
-            }
-
-
-
-
-            /*
-        Actualizar traslado
-        */
-
-
             $this->update(
-
-                "
-        UPDATE wms_traslados_unidades
-
-        SET
-
-            estado=4,
-            fecha_recepcion=NOW(),
-            usuario_recepcion=?
-
-        WHERE idtraslado=?
-
-        ",
-
-                [
-
-                    $usuario,
-                    $idtraslado
-
-                ]
+                "UPDATE wms_traslados_unidades SET estado = 3 WHERE idtraslado = ?",
+                [$idtraslado]
             );
 
-
-
-
+            $pdo->commit();
 
             return [
-
                 "status" => true,
-                "msg" => "Recepción registrada correctamente"
-
+                "msg" => "Ingreso registrado. Falta la recepción interna para completar el traslado."
             ];
         } catch (Exception $e) {
 
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
 
             return [
-
                 "status" => false,
                 "msg" => $e->getMessage()
-
             ];
+        }
+    }
+
+    public function registrarRecepcion($folio, $usuario, $unidadesRecibidas)
+    {
+        $pdo = $this->getConexion();
+
+        try {
+
+            // Bloquea el renglón del traslado mientras dura toda la recepción.
+            // Si el botón se manda dos veces (doble clic, doble tap en el
+            // celular, reintento de red), la segunda petición se queda
+            // esperando aquí y, al continuar, ya encuentra estado != 3 y
+            // se rechaza sin volver a mover inventario ni llaves.
+            $pdo->beginTransaction();
+
+            $traslado = $this->select(
+                "SELECT * FROM wms_traslados_unidades WHERE folio = ? FOR UPDATE",
+                [$folio]
+            );
+
+            if (!$traslado) {
+                throw new Exception("Traslado no encontrado");
+            }
+
+            if ($traslado['estado'] != 3) {
+                throw new Exception(
+                    $traslado['estado'] == 2
+                        ? "Falta registrar el ingreso de la unidad (caseta/seguridad) antes de la recepción interna"
+                        : "El traslado no está pendiente de recepción"
+                );
+            }
+
+            $idtraslado = $traslado['idtraslado'];
+            $almacenDestino = $traslado['almacen_destinoid'];
+
+            // Mapa vin -> { recibida (bool), observaciones } que llegó del cliente
+            $mapaRecibidos = [];
+            foreach ($unidadesRecibidas as $r) {
+                $mapaRecibidos[$r['vin']] = [
+                    'recibida' => !empty($r['llave_recibida']),
+                    'observaciones' => trim((string)($r['observaciones_llave'] ?? '')),
+                ];
+            }
+
+            $sql = "SELECT * FROM wms_traslados_unidades_detalle WHERE trasladoid=$idtraslado";
+            $unidades = $this->select_all($sql);
+
+            $faltantes = 0;
+            $llavesFaltantes = 0;
+
+            foreach ($unidades as $u) {
+
+                $fueRecibida = array_key_exists($u['vin'], $mapaRecibidos);
+
+                if (!$fueRecibida) {
+
+                    $this->update(
+                        "UPDATE wms_traslados_unidades_detalle
+                     SET estado_recepcion = 3
+                     WHERE iddetalle = ?",
+                        [$u['iddetalle']]
+                    );
+
+                    // La unidad no llegó: si tenía llave entregada en la salida,
+                    // no la marcamos como devuelta (sigue fuera, en poder del
+                    // trasladista), pero SÍ dejamos trazabilidad de la incidencia
+                    // para que no quede "perdida" sin ningún registro.
+                    $llaveFaltante = $this->select(
+                        "SELECT idllave_traslado, llaveid FROM wms_traslados_llaves
+                     WHERE iddetalle = ? AND entrega_llave = 1",
+                        [$u['iddetalle']]
+                    );
+
+                    if (!empty($llaveFaltante)) {
+
+                        $this->update(
+                            "UPDATE wms_traslados_llaves
+                         SET observaciones_recepcion = ?
+                         WHERE idllave_traslado = ?",
+                            [
+                                'Unidad no recibida en destino: llave pendiente de localizar',
+                                $llaveFaltante['idllave_traslado']
+                            ]
+                        );
+
+                        $this->insert(
+                            "INSERT INTO wms_llaves_movimientos
+                         (llaveid, tipo_movimiento, referenciaid, tipo_accion,
+                          almacen_origenid, almacen_destinoid, usuarioid, observaciones)
+                         VALUES (?, 'traslado', ?, 'faltante', ?, ?, ?, ?)",
+                            [
+                                $llaveFaltante['llaveid'],
+                                $idtraslado,
+                                $traslado['almacen_origenid'],
+                                $almacenDestino,
+                                $usuario,
+                                'Unidad no recibida en destino: llave pendiente de localizar'
+                            ]
+                        );
+                    }
+
+                    $faltantes++;
+                    continue;
+                }
+
+                /* --- Inventario (igual que antes) --- */
+                $sql = "SELECT existencia FROM wms_multialmacen
+                    WHERE inventarioid={$u['inventarioid']} AND almacenid=$almacenDestino";
+                $exist = $this->select($sql);
+
+                $nuevaExistencia = $exist ? $exist['existencia'] + 1 : 1;
+
+                if ($exist) {
+                    $this->update(
+                        "UPDATE wms_multialmacen SET existencia = existencia + 1
+                     WHERE inventarioid=? AND almacenid=?",
+                        [$u['inventarioid'], $almacenDestino]
+                    );
+                } else {
+                    $this->insert(
+                        "INSERT INTO wms_multialmacen (inventarioid, almacenid, existencia) VALUES (?,?,?)",
+                        [$u['inventarioid'], $almacenDestino, 1]
+                    );
+                }
+
+                $movimiento = "MOV-" . date("YmdHis") . "-" . rand(100, 999);
+
+                $this->insert(
+                    "INSERT INTO wms_movimientos_inventario
+                 (inventarioid, almacenid, numero_movimiento, concepmovid, referencia,
+                  cantidad, costo_cantidad, existencia, signo, fecha_movimiento, estado)
+                 VALUES (?,?,?,?,?,?,?,?,?,NOW(),?)",
+                    [$u['inventarioid'], $almacenDestino, $movimiento, 7, $folio, 1, 0, $nuevaExistencia, 1, 2]
+                );
+
+                $this->update(
+                    "UPDATE wms_traslados_unidades_detalle
+                 SET estado_recepcion = 2, responsable_recepcion = ?, fecha_recepcion = NOW()
+                 WHERE iddetalle = ?",
+                    [$usuario, $u['iddetalle']]
+                );
+
+                /* --- Llave --- */
+                $llave = $this->select(
+                    "SELECT idllave_traslado, llaveid FROM wms_traslados_llaves
+                 WHERE iddetalle = ? AND entrega_llave = 1",
+                    [$u['iddetalle']]
+                );
+
+                $infoLlave = $mapaRecibidos[$u['vin']] ?? ['recibida' => false, 'observaciones' => ''];
+
+                if (!empty($llave) && $infoLlave['recibida']) {
+
+                    $this->update(
+                        "UPDATE wms_traslados_llaves
+                     SET estado_llave = 3, responsable_recepcion = ?, fecha_recepcion = NOW()
+                     WHERE idllave_traslado = ?",
+                        [$usuario, $llave['idllave_traslado']]
+                    );
+
+                    $this->update(
+                        "UPDATE wms_llaves_inventario SET estado = 1, almacenid = ? WHERE idllave = ?",
+                        [$almacenDestino, $llave['llaveid']]
+                    );
+
+                    $this->insert(
+                        "INSERT INTO wms_llaves_movimientos
+                     (llaveid, tipo_movimiento, referenciaid, tipo_accion,
+                      almacen_origenid, almacen_destinoid, usuarioid)
+                     VALUES (?, 'traslado', ?, 'recepcion', ?, ?, ?)",
+                        [$llave['llaveid'], $idtraslado, $traslado['almacen_origenid'], $almacenDestino, $usuario]
+                    );
+                } elseif (!empty($llave)) {
+
+                    // La unidad SÍ llegó pero la llave no se confirmó recibida:
+                    // antes esto se quedaba en silencio (estado_llave=2 y
+                    // wms_llaves_inventario.estado=3 sin ningún registro nuevo),
+                    // por lo que en la bitácora de llaves solo se veía "En
+                    // Tránsito" para siempre, sin explicar por qué ni desde
+                    // cuándo. Ahora se deja trazabilidad explícita, igual que
+                    // en el caso de "unidad completa no recibida".
+                    $observacion = $infoLlave['observaciones'] !== ''
+                        ? $infoLlave['observaciones']
+                        : 'Llave no recibida junto con la unidad en la recepción interna';
+
+                    $this->update(
+                        "UPDATE wms_traslados_llaves
+                     SET observaciones_recepcion = ?
+                     WHERE idllave_traslado = ?",
+                        [$observacion, $llave['idllave_traslado']]
+                    );
+
+                    $this->insert(
+                        "INSERT INTO wms_llaves_movimientos
+                     (llaveid, tipo_movimiento, referenciaid, tipo_accion,
+                      almacen_origenid, almacen_destinoid, usuarioid, observaciones)
+                     VALUES (?, 'traslado', ?, 'faltante', ?, ?, ?, ?)",
+                        [$llave['llaveid'], $idtraslado, $traslado['almacen_origenid'], $almacenDestino, $usuario, $observacion]
+                    );
+
+                    $llavesFaltantes++;
+                }
+                // Si no tenía llave asignada en este traslado, no hay nada que
+                // registrar en wms_llaves_movimientos para esta unidad.
+            }
+
+            $this->update(
+                "UPDATE wms_traslados_unidades
+             SET estado = 4, fecha_recepcion = NOW(), usuario_recepcion = ?
+             WHERE idtraslado = ?",
+                [$usuario, $idtraslado]
+            );
+
+            $pdo->commit();
+
+            $avisos = [];
+            if ($faltantes > 0) {
+                $avisos[] = "$faltantes unidad(es) faltante(s)";
+            }
+            if ($llavesFaltantes > 0) {
+                $avisos[] = "$llavesFaltantes llave(s) no recibida(s)";
+            }
+
+            return [
+                "status" => true,
+                "msg" => !empty($avisos)
+                    ? "Recepción registrada con " . implode(" y ", $avisos)
+                    : "Recepción registrada correctamente",
+                "faltantes" => $faltantes,
+                "llaves_faltantes" => $llavesFaltantes
+            ];
+        } catch (Exception $e) {
+
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            return ["status" => false, "msg" => $e->getMessage()];
         }
     }
 

@@ -117,44 +117,81 @@ class Inv_operaciones_traslados extends Controllers
         die();
     }
 
-    public function registrarRecepcion()
+    /* =====================================================
+       REGISTRO DE INGRESO (Seguridad / caseta)
+       Confirma que la unidad llegó físicamente, sin tocar
+       inventario ni llaves. La recepción interna (con llave)
+       se hace después, por separado, en registrarRecepcion().
+    ===================================================== */
+    public function registrarIngreso()
     {
-
         try {
 
             if ($_SESSION['permisosMod']['r']) {
-
 
                 $data = json_decode(
                     file_get_contents("php://input"),
                     true
                 );
 
-
                 $folio = $data['folio'];
 
+                try {
 
-                $arrData = $this->model->registrarRecepcion(
-                    $folio,
-                    $_SESSION['idUser']
-                );
+                    $arrData = $this->model->registrarIngresoUnidad(
+                        $folio,
+                        $_SESSION['idUser']
+                    );
+                } catch (Throwable $e) {
 
+                    echo json_encode([
+                        "status" => false,
+                        "error" => $e->getMessage(),
+                        "linea" => $e->getLine(),
+                        "archivo" => $e->getFile()
+                    ]);
+
+                    die();
+                }
 
                 echo json_encode($arrData);
             }
         } catch (Throwable $e) {
 
-
             echo json_encode([
                 "status" => false,
-                "error" => $e->getMessage(),
+                "error_general" => $e->getMessage(),
                 "linea" => $e->getLine()
             ]);
         }
 
-
         die();
     }
+
+    public function registrarRecepcion()
+{
+    try {
+        if ($_SESSION['permisosMod']['r']) {
+
+            $data = json_decode(file_get_contents("php://input"), true);
+
+            $folio = $data['folio'];
+            $unidades = $data['unidades'] ?? [];
+
+            $arrData = $this->model->registrarRecepcion(
+                $folio,
+                $_SESSION['idUser'],
+                $unidades
+            );
+
+            echo json_encode($arrData);
+        }
+    } catch (Throwable $e) {
+        echo json_encode(["status" => false, "error" => $e->getMessage(), "linea" => $e->getLine()]);
+    }
+
+    die();
+}
 
     public function registrarUnidadAnomala()
     {

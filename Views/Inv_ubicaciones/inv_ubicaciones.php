@@ -77,13 +77,10 @@
 
                             <div class="col-md-2">
                                 <label class="form-label">Nivel</label>
-                                <input type="number" 
+                                <input type="text" 
                                         class="form-control" 
                                         name="nivel" 
-                                        placeholder="Ej: 1"
-                                        min="1"
-                                        step="1"
-                                        onkeydown="return event.key !== '-'"
+                                        placeholder="Ej: 1 - A"
                                         required>
                             </div>
 

@@ -1,6 +1,8 @@
 let tableTraslados;
 
 document.addEventListener("DOMContentLoaded", function () {
+  cargarKpisTraslados();
+
   tableTraslados = $("#tableTraslados").DataTable({
     processing: true,
     destroy: true,
@@ -49,7 +51,7 @@ document.addEventListener("DOMContentLoaded", function () {
         render: function (data) {
           let badge = {
             1: ["warning", "Solicitud"],
-            2: ["primary", "Salida"],
+            2: ["primary", "Tránsito"],
             3: ["info", "En tránsito"],
             4: ["success", "Recibido"],
             5: ["danger", "Cancelado"],
@@ -67,8 +69,25 @@ document.addEventListener("DOMContentLoaded", function () {
       {
         data: null,
         render: function (row) {
+          // Editar solo tiene sentido mientras el traslado sigue en
+          // "Solicitud" (estado 1): una vez confirmada la salida ya no
+          // se puede modificar, así que el botón ni siquiera se muestra.
+          const btnEditar =
+            parseInt(row.estado) === 1
+              ? `
+            <button
+                class="btn btn-warning btn-sm"
+                onclick="editarTraslado(${row.idtraslado})"
+                title="Editar traslado">
+
+                <i class="ri-edit-line"></i>
+
+            </button>
+          `
+              : "";
+
           return `
-        
+
         <div class="d-flex gap-1">
 
             <button
@@ -79,6 +98,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 <i class="ri-eye-line"></i>
 
             </button>
+
+            ${btnEditar}
 
             <button
     class="btn btn-success btn-sm btnPdfTraslado"
@@ -96,7 +117,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
     order: [[0, "desc"]],
   });
+
+  // Cada vez que la tabla vuelve a traer datos (recarga automática o
+  // manual), refrescamos también las tarjetas de KPIs para que no se
+  // queden desactualizadas frente al listado.
+  tableTraslados.on("xhr.dt", function () {
+    cargarKpisTraslados();
+  });
 });
+
+/* =====================================================
+   KPIs (tarjetas informativas)
+===================================================== */
+
+function cargarKpisTraslados() {
+  fetch(base_url + "/Inv_traslados/getKpis")
+    .then((res) => res.json())
+    .then((data) => {
+      const pendientes = document.querySelector("#kpiPendientes");
+      const transito = document.querySelector("#kpiTransito");
+      const recibidas = document.querySelector("#kpiRecibidas");
+      const canceladas = document.querySelector("#kpiCanceladas");
+
+      if (pendientes) pendientes.innerHTML = data.pendientes || 0;
+      if (transito) transito.innerHTML = data.transito || 0;
+      if (recibidas) recibidas.innerHTML = data.recibidas || 0;
+      if (canceladas) canceladas.innerHTML = data.canceladas || 0;
+    })
+    .catch(() => {
+      // Si falla, dejamos los valores que ya estaban en pantalla
+      // en lugar de romper el resto de la vista.
+      console.error("No se pudieron cargar los KPIs de traslados");
+    });
+}
 
 /* =====================================================
    DETALLE
@@ -132,6 +185,14 @@ function verDetalle(id) {
 
       modal.show();
     });
+}
+
+/* =====================================================
+   EDITAR
+===================================================== */
+
+function editarTraslado(id) {
+  window.location.href = base_url + "/Inv_traslados/editar_traslado/" + id;
 }
 
 /* =====================================================

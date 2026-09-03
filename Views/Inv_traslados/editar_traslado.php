@@ -18,7 +18,7 @@
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
 
                         <h4 class="mb-sm-0">
-                            Nueva Solicitud de Traslado
+                            Editar Solicitud de Traslado
                         </h4>
 
                         <div class="page-title-right">
@@ -37,7 +37,7 @@
                                 </li>
 
                                 <li class="breadcrumb-item active">
-                                    Nueva Solicitud
+                                    Editar Solicitud
                                 </li>
 
                             </ol>
@@ -69,11 +69,15 @@
                         <div class="ms-3">
 
                             <h1 class="mb-1">
-                                Crear solicitud de traslado
+                                Editar solicitud de traslado
                             </h1>
 
                             <p class="text-muted mb-0">
-                                Complete los datos para solicitar el movimiento de una unidad entre almacenes.
+                                Folio: <strong id="lblFolio">—</strong>
+                            </p>
+
+                            <p class="text-muted mb-0 mt-1">
+                                <span class="text-danger">*</span> Campos obligatorios
                             </p>
 
                         </div>
@@ -85,10 +89,26 @@
             </div>
 
             <!-- ============================================= -->
+            <!-- AVISO: SOLO EDITABLE MIENTRAS ESTÉ EN SOLICITUD -->
+            <!-- ============================================= -->
+
+            <div class="alert alert-info" role="alert">
+                <i class="ri-information-line me-1"></i>
+                Solo se puede editar un traslado mientras esté en estado
+                <strong>Solicitud</strong> (antes de confirmar la salida).
+                En cuanto se registra la salida, la información deja de ser editable.
+            </div>
+
+            <!-- ============================================= -->
             <!-- DATOS GENERALES -->
             <!-- ============================================= -->
             <form id="formTraslado" method="POST" enctype="multipart/form-data">
 
+                <input
+                    type="hidden"
+                    id="idtraslado"
+                    name="idtraslado"
+                    value="<?= (int) ($data['idtraslado'] ?? 0); ?>">
 
                 <div class="card">
 
@@ -273,6 +293,7 @@
                                             <input
                                                 type="text"
                                                 class="form-control"
+                                                id="nombre_trasladista"
                                                 name="nombre_trasladista"
                                                 required>
                                         </div>
@@ -285,6 +306,7 @@
                                             <input
                                                 type="text"
                                                 class="form-control"
+                                                id="numero_licencia"
                                                 name="numero_licencia">
                                         </div>
 
@@ -296,6 +318,7 @@
                                             <input
                                                 type="email"
                                                 class="form-control"
+                                                id="correo_trasladista"
                                                 name="correo_trasladista"
                                                 placeholder="Telefono o email">
                                         </div>
@@ -308,6 +331,7 @@
                                             <input
                                                 type="date"
                                                 class="form-control"
+                                                id="vigencia_licencia"
                                                 name="vigencia_licencia">
                                         </div>
 
@@ -321,6 +345,8 @@
                                                 class="form-control"
                                                 name="archivo_licencia"
                                                 accept=".pdf,.jpg,.jpeg,.png">
+
+                                            <div class="form-text" id="lblArchivoActual"></div>
                                         </div>
 
                                     </div>
@@ -424,21 +450,14 @@
 
                                 <button
                                     type="submit"
+                                    id="btnGuardarCambios"
                                     class="btn btn-success w-100 mb-2">
 
-                                    <i class="ri-send-plane-fill me-1"></i>
+                                    <i class="ri-save-line me-1"></i>
 
-                                    Generar solicitud
+                                    Guardar cambios
 
                                 </button>
-
-                                <!-- <button
-                                    type="button"
-                                    class="btn btn-light w-100 mb-2">
-
-                                    Guardar Borrador
-
-                                </button> -->
 
                                 <a
                                     href="<?= base_url(); ?>/inv_traslados"
@@ -448,31 +467,6 @@
 
                                 </a>
 
-                            </div>
-
-                        </div>
-                        <div class="card mt-3">
-
-                            <div class="card-header">
-                                <h4 class="card-title mb-0">
-                                    Control de Llaves
-                                </h4>
-                            </div>
-
-                            <div class="card-body">
-
-                                <p class="text-muted mb-3">
-                                    Administre la entrega y devolución de llaves internas.
-                                </p>
-
-                                <a
-                                    href="<?= base_url(); ?>/Inv_llaves/inv_llaves"
-                                    class="btn btn-primary w-100">
-
-                                    <i class="ri-key-2-line me-1"></i>
-                                    Ir al módulo de llaves
-
-                                </a>
                             </div>
 
                         </div>
@@ -518,87 +512,6 @@
         </div>
 
     </footer>
-
-</div>
-
-
-
-<div
-    class="modal fade"
-    id="modalUnidades"
-    tabindex="-1">
-
-    <div class="modal-dialog modal-xl">
-
-        <div class="modal-content">
-
-            <div class="modal-header">
-
-                <h5 class="modal-title">
-
-                    Seleccionar Unidad
-
-                </h5>
-
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="modal">
-                </button>
-
-            </div>
-
-            <div class="modal-body">
-
-                <div class="mb-3">
-
-                    <label class="form-label">
-
-                        Buscar por VIN, Unidad o Modelo
-
-                    </label>
-
-                    <input
-                        type="text"
-                        id="txtBuscarUnidad"
-                        class="form-control"
-                        placeholder="Escriba VIN, número de unidad o modelo">
-
-                </div>
-
-                <table
-                    class="table table-bordered align-middle"
-                    id="tableBuscarUnidades">
-
-                    <thead>
-
-                        <tr>
-
-                            <th>No. Unidad</th>
-
-                            <th>VIN</th>
-
-                            <th>Modelo</th>
-
-                            <th>Almacén</th>
-
-                            <th></th>
-
-                        </tr>
-
-                    </thead>
-
-                    <tbody>
-
-                    </tbody>
-
-                </table>
-
-            </div>
-
-        </div>
-
-    </div>
 
 </div>
 <?php footerAdmin($data); ?>

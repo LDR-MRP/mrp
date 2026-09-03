@@ -196,13 +196,17 @@ class Inv_series extends Controllers
         $yStartBarcode = $pdf->GetY();
 
         // ------------------ BARCODE
-        $barcodeWidth  = $pageWidth - 28;
-        $barcodeHeight = 12;
+        // Ancho casi completo de la etiqueta (antes se desperdiciaban ~16mm de espacio)
+        // y ancho de barra explicito, para que TCPDF no comprima el modulo del
+        // codigo por debajo de un tamano legible por el lector al codificar un VIN de 17 caracteres.
+        $barcodeWidth  = $pageWidth - 12;
+        $barcodeHeight = 13;
         $barcodeX      = ($pageWidth - $barcodeWidth) / 2;
 
         $style = [
-            'align' => 'C',
-            'text'  => false
+            'align'    => 'C',
+            'text'     => false,
+            'hpadding' => 2 // zona muda (quiet zone) real a cada lado del codigo
         ];
 
         $pdf->write1DBarcode(
@@ -212,7 +216,7 @@ class Inv_series extends Controllers
             $yStartBarcode,
             $barcodeWidth,
             $barcodeHeight,
-            0.4,
+            0.33, // ancho de barra objetivo en mm; con el ancho de arriba ya no se recorta para un VIN de 17 caracteres
             $style,
             'N'
         );
@@ -348,13 +352,14 @@ class Inv_series extends Controllers
 
             $yStartBarcode = $pdf->GetY();
 
-            $barcodeWidth  = $pageWidth - 28;
-            $barcodeHeight = 12;
+            $barcodeWidth  = $pageWidth - 12;
+            $barcodeHeight = 13;
             $barcodeX      = ($pageWidth - $barcodeWidth) / 2;
 
             $style = [
-                'align' => 'C',
-                'text'  => false
+                'align'    => 'C',
+                'text'     => false,
+                'hpadding' => 2 // zona muda (quiet zone) real a cada lado del codigo
             ];
 
             $pdf->write1DBarcode(
@@ -364,7 +369,7 @@ class Inv_series extends Controllers
                 $yStartBarcode,
                 $barcodeWidth,
                 $barcodeHeight,
-                0.4,
+                0.33,
                 $style,
                 'N'
             );

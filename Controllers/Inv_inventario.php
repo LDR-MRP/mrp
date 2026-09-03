@@ -1454,6 +1454,663 @@ class Inv_inventario extends Controllers
 		die();
 	}
 
+	// ================= PORTAL WEB =================
+	// Dos modos segun tipo_elemento de wms_inventario. Solo 'P' y 'R' tienen
+	// pestaña Portal Web (Herramienta, Componente, Kit y Servicio no la ven):
+	//  - 'P' (Producto = unidad ensamblada) -> tablas del desarrollador
+	//    del portal (web_unidades / web_unidades_imagenes). web_unidades tiene
+	//    su propia columna inventarioid (agregada con permiso del desarrollador).
+	//  - 'R' (Refaccion) -> tablas propias (wms_refacciones_portalweb /
+	//    wms_refacciones_portalweb_imagenes), mismas columnas que 'P'.
+
+	private function tipoPortalWeb($inventarioid)
+	{
+		$producto = $this->model->selectInventario($inventarioid);
+		$tipo = $producto['tipo_elemento'] ?? null;
+
+		if ($tipo === 'P') {
+			return 'unidad';
+		}
+
+		if ($tipo === 'R') {
+			return 'refaccion';
+		}
+
+		return null;
+	}
+
+	public function getPortalWeb($idinventario)
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		$inventarioid = intval($idinventario);
+
+		if ($inventarioid <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Inventario inválido']);
+			die();
+		}
+
+		$modo = $this->tipoPortalWeb($inventarioid);
+
+		if ($modo === 'unidad') {
+			$unidad = $this->model->getWebUnidadByInventario($inventarioid);
+			$imagenes = [];
+
+			if (!empty($unidad)) {
+				$imagenes = $this->model->selectImagenesWebUnidad((int) $unidad['idunidad']);
+			}
+
+			// Sugerencias automáticas para cuando aún no existe el registro en web_unidades
+			$sugerencias = [
+				'clave_modelo' => '',
+				'nombre' => '',
+				'marca' => $this->model->getMarcaAutoPorLinea($inventarioid),
+				'precio_estimado' => $this->model->getPrecioPublicoAuto($inventarioid),
+			];
+
+			if (empty($unidad)) {
+				$producto = $this->model->selectInventario($inventarioid);
+				$sugerencias['clave_modelo'] = $producto['cve_articulo'] ?? '';
+				$sugerencias['nombre'] = $producto['descripcion'] ?? '';
+			}
+
+			echo json_encode([
+				'status' => true,
+				'data' => [
+					'modo' => 'unidad',
+					'unidad' => $unidad ?: null,
+					'imagenes' => $imagenes,
+					'stock_actual' => $this->model->getStockTotalAuto($inventarioid),
+					'sugerencias' => $sugerencias,
+				]
+			], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		if ($modo === 'refaccion') {
+			$config = $this->model->getPortalWebRefaccionByInventario($inventarioid);
+			$imagenes = [];
+
+			if (!empty($config)) {
+				$imagenes = $this->model->selectImagenesPortalWebRefaccion((int) $config['idportalweb']);
+			}
+
+			// Sugerencias automáticas para cuando aún no existe el registro en wms_refacciones_portalweb
+			$sugerencias = [
+				'clave_modelo' => '',
+				'nombre' => '',
+				'marca' => $this->model->getMarcaAutoPorLinea($inventarioid),
+				'precio_estimado' => $this->model->getPrecioPublicoAuto($inventarioid),
+			];
+
+			if (empty($config)) {
+				$producto = $this->model->selectInventario($inventarioid);
+				$sugerencias['clave_modelo'] = $producto['cve_articulo'] ?? '';
+				$sugerencias['nombre'] = $producto['descripcion'] ?? '';
+			}
+
+			echo json_encode([
+				'status' => true,
+				'data' => [
+					'modo' => 'refaccion',
+					'unidad' => $config ?: null,
+					'imagenes' => $imagenes,
+					'stock_actual' => $this->model->getStockTotalAuto($inventarioid),
+					'sugerencias' => $sugerencias,
+				]
+			], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		echo json_encode(['status' => false, 'msg' => 'Este tipo de elemento no tiene Portal Web']);
+		die();
+	}
+
+	public function setPortalWeb()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		$inventarioid = intval($_POST['inventarioid'] ?? 0);
+
+		if ($inventarioid <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Inventario inválido']);
+			die();
+		}
+
+		$modo = $this->tipoPortalWeb($inventarioid);
+
+		if ($modo === 'unidad' || $modo === 'refaccion') {
+			$claveModelo = strClean($_POST['clave_modelo'] ?? '');
+
+			if (empty($claveModelo)) {
+				echo json_encode(['status' => false, 'msg' => 'Falta el SKU / clave del modelo']);
+				die();
+			}
+
+			$anio = intval($_POST['anio'] ?? 0);
+			if ($anio <= 0) {
+				$anio = (int) date('Y');
+			}
+
+			$nombre = strClean($_POST['nombre'] ?? '');
+
+			$publicar = !empty($_POST['web_distribuidores']);
+			$estatusRadio = $_POST['estatus'] ?? '2';
+
+			if (!$publicar) {
+				$estadoFinal = 0;
+			} elseif ($estatusRadio == '2') {
+				$estadoFinal = 2;
+			} else {
+				$estadoFinal = 1;
+			}
+
+			// Imagen principal (caratula) - opcional, se sube junto con el formulario
+			// principal. Es distinta de las imagenes adicionales (evidencias) que se
+			// suben aparte en la galeria (web_unidades_imagenes / wms_refacciones_portalweb_imagenes).
+			$rutaCaratulaNueva = null;
+			$carpetaCaratulas = ($modo === 'unidad') ? 'unidades_web' : 'refacciones_web';
+
+			if (!empty($_FILES['imagen_caratula']['tmp_name']) && $_FILES['imagen_caratula']['error'] === 0) {
+				$rutaCaratulas = __DIR__ . "/../Assets/uploads/{$carpetaCaratulas}/img_caratulas/";
+
+				// [DevSecOps] Permisos 0750: Solo el owner (www-data) y el grupo pueden leer/escribir.
+				if (!is_dir($rutaCaratulas) && !mkdir($rutaCaratulas, 0750, true) && !is_dir($rutaCaratulas)) {
+					echo json_encode(['status' => false, 'msg' => 'No se pudo crear el directorio de destino para la imagen principal']);
+					die();
+				}
+
+				$extCaratula = pathinfo($_FILES['imagen_caratula']['name'], PATHINFO_EXTENSION);
+				$fechaCaratula = date("Ymd_His") . "_" . substr(microtime(), 2, 3);
+				$nombreArchivoCaratula = "caratula_" . $inventarioid . "_" . $fechaCaratula . "." . $extCaratula;
+				$destinoCaratula = $rutaCaratulas . $nombreArchivoCaratula;
+
+				if (move_uploaded_file($_FILES['imagen_caratula']['tmp_name'], $destinoCaratula)) {
+					$rutaCaratulaNueva = "Assets/uploads/{$carpetaCaratulas}/img_caratulas/" . $nombreArchivoCaratula;
+				} else {
+					error_log("❌ Error al mover archivo (imagen_caratula): " . $_FILES['imagen_caratula']['tmp_name']);
+				}
+			}
+
+			$data = [
+				'inventarioid' => $inventarioid,
+				'modelo' => $nombre,
+				'clave_modelo' => $claveModelo,
+				'nombre' => $nombre,
+				'descripcion' => strClean($_POST['descripcion'] ?? ''),
+				'marca' => strClean($_POST['marca'] ?? ''),
+				'stock' => $this->model->getStockTotalAuto($inventarioid),
+				'precio_estimado' => (float) ($_POST['precio_estimado'] ?? 0),
+				'estado' => $estadoFinal,
+			];
+
+			// Version, motor y año solo aplican a Producto (unidad ensamblada);
+			// Refaccion no los usa.
+			if ($modo === 'unidad') {
+				$data['version'] = strClean($_POST['version'] ?? '');
+				$data['motor'] = strClean($_POST['motor'] ?? '');
+				$data['anio'] = $anio;
+			}
+
+			if ($modo === 'unidad') {
+				$unidad = $this->model->getWebUnidadByInventario($inventarioid);
+
+				if (!empty($unidad)) {
+					$idunidad = (int) $unidad['idunidad'];
+					$resp = $this->model->updateWebUnidad($idunidad, $data);
+
+					if ($resp && $rutaCaratulaNueva !== null) {
+						$rutaCaratulaAnterior = $unidad['imagen_caratula'] ?? '';
+
+						if (!empty($rutaCaratulaAnterior) && $rutaCaratulaAnterior !== $rutaCaratulaNueva) {
+							$rutaRelativaAnterior = (strpos($rutaCaratulaAnterior, 'Assets/') === 0)
+								? substr($rutaCaratulaAnterior, strlen('Assets/'))
+								: $rutaCaratulaAnterior;
+							$rutaCaratulaAnteriorAbsoluta = __DIR__ . "/../Assets/" . $rutaRelativaAnterior;
+
+							if (file_exists($rutaCaratulaAnteriorAbsoluta)) {
+								@unlink($rutaCaratulaAnteriorAbsoluta);
+							}
+						}
+
+						$this->model->updateImagenCaratulaWebUnidad($idunidad, $rutaCaratulaNueva);
+					}
+				} else {
+					$data['imagen_caratula'] = $rutaCaratulaNueva ?? '';
+					$idunidad = $this->model->insertWebUnidad($data);
+					$resp = $idunidad;
+				}
+
+				echo json_encode([
+					'status' => $resp ? true : false,
+					'msg' => $resp ? 'Configuración de portal web guardada' : 'Error al guardar la configuración de portal web',
+					'idunidad' => $idunidad,
+				]);
+				die();
+			}
+
+			// Modo refaccion
+			$config = $this->model->getPortalWebRefaccionByInventario($inventarioid);
+
+			if (!empty($config)) {
+				$idportalweb = (int) $config['idportalweb'];
+				$resp = $this->model->updatePortalWebRefaccion($idportalweb, $data);
+
+				if ($resp && $rutaCaratulaNueva !== null) {
+					$rutaCaratulaAnterior = $config['imagen_caratula'] ?? '';
+
+					if (!empty($rutaCaratulaAnterior) && $rutaCaratulaAnterior !== $rutaCaratulaNueva) {
+						$rutaRelativaAnterior = (strpos($rutaCaratulaAnterior, 'Assets/') === 0)
+							? substr($rutaCaratulaAnterior, strlen('Assets/'))
+							: $rutaCaratulaAnterior;
+						$rutaCaratulaAnteriorAbsoluta = __DIR__ . "/../Assets/" . $rutaRelativaAnterior;
+
+						if (file_exists($rutaCaratulaAnteriorAbsoluta)) {
+							@unlink($rutaCaratulaAnteriorAbsoluta);
+						}
+					}
+
+					$this->model->updateImagenCaratulaPortalWebRefaccion($idportalweb, $rutaCaratulaNueva);
+				}
+			} else {
+				$data['imagen_caratula'] = $rutaCaratulaNueva ?? '';
+				$idportalweb = $this->model->insertPortalWebRefaccion($data);
+				$resp = $idportalweb;
+			}
+
+			echo json_encode([
+				'status' => $resp ? true : false,
+				'msg' => $resp ? 'Configuración de portal web guardada' : 'Error al guardar la configuración de portal web',
+				'idportalweb' => $idportalweb,
+			]);
+			die();
+		}
+
+		echo json_encode(['status' => false, 'msg' => 'Este tipo de elemento no tiene Portal Web']);
+		die();
+	}
+
+	public function subirImagenPortalWeb()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		$inventarioid = intval($_POST['inventarioid'] ?? 0);
+
+		if ($inventarioid <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Inventario inválido']);
+			die();
+		}
+
+		if (empty($_FILES['imagenes']['name'][0])) {
+			echo json_encode(['status' => false, 'msg' => 'No se recibió ninguna imagen']);
+			die();
+		}
+
+		$maxImagenes = 5;
+		$modo = $this->tipoPortalWeb($inventarioid);
+
+		if ($modo === 'unidad') {
+			$unidad = $this->model->getWebUnidadByInventario($inventarioid);
+
+			if (empty($unidad)) {
+				echo json_encode(['status' => false, 'msg' => 'Primero guarda la configuración de portal web antes de subir imágenes']);
+				die();
+			}
+
+			$idunidad = (int) $unidad['idunidad'];
+			$actuales = $this->model->countImagenesWebUnidad($idunidad);
+			$nuevas = count(array_filter($_FILES['imagenes']['name']));
+
+			if ($actuales + $nuevas > $maxImagenes) {
+				echo json_encode(['status' => false, 'msg' => "Solo puedes tener máximo {$maxImagenes} evidencias por unidad"]);
+				die();
+			}
+
+			$ruta = __DIR__ . "/../Assets/uploads/web_unidades/";
+
+			// [DevSecOps] Permisos 0750: Solo el owner (www-data) y el grupo pueden leer/escribir.
+			if (!is_dir($ruta) && !mkdir($ruta, 0750, true) && !is_dir($ruta)) {
+				echo json_encode(['status' => false, 'msg' => 'No se pudo crear el directorio de destino']);
+				die();
+			}
+
+			$subidas = 0;
+			$orden = $actuales;
+			$yaTienePrincipal = false;
+
+			foreach ($this->model->selectImagenesWebUnidad($idunidad) as $img) {
+				if ((int) $img['es_principal'] === 1) {
+					$yaTienePrincipal = true;
+				}
+			}
+
+			foreach ($_FILES['imagenes']['tmp_name'] as $key => $tmp) {
+
+				if ($_FILES['imagenes']['error'][$key] === 0) {
+
+					$nombreOriginal = $_FILES['imagenes']['name'][$key];
+					$ext = pathinfo($nombreOriginal, PATHINFO_EXTENSION);
+					$fecha = date("Ymd_His") . "_" . substr(microtime(), 2, 3);
+					$nombreArchivo = "unidad_" . $idunidad . "_" . $fecha . "." . $ext;
+
+					$destino = $ruta . $nombreArchivo;
+					$rutaRelativa = "uploads/web_unidades/" . $nombreArchivo;
+
+					if (move_uploaded_file($tmp, $destino)) {
+						$orden++;
+						$esPrincipal = (!$yaTienePrincipal) ? 1 : 0;
+
+						$this->model->insertImagenWebUnidad($idunidad, $nombreOriginal, $nombreArchivo, $rutaRelativa, $orden, $esPrincipal);
+
+						if ($esPrincipal) {
+							$yaTienePrincipal = true;
+						}
+
+						$subidas++;
+					} else {
+						error_log("❌ Error al mover archivo (web_unidades): " . $tmp);
+					}
+				}
+			}
+
+			echo json_encode([
+				'status' => $subidas > 0,
+				'msg' => $subidas > 0 ? "Se subieron {$subidas} imagen(es)" : 'No se pudo subir ninguna imagen',
+				'imagenes' => $this->model->selectImagenesWebUnidad($idunidad)
+			], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		if ($modo === 'refaccion') {
+			$config = $this->model->getPortalWebRefaccionByInventario($inventarioid);
+
+			if (empty($config)) {
+				echo json_encode(['status' => false, 'msg' => 'Primero guarda la configuración de portal web antes de subir imágenes']);
+				die();
+			}
+
+			$idportalweb = (int) $config['idportalweb'];
+			$actuales = $this->model->countImagenesPortalWebRefaccion($idportalweb);
+			$nuevas = count(array_filter($_FILES['imagenes']['name']));
+
+			if ($actuales + $nuevas > $maxImagenes) {
+				echo json_encode(['status' => false, 'msg' => "Solo puedes tener máximo {$maxImagenes} evidencias"]);
+				die();
+			}
+
+			$ruta = __DIR__ . "/../Assets/uploads/portalweb_imagenes/";
+
+			// [DevSecOps] Permisos 0750: Solo el owner (www-data) y el grupo pueden leer/escribir.
+			if (!is_dir($ruta) && !mkdir($ruta, 0750, true) && !is_dir($ruta)) {
+				echo json_encode(['status' => false, 'msg' => 'No se pudo crear el directorio de destino']);
+				die();
+			}
+
+			$subidas = 0;
+			$orden = $actuales;
+			$yaTienePrincipal = false;
+
+			foreach ($this->model->selectImagenesPortalWebRefaccion($idportalweb) as $img) {
+				if ((int) $img['es_principal'] === 1) {
+					$yaTienePrincipal = true;
+				}
+			}
+
+			foreach ($_FILES['imagenes']['tmp_name'] as $key => $tmp) {
+
+				if ($_FILES['imagenes']['error'][$key] === 0) {
+
+					$nombreOriginal = $_FILES['imagenes']['name'][$key];
+					$ext = pathinfo($nombreOriginal, PATHINFO_EXTENSION);
+					$fecha = date("Ymd_His") . "_" . substr(microtime(), 2, 3);
+					$nombreArchivo = "refaccion_" . $idportalweb . "_" . $fecha . "." . $ext;
+
+					$destino = $ruta . $nombreArchivo;
+					$rutaRelativa = "uploads/portalweb_imagenes/" . $nombreArchivo;
+
+					if (move_uploaded_file($tmp, $destino)) {
+						$orden++;
+						$esPrincipal = (!$yaTienePrincipal) ? 1 : 0;
+
+						$this->model->insertImagenPortalWebRefaccion($idportalweb, $nombreOriginal, $nombreArchivo, $rutaRelativa, $orden, $esPrincipal);
+
+						if ($esPrincipal) {
+							$yaTienePrincipal = true;
+						}
+
+						$subidas++;
+					} else {
+						error_log("❌ Error al mover archivo (portalweb refaccion): " . $tmp);
+					}
+				}
+			}
+
+			echo json_encode([
+				'status' => $subidas > 0,
+				'msg' => $subidas > 0 ? "Se subieron {$subidas} imagen(es)" : 'No se pudo subir ninguna imagen',
+				'imagenes' => $this->model->selectImagenesPortalWebRefaccion($idportalweb)
+			], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		echo json_encode(['status' => false, 'msg' => 'Este tipo de elemento no tiene Portal Web']);
+		die();
+	}
+
+	public function eliminarCaratulaPortalWeb()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		$inventarioid = intval($_POST['inventarioid'] ?? 0);
+
+		if ($inventarioid <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'Inventario inválido']);
+			die();
+		}
+
+		$modo = $this->tipoPortalWeb($inventarioid);
+
+		if ($modo === 'unidad') {
+			$unidad = $this->model->getWebUnidadByInventario($inventarioid);
+
+			if (empty($unidad)) {
+				echo json_encode(['status' => false, 'msg' => 'No se encontró la unidad']);
+				die();
+			}
+
+			$idRegistro = (int) $unidad['idunidad'];
+			$rutaCaratula = $unidad['imagen_caratula'] ?? '';
+		} elseif ($modo === 'refaccion') {
+			$config = $this->model->getPortalWebRefaccionByInventario($inventarioid);
+
+			if (empty($config)) {
+				echo json_encode(['status' => false, 'msg' => 'No se encontró la refacción']);
+				die();
+			}
+
+			$idRegistro = (int) $config['idportalweb'];
+			$rutaCaratula = $config['imagen_caratula'] ?? '';
+		} else {
+			echo json_encode(['status' => false, 'msg' => 'Este tipo de elemento no tiene Portal Web']);
+			die();
+		}
+
+		if (empty($rutaCaratula)) {
+			echo json_encode(['status' => false, 'msg' => 'Este registro no tiene imagen principal']);
+			die();
+		}
+
+		$rutaRelativa = (strpos($rutaCaratula, 'Assets/') === 0)
+			? substr($rutaCaratula, strlen('Assets/'))
+			: $rutaCaratula;
+		$rutaAbsoluta = __DIR__ . "/../Assets/" . $rutaRelativa;
+
+		if (file_exists($rutaAbsoluta)) {
+			@unlink($rutaAbsoluta);
+		}
+
+		if ($modo === 'unidad') {
+			$resp = $this->model->updateImagenCaratulaWebUnidad($idRegistro, '');
+		} else {
+			$resp = $this->model->updateImagenCaratulaPortalWebRefaccion($idRegistro, '');
+		}
+
+		echo json_encode([
+			'status' => $resp ? true : false,
+			'msg' => $resp ? 'Imagen principal eliminada' : 'Error al eliminar la imagen principal',
+		]);
+		die();
+	}
+
+	public function deleteImagenPortalWeb()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		// El modo se distingue por el nombre del campo recibido, para no
+		// mezclar los ids de dos tablas independientes (web_unidades_imagenes
+		// vs wms_refacciones_portalweb_imagenes, cada una con su propio autoincrement).
+		if (isset($_POST['idfotoportalweb'])) {
+			$id = intval($_POST['idfotoportalweb']);
+
+			if ($id <= 0) {
+				echo json_encode(['status' => false, 'msg' => 'ID de imagen inválido']);
+				die();
+			}
+
+			$imagen = $this->model->selectImagenPortalWebRefaccion($id);
+
+			if (!$imagen) {
+				echo json_encode(['status' => false, 'msg' => 'No se encontró la imagen']);
+				die();
+			}
+
+			$idportalweb = (int) $imagen['idportalweb'];
+			$eraPrincipal = (int) $imagen['es_principal'] === 1;
+			$ruta = __DIR__ . "/../Assets/" . $imagen['ruta_archivo'];
+
+			if (file_exists($ruta)) {
+				@unlink($ruta);
+			}
+
+			$resp = $this->model->deleteImagenPortalWebRefaccion($id);
+
+			if ($resp && $eraPrincipal) {
+				$restantes = $this->model->selectImagenesPortalWebRefaccion($idportalweb);
+
+				if (!empty($restantes)) {
+					$nuevaPrincipal = $restantes[0];
+					$this->model->marcarPrincipalImagenPortalWebRefaccion((int) $nuevaPrincipal['idfotoportalweb'], $idportalweb);
+				}
+			}
+
+			echo json_encode([
+				'status' => $resp ? true : false,
+				'msg' => $resp ? 'Imagen eliminada' : 'Error al eliminar la imagen',
+				'imagenes' => $this->model->selectImagenesPortalWebRefaccion($idportalweb)
+			], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$id = intval($_POST['idimagen'] ?? 0);
+
+		if ($id <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'ID de imagen inválido']);
+			die();
+		}
+
+		$imagen = $this->model->selectImagenWebUnidad($id);
+
+		if (!$imagen) {
+			echo json_encode(['status' => false, 'msg' => 'No se encontró la imagen']);
+			die();
+		}
+
+		$idunidad = (int) $imagen['idunidad'];
+		$eraPrincipal = (int) $imagen['es_principal'] === 1;
+
+		$ruta = __DIR__ . "/../Assets/" . $imagen['ruta_archivo'];
+
+		if (file_exists($ruta)) {
+			@unlink($ruta);
+		}
+
+		$resp = $this->model->deleteImagenWebUnidad($id);
+
+		if ($resp && $eraPrincipal) {
+			$restantes = $this->model->selectImagenesWebUnidad($idunidad);
+
+			if (!empty($restantes)) {
+				$nuevaPrincipal = $restantes[0];
+				$this->model->marcarPrincipalImagenWebUnidad((int) $nuevaPrincipal['idimagen'], $idunidad);
+			}
+		}
+
+		echo json_encode([
+			'status' => $resp ? true : false,
+			'msg' => $resp ? 'Imagen eliminada' : 'Error al eliminar la imagen',
+			'imagenes' => $this->model->selectImagenesWebUnidad($idunidad)
+		], JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	public function marcarImagenPrincipalPortalWeb()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		if (isset($_POST['idfotoportalweb'])) {
+			$id = intval($_POST['idfotoportalweb']);
+
+			if ($id <= 0) {
+				echo json_encode(['status' => false, 'msg' => 'ID de imagen inválido']);
+				die();
+			}
+
+			$imagen = $this->model->selectImagenPortalWebRefaccion($id);
+
+			if (!$imagen) {
+				echo json_encode(['status' => false, 'msg' => 'No se encontró la imagen']);
+				die();
+			}
+
+			$idportalweb = (int) $imagen['idportalweb'];
+
+			$this->model->marcarPrincipalImagenPortalWebRefaccion($id, $idportalweb);
+
+			echo json_encode([
+				'status' => true,
+				'msg' => 'Imagen marcada como principal',
+				'imagenes' => $this->model->selectImagenesPortalWebRefaccion($idportalweb)
+			], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$idimagen = intval($_POST['idimagen'] ?? 0);
+
+		if ($idimagen <= 0) {
+			echo json_encode(['status' => false, 'msg' => 'ID de imagen inválido']);
+			die();
+		}
+
+		$imagen = $this->model->selectImagenWebUnidad($idimagen);
+
+		if (!$imagen) {
+			echo json_encode(['status' => false, 'msg' => 'No se encontró la imagen']);
+			die();
+		}
+
+		$idunidad = (int) $imagen['idunidad'];
+
+		$this->model->marcarPrincipalImagenWebUnidad($idimagen, $idunidad);
+
+		echo json_encode([
+			'status' => true,
+			'msg' => 'Imagen marcada como principal',
+			'imagenes' => $this->model->selectImagenesWebUnidad($idunidad)
+		], JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+
 	// ================= CANTIDADES =================
 
 	public function getCantidadesProducto()

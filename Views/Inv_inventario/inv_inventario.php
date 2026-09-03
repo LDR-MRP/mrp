@@ -11,7 +11,12 @@
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
                         <h4 class="mb-sm-0"><?= $data['page_title'] ?></h4>
 
-                        <div class="page-title-right">
+                        <div class="page-title-right d-flex align-items-center gap-2">
+                            <?php if ($_SESSION['permisosMod']['w']) { ?>
+                                <a href="<?= base_url() ?>/Inv_cargamasiva" class="btn btn-success btn-sm">
+                                    <i class="ri-file-excel-2-line align-bottom me-1"></i> Cargas Masivas
+                                </a>
+                            <?php } ?>
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="javascript: void(0);">MRP</a></li>
                                 <li class="breadcrumb-item active"><?= $data['page_tag'] ?></li>
@@ -306,6 +311,11 @@
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" href="#tabCantidades">
                             Cantidades
+                        </a>
+                    </li>
+                    <li class="nav-item" id="liTabPortalWeb" hidden>
+                        <a class="nav-link" data-bs-toggle="tab" href="#tabPortalWeb">
+                            Portal Web
                         </a>
                     </li>
                 </ul>
@@ -698,6 +708,150 @@
 
                     </div>
 
+                    <!--tab del portal web-->
+                    <div class="tab-pane fade" id="tabPortalWeb">
+
+                        <form id="formPortalWeb">
+                            <input type="hidden" id="pw_inventarioid" name="inventarioid">
+                            <input type="hidden" id="pw_idunidad" name="idunidad">
+
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="pw_web_distribuidores" name="web_distribuidores">
+                                        <label class="form-check-label" for="pw_web_distribuidores">
+                                            WEB Distribuidores
+                                        </label>
+                                    </div>
+                                    <small class="text-muted">
+                                        Actívalo para publicar esta unidad en la tienda virtual de distribuidores. Si lo desactivas, se quita de la sección de publicaciones (si aún no ha sido publicada).
+                                    </small>
+                                </div>
+
+                                <!-- Solo aplica a unidades ensambladas (tipo_elemento = P). Todo este bloque
+                                     se oculta con JS para refacciones/componentes/herramientas/kits/servicios,
+                                     que solo usan Descripcion / WEB Distribuidores / Estatus / Imagenes. -->
+                                <div class="col-12 row g-3" id="pw_seccionUnidad">
+                                    <div class="col-md-4">
+                                        <label class="form-label">SKU / Clave de modelo</label>
+                                        <input type="text" id="pw_clave_modelo" name="clave_modelo" class="form-control" placeholder="Por defecto la clave del producto">
+                                    </div>
+
+                                    <div class="col-md-8">
+                                        <label class="form-label">Nombre</label>
+                                        <input type="text" id="pw_nombre" name="nombre" class="form-control">
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="form-label">Marca / categoría</label>
+                                        <input type="text" id="pw_marca" name="marca" class="form-control" placeholder="Se sugiere según la línea del producto">
+                                    </div>
+
+                                    <div class="col-md-4" id="pw_wrap_version">
+                                        <label class="form-label">Versión</label>
+                                        <input type="text" id="pw_version" name="version" class="form-control">
+                                    </div>
+
+                                    <div class="col-md-4" id="pw_wrap_motor">
+                                        <label class="form-label">Motor</label>
+                                        <input type="text" id="pw_motor" name="motor" class="form-control">
+                                    </div>
+
+                                    <div class="col-md-3" id="pw_wrap_anio">
+                                        <label class="form-label">Año</label>
+                                        <input type="number" id="pw_anio" name="anio" class="form-control" min="1990" max="2100">
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="form-label">Precio estimado</label>
+                                        <input type="number" step="0.01" id="pw_precio_estimado" name="precio_estimado" class="form-control">
+                                        <small class="text-muted">Se sugiere con el precio público ya registrado, si existe.</small>
+                                    </div>
+
+                                    <div class="col-md-5">
+                                        <label class="form-label">Stock disponible</label>
+                                        <input type="text" id="pw_stock" class="form-control" readonly>
+                                        <small class="text-muted">Se calcula solo con la existencia real del producto; se actualiza al guardar.</small>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label class="form-label">Imagen principal (carátula)</label>
+
+                                        <div id="pw_caratula_actual" class="align-items-center gap-3 mb-2 d-none">
+                                            <img id="pw_caratula_preview" src="" alt="Carátula actual" class="rounded border" style="max-height:80px;max-width:120px;object-fit:cover;">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" id="pw_btn_actualizar_caratula">
+                                                <i class="bi bi-arrow-repeat"></i> Actualizar
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" id="pw_btn_eliminar_caratula">
+                                                <i class="bi bi-trash"></i> Eliminar
+                                            </button>
+                                        </div>
+
+                                        <input type="file" id="pw_imagen_caratula" name="imagen_caratula" accept="image/*" class="form-control">
+
+                                        <small class="text-muted">Es la imagen principal de la unidad en el portal. Las demás fotos (evidencias) se suben abajo, en la sección de imágenes.</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label">Descripción</label>
+                                    <textarea id="pw_descripcion" name="descripcion" class="form-control" rows="3" placeholder="Breve descripción que se publicará en el portal"></textarea>
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label d-block">Estatus</label>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="estatus" id="pw_estatus_activo" value="2" checked>
+                                        <label class="form-check-label" for="pw_estatus_activo">Activo</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="estatus" id="pw_estatus_inactivo" value="1">
+                                        <label class="form-check-label" for="pw_estatus_inactivo">Inactivo</label>
+                                    </div>
+                                    <div>
+                                        <small class="text-muted">Úsalo para marcar la unidad como agotada sin perder su configuración de portal.</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-3">
+                                <div class="col-12 text-end">
+                                    <button type="submit" class="btn btn-primary" id="btnGuardarPortalWeb">
+                                        <i class="ri-save-line"></i> Guardar portal web
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <hr>
+
+                        <h5>Imágenes WEB</h5>
+                        <p class="text-muted small">Evidencias fotográficas adicionales que se publicarán en el portal (máximo 5).</p>
+
+                        <div class="alert alert-warning small" id="avisoGuardarAntesImagenesPw" style="display:none;">
+                            Guarda la configuración de portal web antes de subir imágenes.
+                        </div>
+
+                        <div class="row g-3" id="galeriaPortalWeb">
+                            <!-- Miniaturas de imágenes existentes, llenadas por JS -->
+                        </div>
+
+                        <div class="row g-3 mt-3" id="contenedorNuevasImagenesPortalWeb">
+                            <div class="col-md-4 col-sm-6 input-imagen-pw-wrapper">
+                                <input type="file" class="form-control input-imagen-pw" accept="image/*">
+                            </div>
+                        </div>
+
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnAgregarImagenPortalWeb">
+                                <i class="bi bi-plus-lg"></i> Agregar otra imagen
+                            </button>
+                            <button type="button" class="btn btn-success btn-sm" id="btnSubirImagenesPortalWeb">
+                                <i class="ri-upload-2-line"></i> Subir imágenes
+                            </button>
+                        </div>
+
+                    </div>
                 </div>
 
             </div>

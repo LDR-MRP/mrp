@@ -1,6 +1,24 @@
 let trasladoActual = null;
 let html5QrCode = null;
-let modoOperacion = null; // "salida" | "recepcion"
+let modoOperacion = null; // "salida" | "ingreso" | "recepcion"
+
+// Evita doble envío (doble clic, doble tap) mientras una acción
+// de salida/ingreso/recepción ya está en curso.
+let procesandoAccion = false;
+
+function bloquearBotonesAccion() {
+  procesandoAccion = true;
+  document.querySelectorAll("#cardAcciones button").forEach((btn) => {
+    btn.disabled = true;
+  });
+}
+
+function desbloquearBotonesAccion() {
+  procesandoAccion = false;
+  document.querySelectorAll("#cardAcciones button").forEach((btn) => {
+    btn.disabled = false;
+  });
+}
 
 document.addEventListener("DOMContentLoaded", function () {
   const btnBuscar = document.querySelector("#btnBuscarTraslado");
@@ -74,12 +92,18 @@ function buscarTraslado() {
 function cargarTraslado(data) {
   trasladoActual = data;
 
-  const btnSalida = document.querySelector("#btnRegistrarSalida");
-  const btnRecepcion = document.querySelector("#btnRegistrarRecepcion");
+  desbloquearBotonesAccion();
 
-  // Ocultar ambos por defecto
+  const btnSalida = document.querySelector("#btnRegistrarSalida");
+  const btnIngreso = document.querySelector("#btnRegistrarIngreso");
+  const btnRecepcion = document.querySelector("#btnRegistrarRecepcion");
+  const avisoIngreso = document.querySelector("#avisoIngreso");
+
+  // Ocultar todos por defecto
   btnSalida.classList.add("d-none");
+  btnIngreso.classList.add("d-none");
   btnRecepcion.classList.add("d-none");
+  avisoIngreso.classList.add("d-none");
 
   switch (parseInt(data.estado)) {
     // Solicitud pendiente de salida
@@ -87,14 +111,15 @@ function cargarTraslado(data) {
       btnSalida.classList.remove("d-none");
       break;
 
-    // Ya salió, pendiente de recepción
+    // Ya salió, pendiente de ingreso en patio (lo registra seguridad)
     case 2:
-      btnRecepcion.classList.remove("d-none");
+      btnIngreso.classList.remove("d-none");
       break;
 
-    // En tránsito (si lo utilizas después)
+    // Ingreso ya registrado por seguridad, pendiente de recepción interna
     case 3:
       btnRecepcion.classList.remove("d-none");
+      avisoIngreso.classList.remove("d-none");
       break;
 
     // Recibido
@@ -108,7 +133,9 @@ function cargarTraslado(data) {
 
   if (parseInt(data.estado) === 1) {
     modoOperacion = "salida";
-  } else if ([2, 3].includes(parseInt(data.estado))) {
+  } else if (parseInt(data.estado) === 2) {
+    modoOperacion = "ingreso";
+  } else if (parseInt(data.estado) === 3) {
     modoOperacion = "recepcion";
   } else {
     modoOperacion = null;
@@ -136,40 +163,31 @@ function cargarTraslado(data) {
   let html = "";
 
   data.unidades.forEach((u) => {
-    html += `
+  const tieneLlave = parseInt(u.entrega_llave) === 1;
 
-        <div
-            class="border-bottom p-3 unidad-item"
-            data-vin="${u.vin}"
-            data-validado="0">
+  html += `
+    <div class="border-bottom p-3 unidad-item"
+         data-vin="${u.vin}"
+         data-iddetalle="${u.iddetalle}"
+         data-tiene-llave="${tieneLlave ? 1 : 0}"
+         data-tipo-llave="${u.tipo_llave || ''}"
+         data-llave-recibida="0"
+         data-observaciones-llave=""
+         data-validado="0">
 
-            <div class="d-flex justify-content-between">
-
-                <div>
-
-                    <strong>${u.vin}</strong>
-
-                    <br>
-
-                    <small class="text-muted">
-                        ${u.modelo}
-                    </small>
-
-                </div>
-
-                <span
-                    class="badge bg-secondary estado-vin">
-
-                    Pendiente
-
-                </span>
-
+        <div class="d-flex justify-content-between">
+            <div>
+                <strong>${u.vin}</strong>
+                <br>
+                <small class="text-muted">${u.modelo}</small>
+                ${tieneLlave ? `<br><span class="badge bg-info-subtle text-info"><i class="ri-key-2-line"></i> ${u.tipo_llave}</span>` : ""}
             </div>
-
+            <span class="badge bg-secondary estado-vin">Pendiente</span>
         </div>
-
-        `;
-  });
+        <div class="llave-observacion-vin mt-1"></div>
+    </div>
+  `;
+});
 
   document.querySelector("#contenedorUnidades").innerHTML = html;
 }
@@ -177,8 +195,8 @@ function cargarTraslado(data) {
 function obtenerEstado(estado) {
   let estados = {
     1: '<span class="badge bg-warning">Solicitud</span>',
-    2: '<span class="badge bg-primary">Salida</span>',
-    3: '<span class="badge bg-info">En tránsito</span>',
+    2: '<span class="badge bg-primary">En tránsito (pendiente ingreso)</span>',
+    3: '<span class="badge bg-info">En patio (pendiente recepción interna)</span>',
     4: '<span class="badge bg-success">Recibido</span>',
     5: '<span class="badge bg-danger">Cancelado</span>',
   };
@@ -203,19 +221,19 @@ function validarVin() {
     return;
   }
 
-  let badge = unidad.querySelector(".estado-vin");
-
-  badge.classList.remove("bg-secondary");
-
-  badge.classList.add("bg-success");
-
-  badge.innerHTML = "Validado";
-
-  unidad.setAttribute("data-validado", "1");
-
   document.querySelector("#vinBusqueda").value = "";
 
-  Swal.fire("Correcto", "Unidad validada", "success");
+  // IMPORTANTE: confirmarUnidadValidada() puede abrir el diálogo
+  // "¿Se recibió la llave?" (y su seguimiento de observación). Antes
+  // aquí se disparaba un segundo Swal.fire("Correcto"...) justo
+  // después, y SweetAlert2 no hace cola: el segundo reemplaza al
+  // primero de inmediato, así que la pregunta de la llave nunca se
+  // alcanzaba a ver ni a contestar. Por eso se encadena con .then()
+  // y el aviso de "Unidad validada" espera a que esa pregunta (y su
+  // observación, si aplica) ya se haya resuelto.
+  Promise.resolve(confirmarUnidadValidada(unidad)).then(() => {
+    Swal.fire("Correcto", "Unidad validada", "success");
+  });
 }
 
 function validarTodasLasUnidades() {
@@ -231,10 +249,16 @@ document
   .addEventListener("click", registrarSalida);
 
 document
+  .querySelector("#btnRegistrarIngreso")
+  .addEventListener("click", registrarIngreso);
+
+document
   .querySelector("#btnRegistrarRecepcion")
   .addEventListener("click", registrarRecepcion);
 
 function registrarSalida() {
+  if (procesandoAccion) return;
+
   if (!validarTodasLasUnidades()) {
     Swal.fire(
       "Unidades pendientes",
@@ -253,6 +277,8 @@ function registrarSalida() {
     confirmButtonText: "Sí, registrar",
   }).then((result) => {
     if (result.isConfirmed) {
+      bloquearBotonesAccion();
+
       let folio = document.querySelector("#lblFolio").innerHTML.trim();
 
       fetch(base_url + "/Inv_operaciones_traslados/registrarSalida", {
@@ -275,6 +301,7 @@ function registrarSalida() {
         })
         .then((resp) => {
           if (!resp.status) {
+            desbloquearBotonesAccion();
             Swal.fire("Error", resp.msg, "error");
 
             return;
@@ -287,41 +314,53 @@ function registrarSalida() {
           ).then(() => {
             limpiarPantalla();
           });
+        })
+        .catch(() => {
+          desbloquearBotonesAccion();
+          Swal.fire("Error", "No se pudo registrar la salida", "error");
         });
     }
   });
 }
 
-function registrarRecepcion() {
-  let folio = document.querySelector("#lblFolio").innerHTML.trim();
+function registrarIngreso() {
+  if (procesandoAccion) return;
+
+  if (!validarTodasLasUnidades()) {
+    Swal.fire(
+      "Unidades pendientes",
+      "Debe validar todas las unidades antes de registrar el ingreso",
+      "warning",
+    );
+
+    return;
+  }
 
   Swal.fire({
-    title: "¿Registrar recepción?",
-
-    text: "Se agregará la unidad al almacén destino",
-
-    icon: "warning",
-
+    title: "¿Registrar ingreso de la unidad?",
+    text: "Confirma que la unidad llegó físicamente al patio/destino. La recepción formal (con la llave) la debe hacer después una persona interna.",
+    icon: "question",
     showCancelButton: true,
-
-    confirmButtonText: "Sí, recibir",
+    confirmButtonText: "Sí, registrar ingreso",
   }).then((result) => {
     if (result.isConfirmed) {
-      fetch(base_url + "/Inv_operaciones_traslados/registrarRecepcion", {
-        method: "POST",
+      bloquearBotonesAccion();
 
+      let folio = document.querySelector("#lblFolio").innerHTML.trim();
+
+      fetch(base_url + "/Inv_operaciones_traslados/registrarIngreso", {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           folio: folio,
         }),
       })
         .then((res) => res.json())
-
         .then((resp) => {
           if (!resp.status) {
+            desbloquearBotonesAccion();
             Swal.fire("Error", resp.msg, "error");
 
             return;
@@ -329,14 +368,111 @@ function registrarRecepcion() {
 
           Swal.fire(
             "Correcto",
-            "Recepción registrada correctamente",
+            resp.msg || "Ingreso registrado correctamente",
             "success",
           ).then(() => {
             limpiarPantalla();
           });
+        })
+        .catch(() => {
+          desbloquearBotonesAccion();
+          Swal.fire("Error", "No se pudo registrar el ingreso", "error");
         });
     }
   });
+}
+
+function registrarRecepcion() {
+  if (procesandoAccion) return;
+
+  let folio = document.querySelector("#lblFolio").innerHTML.trim();
+
+  const items = document.querySelectorAll(".unidad-item");
+  const validadas = [...items].filter((el) => el.getAttribute("data-validado") === "1");
+  const faltantes = items.length - validadas.length;
+
+  // Si no se validó ni una sola unidad, lo más probable es que sea un
+  // clic accidental: no dejamos pasar a la confirmación genérica de
+  // "faltantes", hay que validar al menos una unidad explícitamente.
+  if (items.length > 0 && validadas.length === 0) {
+    Swal.fire(
+      "Nada validado todavía",
+      "No ha validado ninguna unidad. Escanee o valide al menos una unidad antes de registrar la recepción.",
+      "warning",
+    );
+    return;
+  }
+
+  const payload = {
+    folio: folio,
+    unidades: validadas.map((el) => ({
+      vin: el.getAttribute("data-vin"),
+      llave_recibida: el.getAttribute("data-llave-recibida") === "1",
+      observaciones_llave: el.getAttribute("data-observaciones-llave") || "",
+    })),
+  };
+
+  // Llaves que sí tenían que venir con la unidad (data-tiene-llave="1")
+  // pero se marcaron/quedaron como NO recibidas: esto es justo lo que
+  // antes desaparecía en silencio. Se avisa aquí, antes de mandar nada,
+  // para que quede claro qué va a pasar con cada una.
+  const llavesConProblema = validadas.filter(
+    (el) =>
+      el.getAttribute("data-tiene-llave") === "1" &&
+      el.getAttribute("data-llave-recibida") !== "1",
+  );
+
+  let avisoLlaves = "";
+  if (llavesConProblema.length > 0) {
+    const vins = llavesConProblema
+      .map((el) => el.getAttribute("data-vin"))
+      .join(", ");
+    avisoLlaves = ` ${llavesConProblema.length} llave(s) quedarán marcadas como FALTANTE (no recibidas): ${vins}.`;
+  }
+
+  const confirmar = () => {
+    bloquearBotonesAccion();
+
+    fetch(base_url + "/Inv_operaciones_traslados/registrarRecepcion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => res.json())
+      .then((resp) => {
+        if (!resp.status) {
+          desbloquearBotonesAccion();
+          Swal.fire("Error", resp.msg, "error");
+          return;
+        }
+        Swal.fire("Correcto", resp.msg, "success").then(() => limpiarPantalla());
+      })
+      .catch(() => {
+        desbloquearBotonesAccion();
+        Swal.fire("Error", "No se pudo registrar la recepción", "error");
+      });
+  };
+
+  if (faltantes > 0) {
+    Swal.fire({
+      title: `Hay ${faltantes} unidad(es) sin validar`,
+      text:
+        "Se marcarán como faltantes y el traslado se cerrará." +
+        avisoLlaves +
+        " ¿Continuar?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, cerrar así",
+    }).then((r) => r.isConfirmed && confirmar());
+  } else {
+    Swal.fire({
+      title: "¿Registrar recepción?",
+      text: "Se agregarán las unidades al almacén destino." + avisoLlaves,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, recibir",
+    }).then((r) => r.isConfirmed && confirmar());
+  }
 }
 
 function limpiarPantalla() {
@@ -353,7 +489,9 @@ function limpiarPantalla() {
   document.querySelector("#contenedorUnidades").innerHTML = "";
 
   document.querySelector("#btnRegistrarSalida").classList.add("d-none");
+  document.querySelector("#btnRegistrarIngreso").classList.add("d-none");
   document.querySelector("#btnRegistrarRecepcion").classList.add("d-none");
+  document.querySelector("#avisoIngreso").classList.add("d-none");
 
   document.querySelector("#cardTraslado").classList.add("d-none");
   document.querySelector("#cardVin").classList.add("d-none");
@@ -363,6 +501,8 @@ function limpiarPantalla() {
   document.querySelector("#cardUnidadesExtra").classList.add("d-none");
   document.querySelector("#contenedorUnidadesExtra").innerHTML = "";
   modoOperacion = null;
+
+  desbloquearBotonesAccion();
 
   detenerScannerVin();
 }
@@ -517,7 +657,7 @@ function procesarVinEscaneado(vin) {
   const unidad = document.querySelector(`.unidad-item[data-vin="${vin}"]`);
 
   if (!unidad) {
-    if (modoOperacion === "recepcion") {
+    if (modoOperacion === "recepcion" || modoOperacion === "ingreso") {
       registrarVinAnomalo(vin);
     } else {
       reproducirSonido(false);
@@ -532,21 +672,84 @@ function procesarVinEscaneado(vin) {
     return;
   }
 
+  reproducirSonido(true);
+  if (navigator.vibrate) navigator.vibrate(100);
+
+  mostrarFlashEscaneo("success", `VIN ${vin} validado correctamente`);
+
+  // Igual que en validarVin(): se espera a que la pregunta de la
+  // llave (si aplica) se resuelva antes de dar por cerrado el ciclo
+  // de validación de esta unidad, para no cerrar/eclipsar el diálogo
+  // ni apagar el escáner de cámara mientras sigue pendiente.
+  Promise.resolve(confirmarUnidadValidada(unidad)).then(() => {
+    if (validarTodasLasUnidades()) {
+      mostrarFlashEscaneo("success", "Todas las unidades han sido validadas");
+      setTimeout(detenerScannerVin, 800);
+    }
+  });
+}
+
+function confirmarUnidadValidada(unidad) {
   const badge = unidad.querySelector(".estado-vin");
   badge.classList.remove("bg-secondary");
   badge.classList.add("bg-success");
   badge.innerHTML = "Validado";
   unidad.setAttribute("data-validado", "1");
 
-  reproducirSonido(true);
-  if (navigator.vibrate) navigator.vibrate(100);
+  // La pregunta de la llave solo aplica en la recepción interna
+  // (estado 3). En el ingreso de seguridad (estado 2) solo se
+  // confirma que la unidad llegó, sin decidir nada sobre la llave.
+  if (modoOperacion === "recepcion" && unidad.getAttribute("data-tiene-llave") === "1") {
+    const tipoLlave = unidad.getAttribute("data-tipo-llave");
 
-  mostrarFlashEscaneo("success", `VIN ${vin} validado correctamente`);
+    // Se devuelve la promesa (y no se deja "suelta") para que quien
+    // llame a esta función pueda esperar a que la pregunta -y su
+    // posible seguimiento de observación- ya se haya contestado
+    // antes de mostrar cualquier otro aviso encima.
+    return Swal.fire({
+      title: "¿Se recibió la llave?",
+      text: `Unidad ${unidad.getAttribute("data-vin")} - Llave ${tipoLlave}`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sí, la recibí",
+      cancelButtonText: "No",
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+    }).then((r) => {
+      unidad.setAttribute("data-llave-recibida", r.isConfirmed ? "1" : "0");
 
-  if (validarTodasLasUnidades()) {
-    mostrarFlashEscaneo("success", "Todas las unidades han sido validadas");
-    setTimeout(detenerScannerVin, 800);
+      const obsDiv = unidad.querySelector(".llave-observacion-vin");
+
+      if (r.isConfirmed) {
+        unidad.setAttribute("data-observaciones-llave", "");
+        if (obsDiv) obsDiv.innerHTML = "";
+        return;
+      }
+
+      // No se recibió la llave: pedir el motivo (opcional) para
+      // que quede registrado junto con el movimiento "faltante".
+      return Swal.fire({
+        title: "Llave no recibida",
+        text: `¿Por qué no llegó la llave de la unidad ${unidad.getAttribute("data-vin")}? (opcional)`,
+        input: "text",
+        inputPlaceholder: "Ej. se quedó en la unidad de origen",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Guardar",
+        cancelButtonText: "Omitir",
+        allowOutsideClick: false,
+      }).then((obsResult) => {
+        const observacion = obsResult.isConfirmed && obsResult.value ? obsResult.value.trim() : "";
+        unidad.setAttribute("data-observaciones-llave", observacion);
+
+        if (obsDiv) {
+          obsDiv.innerHTML = `<span class="badge bg-danger-subtle text-danger"><i class="ri-key-2-line"></i> Llave faltante${observacion ? `: ${observacion}` : ""}</span>`;
+        }
+      });
+    });
   }
+
+  return Promise.resolve();
 }
 
 let overlayScanTimeout = null;
