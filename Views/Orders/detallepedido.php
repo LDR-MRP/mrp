@@ -192,18 +192,7 @@ foreach ($detalles as $detalle) {
 
                 </a>
 
-                <?php if ($estatus === 'PENDIENTE'): ?>
-
-                    <a href="<?= base_url(); ?>/orders/editarpedido/<?= rawurlencode($pedido['clave']); ?>"
-                        class="order-detail-btn order-detail-btn-edit">
-
-                        <i class="ri-edit-line"></i>
-
-                        Editar pedido
-
-                    </a>
-
-                <?php endif; ?>
+   
 
 
 

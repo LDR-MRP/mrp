@@ -288,7 +288,7 @@ if (!function_exists('statusPedidoNormalizado')) {
 
                         <strong>
 
-                            876
+                            <?= number_format(intval($metricas['pedidos'])); ?>
 
                         </strong>
 
@@ -318,7 +318,7 @@ if (!function_exists('statusPedidoNormalizado')) {
 
                         <strong>
 
-                            38
+                            <?= number_format(intval($metricas['unidades'])); ?>
 
                         </strong>
 
@@ -347,7 +347,7 @@ if (!function_exists('statusPedidoNormalizado')) {
 
                         <strong>
 
-                          29
+                            <?= number_format(intval($metricas['modelos'])); ?>
 
                         </strong>
 
@@ -376,7 +376,7 @@ if (!function_exists('statusPedidoNormalizado')) {
 
                         <strong>
 
-                          $23,327,600.00
+                            <?= moneyOrders(floatval($metricas['total'])); ?>
 
                         </strong>
 
