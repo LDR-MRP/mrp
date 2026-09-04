@@ -778,8 +778,60 @@ if (!function_exists('statusPedidoNormalizado')) {
                                                         Ver detalle
                                                     </span>
                                                 </a>
+ 
 
-                                                
+
+
+
+                          
+
+                                                <?php if ($puedeCancelar): ?>
+
+                                                    <button type="button" class="button-order-action button-order-cancel"
+                                                        data-action="cancel-order" data-clave="<?= htmlspecialchars(
+                                                            $pedido['clave'] ?? '',
+                                                            ENT_QUOTES,
+                                                            'UTF-8'
+                                                        ); ?>" data-folio="<?= htmlspecialchars(
+                                                             $pedido['folio_pedido'] ?? '',
+                                                             ENT_QUOTES,
+                                                             'UTF-8'
+                                                         ); ?>">
+
+                                                        <i class="ri-close-circle-line"></i>
+
+                                                        <span>
+                                                            Cancelar
+                                                        </span>
+
+                                                    </button>
+
+                                                <?php else: ?>
+
+                                                    <button type="button" class="button-order-action button-order-disabled" disabled
+                                                        title="Este pedido ya no puede cancelarse">
+
+                                                        <i class="ri-close-circle-line"></i>
+
+                                                        <span>
+                                                            Cancelar
+                                                        </span>
+
+                                                    </button>
+
+                                                <?php endif; ?>
+
+                                                <!-- <a href="<?= base_url(); ?>/orders/imprimirpedido/<?= rawurlencode(
+                                                      $clavePedido
+                                                  ); ?>" target="_blank" class="button-order-action button-order-print"
+                                                    title="Imprimir hoja de pedido">
+
+                                                    <i class="ri-printer-line"></i>
+
+                                                    <span>
+                                                        Imprimir
+                                                    </span>
+                                                </a> -->
 
                                                 <button type="button" class="button-order-action button-order-print"
                                                     data-action="print-order"

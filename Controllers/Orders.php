@@ -3590,10 +3590,7 @@ public function getPedidoPdf($clave = '') {
     $idcliente =intval($_SESSION['portal_idcliente']?? 0);
     $idusuarioAcceso =intval($_SESSION['portal_idusuario_acceso'] ?? 0);
 
-    if ($idcliente <= 0 || $idusuarioAcceso <= 0) {
-        $this->respuestaJson(false,'Sesión no válida.',[],401);
-        return;
-    }
+
     /*
      * ========================================================
      * VALIDAR CLAVE
