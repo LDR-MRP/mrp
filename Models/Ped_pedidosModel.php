@@ -701,20 +701,10 @@ class Ped_pedidosModel extends Mysql
      * INICIAR GESTIÓN DEL PEDIDO
      * ============================================================
      *
-     * PENDIENTE
-     *      ↓
-     * EN_REVISION
-     *
-     * Muy importante:
-     *
-     * El WHERE vuelve a validar PENDIENTE.
      *
      * ============================================================ */
 
-    public function iniciarGestionPedidoModel(
-        int $idpedido,
-        int $idusuario
-    ) {
+    public function iniciarGestionPedidoModel(int $idpedido,int $idusuario) {
 
         if ($idpedido <= 0 || $idusuario <= 0) {
             return false;
@@ -723,7 +713,6 @@ class Ped_pedidosModel extends Mysql
         $sql = "UPDATE ped_pedidos
 
             SET
-
                 estatus = 'EN_REVISION',
                 ultima_modificacion_por = ?,
                 fecha_ultima_modificacion = NOW(),
@@ -754,13 +743,6 @@ class Ped_pedidosModel extends Mysql
      * INSERTAR BITÁCORA
      * ============================================================
      *
-     * Ejemplo:
-     *
-     * INICIO_GESTION
-     *
-     * PENDIENTE -> EN_REVISION
-     *
-     * ADMIN
      * ============================================================ */
 
     public function insertBitacoraEvento(array $data): int {
@@ -845,13 +827,6 @@ class Ped_pedidosModel extends Mysql
      * CONSTRUIR FILTROS
      * ============================================================
      *
-     * Esta función la utilizan:
-     *
-     * selectPedidos()
-     * countPedidos()
-     * selectIndicadoresPedidos()
-     *
-     * Con esto evitamos tener filtros diferentes entre consultas.
      * ============================================================ */
 
     private function construirFiltrosPedidos(array $filtros): array {
@@ -1027,8 +1002,6 @@ class Ped_pedidosModel extends Mysql
          * MES DE FACTURACIÓN DESEADO
          * ========================================================
          *
-         * Soporta que el campo sea DATE, DATETIME o VARCHAR
-         * con formato YYYY-MM...
          * ============================================================ */
 
         $mesFacturacion =trim((string)($filtros['mes_facturacion'] ?? ''));
@@ -1063,5 +1036,198 @@ class Ped_pedidosModel extends Mysql
         ];
 
     }
+
+
+
+
+
+
+    public function selectPedidoGestionAdmin(string $clave)
+{
+    $sql = "SELECT
+            p.idpedido,
+            p.idcliente,
+            p.idsede,
+            p.idusuario_acceso,
+
+            p.folio_pedido,
+            p.clave,
+
+            p.fecha_pedido,
+            p.fecha_requerida,
+            p.mes_facturacion_deseado,
+
+            p.prioridad,
+
+            p.subtotal,
+            p.descuento,
+            p.iva,
+            p.total,
+
+            p.observaciones,
+
+            p.estatus,
+            p.estado,
+
+            p.version,
+            p.ultima_modificacion_por,
+            p.fecha_ultima_modificacion,
+
+            p.fecha_creacion,
+            p.fecha_actualizacion,
+
+            c.codigo_cliente,
+            c.clave_distribuidor,
+            c.razon_social,
+            c.nombre_comercial,
+
+            c.telefono AS telefono_cliente,
+            c.celular AS celular_cliente,
+            c.correo AS correo_cliente,
+
+            ua.nombre AS nombre_usuario,
+            ua.apellido AS apellido_usuario,
+            ua.correo AS correo_usuario,
+            ua.telefono AS telefono_usuario,
+
+            COALESCE(resumen.total_modelos, 0) AS total_modelos,
+            COALESCE(resumen.total_solicitadas, 0) AS total_unidades,
+            COALESCE(resumen.total_autorizadas, 0) AS total_autorizadas,
+            COALESCE(resumen.total_facturadas, 0) AS total_facturadas,
+            COALESCE(resumen.total_pendientes, 0) AS total_pendientes
+
+        FROM ped_pedidos AS p
+
+        INNER JOIN cli_clientes AS c
+            ON c.idcliente = p.idcliente
+
+        LEFT JOIN cli_usuarios_acceso AS ua
+            ON ua.idusuario_acceso = p.idusuario_acceso
+
+        LEFT JOIN (
+            SELECT
+                idpedido,
+                COUNT(DISTINCT idunidad) AS total_modelos,
+                SUM(cantidad_solicitada) AS total_solicitadas,
+                SUM(cantidad_autorizada) AS total_autorizadas,
+                SUM(cantidad_facturada) AS total_facturadas,
+                SUM(cantidad_pendiente) AS total_pendientes
+
+            FROM ped_pedidos_detalle
+
+            WHERE estado = 2
+
+            GROUP BY idpedido
+        ) AS resumen
+            ON resumen.idpedido = p.idpedido
+
+        WHERE p.clave = '{$clave}'
+          AND p.estado = 2
+
+        LIMIT 1
+    ";
+
+    $request = $this->select($sql);
+
+    return !empty($request)
+        ? $request
+        : [];
+}
+
+
+
+
+public function selectDetallesGestionPedido(int $idpedido): array
+{
+    if ($idpedido <= 0) {
+        return [];
+    }
+
+    $sql = "SELECT
+            d.idpedido_detalle,
+            d.idpedido,
+            d.idunidad,
+
+            d.tipo_entrega,
+            d.idsucursal_entrega,
+            d.direccion_entrega,
+
+            d.cantidad_solicitada,
+            d.cantidad_autorizada,
+            d.cantidad_facturada,
+            d.cantidad_pendiente,
+
+            d.precio_unitario,
+            d.descuento,
+            d.subtotal,
+            d.iva,
+            d.total,
+
+            d.estatus,
+            d.estado,
+
+            u.modelo,
+            u.clave_modelo,
+            u.nombre,
+            u.version,
+            u.anio,
+            u.marca,
+            u.motor,
+            u.stock,
+            u.precio_estimado,
+            u.imagen_caratula
+
+        FROM ped_pedidos_detalle AS d
+
+        INNER JOIN web_unidades AS u
+            ON u.idunidad = d.idunidad
+
+        WHERE d.idpedido = $idpedido
+          AND d.estado = 2
+
+        ORDER BY d.idpedido_detalle ASC
+    ";
+
+    $request = $this->select_all($sql);
+
+    return is_array($request)
+        ? $request
+        : [];
+}
+
+
+
+public function selectBitacoraPedido(int $idpedido): array
+{
+    if ($idpedido <= 0) {
+        return [];
+    }
+
+    $sql = "SELECT
+            idbitacora_evento,
+            idpedido,
+            tipo_evento,
+            descripcion,
+            estatus_anterior,
+            estatus_nuevo,
+            usuario_registro,
+            origen,
+            fecha_creacion,
+            fecha_actualizacion
+
+        FROM ped_bitacora_eventos
+
+        WHERE idpedido = $idpedido
+
+        ORDER BY fecha_creacion DESC,
+                 idbitacora_evento DESC
+    ";
+
+    $request = $this->select_all($sql);
+
+    return is_array($request)
+        ? $request
+        : [];
+}
 
 }

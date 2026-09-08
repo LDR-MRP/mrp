@@ -2020,57 +2020,154 @@ public function selectDetallesPedido(int $idpedido) {
 
 
 
-public function selectPedidoParaCancelar(string $clave,int $idcliente) {
+// public function selectPedidoParaCancelar(string $clave,int $idcliente) {
+
+//     $sql = "SELECT
+//             idpedido,
+//             idcliente,
+//             idusuario_acceso,
+//             folio_pedido,
+//             clave,
+//             estatus,
+//             estado
+//         FROM ped_pedidos
+//         WHERE clave = '{$clave}'
+//           AND idcliente = $idcliente
+//           AND estado = 2
+//         LIMIT 1
+//     ";
+//     return $this->select($sql);
+
+// }
+
+
+// public function cancelarPedidoModel(
+//     int $idpedido,
+//     int $idcliente,
+//     int $idusuarioAcceso
+// ) {
+
+//     $sql = "UPDATE ped_pedidos
+
+//         SET
+//             estatus = 'CANCELADO',
+//             ultima_modificacion_por = ?,
+//             fecha_ultima_modificacion = NOW(),
+//             fecha_actualizacion = NOW(),
+//             version = version + 1
+//         WHERE idpedido = $idpedido
+//           AND idcliente = $idcliente
+//           AND estado = 2
+//           AND estatus = 'PENDIENTE'
+//     ";
+
+//     $arrData = [$idusuarioAcceso];
+//     $request =
+//         $this->update(
+//             $sql,
+//             $arrData
+//         );
+
+//     return $request;
+
+// }
+
+
+public function selectMotivosCancelacion()
+{
+    $sql = "SELECT
+                idmotivo_cancelacion,
+                clave,
+                nombre,
+                descripcion,
+                requiere_comentario
+            FROM ped_motivos_cancelacion
+            WHERE estado = 2
+            ORDER BY orden ASC, nombre ASC";
+
+    return $this->select_all($sql);
+}
+
+
+public function selectMotivoCancelacion(int $idmotivo)
+{
+    $sql = "SELECT
+                idmotivo_cancelacion,
+                clave,
+                nombre,
+                descripcion,
+                requiere_comentario
+            FROM ped_motivos_cancelacion
+            WHERE idmotivo_cancelacion = $idmotivo
+              AND estado = 2
+            LIMIT 1";
+
+    return $this->select($sql);
+}
+
+
+
+public function selectPedidoParaCancelar(string $clave, int $idcliente)
+{
+    $clave = strClean($clave);
 
     $sql = "SELECT
-            idpedido,
-            idcliente,
-            idusuario_acceso,
-            folio_pedido,
-            clave,
-            estatus,
-            estado
-        FROM ped_pedidos
-        WHERE clave = '{$clave}'
-          AND idcliente = $idcliente
-          AND estado = 2
-        LIMIT 1
-    ";
-    return $this->select($sql);
+                idpedido,
+                idcliente,
+                idusuario_acceso,
+                folio_pedido,
+                clave,
+                estatus,
+                estado
+            FROM ped_pedidos
+            WHERE clave = '{$clave}'
+              AND idcliente = $idcliente
+              AND estado = 2
+            LIMIT 1";
 
+    return $this->select($sql);
 }
 
 
 public function cancelarPedidoModel(
     int $idpedido,
     int $idcliente,
-    int $idusuarioAcceso
+    int $idusuarioAcceso,
+    int $idmotivoCancelacion,
+    string $motivoOtro = ''
 ) {
 
     $sql = "UPDATE ped_pedidos
+            SET
+                estatus = 'CANCELADO',
+                idmotivo_cancelacion = ?,
+                motivo_cancelacion_otro = ?,
+                fecha_cancelacion = NOW(),
+                cancelado_por = ?,
+                ultima_modificacion_por = ?,
+                fecha_ultima_modificacion = NOW(),
+                fecha_actualizacion = NOW(),
+                version = version + 1
+            WHERE idpedido = $idpedido
+              AND idcliente = $idcliente
+              AND estado = 2
+              AND estatus = 'PENDIENTE'";
 
-        SET
-            estatus = 'CANCELADO',
-            ultima_modificacion_por = ?,
-            fecha_ultima_modificacion = NOW(),
-            fecha_actualizacion = NOW(),
-            version = version + 1
-        WHERE idpedido = $idpedido
-          AND idcliente = $idcliente
-          AND estado = 2
-          AND estatus = 'PENDIENTE'
-    ";
+    $arrData = [
+        $idmotivoCancelacion,
+        $motivoOtro,
+        $idusuarioAcceso,
+        $idusuarioAcceso
+    ];
 
-    $arrData = [$idusuarioAcceso];
-    $request =
-        $this->update(
-            $sql,
-            $arrData
-        );
-
-    return $request;
-
+    return $this->update(
+        $sql,
+        $arrData
+    );
 }
+
+
+
 
 
 

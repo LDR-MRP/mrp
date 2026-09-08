@@ -1108,36 +1108,10 @@ function actualizarIndicadoresPedidos(indicadores) {
     const pendientes =Number(indicadores.pendientes || 0);
     const enRevision =Number(indicadores.en_revision || 0);
     const importe =Number(indicadores.importe_total || 0);
-    actualizarTextoElementoPedidos(
-        "statTotalPedidos",
-        totalPedidos.toLocaleString(
-            "es-MX"
-        )
-    );
-
-
-    actualizarTextoElementoPedidos(
-        "statPendientes",
-        pendientes.toLocaleString(
-            "es-MX"
-        )
-    );
-
-
-    actualizarTextoElementoPedidos(
-        "statEnRevision",
-        enRevision.toLocaleString(
-            "es-MX"
-        )
-    );
-
-
-    actualizarTextoElementoPedidos(
-        "statImportePedidos",
-        formatearMonedaPedidos(
-            importe
-        )
-    );
+    actualizarTextoElementoPedidos("statTotalPedidos",totalPedidos.toLocaleString("es-MX"));
+    actualizarTextoElementoPedidos("statPendientes",pendientes.toLocaleString("es-MX"));
+    actualizarTextoElementoPedidos("statEnRevision",enRevision.toLocaleString("es-MX"));
+    actualizarTextoElementoPedidos("statImportePedidos",formatearMonedaPedidos(importe));
 
 }
 
@@ -1464,11 +1438,8 @@ function cambiarPaginaPedidos(boton) {
             "tablaPedidos"
         )
         ?.scrollIntoView({
-            behavior:
-                "smooth",
-
-            block:
-                "start"
+            behavior:"smooth",
+            block:"start"
         });
 
 }
@@ -1655,7 +1626,6 @@ function ocultarSinResultadosPedidos() {
 
 }
 
-
 /*
  * ============================================================
  * LIMPIAR TABLA
@@ -1670,7 +1640,6 @@ function limpiarTablaPedidos() {
     }
 
 }
-
 
 /*
  * ============================================================
@@ -1848,21 +1817,13 @@ function mostrarAlertaPedidos(mensaje,tipo = "info") {
 }
 
 
-
-
 /* ============================================================
  * GENERAR BOTÓN DE GESTIÓN
  * ============================================================ */
 
-function generarBotonGestionPedido(
-    pedido
-) {
+function generarBotonGestionPedido(pedido) {
 
-    const estatus =
-        String(
-            pedido.estatus
-            || ""
-        )
+    const estatus =String(pedido.estatus || "")
             .trim()
             .toUpperCase();
 
@@ -2059,9 +2020,6 @@ function generarBotonGestionPedido(
 
 
 
-
-
-
 /* ============================================================
  * IMPRIMIR PEDIDO DESDE ADMINISTRACIÓN
  * ============================================================ */
@@ -2077,9 +2035,7 @@ async function imprimirPedidoDesdeAdministracion(
         ).trim();
 
 
-    if (
-        !clave
-    ) {
+    if (!clave) {
 
         mostrarAlertaPedidos(
             "No fue posible identificar el pedido.",
@@ -2090,10 +2046,7 @@ async function imprimirPedidoDesdeAdministracion(
 
     }
 
-
-    const htmlOriginal =
-        boton.innerHTML;
-
+    const htmlOriginal =boton.innerHTML;
 
     try {
 
@@ -2103,14 +2056,11 @@ async function imprimirPedidoDesdeAdministracion(
          * ====================================================
          */
 
-        boton.disabled =
-            true;
-
+        boton.disabled =true;
 
         boton.innerHTML = `
             <i class="ri-loader-4-line ri-spin"></i>
         `;
-
 
         /*
          * ====================================================
@@ -2162,13 +2112,7 @@ async function imprimirPedidoDesdeAdministracion(
 /* ============================================================
  * IMPRIMIR PEDIDO PDF
  * ============================================================
- *
- * Obtiene la información del pedido desde el backend
- * y genera el PDF utilizando pdfMake.
- *
- * @param {string} clave
- * @param {string|null} endpoint
- * ============================================================ */
+ *============================= */
 
 async function imprimirPedidoPdf(
     clave,
@@ -2199,9 +2143,7 @@ async function imprimirPedidoPdf(
      * ========================================================
      */
 
-    if (
-        typeof pdfMake === "undefined"
-    ) {
+    if (typeof pdfMake === "undefined") {
 
         throw new Error(
             "La librería para generar el PDF no está disponible."
@@ -2215,23 +2157,15 @@ async function imprimirPedidoPdf(
      * ENDPOINT
      * ========================================================
      *
-     * Si no mandamos endpoint:
-     * utiliza el endpoint administrativo.
-     *
-     * Ejemplo:
-     *
      * /ped_pedidos/getPedidoPdf/ABC123
      * ========================================================
      */
 
-    if (
-        !endpoint
-    ) {
+    if (!endpoint) {
 
         endpoint =`${base_url}/orders/getPedidoPdf/${encodeURIComponent(clave)}`;
 
     }
-
 
     try {
 
@@ -2245,21 +2179,17 @@ async function imprimirPedidoPdf(
             await fetch(
                 endpoint,
                 {
-                    method:
-                        "GET",
+                    method:"GET",
 
                     headers: {
 
-                        "Accept":
-                            "application/json"
+                        "Accept":"application/json"
 
                     },
 
-                    cache:
-                        "no-store"
+                    cache:"no-store"
                 }
             );
-
 
         /*
          * ====================================================
@@ -2274,16 +2204,9 @@ async function imprimirPedidoPdf(
             || "";
 
 
-        if (
-            !contentType.includes(
-                "application/json"
-            )
-        ) {
+        if (!contentType.includes("application/json")) {
 
-            const texto =
-                await response.text();
-
-
+            const texto =await response.text();
             console.error(
                 "Respuesta no JSON:",
                 texto
@@ -2296,16 +2219,13 @@ async function imprimirPedidoPdf(
 
         }
 
-
         /*
          * ====================================================
          * JSON
          * ====================================================
          */
 
-        const resultado =
-            await response.json();
-
+        const resultado =await response.json();
 
         /*
          * ====================================================
@@ -2313,10 +2233,7 @@ async function imprimirPedidoPdf(
          * ====================================================
          */
 
-        if (
-            !response.ok
-            || !resultado.status
-        ) {
+        if (!response.ok || !resultado.status) {
 
             throw new Error(
                 resultado.message
@@ -2326,17 +2243,13 @@ async function imprimirPedidoPdf(
 
         }
 
-
         /*
          * ====================================================
          * DATOS
          * ====================================================
          */
 
-        const pedido =
-            resultado.data?.pedido
-            || null;
-
+        const pedido =resultado.data?.pedido || null;
 
         const detalles =
             Array.isArray(
@@ -2345,17 +2258,13 @@ async function imprimirPedidoPdf(
                 ? resultado.data.detalles
                 : [];
 
-
-        if (
-            !pedido
-        ) {
+        if (!pedido) {
 
             throw new Error(
                 "No se encontró la información del pedido."
             );
 
         }
-
 
         /*
          * ====================================================
@@ -2368,9 +2277,7 @@ async function imprimirPedidoPdf(
             detalles
         );
 
-
         return true;
-
 
     } catch (error) {
 
@@ -2383,5 +2290,30 @@ async function imprimirPedidoPdf(
         throw error;
 
     }
+
+}
+
+
+
+
+/* ============================================================
+ * ABRIR GESTIÓN DEL PEDIDO
+ * ============================================================ */
+
+function abrirGestionPedido(boton) {
+    console.log('gestionando');
+
+    const clave =String(boton.dataset.clave || "").trim();
+    if (!clave) {
+
+        mostrarAlertaPedidos(
+            "No fue posible identificar el pedido.",
+            "error"
+        );
+
+        return;
+    }
+  
+    window.location.href =`${base_url}/ped_pedidos/gestionar/${encodeURIComponent(clave)}`;
 
 }

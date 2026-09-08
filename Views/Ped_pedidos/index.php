@@ -43,7 +43,6 @@
 
                         </div>
 
-
                         <div class="d-flex align-items-center gap-2">
 
                             <button
@@ -64,7 +63,6 @@
                 </div>
 
             </div>
-
 
             <!-- ============================================================
                  INDICADORES
@@ -94,7 +92,6 @@
 
                             </div>
 
-
                             <div
                                 class="d-flex align-items-end justify-content-between mt-3">
 
@@ -103,9 +100,7 @@
                                     <h4
                                         class="fs-22 fw-semibold ff-secondary mb-0"
                                         id="statTotalPedidos">
-
                                         0
-
                                     </h4>
 
                                     <span class="text-muted fs-12">
@@ -136,7 +131,6 @@
 
                 </div>
 
-
                 <!-- PENDIENTES -->
                 <div class="col-xl-3 col-md-6">
 
@@ -159,7 +153,6 @@
                                 </div>
 
                             </div>
-
 
                             <div
                                 class="d-flex align-items-end justify-content-between mt-3">
@@ -201,7 +194,6 @@
 
                 </div>
 
-
                 <!-- EN REVISIÓN -->
                 <div class="col-xl-3 col-md-6">
 
@@ -224,7 +216,6 @@
                                 </div>
 
                             </div>
-
 
                             <div
                                 class="d-flex align-items-end justify-content-between mt-3">
@@ -266,7 +257,6 @@
 
                 </div>
 
-
                 <!-- IMPORTE -->
                 <div class="col-xl-3 col-md-6">
 
@@ -289,7 +279,6 @@
                                 </div>
 
                             </div>
-
 
                             <div
                                 class="d-flex align-items-end justify-content-between mt-3">
@@ -333,7 +322,6 @@
 
             </div>
 
-
             <!-- ============================================================
                  FILTROS
             ============================================================= -->
@@ -361,7 +349,6 @@
 
                                 </div>
 
-
                                 <button
                                     type="button"
                                     class="btn btn-sm btn-ghost-secondary"
@@ -377,7 +364,6 @@
 
                         </div>
 
-
                         <div class="card-body">
 
                             <div class="row g-3">
@@ -392,7 +378,6 @@
                                         Buscar pedido
 
                                     </label>
-
 
                                     <div class="input-group">
 
@@ -412,7 +397,6 @@
                                     </div>
 
                                 </div>
-
 
                                 <!-- ESTATUS -->
                                 <div class="col-12 col-md-6 col-lg-4 col-xxl-2">
@@ -461,7 +445,6 @@
 
                                 </div>
 
-
                                 <!-- PRIORIDAD -->
                                 <div class="col-12 col-md-6 col-lg-4 col-xxl-2">
 
@@ -501,7 +484,6 @@
 
                                 </div>
 
-
                                 <!-- DISTRIBUIDOR -->
                                 <div class="col-12 col-lg-4 col-xxl-3">
 
@@ -525,7 +507,6 @@
 
                                 </div>
 
-
                                 <!-- FECHA DESDE -->
                                 <div class="col-12 col-md-6 col-lg-3 col-xxl-2">
 
@@ -543,7 +524,6 @@
                                         id="filterDesde">
 
                                 </div>
-
 
                                 <!-- FECHA HASTA -->
                                 <div class="col-12 col-md-6 col-lg-3 col-xxl-2">
@@ -563,7 +543,6 @@
 
                                 </div>
 
-
                                 <!-- FECHA REQUERIDA -->
                                 <div class="col-12 col-md-6 col-lg-3 col-xxl-2">
 
@@ -582,7 +561,6 @@
 
                                 </div>
 
-
                                 <!-- MES FACTURACIÓN -->
                                 <div class="col-12 col-md-6 col-lg-3 col-xxl-2">
 
@@ -600,7 +578,6 @@
                                         id="filterMesFacturacion">
 
                                 </div>
-
 
                                 <!-- BOTÓN BUSCAR -->
                                 <div
@@ -660,7 +637,6 @@
 
                             </div>
 
-
                             <div>
 
                                 <span
@@ -674,7 +650,6 @@
                             </div>
 
                         </div>
-
 
                         <div class="card-body pt-0">
 
@@ -745,7 +720,6 @@
 
                             </div>
 
-
                             <!-- ================================================
                                  ESTADO CARGANDO
                             ================================================= -->
@@ -769,7 +743,6 @@
                                 </p>
 
                             </div>
-
 
                             <!-- ================================================
                                  SIN RESULTADOS
@@ -804,7 +777,6 @@
 
                         </div>
 
-
                         <!-- ====================================================
                              PAGINACIÓN
                         ===================================================== -->
@@ -823,7 +795,6 @@
                                     Mostrando 0 registros
 
                                 </div>
-
 
                                 <nav aria-label="Paginación pedidos">
 
@@ -868,7 +839,6 @@
                     © LDR.
 
                 </div>
-
 
                 <div class="col-sm-6">
 

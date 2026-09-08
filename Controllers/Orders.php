@@ -3493,6 +3493,7 @@ class Orders extends Controllers
 
     public function detallepedido($clave = '') {
 
+
     /*
      * ========================================================
      * VALIDAR CLAVE
@@ -3556,6 +3557,7 @@ class Orders extends Controllers
     $idpedido =intval($pedido['idpedido']);
     $detalles =$this->model->selectDetallesPedido($idpedido);
 
+
     $data = [
         'page_tag' =>'Detalle del pedido',
         'page_title' =>'Detalle del pedido '. ($pedido['folio_pedido']?? ''),
@@ -3568,6 +3570,8 @@ class Orders extends Controllers
         'pedido' =>$pedido,
         'detalles' => $detalles
     ];
+
+  
 
     /*
      * ========================================================
@@ -3642,6 +3646,8 @@ public function getPedidoPdf($clave = '') {
 
         $detalles =$this->model->selectDetallesPedido(intval($pedido['idpedido']));
 
+        // dep($detalles);
+
         /*
          * ====================================================
          * RESPUESTA
@@ -3673,18 +3679,246 @@ public function getPedidoPdf($clave = '') {
 }
 
 
-public function cancelarPedido()
-{
+// public function cancelarPedido()
+// {
   
+//     header('Content-Type: application/json; charset=utf-8');
+
+//     if ($_SERVER['REQUEST_METHOD']!== 'POST') {
+
+//         http_response_code(405);
+//         echo json_encode([
+//             'status'  => false,
+//             'message' => 'Método no permitido.'
+//         ]);
+//         return;
+//     }
+
+//     /*
+//      * ==========================================================
+//      * VALIDAR SESIÓN
+//      * ==========================================================
+//      */
+
+//     $idcliente =intval($_SESSION['portal_idcliente'] ?? 0);
+//     $idusuarioAcceso =intval($_SESSION['portal_idusuario_acceso'] ?? 0);
+
+//     if ($idcliente <= 0 || $idusuarioAcceso <= 0) {
+
+//         http_response_code(401);
+//         echo json_encode([
+//             'status'  => false,
+//             'message' => 'La sesión no es válida.'
+//         ]);
+//         return;
+//     }
+//     /*
+//      * ==========================================================
+//      * OBTENER JSON
+//      * ==========================================================
+//      */
+
+//     $input =json_decode(
+//             file_get_contents(
+//                 'php://input'
+//             ),
+//             true
+//         );
+
+//     if (!is_array($input)) {
+//         $input =$_POST;
+//     }
+
+//     $clave =trim((string)($input['clave']?? ''));
+
+//     if ($clave === '') {
+//         http_response_code(400);
+//         echo json_encode([
+//             'status'  => false,
+//             'message' => 'No se recibió la clave del pedido.'
+//         ]);
+//         return;
+//     }
+
+//     try {
+//         /*
+//          * ======================================================
+//          * CONSULTAR PEDIDO
+//          * ======================================================
+//          */
+
+//         $pedido =$this->model->selectPedidoParaCancelar($clave,$idcliente);
+
+//         if (empty($pedido)) {
+//             http_response_code(404);
+//             echo json_encode([
+//                 'status'  => false,
+//                 'message' => 'El pedido no existe o no pertenece al cliente.'
+//             ]);
+//             return;
+//         }
+
+//         /*
+//          * ======================================================
+//          * VALIDAR ESTATUS
+//          * ======================================================
+//          */
+
+//         $estatusActual =
+//             strtoupper(
+//                 trim(
+//                     (string)(
+//                         $pedido['estatus']
+//                         ?? ''
+//                     )
+//                 )
+//             );
+
+//         if ($estatusActual!== 'PENDIENTE') {
+//             http_response_code(409);
+//             echo json_encode([
+//                 'status'  => false,
+//                 'message' => 'El pedido ya no puede cancelarse porque su estatus actual es '
+//                     . $estatusActual
+//                     . '.'
+//             ]);
+
+//             return;
+//         }
+
+//         $idpedido =intval($pedido['idpedido']);
+
+//         /*
+//          * ======================================================
+//          * CANCELAR
+//          * ======================================================
+//          */
+
+//         $actualizado =$this->model->cancelarPedidoModel(
+//                 $idpedido,
+//                 $idcliente,
+//                 $idusuarioAcceso
+//             );
+
+//         if (!$actualizado) {
+//             throw new Exception(
+//                 'No fue posible actualizar el pedido.'
+//             );
+//         }
+//         /*
+//          * ======================================================
+//          * BITÁCORA
+//          * ======================================================
+//          */
+
+//         $descripcion ='El pedido '. ($pedido['folio_pedido'] ?? $clave). ' fue cancelado desde el Portal de Pedidos.';
+
+//         $idBitacora =$this->model->insertBitacoraEvento([
+//                 'idpedido' => $idpedido,
+//                 'tipo_evento' =>'CANCELACION_PEDIDO',
+//                 'descripcion' =>$descripcion,
+//                 'estatus_anterior' =>$estatusActual,
+//                 'estatus_nuevo' =>'CANCELADO',
+//                 'usuario_registro' =>$idusuarioAcceso,
+//                 'origen' =>'PORTAL'
+//             ]);
+
+//         if ($idBitacora <= 0) {
+//             throw new Exception(
+//                 'No fue posible registrar la bitácora del pedido.'
+//             );
+//         }
+
+//         echo json_encode([
+//             'status'  => true,
+//             'message' => 'El pedido fue cancelado correctamente.',
+//             'data'    => [
+//                 'idpedido' =>$idpedido,
+//                 'clave' =>$clave,
+//                 'folio' =>$pedido['folio_pedido'] ?? '',
+//                 'estatus' =>'CANCELADO'
+//             ]
+//         ]);
+
+//     } catch (Throwable $e) {
+
+
+//         error_log(
+//             'Orders::cancelarPedido - '
+//             . $e->getMessage()
+//         );
+
+//         http_response_code(500);
+
+//         echo json_encode([
+//             'status'  => false,
+//             'message' => 'Ocurrió un error al cancelar el pedido.'
+//         ]);
+
+//     }
+// }
+
+
+
+public function getMotivosCancelacion()
+{
     header('Content-Type: application/json; charset=utf-8');
 
-    if ($_SERVER['REQUEST_METHOD']!== 'POST') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
         http_response_code(405);
         echo json_encode([
             'status'  => false,
             'message' => 'Método no permitido.'
         ]);
+
+        return;
+    }
+
+    $idcliente = intval($_SESSION['portal_idcliente'] ?? 0);
+    $idusuarioAcceso = intval($_SESSION['portal_idusuario_acceso'] ?? 0);
+
+    if ($idcliente <= 0 || $idusuarioAcceso <= 0) {
+        http_response_code(401);
+        echo json_encode([
+            'status'  => false,
+            'message' => 'La sesión no es válida.'
+        ]);
+
+        return;
+    }
+
+    try {
+
+        $motivos = $this->model->selectMotivosCancelacion();
+        echo json_encode([
+            'status'  => true,
+            'message' => 'Motivos obtenidos correctamente.',
+            'data'    => $motivos
+        ]);
+
+    } catch (Throwable $e) {
+
+        error_log('Orders::getMotivosCancelacion - '. $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
+            'status'  => false,
+            'message' => 'No fue posible obtener los motivos de cancelación.'
+        ]);
+    }
+}
+
+public function cancelarPedido()
+{
+    header('Content-Type: application/json; charset=utf-8');
+
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        echo json_encode([
+            'status'  => false,
+            'message' => 'Método no permitido.'
+        ]);
+
         return;
     }
 
@@ -3694,54 +3928,86 @@ public function cancelarPedido()
      * ==========================================================
      */
 
-    $idcliente =intval($_SESSION['portal_idcliente'] ?? 0);
-    $idusuarioAcceso =intval($_SESSION['portal_idusuario_acceso'] ?? 0);
-
+    $idcliente = intval($_SESSION['portal_idcliente'] ?? 0);
+    $idusuarioAcceso = intval($_SESSION['portal_idusuario_acceso'] ?? 0);
     if ($idcliente <= 0 || $idusuarioAcceso <= 0) {
-
         http_response_code(401);
         echo json_encode([
             'status'  => false,
             'message' => 'La sesión no es válida.'
         ]);
+
         return;
     }
+
     /*
      * ==========================================================
      * OBTENER JSON
      * ==========================================================
      */
 
-    $input =json_decode(
-            file_get_contents(
-                'php://input'
-            ),
-            true
-        );
+    $input = json_decode(file_get_contents('php://input'),true);
 
     if (!is_array($input)) {
-        $input =$_POST;
+        $input = $_POST;
     }
 
-    $clave =trim((string)($input['clave']?? ''));
+    /*
+     * ==========================================================
+     * OBTENER DATOS
+     * ==========================================================
+     */
+
+    $clave = trim((string)($input['clave'] ?? ''));
+    $idmotivoCancelacion = intval($input['idmotivo_cancelacion'] ?? 0);
+    $motivoOtro = trim((string)($input['motivo_otro'] ?? ''));
+
+    /*
+     * ==========================================================
+     * VALIDACIONES GENERALES
+     * ==========================================================
+     */
 
     if ($clave === '') {
+
         http_response_code(400);
         echo json_encode([
             'status'  => false,
             'message' => 'No se recibió la clave del pedido.'
         ]);
+
+        return;
+    }
+
+    if ($idmotivoCancelacion <= 0) {
+        http_response_code(400);
+        echo json_encode([
+            'status'  => false,
+            'message' => 'Debe seleccionar un motivo de cancelación.'
+        ]);
+
+        return;
+    }
+
+    if (strlen($motivoOtro) > 500) {
+        http_response_code(400);
+        echo json_encode([
+            'status'  => false,
+            'message' => 'El comentario de cancelación no puede superar los 500 caracteres.'
+        ]);
+
         return;
     }
 
     try {
+
         /*
          * ======================================================
          * CONSULTAR PEDIDO
          * ======================================================
          */
 
-        $pedido =$this->model->selectPedidoParaCancelar($clave,$idcliente);
+        $pedido = $this->model->selectPedidoParaCancelar($clave,$idcliente);
 
         if (empty($pedido)) {
             http_response_code(404);
@@ -3749,6 +4015,7 @@ public function cancelarPedido()
                 'status'  => false,
                 'message' => 'El pedido no existe o no pertenece al cliente.'
             ]);
+
             return;
         }
 
@@ -3758,21 +4025,14 @@ public function cancelarPedido()
          * ======================================================
          */
 
-        $estatusActual =
-            strtoupper(
-                trim(
-                    (string)(
-                        $pedido['estatus']
-                        ?? ''
-                    )
-                )
-            );
+        $estatusActual = strtoupper(trim((string)($pedido['estatus'] ?? '')));
 
-        if ($estatusActual!== 'PENDIENTE') {
+        if ($estatusActual !== 'PENDIENTE') {
             http_response_code(409);
             echo json_encode([
-                'status'  => false,
-                'message' => 'El pedido ya no puede cancelarse porque su estatus actual es '
+                'status' => false,
+                'message' =>
+                    'El pedido ya no puede cancelarse porque su estatus actual es '
                     . $estatusActual
                     . '.'
             ]);
@@ -3780,62 +4040,144 @@ public function cancelarPedido()
             return;
         }
 
-        $idpedido =intval($pedido['idpedido']);
-
         /*
          * ======================================================
-         * CANCELAR
+         * VALIDAR MOTIVO
          * ======================================================
          */
 
-        $actualizado =$this->model->cancelarPedidoModel(
-                $idpedido,
-                $idcliente,
-                $idusuarioAcceso
-            );
+        $motivo = $this->model->selectMotivoCancelacion($idmotivoCancelacion);
+
+        if (empty($motivo)) {
+            http_response_code(400);
+            echo json_encode([
+                'status'  => false,
+                'message' => 'El motivo de cancelación seleccionado no es válido.'
+            ]);
+
+            return;
+        }
+
+        /*
+         * ======================================================
+         * VALIDAR SI REQUIERE COMENTARIO
+         * ======================================================
+         */
+
+        $requiereComentario = intval($motivo['requiere_comentario'] ?? 0);
+
+        if ($requiereComentario === 1 && $motivoOtro === '') {
+            http_response_code(400);
+            echo json_encode([
+                'status'  => false,
+                'message' => 'Debe especificar el motivo de la cancelación.'
+            ]);
+
+            return;
+        }
+
+        /*
+         * Si el motivo no requiere comentario,
+         * limpiamos cualquier texto que pudiera mandar el frontend.
+         */
+        if ($requiereComentario !== 1) {
+            $motivoOtro = '';
+        }
+
+        /*
+         * ======================================================
+         * CANCELAR PEDIDO
+         * ======================================================
+         */
+
+        $idpedido = intval($pedido['idpedido']);
+        $actualizado = $this->model->cancelarPedidoModel(
+            $idpedido,
+            $idcliente,
+            $idusuarioAcceso,
+            $idmotivoCancelacion,
+            $motivoOtro
+        );
 
         if (!$actualizado) {
+
             throw new Exception(
                 'No fue posible actualizar el pedido.'
             );
         }
+
         /*
          * ======================================================
-         * BITÁCORA
+         * GENERAR DESCRIPCIÓN BITÁCORA
          * ======================================================
          */
 
-        $descripcion ='El pedido '. ($pedido['folio_pedido'] ?? $clave). ' fue cancelado desde el Portal de Pedidos.';
+        $folioPedido =$pedido['folio_pedido'] ?? $clave;
+        $nombreMotivo =trim((string)($motivo['nombre'] ?? ''));
 
-        $idBitacora =$this->model->insertBitacoraEvento([
-                'idpedido' => $idpedido,
-                'tipo_evento' =>'CANCELACION_PEDIDO',
-                'descripcion' =>$descripcion,
-                'estatus_anterior' =>$estatusActual,
-                'estatus_nuevo' =>'CANCELADO',
-                'usuario_registro' =>$idusuarioAcceso,
-                'origen' =>'PORTAL'
-            ]);
+        $descripcion =
+            'El pedido '
+            . $folioPedido
+            . ' fue cancelado desde el Portal de Pedidos.'
+            . ' Motivo: '
+            . $nombreMotivo
+            . '.';
+
+        if ($motivoOtro !== '') {
+
+            $descripcion .=
+                ' Detalle: '
+                . $motivoOtro
+                . '.';
+        }
+
+        /*
+         * ======================================================
+         * REGISTRAR BITÁCORA
+         * ======================================================
+         */
+
+        $idBitacora = $this->model->insertBitacoraEvento([
+            'idpedido'          => $idpedido,
+            'tipo_evento'       => 'CANCELACION_PEDIDO',
+            'descripcion'       => $descripcion,
+            'estatus_anterior'  => $estatusActual,
+            'estatus_nuevo'     => 'CANCELADO',
+            'usuario_registro'  => $idusuarioAcceso,
+            'origen'            => 'PORTAL'
+        ]);
 
         if ($idBitacora <= 0) {
-            throw new Exception(
-                'No fue posible registrar la bitácora del pedido.'
+
+            error_log(
+                'Orders::cancelarPedido - '
+                . 'El pedido fue cancelado pero no fue posible registrar la bitácora. '
+                . 'Pedido: '
+                . $idpedido
             );
         }
+
+        /*
+         * ======================================================
+         * RESPUESTA
+         * ======================================================
+         */
 
         echo json_encode([
             'status'  => true,
             'message' => 'El pedido fue cancelado correctamente.',
             'data'    => [
-                'idpedido' =>$idpedido,
-                'clave' =>$clave,
-                'folio' =>$pedido['folio_pedido'] ?? '',
-                'estatus' =>'CANCELADO'
+                'idpedido'             => $idpedido,
+                'clave'                => $clave,
+                'folio'                => $folioPedido,
+                'estatus'              => 'CANCELADO',
+                'idmotivo_cancelacion' => $idmotivoCancelacion,
+                'motivo'               => $nombreMotivo,
+                'motivo_otro'          => $motivoOtro
             ]
         ]);
 
     } catch (Throwable $e) {
-
 
         error_log(
             'Orders::cancelarPedido - '
@@ -3848,7 +4190,6 @@ public function cancelarPedido()
             'status'  => false,
             'message' => 'Ocurrió un error al cancelar el pedido.'
         ]);
-
     }
 }
 

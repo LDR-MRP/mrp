@@ -778,12 +778,45 @@ if (!function_exists('statusPedidoNormalizado')) {
                                                         Ver detalle
                                                     </span>
                                                 </a>
- 
 
 
 
+                                                
 
-                          
+                                                <?php if ($puedeEditar): ?>
+
+                                                    <a href="<?= base_url(); ?>/orders/editarpedido/<?= rawurlencode(
+                                                          $clavePedido
+                                                      ); ?>" class="button-order-action button-order-edit"
+                                                        title="Editar pedido">
+
+                                                        <i class="ri-edit-line"></i>
+
+                                                        <span>
+                                                            Editar
+                                                        </span>
+
+                                                    </a>
+
+                                                <?php else: ?>
+
+                                                    <button type="button"
+                                                        class="button-order-action button-order-edit button-order-disabled" disabled
+                                                        title="El pedido ya no puede editarse porque se encuentra en <?= htmlspecialchars(
+                                                            $estatusPedido,
+                                                            ENT_QUOTES,
+                                                            'UTF-8'
+                                                        ); ?>">
+
+                                                        <i class="ri-edit-line"></i>
+
+                                                        <span>
+                                                            Editar
+                                                        </span>
+
+                                                    </button>
+
+                                                <?php endif; ?>
 
                                                 <?php if ($puedeCancelar): ?>
 
