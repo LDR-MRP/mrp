@@ -12,7 +12,7 @@
                                 <ol class="breadcrumb m-0 fs-13">
                                     <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
                                     <li class="breadcrumb-item"><a href="#">Logística</a></li>
-                                    <li class="breadcrumb-item active text-primary">Administración de Costos</li>
+                                    <li class="breadcrumb-item active text-primary">Distancias y Costos</li>
                                 </ol>
                             </div>
                         </div>
@@ -29,46 +29,12 @@
                                 </span>
                             </div>
                             <div>
-                                <h3 class="mb-1 fw-bold text-uppercase ls-1 text-body">Administrador de Tarifas Logísticas</h3>
+                                <h3 class="mb-1 fw-bold text-uppercase ls-1 text-body">Distancias y Tarifas de Logística</h3>
                                 <p class="text-muted mb-0 fs-14">
-                                    Gestión centralizada de costos por ruta, tipo de traslado y matriz de 15 factores por capacidad de madrina y segmento.
+                                    Gestión separada de distancias (KMs) geográficas y de tarifas cobradas por proveedores.
                                 </p>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-6 d-flex justify-content-md-end justify-content-start mt-4 mt-md-0">
-                        <div class="btn-group me-2">
-                            <button type="button" class="btn btn-light border dropdown-toggle rounded-pill px-3 py-2 fw-semibold shadow-sm" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="ri-download-2-line align-middle fs-16 me-1 text-primary"></i> Descargar Tarifarios
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 14px;">
-                                <li>
-                                    <a class="dropdown-item py-2" href="<?= base_url(); ?>/Lgs_costos/descargarPlantillaCSV?tipo=2">
-                                        <i class="ri-steering-2-line text-warning me-2 fs-16"></i> <b>Tarifario Rodando (Chofer)</b>
-                                        <span class="text-muted d-block fs-11 ps-4">1 Unidad Fija por viaje</span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item py-2" href="<?= base_url(); ?>/Lgs_costos/descargarPlantillaCSV?tipo=1">
-                                        <i class="ri-truck-line text-primary me-2 fs-16"></i> <b>Tarifario Madrinas (Factores 1-15)</b>
-                                        <span class="text-muted d-block fs-11 ps-4">Desglose de 15 capacidades</span>
-                                    </a>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <a class="dropdown-item py-2" href="<?= base_url(); ?>/Lgs_costos/descargarPlantillaCSV?tipo=all">
-                                        <i class="ri-file-list-3-line text-success me-2 fs-16"></i> <b>Tarifario Consolidado Completo</b>
-                                        <span class="text-muted d-block fs-11 ps-4">Todas las rutas y registros de BD</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                        <button type="button" class="btn btn-soft-primary rounded-pill px-3 py-2 fw-semibold me-2 shadow-xs" onclick="openImportModal();">
-                            <i class="ri-upload-cloud-2-line align-middle fs-16 me-1"></i> Importar CSV
-                        </button>
-                        <button type="button" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm" onclick="openNuevaRutaModal();">
-                            <i class="ri-add-line align-middle fs-16 me-1"></i> Nueva Ruta
-                        </button>
                     </div>
                 </div>
 
@@ -79,9 +45,9 @@
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Rutas Configuradas</p>
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Distancias Registradas</p>
                                         <h4 class="fs-22 fw-bold text-body mb-0">
-                                            <span id="kpi-total-rutas"><?= $data['catalogs']['kpis']['total_rutas'] ?? '0' ?></span>
+                                            <span id="kpi-total-distancias"><?= $data['catalogs']['kpis']['total_distancias'] ?? '0' ?></span>
                                         </h4>
                                     </div>
                                     <div class="avatar-sm flex-shrink-0">
@@ -99,14 +65,14 @@
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Puntos de Origen</p>
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Ubicaciones Cubiertas</p>
                                         <h4 class="fs-22 fw-bold text-body mb-0">
-                                            <span id="kpi-total-origenes"><?= $data['catalogs']['kpis']['total_origenes'] ?? '0' ?></span>
+                                            <span id="kpi-total-nodos"><?= $data['catalogs']['kpis']['total_nodos'] ?? '0' ?></span>
                                         </h4>
                                     </div>
                                     <div class="avatar-sm flex-shrink-0">
                                         <span class="avatar-title bg-info-subtle text-info rounded-circle fs-3">
-                                            <i class="ri-building-line"></i>
+                                            <i class="ri-map-pin-2-line"></i>
                                         </span>
                                     </div>
                                 </div>
@@ -119,14 +85,14 @@
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Destinos Cubiertos</p>
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Proveedores c/ Tarifa</p>
                                         <h4 class="fs-22 fw-bold text-body mb-0">
-                                            <span id="kpi-total-destinos"><?= $data['catalogs']['kpis']['total_destinos'] ?? '0' ?></span>
+                                            <span id="kpi-total-proveedores"><?= $data['catalogs']['kpis']['total_proveedores_config'] ?? '0' ?></span>
                                         </h4>
                                     </div>
                                     <div class="avatar-sm flex-shrink-0">
                                         <span class="avatar-title bg-success-subtle text-success rounded-circle fs-3">
-                                            <i class="ri-map-pin-2-line"></i>
+                                            <i class="ri-truck-line"></i>
                                         </span>
                                     </div>
                                 </div>
@@ -155,383 +121,301 @@
                     </div>
                 </div>
 
-                <!-- 4. TABLA PRINCIPAL DE RUTAS -->
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card shadow-sm border-0 rounded-3">
-                            <div class="card-header border-0 bg-light-subtle py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
-                                <h5 class="card-title mb-0 fw-bold"><i class="ri-route-line align-middle text-primary me-2"></i> Catálogo de Rutas y Matriz de Precios</h5>
-                                <div class="d-flex flex-wrap align-items-center gap-2">
-                                    <div class="d-flex align-items-center me-md-2">
-                                        <label for="filter_proveedor_select" class="me-2 fs-12 text-muted fw-bold text-uppercase mb-0"><i class="ri-filter-3-line text-primary"></i> Proveedor:</label>
-                                        <select class="form-select form-select-sm" id="filter_proveedor_select" style="min-width: 230px;" onchange="onFilterProveedorChange(this.value);">
-                                            <option value="">Todos (Base + Proveedores)</option>
-                                            <option value="0">🌐 Tarifa Base General</option>
-                                            <?php if (!empty($data['catalogs']['proveedores'])): ?>
-                                                <optgroup label="── Proveedores Trasladistas ──">
-                                                    <?php foreach ($data['catalogs']['proveedores'] as $prv): ?>
-                                                        <option value="<?= $prv['id_proveedor'] ?>">🚚 <?= htmlspecialchars($prv['razon_social']) ?></option>
-                                                    <?php endforeach; ?>
-                                                </optgroup>
-                                            <?php endif; ?>
-                                        </select>
-                                    </div>
-                                    <div class="btn-group btn-group-sm" role="group" id="filterModalidadButtons">
-                                        <button type="button" class="btn btn-outline-primary active" id="btnFilterAll" onclick="filterTableByModalidad('');">
-                                            <i class="ri-apps-line me-1"></i> Todas
-                                        </button>
-                                        <button type="button" class="btn btn-outline-primary" id="btnFilterMadrina" onclick="filterTableByModalidad('Madrina');">
-                                            <i class="ri-truck-line me-1 text-primary"></i> Madrinas
-                                        </button>
-                                        <button type="button" class="btn btn-outline-warning text-dark" id="btnFilterChofer" onclick="filterTableByModalidad('Chofer');">
-                                            <i class="ri-steering-2-line me-1 text-warning"></i> Choferes
-                                        </button>
+                <!-- 4. PESTAÑAS (TABS) PRINCIPALES -->
+                <div class="card shadow-sm border-0 rounded-3 mb-4">
+                    <div class="card-header bg-white border-bottom-0 pb-0 pt-4 px-4">
+                        <ul class="nav nav-tabs-custom rounded card-header-tabs border-bottom-0" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active fw-bold fs-15 text-uppercase px-4" data-bs-toggle="tab" href="#tab-distancias" role="tab">
+                                    <i class="ri-map-pin-line me-1 align-bottom"></i> 1. Matriz de Distancias (KMs)
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link fw-bold fs-15 text-uppercase px-4" data-bs-toggle="tab" href="#tab-tarifas" role="tab">
+                                    <i class="ri-truck-line me-1 align-bottom"></i> 2. Tarifas por Proveedor
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card-body p-4 bg-light-subtle">
+                        <div class="tab-content">
+                            <!-- ============================================== -->
+                            <!-- TAB 1: DISTANCIAS -->
+                            <!-- ============================================== -->
+                            <div class="tab-pane active" id="tab-distancias" role="tabpanel">
+                                <!-- Formulario Alta de Distancia -->
+                                <div class="card border border-light-subtle shadow-none mb-4">
+                                    <div class="card-body p-3 bg-white rounded">
+                                        <form id="formNuevaDistancia" onsubmit="saveDistancia(event);">
+                                            <div class="row g-3 align-items-end">
+                                                <div class="col-md-3">
+                                                    <label for="dist_ubicacion_a" class="form-label fw-bold text-muted fs-12 text-uppercase mb-1">Ubicación Origen</label>
+                                                    <select class="form-select select2-ubicaciones" id="dist_ubicacion_a" name="id_ubicacion_a" required>
+                                                        <option value="">--Seleccione Ubicación--</option>
+                                                        <?php foreach ($data['catalogs']['ubicaciones'] as $u): ?>
+                                                            <option value="<?= $u['id_ubicacion'] ?>"><?= htmlspecialchars($u['nombre']) ?></option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label for="dist_ubicacion_b" class="form-label fw-bold text-muted fs-12 text-uppercase mb-1">Ubicación Destino</label>
+                                                    <select class="form-select select2-ubicaciones" id="dist_ubicacion_b" name="id_ubicacion_b" required>
+                                                        <option value="">--Seleccione Ubicación--</option>
+                                                        <?php foreach ($data['catalogs']['ubicaciones'] as $u): ?>
+                                                            <option value="<?= $u['id_ubicacion'] ?>"><?= htmlspecialchars($u['nombre']) ?></option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label for="dist_km" class="form-label fw-bold text-muted fs-12 text-uppercase mb-1">Distancia en KM</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text bg-light border-end-0"><i class="ri-dashboard-3-line text-primary"></i></span>
+                                                        <input type="number" step="0.01" class="form-control fw-bold border-start-0" id="dist_km" name="km" placeholder="Ej. 150.50" required>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
+                                                        <i class="ri-save-3-line me-1"></i> Guardar Distancia
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="card-body p-4">
+
+                                <!-- Tabla de Distancias -->
                                 <div class="table-responsive table-card">
-                                    <table id="tableRutas" class="table table-hover align-middle table-nowrap mb-0" style="width:100%">
-                                        <thead class="table-light">
+                                    <table id="tableDistancias" class="table table-hover align-middle table-nowrap mb-0 w-100 bg-white">
+                                        <thead class="table-light text-muted">
                                             <tr>
-                                                <th style="width: 120px;">Modalidad</th>
-                                                <th style="width: 170px;">Aplicación / Proveedor</th>
-                                                <th>Ruta (Origen ➔ Destino)</th>
-                                                <th style="width: 120px;">Distancia</th>
-                                                <th>Tarifas por Segmento ($/KM)</th>
-                                                <th class="text-center" style="width: 140px;">Acciones</th>
+                                                <th>Trayecto (Bidireccional)</th>
+                                                <th style="width: 150px;">Kilómetros (KM)</th>
+                                                <th class="text-center" style="width: 120px;">Acciones</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <!-- Cargado dinámicamente con DataTable -->
+                                            <!-- DataTables -->
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
+
+                            <!-- ============================================== -->
+                            <!-- TAB 2: TARIFAS POR PROVEEDOR -->
+                            <!-- ============================================== -->
+                            <div class="tab-pane" id="tab-tarifas" role="tabpanel">
+                                <!-- Selector de Proveedor y Botón Guardar -->
+                                <div class="card border border-light-subtle shadow-none mb-3">
+                                    <div class="card-body p-3 bg-white rounded d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                                        <div class="d-flex align-items-center" style="min-width: 320px;">
+                                            <div class="avatar-xs me-3 flex-shrink-0">
+                                                <span class="avatar-title bg-info-subtle text-info rounded-circle fs-16">
+                                                    <i class="ri-truck-line"></i>
+                                                </span>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <label for="select_tarifa_proveedor" class="form-label fw-bold text-muted fs-12 text-uppercase mb-1">Configurando Tarifas para:</label>
+                                                <select class="form-select form-select-sm fw-bold border-primary text-primary" id="select_tarifa_proveedor" onchange="loadTarifasProveedor();">
+                                                    <option value="0">🌐 Tarifa Base General (Aplica a todos por defecto)</option>
+                                                    <?php if (!empty($data['catalogs']['proveedores'])): ?>
+                                                        <optgroup label="── Tarifas Específicas ──">
+                                                            <?php foreach ($data['catalogs']['proveedores'] as $prv): ?>
+                                                                <option value="<?= $prv['id_proveedor'] ?>">🚚 <?= htmlspecialchars($prv['razon_social']) ?></option>
+                                                            <?php endforeach; ?>
+                                                        </optgroup>
+                                                    <?php endif; ?>
+                                                </select>
+                                                <div id="tarifa_status_badge" class="mt-2">
+                                                    <!-- Estado dinámico inyectado por JS -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                                            <button type="button" class="btn btn-sm btn-outline-danger fw-medium d-none shadow-xs" id="btnRestablecerGlobal" onclick="resetTarifasProveedor();" title="Elimina las tarifas personalizadas de este proveedor para volver a heredar la Tarifa Base General">
+                                                <i class="ri-history-line me-1"></i> Restablecer a Base General
+                                            </button>
+                                            <button type="button" class="btn btn-success fw-bold shadow-sm" id="btnGuardarTarifas" onclick="saveTarifasProveedor();">
+                                                <i class="ri-save-3-fill me-1"></i> <span id="btnGuardarTarifasTexto">Guardar Tarifa Base General...</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Acordeón de Configuración de Costos -->
+                                <form id="formTarifasProveedor">
+                                    <div class="accordion custom-accordionwithicon accordion-border-box" id="accordionTarifas">
+                                        <!-- MADRINA -->
+                                        <div class="accordion-item shadow-sm border-0 mb-3 rounded-3">
+                                            <h2 class="accordion-header" id="headingMadrina">
+                                                <button class="accordion-button fw-bold fs-15 bg-primary-subtle text-primary rounded-top" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMadrina" aria-expanded="true" aria-controls="collapseMadrina">
+                                                    <i class="ri-truck-line me-2 fs-18"></i> 1. Tarifas de Madrina (Con factores de Volumen)
+                                                </button>
+                                            </h2>
+                                            <div id="collapseMadrina" class="accordion-collapse collapse show" aria-labelledby="headingMadrina" data-bs-parent="#accordionTarifas">
+                                                <div class="accordion-body bg-white">
+                                                    <div class="d-flex justify-content-end mb-2">
+                                                        <button type="button" class="btn btn-sm btn-soft-secondary me-2" onclick="toggleFactoresMadrina(true);"><i class="ri-arrow-down-s-line"></i> Expandir Factores</button>
+                                                        <button type="button" class="btn btn-sm btn-soft-secondary" onclick="toggleFactoresMadrina(false);"><i class="ri-arrow-up-s-line"></i> Contraer Factores</button>
+                                                    </div>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-bordered align-middle mb-0">
+                                                            <thead class="table-light">
+                                                                <tr class="text-uppercase fs-12 text-muted">
+                                                                    <th style="width: 250px;">Segmento</th>
+                                                                    <th style="width: 150px;">Costo Base / KM ($)</th>
+                                                                    <th style="display: none;">Precio Plano Fijo</th>
+                                                                    <th>Desglose de Factores (1 a 15 Unidades)</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody id="tbodyTarifasMadrina">
+                                                                <!-- Renderizado vía JS -->
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- CHOFER RODANDO -->
+                                        <div class="accordion-item shadow-sm border-0 rounded-3">
+                                            <h2 class="accordion-header" id="headingChofer">
+                                                <button class="accordion-button collapsed fw-bold fs-15 bg-warning-subtle text-warning-emphasis rounded-top" type="button" data-bs-toggle="collapse" data-bs-target="#collapseChofer" aria-expanded="false" aria-controls="collapseChofer">
+                                                    <i class="ri-steering-2-line me-2 fs-18"></i> 2. Tarifas Chofer / Rodando (Tarifa Fija 1 Unidad)
+                                                </button>
+                                            </h2>
+                                            <div id="collapseChofer" class="accordion-collapse collapse" aria-labelledby="headingChofer" data-bs-parent="#accordionTarifas">
+                                                <div class="accordion-body bg-white">
+                                                    <div class="alert alert-warning border-0 d-flex align-items-center mb-3 p-3 rounded">
+                                                        <i class="ri-information-line fs-20 text-warning me-3"></i>
+                                                        <div>Para traslados rodando (1 chofer manejando 1 vehículo), ingrese el costo estándar por KM.</div>
+                                                    </div>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-bordered align-middle mb-0">
+                                                            <thead class="table-light">
+                                                                <tr class="text-uppercase fs-12 text-muted">
+                                                                    <th style="width: 250px;">Segmento</th>
+                                                                    <th style="width: 200px;">Costo / KM ($)</th>
+                                                                    <th style="display: none;">Precio Plano Fijo</th>
+                                                                    <th></th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody id="tbodyTarifasChofer">
+                                                                <!-- Renderizado vía JS -->
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+
                         </div>
                     </div>
                 </div>
+
             </section>
         </div>
     </div>
 </div>
 
-<!-- =======================================================
-     MODAL: SUPER MATRIZ DUAL DE PRECIOS (MADRINA Y CHOFER)
-     ======================================================= -->
-<div class="modal fade" id="modalRutaMatriz" tabindex="-1" aria-labelledby="modalRutaMatrizLabel" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-xl" style="max-width: 95%;">
+<!-- ============================================================== -->
+<!-- MODAL: REPLICAR TARIFA BASE GENERAL A PROVEEDORES              -->
+<!-- ============================================================== -->
+<div class="modal fade" id="modalReplicarTarifaBase" tabindex="-1" aria-labelledby="modalReplicarTarifaBaseLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-primary text-white p-3">
-                <div class="d-flex align-items-center">
-                    <div class="avatar-sm me-3">
-                        <span class="avatar-title bg-white text-primary rounded-circle fs-3">
-                            <i class="ri-money-dollar-box-line"></i>
-                        </span>
-                    </div>
-                    <div>
-                        <h5 class="modal-title text-white mb-0" id="modalRutaMatrizLabel">Gestión de Tarifas del Trayecto</h5>
-                        <small class="text-white-50" id="modalRutaSubtitulo">Configure y consulte las tarifas de Madrina (Factores 1-15) y Chofer (1 Unidad) para esta ruta</small>
-                    </div>
+            <div class="modal-header bg-primary text-white py-3">
+                <div>
+                    <h5 class="modal-title fw-bold text-white fs-16" id="modalReplicarTarifaBaseLabel">
+                        <i class="ri-git-branch-line me-1"></i> Guardar y Aplicar Tarifa Base General
+                    </h5>
+                    <p class="fs-12 text-white-50 mb-0">Seleccione los proveedores a los cuales desea actualizarles sus tarifas con esta nueva base general.</p>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="formRutaMatriz" onsubmit="saveRutaMatrizDual(event);">
-                <input type="hidden" id="matriz_id_origen" name="id_origen" value="">
-                <input type="hidden" id="matriz_id_destino" name="id_destino" value="">
-                <input type="hidden" id="matriz_id_proveedor" name="id_proveedor" value="0">
-
-                <div class="modal-body p-4">
-                    <!-- CABECERA RESUMEN DE LA RUTA -->
-                    <div class="card border border-light-subtle shadow-none bg-light-subtle rounded-3 mb-3">
-                        <div class="card-body py-3">
-                            <div class="row align-items-center">
-                                <div class="col-md-5 mb-2 mb-md-0">
-                                    <span class="text-muted fs-12 text-uppercase fw-semibold d-block">Trayecto Logístico</span>
-                                    <div class="d-flex align-items-center">
-                                        <span class="fw-bold text-dark fs-16" id="label_origen_nombre">Lagos de Moreno</span>
-                                        <i class="ri-arrow-right-line text-primary mx-3 fs-20"></i>
-                                        <span class="fw-bold text-primary fs-16" id="label_destino_nombre">Aguascalientes</span>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 text-md-center mb-2 mb-md-0">
-                                    <span class="text-muted fs-12 text-uppercase fw-semibold d-block">Tipo de Tarifa</span>
-                                    <span id="label_proveedor_badge" class="badge bg-secondary-subtle text-secondary fs-13 px-3 py-1"><i class="ri-global-line me-1"></i>Tarifa Base General</span>
-                                </div>
-                                <div class="col-md-3 d-flex align-items-center justify-content-md-end">
-                                    <div class="me-2 text-end">
-                                        <label for="matriz_km" class="form-label fw-bold text-uppercase fs-12 text-muted mb-0">Distancia (KM) *</label>
-                                    </div>
-                                    <div class="input-group input-group-sm" style="width: 140px;">
-                                        <span class="input-group-text bg-white"><i class="ri-dashboard-3-line"></i></span>
-                                        <input type="number" step="0.01" class="form-control fw-bold fs-14 text-dark text-end" id="matriz_km" name="km" value="0.00" oninput="recalcularTotalesDual();" required>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- NAVEGACIÓN DUAL: MADRINA VS CHOFER -->
-                    <ul class="nav nav-pills nav-justified mb-3 p-1 bg-light rounded-3 shadow-xs border" id="pillsModalTarifas" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active fw-bold py-2 fs-14" id="pill-madrina-tab" data-bs-toggle="pill" data-bs-target="#tab_pane_madrina" type="button" role="tab" aria-controls="tab_pane_madrina" aria-selected="true">
-                                <i class="ri-truck-line me-1 fs-16 text-primary"></i> 🚛 Tarifas Madrina (Factores 1 al 15)
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link fw-bold py-2 fs-14" id="pill-chofer-tab" data-bs-toggle="pill" data-bs-target="#tab_pane_chofer" type="button" role="tab" aria-controls="tab_pane_chofer" aria-selected="false">
-                                <i class="ri-steering-2-line me-1 fs-16 text-warning"></i> 🚗 Tarifas Chofer / Rodando (1 Unidad Fija)
-                            </button>
-                        </li>
-                    </ul>
-
-                    <div class="tab-content" id="tabContentTarifasModal">
-                        <!-- PANE 1: MADRINA -->
-                        <div class="tab-pane fade show active" id="tab_pane_madrina" role="tabpanel" aria-labelledby="pill-madrina-tab">
-                            <!-- ACCIONES RÁPIDAS GLOBALES DE FACTORES -->
-                            <div class="d-flex justify-content-between align-items-center mb-2 px-1">
-                                <span class="fw-bold text-uppercase fs-12 text-muted"><i class="ri-list-settings-line me-1"></i> Segmentos y Factores de Madrina (1 a 15 Unidades)</span>
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-sm btn-soft-secondary" onclick="expandirTodosFactoresMadrina(true);"><i class="ri-arrow-down-s-line"></i> Expandir Factores</button>
-                                    <button type="button" class="btn btn-sm btn-soft-secondary" onclick="expandirTodosFactoresMadrina(false);"><i class="ri-arrow-up-s-line"></i> Contraer Factores</button>
-                                </div>
-                            </div>
-
-                            <div class="table-responsive">
-                                <table class="table table-bordered align-middle mb-0">
-                                    <thead class="table-dark">
-                                        <tr class="text-uppercase fs-12">
-                                            <th style="width: 240px;">Segmento / Categoría</th>
-                                            <th style="width: 150px;">Costo Base / KM ($)</th>
-                                            <th style="width: 150px;">Costo Base Estimado</th>
-                                            <th style="width: 130px; display: none;">Costo Fijo ($)</th>
-                                            <th>Desglose de Precios por Factor (Factor 1 a 15)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbodyMatrizMadrina">
-                                        <!-- Generado dinámicamente -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- PANE 2: CHOFER / RODANDO -->
-                        <div class="tab-pane fade" id="tab_pane_chofer" role="tabpanel" aria-labelledby="pill-chofer-tab">
-                            <div class="alert alert-warning border-0 bg-warning-subtle d-flex align-items-center mb-3 p-3 rounded-3">
-                                <i class="ri-information-line fs-22 text-warning me-3"></i>
-                                <div>
-                                    <h6 class="mb-1 text-warning fw-bold">Tarifas de Traslado por Chofer (1 Sola Unidad)</h6>
-                                    <small class="text-muted">El chofer conduce 1 solo vehículo por viaje. Ingrese el costo por kilómetro.</small>
-                                </div>
-                            </div>
-
-                            <div class="table-responsive">
-                                <table class="table table-bordered align-middle mb-0">
-                                    <thead class="table-warning text-dark">
-                                        <tr class="text-uppercase fs-12">
-                                            <th style="width: 250px;">Segmento / Categoría</th>
-                                            <th style="width: 180px;">Costo por KM ($)</th>
-                                            <th style="width: 180px; display: none;">Costo Fijo / Tramo ($)</th>
-                                            <th style="width: 200px;" class="text-end">Costo Total por VIN ($)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbodyMatrizChofer">
-                                        <!-- Generado dinámicamente -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+            <div class="modal-body p-4 bg-light-subtle">
+                <!-- Alerta informativa -->
+                <div class="alert alert-info border-0 shadow-xs d-flex align-items-center mb-3 p-3 rounded-3">
+                    <i class="ri-information-fill fs-22 text-info me-3 flex-shrink-0"></i>
+                    <div class="fs-12">
+                        Los proveedores que <b>no seleccione</b> conservarán intactas sus tarifas personalizadas actuales sin sufrir ninguna modificación.
                     </div>
                 </div>
-                <div class="modal-footer bg-light-subtle p-3">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary btn-label waves-effect waves-light shadow-md">
-                        <i class="ri-save-3-line label-icon align-middle fs-16 me-2"></i> Guardar Tarifas del Trayecto
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
-<!-- =======================================================
-     MODAL: CREAR NUEVA RUTA CON SEGMENTOS EN BLANCO
-     ======================================================= -->
-<div class="modal fade" id="modalNuevaRuta" tabindex="-1" aria-labelledby="modalNuevaRutaLabel" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-xl" style="max-width: 95%;">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-primary text-white p-3">
-                <div class="d-flex align-items-center">
-                    <div class="avatar-sm me-3">
-                        <span class="avatar-title bg-white text-primary rounded-circle fs-3">
-                            <i class="ri-add-circle-line"></i>
-                        </span>
+                <!-- Barra de herramientas y filtros rápidos -->
+                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3 bg-white p-2 rounded-2 border">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-primary fw-medium" onclick="filtrarSeleccionReplicar('todos');">
+                            <i class="ri-checkbox-line me-1"></i> Seleccionar Todos
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-success fw-medium" onclick="filtrarSeleccionReplicar('solo_base');" title="Selecciona solo los que no tienen tarifas personalizadas">
+                            <i class="ri-filter-line me-1"></i> Solo los de Tarifa General
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary fw-medium" onclick="filtrarSeleccionReplicar('ninguno');">
+                            <i class="ri-close-circle-line me-1"></i> Limpiar
+                        </button>
                     </div>
                     <div>
-                        <h5 class="modal-title text-white mb-0" id="modalNuevaRutaLabel">Nueva Ruta y Matriz de Precios</h5>
-                        <small class="text-white-50">Seleccione el origen, destino y complete los precios por segmento y sus factores</small>
+                        <span class="badge bg-primary fs-12 px-3 py-2 rounded-pill shadow-xs" id="lblContadorReplicar">
+                            0 de 0 seleccionados
+                        </span>
                     </div>
                 </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="formNuevaRuta" onsubmit="saveNuevaRuta(event);">
-                <div class="modal-body p-4">
-                    <!-- SELECTORES DE RUTA -->
-                    <div class="row g-3 mb-4 bg-light-subtle p-3 rounded-3 border border-light-subtle">
-                        <div class="col-md-3">
-                            <label for="new_id_tipo_traslado" class="form-label fw-bold">Tipo de Traslado *</label>
-                            <select class="form-select" id="new_id_tipo_traslado" name="id_tipo_traslado" required>
-                                <option value="">--Seleccione--</option>
-                                <?php foreach ($data['catalogs']['tipos_traslado'] as $t): ?>
-                                    <option value="<?= $t['id_tipo_traslado'] ?>" <?= $t['id_tipo_traslado'] == 1 ? 'selected' : '' ?>><?= $t['nombre'] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="new_id_origen" class="form-label fw-bold">Punto Origen *</label>
-                            <select class="form-select" id="new_id_origen" name="id_origen" required>
-                                <option value="">--Seleccione--</option>
-                                <?php foreach ($data['catalogs']['origenes'] as $o): ?>
-                                    <option value="<?= $o['id_origen'] ?>"><?= $o['nombre'] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="new_id_destino" class="form-label fw-bold">Punto Destino *</label>
-                            <select class="form-select" id="new_id_destino" name="id_destino" required>
-                                <option value="">--Seleccione--</option>
-                                <?php foreach ($data['catalogs']['destinos'] as $d): ?>
-                                    <option value="<?= $d['id_destino'] ?>"><?= $d['nombre'] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="new_km" class="form-label fw-bold">Distancia (KM) *</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white"><i class="ri-dashboard-3-line"></i></span>
-                                <input type="number" step="0.01" class="form-control fw-bold" id="new_km" name="km" value="0.00" oninput="recalcularTotalesNuevaRuta();" required>
-                            </div>
-                        </div>
-                        <div class="col-md-12 mt-3">
-                            <label for="new_id_proveedor" class="form-label fw-bold"><i class="ri-truck-line text-primary me-1"></i> Aplicación de la Tarifa (Proveedor)</label>
-                            <select class="form-select" id="new_id_proveedor" name="id_proveedor">
-                                <option value="0">🌐 Tarifa Base General (Aplica a todos los proveedores trasladistas por defecto)</option>
-                                <?php if (!empty($data['catalogs']['proveedores'])): ?>
-                                    <optgroup label="── Trato Específico por Proveedor ──">
-                                        <?php foreach ($data['catalogs']['proveedores'] as $prv): ?>
-                                            <option value="<?= $prv['id_proveedor'] ?>">🚚 <?= htmlspecialchars($prv['razon_social']) ?></option>
-                                        <?php endforeach; ?>
-                                    </optgroup>
-                                <?php endif; ?>
-                            </select>
-                            <small class="text-muted fs-11">Seleccione "Tarifa Base General" para que todos compartan el mismo costo, o un trasladista en específico si tiene un precio/trato diferente.</small>
-                        </div>
-                    </div>
 
-                    <!-- TABLA MATRIZ DE SEGMENTOS -->
-                    <h6 class="fw-bold text-uppercase fs-13 text-muted mb-2"><i class="ri-grid-fill me-1"></i> Precios por Segmento</h6>
-                    <div class="table-responsive">
-                        <table class="table table-bordered align-middle mb-0">
-                            <thead class="table-dark">
-                                <tr class="text-uppercase fs-12">
-                                    <th style="width: 250px;">Segmento</th>
-                                    <th style="width: 170px;">Costo / KM ($)</th>
-                                    <th style="width: 170px;">Costo Estimado (1 VIN)</th>
-                                    <th style="width: 150px; display: none;">Costo Fijo ($)</th>
-                                    <th>Factor Base</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($data['catalogs']['segmentos'] as $idx => $seg): ?>
+                <!-- Lista de Proveedores con Checkboxes -->
+                <div class="card border mb-0 shadow-none">
+                    <div class="card-body p-0" style="max-height: 320px; overflow-y: auto;">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped align-middle mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr class="fs-11 text-uppercase text-muted">
+                                        <th style="width: 50px;" class="text-center">
+                                            <input type="checkbox" class="form-check-input" id="chkReplicarMaster" onchange="toggleReplicarMaster(this);">
+                                        </th>
+                                        <th>Proveedor / Transportista</th>
+                                        <th style="width: 190px;" class="text-center">Estado Actual</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyReplicarProveedores">
                                     <tr>
-                                        <td>
-                                            <input type="hidden" name="segmentos[<?= $idx ?>][id_segmento]" value="<?= $seg['id_segmento'] ?>">
-                                            <input type="hidden" name="segmentos[<?= $idx ?>][num_vins_min]" value="1">
-                                            <input type="hidden" name="segmentos[<?= $idx ?>][num_vins_max]" value="15">
-                                            <span class="fw-bold text-dark fs-14 d-block"><?= htmlspecialchars($seg['nombre']) ?></span>
-                                            <small class="text-muted fs-11"><?= htmlspecialchars($seg['descripcion']) ?></small>
-                                        </td>
-                                        <td>
-                                            <div class="input-group input-group-sm">
-                                                <span class="input-group-text">$</span>
-                                                <input type="number" step="0.01" class="form-control text-end fw-bold new-costo-km" name="segmentos[<?= $idx ?>][costo_por_km]" value="0.00" oninput="recalcularTotalesNuevaRuta();" required>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-success-subtle text-success fs-13 fw-bold p-2 d-block text-end new-costo-total">$ 0.00</span>
-                                        </td>
-                                        <td style="display: none;">
-                                            <div class="input-group input-group-sm">
-                                                <span class="input-group-text">$</span>
-                                                <input type="number" step="0.01" class="form-control text-end" name="segmentos[<?= $idx ?>][precio_plano]" value="0.00">
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <input type="number" step="0.01" class="form-control form-control-sm text-center fw-bold" name="segmentos[<?= $idx ?>][factor]" value="1.00">
+                                        <td colspan="3" class="text-center py-4 text-muted">
+                                            <div class="spinner-border spinner-border-sm text-primary me-2"></div> Cargando transportistas...
                                         </td>
                                     </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light-subtle p-3">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary btn-label waves-effect waves-light shadow-md">
-                        <i class="ri-save-3-line label-icon align-middle fs-16 me-2"></i> Crear Ruta y Tarifas
+
+                <div id="alertaPersonalizadosSeleccionados" class="alert alert-warning border-0 mt-3 mb-0 p-2 fs-12 d-none rounded-2">
+                    <i class="ri-alert-line me-1 fw-bold text-warning"></i> 
+                    <span id="txtAlertaPersonalizados">Ha seleccionado proveedores con tarifas personalizadas previas; sus tarifas anteriores serán reemplazadas por la nueva base general.</span>
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-top d-flex justify-content-between p-3">
+                <button type="button" class="btn btn-soft-secondary fw-semibold" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-primary fw-semibold shadow-xs" onclick="ejecutarGuardadoConReplicacion(true);">
+                        <i class="ri-save-line me-1"></i> Guardar solo Base (Sin replicar)
+                    </button>
+                    <button type="button" class="btn btn-success fw-bold shadow-sm" id="btnConfirmarReplicar" onclick="ejecutarGuardadoConReplicacion(false);">
+                        <i class="ri-check-double-line me-1"></i> Guardar y Replicar a Seleccionados
                     </button>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- ==========================================
-     MODAL: IMPORTAR CSV
-     ========================================== -->
-<div class="modal fade" id="modalImportCSV" tabindex="-1" aria-labelledby="modalImportCSVLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-secondary text-white p-3">
-                <h5 class="modal-title text-white" id="modalImportCSVLabel">Importar Tarifas desde CSV</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="formImportCSV" onsubmit="submitImportCSV(event);">
-                <div class="modal-body p-4 text-center">
-                    <div class="mb-4">
-                        <i class="ri-upload-cloud-2-line text-muted display-4"></i>
-                        <p class="mt-2 text-muted fs-14">
-                            Selecciona el archivo CSV del Tarifario. El sistema creará los destinos de forma automática y cargará la matriz de tarifas según la modalidad elegida.
-                        </p>
-                        <div class="d-flex justify-content-center gap-2 mt-2">
-                            <a href="<?= base_url(); ?>/Lgs_costos/descargarPlantillaCSV?tipo=2" class="btn btn-sm btn-soft-warning">
-                                <i class="ri-steering-2-line me-1"></i> Plantilla Rodando
-                            </a>
-                            <a href="<?= base_url(); ?>/Lgs_costos/descargarPlantillaCSV?tipo=1" class="btn btn-sm btn-soft-primary">
-                                <i class="ri-truck-line me-1"></i> Plantilla Madrina
-                            </a>
-                        </div>
-                    </div>
-                    <div class="mb-3 text-start">
-                        <label for="import_id_tipo_traslado" class="form-label fw-bold">Modalidad del Tarifario *</label>
-                        <select class="form-select" id="import_id_tipo_traslado" name="id_tipo_traslado">
-                            <option value="">-- Detectar automáticamente del archivo CSV --</option>
-                            <option value="2">🚗 Chofer (Rodando) - 1 Unidad Fija</option>
-                            <option value="1">🚛 Madrina - Factores de Volumen (1 a 15)</option>
-                        </select>
-                    </div>
-                    <div class="mb-3 text-start">
-                        <label for="csv_file" class="form-label fw-bold">Archivo CSV *</label>
-                        <input class="form-control" type="file" id="csv_file" name="csv_file" accept=".csv" required>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-secondary">Comenzar Importación</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<!-- DATA PASSTHROUGH PARA JAVASCRIPT -->
+<script>
+    const sysSegmentos = <?= json_encode($data['catalogs']['segmentos']) ?>;
+</script>
 
 <?php footerAdmin($data); ?>

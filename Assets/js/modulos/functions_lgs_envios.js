@@ -104,13 +104,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 "render": function (data) {
                     let badge = '';
                     switch(parseInt(data)) {
-                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>En Planeación</span>'; break;
+                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>Borrador</span>'; break;
                         case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>En Revisión</span>'; break;
                         case 3: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-checkbox-circle-line me-1"></i>Envío Aprobado</span>'; break;
                         case 4: badge = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Planeación Rechazada</span>'; break;
                         case 5: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-calendar-check-line me-1"></i>Programado</span>'; break;
                         case 6: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-truck-line me-1"></i>En Tránsito</span>'; break;
                         case 7: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-double-line me-1"></i>Entregado</span>'; break;
+                        case 8: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-line me-1"></i>Envío Confirmado</span>'; break;
                         default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
                     }
                     return badge;
@@ -120,19 +121,42 @@ document.addEventListener('DOMContentLoaded', function () {
                 "data": "id_envio",
                 "render": function (data, type, row) {
                     let btnReabrir = '';
-                    if (parseInt(row.id_estado) === 4 || parseInt(row.id_estado) === 2) {
+                    let estado = parseInt(row.id_estado);
+                    
+                    if (estado === 4 || estado === 2) {
                         btnReabrir = `<button class="btn btn-sm btn-soft-warning rounded-pill px-3 fw-semibold me-1" onClick="fntReabrirEnvio(${data})" title="Reabrir / Desbloquear Envío">
                                         <i class="ri-restart-line me-1"></i> Reabrir
                                       </button>`;
                     }
+                    
+                    let btnRuta = '';
+                    let btnAcomodo = '';
+                    let btnEliminar = '';
+
+                    if (estado === 1 || estado === 8) {
+                        btnRuta = `<button class="btn btn-sm btn-soft-secondary rounded-pill px-3 fw-semibold me-1" onClick="fntEditRuta(${data})" title="Editar Itinerario / Ruta">
+                                    <i class="ri-edit-line me-1"></i> Ruta
+                                </button>`;
+                        btnAcomodo = `<button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold me-1" onClick="fntViewEnvio(${data})" title="Ver / Acomodar VINs">
+                                    <i class="ri-truck-line me-1"></i> Acomodo
+                                </button>`;
+                        btnEliminar = `<button class="btn btn-sm btn-soft-danger rounded-pill px-3 fw-semibold" onClick="fntDelEnvio(${data})" title="Eliminar">
+                                    <i class="ri-delete-bin-line me-1"></i> Eliminar
+                                </button>`;
+                    } else {
+                        btnRuta = `<button class="btn btn-sm btn-soft-secondary rounded-pill px-3 fw-semibold me-1" onClick="fntEditRuta(${data})" title="Ver Itinerario / Ruta">
+                                    <i class="ri-eye-line me-1"></i> Ver Ruta
+                                </button>`;
+                        btnAcomodo = `<button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold me-1" onClick="fntViewEnvio(${data})" title="Ver Detalles del Acomodo">
+                                    <i class="ri-eye-line me-1"></i> Detalles
+                                </button>`;
+                    }
+
                     return `<div class="text-end">
                                 ${btnReabrir}
-                                <button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold me-1" onClick="fntViewEnvio(${data})" title="Ver / Acomodar VINs">
-                                    <i class="ri-truck-line me-1"></i> Acomodo
-                                </button>
-                                <button class="btn btn-sm btn-soft-danger rounded-pill px-3 fw-semibold" onClick="fntDelEnvio(${data})" title="Eliminar">
-                                    <i class="ri-delete-bin-line me-1"></i> Eliminar
-                                </button>
+                                ${btnRuta}
+                                ${btnAcomodo}
+                                ${btnEliminar}
                             </div>`;
                 }
             }
@@ -178,204 +202,590 @@ function actualizarMetricasEnvios(data) {
 // PARADAS MULTI-DESTINO
 // ──────────────────────────────────────────────────────────────────────────────
 
-/** Lee los destinos del catlogo embebido en el HTML */
-function getCatalogoDestinos() {
-    const el = document.getElementById('catalogoDestinos');
-    if (!el) return [];
-    try { return JSON.parse(el.textContent); } catch { return []; }
+/** Lee el catálogo unificado de ubicaciones embebido en el HTML */
+function getCatalogoUbicaciones() {
+    const elUbi = document.getElementById('catalogoUbicaciones');
+    if (elUbi) {
+        try {
+            const arr = JSON.parse(elUbi.textContent);
+            if (Array.isArray(arr) && arr.length > 0) return arr;
+        } catch (e) {}
+    }
+    const elDest = document.getElementById('catalogoDestinos');
+    if (elDest) {
+        try { return JSON.parse(elDest.textContent); } catch (e) { return []; }
+    }
+    return [];
 }
 
-/** Construye el HTML de options para el select de destino de una parada */
-function buildDestinoOptions(selectedId) {
-    const destinos = getCatalogoDestinos();
-    let html = '<option value="">Seleccione distribuidor / destino...</option>';
-    
-    // Agrupar por categoría
-    const grupos = {};
-    destinos.forEach(d => {
-        const cat = d.tipo_destino || 'Destinos y Distribuidores';
-        if (!grupos[cat]) grupos[cat] = [];
-        grupos[cat].push(d);
+/** Construye el HTML de options agrupadas para el select de ubicación de cualquier nodo */
+function buildUbicacionOptions(selectedId) {
+    const ubicaciones = getCatalogoUbicaciones();
+    let html = '<option value="">Seleccione ubicación (Planta, Almacén, Distribuidor)...</option>';
+
+    // Categorizar según id_tipo_destino
+    // 5 = Planta, 4 = Almacén, 1 = Distribuidor, 2 = Carrocero, 3 = Cliente Final, 6 = Otro
+    const grupos = {
+        'Plantas y Centros de Ensamble (Carga)': [],
+        'Almacenes y Patios de Maniobra': [],
+        'Distribuidores y Agencias (Entrega)': [],
+        'Carroceros y Adaptaciones': [],
+        'Otras Ubicaciones': []
+    };
+
+    ubicaciones.forEach(u => {
+        const tipo = parseInt(u.id_tipo_destino || 0);
+        if (tipo === 5) {
+            grupos['Plantas y Centros de Ensamble (Carga)'].push(u);
+        } else if (tipo === 4) {
+            grupos['Almacenes y Patios de Maniobra'].push(u);
+        } else if (tipo === 1) {
+            grupos['Distribuidores y Agencias (Entrega)'].push(u);
+        } else if (tipo === 2) {
+            grupos['Carroceros y Adaptaciones'].push(u);
+        } else {
+            grupos['Otras Ubicaciones'].push(u);
+        }
     });
 
     Object.keys(grupos).forEach(catName => {
-        html += `<optgroup label="${catName}">`;
-        grupos[catName].forEach(d => {
-            const sel = (String(d.id) === String(selectedId)) ? 'selected' : '';
-            const addr = d.direccion ? ` — ${d.direccion}` : '';
-            html += `<option value="${d.id}" data-direccion="${d.direccion || ''}" data-nombre="${d.nombre}" ${sel}>${d.nombre}${addr}</option>`;
-        });
-        html += `</optgroup>`;
+        if (grupos[catName].length > 0) {
+            html += `<optgroup label="${catName}">`;
+            grupos[catName].forEach(u => {
+                const sel = (String(u.id || u.id_ubicacion) === String(selectedId)) ? 'selected' : '';
+                const dir = u.direccion ? ` — ${u.direccion}` : '';
+                const uId = u.id || u.id_ubicacion;
+                html += `<option value="${uId}" data-direccion="${u.direccion || ''}" data-nombre="${u.nombre}" ${sel}>${u.nombre}${dir}</option>`;
+            });
+            html += `</optgroup>`;
+        }
     });
 
     return html;
 }
 
-let _paradaCounter = 0;
-
-/** Agrega un nuevo bloque de parada al formulario */
-function agregarParadaForm(data) {
-    _paradaCounter++;
-    const n = _paradaCounter;
-    const msg = document.getElementById('msg-sin-paradas');
-    if (msg) msg.style.display = 'none';
-
-    const cont = document.getElementById('contenedor-paradas');
-    if (!cont) return;
-
-    const div = document.createElement('div');
-    div.className = 'card border shadow-sm p-3 mb-0 parada-item';
-    div.setAttribute('data-n', n);
-    div.innerHTML = `
-        <div class="d-flex align-items-center mb-2">
-            <span class="badge bg-primary me-2">Parada <span class="num-parada">${cont.querySelectorAll('.parada-item').length + 1}</span></span>
-            <span class="text-muted fs-11">Define el destino y los kilómetros de este tramo</span>
-            <button type="button" class="btn btn-sm btn-soft-danger ms-auto" onclick="eliminarParada(this)">
-                <i class="ri-delete-bin-line"></i> Quitar
-            </button>
-        </div>
-        <div class="row g-2">
-            <div class="col-md-6">
-                <label class="form-label fs-11 text-muted mb-1">Destino (Distribuidor / Cliente)</label>
-                <select class="form-select form-select-sm parada-id-destino" onchange="recalcularRutaGoogleMaps(); serializarParadas();">
-                    ${buildDestinoOptions(data ? data.id_destino_cat : '')}
-                </select>
-                <small class="text-muted fs-10 d-block mt-1 parada-direccion-info"></small>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label fs-11 text-muted mb-1">Nombre libre / Dirección manual</label>
-                <input type="text" class="form-control form-control-sm parada-nombre-libre"
-                    value="${data ? (data.destino_nombre_libre || '') : ''}"
-                    placeholder="Ej: Av. Juárez 100, Puebla"
-                    oninput="serializarParadas()">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label fs-11 text-muted mb-1">Km tramo <small class="text-primary">(Tarifario)</small></label>
-                <input type="number" class="form-control form-control-sm parada-km" min="0" step="0.1"
-                    value="${data ? (data.km_tramo || 0) : 0}"
-                    oninput="serializarParadas()">
-            </div>
-        </div>`;
-    cont.appendChild(div);
-    actualizarNumerosParadas();
-    serializarParadas();
-    recalcularRutaGoogleMaps();
+/** Formatea una fecha/hora para inputs de tipo datetime-local (YYYY-MM-DDTHH:mm) */
+function formatDateTimeLocal(val) {
+    if (!val) return '';
+    let s = String(val).trim();
+    // Rechazar fechas cero de MySQL
+    if (s.startsWith('0000') || s === '' || s === 'null' || s === 'NULL') return '';
+    if (s.length === 10) { // YYYY-MM-DD solo
+        return s + 'T00:00';
+    }
+    return s.replace(' ', 'T').substring(0, 16);
 }
 
-/** Elimina una parada y renumera */
-function eliminarParada(btn) {
-    const item = btn.closest('.parada-item');
+let _nodoCounter = 0;
+
+/** Agrega un nuevo nodo / punto al recorrido de la ruta */
+function agregarNodoRuta(data, isCarga = false) {
+    _nodoCounter++;
+    const cont = document.getElementById('contenedor-nodos-ruta');
+    if (!cont) return;
+
+    const msg = document.getElementById('msg-sin-nodos');
+    if (msg) msg.style.display = 'none';
+
+    const index = cont.querySelectorAll('.nodo-item').length;
+    const esOrigen = (index === 0);
+
+    const div = document.createElement('div');
+    div.className = 'card border shadow-sm p-3 mb-0 nodo-item';
+    div.setAttribute('data-nodo-id', _nodoCounter);
+
+    const selUbicacionId = data ? (data.id_ubicacion || data.id_destino_cat || '') : '';
+    const nombreLibre = data ? (data.destino_nombre_libre || '') : '';
+    const kmTramo = data ? parseFloat(data.km_tramo || data.km_tramo_anterior || 0) : 0;
+    const obs = data ? (data.observaciones || '') : '';
+    const fechaEstimadaVal = data && data.fecha_estimada ? formatDateTimeLocal(data.fecha_estimada) : '';
+
+    let isCargaVal = isCarga;
+    if (data) {
+        if (data.tipo_nodo) {
+            isCargaVal = (data.tipo_nodo === 'carga');
+        } else if (data.id_ubicacion || data.id_destino_cat) {
+            const ubicaciones = getCatalogoUbicaciones();
+            const ubi = ubicaciones.find(u => String(u.id || u.id_ubicacion) === String(selUbicacionId));
+            if (ubi && parseInt(ubi.id_tipo_destino) === 5) {
+                isCargaVal = true;
+            }
+        }
+    }
+    div.setAttribute('data-tipo-nodo', isCargaVal ? 'carga' : 'entrega');
+
+    div.innerHTML = `
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge ${esOrigen ? 'bg-success' : (isCargaVal ? 'bg-info' : 'bg-primary')} badge-nodo-tipo px-2 py-1 fs-11">
+                    <i class="${esOrigen ? 'ri-map-pin-user-line' : (isCargaVal ? 'ri-map-pin-add-line' : 'ri-map-pin-line')} me-1"></i>
+                    <span class="nodo-tipo-txt">${esOrigen ? 'PUNTO 1 (PUNTO DE PARTIDA)' : (isCargaVal ? 'PUNTO ' + (index + 1) + ' (CARGA)' : 'PUNTO ' + (index + 1) + ' (PARADA/ENTREGA)')}</span>
+                </span>
+                <span class="text-muted fs-11 nodo-desc-txt">
+                    ${esOrigen ? 'Lugar de salida de la madrina o chofer' : (isCargaVal ? 'Punto de recolección o carga de unidades' : 'Parada intermedia o destino de entrega')}
+                </span>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                <button type="button" class="btn btn-sm btn-light border btn-reordenar-up" onclick="moverNodoRuta(this, -1)" title="Mover arriba">
+                    <i class="ri-arrow-up-s-line"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-light border btn-reordenar-down" onclick="moverNodoRuta(this, 1)" title="Mover abajo">
+                    <i class="ri-arrow-down-s-line"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-soft-danger ms-1" onclick="eliminarNodoRuta(this)" title="Quitar este punto">
+                    <i class="ri-delete-bin-line"></i>
+                </button>
+            </div>
+        </div>
+        <div class="row g-2 align-items-center">
+            <div class="${esOrigen ? 'col-md-9' : 'col-md-7'} col-ubi-wrapper">
+                <label class="form-label fs-11 text-muted mb-1 fw-bold">Ubicación del Catálogo <span class="text-danger">*</span></label>
+                <select class="form-select form-select-sm nodo-select-ubicacion" onchange="alCambiarUbicacionNodo(this)">
+                    ${buildUbicacionOptions(selUbicacionId)}
+                </select>
+                <small class="text-muted fs-10 d-block mt-1 nodo-direccion-preview"></small>
+            </div>
+            <!-- Input oculto para conservar la propiedad en el objeto al guardar, si fuera necesario, o simplemente se manda vacío -->
+            <input type="hidden" class="nodo-nombre-libre" value="${nombreLibre}">
+            <div class="col-md-3 seccion-fecha-estimada">
+                <label class="form-label fs-11 text-muted mb-1 fw-bold nodo-lbl-fecha-estimada">
+                    <i class="ri-calendar-event-line ${isCargaVal ? 'text-info' : 'text-primary'} me-1"></i>${esOrigen ? 'Llegada est. Origen' : (isCargaVal ? 'Est. Recolección' : 'Est. Entrega')}
+                </label>
+                <input type="datetime-local" class="form-control form-control-sm nodo-fecha-estimada" 
+                    value="${fechaEstimadaVal}" 
+                    oninput="serializarNodos()">
+            </div>
+            <div class="col-md-2 seccion-km-tramo" style="${esOrigen ? 'display: none;' : ''}">
+                <label class="form-label fs-11 text-muted mb-1 fw-bold">
+                    <i class="ri-route-line text-primary me-1"></i>Distancia
+                </label>
+                <div class="input-group input-group-sm">
+                    <input type="number" class="form-control form-control-sm nodo-km-tramo" min="0" step="0.1"
+                        value="${kmTramo > 0 ? kmTramo : ''}" 
+                        placeholder="0.0"
+                        oninput="serializarNodos()">
+                    <span class="input-group-text bg-light text-muted fs-11 px-1">km</span>
+                </div>
+                <small class="text-muted fs-10 d-block mt-1 nodo-memoria-badge">
+                    <i class="ri-history-line me-1"></i>Memoria
+                </small>
+            </div>
+        </div>`;
+
+    if (!data && isCargaVal && !esOrigen) {
+        const nodosActuales = Array.from(cont.querySelectorAll('.nodo-item'));
+        let insertado = false;
+        for (let i = nodosActuales.length - 1; i >= 0; i--) {
+            const tipo = nodosActuales[i].getAttribute('data-tipo-nodo');
+            if (i === 0 || tipo === 'carga') {
+                nodosActuales[i].insertAdjacentElement('afterend', div);
+                insertado = true;
+                break;
+            }
+        }
+        if (!insertado) {
+            cont.appendChild(div);
+        }
+    } else {
+        cont.appendChild(div);
+    }
+
+    if (!data) {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2000,
+            timerProgressBar: true,
+            icon: 'success',
+            title: isCargaVal ? 'Punto de Carga añadido' : 'Punto de Entrega añadido'
+        });
+    }
+
+    actualizarSecuenciaNodos();
+}
+
+/** Elimina un nodo del recorrido */
+function eliminarNodoRuta(btn) {
+    const item = btn.closest('.nodo-item');
     if (item) item.remove();
-    actualizarNumerosParadas();
-    serializarParadas();
-    recalcularRutaGoogleMaps();
-    const cont = document.getElementById('contenedor-paradas');
-    const msg  = document.getElementById('msg-sin-paradas');
-    if (msg && cont && cont.querySelectorAll('.parada-item').length === 0) {
-        msg.style.display = '';
-        const alertTotal = document.getElementById('badge-distancia-total-container');
-        if (alertTotal) alertTotal.style.setProperty('display', 'none', 'important');
+    actualizarSecuenciaNodos();
+    const cont = document.getElementById('contenedor-nodos-ruta');
+    if (cont && cont.querySelectorAll('.nodo-item').length === 0) {
+        const msg = document.getElementById('msg-sin-nodos');
+        if (msg) msg.style.display = '';
+        const badge = document.getElementById('badge-distancia-total-container');
+        if (badge) badge.style.setProperty('display', 'none', 'important');
     }
 }
 
-/** Reasigna los números visuales de paradas */
-function actualizarNumerosParadas() {
-    const items = document.querySelectorAll('#contenedor-paradas .parada-item');
-    items.forEach((el, idx) => {
-        const badge = el.querySelector('.num-parada');
-        if (badge) badge.textContent = idx + 1;
-    });
+/** Reordena un nodo subiéndolo o bajándolo */
+function moverNodoRuta(btn, dir) {
+    const item = btn.closest('.nodo-item');
+    if (!item) return;
+    const parent = item.parentNode;
+    if (dir === -1 && item.previousElementSibling) {
+        parent.insertBefore(item, item.previousElementSibling);
+    } else if (dir === 1 && item.nextElementSibling) {
+        parent.insertBefore(item.nextElementSibling, item);
+    }
+    actualizarSecuenciaNodos();
+    verificarYCalcularRuta();
 }
 
-/** Serializa las paradas al campo oculto paradas_json */
-function serializarParadas() {
-    const items = document.querySelectorAll('#contenedor-paradas .parada-item');
-    const result = [];
-    items.forEach((el, idx) => {
-        const idDestCat  = el.querySelector('.parada-id-destino') ? el.querySelector('.parada-id-destino').value : '';
-        const nombreLibre= el.querySelector('.parada-nombre-libre') ? el.querySelector('.parada-nombre-libre').value.trim() : '';
-        const km         = el.querySelector('.parada-km') ? parseFloat(el.querySelector('.parada-km').value) || 0 : 0;
-        result.push({
-            orden: idx + 1,
-            id_destino_cat: idDestCat || null,
-            destino_nombre_libre: nombreLibre,
-            km_tramo: km
-        });
+/** Al cambiar la ubicación en el select de un nodo */
+function alCambiarUbicacionNodo(selObj) {
+    const card = selObj.closest('.nodo-item');
+    if (!card) return;
+    const optSelected = selObj.selectedIndex >= 0 ? selObj.options[selObj.selectedIndex] : null;
+    const dir = optSelected ? optSelected.getAttribute('data-direccion') : '';
+    const infoSpan = card.querySelector('.nodo-direccion-preview');
+    if (infoSpan) {
+        infoSpan.innerHTML = dir ? `<i class="ri-map-pin-line text-danger me-1"></i>${dir}` : '';
+    }
+
+    // Validar que no sea idéntico al punto anterior o siguiente
+    const items = Array.from(document.querySelectorAll('#contenedor-nodos-ruta .nodo-item'));
+    const currIdx = items.indexOf(card);
+    if (currIdx > 0 && selObj.value) {
+        const prevSel = items[currIdx - 1].querySelector('.nodo-select-ubicacion');
+        if (prevSel && prevSel.value === selObj.value) {
+            const nom = optSelected ? optSelected.text.split('—')[0].trim() : 'la misma ubicación';
+            Swal.fire({
+                title: "Ubicación duplicada",
+                text: `El Punto #${currIdx + 1} no puede ser la misma ubicación que el Punto #${currIdx} (${nom}). Por favor seleccione un destino diferente.`,
+                icon: "warning"
+            });
+            selObj.value = "";
+            if (infoSpan) infoSpan.innerHTML = "";
+            serializarNodos();
+            return;
+        }
+    }
+    if (currIdx < items.length - 1 && selObj.value) {
+        const nextSel = items[currIdx + 1].querySelector('.nodo-select-ubicacion');
+        if (nextSel && nextSel.value === selObj.value) {
+            const nom = optSelected ? optSelected.text.split('—')[0].trim() : 'la misma ubicación';
+            Swal.fire({
+                title: "Ubicación duplicada",
+                text: `El Punto #${currIdx + 1} no puede ser la misma ubicación que el Punto #${currIdx + 2} (${nom}). Por favor seleccione un destino diferente.`,
+                icon: "warning"
+            });
+            selObj.value = "";
+            if (infoSpan) infoSpan.innerHTML = "";
+            serializarNodos();
+            return;
+        }
+    }
+
+    serializarNodos();
+    verificarYCalcularRuta();
+}
+
+/** Actualiza numeración, badges visuales y botones de los nodos */
+function actualizarSecuenciaNodos() {
+    const items = document.querySelectorAll('#contenedor-nodos-ruta .nodo-item');
+    items.forEach((card, idx) => {
+        const esPrimero = (idx === 0);
+        const isCarga = card.getAttribute('data-tipo-nodo') === 'carga';
+        const badge = card.querySelector('.badge-nodo-tipo');
+        const txtTipo = card.querySelector('.nodo-tipo-txt');
+        const descTxt = card.querySelector('.nodo-desc-txt');
+        const colUbi   = card.querySelector('.col-ubi-wrapper');
+        const secFecha = card.querySelector('.seccion-fecha-estimada');
+        const lblFecha = card.querySelector('.nodo-lbl-fecha-estimada');
+        const secKm    = card.querySelector('.seccion-km-tramo');
+
+        if (esPrimero) {
+            if (colUbi) colUbi.className = 'col-md-9 col-ubi-wrapper';
+            if (secFecha) secFecha.style.display = '';
+            if (lblFecha) lblFecha.innerHTML = '<i class="ri-calendar-event-line text-primary me-1"></i>Llegada est. Origen';
+            if (secKm) secKm.style.display = 'none';
+            if (badge) {
+                badge.className = 'badge bg-success badge-nodo-tipo px-2 py-1 fs-11';
+                badge.innerHTML = '<i class="ri-map-pin-user-line me-1"></i><span class="nodo-tipo-txt">PUNTO 1 (PUNTO DE PARTIDA)</span>';
+            }
+            if (descTxt) descTxt.innerText = 'Lugar de salida de la madrina o chofer';
+        } else {
+            if (colUbi) colUbi.className = 'col-md-7 col-ubi-wrapper';
+            if (secFecha) secFecha.style.display = '';
+            if (secKm) secKm.style.display = '';
+
+            if (isCarga) {
+                if (badge) {
+                    badge.className = 'badge bg-info badge-nodo-tipo px-2 py-1 fs-11';
+                    badge.innerHTML = `<i class="ri-map-pin-add-line me-1"></i><span class="nodo-tipo-txt">PUNTO ${idx + 1} (CARGA)</span>`;
+                }
+                if (descTxt) descTxt.innerText = 'Punto de recolección o carga de unidades';
+                if (lblFecha) lblFecha.innerHTML = '<i class="ri-calendar-event-line text-info me-1"></i>Est. Recolección';
+            } else {
+                if (badge) {
+                    badge.className = 'badge bg-primary badge-nodo-tipo px-2 py-1 fs-11';
+                    badge.innerHTML = `<i class="ri-map-pin-line me-1"></i><span class="nodo-tipo-txt">PUNTO ${idx + 1} (PARADA / ENTREGA)</span>`;
+                }
+                if (descTxt) descTxt.innerText = 'Parada intermedia o destino final';
+                if (lblFecha) lblFecha.innerHTML = '<i class="ri-calendar-event-line text-primary me-1"></i>Est. Entrega';
+            }
+        }
     });
-    const campo = document.getElementById('paradas_json');
-    if (campo) campo.value = JSON.stringify(result);
+
+    serializarNodos();
+}
+
+/** Serializa los nodos en los campos ocultos del formulario */
+function serializarNodos() {
+    const items = document.querySelectorAll('#contenedor-nodos-ruta .nodo-item');
+    const nodos = [];
+    const paradasCompat = [];
+
+    items.forEach((card, idx) => {
+        const isCarga = card.getAttribute('data-tipo-nodo') === 'carga';
+        const tipoNodo = (idx === 0) ? 'origen' : (isCarga ? 'carga' : 'entrega');
+        const selUbi = card.querySelector('.nodo-select-ubicacion');
+        const idUbi  = selUbi && selUbi.value ? parseInt(selUbi.value) : null;
+        const nombreLibre = card.querySelector('.nodo-nombre-libre') ? card.querySelector('.nodo-nombre-libre').value.trim() : '';
+        const kmVal  = card.querySelector('.nodo-km-tramo') ? (parseFloat(card.querySelector('.nodo-km-tramo').value) || 0) : 0;
+        const fechaEst = card.querySelector('.nodo-fecha-estimada') ? card.querySelector('.nodo-fecha-estimada').value : '';
+
+        nodos.push({
+            orden: idx,
+            tipo_nodo: tipoNodo,
+            id_ubicacion: idUbi,
+            destino_nombre_libre: nombreLibre,
+            km_tramo: (idx === 0) ? 0 : kmVal,
+            fecha_estimada: fechaEst
+        });
+
+        if (idx > 0) {
+            paradasCompat.push({
+                orden: idx,
+                tipo_nodo: tipoNodo,
+                id_destino_cat: idUbi,
+                destino_nombre_libre: nombreLibre,
+                km_tramo: kmVal,
+                fecha_estimada: fechaEst
+            });
+        }
+    });
+
+    const campoNodos = document.getElementById('nodos_json');
+    if (campoNodos) campoNodos.value = JSON.stringify(nodos);
+
+    const campoParadas = document.getElementById('paradas_json');
+    if (campoParadas) campoParadas.value = JSON.stringify(paradasCompat);
+
+    // Compatibilidad para campos viejos
+    const campoOrigen = document.getElementById('id_origen');
+    if (campoOrigen && nodos.length > 0) {
+        campoOrigen.value = nodos[0].id_ubicacion || '';
+    }
+    const campoDestino = document.getElementById('id_destino');
+    if (campoDestino && nodos.length > 1) {
+        campoDestino.value = nodos[nodos.length - 1].id_ubicacion || '';
+    }
 }
 
 /**
- * Recalcula distancias de ruta consultando directamente el Tarifario
+ * Consulta la memoria progresiva de distancias en el backend
  */
-function recalcularRutaGoogleMaps() {
-    const idOrigen = document.getElementById('id_origen') ? parseInt(document.getElementById('id_origen').value) || 0 : 0;
-    const items = document.querySelectorAll('#contenedor-paradas .parada-item');
-    
-    if (items.length === 0) return;
+function verificarYCalcularRuta(callbackOnSuccess, isManual = false) {
+    serializarNodos();
+    const nodosRaw = document.getElementById('nodos_json') ? document.getElementById('nodos_json').value : '[]';
+    const nodos = JSON.parse(nodosRaw);
 
-    const paradasList = [];
-    items.forEach((el, idx) => {
-        const idDestCat   = el.querySelector('.parada-id-destino') ? el.querySelector('.parada-id-destino').value : '';
-        const nombreLibre = el.querySelector('.parada-nombre-libre') ? el.querySelector('.parada-nombre-libre').value.trim() : '';
-        const kmActual    = el.querySelector('.parada-km') ? parseFloat(el.querySelector('.parada-km').value) || 0 : 0;
-        
-        // Actualizar subtitulo de direccion
-        const selObj = el.querySelector('.parada-id-destino');
-        const optSelected = selObj && selObj.selectedIndex >= 0 ? selObj.options[selObj.selectedIndex] : null;
-        const dir = optSelected ? optSelected.getAttribute('data-direccion') : '';
-        const infoSpan = el.querySelector('.parada-direccion-info');
-        if (infoSpan) {
-            infoSpan.innerHTML = dir ? `<i class="ri-map-pin-line text-danger me-1"></i>${dir}` : '';
+    if (!Array.isArray(nodos) || nodos.length < 2) {
+        return;
+    }
+
+    // Verificar si todos los nodos tienen ubicación seleccionada
+    for (let i = 0; i < nodos.length; i++) {
+        if (!nodos[i].id_ubicacion && !nodos[i].destino_nombre_libre) {
+            Swal.fire("Atención", "Por favor seleccione una ubicación para todos los puntos de la ruta antes de verificar.", "warning");
+            return;
         }
+    }
 
-        paradasList.push({
-            orden: idx + 1,
-            id_destino_cat: idDestCat || null,
-            destino_nombre_libre: nombreLibre,
-            km_tramo: kmActual
-        });
-    });
+    // Si hay tramos consecutivos idénticos, avisar al usuario
+    for (let i = 1; i < nodos.length; i++) {
+        if (nodos[i].id_ubicacion && nodos[i - 1].id_ubicacion && nodos[i].id_ubicacion === nodos[i - 1].id_ubicacion) {
+            Swal.fire("Ubicación duplicada", `El Punto #${i + 1} y el Punto #${i} tienen la misma ubicación. Corrija esto para poder verificar las distancias.`, "warning");
+            return;
+        }
+    }
 
     let request = new XMLHttpRequest();
-    let ajaxUrl = base_url + '/Lgs_envios/calcularDistanciaRuta';
+    let ajaxUrl = base_url + '/Lgs_envios/verificarDistanciasRuta';
 
     request.open("POST", ajaxUrl, true);
     request.setRequestHeader("Content-Type", "application/json");
-    request.send(JSON.stringify({
-        id_origen: idOrigen,
-        paradas: paradasList
-    }));
+    request.send(JSON.stringify({ nodos: nodos }));
 
     request.onreadystatechange = function () {
         if (request.readyState == 4 && request.status == 200) {
             try {
-                let objData = JSON.parse(request.responseText);
-                if (objData.status && objData.data) {
-                    const paradasRes = objData.data.paradas || [];
-                    const kmTotal    = objData.data.km_total || 0;
+                let res = JSON.parse(request.responseText);
+                if (res.status && res.data) {
+                    const data = res.data;
+                    const items = document.querySelectorAll('#contenedor-nodos-ruta .nodo-item');
 
-                    // Actualizar inputs de km_tramo en la UI
-                    items.forEach((el, idx) => {
-                        if (paradasRes[idx] && typeof paradasRes[idx].km_tramo !== 'undefined') {
-                            const inputKm = el.querySelector('.parada-km');
-                            if (inputKm) inputKm.value = paradasRes[idx].km_tramo;
-                        }
-                    });
+                    // Actualizar distancias conocidas en la UI
+                    if (Array.isArray(data.tramos)) {
+                        data.tramos.forEach(t => {
+                            const nodoCard = items[t.tramo_indice];
+                            if (nodoCard) {
+                                const inpKm = nodoCard.querySelector('.nodo-km-tramo');
+                                if (inpKm && t.km > 0) {
+                                    inpKm.value = t.km;
+                                }
+                            }
+                        });
+                    }
 
-                    serializarParadas();
+                    serializarNodos();
 
-                    // Mostrar badge total
+                    // Mostrar resumen de KM total
                     const alertTotal = document.getElementById('badge-distancia-total-container');
-                    const spanVal    = document.getElementById('badge-km-total-val');
+                    const spanVal = document.getElementById('badge-km-total-val');
                     if (alertTotal && spanVal) {
                         alertTotal.style.setProperty('display', 'flex', 'important');
-                        spanVal.innerText = kmTotal.toFixed(1) + ' km (Tarifario)';
+                        spanVal.innerText = (data.km_total || 0).toFixed(1) + ' km (Memoria Progresiva)';
+                    }
+
+                    // Si faltan distancias y se requería para guardar o continuar
+                    if (!data.completo && data.faltantes && data.faltantes.length > 0) {
+                        abrirModalDistanciasFaltantes(data.faltantes, callbackOnSuccess);
+                    } else {
+                        if (isManual) {
+                            Swal.fire({
+                                title: "Ruta Verificada",
+                                text: "Todas las distancias están calculadas y en memoria.",
+                                icon: "success",
+                                toast: true,
+                                position: "top-end",
+                                showConfirmButton: false,
+                                timer: 3000
+                            });
+                        }
+                        if (typeof callbackOnSuccess === 'function') {
+                            callbackOnSuccess();
+                        }
                     }
                 }
             } catch (e) {
-                console.error("Error al recalcular ruta: ", e);
+                console.error("Error al verificar distancias: ", e);
+            }
+        }
+    };
+}
+
+let _callbackDistanciasPendiente = null;
+
+/** Abre el modal para que el usuario capture distancias que no están en memoria */
+function abrirModalDistanciasFaltantes(faltantes, callbackOnSuccess) {
+    _callbackDistanciasPendiente = callbackOnSuccess;
+    const tbody = document.getElementById('tbodyDistanciasFaltantes');
+    if (!tbody || !Array.isArray(faltantes)) return;
+
+    // Filtrar cualquier tramo inválido donde origen y destino sean idénticos
+    faltantes = faltantes.filter(f => f.id_ubicacion_a !== f.id_ubicacion_b && (f.id_ubicacion_a > 0 || f.id_ubicacion_b > 0));
+    if (faltantes.length === 0) {
+        if (typeof callbackOnSuccess === 'function') {
+            callbackOnSuccess();
+        }
+        return;
+    }
+
+    let html = '';
+    faltantes.forEach((f, idx) => {
+        html += `
+        <tr data-id-a="${f.id_ubicacion_a}" data-id-b="${f.id_ubicacion_b}" data-tramo-idx="${f.tramo_indice}">
+            <td class="fw-bold text-primary">T${f.tramo_indice}</td>
+            <td><strong class="text-dark">${f.nombre_a}</strong></td>
+            <td class="text-center text-muted">➔</td>
+            <td><strong class="text-dark">${f.nombre_b}</strong></td>
+            <td>
+                <div class="input-group input-group-sm">
+                    <input type="number" class="form-control form-control-sm input-modal-km" min="1" step="0.1" placeholder="Ej: 145.5" required>
+                    <span class="input-group-text">km</span>
+                </div>
+            </td>
+        </tr>`;
+    });
+
+    tbody.innerHTML = html;
+
+    const modalEl = document.getElementById('modalDistanciasFaltantes');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const bsModal = new bootstrap.Modal(modalEl);
+        bsModal.show();
+    }
+}
+
+/** Guarda las distancias capturadas en el modal en lgs_distancias y actualiza la ruta */
+function guardarDistanciasFaltantesModal() {
+    const rows = document.querySelectorAll('#tbodyDistanciasFaltantes tr');
+    const distancias = [];
+    let valido = true;
+
+    rows.forEach(tr => {
+        const idA = parseInt(tr.getAttribute('data-id-a')) || 0;
+        const idB = parseInt(tr.getAttribute('data-id-b')) || 0;
+        const inp = tr.querySelector('.input-modal-km');
+        const km  = inp ? parseFloat(inp.value) : 0;
+
+        if (!km || km <= 0) {
+            valido = false;
+            if (inp) inp.classList.add('is-invalid');
+        } else {
+            if (inp) inp.classList.remove('is-invalid');
+            distancias.push({
+                id_ubicacion_a: idA,
+                id_ubicacion_b: idB,
+                km: km
+            });
+        }
+    });
+
+    if (!valido || distancias.length === 0) {
+        Swal.fire("Atención", "Por favor ingresa los kilómetros para todos los tramos solicitados.", "warning");
+        return;
+    }
+
+    let request = new XMLHttpRequest();
+    let ajaxUrl = base_url + '/Lgs_envios/guardarDistanciasFaltantes';
+
+    request.open("POST", ajaxUrl, true);
+    request.setRequestHeader("Content-Type", "application/json");
+    request.send(JSON.stringify({ distancias: distancias }));
+
+    request.onreadystatechange = function () {
+        if (request.readyState == 4 && request.status == 200) {
+            try {
+                let res = JSON.parse(request.responseText);
+                if (res.status) {
+                    // Cerrar modal
+                    const modalEl = document.getElementById('modalDistanciasFaltantes');
+                    if (modalEl && typeof bootstrap !== 'undefined') {
+                        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                        if (modalInstance) modalInstance.hide();
+                    }
+
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Distancias aprendidas en memoria progresiva',
+                        showConfirmButton: false,
+                        timer: 2000
+                    });
+
+                    // Re-verificar la ruta para que actualice la UI
+                    verificarYCalcularRuta(_callbackDistanciasPendiente);
+                } else {
+                    Swal.fire("Error", res.message || "No se pudieron guardar las distancias", "error");
+                }
+            } catch (e) {
+                Swal.fire("Error", "Error al procesar la respuesta del servidor", "error");
             }
         }
     };
@@ -386,43 +796,61 @@ function openModal() {
     document.querySelector('#btnText').innerHTML = "Guardar Envío";
     document.querySelector('#form-envio-title').innerHTML = "Crear Solicitud de Traslado";
     document.querySelector("#formEnvio").reset();
-    // Limpiar paradas
-    const cont = document.getElementById('contenedor-paradas');
+
+    // Limpiar contenedor de nodos
+    const cont = document.getElementById('contenedor-nodos-ruta');
     if (cont) cont.innerHTML = '';
-    const msg = document.getElementById('msg-sin-paradas');
-    if (msg) msg.style.display = '';
-    serializarParadas();
+
+    // Iniciar con 2 nodos por defecto (Punto de Partida y Primer Destino)
+    agregarNodoRuta();
+    agregarNodoRuta();
+
+    actualizarSecuenciaNodos();
     fntSwitchView('form');
 }
 
 function saveEnvio() {
     let id_tipo_traslado = document.querySelector('#id_tipo_traslado').value;
-    let id_motivo = document.querySelector('#id_motivo') ? document.querySelector('#id_motivo').value : '';
-    let id_proveedor = document.querySelector('#id_proveedor').value;
-    let id_origen = document.querySelector('#id_origen').value;
+    let id_motivo        = document.querySelector('#id_motivo') ? document.querySelector('#id_motivo').value : '';
+    let id_proveedor     = document.querySelector('#id_proveedor').value;
     let fecha_tentativa_envio = document.querySelector('#fecha_tentativa_envio') ? document.querySelector('#fecha_tentativa_envio').value : '';
 
-    // Serializar paradas antes de validar
-    serializarParadas();
-    const paradasJson = document.getElementById('paradas_json') ? document.getElementById('paradas_json').value : '[]';
-    const paradas = JSON.parse(paradasJson);
+    serializarNodos();
+    const nodosRaw = document.getElementById('nodos_json') ? document.getElementById('nodos_json').value : '[]';
+    const nodos = JSON.parse(nodosRaw);
 
-    if (id_tipo_traslado == '' || id_motivo == '' || id_proveedor == '' || id_origen == '' || fecha_tentativa_envio == '') {
+    if (!id_tipo_traslado || !id_motivo || !id_proveedor || !fecha_tentativa_envio) {
         Swal.fire("Atención", "Todos los campos marcados con (*) son obligatorios, incluyendo la Fecha/Hora Programada de Salida.", "error");
         return false;
     }
-    if (paradas.length === 0) {
-        Swal.fire("Atención", "Debe agregar al menos una parada destino en la ruta.", "warning");
+
+    if (nodos.length < 2) {
+        Swal.fire("Atención", "Debe agregar al menos 2 puntos en el recorrido (Punto de Partida y al menos un Destino).", "warning");
         return false;
     }
-    // Validar que cada parada tenga al menos nombre o destino cat
-    for (let i = 0; i < paradas.length; i++) {
-        if (!paradas[i].id_destino_cat && !paradas[i].destino_nombre_libre) {
-            Swal.fire("Atención", `La parada ${i + 1} debe tener un destino seleccionado o un nombre libre.`, "warning");
+
+    for (let i = 0; i < nodos.length; i++) {
+        if (!nodos[i].id_ubicacion && !nodos[i].destino_nombre_libre) {
+            Swal.fire("Atención", `El Punto #${i + 1} debe tener una ubicación seleccionada o un nombre libre.`, "warning");
             return false;
         }
     }
 
+    // Validar que no haya tramos consecutivos con la misma ubicación
+    for (let i = 1; i < nodos.length; i++) {
+        if (nodos[i].id_ubicacion && nodos[i - 1].id_ubicacion && nodos[i].id_ubicacion === nodos[i - 1].id_ubicacion) {
+            Swal.fire("Ubicación duplicada", `El Punto #${i + 1} no puede ser la misma ubicación que el Punto #${i}. Una ruta no puede tener un tramo con origen y destino idénticos.`, "warning");
+            return false;
+        }
+    }
+
+    // Verificar si hay tramos sin distancia en la memoria progresiva antes de enviar
+    verificarYCalcularRuta(function () {
+        ejecutarGuardadoEnvioFinal();
+    });
+}
+
+function ejecutarGuardadoEnvioFinal() {
     let request = new XMLHttpRequest();
     let ajaxUrl = base_url + '/Lgs_envios/store';
     let formData = new FormData(document.querySelector("#formEnvio"));
@@ -445,7 +873,7 @@ function saveEnvio() {
                     let objData = JSON.parse(request.responseText);
                     if (objData.status === 'success' || objData.status === true || objData.code === 200) {
                         document.querySelector("#formEnvio").reset();
-                        Swal.fire("Envíos", objData.message || objData.msg || "Guardado exitosamente", "success");
+                        Swal.fire("Envíos", objData.message || objData.msg || "Guardado exitosamente con ruta multi-nodo", "success");
                         if (typeof tableEnvios !== 'undefined' && tableEnvios) tableEnvios.ajax.reload();
                         fntSwitchView('grid');
                     } else {
@@ -463,7 +891,7 @@ function saveEnvio() {
                 }
             }
         }
-    }
+    };
 }
 
 function cargarProveedoresTrasladistas() {
@@ -512,6 +940,65 @@ function cargarProveedoresTrasladistas() {
             } catch(e) {}
         }
     }
+}
+
+function fntEditRuta(idEnvio) {
+    let request = new XMLHttpRequest();
+    let ajaxUrl = base_url + '/Lgs_envios/getDetalleEnvioData/' + idEnvio;
+
+    Swal.fire({
+        title: 'Cargando Itinerario...',
+        text: 'Por favor espere.',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    request.open("GET", ajaxUrl, true);
+    request.send();
+    request.onreadystatechange = function () {
+        if (request.readyState == 4 && request.status == 200) {
+            Swal.close();
+            try {
+                let objData = JSON.parse(request.responseText);
+                if (objData.status && objData.data) {
+                    const envio = objData.data.envio;
+                    const nodos = objData.data.nodos || [];
+
+                    document.querySelector('#id_envio').value = envio.id_envio;
+                    document.querySelector('#btnText').innerHTML = "Actualizar Envío";
+                    document.querySelector('#form-envio-title').innerHTML = "Editar Itinerario de Envío: " + (envio.folio || ('#' + envio.id_envio));
+
+                    if (document.querySelector('#id_tipo_traslado')) document.querySelector('#id_tipo_traslado').value = envio.id_tipo_traslado || '';
+                    if (document.querySelector('#id_motivo')) document.querySelector('#id_motivo').value = envio.id_motivo || '';
+                    if (document.querySelector('#id_proveedor')) document.querySelector('#id_proveedor').value = envio.id_proveedor || '';
+
+                    if (document.querySelector('#fecha_tentativa_envio')) document.querySelector('#fecha_tentativa_envio').value = formatDateTimeLocal(envio.fecha_tentativa_envio);
+                    if (document.querySelector('#fecha_tentativa_llegada')) document.querySelector('#fecha_tentativa_llegada').value = formatDateTimeLocal(envio.fecha_tentativa_llegada);
+                    if (document.querySelector('#observaciones')) document.querySelector('#observaciones').value = envio.observaciones || '';
+
+                    // Llenar los nodos
+                    const cont = document.getElementById('contenedor-nodos-ruta');
+                    if (cont) cont.innerHTML = '';
+
+                    if (nodos.length > 0) {
+                        nodos.forEach(n => {
+                            const isCarga = (n.tipo_nodo === 'carga' || parseInt(n.id_tipo_destino) === 5);
+                            agregarNodoRuta(n, isCarga);
+                        });
+                    } else {
+                        agregarNodoRuta({ id_ubicacion: envio.id_origen });
+                        agregarNodoRuta({ id_ubicacion: envio.id_destino, destino_nombre_libre: envio.destino_nombre_libre });
+                    }
+
+                    actualizarSecuenciaNodos();
+                    verificarYCalcularRuta();
+                    fntSwitchView('form');
+                }
+            } catch (e) {
+                Swal.fire("Error", "No se pudo cargar la información del envío.", "error");
+            }
+        }
+    };
 }
 
 function fntViewEnvio(idEnvio) {

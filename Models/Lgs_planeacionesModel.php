@@ -118,7 +118,7 @@ class Lgs_planeacionesModel extends Mysql
                 FROM lgs_envios e
                 LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
                 LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
-                WHERE e.id_estado = 1 AND e.deleted_at IS NULL";
+                WHERE e.id_estado = 8 AND e.deleted_at IS NULL";
         
         return $this->select_all($sql);
     }
@@ -214,10 +214,10 @@ class Lgs_planeacionesModel extends Mysql
         $stmt = $db->prepare($sql);
         $stmt->execute([$idPlaneacion]);
 
-        // 2. Desbloquear los envíos para que vuelvan a estado 1 (Creado / Editable)
+        // 2. Desbloquear los envíos para que vuelvan a estado 8 (Confirmado / Listo para planear)
         $sqlEnvios = "UPDATE lgs_envios e
                       INNER JOIN lgs_planeaciones_envios pe ON e.id_envio = pe.id_envio
-                      SET e.id_estado = 1
+                      SET e.id_estado = 8
                       WHERE pe.id_planeacion = ?";
         $stmtEnv = $db->prepare($sqlEnvios);
         $stmtEnv->execute([$idPlaneacion]);

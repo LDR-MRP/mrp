@@ -27,18 +27,34 @@
                     <p class="text-muted fs-14 mb-0">Arrastre los VINs desde el pool disponible hacia la Madrina/Chofer y ordénelos según su destino de entrega.</p>
                 </div>
                 <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                    <button class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="guardarAcomodo();">
-                        <i class="ri-check-double-line me-1"></i> Finalizar y Volver
-                    </button>
+                    <?php 
+                        $estadoEnvio = intval($data['envio']['id_estado'] ?? 1);
+                        if ($estadoEnvio === 1): 
+                    ?>
+                        <button class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="guardarAcomodo(true);">
+                            <i class="ri-check-double-line me-1"></i> Finalizar y Volver
+                        </button>
+                    <?php elseif ($estadoEnvio === 8): ?>
+                        <a href="<?= base_url(); ?>/Lgs_envios" class="btn btn-soft-secondary rounded-pill px-4 shadow-sm me-2">
+                            <i class="ri-arrow-go-back-line me-1"></i> Volver
+                        </a>
+                        <button class="btn btn-warning rounded-pill px-4 shadow-sm" onclick="guardarAcomodo(false);">
+                            <i class="ri-edit-line me-1"></i> Editar (Regresa a Borrador)
+                        </button>
+                    <?php else: ?>
+                        <a href="<?= base_url(); ?>/Lgs_envios" class="btn btn-soft-secondary rounded-pill px-4 shadow-sm">
+                            <i class="ri-arrow-go-back-line me-1"></i> Volver (Solo Lectura)
+                        </a>
+                    <?php endif; ?>
                 </div>
             </div>
 
-            <!-- LEYENDA INFORMATIVA ORDEN DE CARGA -->
+            <!-- LEYENDA INFORMATIVA ORDEN DE CARGA Y LOGÍSTICA MULTI-ORIGEN / MULTI-DESTINO -->
             <div class="alert alert-info border-0 shadow-sm rounded-3 mb-4 d-flex align-items-center">
-                <i class="ri-information-fill fs-20 me-3 text-info"></i>
+                <i class="ri-route-line fs-20 me-3 text-info"></i>
                 <div class="fs-13">
-                    <strong class="text-dark">Secuencia de Carga y Descarga:</strong>
-                    La unidad en la <strong>Posición #1</strong> es la <span class="badge bg-success px-2 py-1">1º en Cargar</span> (primera en subir al vehículo). Cada tarjeta muestra su <strong>Modelo</strong>, <strong>Origen ➔ Destino</strong> y su número de secuencia de carga.
+                    <strong class="text-dark">Ruta Multi-Origen y Multi-Destino:</strong>
+                    Para cada unidad asignada a la madrina, defina el nodo de <span class="badge bg-success">🟢 Subida (Carga)</span> y el nodo de <span class="badge bg-danger">🔴 Bajada (Entrega)</span>. El sistema adicionará el factor volumétrico en las recolecciones y lo descontará en las entregas intermedias, calculando el costo exacto por tramo con tarifas o memoria de distancias $/km.
                 </div>
             </div>
 
@@ -200,4 +216,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 
+<script>
+    var ENVIO_READONLY = <?= ($estadoEnvio >= 2 && $estadoEnvio != 8) ? 'true' : 'false' ?>;
+</script>
 <?php footerAdmin($data); ?>

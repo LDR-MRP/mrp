@@ -2,6 +2,7 @@ let g_madrinasProveedor = [];
 let g_choferesProveedor = [];
 let g_envioData = null;
 let g_paradasEnvio = [];
+let g_nodosEnvio = [];
 let modalVehiculoBs = null;
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -49,6 +50,7 @@ function cargarDatosDetalle() {
                     g_madrinasProveedor = objData.data.madrinas || [];
                     g_choferesProveedor = objData.data.choferes || [];
                     g_paradasEnvio = objData.data.paradas || [];
+                    g_nodosEnvio = objData.data.nodos || [];
 
                     // 1. Mostrar nombre de la empresa trasladista y actualizar resumen
                     const lblProv = document.getElementById('lbl-trasladista-nombre');
@@ -59,21 +61,38 @@ function cargarDatosDetalle() {
                     // Llenar tarjeta de resumen de ruta y KM
                     let acumRuta = 0;
                     let desgloseTramos = [];
-                    (g_paradasEnvio || []).forEach(p => {
-                        const kmT = parseFloat(p.km_tramo || 0);
-                        acumRuta += kmT;
-                        p.km_acumulado = acumRuta; // Guardar km acumulado desde el origen
-                        desgloseTramos.push(`P${p.orden} (${p.destino_nombre || 'Parada'}: +${kmT.toFixed(1)}km)`);
-                    });
+
+                    if (g_nodosEnvio.length > 0) {
+                        g_nodosEnvio.forEach((n, idx) => {
+                            const kmT = parseFloat(n.km_tramo || 0);
+                            acumRuta += kmT;
+                            n.km_acumulado = acumRuta;
+                            if (idx === 0) {
+                                desgloseTramos.push(`🟢 Salida: ${n.nombre || 'Origen'}`);
+                            } else {
+                                desgloseTramos.push(`P${n.orden} (${n.nombre || 'Nodo'}: +${kmT.toFixed(1)}km)`);
+                            }
+                        });
+                    } else {
+                        (g_paradasEnvio || []).forEach(p => {
+                            const kmT = parseFloat(p.km_tramo || 0);
+                            acumRuta += kmT;
+                            p.km_acumulado = acumRuta;
+                            desgloseTramos.push(`P${p.orden} (${p.destino_nombre || 'Parada'}: +${kmT.toFixed(1)}km)`);
+                        });
+                    }
 
                     const lblOrig = document.getElementById('lbl-resumen-origen');
                     const lblKm   = document.getElementById('lbl-resumen-km-total');
                     const lblPar  = document.getElementById('lbl-resumen-paradas');
                     const lblCost = document.getElementById('lbl-resumen-costo');
 
-                    if (lblOrig) lblOrig.innerText = g_envioData.origen || '-';
+                    const primerNodo = g_nodosEnvio.length > 0 ? g_nodosEnvio[0].nombre : g_envioData.origen;
+                    if (lblOrig) lblOrig.innerText = primerNodo || '-';
                     if (lblKm)   lblKm.innerText   = (parseFloat(g_envioData.km_total || acumRuta).toFixed(1)) + ' km Total';
-                    if (lblPar)  lblPar.innerHTML  = `<strong>${g_paradasEnvio ? g_paradasEnvio.length : 0} paradas</strong><small class="d-block text-muted fs-10 mt-1">${desgloseTramos.join(' ➔ ')}</small>`;
+                    
+                    const numTramos = g_nodosEnvio.length > 1 ? (g_nodosEnvio.length - 1) : (g_paradasEnvio.length || 0);
+                    if (lblPar)  lblPar.innerHTML  = `<strong>${numTramos} tramo(s) (${g_nodosEnvio.length || (g_paradasEnvio.length + 1)} puntos)</strong><small class="d-block text-muted fs-10 mt-1">${desgloseTramos.join(' ➔ ')}</small>`;
                     if (lblCost) lblCost.innerText = g_envioData.costo_total ? '$' + parseFloat(g_envioData.costo_total).toFixed(2) : '$0.00';
 
                     const idTipoTraslado = parseInt(g_envioData.id_tipo_traslado || 1);
@@ -205,6 +224,7 @@ function initSortables() {
         new Sortable(pool, {
             group: 'shared',
             animation: 150,
+            disabled: (typeof ENVIO_READONLY !== 'undefined' && ENVIO_READONLY),
             ghostClass: 'sortable-ghost',
             onAdd: function (evt) {
                 actualizarConteoYSecuencia(evt.from);
@@ -221,6 +241,7 @@ function initSortables() {
             new Sortable(v, {
                 group: 'shared',
                 animation: 150,
+                disabled: (typeof ENVIO_READONLY !== 'undefined' && ENVIO_READONLY),
                 ghostClass: 'sortable-ghost',
                 onAdd: function (evt) {
                     actualizarConteoYSecuencia(evt.to);
@@ -258,16 +279,8 @@ function actualizarConteoYSecuencia(listaUl) {
 
     const container = listaUl.closest('div.border');
     const items = listaUl.querySelectorAll('li');
-    const cap = listaUl.getAttribute('data-capacidad') || 99;
-
-    // Contar cuántos VINs van a cada parada en este vehículo para detectar paradas compartidas
-    const paradasCountMap = {};
-    items.forEach(li => {
-        const pId = li.getAttribute('data-id-parada');
-        if (pId) {
-            paradasCountMap[pId] = (paradasCountMap[pId] || 0) + 1;
-        }
-    });
+    const cap = parseInt(listaUl.getAttribute('data-capacidad') || 99, 10);
+    const tieneNodos = Array.isArray(g_nodosEnvio) && g_nodosEnvio.length > 0;
 
     items.forEach((li, idx) => {
         li.classList.remove('border-primary');
@@ -278,157 +291,327 @@ function actualizarConteoYSecuencia(listaUl) {
         const modelo = li.getAttribute('data-modelo') || 'Unidad';
         const origen = li.getAttribute('data-origen') || 'Origen';
         const destino = li.getAttribute('data-destino') || 'Destino';
-        const paradaActual = li.getAttribute('data-id-parada') || '';
 
         const posIndex = idx + 1;
         let badgeSecuencia = (posIndex === 1)
             ? `<span class="badge bg-success px-2 py-1 fs-11 me-1"><i class="ri-number-1 me-1"></i>1º EN CARGAR</span>`
             : `<span class="badge bg-info px-2 py-1 fs-11 me-1"><i class="ri-truck-line me-1"></i>${posIndex}º EN CARGAR</span>`;
 
-        let paradaAutoselect = paradaActual;
-        if (!paradaAutoselect && g_paradasEnvio.length > 0 && destino) {
-            const destinoLower = destino.toLowerCase().trim();
-            let bestMatch = null;
-            let bestScore = 0;
-            g_paradasEnvio.forEach(p => {
-                const nombreParada = (p.destino_nombre || p.destino_nombre_libre || '').toLowerCase().trim();
-                if (!nombreParada) return;
-                let score = 0;
-                if (nombreParada === destinoLower) score = 100;
-                else if (nombreParada.includes(destinoLower) || destinoLower.includes(nombreParada)) score = 60;
-                else {
-                    const words = destinoLower.split(/\s+/);
-                    words.forEach(w => { if (w.length > 3 && nombreParada.includes(w)) score += 20; });
+        if (tieneNodos) {
+            let idSubidaActual = li.getAttribute('data-id-nodo-subida') || '';
+            let idBajadaActual = li.getAttribute('data-id-nodo-bajada') || li.getAttribute('data-id-parada') || '';
+
+            // Auto-matching Subida
+            if (!idSubidaActual) {
+                let bestSubida = g_nodosEnvio[0];
+                if (origen) {
+                    const oLow = origen.toLowerCase().trim();
+                    const match = g_nodosEnvio.find(n => (n.nombre || '').toLowerCase().trim() === oLow || (n.nombre || '').toLowerCase().trim().includes(oLow) || oLow.includes((n.nombre || '').toLowerCase().trim()));
+                    if (match && parseInt(match.orden || 0) < (g_nodosEnvio.length - 1)) {
+                        bestSubida = match;
+                    }
                 }
-                if (score > bestScore) { bestScore = score; bestMatch = p; }
+                idSubidaActual = String(bestSubida.id_nodo);
+            }
+
+            // Auto-matching Bajada
+            if (!idBajadaActual) {
+                let bestBajada = g_nodosEnvio[g_nodosEnvio.length - 1];
+                if (destino) {
+                    const dLow = destino.toLowerCase().trim();
+                    const match = g_nodosEnvio.find(n => (n.nombre || '').toLowerCase().trim() === dLow || (n.nombre || '').toLowerCase().trim().includes(dLow) || dLow.includes((n.nombre || '').toLowerCase().trim()));
+                    if (match && parseInt(match.orden || 0) > 0) {
+                        bestBajada = match;
+                    }
+                }
+                idBajadaActual = String(bestBajada.id_nodo);
+            }
+
+            let objSubida = g_nodosEnvio.find(n => String(n.id_nodo) === String(idSubidaActual)) || g_nodosEnvio[0];
+            let objBajada = g_nodosEnvio.find(n => String(n.id_nodo) === String(idBajadaActual)) || g_nodosEnvio[g_nodosEnvio.length - 1];
+
+            let ordSub = parseInt(objSubida.orden || 0);
+            let ordBaj = parseInt(objBajada.orden || 0);
+
+            // Validar coherencia: Bajada debe ser posterior a Subida
+            if (ordBaj <= ordSub) {
+                let candidate = g_nodosEnvio.find(n => parseInt(n.orden || 0) > ordSub);
+                if (candidate) {
+                    objBajada = candidate;
+                    idBajadaActual = String(candidate.id_nodo);
+                    ordBaj = parseInt(candidate.orden || 0);
+                } else if (ordSub > 0) {
+                    objSubida = g_nodosEnvio[0];
+                    idSubidaActual = String(objSubida.id_nodo);
+                    ordSub = 0;
+                }
+            }
+
+            li.setAttribute('data-id-nodo-subida', idSubidaActual);
+            li.setAttribute('data-id-nodo-bajada', idBajadaActual);
+            li.setAttribute('data-id-parada', idBajadaActual);
+
+            // Generar options para Subida
+            let optsSubida = '';
+            g_nodosEnvio.forEach((n, i) => {
+                const tipo = String(n.tipo_nodo || '').toLowerCase().trim();
+                const isCarga = (tipo === 'carga' || tipo === 'origen' || parseInt(n.orden || 0) === 0 || parseInt(n.id_tipo_destino || 0) === 5);
+                if (i < g_nodosEnvio.length - 1 && isCarga) {
+                    const sel = (String(n.id_nodo) === String(idSubidaActual)) ? 'selected' : '';
+                    const numPunto = parseInt(n.orden || 0) + 1;
+                    const prefix = (parseInt(n.orden || 0) === 0) ? '🟢 Inicio: ' : `🔵 Pto ${numPunto} (Carga): `;
+                    optsSubida += `<option value="${n.id_nodo}" ${sel}>${prefix}${n.nombre || 'Nodo ' + n.orden}</option>`;
+                }
             });
-            if (bestMatch && bestScore >= 20) paradaAutoselect = String(bestMatch.id_parada);
-        }
 
-        const objParadaSel = (g_paradasEnvio || []).find(p => String(p.id_parada) === String(paradaAutoselect));
-        const kmTramo = objParadaSel ? parseFloat(objParadaSel.km_tramo || 0).toFixed(1) : null;
-        const kmAcum = objParadaSel ? parseFloat(objParadaSel.km_acumulado || objParadaSel.km_tramo || 0).toFixed(1) : null;
-        const isCompartida = paradaAutoselect && (paradasCountMap[paradaAutoselect] || 0) > 1;
-
-        let opts = '<option value="">-- Sin parada --</option>';
-        if (g_paradasEnvio && g_paradasEnvio.length > 0) {
-            g_paradasEnvio.forEach(p => {
-                const sel = (String(p.id_parada) === String(paradaAutoselect)) ? 'selected' : '';
-                const matchBadge = (!paradaActual && String(p.id_parada) === String(paradaAutoselect)) ? ' 🎯' : '';
-                const kmTxt = p.km_tramo ? ` (+${parseFloat(p.km_tramo).toFixed(1)}km)` : '';
-                opts += `<option value="${p.id_parada}" ${sel}>Parada ${p.orden}: ${p.destino_nombre || p.destino_nombre_libre || 'Sin Nombre'}${kmTxt}${matchBadge}</option>`;
+            // Generar options para Bajada
+            let optsBajada = '';
+            g_nodosEnvio.forEach((n, i) => {
+                const tipo = String(n.tipo_nodo || '').toLowerCase().trim();
+                const isEntrega = (tipo === 'entrega' || i === g_nodosEnvio.length - 1);
+                if (i > ordSub && isEntrega) {
+                    const sel = (String(n.id_nodo) === String(idBajadaActual)) ? 'selected' : '';
+                    const isFinal = (i === g_nodosEnvio.length - 1);
+                    const numPunto = parseInt(n.orden || 0) + 1;
+                    const prefix = isFinal ? '🏁 Fin: ' : `🔴 Pto ${numPunto} (Entrega): `;
+                    optsBajada += `<option value="${n.id_nodo}" ${sel}>${prefix}${n.nombre || 'Nodo ' + n.orden}</option>`;
+                }
             });
-        }
 
-        li.innerHTML = `
-        <div class="d-flex align-items-center">
-            <div class="flex-shrink-0 me-2">
-                <i class="ri-draggable fs-18 text-muted"></i>
-            </div>
-            <div class="flex-grow-1">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <h6 class="mb-0 fs-13 text-success fw-bold">VIN: ${vin}</h6>
-                    <div>
-                        ${badgeSecuencia}
-                        <span class="badge bg-soft-secondary text-dark fs-11">${modelo}</span>
+            // Calcular KM y tramos a bordo
+            let kmVin = 0;
+            let tramosVin = 0;
+            g_nodosEnvio.forEach(n => {
+                const o = parseInt(n.orden || 0);
+                if (o > ordSub && o <= ordBaj) {
+                    kmVin += parseFloat(n.km_tramo || 0);
+                    tramosVin++;
+                }
+            });
+
+            li.innerHTML = `
+            <div class="d-flex align-items-center">
+                <div class="flex-shrink-0 me-2">
+                    <i class="ri-draggable fs-18 text-muted"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h6 class="mb-0 fs-13 text-success fw-bold">VIN: ${vin}</h6>
+                        <div>
+                            ${badgeSecuencia}
+                            <span class="badge bg-soft-secondary text-dark fs-11">${modelo}</span>
+                        </div>
+                    </div>
+                    <p class="text-dark mb-1 fs-11 fw-semibold">
+                        <i class="ri-map-pin-line text-danger me-1"></i>${origen} 
+                        <i class="ri-arrow-right-line mx-1 text-muted"></i> 
+                        <i class="ri-map-pin-2-fill text-success me-1"></i>${destino}
+                    </p>
+                    <div class="mt-1 p-2 bg-light rounded border">
+                        <div class="row g-1 align-items-center">
+                            <div class="col-6">
+                                <label class="fs-10 text-success fw-bold mb-0 d-block"><i class="ri-login-box-line me-1"></i>Subida (Carga)</label>
+                                <select class="form-select form-select-sm py-0 nodo-subida-select" 
+                                        style="font-size:11px;"
+                                        data-vin-key="${vin}"
+                                        onchange="li_setNodoSubida(this)">
+                                    ${optsSubida}
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="fs-10 text-danger fw-bold mb-0 d-block"><i class="ri-logout-box-line me-1"></i>Bajada (Entrega)</label>
+                                <select class="form-select form-select-sm py-0 nodo-bajada-select" 
+                                        style="font-size:11px;"
+                                        data-vin-key="${vin}"
+                                        onchange="li_setNodoBajada(this)">
+                                    ${optsBajada}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <span class="badge bg-soft-info text-info border border-info fs-10 fw-bold">
+                                <i class="ri-route-line me-1"></i>${kmVin.toFixed(1)} km (${tramosVin} tramo${tramosVin > 1 ? 's' : ''} a bordo)
+                            </span>
+                            <small class="text-muted fs-10">N/S: ${numSerie || 'N/A'}</small>
+                        </div>
                     </div>
                 </div>
-                <p class="text-dark mb-1 fs-11 fw-semibold">
-                    <i class="ri-map-pin-line text-danger me-1"></i>${origen} 
-                    <i class="ri-arrow-right-line mx-1 text-muted"></i> 
-                    <i class="ri-map-pin-2-fill text-success me-1"></i>${destino}
-                </p>
-                ${ g_paradasEnvio.length > 0 ? `
-                <div class="mt-1 d-flex align-items-center gap-2 flex-wrap">
-                    <i class="ri-route-line text-primary fs-12"></i>
-                    <select class="form-select form-select-sm py-0 parada-vin-select" 
-                            style="max-width:230px; font-size:11px;"
-                            data-vin-key="${vin}"
-                            onchange="li_setParada(this)">
-                        ${opts}
-                    </select>
-                    <span class="badge bg-soft-info text-info border border-info fs-11 fw-bold vin-km-tramo-badge" style="${kmTramo ? '' : 'display:none;'}">
-                        <i class="ri-map-pin-distance-line me-1"></i>+${kmTramo || 0} km (Total: ${kmAcum || 0} km)
-                    </span>
-                    ${isCompartida ? '<span class="badge bg-soft-secondary text-dark fs-10" title="Misma parada que otra unidad en este vehículo (sin duplicar kms de viaje)"><i class="ri-user-shared-line text-primary me-1"></i>Parada Compartida</span>' : ''}
-                    ${paradaAutoselect && !paradaActual ? '<small class="text-muted fs-10"><i class="ri-magic-line text-info me-1"></i>Auto desde pedido</small>' : ''}
-                </div>` : ''}
-                <small class="text-muted fs-11">N/S: ${numSerie || 'N/A'}</small>
-            </div>
-        </div>`;
+            </div>`;
+        } else {
+            // Modo retrocompatible con g_paradasEnvio simple
+            const paradaActual = li.getAttribute('data-id-parada') || '';
+            let paradaAutoselect = paradaActual;
+            if (!paradaAutoselect && g_paradasEnvio.length > 0 && destino) {
+                const destinoLower = destino.toLowerCase().trim();
+                let bestMatch = null;
+                let bestScore = 0;
+                g_paradasEnvio.forEach(p => {
+                    const nombreParada = (p.destino_nombre || p.destino_nombre_libre || '').toLowerCase().trim();
+                    if (!nombreParada) return;
+                    let score = 0;
+                    if (nombreParada === destinoLower) score = 100;
+                    else if (nombreParada.includes(destinoLower) || destinoLower.includes(nombreParada)) score = 60;
+                    if (score > bestScore) { bestScore = score; bestMatch = p; }
+                });
+                if (bestMatch && bestScore >= 20) paradaAutoselect = String(bestMatch.id_parada);
+            }
 
-        if (paradaAutoselect) li.setAttribute('data-id-parada', paradaAutoselect);
-        const sel = li.querySelector('.parada-vin-select');
-        if (sel) sel.addEventListener('change', () => {
-            li.setAttribute('data-id-parada', sel.value);
-        });
+            const objParadaSel = (g_paradasEnvio || []).find(p => String(p.id_parada) === String(paradaAutoselect));
+            const kmTramo = objParadaSel ? parseFloat(objParadaSel.km_tramo || 0).toFixed(1) : null;
+            const kmAcum = objParadaSel ? parseFloat(objParadaSel.km_acumulado || objParadaSel.km_tramo || 0).toFixed(1) : null;
+
+            let opts = '<option value="">-- Sin parada --</option>';
+            if (g_paradasEnvio && g_paradasEnvio.length > 0) {
+                g_paradasEnvio.forEach(p => {
+                    const sel = (String(p.id_parada) === String(paradaAutoselect)) ? 'selected' : '';
+                    const kmTxt = p.km_tramo ? ` (+${parseFloat(p.km_tramo).toFixed(1)}km)` : '';
+                    opts += `<option value="${p.id_parada}" ${sel}>Parada ${p.orden}: ${p.destino_nombre || p.destino_nombre_libre || 'Sin Nombre'}${kmTxt}</option>`;
+                });
+            }
+
+            li.innerHTML = `
+            <div class="d-flex align-items-center">
+                <div class="flex-shrink-0 me-2">
+                    <i class="ri-draggable fs-18 text-muted"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h6 class="mb-0 fs-13 text-success fw-bold">VIN: ${vin}</h6>
+                        <div>
+                            ${badgeSecuencia}
+                            <span class="badge bg-soft-secondary text-dark fs-11">${modelo}</span>
+                        </div>
+                    </div>
+                    <p class="text-dark mb-1 fs-11 fw-semibold">
+                        <i class="ri-map-pin-line text-danger me-1"></i>${origen} 
+                        <i class="ri-arrow-right-line mx-1 text-muted"></i> 
+                        <i class="ri-map-pin-2-fill text-success me-1"></i>${destino}
+                    </p>
+                    ${ g_paradasEnvio.length > 0 ? `
+                    <div class="mt-1 d-flex align-items-center gap-2 flex-wrap">
+                        <i class="ri-route-line text-primary fs-12"></i>
+                        <select class="form-select form-select-sm py-0 parada-vin-select" 
+                                style="max-width:230px; font-size:11px;"
+                                data-vin-key="${vin}"
+                                onchange="li_setParada(this)">
+                            ${opts}
+                        </select>
+                        <span class="badge bg-soft-info text-info border border-info fs-11 fw-bold vin-km-tramo-badge" style="${kmTramo ? '' : 'display:none;'}">
+                            <i class="ri-map-pin-distance-line me-1"></i>+${kmTramo || 0} km (Total: ${kmAcum || 0} km)
+                        </span>
+                    </div>` : ''}
+                    <small class="text-muted fs-11">N/S: ${numSerie || 'N/A'}</small>
+                </div>
+            </div>`;
+
+            if (paradaAutoselect) li.setAttribute('data-id-parada', paradaAutoselect);
+            const sel = li.querySelector('.parada-vin-select');
+            if (sel) sel.addEventListener('change', () => {
+                li.setAttribute('data-id-parada', sel.value);
+            });
+        }
     });
 
-    // Calcular la ruta real del vehículo (suma de tramos de las paradas recorridas en orden hasta el máximo destino)
+    // Calcular ocupación y recorrido del vehículo por tramo
     if (container) {
         const badge = container.querySelector('.badge');
         if (badge) {
-            let maxOrdenVisitado = 0;
-            let paradasUnicasSet = new Set();
-            items.forEach(li => {
-                const pId = li.getAttribute('data-id-parada');
-                const pObj = (g_paradasEnvio || []).find(p => String(p.id_parada) === String(pId));
-                if (pObj) {
-                    paradasUnicasSet.add(pObj.id_parada);
-                    const ord = parseInt(pObj.orden || 0);
-                    if (ord > maxOrdenVisitado) maxOrdenVisitado = ord;
-                }
-            });
+            if (tieneNodos && g_nodosEnvio.length > 1) {
+                let maxCargaSimultanea = 0;
+                let tramoSobrecapacidad = null;
+                let kmTotalVehiculo = 0;
 
-            // Sumar los tramos de la ruta continuada hasta la parada de mayor orden visitada por este vehículo
-            let kmRecorridoRealVehiculo = 0;
-            (g_paradasEnvio || []).forEach(p => {
-                if (parseInt(p.orden || 0) <= maxOrdenVisitado) {
-                    kmRecorridoRealVehiculo += parseFloat(p.km_tramo || 0);
-                }
-            });
+                for (let i = 1; i < g_nodosEnvio.length; i++) {
+                    const nodoAnt = g_nodosEnvio[i - 1];
+                    const nodoAct = g_nodosEnvio[i];
+                    const ordAnt = parseInt(nodoAnt.orden || 0);
+                    const ordAct = parseInt(nodoAct.orden || 0);
 
-            const nParadasUnicas = paradasUnicasSet.size;
-            const kmTxt = kmRecorridoRealVehiculo > 0 
-                ? ` | 🛣️ ${kmRecorridoRealVehiculo.toFixed(1)} km (${nParadasUnicas} parada${nParadasUnicas > 1 ? 's' : ''} única${nParadasUnicas > 1 ? 's' : ''})` 
-                : '';
-            badge.innerHTML = items.length + ' / ' + cap + ' VINs' + kmTxt;
+                    let vinsEnEsteTramo = 0;
+                    items.forEach(li => {
+                        const sId = li.getAttribute('data-id-nodo-subida');
+                        const bId = li.getAttribute('data-id-nodo-bajada');
+                        const oSub = g_nodosEnvio.find(n => String(n.id_nodo) === String(sId));
+                        const oBaj = g_nodosEnvio.find(n => String(n.id_nodo) === String(bId));
+                        const ordS = oSub ? parseInt(oSub.orden || 0) : 0;
+                        const ordB = oBaj ? parseInt(oBaj.orden || 0) : (g_nodosEnvio.length - 1);
+                        if (ordS <= ordAnt && ordB >= ordAct) {
+                            vinsEnEsteTramo++;
+                        }
+                    });
+
+                    if (vinsEnEsteTramo > 0) {
+                        kmTotalVehiculo += parseFloat(nodoAct.km_tramo || 0);
+                    }
+
+                    if (vinsEnEsteTramo > maxCargaSimultanea) {
+                        maxCargaSimultanea = vinsEnEsteTramo;
+                    }
+                    if (vinsEnEsteTramo > cap && !tramoSobrecapacidad) {
+                        tramoSobrecapacidad = `Tramo ${ordAnt}➔${ordAct}`;
+                    }
+                }
+
+                if (tramoSobrecapacidad) {
+                    badge.className = 'badge bg-danger rounded-pill me-2';
+                    badge.innerHTML = `<i class="ri-alert-line me-1"></i> Carga máx: ${maxCargaSimultanea} / ${cap} (Excede en ${tramoSobrecapacidad}) | ${kmTotalVehiculo.toFixed(1)} km`;
+                } else {
+                    badge.className = 'badge bg-primary rounded-pill me-2';
+                    const kmTxt = kmTotalVehiculo > 0 ? ` | 🛣️ ${kmTotalVehiculo.toFixed(1)} km` : '';
+                    badge.innerHTML = `${items.length} VINs asignados (Carga máx: ${maxCargaSimultanea} / ${cap})${kmTxt}`;
+                }
+            } else {
+                badge.innerHTML = items.length + ' / ' + cap + ' VINs';
+            }
         }
     }
 }
 
-function limpiarBadgesPool(li) {
+/** Cuando el usuario cambia el nodo de subida de un VIN */
+function li_setNodoSubida(selectEl) {
+    const li = selectEl.closest('li');
     if (!li) return;
-    li.classList.remove('border-success');
-    li.classList.add('border-primary');
+    const val = selectEl.value;
+    li.setAttribute('data-id-nodo-subida', val);
 
-    const vin = li.getAttribute('data-vin') || li.querySelector('h6')?.innerText.replace('VIN:', '').trim() || '';
-    const numSerie = li.getAttribute('data-num-serie') || '';
-    const modelo = li.getAttribute('data-modelo') || 'Unidad';
-    const origen = li.getAttribute('data-origen') || 'Origen';
-    const destino = li.getAttribute('data-destino') || 'Destino';
+    const objSub = (g_nodosEnvio || []).find(n => String(n.id_nodo) === String(val));
+    const objBaj = (g_nodosEnvio || []).find(n => String(n.id_nodo) === String(li.getAttribute('data-id-nodo-bajada')));
+    const ordSub = objSub ? parseInt(objSub.orden || 0) : 0;
+    const ordBaj = objBaj ? parseInt(objBaj.orden || 0) : 0;
 
-    li.innerHTML = `
-    <div class="d-flex align-items-center">
-        <div class="flex-shrink-0 me-2">
-            <i class="ri-draggable fs-18 text-muted"></i>
-        </div>
-        <div class="flex-grow-1">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-                <h6 class="mb-0 fs-13 text-primary fw-bold">${vin}</h6>
-                <span class="badge bg-soft-info text-info fs-11">${modelo}</span>
-            </div>
-            <p class="text-dark mb-0 fs-11 fw-semibold">
-                <i class="ri-map-pin-line text-danger me-1"></i>${origen} 
-                <i class="ri-arrow-right-line mx-1 text-muted"></i> 
-                <i class="ri-map-pin-2-fill text-success me-1"></i>${destino}
-            </p>
-            <small class="text-muted fs-11">N/S: ${numSerie || 'N/A'}</small>
-        </div>
-    </div>`;
+    if (ordSub >= ordBaj) {
+        const candidateBaj = (g_nodosEnvio || []).find(n => parseInt(n.orden || 0) > ordSub);
+        if (candidateBaj) {
+            li.setAttribute('data-id-nodo-bajada', candidateBaj.id_nodo);
+            li.setAttribute('data-id-parada', candidateBaj.id_nodo);
+        }
+    }
+
+    const ul = li.closest('ul');
+    if (ul) {
+        actualizarConteoYSecuencia(ul);
+        agruparYOrdenarParadas(ul);
+        guardarAcomodoAuto();
+    }
 }
 
-/** Cuando el usuario cambia la parada de un VIN desde el select dentro del acomodo */
+/** Cuando el usuario cambia el nodo de bajada de un VIN */
+function li_setNodoBajada(selectEl) {
+    const li = selectEl.closest('li');
+    if (!li) return;
+    const val = selectEl.value;
+    li.setAttribute('data-id-nodo-bajada', val);
+    li.setAttribute('data-id-parada', val);
+
+    const ul = li.closest('ul');
+    if (ul) {
+        actualizarConteoYSecuencia(ul);
+        agruparYOrdenarParadas(ul);
+        guardarAcomodoAuto();
+    }
+}
+
+/** Retrocompatibilidad: Cuando el usuario cambia la parada de un VIN desde el select de parada */
 function li_setParada(selectEl) {
     const li = selectEl.closest('li');
     if (!li) return;
@@ -458,33 +641,34 @@ function li_setParada(selectEl) {
     }
 }
 
+/** Agrupa y ordena VINs por LIFO (los que bajan más lejos van al fondo) */
 function agruparYOrdenarParadas(ul) {
     if (!ul || ul.id === 'vins-disponibles') return;
     const items = Array.from(ul.querySelectorAll('li'));
     if (items.length <= 1) return;
 
-    // Obtener orden de cada parada asignada
     let listOrder = items.map(li => {
-        let pId = li.getAttribute('data-id-parada');
-        if (!pId) {
-            let sel = li.querySelector('.parada-vin-select');
-            if (sel && sel.value) pId = sel.value;
+        let bId = li.getAttribute('data-id-nodo-bajada') || li.getAttribute('data-id-parada');
+        let sId = li.getAttribute('data-id-nodo-subida');
+
+        let objBaj = (g_nodosEnvio || []).find(n => String(n.id_nodo) === String(bId));
+        if (!objBaj && g_paradasEnvio) {
+            objBaj = g_paradasEnvio.find(p => String(p.id_parada) === String(bId));
         }
-        let pObj = (g_paradasEnvio || []).find(p => String(p.id_parada) === String(pId));
+        let objSub = (g_nodosEnvio || []).find(n => String(n.id_nodo) === String(sId));
+
         return {
             li: li,
-            orden: pObj ? parseInt(pObj.orden || 0) : 0,
-            idParada: pId || ''
+            ordenBajada: objBaj ? parseInt(objBaj.orden || 0) : 99,
+            ordenSubida: objSub ? parseInt(objSub.orden || 0) : 0
         };
     });
 
-    // Ordenar de Mayor Parada a Menor Parada (ej: Parada 3 -> Parada 2 -> Parada 1)
-    // Para que la última parada se cargue primero (1º EN CARGAR) y todas las paradas iguales queden juntas
     listOrder.sort((a, b) => {
-        if (b.orden !== a.orden) {
-            return b.orden - a.orden;
+        if (b.ordenBajada !== a.ordenBajada) {
+            return b.ordenBajada - a.ordenBajada;
         }
-        return 0;
+        return a.ordenSubida - b.ordenSubida;
     });
 
     let cambio = false;
@@ -497,17 +681,6 @@ function agruparYOrdenarParadas(ul) {
     if (cambio) {
         listOrder.forEach(item => ul.appendChild(item.li));
         actualizarConteoYSecuencia(ul);
-
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'info',
-                title: 'Unidades agrupadas por Parada automáticamente',
-                showConfirmButton: false,
-                timer: 2500
-            });
-        }
     }
 }
 
@@ -701,7 +874,9 @@ function inyectarContenedorVehiculo(vehiculo, vinsIniciales = []) {
             data-modelo="${mod}"
             data-origen="${orig}"
             data-destino="${dest}"
-            data-id-parada="${v.id_parada || ''}">
+            data-id-parada="${v.id_parada || v.id_nodo_bajada || ''}"
+            data-id-nodo-subida="${v.id_nodo_subida || ''}"
+            data-id-nodo-bajada="${v.id_nodo_bajada || v.id_parada || ''}">
             <div class="d-flex align-items-center">
                 <div class="flex-shrink-0 me-2">
                     <i class="ri-draggable fs-18 text-muted"></i>
@@ -790,15 +965,32 @@ function guardarAcomodoAuto() {
         let posicion = 1;
         items.forEach(li => {
             let idUnidad = li.getAttribute('data-id-unidad');
-            let idParada = li.getAttribute('data-id-parada') || null;
-            const sel = li.querySelector('.parada-vin-select');
-            if (sel && sel.value) idParada = sel.value;
+            let idSubida = li.getAttribute('data-id-nodo-subida') || null;
+            let idBajada = li.getAttribute('data-id-nodo-bajada') || null;
+            let idParada = li.getAttribute('data-id-parada') || idBajada;
+
+            const selSub = li.querySelector('.nodo-subida-select');
+            if (selSub && selSub.value) idSubida = selSub.value;
+
+            const selBaj = li.querySelector('.nodo-bajada-select');
+            if (selBaj && selBaj.value) {
+                idBajada = selBaj.value;
+                idParada = selBaj.value;
+            }
+
+            const selLegacy = li.querySelector('.parada-vin-select');
+            if (selLegacy && selLegacy.value) {
+                idParada = selLegacy.value;
+                if (!idBajada) idBajada = selLegacy.value;
+            }
 
             if (idUnidad) {
                 if (!asignaciones.some(a => a.id_unidad == idUnidad)) {
                     asignaciones.push({
                         id_unidad: idUnidad,
                         id_parada: idParada,
+                        id_nodo_subida: idSubida,
+                        id_nodo_bajada: idBajada,
                         id_madrina: idMadrina,
                         id_chofer: idChofer,
                         posicion_acomodo: posicion
@@ -841,7 +1033,26 @@ function guardarAcomodoAuto() {
     }
 }
 
-function guardarAcomodo() {
+function guardarAcomodo(finalizar = false) {
+    if (finalizar) {
+        Swal.fire({
+            title: "¿Confirmar Envío?",
+            text: "Al finalizar, este envío pasará a estar confirmado y disponible para las planeaciones. ¿Desea continuar?",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Sí, finalizar",
+            cancelButtonText: "Cancelar"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                procesarAcomodo(true);
+            }
+        });
+    } else {
+        procesarAcomodo(false);
+    }
+}
+
+function procesarAcomodo(finalizar) {
     const idEnvio = document.getElementById('id_envio') ? document.getElementById('id_envio').value : 0;
     if (!idEnvio) {
         Swal.fire("Error", "No se encontró el ID del envío.", "error");
@@ -859,10 +1070,24 @@ function guardarAcomodo() {
         let posicion = 1;
         items.forEach(li => {
             let idUnidad = li.getAttribute('data-id-unidad');
-            let idParada = li.getAttribute('data-id-parada') || null;
-            // Si no viene del atributo, intentar leerlo del select
-            const sel = li.querySelector('.parada-vin-select');
-            if (sel && sel.value) idParada = sel.value;
+            let idSubida = li.getAttribute('data-id-nodo-subida') || null;
+            let idBajada = li.getAttribute('data-id-nodo-bajada') || null;
+            let idParada = li.getAttribute('data-id-parada') || idBajada;
+
+            const selSub = li.querySelector('.nodo-subida-select');
+            if (selSub && selSub.value) idSubida = selSub.value;
+
+            const selBaj = li.querySelector('.nodo-bajada-select');
+            if (selBaj && selBaj.value) {
+                idBajada = selBaj.value;
+                idParada = selBaj.value;
+            }
+
+            const selLegacy = li.querySelector('.parada-vin-select');
+            if (selLegacy && selLegacy.value) {
+                idParada = selLegacy.value;
+                if (!idBajada) idBajada = selLegacy.value;
+            }
 
             if (idUnidad) {
                 if (asignaciones.some(a => a.id_unidad == idUnidad)) {
@@ -871,6 +1096,8 @@ function guardarAcomodo() {
                 asignaciones.push({
                     id_unidad: idUnidad,
                     id_parada: idParada,
+                    id_nodo_subida: idSubida,
+                    id_nodo_bajada: idBajada,
                     id_madrina: idMadrina,
                     id_chofer: idChofer,
                     posicion_acomodo: posicion
@@ -885,6 +1112,55 @@ function guardarAcomodo() {
         return;
     }
 
+    // Validar si algún vehículo excede su capacidad física en algún tramo
+    let haySobrecapacidad = false;
+    let mensajeSobrecapacidad = '';
+    vehiculos.forEach(v => {
+        const cap = parseInt(v.getAttribute('data-capacidad') || 99, 10);
+        const items = v.querySelectorAll('li');
+        if (g_nodosEnvio && g_nodosEnvio.length > 1) {
+            for (let i = 1; i < g_nodosEnvio.length; i++) {
+                const ordAnt = parseInt(g_nodosEnvio[i - 1].orden || 0);
+                const ordAct = parseInt(g_nodosEnvio[i].orden || 0);
+                let count = 0;
+                items.forEach(li => {
+                    const sId = li.getAttribute('data-id-nodo-subida');
+                    const bId = li.getAttribute('data-id-nodo-bajada');
+                    const oSub = g_nodosEnvio.find(n => String(n.id_nodo) === String(sId));
+                    const oBaj = g_nodosEnvio.find(n => String(n.id_nodo) === String(bId));
+                    const ordS = oSub ? parseInt(oSub.orden || 0) : 0;
+                    const ordB = oBaj ? parseInt(oBaj.orden || 0) : (g_nodosEnvio.length - 1);
+                    if (ordS <= ordAnt && ordB >= ordAct) count++;
+                });
+                if (count > cap) {
+                    haySobrecapacidad = true;
+                    mensajeSobrecapacidad = `El vehículo excede su capacidad (${cap} unidades) en el Tramo N${ordAnt}➔N${ordAct} (${count} unidades a bordo).`;
+                    break;
+                }
+            }
+        }
+    });
+
+    if (haySobrecapacidad) {
+        Swal.fire({
+            title: "Capacidad Excedida",
+            text: mensajeSobrecapacidad + " ¿Desea continuar de todos modos o ajustar las unidades?",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Continuar de todos modos",
+            cancelButtonText: "Ajustar acomodo"
+        }).then(result => {
+            if (result.isConfirmed) {
+                enviarAcomodoAlServidor(idEnvio, asignaciones, finalizar);
+            }
+        });
+        return;
+    }
+
+    enviarAcomodoAlServidor(idEnvio, asignaciones, finalizar);
+}
+
+function enviarAcomodoAlServidor(idEnvio, asignaciones, finalizar = false) {
     Swal.fire({
         title: 'Guardando Acomodo...',
         text: 'Por favor espere mientras se asignan los VINs y se recalculan los costos del envío.',
@@ -901,7 +1177,8 @@ function guardarAcomodo() {
     request.setRequestHeader("Content-Type", "application/json");
     request.send(JSON.stringify({
         id_envio: idEnvio,
-        asignaciones: asignaciones
+        asignaciones: asignaciones,
+        finalizar: finalizar
     }));
 
     request.onreadystatechange = function () {

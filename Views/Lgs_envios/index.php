@@ -216,8 +216,7 @@
                     </div>
                 </div>
 
-                <!-- 3. FORMULARIO ASIMÉTRICO (2 COLUMNAS) -->
-                <form id="formEnvio" name="formEnvio" autocomplete="off">
+                <form id="formEnvio" name="formEnvio" autocomplete="off" onsubmit="event.preventDefault(); saveEnvio();">
                     <input type="hidden" id="id_envio" name="id_envio" value="">
 
                     <div class="row">
@@ -260,19 +259,6 @@
                                         </div>
 
                                         <div class="col-md-6">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Origen <span class="text-danger">*</span></label>
-                                            <select class="form-select" id="id_origen" name="id_origen" onchange="recalcularRutaGoogleMaps()" required>
-                                                <option value="">Seleccione Origen...</option>
-                                                <?php foreach ($data['catalogos']['origenes'] ?? [] as $o): ?>
-                                                    <option value="<?= $o['id']; ?>" data-direccion="<?= htmlspecialchars($o['direccion'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-                                                        <?= htmlspecialchars($o['nombre'], ENT_QUOTES, 'UTF-8'); ?>
-                                                        <?= !empty($o['direccion']) ? ' ('.htmlspecialchars($o['direccion'], ENT_QUOTES, 'UTF-8').')' : ''; ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-
-                                        <div class="col-md-6">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1"><i class="ri-calendar-event-line me-1 text-primary"></i>Fecha/Hora Programada de Salida <span class="text-danger">*</span></label>
                                             <input type="datetime-local" class="form-control" id="fecha_tentativa_envio" name="fecha_tentativa_envio" required>
                                         </div>
@@ -282,71 +268,62 @@
                                             <input type="datetime-local" class="form-control" id="fecha_tentativa_llegada" name="fecha_tentativa_llegada">
                                         </div>
 
-                                        <!-- ── SECCIÓN MULTI-DESTINO / PARADAS ── -->
+                                        <!-- ── SECCIÓN MULTI-ORIGEN Y MULTI-DESTINO: ITINERARIO DE LA RUTA ── -->
                                         <div class="col-12">
                                             <hr class="my-3">
                                             <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                                                 <div>
-                                                    <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-0">
+                                                    <label class="form-label text-uppercase fs-12 fw-bold text-dark mb-0">
                                                         <i class="ri-route-line me-1 text-primary"></i>
-                                                        Paradas de la Ruta <span class="text-danger">*</span>
+                                                        Itinerario del Recorrido (Multi-Origen y Multi-Destino) <span class="text-danger">*</span>
                                                     </label>
-                                                    <small class="text-muted d-block fs-11">El camión recorre las paradas en el orden indicado. Las distancias se cargan automáticamente desde el <strong>Tarifario de Rutas</strong>.</small>
+                                                    <small class="text-muted d-block fs-11">
+                                                        Construye la secuencia física del viaje. Cada punto puede ser una <strong>Planta (Carga)</strong>, un <strong>Almacén</strong> o un <strong>Distribuidor (Entrega)</strong>.
+                                                    </small>
                                                 </div>
                                                 <div class="d-flex gap-2">
-                                                    <button type="button" class="btn btn-sm btn-soft-primary shadow-sm" onclick="recalcularRutaGoogleMaps()" title="Consultar distancias en Tarifario">
-                                                        <i class="ri-money-dollar-circle-line me-1"></i> ⚡ Cargar desde Tarifario
+                                                    <button type="button" class="btn btn-sm btn-soft-primary shadow-sm" onclick="verificarYCalcularRuta(null, true)" title="Consultar distancias en memoria">
+                                                        <i class="ri-refresh-line me-1"></i> ⚡ Verificar Distancias
                                                     </button>
-                                                    <button type="button" class="btn btn-sm btn-primary shadow-sm" onclick="agregarParadaForm()">
-                                                        <i class="ri-add-line me-1"></i> Agregar Parada
+                                                    <button type="button" class="btn btn-sm btn-success shadow-sm" onclick="agregarNodoRuta(null, true)">
+                                                        <i class="ri-add-line me-1"></i> Añadir Carga
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-primary shadow-sm" onclick="agregarNodoRuta(null, false)">
+                                                        <i class="ri-add-line me-1"></i> Añadir Entrega
                                                     </button>
                                                 </div>
                                             </div>
 
                                             <!-- Badge Resumen Distancia Total -->
                                             <div id="badge-distancia-total-container" class="alert alert-soft-primary d-flex align-items-center justify-content-between p-2 mb-3 rounded-3" style="display:none !important;">
-                                                <span class="fs-12 fw-medium"><i class="ri-road-map-line text-primary me-1"></i>Distancia Total (Tarifario):</span>
+                                                <span class="fs-12 fw-medium"><i class="ri-road-map-line text-primary me-1"></i>Distancia Total del Recorrido:</span>
                                                 <span id="badge-km-total-val" class="badge bg-primary fs-13">0 km</span>
                                             </div>
 
-                                            <!-- Contenedor dinámico de paradas -->
-                                            <div id="contenedor-paradas" class="d-flex flex-column gap-2">
-                                                <!-- Las paradas se agregan aquí dinámicamente -->
+                                            <!-- Contenedor dinámico de nodos del recorrido -->
+                                            <div id="contenedor-nodos-ruta" class="d-flex flex-column gap-2">
+                                                <!-- Los nodos se agregan aquí dinámicamente -->
                                             </div>
 
-                                            <div id="msg-sin-paradas" class="text-center py-3 border border-dashed rounded-3 text-muted" style="border-style: dashed !important;">
+                                            <div id="msg-sin-nodos" class="text-center py-3 border border-dashed rounded-3 text-muted" style="border-style: dashed !important; display:none;">
                                                 <i class="ri-map-pin-add-line fs-24 d-block mb-1 text-primary opacity-50"></i>
-                                                <span class="fs-12">Sin paradas. Haz clic en <strong>"Agregar Parada"</strong> para definir la ruta.</span>
+                                                <span class="fs-12">Sin puntos en el recorrido. Haz clic en <strong>"Agregar Punto / Nodo"</strong> para comenzar.</span>
                                             </div>
 
-                                            <!-- Campo oculto donde se guarda el JSON de paradas -->
+                                            <!-- Campos ocultos de sincronización -->
+                                            <input type="hidden" id="nodos_json" name="nodos" value="[]">
                                             <input type="hidden" id="paradas_json" name="paradas" value="[]">
+                                            <input type="hidden" id="id_origen" name="id_origen" value="">
+                                            <input type="hidden" id="id_destino" name="id_destino" value="">
                                         </div>
 
-                                        <!-- Destinos disponibles como JSON para el JS -->
-                                        <script id="catalogoDestinos" type="application/json">
-                                            <?php
-                                            $destinosJson = [];
-                                            foreach ($data['catalogos']['destinos'] ?? [] as $d) {
-                                                $destinosJson[] = [
-                                                    'id'        => (int)$d['id'],
-                                                    'nombre'    => htmlspecialchars($d['nombre'], ENT_QUOTES, 'UTF-8'),
-                                                    'direccion' => htmlspecialchars($d['direccion'] ?? '', ENT_QUOTES, 'UTF-8'),
-                                                    'lat'       => floatval($d['lat'] ?? 0),
-                                                    'lng'       => floatval($d['lng'] ?? 0)
-                                                ];
-                                            }
-                                            echo json_encode($destinosJson, JSON_UNESCAPED_UNICODE);
-                                            ?>
+                                        <!-- Catálogos completos para el JS -->
+                                        <script id="catalogoUbicaciones" type="application/json">
+                                            <?= json_encode($data['catalogos']['ubicaciones'] ?? [], JSON_UNESCAPED_UNICODE); ?>
                                         </script>
-
-                                        <div class="col-md-12">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Fecha Tentativa Salida</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text border-end-0 text-muted"><i class="ri-calendar-event-line"></i></span>
-                                                <input type="date" class="form-control border-start-0 ps-0" id="fecha_tentativa_envio" name="fecha_tentativa_envio">
-                                            </div>
-                                        </div>
+                                        <script id="catalogoDestinos" type="application/json">
+                                            <?= json_encode($data['catalogos']['destinos'] ?? [], JSON_UNESCAPED_UNICODE); ?>
+                                        </script>
 
                                         <div class="col-12">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Observaciones</label>
@@ -392,13 +369,60 @@
                                             <i class="ri-route-line text-white fs-24 opacity-50"></i>
                                         </div>
                                     </div>
-                                    <div class="text-white-50 fs-10 mt-1">Podrás asignar VINs en la siguiente etapa</div>
+                                    <div class="text-white-50 fs-10 mt-2">
+                                        <i class="ri-information-line me-1"></i> Las subidas y bajadas de VINs por tramo se configuran en la siguiente pantalla.
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </form>
             </section>
+
+            <!-- ── MODAL CAPTURA DISTANCIAS FALTANTES (MEMORIA PROGRESIVA) ── -->
+            <div class="modal fade" id="modalDistanciasFaltantes" tabindex="-1" aria-labelledby="modalDistanciasLabel" aria-hidden="true" data-bs-backdrop="static">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+                        <div class="modal-header bg-soft-warning border-bottom border-warning py-3">
+                            <h5 class="modal-title fw-bold text-dark fs-16" id="modalDistanciasLabel">
+                                <i class="ri-route-line text-warning me-2 fs-18"></i> Distancias de Tramos Desconocidas
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div class="alert alert-soft-info d-flex align-items-center mb-3 rounded-3">
+                                <i class="ri-lightbulb-line fs-22 me-3 text-info flex-shrink-0"></i>
+                                <div class="fs-13">
+                                    Se detectaron tramos nuevos en la ruta sin distancia en el sistema. 
+                                    <strong>Ingresa los kilómetros una sola vez:</strong> el sistema los guardará en su memoria progresiva para utilizarlos en este y futuros envíos.
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr class="fs-12 text-uppercase text-muted">
+                                            <th style="width: 50px;">Tramo</th>
+                                            <th>Punto de Origen</th>
+                                            <th style="width: 30px;" class="text-center text-muted">➔</th>
+                                            <th>Punto de Destino</th>
+                                            <th style="width: 170px;">Distancia (KM) <span class="text-danger">*</span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbodyDistanciasFaltantes">
+                                        <!-- Se llena dinámicamente -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light py-2">
+                            <button type="button" class="btn btn-sm btn-light border px-3" data-bs-dismiss="modal">Cerrar</button>
+                            <button type="button" class="btn btn-sm btn-primary px-4 fw-semibold" id="btnGuardarDistanciasModal" onclick="guardarDistanciasFaltantesModal()">
+                                <i class="ri-save-line me-1"></i> Guardar en Memoria y Continuar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
         </div>
     </div>
