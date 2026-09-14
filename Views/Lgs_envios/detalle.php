@@ -86,6 +86,10 @@
                     </div>
                 </div>
             </div>
+
+            <!-- CONTENEDOR DE LA INFOGRAFÍA DE FACTORAJE Y TRAMOS -->
+            <div id="panel-infografia-ruta" class="mb-4"></div>
+
             <input type="hidden" id="id_envio" value="<?= $data['id_envio'] ?>">
 
             <div class="row">

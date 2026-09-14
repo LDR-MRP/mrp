@@ -244,6 +244,12 @@ function initSortables() {
                 disabled: (typeof ENVIO_READONLY !== 'undefined' && ENVIO_READONLY),
                 ghostClass: 'sortable-ghost',
                 onAdd: function (evt) {
+                    const cap = parseInt(evt.to.getAttribute('data-capacidad') || 99, 10);
+                    if (cap === 1 && evt.to.querySelectorAll('li').length > 1) {
+                        Swal.fire('Atención', 'En envíos por chofer (Rodando) solo se permite 1 unidad por chofer.', 'warning');
+                        evt.from.appendChild(evt.item); // Regresar al origen
+                        return;
+                    }
                     actualizarConteoYSecuencia(evt.to);
                     agruparYOrdenarParadas(evt.to);
                     guardarAcomodoAuto();
@@ -565,6 +571,8 @@ function actualizarConteoYSecuencia(listaUl) {
             }
         }
     }
+
+    renderInfografiaRuta();
 }
 
 /** Cuando el usuario cambia el nodo de subida de un VIN */
@@ -1213,3 +1221,118 @@ function enviarAcomodoAlServidor(idEnvio, asignaciones, finalizar = false) {
         }
     }
 }
+
+function renderInfografiaRuta() {
+    const container = document.getElementById('panel-infografia-ruta');
+    if (!container) return;
+
+    if (!g_nodosEnvio || g_nodosEnvio.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = `
+    <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px; background: linear-gradient(to right, #f8f9fa, #ffffff);">
+        <div class="card-header border-bottom border-light bg-transparent py-3">
+            <h6 class="card-title mb-0 fw-bold text-uppercase fs-12 text-primary">
+                <i class="ri-git-merge-line me-1 fs-15 align-middle"></i> Infografía de Factoraje y Ruta
+            </h6>
+        </div>
+        <div class="card-body p-4">
+            <div class="d-flex align-items-stretch justify-content-start overflow-auto pb-3" style="min-width: max-content;">
+    `;
+
+    // Obtener todos los VINs asignados a los vehículos (ignorar el pool)
+    const vehiculos = document.querySelectorAll('.vehiculo-list');
+    const todosLosVins = [];
+    vehiculos.forEach(v => {
+        v.querySelectorAll('li').forEach(li => {
+            todosLosVins.push({
+                sId: li.getAttribute('data-id-nodo-subida'),
+                bId: li.getAttribute('data-id-nodo-bajada')
+            });
+        });
+    });
+
+    let factorAcumulado = 0; // Asumiremos 1 unidad = 1 factor volumétrico estándar
+
+    for (let i = 0; i < g_nodosEnvio.length; i++) {
+        const nodoAct = g_nodosEnvio[i];
+        const ordAct = parseInt(nodoAct.orden || 0);
+
+        // Calcular cuántos suben y cuántos bajan
+        let suben = 0;
+        let bajan = 0;
+        todosLosVins.forEach(vin => {
+            const oSub = g_nodosEnvio.find(n => String(n.id_nodo) === String(vin.sId));
+            const oBaj = g_nodosEnvio.find(n => String(n.id_nodo) === String(vin.bId));
+            const ordS = oSub ? parseInt(oSub.orden || 0) : 0;
+            const ordB = oBaj ? parseInt(oBaj.orden || 0) : (g_nodosEnvio.length - 1);
+            
+            if (ordS === ordAct) suben++;
+            if (ordB === ordAct && ordB !== ordS) bajan++; 
+        });
+
+        factorAcumulado += suben;
+        factorAcumulado -= bajan;
+
+        const isPrimerNodo = (i === 0);
+        const isUltimoNodo = (i === g_nodosEnvio.length - 1);
+
+        html += `
+            <div class="d-flex flex-column align-items-center position-relative" style="min-width: 160px;">
+                <div class="text-center mb-2">
+                    <span class="badge ${isPrimerNodo ? 'bg-primary' : (isUltimoNodo ? 'bg-dark' : 'bg-secondary')} px-2 py-1 fs-10 text-uppercase rounded-pill shadow-sm">
+                        ${isPrimerNodo ? 'Origen' : (isUltimoNodo ? 'Destino Final' : 'Pto ' + (ordAct + 1))}
+                    </span>
+                </div>
+                
+                <div class="rounded-circle d-flex align-items-center justify-content-center shadow" style="width: 50px; height: 50px; background-color: #fff; border: 3px solid ${isPrimerNodo ? '#0ab39c' : (isUltimoNodo ? '#f06548' : '#299cdb')}; z-index: 2;">
+                    <i class="ri-map-pin-2-fill fs-20 ${isPrimerNodo ? 'text-success' : (isUltimoNodo ? 'text-danger' : 'text-info')}"></i>
+                </div>
+                
+                <div class="text-center mt-2 fw-bold fs-12 text-dark px-2 text-truncate" style="max-width: 140px;" title="${nodoAct.nombre}">
+                    ${nodoAct.nombre || 'Nodo ' + ordAct}
+                </div>
+
+                <div class="mt-2 d-flex flex-column gap-1 align-items-center">
+                    ${suben > 0 ? `<span class="badge bg-soft-success text-success fs-10 border border-success"><i class="ri-arrow-up-circle-fill me-1"></i> Sube +F${suben}</span>` : ''}
+                    ${bajan > 0 ? `<span class="badge bg-soft-danger text-danger fs-10 border border-danger"><i class="ri-arrow-down-circle-fill me-1"></i> Baja -F${bajan}</span>` : ''}
+                </div>
+            </div>
+        `;
+
+        if (i < g_nodosEnvio.length - 1) {
+            const nodoSig = g_nodosEnvio[i + 1];
+            const kmTramo = parseFloat(nodoSig.km_tramo || 0).toFixed(1);
+            
+            html += `
+            <div class="d-flex flex-column justify-content-center flex-grow-1 position-relative px-2" style="min-width: 140px; margin-top: -30px;">
+                <div style="height: 3px; background-color: #e9ecef; width: 100%; position: absolute; top: 50px; left: 0; z-index: 1;"></div>
+                
+                <div class="text-center position-relative z-index-2 mt-4">
+                    <span class="badge bg-light text-dark border border-secondary shadow-sm px-2 py-1 fs-11">
+                        <i class="ri-route-line text-muted me-1"></i>${kmTramo} km
+                    </span>
+                </div>
+                <div class="text-center position-relative z-index-2 mt-2">
+                    <span class="badge bg-soft-primary text-primary border border-primary px-2 py-1 fs-11 fw-bold shadow-sm">
+                        <i class="ri-truck-fill me-1"></i>Factor A Bordo: F${factorAcumulado}
+                    </span>
+                </div>
+            </div>
+            `;
+        }
+    }
+
+    html += `
+            </div>
+        </div>
+        <div class="card-footer bg-light py-2">
+            <small class="text-muted fs-11"><i class="ri-information-line me-1 text-info"></i>El factoraje volumétrico se ajusta progresivamente por tramo según las unidades a bordo. Unidades en el pool no asignadas no contabilizan factor.</small>
+        </div>
+    </div>`;
+
+    container.innerHTML = html;
+}
+
