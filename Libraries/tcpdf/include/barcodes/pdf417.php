@@ -951,7 +951,7 @@ class PDF417 {
 						$cw = array_merge($cw, $cw6);
 					} else {
 						for ($i = 0; $i < $sublen; ++$i) {
-							$cw[] = ord($code{$i});
+							$cw[] = ord($code[$i]);
 						}
 					}
 					$code = $rest;
