@@ -92,4 +92,12 @@ class Inv_captura_vin extends Controllers
 		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
 		die();
 	}
+
+	public function getModelosInventario()
+	{
+		$arrData = $this->model->selectModelosInventario();
+
+		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+		die();
+	}
 }

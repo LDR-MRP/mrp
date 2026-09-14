@@ -697,6 +697,57 @@
                         </li> -->
 
 
+                      
+                      <!-- ==============================================================================
+                        INGENIERÍA (CATÁLOGO MAESTRO DE VEHÍCULOS)
+                        ============================================================================== -->
+                      <li class="nav-item" data-permiso="ING_MODELOS|r">
+                          <a class="nav-link menu-link" href="#sidebarIngenieria" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarIngenieria">
+                              <i class="ri-settings-3-line icon-dual"></i> <span>Ingeniería</span>
+                          </a>
+                          <div class="collapse menu-dropdown" id="sidebarIngenieria">
+                              <ul class="nav nav-sm flex-column">
+
+                                  <li class="nav-item" data-permiso="ING_MODELOS|r">
+                                      <a href="<?= base_url(); ?>/ing_modelos" class="nav-link">
+                                          <i class="ri-car-line align-bottom me-1"></i> Modelos
+                                      </a>
+                                  </li>
+
+                                  <li class="nav-item" data-permiso="ING_CONFIGURACIONES|r">
+                                      <a href="<?= base_url(); ?>/ing_configuraciones" class="nav-link">
+                                          <i class="ri-file-list-3-line align-bottom me-1"></i> Configuraciones
+                                      </a>
+                                  </li>
+
+                                  <li class="nav-item" data-permiso="ING_MOTORES|r">
+                                      <a href="<?= base_url(); ?>/ing_motores" class="nav-link">
+                                          <i class="ri-gas-station-line align-bottom me-1"></i> Motores
+                                      </a>
+                                  </li>
+
+                                  <li class="nav-item" data-permiso="ING_TRANSMISIONES|r">
+                                      <a href="<?= base_url(); ?>/ing_transmisiones" class="nav-link">
+                                          <i class="ri-settings-4-line align-bottom me-1"></i> Transmisiones
+                                      </a>
+                                  </li>
+
+                                  <li class="nav-item" data-permiso="ING_CERTIFICACIONES|r">
+                                      <a href="<?= base_url(); ?>/ing_certificaciones" class="nav-link">
+                                          <i class="ri-award-line align-bottom me-1"></i> Certificaciones
+                                      </a>
+                                  </li>
+
+                                  <li class="nav-item" data-permiso="ING_ESPECIFICACIONES|r">
+                                      <a href="<?= base_url(); ?>/ing_especificaciones" class="nav-link">
+                                          <i class="ri-list-check-2 align-bottom me-1"></i> Especificaciones
+                                      </a>
+                                  </li>
+
+                              </ul>
+                          </div>
+                      </li>
+
                       <li class="menu-title"><i class="ri-more-fill"></i> <span data-key="t-components">Components</span></li>
 
 

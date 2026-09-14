@@ -178,6 +178,11 @@ class Inv_cargamasiva extends Controllers
 		$hoja2->fromArray($ejemplo, null, 'A2');
 		$hoja2->getStyle('A2:T2')->getFont()->setItalic(true)->getColor()->setARGB('FF999999');
 
+		// CLAVE_ARTICULO como TEXTO: evita que Excel convierta claves numéricas
+		// largas (ej. 7502225310467) a notación científica (7.50223E+12).
+		$hoja2->getStyle('A2:A300')->getNumberFormat()
+			->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+
 		$this->agregarValidacionLista($hoja2, 'C', 3, 300, '"P,S,K,C,H,R"');
 		$this->agregarValidacionLista($hoja2, 'L', 3, 300, '"S,N"');
 		$this->agregarValidacionLista($hoja2, 'M', 3, 300, '"S,N"');
@@ -451,12 +456,18 @@ class Inv_cargamasiva extends Controllers
 			->getStartColor()->setARGB('FFEFEFEF');
 		$sheet->freezePane('A5');
 
+		// CLAVE_ARTICULO, DESCRIPCION y MOTIVO como TEXTO explícito: evita que
+		// Excel muestre claves numéricas largas en notación científica (ej.
+		// 7502225310467 -> 7.50223E+12) al auto-detectar el tipo de la celda.
+		$sheet->getStyle('B5:B5000')->getNumberFormat()
+			->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+
 		$r = 5;
 		foreach ($log as $item) {
 			$sheet->setCellValue('A' . $r, $item['fila'] ?? '');
-			$sheet->setCellValue('B' . $r, $item['clave'] ?? '');
-			$sheet->setCellValue('C' . $r, $item['descripcion'] ?? '');
-			$sheet->setCellValue('D' . $r, $item['motivo'] ?? '');
+			$sheet->setCellValueExplicit('B' . $r, (string) ($item['clave'] ?? ''), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+			$sheet->setCellValueExplicit('C' . $r, (string) ($item['descripcion'] ?? ''), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+			$sheet->setCellValueExplicit('D' . $r, (string) ($item['motivo'] ?? ''), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
 			$r++;
 		}
 
@@ -594,9 +605,9 @@ class Inv_cargamasiva extends Controllers
 			$vacio = true;
 
 			foreach ($columnas as $col => $campo) {
-				$valor = $sheet->getCellByColumnAndRow($col, $fila)->getValue();
-				$registro[$campo] = is_string($valor) ? trim($valor) : $valor;
-				if ($valor !== null && $valor !== '') {
+				$valorCrudo = $sheet->getCellByColumnAndRow($col, $fila)->getValue();
+				$registro[$campo] = $this->valorComoTexto($valorCrudo);
+				if ($registro[$campo] !== '') {
 					$vacio = false;
 				}
 			}
@@ -622,6 +633,31 @@ class Inv_cargamasiva extends Controllers
 	private function normalizarTexto(string $texto): string
 	{
 		return strtoupper(trim($this->quitarAcentos($texto)));
+	}
+
+	/**
+	 * Convierte el valor crudo de una celda a texto sin perder precisión ni
+	 * caer en notación científica (importante para claves numéricas largas
+	 * como 7502225310467, que Excel/PhpSpreadsheet pueden leer como float).
+	 */
+	private function valorComoTexto($valor): string
+	{
+		if ($valor === null) {
+			return '';
+		}
+		if (is_string($valor)) {
+			return trim($valor);
+		}
+		if (is_int($valor)) {
+			return (string) $valor;
+		}
+		if (is_float($valor)) {
+			if (fmod($valor, 1.0) === 0.0 && abs($valor) < 1e15) {
+				return sprintf('%.0f', $valor);
+			}
+			return rtrim(rtrim(sprintf('%.10f', $valor), '0'), '.');
+		}
+		return trim((string) $valor);
 	}
 
 	private function normalizarFilaAlta(array $r): array
