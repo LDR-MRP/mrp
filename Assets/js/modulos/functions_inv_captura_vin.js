@@ -32,6 +32,11 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((data) => {
         let select = document.getElementById("id_inventario");
 
+        // [FIX] Defensa contra doble carga (ej. si el JS del módulo se incluye
+        // más de una vez en la página): conserva solo la opción "Seleccionar" y
+        // limpia cualquier <option> añadida dinámicamente antes de repoblar.
+        select.length = 1;
+
         data.forEach((item) => {
           let option = document.createElement("option");
 
@@ -49,6 +54,11 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((data) => {
         let select = document.getElementById("id_fabricante");
 
+        // [FIX] Defensa contra doble carga (ej. si el JS del módulo se incluye
+        // más de una vez en la página): conserva solo la opción "Seleccionar" y
+        // limpia cualquier <option> añadida dinámicamente antes de repoblar.
+        select.length = 1;
+
         data.forEach((item) => {
           let option = document.createElement("option");
 
@@ -65,6 +75,11 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((res) => res.json())
       .then((data) => {
         let select = document.getElementById("id_tipo_vehiculo");
+
+        // [FIX] Defensa contra doble carga (ej. si el JS del módulo se incluye
+        // más de una vez en la página): conserva solo la opción "Seleccionar" y
+        // limpia cualquier <option> añadida dinámicamente antes de repoblar.
+        select.length = 1;
 
         data.forEach((item) => {
           let option = document.createElement("option");
@@ -84,6 +99,11 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((data) => {
         let select = document.getElementById("id_tipo_motor");
 
+        // [FIX] Defensa contra doble carga (ej. si el JS del módulo se incluye
+        // más de una vez en la página): conserva solo la opción "Seleccionar" y
+        // limpia cualquier <option> añadida dinámicamente antes de repoblar.
+        select.length = 1;
+
         data.forEach((item) => {
           let option = document.createElement("option");
 
@@ -101,6 +121,11 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((data) => {
         let select = document.getElementById("id_planta");
 
+        // [FIX] Defensa contra doble carga (ej. si el JS del módulo se incluye
+        // más de una vez en la página): conserva solo la opción "Seleccionar" y
+        // limpia cualquier <option> añadida dinámicamente antes de repoblar.
+        select.length = 1;
+
         data.forEach((item) => {
           let option = document.createElement("option");
 
@@ -117,6 +142,11 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((res) => res.json())
       .then((data) => {
         let select = document.getElementById("anio");
+
+        // [FIX] Defensa contra doble carga (ej. si el JS del módulo se incluye
+        // más de una vez en la página): conserva solo la opción "Seleccionar" y
+        // limpia cualquier <option> añadida dinámicamente antes de repoblar.
+        select.length = 1;
 
         data.forEach((a) => {
           let option = document.createElement("option");

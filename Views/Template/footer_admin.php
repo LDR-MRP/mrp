@@ -863,9 +863,12 @@ Se utiliza con fines de configuración y ajustes visuales del layout.
     <!-- <script src="<?= media(); ?>/minimal/js/pages/sweetalerts.init.js"></script> -->
 
     <script src="<?= media(); ?>/js/sys_core.js?v=1.0.9"></script>
-    <script src="<?= media(); ?>/js/modulos/<?= $data['page_functions_js']; ?>?v=1.0.2.3"></script>
     <script src="<?= media(); ?>/js/sys_core.js?v=<?= time(); ?>"></script>
-    <!-- <script src="<?= media(); ?>/js/modulos/<?= $data['page_functions_js']; ?>?v=<?= time(); ?>"></script> -->
+    <!-- [FIX] Se retiró el <script> de page_functions_js que estaba aquí (duplicado):
+         ya se carga una sola vez más abajo, en el bloque "if (!empty($data['page_functions_js']))",
+         que además maneja correctamente el caso de arreglo (múltiples archivos JS). Cargarlo
+         también aquí hacía que CADA módulo se ejecutara dos veces en cada carga de página
+         (listeners duplicados, catálogos duplicados en selects, envíos de formulario duplicados). -->
 
 
 <?php if (!empty($data['page_functions_js'])) { ?>
