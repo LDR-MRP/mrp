@@ -1081,6 +1081,130 @@ html[data-theme="dark"] #modalPdi .table-light {
 }
 
 
+/* =========================================================
+   INGENIERÍA - AGRUPACIÓN DE ESPECIFICACIONES POR CATEGORÍA
+   ========================================================= */
+#tableEspecificaciones tr.categoria-group-row {
+  cursor: pointer;
+  background: rgba(64, 81, 137, 0.06);
+  border-left: 3px solid #405189;
+  transition: background .15s ease;
+}
+
+#tableEspecificaciones tr.categoria-group-row:hover {
+  background: rgba(64, 81, 137, 0.12);
+}
+
+#tableEspecificaciones tr.categoria-group-row td {
+  padding: .6rem .9rem;
+}
+
+#tableEspecificaciones .categoria-group-icon {
+  font-size: 1.15rem;
+  color: #405189;
+  vertical-align: middle;
+  margin-right: .25rem;
+}
+
+#tableEspecificaciones .categoria-group-title {
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  font-size: .8125rem;
+  color: #34425a;
+  vertical-align: middle;
+}
+
+#tableEspecificaciones .categoria-group-badge {
+  background: rgba(64, 81, 137, 0.14);
+  color: #405189;
+  font-weight: 600;
+  border-radius: 20px;
+  padding: .2em .65em;
+  font-size: .75rem;
+  margin-left: .4rem;
+}
+
+[data-layout-mode="dark"] #tableEspecificaciones tr.categoria-group-row,
+[data-bs-theme="dark"] #tableEspecificaciones tr.categoria-group-row,
+html[data-theme="dark"] #tableEspecificaciones tr.categoria-group-row {
+  background: rgba(111, 133, 213, 0.14);
+  border-left-color: #6f85d5;
+}
+
+[data-layout-mode="dark"] #tableEspecificaciones tr.categoria-group-row:hover,
+[data-bs-theme="dark"] #tableEspecificaciones tr.categoria-group-row:hover,
+html[data-theme="dark"] #tableEspecificaciones tr.categoria-group-row:hover {
+  background: rgba(111, 133, 213, 0.22);
+}
+
+[data-layout-mode="dark"] #tableEspecificaciones .categoria-group-icon,
+[data-bs-theme="dark"] #tableEspecificaciones .categoria-group-icon,
+html[data-theme="dark"] #tableEspecificaciones .categoria-group-icon {
+  color: #a9b6e8;
+}
+
+[data-layout-mode="dark"] #tableEspecificaciones .categoria-group-title,
+[data-bs-theme="dark"] #tableEspecificaciones .categoria-group-title,
+html[data-theme="dark"] #tableEspecificaciones .categoria-group-title {
+  color: #e9edf4;
+}
+
+[data-layout-mode="dark"] #tableEspecificaciones .categoria-group-badge,
+[data-bs-theme="dark"] #tableEspecificaciones .categoria-group-badge,
+html[data-theme="dark"] #tableEspecificaciones .categoria-group-badge {
+  background: rgba(111, 133, 213, 0.22);
+  color: #c7d0f0;
+}
+
+/* =========================================================
+   INGENIERIA - CONFIGURACIONES: linea de proceso (stepper)
+   ========================================================= */
+
+.stepper-configuracion {
+  position: relative;
+}
+
+.stepper-configuracion .stepper-track {
+  position: absolute;
+  top: 1rem; /* mitad de .avatar-xs (2rem) para cruzar los circulos al centro */
+  left: 8%;
+  right: 8%;
+  height: 2px;
+  background: var(--vz-border-color, #e9ebec);
+  z-index: 0;
+}
+
+.stepper-configuracion .stepper-steps {
+  position: relative;
+  z-index: 1;
+  display: flex;
+}
+
+.stepper-configuracion .stepper-step {
+  flex: 1;
+  text-align: center;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.stepper-configuracion .stepper-step.disabled {
+  cursor: default;
+}
+
+.stepper-configuracion .stepper-step .stepper-label {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.stepper-configuracion .stepper-step .stepper-sublabel {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--vz-secondary-color, #878a99);
+}
+
 
 /* =========================================================
    PROCESOS / RUTA PRODUCTO - VELZON FRIENDLY

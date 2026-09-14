@@ -42,6 +42,49 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ================================
+  // FILTROS DE LA TABLA (Tipo / Estado)
+  // ================================
+
+  document
+    .getElementById("filtroTipoInventario")
+    ?.addEventListener("change", function () {
+      // columna 2 = TIPO -- valores sin traslape entre si (Producto,
+      // Servicio, Kit, Componente, Herramienta, Refaccion), busqueda simple
+      tableInventarios.column(2).search(this.value).draw();
+    });
+
+  document
+    .getElementById("filtroEstadoInventario")
+    ?.addEventListener("change", function () {
+      const valor = this.value;
+
+      if (!valor) {
+        tableInventarios.column(3).search("").draw();
+        return;
+      }
+
+      // columna 3 = ESTADO, viene como badge HTML (<span ...>Activo</span>).
+      // DataTables detecta que la columna trae HTML y para buscar le quita
+      // las etiquetas -- el texto que realmente compara es "Activo" o
+      // "Inactivo" a secas (sin < >). Como "Activo" es substring de
+      // "Inactivo", hay que anclar con ^...$ para que no traiga ambos.
+      const patron = "^" + valor + "$";
+      tableInventarios.column(3).search(patron, true, false).draw();
+    });
+
+  document
+    .getElementById("btnLimpiarFiltrosInventario")
+    ?.addEventListener("click", function () {
+      const filtroTipo = document.getElementById("filtroTipoInventario");
+      const filtroEstado = document.getElementById("filtroEstadoInventario");
+
+      if (filtroTipo) filtroTipo.value = "";
+      if (filtroEstado) filtroEstado.value = "";
+
+      tableInventarios.search("").columns().search("").draw();
+    });
+
+  // ================================
   // IMÁGENES
   // ================================
 
@@ -142,6 +185,26 @@ document.addEventListener("DOMContentLoaded", () => {
     pwModoActual = null;
     const liTabPortalWebReset = document.getElementById("liTabPortalWeb");
     if (liTabPortalWebReset) liTabPortalWebReset.hidden = true;
+
+    const liTabVinesReset = document.getElementById("liTabVines");
+    if (liTabVinesReset) liTabVinesReset.hidden = true;
+
+    const tbodyVinesLoteReset = document.getElementById("tbodyVinesLote");
+    if (tbodyVinesLoteReset) tbodyVinesLoteReset.innerHTML = "";
+
+    const tbodyVinesOrdenReset = document.getElementById("tbodyVinesOrden");
+    if (tbodyVinesOrdenReset) tbodyVinesOrdenReset.innerHTML = "";
+
+    const vinesTotalLoteReset = document.getElementById("vinesTotalLote");
+    if (vinesTotalLoteReset) vinesTotalLoteReset.textContent = "0";
+
+    const vinesTotalOrdenReset = document.getElementById("vinesTotalOrden");
+    if (vinesTotalOrdenReset) vinesTotalOrdenReset.textContent = "0";
+
+    vinesLoteRows = [];
+    vinesLotePagina = 1;
+    vinesOrdenRows = [];
+    vinesOrdenPagina = 1;
     const seccionUnidadReset = document.getElementById("pw_seccionUnidad");
     if (seccionUnidadReset) seccionUnidadReset.hidden = true;
 
@@ -1573,6 +1636,7 @@ function fntConfigInventario(idinventario) {
         cargarTabUbicaciones(idinventario);
         cargarTabProveedores(idinventario);
         cargarTabPortalWeb(idinventario, d.tipo_elemento);
+        cargarTabVines(idinventario, d.tipo_elemento);
       }, 150);
     });
 }
@@ -3118,6 +3182,198 @@ document
     if (!currentInventarioId) return;
     cargarCantidades(currentInventarioId);
   });
+
+//-----------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------VINES (wms_numeros_series)----------------------------------
+//-----------------------------------------------------------------------------------------------------------------
+
+function cargarTabVines(idinventario, tipoElemento) {
+  const liVines = document.getElementById("liTabVines");
+  if (!liVines) return;
+
+  // Solo 'P' (Producto) tiene VINes -- se generan en Inv_series contra
+  // wms_inventario tipo_elemento = 'P'.
+  liVines.hidden = tipoElemento !== "P";
+
+  if (tipoElemento !== "P") return;
+
+  const idCampo = document.getElementById("vines_inventarioid");
+  if (idCampo) idCampo.value = idinventario;
+
+  const tbodyLote = document.getElementById("tbodyVinesLote");
+  const tbodyOrden = document.getElementById("tbodyVinesOrden");
+
+  const cargando = `
+    <tr>
+      <td colspan="6" class="text-center py-4">Cargando...</td>
+    </tr>
+  `;
+
+  if (tbodyLote) tbodyLote.innerHTML = cargando;
+  if (tbodyOrden) tbodyOrden.innerHTML = cargando;
+
+  $.ajax({
+    url: base_url + "/Inv_inventario/getVinesProducto",
+    type: "POST",
+    data: { inventarioid: idinventario },
+    dataType: "json",
+    success: function (res) {
+      vinesLoteRows = res.lote || [];
+      vinesOrdenRows = res.orden || [];
+      vinesLotePagina = 1;
+      vinesOrdenPagina = 1;
+
+      pintarPaginaVines("lote");
+      pintarPaginaVines("orden");
+
+      const totalLote = document.getElementById("vinesTotalLote");
+      if (totalLote) totalLote.textContent = vinesLoteRows.length;
+
+      const totalOrden = document.getElementById("vinesTotalOrden");
+      if (totalOrden) totalOrden.textContent = vinesOrdenRows.length;
+    },
+    error: function () {
+      const errorHtml = `
+        <tr>
+          <td colspan="6" class="text-center text-danger py-4">
+            <i class="ri-error-warning-line me-1"></i> Error al consultar VINes
+          </td>
+        </tr>
+      `;
+      if (tbodyLote) tbodyLote.innerHTML = errorHtml;
+      if (tbodyOrden) tbodyOrden.innerHTML = errorHtml;
+    },
+  });
+}
+
+function renderVinesTabla(tbody, filas, tipo) {
+  if (!tbody) return;
+
+  if (!filas.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="text-center text-muted py-4">
+          <i class="ri-inbox-line fs-3 d-block mb-1"></i>
+          Sin VINes generados
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  // chip del VIN pintado del color de su sección (lote = primary, orden = warning)
+  const claseVin =
+    tipo === "orden"
+      ? "badge bg-warning-subtle text-warning font-monospace fs-12"
+      : "badge bg-primary-subtle text-primary font-monospace fs-12";
+
+  tbody.innerHTML = filas
+    .map(
+      (row) => `
+        <tr>
+          <td><span class="${claseVin}">${row.numero_serie}</span></td>
+          <td>${row.referencia}</td>
+          <td>${row.almacen}</td>
+          <td>${row.fecha}</td>
+          <td>${row.estado}</td>
+          <td class="text-center">
+            <a href="${base_url}/Inv_series/generarCodigoPDF/${row.numero_serie}"
+               target="_blank"
+               class="btn btn-sm btn-soft-primary"
+               title="Código de barras">
+              <i class="ri-barcode-line"></i>
+            </a>
+          </td>
+        </tr>
+      `,
+    )
+    .join("");
+}
+
+// ================================
+// PAGINACIÓN (VINes por lote / por orden)
+// ================================
+const VINES_POR_PAGINA = 8;
+
+let vinesLoteRows = [];
+let vinesLotePagina = 1;
+let vinesOrdenRows = [];
+let vinesOrdenPagina = 1;
+
+function pintarPaginaVines(tipo) {
+  const esLote = tipo === "lote";
+
+  const rows = esLote ? vinesLoteRows : vinesOrdenRows;
+  const pagina = esLote ? vinesLotePagina : vinesOrdenPagina;
+
+  const tbody = document.getElementById(
+    esLote ? "tbodyVinesLote" : "tbodyVinesOrden",
+  );
+  const info = document.getElementById(
+    esLote ? "infoVinesLote" : "infoVinesOrden",
+  );
+  const btnPrev = document.getElementById(
+    esLote ? "btnVinesLotePrev" : "btnVinesOrdenPrev",
+  );
+  const btnNext = document.getElementById(
+    esLote ? "btnVinesLoteNext" : "btnVinesOrdenNext",
+  );
+
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(rows.length / VINES_POR_PAGINA),
+  );
+
+  const inicio = (pagina - 1) * VINES_POR_PAGINA;
+  const filasPagina = rows.slice(inicio, inicio + VINES_POR_PAGINA);
+
+  renderVinesTabla(tbody, filasPagina, tipo);
+
+  if (info) {
+    info.textContent = rows.length
+      ? `Página ${pagina} de ${totalPaginas} (${rows.length} en total)`
+      : "";
+  }
+
+  if (btnPrev) btnPrev.disabled = pagina <= 1;
+  if (btnNext) btnNext.disabled = pagina >= totalPaginas;
+}
+
+document.getElementById("btnVinesLotePrev")?.addEventListener("click", () => {
+  if (vinesLotePagina > 1) {
+    vinesLotePagina--;
+    pintarPaginaVines("lote");
+  }
+});
+
+document.getElementById("btnVinesLoteNext")?.addEventListener("click", () => {
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(vinesLoteRows.length / VINES_POR_PAGINA),
+  );
+  if (vinesLotePagina < totalPaginas) {
+    vinesLotePagina++;
+    pintarPaginaVines("lote");
+  }
+});
+
+document.getElementById("btnVinesOrdenPrev")?.addEventListener("click", () => {
+  if (vinesOrdenPagina > 1) {
+    vinesOrdenPagina--;
+    pintarPaginaVines("orden");
+  }
+});
+
+document.getElementById("btnVinesOrdenNext")?.addEventListener("click", () => {
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(vinesOrdenRows.length / VINES_POR_PAGINA),
+  );
+  if (vinesOrdenPagina < totalPaginas) {
+    vinesOrdenPagina++;
+    pintarPaginaVines("orden");
+  }
+});
 
 //-----------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------PORTAL WEB (web_unidades)------------------------------------

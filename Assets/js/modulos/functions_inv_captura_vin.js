@@ -5,6 +5,13 @@ document.addEventListener("DOMContentLoaded", function () {
   cargarTabla();
   configurarDistancia();
 
+  // MODELO: al elegir un artículo de inventario, refleja su descripción
+  // en el campo oculto "modelo" (se sigue guardando como texto para el listado)
+  document.getElementById("id_inventario").addEventListener("change", function () {
+    let selected = this.selectedOptions[0];
+    document.getElementById("modelo").value = selected ? (selected.dataset.descripcion || "") : "";
+  });
+
   // ============================
   // EVENTOS
   // ============================
@@ -19,6 +26,23 @@ document.addEventListener("DOMContentLoaded", function () {
   // ============================
 
   async function cargarCatalogos() {
+    // MODELOS (Ingeniería / wms_inventario tipo_elemento = 'P')
+    fetch(base_url + "/Inv_captura_vin/getModelosInventario")
+      .then((res) => res.json())
+      .then((data) => {
+        let select = document.getElementById("id_inventario");
+
+        data.forEach((item) => {
+          let option = document.createElement("option");
+
+          option.value = item.idinventario;
+          option.textContent = item.descripcion + " (" + item.cve_articulo + ")";
+          option.dataset.descripcion = item.descripcion;
+
+          select.appendChild(option);
+        });
+      });
+
     // FABRICANTES
     fetch(base_url + "/Inv_captura_vin/getFabricantes")
       .then((res) => res.json())
@@ -492,7 +516,8 @@ function editarRegistro(item) {
   document.getElementById("id").value = item.id_cat_modelo_vin;
 
   // MODELO
-  document.querySelector('[name="modelo"]').value = item.modelo;
+  document.getElementById("id_inventario").value = item.id_inventario ?? "";
+  document.getElementById("modelo").value = item.modelo;
 
   // ESTADO
   document.querySelector('[name="estado"]').value = item.estado;
