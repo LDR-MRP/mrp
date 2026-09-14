@@ -1,0 +1,1196 @@
+/* ============================================================
+   VISTA: EDITAR PEDIDO
+   Estilos exclusivos para .edit-order-page
+   Inspirados en la vista carrito
+   ============================================================ */
+
+.edit-order-page {
+    padding: 34px 0 64px;
+    background: #f8f9fb;
+}
+
+
+/* ============================================================
+   ENCABEZADO GENERAL
+   ============================================================ */
+
+.edit-order-page .edit-order-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 22px;
+
+    margin-bottom: 22px;
+    padding: 20px 22px;
+
+    border: 1px solid var(--border);
+    border-radius: 18px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ffffff 0%,
+            #fff8f2 100%
+        );
+
+    box-shadow:
+        0 8px 24px
+        rgba(16, 24, 40, .05);
+}
+
+.edit-order-page .edit-order-heading > div:first-child {
+    min-width: 0;
+}
+
+.edit-order-page .edit-order-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    margin-bottom: 11px;
+
+    color: var(--primary);
+
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.edit-order-page .edit-order-back:hover {
+    color: var(--primary-dark);
+}
+
+.edit-order-page .edit-order-heading > div:first-child > span {
+    display: block;
+
+    margin-bottom: 4px;
+
+    color: var(--primary);
+
+    font-size: 11px;
+    font-weight: 900;
+
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.edit-order-page .edit-order-heading h1 {
+    margin: 0 0 7px;
+
+    color: var(--dark);
+
+    font-size: clamp(
+        25px,
+        4vw,
+        34px
+    );
+
+    line-height: 1.1;
+}
+
+.edit-order-page .edit-order-heading p {
+    max-width: 650px;
+
+    margin: 0;
+
+    color: var(--muted);
+
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+
+/* ============================================================
+   ESTATUS / VERSIÓN
+   ============================================================ */
+
+.edit-order-page .edit-order-status {
+    flex: 0 0 auto;
+
+    min-width: 155px;
+
+    padding: 13px 15px;
+
+    border: 1px solid
+        rgba(233, 126, 46, .18);
+
+    border-radius: 13px;
+
+    background: #fff7f0;
+
+    text-align: right;
+}
+
+.edit-order-page .edit-order-status span,
+.edit-order-page .edit-order-status small {
+    display: block;
+}
+
+.edit-order-page .edit-order-status span {
+    color: var(--muted);
+
+    font-size: 9px;
+    font-weight: 800;
+
+    text-transform: uppercase;
+}
+
+.edit-order-page .edit-order-status strong {
+    display: inline-flex;
+
+    margin: 4px 0;
+
+    padding: 5px 9px;
+
+    border-radius: 999px;
+
+    background: #fffaeb;
+
+    color: #b54708;
+
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.edit-order-page .edit-order-status small {
+    color: var(--muted);
+
+    font-size: 10px;
+    font-weight: 700;
+}
+
+
+/* ============================================================
+   LAYOUT PRINCIPAL
+   Similar al carrito
+   ============================================================ */
+
+.edit-order-page .edit-order-layout {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        325px;
+
+    gap: 22px;
+
+    align-items: start;
+}
+
+
+/* ============================================================
+   BLOQUE DE UNIDADES
+   ============================================================ */
+
+.edit-order-page .edit-order-products {
+    min-width: 0;
+}
+
+.edit-order-page .edit-products-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 16px;
+
+    margin-bottom: 14px;
+}
+
+.edit-order-page .edit-products-header > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.edit-order-page .edit-products-header span {
+    color: var(--primary);
+
+    font-size: 10px;
+    font-weight: 900;
+
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.edit-order-page .edit-products-header h2 {
+    margin: 0;
+
+    font-size: 20px;
+    color: var(--dark);
+}
+
+.edit-order-page .edit-products-header .btn {
+    white-space: nowrap;
+
+    padding: 9px 14px;
+
+    font-size: 12px;
+}
+
+
+/* ============================================================
+   CONTENEDOR DE TARJETAS
+   ============================================================ */
+
+.edit-order-page #editOrderItems {
+    display: flex;
+    flex-direction: column;
+
+    gap: 14px;
+}
+
+
+/* ============================================================
+   TARJETA DE UNIDAD
+   ============================================================ */
+
+.edit-order-page .edit-order-item {
+    display: grid;
+
+    grid-template-columns:
+        135px
+        minmax(0, 1fr);
+
+    gap: 16px;
+
+    width: 100%;
+
+    padding: 16px;
+
+    border: 1px solid #e1e6ed;
+    border-radius: 15px;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 5px 18px
+        rgba(15, 23, 42, .035);
+
+    transition:
+        border-color .15s ease,
+        box-shadow .15s ease,
+        transform .15s ease;
+}
+
+.edit-order-page .edit-order-item:hover {
+    border-color: #d4dae3;
+
+    box-shadow:
+        0 8px 22px
+        rgba(15, 23, 42, .055);
+}
+
+
+/* ============================================================
+   IMAGEN
+   ============================================================ */
+
+.edit-order-page .edit-item-image {
+    width: 135px;
+    height: 105px;
+
+    overflow: hidden;
+
+    border-radius: 11px;
+
+    background: #f5f6f8;
+}
+
+.edit-order-page .edit-item-image img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+}
+
+
+/* ============================================================
+   CONTENIDO UNIDAD
+   ============================================================ */
+
+.edit-order-page .edit-item-content {
+    min-width: 0;
+}
+
+.edit-order-page .edit-item-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    margin-bottom: 12px;
+}
+
+.edit-order-page .edit-item-heading > div {
+    min-width: 0;
+}
+
+.edit-order-page .edit-item-heading span {
+    display: block;
+
+    margin-bottom: 2px;
+
+    color: var(--primary);
+
+    font-size: 9px;
+    font-weight: 900;
+
+    text-transform: uppercase;
+}
+
+.edit-order-page .edit-item-heading h3 {
+    margin: 0;
+
+    color: var(--dark);
+
+    font-size: 17px;
+    line-height: 1.2;
+}
+
+.edit-order-page .edit-item-heading p {
+    margin: 4px 0 0;
+
+    color: var(--muted);
+
+    font-size: 11px;
+}
+
+
+/* ============================================================
+   ELIMINAR
+   ============================================================ */
+
+.edit-order-page .edit-item-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 34px;
+
+    padding: 7px 11px;
+
+    border: 1px solid #fecaca;
+    border-radius: 999px;
+
+    background: #fff1f2;
+
+    color: #b91c1c;
+
+    font-size: 11px;
+    font-weight: 800;
+
+    cursor: pointer;
+
+    white-space: nowrap;
+
+    transition:
+        background-color .12s ease,
+        color .12s ease,
+        border-color .12s ease;
+}
+
+.edit-order-page .edit-item-remove:hover {
+    border-color: #b91c1c;
+
+    background: #b91c1c;
+
+    color: #ffffff;
+}
+
+
+/* ============================================================
+   GRID DE CAMPOS POR UNIDAD
+   ============================================================ */
+
+.edit-order-page .edit-item-grid {
+    display: grid;
+
+    grid-template-columns:
+        125px
+        160px
+        minmax(170px, 1fr);
+
+    gap: 12px;
+
+    align-items: end;
+}
+
+.edit-order-page .edit-item-grid > div {
+    min-width: 0;
+}
+
+.edit-order-page .edit-item-grid label {
+    display: block;
+
+    margin-bottom: 5px;
+
+    color: #475467;
+
+    font-size: 9px;
+    font-weight: 800;
+}
+
+
+/* ============================================================
+   INPUTS / SELECTS
+   ============================================================ */
+
+.edit-order-page .edit-item-grid select,
+.edit-order-page .edit-item-grid textarea,
+.edit-order-page .edit-order-summary input,
+.edit-order-page .edit-order-summary select,
+.edit-order-page .edit-order-summary textarea {
+    width: 100%;
+
+    border: 1px solid #d0d5dd;
+    border-radius: 9px;
+
+    background: #ffffff;
+
+    color: #344054;
+
+    font-family: inherit;
+    font-size: 11px;
+
+    outline: none;
+
+    transition:
+        border-color .15s ease,
+        box-shadow .15s ease;
+}
+
+.edit-order-page .edit-item-grid select,
+.edit-order-page .edit-order-summary input,
+.edit-order-page .edit-order-summary select {
+    min-height: 38px;
+
+    padding: 8px 10px;
+}
+
+.edit-order-page .edit-item-grid textarea,
+.edit-order-page .edit-order-summary textarea {
+    min-height: 76px;
+
+    padding: 9px 10px;
+
+    resize: vertical;
+}
+
+.edit-order-page .edit-item-grid select:focus,
+.edit-order-page .edit-item-grid textarea:focus,
+.edit-order-page .edit-order-summary input:focus,
+.edit-order-page .edit-order-summary select:focus,
+.edit-order-page .edit-order-summary textarea:focus {
+    border-color: var(--primary);
+
+    box-shadow:
+        0 0 0 3px
+        rgba(233, 126, 46, .10);
+}
+
+
+/* ============================================================
+   CONTROL DE CANTIDAD
+   ============================================================ */
+
+.edit-order-page .edit-quantity-control {
+    display: inline-flex;
+    align-items: center;
+
+    width: 100%;
+    height: 38px;
+
+    overflow: hidden;
+
+    border: 1px solid #d0d5dd;
+    border-radius: 9px;
+
+    background: #ffffff;
+}
+
+.edit-order-page .edit-quantity-control button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    flex: 0 0 36px;
+
+    width: 36px;
+    height: 36px;
+
+    padding: 0;
+
+    border: 0;
+
+    background: #ffffff;
+
+    color: #344054;
+
+    font-size: 18px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background-color .1s ease,
+        color .1s ease;
+}
+
+.edit-order-page
+.edit-quantity-control
+button:hover:not(:disabled) {
+    background: #fff3e8;
+
+    color: var(--primary);
+}
+
+.edit-order-page
+.edit-quantity-control
+button:disabled {
+    background: #f9fafb;
+
+    color: #d0d5dd;
+
+    cursor: not-allowed;
+}
+
+.edit-order-page .edit-quantity-control input {
+    flex: 1;
+
+    width: 48px;
+    min-width: 0;
+    height: 36px;
+
+    padding: 0;
+
+    border: 0;
+    border-left: 1px solid #eaecf0;
+    border-right: 1px solid #eaecf0;
+
+    border-radius: 0;
+
+    box-shadow: none !important;
+    outline: none;
+
+    background: #ffffff;
+
+    color: var(--dark);
+
+    font-size: 12px;
+    font-weight: 900;
+
+    text-align: center;
+}
+
+.edit-order-page
+.edit-quantity-control
+input::-webkit-inner-spin-button,
+.edit-order-page
+.edit-quantity-control
+input::-webkit-outer-spin-button {
+    margin: 0;
+
+    -webkit-appearance: none;
+}
+
+.edit-order-page
+.edit-quantity-control
+input {
+    -moz-appearance: textfield;
+}
+
+
+/* ============================================================
+   PRECIO UNITARIO
+   ============================================================ */
+
+.edit-order-page .edit-item-financial {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    gap: 8px;
+
+    margin-top: 12px;
+    padding-top: 10px;
+
+    border-top: 1px solid #eaecf0;
+}
+
+.edit-order-page .edit-item-financial span {
+    color: var(--muted);
+
+    font-size: 9px;
+}
+
+.edit-order-page .edit-item-financial strong {
+    color: var(--dark);
+
+    font-size: 13px;
+}
+
+
+/* ============================================================
+   RESUMEN LATERAL
+   ============================================================ */
+
+.edit-order-page .edit-order-summary {
+    position: sticky;
+
+    top: 90px;
+
+    width: 100%;
+
+    padding: 20px;
+
+    border: 1px solid #e1e6ed;
+    border-radius: 16px;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 7px 22px
+        rgba(15, 23, 42, .04);
+
+    align-self: start;
+}
+
+.edit-order-page .edit-order-summary h2 {
+    margin: 0 0 17px;
+
+    color: var(--dark);
+
+    font-size: 17px;
+}
+
+
+/* ============================================================
+   FORMULARIO LATERAL
+   ============================================================ */
+
+.edit-order-page .edit-form-group {
+    display: flex;
+    flex-direction: column;
+
+    gap: 5px;
+
+    margin-bottom: 14px;
+}
+
+.edit-order-page .edit-form-group label {
+    color: #344054;
+
+    font-size: 10px;
+    font-weight: 800;
+}
+
+
+/* ============================================================
+   VALORES DEL RESUMEN
+   ============================================================ */
+
+.edit-order-page .edit-summary-values {
+    margin-top: 17px;
+    padding-top: 4px;
+
+    border-top: 1px solid #eaecf0;
+}
+
+.edit-order-page .edit-summary-values > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 10px;
+
+    padding: 10px 0;
+
+    border-bottom: 1px solid #eaecf0;
+}
+
+.edit-order-page .edit-summary-values span {
+    color: #475467;
+
+    font-size: 11px;
+}
+
+.edit-order-page .edit-summary-values strong {
+    color: var(--dark);
+
+    font-size: 12px;
+    font-weight: 800;
+
+    text-align: right;
+}
+
+.edit-order-page .edit-summary-values .edit-summary-total {
+    border-bottom: 0;
+
+    padding-top: 12px;
+}
+
+.edit-order-page
+.edit-summary-values
+.edit-summary-total span {
+    color: var(--dark);
+
+    font-weight: 800;
+}
+
+.edit-order-page
+.edit-summary-values
+.edit-summary-total strong {
+    color: var(--primary);
+
+    font-size: 17px;
+}
+
+
+/* ============================================================
+   AVISO IMPORTANTE
+   ============================================================ */
+
+.edit-order-page .edit-order-warning {
+    position: relative;
+
+    margin: 16px 0 13px;
+
+    padding: 11px 12px 11px 36px;
+
+    border: 1px solid #fedf89;
+    border-radius: 10px;
+
+    background: #fffaeb;
+
+    color: #b54708;
+
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+.edit-order-page .edit-order-warning::before {
+    content: "!";
+
+    position: absolute;
+
+    left: 12px;
+    top: 11px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 16px;
+    height: 16px;
+
+    border: 1px solid currentColor;
+    border-radius: 50%;
+
+    font-size: 10px;
+    font-weight: 900;
+}
+
+
+/* ============================================================
+   BOTONES LATERALES
+   ============================================================ */
+
+.edit-order-page
+.edit-order-summary
+.btn-full {
+    min-height: 41px;
+
+    margin-top: 9px;
+
+    font-size: 12px;
+}
+
+
+/* ============================================================
+   ERROR
+   ============================================================ */
+
+.edit-order-page .edit-order-error {
+    max-width: 640px;
+
+    margin: 60px auto;
+
+    padding: 38px 30px;
+
+    border: 1px solid var(--border);
+    border-radius: 18px;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 10px 30px
+        rgba(16, 24, 40, .06);
+
+    text-align: center;
+}
+
+.edit-order-page .edit-order-error::before {
+    content: "!";
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 56px;
+    height: 56px;
+
+    margin: 0 auto 15px;
+
+    border-radius: 50%;
+
+    background: #fff3e8;
+
+    color: var(--primary);
+
+    font-size: 24px;
+    font-weight: 900;
+}
+
+.edit-order-page .edit-order-error h1 {
+    margin: 0 0 8px;
+
+    font-size: 26px;
+}
+
+.edit-order-page .edit-order-error p {
+    max-width: 480px;
+
+    margin:
+        0 auto
+        20px;
+
+    color: var(--muted);
+
+    line-height: 1.6;
+}
+
+
+/* ============================================================
+   ELEMENTOS OCULTOS POR JS
+   ============================================================ */
+
+.edit-order-page [hidden] {
+    display: none !important;
+}
+
+
+/* ============================================================
+   RESPONSIVE - LAPTOP PEQUEÑA
+   ============================================================ */
+
+@media (max-width: 1080px) {
+
+    .edit-order-page .edit-order-layout {
+        grid-template-columns:
+            minmax(0, 1fr)
+            300px;
+    }
+
+    .edit-order-page .edit-item-grid {
+        grid-template-columns:
+            115px
+            150px
+            minmax(150px, 1fr);
+    }
+
+}
+
+
+/* ============================================================
+   RESPONSIVE - TABLET
+   ============================================================ */
+
+@media (max-width: 900px) {
+
+    .edit-order-page .edit-order-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .edit-order-page .edit-order-summary {
+        position: static;
+    }
+
+    .edit-order-page .edit-order-heading {
+        flex-direction: column;
+    }
+
+    .edit-order-page .edit-order-status {
+        width: 100%;
+
+        text-align: left;
+    }
+
+}
+
+
+/* ============================================================
+   RESPONSIVE - TABLET PEQUEÑA
+   ============================================================ */
+
+@media (max-width: 720px) {
+
+    .edit-order-page {
+        padding-top: 24px;
+    }
+
+    .edit-order-page .edit-products-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .edit-order-page
+    .edit-products-header
+    .btn {
+        width: 100%;
+    }
+
+    .edit-order-page .edit-order-item {
+        grid-template-columns:
+            110px
+            minmax(0, 1fr);
+    }
+
+    .edit-order-page .edit-item-image {
+        width: 110px;
+        height: 92px;
+    }
+
+    .edit-order-page .edit-item-grid {
+        grid-template-columns:
+            1fr
+            1fr;
+    }
+
+    .edit-order-page
+    .edit-item-grid
+    [data-sucursal-wrapper],
+    .edit-order-page
+    .edit-item-grid
+    [data-address-wrapper] {
+        grid-column: 1 / -1;
+    }
+
+}
+
+
+/* ============================================================
+   RESPONSIVE - CELULAR
+   ============================================================ */
+
+@media (max-width: 540px) {
+
+    .edit-order-page {
+        padding:
+            18px 0
+            45px;
+    }
+
+    .edit-order-page .edit-order-heading {
+        padding: 16px;
+
+        border-radius: 14px;
+    }
+
+    .edit-order-page .edit-order-heading h1 {
+        font-size: 24px;
+    }
+
+    .edit-order-page .edit-order-heading p {
+        font-size: 12px;
+    }
+
+    .edit-order-page .edit-order-item {
+        grid-template-columns: 1fr;
+
+        padding: 13px;
+    }
+
+    .edit-order-page .edit-item-image {
+        width: 100%;
+        height: 180px;
+    }
+
+    .edit-order-page .edit-item-heading {
+        align-items: flex-start;
+    }
+
+    .edit-order-page .edit-item-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .edit-order-page
+    .edit-item-grid
+    [data-sucursal-wrapper],
+    .edit-order-page
+    .edit-item-grid
+    [data-address-wrapper] {
+        grid-column: auto;
+    }
+
+    .edit-order-page .edit-quantity-control {
+        width: 100%;
+    }
+
+    .edit-order-page
+    .edit-quantity-control
+    button {
+        flex: 0 0 42px;
+
+        width: 42px;
+    }
+
+    .edit-order-page
+    .edit-quantity-control
+    input {
+        flex: 1;
+
+        width: auto;
+    }
+
+    .edit-order-page .edit-item-financial {
+        justify-content: space-between;
+    }
+
+    .edit-order-page .edit-order-summary {
+        padding: 16px;
+
+        border-radius: 14px;
+    }
+
+}
+
+
+/* ============================================================
+   RESPONSIVE - CELULAR MUY PEQUEÑO
+   ============================================================ */
+
+@media (max-width: 390px) {
+
+    .edit-order-page .edit-item-heading {
+        flex-direction: column;
+    }
+
+    .edit-order-page .edit-item-remove {
+        width: 100%;
+    }
+
+    .edit-order-page .edit-order-status {
+        min-width: 0;
+    }
+
+}
+
+
+
+.edit-order-page .edit-new-badge {
+    display: inline-flex;
+
+    width: max-content;
+
+    margin-top: 7px;
+
+    padding: 4px 8px;
+
+    border-radius: 999px;
+
+    background: #ecfdf3;
+
+    color: #067647;
+
+    font-size: 9px;
+    font-weight: 900;
+
+    text-transform: uppercase;
+}
+
+
+.edit-order-page .edit-order-item-new {
+    border-color: #a6f4c5;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ffffff 0%,
+            #f6fef9 100%
+        );
+}
+
+
+
+.edit-order-page .edit-item-financial {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    gap: 28px;
+
+    margin-top: 12px;
+    padding-top: 10px;
+
+    border-top: 1px solid #eaecf0;
+}
+
+
+.edit-order-page .edit-item-financial-value {
+    display: flex;
+    flex-direction: column;
+
+    gap: 2px;
+
+    text-align: right;
+}
+
+
+.edit-order-page
+.edit-item-financial-value
+span {
+    color: var(--muted);
+
+    font-size: 9px;
+}
+
+
+.edit-order-page
+.edit-item-financial-value
+strong {
+    color: var(--dark);
+
+    font-size: 13px;
+}
+
+
+.edit-order-page
+.edit-item-financial-value:last-child
+strong {
+    color: var(--primary);
+
+    font-size: 14px;
+    font-weight: 900;
+}
+
+
+@media(max-width: 540px) {
+
+    .edit-order-page
+    .edit-item-financial {
+
+        align-items: stretch;
+        justify-content: flex-start;
+
+        gap: 12px;
+    }
+
+
+    .edit-order-page
+    .edit-item-financial-value {
+
+        flex: 1;
+
+        text-align: left;
+    }
+}

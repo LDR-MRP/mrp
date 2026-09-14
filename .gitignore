@@ -1,41 +1,25 @@
 # Archivos subidos por usuarios / temporales
-Assets/uploads/
+#Assets/uploads/
+Assets/images/uploads/
 
-# Plantillas locales
-
-# Dependencies
+# Dependencias
 vendor/
 
-# Storage
+# Logs y almacenamiento temporal
 Logs/
-
-# Debug
 debug_local.log
-
+ddagent-install.log
 Config/Config_local.php
+
+# Scanner / Sonar
 .scannerwork/*
 sonar-project.properties
-ddagent-install.log
 
-# Guías y documentación local
-FLUJO_DE_TRABAJO.md
-GUIA_FRAMEWORK.md
-CHANGELOG_DB_SCHEMA.md
-HISTORIAL_COMMITS.md
-PLAN_MASTER_LOGISTICA.md
-PLAN_DESARROLLO_TECNICO_LOGISTICA.md
-
-# Archivos de respaldo de Base de Datos y Contexto DB
-db info/
-db_info/
-*.sql
-
-# vscode config
+# Archivos del sistema y editor
+.DS_Store
+Thumbs.db
 .vscode/
+.idea/
 
-# Docker
-docker/
-docker-compose.yml
-
-# Archivos de interfaz de ejemplo
-interfaz ejemplo*
+# Documentación interna de desarrollo, bases de datos y scripts
+docs_desarrollo/

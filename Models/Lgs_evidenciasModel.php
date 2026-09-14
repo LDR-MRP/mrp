@@ -41,14 +41,25 @@ class Lgs_evidenciasModel extends Mysql
     }
 
     /**
-     * Obtiene las evidencias multimedia asociadas a un envío
+     * Obtiene las evidencias multimedia asociadas a un envío, incluyendo datos del VIN si aplica
      */
     public function getEvidenciasPorEnvio(int $idEnvio): array
     {
-        $sql = "SELECT id_evidencia, id_envio, id_unidad, tipo_evidencia, ruta_archivo, observaciones, created_at 
-                FROM lgs_evidencias 
-                WHERE id_envio = :id_envio
-                ORDER BY created_at DESC";
+        $sql = "SELECT 
+                    ev.id_evidencia, 
+                    ev.id_envio, 
+                    ev.id_unidad, 
+                    ev.tipo_evidencia, 
+                    ev.ruta_archivo, 
+                    ev.observaciones, 
+                    ev.created_at,
+                    COALESCE(u.vin, ut.clave, 'General de Envío') AS vin,
+                    COALESCE(u.modelo, 'General') AS modelo
+                FROM lgs_evidencias ev
+                LEFT JOIN lgs_unidades_envios u ON ev.id_unidad = u.id_unidad
+                LEFT JOIN mrp_unidades_terminadas ut ON ev.id_unidad = ut.idunidad
+                WHERE ev.id_envio = :id_envio
+                ORDER BY ev.created_at DESC";
         
         $stmt = $this->getConexion()->prepare($sql);
         $stmt->execute(['id_envio' => $idEnvio]);
