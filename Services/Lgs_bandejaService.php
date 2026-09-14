@@ -81,6 +81,10 @@ class Lgs_bandejaService {
         return $this->model->getDestinos();
     }
 
+    public function getListaDistribuidores(): array {
+        return $this->model->getListaDistribuidores();
+    }
+
     // ─── Entrega interna ──────────────────────────────────────────────────────
 
     public function solicitarEntregaInterna(int $idUnidad, ?string $obs, int $userId): int {

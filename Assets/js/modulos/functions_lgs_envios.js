@@ -36,8 +36,13 @@ document.addEventListener('DOMContentLoaded', function () {
             { "data": "id_envio" },
             { 
                 "data": "folio",
-                "render": function(data) {
-                    return '<span class="badge bg-soft-primary text-primary fs-12 fw-bold">' + (data || 'S/F') + '</span>';
+                "render": function(data, type, row) {
+                    let html = '<span class="badge bg-soft-primary text-primary fs-12 fw-bold">' + (data || 'S/F') + '</span>';
+                    if (row.vins_list) {
+                        const vins = row.vins_list.split(', ');
+                        html += '<div class="mt-1">' + vins.map(v => '<span class="badge bg-soft-secondary text-secondary me-1 fs-10">' + v + '</span>').join('') + '</div>';
+                    }
+                    return html;
                 }
             },
             { "data": "tipo_traslado" },
@@ -51,14 +56,33 @@ document.addEventListener('DOMContentLoaded', function () {
             { "data": "origen" },
             { 
                 "data": "destino",
-                "render": function(data) {
-                    return '<span class="fw-medium text-dark">' + (data || 'Sin Destino') + '</span>';
+                "render": function(data, type, row) {
+                    let html = '<span class="fw-medium text-dark">' + (data || 'Sin Destino') + '</span>';
+                    if (row.paradas_list) {
+                        html += '<div class="mt-1 fs-11 text-muted"><i class="ri-route-line text-info me-1"></i>Ruta: ' + row.paradas_list + '</div>';
+                    }
+                    return html;
+                }
+            },
+            { 
+                "data": "km_total",
+                "render": function(data, type, row) {
+                    const kmVal = parseFloat(data || 0).toFixed(1);
+                    const nParadas = row.total_paradas || 1;
+                    return '<span class="badge bg-soft-info text-info fs-12 fw-bold"><i class="ri-route-line me-1"></i>' + kmVal + ' km</span>' +
+                           '<div class="text-muted fs-11 mt-1">' + nParadas + ' parada(s)</div>';
                 }
             },
             { 
                 "data": "total_vins",
-                "render": function(data) {
-                    return '<span class="badge bg-primary fs-12">' + (data || 0) + ' VINs</span>';
+                "render": function(data, type, row) {
+                    if (!row.vins_list || !row.vins_list.trim()) {
+                        return '<span class="badge bg-soft-secondary text-muted fs-12">Sin VINs</span>';
+                    }
+                    const vins = row.vins_list.split(', ').filter(v => v.trim());
+                    let html = vins.map(v => '<span class="badge bg-primary me-1 fs-10" style="font-size:10px;">' + v + '</span>').join('');
+                    html += '<div class="text-muted fs-11 mt-1">' + vins.length + ' unidad(es)</div>';
+                    return html;
                 }
             },
             { 
@@ -68,15 +92,25 @@ document.addEventListener('DOMContentLoaded', function () {
                     return '<span class="fw-bold text-success">$' + parseFloat(data).toFixed(2) + '</span>';
                 }
             },
+            {
+                "data": "fecha_tentativa_envio",
+                "render": function (data) {
+                    if (!data || data === 'null') return '<span class="text-muted fs-11">No definida</span>';
+                    return '<span class="fs-12 text-dark fw-medium"><i class="ri-calendar-event-line text-primary me-1"></i>' + data.replace('T', ' ') + '</span>';
+                }
+            },
             { 
                 "data": "id_estado",
                 "render": function (data) {
                     let badge = '';
                     switch(parseInt(data)) {
-                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12">Creado</span>'; break;
-                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12">En Revisión</span>'; break;
-                        case 6: badge = '<span class="badge bg-soft-info text-info fs-12">En Tránsito</span>'; break;
-                        case 7: badge = '<span class="badge bg-soft-success text-success fs-12">Entregado</span>'; break;
+                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>En Planeación</span>'; break;
+                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>En Revisión</span>'; break;
+                        case 3: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-checkbox-circle-line me-1"></i>Envío Aprobado</span>'; break;
+                        case 4: badge = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Planeación Rechazada</span>'; break;
+                        case 5: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-calendar-check-line me-1"></i>Programado</span>'; break;
+                        case 6: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-truck-line me-1"></i>En Tránsito</span>'; break;
+                        case 7: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-double-line me-1"></i>Entregado</span>'; break;
                         default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
                     }
                     return badge;
@@ -84,13 +118,20 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             {
                 "data": "id_envio",
-                "render": function (data) {
+                "render": function (data, type, row) {
+                    let btnReabrir = '';
+                    if (parseInt(row.id_estado) === 4 || parseInt(row.id_estado) === 2) {
+                        btnReabrir = `<button class="btn btn-sm btn-soft-warning rounded-pill px-3 fw-semibold me-1" onClick="fntReabrirEnvio(${data})" title="Reabrir / Desbloquear Envío">
+                                        <i class="ri-restart-line me-1"></i> Reabrir
+                                      </button>`;
+                    }
                     return `<div class="text-end">
-                                <button class="btn btn-sm btn-soft-info me-1" onClick="fntViewEnvio(${data})" title="Ver / Acomodar VINs">
+                                ${btnReabrir}
+                                <button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold me-1" onClick="fntViewEnvio(${data})" title="Ver / Acomodar VINs">
                                     <i class="ri-truck-line me-1"></i> Acomodo
                                 </button>
-                                <button class="btn btn-sm btn-soft-danger" onClick="fntDelEnvio(${data})" title="Eliminar">
-                                    <i class="ri-delete-bin-line"></i>
+                                <button class="btn btn-sm btn-soft-danger rounded-pill px-3 fw-semibold" onClick="fntDelEnvio(${data})" title="Eliminar">
+                                    <i class="ri-delete-bin-line me-1"></i> Eliminar
                                 </button>
                             </div>`;
                 }
@@ -109,6 +150,16 @@ document.addEventListener('DOMContentLoaded', function () {
     cargarProveedoresTrasladistas();
 });
 
+/**
+ * Filtra el DataTable de envíos en tiempo real.
+ * Busca en columnas de folio, VINs, origen, destino.
+ */
+function filtrarTablaPorVin(term) {
+    if (tableEnvios) {
+        tableEnvios.search(term).draw();
+    }
+}
+
 function actualizarMetricasEnvios(data) {
     if (!Array.isArray(data)) return;
     
@@ -123,24 +174,253 @@ function actualizarMetricasEnvios(data) {
     if (document.getElementById('cardEnviosEntregados')) document.getElementById('cardEnviosEntregados').innerText = entregados;
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// PARADAS MULTI-DESTINO
+// ──────────────────────────────────────────────────────────────────────────────
+
+/** Lee los destinos del catlogo embebido en el HTML */
+function getCatalogoDestinos() {
+    const el = document.getElementById('catalogoDestinos');
+    if (!el) return [];
+    try { return JSON.parse(el.textContent); } catch { return []; }
+}
+
+/** Construye el HTML de options para el select de destino de una parada */
+function buildDestinoOptions(selectedId) {
+    const destinos = getCatalogoDestinos();
+    let html = '<option value="">Seleccione distribuidor / destino...</option>';
+    
+    // Agrupar por categoría
+    const grupos = {};
+    destinos.forEach(d => {
+        const cat = d.tipo_destino || 'Destinos y Distribuidores';
+        if (!grupos[cat]) grupos[cat] = [];
+        grupos[cat].push(d);
+    });
+
+    Object.keys(grupos).forEach(catName => {
+        html += `<optgroup label="${catName}">`;
+        grupos[catName].forEach(d => {
+            const sel = (String(d.id) === String(selectedId)) ? 'selected' : '';
+            const addr = d.direccion ? ` — ${d.direccion}` : '';
+            html += `<option value="${d.id}" data-direccion="${d.direccion || ''}" data-nombre="${d.nombre}" ${sel}>${d.nombre}${addr}</option>`;
+        });
+        html += `</optgroup>`;
+    });
+
+    return html;
+}
+
+let _paradaCounter = 0;
+
+/** Agrega un nuevo bloque de parada al formulario */
+function agregarParadaForm(data) {
+    _paradaCounter++;
+    const n = _paradaCounter;
+    const msg = document.getElementById('msg-sin-paradas');
+    if (msg) msg.style.display = 'none';
+
+    const cont = document.getElementById('contenedor-paradas');
+    if (!cont) return;
+
+    const div = document.createElement('div');
+    div.className = 'card border shadow-sm p-3 mb-0 parada-item';
+    div.setAttribute('data-n', n);
+    div.innerHTML = `
+        <div class="d-flex align-items-center mb-2">
+            <span class="badge bg-primary me-2">Parada <span class="num-parada">${cont.querySelectorAll('.parada-item').length + 1}</span></span>
+            <span class="text-muted fs-11">Define el destino y los kilómetros de este tramo</span>
+            <button type="button" class="btn btn-sm btn-soft-danger ms-auto" onclick="eliminarParada(this)">
+                <i class="ri-delete-bin-line"></i> Quitar
+            </button>
+        </div>
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label fs-11 text-muted mb-1">Destino (Distribuidor / Cliente)</label>
+                <select class="form-select form-select-sm parada-id-destino" onchange="recalcularRutaGoogleMaps(); serializarParadas();">
+                    ${buildDestinoOptions(data ? data.id_destino_cat : '')}
+                </select>
+                <small class="text-muted fs-10 d-block mt-1 parada-direccion-info"></small>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fs-11 text-muted mb-1">Nombre libre / Dirección manual</label>
+                <input type="text" class="form-control form-control-sm parada-nombre-libre"
+                    value="${data ? (data.destino_nombre_libre || '') : ''}"
+                    placeholder="Ej: Av. Juárez 100, Puebla"
+                    oninput="serializarParadas()">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fs-11 text-muted mb-1">Km tramo <small class="text-primary">(Tarifario)</small></label>
+                <input type="number" class="form-control form-control-sm parada-km" min="0" step="0.1"
+                    value="${data ? (data.km_tramo || 0) : 0}"
+                    oninput="serializarParadas()">
+            </div>
+        </div>`;
+    cont.appendChild(div);
+    actualizarNumerosParadas();
+    serializarParadas();
+    recalcularRutaGoogleMaps();
+}
+
+/** Elimina una parada y renumera */
+function eliminarParada(btn) {
+    const item = btn.closest('.parada-item');
+    if (item) item.remove();
+    actualizarNumerosParadas();
+    serializarParadas();
+    recalcularRutaGoogleMaps();
+    const cont = document.getElementById('contenedor-paradas');
+    const msg  = document.getElementById('msg-sin-paradas');
+    if (msg && cont && cont.querySelectorAll('.parada-item').length === 0) {
+        msg.style.display = '';
+        const alertTotal = document.getElementById('badge-distancia-total-container');
+        if (alertTotal) alertTotal.style.setProperty('display', 'none', 'important');
+    }
+}
+
+/** Reasigna los números visuales de paradas */
+function actualizarNumerosParadas() {
+    const items = document.querySelectorAll('#contenedor-paradas .parada-item');
+    items.forEach((el, idx) => {
+        const badge = el.querySelector('.num-parada');
+        if (badge) badge.textContent = idx + 1;
+    });
+}
+
+/** Serializa las paradas al campo oculto paradas_json */
+function serializarParadas() {
+    const items = document.querySelectorAll('#contenedor-paradas .parada-item');
+    const result = [];
+    items.forEach((el, idx) => {
+        const idDestCat  = el.querySelector('.parada-id-destino') ? el.querySelector('.parada-id-destino').value : '';
+        const nombreLibre= el.querySelector('.parada-nombre-libre') ? el.querySelector('.parada-nombre-libre').value.trim() : '';
+        const km         = el.querySelector('.parada-km') ? parseFloat(el.querySelector('.parada-km').value) || 0 : 0;
+        result.push({
+            orden: idx + 1,
+            id_destino_cat: idDestCat || null,
+            destino_nombre_libre: nombreLibre,
+            km_tramo: km
+        });
+    });
+    const campo = document.getElementById('paradas_json');
+    if (campo) campo.value = JSON.stringify(result);
+}
+
+/**
+ * Recalcula distancias de ruta consultando directamente el Tarifario
+ */
+function recalcularRutaGoogleMaps() {
+    const idOrigen = document.getElementById('id_origen') ? parseInt(document.getElementById('id_origen').value) || 0 : 0;
+    const items = document.querySelectorAll('#contenedor-paradas .parada-item');
+    
+    if (items.length === 0) return;
+
+    const paradasList = [];
+    items.forEach((el, idx) => {
+        const idDestCat   = el.querySelector('.parada-id-destino') ? el.querySelector('.parada-id-destino').value : '';
+        const nombreLibre = el.querySelector('.parada-nombre-libre') ? el.querySelector('.parada-nombre-libre').value.trim() : '';
+        const kmActual    = el.querySelector('.parada-km') ? parseFloat(el.querySelector('.parada-km').value) || 0 : 0;
+        
+        // Actualizar subtitulo de direccion
+        const selObj = el.querySelector('.parada-id-destino');
+        const optSelected = selObj && selObj.selectedIndex >= 0 ? selObj.options[selObj.selectedIndex] : null;
+        const dir = optSelected ? optSelected.getAttribute('data-direccion') : '';
+        const infoSpan = el.querySelector('.parada-direccion-info');
+        if (infoSpan) {
+            infoSpan.innerHTML = dir ? `<i class="ri-map-pin-line text-danger me-1"></i>${dir}` : '';
+        }
+
+        paradasList.push({
+            orden: idx + 1,
+            id_destino_cat: idDestCat || null,
+            destino_nombre_libre: nombreLibre,
+            km_tramo: kmActual
+        });
+    });
+
+    let request = new XMLHttpRequest();
+    let ajaxUrl = base_url + '/Lgs_envios/calcularDistanciaRuta';
+
+    request.open("POST", ajaxUrl, true);
+    request.setRequestHeader("Content-Type", "application/json");
+    request.send(JSON.stringify({
+        id_origen: idOrigen,
+        paradas: paradasList
+    }));
+
+    request.onreadystatechange = function () {
+        if (request.readyState == 4 && request.status == 200) {
+            try {
+                let objData = JSON.parse(request.responseText);
+                if (objData.status && objData.data) {
+                    const paradasRes = objData.data.paradas || [];
+                    const kmTotal    = objData.data.km_total || 0;
+
+                    // Actualizar inputs de km_tramo en la UI
+                    items.forEach((el, idx) => {
+                        if (paradasRes[idx] && typeof paradasRes[idx].km_tramo !== 'undefined') {
+                            const inputKm = el.querySelector('.parada-km');
+                            if (inputKm) inputKm.value = paradasRes[idx].km_tramo;
+                        }
+                    });
+
+                    serializarParadas();
+
+                    // Mostrar badge total
+                    const alertTotal = document.getElementById('badge-distancia-total-container');
+                    const spanVal    = document.getElementById('badge-km-total-val');
+                    if (alertTotal && spanVal) {
+                        alertTotal.style.setProperty('display', 'flex', 'important');
+                        spanVal.innerText = kmTotal.toFixed(1) + ' km (Tarifario)';
+                    }
+                }
+            } catch (e) {
+                console.error("Error al recalcular ruta: ", e);
+            }
+        }
+    };
+}
+
 function openModal() {
     document.querySelector('#id_envio').value = "";
     document.querySelector('#btnText').innerHTML = "Guardar Envío";
     document.querySelector('#form-envio-title').innerHTML = "Crear Solicitud de Traslado";
     document.querySelector("#formEnvio").reset();
+    // Limpiar paradas
+    const cont = document.getElementById('contenedor-paradas');
+    if (cont) cont.innerHTML = '';
+    const msg = document.getElementById('msg-sin-paradas');
+    if (msg) msg.style.display = '';
+    serializarParadas();
     fntSwitchView('form');
 }
 
 function saveEnvio() {
     let id_tipo_traslado = document.querySelector('#id_tipo_traslado').value;
-    let id_motivo = document.querySelector('#id_motivo').value;
+    let id_motivo = document.querySelector('#id_motivo') ? document.querySelector('#id_motivo').value : '';
     let id_proveedor = document.querySelector('#id_proveedor').value;
     let id_origen = document.querySelector('#id_origen').value;
-    let id_destino = document.querySelector('#id_destino') ? document.querySelector('#id_destino').value : '';
+    let fecha_tentativa_envio = document.querySelector('#fecha_tentativa_envio') ? document.querySelector('#fecha_tentativa_envio').value : '';
 
-    if (id_tipo_traslado == '' || id_motivo == '' || id_proveedor == '' || id_origen == '' || id_destino == '') {
-        Swal.fire("Atención", "Todos los campos marcados con (*) son obligatorios.", "error");
+    // Serializar paradas antes de validar
+    serializarParadas();
+    const paradasJson = document.getElementById('paradas_json') ? document.getElementById('paradas_json').value : '[]';
+    const paradas = JSON.parse(paradasJson);
+
+    if (id_tipo_traslado == '' || id_motivo == '' || id_proveedor == '' || id_origen == '' || fecha_tentativa_envio == '') {
+        Swal.fire("Atención", "Todos los campos marcados con (*) son obligatorios, incluyendo la Fecha/Hora Programada de Salida.", "error");
         return false;
+    }
+    if (paradas.length === 0) {
+        Swal.fire("Atención", "Debe agregar al menos una parada destino en la ruta.", "warning");
+        return false;
+    }
+    // Validar que cada parada tenga al menos nombre o destino cat
+    for (let i = 0; i < paradas.length; i++) {
+        if (!paradas[i].id_destino_cat && !paradas[i].destino_nombre_libre) {
+            Swal.fire("Atención", `La parada ${i + 1} debe tener un destino seleccionado o un nombre libre.`, "warning");
+            return false;
+        }
     }
 
     let request = new XMLHttpRequest();
@@ -249,7 +529,91 @@ function fntDelEnvio(idEnvio) {
         confirmButtonText: 'Sí, eliminar'
     }).then((result) => {
         if (result.isConfirmed) {
-            Swal.fire('Eliminado!', 'El registro ha sido eliminado.', 'success');
+            let request = new XMLHttpRequest();
+            let ajaxUrl = base_url + '/Lgs_envios/delete';
+            let formData = new FormData();
+            formData.append('id_envio', idEnvio);
+
+            Swal.fire({
+                title: 'Eliminando...',
+                text: 'Por favor espere.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading()
+                }
+            });
+
+            request.open("POST", ajaxUrl, true);
+            request.send(formData);
+            request.onreadystatechange = function () {
+                if (request.readyState == 4) {
+                    if (request.status == 200) {
+                        try {
+                            let objData = JSON.parse(request.responseText);
+                            if (objData.status === 'success' || objData.code === 200) {
+                                Swal.fire('Eliminado!', objData.message || 'El registro ha sido eliminado.', 'success');
+                                if (typeof tableEnvios !== 'undefined' && tableEnvios) tableEnvios.ajax.reload();
+                            } else {
+                                Swal.fire("Error", objData.message || "Error al eliminar el envío", "error");
+                            }
+                        } catch (e) {
+                            Swal.fire("Error", "Respuesta no válida del servidor.", "error");
+                        }
+                    } else {
+                        try {
+                            let objData = JSON.parse(request.responseText);
+                            Swal.fire("Error (" + request.status + ")", objData.message || "Ocurrió un error en el servidor.", "error");
+                        } catch (e) {
+                            Swal.fire("Error (" + request.status + ")", "Error en el servidor al procesar la solicitud.", "error");
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function fntReabrirEnvio(idEnvio) {
+    Swal.fire({
+        title: '¿Reabrir / Desbloquear Envío?',
+        text: 'El envío regresará a estado En Planeación para que puedas editar su acomodo, paradas y costos.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#ffc107',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="ri-restart-line me-1"></i> Sí, reabrir',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Reabriendo Envío...',
+                text: 'Por favor espere.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading() }
+            });
+
+            let request = new XMLHttpRequest();
+            let ajaxUrl = base_url + '/Lgs_envios/reabrir';
+            let formData = new FormData();
+            formData.append('id_envio', idEnvio);
+
+            request.open("POST", ajaxUrl, true);
+            request.send(formData);
+            request.onreadystatechange = function () {
+                if (request.readyState == 4 && request.status == 200) {
+                    try {
+                        let objData = JSON.parse(request.responseText);
+                        if (objData.status) {
+                            Swal.fire("¡Envío Reabierto!", objData.msg, "success");
+                            if (typeof tableEnvios !== 'undefined' && tableEnvios) tableEnvios.ajax.reload();
+                        } else {
+                            Swal.fire("Error", objData.msg || "No se pudo reabrir el envío", "error");
+                        }
+                    } catch (e) {
+                        Swal.fire("Error", "Error al procesar la respuesta del servidor", "error");
+                    }
+                }
+            };
         }
     });
 }

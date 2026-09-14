@@ -195,7 +195,7 @@
         <!-- PESO -->
         <div class="col-lg-4 col-sm-6">
             <div class="mb-3">
-                <label class="form-label" for="peso">PESO</label>
+                <label class="form-label" for="peso">PESO (Kg)</label>
                 <div class="input-group mb-3">
                     <span class="input-group-text" id="peso-addon">Peso (Kg)</span>
                     <input type="number" class="form-control"

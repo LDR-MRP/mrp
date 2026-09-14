@@ -38,7 +38,8 @@ class Lgs_panelrutas extends Controllers
     public function getRutasMapa(): void
     {
         try {
-            $data = $this->service->getRutasActivasMapa();
+            $plantaId = ($_SESSION['userData']['idrol'] ?? 0) == 1 ? null : ($_SESSION['userData']['plantaid'] ?? null);
+            $data = $this->service->getRutasActivasMapa($plantaId);
             echo $this->successResponse($data, "Rutas activas en tránsito obtenidas");
         } catch (Exception $e) {
             echo $this->errorResponse($e->getMessage(), 500);

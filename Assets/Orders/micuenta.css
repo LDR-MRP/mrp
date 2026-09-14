@@ -473,7 +473,7 @@
 .account-hero h1 {
     margin: 0 0 9px;
 
-    color: #0f172a;
+    color: #fff;
 
     font-size: clamp(27px, 2.5vw, 35px);
     font-weight: 850;
@@ -484,7 +484,7 @@
     max-width: 470px;
     margin: 0;
 
-    color: var(--account-text-secondary);
+       color: #fff;
 
     font-size: 13px;
     line-height: 1.65;
@@ -1906,6 +1906,166 @@ select.account-input {
 
     .status-tab {
         padding: 0 10px;
+    }
+
+}
+
+
+
+
+.order-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+
+/* ==========================================================
+   BOTÓN GENERAL
+========================================================== */
+
+.button-order-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+
+    min-height: 34px;
+    padding: 7px 11px;
+
+    border: 1px solid transparent;
+    border-radius: 7px;
+
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1;
+
+    text-decoration: none;
+
+    cursor: pointer;
+
+    transition:
+        background-color .18s ease,
+        border-color .18s ease,
+        color .18s ease,
+        opacity .18s ease,
+        transform .18s ease;
+}
+
+
+.button-order-action i {
+    font-size: 15px;
+    line-height: 1;
+}
+
+
+.button-order-action:hover {
+    transform: translateY(-1px);
+}
+
+
+/* ==========================================================
+   VER DETALLE
+========================================================== */
+
+.button-order-view {
+    background: #f8fafc;
+    border-color: #d0d5dd;
+    color: #344054;
+}
+
+
+.button-order-view:hover {
+    background: #f2f4f7;
+    border-color: #98a2b3;
+    color: #101828;
+}
+
+
+/* ==========================================================
+   EDITAR
+========================================================== */
+
+.button-order-edit {
+    background: #fff7ed;
+    border-color: #fed7aa;
+    color: #c2410c;
+}
+
+
+.button-order-edit:hover {
+    background: #ffedd5;
+    border-color: #fdba74;
+    color: #9a3412;
+}
+
+
+/* ==========================================================
+   CANCELAR
+========================================================== */
+
+.button-order-cancel {
+    background: #fff;
+    border-color: #fda29b;
+    color: #b42318;
+}
+
+
+.button-order-cancel:hover {
+    background: #fef3f2;
+    border-color: #f97066;
+    color: #912018;
+}
+
+
+/* ==========================================================
+   IMPRIMIR
+========================================================== */
+
+.button-order-print {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #15803d;
+}
+
+
+.button-order-print:hover {
+    background: #dcfce7;
+    border-color: #86efac;
+    color: #166534;
+}
+
+
+/* ==========================================================
+   DESHABILITADO
+========================================================== */
+
+.button-order-disabled,
+.button-order-disabled:hover {
+    background: #f2f4f7;
+    border-color: #e4e7ec;
+    color: #98a2b3;
+
+    cursor: not-allowed;
+    opacity: .65;
+
+    transform: none;
+}
+
+
+/* ==========================================================
+   RESPONSIVE
+========================================================== */
+
+@media (max-width: 768px) {
+
+    .order-actions {
+        align-items: stretch;
+    }
+
+    .button-order-action {
+        flex: 1 1 auto;
     }
 
 }

@@ -48,6 +48,8 @@ class Inv_recepcion extends Controllers
 
     public function getDetalleOC($idCompra)
     {
+        ini_set('display_errors', 1);
+        error_reporting(E_ALL);
         echo json_encode($this->model->selectDetalleOC($idCompra), JSON_UNESCAPED_UNICODE);
         die();
     }
@@ -82,6 +84,8 @@ class Inv_recepcion extends Controllers
             $this->model->getAlmacenCompra($idCompra);
 
         if (empty($almacenCompra)) {
+            error_log("idCompra recibido: " . $idCompra);
+error_log("Resultado almacenCompra: " . print_r($almacenCompra, true));
 
             echo json_encode([
                 "status" => false,

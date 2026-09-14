@@ -1,6 +1,7 @@
 let g_madrinasProveedor = [];
 let g_choferesProveedor = [];
 let g_envioData = null;
+let g_paradasEnvio = [];
 let modalVehiculoBs = null;
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -10,6 +11,24 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     cargarDatosDetalle();
+
+    const inputBuscar = document.getElementById('buscar-vin-pool');
+    if (inputBuscar) {
+        inputBuscar.addEventListener('input', function (e) {
+            const term = e.target.value.toLowerCase().trim();
+            const items = document.querySelectorAll('#vins-disponibles li');
+            items.forEach(item => {
+                const vin = (item.getAttribute('data-vin') || '').toLowerCase();
+                const numSerie = (item.getAttribute('data-num-serie') || '').toLowerCase();
+                const modelo = (item.getAttribute('data-modelo') || '').toLowerCase();
+                if (vin.includes(term) || numSerie.includes(term) || modelo.includes(term)) {
+                    item.style.setProperty('display', '', 'important');
+                } else {
+                    item.style.setProperty('display', 'none', 'important');
+                }
+            });
+        });
+    }
 });
 
 function cargarDatosDetalle() {
@@ -29,11 +48,42 @@ function cargarDatosDetalle() {
                     g_envioData = objData.data.envio || {};
                     g_madrinasProveedor = objData.data.madrinas || [];
                     g_choferesProveedor = objData.data.choferes || [];
+                    g_paradasEnvio = objData.data.paradas || [];
 
-                    // 1. Mostrar nombre de la empresa trasladista
+                    // 1. Mostrar nombre de la empresa trasladista y actualizar resumen
                     const lblProv = document.getElementById('lbl-trasladista-nombre');
                     if (lblProv) {
                         lblProv.innerText = g_envioData.trasladista || 'Sin Trasladista Asignado';
+                    }
+
+                    // Llenar tarjeta de resumen de ruta y KM
+                    let acumRuta = 0;
+                    let desgloseTramos = [];
+                    (g_paradasEnvio || []).forEach(p => {
+                        const kmT = parseFloat(p.km_tramo || 0);
+                        acumRuta += kmT;
+                        p.km_acumulado = acumRuta; // Guardar km acumulado desde el origen
+                        desgloseTramos.push(`P${p.orden} (${p.destino_nombre || 'Parada'}: +${kmT.toFixed(1)}km)`);
+                    });
+
+                    const lblOrig = document.getElementById('lbl-resumen-origen');
+                    const lblKm   = document.getElementById('lbl-resumen-km-total');
+                    const lblPar  = document.getElementById('lbl-resumen-paradas');
+                    const lblCost = document.getElementById('lbl-resumen-costo');
+
+                    if (lblOrig) lblOrig.innerText = g_envioData.origen || '-';
+                    if (lblKm)   lblKm.innerText   = (parseFloat(g_envioData.km_total || acumRuta).toFixed(1)) + ' km Total';
+                    if (lblPar)  lblPar.innerHTML  = `<strong>${g_paradasEnvio ? g_paradasEnvio.length : 0} paradas</strong><small class="d-block text-muted fs-10 mt-1">${desgloseTramos.join(' ➔ ')}</small>`;
+                    if (lblCost) lblCost.innerText = g_envioData.costo_total ? '$' + parseFloat(g_envioData.costo_total).toFixed(2) : '$0.00';
+
+                    const idTipoTraslado = parseInt(g_envioData.id_tipo_traslado || 1);
+                    const btnAdd = document.getElementById('btn-agregar-vehiculo');
+                    if (btnAdd) {
+                        if (idTipoTraslado === 1) {
+                            btnAdd.innerHTML = '<i class="ri-truck-line me-1"></i> Agregar Madrina';
+                        } else {
+                            btnAdd.innerHTML = '<i class="ri-steering-2-line me-1"></i> Seleccionar Chofer (Rodando)';
+                        }
                     }
 
                     // 2. Renderizar VINs Disponibles en el pool izquierdo
@@ -44,6 +94,11 @@ function cargarDatosDetalle() {
 
                     // 4. Inicializar Sortables
                     initSortables();
+
+                    // 5. Recalcular costo si ya existen asignaciones cargadas
+                    if (objData.data.existentes && objData.data.existentes.length > 0) {
+                        guardarAcomodoAuto();
+                    }
                 }
             } catch (e) {
                 console.error("Error al procesar datos de detalle: ", e);
@@ -66,15 +121,32 @@ function renderPoolVins(vins) {
 
     let html = '';
     vins.forEach(v => {
+        const mod = v.modelo || 'Unidad';
+        const orig = v.origen || 'Origen';
+        const dest = v.destino || 'Destino';
         html += `
-        <li class="list-group-item cursor-move shadow-sm mb-2 rounded border-start border-3 border-primary bg-white" data-id-unidad="${v.id_unidad}">
+        <li class="list-group-item cursor-move shadow-sm mb-2 rounded border-start border-3 border-primary bg-white" 
+            data-id-unidad="${v.id_unidad}"
+            data-vin="${v.vin}"
+            data-num-serie="${v.num_serie || ''}"
+            data-modelo="${mod}"
+            data-origen="${orig}"
+            data-destino="${dest}">
             <div class="d-flex align-items-center">
-                <div class="flex-shrink-0 me-3">
+                <div class="flex-shrink-0 me-2">
                     <i class="ri-draggable fs-18 text-muted"></i>
                 </div>
                 <div class="flex-grow-1">
-                    <h6 class="mb-0 fs-13">VIN: <span class="text-primary fw-bold">${v.vin}</span></h6>
-                    <p class="text-muted mb-0 fs-11">N/S: ${v.num_serie || 'N/A'}</p>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h6 class="mb-0 fs-13 text-primary fw-bold">${v.vin}</h6>
+                        <span class="badge bg-soft-info text-info fs-11">${mod}</span>
+                    </div>
+                    <p class="text-dark mb-0 fs-11 fw-semibold">
+                        <i class="ri-map-pin-line text-danger me-1"></i>${orig} 
+                        <i class="ri-arrow-right-line mx-1 text-muted"></i> 
+                        <i class="ri-map-pin-2-fill text-success me-1"></i>${dest}
+                    </p>
+                    <small class="text-muted fs-11">N/S: ${v.num_serie || 'N/A'}</small>
                 </div>
             </div>
         </li>`;
@@ -118,16 +190,26 @@ function renderAcomodoExistente(existentes) {
             }, grupo.vins);
         }
     });
+
+    document.querySelectorAll('.vehiculo-list').forEach(ul => {
+        actualizarConteoYSecuencia(ul);
+        agruparYOrdenarParadas(ul);
+    });
 }
 
 function initSortables() {
     // 1. Contenedor de VINs Disponibles
     const pool = document.getElementById('vins-disponibles');
-    if (pool) {
+    if (pool && !pool.getAttribute('data-sortable-init')) {
+        pool.setAttribute('data-sortable-init', 'true');
         new Sortable(pool, {
             group: 'shared',
             animation: 150,
-            ghostClass: 'sortable-ghost'
+            ghostClass: 'sortable-ghost',
+            onAdd: function (evt) {
+                actualizarConteoYSecuencia(evt.from);
+                limpiarBadgesPool(evt.item);
+            }
         });
     }
 
@@ -141,27 +223,323 @@ function initSortables() {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
                 onAdd: function (evt) {
-                    actualizarConteo(evt.to);
+                    actualizarConteoYSecuencia(evt.to);
+                    agruparYOrdenarParadas(evt.to);
+                    guardarAcomodoAuto();
                 },
                 onRemove: function (evt) {
-                    actualizarConteo(evt.from);
+                    actualizarConteoYSecuencia(evt.from);
+                    guardarAcomodoAuto();
+                },
+                onUpdate: function (evt) {
+                    actualizarConteoYSecuencia(evt.to);
+                    agruparYOrdenarParadas(evt.to);
+                    guardarAcomodoAuto();
+                },
+                onEnd: function (evt) {
+                    if (evt.to && evt.to.id !== 'vins-disponibles') {
+                        actualizarConteoYSecuencia(evt.to);
+                        agruparYOrdenarParadas(evt.to);
+                        guardarAcomodoAuto();
+                    }
                 }
             });
         }
     });
+
+    document.querySelectorAll('.vehiculo-list').forEach(ul => {
+        actualizarConteoYSecuencia(ul);
+        agruparYOrdenarParadas(ul);
+    });
 }
 
-function actualizarConteo(listaUl) {
-    if (!listaUl) return;
+function actualizarConteoYSecuencia(listaUl) {
+    if (!listaUl || listaUl.id === 'vins-disponibles') return;
+
     const container = listaUl.closest('div.border');
+    const items = listaUl.querySelectorAll('li');
+    const cap = listaUl.getAttribute('data-capacidad') || 99;
+
+    // Contar cuántos VINs van a cada parada en este vehículo para detectar paradas compartidas
+    const paradasCountMap = {};
+    items.forEach(li => {
+        const pId = li.getAttribute('data-id-parada');
+        if (pId) {
+            paradasCountMap[pId] = (paradasCountMap[pId] || 0) + 1;
+        }
+    });
+
+    items.forEach((li, idx) => {
+        li.classList.remove('border-primary');
+        li.classList.add('border-success');
+
+        const vin = li.getAttribute('data-vin') || li.querySelector('h6')?.innerText.replace('VIN:', '').trim() || '';
+        const numSerie = li.getAttribute('data-num-serie') || '';
+        const modelo = li.getAttribute('data-modelo') || 'Unidad';
+        const origen = li.getAttribute('data-origen') || 'Origen';
+        const destino = li.getAttribute('data-destino') || 'Destino';
+        const paradaActual = li.getAttribute('data-id-parada') || '';
+
+        const posIndex = idx + 1;
+        let badgeSecuencia = (posIndex === 1)
+            ? `<span class="badge bg-success px-2 py-1 fs-11 me-1"><i class="ri-number-1 me-1"></i>1º EN CARGAR</span>`
+            : `<span class="badge bg-info px-2 py-1 fs-11 me-1"><i class="ri-truck-line me-1"></i>${posIndex}º EN CARGAR</span>`;
+
+        let paradaAutoselect = paradaActual;
+        if (!paradaAutoselect && g_paradasEnvio.length > 0 && destino) {
+            const destinoLower = destino.toLowerCase().trim();
+            let bestMatch = null;
+            let bestScore = 0;
+            g_paradasEnvio.forEach(p => {
+                const nombreParada = (p.destino_nombre || p.destino_nombre_libre || '').toLowerCase().trim();
+                if (!nombreParada) return;
+                let score = 0;
+                if (nombreParada === destinoLower) score = 100;
+                else if (nombreParada.includes(destinoLower) || destinoLower.includes(nombreParada)) score = 60;
+                else {
+                    const words = destinoLower.split(/\s+/);
+                    words.forEach(w => { if (w.length > 3 && nombreParada.includes(w)) score += 20; });
+                }
+                if (score > bestScore) { bestScore = score; bestMatch = p; }
+            });
+            if (bestMatch && bestScore >= 20) paradaAutoselect = String(bestMatch.id_parada);
+        }
+
+        const objParadaSel = (g_paradasEnvio || []).find(p => String(p.id_parada) === String(paradaAutoselect));
+        const kmTramo = objParadaSel ? parseFloat(objParadaSel.km_tramo || 0).toFixed(1) : null;
+        const kmAcum = objParadaSel ? parseFloat(objParadaSel.km_acumulado || objParadaSel.km_tramo || 0).toFixed(1) : null;
+        const isCompartida = paradaAutoselect && (paradasCountMap[paradaAutoselect] || 0) > 1;
+
+        let opts = '<option value="">-- Sin parada --</option>';
+        if (g_paradasEnvio && g_paradasEnvio.length > 0) {
+            g_paradasEnvio.forEach(p => {
+                const sel = (String(p.id_parada) === String(paradaAutoselect)) ? 'selected' : '';
+                const matchBadge = (!paradaActual && String(p.id_parada) === String(paradaAutoselect)) ? ' 🎯' : '';
+                const kmTxt = p.km_tramo ? ` (+${parseFloat(p.km_tramo).toFixed(1)}km)` : '';
+                opts += `<option value="${p.id_parada}" ${sel}>Parada ${p.orden}: ${p.destino_nombre || p.destino_nombre_libre || 'Sin Nombre'}${kmTxt}${matchBadge}</option>`;
+            });
+        }
+
+        li.innerHTML = `
+        <div class="d-flex align-items-center">
+            <div class="flex-shrink-0 me-2">
+                <i class="ri-draggable fs-18 text-muted"></i>
+            </div>
+            <div class="flex-grow-1">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <h6 class="mb-0 fs-13 text-success fw-bold">VIN: ${vin}</h6>
+                    <div>
+                        ${badgeSecuencia}
+                        <span class="badge bg-soft-secondary text-dark fs-11">${modelo}</span>
+                    </div>
+                </div>
+                <p class="text-dark mb-1 fs-11 fw-semibold">
+                    <i class="ri-map-pin-line text-danger me-1"></i>${origen} 
+                    <i class="ri-arrow-right-line mx-1 text-muted"></i> 
+                    <i class="ri-map-pin-2-fill text-success me-1"></i>${destino}
+                </p>
+                ${ g_paradasEnvio.length > 0 ? `
+                <div class="mt-1 d-flex align-items-center gap-2 flex-wrap">
+                    <i class="ri-route-line text-primary fs-12"></i>
+                    <select class="form-select form-select-sm py-0 parada-vin-select" 
+                            style="max-width:230px; font-size:11px;"
+                            data-vin-key="${vin}"
+                            onchange="li_setParada(this)">
+                        ${opts}
+                    </select>
+                    <span class="badge bg-soft-info text-info border border-info fs-11 fw-bold vin-km-tramo-badge" style="${kmTramo ? '' : 'display:none;'}">
+                        <i class="ri-map-pin-distance-line me-1"></i>+${kmTramo || 0} km (Total: ${kmAcum || 0} km)
+                    </span>
+                    ${isCompartida ? '<span class="badge bg-soft-secondary text-dark fs-10" title="Misma parada que otra unidad en este vehículo (sin duplicar kms de viaje)"><i class="ri-user-shared-line text-primary me-1"></i>Parada Compartida</span>' : ''}
+                    ${paradaAutoselect && !paradaActual ? '<small class="text-muted fs-10"><i class="ri-magic-line text-info me-1"></i>Auto desde pedido</small>' : ''}
+                </div>` : ''}
+                <small class="text-muted fs-11">N/S: ${numSerie || 'N/A'}</small>
+            </div>
+        </div>`;
+
+        if (paradaAutoselect) li.setAttribute('data-id-parada', paradaAutoselect);
+        const sel = li.querySelector('.parada-vin-select');
+        if (sel) sel.addEventListener('change', () => {
+            li.setAttribute('data-id-parada', sel.value);
+        });
+    });
+
+    // Calcular la ruta real del vehículo (suma de tramos de las paradas recorridas en orden hasta el máximo destino)
     if (container) {
         const badge = container.querySelector('.badge');
-        const items = listaUl.querySelectorAll('li').length;
-        const cap = listaUl.getAttribute('data-capacidad') || 99;
         if (badge) {
-            badge.innerHTML = items + ' / ' + cap + ' VINs';
+            let maxOrdenVisitado = 0;
+            let paradasUnicasSet = new Set();
+            items.forEach(li => {
+                const pId = li.getAttribute('data-id-parada');
+                const pObj = (g_paradasEnvio || []).find(p => String(p.id_parada) === String(pId));
+                if (pObj) {
+                    paradasUnicasSet.add(pObj.id_parada);
+                    const ord = parseInt(pObj.orden || 0);
+                    if (ord > maxOrdenVisitado) maxOrdenVisitado = ord;
+                }
+            });
+
+            // Sumar los tramos de la ruta continuada hasta la parada de mayor orden visitada por este vehículo
+            let kmRecorridoRealVehiculo = 0;
+            (g_paradasEnvio || []).forEach(p => {
+                if (parseInt(p.orden || 0) <= maxOrdenVisitado) {
+                    kmRecorridoRealVehiculo += parseFloat(p.km_tramo || 0);
+                }
+            });
+
+            const nParadasUnicas = paradasUnicasSet.size;
+            const kmTxt = kmRecorridoRealVehiculo > 0 
+                ? ` | 🛣️ ${kmRecorridoRealVehiculo.toFixed(1)} km (${nParadasUnicas} parada${nParadasUnicas > 1 ? 's' : ''} única${nParadasUnicas > 1 ? 's' : ''})` 
+                : '';
+            badge.innerHTML = items.length + ' / ' + cap + ' VINs' + kmTxt;
         }
     }
+}
+
+function limpiarBadgesPool(li) {
+    if (!li) return;
+    li.classList.remove('border-success');
+    li.classList.add('border-primary');
+
+    const vin = li.getAttribute('data-vin') || li.querySelector('h6')?.innerText.replace('VIN:', '').trim() || '';
+    const numSerie = li.getAttribute('data-num-serie') || '';
+    const modelo = li.getAttribute('data-modelo') || 'Unidad';
+    const origen = li.getAttribute('data-origen') || 'Origen';
+    const destino = li.getAttribute('data-destino') || 'Destino';
+
+    li.innerHTML = `
+    <div class="d-flex align-items-center">
+        <div class="flex-shrink-0 me-2">
+            <i class="ri-draggable fs-18 text-muted"></i>
+        </div>
+        <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <h6 class="mb-0 fs-13 text-primary fw-bold">${vin}</h6>
+                <span class="badge bg-soft-info text-info fs-11">${modelo}</span>
+            </div>
+            <p class="text-dark mb-0 fs-11 fw-semibold">
+                <i class="ri-map-pin-line text-danger me-1"></i>${origen} 
+                <i class="ri-arrow-right-line mx-1 text-muted"></i> 
+                <i class="ri-map-pin-2-fill text-success me-1"></i>${destino}
+            </p>
+            <small class="text-muted fs-11">N/S: ${numSerie || 'N/A'}</small>
+        </div>
+    </div>`;
+}
+
+/** Cuando el usuario cambia la parada de un VIN desde el select dentro del acomodo */
+function li_setParada(selectEl) {
+    const li = selectEl.closest('li');
+    if (!li) return;
+    const idParada = selectEl.value;
+    li.setAttribute('data-id-parada', idParada);
+
+    const objParadaSel = (g_paradasEnvio || []).find(p => String(p.id_parada) === String(idParada));
+    const kmSpan = li.querySelector('.vin-km-tramo-badge');
+    if (kmSpan) {
+        if (objParadaSel && typeof objParadaSel.km_tramo !== 'undefined') {
+            const kmTramo = parseFloat(objParadaSel.km_tramo || 0).toFixed(1);
+            const kmAcum  = parseFloat(objParadaSel.km_acumulado || objParadaSel.km_tramo || 0).toFixed(1);
+            kmSpan.innerHTML = `<i class="ri-map-pin-distance-line me-1"></i>+${kmTramo} km (Total: ${kmAcum} km)`;
+            kmSpan.style.display = 'inline-block';
+        } else {
+            kmSpan.style.display = 'none';
+        }
+    }
+
+    const ul = li.closest('ul');
+    if (ul) {
+        actualizarConteoYSecuencia(ul);
+        agruparYOrdenarParadas(ul);
+        guardarAcomodoAuto();
+    } else {
+        guardarAcomodoAuto();
+    }
+}
+
+function agruparYOrdenarParadas(ul) {
+    if (!ul || ul.id === 'vins-disponibles') return;
+    const items = Array.from(ul.querySelectorAll('li'));
+    if (items.length <= 1) return;
+
+    // Obtener orden de cada parada asignada
+    let listOrder = items.map(li => {
+        let pId = li.getAttribute('data-id-parada');
+        if (!pId) {
+            let sel = li.querySelector('.parada-vin-select');
+            if (sel && sel.value) pId = sel.value;
+        }
+        let pObj = (g_paradasEnvio || []).find(p => String(p.id_parada) === String(pId));
+        return {
+            li: li,
+            orden: pObj ? parseInt(pObj.orden || 0) : 0,
+            idParada: pId || ''
+        };
+    });
+
+    // Ordenar de Mayor Parada a Menor Parada (ej: Parada 3 -> Parada 2 -> Parada 1)
+    // Para que la última parada se cargue primero (1º EN CARGAR) y todas las paradas iguales queden juntas
+    listOrder.sort((a, b) => {
+        if (b.orden !== a.orden) {
+            return b.orden - a.orden;
+        }
+        return 0;
+    });
+
+    let cambio = false;
+    listOrder.forEach((item, idx) => {
+        if (items[idx] !== item.li) {
+            cambio = true;
+        }
+    });
+
+    if (cambio) {
+        listOrder.forEach(item => ul.appendChild(item.li));
+        actualizarConteoYSecuencia(ul);
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'info',
+                title: 'Unidades agrupadas por Parada automáticamente',
+                showConfirmButton: false,
+                timer: 2500
+            });
+        }
+    }
+}
+
+function limpiarBadgesPool(li) {
+    if (!li) return;
+    li.classList.remove('border-success');
+    li.classList.add('border-primary');
+
+    const vin = li.getAttribute('data-vin') || li.querySelector('h6')?.innerText.replace('VIN:', '').trim() || '';
+    const numSerie = li.getAttribute('data-num-serie') || '';
+    const modelo = li.getAttribute('data-modelo') || 'Unidad';
+    const origen = li.getAttribute('data-origen') || 'Origen';
+    const destino = li.getAttribute('data-destino') || 'Destino';
+
+    li.innerHTML = `
+    <div class="d-flex align-items-center">
+        <div class="flex-shrink-0 me-2">
+            <i class="ri-draggable fs-18 text-muted"></i>
+        </div>
+        <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <h6 class="mb-0 fs-13 text-primary fw-bold">${vin}</h6>
+                <span class="badge bg-soft-info text-info fs-11">${modelo}</span>
+            </div>
+            <p class="text-dark mb-0 fs-11 fw-semibold">
+                <i class="ri-map-pin-line text-danger me-1"></i>${origen} 
+                <i class="ri-arrow-right-line mx-1 text-muted"></i> 
+                <i class="ri-map-pin-2-fill text-success me-1"></i>${destino}
+            </p>
+            <small class="text-muted fs-11">N/S: ${numSerie || 'N/A'}</small>
+        </div>
+    </div>`;
 }
 
 function agregarVehiculo() {
@@ -212,6 +590,40 @@ function agregarVehiculo() {
             });
             tbodyC.innerHTML = htmlC;
         }
+    }
+
+    // Filtrar pestañas según Tipo de Traslado (1 = Madrina, 2 = Chofer Rodando)
+    const idTipoTraslado = parseInt(g_envioData ? g_envioData.id_tipo_traslado : 1);
+    const tabMadrinasNav = document.getElementById('nav-tab-madrinas');
+    const tabChoferesNav = document.getElementById('nav-tab-choferes');
+    const linkMadrinas  = document.getElementById('link-tab-madrinas');
+    const linkChoferes  = document.getElementById('link-tab-choferes');
+    const paneMadrinas  = document.getElementById('tab-madrinas');
+    const paneChoferes  = document.getElementById('tab-choferes');
+    const modalTitle    = document.getElementById('modalVehiculoLabel');
+
+    if (idTipoTraslado === 1) {
+        // Es Traslado en Madrina: Mostrar solo pestaña de Madrinas
+        if (tabMadrinasNav) tabMadrinasNav.style.display = 'block';
+        if (tabChoferesNav) tabChoferesNav.style.display = 'none';
+
+        if (linkMadrinas) linkMadrinas.classList.add('active');
+        if (linkChoferes) linkChoferes.classList.remove('active');
+        if (paneMadrinas) paneMadrinas.classList.add('show', 'active');
+        if (paneChoferes) paneChoferes.classList.remove('show', 'active');
+
+        if (modalTitle) modalTitle.innerHTML = '<i class="ri-truck-line me-2"></i> Seleccionar Madrina del Trasladista';
+    } else {
+        // Es Traslado por Chofer (Rodando): Mostrar solo pestaña de Choferes
+        if (tabMadrinasNav) tabMadrinasNav.style.display = 'none';
+        if (tabChoferesNav) tabChoferesNav.style.display = 'block';
+
+        if (linkChoferes) linkChoferes.classList.add('active');
+        if (linkMadrinas) linkMadrinas.classList.remove('active');
+        if (paneChoferes) paneChoferes.classList.add('show', 'active');
+        if (paneMadrinas) paneMadrinas.classList.remove('show', 'active');
+
+        if (modalTitle) modalTitle.innerHTML = '<i class="ri-steering-2-line me-2"></i> Seleccionar Conductor (Rodando) del Trasladista';
     }
 
     // Abrir Modal
@@ -272,16 +684,42 @@ function inyectarContenedorVehiculo(vehiculo, vinsIniciales = []) {
     divCard.className = 'border rounded p-3 mb-4 bg-light shadow-sm';
     
     let htmlVins = '';
-    vinsIniciales.forEach(v => {
+    vinsIniciales.forEach((v, idx) => {
+        const mod = v.modelo || 'Unidad';
+        const orig = v.origen || 'Origen';
+        const dest = v.destino || 'Destino';
+        const posIndex = idx + 1;
+        const badgeSecuencia = (posIndex === 1) 
+            ? `<span class="badge bg-success px-2 py-1 fs-11 me-1"><i class="ri-number-1 me-1"></i>1º EN CARGAR</span>`
+            : `<span class="badge bg-info px-2 py-1 fs-11 me-1"><i class="ri-truck-line me-1"></i>${posIndex}º EN CARGAR</span>`;
+
         htmlVins += `
-        <li class="list-group-item cursor-move shadow-sm mb-2 rounded border-start border-3 border-success bg-white" data-id-unidad="${v.id_unidad}">
+        <li class="list-group-item cursor-move shadow-sm mb-2 rounded border-start border-3 border-success bg-white" 
+            data-id-unidad="${v.id_unidad}"
+            data-vin="${v.vin}"
+            data-num-serie="${v.num_serie || ''}"
+            data-modelo="${mod}"
+            data-origen="${orig}"
+            data-destino="${dest}"
+            data-id-parada="${v.id_parada || ''}">
             <div class="d-flex align-items-center">
-                <div class="flex-shrink-0 me-3">
+                <div class="flex-shrink-0 me-2">
                     <i class="ri-draggable fs-18 text-muted"></i>
                 </div>
                 <div class="flex-grow-1">
-                    <h6 class="mb-0 fs-13">VIN: <span class="text-success fw-bold">${v.vin}</span></h6>
-                    <p class="text-muted mb-0 fs-11">N/S: ${v.num_serie || 'N/A'}</p>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h6 class="mb-0 fs-13 text-success fw-bold">VIN: ${v.vin}</h6>
+                        <div>
+                            ${badgeSecuencia}
+                            <span class="badge bg-soft-secondary text-dark fs-11">${mod}</span>
+                        </div>
+                    </div>
+                    <p class="text-dark mb-0 fs-11 fw-semibold">
+                        <i class="ri-map-pin-line text-danger me-1"></i>${orig} 
+                        <i class="ri-arrow-right-line mx-1 text-muted"></i> 
+                        <i class="ri-map-pin-2-fill text-success me-1"></i>${dest}
+                    </p>
+                    <small class="text-muted fs-11">N/S: ${v.num_serie || 'N/A'}</small>
                 </div>
             </div>
         </li>`;
@@ -333,6 +771,74 @@ function removerContenedorVehiculo(btn) {
         const msgEmpty = document.getElementById('empty-vehiculos-msg');
         if (msgEmpty) msgEmpty.style.display = 'block';
     }
+
+    guardarAcomodoAuto();
+}
+
+function guardarAcomodoAuto() {
+    const idEnvio = document.getElementById('id_envio') ? document.getElementById('id_envio').value : 0;
+    if (!idEnvio) return;
+
+    const asignaciones = [];
+    const vehiculos = document.querySelectorAll('.vehiculo-list');
+
+    vehiculos.forEach(v => {
+        const idMadrina = v.getAttribute('data-id-madrina') || null;
+        const idChofer  = v.getAttribute('data-id-chofer') || null;
+        const items     = v.querySelectorAll('li');
+
+        let posicion = 1;
+        items.forEach(li => {
+            let idUnidad = li.getAttribute('data-id-unidad');
+            let idParada = li.getAttribute('data-id-parada') || null;
+            const sel = li.querySelector('.parada-vin-select');
+            if (sel && sel.value) idParada = sel.value;
+
+            if (idUnidad) {
+                if (!asignaciones.some(a => a.id_unidad == idUnidad)) {
+                    asignaciones.push({
+                        id_unidad: idUnidad,
+                        id_parada: idParada,
+                        id_madrina: idMadrina,
+                        id_chofer: idChofer,
+                        posicion_acomodo: posicion
+                    });
+                    posicion++;
+                }
+            }
+        });
+    });
+
+    const lblCosto = document.getElementById('lbl-resumen-costo');
+    if (lblCosto) lblCosto.innerHTML = '<i class="spinner-border spinner-border-sm me-1"></i> Calculando...';
+
+    let request = new XMLHttpRequest();
+    let ajaxUrl = base_url + '/Lgs_envios/storeAcomodo';
+
+    request.open("POST", ajaxUrl, true);
+    request.setRequestHeader("Content-Type", "application/json");
+    request.send(JSON.stringify({
+        id_envio: idEnvio,
+        asignaciones: asignaciones
+    }));
+
+    request.onreadystatechange = function () {
+        if (request.readyState == 4 && request.status == 200) {
+            try {
+                let objData = JSON.parse(request.responseText);
+                if (objData.status === 'success' || objData.code === 200) {
+                    if (lblCosto) {
+                        let costoTxt = objData.data && objData.data.costo_total ? '$' + parseFloat(objData.data.costo_total).toFixed(2) : '$0.00';
+                        lblCosto.innerText = costoTxt;
+                    }
+                } else {
+                    if (lblCosto) lblCosto.innerText = 'Error';
+                }
+            } catch (e) {
+                if (lblCosto) lblCosto.innerText = 'Error';
+            }
+        }
+    }
 }
 
 function guardarAcomodo() {
@@ -353,9 +859,18 @@ function guardarAcomodo() {
         let posicion = 1;
         items.forEach(li => {
             let idUnidad = li.getAttribute('data-id-unidad');
+            let idParada = li.getAttribute('data-id-parada') || null;
+            // Si no viene del atributo, intentar leerlo del select
+            const sel = li.querySelector('.parada-vin-select');
+            if (sel && sel.value) idParada = sel.value;
+
             if (idUnidad) {
+                if (asignaciones.some(a => a.id_unidad == idUnidad)) {
+                    return;
+                }
                 asignaciones.push({
                     id_unidad: idUnidad,
+                    id_parada: idParada,
                     id_madrina: idMadrina,
                     id_chofer: idChofer,
                     posicion_acomodo: posicion
@@ -396,7 +911,14 @@ function guardarAcomodo() {
                     let objData = JSON.parse(request.responseText);
                     if (objData.status === 'success' || objData.code === 200) {
                         let costoTxt = objData.data && objData.data.costo_total ? '$' + parseFloat(objData.data.costo_total).toFixed(2) : '$0.00';
-                        Swal.fire("¡Acomodo Guardado!", `Las unidades han sido asignadas correctamente. Costo total estimado del envío: ${costoTxt}`, "success");
+                        Swal.fire({
+                            title: "¡Acomodo Guardado!",
+                            text: `Las unidades han sido asignadas correctamente. Costo total estimado del envío: ${costoTxt}`,
+                            icon: "success",
+                            confirmButtonText: "Aceptar y Volver a la Bandeja"
+                        }).then((result) => {
+                            window.location.href = base_url + '/Lgs_envios';
+                        });
                     } else {
                         Swal.fire("Error", objData.message || "Error al guardar el acomodo.", "error");
                     }

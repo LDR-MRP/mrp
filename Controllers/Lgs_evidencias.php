@@ -51,9 +51,13 @@ class Lgs_evidencias extends Controllers
      * Devuelve la lista de evidencias asociadas a un envío
      * URL: {{base_url}}/Lgs_evidencias/getEvidenciasEnvio/12
      */
-    public function getEvidenciasEnvio(int $idEnvio): void
+    public function getEvidenciasEnvio($idEnvio = 0): void
     {
         try {
+            $idEnvio = intval($idEnvio);
+            if ($idEnvio <= 0) {
+                throw new Exception("ID de envío no válido.");
+            }
             $data = $this->service->getEvidenciasEnvio($idEnvio);
             echo $this->successResponse($data, "Evidencias del envío obtenidas");
         } catch (Exception $e) {
@@ -71,16 +75,33 @@ class Lgs_evidencias extends Controllers
             $userId = $_SESSION['idUser'] ?? 1;
             
             $idEnvio = intval($_POST['id_envio'] ?? 0);
+            $idUnidad = !empty($_POST['id_unidad']) ? intval($_POST['id_unidad']) : null;
             $tipoEvidencia = intval($_POST['tipo_evidencia'] ?? 1); // 1: Salida, 2: Llegada
             $rutaArchivo = $_POST['ruta_archivo'] ?? '';
-            $observaciones = $_POST['observaciones'] ?? '';
+            $observaciones = $_POST['observaciones'] ?? $_POST['notas'] ?? '';
+
+            // Si viene un archivo subido por formulario
+            if (isset($_FILES['archivo']) && $_FILES['archivo']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = 'Assets/images/uploads/evidencias/';
+                if (!file_exists($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $ext = pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION);
+                $fileName = 'ev_admin_' . $idEnvio . '_' . md5(uniqid()) . '.' . $ext;
+                $destPath = $uploadDir . $fileName;
+
+                if (move_uploaded_file($_FILES['archivo']['tmp_name'], $destPath)) {
+                    $rutaArchivo = $destPath;
+                }
+            }
 
             if ($idEnvio === 0 || empty($rutaArchivo)) {
-                throw new Exception("Debe proporcionar una URL/Ruta de archivo válida.");
+                throw new Exception("Debe proporcionar un archivo o una ruta válida de evidencia.");
             }
 
             $idEvidencia = $this->service->guardarEvidencia([
                 'id_envio' => $idEnvio,
+                'id_unidad' => $idUnidad,
                 'tipo_evidencia' => $tipoEvidencia,
                 'ruta_archivo' => $rutaArchivo,
                 'observaciones' => $observaciones
@@ -96,9 +117,13 @@ class Lgs_evidencias extends Controllers
      * POST: Elimina una evidencia por ID
      * URL: {{base_url}}/Lgs_evidencias/delete/5
      */
-    public function delete(int $idEvidencia): void
+    public function delete($idEvidencia = 0): void
     {
         try {
+            $idEvidencia = intval($idEvidencia);
+            if ($idEvidencia <= 0) {
+                throw new Exception("ID de evidencia no válido.");
+            }
             $this->service->borrarEvidencia($idEvidencia);
             echo $this->successResponse(null, "Evidencia eliminada correctamente.");
         } catch (Exception $e) {

@@ -29,6 +29,149 @@ document.addEventListener(
 );
 
 
+
+
+
+
+/* ============================================================
+ * CONTEXTO DE EDICIÓN
+ * ============================================================ */
+
+function getDetalleContext() {
+
+    const globalContext =
+        typeof getOrdersEditContext
+            === 'function'
+            ? getOrdersEditContext()
+            : null;
+
+    if (
+        globalContext?.activo
+    ) {
+
+        return {
+            modo:
+                'editar',
+
+            pedido:
+                globalContext.pedido,
+
+            esEdicion:
+                true
+        };
+    }
+
+
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+    const modo =
+        String(
+            params.get('modo')
+            || 'normal'
+        ).toLowerCase();
+
+    const pedido =
+        String(
+            params.get('pedido')
+            || ''
+        ).trim();
+
+    return {
+        modo,
+        pedido,
+        esEdicion:
+            modo === 'editar'
+            && pedido !== ''
+    };
+}
+
+
+function getPedidoEdicionStorageKeyDetalle(
+  clavePedido
+) {
+
+  const clave =
+    String(
+      clavePedido || ''
+    ).trim();
+
+  if (!clave) {
+    return null;
+  }
+
+  return `pedidoEdicion_${clave}`;
+}
+
+
+function obtenerPedidoEdicionDetalle(
+  clavePedido
+) {
+
+  const key =
+    getPedidoEdicionStorageKeyDetalle(
+      clavePedido
+    );
+
+  if (!key) {
+    return [];
+  }
+
+  try {
+
+    const data =
+      JSON.parse(
+        localStorage.getItem(key)
+        || '[]'
+      );
+
+    return Array.isArray(data)
+      ? data
+      : [];
+
+  } catch (error) {
+
+    console.error(
+      'Error leyendo pedido en edición:',
+      error
+    );
+
+    return [];
+  }
+}
+
+
+function guardarPedidoEdicionDetalle(
+  clavePedido,
+  items
+) {
+
+  const key =
+    getPedidoEdicionStorageKeyDetalle(
+      clavePedido
+    );
+
+  if (!key) {
+    return false;
+  }
+
+  localStorage.setItem(
+    key,
+    JSON.stringify(
+      Array.isArray(items)
+        ? items
+        : []
+    )
+  );
+
+  return true;
+}
+
+
+
+
 /* ============================================================
  * SLIDER
  * ============================================================ */
@@ -889,7 +1032,421 @@ function actualizarContadorDetalle() {
  * Configura el botón de agregar al carrito
  * desde el detalle de la unidad.
  */
+
 function configurarAgregarCarrito(
+  unidad
+) {
+
+  const button =
+    document.getElementById(
+      'btnAddDetailCart'
+    );
+
+  const quantityInput =
+    document.getElementById(
+      'detailQuantity'
+    );
+
+  if (
+    !button
+    || !quantityInput
+  ) {
+    return;
+  }
+
+  button.addEventListener(
+    'click',
+    () => {
+
+      const idcliente =
+        getPortalClientIdDetalle();
+
+      if (idcliente <= 0) {
+
+        mostrarMensajeDetalle(
+          'warning',
+          'Inicia sesión',
+          'Debes iniciar sesión para agregar unidades.'
+        ).then(() => {
+
+          window.location.href =
+            `${base_url}/orders/login`;
+        });
+
+        return;
+      }
+
+
+      if (
+        Number(
+          unidad.stock || 0
+        ) <= 0
+      ) {
+
+        mostrarMensajeDetalle(
+          'warning',
+          'Sin disponibilidad',
+          'Esta unidad no cuenta con disponibilidad actualmente.'
+        );
+
+        return;
+      }
+
+
+      let quantity =
+        parseInt(
+          quantityInput.value,
+          10
+        );
+
+      if (
+        !Number.isInteger(quantity)
+        || quantity < 1
+      ) {
+
+        quantity = 1;
+      }
+
+
+      const context =
+        getDetalleContext();
+
+
+      /*
+       * ==========================================
+       * EDITANDO PEDIDO EXISTENTE
+       * ==========================================
+       */
+
+      if (
+        context.esEdicion
+      ) {
+
+        agregarDesdeDetalleAPedidoEdicion(
+          unidad,
+          quantity,
+          context.pedido
+        );
+
+        return;
+      }
+
+
+      /*
+       * ==========================================
+       * CARRITO NORMAL
+       * ==========================================
+       */
+
+      agregarDesdeDetalleCarritoNormal(
+        unidad,
+        quantity
+      );
+
+    }
+  );
+}
+
+
+
+function agregarDesdeDetalleCarritoNormal(
+  unidad,
+  quantity
+) {
+
+  const cart =
+    obtenerCarritoDetalle();
+
+  const existing =
+    cart.find(
+      item =>
+        Number(
+          item.idunidad
+          || item.id
+        )
+        === Number(
+          unidad.idunidad
+          || unidad.id
+        )
+    );
+
+
+  if (existing) {
+
+    existing.qty =
+      Math.max(
+        1,
+        Number(
+          existing.qty || 1
+        )
+      )
+      + quantity;
+
+  } else {
+
+    cart.push(
+      construirItemDetalle(
+        unidad,
+        quantity
+      )
+    );
+  }
+
+
+  const guardado =
+    guardarCarritoDetalle(
+      cart
+    );
+
+  if (!guardado) {
+    return;
+  }
+
+
+  mostrarMensajeDetalle(
+    'success',
+    'Unidad agregada',
+    `${quantity} ${
+      quantity === 1
+        ? 'unidad fue agregada'
+        : 'unidades fueron agregadas'
+    } al carrito.`,
+    {
+      showCancelButton: true,
+      confirmButtonText:
+        'Ver carrito',
+      cancelButtonText:
+        'Continuar consultando'
+    }
+  ).then(
+    result => {
+
+      if (
+        result.isConfirmed
+      ) {
+
+        window.location.href =
+          `${base_url}/orders/carrito`;
+      }
+    }
+  );
+}
+
+
+function agregarDesdeDetalleAPedidoEdicion(
+  unidad,
+  quantity,
+  clavePedido
+) {
+
+  const items =
+    obtenerPedidoEdicionDetalle(
+      clavePedido
+    );
+
+  const existing =
+    items.find(
+      item =>
+        Number(
+          item.idunidad
+          || item.id
+        )
+        === Number(
+          unidad.idunidad
+          || unidad.id
+        )
+    );
+
+
+  if (existing) {
+
+    existing.qty =
+      Math.max(
+        1,
+        Number(
+          existing.qty || 1
+        )
+      )
+      + quantity;
+
+  } else {
+
+    const nuevo =
+      construirItemDetalle(
+        unidad,
+        quantity
+      );
+
+    nuevo.idpedido_detalle = 0;
+
+    nuevo.es_nuevo = true;
+
+    items.push(nuevo);
+  }
+
+
+  const guardado =
+    guardarPedidoEdicionDetalle(
+      clavePedido,
+      items
+    );
+
+  if (!guardado) {
+
+    mostrarMensajeDetalle(
+      'error',
+      'No fue posible agregar',
+      'No fue posible agregar la unidad al pedido en edición.'
+    );
+
+    return;
+  }
+
+
+  mostrarMensajeDetalle(
+    'success',
+    'Unidad agregada al pedido',
+    `${quantity} ${
+      quantity === 1
+        ? 'unidad fue agregada'
+        : 'unidades fueron agregadas'
+    } al pedido que estás editando.`,
+    {
+      showCancelButton: true,
+      confirmButtonText:
+        'Volver al pedido',
+      cancelButtonText:
+        'Seguir consultando'
+    }
+  ).then(
+    result => {
+
+      if (
+        result.isConfirmed
+      ) {
+
+        window.location.href =
+          `${base_url}/orders/editarpedido/${encodeURIComponent(
+            clavePedido
+          )}`;
+      }
+    }
+  );
+}
+
+
+
+function construirItemDetalle(
+  unidad,
+  quantity
+) {
+
+  return {
+
+    id:
+      Number(
+        unidad.id
+        || unidad.idunidad
+      ),
+
+    idunidad:
+      Number(
+        unidad.idunidad
+        || unidad.id
+      ),
+
+    modelo:
+      String(
+        unidad.modelo || ''
+      ),
+
+    clave_modelo:
+      String(
+        unidad.clave_modelo || ''
+      ),
+
+    nombre:
+      String(
+        unidad.nombre || ''
+      ),
+
+    version:
+      String(
+        unidad.version || ''
+      ),
+
+    marca:
+      String(
+        unidad.marca || ''
+      ),
+
+    anio:
+      Number(
+        unidad.anio || 0
+      ),
+
+    motor:
+      String(
+        unidad.motor || ''
+      ),
+
+    stock:
+      Number(
+        unidad.stock || 0
+      ),
+
+    cat:
+      String(
+        unidad.modelo
+        || 'unidad'
+      ).toLowerCase(),
+
+    precio:
+      Number(
+        unidad.precio
+        || unidad.precio_estimado
+        || 0
+      ),
+
+    precio_estimado:
+      Number(
+        unidad.precio_estimado
+        || unidad.precio
+        || 0
+      ),
+
+    img:
+      String(
+        unidad.img
+        || unidad.imagen_caratula
+        || ''
+      ),
+
+    desc:
+      String(
+        unidad.desc
+        || unidad.descripcion
+        || ''
+      ),
+
+    qty:
+      Math.max(
+        1,
+        Number(quantity || 1)
+      ),
+
+    tipo_entrega: '',
+
+    idsucursal_entrega: null,
+
+    direccion_entrega: ''
+  };
+}
+
+
+
+
+function configurarAgregarCarritoOLD(
   unidad
 ) {
 

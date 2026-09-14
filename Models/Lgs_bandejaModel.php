@@ -4,11 +4,110 @@ class Lgs_bandejaModel extends Mysql {
 
     public function __construct() {
         parent::__construct();
+        $this->asegurarTablas();
+    }
+
+    /**
+     * Asegura la creación de tablas requeridas para la bandeja de logística y catálogos
+     */
+    private function asegurarTablas(): void {
+        try {
+            // 1. Catálogo motivos de envío
+            $sqlMotivos = "CREATE TABLE IF NOT EXISTS `lgs_cat_motivo_envio` (
+              `id_motivo` int(11) NOT NULL AUTO_INCREMENT,
+              `cve_motivo` varchar(50) DEFAULT NULL,
+              `descripcion` varchar(150) NOT NULL,
+              `activo` tinyint(1) NOT NULL DEFAULT 1,
+              PRIMARY KEY (`id_motivo`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+            $this->insert($sqlMotivos, []);
+
+            $checkMotivos = $this->select_all("SELECT id_motivo FROM lgs_cat_motivo_envio LIMIT 1");
+            if (empty($checkMotivos)) {
+                $seedMotivos = "INSERT INTO `lgs_cat_motivo_envio` (`cve_motivo`, `descripcion`, `activo`) VALUES
+                ('VENTA', 'Venta Directa', 1),
+                ('TRASLADO_PLANTA', 'Traslado entre Plantas', 1),
+                ('DEMO', 'Demostración / Expo', 1),
+                ('SERVICIO', 'Servicio / Mantenimiento', 1),
+                ('EXPORT', 'Exportación', 1)";
+                $this->insert($seedMotivos, []);
+            }
+
+            // 2. Catálogo tipo destino
+            $sqlDestinos = "CREATE TABLE IF NOT EXISTS `lgs_cat_tipo_destino` (
+              `id_tipo_destino` int(11) NOT NULL AUTO_INCREMENT,
+              `cve_destino` varchar(50) DEFAULT NULL,
+              `descripcion` varchar(150) NOT NULL,
+              `activo` tinyint(1) NOT NULL DEFAULT 1,
+              PRIMARY KEY (`id_tipo_destino`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+            $this->insert($sqlDestinos, []);
+
+            $checkDestinos = $this->select_all("SELECT id_tipo_destino FROM lgs_cat_tipo_destino LIMIT 1");
+            if (empty($checkDestinos)) {
+                $seedDestinos = "INSERT INTO `lgs_cat_tipo_destino` (`cve_destino`, `descripcion`, `activo`) VALUES
+                ('DISTRIBUIDOR', 'Distribuidor Autorizado', 1),
+                ('AGENCIA', 'Agencia / Concesionario', 1),
+                ('PATIO', 'Patio Central', 1),
+                ('CLIENTE_FINAL', 'Cliente Final', 1),
+                ('ADUANA', 'Aduana / Puerto', 1)";
+                $this->insert($seedDestinos, []);
+            }
+
+            // 3. Catálogo unidades de envíos (si no existe)
+            $sqlUnidadesEnvios = "CREATE TABLE IF NOT EXISTS `lgs_unidades_envios` (
+              `id_unidad` int(11) NOT NULL AUTO_INCREMENT,
+              `vin` varchar(50) NOT NULL UNIQUE,
+              `num_serie` varchar(50) DEFAULT NULL,
+              `modelo` varchar(100) DEFAULT NULL,
+              `origen` varchar(150) DEFAULT NULL,
+              `destino` varchar(150) DEFAULT NULL,
+              `estatus` varchar(50) DEFAULT 'disponible',
+              `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id_unidad`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+            $this->insert($sqlUnidadesEnvios, []);
+
+            // 4. Tabla principal lgs_unidades
+            $sqlBandeja = "CREATE TABLE IF NOT EXISTS `lgs_unidades` (
+              `id_lgs_unidad` int(11) NOT NULL AUTO_INCREMENT,
+              `id_unidad` int(11) NOT NULL,
+              `id_motivo` int(11) DEFAULT NULL,
+              `id_destino` int(11) DEFAULT NULL,
+              `destino_descripcion` varchar(255) DEFAULT NULL,
+              `id_estado_proceso` tinyint(4) NOT NULL DEFAULT 1 COMMENT '1=Pendiente, 2=En Tránsito, 3=Entregado',
+              `fecha_salida` datetime DEFAULT NULL,
+              `fecha_llegada` datetime DEFAULT NULL,
+              `created_by` int(11) DEFAULT 1,
+              `updated_by` int(11) DEFAULT NULL,
+              `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id_lgs_unidad`),
+              KEY `idx_lgs_id_unidad` (`id_unidad`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+            $this->insert($sqlBandeja, []);
+
+            // 5. Tabla entrega interna
+            $sqlEntrega = "CREATE TABLE IF NOT EXISTS `lgs_unidades_entrega_interna` (
+              `id_entrega_interna` int(11) NOT NULL AUTO_INCREMENT,
+              `id_unidad` int(11) NOT NULL,
+              `id_estado` tinyint(4) NOT NULL DEFAULT 1,
+              `observaciones` text DEFAULT NULL,
+              `solicitado_by` int(11) DEFAULT NULL,
+              `solicitado_at` datetime DEFAULT CURRENT_TIMESTAMP,
+              `confirmado_by` int(11) DEFAULT NULL,
+              `confirmado_at` datetime DEFAULT NULL,
+              PRIMARY KEY (`id_entrega_interna`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+            $this->insert($sqlEntrega, []);
+
+        } catch (Throwable $e) {
+            // Manejo silencioso para no interrumpir el flujo si las tablas ya están creadas
+        }
     }
 
     /**
      * Obtiene todos los VINs elegibles para la bandeja de logística.
-     * Condiciones: proceso activo 6/13/20, liberada=1, solicitado=1, finanzas aprobado=3
      */
     public function getUnidadesBandeja(array $filtros = []): array {
         $where  = "WHERE 1=1";
@@ -34,8 +133,10 @@ class Lgs_bandejaModel extends Mysql {
 
         // Búsqueda por VIN o folio
         if (!empty($filtros['busqueda'])) {
-            $where .= " AND (u.vin LIKE ? OR u.num_serie LIKE ?)";
+            $where .= " AND (u.vin LIKE ? OR u.num_serie LIKE ? OR ut.clave LIKE ? OR ut.num_unidad LIKE ?)";
             $term = '%' . $filtros['busqueda'] . '%';
+            $params[] = $term;
+            $params[] = $term;
             $params[] = $term;
             $params[] = $term;
         }
@@ -43,13 +144,13 @@ class Lgs_bandejaModel extends Mysql {
         $sql = "SELECT
                     lu.id_lgs_unidad,
                     lu.id_unidad,
-                    u.vin,
-                    u.num_serie,
-                    u.modelo       AS modelo_unidad,
-                    u.color        AS color_unidad,
-                    m.descripcion  AS motivo_envio,
-                    d.descripcion  AS tipo_destino,
-                    lu.destino_descripcion,
+                    COALESCE(u.vin, ut.clave, CONCAT('VIN-', lu.id_unidad)) AS vin,
+                    COALESCE(u.num_serie, ut.num_unidad, 'S/N') AS num_serie,
+                    COALESCE(u.modelo, 'Unidad Terminada') AS modelo_unidad,
+                    'Blanco' AS color_unidad,
+                    COALESCE(m.descripcion, 'Sin Asignar') AS motivo_envio,
+                    COALESCE(d.descripcion, 'Sin Asignar') AS tipo_destino,
+                    COALESCE(lu.destino_descripcion, u.destino, 'Por Definir') AS destino_descripcion,
                     lu.id_estado_proceso,
                     CASE lu.id_estado_proceso
                         WHEN 1 THEN 'Pendiente'
@@ -57,17 +158,43 @@ class Lgs_bandejaModel extends Mysql {
                         WHEN 3 THEN 'Entregado'
                         ELSE 'Desconocido'
                     END AS estado_proceso_texto,
+                    (SELECT e.folio 
+                     FROM lgs_envios_vins ev 
+                     INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio 
+                     WHERE ev.id_unidad = lu.id_unidad AND e.deleted_at IS NULL AND e.id_estado <> 0 
+                     ORDER BY ev.id DESC LIMIT 1) AS envio_folio,
+                    (SELECT e.id_envio 
+                     FROM lgs_envios_vins ev 
+                     INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio 
+                     WHERE ev.id_unidad = lu.id_unidad AND e.deleted_at IS NULL AND e.id_estado <> 0 
+                     ORDER BY ev.id DESC LIMIT 1) AS envio_id,
                     lu.fecha_salida,
                     lu.fecha_llegada,
                     lu.created_at
                 FROM lgs_unidades lu
-                INNER JOIN mrp_unidades_terminadas u ON u.id_unidad = lu.id_unidad
-                LEFT JOIN  lgs_cat_motivo_envio m    ON m.id_motivo  = lu.id_motivo
-                LEFT JOIN  lgs_cat_destino d         ON d.id_destino = lu.id_destino
+                LEFT JOIN lgs_unidades_envios u ON u.id_unidad = lu.id_unidad
+                LEFT JOIN mrp_unidades_terminadas ut ON ut.idunidad = lu.id_unidad
+                LEFT JOIN lgs_cat_motivo_envio m ON m.id_motivo = lu.id_motivo
+                LEFT JOIN lgs_cat_tipo_destino d ON d.id_tipo_destino = lu.id_destino
                 {$where}
                 ORDER BY lu.id_lgs_unidad DESC";
 
-        return $this->select_all($sql, $params);
+        $res = $this->select_all($sql, $params);
+        return $res ?: [];
+    }
+
+    /**
+     * Obtiene la lista unificada de distribuidores para autocompletar en la bandeja
+     */
+    public function getListaDistribuidores(): array {
+        $sql = "SELECT DISTINCT TRIM(nombre) AS nombre FROM lgs_cat_destinos WHERE activo = 1 AND nombre IS NOT NULL AND TRIM(nombre) <> ''
+                UNION
+                SELECT DISTINCT TRIM(destino_descripcion) AS nombre FROM lgs_unidades WHERE destino_descripcion IS NOT NULL AND TRIM(destino_descripcion) <> ''
+                UNION
+                SELECT DISTINCT TRIM(destino) AS nombre FROM lgs_unidades_envios WHERE destino IS NOT NULL AND TRIM(destino) <> ''
+                ORDER BY nombre ASC";
+        $res = $this->select_all($sql);
+        return $res ?: [];
     }
 
     /**
@@ -76,18 +203,19 @@ class Lgs_bandejaModel extends Mysql {
     public function getUnidadDetalle(int $idLgsUnidad): ?array {
         $sql = "SELECT
                     lu.*,
-                    u.vin,
-                    u.num_serie,
-                    u.modelo       AS modelo_unidad,
-                    u.color        AS color_unidad,
-                    m.descripcion  AS motivo_envio,
+                    COALESCE(u.vin, ut.clave, CONCAT('VIN-', lu.id_unidad)) AS vin,
+                    COALESCE(u.num_serie, ut.num_unidad, 'S/N') AS num_serie,
+                    COALESCE(u.modelo, 'Unidad Terminada') AS modelo_unidad,
+                    'Blanco' AS color_unidad,
+                    COALESCE(m.descripcion, 'Sin Asignar') AS motivo_envio,
                     m.cve_motivo,
-                    d.descripcion  AS tipo_destino,
+                    COALESCE(d.descripcion, 'Sin Asignar') AS tipo_destino,
                     d.cve_destino
                 FROM lgs_unidades lu
-                INNER JOIN mrp_unidades_terminadas u ON u.id_unidad  = lu.id_unidad
-                LEFT JOIN  lgs_cat_motivo_envio m    ON m.id_motivo  = lu.id_motivo
-                LEFT JOIN  lgs_cat_destino d         ON d.id_destino = lu.id_destino
+                LEFT JOIN lgs_unidades_envios u ON u.id_unidad = lu.id_unidad
+                LEFT JOIN mrp_unidades_terminadas ut ON ut.idunidad = lu.id_unidad
+                LEFT JOIN lgs_cat_motivo_envio m ON m.id_motivo = lu.id_motivo
+                LEFT JOIN lgs_cat_tipo_destino d ON d.id_tipo_destino = lu.id_destino
                 WHERE lu.id_lgs_unidad = ?";
         $res = $this->select($sql, [$idLgsUnidad]);
         return $res ?: null;
@@ -157,11 +285,13 @@ class Lgs_bandejaModel extends Mysql {
     // ---------- Catálogos ----------
 
     public function getMotivos(): array {
-        return $this->select_all("SELECT id_motivo, cve_motivo, descripcion FROM lgs_cat_motivo_envio WHERE activo = 1 ORDER BY descripcion ASC");
+        $res = $this->select_all("SELECT id_motivo, cve_motivo, descripcion FROM lgs_cat_motivo_envio WHERE activo = 1 ORDER BY descripcion ASC");
+        return $res ?: [];
     }
 
     public function getDestinos(): array {
-        return $this->select_all("SELECT id_tipo_destino AS id_destino, cve_destino, descripcion FROM lgs_cat_tipo_destino WHERE activo = 1 ORDER BY descripcion ASC");
+        $res = $this->select_all("SELECT id_tipo_destino AS id_destino, cve_destino, descripcion FROM lgs_cat_tipo_destino WHERE activo = 1 ORDER BY descripcion ASC");
+        return $res ?: [];
     }
 
     // ---------- Entrega Interna ----------

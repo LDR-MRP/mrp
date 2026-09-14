@@ -1,7 +1,7 @@
 'use strict';
 
 /* ============================================================
- * CONFIGURACIÓN
+ * CONFIGRACIÓN
  * ============================================================ */
 
 let products = [];
@@ -14,19 +14,110 @@ const PRODUCTS_PER_PAGE = 15;
 
 
 
+/* ============================================================
+ * CONTEXTO DEL CALOGO
+ * ============================================================ */
+
+function getCatalogContext() {
+
+ 
+    const globalContext =
+        typeof getOrdersEditContext
+            === 'function'
+            ? getOrdersEditContext()
+            : null;
+
+    if (globalContext?.activo) {
+
+        return {modo:'editar',pedido:globalContext.pedido, esEdicion:true
+        };
+    }
+
+
+    /*
+     * Fallback por URL.
+     */
+    const params =new URLSearchParams(window.location.search);
+
+    const modo =String(params.get('modo')|| 'normal').toLowerCase();
+
+    const pedido = String(params.get('pedido')|| '').trim();
+
+    return {modo,pedido,esEdicion:modo === 'editar'&& pedido !== ''};
+}
+
+
+function getPedidoEdicionStorageKey(clavePedido) {
+
+  const clave =String(clavePedido || '').trim();
+
+  if (!clave) {
+    return null;
+  }
+
+  return `pedidoEdicion_${clave}`;
+}
+
+
+function getPedidoEdicionItems(clavePedido) {
+
+  const key = getPedidoEdicionStorageKey(clavePedido);
+
+  if (!key) {
+    return [];
+  }
+
+  try {
+
+    const data =JSON.parse(localStorage.getItem(key) || '[]');
+
+    return Array.isArray(data)
+      ? data
+      : [];
+
+  } catch (error) {
+
+    console.error(
+      'Error leyendo unidades del pedido en edición:',
+      error
+    );
+
+    return [];
+  }
+}
+
+
+function setPedidoEdicionItems(clavePedido,items) {
+
+  const key =getPedidoEdicionStorageKey(clavePedido);
+
+  if (!key) {
+    return false;
+  }
+
+  localStorage.setItem(
+    key,
+    JSON.stringify(
+      Array.isArray(items)
+        ? items
+        : []
+    )
+  );
+
+  return true;
+}
+
+
+
 function getPortalClientId() {
 
-  return Number(
-    window.ordersPortal?.idcliente
-    || 0
-  );
+  return Number(window.ordersPortal?.idcliente || 0);
 }
 
 
 function getCartStorageKey() {
 
-  const idcliente =
-    getPortalClientId();
+  const idcliente =getPortalClientId();
 
   if (idcliente <= 0) {
 
@@ -43,8 +134,7 @@ function getCartStorageKey() {
 
 function getCart() {
 
-  const storageKey =
-    getCartStorageKey();
+  const storageKey =getCartStorageKey();
 
   if (!storageKey) {
 
@@ -53,10 +143,7 @@ function getCart() {
 
   try {
 
-    const storedCart =
-      localStorage.getItem(
-        storageKey
-      );
+    const storedCart =localStorage.getItem(storageKey);
 
     if (!storedCart) {
 
@@ -86,8 +173,7 @@ function getCart() {
 
 function setCart(cart) {
 
-  const storageKey =
-    getCartStorageKey();
+  const storageKey =getCartStorageKey();
 
   if (!storageKey) {
 
@@ -104,10 +190,7 @@ function setCart(cart) {
     return false;
   }
 
-  const carritoValido =
-    Array.isArray(cart)
-      ? cart
-      : [];
+  const carritoValido =Array.isArray(cart)? cart: [];
 
   localStorage.setItem(
     storageKey,
@@ -124,18 +207,13 @@ function setCart(cart) {
 
 function updateCartCount() {
 
-  const element =
-    document.getElementById(
-      'cartCount'
-    );
+  const element =document.getElementById('cartCount');
 
   if (!element) {
     return;
   }
 
-  const totalUnidades =
-    getCart().reduce(
-      (total, item) => {
+  const totalUnidades =getCart().reduce((total, item) => {
 
         const cantidad =
           Math.max(
@@ -155,8 +233,287 @@ function updateCartCount() {
 
 function addToCart(id) {
 
-  const idcliente =
-    getPortalClientId();
+  const idcliente =getPortalClientId();
+
+  if (idcliente <= 0) {
+
+    mostrarMensajeCarrito(
+      'warning',
+      'Inicia sesión',
+      'Debes iniciar sesión para agregar unidades.'
+    ).then(() => {
+
+      window.location.href =
+        `${base_url}/orders/login`;
+    });
+
+    return;
+  }
+
+  const item =
+    products.find(
+      product =>
+        Number(product.id)
+        === Number(id)
+    );
+
+  if (!item) {
+
+    mostrarMensajeCarrito('error','Unidad no disponible','No fue posible localizar la unidad seleccionada.'
+    );
+
+    return;
+  }
+
+  if (
+    Number(item.stock || 0)
+    <= 0
+  ) {
+
+    mostrarMensajeCarrito(
+      'warning',
+      'Sin disponibilidad',
+      'Esta unidad no cuenta con disponibilidad actualmente.'
+    );
+
+    return;
+  }
+
+  const context =getCatalogContext();
+
+  /*
+   * ==========================================
+   * MODO EDIIÓN
+   * ==========================================
+   */
+  if (context.esEdicion) {
+
+    agregarUnidadPedidoEdicion(
+      item,
+      context.pedido,
+      1
+    );
+
+    return;
+  }
+
+  /*
+   * ==========================================
+   * CARRITO NORMAL
+   * ==========================================
+   */
+
+  agregarUnidadCarritoNormal(item,1);
+}
+
+
+function agregarUnidadCarritoNormal(item,cantidad = 1) {
+
+  const cart =getCart();
+
+  const found =
+    cart.find(
+      product =>
+        Number(
+          product.idunidad
+          || product.id
+        )
+        === Number(
+          item.idunidad
+          || item.id
+        )
+    );
+
+  if (found) {
+
+    found.qty =
+      Math.max(
+        1,
+        Number(found.qty || 1)
+      )
+      + cantidad;
+
+  } else {
+
+    cart.push(construirItemCarrito(item,cantidad));
+  }
+
+  const guardado =
+    setCart(cart);
+
+  if (!guardado) {
+    return;
+  }
+
+  mostrarMensajeCarrito(
+    'success',
+    'Unidad agregada',
+    `${item.nombre} fue agregada al carrito.`,
+    {
+      timer: 1400,
+      showConfirmButton: false
+    }
+  );
+}
+
+function agregarUnidadPedidoEdicion(item,clavePedido,cantidad = 1) {
+
+  const items = getPedidoEdicionItems(clavePedido);
+
+  const existente =
+    items.find(
+      product =>
+        Number(
+          product.idunidad
+          || product.id
+        )
+        === Number(
+          item.idunidad
+          || item.id
+        )
+    );
+
+  if (existente) {
+
+    existente.qty =
+      Math.max(
+        1,
+        Number(existente.qty || 1)
+      )
+      + cantidad;
+
+  } else {
+
+    const nuevo =construirItemCarrito(item,cantidad);
+
+    /*
+     * Importantísimo:
+     * todavía NO existe en ped_pedidos_detalle.
+     */
+    nuevo.idpedido_detalle = 0;
+
+    nuevo.es_nuevo = true;
+
+    items.push(nuevo);
+  }
+
+  const guardado =setPedidoEdicionItems(clavePedido,items);
+
+  if (!guardado) {
+
+    mostrarMensajeCarrito(
+      'error',
+      'No fue posible agregar',
+      'No se pudo almacenar la unidad para editar el pedido.'
+    );
+
+    return;
+  }
+
+  mostrarMensajeCarrito(
+    'success',
+    'Unidad agregada al pedido',
+    `${item.nombre} se agregó al pedido que estás editando.`,
+    {
+      showCancelButton: true,
+      confirmButtonText:
+        'Volver al pedido',
+      cancelButtonText:
+        'Agregar más unidades'
+    }
+  ).then(
+    result => {
+
+      if (
+        result.isConfirmed
+      ) {
+
+        window.location.href =
+          `${base_url}/orders/editarpedido/${encodeURIComponent(
+            clavePedido
+          )}`;
+      }
+    }
+  );
+}
+
+
+function getUrlDetalleUnidad(idunidad) {
+
+  const context =getCatalogContext();
+
+  let url =`${base_url}/orders/detalle/${Number(idunidad)}`;
+
+  if (context.esEdicion) {
+
+    url +=`?modo=editar&pedido=${encodeURIComponent(context.pedido)}`;
+  }
+
+  return url;
+}
+
+function construirItemCarrito(item,cantidad = 1) {
+
+  return {
+
+    id:Number(item.id|| item.idunidad ),
+
+    idunidad:Number(item.idunidad || item.id),
+
+    modelo:String(item.modelo || ''),
+
+    clave_modelo:String(item.clave_modelo || '' ),
+
+    nombre:String(item.nombre || ''),
+
+    version:String(item.version || ''),
+
+    marca:String(item.marca || ''),
+
+    anio: Number(item.anio || 0),
+
+    motor:String(item.motor || ''),
+
+    stock:Number(item.stock || 0),
+
+    cat:String(item.modelo || 'unidad').toLowerCase(),
+
+    precio:Number(item.precio || item.precio_estimado || 0),
+
+    precio_estimado:
+      Number(
+        item.precio_estimado
+        || item.precio
+        || 0
+      ),
+
+    img:String(item.img || ''),
+
+    desc:
+      String(
+        item.descripcion
+        || item.desc
+        || ''
+      ),
+
+    qty:
+      Math.max(
+        1,
+        Number(cantidad || 1)
+      ),
+
+    tipo_entrega: '',
+
+    idsucursal_entrega: null,
+
+    direccion_entrega: ''
+  };
+}
+
+
+function addToCartOLD(id) {
+
+  const idcliente =getPortalClientId();
 
   if (idcliente <= 0) {
 
@@ -166,8 +523,7 @@ function addToCart(id) {
       'Debes iniciar sesión para agregar unidades al carrito.'
     ).then(() => {
 
-      window.location.href =
-        `${base_url}/orders/login`;
+      window.location.href = `${base_url}/orders/login`;
     });
 
     return;
@@ -202,8 +558,7 @@ function addToCart(id) {
     return;
   }
 
-  const cart =
-    getCart();
+  const cart =getCart();
 
   const found =
     cart.find(
@@ -224,69 +579,48 @@ function addToCart(id) {
 
     cart.push({
 
-      id:
-        Number(item.id),
+      id: Number(item.id),
 
-      idunidad:
-        Number(item.idunidad),
+      idunidad: Number(item.idunidad),
 
-      modelo:
-        String(item.modelo || ''),
+      modelo:String(item.modelo || ''),
 
-      clave_modelo:
-        String(item.clave_modelo || ''),
+      clave_modelo:String(item.clave_modelo || ''),
 
-      nombre:
-        String(item.nombre || ''),
+      nombre:String(item.nombre || ''),
 
-      version:
-        String(item.version || ''),
+      version:String(item.version || ''),
 
-      marca:
-        String(item.marca || ''),
+      marca:String(item.marca || ''),
 
-      anio:
-        Number(item.anio || 0),
+      anio:Number(item.anio || 0),
 
-      motor:
-        String(item.motor || ''),
+      motor:String(item.motor || ''),
 
-      stock:
-        Number(item.stock || 0),
+      stock:Number(item.stock || 0),
 
-      cat:
-        String(
-          item.modelo || 'unidad'
-        ).toLowerCase(),
+      cat:String(item.modelo || 'unidad').toLowerCase(),
 
-      precio:
-        Number(item.precio || 0),
+      precio:Number(item.precio || 0),
 
-      precio_estimado:
-        Number(item.precio || 0),
+      precio_estimado:Number(item.precio || 0),
 
-      img:
-        String(item.img || ''),
+      img:String(item.img || ''),
 
-      desc:
-        String(item.descripcion || ''),
+      desc:String(item.descripcion || ''),
 
       qty:
         1,
 
-      tipo_entrega:
-        '',
+      tipo_entrega:'',
 
-      idsucursal_entrega:
-        null,
+      idsucursal_entrega: null,
 
-      direccion_entrega:
-        ''
+      direccion_entrega:''
     });
   }
 
-  const guardado =
-    setCart(cart);
+  const guardado =setCart(cart);
 
   if (!guardado) {
     return;
@@ -304,17 +638,9 @@ function addToCart(id) {
 }
 
 
-function mostrarMensajeCarrito(
-  icon,
-  title,
-  text,
-  options = {}
-) {
+function mostrarMensajeCarrito(icon,title,text,options = {}) {
 
-  if (
-    typeof Swal !== 'undefined'
-    && Swal.fire
-  ) {
+  if (typeof Swal !== 'undefined'&& Swal.fire) {
 
     return Swal.fire({
       icon,
@@ -381,10 +707,7 @@ function obtenerRutaImagen(ruta) {
     return `${base_url}/Assets/images/no-image.png`;
   }
 
-  if (
-    imagen.startsWith('http://')
-    || imagen.startsWith('https://')
-  ) {
+  if (imagen.startsWith('http://')|| imagen.startsWith('https://')) {
 
     return imagen;
   }
@@ -401,70 +724,31 @@ function normalizarProducto(unidad) {
 
   return {
 
-    id:
-      Number(
-        unidad.idunidad
-      ),
+    id:Number(unidad.idunidad),
 
-    idunidad:
-      Number(
-        unidad.idunidad
-      ),
+    idunidad:Number(unidad.idunidad),
 
-    modelo:
-      String(
-        unidad.modelo || ''
-      ).trim(),
+    modelo:String(unidad.modelo || '').trim(),
 
-    clave_modelo:
-      String(
-        unidad.clave_modelo || ''
-      ).trim(),
+    clave_modelo:String(unidad.clave_modelo || '').trim(),
 
-    nombre:
-      String(
-        unidad.nombre || ''
-      ).trim(),
+    nombre:String(unidad.nombre || '').trim(),
 
-    version:
-      String(
-        unidad.version || ''
-      ).trim(),
+    version:String(unidad.version || '').trim(),
 
-    descripcion:
-      String(
-        unidad.descripcion || ''
-      ).trim(),
+    descripcion:String(unidad.descripcion || '' ).trim(),
 
-    anio:
-      Number(
-        unidad.anio || 0
-      ),
+    anio:Number(unidad.anio || 0),
 
-    marca:
-      String(
-        unidad.marca || ''
-      ).trim(),
+    marca:String(unidad.marca || '').trim(),
 
-    motor:
-      String(
-        unidad.motor || ''
-      ).trim(),
+    motor:String(unidad.motor || '').trim(),
 
-    stock:
-      Number(
-        unidad.stock || 0
-      ),
+    stock:Number(unidad.stock || 0),
 
-    precio:
-      Number(
-        unidad.precio_estimado || 0
-      ),
+    precio:Number(unidad.precio_estimado || 0),
 
-    img:
-      obtenerRutaImagen(
-        unidad.imagen_caratula
-      )
+    img:obtenerRutaImagen(unidad.imagen_caratula)
 
   };
 }
@@ -476,10 +760,7 @@ function normalizarProducto(unidad) {
 
 async function cargarProductos() {
 
-  const grid =
-    document.getElementById(
-      'productsGrid'
-    );
+  const grid =document.getElementById('productsGrid');
 
   if (grid) {
 
@@ -517,31 +798,24 @@ async function cargarProductos() {
         }
       );
 
-    const text =
-      await response.text();
+    const text =await response.text();
 
     let result;
 
     try {
 
-      result =
-        JSON.parse(text);
+      result =JSON.parse(text);
 
     } catch (error) {
 
-      console.error(
-        text
-      );
+      console.error( text);
 
       throw new Error(
         'La respuesta del servidor no tiene formato JSON.'
       );
     }
 
-    if (
-      !response.ok
-      || !result.status
-    ) {
+    if (!response.ok|| !result.status) {
 
       throw new Error(
         result.message
@@ -549,8 +823,7 @@ async function cargarProductos() {
       );
     }
 
-    products =
-      Array.isArray(result.data)
+    products =Array.isArray(result.data)
         ? result.data.map(
             normalizarProducto
           )
@@ -570,9 +843,7 @@ async function cargarProductos() {
 
     filteredProducts = [];
 
-    mostrarErrorCatalogo(
-      error.message
-    );
+    mostrarErrorCatalogo(error.message);
   }
 }
 
@@ -603,16 +874,9 @@ function cargarOpcionesFiltros() {
 }
 
 
-function cargarSelectUnico(
-  elementId,
-  values,
-  defaultLabel
-) {
+function cargarSelectUnico(elementId,values,defaultLabel) {
 
-  const select =
-    document.getElementById(
-      elementId
-    );
+  const select =document.getElementById(elementId);
 
   if (!select) {
     return;
@@ -680,15 +944,9 @@ function cargarFiltroAnios() {
           b - a
       );
 
-  const from =
-    document.getElementById(
-      'yearFromFilter'
-    );
+  const from =document.getElementById('yearFromFilter');
 
-  const to =
-    document.getElementById(
-      'yearToFilter'
-    );
+  const to =document.getElementById('yearToFilter');
 
   const options =
     years.map(
@@ -729,9 +987,7 @@ function cargarFiltroAnios() {
  * FILTROS
  * ============================================================ */
 
-function aplicarFiltros(
-  resetPage = true
-) {
+function aplicarFiltros(resetPage = true) {
 
   if (resetPage) {
 
@@ -842,12 +1098,7 @@ function aplicarFiltros(
           return false;
         }
 
-        if (
-          marca !== 'todos'
-          && item.marca
-            .toLowerCase()
-            !== marca
-        ) {
+        if (marca !== 'todos' && item.marca.toLowerCase() !== marca) {
 
           return false;
         }
@@ -862,50 +1113,32 @@ function aplicarFiltros(
           return false;
         }
 
-        if (
-          yearFrom
-          && item.anio < yearFrom
-        ) {
+        if (yearFrom && item.anio < yearFrom) {
 
           return false;
         }
 
-        if (
-          yearTo
-          && item.anio > yearTo
-        ) {
+        if (yearTo && item.anio > yearTo) {
 
           return false;
         }
 
-        if (
-          priceFrom
-          && item.precio < priceFrom
-        ) {
+        if (priceFrom && item.precio < priceFrom) {
 
           return false;
         }
 
-        if (
-          priceTo
-          && item.precio > priceTo
-        ) {
+        if (priceTo && item.precio > priceTo) {
 
           return false;
         }
 
-        if (
-          stock === 'disponible'
-          && item.stock <= 0
-        ) {
+        if (stock === 'disponible' && item.stock <= 0) {
 
           return false;
         }
 
-        if (
-          stock === 'sin_stock'
-          && item.stock > 0
-        ) {
+        if (stock === 'sin_stock' && item.stock > 0) {
 
           return false;
         }
@@ -985,8 +1218,7 @@ function ordenarProductos() {
 
 function renderCatalogPage() {
 
-  const total =
-    filteredProducts.length;
+  const total =filteredProducts.length;
 
   const totalPages =
     Math.max(
@@ -1021,13 +1253,9 @@ function renderCatalogPage() {
       end
     );
 
-  renderProducts(
-    pageItems
-  );
+  renderProducts(pageItems);
 
-  renderPagination(
-    totalPages
-  );
+  renderPagination(totalPages);
 
   actualizarContadorResultados(
     total,
@@ -1053,8 +1281,7 @@ function cambiarPagina(page) {
     return;
   }
 
-  currentPage =
-    page;
+  currentPage = page;
 
   renderCatalogPage();
 
@@ -1072,9 +1299,7 @@ function cambiarPagina(page) {
 }
 
 
-function renderPagination(
-  totalPages
-) {
+function renderPagination(totalPages) {
 
   const container =
     document.getElementById(
@@ -1085,9 +1310,7 @@ function renderPagination(
     return;
   }
 
-  if (
-    totalPages <= 1
-  ) {
+  if (totalPages <= 1) {
 
     container.innerHTML = '';
 
@@ -1113,11 +1336,7 @@ function renderPagination(
     </button>
   `;
 
-  const pages =
-    calcularPaginasVisibles(
-      totalPages,
-      currentPage
-    );
+  const pages =calcularPaginasVisibles(totalPages,currentPage);
 
   pages.forEach(
     page => {
@@ -1190,10 +1409,7 @@ function renderPagination(
 }
 
 
-function calcularPaginasVisibles(
-  totalPages,
-  current
-) {
+function calcularPaginasVisibles(totalPages,current) {
 
   if (
     totalPages <= 7
@@ -1243,19 +1459,12 @@ function calcularPaginasVisibles(
     );
   }
 
-  if (
-    current
-    < totalPages - 3
-  ) {
+  if (current < totalPages - 3) {
 
-    pages.push(
-      '...'
-    );
+    pages.push('...');
   }
 
-  pages.push(
-    totalPages
-  );
+  pages.push(totalPages);
 
   return pages;
 }
@@ -1265,21 +1474,11 @@ function calcularPaginasVisibles(
  * CONTADOR
  * ============================================================ */
 
-function actualizarContadorResultados(
-  total,
-  start,
-  end
-) {
+function actualizarContadorResultados(total,start,end) {
 
-  const results =
-    document.getElementById(
-      'catalogResults'
-    );
+  const results =document.getElementById('catalogResults');
 
-  const info =
-    document.getElementById(
-      'catalogPageInfo'
-    );
+  const info =document.getElementById('catalogPageInfo');
 
   if (results) {
 
@@ -1318,14 +1517,9 @@ function actualizarContadorResultados(
  * RENDER PRODUCTOS
  * ============================================================ */
 
-function renderProducts(
-  list
-) {
+function renderProducts(list) {
 
-  const grid =
-    document.getElementById(
-      'productsGrid'
-    );
+  const grid =document.getElementById('productsGrid');
 
   if (!grid) {
     return;
@@ -1410,11 +1604,7 @@ function renderProducts(
               <div class="product-card-top">
 
                 <span class="product-brand">
-                  ${
-                    escapeHtml(
-                      item.marca
-                    )
-                  }
+                  ${escapeHtml(item.marca)}
                 </span>
 
                 ${
@@ -1432,33 +1622,21 @@ function renderProducts(
 
               <h3>
 
-                ${
-                  escapeHtml(
-                    item.nombre
-                  )
-                }
+                ${escapeHtml(item.nombre)}
 
               </h3>
 
 
               <span class="product-version">
 
-                ${
-                  escapeHtml(
-                    item.version
-                  )
-                }
+                ${escapeHtml(item.version)}
 
               </span>
 
 
               <p>
 
-                ${
-                  escapeHtml(
-                    item.descripcion
-                  )
-                }
+                ${escapeHtml(item.descripcion)}
 
               </p>
 
@@ -1473,11 +1651,7 @@ function renderProducts(
 
                   <strong>
 
-                    ${
-                      escapeHtml(
-                        item.modelo
-                      )
-                    }
+                    ${escapeHtml(item.modelo)}
 
                   </strong>
 
@@ -1492,12 +1666,7 @@ function renderProducts(
 
                   <strong>
 
-                    ${
-                      escapeHtml(
-                        item.motor
-                        || 'Consultar'
-                      )
-                    }
+                    ${escapeHtml(item.motor|| 'Consultar')}
 
                   </strong>
 
@@ -1514,11 +1683,7 @@ function renderProducts(
 
                 <strong>
 
-                  ${
-                    formatMoney(
-                      item.precio
-                    )
-                  }
+                  ${formatMoney(item.precio)}
 
                 </strong>
 
@@ -1528,7 +1693,7 @@ function renderProducts(
               <div class="product-actions">
 
                 <a
-                  href="${base_url}/orders/detalle/${item.id}"
+                  href="${getUrlDetalleUnidad(item.id)}"
                   class="
                     btn
                     btn-outline
@@ -1626,15 +1791,9 @@ function limpiarFiltros() {
     }
   );
 
-  const yearFrom =
-    document.getElementById(
-      'yearFromFilter'
-    );
+  const yearFrom =document.getElementById('yearFromFilter');
 
-  const yearTo =
-    document.getElementById(
-      'yearToFilter'
-    );
+  const yearTo =document.getElementById('yearToFilter');
 
   if (yearFrom) {
 
@@ -1646,10 +1805,7 @@ function limpiarFiltros() {
     yearTo.value = '';
   }
 
-  const sort =
-    document.getElementById(
-      'sortProducts'
-    );
+  const sort =document.getElementById('sortProducts');
 
   if (sort) {
 
@@ -1667,14 +1823,9 @@ function limpiarFiltros() {
  * ERROR
  * ============================================================ */
 
-function mostrarErrorCatalogo(
-  mensaje
-) {
+function mostrarErrorCatalogo(mensaje) {
 
-  const grid =
-    document.getElementById(
-      'productsGrid'
-    );
+  const grid =document.getElementById('productsGrid');
 
   if (!grid) {
     return;
@@ -1690,11 +1841,7 @@ function mostrarErrorCatalogo(
 
       <p>
 
-        ${
-          escapeHtml(
-            mensaje
-          )
-        }
+        ${escapeHtml(mensaje)}
 
       </p>
 
@@ -1745,23 +1892,12 @@ function setupMenu() {
 
 function configurarEventosFiltros() {
 
-  document
-    .getElementById(
-      'btnApplyFilters'
-    )
-    ?.addEventListener(
-      'click',
-      () =>
+  document.getElementById('btnApplyFilters')?.addEventListener('click',() =>
         aplicarFiltros()
     );
 
 
-  document
-    .getElementById(
-      'btnClearFilters'
-    )
-    ?.addEventListener(
-      'click',
+  document.getElementById('btnClearFilters') ?.addEventListener('click',
       limpiarFiltros
     );
 
@@ -1828,13 +1964,298 @@ document.addEventListener(
   'DOMContentLoaded',
   async () => {
 
+  
     updateCartCount();
 
     setupMenu();
 
     configurarEventosFiltros();
 
+     mostrarAvisoCatalogoEdicion();
+
+     inicializarModoEdicionGlobal();
+
     await cargarProductos();
 
   }
 );
+
+
+
+
+
+
+function mostrarAvisoCatalogoEdicion() {
+
+    const context =getCatalogContext();
+
+    const notice = document.getElementById('catalogEditNotice');
+
+    if (!notice) {
+        return;
+    }
+
+    notice.hidden =
+        !context.esEdicion;
+}
+
+
+
+
+
+
+function getOrdersEditContext() {
+
+    try {
+
+        const data =JSON.parse(sessionStorage.getItem('orders_edit_context') || 'null' );
+
+        if (
+            !data
+            || data.modo !== 'editar'
+            || !data.pedido
+        ) {
+
+            return {
+                activo: false,
+                pedido: '',
+                folio: ''
+            };
+        }
+
+        return {
+            activo: true,
+            pedido:
+                String(
+                    data.pedido
+                ),
+
+            folio:
+                String(
+                    data.folio || ''
+                )
+        };
+
+    } catch (error) {
+
+        console.error(
+            'No fue posible leer el contexto de edición:',
+            error
+        );
+
+        return {
+            activo: false,
+            pedido: '',
+            folio: ''
+        };
+    }
+}
+
+
+
+
+function salirModoEdicionPedido() {
+ 
+
+    const context =getOrdersEditContext();
+
+    // console.log(context);
+
+    if (!context.activo) {
+
+        window.location.href =`${base_url}/orders/home`;
+
+        return;
+    }
+
+    if (typeof Swal !== 'undefined'&& Swal.fire) {
+
+        Swal.fire({
+
+            icon:'warning',
+
+            title:'¿Salir del modo edición?',
+
+            html:`Estás editando el pedido <strong>${escapeHtml(context.folio|| context.pedido)}</strong>.<br><br>
+                Las unidades agregadas temporalmente al pedido dejarán de mostrarse en el flujo de edición hasta que vuelvas a editarlo.`,
+
+            showCancelButton:true,
+
+            confirmButtonText:'Sí, salir',
+
+            cancelButtonText: 'Continuar editando',
+
+            reverseButtons:true
+
+        }).then(
+            result => {
+
+                if (!result.isConfirmed) {
+                    return;
+                }
+
+                limpiarModoEdicionPedido();
+
+                window.location.href =`${base_url}/orders/home`;
+            }
+        );
+
+        return;
+    }
+
+    if (confirm(
+            '¿Deseas salir del modo edición del pedido?'
+        )
+    ) {
+
+        limpiarModoEdicionPedido();
+
+        window.location.href =`${base_url}/orders/home`;
+    }
+}
+
+
+
+
+function limpiarModoEdicionPedido() {
+
+    sessionStorage.removeItem('orders_edit_context');
+}
+
+
+
+
+
+function aplicarContextoEdicionEnlaces() {
+
+    const context =getOrdersEditContext();
+
+    if (!context.activo) {
+        return;
+    }
+
+    const links =document.querySelectorAll('a[href]');
+
+    links.forEach(
+        link => {
+
+            const href =
+                link.getAttribute(
+                    'href'
+                );
+
+            if (
+                !href
+                || href.startsWith('#')
+                || href.startsWith('mailto:')
+                || href.startsWith('tel:')
+                || href.includes('/orders/logout')
+                || href.includes('/orders/editarpedido/')
+            ) {
+
+                return;
+            }
+
+            /*
+             * Solo modificar URLs pertenecientes
+             * al portal Orders.
+             */
+            if (!href.includes('/orders/')) {
+                return;
+            }
+
+            try {
+
+                const url =
+                    new URL(
+                        href,
+                        window.location.origin
+                    );
+
+                url.searchParams.set(
+                    'modo',
+                    'editar'
+                );
+
+                url.searchParams.set(
+                    'pedido',
+                    context.pedido
+                );
+
+                /*
+                 * Conservar hash como #catalogo.
+                 */
+                link.href =
+                    url.toString();
+
+            } catch (error) {
+
+                console.error(
+                    'No fue posible actualizar enlace:',
+                    href,
+                    error
+                );
+            }
+        }
+    );
+}
+
+
+
+
+function inicializarModoEdicionGlobal() {
+
+    const context = getOrdersEditContext();
+
+    const banner =document.getElementById('orderEditModeBanner');
+
+    if (!context.activo) {
+
+        if (banner) {
+            banner.hidden = true;
+        }
+
+        return;
+    }
+
+    /*
+     * Banner.
+     */
+    if (banner) {
+        banner.hidden = false;
+    }
+
+    const text =document.getElementById('orderEditModeText');
+
+    if (text) {
+
+        text.textContent =
+            `Editando ${
+                context.folio
+                || context.pedido
+            }`;
+    }
+
+
+    /*
+     * Regresar al pedido.
+     */
+    const returnButton =document.getElementById('btnReturnEditOrder');
+
+    if (returnButton) {
+
+        returnButton.href =`${base_url}/orders/editarpedido/${encodeURIComponent(context.pedido)}`;
+    }
+
+
+    /*
+     * Salir.
+     */
+    document.getElementById('btnExitEditMode') ?.addEventListener('click',salirModoEdicionPedido);
+
+
+    /*
+     * Propagar contexto a enlaces.
+     */
+    aplicarContextoEdicionEnlaces();
+}

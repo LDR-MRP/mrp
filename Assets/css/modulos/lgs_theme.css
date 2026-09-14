@@ -1,0 +1,9 @@
+/* ==============================================================================
+   LGS THEME — Modulo Logística
+   Usa estilos y variables nativas del sistema (compatible con Modo Oscuro y Modo Claro)
+   ============================================================================== */
+
+/* Utilidades adicionales no invasivas */
+.cursor-pointer {
+    cursor: pointer !important;
+}

@@ -91,4 +91,60 @@ class Lgs_planeaciones extends Controllers
             echo $this->errorResponse($e->getMessage(), 500);
         }
     }
+
+    /**
+     * Devuelve el detalle completo de una planeación con sus envíos y VINs
+     * URL: {{base_url}}/Lgs_planeaciones/getDetalleCompletoPlan/1
+     */
+    public function getDetalleCompletoPlan(int $idPlaneacion): void
+    {
+        try {
+            $data = $this->service->getDetalleCompletoPlan($idPlaneacion);
+            echo $this->successResponse($data, "Detalle completo de la planeación obtenido");
+        } catch (Exception $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST: Reabre una planeación rechazada
+     * URL: {{base_url}}/Lgs_planeaciones/reabrir
+     */
+    public function reabrir(): void
+    {
+        try {
+            $userId = $_SESSION['idUser'] ?? 1;
+            $idPlaneacion = intval($_POST['id_planeacion'] ?? 0);
+
+            if ($idPlaneacion <= 0) {
+                throw new Exception("ID de planeación no válido.");
+            }
+
+            $this->service->reabrirPlaneacion($idPlaneacion, $userId);
+            echo $this->successResponse(null, "Planeación y sus envíos reabiertos con éxito.");
+        } catch (Exception $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST: Envía una planeación existente en borrador a Aprobación
+     * URL: {{base_url}}/Lgs_planeaciones/enviarAprobacion
+     */
+    public function enviarAprobacion(): void
+    {
+        try {
+            $userId = $_SESSION['idUser'] ?? 1;
+            $idPlaneacion = intval($_POST['id_planeacion'] ?? 0);
+
+            if ($idPlaneacion <= 0) {
+                throw new Exception("ID de planeación no válido.");
+            }
+
+            $this->service->enviarAprobacion($idPlaneacion, $userId);
+            echo $this->successResponse(null, "Planeación enviada a aprobación exitosamente.");
+        } catch (Exception $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
 }

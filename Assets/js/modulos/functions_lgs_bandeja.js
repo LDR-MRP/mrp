@@ -29,7 +29,11 @@ function initTableBandeja() {
                 + '&destino=' + encodeURIComponent(destino)
                 + '&motivo=' + encodeURIComponent(motivo)
                 + '&busqueda=' + encodeURIComponent(busqueda),
-            dataSrc: ''
+            dataSrc: function (json) {
+                const list = Array.isArray(json) ? json : (json.data || []);
+                actualizarKpisBandeja(list);
+                return list;
+            }
         },
         columns: [
             { data: 'id_lgs_unidad' },
@@ -59,7 +63,11 @@ function initTableBandeja() {
                 render: function (data, _, row) {
                     const clases = { 1: 'bg-warning text-dark', 2: 'bg-primary', 3: 'bg-success' };
                     const cls = clases[row.id_estado_proceso] || 'bg-secondary';
-                    return '<span class="badge ' + cls + '">' + _esc(data) + '</span>';
+                    let html = '<span class="badge ' + cls + '">' + _esc(data) + '</span>';
+                    if (row.envio_folio) {
+                        html += '<br><a href="' + base_url + '/Lgs_envios/detalle/' + row.envio_id + '" class="badge bg-soft-info text-info border border-info mt-1 text-decoration-none" title="Ver Acomodo / Envío"><i class="ri-truck-line me-1"></i>' + _esc(row.envio_folio) + '</a>';
+                    }
+                    return html;
                 }
             },
             {
@@ -82,6 +90,24 @@ function initTableBandeja() {
 
 function recargarBandeja() {
     initTableBandeja();
+}
+
+function actualizarKpisBandeja(list) {
+    if (!Array.isArray(list)) return;
+    const total = list.length;
+    const pendientes = list.filter(r => parseInt(r.id_estado_proceso) === 1).length;
+    const transito   = list.filter(r => parseInt(r.id_estado_proceso) === 2).length;
+    const entregados = list.filter(r => parseInt(r.id_estado_proceso) === 3).length;
+
+    const elTotal = document.getElementById('kpi-total-bandeja');
+    const elPend  = document.getElementById('kpi-pendientes-bandeja');
+    const elTran  = document.getElementById('kpi-transito-bandeja');
+    const elEntr  = document.getElementById('kpi-entregados-bandeja');
+
+    if (elTotal) elTotal.textContent = total;
+    if (elPend)  elPend.textContent  = pendientes;
+    if (elTran)  elTran.textContent  = transito;
+    if (elEntr)  elEntr.textContent  = entregados;
 }
 
 // ─── Ver Detalle ─────────────────────────────────────────────────────────────
@@ -120,6 +146,20 @@ function fntAsignarDestino(idLgsUnidad) {
     document.getElementById('asig_id_destino').value    = '';
     document.getElementById('asig_destino_descripcion').value = '';
     document.getElementById('asig_vin_label').textContent = '(ID Unidad: ' + idLgsUnidad + ')';
+
+    fetch(base_url + '/Lgs_bandeja/getUnidad/' + idLgsUnidad)
+        .then(r => r.json())
+        .then(res => {
+            if (res.success && res.data) {
+                const d = res.data;
+                document.getElementById('asig_vin_label').textContent = '(VIN: ' + (d.vin || '') + ' - ' + (d.modelo_unidad || '') + ')';
+                if (d.id_motivo) document.getElementById('asig_id_motivo').value = d.id_motivo;
+                if (d.id_destino) document.getElementById('asig_id_destino').value = d.id_destino;
+                if (d.destino_descripcion) document.getElementById('asig_destino_descripcion').value = d.destino_descripcion;
+            }
+        })
+        .catch(() => {});
+
     new bootstrap.Modal(document.getElementById('modalAsignarDestino')).show();
 }
 
