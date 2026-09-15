@@ -33,7 +33,6 @@ document.addEventListener('DOMContentLoaded', function () {
             "dataSrc": ""
         },
         "columns": [
-            { "data": "id_envio" },
             { 
                 "data": "folio",
                 "render": function(data, type, row) {
@@ -45,12 +44,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     return html;
                 }
             },
-            { "data": "tipo_traslado" },
-            { "data": "motivo" },
             { 
-                "data": "trasladista",
-                "render": function(data) {
-                    return '<span class="fw-medium text-dark">' + (data || '-') + '</span>';
+                "data": "id_estado",
+                "render": function (data) {
+                    let badge = '';
+                    switch(parseInt(data)) {
+                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>Creado</span>'; break;
+                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>En Aprobación</span>'; break;
+                        case 3: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-checkbox-circle-line me-1"></i>Aprobado</span>'; break;
+                        case 4: badge = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Rechazado</span>'; break;
+                        case 5: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-calendar-check-line me-1"></i>Programado</span>'; break;
+                        case 6: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-truck-line me-1"></i>Ejecutado</span>'; break;
+                        case 7: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-double-line me-1"></i>Entregado</span>'; break;
+                        case 8: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-line me-1"></i>Confirmado</span>'; break;
+                        default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
+                    }
+                    return badge;
                 }
             },
             { "data": "origen" },
@@ -64,13 +73,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     return html;
                 }
             },
-            { 
-                "data": "km_total",
-                "render": function(data, type, row) {
-                    const kmVal = parseFloat(data || 0).toFixed(1);
-                    const nParadas = row.total_paradas || 1;
-                    return '<span class="badge bg-soft-info text-info fs-12 fw-bold"><i class="ri-route-line me-1"></i>' + kmVal + ' km</span>' +
-                           '<div class="text-muted fs-11 mt-1">' + nParadas + ' parada(s)</div>';
+            {
+                "data": "fecha_tentativa_envio",
+                "render": function (data) {
+                    if (!data || data === 'null') return '<span class="text-muted fs-11">No definida</span>';
+                    return '<span class="fs-12 text-dark fw-medium"><i class="ri-calendar-event-line text-primary me-1"></i>' + data.replace('T', ' ') + '</span>';
                 }
             },
             { 
@@ -86,37 +93,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             },
             { 
+                "data": "trasladista",
+                "render": function(data) {
+                    return '<span class="fw-medium text-dark">' + (data || '-') + '</span>';
+                }
+            },
+            { 
                 "data": "costo_total",
                 "render": function (data) {
                     if (data == null) return '$0.00';
                     return '<span class="fw-bold text-success">$' + parseFloat(data).toFixed(2) + '</span>';
                 }
             },
-            {
-                "data": "fecha_tentativa_envio",
-                "render": function (data) {
-                    if (!data || data === 'null') return '<span class="text-muted fs-11">No definida</span>';
-                    return '<span class="fs-12 text-dark fw-medium"><i class="ri-calendar-event-line text-primary me-1"></i>' + data.replace('T', ' ') + '</span>';
-                }
-            },
             { 
-                "data": "id_estado",
-                "render": function (data) {
-                    let badge = '';
-                    switch(parseInt(data)) {
-                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>Borrador</span>'; break;
-                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>En Revisión</span>'; break;
-                        case 3: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-checkbox-circle-line me-1"></i>Envío Aprobado</span>'; break;
-                        case 4: badge = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Planeación Rechazada</span>'; break;
-                        case 5: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-calendar-check-line me-1"></i>Programado</span>'; break;
-                        case 6: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-truck-line me-1"></i>En Tránsito</span>'; break;
-                        case 7: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-double-line me-1"></i>Entregado</span>'; break;
-                        case 8: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-line me-1"></i>Envío Confirmado</span>'; break;
-                        default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
-                    }
-                    return badge;
+                "data": "km_total",
+                "render": function(data, type, row) {
+                    const kmVal = parseFloat(data || 0).toFixed(1);
+                    const nParadas = row.total_paradas || 1;
+                    return '<span class="badge bg-soft-info text-info fs-12 fw-bold"><i class="ri-route-line me-1"></i>' + kmVal + ' km</span>' +
+                           '<div class="text-muted fs-11 mt-1">' + nParadas + ' parada(s)</div>';
                 }
             },
+            { "data": "tipo_traslado" },
+            { "data": "motivo" },
+            { "data": "id_envio" },
             {
                 "data": "id_envio",
                 "render": function (data, type, row) {
@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     let btnAcomodo = '';
                     let btnEliminar = '';
 
-                    if (estado === 1 || estado === 8) {
+                    if (estado === 1) {
                         btnRuta = `<button class="btn btn-sm btn-soft-secondary rounded-pill px-3 fw-semibold me-1" onClick="fntEditRuta(${data})" title="Editar Itinerario / Ruta">
                                     <i class="ri-edit-line me-1"></i> Ruta
                                 </button>`;
@@ -142,6 +142,13 @@ document.addEventListener('DOMContentLoaded', function () {
                                 </button>`;
                         btnEliminar = `<button class="btn btn-sm btn-soft-danger rounded-pill px-3 fw-semibold" onClick="fntDelEnvio(${data})" title="Eliminar">
                                     <i class="ri-delete-bin-line me-1"></i> Eliminar
+                                </button>`;
+                    } else if (estado === 8) {
+                        btnRuta = `<button class="btn btn-sm btn-soft-secondary rounded-pill px-3 fw-semibold me-1" onClick="fntEditRuta(${data})" title="Ver Itinerario / Ruta">
+                                    <i class="ri-eye-line me-1"></i> Ver Ruta
+                                </button>`;
+                        btnAcomodo = `<button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold me-1" onClick="fntViewEnvio(${data})" title="Ver Detalles del Acomodo">
+                                    <i class="ri-eye-line me-1"></i> Detalles
                                 </button>`;
                     } else {
                         btnRuta = `<button class="btn btn-sm btn-soft-secondary rounded-pill px-3 fw-semibold me-1" onClick="fntEditRuta(${data})" title="Ver Itinerario / Ruta">
@@ -280,6 +287,15 @@ let _nodoCounter = 0;
 
 /** Agrega un nuevo nodo / punto al recorrido de la ruta */
 function agregarNodoRuta(data, isCarga = false) {
+    const idTipoTraslado = document.getElementById('id_tipo_traslado') ? document.getElementById('id_tipo_traslado').value : '';
+    if (idTipoTraslado == '2' && !data) {
+        const contCheck = document.getElementById('contenedor-nodos-ruta');
+        if (contCheck && contCheck.querySelectorAll('.nodo-item').length >= 2) {
+            Swal.fire("Atención", "El tipo de traslado 'Chofer (Rodando)' solo permite un Origen y un Destino.", "warning");
+            return;
+        }
+    }
+
     _nodoCounter++;
     const cont = document.getElementById('contenedor-nodos-ruta');
     if (!cont) return;
@@ -313,16 +329,17 @@ function agregarNodoRuta(data, isCarga = false) {
         }
     }
     div.setAttribute('data-tipo-nodo', isCargaVal ? 'carga' : 'entrega');
+    div.style.borderLeft = esOrigen ? '4px solid #0ab39c' : (isCargaVal ? '4px solid #0d6efd' : '4px solid #fd7e14');
 
     div.innerHTML = `
         <div class="d-flex align-items-center justify-content-between mb-2">
             <div class="d-flex align-items-center gap-2">
-                <span class="badge ${esOrigen ? 'bg-success' : (isCargaVal ? 'bg-info' : 'bg-primary')} badge-nodo-tipo px-2 py-1 fs-11">
+                <span class="badge ${esOrigen ? 'bg-success' : 'text-white'} badge-nodo-tipo px-2 py-1 fs-11" style="${esOrigen ? '' : (isCargaVal ? 'background-color: #0d6efd !important;' : 'background-color: #fd7e14 !important;')}">
                     <i class="${esOrigen ? 'ri-map-pin-user-line' : (isCargaVal ? 'ri-map-pin-add-line' : 'ri-map-pin-line')} me-1"></i>
-                    <span class="nodo-tipo-txt">${esOrigen ? 'PUNTO 1 (PUNTO DE PARTIDA)' : (isCargaVal ? 'PUNTO ' + (index + 1) + ' (CARGA)' : 'PUNTO ' + (index + 1) + ' (PARADA/ENTREGA)')}</span>
+                    <span class="nodo-tipo-txt">${esOrigen ? 'PUNTO 1 (PUNTO DE PARTIDA / CARGA)' : (isCargaVal ? 'PUNTO ' + (index + 1) + ' (CARGA ADICIONAL)' : 'PUNTO ' + (index + 1) + ' (BAJADA / DESCARGA)')}</span>
                 </span>
                 <span class="text-muted fs-11 nodo-desc-txt">
-                    ${esOrigen ? 'Lugar de salida de la madrina o chofer' : (isCargaVal ? 'Punto de recolección o carga de unidades' : 'Parada intermedia o destino de entrega')}
+                    ${esOrigen ? 'Lugar de salida de la madrina o chofer' : (isCargaVal ? 'Punto de recolección o carga de unidades' : 'Punto de entrega o descarga de unidades')}
                 </span>
             </div>
             <div class="d-flex align-items-center gap-1">
@@ -349,7 +366,7 @@ function agregarNodoRuta(data, isCarga = false) {
             <input type="hidden" class="nodo-nombre-libre" value="${nombreLibre}">
             <div class="col-md-3 seccion-fecha-estimada">
                 <label class="form-label fs-11 text-muted mb-1 fw-bold nodo-lbl-fecha-estimada">
-                    <i class="ri-calendar-event-line ${isCargaVal ? 'text-info' : 'text-primary'} me-1"></i>${esOrigen ? 'Llegada est. Origen' : (isCargaVal ? 'Est. Recolección' : 'Est. Entrega')}
+                    <i class="ri-calendar-event-line me-1" style="color: ${esOrigen ? '#0ab39c' : (isCargaVal ? '#0d6efd' : '#fd7e14')};"></i>${esOrigen ? 'Fecha/Hora Salida <span class="text-danger">*</span>' : (isCargaVal ? 'Est. Recolección' : 'Est. Descarga')}
                 </label>
                 <input type="datetime-local" class="form-control form-control-sm nodo-fecha-estimada" 
                     value="${fechaEstimadaVal}" 
@@ -398,7 +415,7 @@ function agregarNodoRuta(data, isCarga = false) {
             timer: 2000,
             timerProgressBar: true,
             icon: 'success',
-            title: isCargaVal ? 'Punto de Carga añadido' : 'Punto de Entrega añadido'
+            title: isCargaVal ? 'Punto de Carga añadido' : 'Punto de Descarga añadido'
         });
     }
 
@@ -499,11 +516,13 @@ function actualizarSecuenciaNodos() {
         if (esPrimero) {
             if (colUbi) colUbi.className = 'col-md-9 col-ubi-wrapper';
             if (secFecha) secFecha.style.display = '';
-            if (lblFecha) lblFecha.innerHTML = '<i class="ri-calendar-event-line text-primary me-1"></i>Llegada est. Origen';
+            if (lblFecha) lblFecha.innerHTML = '<i class="ri-calendar-event-line text-success me-1"></i>Fecha/Hora Salida <span class="text-danger">*</span>';
             if (secKm) secKm.style.display = 'none';
+            card.style.borderLeft = '4px solid #0ab39c';
             if (badge) {
                 badge.className = 'badge bg-success badge-nodo-tipo px-2 py-1 fs-11';
-                badge.innerHTML = '<i class="ri-map-pin-user-line me-1"></i><span class="nodo-tipo-txt">PUNTO 1 (PUNTO DE PARTIDA)</span>';
+                badge.style.removeProperty('background-color');
+                badge.innerHTML = '<i class="ri-map-pin-user-line me-1"></i><span class="nodo-tipo-txt">PUNTO 1 (PUNTO DE PARTIDA / CARGA)</span>';
             }
             if (descTxt) descTxt.innerText = 'Lugar de salida de la madrina o chofer';
         } else {
@@ -512,19 +531,23 @@ function actualizarSecuenciaNodos() {
             if (secKm) secKm.style.display = '';
 
             if (isCarga) {
+                card.style.borderLeft = '4px solid #0d6efd';
                 if (badge) {
-                    badge.className = 'badge bg-info badge-nodo-tipo px-2 py-1 fs-11';
-                    badge.innerHTML = `<i class="ri-map-pin-add-line me-1"></i><span class="nodo-tipo-txt">PUNTO ${idx + 1} (CARGA)</span>`;
+                    badge.className = 'badge text-white badge-nodo-tipo px-2 py-1 fs-11';
+                    badge.style.backgroundColor = '#0d6efd';
+                    badge.innerHTML = `<i class="ri-map-pin-add-line me-1"></i><span class="nodo-tipo-txt">PUNTO ${idx + 1} (CARGA ADICIONAL)</span>`;
                 }
                 if (descTxt) descTxt.innerText = 'Punto de recolección o carga de unidades';
-                if (lblFecha) lblFecha.innerHTML = '<i class="ri-calendar-event-line text-info me-1"></i>Est. Recolección';
+                if (lblFecha) lblFecha.innerHTML = '<i class="ri-calendar-event-line me-1" style="color: #0d6efd;"></i>Est. Recolección';
             } else {
+                card.style.borderLeft = '4px solid #fd7e14';
                 if (badge) {
-                    badge.className = 'badge bg-primary badge-nodo-tipo px-2 py-1 fs-11';
-                    badge.innerHTML = `<i class="ri-map-pin-line me-1"></i><span class="nodo-tipo-txt">PUNTO ${idx + 1} (PARADA / ENTREGA)</span>`;
+                    badge.className = 'badge text-white badge-nodo-tipo px-2 py-1 fs-11';
+                    badge.style.backgroundColor = '#fd7e14';
+                    badge.innerHTML = `<i class="ri-map-pin-line me-1"></i><span class="nodo-tipo-txt">PUNTO ${idx + 1} (BAJADA / DESCARGA)</span>`;
                 }
-                if (descTxt) descTxt.innerText = 'Parada intermedia o destino final';
-                if (lblFecha) lblFecha.innerHTML = '<i class="ri-calendar-event-line text-primary me-1"></i>Est. Entrega';
+                if (descTxt) descTxt.innerText = 'Punto de entrega o descarga de unidades';
+                if (lblFecha) lblFecha.innerHTML = '<i class="ri-calendar-event-line me-1" style="color: #fd7e14;"></i>Est. Descarga';
             }
         }
     });
@@ -582,6 +605,16 @@ function serializarNodos() {
     const campoDestino = document.getElementById('id_destino');
     if (campoDestino && nodos.length > 1) {
         campoDestino.value = nodos[nodos.length - 1].id_ubicacion || '';
+    }
+
+    // Sincronizar fechas maestras de salida (Punto 1) y llegada (Último Punto)
+    const campoFechaEnvio = document.getElementById('fecha_tentativa_envio');
+    if (campoFechaEnvio && nodos.length > 0) {
+        campoFechaEnvio.value = nodos[0].fecha_estimada || '';
+    }
+    const campoFechaLlegada = document.getElementById('fecha_tentativa_llegada');
+    if (campoFechaLlegada && nodos.length > 1) {
+        campoFechaLlegada.value = nodos[nodos.length - 1].fecha_estimada || '';
     }
 }
 
@@ -791,11 +824,85 @@ function guardarDistanciasFaltantesModal() {
     };
 }
 
+function actualizarEstatusLateralEnvio(idEstado) {
+    const lbl = document.getElementById('lbl-estatus-envio-lateral');
+    const iconCont = document.getElementById('icon-estatus-envio-lateral');
+    const desc = document.getElementById('desc-estatus-envio-lateral');
+    if (!lbl) return;
+
+    let nombreEstado = 'Creado';
+    let icono = '<i class="ri-draft-line text-white fs-24 opacity-50"></i>';
+    let descripcion = '<i class="ri-information-line me-1"></i> Las subidas y bajadas de VINs por tramo se configuran en la siguiente pantalla.';
+
+    switch(parseInt(idEstado || 1)) {
+        case 1:
+            nombreEstado = 'Creado';
+            icono = '<i class="ri-draft-line text-white fs-24 opacity-75"></i>';
+            descripcion = '<i class="ri-information-line me-1"></i> Envío creado, pendiente de configuración de ruta y acomodo.';
+            break;
+        case 2:
+            nombreEstado = 'En Aprobación';
+            icono = '<i class="ri-time-line text-warning fs-24"></i>';
+            descripcion = '<i class="ri-time-line me-1 text-warning"></i> Pendiente de aprobación por logística o administración.';
+            break;
+        case 3:
+            nombreEstado = 'Aprobado';
+            icono = '<i class="ri-checkbox-circle-line text-info fs-24"></i>';
+            descripcion = '<i class="ri-checkbox-circle-line me-1 text-info"></i> Aprobado para asignación y programación de salida.';
+            break;
+        case 4:
+            nombreEstado = 'Rechazado';
+            icono = '<i class="ri-close-circle-line text-danger fs-24"></i>';
+            descripcion = '<i class="ri-close-circle-line me-1 text-danger"></i> La planeación fue rechazada.';
+            break;
+        case 5:
+            nombreEstado = 'Programado';
+            icono = '<i class="ri-calendar-check-line text-info fs-24"></i>';
+            descripcion = '<i class="ri-calendar-check-line me-1 text-info"></i> Salida programada con unidades y chofer asignados.';
+            break;
+        case 6:
+            nombreEstado = 'Ejecutado';
+            icono = '<i class="ri-truck-line text-info fs-24"></i>';
+            descripcion = '<i class="ri-truck-line me-1 text-info"></i> Madrina o chofer en ruta hacia los destinos.';
+            break;
+        case 7:
+            nombreEstado = 'Entregado';
+            icono = '<i class="ri-check-double-line text-success fs-24"></i>';
+            descripcion = '<i class="ri-check-double-line me-1 text-success"></i> Todas las unidades han sido entregadas.';
+            break;
+        case 8:
+            nombreEstado = 'Confirmado';
+            icono = '<i class="ri-checkbox-circle-fill text-success fs-24"></i>';
+            descripcion = '<i class="ri-checkbox-circle-fill me-1 text-success"></i> Envío confirmado, listo para incluir en planeación.';
+            break;
+        default:
+            nombreEstado = 'Estado ' + idEstado;
+            icono = '<i class="ri-route-line text-white fs-24 opacity-50"></i>';
+            descripcion = '<i class="ri-information-line me-1"></i> Estado del traslado.';
+            break;
+    }
+
+    lbl.innerHTML = nombreEstado;
+    if (iconCont) iconCont.innerHTML = icono;
+    if (desc) desc.innerHTML = descripcion;
+}
+
 function openModal() {
     document.querySelector('#id_envio').value = "";
     document.querySelector('#btnText').innerHTML = "Guardar Envío";
     document.querySelector('#form-envio-title').innerHTML = "Crear Solicitud de Traslado";
     document.querySelector("#formEnvio").reset();
+    actualizarEstatusLateralEnvio(1);
+
+    // Resetear botones de acción
+    const btnAction = document.getElementById('btnActionForm');
+    const btnReabrir = document.getElementById('btnReabrirEditar');
+    if (btnAction) btnAction.style.display = '';
+    if (btnReabrir) btnReabrir.style.display = 'none';
+
+    // Re-habilitar campos que pudieran estar deshabilitados de una vista previa
+    document.querySelectorAll('#formEnvio select, #formEnvio input:not([type=hidden]), #formEnvio textarea').forEach(el => el.disabled = false);
+    document.querySelectorAll('#btnAgregarDescarga, #btnAgregarCarga').forEach(el => el.style.display = '');
 
     // Limpiar contenedor de nodos
     const cont = document.getElementById('contenedor-nodos-ruta');
@@ -806,21 +913,28 @@ function openModal() {
     agregarNodoRuta();
 
     actualizarSecuenciaNodos();
+    handleTipoTrasladoEnvio();
     fntSwitchView('form');
 }
 
 function saveEnvio() {
+    serializarNodos();
+
     let id_tipo_traslado = document.querySelector('#id_tipo_traslado').value;
     let id_motivo        = document.querySelector('#id_motivo') ? document.querySelector('#id_motivo').value : '';
     let id_proveedor     = document.querySelector('#id_proveedor').value;
     let fecha_tentativa_envio = document.querySelector('#fecha_tentativa_envio') ? document.querySelector('#fecha_tentativa_envio').value : '';
 
-    serializarNodos();
     const nodosRaw = document.getElementById('nodos_json') ? document.getElementById('nodos_json').value : '[]';
     const nodos = JSON.parse(nodosRaw);
 
-    if (!id_tipo_traslado || !id_motivo || !id_proveedor || !fecha_tentativa_envio) {
-        Swal.fire("Atención", "Todos los campos marcados con (*) son obligatorios, incluyendo la Fecha/Hora Programada de Salida.", "error");
+    if (!id_tipo_traslado || !id_motivo || !id_proveedor) {
+        Swal.fire("Atención", "Todos los campos marcados con (*) son obligatorios.", "error");
+        return false;
+    }
+
+    if (!fecha_tentativa_envio) {
+        Swal.fire("Atención", "Debe ingresar la Fecha y Hora de Salida en el Punto 1 (Punto de Partida).", "warning");
         return false;
     }
 
@@ -967,8 +1081,10 @@ function fntEditRuta(idEnvio) {
                     document.querySelector('#id_envio').value = envio.id_envio;
                     document.querySelector('#btnText').innerHTML = "Actualizar Envío";
                     document.querySelector('#form-envio-title').innerHTML = "Editar Itinerario de Envío: " + (envio.folio || ('#' + envio.id_envio));
+                    actualizarEstatusLateralEnvio(envio.id_estado);
 
                     if (document.querySelector('#id_tipo_traslado')) document.querySelector('#id_tipo_traslado').value = envio.id_tipo_traslado || '';
+                    handleTipoTrasladoEnvio();
                     if (document.querySelector('#id_motivo')) document.querySelector('#id_motivo').value = envio.id_motivo || '';
                     if (document.querySelector('#id_proveedor')) document.querySelector('#id_proveedor').value = envio.id_proveedor || '';
 
@@ -981,21 +1097,61 @@ function fntEditRuta(idEnvio) {
                     if (cont) cont.innerHTML = '';
 
                     if (nodos.length > 0) {
-                        nodos.forEach(n => {
+                        nodos.forEach((n, nIdx) => {
                             const isCarga = (n.tipo_nodo === 'carga' || parseInt(n.id_tipo_destino) === 5);
+                            if (!n.fecha_estimada) {
+                                if (nIdx === 0 && envio.fecha_tentativa_envio) {
+                                    n.fecha_estimada = envio.fecha_tentativa_envio;
+                                } else if (nIdx === nodos.length - 1 && envio.fecha_tentativa_llegada) {
+                                    n.fecha_estimada = envio.fecha_tentativa_llegada;
+                                }
+                            }
                             agregarNodoRuta(n, isCarga);
                         });
                     } else {
-                        agregarNodoRuta({ id_ubicacion: envio.id_origen });
-                        agregarNodoRuta({ id_ubicacion: envio.id_destino, destino_nombre_libre: envio.destino_nombre_libre });
+                        agregarNodoRuta({ id_ubicacion: envio.id_origen, fecha_estimada: envio.fecha_tentativa_envio });
+                        agregarNodoRuta({ id_ubicacion: envio.id_destino, destino_nombre_libre: envio.destino_nombre_libre, fecha_estimada: envio.fecha_tentativa_llegada });
                     }
 
                     actualizarSecuenciaNodos();
                     verificarYCalcularRuta();
+
+                    // Proteger formulario si el envío ya está confirmado o en un estado posterior
+                    const estadoEnvio = parseInt(envio.id_estado);
+                    const btnAction = document.getElementById('btnActionForm');
+                    const btnReabrirEditar = document.getElementById('btnReabrirEditar');
+                    
+                    if (estadoEnvio === 1) {
+                        // Estado 1 (Creado): edición normal
+                        if (btnAction) btnAction.style.display = '';
+                        if (btnReabrirEditar) btnReabrirEditar.style.display = 'none';
+                        document.querySelectorAll('#formEnvio select, #formEnvio input:not([type=hidden]), #formEnvio textarea').forEach(el => el.disabled = false);
+                        document.querySelectorAll('#btnAgregarDescarga, #btnAgregarCarga').forEach(el => el.style.display = '');
+                    } else if (estadoEnvio === 8) {
+                        // Confirmado: ofrecer reabrir para editar
+                        if (btnAction) btnAction.style.display = 'none';
+                        if (btnReabrirEditar) {
+                            btnReabrirEditar.style.display = '';
+                            btnReabrirEditar.setAttribute('data-id-envio', envio.id_envio);
+                        }
+                        // Deshabilitar inputs
+                        document.querySelectorAll('#formEnvio select, #formEnvio input:not([type=hidden]), #formEnvio textarea').forEach(el => el.disabled = true);
+                        document.querySelectorAll('#contenedor-nodos-ruta .btn-close, #contenedor-nodos-ruta .btn-outline-danger, #contenedor-nodos-ruta .btn-outline-primary').forEach(el => el.style.display = 'none');
+                        document.querySelectorAll('#btnAgregarDescarga, #btnAgregarCarga').forEach(el => el.style.display = 'none');
+                    } else {
+                        // Estado 2+ (En Aprobación, Aprobado, Ejecutado, etc.): solo lectura sin opción de reabrir
+                        if (btnAction) btnAction.style.display = 'none';
+                        if (btnReabrirEditar) btnReabrirEditar.style.display = 'none';
+                        document.querySelectorAll('#formEnvio select, #formEnvio input:not([type=hidden]), #formEnvio textarea').forEach(el => el.disabled = true);
+                        document.querySelectorAll('#contenedor-nodos-ruta .btn-close, #contenedor-nodos-ruta .btn-outline-danger, #contenedor-nodos-ruta .btn-outline-primary').forEach(el => el.style.display = 'none');
+                        document.querySelectorAll('#btnAgregarDescarga, #btnAgregarCarga').forEach(el => el.style.display = 'none');
+                    }
+
                     fntSwitchView('form');
                 }
             } catch (e) {
-                Swal.fire("Error", "No se pudo cargar la información del envío.", "error");
+                console.error("Error en fntEditRuta:", e);
+                Swal.fire("Error", "No se pudo cargar la información del envío: " + (e.message || ''), "error");
             }
         }
     };
@@ -1003,6 +1159,46 @@ function fntEditRuta(idEnvio) {
 
 function fntViewEnvio(idEnvio) {
     window.location.href = base_url + '/Lgs_envios/detalle/' + idEnvio;
+}
+
+function fntReabrirParaEditar() {
+    const btnReabrir = document.getElementById('btnReabrirEditar');
+    const idEnvio = btnReabrir ? btnReabrir.getAttribute('data-id-envio') : null;
+    if (!idEnvio) return;
+
+    Swal.fire({
+        title: '¿Reabrir envío para editar?',
+        html: '<p class="mb-1">El envío regresará al estado <strong>Creado</strong> y deberá ser confirmado nuevamente.</p><p class="text-muted small mb-0">Esto también lo removerá de cualquier planeación pendiente.</p>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#f0ad4e',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="ri-lock-unlock-line me-1"></i> Sí, reabrir',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Habilitar campos y mostrar botón guardar
+            document.querySelectorAll('#formEnvio select, #formEnvio input:not([type=hidden]), #formEnvio textarea').forEach(el => el.disabled = false);
+            document.querySelectorAll('#btnAgregarDescarga, #btnAgregarCarga').forEach(el => el.style.display = '');
+            document.querySelectorAll('#contenedor-nodos-ruta .btn-close, #contenedor-nodos-ruta .btn-outline-danger, #contenedor-nodos-ruta .btn-outline-primary').forEach(el => el.style.display = '');
+            
+            const btnAction = document.getElementById('btnActionForm');
+            if (btnAction) {
+                btnAction.style.display = '';
+                document.querySelector('#btnText').innerHTML = "Actualizar Envío";
+            }
+            btnReabrir.style.display = 'none';
+            
+            actualizarEstatusLateralEnvio(1);
+            Swal.fire({
+                title: 'Envío desbloqueado',
+                text: 'Ahora puede editar la ruta. Al guardar, el envío regresará a estado Creado.',
+                icon: 'info',
+                timer: 3000,
+                showConfirmButton: false
+            });
+        }
+    });
 }
 
 function fntDelEnvio(idEnvio) {
@@ -1103,4 +1299,31 @@ function fntReabrirEnvio(idEnvio) {
             };
         }
     });
+}
+
+
+function handleTipoTrasladoEnvio() {
+    const idTipoTraslado = document.getElementById('id_tipo_traslado') ? document.getElementById('id_tipo_traslado').value : '';
+    const btnAddCarga = document.querySelector('button[onclick="agregarNodoRuta(null, true)"]');
+    const btnAddDescarga = document.querySelector('button[onclick="agregarNodoRuta(null, false)"]');
+    
+    if (idTipoTraslado == '2') {
+        if (btnAddCarga) btnAddCarga.style.display = 'none';
+        if (btnAddDescarga) btnAddDescarga.style.display = 'none';
+        
+        // Remove extra nodes if there are more than 2
+        const cont = document.getElementById('contenedor-nodos-ruta');
+        if (cont) {
+            const items = cont.querySelectorAll('.nodo-item');
+            if (items.length > 2) {
+                for (let i = 2; i < items.length; i++) {
+                    items[i].remove();
+                }
+                actualizarSecuenciaNodos();
+            }
+        }
+    } else {
+        if (btnAddCarga) btnAddCarga.style.display = '';
+        if (btnAddDescarga) btnAddDescarga.style.display = '';
+    }
 }

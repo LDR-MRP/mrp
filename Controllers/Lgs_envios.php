@@ -236,8 +236,16 @@ class Lgs_envios extends Controllers
                 }
                 
                 $idEstadoStr = intval($existingEnvio['id_estado']);
-                if ($idEstadoStr !== 1 && $idEstadoStr !== 8) {
-                    echo $this->errorResponse("El envío no puede ser modificado porque ya está en proceso de planeación o ejecución (Estado actual: $idEstadoStr).", 400);
+                $canEdit = ($idEstadoStr === 1 || $idEstadoStr === 8);
+                if ($idEstadoStr === 2) {
+                    $estadoPlan = $this->model->getPlaneacionEstadoByEnvio($idEnvio);
+                    if ($estadoPlan === null || $estadoPlan < 3) {
+                        $canEdit = true;
+                    }
+                }
+                
+                if (!$canEdit) {
+                    echo $this->errorResponse("El envío no puede ser modificado porque ya está en proceso de planeación aprobada o ejecución (Estado actual: $idEstadoStr).", 400);
                     return;
                 }
 
@@ -370,6 +378,14 @@ class Lgs_envios extends Controllers
      */
     public function detalle(int $idEnvio): void
     {
+        $model = new Lgs_enviosModel();
+        $envio = $model->getEnvioCabecera($idEnvio);
+        
+        $estadoPlan = 0;
+        if (!empty($envio)) {
+            $estadoPlan = $model->getPlaneacionEstadoByEnvio($idEnvio);
+        }
+
         $this->views->getView(
             $this,
             "../Lgs_envios/detalle",
@@ -378,7 +394,9 @@ class Lgs_envios extends Controllers
                 'page_title' => "Detalle de Envío",
                 'page_name' => "lgs_envios_detalle",
                 'page_functions_js' => "functions_lgs_envios_detalle.js",
-                'id_envio' => $idEnvio
+                'id_envio' => $idEnvio,
+                'envio' => $envio,
+                'estado_planeacion' => $estadoPlan
             ]
         );
     }
@@ -488,8 +506,16 @@ class Lgs_envios extends Controllers
             }
             
             $idEstadoStr = intval($existingEnvio['id_estado']);
-            if ($idEstadoStr !== 1 && $idEstadoStr !== 8) {
-                echo $this->errorResponse("El acomodo no puede ser modificado porque el envío ya está asignado a una planeación o en ejecución.", 400);
+            $canEdit = ($idEstadoStr === 1 || $idEstadoStr === 8);
+            if ($idEstadoStr === 2) {
+                $estadoPlan = $this->model->getPlaneacionEstadoByEnvio($idEnvio);
+                if ($estadoPlan === null || $estadoPlan < 3) {
+                    $canEdit = true;
+                }
+            }
+
+            if (!$canEdit) {
+                echo $this->errorResponse("El acomodo no puede ser modificado porque el envío ya está asignado a una planeación aprobada o en ejecución.", 400);
                 return;
             }
 
@@ -661,8 +687,16 @@ class Lgs_envios extends Controllers
             }
             
             $idEstadoStr = intval($existingEnvio['id_estado']);
-            if ($idEstadoStr !== 1 && $idEstadoStr !== 8) {
-                echo $this->errorResponse("El envío no puede ser eliminado porque ya está asignado a una planeación o en ejecución.", 400);
+            $canEdit = ($idEstadoStr === 1 || $idEstadoStr === 8);
+            if ($idEstadoStr === 2) {
+                $estadoPlan = $this->model->getPlaneacionEstadoByEnvio($idEnvio);
+                if ($estadoPlan === null || $estadoPlan < 3) {
+                    $canEdit = true;
+                }
+            }
+
+            if (!$canEdit) {
+                echo $this->errorResponse("El envío no puede ser eliminado porque ya está asignado a una planeación aprobada o en ejecución.", 400);
                 return;
             }
             $db = $model->getConexion();

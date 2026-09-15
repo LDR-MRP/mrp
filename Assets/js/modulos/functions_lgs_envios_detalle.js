@@ -425,7 +425,7 @@ function actualizarConteoYSecuencia(listaUl) {
                                 </select>
                             </div>
                             <div class="col-6">
-                                <label class="fs-10 text-danger fw-bold mb-0 d-block"><i class="ri-logout-box-line me-1"></i>Bajada (Entrega)</label>
+                                <label class="fs-10 fw-bold mb-0 d-block" style="color: #fd7e14;"><i class="ri-logout-box-line me-1"></i>Descarga (Bajada)</label>
                                 <select class="form-select form-select-sm py-0 nodo-bajada-select" 
                                         style="font-size:11px;"
                                         data-vin-key="${vin}"
@@ -1297,7 +1297,7 @@ function renderInfografiaRuta() {
 
                 <div class="mt-2 d-flex flex-column gap-1 align-items-center">
                     ${suben > 0 ? `<span class="badge bg-soft-success text-success fs-10 border border-success"><i class="ri-arrow-up-circle-fill me-1"></i> Sube +F${suben}</span>` : ''}
-                    ${bajan > 0 ? `<span class="badge bg-soft-danger text-danger fs-10 border border-danger"><i class="ri-arrow-down-circle-fill me-1"></i> Baja -F${bajan}</span>` : ''}
+                    ${bajan > 0 ? `<span class="badge fs-10 border" style="background-color: rgba(253, 126, 20, 0.12); color: #e65100; border-color: #fd7e14 !important;"><i class="ri-arrow-down-circle-fill me-1" style="color: #fd7e14;"></i> Descarga -F${bajan}</span>` : ''}
                 </div>
             </div>
         `;
@@ -1336,3 +1336,53 @@ function renderInfografiaRuta() {
     container.innerHTML = html;
 }
 
+
+function regresarABorrador() {
+    Swal.fire({
+        title: '¿Regresar a Borrador?',
+        text: 'El envío volverá a estado de Borrador para permitir su edición y recalcular costos. ¿Desea continuar?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, regresar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Reabriendo...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            const idEnvio = document.getElementById('id_envio').value;
+            let request = new XMLHttpRequest();
+            let ajaxUrl = base_url + '/Lgs_envios/reabrir';
+            let formData = new FormData();
+            formData.append('id_envio', idEnvio);
+
+            request.open("POST", ajaxUrl, true);
+            request.send(formData);
+
+            request.onreadystatechange = function () {
+                if (request.readyState == 4) {
+                    if (request.status == 200) {
+                        try {
+                            let objData = JSON.parse(request.responseText);
+                            if (objData.status) {
+                                Swal.fire("Éxito", objData.msg, "success").then(() => {
+                                    window.location.reload();
+                                });
+                            } else {
+                                Swal.fire("Error", objData.msg || "Ocurrió un error.", "error");
+                            }
+                        } catch(e) {
+                            Swal.fire("Error de Servidor", "La respuesta no es válida.", "error");
+                            console.error("Respuesta no JSON:", request.responseText);
+                        }
+                    } else {
+                        Swal.fire("Error", "Ocurrió un problema de red (Código: " + request.status + ").", "error");
+                    }
+                }
+            }
+        }
+    });
+}

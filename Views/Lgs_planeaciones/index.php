@@ -147,6 +147,9 @@
                             </table>
                         </div>
                     </div>
+                    
+                    <div id="containerAccionesDetalle" class="d-flex justify-content-end mt-4 mb-3 pe-4">
+                    </div>
                     <div class="card-footer border-top-0 py-4">
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-muted fw-medium">

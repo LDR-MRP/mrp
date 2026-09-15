@@ -29,17 +29,22 @@
                 <div class="col-md-4 text-md-end mt-3 mt-md-0">
                     <?php 
                         $estadoEnvio = intval($data['envio']['id_estado'] ?? 1);
+                        $estadoPlan = intval($data['estado_planeacion'] ?? 0);
+                        
+                        $enPlaneacionAbierta = ($estadoEnvio === 2 && $estadoPlan < 2);
+                        $puedeEditar = ($estadoEnvio === 8 || $enPlaneacionAbierta);
+                        
                         if ($estadoEnvio === 1): 
                     ?>
                         <button class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="guardarAcomodo(true);">
                             <i class="ri-check-double-line me-1"></i> Finalizar y Volver
                         </button>
-                    <?php elseif ($estadoEnvio === 8): ?>
+                    <?php elseif ($puedeEditar): ?>
                         <a href="<?= base_url(); ?>/Lgs_envios" class="btn btn-soft-secondary rounded-pill px-4 shadow-sm me-2">
                             <i class="ri-arrow-go-back-line me-1"></i> Volver
                         </a>
-                        <button class="btn btn-warning rounded-pill px-4 shadow-sm" onclick="guardarAcomodo(false);">
-                            <i class="ri-edit-line me-1"></i> Editar (Regresa a Borrador)
+                        <button class="btn btn-warning rounded-pill px-4 shadow-sm" onclick="regresarABorrador();">
+                            <i class="ri-edit-line me-1"></i> <?= $enPlaneacionAbierta ? 'Editar (Regresa a Borrador)' : 'Editar (Regresa a Borrador)' ?>
                         </button>
                     <?php else: ?>
                         <a href="<?= base_url(); ?>/Lgs_envios" class="btn btn-soft-secondary rounded-pill px-4 shadow-sm">
@@ -54,7 +59,7 @@
                 <i class="ri-route-line fs-20 me-3 text-info"></i>
                 <div class="fs-13">
                     <strong class="text-dark">Ruta Multi-Origen y Multi-Destino:</strong>
-                    Para cada unidad asignada a la madrina, defina el nodo de <span class="badge bg-success">🟢 Subida (Carga)</span> y el nodo de <span class="badge bg-danger">🔴 Bajada (Entrega)</span>. El sistema adicionará el factor volumétrico en las recolecciones y lo descontará en las entregas intermedias, calculando el costo exacto por tramo con tarifas o memoria de distancias $/km.
+                    Para cada unidad asignada a la madrina, defina el nodo de <span class="badge bg-success">🟢 Subida (Carga)</span> y el nodo de <span class="badge text-white" style="background-color: #fd7e14;">🟠 Descarga (Bajada)</span>. El sistema adicionará el factor volumétrico en las recolecciones y lo descontará en las entregas intermedias, calculando el costo exacto por tramo con tarifas o memoria de distancias $/km.
                 </div>
             </div>
 

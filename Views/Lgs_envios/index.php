@@ -151,18 +151,18 @@
                             <table id="tableEnvios" class="table table-hover table-lg align-middle mb-0" style="width:100% !important;">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">ID</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Folio</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Tipo</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Motivo</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Trasladista</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Origen</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Destino</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Distancia (KM)</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">VINs Asignados</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Costo Est.</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Fecha Prog.</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">VINs Asignados</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Trasladista</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Costo Est.</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Distancia (KM)</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Tipo</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Motivo</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">ID</th>
                                         <th scope="col" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
                                     </tr>
                                 </thead>
@@ -228,9 +228,9 @@
                                 </div>
                                 <div class="card-body p-4">
                                     <div class="row g-3">
-                                        <div class="col-md-6">
+                                        <div class="col-md-4">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Tipo de Traslado <span class="text-danger">*</span></label>
-                                            <select class="form-select form-select-lg bg-light border-0" id="id_tipo_traslado" name="id_tipo_traslado" required>
+                                            <select class="form-select form-select-lg bg-light border-0" id="id_tipo_traslado" name="id_tipo_traslado" required onchange="handleTipoTrasladoEnvio()">
                                                 <option value="">Seleccione Tipo...</option>
                                                 <?php foreach ($data['catalogos']['tipos_traslado'] ?? [] as $t): ?>
                                                     <option value="<?= $t['id']; ?>"><?= htmlspecialchars($t['nombre'], ENT_QUOTES, 'UTF-8'); ?></option>
@@ -238,7 +238,7 @@
                                             </select>
                                         </div>
 
-                                        <div class="col-md-6">
+                                        <div class="col-md-4">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Motivo <span class="text-danger">*</span></label>
                                             <select class="form-select form-select-lg bg-light border-0" id="id_motivo" name="id_motivo" required>
                                                 <option value="">Seleccione Motivo...</option>
@@ -248,9 +248,9 @@
                                             </select>
                                         </div>
 
-                                        <div class="col-md-6">
+                                        <div class="col-md-4">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Empresa Trasladista <span class="text-danger">*</span></label>
-                                            <select class="form-select" id="id_proveedor" name="id_proveedor" required>
+                                            <select class="form-select form-select-lg bg-light border-0" id="id_proveedor" name="id_proveedor" required>
                                                 <option value="">Seleccione Trasladista...</option>
                                                 <?php foreach ($data['catalogos']['proveedores'] ?? [] as $p): ?>
                                                     <option value="<?= $p['id']; ?>"><?= htmlspecialchars($p['nombre'], ENT_QUOTES, 'UTF-8'); ?></option>
@@ -258,15 +258,9 @@
                                             </select>
                                         </div>
 
-                                        <div class="col-md-6">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1"><i class="ri-calendar-event-line me-1 text-primary"></i>Fecha/Hora Programada de Salida <span class="text-danger">*</span></label>
-                                            <input type="datetime-local" class="form-control" id="fecha_tentativa_envio" name="fecha_tentativa_envio" required>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1"><i class="ri-calendar-check-line me-1 text-muted"></i>Fecha Estimada de Llegada</label>
-                                            <input type="datetime-local" class="form-control" id="fecha_tentativa_llegada" name="fecha_tentativa_llegada">
-                                        </div>
+                                        <!-- Fechas maestras de envío/llegada (Sincronizadas automáticamente desde el Punto 1 y Punto Final del itinerario) -->
+                                        <input type="hidden" id="fecha_tentativa_envio" name="fecha_tentativa_envio" value="">
+                                        <input type="hidden" id="fecha_tentativa_llegada" name="fecha_tentativa_llegada" value="">
 
                                         <!-- ── SECCIÓN MULTI-ORIGEN Y MULTI-DESTINO: ITINERARIO DE LA RUTA ── -->
                                         <div class="col-12">
@@ -278,7 +272,7 @@
                                                         Itinerario del Recorrido (Multi-Origen y Multi-Destino) <span class="text-danger">*</span>
                                                     </label>
                                                     <small class="text-muted d-block fs-11">
-                                                        Construye la secuencia física del viaje. Cada punto puede ser una <strong>Planta (Carga)</strong>, un <strong>Almacén</strong> o un <strong>Distribuidor (Entrega)</strong>.
+                                                        Construye la secuencia física del viaje: <strong><span class="text-success">Carga Inicial (Verde)</span></strong>, <strong><span style="color: #0d6efd;">Cargas Adicionales (Azul)</span></strong> y <strong><span style="color: #fd7e14;">Bajadas / Descargas (Naranja)</span></strong>.
                                                     </small>
                                                 </div>
                                                 <div class="d-flex gap-2">
@@ -288,8 +282,8 @@
                                                     <button type="button" class="btn btn-sm btn-success shadow-sm" onclick="agregarNodoRuta(null, true)">
                                                         <i class="ri-add-line me-1"></i> Añadir Carga
                                                     </button>
-                                                    <button type="button" class="btn btn-sm btn-primary shadow-sm" onclick="agregarNodoRuta(null, false)">
-                                                        <i class="ri-add-line me-1"></i> Añadir Entrega
+                                                    <button type="button" class="btn btn-sm text-white shadow-sm" style="background-color: #fd7e14; border-color: #fd7e14;" onclick="agregarNodoRuta(null, false)">
+                                                        <i class="ri-add-line me-1"></i> Añadir Descarga
                                                     </button>
                                                 </div>
                                             </div>
@@ -346,6 +340,9 @@
                                         <button type="button" id="btnActionForm" class="btn btn-success rounded-pill py-2 shadow-sm fw-semibold" onclick="saveEnvio();">
                                             <i class="ri-save-3-line align-middle me-1"></i> <span id="btnText">Guardar Envío</span>
                                         </button>
+                                        <button type="button" id="btnReabrirEditar" class="btn btn-warning rounded-pill py-2 shadow-sm fw-semibold" onclick="fntReabrirParaEditar()" style="display:none;">
+                                            <i class="ri-lock-unlock-line align-middle me-1"></i> Reabrir para Editar
+                                        </button>
                                         <button type="button" class="btn btn-light border rounded-pill py-2 fw-semibold" onclick="cancelFormEnvio();">
                                             <i class="ri-arrow-go-back-line align-middle fs-16 me-1"></i> Cancelar y Volver
                                         </button>
@@ -361,15 +358,15 @@
                                             <h6 class="text-white text-uppercase fs-11 fw-bold opacity-75 mb-1">
                                                 Estatus del Envío
                                             </h6>
-                                            <h4 class="text-white mb-0 fw-bold">
+                                            <h4 class="text-white mb-0 fw-bold" id="lbl-estatus-envio-lateral">
                                                 En Borrador
                                             </h4>
                                         </div>
-                                        <div class="flex-shrink-0">
+                                        <div class="flex-shrink-0" id="icon-estatus-envio-lateral">
                                             <i class="ri-route-line text-white fs-24 opacity-50"></i>
                                         </div>
                                     </div>
-                                    <div class="text-white-50 fs-10 mt-2">
+                                    <div class="text-white-50 fs-10 mt-2" id="desc-estatus-envio-lateral">
                                         <i class="ri-information-line me-1"></i> Las subidas y bajadas de VINs por tramo se configuran en la siguiente pantalla.
                                     </div>
                                 </div>

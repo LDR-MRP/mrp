@@ -13,7 +13,10 @@ class Lgs_aprobacionesService {
     }
 
     public function getDetallePlan(int $idPlaneacion): array {
-        return $this->model->getEnviosPorPlaneacion($idPlaneacion);
+        require_once('Services/Lgs_planeacionesService.php');
+        $planService = new Lgs_planeacionesService();
+        $planCompleto = $planService->getDetalleCompletoPlan($idPlaneacion);
+        return $planCompleto['envios'] ?? [];
     }
 
     /**

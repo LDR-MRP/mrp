@@ -179,16 +179,15 @@ class Lgs_planeacionesModel extends Mysql
                             COALESCE(u.modelo, 'Unidad Terminada') AS modelo,
                             COALESCE(m.numero_economico, 'Sin Madrina') AS madrina,
                             COALESCE(CONCAT(c.nombre, ' ', c.apellidos), 'Sin Chofer') AS chofer,
-                            COALESCE(NULLIF(cli.nombre_comercial, ''), cli.razon_social, d.nombre, p.destino_nombre_libre, 'Destino General') AS destino_parada,
-                            p.orden AS orden_parada
+                            COALESCE(ubi.nombre, n.destino_nombre_libre, 'Destino General') AS destino_parada,
+                            n.orden AS orden_parada
                         FROM lgs_envios_vins v
                         LEFT JOIN lgs_unidades_envios u ON v.id_unidad = u.id_unidad
                         LEFT JOIN mrp_unidades_terminadas ut ON v.id_unidad = ut.idunidad
                         LEFT JOIN prv_det_madrinas m ON v.id_madrina = m.id_madrina
                         LEFT JOIN prv_det_choferes c ON v.id_chofer = c.id_chofer
-                        LEFT JOIN lgs_envios_paradas p ON v.id_parada = p.id_parada
-                        LEFT JOIN cli_clientes cli ON p.id_destino_cat = cli.idcliente
-                        LEFT JOIN lgs_cat_destinos d ON p.id_destino_cat = d.id_destino
+                        LEFT JOIN lgs_envios_nodos n ON v.id_nodo_bajada = n.id_nodo
+                        LEFT JOIN lgs_cat_ubicaciones ubi ON n.id_ubicacion = ubi.id_ubicacion
                         WHERE v.id_envio = ?
                         ORDER BY v.posicion_acomodo ASC, v.id ASC";
             $vins = $this->select_all($sqlVins, [$env['id_envio']]) ?: [];
@@ -214,10 +213,10 @@ class Lgs_planeacionesModel extends Mysql
         $stmt = $db->prepare($sql);
         $stmt->execute([$idPlaneacion]);
 
-        // 2. Desbloquear los envíos para que vuelvan a estado 8 (Confirmado / Listo para planear)
+        // 2. Desbloquear los envíos para que vuelvan a estado 1 (Creado / Editable)
         $sqlEnvios = "UPDATE lgs_envios e
                       INNER JOIN lgs_planeaciones_envios pe ON e.id_envio = pe.id_envio
-                      SET e.id_estado = 8
+                      SET e.id_estado = 1
                       WHERE pe.id_planeacion = ?";
         $stmtEnv = $db->prepare($sqlEnvios);
         $stmtEnv->execute([$idPlaneacion]);
@@ -252,4 +251,89 @@ class Lgs_planeacionesModel extends Mysql
         }
         return $campos;
     }
+
+    /**
+     * Clona una planeación rechazada como borrador nuevo
+     */
+    public function clonarPlaneacion(int $idPlaneacionOriginal, int $userId): array
+    {
+        $sqlOrig = "SELECT * FROM lgs_planeaciones WHERE id_planeacion = ?";
+        $orig = $this->select($sqlOrig, [$idPlaneacionOriginal]);
+        
+        if (empty($orig)) {
+            throw new Exception("La planeación original no existe.");
+        }
+        
+        $nuevoTitulo = $orig['descripcion'] . " (Copia)";
+        $sqlInsert = "INSERT INTO lgs_planeaciones (descripcion, obs_operador, id_estado, created_by) 
+                      VALUES (?, ?, 1, ?)";
+        $idNueva = $this->insert($sqlInsert, [
+            $nuevoTitulo,
+            $orig['obs_operador'],
+            $userId
+        ]);
+        
+        if ($idNueva <= 0) {
+            throw new Exception("No se pudo crear la nueva planeación.");
+        }
+        
+        // Copiar los envíos
+        $sqlEnvios = "SELECT id_envio FROM lgs_planeaciones_envios WHERE id_planeacion = ?";
+        $envios = $this->select_all($sqlEnvios, [$idPlaneacionOriginal]);
+        
+        $sqlInsertEnvio = "INSERT INTO lgs_planeaciones_envios (id_planeacion, id_envio) VALUES (?, ?)";
+        foreach ($envios as $e) {
+            $this->insert($sqlInsertEnvio, [$idNueva, $e['id_envio']]);
+            $sqlUpdEnvio = "UPDATE lgs_envios SET id_estado = 2 WHERE id_envio = ?";
+            $this->update($sqlUpdEnvio, [$e['id_envio']]);
+        }
+        
+        return ['status' => true, 'id_planeacion' => $idNueva];
+    }
+
+    /**
+     * Cambia el estado de una planeación y actualiza envíos según corresponda
+     */
+    public function changeEstado(int $idPlaneacion, int $newEstado, int $userId, string $msg): bool
+    {
+        $sql = "UPDATE lgs_planeaciones SET id_estado = ?, updated_at = NOW() WHERE id_planeacion = ?";
+        $res = $this->update($sql, [$newEstado, $idPlaneacion]);
+        
+        $this->logEstadoPlaneacion($idPlaneacion, $newEstado, $userId, $msg);
+        
+        // Si se rechaza (4), liberar envios a estado 1
+        if ($newEstado == 4) {
+            $sqlEnvios = "UPDATE lgs_envios e
+                          INNER JOIN lgs_planeaciones_envios pe ON e.id_envio = pe.id_envio
+                          SET e.id_estado = 1
+                          WHERE pe.id_planeacion = ?";
+            $this->update($sqlEnvios, [$idPlaneacion]);
+        }
+        
+        // Si se aprueba (5), marcar envios como Aprobados
+        if ($newEstado == 5) {
+            $sqlEnvios = "UPDATE lgs_envios e
+                          INNER JOIN lgs_planeaciones_envios pe ON e.id_envio = pe.id_envio
+                          SET e.id_estado = 3
+                          WHERE pe.id_planeacion = ?";
+            $this->update($sqlEnvios, [$idPlaneacion]);
+        }
+        
+        return $res;
+    }
+
+    /**
+     * Registra un log del cambio de estado
+     */
+    private function logEstadoPlaneacion(int $idPlaneacion, int $newEstado, int $userId, string $msg): void
+    {
+        try {
+            $sql = "INSERT INTO lgs_planeaciones_log (id_planeacion, id_estado, id_usuario, mensaje, created_at) 
+                    VALUES (?, ?, ?, ?, NOW())";
+            $this->insert($sql, [$idPlaneacion, $newEstado, $userId, $msg]);
+        } catch (Exception $e) {
+            // Si la tabla no existe, no bloquear la operación principal
+        }
+    }
+
 }

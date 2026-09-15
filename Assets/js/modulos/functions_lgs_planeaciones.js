@@ -86,6 +86,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         btnActionExtra = `<button class="btn btn-sm btn-soft-warning rounded-pill px-3 fw-semibold me-1" onClick="fntReabrirPlan(${data})" title="Reabrir y Desbloquear Planeación">
                                             <i class="ri-restart-line me-1"></i> Reabrir
                                           </button>`;
+                    } else if (parseInt(row.id_estado) === 4) {
+                        btnActionExtra = `<button class="btn btn-sm btn-soft-info rounded-pill px-3 fw-semibold me-1" onClick="clonarPlaneacion(${data})" title="Clonar (Reutilizar Histórico)">
+                                            <i class="ri-file-copy-line me-1"></i> Clonar
+                                          </button>`;
                     }
                     return `<div class="text-end">
                                 ${btnActionExtra}
@@ -148,7 +152,7 @@ function cargarEnviosDisponibles() {
                     htmlBody += `
                         <tr>
                             <td>
-                                <input class="form-check-input chk-envio" type="checkbox" value="${envio.id_envio}" data-costo="${envio.costo_total}" onchange="calcularTotalesPlan();">
+                                <input class="form-check-input chk-envio" type="checkbox" value="${envio.id_envio}" data-costo="${envio.costo_total}" data-distancia="${envio.km_total || 0}" onchange="calcularTotalesPlan();">
                             </td>
                             <td class="fw-bold">${envio.folio}</td>
                             <td>${envio.origen}</td>
@@ -178,13 +182,18 @@ function toggleAllEnvios(masterChk) {
 function calcularTotalesPlan() {
     let checkboxes = document.querySelectorAll('.chk-envio:checked');
     let totalCosto = 0.0;
+    let totalDistancia = 0.0;
     
     checkboxes.forEach(chk => {
         totalCosto += parseFloat(chk.getAttribute('data-costo')) || 0;
+        totalDistancia += parseFloat(chk.getAttribute('data-distancia')) || 0;
     });
     
-    let lbl = document.getElementById('lbl-monto-plan-display');
-    if (lbl) lbl.innerText = '$' + totalCosto.toFixed(2);
+    let lblMonto = document.getElementById('lbl-monto-plan-display');
+    if (lblMonto) lblMonto.innerText = '$' + totalCosto.toFixed(2);
+
+    let lblDistancia = document.getElementById('lbl-distancia-plan-display');
+    if (lblDistancia) lblDistancia.innerText = totalDistancia.toFixed(1) + ' km';
 }
 
 function savePlaneacion() {
@@ -476,6 +485,55 @@ function fntEnviarAprobacionPlan(idPlaneacion) {
                     }
                 }
             };
+        }
+    });
+}
+
+function clonarPlaneacion(idPlaneacion) {
+    Swal.fire({
+        title: '¿Clonar Planeación?',
+        text: 'Se creará una copia en estado de Borrador con los mismos envíos, dejándolos disponibles para edición.',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, clonar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Clonando...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+            let request = new XMLHttpRequest();
+            let ajaxUrl = base_url + '/Lgs_planeaciones/clonarPlaneacion';
+            let formData = new FormData();
+            formData.append('id_planeacion', idPlaneacion);
+
+            request.open("POST", ajaxUrl, true);
+            request.send(formData);
+
+            request.onreadystatechange = function () {
+                if (request.readyState == 4) {
+                    if (request.status == 200) {
+                        try {
+                            let objData = JSON.parse(request.responseText);
+                            if (objData.status) {
+                                Swal.fire("Éxito", objData.msg, "success");
+                                tablePlaneaciones.ajax.reload();
+                                if (document.getElementById('view-detalle-planeaciones').style.display !== 'none') {
+                                    fntSwitchView('grid');
+                                }
+                            } else {
+                                Swal.fire("Error", objData.msg || "Error al clonar", "error");
+                            }
+                        } catch(e) {
+                            Swal.fire("Error de Servidor", "La respuesta no es válida.", "error");
+                        }
+                    } else {
+                        Swal.fire("Error", "Ocurrió un problema de red (Código: " + request.status + ").", "error");
+                    }
+                }
+            }
         }
     });
 }

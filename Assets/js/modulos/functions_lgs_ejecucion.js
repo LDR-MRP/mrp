@@ -75,9 +75,9 @@ function initTableEjecucion() {
                 "render": function (data) {
                     let badge = '';
                     switch(parseInt(data)) {
-                        case 3: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-checkbox-check-line me-1"></i>Envío Aprobado</span>'; break;
+                        case 3: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-checkbox-check-line me-1"></i>Aprobado</span>'; break;
                         case 5: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-calendar-event-line me-1"></i>Programado</span>'; break;
-                        case 6: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-truck-line me-1"></i>En Tránsito</span>'; break;
+                        case 6: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-truck-line me-1"></i>Ejecutado</span>'; break;
                         case 7: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-double-line me-1"></i>Entregado</span>'; break;
                         default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
                     }
@@ -370,7 +370,7 @@ function guardarDespacho() {
 
     Swal.fire({
         title: 'Registrando Salida a Ruta...',
-        text: 'Actualizando estatus del envío a En Tránsito',
+        text: 'Actualizando estatus del envío a Ejecutado',
         allowOutsideClick: false,
         didOpen: () => { Swal.showLoading() }
     });
@@ -384,7 +384,7 @@ function guardarDespacho() {
                 let isSuccess = (objData.status === 'success' || objData.status === true || objData.code === 200);
                 if (isSuccess) {
                     cerrarDespachoPlanilla();
-                    Swal.fire("¡Despacho Registrado!", objData.message || objData.msg || "El envío ahora se encuentra En Tránsito", "success");
+                    Swal.fire("¡Despacho Registrado!", objData.message || objData.msg || "El envío ahora se encuentra en ejecución", "success");
                     tableEjecucion.ajax.reload();
                 } else {
                     Swal.fire("Error", objData.message || objData.msg || "Error al registrar el despacho", "error");

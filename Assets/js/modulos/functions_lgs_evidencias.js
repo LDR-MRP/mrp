@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 "render": function (data, type, row) {
                     let badge = '';
                     switch(parseInt(data)) {
-                        case 6: badge = '<span class="badge bg-primary">En Tránsito</span>'; break;
+                        case 6: badge = '<span class="badge bg-primary">Ejecutado</span>'; break;
                         case 7: badge = '<span class="badge bg-success">Entregado (Completado)</span>'; break;
                         default: badge = '<span class="badge bg-light text-dark">Estado ' + data + '</span>'; break;
                     }
