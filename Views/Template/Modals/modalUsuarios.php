@@ -73,6 +73,15 @@
         </div>
       </div>
 
+
+            <div class="col-lg-12">
+        <div>
+          <label for="website-field" class="form-label">Selecciona la planta cuya información podrá visualizar el usuario</label>
+          <select class="form-control"  id="listPlantaid" name="listPlantaid" required>
+          </select>
+        </div>
+      </div>
+
       <!-- CHECKBOX ENVIAR POR CORREO -->
       <div class="col-lg-12">
         <div class="form-check mt-2">

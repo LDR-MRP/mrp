@@ -2480,10 +2480,7 @@ class Orders extends Controllers
 
             $sendEmail = sendMailLocalCron($dataUsuario, 'email_distribuidores_nuevopedido', $correos_copias);
 
-            /*
-             * No lanzamos excepción si sendMailLocal()
-             * simplemente regresa false.
-             */
+      
             $resultado['enviado'] = (bool) $sendEmail;
             $resultado['correo'] = $correoDestino;
             $resultado['mensaje'] = $sendEmail ? 'Correo enviado correctamente.' : 'El pedido fue registrado, pero el correo no pudo enviarse.';

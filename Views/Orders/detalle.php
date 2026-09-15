@@ -23,6 +23,8 @@ $urlCatalogo .='#catalogo';
 $unidad = $data['unidad'] ?? null;
 $imagenes = $data['imagenes'] ?? [];
 
+dep($imagenes);
+
 function construirRutaImagenUnidad(
     ?string $ruta
 ): string {
