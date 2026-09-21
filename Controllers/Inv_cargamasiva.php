@@ -82,7 +82,7 @@ class Inv_cargamasiva extends Controllers
 			['CLAVE_ARTICULO', 'Sí', 'Clave única del producto (cve_articulo). No puede repetirse.'],
 			['DESCRIPCION', 'Sí', 'Descripción del producto.'],
 			['TIPO_ELEMENTO', 'Sí (en alta)', 'Una letra: P=Producto, S=Servicio, K=Kit, C=Componente, H=Herramienta, R=Refacción.'],
-			['UNIDAD_ENTRADA', 'Sí (en alta)', 'Unidad de compra/entrada, ej. PZA, KG, LT.'],
+			['UNIDAD_ENTRADA', 'Sí (en alta)', 'Unidad de compra/entrada, ej. PIEZA, KILOGRAMO, LITRO, CAJA.'],
 			['UNIDAD_SALIDA', 'No', 'Unidad de venta/salida.'],
 			['UNIDAD_EMPAQUE', 'No', 'Numérico. Si se deja vacío se usa 1.'],
 			['FACTOR_UNIDADES', 'No', 'Numérico. Si se deja vacío se usa 1.'],

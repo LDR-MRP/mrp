@@ -138,6 +138,8 @@ td, th {
   <td><b>Referencia:</b></td>
   <td><?= $data['movimiento']['referencia'] ?></td>
 
+  <td><b>Lote:</b></td>
+  <td><?= $data['movimiento']['lote'] ?></td>
 </tr>
 </table>
 

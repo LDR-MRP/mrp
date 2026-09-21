@@ -80,6 +80,7 @@ document.addEventListener("DOMContentLoaded", function () {
       { data: "almacen" },
       { data: "concepto" },
       { data: "referencia" },
+      { data: "lote", defaultContent: "" },
       { data: "cantidad" },
       { data: "fecha_movimiento" },
       {
@@ -204,6 +205,22 @@ document.addEventListener("DOMContentLoaded", function () {
           });
 
           formMovimiento.reset();
+
+          const bloqueCPNReset = document.querySelector("#bloqueCPN");
+          const cpnValorReset = document.querySelector("#cpnValor");
+          const selectProveedorReset = document.querySelector("#id_proveedor");
+          if (bloqueCPNReset) bloqueCPNReset.style.display = "none";
+          if (cpnValorReset) {
+            cpnValorReset.style.display = "";
+            cpnValorReset.value = "";
+          }
+          if (selectProveedorReset) {
+            selectProveedorReset.style.display = "none";
+            selectProveedorReset.required = false;
+            selectProveedorReset.disabled = true;
+            selectProveedorReset.value = "";
+          }
+
           $("#tableMovimientos").DataTable().ajax.reload();
         } else {
           Swal.fire("Error", obj.msg, "error");
@@ -232,39 +249,6 @@ document.addEventListener("DOMContentLoaded", function () {
       productosMovCache = data;
     });
 
-  const inputMov = document.querySelector("#inventarioSearchMov");
-
-  inputMov.addEventListener("input", function () {
-    let val = this.value.toLowerCase();
-    cerrarListaMov();
-    if (!val) return;
-
-    let lista = document.createElement("div");
-    lista.className = "autocomplete-items list-group position-absolute w-100";
-    this.parentNode.appendChild(lista);
-
-    productosMovCache
-      .filter(
-        (p) =>
-          (p.cve_articulo && p.cve_articulo.toLowerCase().includes(val)) ||
-          (p.descripcion && p.descripcion.toLowerCase().includes(val)),
-      )
-      .slice(0, 10)
-      .forEach((p) => {
-        let item = document.createElement("div");
-        item.className = "list-group-item list-group-item-action";
-        item.innerHTML = `<strong>${p.cve_articulo}</strong> - ${p.descripcion}`;
-
-        item.addEventListener("click", function () {
-          document.querySelector("#inventarioSearchMov").value =
-            p.cve_articulo + " - " + p.descripcion;
-          document.querySelector("#inventarioid").value = p.idinventario;
-          cerrarListaMov();
-        });
-
-        lista.appendChild(item);
-      });
-  });
 });
 
 function cerrarListaMov() {
@@ -367,14 +351,33 @@ document.addEventListener("click", function (e) {
   if (!e.target.classList.contains("invSearch")) cerrarListaMov();
 });
 
+let proveedoresMovLoaded = false;
+
+function cargarSelectProveedoresMov() {
+  if (proveedoresMovLoaded) return;
+
+  fetch(base_url + "/Inv_movimientosinventario/getSelectProveedores")
+    .then((res) => res.text())
+    .then((html) => {
+      document.querySelector("#id_proveedor").innerHTML = html;
+      proveedoresMovLoaded = true;
+    });
+}
+
 document.querySelector("#concepmovid").addEventListener("change", function () {
   const id = this.value;
   const bloque = document.querySelector("#bloqueCPN");
   const input = document.querySelector("#cpnValor");
+  const selectProveedor = document.querySelector("#id_proveedor");
 
   if (!id) {
     bloque.style.display = "none";
     input.value = "";
+    input.style.display = "";
+    selectProveedor.style.display = "none";
+    selectProveedor.required = false;
+    selectProveedor.disabled = true;
+    selectProveedor.value = "";
     return;
   }
 
@@ -385,12 +388,29 @@ document.querySelector("#concepmovid").addEventListener("change", function () {
 
       bloque.style.display = "block";
 
-      if (data.cpn === "C") {
-        input.value = "Cliente";
-      } else if (data.cpn === "P") {
-        input.value = "Proveedor";
+      if (data.cpn === "P") {
+        // Concepto tipo Proveedor: select conectado a prv_cat_proveedores
+        cargarSelectProveedoresMov();
+
+        input.style.display = "none";
+        input.value = "";
+
+        selectProveedor.style.display = "block";
+        selectProveedor.disabled = false;
+        selectProveedor.required = true;
       } else {
-        input.value = "Ninguno";
+        selectProveedor.style.display = "none";
+        selectProveedor.required = false;
+        selectProveedor.disabled = true;
+        selectProveedor.value = "";
+
+        input.style.display = "";
+
+        if (data.cpn === "C") {
+          input.value = "Cliente";
+        } else {
+          input.value = "Ninguno";
+        }
       }
     });
 });
