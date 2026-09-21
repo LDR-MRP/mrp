@@ -12,7 +12,12 @@
                     <div class="page-title-box d-sm-flex align-items-center justify-content-between">
                         <h4 class="mb-sm-0"><?= $data['page_title'] ?></h4>
 
-                        <div class="page-title-right">
+                        <div class="page-title-right d-flex align-items-center gap-2">
+                            <?php if ($_SESSION['permisosMod']['w']) { ?>
+                                <a href="<?= base_url() ?>/Inv_movalmcargamasiva" class="btn btn-success btn-sm">
+                                    <i class="ri-file-excel-2-line align-bottom me-1"></i> Cargas Masivas
+                                </a>
+                            <?php } ?>
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="javascript: void(0);">MRP</a></li>
                                 <li class="breadcrumb-item active"><?= $data['page_tag'] ?></li>
@@ -95,6 +100,7 @@
                                         <th>Almacén origen</th>
                                         <th>Almacén destino</th>
                                         <th>Referencia</th>
+                                        <th>Lote</th>
                                         <th>Fecha</th>
                                         <th>Acciones</th>
                                     </tr>
@@ -129,6 +135,11 @@
                                     <div class="col-md-4">
                                         <label class="form-label">Referencia</label>
                                         <input type="text" class="form-control" id="referencia" name="referencia" required>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="form-label">Lote</label>
+                                        <input type="text" class="form-control" id="lote" name="lote">
                                     </div>
 
                                 </div>

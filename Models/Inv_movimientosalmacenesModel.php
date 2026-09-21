@@ -310,7 +310,8 @@ class Inv_movimientosalmacenesModel extends Mysql
         string $referencia,
         array $inventarios,
         array $cantidades,
-        array $costos
+        array $costos,
+        ?string $lote = null
     ) {
 
         $folio = 'TRF-' . date('YmdHis') . '-' . rand(100, 999);
@@ -341,9 +342,9 @@ class Inv_movimientosalmacenesModel extends Mysql
         // 🔥 2. INSERTAR ENCABEZADO
         $movimientoid = $this->insert(
             "INSERT INTO wms_movimientos_almacenes
-        (folio, almacen_origenid, almacen_destinoid, referencia, fecha, estado)
-        VALUES (?,?,?,?,NOW(),2)",
-            [$folio, $almacen_origenid, $almacen_destinoid, $referencia]
+        (folio, almacen_origenid, almacen_destinoid, referencia, lote, fecha, estado)
+        VALUES (?,?,?,?,?,NOW(),2)",
+            [$folio, $almacen_origenid, $almacen_destinoid, $referencia, $lote]
         );
 
         // 🔥 3. PROCESAR TODO
@@ -400,15 +401,16 @@ class Inv_movimientosalmacenesModel extends Mysql
             $this->insert("
             INSERT INTO wms_movimientos_inventario
             (inventarioid, almacenid, numero_movimiento, concepmovid,
-             referencia, cantidad, costo_cantidad, existencia, signo,
+             referencia, lote, cantidad, costo_cantidad, existencia, signo,
              fecha_movimiento, estado)
-            VALUES (?,?,?,?,?,?,?,?,?,NOW(),2)
+            VALUES (?,?,?,?,?,?,?,?,?,?,NOW(),2)
         ", [
                 $inventarioid,
                 $almacen_origenid,
                 $folio,
                 15,
                 $referencia,
+                $lote,
                 $cantidad,
                 $costo,
                 $nuevoOrigen,
@@ -419,15 +421,16 @@ class Inv_movimientosalmacenesModel extends Mysql
             $this->insert("
             INSERT INTO wms_movimientos_inventario
             (inventarioid, almacenid, numero_movimiento, concepmovid,
-             referencia, cantidad, costo_cantidad, existencia, signo,
+             referencia, lote, cantidad, costo_cantidad, existencia, signo,
              fecha_movimiento, estado)
-            VALUES (?,?,?,?,?,?,?,?,?,NOW(),2)
+            VALUES (?,?,?,?,?,?,?,?,?,?,NOW(),2)
         ", [
                 $inventarioid,
                 $almacen_destinoid,
                 $folio,
                 7,
                 $referencia,
+                $lote,
                 $cantidad,
                 $costo,
                 $nuevoDestino,
@@ -464,6 +467,7 @@ class Inv_movimientosalmacenesModel extends Mysql
         ao.descripcion AS almacen_origen,
         ad.descripcion AS almacen_destino,
         m.referencia,
+        m.lote,
         m.fecha
     FROM wms_movimientos_almacenes m
     INNER JOIN wms_almacenes ao ON ao.idalmacen = m.almacen_origenid

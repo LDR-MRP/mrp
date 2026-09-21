@@ -49,13 +49,18 @@ class Inv_movimientosinventario extends Controllers
             $cantidades  = $_POST['cantidad'];
             $costos      = $_POST['costo_cantidad'];
 
+            $id_proveedor = !empty($_POST['id_proveedor']) ? intval($_POST['id_proveedor']) : null;
+            $lote = !empty($_POST['lote']) ? strClean($_POST['lote']) : null;
+
             $request = $this->model->insertMovimientoMasivo(
                 $almacenid,
                 $concepmovid,
                 $referencia,
                 $inventarios,
                 $cantidades,
-                $costos
+                $costos,
+                $id_proveedor,
+                $lote
             );
 
             if (is_array($request)) {
@@ -122,6 +127,22 @@ class Inv_movimientosinventario extends Controllers
                 '</option>';
         }
         echo $htmlOptions;
+        die();
+    }
+
+    public function getSelectProveedores()
+    {
+        if ($_SESSION['permisosMod']['r']) {
+            $htmlOptions = '<option value="">-- Seleccione proveedor --</option>';
+            $arrData = $this->model->selectProveedores();
+
+            foreach ($arrData as $row) {
+                $htmlOptions .= '<option value="' . $row['id_proveedor'] . '">'
+                    . $row['nombre'] .
+                    '</option>';
+            }
+            echo $htmlOptions;
+        }
         die();
     }
 
