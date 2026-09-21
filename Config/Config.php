@@ -56,7 +56,8 @@ const NOMBRE_REMITENTE = "LDR - SOLUTIONS";
 const EMAIL_REMITENTE = "carlosbunti97@gmail.com";
 const NOMBRE_EMPESA = "LDR - SOLUTIONS";
 const WEB_EMPRESA = "https://www.ldrsolutions.mx/";
-
+// Google Maps API Key
+const GOOGLE_MAPS_API_KEY = "";
 
 const SHAREDHASH = "ldrsolutions";
 
@@ -112,15 +113,6 @@ const MIDESCUENTOS = 63;
 const MITRASLADOS = 75;
 const MIOPTRASLADOS = 76;
 
-//Submodulos Ingeniería (vehículos)
-const ING_MODELOS = 77;
-const ING_MOTORES = 78;
-const ING_TRANSMISIONES = 79;
-const ING_CERTIFICACIONES = 80;
-const ING_ESPECIFICACIONES = 81;
-const ING_CONFIGURACIONES = 82;
-const ING_VEHICULOS = 83;
-
 //Submodulos Capacidad
 
 const MCESTACIONESTRABAJO = 27;
@@ -131,14 +123,14 @@ const MCPLANTAS = 29;
 const MPPROVEEDORES = 35;
 
 //Submodulos Clientes
-const MCCLIENTES = 39;
-const MCMARCAS = 40;
-const MCDEPARTAMENTOS = 41;
-const MCLI_GRUPOS = 42;
-const MCLI_PUESTOS = 43;
-const MCLI_CONTACTOS = 44;
-const MCLI_REGIONALES = 45;
-const MCLI_TIPOS_CLIENTES = 46;
+const MCCLIENTES = 36;
+const MCPEDIDOS = 37;
+const MCDEPARTAMENTOS = 38;
+const MCLI_GRUPOS = 39;
+const MCLI_PUESTOS = 40;
+const MCLI_CONTACTOS = 41;
+const MCLI_REGIONALES = 42;
+const MCLI_TIPOS_CLIENTES = 43;
 
 //Submodulos Compras
 const COM_COMPRAS = 50;
