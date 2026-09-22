@@ -21,9 +21,9 @@ class Cli_clientes extends Controllers
 
     public function Cli_clientes()
     {
-        if (empty($_SESSION['permisosMod']['r'])) {
-            header("Location:" . base_url() . '/dashboard');
-        }
+        // if (empty($_SESSION['permisosMod']['r'])) {
+        //     header("Location:" . base_url() . '/dashboard');
+        // }
         $data['page_tag'] = "Clientes";
         $data['page_title'] = "Clientes";
         $data['page_functions_js'] = "/clientes/index.js";

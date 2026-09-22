@@ -15,9 +15,9 @@ class Ped_pedidos extends Controllers
 
     public function Ped_pedidos()
     {
-        if (empty($_SESSION['permisosMod']['r'])) {
-            header("Location:" . base_url() . '/dashboard');
-        }
+        // if (empty($_SESSION['permisosMod']['r'])) {
+        //     header("Location:" . base_url() . '/dashboard');
+        // }
         $data['page_tag'] = "Pedidos";
         $data['page_title'] = "Gestión de Pedidos";
         $data['page_name'] = "Pedidos";
