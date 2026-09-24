@@ -166,7 +166,12 @@ class Lgs_planeacionesModel extends Mysql
         $envios = $this->select_all($sqlEnvios, [$idPlaneacion]) ?: [];
 
         // 3. Traer los VINs, modelos, segmentos y costos de cada envío
+        $enviosService = new Lgs_enviosService();
         foreach ($envios as &$env) {
+            try {
+                $enviosService->asegurarCostosVins((int)$env['id_envio']);
+            } catch (Throwable $e) {}
+
             $sqlVins = "SELECT 
                             v.id,
                             v.id_unidad,

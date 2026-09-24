@@ -133,8 +133,9 @@ function cargarVinsEnSelector(idEnvio) {
             let html = '<option value="">-- Seleccionar Unidad a Entregar --</option>';
             const vins = res.data || [];
             vins.forEach(v => {
-                let entregadoBadge = (v.estado_unidad_fisico === 'ENTREGADO') ? ' [Entregado]' : '';
-                html += `<option value="${v.id_unidad}" data-vin="${v.vin}">${v.vin} (${v.modelo || 'Unidad'}) - Pos #${v.posicion_acomodo || 1}${entregadoBadge}</option>`;
+                if (v.estado_unidad_fisico !== 'ENTREGADO') {
+                    html += `<option value="${v.id_unidad}" data-vin="${v.vin}">${v.vin} (${v.modelo || 'Unidad'}) - Pos #${v.posicion_acomodo || 1}</option>`;
+                }
             });
             select.innerHTML = html;
         })

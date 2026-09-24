@@ -187,14 +187,33 @@ class Lgs_bandejaModel extends Mysql {
      * Obtiene la lista unificada de distribuidores para autocompletar en la bandeja
      */
     public function getListaDistribuidores(): array {
-        $sql = "SELECT DISTINCT TRIM(nombre) AS nombre FROM lgs_cat_destinos WHERE activo = 1 AND nombre IS NOT NULL AND TRIM(nombre) <> ''
-                UNION
-                SELECT DISTINCT TRIM(destino_descripcion) AS nombre FROM lgs_unidades WHERE destino_descripcion IS NOT NULL AND TRIM(destino_descripcion) <> ''
-                UNION
-                SELECT DISTINCT TRIM(destino) AS nombre FROM lgs_unidades_envios WHERE destino IS NOT NULL AND TRIM(destino) <> ''
-                ORDER BY nombre ASC";
-        $res = $this->select_all($sql);
-        return $res ?: [];
+        try {
+            $sql = "SELECT DISTINCT TRIM(nombre) COLLATE utf8mb4_unicode_ci AS nombre FROM lgs_cat_destinos WHERE activo = 1 AND nombre IS NOT NULL AND TRIM(nombre) <> ''
+                    UNION
+                    SELECT DISTINCT TRIM(destino_descripcion) COLLATE utf8mb4_unicode_ci AS nombre FROM lgs_unidades WHERE destino_descripcion IS NOT NULL AND TRIM(destino_descripcion) <> ''
+                    UNION
+                    SELECT DISTINCT TRIM(destino) COLLATE utf8mb4_unicode_ci AS nombre FROM lgs_unidades_envios WHERE destino IS NOT NULL AND TRIM(destino) <> ''
+                    ORDER BY nombre ASC";
+            $res = $this->select_all($sql);
+            return $res ?: [];
+        } catch (Throwable $e) {
+            $list1 = $this->select_all("SELECT DISTINCT TRIM(nombre) AS nombre FROM lgs_cat_destinos WHERE activo = 1 AND nombre IS NOT NULL AND TRIM(nombre) <> ''") ?: [];
+            $list2 = $this->select_all("SELECT DISTINCT TRIM(destino_descripcion) AS nombre FROM lgs_unidades WHERE destino_descripcion IS NOT NULL AND TRIM(destino_descripcion) <> ''") ?: [];
+            $list3 = $this->select_all("SELECT DISTINCT TRIM(destino) AS nombre FROM lgs_unidades_envios WHERE destino IS NOT NULL AND TRIM(destino) <> ''") ?: [];
+
+            $nombres = [];
+            foreach (array_merge($list1, $list2, $list3) as $row) {
+                if (!empty($row['nombre'])) {
+                    $nombres[trim($row['nombre'])] = true;
+                }
+            }
+            ksort($nombres);
+            $res = [];
+            foreach (array_keys($nombres) as $n) {
+                $res[] = ['nombre' => $n];
+            }
+            return $res;
+        }
     }
 
     /**

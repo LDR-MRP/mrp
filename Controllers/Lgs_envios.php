@@ -751,6 +751,266 @@ class Lgs_envios extends Controllers
     }
 
     /**
+     * Genera el PDF de la Hoja de Entrega / Traspaso por unidad
+     * URL: {{base_url}}/Lgs_envios/hoja_entrega_pdf/123/456
+     */
+    public function hoja_entrega_pdf($idEnvio = 0, $idUnidad = 0): void
+    {
+        if (is_string($idEnvio) && str_contains($idEnvio, ',')) {
+            [$idEnvio, $idUnidad] = array_pad(array_map('intval', explode(',', $idEnvio)), 2, 0);
+        } else {
+            $idEnvio = (int)$idEnvio;
+            $idUnidad = (int)$idUnidad;
+        }
+
+        try {
+            $model = new Lgs_enviosModel();
+            $db = $model->getConexion();
+            
+            // Asegurar que el costo unitario por segmento esté calculado para este envío
+            if (file_exists(__DIR__ . '/../sync_unit_costs.php')) { @unlink(__DIR__ . '/../sync_unit_costs.php'); }
+            $this->service->asegurarCostosVins($idEnvio, $db);
+
+            $stmt = $db->prepare("
+                SELECT 
+                    e.folio, e.fecha_tentativa_envio, e.fecha_tentativa_llegada, e.km_total, e.costo_total,
+                    mo.descripcion AS motivo_nombre,
+                    COALESCE(u.vin, ut.clave, CONCAT('VIN-', ev.id_unidad)) AS vin,
+                    COALESCE(u.modelo, 'Unidad') AS modelo,
+                    'Blanco' AS color,
+                    ev.costo_unidad,
+                    COALESCE(pr.nombre_comercial, pr.razon_social, 'LDR Solutions') AS proveedor_nombre,
+                    COALESCE(m.numero_economico, 'Sin Asignar') AS madrina_nombre,
+                    COALESCE(m.placas, 'S/P') AS madrina_placas,
+                    COALESCE(CONCAT(c.nombre, ' ', c.apellidos), 'Sin Chofer') AS chofer_nombre,
+                    (SELECT nombre FROM lgs_cat_ubicaciones WHERE id_ubicacion = e.id_origen) AS origen_global,
+                    (SELECT nombre FROM lgs_cat_ubicaciones WHERE id_ubicacion = e.id_destino) AS destino_global,
+                    (SELECT nombre FROM lgs_cat_ubicaciones WHERE id_ubicacion = ns.id_ubicacion) AS subida_nombre,
+                    (SELECT nombre FROM lgs_cat_ubicaciones WHERE id_ubicacion = nb.id_ubicacion) AS bajada_nombre,
+                    (SELECT km_tramo FROM lgs_envios_tramos_costos WHERE id_envio = e.id_envio ORDER BY id_tramo_costo DESC LIMIT 1) as km_tramo,
+                    (SELECT AVG(factor_aplicado) FROM lgs_envios_tramos_costos WHERE id_envio = e.id_envio) as factor_promedio
+                FROM lgs_envios_vins ev
+                INNER JOIN lgs_envios e ON e.id_envio = ev.id_envio
+                LEFT JOIN lgs_cat_motivo_envio mo ON mo.id_motivo = e.id_motivo
+                LEFT JOIN prv_cat_proveedores pr ON pr.id_proveedor = e.id_proveedor
+                LEFT JOIN lgs_unidades_envios u ON ev.id_unidad = u.id_unidad
+                LEFT JOIN lgs_unidades lu ON ev.id_unidad = lu.id_unidad
+                LEFT JOIN mrp_unidades_terminadas ut ON ev.id_unidad = ut.idunidad
+                LEFT JOIN prv_det_madrinas m ON ev.id_madrina = m.id_madrina
+                LEFT JOIN prv_det_choferes c ON ev.id_chofer = c.id_chofer
+                LEFT JOIN lgs_envios_nodos ns ON ns.id_nodo = ev.id_nodo_subida
+                LEFT JOIN lgs_envios_nodos nb ON nb.id_nodo = ev.id_nodo_bajada
+                WHERE ev.id_envio = ? AND ev.id_unidad = ?
+            ");
+            $stmt->execute([$idEnvio, $idUnidad]);
+            $detalle = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (empty($detalle)) {
+                while (ob_get_level() > 0) {
+                    ob_end_clean();
+                }
+                echo "<div style='font-family: Arial, sans-serif; padding: 40px; text-align: center; color: #333;'>";
+                echo "<h2>No se encontró información</h2>";
+                echo "<p>No existe registro para el Envío #{$idEnvio} con la Unidad #{$idUnidad}.</p>";
+                echo "</div>";
+                exit;
+            }
+
+            // Resolver información de Segmento y Tarifas
+            $segId = $this->service->resolveSegmentoForUnit($db, $idUnidad);
+            $segmentosInfo = [
+                1 => ['nombre' => 'LDT (Ligeros)', 'tarifa' => 27.00],
+                2 => ['nombre' => 'MDT (Medianos)', 'tarifa' => 30.00],
+                3 => ['nombre' => 'HDT (Pesados)', 'tarifa' => 40.00],
+                4 => ['nombre' => 'BUSES', 'tarifa' => 50.00],
+                5 => ['nombre' => 'LOWBOY', 'tarifa' => 60.00],
+            ];
+            $sInfo = $segmentosInfo[$segId] ?? $segmentosInfo[1];
+
+            $detalle['segmento'] = $sInfo['nombre'];
+            $detalle['costo_base_tramo'] = (float)$sInfo['tarifa'];
+            $detalle['costo_estimado'] = (float)($detalle['costo_total'] ?? 0.0);
+            $detalle['costo_total_unitario'] = (float)($detalle['costo_unidad'] ?? 0.0);
+
+            // 1. Obtener datos de este VIN (nodos de subida y bajada)
+            $stmtVinInfo = $db->prepare("SELECT id, id_unidad, id_nodo_subida, id_nodo_bajada, id_parada FROM lgs_envios_vins WHERE id_envio = ? AND id_unidad = ?");
+            $stmtVinInfo->execute([$idEnvio, $idUnidad]);
+            $currentVin = $stmtVinInfo->fetch(PDO::FETCH_ASSOC);
+
+            // 2. Obtener todos los nodos del envío
+            $stmtNodos = $db->prepare("
+                SELECT n.id_nodo, n.orden, n.id_ubicacion, 
+                       COALESCE(u.nombre, n.destino_nombre_libre, CONCAT('Parada ', n.orden)) AS nombre
+                FROM lgs_envios_nodos n
+                LEFT JOIN lgs_cat_ubicaciones u ON n.id_ubicacion = u.id_ubicacion
+                WHERE n.id_envio = ?
+                ORDER BY n.orden ASC
+            ");
+            $stmtNodos->execute([$idEnvio]);
+            $nodos = $stmtNodos->fetchAll(PDO::FETCH_ASSOC);
+            $nodosMap = [];
+            foreach ($nodos as $nd) {
+                $nodosMap[$nd['id_nodo']] = $nd;
+            }
+
+            $ordenSubidaVin = 0;
+            $ordenBajadaVin = count($nodos) > 0 ? (count($nodos) - 1) : 1;
+            if (!empty($currentVin['id_nodo_subida']) && isset($nodosMap[$currentVin['id_nodo_subida']])) {
+                $ordenSubidaVin = (int)$nodosMap[$currentVin['id_nodo_subida']]['orden'];
+            }
+            if (!empty($currentVin['id_nodo_bajada']) && isset($nodosMap[$currentVin['id_nodo_bajada']])) {
+                $ordenBajadaVin = (int)$nodosMap[$currentVin['id_nodo_bajada']]['orden'];
+            } elseif (!empty($currentVin['id_parada']) && isset($nodosMap[$currentVin['id_parada']])) {
+                $ordenBajadaVin = (int)$nodosMap[$currentVin['id_parada']]['orden'];
+            }
+
+            // 3. Obtener todos los VINs del envío para conocer la ocupación y segmentos en cada tramo
+            $stmtAllVins = $db->prepare("SELECT id, id_unidad, id_nodo_subida, id_nodo_bajada, id_parada FROM lgs_envios_vins WHERE id_envio = ?");
+            $stmtAllVins->execute([$idEnvio]);
+            $allVins = $stmtAllVins->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($allVins as &$v) {
+                $v['id_segmento'] = $this->service->resolveSegmentoForUnit($db, (int)$v['id_unidad']);
+                $v['ord_sub'] = 0;
+                $v['ord_baj'] = count($nodos) > 0 ? (count($nodos) - 1) : 1;
+                if (!empty($v['id_nodo_subida']) && isset($nodosMap[$v['id_nodo_subida']])) {
+                    $v['ord_sub'] = (int)$nodosMap[$v['id_nodo_subida']]['orden'];
+                }
+                if (!empty($v['id_nodo_bajada']) && isset($nodosMap[$v['id_nodo_bajada']])) {
+                    $v['ord_baj'] = (int)$nodosMap[$v['id_nodo_bajada']]['orden'];
+                } elseif (!empty($v['id_parada']) && isset($nodosMap[$v['id_parada']])) {
+                    $v['ord_baj'] = (int)$nodosMap[$v['id_parada']]['orden'];
+                }
+            }
+            unset($v);
+
+            // 4. Obtener tramos de costos
+            $stmtTramos = $db->prepare("SELECT * FROM lgs_envios_tramos_costos WHERE id_envio = ? ORDER BY id_tramo_costo ASC");
+            $stmtTramos->execute([$idEnvio]);
+            $tramos = $stmtTramos->fetchAll(PDO::FETCH_ASSOC);
+
+            $tarifasBasePond = [1 => 27.0, 2 => 30.0, 3 => 40.0, 4 => 50.0, 5 => 60.0];
+            $miPeso = $tarifasBasePond[$segId] ?? 27.0;
+
+            $tramosRecorridos = [];
+            $kmRecorridosTotal = 0.0;
+            $costoTotalCalculado = 0.0;
+
+            if (!empty($tramos)) {
+                $idx = 1;
+                foreach ($tramos as $tr) {
+                    $ordOrig = 0;
+                    $ordDest = 1;
+                    $nomOrig = 'Origen';
+                    $nomDest = 'Destino';
+                    if (isset($nodosMap[$tr['id_nodo_origen']])) {
+                        $ordOrig = (int)$nodosMap[$tr['id_nodo_origen']]['orden'];
+                        $nomOrig = $nodosMap[$tr['id_nodo_origen']]['nombre'];
+                    }
+                    if (isset($nodosMap[$tr['id_nodo_destino']])) {
+                        $ordDest = (int)$nodosMap[$tr['id_nodo_destino']]['orden'];
+                        $nomDest = $nodosMap[$tr['id_nodo_destino']]['nombre'];
+                    }
+
+                    // ¿Este VIN estuvo presente en este tramo?
+                    if (!($ordenSubidaVin <= $ordOrig && $ordenBajadaVin >= $ordDest)) {
+                        continue;
+                    }
+
+                    // Vins a bordo en este tramo
+                    $vinsEnTramo = [];
+                    $sumaPondTramo = 0.0;
+                    foreach ($allVins as $v) {
+                        if ($v['ord_sub'] <= $ordOrig && $v['ord_baj'] >= $ordDest) {
+                            $vinsEnTramo[] = $v;
+                            $seg = (int)($v['id_segmento'] ?? 1);
+                            $sumaPondTramo += ($tarifasBasePond[$seg] ?? 27.0);
+                        }
+                    }
+                    $volumenTramo = count($vinsEnTramo);
+                    if ($sumaPondTramo <= 0) $sumaPondTramo = (float)$volumenTramo;
+
+                    $costoTramo = (float)$tr['costo_estimado'];
+                    $cuotaUnidadTramo = ($sumaPondTramo > 0) ? ($costoTramo * ($miPeso / $sumaPondTramo)) : 0.0;
+                    $kmTramo = (float)$tr['km_tramo'];
+
+                    $kmRecorridosTotal += $kmTramo;
+                    $costoTotalCalculado += $cuotaUnidadTramo;
+
+                    $tramosRecorridos[] = [
+                        'num' => $idx++,
+                        'origen' => $nomOrig,
+                        'destino' => $nomDest,
+                        'km' => $kmTramo,
+                        'unidades_a_bordo' => $volumenTramo,
+                        'factor' => (float)$tr['factor_aplicado'],
+                        'costo_tramo' => $costoTramo,
+                        'cuota_unidad' => round($cuotaUnidadTramo, 2),
+                        'porcentaje' => ($costoTramo > 0) ? round(($cuotaUnidadTramo / $costoTramo) * 100, 1) : 100
+                    ];
+                }
+            }
+
+            // Fallback si no hay tramos detallados
+            if (empty($tramosRecorridos)) {
+                $kmEnvio = (float)($detalle['km_total'] ?? 0);
+                $costoEnvio = (float)($detalle['costo_total'] ?? 0);
+                $costoUnidad = (float)($detalle['costo_unidad'] ?? $costoEnvio);
+                $volTotal = count($allVins) > 0 ? count($allVins) : 1;
+                $kmRecorridosTotal = $kmEnvio;
+                $costoTotalCalculado = $costoUnidad;
+
+                $tramosRecorridos[] = [
+                    'num' => 1,
+                    'origen' => $detalle['subida_nombre'] ?? $detalle['origen_global'] ?? 'Origen',
+                    'destino' => $detalle['bajada_nombre'] ?? $detalle['destino_global'] ?? 'Destino',
+                    'km' => $kmEnvio,
+                    'unidades_a_bordo' => $volTotal,
+                    'factor' => (float)($detalle['factor_promedio'] ?? 1.0),
+                    'costo_tramo' => $costoEnvio,
+                    'cuota_unidad' => round($costoUnidad, 2),
+                    'porcentaje' => ($costoEnvio > 0) ? round(($costoUnidad / $costoEnvio) * 100, 1) : 100
+                ];
+            }
+
+            // Ajustar diferencia de centavos con el costo_unidad guardado
+            if ($detalle['costo_total_unitario'] > 0 && !empty($tramosRecorridos)) {
+                $dif = round($detalle['costo_total_unitario'] - array_sum(array_column($tramosRecorridos, 'cuota_unidad')), 2);
+                if (abs($dif) > 0.001) {
+                    $lastIdx = count($tramosRecorridos) - 1;
+                    $tramosRecorridos[$lastIdx]['cuota_unidad'] = round($tramosRecorridos[$lastIdx]['cuota_unidad'] + $dif, 2);
+                }
+            }
+
+            // Limpiar cualquier búfer de salida antes de renderizar PDF
+            while (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+
+            require_once("Libraries/html2pdf/vendor/autoload.php");
+
+            ob_start();
+            include "Views/Lgs_envios/hoja_entrega_pdf.php";
+            $html = ob_get_clean();
+
+            $pdf = new \Spipu\Html2Pdf\Html2Pdf('P', 'A4', 'es', true, 'UTF-8', [10, 10, 10, 10]);
+            $pdf->pdf->SetDisplayMode('fullpage');
+            $pdf->writeHTML($html);
+            $pdf->output("Hoja_Entrega_" . ($detalle['vin'] ?? 'Unidad') . ".pdf", 'I');
+            exit;
+
+        } catch (Throwable $e) {
+            while (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+            echo "<div style='font-family: Arial, sans-serif; padding: 40px; color: #b91c1c;'>";
+            echo "<h2>Error al generar PDF</h2>";
+            echo "<p>" . htmlspecialchars($e->getMessage()) . "</p>";
+            echo "</div>";
+            exit;
+        }
+    }
+
+    /**
      * Función temporal para ejecutar la migración de base de datos
      */
     public function migrarDB()

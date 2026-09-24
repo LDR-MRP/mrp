@@ -302,9 +302,14 @@ function cargarAcomodoPlanta(idEnvio, isHistorico = false) {
                             let btnConfirm = '';
                             if (isHistorico) {
                                 btnConfirm = `
-                                    <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold shadow-sm" onclick="verEvidencias(${idEnvio}, ${vin.id_unidad}, '${vin.vin}');" title="Ver Evidencias y Observaciones de Salida">
-                                        <i class="ri-camera-lens-fill me-1"></i> Ver Evidencias
-                                    </button>
+                                    <div class="d-flex gap-1 justify-content-center">
+                                        <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold shadow-sm" onclick="verEvidencias(${idEnvio}, ${vin.id_unidad}, '${vin.vin}');" title="Ver Evidencias y Observaciones de Salida">
+                                            <i class="ri-camera-lens-fill me-1"></i> Ver Evidencias
+                                        </button>
+                                        <a href="${base_url}/Lgs_envios/hoja_entrega_pdf/${idEnvio}/${vin.id_unidad}" target="_blank" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-semibold shadow-sm" title="Imprimir Hoja de Entrega / Traspaso">
+                                            <i class="ri-printer-line me-1"></i> Imprimir Hoja
+                                        </a>
+                                    </div>
                                 `;
                             } else if (isConfirmed) {
                                 btnConfirm = `
@@ -317,6 +322,9 @@ function cargarAcomodoPlanta(idEnvio, isHistorico = false) {
                                         <button class="btn btn-sm btn-outline-danger rounded-pill px-2" onclick="revertirValidacion(${idEnvio}, ${vin.id_unidad}, '${vin.vin}');" title="Deshacer Validación">
                                             <i class="ri-arrow-go-back-line"></i> Revertir
                                         </button>
+                                        <a href="${base_url}/Lgs_envios/hoja_entrega_pdf/${idEnvio}/${vin.id_unidad}" target="_blank" class="btn btn-sm btn-outline-dark rounded-pill px-2" title="Imprimir Hoja de Entrega / Traspaso">
+                                            <i class="ri-printer-line"></i> Imprimir
+                                        </a>
                                     </div>
                                 </div>
                                 `;
