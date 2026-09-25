@@ -2,6 +2,15 @@
 
 class Ing_transmisionesModel extends Mysql
 {
+    use Auditable;
+
+    protected string $table = 'ing_cat_transmision';
+
+    public function getTableName(): string
+    {
+        return $this->table;
+    }
+
     public function __construct()
     {
         parent::__construct();

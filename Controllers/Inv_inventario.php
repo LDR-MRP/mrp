@@ -191,7 +191,7 @@ class Inv_inventario extends Controllers
 			}
 
 			// =========================
-			// 🔥 AQUÍ VA LO DE IMÁGENES
+			// IMÁGENES
 			// =========================
 			$idFinal = ($option == 1) ? $request : $idinventario;
 
@@ -225,7 +225,7 @@ class Inv_inventario extends Controllers
 
 							if (move_uploaded_file($tmp, $destino)) {
 
-								// 🔥 AQUI EL CAMBIO IMPORTANTE
+								// CAMBIO IMPORTANTE
 								$this->model->insertImagenInventario($idFinal, $nombre);
 							} else {
 								error_log("❌ Error al mover archivo: " . $tmp);
@@ -386,7 +386,7 @@ class Inv_inventario extends Controllers
 
 					$principal = $arrData;
 
-					// 🔥 NUEVO: TRAER IMÁGENES
+					// TRAER IMÁGENES
 					$imagenes = $this->model->selectImagenesInventario($intidalmacen);
 					$principal['imagenes'] = $imagenes;
 
@@ -529,7 +529,7 @@ class Inv_inventario extends Controllers
 
 		$term = strClean($_GET['term'] ?? '');
 
-		// ✅ SIEMPRE llamar al MODELO
+		// SIEMPRE llamar al MODELO
 		$arrData = $this->model->buscarProductoKit($term);
 
 		ob_clean();
@@ -616,18 +616,18 @@ class Inv_inventario extends Controllers
 				die();
 			}
 
-			// 🔍 BUSCAR SI YA EXISTE CONFIG
+			// BUSCAR SI YA EXISTE CONFIG
 			$existing = $this->model->selectKitConfigByInventario($inventarioid);
 
 			if (!empty($existing)) {
 
-				// 🔥 YA EXISTE → USAR ESE ID
+				// YA EXISTE → USAR ESE ID
 				$kitid = $existing['idkitconfig'];
 
 				$this->model->updateKitConfig($kitid, $precio, $descripcion);
 			} else {
 
-				// 🔥 NO EXISTE → CREAR NUEVO
+				// NO EXISTE → CREAR NUEVO
 				$kitid = $this->model->insertKitConfig(
 					$inventarioid,
 					$precio,
@@ -643,7 +643,7 @@ class Inv_inventario extends Controllers
 
 			$this->model->deleteKitDetalleExcepto($kitid, $ids);
 
-			// 🔥 INSERTAR NUEVO DETALLE
+			// INSERTAR NUEVO DETALLE
 			foreach ($componentes as $item) {
 
 				$productoId = intval($item['idinventario'] ?? 0);

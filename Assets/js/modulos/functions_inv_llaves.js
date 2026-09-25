@@ -383,6 +383,30 @@ configurarEscanerGafete(
 
 configurarEscanerGafete("scanEntregaPorLlave", "id_entrega_por_llave", null);
 
+// Devolución: mismo escaneo de gafete para "¿Quién recibe la llave?".
+// Tras un escaneo válido pasa el foco a Observaciones.
+configurarEscanerGafete(
+  "scanRecibeDevolucion",
+  "responsable_recibe",
+  "observaciones_devolucion",
+);
+
+document
+  .querySelector("#modalDevolucion")
+  ?.addEventListener("shown.bs.modal", function () {
+    document.querySelector("#scanRecibeDevolucion")?.focus();
+  });
+
+document
+  .querySelector("#modalDevolucion")
+  ?.addEventListener("hidden.bs.modal", function () {
+    const input = document.querySelector("#scanRecibeDevolucion");
+    if (input) {
+      input.value = "";
+      input.classList.remove("is-valid", "is-invalid");
+    }
+  });
+
 // Al abrir Nueva Entrega -ya sea con el botón normal o encadenado desde
 // el escaneo del VIN- se enfoca directo el campo de escaneo del
 // colaborador, para poder seguir escaneando gafetes sin tocar el mouse.

@@ -123,7 +123,7 @@
                                             <label class="form-label" for="potencia-input">POTENCIA</label>
                                             <div class="input-group">
                                                 <input type="number" step="0.01" class="form-control" id="potencia-input" name="potencia-input">
-                                                <select class="form-select" id="unidad-potencia-select" name="unidad-potencia-select" style="max-width:90px">
+                                                <select class="form-select" id="unidad-potencia-select" name="unidad-potencia-select" style="max-width:120px">
                                                     <option value="HP" selected>hp</option>
                                                     <option value="KW">kW</option>
                                                 </select>
@@ -135,7 +135,7 @@
                                             <label class="form-label" for="torque-input">TORQUE</label>
                                             <div class="input-group">
                                                 <input type="number" step="0.01" class="form-control" id="torque-input" name="torque-input">
-                                                <select class="form-select" id="unidad-torque-select" name="unidad-torque-select" style="max-width:110px">
+                                                <select class="form-select" id="unidad-torque-select" name="unidad-torque-select" style="max-width:140px">
                                                     <option value="LB-PIE" selected>lb-pie</option>
                                                     <option value="NM">N.m</option>
                                                 </select>

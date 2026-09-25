@@ -984,6 +984,8 @@
                           <div class="collapse menu-dropdown" id="sidebarIngenieria">
                               <ul class="nav nav-sm flex-column">
 
+                                  <li class="nav-item"><h6 class="dropdown-header py-1 mb-0">Configuración</h6></li>
+
                                   <li class="nav-item" data-permiso="ING_MODELOS|r">
                                       <a href="<?= base_url(); ?>/ing_modelos" class="nav-link">
                                           <i class="ri-car-line align-bottom me-1"></i> Modelos
@@ -995,6 +997,9 @@
                                           <i class="ri-file-list-3-line align-bottom me-1"></i> Configuraciones
                                       </a>
                                   </li>
+
+                                  <li class="nav-item"><div class="dropdown-divider my-1"></div></li>
+                                  <li class="nav-item"><h6 class="dropdown-header py-1 mb-0">Catálogos</h6></li>
 
                                   <li class="nav-item" data-permiso="ING_MOTORES|r">
                                       <a href="<?= base_url(); ?>/ing_motores" class="nav-link">
@@ -1017,6 +1022,14 @@
                                   <li class="nav-item" data-permiso="ING_ESPECIFICACIONES|r">
                                       <a href="<?= base_url(); ?>/ing_especificaciones" class="nav-link">
                                           <i class="ri-list-check-2 align-bottom me-1"></i> Especificaciones
+                                      </a>
+                                  </li>
+
+                                  <li class="nav-item"><div class="dropdown-divider my-1"></div></li>
+
+                                  <li class="nav-item">
+                                      <a href="<?= base_url(); ?>/ing_bitacora" class="nav-link">
+                                          <i class="ri-history-line align-bottom me-1"></i> Bitácora
                                       </a>
                                   </li>
 

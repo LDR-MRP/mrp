@@ -2,6 +2,15 @@
 
 class Ing_motoresModel extends Mysql
 {
+    use Auditable;
+
+    protected string $table = 'ing_cat_motor';
+
+    public function getTableName(): string
+    {
+        return $this->table;
+    }
+
     public function __construct()
     {
         parent::__construct();

@@ -2,6 +2,15 @@
 
 class Ing_configuracionesModel extends Mysql
 {
+    use Auditable;
+
+    protected string $table = 'ing_modelo_configuracion';
+
+    public function getTableName(): string
+    {
+        return $this->table;
+    }
+
     public function __construct()
     {
         parent::__construct();
@@ -413,7 +422,8 @@ class Ing_configuracionesModel extends Mysql
                     mc.fecha_emision,
                     mc.fecha_inicio,
                     mc.fecha_vencimiento,
-                    mc.observaciones
+                    mc.observaciones,
+                    mc.archivo
                 FROM ing_cat_certificacion cert
                 LEFT JOIN ing_modelo_certificacion mc
                     ON mc.id_certificacion = cert.id_certificacion AND mc.id_configuracion = ?
@@ -432,27 +442,28 @@ class Ing_configuracionesModel extends Mysql
         $exist = $this->select($sql, [$idConfiguracion, $idCertificacion]);
 
         if (!empty($exist)) {
+            // archivo: si no se subió uno nuevo (null), conserva el que ya estaba guardado.
             $sql = "UPDATE ing_modelo_certificacion SET
                 obligatoria = ?, estado = ?, numero_certificado = ?, fecha_emision = ?, fecha_inicio = ?,
-                fecha_vencimiento = ?, observaciones = ?, updated_by = ?
+                fecha_vencimiento = ?, observaciones = ?, archivo = COALESCE(?, archivo), updated_by = ?
                 WHERE id_configuracion = ? AND id_certificacion = ?";
 
             return $this->update($sql, [
                 $data['obligatoria'], $data['estado'], $data['numero_certificado'], $data['fecha_emision'],
-                $data['fecha_inicio'], $data['fecha_vencimiento'], $data['observaciones'], $idusuario,
+                $data['fecha_inicio'], $data['fecha_vencimiento'], $data['observaciones'], $data['archivo'] ?? null, $idusuario,
                 $idConfiguracion, $idCertificacion,
             ]);
         }
 
         $sql = "INSERT INTO ing_modelo_certificacion
             (id_configuracion, id_certificacion, obligatoria, estado, numero_certificado, fecha_emision,
-             fecha_inicio, fecha_vencimiento, observaciones, created_by)
-            VALUES (?,?,?,?,?,?,?,?,?,?)";
+             fecha_inicio, fecha_vencimiento, observaciones, archivo, created_by)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)";
 
         return $this->insert($sql, [
             $idConfiguracion, $idCertificacion, $data['obligatoria'], $data['estado'], $data['numero_certificado'],
             $data['fecha_emision'], $data['fecha_inicio'], $data['fecha_vencimiento'], $data['observaciones'],
-            $idusuario,
+            $data['archivo'] ?? null, $idusuario,
         ]);
     }
 }

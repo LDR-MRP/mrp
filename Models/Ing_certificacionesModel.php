@@ -2,6 +2,15 @@
 
 class Ing_certificacionesModel extends Mysql
 {
+    use Auditable;
+
+    protected string $table = 'ing_cat_certificacion';
+
+    public function getTableName(): string
+    {
+        return $this->table;
+    }
+
     public function __construct()
     {
         parent::__construct();

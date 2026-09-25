@@ -42,7 +42,9 @@ document.addEventListener("DOMContentLoaded", function () {
         data: null,
         render: function (row) {
           if (!row.potencia) return "";
-          return row.potencia + " " + (row.unidad_potencia || "");
+          let valor = Math.round(parseFloat(row.potencia));
+          let unidad = (row.unidad_potencia || "").toLowerCase();
+          return valor + " " + unidad;
         },
       },
       { data: "tipo_combustible" },

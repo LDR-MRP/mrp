@@ -62,7 +62,7 @@ class Inv_movalmcargamasiva extends Controllers
 		$hoja1->setCellValue('A3', '1. Llena la hoja "Traspasos" sin modificar los encabezados de la fila 1.');
 		$hoja1->setCellValue('A4', '2. Borra la fila de ejemplo (fila 2) antes de subir el archivo.');
 		$hoja1->setCellValue('A5', '3. En ALMACEN_ORIGEN y ALMACEN_DESTINO escribe el texto tal como aparece en la hoja "Almacenes" (tiene lista desplegable para elegirlo sin errores). No pueden ser el mismo almacén.');
-		$hoja1->setCellValue('A6', '4. Cada fila del archivo genera un traspaso INDEPENDIENTE (con su propio folio TRF-). No se agrupan varias filas en un mismo traspaso.');
+		$hoja1->setCellValue('A6', '4. Las filas que compartan el mismo ALMACEN_ORIGEN y ALMACEN_DESTINO se agrupan en un mismo traspaso (un solo folio TRF- con varias partidas). La REFERENCIA y el LOTE del traspaso se toman de la primera fila de cada grupo. Si cambias el almacén origen o destino, se genera un traspaso nuevo.');
 		$hoja1->setCellValue('A7', '5. CLAVE_ARTICULO debe existir y estar activa en el catálogo de inventario. CANTIDAD debe ser mayor a 0 y debe haber suficiente existencia en el almacén origen.');
 		$hoja1->setCellValue('A8', '6. COSTO_UNITARIO, REFERENCIA y LOTE son opcionales; si se dejan vacíos, el costo se guarda como 0 y referencia/lote quedan vacíos.');
 		$hoja1->setCellValue('A9', '7. Puedes agregar o quitar columnas si no las necesitas: la lectura del archivo se hace por el NOMBRE del encabezado, no por su posición.');
@@ -214,7 +214,7 @@ class Inv_movalmcargamasiva extends Controllers
 	}
 
 	/* ===============================
-	   PROCESAR CARGA (CADA FILA = UN TRASPASO INDEPENDIENTE)
+	   PROCESAR CARGA (AGRUPA POR ALMACEN ORIGEN + ALMACEN DESTINO)
 	=============================== */
 	public function procesarCarga()
 	{
@@ -245,8 +245,11 @@ class Inv_movalmcargamasiva extends Controllers
 		require_once 'Models/Inv_movimientosalmacenesModel.php';
 		$trasladoModel = new Inv_movimientosalmacenesModel();
 
-		$insertados = 0;
 		$log = [];
+		// Filas válidas agrupadas por ALMACEN_ORIGEN + ALMACEN_DESTINO: cada
+		// grupo se registra con un solo folio TRF- (varias partidas), para que
+		// el detalle del traspaso las muestre juntas en vez de una por fila.
+		$grupos = [];
 
 		foreach ($rows as $r) {
 			$fila = $r['_fila'];
@@ -298,36 +301,81 @@ class Inv_movalmcargamasiva extends Controllers
 
 			$costo = (is_numeric($costoTexto) ? (float) $costoTexto : 0.0);
 
+			$claveGrupo = $almacen_origenid . '|' . $almacen_destinoid;
+
+			if (!isset($grupos[$claveGrupo])) {
+				$grupos[$claveGrupo] = [
+					'almacen_origenid' => $almacen_origenid,
+					'almacen_destinoid' => $almacen_destinoid,
+					'origenTexto' => $origenTexto,
+					'destinoTexto' => $destinoTexto,
+					// La referencia y el lote del traspaso se toman de la primera
+					// fila del grupo (todas las filas del grupo comparten un solo
+					// folio, y esos dos campos son a nivel traspaso).
+					'referencia' => $referencia,
+					'lote' => $lote,
+					'filas' => [],
+				];
+			}
+
+			$grupos[$claveGrupo]['filas'][] = [
+				'fila' => $fila,
+				'clave' => $clave,
+				'inventarioid' => $inventarioid,
+				'cantidad' => $cantidad,
+				'costo' => $costo,
+			];
+		}
+
+		$filasInsertadas = 0;
+		$traspasosCreados = 0;
+
+		foreach ($grupos as $grupo) {
+			$inventarios = array_column($grupo['filas'], 'inventarioid');
+			$cantidades = array_column($grupo['filas'], 'cantidad');
+			$costos = array_column($grupo['filas'], 'costo');
+
 			try {
 				$resultado = $trasladoModel->insertTransferencia(
-					$almacen_origenid,
-					$almacen_destinoid,
-					$referencia,
-					[$inventarioid],
-					[$cantidad],
-					[$costo],
-					$lote !== '' ? $lote : null
+					$grupo['almacen_origenid'],
+					$grupo['almacen_destinoid'],
+					$grupo['referencia'],
+					$inventarios,
+					$cantidades,
+					$costos,
+					$grupo['lote'] !== '' ? $grupo['lote'] : null
 				);
 
 				if (is_string($resultado) && str_starts_with($resultado, 'TRF-')) {
-					$insertados++;
+					$filasInsertadas += count($grupo['filas']);
+					$traspasosCreados++;
 				} else {
-					$log[] = ['fila' => $fila, 'clave' => $clave, 'almacenes' => "{$origenTexto} -> {$destinoTexto}", 'motivo' => (string) $resultado];
+					foreach ($grupo['filas'] as $f) {
+						$log[] = ['fila' => $f['fila'], 'clave' => $f['clave'], 'almacenes' => "{$grupo['origenTexto']} -> {$grupo['destinoTexto']}", 'motivo' => (string) $resultado];
+					}
 				}
 			} catch (\Throwable $e) {
-				error_log('Inv_movalmcargamasiva::procesarCarga insertTransferencia fila ' . $fila . ': ' . $e->getMessage());
-				$log[] = ['fila' => $fila, 'clave' => $clave, 'almacenes' => "{$origenTexto} -> {$destinoTexto}", 'motivo' => 'Error al guardar (revisa el formato de los datos)'];
+				error_log('Inv_movalmcargamasiva::procesarCarga insertTransferencia grupo: ' . $e->getMessage());
+				foreach ($grupo['filas'] as $f) {
+					$log[] = ['fila' => $f['fila'], 'clave' => $f['clave'], 'almacenes' => "{$grupo['origenTexto']} -> {$grupo['destinoTexto']}", 'motivo' => 'Error al guardar (revisa el formato de los datos)'];
+				}
 			}
 		}
+
+		// Ordena el log por número de fila para que se lea en el mismo orden que el archivo.
+		usort($log, function ($a, $b) {
+			return ($a['fila'] ?? 0) <=> ($b['fila'] ?? 0);
+		});
 
 		$_SESSION['cargaMasivaMovAlmLog']['traspasos'] = $log;
 
 		echo json_encode([
 			'status' => true,
-			'insertados' => $insertados,
+			'insertados' => $filasInsertadas,
+			'traspasos' => $traspasosCreados,
 			'omitidos' => count($log),
 			'totalFilas' => count($rows),
-			'msg' => "Proceso finalizado: {$insertados} traspaso(s) registrado(s), " . count($log) . " omitido(s) de " . count($rows) . " fila(s).",
+			'msg' => "Proceso finalizado: {$filasInsertadas} fila(s) registrada(s) en {$traspasosCreados} traspaso(s), " . count($log) . " omitido(s) de " . count($rows) . " fila(s).",
 		], JSON_UNESCAPED_UNICODE);
 		die();
 	}

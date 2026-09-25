@@ -74,6 +74,8 @@ class Ing_certificaciones extends Controllers
                 $intId = intval($_POST['id_certificacion']);
                 $request = false;
                 $option = 1;
+                $idusuario = $_SESSION['userData']['idusuario'] ?? null;
+                $antes = $intId > 0 ? $this->model->selectCertificacion($intId) : [];
 
                 $data = [
                     'codigo'             => strtoupper(strClean($_POST['codigo-input'])),
@@ -90,11 +92,29 @@ class Ing_certificaciones extends Controllers
                     if (!empty($_SESSION['permisosMod']['w'])) {
                         $request = $this->model->insertCertificacion($data);
                         $option = 1;
+
+                        if (!empty($request) && $request !== 'exist') {
+                            $this->model->logAudit(
+                                $request,
+                                AuditAction::CREATED,
+                                "Alta de certificación: {$data['codigo']} - {$data['nombre']}",
+                                $idusuario
+                            );
+                        }
                     }
                 } else {
                     if (!empty($_SESSION['permisosMod']['u'])) {
                         $request = $this->model->updateCertificacion($intId, $data);
                         $option = 2;
+
+                        if (!empty($request) && $request !== 'exist') {
+                            $this->model->logAudit(
+                                $intId,
+                                AuditAction::UPDATED,
+                                auditDiff($antes, $data),
+                                $idusuario
+                            );
+                        }
                     }
                 }
 

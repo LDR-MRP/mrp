@@ -352,6 +352,7 @@
                                                 <th>INICIO</th>
                                                 <th>VENCIMIENTO</th>
                                                 <th>OBSERVACIONES</th>
+                                                <th>ARCHIVO</th>
                                             </tr>
                                         </thead>
                                         <tbody id="bodyCertificacionesForm"></tbody>

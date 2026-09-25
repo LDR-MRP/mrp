@@ -515,6 +515,49 @@ function strClean($strCadena)
     return $string;
 }
 
+/**
+ * Construye un texto legible con los campos que cambiaron entre un registro
+ * "antes" (arreglo asociativo, típicamente el resultado de un SELECT) y un
+ * arreglo "después" (los datos que se van a guardar), para usarse como
+ * comentario en el log de auditoría (log_audit / Auditable::logAudit()).
+ *
+ * Solo compara las llaves presentes en $after. Ignora llaves de $after que
+ * no existan en $before (p. ej. created_by/updated_by).
+ *
+ * @param array $before Datos actuales del registro (antes del cambio).
+ * @param array $after  Datos nuevos que se van a guardar.
+ * @param array $labels Mapa opcional campo => etiqueta legible.
+ * @return string
+ */
+function auditDiff(array $before, array $after, array $labels = [])
+{
+    $cambios = [];
+
+    foreach ($after as $campo => $valorNuevo) {
+        if (!array_key_exists($campo, $before)) {
+            continue;
+        }
+
+        $valorAnterior = $before[$campo];
+
+        // Normalizamos para comparar (NULL, '' y valores numéricos como string).
+        $strAnterior = $valorAnterior === null ? '' : (string) $valorAnterior;
+        $strNuevo    = $valorNuevo === null ? '' : (string) $valorNuevo;
+
+        if ($strAnterior === $strNuevo) {
+            continue;
+        }
+
+        $etiqueta = $labels[$campo] ?? $campo;
+        $txtAnterior = $strAnterior === '' ? '(vacío)' : $strAnterior;
+        $txtNuevo    = $strNuevo === '' ? '(vacío)' : $strNuevo;
+
+        $cambios[] = "{$etiqueta}: '{$txtAnterior}' -> '{$txtNuevo}'";
+    }
+
+    return $cambios ? implode('; ', $cambios) : 'Sin cambios en los datos.';
+}
+
 function clear_cadena(string $cadena)
 {
     //Reemplazamos la A y a

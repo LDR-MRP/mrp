@@ -72,9 +72,9 @@
                                         <div class="mb-3">
                                             <label class="form-label" for="tipo-select">TIPO</label>
                                             <select class="form-select" id="tipo-select" name="tipo-select">
-                                                <option value="TMA" selected>T.M.A</option>
-                                                <option value="AMT">A.M.T</option>
-                                                <option value="AT">A.T</option>
+                                                <option value="TM" selected>TM</option>
+                                                <option value="AMT">AMT</option>
+                                                <option value="AT">AT</option>
                                             </select>
                                         </div>
                                     </div>
