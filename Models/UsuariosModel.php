@@ -1,260 +1,291 @@
-<?php 
+<?php
 
-	class UsuariosModel extends Mysql
+class UsuariosModel extends Mysql
+{
+	private $intIdUsuario;
+
+	private $strNombre;
+	private $strApellido;
+	private $intTelefono;
+	private $strEmail;
+	private $strPassword;
+	private $strToken;
+	private $intTipoId;
+	private $intStatus;
+	private $strNit;
+	private $strNomFiscal;
+	private $strDirFiscal;
+	private $strAvatar;
+	private $intPlantaid;
+	protected $table = "usuarios";
+
+	public function __construct()
 	{
-		private $intIdUsuario;
-		
-		private $strNombre;
-		private $strApellido;
-		private $intTelefono;
-		private $strEmail;
-		private $strPassword;
-		private $strToken;
-		private $intTipoId;
-		private $intStatus;
-		private $strNit;
-		private $strNomFiscal;
-		private $strDirFiscal;
-		private $strAvatar;
-		protected $table = "usuarios";
+		parent::__construct();
+	}
 
-		public function __construct()
-		{
-			parent::__construct();
-		}	
+	public function insertUsuario(string $nombre, string $apellido, int $telefono, string $email, string $password, int $tipoid, int $status, int $plantaid)
+	{
 
-		public function insertUsuario(string $nombre, string $apellido, int $telefono, string $email, string $password, int $tipoid, int $status){
 
-	
-			$this->strNombre = $nombre;
-			$this->strApellido = $apellido;
-			$this->intTelefono = $telefono;
-			$this->strEmail = $email;
-			$this->strPassword = $password;
-			$this->intTipoId = $tipoid;
-			$this->intStatus = $status;
-			$return = 0;
+		$this->strNombre = $nombre;
+		$this->strApellido = $apellido;
+		$this->intTelefono = $telefono;
+		$this->strEmail = $email;
+		$this->strPassword = $password;
+		$this->intTipoId = $tipoid;
+		$this->intStatus = $status;
+		$this->intPlantaid = $plantaid;
+		$return = 0;
 
-			$sql = "SELECT * FROM usuarios WHERE 
+		$sql = "SELECT * FROM usuarios WHERE 
 					email_user = '{$this->strEmail}'";
-			$request = $this->select_all($sql);
+		$request = $this->select_all($sql);
 
-			if(empty($request))
-			{
-				$query_insert  = "INSERT INTO usuarios(nombres,apellidos,telefono,email_user,password,rolid,status) 
-								  VALUES(?,?,?,?,?,?,?)";
-	        	$arrData = array($this->strNombre,
-        						$this->strApellido,
-        						$this->intTelefono,
-        						$this->strEmail,
-        						$this->strPassword,
-        						$this->intTipoId,
-        						$this->intStatus);
-	        	$request_insert = $this->insert($query_insert,$arrData);
-	        	$return = $request_insert;
-			}else{
-				$return = "exist";
-			}
-	        return $return;
+		if (empty($request)) {
+			$query_insert = "INSERT INTO usuarios(nombres,apellidos,telefono,email_user,password,rolid,status,plantaid) 
+								  VALUES(?,?,?,?,?,?,?,?)";
+			$arrData = array(
+				$this->strNombre,
+				$this->strApellido,
+				$this->intTelefono,
+				$this->strEmail,
+				$this->strPassword,
+				$this->intTipoId,
+				$this->intStatus,
+				$this->intPlantaid
+			);
+			$request_insert = $this->insert($query_insert, $arrData);
+			$return = $request_insert;
+		} else {
+			$return = "exist";
 		}
+		return $return;
+	}
 
-		public function selectUsuarios()
-		{
-			$whereAdmin = "";
-			if($_SESSION['idUser'] != 1 ){
-				$whereAdmin = " and p.idusuario != 1 ";
-			}
-			$sql = "SELECT p.idusuario,p.nombres,p.apellidos,p.telefono,p.email_user,p.status,r.idrol,r.nombrerol 
+	public function selectPlantas()
+	{
+		//BUSCAR ROLE
+	
+		$sql = "SELECT * FROM mrp_planta WHERE estado =2";
+		$request = $this->select_all($sql);
+		return $request;
+	}
+
+	public function selectUsuarios()
+	{
+		$whereAdmin = "";
+		if ($_SESSION['idUser'] != 1) {
+			$whereAdmin = " and p.idusuario != 1 ";
+		}
+		$sql = "SELECT p.idusuario,p.nombres,p.apellidos,p.telefono,p.email_user,p.status,r.idrol,r.nombrerol 
 					FROM usuarios p 
 					INNER JOIN rol r
 					ON p.rolid = r.idrol
-					WHERE p.status != 0 ".$whereAdmin;
-					$request = $this->select_all($sql);
-					return $request;
-		}
-		public function selectUsuario(int $idusuario){
-			$this->intIdUsuario = $idusuario;
-			$sql = "SELECT p.idusuario,p.nombres,p.apellidos,p.telefono,p.email_user,p.nit,p.nombrefiscal,p.direccionfiscal,r.idrol,r.nombrerol,p.status, DATE_FORMAT(p.datecreated, '%d-%m-%Y') as fechaRegistro 
+					WHERE p.status != 0 " . $whereAdmin;
+		$request = $this->select_all($sql);
+		return $request;
+	}
+	public function selectUsuario(int $idusuario)
+	{
+		$this->intIdUsuario = $idusuario;
+		$sql = "SELECT p.idusuario,p.nombres,p.apellidos,p.telefono,p.email_user,p.nit,p.nombrefiscal,p.direccionfiscal,r.idrol,r.nombrerol,p.status,plantaid, DATE_FORMAT(p.datecreated, '%d-%m-%Y') as fechaRegistro 
 					FROM usuarios p
 					INNER JOIN rol r
 					ON p.rolid = r.idrol
 					WHERE p.idusuario = $this->intIdUsuario";
-			$request = $this->select($sql);
-			return $request;
-		}
+		$request = $this->select($sql);
+		return $request;
+	}
 
-				public function getUsuarioDatada(){
+	public function getUsuarioDatada()
+	{
 
-				$usuarioId=	$_SESSION['idUser'];
-			// $this->intIdUsuario = $idusuario;
-			$sql = "SELECT p.idusuario,p.nombres,p.apellidos,p.telefono,p.email_user,p.nit,p.nombrefiscal,p.direccionfiscal,r.idrol,r.nombrerol,p.status, avatar_file,avatar_seed,avatar_gender,avatar_options 
+		$usuarioId = $_SESSION['idUser'];
+		// $this->intIdUsuario = $idusuario;
+		$sql = "SELECT p.idusuario,p.nombres,p.apellidos,p.telefono,p.email_user,p.nit,p.nombrefiscal,p.direccionfiscal,r.idrol,r.nombrerol,p.status, avatar_file,avatar_seed,avatar_gender,avatar_options 
 					FROM usuarios p
 					INNER JOIN rol r
 					ON p.rolid = r.idrol
 					WHERE p.idusuario = $usuarioId";
-			$request = $this->select($sql);
-			return $request;
-		}
+		$request = $this->select($sql);
+		return $request;
+	}
 
 
-		
 
-		public function updateUsuario(int $idUsuario, string $nombre, string $apellido, int $telefono, string $email, string $password, int $tipoid, int $status){
 
-			$this->intIdUsuario = $idUsuario;
+	public function updateUsuario(int $idUsuario, string $nombre, string $apellido, int $telefono, string $email, string $password, int $tipoid, int $status, int $plantaid)
+	{
 
-			$this->strNombre = $nombre;
-			$this->strApellido = $apellido;
-			$this->intTelefono = $telefono;
-			$this->strEmail = $email;
-			$this->strPassword = $password;
-			$this->intTipoId = $tipoid;
-			$this->intStatus = $status;
+		$this->intIdUsuario = $idUsuario;
 
-			$sql = "SELECT * FROM usuarios WHERE (email_user = '{$this->strEmail}' AND idusuario != $this->intIdUsuario)
-										   AND idusuario != $this->intIdUsuario) ";
-			$request = $this->select_all($sql);
+		$this->strNombre = $nombre;
+		$this->strApellido = $apellido;
+		$this->intTelefono = $telefono;
+		$this->strEmail = $email;
+		$this->strPassword = $password;
+		$this->intTipoId = $tipoid;
+		$this->intStatus = $status;
+		$this->intPlantaid = $plantaid;
 
-			if(empty($request))
-			{
-				if($this->strPassword  != "")
-				{
-					$sql = "UPDATE usuarios  nombres=?, apellidos=?, telefono=?, email_user=?, password=?, rolid=?, status=? 
+		$sql = "SELECT * FROM usuarios WHERE (email_user = '{$this->strEmail}' AND idusuario != $this->intIdUsuario)";
+		$request = $this->select_all($sql);
+
+		if (empty($request)) {
+			if ($this->strPassword != "") {
+				$sql = "UPDATE usuarios  nombres=?, apellidos=?, telefono=?, email_user=?, password=?, rolid=?, status=?, plantaid=? 
 							WHERE idusuario = $this->intIdUsuario ";
-					$arrData = array($this->strNombre,
-	        						$this->strApellido,
-	        						$this->intTelefono,
-	        						$this->strEmail,
-	        						$this->strPassword,
-	        						$this->intTipoId,
-	        						$this->intStatus);
-				}else{
-					$sql = "UPDATE usuarios SET  nombres=?, apellidos=?, telefono=?, email_user=?, rolid=?, status=? 
+				$arrData = array(
+					$this->strNombre,
+					$this->strApellido,
+					$this->intTelefono,
+					$this->strEmail,
+					$this->strPassword,
+					$this->intTipoId,
+					$this->intStatus,
+					$this->intPlantaid
+				);
+			} else {
+				$sql = "UPDATE usuarios SET  nombres=?, apellidos=?, telefono=?, email_user=?, rolid=?, status=?, plantaid=? 
 							WHERE idusuario = $this->intIdUsuario ";
-					$arrData = array($this->strNombre,
-	        						$this->strApellido,
-	        						$this->intTelefono,
-	        						$this->strEmail,
-	        						$this->intTipoId,
-	        						$this->intStatus);
-				}
-				$request = $this->update($sql,$arrData);
-			}else{
-				$request = "exist";
+				$arrData = array(
+					$this->strNombre,
+					$this->strApellido,
+					$this->intTelefono,
+					$this->strEmail,
+					$this->intTipoId,
+					$this->intStatus,
+					$this->intPlantaid
+				);
 			}
-			return $request;
-		
+			$request = $this->update($sql, $arrData);
+		} else {
+			$request = "exist";
 		}
-		public function deleteUsuario(int $intIdusuario)
-		{
-			$this->intIdUsuario = $intIdusuario;
-			$sql = "UPDATE usuarios SET status = ? WHERE idusuario = $this->intIdUsuario ";
-			$arrData = array(0);
-			$request = $this->update($sql,$arrData);
-			return $request;
-		}
+		return $request;
 
-		public function updatePerfil(int $idUsuario, string $nombre, string $apellido, int $telefono, string $password){
-			$this->intIdUsuario = $idUsuario;
-			$this->strNombre = $nombre;
-			$this->strApellido = $apellido;
-			$this->intTelefono = $telefono;
-			$this->strPassword = $password;
+	}
+	public function deleteUsuario(int $intIdusuario)
+	{
+		$this->intIdUsuario = $intIdusuario;
+		$sql = "UPDATE usuarios SET status = ? WHERE idusuario = $this->intIdUsuario ";
+		$arrData = array(0);
+		$request = $this->update($sql, $arrData);
+		return $request;
+	}
 
-			if($this->strPassword != "")
-			{
-				$sql = "UPDATE usuarios SET  nombres=?, apellidos=?, telefono=?, password=? 
+	public function updatePerfil(int $idUsuario, string $nombre, string $apellido, int $telefono, string $password)
+	{
+		$this->intIdUsuario = $idUsuario;
+		$this->strNombre = $nombre;
+		$this->strApellido = $apellido;
+		$this->intTelefono = $telefono;
+		$this->strPassword = $password;
+
+		if ($this->strPassword != "") {
+			$sql = "UPDATE usuarios SET  nombres=?, apellidos=?, telefono=?, password=? 
 						WHERE idusuario = $this->intIdUsuario ";
-				$arrData = array($this->strNombre,
-								$this->strApellido,
-								$this->intTelefono,
-								$this->strPassword);
-			}else{
-				$sql = "UPDATE usuarios SET  nombres=?, apellidos=?, telefono=? 
+			$arrData = array(
+				$this->strNombre,
+				$this->strApellido,
+				$this->intTelefono,
+				$this->strPassword
+			);
+		} else {
+			$sql = "UPDATE usuarios SET  nombres=?, apellidos=?, telefono=? 
 						WHERE idusuario = $this->intIdUsuario ";
-				$arrData = array($this->strNombre,
-								$this->strApellido,
-								$this->intTelefono);
-			}
-			$request = $this->update($sql,$arrData);
-		    return $request;
+			$arrData = array(
+				$this->strNombre,
+				$this->strApellido,
+				$this->intTelefono
+			);
 		}
+		$request = $this->update($sql, $arrData);
+		return $request;
+	}
 
-		public function updateDataFiscal(int $idUsuario, string $strNit, string $strNomFiscal, string $strDirFiscal){
-			$this->intIdUsuario = $idUsuario;
-			$this->strNit = $strNit;
-			$this->strNomFiscal = $strNomFiscal;
-			$this->strDirFiscal = $strDirFiscal;
-			$sql = "UPDATE usuarios SET nit=?, nombrefiscal=?, direccionfiscal=? 
+	public function updateDataFiscal(int $idUsuario, string $strNit, string $strNomFiscal, string $strDirFiscal)
+	{
+		$this->intIdUsuario = $idUsuario;
+		$this->strNit = $strNit;
+		$this->strNomFiscal = $strNomFiscal;
+		$this->strDirFiscal = $strDirFiscal;
+		$sql = "UPDATE usuarios SET nit=?, nombrefiscal=?, direccionfiscal=? 
 						WHERE idusuario = $this->intIdUsuario ";
-			$arrData = array($this->strNit,
-							$this->strNomFiscal,
-							$this->strDirFiscal);
-			$request = $this->update($sql,$arrData);
-		    return $request;
-		}
+		$arrData = array(
+			$this->strNit,
+			$this->strNomFiscal,
+			$this->strDirFiscal
+		);
+		$request = $this->update($sql, $arrData);
+		return $request;
+	}
 
-		public function updateAvatarUser(int $idUsuario, string $avatar){
-			$this->intIdUsuario = $idUsuario;
-			$this->strAvatar = $avatar;
-			$sql = "UPDATE usuarios SET avatar=?
+	public function updateAvatarUser(int $idUsuario, string $avatar)
+	{
+		$this->intIdUsuario = $idUsuario;
+		$this->strAvatar = $avatar;
+		$sql = "UPDATE usuarios SET avatar=?
 						WHERE idusuario = $this->intIdUsuario ";
-			$arrData = array($this->strAvatar);
-			$request = $this->update($sql,$arrData);
-		    return $request;
+		$arrData = array($this->strAvatar);
+		$request = $this->update($sql, $arrData);
+		return $request;
 
-		}
+	}
 
 
 
-		public function getAvatarByUser(int $usuarioid)
-{
-	$this->intIdUsuario = $usuarioid;
-    $sql = "SELECT idusuario, avatar_file, avatar_seed, avatar_gender, avatar_options
+	public function getAvatarByUser(int $usuarioid)
+	{
+		$this->intIdUsuario = $usuarioid;
+		$sql = "SELECT idusuario, avatar_file, avatar_seed, avatar_gender, avatar_options
             FROM usuarios
             WHERE idusuario = $this->intIdUsuario";
-    // return $this->select($sql, [$usuarioid]);
+		// return $this->select($sql, [$usuarioid]);
 
 
-				$request = $this->select($sql);
-			return $request;
-}
+		$request = $this->select($sql);
+		return $request;
+	}
 
-public function updateAvatarUsuario(int $usuarioid, string $filename, string $seed, string $gender, string $optionsJson)
-{
-    $sql = "UPDATE usuarios
+	public function updateAvatarUsuario(int $usuarioid, string $filename, string $seed, string $gender, string $optionsJson)
+	{
+		$sql = "UPDATE usuarios
             SET avatar_file = ?,
                 avatar_seed = ?,
                 avatar_gender = ?,
                 avatar_options = ?,
                 avatar_updated_at = NOW()
             WHERE idusuario = ?";
-    return $this->update($sql, [$filename, $seed, $gender, $optionsJson, $usuarioid]);
-}
+		return $this->update($sql, [$filename, $seed, $gender, $optionsJson, $usuarioid]);
+	}
 
 	/**
-     * Valida las credenciales contra la base de datos usando SHA256.
-     */
-    public function loginUser(string $usuario, string $password): ?array {
-        $query = "SELECT 
+	 * Valida las credenciales contra la base de datos usando SHA256.
+	 */
+	public function loginUser(string $usuario, string $password): ?array
+	{
+		$query = "SELECT 
                     u.idusuario, u.status, u.rolid, u.plantaid, u.avatar_file, 
                     u.nombres, u.apellidos, r.nombrerol as rol_nombre
                   FROM usuarios u
                   INNER JOIN rol r ON u.rolid = r.idrol
                   WHERE u.email_user = ? AND u.password = ? AND u.status != 0 
                   LIMIT 1";
-        
-        $result = $this->select($query, [$usuario, $password]);
-        return $result ?: null;
-    }
 
-    /**
-     * Registra el acceso en la tabla de auditoría.
-     */
-    public function registrarAcceso(int $id, string $evento, string $ip, string $detalle): void {
-        $query = "INSERT INTO login_logs (idusuario, evento, ip, detalle, fecha) VALUES (?,?,?,?, NOW())";
-        $this->insert($query, [$id, $evento, $ip, $detalle]);
-    }
+		$result = $this->select($query, [$usuario, $password]);
+		return $result ?: null;
+	}
+
+	/**
+	 * Registra el acceso en la tabla de auditoría.
+	 */
+	public function registrarAcceso(int $id, string $evento, string $ip, string $detalle): void
+	{
+		$query = "INSERT INTO login_logs (idusuario, evento, ip, detalle, fecha) VALUES (?,?,?,?, NOW())";
+		$this->insert($query, [$id, $evento, $ip, $detalle]);
+	}
 
 	/**
 	 * Resuelve los correos electrónicos de los destinatarios basados en la configuración.
@@ -273,31 +304,31 @@ public function updateAvatarUsuario(int $usuarioid, string $filename, string $se
 	}
 
 	/**
-     * Localiza un usuario por su ancla de identidad (Email).
-     * Se usa para determinar si el usuario de RRHH ya existe localmente.
-     */
-    public function findByEmail(string $email): ?array
-    {
-        $sql = "SELECT u.idusuario, u.email_user, u.password, u.status, u.rolid, u.plantaid, u.avatar_file,
+	 * Localiza un usuario por su ancla de identidad (Email).
+	 * Se usa para determinar si el usuario de RRHH ya existe localmente.
+	 */
+	public function findByEmail(string $email): ?array
+	{
+		$sql = "SELECT u.idusuario, u.email_user, u.password, u.status, u.rolid, u.plantaid, u.avatar_file,
                        u.nombres, u.apellidos, r.nombrerol as rol_nombre
                 FROM {$this->table} u
                 LEFT JOIN rol r ON u.rolid = r.idrol
                 WHERE u.email_user = ? 
                 LIMIT 1";
-        
-        $params = [strtolower($email)];
-        $request = $this->select($sql, $params);
-        
-        return $request ?: null;
-    }
 
-    /**
-     * Recupera el perfil completo para hidratación de sesión (SSO/Legacy).
-     * Incluye JOINs para obtener nombres de roles y plantas.
-     */
-    public function loginUserById(int $idUsuario): ?array
-    {
-        $sql = "SELECT 
+		$params = [strtolower($email)];
+		$request = $this->select($sql, $params);
+
+		return $request ?: null;
+	}
+
+	/**
+	 * Recupera el perfil completo para hidratación de sesión (SSO/Legacy).
+	 * Incluye JOINs para obtener nombres de roles y plantas.
+	 */
+	public function loginUserById(int $idUsuario): ?array
+	{
+		$sql = "SELECT 
                     u.idusuario, 
                     u.nombres, 
                     u.apellidos, 
@@ -315,19 +346,19 @@ public function updateAvatarUsuario(int $usuarioid, string $filename, string $se
                   AND u.status != 0 
                 LIMIT 1";
 
-        $params = [':id' => $idUsuario];
-        $request = $this->select($sql, $params);
+		$params = [':id' => $idUsuario];
+		$request = $this->select($sql, $params);
 
-        return $request ?: null;
-    }
+		return $request ?: null;
+	}
 
-    /**
-     * Inserta un nuevo usuario provicionado desde el sistema de RRHH.
-     * Implementa el 'Deber Ser' de integridad de datos.
-     */
-    public function insertUserFromSso(array $data): int
-    {
-        $sql = "INSERT INTO {$this->table} (
+	/**
+	 * Inserta un nuevo usuario provicionado desde el sistema de RRHH.
+	 * Implementa el 'Deber Ser' de integridad de datos.
+	 */
+	public function insertUserFromSso(array $data): int
+	{
+		$sql = "INSERT INTO {$this->table} (
                     nombres, 
                     apellidos, 
                     email_user, 
@@ -349,21 +380,21 @@ public function updateAvatarUsuario(int $usuarioid, string $filename, string $se
                     NOW()
                 )";
 
-        $params = [
-            ':nom'    => $data['nombres'],
-            ':ape'    => $data['apellidos'],
-            ':email'  => strtolower($data['email']),
-            ':pass'   => $data['password'], // 'SSO_LDR_IDENTITY' o hash dummy
-            ':rol'    => (int)$data['rolid'],
-            ':planta' => (int)$data['plantaid'],
-            ':status' => (int)$data['status'],
-            ':avatar' => $data['avatar_file'] ?? 'default.png'
-        ];
+		$params = [
+			':nom' => $data['nombres'],
+			':ape' => $data['apellidos'],
+			':email' => strtolower($data['email']),
+			':pass' => $data['password'], // 'SSO_LDR_IDENTITY' o hash dummy
+			':rol' => (int) $data['rolid'],
+			':planta' => (int) $data['plantaid'],
+			':status' => (int) $data['status'],
+			':avatar' => $data['avatar_file'] ?? 'default.png'
+		];
 
-        // El método insert de tu Core devuelve el ID insertado
-        $request_insert = parent::insert($sql, $params);
-        
-        return (int)$request_insert;
-    }
+		// El método insert de tu Core devuelve el ID insertado
+		$request_insert = parent::insert($sql, $params);
+
+		return (int) $request_insert;
+	}
 }
- ?>
+?>

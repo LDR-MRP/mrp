@@ -1405,6 +1405,28 @@ WHERE idinventario = ?";
     }
 
     /**
+     * VINes (wms_numeros_series) generados para este producto (tipo_elemento = P),
+     * sin separar por lote/orden -- eso lo hace el controller con tipo_generacion.
+     */
+    public function selectVinesProducto(int $inventarioid)
+    {
+        $sql = "SELECT
+                s.numero_serie,
+                s.referencia,
+                s.fecha,
+                s.estado,
+                s.tipo_generacion,
+                a.descripcion AS almacen
+            FROM wms_numeros_series s
+            INNER JOIN wms_almacenes a
+                ON a.idalmacen = s.almacenid
+            WHERE s.inventarioid = ?
+            ORDER BY s.fecha DESC";
+
+        return $this->select_all($sql, [$inventarioid]);
+    }
+
+    /**
      * Inserta un nuevo artículo en el catálogo maestro.
      * Basado estrictamente en el DDL de wms_inventario.
      */

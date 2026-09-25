@@ -32,7 +32,7 @@ class Inv_captura_vinService
 
             FROM cat_modelos_vin
 
-            WHERE modelo = ?
+            WHERE id_inventario = ?
             AND id_fabricante = ?
             AND id_tipo_vehiculo = ?
             AND peso_bruto_kg = ?
@@ -44,7 +44,7 @@ class Inv_captura_vinService
 
             [
 
-                $data['modelo'],
+                $data['id_inventario'],
                 $data['id_fabricante'],
                 $data['id_tipo_vehiculo'],
                 $data['peso_bruto_kg'],

@@ -37,7 +37,7 @@ class Inv_esquemaimpuestos extends Controllers
 				die();
 			}
 
-			$request = 0; // 🔥 CLAVE
+			$request = 0; 
 			$id = intval($_POST['idimpuesto']);
 			$cve = strClean($_POST['clave-impuesto-input']);
 			$desc = strClean($_POST['descripcion-impuesto-textarea']);

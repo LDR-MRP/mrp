@@ -3606,6 +3606,91 @@ estilos nuevos  */
 
 
 
+.order-edit-mode-banner {
+    border-top: 1px solid #fed7aa;
+    border-bottom: 1px solid #fed7aa;
+
+    background: #fff7ed;
+}
+
+.order-edit-mode-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 16px;
+
+    padding-top: 9px;
+    padding-bottom: 9px;
+}
+
+.order-edit-mode-info {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+}
+
+.order-edit-mode-icon {
+    display: grid;
+    place-items: center;
+
+    width: 34px;
+    height: 34px;
+
+    border-radius: 9px;
+
+    background: #ffedd5;
+    color: #c2410c;
+
+    font-size: 17px;
+}
+
+.order-edit-mode-info small,
+.order-edit-mode-info strong {
+    display: block;
+}
+
+.order-edit-mode-info small {
+    color: #9a3412;
+
+    font-size: 9px;
+    font-weight: 900;
+
+    text-transform: uppercase;
+}
+
+.order-edit-mode-info strong {
+    margin-top: 2px;
+
+    color: #7c2d12;
+
+    font-size: 12px;
+}
+
+.order-edit-mode-actions {
+    display: flex;
+    gap: 8px;
+}
+
+@media(max-width: 700px) {
+
+    .order-edit-mode-content {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .order-edit-mode-actions {
+        width: 100%;
+    }
+
+    .order-edit-mode-actions .btn {
+        flex: 1;
+    }
+
+}
+
+
 
 
 

@@ -179,8 +179,220 @@ function formatFechaLargaEs(string $value, bool $incluirHora = false): string
 
 
 
+function sendMailLocalCron(
+    $data,
+    $template,
+    $correos_copia = ''
+) {
 
-function sendMailLocalCron($data, $template, $correos_copia = '')
+    $mail = new PHPMailer(true);
+
+    try {
+
+        /*
+         * ========================================================
+         * VALIDAR CORREO DESTINATARIO
+         * ========================================================
+         */
+
+        if (
+            empty($data['email'])
+            || !filter_var(
+                $data['email'],
+                FILTER_VALIDATE_EMAIL
+            )
+        ) {
+            throw new Exception(
+                'Correo destinatario inválido.'
+            );
+        }
+
+
+        /*
+         * ========================================================
+         * CARGAR PLANTILLA
+         * ========================================================
+         */
+
+        $rutaTemplate ="Views/Template/Email/". $template. ".php";
+
+
+        if (!file_exists($rutaTemplate)) {
+
+            throw new Exception(
+                'No existe la plantilla de correo: '
+                . $rutaTemplate
+            );
+        }
+
+
+        ob_start();
+
+        require($rutaTemplate);
+
+        $mensaje =
+            ob_get_clean();
+
+
+        if (trim($mensaje)=== '') {
+
+            throw new Exception(
+                'La plantilla de correo se encuentra vacía.'
+            );
+        }
+
+
+        /*
+         * ========================================================
+         * CONFIGURACIÓN SMTP
+         * ========================================================
+         */
+
+        $mail->isSMTP();
+
+        $mail->Host ='smtp.gmail.com';
+
+        $mail->SMTPAuth =true;
+
+        $mail->Username ='notificacion@ldrsolutions.com.mx';
+
+        $mail->Password = 'ppiz zylc bpod tczi';
+
+        $mail->SMTPSecure =PHPMailer::ENCRYPTION_SMTPS;
+
+        $mail->Port =
+            465;
+
+
+        /*
+         * ========================================================
+         * REMITENTE
+         * ========================================================
+         */
+
+        $mail->setFrom('notificacion@ldrsolutions.com.mx','Notificaciones LDR');
+
+
+        /*
+         * ========================================================
+         * DESTINATARIO
+         * ========================================================
+         */
+
+        $mail->addAddress(trim($data['email']));
+
+
+        /*
+         * ========================================================
+         * COPIAS BCC
+         * ========================================================
+         */
+
+        $cc =is_array($correos_copia) ? $correos_copia : explode(',',(string) $correos_copia);
+
+
+        foreach ($cc as $correo) {
+
+            $correo =trim($correo);
+
+
+            if ($correo !== '' && filter_var($correo,FILTER_VALIDATE_EMAIL)) {
+
+                $mail->addBCC($correo);
+            }
+        }
+
+
+        /*
+         * ========================================================
+         * CONTENIDO
+         * ========================================================
+         */
+
+        $mail->isHTML(true);
+
+        $mail->CharSet ='UTF-8';
+
+        $mail->Encoding ='base64';
+
+
+        $mail->Subject =
+            trim(
+                (
+                    $data['asunto']
+                    ?? 'Notificación'
+                )
+                . (
+                    !empty(
+                        $data['num_orden']
+                    )
+                        ? ' | '
+                        . $data['num_orden']
+                        : ''
+                )
+            );
+
+
+        $mail->Body =$mensaje;
+
+
+        /*
+         * Versión texto plano del correo.
+         */
+        $mail->AltBody =
+            strip_tags(
+                preg_replace(
+                    '/<br\s*\/?>/i',
+                    "\n",
+                    $mensaje
+                )
+            );
+
+
+        /*
+         * ========================================================
+         * ENVÍO
+         * ========================================================
+         */
+
+        $mail->send();
+
+
+        return true;
+
+
+    } catch (Throwable $e) {
+
+        /*
+         * Si quedó un buffer abierto,
+         * lo limpiamos.
+         */
+        if (ob_get_level() > 0) {
+
+            @ob_end_clean();
+        }
+
+
+        error_log(
+            'Error al enviar correo a '
+            . (
+                $data['email']
+                ?? 'SIN CORREO'
+            )
+            . ': '
+            . $e->getMessage()
+            . ' | PHPMailer: '
+            . $mail->ErrorInfo
+        );
+
+
+        return false;
+    }
+}
+
+
+
+function sendMailLocalCronOLD($data, $template, $correos_copia = '')
 {
     $mail = new PHPMailer(true);
     ob_start();
@@ -224,6 +436,7 @@ function sendMailLocalCron($data, $template, $correos_copia = '')
         return false;
     }
 }
+
 
 
 
@@ -300,6 +513,49 @@ function strClean($strCadena)
     $string = str_ireplace("]", "", $string);
     $string = str_ireplace("==", "", $string);
     return $string;
+}
+
+/**
+ * Construye un texto legible con los campos que cambiaron entre un registro
+ * "antes" (arreglo asociativo, típicamente el resultado de un SELECT) y un
+ * arreglo "después" (los datos que se van a guardar), para usarse como
+ * comentario en el log de auditoría (log_audit / Auditable::logAudit()).
+ *
+ * Solo compara las llaves presentes en $after. Ignora llaves de $after que
+ * no existan en $before (p. ej. created_by/updated_by).
+ *
+ * @param array $before Datos actuales del registro (antes del cambio).
+ * @param array $after  Datos nuevos que se van a guardar.
+ * @param array $labels Mapa opcional campo => etiqueta legible.
+ * @return string
+ */
+function auditDiff(array $before, array $after, array $labels = [])
+{
+    $cambios = [];
+
+    foreach ($after as $campo => $valorNuevo) {
+        if (!array_key_exists($campo, $before)) {
+            continue;
+        }
+
+        $valorAnterior = $before[$campo];
+
+        // Normalizamos para comparar (NULL, '' y valores numéricos como string).
+        $strAnterior = $valorAnterior === null ? '' : (string) $valorAnterior;
+        $strNuevo    = $valorNuevo === null ? '' : (string) $valorNuevo;
+
+        if ($strAnterior === $strNuevo) {
+            continue;
+        }
+
+        $etiqueta = $labels[$campo] ?? $campo;
+        $txtAnterior = $strAnterior === '' ? '(vacío)' : $strAnterior;
+        $txtNuevo    = $strNuevo === '' ? '(vacío)' : $strNuevo;
+
+        $cambios[] = "{$etiqueta}: '{$txtAnterior}' -> '{$txtNuevo}'";
+    }
+
+    return $cambios ? implode('; ', $cambios) : 'Sin cambios en los datos.';
 }
 
 function clear_cadena(string $cadena)

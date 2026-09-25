@@ -74,6 +74,7 @@ document.addEventListener("DOMContentLoaded", function () {
       { data: "almacen_origen" },
       { data: "almacen_destino" },
       { data: "referencia" },
+      { data: "lote", defaultContent: "" },
       { data: "fecha" },
       {
         data: "idmovimientoalmacen",
@@ -197,39 +198,6 @@ document.addEventListener("DOMContentLoaded", function () {
       productosMovCache = data;
     });
 
-  const inputMov = document.querySelector("#inventarioSearchMov");
-
-  inputMov.addEventListener("input", function () {
-    let val = this.value.toLowerCase();
-    cerrarListaMov();
-    if (!val) return;
-
-    let lista = document.createElement("div");
-    lista.className = "autocomplete-items list-group position-absolute w-100";
-    this.parentNode.appendChild(lista);
-
-    productosMovCache
-      .filter(
-        (p) =>
-          (p.cve_articulo && p.cve_articulo.toLowerCase().includes(val)) ||
-          (p.descripcion && p.descripcion.toLowerCase().includes(val)),
-      )
-      .slice(0, 10)
-      .forEach((p) => {
-        let item = document.createElement("div");
-        item.className = "list-group-item list-group-item-action";
-        item.innerHTML = `<strong>${p.cve_articulo}</strong> - ${p.descripcion}`;
-
-        item.addEventListener("click", function () {
-          document.querySelector("#inventarioSearchMov").value =
-            p.cve_articulo + " - " + p.descripcion;
-          document.querySelector("#inventarioid").value = p.idinventario;
-          cerrarListaMov();
-        });
-
-        lista.appendChild(item);
-      });
-  });
 });
 
 function cerrarListaMov() {

@@ -12,7 +12,6 @@ class Inv_captura_vin extends Controllers
 		}
 		getPermisos(MICAPTURAVIN);
 
-		// 🔥 AGREGA ESTO
 		$this->service = new Inv_captura_vinService();
 		$this->service->model = $this->model; //  importante
 	}
@@ -88,6 +87,14 @@ class Inv_captura_vin extends Controllers
 	public function getPlantas()
 	{
 		$arrData = $this->model->selectPlantas();
+
+		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	public function getModelosInventario()
+	{
+		$arrData = $this->model->selectModelosInventario();
 
 		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
 		die();

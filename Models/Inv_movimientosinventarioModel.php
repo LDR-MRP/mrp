@@ -22,7 +22,9 @@ class Inv_movimientosinventarioModel extends Mysql
         int $concepmovid,
         string $referencia,
         float $cantidad,
-        float $costo_cantidad
+        float $costo_cantidad,
+        ?int $id_proveedor = null,
+        ?string $lote = null
     ) {
         // 1. Signo
         $concepmovid = (int)$concepmovid;
@@ -61,16 +63,18 @@ class Inv_movimientosinventarioModel extends Mysql
         // 4. Insertar movimiento
         $this->insert(
             "INSERT INTO wms_movimientos_inventario
-        (inventarioid, almacenid, numero_movimiento, concepmovid,
-         referencia, cantidad, costo_cantidad, existencia, signo,
+        (inventarioid, almacenid, numero_movimiento, concepmovid, id_proveedor,
+         referencia, lote, cantidad, costo_cantidad, existencia, signo,
          fecha_movimiento, estado)
-        VALUES (?,?,?,?,?,?,?,?,?,NOW(),2)",
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW(),2)",
             [
                 $inventarioid,
                 $almacenid,
                 $numero_movimiento,
                 $concepmovid,
+                $id_proveedor,
                 $referencia,
+                $lote,
                 $cantidad,
                 $costo_cantidad,
                 $nueva_existencia,
@@ -119,6 +123,7 @@ class Inv_movimientosinventarioModel extends Mysql
         a.descripcion AS almacen,
         c.descripcion AS concepto,
         m.referencia,
+        m.lote,
         (m.signo * m.cantidad) AS cantidad,
         m.existencia,
         m.fecha_movimiento
@@ -160,6 +165,17 @@ class Inv_movimientosinventarioModel extends Mysql
     ");
     }
 
+    public function selectProveedores()
+    {
+        return $this->select_all("
+        SELECT id_proveedor, COALESCE(NULLIF(nombre_comercial, ''), razon_social) AS nombre
+        FROM prv_cat_proveedores
+        WHERE estatus_operativo = 1
+          AND deleted_at IS NULL
+        ORDER BY nombre ASC
+    ");
+    }
+
     public function selectInventarioPredictivo()
     {
         return $this->select_all("
@@ -175,12 +191,19 @@ class Inv_movimientosinventarioModel extends Mysql
         string $referencia,
         array $inventarios,
         array $cantidades,
-        array $costos
+        array $costos,
+        ?int $id_proveedor = null,
+        ?string $lote = null
     ) {
-        $concepto = $this->select("SELECT signo FROM wms_conceptos_mov WHERE idconcepmov = $concepmovid");
+        $concepto = $this->select("SELECT signo, cpn FROM wms_conceptos_mov WHERE idconcepmov = $concepmovid");
         if (!$concepto) return "Concepto inválido";
 
         $signo = (int)$concepto['signo'];
+
+        // Si el concepto de movimiento es de tipo Proveedor (cpn = 'P'), el proveedor es obligatorio
+        if ($concepto['cpn'] === 'P' && empty($id_proveedor)) {
+            return "Debe seleccionar un proveedor para este concepto de movimiento";
+        }
 
 
         try {
@@ -213,16 +236,18 @@ class Inv_movimientosinventarioModel extends Mysql
                 // insertar movimiento
                 $this->insert("
                 INSERT INTO wms_movimientos_inventario
-                (inventarioid, almacenid, numero_movimiento, concepmovid,
-                 referencia, cantidad, costo_cantidad, existencia, signo,
+                (inventarioid, almacenid, numero_movimiento, concepmovid, id_proveedor,
+                 referencia, lote, cantidad, costo_cantidad, existencia, signo,
                  fecha_movimiento, estado)
-                VALUES (?,?,?,?,?,?,?,?,?,NOW(),2)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW(),2)
             ", [
                     $inventarioid,
                     $almacenid,
                     $numero_movimiento,
                     $concepmovid,
+                    $id_proveedor,
                     $referencia,
+                    $lote,
                     $cantidad,
                     $costo,
                     $nueva_existencia,
@@ -276,6 +301,7 @@ class Inv_movimientosinventarioModel extends Mysql
             a.descripcion AS almacen,
             c.descripcion AS concepto,
             m.referencia,
+            m.lote,
             m.fecha_movimiento
         FROM wms_movimientos_inventario m
         INNER JOIN wms_almacenes a ON a.idalmacen = m.almacenid
@@ -290,6 +316,7 @@ public function getDetalleMovimientoReporte($numero, $almacenid)
 {
     return $this->select_all("
         SELECT 
+            i.cve_articulo,
             i.descripcion,
             m.cantidad,
             m.signo,

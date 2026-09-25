@@ -20,6 +20,7 @@ class Inv_captura_vinModel extends Mysql
         $sql = "INSERT INTO cat_modelos_vin (
 
             modelo,
+            id_inventario,
             vin_base,
             id_fabricante,
             id_tipo_vehiculo,
@@ -34,11 +35,12 @@ class Inv_captura_vinModel extends Mysql
 
         )
 
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW())";
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW())";
 
         return $this->insert($sql, [
 
             $data['modelo'],
+            $data['id_inventario'],
             $data['vin_base'],
             $data['id_fabricante'],
             $data['id_tipo_vehiculo'],
@@ -65,6 +67,7 @@ class Inv_captura_vinModel extends Mysql
         $sql = "UPDATE cat_modelos_vin SET
 
     modelo = ?,
+    id_inventario = ?,
     vin_base = ?,
     id_fabricante = ?,
     id_tipo_vehiculo = ?,
@@ -81,6 +84,7 @@ WHERE id_cat_modelo_vin = ?";
         return $this->update($sql, [
 
             $data['modelo'],
+            $data['id_inventario'],
             $data['vin_base'],
             $data['id_fabricante'],
             $data['id_tipo_vehiculo'],
@@ -199,6 +203,25 @@ WHERE id_cat_modelo_vin = ?";
         $sql = "SELECT *
                 FROM cat_vin_plantas
                 WHERE estado = 1";
+
+        return $this->select_all($sql);
+    }
+
+    public function selectModelosInventario()
+    {
+
+        $sql = "SELECT
+
+                idinventario,
+                cve_articulo,
+                descripcion
+
+            FROM wms_inventario
+
+            WHERE tipo_elemento = 'P'
+            AND estado = '2'
+
+            ORDER BY descripcion ASC";
 
         return $this->select_all($sql);
     }

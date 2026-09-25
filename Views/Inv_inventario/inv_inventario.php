@@ -61,6 +61,44 @@
                     <div class="tab-content">
                         <div class="tab-pane active" id="listInventarios" role="tabpanel">
 
+                            <!-- FILTROS -->
+                            <div class="bg-light-subtle border rounded-3 p-3 mb-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="ri-filter-3-line text-primary me-1"></i>
+                                    <span class="text-uppercase fw-semibold text-muted fs-12">Filtros</span>
+                                </div>
+
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-3">
+                                        <label class="form-label mb-1 small text-muted">Tipo</label>
+                                        <select id="filtroTipoInventario" class="form-select form-select-sm rounded-pill">
+                                            <option value="">Todos los tipos</option>
+                                            <option value="Producto">Producto</option>
+                                            <option value="Servicio">Servicio</option>
+                                            <option value="Kit">Kit</option>
+                                            <option value="Componente">Componente</option>
+                                            <option value="Herramienta">Herramienta</option>
+                                            <option value="Refacción">Refacción</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label mb-1 small text-muted">Estado</label>
+                                        <select id="filtroEstadoInventario" class="form-select form-select-sm rounded-pill">
+                                            <option value="">Todos los estados</option>
+                                            <option value="Activo">Activo</option>
+                                            <option value="Inactivo">Inactivo</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-auto">
+                                        <button type="button" id="btnLimpiarFiltrosInventario" class="btn btn-sm btn-outline-secondary rounded-pill">
+                                            <i class="ri-close-line align-middle"></i> Limpiar filtros
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <table id="tableInventarios"
                                 class="table table-bordered dt-responsive nowrap table-striped align-middle"
                                 style="width:100%">
@@ -316,6 +354,11 @@
                     <li class="nav-item" id="liTabPortalWeb" hidden>
                         <a class="nav-link" data-bs-toggle="tab" href="#tabPortalWeb">
                             Portal Web
+                        </a>
+                    </li>
+                    <li class="nav-item" id="liTabVines" hidden>
+                        <a class="nav-link" data-bs-toggle="tab" href="#tabVines">
+                            VINes
                         </a>
                     </li>
                 </ul>
@@ -849,6 +892,138 @@
                             <button type="button" class="btn btn-success btn-sm" id="btnSubirImagenesPortalWeb">
                                 <i class="ri-upload-2-line"></i> Subir imágenes
                             </button>
+                        </div>
+
+                    </div>
+
+                    <!--tab de VINes asociados al producto (tipo_elemento = P)-->
+                    <div class="tab-pane fade" id="tabVines">
+
+                        <input type="hidden" id="vines_inventarioid">
+
+                        <!-- KPIs -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="card card-animate border-start border-4 border-primary shadow-sm rounded-3 mb-0">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1 overflow-hidden">
+                                                <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">
+                                                    VINes por lote
+                                                </p>
+                                                <h4 class="fs-22 fw-bold text-body mb-0">
+                                                    <span id="vinesTotalLote">0</span>
+                                                </h4>
+                                            </div>
+                                            <div class="avatar-sm flex-shrink-0">
+                                                <span class="avatar-title bg-primary-subtle text-primary rounded-circle fs-3">
+                                                    <i class="ri-box-3-line"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="card card-animate border-start border-4 border-warning shadow-sm rounded-3 mb-0">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1 overflow-hidden">
+                                                <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">
+                                                    VINes por orden de trabajo
+                                                </p>
+                                                <h4 class="fs-22 fw-bold text-body mb-0">
+                                                    <span id="vinesTotalOrden">0</span>
+                                                </h4>
+                                            </div>
+                                            <div class="avatar-sm flex-shrink-0">
+                                                <span class="avatar-title bg-warning-subtle text-warning rounded-circle fs-3">
+                                                    <i class="ri-file-list-3-line"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- LOTE -->
+                        <div class="card border-0 shadow-sm rounded-3 mb-3">
+                            <div class="card-header bg-primary-subtle border-bottom border-primary border-opacity-25">
+                                <h6 class="mb-0 text-primary">
+                                    <i class="ri-box-3-line me-1"></i> VINes por lote
+                                </h6>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>VIN</th>
+                                            <th>Lote</th>
+                                            <th>Almacén</th>
+                                            <th>Fecha</th>
+                                            <th>Estado</th>
+                                            <th class="text-center">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbodyVinesLote">
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4">Cargando...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="card-footer bg-transparent d-flex justify-content-between align-items-center py-2">
+                                <small class="text-muted" id="infoVinesLote"></small>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-secondary" id="btnVinesLotePrev">
+                                        <i class="ri-arrow-left-s-line"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="btnVinesLoteNext">
+                                        <i class="ri-arrow-right-s-line"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ORDEN -->
+                        <div class="card border-0 shadow-sm rounded-3">
+                            <div class="card-header bg-warning-subtle border-bottom border-warning border-opacity-25">
+                                <h6 class="mb-0 text-warning">
+                                    <i class="ri-file-list-3-line me-1"></i> VINes por orden de trabajo
+                                </h6>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>VIN</th>
+                                            <th>Orden</th>
+                                            <th>Almacén</th>
+                                            <th>Fecha</th>
+                                            <th>Estado</th>
+                                            <th class="text-center">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbodyVinesOrden">
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4">Cargando...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="card-footer bg-transparent d-flex justify-content-between align-items-center py-2">
+                                <small class="text-muted" id="infoVinesOrden"></small>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-secondary" id="btnVinesOrdenPrev">
+                                        <i class="ri-arrow-left-s-line"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="btnVinesOrdenNext">
+                                        <i class="ri-arrow-right-s-line"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                     </div>

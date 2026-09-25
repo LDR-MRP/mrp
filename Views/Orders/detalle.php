@@ -2,8 +2,28 @@
 
 headerOrders($data);
 
+
+
+
+$modo =$_GET['modo'] ?? '';
+
+$pedidoEdicion =$_GET['pedido'] ?? '';
+
+$urlCatalogo = base_url() . '/orders/home';
+
+if ($modo === 'editar' && !empty($pedidoEdicion)) {
+
+    $urlCatalogo .='?modo=editar&pedido='. rawurlencode($pedidoEdicion);
+}
+
+$urlCatalogo .='#catalogo';
+
+
+
 $unidad = $data['unidad'] ?? null;
 $imagenes = $data['imagenes'] ?? [];
+
+// dep($imagenes);
 
 function construirRutaImagenUnidad(
     ?string $ruta
@@ -36,13 +56,13 @@ function construirRutaImagenUnidad(
         <!-- NAVEGACIÓN -->
         <nav class="unit-breadcrumb" aria-label="Navegación">
 
-            <a href="<?= base_url(); ?>/orders/home">
+            <a href="<?= $urlCatalogo ?>">
                 Inicio
             </a>
 
             <span>/</span>
 
-            <a href="<?= base_url(); ?>/orders/home#catalogo">
+            <a href="<?= $urlCatalogo ?>">
                 Catálogo
             </a>
 

@@ -48,7 +48,7 @@ class Inv_concepmovinventarios extends Controllers
             $cpn            = strClean($_POST['asociado-select']);
             $estado         = intval($_POST['estado-select']);
 
-            // ✅ AHORA SÍ EXISTE
+            
             $tipo_mov = $_POST['tipo_mov']; // E | S
             $signo    = ($tipo_mov === 'E') ? 1 : -1;
 

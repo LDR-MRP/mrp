@@ -21,9 +21,9 @@ class Cli_clientes extends Controllers
 
     public function Cli_clientes()
     {
-        if (empty($_SESSION['permisosMod']['r'])) {
-            header("Location:" . base_url() . '/dashboard');
-        }
+        // if (empty($_SESSION['permisosMod']['r'])) {
+        //     header("Location:" . base_url() . '/dashboard');
+        // }
         $data['page_tag'] = "Clientes";
         $data['page_title'] = "Clientes";
         $data['page_functions_js'] = "/clientes/index.js";
@@ -218,9 +218,11 @@ class Cli_clientes extends Controllers
     */
     public function create()
     {
-        if (empty($_SESSION['permisosMod']['r'])) {
-            header("Location:" . base_url() . '/dashboard');
-        }
+        // if (empty($_SESSION['permisosMod']['r'])) {
+        //     header("Location:" . base_url() . '/dashboard');
+        // }
+
+        // dep($_SESSION);
         $data['page_tag'] = "Clientes";
         $data['page_title'] = "Clientes";
         $data['page_name'] = "bom";
@@ -285,9 +287,9 @@ class Cli_clientes extends Controllers
     public function accesos($idcliente)
     {
 
-        if (empty($_SESSION['permisosMod']['r'])) {
-            header("Location:" . base_url() . '/dashboard');
-        }
+        // if (empty($_SESSION['permisosMod']['r'])) {
+        //     header("Location:" . base_url() . '/dashboard');
+        // }
         $data['page_tag'] = "Clientes";
         $data['page_title'] = "Clientes";
         $data['page_functions_js'] = "/clientes/accesos.js";
@@ -307,9 +309,9 @@ class Cli_clientes extends Controllers
 */
     public function getAccesoCliente($idcliente)
     {
-        if (empty($_SESSION['permisosMod']['r'])) {
-            $this->responseJson(false, 'No tiene permisos para consultar.');
-        }
+        // if (empty($_SESSION['permisosMod']['r'])) {
+        //     $this->responseJson(false, 'No tiene permisos para consultar.');
+        // }
 
         $idcliente = intval($idcliente);
 
@@ -657,12 +659,12 @@ class Cli_clientes extends Controllers
 
     public function getLogsAcceso($idcliente)
     {
-        if (empty($_SESSION['permisosMod']['r'])) {
-            $this->responseJson(
-                false,
-                'No tiene permisos para consultar el histórico.'
-            );
-        }
+        // if (empty($_SESSION['permisosMod']['r'])) {
+        //     $this->responseJson(
+        //         false,
+        //         'No tiene permisos para consultar el histórico.'
+        //     );
+        // }
 
         $idcliente = intval($idcliente);
 
@@ -895,14 +897,14 @@ class Cli_clientes extends Controllers
              * Validamos que el usuario tenga permiso de lectura
              * sobre el módulo actual.
              */
-            if (empty($_SESSION['permisosMod']['r'])) {
-                $this->responderJson(
-                    false,
-                    'No tiene permisos para consultar esta información.',
-                    [],
-                    403
-                );
-            }
+            // if (empty($_SESSION['permisosMod']['r'])) {
+            //     $this->responderJson(
+            //         false,
+            //         'No tiene permisos para consultar esta información.',
+            //         [],
+            //         403
+            //     );
+            // }
 
             /*
              * Convertimos el parámetro recibido a un número entero.

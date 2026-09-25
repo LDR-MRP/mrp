@@ -30,7 +30,7 @@
                 <div class="col-xl-12">
                     <div class="card">
                         <div class="card-header">
-                            <h5>Captura de Modelo VIN</h5>
+                            <h5>Captura de Modelo NIV</h5>
                         </div>
 
                         <div class="card-body">
@@ -41,8 +41,11 @@
                                 <!-- MODELO -->
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <label>Modelo</label>
-                                        <input type="text" class="form-control" name="modelo" placeholder="EJ.AUMARK S2" required>
+                                        <label>Modelo (Ingeniería / Inventario)</label>
+                                        <select class="form-select" name="id_inventario" id="id_inventario" required>
+                                            <option value="">Seleccionar</option>
+                                        </select>
+                                        <input type="hidden" name="modelo" id="modelo">
                                     </div>
 
                                     <div class="col-md-6">
@@ -57,7 +60,7 @@
                                 <hr>
 
                                 <!-- CONFIGURACIÓN VIN -->
-                                <label class="fw-bold">Configuración VIN</label>
+                                <label class="fw-bold">Configuración NIV</label>
 
                                 <div class="row mt-3">
 
@@ -158,7 +161,7 @@
 
                                     <!-- AÑO -->
                                     <div class="col-md-4 mb-3">
-                                        <label>Año VIN</label>
+                                        <label>Año modelo</label>
                                         <select class="form-select" name="anio" id="anio" required>
                                             <option value="">Seleccionar</option>
                                         </select>
@@ -175,7 +178,7 @@
                                 </div>
                                 <!-- PREVIEW -->
                                 <div class="mt-4 text-center">
-                                    <h5>VIN Base:</h5>
+                                    <h5>NIV Base:</h5>
                                     <h3 id="vinPreview" class="text-primary">--------</h3>
                                 </div>
                                 <input type="hidden" name="vin_base" id="vin_base">
@@ -185,7 +188,7 @@
                                         type="submit"
                                         id="btnGuardar"
                                         class="btn btn-success">
-                                        Guardar Modelo VIN
+                                        Guardar Modelo NIV
                                     </button>
                                 </div>
 
@@ -193,14 +196,14 @@
 
                             <hr>
 
-                            <h5 class="mt-4">Modelos VIN Registrados</h5>
+                            <h5 class="mt-4">Modelos NIV Registrados</h5>
 
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover">
                                     <thead class="table-light">
                                         <tr>
                                             <th>Modelo</th>
-                                            <th>VIN Base</th>
+                                            <th>NIV Base</th>
                                             <th>Año</th>
                                             <th>Planta</th>
                                             <th>Estado</th>

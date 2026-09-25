@@ -34,6 +34,7 @@ class Inv_movimientosalmacenes extends Controllers
             $almacen_origenid  = intval($_POST['almacen_origenid']);
             $almacen_destinoid = intval($_POST['almacen_destinoid']);
             $referencia        = strClean($_POST['referencia']);
+            $lote              = !empty($_POST['lote']) ? strClean($_POST['lote']) : null;
 
             $inventarios = $_POST['inventarioid'];
             $cantidades  = $_POST['cantidad'];
@@ -45,7 +46,8 @@ class Inv_movimientosalmacenes extends Controllers
                 $referencia,
                 $inventarios,
                 $cantidades,
-                $costos
+                $costos,
+                $lote
             );
 
             if (is_string($request) && str_starts_with($request, 'TRF-')) {

@@ -29,6 +29,8 @@ class LogAuditModel extends Mysql{
     {
         $query ="SELECT 
                 -- data log
+                log_audit.resourceid,
+                log_audit.usuarioid,
                 nombre_tabla,
                 accion,
                 comentario,
@@ -41,12 +43,40 @@ class LogAuditModel extends Mysql{
             WHERE true
             ";
 
+        // nombre_tabla acepta un string (una sola tabla) o un array (varias
+        // tablas vía IN), útil para pantallas que agrupan varios catálogos
+        // relacionados (p. ej. la bitácora de Ingeniería).
         if(array_key_exists('nombre_tabla', $filters)) {
-            $query .= "AND log_audit.nombre_tabla = '{$filters['nombre_tabla']}'";
+            if (is_array($filters['nombre_tabla'])) {
+                $tablas = array_map(function ($t) {
+                    return "'" . addslashes($t) . "'";
+                }, $filters['nombre_tabla']);
+                if (!empty($tablas)) {
+                    $query .= "AND log_audit.nombre_tabla IN (" . implode(',', $tablas) . ")";
+                }
+            } else {
+                $query .= "AND log_audit.nombre_tabla = '" . addslashes($filters['nombre_tabla']) . "'";
+            }
         }
 
         if(array_key_exists('resource_id', $filters)) {
             $query .= "AND log_audit.resourceid = '{$filters['resource_id']}'";
+        }
+
+        if(array_key_exists('usuarioid', $filters) && $filters['usuarioid'] !== '' && $filters['usuarioid'] !== null) {
+            $query .= "AND log_audit.usuarioid = " . intval($filters['usuarioid']) . " ";
+        }
+
+        if(array_key_exists('accion', $filters) && $filters['accion'] !== '') {
+            $query .= "AND log_audit.accion = '" . addslashes($filters['accion']) . "' ";
+        }
+
+        if(array_key_exists('fecha_desde', $filters) && !empty($filters['fecha_desde'])) {
+            $query .= "AND log_audit.created_at >= '" . addslashes($filters['fecha_desde']) . " 00:00:00' ";
+        }
+
+        if(array_key_exists('fecha_hasta', $filters) && !empty($filters['fecha_hasta'])) {
+            $query .= "AND log_audit.created_at <= '" . addslashes($filters['fecha_hasta']) . " 23:59:59' ";
         }
 
         $query .= " ORDER BY id DESC";

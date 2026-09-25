@@ -862,8 +862,30 @@ Se utiliza con fines de configuración y ajustes visuales del layout.
     <!-- Sweet alert init js-->
     <!-- <script src="<?= media(); ?>/minimal/js/pages/sweetalerts.init.js"></script> -->
 
+    <script src="<?= media(); ?>/js/sys_core.js?v=1.0.9"></script>
     <script src="<?= media(); ?>/js/sys_core.js?v=<?= time(); ?>"></script>
-    <script src="<?= media(); ?>/js/modulos/<?= $data['page_functions_js']; ?>?v=<?= time(); ?>"></script>
+    <!-- [FIX] Se retiró el <script> de page_functions_js que estaba aquí (duplicado):
+         ya se carga una sola vez más abajo, en el bloque "if (!empty($data['page_functions_js']))",
+         que además maneja correctamente el caso de arreglo (múltiples archivos JS). Cargarlo
+         también aquí hacía que CADA módulo se ejecutara dos veces en cada carga de página
+         (listeners duplicados, catálogos duplicados en selects, envíos de formulario duplicados). -->
+
+
+<?php if (!empty($data['page_functions_js'])) { ?>
+
+    <?php if (is_array($data['page_functions_js'])) { ?>
+
+        <?php foreach ($data['page_functions_js'] as $js) { ?>
+            <script src="<?= media(); ?>/js/<?= $js; ?>?v=<?= time(); ?>"></script>
+        <?php } ?>
+
+    <?php } else { ?>
+
+        <script src="<?= media(); ?>/js/modulos/<?= $data['page_functions_js']; ?>?v=<?= time(); ?>"></script>
+
+    <?php } ?>
+
+<?php } ?>
 
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>

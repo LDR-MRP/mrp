@@ -111,11 +111,11 @@ class Inv_series extends Controllers
         $almacenid = $data['almacenid'];
         $referencia = $data['referencia']; // orden o lote
         $costo = $data['costo'] ?? 0;
-        $modo = $data['modo']; // 🔥 NUEVO
+        $modo = $data['modo'];
 
         if ($modo === "orden") {
 
-            // 🔒 validar orden
+            // validar orden
             $orden = $this->model->validarOrdenTrabajoPorOrden($referencia);
 
             if (empty($orden)) {
@@ -127,7 +127,7 @@ class Inv_series extends Controllers
             }
         } else if ($modo === "lote") {
 
-            // 🔒 validar lote
+            // validar lote
             if (empty($referencia)) {
                 echo json_encode([
                     "status" => false,
@@ -143,7 +143,7 @@ class Inv_series extends Controllers
             $almacenid,
             $referencia,
             $costo,
-            $modo // 🔥 IMPORTANTE
+            $modo // IMPORTANTE
         );
 
         echo json_encode($request, JSON_UNESCAPED_UNICODE);
@@ -206,7 +206,7 @@ class Inv_series extends Controllers
         $style = [
             'align'    => 'C',
             'text'     => false,
-            'hpadding' => 2 // zona muda (quiet zone) real a cada lado del codigo
+            'hpadding' => 'auto' // zona muda estandar de 10 modulos por lado (antes 2mm, ~6 modulos: bajo norma Code128)
         ];
 
         $pdf->write1DBarcode(
@@ -278,23 +278,31 @@ class Inv_series extends Controllers
 
         $pdf->Ln(4);
 
-        $qrUrl = base_url() . "/Inv_series/ver/" . $data['numero_serie'];
+        // El QR guarda solo el VIN (antes una URL a Inv_series/ver/{vin}, ruta que no existe)
+        $qrContenido = $data['numero_serie'];
 
         // QR centrado
         $pdf->write2DBarcode(
-            $qrUrl,
+            $qrContenido,
             'QRCODE,H',
             20,
             30,
             40,
-            40
+            40,
+            [
+                'border'  => false,
+                'padding' => 4, // zona muda de 4 modulos exigida por la norma QR (antes 0)
+                'fgcolor' => [0, 0, 0],
+                'bgcolor' => [255, 255, 255]
+            ],
+            'N'
         );
 
         $pdf->Ln(48);
 
         // Pie discreto
         $pdf->SetFont('helvetica', '', 7);
-        $pdf->Cell(0, 4, 'Escanee para consultar la informacion del producto', 0, 1, 'C');
+        $pdf->Cell(0, 4, 'Escanee para leer el VIN', 0, 1, 'C');
 
         $pdf->Output('QR_' . $vin . '.pdf', 'I');
         exit;
@@ -359,7 +367,7 @@ class Inv_series extends Controllers
             $style = [
                 'align'    => 'C',
                 'text'     => false,
-                'hpadding' => 2 // zona muda (quiet zone) real a cada lado del codigo
+                'hpadding' => 'auto' // zona muda estandar de 10 modulos por lado (antes 2mm, ~6 modulos: bajo norma Code128)
             ];
 
             $pdf->write1DBarcode(
