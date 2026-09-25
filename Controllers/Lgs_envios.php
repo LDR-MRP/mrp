@@ -76,6 +76,23 @@ class Lgs_envios extends Controllers
      * URL: {{base_url}}/Lgs_envios/store
      */
     /**
+     * Endpoint AJAX para obtener las sedes de un distribuidor.
+     * URL: {{base_url}}/Lgs_envios/getSedesByDistribuidor?id=XX
+     */
+    public function getSedesByDistribuidor(): void
+    {
+        $idDistribuidor = intval($_GET['id'] ?? 0);
+        if ($idDistribuidor <= 0) {
+            echo json_encode(['status' => false, 'data' => [], 'msg' => 'ID de distribuidor inválido']);
+            return;
+        }
+
+        $ubicModel = new Lgs_ubicacionesModel();
+        $sedes = $ubicModel->getSedesByDistribuidor($idDistribuidor);
+        echo json_encode(['status' => true, 'data' => $sedes]);
+    }
+
+    /**
      * Endpoint AJAX para verificar si existen distancias conocidas para una secuencia de nodos.
      * Retorna si faltan distancias y cuáles son.
      * URL: {{base_url}}/Lgs_envios/verificarDistanciasRuta

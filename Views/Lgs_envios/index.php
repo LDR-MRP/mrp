@@ -318,6 +318,9 @@
                                         <script id="catalogoDestinos" type="application/json">
                                             <?= json_encode($data['catalogos']['destinos'] ?? [], JSON_UNESCAPED_UNICODE); ?>
                                         </script>
+                                        <script id="catalogoDistribuidores" type="application/json">
+                                            <?= json_encode($data['catalogos']['distribuidores'] ?? [], JSON_UNESCAPED_UNICODE); ?>
+                                        </script>
 
                                         <div class="col-12">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Observaciones</label>

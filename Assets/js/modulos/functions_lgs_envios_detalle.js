@@ -70,7 +70,7 @@ function cargarDatosDetalle() {
                             if (idx === 0) {
                                 desgloseTramos.push(`🟢 Salida: ${n.nombre || 'Origen'}`);
                             } else {
-                                desgloseTramos.push(`P${n.orden} (${n.nombre || 'Nodo'}: +${kmT.toFixed(1)}km)`);
+                                desgloseTramos.push(`P${n.orden} (${n.nombre || 'Nodo'}: +${kmT.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}km)`);
                             }
                         });
                     } else {
@@ -78,7 +78,7 @@ function cargarDatosDetalle() {
                             const kmT = parseFloat(p.km_tramo || 0);
                             acumRuta += kmT;
                             p.km_acumulado = acumRuta;
-                            desgloseTramos.push(`P${p.orden} (${p.destino_nombre || 'Parada'}: +${kmT.toFixed(1)}km)`);
+                            desgloseTramos.push(`P${p.orden} (${p.destino_nombre || 'Parada'}: +${kmT.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}km)`);
                         });
                     }
 
@@ -89,11 +89,11 @@ function cargarDatosDetalle() {
 
                     const primerNodo = g_nodosEnvio.length > 0 ? g_nodosEnvio[0].nombre : g_envioData.origen;
                     if (lblOrig) lblOrig.innerText = primerNodo || '-';
-                    if (lblKm)   lblKm.innerText   = (parseFloat(g_envioData.km_total || acumRuta).toFixed(1)) + ' km Total';
+                    if (lblKm)   lblKm.innerText   = (parseFloat(g_envioData.km_total || acumRuta).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })) + ' km Total';
                     
                     const numTramos = g_nodosEnvio.length > 1 ? (g_nodosEnvio.length - 1) : (g_paradasEnvio.length || 0);
                     if (lblPar)  lblPar.innerHTML  = `<strong>${numTramos} tramo(s) (${g_nodosEnvio.length || (g_paradasEnvio.length + 1)} puntos)</strong><small class="d-block text-muted fs-10 mt-1">${desgloseTramos.join(' ➔ ')}</small>`;
-                    if (lblCost) lblCost.innerText = g_envioData.costo_total ? '$' + parseFloat(g_envioData.costo_total).toFixed(2) : '$0.00';
+                    if (lblCost) lblCost.innerText = g_envioData.costo_total ? '$' + parseFloat(g_envioData.costo_total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00';
 
                     const idTipoTraslado = parseInt(g_envioData.id_tipo_traslado || 1);
                     const btnAdd = document.getElementById('btn-agregar-vehiculo');
@@ -436,7 +436,7 @@ function actualizarConteoYSecuencia(listaUl) {
                         </div>
                         <div class="d-flex justify-content-between align-items-center mt-1">
                             <span class="badge bg-soft-info text-info border border-info fs-10 fw-bold">
-                                <i class="ri-route-line me-1"></i>${kmVin.toFixed(1)} km (${tramosVin} tramo${tramosVin > 1 ? 's' : ''} a bordo)
+                                <i class="ri-route-line me-1"></i>${kmVin.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km (${tramosVin} tramo${tramosVin > 1 ? 's' : ''} a bordo)
                             </span>
                             <small class="text-muted fs-10">N/S: ${numSerie || 'N/A'}</small>
                         </div>
@@ -463,14 +463,14 @@ function actualizarConteoYSecuencia(listaUl) {
             }
 
             const objParadaSel = (g_paradasEnvio || []).find(p => String(p.id_parada) === String(paradaAutoselect));
-            const kmTramo = objParadaSel ? parseFloat(objParadaSel.km_tramo || 0).toFixed(1) : null;
-            const kmAcum = objParadaSel ? parseFloat(objParadaSel.km_acumulado || objParadaSel.km_tramo || 0).toFixed(1) : null;
+            const kmTramo = objParadaSel ? parseFloat(objParadaSel.km_tramo || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : null;
+            const kmAcum = objParadaSel ? parseFloat(objParadaSel.km_acumulado || objParadaSel.km_tramo || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : null;
 
             let opts = '<option value="">-- Sin parada --</option>';
             if (g_paradasEnvio && g_paradasEnvio.length > 0) {
                 g_paradasEnvio.forEach(p => {
                     const sel = (String(p.id_parada) === String(paradaAutoselect)) ? 'selected' : '';
-                    const kmTxt = p.km_tramo ? ` (+${parseFloat(p.km_tramo).toFixed(1)}km)` : '';
+                    const kmTxt = p.km_tramo ? ` (+${parseFloat(p.km_tramo).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}km)` : '';
                     opts += `<option value="${p.id_parada}" ${sel}>Parada ${p.orden}: ${p.destino_nombre || p.destino_nombre_libre || 'Sin Nombre'}${kmTxt}</option>`;
                 });
             }
@@ -560,10 +560,10 @@ function actualizarConteoYSecuencia(listaUl) {
 
                 if (tramoSobrecapacidad) {
                     badge.className = 'badge bg-danger rounded-pill me-2';
-                    badge.innerHTML = `<i class="ri-alert-line me-1"></i> Carga máx: ${maxCargaSimultanea} / ${cap} (Excede en ${tramoSobrecapacidad}) | ${kmTotalVehiculo.toFixed(1)} km`;
+                    badge.innerHTML = `<i class="ri-alert-line me-1"></i> Carga máx: ${maxCargaSimultanea} / ${cap} (Excede en ${tramoSobrecapacidad}) | ${kmTotalVehiculo.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`;
                 } else {
                     badge.className = 'badge bg-primary rounded-pill me-2';
-                    const kmTxt = kmTotalVehiculo > 0 ? ` | 🛣️ ${kmTotalVehiculo.toFixed(1)} km` : '';
+                    const kmTxt = kmTotalVehiculo > 0 ? ` | 🛣️ ${kmTotalVehiculo.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km` : '';
                     badge.innerHTML = `${items.length} VINs asignados (Carga máx: ${maxCargaSimultanea} / ${cap})${kmTxt}`;
                 }
             } else {
@@ -630,8 +630,8 @@ function li_setParada(selectEl) {
     const kmSpan = li.querySelector('.vin-km-tramo-badge');
     if (kmSpan) {
         if (objParadaSel && typeof objParadaSel.km_tramo !== 'undefined') {
-            const kmTramo = parseFloat(objParadaSel.km_tramo || 0).toFixed(1);
-            const kmAcum  = parseFloat(objParadaSel.km_acumulado || objParadaSel.km_tramo || 0).toFixed(1);
+            const kmTramo = parseFloat(objParadaSel.km_tramo || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+            const kmAcum  = parseFloat(objParadaSel.km_acumulado || objParadaSel.km_tramo || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
             kmSpan.innerHTML = `<i class="ri-map-pin-distance-line me-1"></i>+${kmTramo} km (Total: ${kmAcum} km)`;
             kmSpan.style.display = 'inline-block';
         } else {
@@ -1028,7 +1028,7 @@ function guardarAcomodoAuto() {
                 let objData = JSON.parse(request.responseText);
                 if (objData.status === 'success' || objData.code === 200) {
                     if (lblCosto) {
-                        let costoTxt = objData.data && objData.data.costo_total ? '$' + parseFloat(objData.data.costo_total).toFixed(2) : '$0.00';
+                        let costoTxt = objData.data && objData.data.costo_total ? '$' + parseFloat(objData.data.costo_total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00';
                         lblCosto.innerText = costoTxt;
                     }
                 } else {
@@ -1195,7 +1195,7 @@ function enviarAcomodoAlServidor(idEnvio, asignaciones, finalizar = false) {
                 try {
                     let objData = JSON.parse(request.responseText);
                     if (objData.status === 'success' || objData.code === 200) {
-                        let costoTxt = objData.data && objData.data.costo_total ? '$' + parseFloat(objData.data.costo_total).toFixed(2) : '$0.00';
+                        let costoTxt = objData.data && objData.data.costo_total ? '$' + parseFloat(objData.data.costo_total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00';
                         Swal.fire({
                             title: "¡Acomodo Guardado!",
                             text: `Las unidades han sido asignadas correctamente. Costo total estimado del envío: ${costoTxt}`,
@@ -1304,7 +1304,7 @@ function renderInfografiaRuta() {
 
         if (i < g_nodosEnvio.length - 1) {
             const nodoSig = g_nodosEnvio[i + 1];
-            const kmTramo = parseFloat(nodoSig.km_tramo || 0).toFixed(1);
+            const kmTramo = parseFloat(nodoSig.km_tramo || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
             
             html += `
             <div class="d-flex flex-column justify-content-center flex-grow-1 position-relative px-2" style="min-width: 140px; margin-top: -30px;">

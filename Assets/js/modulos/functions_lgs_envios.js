@@ -102,13 +102,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 "data": "costo_total",
                 "render": function (data) {
                     if (data == null) return '$0.00';
-                    return '<span class="fw-bold text-success">$' + parseFloat(data).toFixed(2) + '</span>';
+                    return '<span class="fw-bold text-success">$' + parseFloat(data).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</span>';
                 }
             },
             { 
                 "data": "km_total",
                 "render": function(data, type, row) {
-                    const kmVal = parseFloat(data || 0).toFixed(1);
+                    const kmVal = parseFloat(data || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
                     const nParadas = row.total_paradas || 1;
                     return '<span class="badge bg-soft-info text-info fs-12 fw-bold"><i class="ri-route-line me-1"></i>' + kmVal + ' km</span>' +
                            '<div class="text-muted fs-11 mt-1">' + nParadas + ' parada(s)</div>';
@@ -225,6 +225,18 @@ function getCatalogoUbicaciones() {
     return [];
 }
 
+/** Lee el catálogo de distribuidores embebido en el HTML */
+function getCatalogoDistribuidores() {
+    const el = document.getElementById('catalogoDistribuidores');
+    if (el) {
+        try {
+            const arr = JSON.parse(el.textContent);
+            if (Array.isArray(arr)) return arr;
+        } catch (e) {}
+    }
+    return [];
+}
+
 /** Construye el HTML de options agrupadas para el select de ubicación de cualquier nodo */
 function buildUbicacionOptions(selectedId) {
     const ubicaciones = getCatalogoUbicaciones();
@@ -269,6 +281,120 @@ function buildUbicacionOptions(selectedId) {
     });
 
     return html;
+}
+
+/** Construye el HTML de options para el select de distribuidores */
+function buildDistribuidorOptions(selectedDistribuidorId) {
+    const distribuidores = getCatalogoDistribuidores();
+    let html = '<option value="">Seleccione distribuidor...</option>';
+    distribuidores.forEach(d => {
+        const sel = (String(d.id_distribuidor) === String(selectedDistribuidorId)) ? 'selected' : '';
+        const sedesTxt = parseInt(d.total_sedes) > 1 ? ` (${d.total_sedes} sedes)` : '';
+        html += `<option value="${d.id_distribuidor}" ${sel}>${d.nombre}${sedesTxt}</option>`;
+    });
+    return html;
+}
+
+/** Maneja el cambio del select de distribuidor para cargar sedes dinámicamente */
+function onDistribuidorChange(selectDistribuidor) {
+    const card = selectDistribuidor.closest('.nodo-item');
+    if (!card) return;
+    const selectSede = card.querySelector('.nodo-select-sede');
+    const selectUbi = card.querySelector('.nodo-select-ubicacion');
+    const infoSpan = card.querySelector('.nodo-direccion-preview');
+    const idDistribuidor = selectDistribuidor.value;
+
+    if (!idDistribuidor) {
+        if (selectSede) {
+            selectSede.innerHTML = '<option value="">Primero seleccione distribuidor</option>';
+            selectSede.disabled = true;
+        }
+        if (selectUbi) selectUbi.value = '';
+        if (infoSpan) infoSpan.innerHTML = '';
+        serializarNodos();
+        return;
+    }
+
+    // Buscar sedes del distribuidor en el catálogo local de ubicaciones
+    const ubicaciones = getCatalogoUbicaciones();
+    const sedes = ubicaciones.filter(u => String(u.id_distribuidor) === String(idDistribuidor) && parseInt(u.id_tipo_destino) === 1);
+
+    if (selectSede) {
+        if (sedes.length === 1) {
+            // Auto-seleccionar la única sede
+            selectSede.innerHTML = `<option value="${sedes[0].id || sedes[0].id_ubicacion}" selected>${sedes[0].nombre}${sedes[0].direccion ? ' — ' + sedes[0].direccion : ''}</option>`;
+            selectSede.disabled = false;
+            if (selectUbi) selectUbi.value = sedes[0].id || sedes[0].id_ubicacion;
+            if (infoSpan) infoSpan.innerHTML = sedes[0].direccion ? `<i class="ri-map-pin-line text-danger me-1"></i>${sedes[0].direccion}` : '';
+        } else if (sedes.length > 1) {
+            let opts = '<option value="">Seleccione sede...</option>';
+            sedes.forEach(s => {
+                const dir = s.direccion ? ` — ${s.direccion}` : '';
+                opts += `<option value="${s.id || s.id_ubicacion}" data-direccion="${s.direccion || ''}">${s.nombre}${dir}</option>`;
+            });
+            selectSede.innerHTML = opts;
+            selectSede.disabled = false;
+            if (selectUbi) selectUbi.value = '';
+            if (infoSpan) infoSpan.innerHTML = `<span class="text-info"><i class="ri-building-2-line me-1"></i>${sedes.length} sedes disponibles</span>`;
+        } else {
+            // Sin sedes en catálogo local, intentar AJAX
+            selectSede.innerHTML = '<option value="">Cargando sedes...</option>';
+            selectSede.disabled = true;
+            let request = new XMLHttpRequest();
+            request.open('GET', base_url + '/Lgs_envios/getSedesByDistribuidor?id=' + idDistribuidor, true);
+            request.send();
+            request.onreadystatechange = function() {
+                if (request.readyState == 4 && request.status == 200) {
+                    try {
+                        let res = JSON.parse(request.responseText);
+                        if (res.status && res.data && res.data.length > 0) {
+                            let opts = res.data.length === 1 ? '' : '<option value="">Seleccione sede...</option>';
+                            res.data.forEach(s => {
+                                const dir = s.direccion ? ` — ${s.direccion}` : '';
+                                const sel = res.data.length === 1 ? 'selected' : '';
+                                opts += `<option value="${s.id}" data-direccion="${s.direccion || ''}" ${sel}>${s.nombre}${dir}</option>`;
+                            });
+                            selectSede.innerHTML = opts;
+                            selectSede.disabled = false;
+                            if (res.data.length === 1) {
+                                if (selectUbi) selectUbi.value = res.data[0].id;
+                                if (infoSpan) infoSpan.innerHTML = res.data[0].direccion ? `<i class="ri-map-pin-line text-danger me-1"></i>${res.data[0].direccion}` : '';
+                            }
+                        } else {
+                            selectSede.innerHTML = '<option value="">Sin sedes registradas</option>';
+                        }
+                    } catch(e) {
+                        selectSede.innerHTML = '<option value="">Error al cargar sedes</option>';
+                    }
+                    serializarNodos();
+                }
+            };
+        }
+    }
+
+    serializarNodos();
+}
+
+/** Maneja el cambio del select de sede */
+function onSedeChange(selectSede) {
+    const card = selectSede.closest('.nodo-item');
+    if (!card) return;
+    const selectUbi = card.querySelector('.nodo-select-ubicacion');
+    const infoSpan = card.querySelector('.nodo-direccion-preview');
+    const optSelected = selectSede.selectedIndex >= 0 ? selectSede.options[selectSede.selectedIndex] : null;
+
+    if (selectUbi) selectUbi.value = selectSede.value || '';
+    if (infoSpan) {
+        const dir = optSelected ? optSelected.getAttribute('data-direccion') : '';
+        infoSpan.innerHTML = dir ? `<i class="ri-map-pin-line text-danger me-1"></i>${dir}` : '';
+    }
+
+    // Disparar la misma validación que el select de ubicación original
+    if (selectUbi && selectUbi.value) {
+        alCambiarUbicacionNodo(selectUbi);
+    } else {
+        serializarNodos();
+    }
 }
 
 /** Formatea una fecha/hora para inputs de tipo datetime-local (YYYY-MM-DDTHH:mm) */
@@ -331,6 +457,50 @@ function agregarNodoRuta(data, isCarga = false) {
     div.setAttribute('data-tipo-nodo', isCargaVal ? 'carga' : 'entrega');
     div.style.borderLeft = esOrigen ? '4px solid #0ab39c' : (isCargaVal ? '4px solid #0d6efd' : '4px solid #fd7e14');
 
+    // Determinar si la ubicación seleccionada es un distribuidor (para preseleccionar la cascada)
+    let selDistribuidorId = '';
+    if (selUbicacionId && !esOrigen && !isCargaVal) {
+        const ubicaciones = getCatalogoUbicaciones();
+        const ubiSel = ubicaciones.find(u => String(u.id || u.id_ubicacion) === String(selUbicacionId));
+        if (ubiSel && ubiSel.id_distribuidor) {
+            selDistribuidorId = ubiSel.id_distribuidor;
+        }
+    }
+
+    // Construir HTML del bloque de ubicación según tipo de nodo
+    let htmlUbicacion = '';
+    if (!esOrigen && !isCargaVal) {
+        // NODOS DE DESCARGA: Cascada Distribuidor → Sede + fallback ubicación directa
+        htmlUbicacion = `
+            <div class="row g-2 mb-1">
+                <div class="col-md-6">
+                    <label class="form-label fs-11 text-muted mb-1 fw-bold"><i class="ri-building-2-line text-primary me-1"></i>Distribuidor</label>
+                    <select class="form-select form-select-sm nodo-select-distribuidor" onchange="onDistribuidorChange(this)">
+                        ${buildDistribuidorOptions(selDistribuidorId)}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fs-11 text-muted mb-1 fw-bold"><i class="ri-map-pin-2-line text-warning me-1"></i>Sede</label>
+                    <select class="form-select form-select-sm nodo-select-sede" onchange="onSedeChange(this)" ${selDistribuidorId ? '' : 'disabled'}>
+                        <option value="">Primero seleccione distribuidor</option>
+                    </select>
+                </div>
+            </div>
+            <details class="mt-1">
+                <summary class="fs-10 text-muted" style="cursor:pointer;"><i class="ri-arrow-down-s-line me-1"></i>Selección directa (sin distribuidor)</summary>
+                <select class="form-select form-select-sm nodo-select-ubicacion mt-1" onchange="alCambiarUbicacionNodo(this)">
+                    ${buildUbicacionOptions(selUbicacionId)}
+                </select>
+            </details>`;
+    } else {
+        // NODOS DE CARGA / ORIGEN: Select unificado
+        htmlUbicacion = `
+            <label class="form-label fs-11 text-muted mb-1 fw-bold">Ubicación del Catálogo <span class="text-danger">*</span></label>
+            <select class="form-select form-select-sm nodo-select-ubicacion" onchange="alCambiarUbicacionNodo(this)">
+                ${buildUbicacionOptions(selUbicacionId)}
+            </select>`;
+    }
+
     div.innerHTML = `
         <div class="d-flex align-items-center justify-content-between mb-2">
             <div class="d-flex align-items-center gap-2">
@@ -356,10 +526,7 @@ function agregarNodoRuta(data, isCarga = false) {
         </div>
         <div class="row g-2 align-items-center">
             <div class="${esOrigen ? 'col-md-9' : 'col-md-7'} col-ubi-wrapper">
-                <label class="form-label fs-11 text-muted mb-1 fw-bold">Ubicación del Catálogo <span class="text-danger">*</span></label>
-                <select class="form-select form-select-sm nodo-select-ubicacion" onchange="alCambiarUbicacionNodo(this)">
-                    ${buildUbicacionOptions(selUbicacionId)}
-                </select>
+                ${htmlUbicacion}
                 <small class="text-muted fs-10 d-block mt-1 nodo-direccion-preview"></small>
             </div>
             <!-- Input oculto para conservar la propiedad en el objeto al guardar, si fuera necesario, o simplemente se manda vacío -->
@@ -405,6 +572,18 @@ function agregarNodoRuta(data, isCarga = false) {
         }
     } else {
         cont.appendChild(div);
+    }
+
+    if (selDistribuidorId) {
+        const selDist = div.querySelector('.nodo-select-distribuidor');
+        if (selDist) {
+            onDistribuidorChange(selDist);
+            const selSede = div.querySelector('.nodo-select-sede');
+            if (selSede && selUbicacionId) {
+                selSede.value = selUbicacionId;
+                onSedeChange(selSede);
+            }
+        }
     }
 
     if (!data) {
@@ -681,7 +860,7 @@ function verificarYCalcularRuta(callbackOnSuccess, isManual = false) {
                     const spanVal = document.getElementById('badge-km-total-val');
                     if (alertTotal && spanVal) {
                         alertTotal.style.setProperty('display', 'flex', 'important');
-                        spanVal.innerText = (data.km_total || 0).toFixed(1) + ' km (Memoria Progresiva)';
+                        spanVal.innerText = (data.km_total || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km (Memoria Progresiva)';
                     }
 
                     // Si faltan distancias y se requería para guardar o continuar
@@ -955,6 +1134,21 @@ function saveEnvio() {
         if (nodos[i].id_ubicacion && nodos[i - 1].id_ubicacion && nodos[i].id_ubicacion === nodos[i - 1].id_ubicacion) {
             Swal.fire("Ubicación duplicada", `El Punto #${i + 1} no puede ser la misma ubicación que el Punto #${i}. Una ruta no puede tener un tramo con origen y destino idénticos.`, "warning");
             return false;
+        }
+    }
+
+    // Validar cronología de fechas estimadas (la descarga/siguiente nodo no sea menor a la carga/nodo anterior)
+    let ultimaFecha = null;
+    let indexUltimaFecha = 0;
+    for (let i = 0; i < nodos.length; i++) {
+        if (nodos[i].fecha_estimada) {
+            let fechaActual = new Date(nodos[i].fecha_estimada);
+            if (ultimaFecha && fechaActual < ultimaFecha) {
+                Swal.fire("Fechas Inválidas", `La fecha/hora del Punto #${i + 1} no puede ser anterior a la fecha del Punto #${indexUltimaFecha + 1} (La descarga o llegada no puede ser menor a la salida).`, "warning");
+                return false;
+            }
+            ultimaFecha = fechaActual;
+            indexUltimaFecha = i;
         }
     }
 
