@@ -31,7 +31,7 @@
                     <div class="alert alert-info d-flex align-items-center justify-content-between flex-wrap gap-2" role="alert">
                         <div>
                             <i class="ri-file-excel-2-line align-bottom me-1"></i>
-                            Descarga la plantilla, llénala y súbela. Cada fila genera un traspaso independiente entre dos almacenes. La plantilla incluye una hoja de instrucciones.
+                            Descarga la plantilla, llénala y súbela. Las filas con el mismo Almacén origen y Almacén destino se agrupan en un mismo traspaso. La plantilla incluye una hoja de instrucciones.
                         </div>
                         <button type="button" id="btnDescargarPlantillaMovAlm" class="btn btn-success btn-sm">
                             <i class="ri-download-2-line align-bottom me-1"></i> Descargar plantilla
@@ -49,7 +49,7 @@
 
                     <?php if ($_SESSION['permisosMod']['w']) { ?>
                         <p class="text-muted">
-                            Cada fila del archivo registra un <strong>traspaso independiente</strong> (con su propio folio TRF-). Si una fila tiene datos inválidos, se omite y no afecta a las demás filas.
+                            Las filas que compartan <strong>Almacén origen y Almacén destino</strong> se agrupan en un mismo traspaso (un solo folio TRF- con varias partidas). Si una fila tiene datos inválidos, se omite y no afecta a las demás filas.
                         </p>
 
                         <form id="formCargaTraspasos" autocomplete="off">

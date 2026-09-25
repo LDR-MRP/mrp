@@ -72,6 +72,8 @@ class Ing_transmisiones extends Controllers
                 $intId = intval($_POST['id_transmision']);
                 $request = false;
                 $option = 1;
+                $idusuario = $_SESSION['userData']['idusuario'] ?? null;
+                $antes = $intId > 0 ? $this->model->selectTransmision($intId) : [];
 
                 $data = [
                     'fabricante'         => strClean($_POST['fabricante-input']),
@@ -86,11 +88,29 @@ class Ing_transmisiones extends Controllers
                     if (!empty($_SESSION['permisosMod']['w'])) {
                         $request = $this->model->insertTransmision($data);
                         $option = 1;
+
+                        if (!empty($request) && $request !== 'exist') {
+                            $this->model->logAudit(
+                                $request,
+                                AuditAction::CREATED,
+                                "Alta de transmisión: {$data['fabricante']} {$data['modelo']}",
+                                $idusuario
+                            );
+                        }
                     }
                 } else {
                     if (!empty($_SESSION['permisosMod']['u'])) {
                         $request = $this->model->updateTransmision($intId, $data);
                         $option = 2;
+
+                        if (!empty($request) && $request !== 'exist') {
+                            $this->model->logAudit(
+                                $intId,
+                                AuditAction::UPDATED,
+                                auditDiff($antes, $data),
+                                $idusuario
+                            );
+                        }
                     }
                 }
 

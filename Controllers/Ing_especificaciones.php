@@ -73,6 +73,8 @@ class Ing_especificaciones extends Controllers
                 $intId = intval($_POST['id_especificacion']);
                 $request = false;
                 $option = 1;
+                $idusuario = $_SESSION['userData']['idusuario'] ?? null;
+                $antes = $intId > 0 ? $this->model->selectEspecificacion($intId) : [];
 
                 $data = [
                     'categoria'             => strClean($_POST['categoria-select']),
@@ -87,11 +89,29 @@ class Ing_especificaciones extends Controllers
                     if (!empty($_SESSION['permisosMod']['w'])) {
                         $request = $this->model->insertEspecificacion($data);
                         $option = 1;
+
+                        if (!empty($request) && $request !== 'exist') {
+                            $this->model->logAudit(
+                                $request,
+                                AuditAction::CREATED,
+                                "Alta de especificación: {$data['categoria']} / {$data['clave']}",
+                                $idusuario
+                            );
+                        }
                     }
                 } else {
                     if (!empty($_SESSION['permisosMod']['u'])) {
                         $request = $this->model->updateEspecificacion($intId, $data);
                         $option = 2;
+
+                        if (!empty($request) && $request !== 'exist') {
+                            $this->model->logAudit(
+                                $intId,
+                                AuditAction::UPDATED,
+                                auditDiff($antes, $data),
+                                $idusuario
+                            );
+                        }
                     }
                 }
 

@@ -316,6 +316,7 @@ public function getDetalleMovimientoReporte($numero, $almacenid)
 {
     return $this->select_all("
         SELECT 
+            i.cve_articulo,
             i.descripcion,
             m.cantidad,
             m.signo,

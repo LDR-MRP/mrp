@@ -75,6 +75,12 @@ background: #ffe0b2;
   overflow-wrap: break-word;
 }
 
+.table th.num,
+.table td.num {
+  padding-left: 4px;
+  padding-right: 6px;
+}
+
 table { 
   width:100%; 
 }
@@ -145,17 +151,19 @@ td, th {
 
 <table class="table">
 <colgroup>
-  <col style="width:45%;">
-  <col style="width:15%;">
   <col style="width:20%;">
-  <col style="width:20%;">
+  <col style="width:40%;">
+  <col style="width:12%;">
+  <col style="width:14%;">
+  <col style="width:14%;">
 </colgroup>
 <thead>
 <tr>
+  <th>Clave</th>
   <th>Producto</th>
-  <th style="text-align:right;">Cantidad</th>
-  <th style="text-align:right;">Costo</th>
-  <th style="text-align:right;">Importe</th>
+  <th class="num" style="text-align:right;">Cantidad</th>
+  <th class="num" style="text-align:right;">Costo</th>
+  <th class="num" style="text-align:right;">Importe</th>
 </tr>
 </thead>
 
@@ -168,19 +176,24 @@ foreach ($data['detalle'] as $d) {
 ?>
 <tr>
   <td>
+  <div style="word-wrap:break-word; overflow-wrap:break-word; white-space:normal;">
+    <?= $d['cve_articulo'] ?>
+  </div>
+</td>
+  <td>
   <div style="word-wrap:break-word; white-space:normal;">
     <?= $d['descripcion'] ?>
   </div>
 </td>
-  <td class="t-right"><?= number_format($d['cantidad'] * $d['signo']) ?></td>
-  <td class="t-right"><?= number_format($d['costo_cantidad'],2) ?></td>
-  <td class="t-right"><?= number_format($d['total'],2) ?></td>
+  <td class="t-right num"><?= number_format($d['cantidad'] * $d['signo']) ?></td>
+  <td class="t-right num"><?= number_format($d['costo_cantidad'],2) ?></td>
+  <td class="t-right num"><?= number_format($d['total'],2) ?></td>
 </tr>
 <?php } ?>
 
 <tr>
-  <td colspan="3" class="t-right" style="background:#fff3e0;"><b>TOTAL</b></td>
-  <td class="t-right" style="background:#fff3e0;"><b><?= number_format($totalGeneral,2) ?></b></td>
+  <td colspan="4" class="t-right" style="background:#fff3e0;"><b>TOTAL</b></td>
+  <td class="t-right num" style="background:#fff3e0;"><b><?= number_format($totalGeneral,2) ?></b></td>
 </tr>
 
 

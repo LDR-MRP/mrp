@@ -77,6 +77,8 @@ class Ing_configuraciones extends Controllers
                 $intIdConfiguracion = intval($_POST['id_configuracion']);
                 $request = false;
                 $option = 1;
+                $idusuario = $_SESSION['userData']['idusuario'] ?? null;
+                $antes = $intIdConfiguracion > 0 ? $this->model->selectConfiguracion($intIdConfiguracion) : [];
 
                 $estado = strClean($_POST['estado-select'] ?? 'BORRADOR');
                 if (!in_array($estado, self::ESTADOS_MANUALES)) {
@@ -103,11 +105,29 @@ class Ing_configuraciones extends Controllers
                     if (!empty($_SESSION['permisosMod']['w'])) {
                         $request = $this->model->insertConfiguracion($data);
                         $option = 1;
+
+                        if (!empty($request) && $request !== 'exist') {
+                            $this->model->logAudit(
+                                intval($request),
+                                AuditAction::CREATED,
+                                "Alta de configuración: {$data['nombre_unidad']} (clave vehicular {$data['clave_vehicular']})",
+                                $idusuario
+                            );
+                        }
                     }
                 } else {
                     if (!empty($_SESSION['permisosMod']['u'])) {
                         $request = $this->model->updateConfiguracion($intIdConfiguracion, $data);
                         $option = 2;
+
+                        if (!empty($request) && $request !== 'exist') {
+                            $this->model->logAudit(
+                                $intIdConfiguracion,
+                                AuditAction::UPDATED,
+                                auditDiff($antes, $data),
+                                $idusuario
+                            );
+                        }
                     }
                 }
 
@@ -169,6 +189,7 @@ class Ing_configuraciones extends Controllers
             } else if (empty($_SESSION['permisosMod']['u']) && empty($_SESSION['permisosMod']['w'])) {
                 $arrResponse = array('status' => false, 'msg' => 'No tienes permiso para esta acción.');
             } else {
+                $idusuario = $_SESSION['userData']['idusuario'] ?? null;
                 $valores = $_POST['valor'] ?? [];
                 $ok = true;
                 foreach ($valores as $idEspecificacion => $valor) {
@@ -178,6 +199,12 @@ class Ing_configuraciones extends Controllers
                     }
                 }
                 if ($ok) {
+                    $this->model->logAudit(
+                        $intIdConfiguracion,
+                        AuditAction::UPDATED,
+                        'Especificaciones actualizadas (' . count($valores) . ' campos capturados).',
+                        $idusuario
+                    );
                     $arrResponse = array('status' => true, 'msg' => 'Las especificaciones se guardaron correctamente.');
                     $evaluacion = (new Ing_reglasService())->evaluarConfiguracion($intIdConfiguracion, 'GUARDADO');
                     if ($evaluacion['cambio']) {
@@ -214,10 +241,30 @@ class Ing_configuraciones extends Controllers
             } else if (empty($_SESSION['permisosMod']['u']) && empty($_SESSION['permisosMod']['w'])) {
                 $arrResponse = array('status' => false, 'msg' => 'No tienes permiso para esta acción.');
             } else {
+                $idusuario = $_SESSION['userData']['idusuario'] ?? null;
                 $certificaciones = json_decode($_POST['certificaciones'] ?? '[]', true);
                 $ok = true;
                 if (is_array($certificaciones)) {
                     foreach ($certificaciones as $cert) {
+                        $idCertificacion = intval($cert['id_certificacion']);
+
+                        // archivo adjunto (constancia/certificado): opcional, solo se procesa si se subió uno nuevo.
+                        $archivo = null;
+                        $campoArchivo = 'archivo_' . $idCertificacion;
+                        if (isset($_FILES[$campoArchivo]) && $_FILES[$campoArchivo]['error'] === UPLOAD_ERR_OK) {
+                            $directorio = 'Assets/uploads/ing_certificaciones/';
+                            if (!file_exists($directorio)) {
+                                mkdir($directorio, 0777, true);
+                            }
+                            $extension = pathinfo($_FILES[$campoArchivo]['name'], PATHINFO_EXTENSION);
+                            $nombreArchivo = 'cert_' . $intIdConfiguracion . '_' . $idCertificacion . '_' . date('YmdHis') . '_' . substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 5) . '.' . $extension;
+                            $rutaDestino = $directorio . $nombreArchivo;
+
+                            if (move_uploaded_file($_FILES[$campoArchivo]['tmp_name'], $rutaDestino)) {
+                                $archivo = $nombreArchivo;
+                            }
+                        }
+
                         $data = [
                             'obligatoria'        => !empty($cert['obligatoria']) ? 1 : 0,
                             'estado'             => strClean($cert['estado'] ?? 'PENDIENTE'),
@@ -226,14 +273,21 @@ class Ing_configuraciones extends Controllers
                             'fecha_inicio'       => !empty($cert['fecha_inicio']) ? $cert['fecha_inicio'] : null,
                             'fecha_vencimiento'  => !empty($cert['fecha_vencimiento']) ? $cert['fecha_vencimiento'] : null,
                             'observaciones'      => strClean($cert['observaciones'] ?? ''),
+                            'archivo'            => $archivo,
                         ];
-                        $result = $this->model->upsertCertificacionConfiguracion($intIdConfiguracion, intval($cert['id_certificacion']), $data);
+                        $result = $this->model->upsertCertificacionConfiguracion($intIdConfiguracion, $idCertificacion, $data);
                         if (!$result) {
                             $ok = false;
                         }
                     }
                 }
                 if ($ok) {
+                    $this->model->logAudit(
+                        $intIdConfiguracion,
+                        AuditAction::UPDATED,
+                        'Certificaciones actualizadas (' . count($certificaciones) . ' certificaciones capturadas).',
+                        $idusuario
+                    );
                     $arrResponse = array('status' => true, 'msg' => 'Las certificaciones se guardaron correctamente.');
                     $evaluacion = (new Ing_reglasService())->evaluarConfiguracion($intIdConfiguracion, 'GUARDADO');
                     if ($evaluacion['cambio']) {
@@ -373,6 +427,14 @@ class Ing_configuraciones extends Controllers
                 $pdo->commit();
 
                 $skuRow = $this->model->selectSkuInventario($idInventario);
+
+                $this->model->logAudit(
+                    $intId,
+                    AuditAction::UPDATED,
+                    "Dada de alta en inventario. SKU generado: " . ($skuRow['cve_articulo'] ?? $sku),
+                    $_SESSION['userData']['idusuario'] ?? null
+                );
+
                 echo json_encode(array(
                     'status'        => true,
                     'msg'           => 'Configuración dada de alta en inventario correctamente.',

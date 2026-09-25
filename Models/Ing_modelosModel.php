@@ -2,6 +2,15 @@
 
 class Ing_modelosModel extends Mysql
 {
+    use Auditable;
+
+    protected string $table = 'ing_modelo_detalle';
+
+    public function getTableName(): string
+    {
+        return $this->table;
+    }
+
     public function __construct()
     {
         parent::__construct();

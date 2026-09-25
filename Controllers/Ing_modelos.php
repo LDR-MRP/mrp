@@ -72,6 +72,10 @@ class Ing_modelos extends Controllers
             } else if (empty($_SESSION['permisosMod']['u']) && empty($_SESSION['permisosMod']['w'])) {
                 $arrResponse = array('status' => false, 'msg' => 'No tienes permiso para esta acción.');
             } else {
+                $idusuario = $_SESSION['userData']['idusuario'] ?? null;
+                $antes = $this->model->selectModelo($intIdSublinea);
+                $existiaDetalle = !empty($antes['marca']) || !empty($antes['estado']) || !empty($antes['version']);
+
                 $data = [
                     'marca'           => strClean($_POST['marca-input'] ?? 'FOTON'),
                     'tipo_carroceria' => strClean($_POST['carroceria-input'] ?? ''),
@@ -82,6 +86,17 @@ class Ing_modelos extends Controllers
                 ];
 
                 $request = $this->model->upsertDetalle($intIdSublinea, $data);
+
+                if (!empty($request)) {
+                    $this->model->logAudit(
+                        $intIdSublinea,
+                        $existiaDetalle ? AuditAction::UPDATED : AuditAction::CREATED,
+                        $existiaDetalle
+                            ? auditDiff($antes, $data)
+                            : "Alta de detalle de modelo: {$data['marca']} (modelo #{$intIdSublinea})",
+                        $idusuario
+                    );
+                }
 
                 $arrResponse = $request
                     ? array('status' => true, 'msg' => 'El detalle del modelo se guardó correctamente.')

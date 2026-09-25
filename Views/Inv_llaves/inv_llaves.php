@@ -626,6 +626,13 @@
 
                         </select>
 
+                        <input
+                            type="text"
+                            class="form-control form-control-sm mt-1"
+                            id="scanRecibeDevolucion"
+                            placeholder="O escanee el gafete de quién recibe..."
+                            autocomplete="off">
+
                     </div>
 
                     <div class="mb-3">

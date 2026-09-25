@@ -122,7 +122,7 @@ function fntEditInfo(idTransmision) {
     document.querySelector("#id_transmision").value = d.id_transmision;
     document.querySelector("#fabricante-input").value = d.fabricante || "";
     document.querySelector("#modelo-input").value = d.modelo || "";
-    document.querySelector("#tipo-select").value = d.tipo || "Manual";
+    document.querySelector("#tipo-select").value = d.tipo || "TM";
     document.querySelector("#velocidades-input").value = d.numero_velocidades || "";
     document.querySelector("#descripcion-textarea").value = d.descripcion || "";
     document.querySelector("#activo-select").value = d.activo;

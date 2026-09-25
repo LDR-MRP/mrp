@@ -73,6 +73,8 @@ class Ing_motores extends Controllers
                 $intIdMotor = intval($_POST['id_motor']);
                 $request = false;
                 $option = 1;
+                $idusuario = $_SESSION['userData']['idusuario'] ?? null;
+                $antes = $intIdMotor > 0 ? $this->model->selectMotor($intIdMotor) : [];
 
                 $data = [
                     'fabricante'         => strClean($_POST['fabricante-input']),
@@ -100,11 +102,29 @@ class Ing_motores extends Controllers
                     if (!empty($_SESSION['permisosMod']['w'])) {
                         $request = $this->model->insertMotor($data);
                         $option = 1;
+
+                        if (!empty($request) && $request !== 'exist') {
+                            $this->model->logAudit(
+                                $request,
+                                AuditAction::CREATED,
+                                "Alta de motor: {$data['fabricante']} {$data['modelo_motor']}",
+                                $idusuario
+                            );
+                        }
                     }
                 } else {
                     if (!empty($_SESSION['permisosMod']['u'])) {
                         $request = $this->model->updateMotor($intIdMotor, $data);
                         $option = 2;
+
+                        if (!empty($request) && $request !== 'exist') {
+                            $this->model->logAudit(
+                                $intIdMotor,
+                                AuditAction::UPDATED,
+                                auditDiff($antes, $data),
+                                $idusuario
+                            );
+                        }
                     }
                 }
 

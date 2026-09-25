@@ -64,7 +64,7 @@ class Inv_movcargamasiva extends Controllers
 		$hoja1->setCellValue('A3', '1. Llena la hoja "Movimientos" sin modificar los encabezados de la fila 1.');
 		$hoja1->setCellValue('A4', '2. Borra la fila de ejemplo (fila 2) antes de subir el archivo.');
 		$hoja1->setCellValue('A5', '3. Esta carga solo admite conceptos que requieren Proveedor (ej. Compras). En CONCEPTO, ALMACEN y PROVEEDOR escribe el texto tal como aparece en sus hojas de referencia (tienen lista desplegable para elegirlo sin errores).');
-		$hoja1->setCellValue('A6', '4. Cada fila del archivo genera un movimiento INDEPENDIENTE (con su propio número de movimiento). No se agrupan varias filas en un mismo movimiento.');
+		$hoja1->setCellValue('A6', '4. Las filas que compartan el mismo CONCEPTO, ALMACEN y PROVEEDOR se agrupan en un mismo movimiento (un solo número de movimiento con varias partidas). La REFERENCIA y el LOTE del movimiento se toman de la primera fila de cada grupo. Si cambias el concepto, almacén o proveedor, se genera un movimiento nuevo.');
 		$hoja1->setCellValue('A7', '5. CLAVE_ARTICULO debe existir y estar activa en el catálogo de inventario. CANTIDAD debe ser mayor a 0.');
 		$hoja1->setCellValue('A8', '6. COSTO_UNITARIO, REFERENCIA y LOTE son opcionales; si se dejan vacíos, el costo se guarda como 0 y referencia/lote quedan vacíos.');
 		$hoja1->setCellValue('A9', '7. Puedes agregar o quitar columnas si no las necesitas: la lectura del archivo se hace por el NOMBRE del encabezado, no por su posición.');
@@ -269,7 +269,7 @@ class Inv_movcargamasiva extends Controllers
 	}
 
 	/* ===============================
-	   PROCESAR CARGA (CADA FILA = UN MOVIMIENTO INDEPENDIENTE)
+	   PROCESAR CARGA (AGRUPA POR CONCEPTO + ALMACEN + PROVEEDOR)
 	=============================== */
 	public function procesarCarga()
 	{
@@ -302,8 +302,11 @@ class Inv_movcargamasiva extends Controllers
 		require_once 'Models/Inv_movimientosinventarioModel.php';
 		$movModel = new Inv_movimientosinventarioModel();
 
-		$insertados = 0;
 		$log = [];
+		// Filas válidas agrupadas por CONCEPTO + ALMACEN + PROVEEDOR: cada grupo
+		// se registra con un solo numero_movimiento (varias partidas), para que
+		// el Reporte del módulo las muestre juntas en vez de una por fila.
+		$grupos = [];
 
 		foreach ($rows as $r) {
 			$fila = $r['_fila'];
@@ -359,37 +362,82 @@ class Inv_movcargamasiva extends Controllers
 
 			$costo = (is_numeric($costoTexto) ? (float) $costoTexto : 0.0);
 
+			$claveGrupo = $concepmovid . '|' . $almacenid . '|' . $id_proveedor;
+
+			if (!isset($grupos[$claveGrupo])) {
+				$grupos[$claveGrupo] = [
+					'almacenid' => $almacenid,
+					'concepmovid' => $concepmovid,
+					'id_proveedor' => $id_proveedor,
+					'concepto' => $conceptoTexto,
+					// La referencia y el lote del movimiento se toman de la primera
+					// fila del grupo (todas las filas del grupo comparten un solo
+					// numero_movimiento, y esos dos campos son a nivel movimiento).
+					'referencia' => $referencia,
+					'lote' => $lote,
+					'filas' => [],
+				];
+			}
+
+			$grupos[$claveGrupo]['filas'][] = [
+				'fila' => $fila,
+				'clave' => $clave,
+				'inventarioid' => $inventarioid,
+				'cantidad' => $cantidad,
+				'costo' => $costo,
+			];
+		}
+
+		$filasInsertadas = 0;
+		$movimientosCreados = 0;
+
+		foreach ($grupos as $grupo) {
+			$inventarios = array_column($grupo['filas'], 'inventarioid');
+			$cantidades = array_column($grupo['filas'], 'cantidad');
+			$costos = array_column($grupo['filas'], 'costo');
+
 			try {
 				$resultado = $movModel->insertMovimientoMasivo(
-					$almacenid,
-					$concepmovid,
-					$referencia,
-					[$inventarioid],
-					[$cantidad],
-					[$costo],
-					$id_proveedor,
-					$lote !== '' ? $lote : null
+					$grupo['almacenid'],
+					$grupo['concepmovid'],
+					$grupo['referencia'],
+					$inventarios,
+					$cantidades,
+					$costos,
+					$grupo['id_proveedor'],
+					$grupo['lote'] !== '' ? $grupo['lote'] : null
 				);
 
 				if (is_array($resultado)) {
-					$insertados++;
+					$filasInsertadas += count($grupo['filas']);
+					$movimientosCreados++;
 				} else {
-					$log[] = ['fila' => $fila, 'clave' => $clave, 'concepto' => $conceptoTexto, 'motivo' => (string) $resultado];
+					foreach ($grupo['filas'] as $f) {
+						$log[] = ['fila' => $f['fila'], 'clave' => $f['clave'], 'concepto' => $grupo['concepto'], 'motivo' => (string) $resultado];
+					}
 				}
 			} catch (\Throwable $e) {
-				error_log('Inv_movcargamasiva::procesarCarga insertMovimientoMasivo fila ' . $fila . ': ' . $e->getMessage());
-				$log[] = ['fila' => $fila, 'clave' => $clave, 'concepto' => $conceptoTexto, 'motivo' => 'Error al guardar (revisa el formato de los datos)'];
+				error_log('Inv_movcargamasiva::procesarCarga insertMovimientoMasivo grupo: ' . $e->getMessage());
+				foreach ($grupo['filas'] as $f) {
+					$log[] = ['fila' => $f['fila'], 'clave' => $f['clave'], 'concepto' => $grupo['concepto'], 'motivo' => 'Error al guardar (revisa el formato de los datos)'];
+				}
 			}
 		}
+
+		// Ordena el log por número de fila para que se lea en el mismo orden que el archivo.
+		usort($log, function ($a, $b) {
+			return ($a['fila'] ?? 0) <=> ($b['fila'] ?? 0);
+		});
 
 		$_SESSION['cargaMasivaMovLog']['movimientos'] = $log;
 
 		echo json_encode([
 			'status' => true,
-			'insertados' => $insertados,
+			'insertados' => $filasInsertadas,
+			'movimientos' => $movimientosCreados,
 			'omitidos' => count($log),
 			'totalFilas' => count($rows),
-			'msg' => "Proceso finalizado: {$insertados} movimiento(s) registrado(s), " . count($log) . " omitido(s) de " . count($rows) . " fila(s).",
+			'msg' => "Proceso finalizado: {$filasInsertadas} fila(s) registrada(s) en {$movimientosCreados} movimiento(s), " . count($log) . " omitido(s) de " . count($rows) . " fila(s).",
 		], JSON_UNESCAPED_UNICODE);
 		die();
 	}

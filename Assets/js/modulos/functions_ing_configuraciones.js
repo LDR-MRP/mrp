@@ -317,14 +317,28 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   if (formCertificaciones) {
+    formCertificaciones.addEventListener("change", function (e) {
+      if (!e.target.classList.contains("chk-obligatoria")) return;
+      if (e.target.checked) return;
+
+      let tr = e.target.closest("tr");
+      if (!tr) return;
+
+      let selEstado = tr.querySelector(".sel-estado-cert");
+      if (selEstado) selEstado.value = "NO_APLICA";
+    });
+
     formCertificaciones.addEventListener("submit", function (e) {
       e.preventDefault();
       if (divLoading) divLoading.style.display = "flex";
 
       let certificaciones = [];
+      let formData = new FormData();
+
       document.querySelectorAll("#bodyCertificacionesForm tr").forEach(function (tr) {
+        let idCertificacion = tr.dataset.idCertificacion;
         certificaciones.push({
-          id_certificacion: tr.dataset.idCertificacion,
+          id_certificacion: idCertificacion,
           obligatoria: tr.querySelector(".chk-obligatoria").checked ? 1 : 0,
           estado: tr.querySelector(".sel-estado-cert").value,
           numero_certificado: tr.querySelector(".txt-numero-cert").value,
@@ -333,17 +347,20 @@ document.addEventListener("DOMContentLoaded", function () {
           fecha_vencimiento: tr.querySelector(".fecha-vencimiento-cert").value,
           observaciones: tr.querySelector(".txt-observaciones-cert").value,
         });
+
+        let inpArchivo = tr.querySelector(".inp-archivo-cert");
+        if (inpArchivo && inpArchivo.files && inpArchivo.files[0]) {
+          formData.append("archivo_" + idCertificacion, inpArchivo.files[0]);
+        }
       });
 
       let request = new XMLHttpRequest();
       let ajaxUrl = base_url + "/Ing_configuraciones/setCertificaciones";
-      let params = new URLSearchParams();
-      params.append("id_configuracion", idConfiguracionInput.value);
-      params.append("certificaciones", JSON.stringify(certificaciones));
+      formData.append("id_configuracion", idConfiguracionInput.value);
+      formData.append("certificaciones", JSON.stringify(certificaciones));
 
       request.open("POST", ajaxUrl, true);
-      request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-      request.send(params.toString());
+      request.send(formData);
 
       request.onreadystatechange = function () {
         if (request.readyState !== 4) return;
@@ -356,6 +373,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (objData.status) {
           Swal.fire("¡Operación exitosa!", objData.msg, "success");
           if (idConfiguracionInput && idConfiguracionInput.value) {
+            cargarCertificaciones(idConfiguracionInput.value);
             cargarHistorial(idConfiguracionInput.value);
             cargarFichaTecnica(idConfiguracionInput.value);
             cargarProgreso(idConfiguracionInput.value);
@@ -525,6 +543,12 @@ function renderCertificaciones(arrData) {
       '<td><input type="date" class="form-control fecha-inicio-cert" value="' + (row.fecha_inicio || "") + '"></td>' +
       '<td><input type="date" class="form-control fecha-vencimiento-cert" value="' + (row.fecha_vencimiento || "") + '"></td>' +
       '<td><input type="text" class="form-control txt-observaciones-cert" value="' + (row.observaciones || "") + '"></td>' +
+      '<td>' +
+      (row.archivo
+        ? '<a href="' + base_url + '/Assets/uploads/ing_certificaciones/' + row.archivo + '" target="_blank" class="btn btn-sm btn-soft-success mb-1" title="Ver archivo adjunto"><i class="ri-file-text-fill align-bottom"></i> Ver</a><br>'
+        : "") +
+      '<input type="file" class="form-control form-control-sm inp-archivo-cert" accept=".pdf,.jpg,.jpeg,.png">' +
+      "</td>" +
       "</tr>";
   });
 
