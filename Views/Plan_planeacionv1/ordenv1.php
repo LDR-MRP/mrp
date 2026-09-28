@@ -22,6 +22,7 @@ function badgePrioridad($prioridad)
   }
 }
 
+
 function badgeEstadoOrden($estatus)
 {
   $estatus = (int) $estatus;

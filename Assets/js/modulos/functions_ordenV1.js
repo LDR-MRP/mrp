@@ -2191,7 +2191,7 @@ function validarPermisosProduccion() {
       puedeFinalizar ? '' : 'none';
   }
 
- function validarBotonesProduccion() {
+ function validarBotonesProduccionoLD() {
 
   if (!btnIniciarProduccion || !btnFinalizarProduccion) {
     return;
@@ -2205,6 +2205,53 @@ function validarPermisosProduccion() {
   const esAdmin = currentRolId === 1;
 
   const tienePermiso = esSupervisor || esAdmin;
+
+  if (!tienePermiso) {
+    btnIniciarProduccion.style.display = 'none';
+    btnFinalizarProduccion.style.display = 'none';
+    return;
+  }
+
+  const fase = Number(MRP_STATE?.fase || 0);
+
+  // FASE 2 = pendiente / lista para iniciar producción
+  if (fase === 2) {
+    btnIniciarProduccion.style.display = '';
+    btnFinalizarProduccion.style.display = 'none';
+    return;
+  }
+
+  // FASE 3 = producción en proceso
+  if (fase === 3) {
+    btnIniciarProduccion.style.display = 'none';
+    btnFinalizarProduccion.style.display = '';
+    return;
+  }
+
+  // FASE 5 = producción finalizada
+  if (fase === 5) {
+    btnIniciarProduccion.style.display = 'none';
+    btnFinalizarProduccion.style.display = 'none';
+    return;
+  }
+
+  btnIniciarProduccion.style.display = 'none';
+  btnFinalizarProduccion.style.display = 'none';
+}
+
+
+function validarBotonesProduccion() {
+  if (!btnIniciarProduccion || !btnFinalizarProduccion) {
+    return;
+  }
+
+  const supervisorId = Number(MRP_STATE?.supervisorid || 0);
+  const currentUserId = Number(window.CURRENT_USER_ID || 0);
+  const currentRolId = Number(window.CURRENT_ROL_ID || 0);
+
+  const esSupervisor = currentUserId === supervisorId;
+  const tieneRolPermitido = [1, 7].includes(currentRolId);
+  const tienePermiso = esSupervisor || tieneRolPermitido;
 
   if (!tienePermiso) {
     btnIniciarProduccion.style.display = 'none';

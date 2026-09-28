@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function normalizarTextoSimple(valor) {
-        return String(valor ? ? '').trim();
+        return String(valor ?? '').trim();
     }
 
     function normalizarTextoBusqueda(valor) {
@@ -124,15 +124,15 @@ document.addEventListener('DOMContentLoaded', function() {
             return data;
         }
 
-        if (Array.isArray(data ? .data)) {
+        if (Array.isArray(data?.data)) {
             return data.data;
         }
 
-        if (Array.isArray(data ? .clientes)) {
+        if (Array.isArray(data?.clientes)) {
             return data.clientes;
         }
 
-        if (Array.isArray(data ? .results)) {
+        if (Array.isArray(data?.results)) {
             return data.results;
         }
 
@@ -377,7 +377,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             return {
                 idcliente: convertirNumero(
-                    row.idcliente ? ? row.id
+                    row.idcliente ?? row.id
                 ),
 
                 idtipo_cliente: convertirNumero(
@@ -457,11 +457,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function aplicarFiltros(rows) {
         const textoBusqueda = normalizarTextoBusqueda(
-            filterSearch ? .value
+            filterSearch ?.value
         );
 
-        const fechaDesde = filterDesde ? .value || '';
-        const fechaHasta = filterHasta ? .value || '';
+        const fechaDesde = filterDesde ?.value || '';
+        const fechaHasta = filterHasta ?.value || '';
 
         return rows.filter(row => {
             const camposBusqueda = [
@@ -935,7 +935,7 @@ document.addEventListener('DOMContentLoaded', function() {
     |--------------------------------------------------------------------------
     */
 
-    const tipoInicial = filterTipoCliente ? .value || 'TODAS';
+    const tipoInicial = filterTipoCliente ?.value || 'TODAS';
 
     renderListado(tipoInicial);
 });
