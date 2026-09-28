@@ -1091,7 +1091,7 @@ class Plan_planeacionModel extends Mysql
     }
 
 
-    $isAdmin = isset($_SESSION['rolid']) && in_array((int) $_SESSION['rolid'], [1, 5, 4]);
+    $isAdmin = isset($_SESSION['rolid']) && in_array((int) $_SESSION['rolid'], [1, 5, 4, 7]);
 
     $userIdSes = isset($_SESSION['idUser']) ? (int) $_SESSION['idUser'] : 0;
 

@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
 
     /*
     |--------------------------------------------------------------------------
@@ -52,8 +52,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function getListadoEndpoint(tipo) {
         const tipoNormalizado = normalizarTextoSimple(tipo).toUpperCase();
 
-        return ENDPOINTS_CLIENTES[tipoNormalizado]
-            || ENDPOINTS_CLIENTES.TODAS;
+        return ENDPOINTS_CLIENTES[tipoNormalizado] ||
+            ENDPOINTS_CLIENTES.TODAS;
     }
 
     /*
@@ -93,15 +93,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function escapeHtml(valor) {
         const div = document.createElement('div');
-        div.textContent = valor === null || valor === undefined
-            ? ''
-            : String(valor);
+        div.textContent = valor === null || valor === undefined ?
+            '' :
+            String(valor);
 
         return div.innerHTML;
     }
 
     function normalizarTextoSimple(valor) {
-        return String(valor ?? '').trim();
+        return String(valor ? ? '').trim();
     }
 
     function normalizarTextoBusqueda(valor) {
@@ -114,9 +114,9 @@ document.addEventListener('DOMContentLoaded', function () {
     function convertirNumero(valor, valorPredeterminado = 0) {
         const numero = Number(valor);
 
-        return Number.isFinite(numero)
-            ? numero
-            : valorPredeterminado;
+        return Number.isFinite(numero) ?
+            numero :
+            valorPredeterminado;
     }
 
     function obtenerArrayRespuesta(data) {
@@ -124,15 +124,15 @@ document.addEventListener('DOMContentLoaded', function () {
             return data;
         }
 
-        if (Array.isArray(data?.data)) {
+        if (Array.isArray(data ? .data)) {
             return data.data;
         }
 
-        if (Array.isArray(data?.clientes)) {
+        if (Array.isArray(data ? .clientes)) {
             return data.clientes;
         }
 
-        if (Array.isArray(data?.results)) {
+        if (Array.isArray(data ? .results)) {
             return data.results;
         }
 
@@ -155,9 +155,9 @@ document.addEventListener('DOMContentLoaded', function () {
             4: 'GUBERNAMENTAL'
         };
 
-        return tipos[idtipo]
-            || normalizarTextoSimple(row.tipo_cliente)
-            || 'SIN TIPO';
+        return tipos[idtipo] ||
+            normalizarTextoSimple(row.tipo_cliente) ||
+            'SIN TIPO';
     }
 
     /*
@@ -357,9 +357,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return 'Sin crédito';
         }
 
-        return cantidad === 1
-            ? '1 día'
-            : `${cantidad} días`;
+        return cantidad === 1 ?
+            '1 día' :
+            `${cantidad} días`;
     }
 
     /*
@@ -377,7 +377,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             return {
                 idcliente: convertirNumero(
-                    row.idcliente ?? row.id
+                    row.idcliente ? ? row.id
                 ),
 
                 idtipo_cliente: convertirNumero(
@@ -457,11 +457,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function aplicarFiltros(rows) {
         const textoBusqueda = normalizarTextoBusqueda(
-            filterSearch?.value
+            filterSearch ? .value
         );
 
-        const fechaDesde = filterDesde?.value || '';
-        const fechaHasta = filterHasta?.value || '';
+        const fechaDesde = filterDesde ? .value || '';
+        const fechaHasta = filterHasta ? .value || '';
 
         return rows.filter(row => {
             const camposBusqueda = [
@@ -481,17 +481,17 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (
-                fechaDesde
-                && row.fecha_filtro
-                && row.fecha_filtro < fechaDesde
+                fechaDesde &&
+                row.fecha_filtro &&
+                row.fecha_filtro < fechaDesde
             ) {
                 return false;
             }
 
             if (
-                fechaHasta
-                && row.fecha_filtro
-                && row.fecha_filtro > fechaHasta
+                fechaHasta &&
+                row.fecha_filtro &&
+                row.fecha_filtro > fechaHasta
             ) {
                 return false;
             }
@@ -791,8 +791,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function inicializarTooltips() {
         if (
-            typeof bootstrap === 'undefined'
-            || typeof bootstrap.Tooltip === 'undefined'
+            typeof bootstrap === 'undefined' ||
+            typeof bootstrap.Tooltip === 'undefined'
         ) {
             return;
         }
@@ -827,8 +827,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        tipoClienteActual = normalizarTextoSimple(tipo).toUpperCase()
-            || 'TODAS';
+        tipoClienteActual = normalizarTextoSimple(tipo).toUpperCase() ||
+            'TODAS';
 
         if (controladorCarga) {
             controladorCarga.abort();
@@ -877,7 +877,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function debounce(funcion, tiempo = 300) {
         let temporizador;
 
-        return function (...argumentos) {
+        return function(...argumentos) {
             clearTimeout(temporizador);
 
             temporizador = setTimeout(() => {
@@ -898,7 +898,7 @@ document.addEventListener('DOMContentLoaded', function () {
     */
 
     if (filterTipoCliente) {
-        filterTipoCliente.addEventListener('change', function () {
+        filterTipoCliente.addEventListener('change', function() {
             const tipoSeleccionado = this.value || 'TODAS';
 
             renderListado(tipoSeleccionado);
@@ -906,7 +906,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (btnRefrescarListado) {
-        btnRefrescarListado.addEventListener('click', function () {
+        btnRefrescarListado.addEventListener('click', function() {
             renderListado(tipoClienteActual);
         });
     }
@@ -935,7 +935,7 @@ document.addEventListener('DOMContentLoaded', function () {
     |--------------------------------------------------------------------------
     */
 
-    const tipoInicial = filterTipoCliente?.value || 'TODAS';
+    const tipoInicial = filterTipoCliente ? .value || 'TODAS';
 
     renderListado(tipoInicial);
 });
@@ -967,7 +967,7 @@ function fntAccesosCliente(idcliente) {
 
     window.location.href =
         `${base_url}/cli_clientes/accesos/${idcliente}`;
- 
+
 }
 
 
@@ -1012,6 +1012,6 @@ function fntDelCliente(idcliente) {
 
 /*creamos la funcionalidad para redirecionar a la vista de crear un nuevo cliente */
 
-document.getElementById("btnAgregarCliente").addEventListener("click", function () {
+document.getElementById("btnAgregarCliente").addEventListener("click", function() {
     window.location.href = base_url + "/cli_clientes/create";
 });
