@@ -10,7 +10,7 @@ class Inv_series extends Controllers
             header('Location: ' . base_url() . '/login');
             die();
         }
-        getPermisos(MIASIGNACIONESINV); // 71 = Generar VIN (antes usaba MIPRECIOS=17 por error)
+        getPermisos(MIPRECIOS);
     }
 
     public function Inv_series()
