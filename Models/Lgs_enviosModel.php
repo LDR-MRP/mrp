@@ -288,7 +288,7 @@ class Lgs_enviosModel extends Mysql
 
         // 4. Ubicaciones
         try {
-            $ubicaciones = $this->select_all("SELECT id_ubicacion AS id, nombre, direccion, lat, lng, id_tipo_destino FROM lgs_cat_ubicaciones WHERE activo = 1 ORDER BY nombre ASC");
+            $ubicaciones = $this->select_all("SELECT id_ubicacion AS id, nombre, direccion, lat, lng, id_tipo_destino, id_distribuidor FROM lgs_cat_ubicaciones WHERE activo = 1 ORDER BY nombre ASC");
         } catch (Throwable $e) {
             $ubicaciones = [];
         }
@@ -306,13 +306,21 @@ class Lgs_enviosModel extends Mysql
         $origenes = array_values($origenes);
         $destinos = array_values($destinos);
 
+        // 5. Distribuidores
+        try {
+            $distribuidores = $this->select_all("SELECT d.id_distribuidor, d.nombre, d.clave, COUNT(u.id_ubicacion) AS total_sedes FROM lgs_cat_distribuidores d LEFT JOIN lgs_cat_ubicaciones u ON u.id_distribuidor = d.id_distribuidor AND u.activo = 1 WHERE d.activo = 1 GROUP BY d.id_distribuidor ORDER BY d.nombre ASC");
+        } catch (Throwable $e) {
+            $distribuidores = [];
+        }
+
         return [
             'tipos_traslado' => $tiposTraslado,
             'motivos'        => $motivos,
             'proveedores'    => $proveedores,
             'origenes'       => $origenes,
             'destinos'       => $destinos,
-            'ubicaciones'    => $ubicaciones
+            'ubicaciones'    => $ubicaciones,
+            'distribuidores' => $distribuidores ?: []
         ];
     }
 
@@ -387,6 +395,23 @@ class Lgs_enviosModel extends Mysql
     /**
      * Obtiene la cabecera completa de un envío por su ID
      */
+    public function getPlaneacionEstadoByEnvio(int $idEnvio): ?int
+    {
+        $sql = "SELECT p.id_estado 
+                FROM lgs_planeaciones p 
+                INNER JOIN lgs_planeaciones_envios pe ON p.id_planeacion = pe.id_planeacion 
+                WHERE pe.id_envio = ? 
+                LIMIT 1";
+        $db = $this->getConexion();
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$idEnvio]);
+        $res = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($res && isset($res['id_estado'])) {
+            return intval($res['id_estado']);
+        }
+        return null;
+    }
+
     public function getEnvioCabecera(int $idEnvio): array
     {
         $sql = "SELECT 

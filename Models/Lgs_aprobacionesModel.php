@@ -28,7 +28,7 @@ class Lgs_aprobacionesModel extends Mysql
                     p.costo_total,
                     p.id_estado,
                     p.created_at,
-                    p.obs_operador,
+                    '' AS obs_operador,
                     u.nombres AS creador,
                     (SELECT COUNT(*) FROM lgs_planeaciones_envios WHERE id_planeacion = p.id_planeacion) AS total_rutas
                 FROM lgs_planeaciones p

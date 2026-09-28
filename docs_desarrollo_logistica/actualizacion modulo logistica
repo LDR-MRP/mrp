@@ -1,0 +1,1080 @@
+# REPLANTEAMIENTO COMPLETO DEL MÓDULO DE LOGÍSTICA
+
+Quiero que replantees y evoluciones el módulo de **Logística / TMS** existente del proyecto.
+
+NO empieces programando inmediatamente.
+
+Primero debes **explorar y entender completamente el código actual**, incluyendo:
+
+* estructura del proyecto;
+* modelos;
+* migraciones;
+* controllers;
+* services;
+* repositories si existen;
+* rutas;
+* requests/validaciones;
+* frontend;
+* tablas actuales relacionadas con logística;
+* catálogos;
+* lógica actual de envíos;
+* cálculo actual de costos;
+* proveedores;
+* segmentos;
+* tipos de envío;
+* madrinas;
+* choferes;
+* unidades;
+* cualquier relación existente con origen/destino.
+
+El objetivo es **integrar esta nueva lógica sobre la arquitectura existente sin romper funcionalidades actuales**.
+
+---
+
+# 1. CONCEPTO PRINCIPAL
+
+El sistema debe modelar un **ENVÍO LOGÍSTICO** como un recorrido compuesto por múltiples ubicaciones.
+
+Una ubicación puede ser:
+
+* Planta
+* Distribuidor
+* Almacén
+* Patio
+* cualquier otro tipo de ubicación logística existente o que el sistema necesite soportar.
+
+El envío puede tener:
+
+### Múltiples ORÍGENES
+
+Ejemplo:
+
+```text
+O1 = Planta 1
+O2 = Planta 2
+O3 = Distribuidor 1
+```
+
+La madrina realiza físicamente el recorrido:
+
+```text
+O1 → O2 → O3 → D1 → D2 → D3
+```
+
+Los orígenes representan puntos donde la madrina **RECOGE unidades**.
+
+Los destinos representan puntos donde la madrina **DEJA unidades**.
+
+---
+
+# 2. FACTORAJE DINÁMICO
+
+Cada grupo de unidades recogidas en un origen tiene un factoraje.
+
+Ejemplo:
+
+```text
+O1
+Factor = F2
+
+O2
+Factor = F3
+
+O3
+Factor = F1
+```
+
+Mientras la madrina va recogiendo unidades, el factoraje se ACUMULA.
+
+Por lo tanto:
+
+```text
+O1:
+F2
+
+O1 → O2:
+F2 + F3 = F5
+
+O1 → O2 → O3:
+F5 + F1 = F6
+```
+
+La madrina sale de O3 transportando:
+
+```text
+FACTOR ACTUAL = F6
+```
+
+---
+
+# 3. LOS DESTINOS RESTAN FACTORAJE
+
+Cuando la madrina llega a un destino, deja determinadas unidades.
+
+El factoraje correspondiente a las unidades entregadas debe descontarse del factoraje actual.
+
+Ejemplo:
+
+```text
+Factor al llegar a D1 = F6
+
+D1 recibe unidades con factor F2
+
+F6 - F2 = F4
+```
+
+Por lo tanto, para el siguiente tramo:
+
+```text
+D1 → D2
+
+Factor = F4
+```
+
+Si D2 recibe unidades con factor F1:
+
+```text
+F4 - F1 = F3
+```
+
+Entonces:
+
+```text
+D2 → D3
+
+Factor = F3
+```
+
+REGLA FUNDAMENTAL:
+
+```text
+ORIGEN = SUMA FACTORAJE
+
+DESTINO = RESTA FACTORAJE
+```
+
+El factoraje de cada tramo depende del estado de carga de la madrina en ese momento.
+
+---
+
+# 4. TRAMOS
+
+El recorrido debe dividirse en tramos.
+
+Ejemplo:
+
+```text
+O1 → O2
+O2 → O3
+O3 → D1
+D1 → D2
+D2 → D3
+```
+
+Cada tramo debe conservar como mínimo:
+
+* ubicación origen;
+* ubicación destino;
+* orden/secuencia;
+* kilómetros;
+* factoraje utilizado;
+* precio/tarifa aplicada;
+* costo calculado;
+* estado;
+* información suficiente para auditar/recalcular.
+
+Ejemplo:
+
+```text
+TRAMO 1
+O1 → O2
+KM = 20
+Factor = F2
+
+TRAMO 2
+O2 → O3
+KM = 15
+Factor = F5
+
+TRAMO 3
+O3 → D1
+KM = 40
+Factor = F6
+
+TRAMO 4
+D1 → D2
+KM = 30
+Factor = F4
+
+TRAMO 5
+D2 → D3
+KM = 25
+Factor = F3
+```
+
+NO calcular únicamente:
+
+```text
+KM TOTAL × FACTOR TOTAL
+```
+
+Eso sería incorrecto.
+
+El cálculo debe hacerse **por tramo**.
+
+---
+
+# 5. CATÁLOGO DE DISTANCIAS — MEMORIA PROGRESIVA
+
+Quiero que el sistema tenga una tabla/catalogo independiente para almacenar distancias conocidas entre ubicaciones.
+
+Conceptualmente:
+
+```text
+lgs_distancias
+```
+
+Debe permitir conocer:
+
+```text
+Ubicación A → Ubicación B = X km
+```
+
+La distancia NO pertenece exclusivamente al envío.
+
+El catálogo funciona como una **memoria reutilizable de distancias**.
+
+---
+
+# 6. LLENADO GRADUAL DE DISTANCIAS
+
+Este comportamiento es MUY IMPORTANTE.
+
+Cuando se crea un envío y se construye la ruta:
+
+```text
+Planta 1 → Almacén 1
+```
+
+el sistema debe consultar automáticamente si ya existe esa distancia.
+
+### CASO A — YA EXISTE
+
+Si existe:
+
+```text
+Planta 1 → Almacén 1 = 20 km
+```
+
+el sistema debe:
+
+* recuperar automáticamente los 20 km;
+* rellenar el campo;
+* NO pedir nuevamente al usuario la distancia.
+
+### CASO B — NO EXISTE
+
+Si no existe:
+
+```text
+Planta 1 → Almacén 1
+```
+
+el sistema debe detectar que falta.
+
+La UI debe solicitar al usuario:
+
+```text
+Distancia Planta 1 → Almacén 1:
+[ 20 ] km
+```
+
+Cuando el usuario confirme/guarde:
+
+```text
+Planta 1 → Almacén 1 = 20 km
+```
+
+debe almacenarse en `lgs_distancias`.
+
+La siguiente vez que se utilice esa combinación:
+
+```text
+Planta 1 → Almacén 1
+```
+
+el sistema debe encontrar:
+
+```text
+20 km
+```
+
+y rellenarlo automáticamente.
+
+---
+
+# 7. LA DISTANCIA DEBE SER REUTILIZABLE
+
+Ejemplo:
+
+ENVÍO #1001:
+
+```text
+Planta 1 → Almacén 1
+```
+
+No existe.
+
+Usuario captura:
+
+```text
+20 km
+```
+
+Se almacena.
+
+Posteriormente:
+
+ENVÍO #1050:
+
+```text
+Planta 1 → Almacén 1
+```
+
+El sistema encuentra:
+
+```text
+20 km
+```
+
+y lo rellena automáticamente.
+
+NO volver a preguntar.
+
+---
+
+# 8. HISTÓRICO DEL ENVÍO
+
+MUY IMPORTANTE:
+
+Aunque el catálogo tenga una distancia reutilizable, el envío debe conservar el valor que utilizó en ese momento.
+
+Ejemplo:
+
+Catálogo:
+
+```text
+Planta 1 → Almacén 1 = 20 km
+```
+
+Envío #1001:
+
+```text
+KM utilizado = 20
+```
+
+Posteriormente alguien corrige el catálogo:
+
+```text
+Planta 1 → Almacén 1 = 22 km
+```
+
+El envío histórico #1001 debe seguir teniendo:
+
+```text
+20 km
+```
+
+NO modificar costos históricos automáticamente.
+
+El catálogo representa el valor actualmente conocido.
+
+El envío representa el snapshot utilizado para ese cálculo.
+
+---
+
+# 9. DISTANCIAS ENTRE TODOS LOS TIPOS DE UBICACIÓN
+
+NO crear lógica separada para:
+
+```text
+planta → almacén
+planta → distribuidor
+almacén → patio
+etc.
+```
+
+Debe existir un modelo genérico de:
+
+```text
+UBICACIÓN → UBICACIÓN
+```
+
+Por ejemplo:
+
+```text
+Planta 1 → Planta 2
+Planta 1 → Almacén 1
+Almacén 1 → Distribuidor 1
+Distribuidor 1 → Patio 1
+Patio 1 → Almacén 2
+```
+
+El sistema debe ser capaz de reutilizar todas esas distancias.
+
+---
+
+# 10. EVITAR DUPLICADOS
+
+Debe existir una estrategia para evitar duplicar innecesariamente:
+
+```text
+Planta 1 → Almacén 1
+```
+
+y
+
+```text
+Almacén 1 → Planta 1
+```
+
+si el negocio considera que físicamente la distancia es equivalente.
+
+Analiza el dominio existente y determina la mejor solución.
+
+Preferentemente manejar una relación de distancia reutilizable/bidireccional sin duplicar información innecesariamente.
+
+NO tomes esta decisión sin analizar primero el modelo actual.
+
+---
+
+# 11. FLUJO COMPLETO DEL ENVÍO
+
+El flujo esperado es:
+
+### PASO 1
+
+Crear envío.
+
+### PASO 2
+
+Seleccionar madrina.
+
+### PASO 3
+
+Agregar uno o múltiples orígenes.
+
+Ejemplo:
+
+```text
+O1 Planta 1
+O2 Planta 2
+O3 Planta 3
+```
+
+### PASO 4
+
+Para cada origen indicar las unidades que recoge y su factoraje.
+
+Ejemplo:
+
+```text
+Planta 1
+Unidades: 3
+Factor: F2
+
+Planta 2
+Unidades: 4
+Factor: F3
+
+Planta 3
+Unidades: 2
+Factor: F1
+```
+
+### PASO 5
+
+Agregar uno o múltiples destinos.
+
+Ejemplo:
+
+```text
+D1 Almacén 1
+D2 Distribuidor 1
+D3 Patio 1
+```
+
+### PASO 6
+
+Construir automáticamente la secuencia:
+
+```text
+O1 → O2 → O3 → D1 → D2 → D3
+```
+
+### PASO 7
+
+Para cada conexión:
+
+```text
+A → B
+```
+
+consultar:
+
+```text
+¿Existe distancia?
+```
+
+Si existe:
+
+```text
+usar distancia
+```
+
+Si no existe:
+
+```text
+solicitarla
+guardar
+usar
+```
+
+### PASO 8
+
+Calcular factoraje progresivo:
+
+```text
+O1:
+F2
+
+O2:
+F2 + F3 = F5
+
+O3:
+F5 + F1 = F6
+
+D1:
+F6 - F2 = F4
+
+D2:
+F4 - F1 = F3
+
+D3:
+F3 - F3 = F0
+```
+
+El factoraje debe poder llegar a:
+
+```text
+F0
+```
+
+al finalizar correctamente el envío.
+
+---
+
+# 12. VALIDACIONES DE NEGOCIO
+
+Implementar validaciones para evitar inconsistencias.
+
+Por ejemplo:
+
+* no permitir factoraje negativo;
+* no permitir entregar más factoraje del disponible;
+* no permitir finalizar un envío si quedan unidades/factoraje pendientes, salvo que el negocio explícitamente permita esa situación;
+* no permitir destinos que intenten descargar unidades inexistentes;
+* validar que las unidades asignadas realmente correspondan al envío;
+* validar secuencia de recorrido;
+* validar kilómetros;
+* validar ubicaciones;
+* validar duplicados;
+* validar que cada tramo tenga la información necesaria para calcular su costo.
+
+Las reglas exactas deben derivarse también de lo que ya existe en el sistema.
+
+---
+
+# 13. CÁLCULO DEL COSTO
+
+El costo debe calcularse por tramo.
+
+NO inventes una fórmula nueva si el proyecto ya tiene una fórmula de costeo existente.
+
+Primero identifica cómo se calcula actualmente:
+
+* tarifa;
+* factor;
+* segmento;
+* tipo de envío;
+* proveedor;
+* unidad;
+* kilometraje;
+* cualquier otro factor existente.
+
+Después adapta esa fórmula al nuevo concepto:
+
+```text
+COSTO DEL TRAMO
+=
+KM DEL TRAMO
++
+FACTORAJE DEL TRAMO
++
+REGLAS DE COSTEO EXISTENTES
+```
+
+La expresión anterior es conceptual.
+
+**NO asumas que literalmente es KM + factor.**
+
+Debes identificar la fórmula real existente y conservarla.
+
+Lo nuevo es que el:
+
+```text
+KM
+```
+
+y el:
+
+```text
+FACTOR
+```
+
+se obtienen dinámicamente por tramo.
+
+---
+
+# 14. ARQUITECTURA
+
+NO meter toda la lógica en Controllers.
+
+Quiero una arquitectura limpia.
+
+Idealmente separar:
+
+### Envío
+
+Responsable de la entidad principal.
+
+### Ruta
+
+Responsable de la secuencia de ubicaciones.
+
+### Tramos
+
+Responsables de cada conexión A → B.
+
+### Distancias
+
+Responsable del catálogo/memoria de distancias.
+
+### Factoraje
+
+Responsable del estado acumulado/reducido.
+
+### Costeo
+
+Responsable de calcular el precio por tramo y total.
+
+Puedes crear Services especializados si eso encaja mejor con la arquitectura actual.
+
+No quiero sobreingeniería innecesaria.
+
+---
+
+# 15. API / BACKEND
+
+Analiza las rutas actuales y determina qué endpoints deben:
+
+* mantenerse;
+* modificarse;
+* agregarse;
+* deprecated si realmente es necesario.
+
+No rompas APIs existentes sin justificación.
+
+Implementa:
+
+* validaciones;
+* transacciones;
+* manejo de errores;
+* respuestas consistentes;
+* autorización existente;
+* auditoría si el proyecto ya cuenta con ella.
+
+---
+
+# 16. FRONTEND
+
+El frontend debe hacer evidente al usuario el comportamiento.
+
+Al construir la ruta debería visualizarse algo como:
+
+```text
+┌───────────────────────────────────────┐
+│ ORÍGENES                              │
+├───────────────────────────────────────┤
+│ Planta 1       F2                     │
+│ Planta 2       F3                     │
+│ Planta 3       F1                     │
+└───────────────────────────────────────┘
+
+                ↓
+
+Factor acumulado: F6
+
+                ↓
+
+┌───────────────────────────────────────┐
+│ DESTINOS                              │
+├───────────────────────────────────────┤
+│ Almacén 1      -F2                    │
+│ Distribuidor 1 -F1                    │
+│ Patio 1        -F3                    │
+└───────────────────────────────────────┘
+```
+
+Y mostrar los tramos:
+
+```text
+O1 → O2
+20 km
+Factor F2
+
+O2 → O3
+15 km
+Factor F5
+
+O3 → D1
+40 km
+Factor F6
+
+D1 → D2
+30 km
+Factor F4
+
+D2 → D3
+25 km
+Factor F3
+```
+
+Cuando falte una distancia:
+
+```text
+⚠ Distancia no registrada
+
+Planta 2 → Distribuidor 1
+
+[ ______ ] km
+
+[Guardar distancia]
+```
+
+Una vez guardada:
+
+```text
+✓ Distancia registrada: 35 km
+```
+
+---
+
+# 17. NO QUIERO DUPLICAR INFORMACIÓN
+
+El catálogo de distancias debe ser reutilizable.
+
+El envío debe conservar su snapshot.
+
+Los catálogos de ubicaciones deben ser reutilizados.
+
+Las unidades deben tener una única fuente de verdad.
+
+Los factores deben derivarse de las unidades/asignaciones cuando corresponda.
+
+Evita almacenar el mismo dato en múltiples tablas salvo que exista una razón histórica/auditiva.
+
+---
+
+# 18. RECOMPUTACIÓN
+
+Debe existir una forma segura de recalcular la ruta.
+
+Si cambia:
+
+* un origen;
+* una unidad;
+* un destino;
+* una descarga;
+* una distancia;
+* una tarifa;
+
+el sistema debe poder recalcular los tramos afectados.
+
+Sin embargo:
+
+**NO modificar automáticamente envíos históricos ya cerrados/facturados**, si la arquitectura actual contempla estados cerrados.
+
+Analiza los estados existentes antes de implementar esta regla.
+
+---
+
+# 19. PRUEBAS
+
+Antes de considerar terminada la implementación, crea pruebas automatizadas.
+
+Como mínimo cubrir:
+
+### Caso 1 — Un origen / un destino
+
+```text
+O1 F5 → D1
+```
+
+### Caso 2 — Múltiples orígenes
+
+```text
+O1 F2
+O2 F3
+
+Resultado:
+F5
+```
+
+### Caso 3 — Múltiples destinos
+
+```text
+F5 → D1 descarga F2 → F3
+F3 → D2 descarga F1 → F2
+F2 → D3 descarga F2 → F0
+```
+
+### Caso 4 — Distancia inexistente
+
+Debe solicitar/crear la distancia.
+
+### Caso 5 — Distancia existente
+
+Debe recuperarla automáticamente.
+
+### Caso 6 — Reutilización
+
+Crear dos envíos con:
+
+```text
+Planta 1 → Almacén 1
+```
+
+El segundo debe utilizar automáticamente la distancia previamente registrada.
+
+### Caso 7 — Factoraje insuficiente
+
+Intentar descargar:
+
+```text
+F6
+```
+
+cuando solamente hay:
+
+```text
+F5
+```
+
+Debe fallar.
+
+### Caso 8 — Factoraje final
+
+Un envío correctamente terminado debe llegar a:
+
+```text
+F0
+```
+
+### Caso 9 — Histórico
+
+Modificar posteriormente el catálogo de distancia y comprobar que un envío histórico conserva su snapshot.
+
+### Caso 10 — Recalculo
+
+Modificar la ruta y comprobar que los tramos afectados se recalculan correctamente.
+
+---
+
+# 20. MIGRACIONES
+
+Antes de crear nuevas tablas:
+
+1. inspecciona las tablas actuales;
+2. identifica qué información ya existe;
+3. reutiliza estructuras existentes cuando tenga sentido;
+4. evita crear tablas duplicadas;
+5. crea migraciones compatibles con la base de datos actual;
+6. agrega índices y constraints necesarios;
+7. agrega índices para búsquedas frecuentes de distancias.
+
+Especial atención a la unicidad de las relaciones de distancia.
+
+---
+
+# 21. NO HAGAS ESTO
+
+NO:
+
+* reescribas todo el proyecto innecesariamente;
+* elimines tablas existentes sin analizar dependencias;
+* cambies APIs existentes porque sí;
+* metas toda la lógica en un Controller;
+* dupliques distancias;
+* recalcules históricos cerrados sin razón;
+* hardcodees plantas, almacenes o distribuidores;
+* hardcodees factores;
+* asumas que todos los envíos tienen un solo origen;
+* asumas que todos los envíos tienen un solo destino;
+* uses KM TOTAL × FACTOR TOTAL;
+* inventes reglas de negocio que no estén justificadas.
+
+---
+
+# 22. METODOLOGÍA OBLIGATORIA
+
+Trabaja en estas fases:
+
+## FASE 1 — ANÁLISIS
+
+Explora primero el proyecto.
+
+Identifica:
+
+* arquitectura actual;
+* tablas;
+* relaciones;
+* endpoints;
+* lógica existente;
+* frontend;
+* fórmula de costeo;
+* flujo actual de creación de envíos.
+
+NO MODIFIQUES CÓDIGO TODAVÍA.
+
+Al finalizar esta fase genera un diagnóstico técnico.
+
+---
+
+## FASE 2 — DISEÑO
+
+Propón:
+
+* modelo de datos;
+* migraciones;
+* relaciones;
+* flujo de negocio;
+* algoritmo de factoraje;
+* algoritmo de distancias;
+* cálculo por tramo;
+* endpoints;
+* cambios de frontend.
+
+Explica qué reutilizarás y qué crearás.
+
+NO IMPLEMENTES TODAVÍA si detectas conflictos importantes con el sistema actual.
+
+---
+
+## FASE 3 — IMPLEMENTACIÓN
+
+Una vez validado el diseño internamente con el código existente:
+
+* implementa migraciones;
+* modelos;
+* services;
+* controllers;
+* requests;
+* endpoints;
+* frontend;
+* validaciones;
+* pruebas.
+
+Mantén compatibilidad con lo existente siempre que sea posible.
+
+---
+
+## FASE 4 — PRUEBAS
+
+Ejecuta:
+
+* tests unitarios;
+* tests de integración;
+* pruebas de API;
+* pruebas del cálculo;
+* pruebas de regresión.
+
+Corrige cualquier error.
+
+---
+
+## FASE 5 — AUDITORÍA FINAL
+
+Antes de terminar verifica:
+
+```text
+[ ] Múltiples orígenes
+[ ] Múltiples destinos
+[ ] Madrina recorriendo múltiples orígenes
+[ ] Factor acumulativo en orígenes
+[ ] Factor decremental en destinos
+[ ] Tramos independientes
+[ ] KM por tramo
+[ ] Factor por tramo
+[ ] Costeo por tramo
+[ ] Catálogo de distancias
+[ ] Autorrelleno de distancias existentes
+[ ] Captura de distancias inexistentes
+[ ] Persistencia de nuevas distancias
+[ ] Reutilización futura
+[ ] Snapshot histórico
+[ ] Validación de factoraje
+[ ] Recalculo
+[ ] Tests
+[ ] Compatibilidad con funcionalidades existentes
+```
+
+---
+
+# 23. REGLA MÁS IMPORTANTE
+
+No quiero que implementes solamente lo que literalmente dice este documento.
+
+Quiero que **entiendas el dominio existente**, detectes conflictos con la arquitectura actual y construyas la solución más sólida.
+
+Si encuentras una decisión de diseño que pueda afectar significativamente:
+
+* costos;
+* datos históricos;
+* facturación;
+* compatibilidad;
+* estructura de BD;
+
+detente y explícala antes de tomar una decisión destructiva.
+
+La prioridad es:
+
+```text
+CORRECCIÓN DEL NEGOCIO
+>
+INTEGRIDAD DE DATOS
+>
+COMPATIBILIDAD
+>
+MANTENIBILIDAD
+>
+PERFORMANCE
+>
+VELOCIDAD DE IMPLEMENTACIÓN
+```
+
+El resultado final debe ser un **motor de envíos logísticos multi-origen / multi-destino, con factoraje dinámico por tramo y catálogo progresivo de distancias reutilizables**.
+
+No quiero un parche.
+
+Quiero que esta sea la base correcta para continuar desarrollando el módulo de Logística.

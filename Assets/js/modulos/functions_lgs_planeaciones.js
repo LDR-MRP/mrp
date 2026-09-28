@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 "data": "costo_total",
                 "render": function (data) {
                     if (data == null) return '$0.00';
-                    return '<span class="fw-bold text-success">$' + parseFloat(data).toFixed(2) + '</span>';
+                    return '<span class="fw-bold text-success">$' + parseFloat(data).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</span>';
                 }
             },
             { "data": "created_at" },
@@ -85,6 +85,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     } else if (parseInt(row.id_estado) === 3 || parseInt(row.id_estado) === 2) {
                         btnActionExtra = `<button class="btn btn-sm btn-soft-warning rounded-pill px-3 fw-semibold me-1" onClick="fntReabrirPlan(${data})" title="Reabrir y Desbloquear Planeación">
                                             <i class="ri-restart-line me-1"></i> Reabrir
+                                          </button>`;
+                    } else if (parseInt(row.id_estado) === 4) {
+                        btnActionExtra = `<button class="btn btn-sm btn-soft-info rounded-pill px-3 fw-semibold me-1" onClick="clonarPlaneacion(${data})" title="Clonar (Reutilizar Histórico)">
+                                            <i class="ri-file-copy-line me-1"></i> Clonar
                                           </button>`;
                     }
                     return `<div class="text-end">
@@ -117,7 +121,7 @@ function actualizarMetricasPlaneaciones(data) {
     if (document.getElementById('cardTotalPlaneaciones')) document.getElementById('cardTotalPlaneaciones').innerText = total;
     if (document.getElementById('cardPlanPendientes')) document.getElementById('cardPlanPendientes').innerText = pendientes;
     if (document.getElementById('cardPlanAprobadas')) document.getElementById('cardPlanAprobadas').innerText = aprobadas;
-    if (document.getElementById('cardPlanMontoTotal')) document.getElementById('cardPlanMontoTotal').innerText = '$' + montoTotal.toFixed(2);
+    if (document.getElementById('cardPlanMontoTotal')) document.getElementById('cardPlanMontoTotal').innerText = '$' + montoTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function openModalPlan() {
@@ -148,13 +152,13 @@ function cargarEnviosDisponibles() {
                     htmlBody += `
                         <tr>
                             <td>
-                                <input class="form-check-input chk-envio" type="checkbox" value="${envio.id_envio}" data-costo="${envio.costo_total}" onchange="calcularTotalesPlan();">
+                                <input class="form-check-input chk-envio" type="checkbox" value="${envio.id_envio}" data-costo="${envio.costo_total}" data-distancia="${envio.km_total || 0}" onchange="calcularTotalesPlan();">
                             </td>
                             <td class="fw-bold">${envio.folio}</td>
                             <td>${envio.origen}</td>
                             <td>${envio.trasladista}</td>
                             <td><span class="badge bg-soft-info text-info">${envio.total_vins} VINs</span></td>
-                            <td class="fw-bold text-success">$${parseFloat(envio.costo_total).toFixed(2)}</td>
+                            <td class="fw-bold text-success">$${parseFloat(envio.costo_total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         </tr>
                     `;
                 });
@@ -178,13 +182,18 @@ function toggleAllEnvios(masterChk) {
 function calcularTotalesPlan() {
     let checkboxes = document.querySelectorAll('.chk-envio:checked');
     let totalCosto = 0.0;
+    let totalDistancia = 0.0;
     
     checkboxes.forEach(chk => {
         totalCosto += parseFloat(chk.getAttribute('data-costo')) || 0;
+        totalDistancia += parseFloat(chk.getAttribute('data-distancia')) || 0;
     });
     
-    let lbl = document.getElementById('lbl-monto-plan-display');
-    if (lbl) lbl.innerText = '$' + totalCosto.toFixed(2);
+    let lblMonto = document.getElementById('lbl-monto-plan-display');
+    if (lblMonto) lblMonto.innerText = '$' + totalCosto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    let lblDistancia = document.getElementById('lbl-distancia-plan-display');
+    if (lblDistancia) lblDistancia.innerText = totalDistancia.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km';
 }
 
 function savePlaneacion() {
@@ -251,8 +260,8 @@ function fntViewPlan(idPlaneacion) {
 
                     // 1. Cabecera y KPIs
                     setTxt('vdp_folio', plan.folio || ('PL-' + plan.id_planeacion));
-                    setTxt('vdp_costo_total', '$' + (parseFloat(plan.costo_total) || 0).toFixed(2));
-                    setTxt('vdp_km_total', (parseFloat(plan.km_total) || 0).toFixed(1));
+                    setTxt('vdp_costo_total', '$' + (parseFloat(plan.costo_total) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                    setTxt('vdp_km_total', (parseFloat(plan.km_total) || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
                     setTxt('vdp_total_envios', (plan.envios || []).length);
                     
                     let totalVinsCount = 0;
@@ -307,7 +316,7 @@ function fntViewPlan(idPlaneacion) {
                                             <td><span class="badge bg-soft-secondary text-dark">${v.modelo}</span></td>
                                             <td><i class="ri-map-pin-line text-danger me-1"></i>${v.destino_parada}</td>
                                             <td><i class="ri-truck-line text-info me-1"></i>${v.madrina}</td>
-                                            <td class="text-end fw-bold text-success">$${(parseFloat(v.costo_unidad) || 0).toFixed(2)}</td>
+                                            <td class="text-end fw-bold text-success">$${(parseFloat(v.costo_unidad) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                         </tr>
                                     `;
                                 });
@@ -326,7 +335,7 @@ function fntViewPlan(idPlaneacion) {
                                         </div>
                                         <div class="d-flex align-items-center gap-3">
                                             <span class="fs-12 text-muted"><i class="ri-car-line me-1"></i>${env.total_vins} unidad(es)</span>
-                                            <strong class="fs-14 text-success">$${(parseFloat(env.costo_total) || 0).toFixed(2)}</strong>
+                                            <strong class="fs-14 text-success">$${(parseFloat(env.costo_total) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                                         </div>
                                     </div>
                                     <div class="card-body p-0">
@@ -476,6 +485,55 @@ function fntEnviarAprobacionPlan(idPlaneacion) {
                     }
                 }
             };
+        }
+    });
+}
+
+function clonarPlaneacion(idPlaneacion) {
+    Swal.fire({
+        title: '¿Clonar Planeación?',
+        text: 'Se creará una copia en estado de Borrador con los mismos envíos, dejándolos disponibles para edición.',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, clonar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Clonando...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+            let request = new XMLHttpRequest();
+            let ajaxUrl = base_url + '/Lgs_planeaciones/clonarPlaneacion';
+            let formData = new FormData();
+            formData.append('id_planeacion', idPlaneacion);
+
+            request.open("POST", ajaxUrl, true);
+            request.send(formData);
+
+            request.onreadystatechange = function () {
+                if (request.readyState == 4) {
+                    if (request.status == 200) {
+                        try {
+                            let objData = JSON.parse(request.responseText);
+                            if (objData.status) {
+                                Swal.fire("Éxito", objData.msg, "success");
+                                tablePlaneaciones.ajax.reload();
+                                if (document.getElementById('view-detalle-planeaciones').style.display !== 'none') {
+                                    fntSwitchView('grid');
+                                }
+                            } else {
+                                Swal.fire("Error", objData.msg || "Error al clonar", "error");
+                            }
+                        } catch(e) {
+                            Swal.fire("Error de Servidor", "La respuesta no es válida.", "error");
+                        }
+                    } else {
+                        Swal.fire("Error", "Ocurrió un problema de red (Código: " + request.status + ").", "error");
+                    }
+                }
+            }
         }
     });
 }

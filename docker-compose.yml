@@ -22,8 +22,10 @@ services:
     volumes:
       - ./:/var/www/html/mrp
       - ./docker/nginx/dev.conf:/etc/nginx/conf.d/default.conf
+      - /home/christianguarneros/proyectos/LDRHSystem:/var/www/html/ldrhsystem
     networks:
       - mrp-network
+      - ldrhsystem_webbox
     depends_on:
       - mrp-app
 
@@ -63,6 +65,8 @@ services:
 networks:
   mrp-network:
     driver: bridge
+  ldrhsystem_webbox:
+    external: true
 
 volumes:
   mrp_dbdata:

@@ -147,4 +147,51 @@ class Lgs_planeaciones extends Controllers
             echo $this->errorResponse($e->getMessage(), 500);
         }
     }
+
+    /**
+     * POST: Clona una planeación rechazada como borrador nuevo
+     */
+    public function clonarPlaneacion(): void
+    {
+        try {
+            $userId = $_SESSION['idUser'] ?? 1;
+            $idPlaneacion = intval($_POST['id_planeacion'] ?? 0);
+
+            if ($idPlaneacion <= 0) {
+                throw new Exception("ID de planeación no válido.");
+            }
+
+            $model = new Lgs_planeacionesModel();
+            $res = $model->clonarPlaneacion($idPlaneacion, $userId);
+            
+            echo $this->successResponse(['id_planeacion' => $res['id_planeacion']], "Planeación clonada con éxito.");
+        } catch (Exception $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST: Cambia el estado de una planeación
+     */
+    public function changeEstado(): void
+    {
+        try {
+            $userId = $_SESSION['idUser'] ?? 1;
+            $idPlaneacion = intval($_POST['id_planeacion'] ?? 0);
+            $newEstado = intval($_POST['id_estado'] ?? 0);
+            $msg = $_POST['msg'] ?? '';
+
+            if ($idPlaneacion <= 0 || $newEstado <= 0) {
+                throw new Exception("Datos no válidos.");
+            }
+
+            $model = new Lgs_planeacionesModel();
+            $model->changeEstado($idPlaneacion, $newEstado, $userId, $msg);
+            
+            echo $this->successResponse([], "Estado actualizado correctamente.");
+        } catch (Exception $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
 }

@@ -75,9 +75,9 @@ function initTableEjecucion() {
                 "render": function (data) {
                     let badge = '';
                     switch(parseInt(data)) {
-                        case 3: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-checkbox-check-line me-1"></i>Envío Aprobado</span>'; break;
+                        case 3: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-checkbox-check-line me-1"></i>Aprobado</span>'; break;
                         case 5: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-calendar-event-line me-1"></i>Programado</span>'; break;
-                        case 6: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-truck-line me-1"></i>En Tránsito</span>'; break;
+                        case 6: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-truck-line me-1"></i>Ejecutado</span>'; break;
                         case 7: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-double-line me-1"></i>Entregado</span>'; break;
                         default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
                     }
@@ -302,9 +302,14 @@ function cargarAcomodoPlanta(idEnvio, isHistorico = false) {
                             let btnConfirm = '';
                             if (isHistorico) {
                                 btnConfirm = `
-                                    <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold shadow-sm" onclick="verEvidencias(${idEnvio}, ${vin.id_unidad}, '${vin.vin}');" title="Ver Evidencias y Observaciones de Salida">
-                                        <i class="ri-camera-lens-fill me-1"></i> Ver Evidencias
-                                    </button>
+                                    <div class="d-flex gap-1 justify-content-center">
+                                        <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold shadow-sm" onclick="verEvidencias(${idEnvio}, ${vin.id_unidad}, '${vin.vin}');" title="Ver Evidencias y Observaciones de Salida">
+                                            <i class="ri-camera-lens-fill me-1"></i> Ver Evidencias
+                                        </button>
+                                        <a href="${base_url}/Lgs_envios/hoja_entrega_pdf/${idEnvio}/${vin.id_unidad}" target="_blank" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-semibold shadow-sm" title="Imprimir Hoja de Entrega / Traspaso">
+                                            <i class="ri-printer-line me-1"></i> Imprimir Hoja
+                                        </a>
+                                    </div>
                                 `;
                             } else if (isConfirmed) {
                                 btnConfirm = `
@@ -317,6 +322,9 @@ function cargarAcomodoPlanta(idEnvio, isHistorico = false) {
                                         <button class="btn btn-sm btn-outline-danger rounded-pill px-2" onclick="revertirValidacion(${idEnvio}, ${vin.id_unidad}, '${vin.vin}');" title="Deshacer Validación">
                                             <i class="ri-arrow-go-back-line"></i> Revertir
                                         </button>
+                                        <a href="${base_url}/Lgs_envios/hoja_entrega_pdf/${idEnvio}/${vin.id_unidad}" target="_blank" class="btn btn-sm btn-outline-dark rounded-pill px-2" title="Imprimir Hoja de Entrega / Traspaso">
+                                            <i class="ri-printer-line"></i> Imprimir
+                                        </a>
                                     </div>
                                 </div>
                                 `;
@@ -370,7 +378,7 @@ function guardarDespacho() {
 
     Swal.fire({
         title: 'Registrando Salida a Ruta...',
-        text: 'Actualizando estatus del envío a En Tránsito',
+        text: 'Actualizando estatus del envío a Ejecutado',
         allowOutsideClick: false,
         didOpen: () => { Swal.showLoading() }
     });
@@ -384,7 +392,7 @@ function guardarDespacho() {
                 let isSuccess = (objData.status === 'success' || objData.status === true || objData.code === 200);
                 if (isSuccess) {
                     cerrarDespachoPlanilla();
-                    Swal.fire("¡Despacho Registrado!", objData.message || objData.msg || "El envío ahora se encuentra En Tránsito", "success");
+                    Swal.fire("¡Despacho Registrado!", objData.message || objData.msg || "El envío ahora se encuentra en ejecución", "success");
                     tableEjecucion.ajax.reload();
                 } else {
                     Swal.fire("Error", objData.message || objData.msg || "Error al registrar el despacho", "error");

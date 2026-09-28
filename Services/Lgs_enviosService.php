@@ -83,6 +83,7 @@ class Lgs_enviosService {
 
         // Regla histórica: no recalcular ni alterar envíos cerrados/entregados (id_estado = 7)
         if (isset($envio['id_estado']) && (int)$envio['id_estado'] === 7) {
+            $this->asegurarCostosVins($idEnvio, $db);
             return (float)($envio['costo_total'] ?? 0.0);
         }
 
@@ -122,10 +123,19 @@ class Lgs_enviosService {
             $unidadesAsignadas[$key][] = $vin;
         }
 
-        // Limpiar tabla de tramos_costos para este envío
+        // Limpiar tabla de tramos_costos e inicializar costo_unidad en 0
         $db->prepare("DELETE FROM lgs_envios_tramos_costos WHERE id_envio = ?")->execute([$idEnvio]);
+        $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = 0 WHERE id_envio = ?")->execute([$idEnvio]);
 
         $costoTotalEnvio = 0.0;
+
+        // Ponderación tarifaria base por segmento:
+        // Segmento 1 (LDT / Ligeros): $27.00
+        // Segmento 2 (MDT / Medianos): $30.00
+        // Segmento 3 (HDT / Pesados): $40.00
+        // Segmento 4 (Buses): $50.00
+        // Segmento 5 (Lowboy): $60.00
+        $tarifasBasePond = [1 => 27.0, 2 => 30.0, 3 => 40.0, 4 => 50.0, 5 => 60.0];
 
         // Recorrer cada madrina/chofer
         foreach ($unidadesAsignadas as $idAgrupador => $vinsGrupo) {
@@ -157,8 +167,6 @@ class Lgs_enviosService {
                 }
 
                 // Determinar qué VINs van en la madrina durante este tramo
-                // Un VIN va en el tramo si su nodo de subida es <= nodoOrigen.orden 
-                // y su nodo de bajada es >= nodoDestino.orden
                 $vinsEnTramo = [];
                 $vinsLigeros = 0;
                 $vinsMedianos = 0;
@@ -257,12 +265,32 @@ class Lgs_enviosService {
 
                 $costoTotalEnvio += $costoTramo;
 
-                // Actualizar costo unitario (prorrateado informativo)
-                $costoUnitarioTramo = $costoTramo / $volumenTotal;
+                // Actualizar costo unitario ponderado por segmento tarifario
+                $sumaPonderaciones = 0.0;
                 foreach ($vinsEnTramo as $v) {
-                    $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = costo_unidad + ? WHERE id = ?")->execute([$costoUnitarioTramo, $v['id']]);
+                    $segId = (int)($v['id_segmento'] ?? 1);
+                    $sumaPonderaciones += ($tarifasBasePond[$segId] ?? 27.0);
+                }
+                if ($sumaPonderaciones <= 0) $sumaPonderaciones = (float)$volumenTotal;
+
+                $stmtUpdateVin = $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = COALESCE(costo_unidad, 0) + ? WHERE id = ?");
+                foreach ($vinsEnTramo as $v) {
+                    $segId = (int)($v['id_segmento'] ?? 1);
+                    $peso = $tarifasBasePond[$segId] ?? 27.0;
+                    $costoUnitarioTramo = $costoTramo * ($peso / $sumaPonderaciones);
+                    $stmtUpdateVin->execute([round($costoUnitarioTramo, 2), $v['id']]);
                 }
             }
+        }
+
+        // Ajuste de centavos por redondeo al último VIN
+        $stmtSum = $db->prepare("SELECT SUM(costo_unidad) as sum_costos FROM lgs_envios_vins WHERE id_envio = ?");
+        $stmtSum->execute([$idEnvio]);
+        $sumVins = (float)($stmtSum->fetch(PDO::FETCH_ASSOC)['sum_costos'] ?? 0);
+        $dif = round($costoTotalEnvio - $sumVins, 2);
+        if (abs($dif) > 0.001 && !empty($vins)) {
+            $lastVinId = $vins[count($vins) - 1]['id'];
+            $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = costo_unidad + ? WHERE id = ?")->execute([$dif, $lastVinId]);
         }
 
         // 3. Actualizar el Costo Total y KM Total en la Cabecera
@@ -282,9 +310,115 @@ class Lgs_enviosService {
     }
 
     /**
+     * Asegura que los VINs de un envío tengan su costo unitario calculado y distribuido según su segmento
+     */
+    public function asegurarCostosVins(int $idEnvio, PDO $db = null): void {
+        if ($db === null) {
+            $db = $this->model->getConexion();
+        }
+
+        $stmtCheck = $db->prepare("SELECT COUNT(*) as t FROM lgs_envios_vins WHERE id_envio = ? AND (costo_unidad IS NULL OR costo_unidad = 0)");
+        $stmtCheck->execute([$idEnvio]);
+        $faltanCostos = (int)($stmtCheck->fetch(PDO::FETCH_ASSOC)['t'] ?? 0);
+
+        if ($faltanCostos === 0) {
+            return; // Ya están calculados
+        }
+
+        $stmtTramos = $db->prepare("SELECT * FROM lgs_envios_tramos_costos WHERE id_envio = ? ORDER BY id_tramo_costo ASC");
+        $stmtTramos->execute([$idEnvio]);
+        $tramos = $stmtTramos->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmtNodos = $db->prepare("SELECT id_nodo, orden FROM lgs_envios_nodos WHERE id_envio = ? ORDER BY orden ASC");
+        $stmtNodos->execute([$idEnvio]);
+        $nodos = $stmtNodos->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmtVins = $db->prepare("SELECT id, id_unidad, id_nodo_subida, id_nodo_bajada FROM lgs_envios_vins WHERE id_envio = ?");
+        $stmtVins->execute([$idEnvio]);
+        $vins = $stmtVins->fetchAll(PDO::FETCH_ASSOC);
+        if (empty($vins)) return;
+
+        foreach ($vins as &$vin) {
+            $vin['id_segmento'] = $this->resolveSegmentoForUnit($db, (int)$vin['id_unidad']);
+        }
+        unset($vin);
+
+        $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = 0 WHERE id_envio = ?")->execute([$idEnvio]);
+
+        $tarifasBasePond = [1 => 27.0, 2 => 30.0, 3 => 40.0, 4 => 50.0, 5 => 60.0];
+
+        if (!empty($tramos) && !empty($nodos)) {
+            foreach ($tramos as $tr) {
+                $costoTramo = (float)$tr['costo_estimado'];
+                if ($costoTramo <= 0) continue;
+
+                $ordOrigen = 0;
+                $ordDestino = 1;
+                foreach ($nodos as $n) {
+                    if ($n['id_nodo'] == $tr['id_nodo_origen']) $ordOrigen = (int)$n['orden'];
+                    if ($n['id_nodo'] == $tr['id_nodo_destino']) $ordDestino = (int)$n['orden'];
+                }
+
+                $vinsEnTramo = [];
+                foreach ($vins as $vin) {
+                    $ordSub = 0;
+                    $ordBaj = count($nodos) - 1;
+                    foreach ($nodos as $n) {
+                        if (!empty($vin['id_nodo_subida']) && $n['id_nodo'] == $vin['id_nodo_subida']) $ordSub = (int)$n['orden'];
+                        if (!empty($vin['id_nodo_bajada']) && $n['id_nodo'] == $vin['id_nodo_bajada']) $ordBaj = (int)$n['orden'];
+                    }
+                    if ($ordSub <= $ordOrigen && $ordBaj >= $ordDestino) {
+                        $vinsEnTramo[] = $vin;
+                    }
+                }
+
+                $vol = count($vinsEnTramo);
+                if ($vol === 0) continue;
+
+                $sumaPond = 0.0;
+                foreach ($vinsEnTramo as $v) {
+                    $segId = (int)($v['id_segmento'] ?? 1);
+                    $sumaPond += ($tarifasBasePond[$segId] ?? 27.0);
+                }
+                if ($sumaPond <= 0) $sumaPond = (float)$vol;
+
+                $stmtUp = $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = COALESCE(costo_unidad, 0) + ? WHERE id = ?");
+                foreach ($vinsEnTramo as $v) {
+                    $segId = (int)($v['id_segmento'] ?? 1);
+                    $peso = $tarifasBasePond[$segId] ?? 27.0;
+                    $cUnit = $costoTramo * ($peso / $sumaPond);
+                    $stmtUp->execute([round($cUnit, 2), $v['id']]);
+                }
+            }
+        } else {
+            // Prorrateo general del costo total si no hay tramos detallados
+            $stmtCostoEnvio = $db->prepare("SELECT costo_total FROM lgs_envios WHERE id_envio = ?");
+            $stmtCostoEnvio->execute([$idEnvio]);
+            $costoTotal = (float)($stmtCostoEnvio->fetch(PDO::FETCH_ASSOC)['costo_total'] ?? 0);
+
+            if ($costoTotal > 0) {
+                $sumaPond = 0.0;
+                foreach ($vins as $v) {
+                    $segId = (int)($v['id_segmento'] ?? 1);
+                    $sumaPond += ($tarifasBasePond[$segId] ?? 27.0);
+                }
+                if ($sumaPond <= 0) $sumaPond = (float)count($vins);
+
+                $stmtUp = $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = ? WHERE id = ?");
+                foreach ($vins as $v) {
+                    $segId = (int)($v['id_segmento'] ?? 1);
+                    $peso = $tarifasBasePond[$segId] ?? 27.0;
+                    $cUnit = $costoTotal * ($peso / $sumaPond);
+                    $stmtUp->execute([round($cUnit, 2), $v['id']]);
+                }
+            }
+        }
+    }
+
+    /**
      * Resuelve dinámicamente el segmento de una unidad (VIN)
      */
-    private function resolveSegmentoForUnit(PDO $db, int $idUnidad): int {
+    public function resolveSegmentoForUnit(PDO $db, int $idUnidad): int {
         // 1. Intentar obtener el modelo del VIN desde lgs_unidades_envios
         $stmtMock = $db->prepare("SELECT vin, modelo FROM lgs_unidades_envios WHERE id_unidad = ? LIMIT 1");
         $stmtMock->execute([$idUnidad]);

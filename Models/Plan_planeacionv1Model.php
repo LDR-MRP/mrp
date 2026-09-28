@@ -352,7 +352,7 @@ class Plan_planeacionv1Model extends Mysql
     $userIdSes = isset($_SESSION['idUser']) ? (int) $_SESSION['idUser'] : 0;
 
     // Admin y rol 5 ven todo
-    $isAdmin = in_array($rolId, [1, 5]);
+    $isAdmin = in_array($rolId, [1, 5, 7]);
 
     if (!$isAdmin && $userIdSes <= 0) {
       return [];
@@ -1868,7 +1868,7 @@ class Plan_planeacionv1Model extends Mysql
       return ['status' => false, 'msg' => 'Planeación inválida', 'data' => []];
     }
 
-    $isAdmin = isset($_SESSION['rolid']) && in_array((int) $_SESSION['rolid'], [1, 5, 4]);
+    $isAdmin = isset($_SESSION['rolid']) && in_array((int) $_SESSION['rolid'], [1, 5, 4, 7]);
     $userIdSes = isset($_SESSION['idUser']) ? (int) $_SESSION['idUser'] : 0;
 
     if (!$isAdmin && $userIdSes <= 0) {
@@ -3355,7 +3355,7 @@ class Plan_planeacionv1Model extends Mysql
   public function selectOrdenesCalendar()
   {
     $rolId = isset($_SESSION['rolid']) ? (int) $_SESSION['rolid'] : 0;
-    $isAdmin = in_array($rolId, [1, 5]); // 👈 ahora 1 y 5 ven todo
+    $isAdmin = in_array($rolId, [1, 5, 7]); //  ahora 1 y 5 ven todo
     $userIdSes = isset($_SESSION['idUser']) ? (int) $_SESSION['idUser'] : 0;
 
     if (!$isAdmin && $userIdSes <= 0) {

@@ -1,806 +1,663 @@
 "use strict";
 
-/* ============================================================
- * MÓDULO: CLIENTES Y DISTRIBUIDORES
- * ARCHIVO: cli_clientes.js
- *
- * PARTE 1:
- * - Configuración general.
- * - Inicialización del módulo.
- * - Bloqueo y desbloqueo de pestañas.
- * - Secciones dinámicas por tipo de cliente.
- * - Generación automática del código.
- * - Validaciones generales.
- * - Guardado de información general.
- * - Validación de RFC.
- * - Funciones auxiliares comunes.
- * ============================================================ */
-
-/* ============================================================
- * 1. CONFIGURACIÓN GENERAL
- * ============================================================ */
-
-/**
- * Obtiene la URL base declarada globalmente por el proyecto.
- *
- * Normalmente en el layout existe algo parecido a:
- *
- * const base_url = "http://localhost/mrp";
- *
- * La función también elimina diagonales finales para evitar rutas
- * como:
- *
- * http://localhost/mrp//cli_clientes/setGeneral
- */
 function obtenerBaseUrl() {
-  let url = "";
+    let url = "";
 
-  if (typeof window.base_url !== "undefined" && window.base_url) {
-    url = window.base_url;
-  } else if (typeof base_url !== "undefined" && base_url) {
-    url = base_url;
-  }
+    if (typeof window.base_url !== "undefined" && window.base_url) {
+        url = window.base_url;
+    } else if (typeof base_url !== "undefined" && base_url) {
+        url = base_url;
+    }
 
-  return String(url).replace(/\/+$/, "");
+    return String(url).replace(/\/+$/, "");
 }
 
-/**
- * Endpoints utilizados por el módulo.
- *
- * Las siguientes partes agregarán el funcionamiento completo
- * de cada uno.
- */
+
 const CLIENTES_ENDPOINTS = {
-  codigoCliente: `${obtenerBaseUrl()}/cli_clientes/getCodigoCliente`,
-  guardarGeneral: `${obtenerBaseUrl()}/cli_clientes/setGeneral`,
-  validarRFC: `${obtenerBaseUrl()}/cli_clientes/validarRFC`,
+    codigoCliente: `${obtenerBaseUrl()}/cli_clientes/getCodigoCliente`,
+    guardarGeneral: `${obtenerBaseUrl()}/cli_clientes/setGeneral`,
+    validarRFC: `${obtenerBaseUrl()}/cli_clientes/validarRFC`,
 
-  guardarFiscal: `${obtenerBaseUrl()}/cli_clientes/setFiscal`,
+    guardarFiscal: `${obtenerBaseUrl()}/cli_clientes/setFiscal`,
 
-  guardarContacto: `${obtenerBaseUrl()}/cli_clientes/setContacto`,
-  eliminarContacto: `${obtenerBaseUrl()}/cli_clientes/delContacto`,
-  listarContactos: `${obtenerBaseUrl()}/cli_clientes/getContactos`,
+    guardarContacto: `${obtenerBaseUrl()}/cli_clientes/setContacto`,
+    eliminarContacto: `${obtenerBaseUrl()}/cli_clientes/delContacto`,
+    listarContactos: `${obtenerBaseUrl()}/cli_clientes/getContactos`,
 
-  guardarSucursal: `${obtenerBaseUrl()}/cli_clientes/setSucursal`,
-  eliminarSucursal: `${obtenerBaseUrl()}/cli_clientes/delSucursal`,
-  listarSucursales: `${obtenerBaseUrl()}/cli_clientes/getSucursales`,
+    guardarSucursal: `${obtenerBaseUrl()}/cli_clientes/setSucursal`,
+    eliminarSucursal: `${obtenerBaseUrl()}/cli_clientes/delSucursal`,
+    listarSucursales: `${obtenerBaseUrl()}/cli_clientes/getSucursales`,
 
-  guardarDireccion: `${obtenerBaseUrl()}/cli_clientes/setDireccion`,
-  listarDirecciones: `${obtenerBaseUrl()}/cli_clientes/getDirecciones`,
-  eliminarDireccion: `${obtenerBaseUrl()}/cli_clientes/delDireccion`,
+    guardarDireccion: `${obtenerBaseUrl()}/cli_clientes/setDireccion`,
+    listarDirecciones: `${obtenerBaseUrl()}/cli_clientes/getDirecciones`,
+    eliminarDireccion: `${obtenerBaseUrl()}/cli_clientes/delDireccion`,
 
-  guardarComercial: `${obtenerBaseUrl()}/cli_clientes/setComercial`,
+    guardarComercial: `${obtenerBaseUrl()}/cli_clientes/setComercial`,
 
-  guardarBanco: `${obtenerBaseUrl()}/cli_clientes/setBanco`,
-  listarBancos: `${obtenerBaseUrl()}/cli_clientes/getBancos`,
-  eliminarBanco: `${obtenerBaseUrl()}/cli_clientes/delBanco`,
+    guardarBanco: `${obtenerBaseUrl()}/cli_clientes/setBanco`,
+    listarBancos: `${obtenerBaseUrl()}/cli_clientes/getBancos`,
+    eliminarBanco: `${obtenerBaseUrl()}/cli_clientes/delBanco`,
 
-  guardarDocumento: `${obtenerBaseUrl()}/cli_clientes/setDocumento`,
-  listarDocumentos: `${obtenerBaseUrl()}/cli_clientes/getDocumentos`,
-  eliminarDocumento: `${obtenerBaseUrl()}/cli_clientes/delDocumento`,
+    guardarDocumento: `${obtenerBaseUrl()}/cli_clientes/setDocumento`,
+    listarDocumentos: `${obtenerBaseUrl()}/cli_clientes/getDocumentos`,
+    eliminarDocumento: `${obtenerBaseUrl()}/cli_clientes/delDocumento`,
 
-  obtenerGeneral: `${obtenerBaseUrl()}/cli_clientes/getGeneral`,
+    obtenerGeneral: `${obtenerBaseUrl()}/cli_clientes/getGeneral`,
 
-  obtenerFiscal: `${obtenerBaseUrl()}/cli_clientes/getFiscal`,
+    obtenerFiscal: `${obtenerBaseUrl()}/cli_clientes/getFiscal`,
 
-  obtenerComercial: `${obtenerBaseUrl()}/cli_clientes/getComercial`,
+    obtenerComercial: `${obtenerBaseUrl()}/cli_clientes/getComercial`,
 };
 
 /**
  * Selectores principales del formulario.
  */
 const SELECTORES_CLIENTE = {
-  formulario: "#formCliente",
-  idcliente: "#idcliente",
-  tabs: "#clientTabs",
-  tabGeneral: "#tab-general",
-  tabFiscal: "#tab-fiscal",
-  tabContactos: "#tab-contactos",
-  tabSucursales: "#tab-sucursales",
-  tabDirecciones: "#tab-direcciones",
-  tabComercial: "#tab-comercial",
-  tabBancos: "#tab-bancos",
-  tabDocumentos: "#tab-documentos",
+    formulario: "#formCliente",
+    idcliente: "#idcliente",
+    tabs: "#clientTabs",
+    tabGeneral: "#tab-general",
+    tabFiscal: "#tab-fiscal",
+    tabContactos: "#tab-contactos",
+    tabSucursales: "#tab-sucursales",
+    tabDirecciones: "#tab-direcciones",
+    tabComercial: "#tab-comercial",
+    tabBancos: "#tab-bancos",
+    tabDocumentos: "#tab-documentos",
 };
 
 /**
  * Estado interno del módulo.
  */
 const estadoModuloClientes = {
-  idcliente: 0,
-  guardandoGeneral: false,
-  generandoCodigo: false,
-  codigoGenerado: "",
-  clienteGuardado: false,
-  contadorContactos: 0,
-  contadorSucursales: 0,
-  cargandoGeneral: false,
+    idcliente: 0,
+    guardandoGeneral: false,
+    generandoCodigo: false,
+    codigoGenerado: "",
+    clienteGuardado: false,
+    contadorContactos: 0,
+    contadorSucursales: 0,
+    cargandoGeneral: false,
 };
 
-/**
- * Pestañas que deben permanecer bloqueadas hasta que se registre
- * correctamente la información general del cliente.
- */
+
 const PESTANAS_DEPENDIENTES = [
-  "#tab-fiscal",
-  "#tab-contactos",
-  "#tab-sucursales",
-  "#tab-direcciones",
-  "#tab-comercial",
-  "#tab-bancos",
-  "#tab-documentos",
+    "#tab-fiscal",
+    "#tab-contactos",
+    "#tab-sucursales",
+    "#tab-direcciones",
+    "#tab-comercial",
+    "#tab-bancos",
+    "#tab-documentos",
 ];
 
 /* ============================================================
- * 2. INICIALIZACIÓN
+ * INICIALIZACIÓN
  * ============================================================ */
 
-document.addEventListener("DOMContentLoaded", function () {
-  inicializarModuloClientes();
+document.addEventListener("DOMContentLoaded", function() {
+    inicializarModuloClientes();
 });
 
-/**
- * Inicializa todos los eventos correspondientes a esta primera parte.
- */
+
 function inicializarModuloClientes() {
-  const formulario = document.querySelector(SELECTORES_CLIENTE.formulario);
+    const formulario = document.querySelector(SELECTORES_CLIENTE.formulario);
 
-  if (!formulario) {
-    console.warn("No se encontró el formulario #formCliente.");
+    if (!formulario) {
+        console.warn("No se encontró el formulario #formCliente.");
 
-    return;
-  }
-
-  /*
-   * Recuperamos el ID colocado en el campo oculto.
-   *
-   * Cuando el ID es mayor a cero, significa que estamos editando
-   * un cliente previamente registrado.
-   */
-  estadoModuloClientes.idcliente = obtenerIdCliente();
-
-  estadoModuloClientes.clienteGuardado = estadoModuloClientes.idcliente > 0;
-
-  configurarPestanasCliente();
-  configurarTipoCliente();
-  configurarTipoPersona();
-  configurarGeneracionCodigo();
-  configurarValidacionRFC();
-  configurarFormularioGeneral();
-  configurarBotonLimpiar();
-  configurarTransformacionesCampos();
-
-  /*
-   * Funciones agregadas en la Parte 2.
-   */
-  configurarSeccionFiscal();
-  configurarSeccionContactos();
-  configurarSeccionSucursales();
-  configurarSeccionDirecciones();
-  configurarSeccionComercial();
-  configurarSeccionBancos();
-  configurarSeccionDocumentos();
-
-  /*
-   * Al abrir el formulario, mostramos la sección dinámica
-   * correspondiente al tipo de cliente actualmente seleccionado.
-   */
-  mostrarSeccionTipoCliente();
-
-  /*
-   * Oculta o muestra CURP dependiendo del tipo de persona.
-   */
-  actualizarCamposTipoPersona();
-
-  /*
-   * Si el formulario ya contiene idcliente, se interpreta como edición
-   * y las pestañas pueden utilizarse inmediatamente.
-   */
- if (estadoModuloClientes.clienteGuardado) {
-
-    desbloquearPestanasCliente();
-
-    cargarInformacionGeneralCliente();
-
-} else {
-
-    bloquearPestanasCliente();
-
-}
-}
-
-/* ============================================================
- * 3. CONTROL DE PESTAÑAS
- * ============================================================ */
-
-/**
- * Agrega protección adicional para impedir que el usuario abra
- * una pestaña dependiente antes de guardar la información general.
- */
-function configurarPestanasCliente() {
-  const contenedorTabs = document.querySelector(
-    SELECTORES_CLIENTE.tabs
-  );
-
-  const btnGuardarCliente = document.querySelector(
-    "#btnGuardarCliente"
-  );
-
-  if (!contenedorTabs) {
-    return;
-  }
-
-  /*
-   * Control existente para bloquear pestañas
-   * hasta guardar primero el cliente.
-   */
-  contenedorTabs.addEventListener(
-    "click",
-    function (event) {
-      const botonTab = event.target.closest(
-        '[data-bs-toggle="tab"]'
-      );
-
-      if (!botonTab) {
         return;
-      }
-
-      const destino = botonTab.getAttribute(
-        "data-bs-target"
-      );
-
-      if (
-        PESTANAS_DEPENDIENTES.includes(destino) &&
-        obtenerIdCliente() <= 0
-      ) {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-
-        mostrarAdvertencia(
-          "Primero debe guardar la información general del cliente."
-        );
-
-        abrirPestana("#tab-general");
-      }
-    },
-    true
-  );
-
-  /*
-   * Mostrar Guardar cliente únicamente en General.
-   */
-  contenedorTabs.addEventListener(
-    "shown.bs.tab",
-    function (event) {
-      const destino = event.target.getAttribute(
-        "data-bs-target"
-      );
-
-      if (!btnGuardarCliente) {
-        return;
-      }
-
-      if (destino === "#tab-general") {
-        btnGuardarCliente.classList.remove("d-none");
-      } else {
-        btnGuardarCliente.classList.add("d-none");
-      }
-    }
-  );
-}
-
-/**
- * Bloquea las pestañas dependientes.
- */
-function bloquearPestanasCliente() {
-  PESTANAS_DEPENDIENTES.forEach(function (destino) {
-    const boton = obtenerBotonTab(destino);
-
-    if (!boton) {
-      return;
     }
 
-    boton.classList.add("disabled");
-    boton.setAttribute("aria-disabled", "true");
-    boton.setAttribute("tabindex", "-1");
-    boton.style.pointerEvents = "none";
-    boton.style.opacity = "0.55";
 
-    /*
-     * Se agrega un indicador visual de bloqueo.
-     */
-    if (!boton.querySelector(".tab-lock-icon")) {
-      const icono = document.createElement("i");
+    estadoModuloClientes.idcliente = obtenerIdCliente();
 
-      icono.className = "ri-lock-2-line ms-1 tab-lock-icon";
+    estadoModuloClientes.clienteGuardado = estadoModuloClientes.idcliente > 0;
 
-      boton.appendChild(icono);
-    }
-  });
-}
+    configurarPestanasCliente();
+    configurarTipoCliente();
+    configurarTipoPersona();
+    configurarGeneracionCodigo();
+    configurarValidacionRFC();
+    configurarFormularioGeneral();
+    configurarBotonLimpiar();
+    configurarTransformacionesCampos();
 
-/**
- * Habilita todas las pestañas después de guardar General.
- */
-function desbloquearPestanasCliente() {
-  PESTANAS_DEPENDIENTES.forEach(function (destino) {
-    const boton = obtenerBotonTab(destino);
 
-    if (!boton) {
-      return;
-    }
+    configurarSeccionFiscal();
+    configurarSeccionContactos();
+    configurarSeccionSucursales();
+    configurarSeccionDirecciones();
+    configurarSeccionComercial();
+    configurarSeccionBancos();
+    configurarSeccionDocumentos();
 
-    boton.classList.remove("disabled");
-    boton.removeAttribute("aria-disabled");
-    boton.removeAttribute("tabindex");
-    boton.style.pointerEvents = "";
-    boton.style.opacity = "";
 
-    const iconoCandado = boton.querySelector(".tab-lock-icon");
-
-    if (iconoCandado) {
-      iconoCandado.remove();
-    }
-  });
-}
-
-/**
- * Obtiene el botón Bootstrap que abre una pestaña determinada.
- *
- * @param {string} destino Ejemplo: #tab-fiscal
- * @returns {HTMLElement|null}
- */
-function obtenerBotonTab(destino) {
-  return document.querySelector(`[data-bs-target="${destino}"]`);
-}
-
-/**
- * Abre una pestaña de Bootstrap.
- *
- * @param {string} destino Ejemplo: #tab-general
- */
-function abrirPestana(destino) {
-  const boton = obtenerBotonTab(destino);
-
-  if (!boton) {
-    return;
-  }
-
-  if (typeof bootstrap !== "undefined" && bootstrap.Tab) {
-    const instancia = bootstrap.Tab.getOrCreateInstance(boton);
-
-    instancia.show();
-  } else {
-    /*
-     * Respaldo para proyectos donde Bootstrap no está expuesto
-     * como objeto global.
-     */
-    boton.click();
-  }
-}
-
-/* ============================================================
- * 4. TIPO DE CLIENTE Y SECCIONES DINÁMICAS
- * ============================================================ */
-
-/**
- * Configura el cambio del tipo de cliente.
- */
-function configurarTipoCliente() {
-  const selectTipoCliente = document.querySelector("#idtipo_cliente");
-
-  if (!selectTipoCliente) {
-    return;
-  }
-
-  selectTipoCliente.addEventListener("change", async function () {
     mostrarSeccionTipoCliente();
 
-    /*
-     * Cuando se selecciona un tipo, se solicita el código
-     * correspondiente al servidor.
-     */
-    if (selectTipoCliente.value) {
-      await generarCodigoCliente();
+
+    actualizarCamposTipoPersona();
+
+
+    if (estadoModuloClientes.clienteGuardado) {
+
+        desbloquearPestanasCliente();
+
+        cargarInformacionGeneralCliente();
+
     } else {
-      limpiarCodigoCliente();
+
+        bloquearPestanasCliente();
+
     }
-  });
 }
 
-/**
- * Muestra únicamente la sección dinámica correspondiente al tipo
- * de cliente seleccionado.
- *
- * También deshabilita los campos de secciones ocultas para evitar
- * que sean enviados al servidor.
- */
-function mostrarSeccionTipoCliente() {
-  const selectTipo = document.querySelector("#idtipo_cliente");
 
-  const tipoSeleccionado = selectTipo
-    ? String(selectTipo.value).trim().toUpperCase()
-    : "";
+function configurarPestanasCliente() {
+    const contenedorTabs = document.querySelector(
+        SELECTORES_CLIENTE.tabs
+    );
 
-  const secciones = {
-    1: document.querySelector("#sectionDistribuidor"),
+    const btnGuardarCliente = document.querySelector(
+        "#btnGuardarCliente"
+    );
 
-    2: document.querySelector("#sectionInterno"),
-
-    3: document.querySelector("#sectionExterno"),
-
-    4: document.querySelector("#sectionGubernamental"),
-  };
-
-  /*
-   * Primero ocultamos y deshabilitamos todas las secciones.
-   */
-  Object.values(secciones).forEach(function (seccion) {
-    if (!seccion) {
-      return;
+    if (!contenedorTabs) {
+        return;
     }
 
-    seccion.style.display = "none";
 
-    seccion
-      .querySelectorAll("input, select, textarea, button")
-      .forEach(function (campo) {
-        campo.disabled = true;
+    contenedorTabs.addEventListener(
+        "click",
+        function(event) {
+            const botonTab = event.target.closest(
+                '[data-bs-toggle="tab"]'
+            );
 
-        if (campo.classList.contains("dynamic-required")) {
-          campo.required = false;
+            if (!botonTab) {
+                return;
+            }
+
+            const destino = botonTab.getAttribute(
+                "data-bs-target"
+            );
+
+            if (
+                PESTANAS_DEPENDIENTES.includes(destino) &&
+                obtenerIdCliente() <= 0
+            ) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+
+                mostrarAdvertencia(
+                    "Primero debe guardar la información general del cliente."
+                );
+
+                abrirPestana("#tab-general");
+            }
+        },
+        true
+    );
+
+
+    contenedorTabs.addEventListener(
+        "shown.bs.tab",
+        function(event) {
+            const destino = event.target.getAttribute(
+                "data-bs-target"
+            );
+
+            if (!btnGuardarCliente) {
+                return;
+            }
+
+            if (destino === "#tab-general") {
+                btnGuardarCliente.classList.remove("d-none");
+            } else {
+                btnGuardarCliente.classList.add("d-none");
+            }
         }
-      });
-  });
+    );
+}
 
-  /*
-   * Mostramos y habilitamos únicamente la sección seleccionada.
-   */
-  const seccionActiva = secciones[tipoSeleccionado];
 
-  if (!seccionActiva) {
-    return;
-  }
+function bloquearPestanasCliente() {
+    PESTANAS_DEPENDIENTES.forEach(function(destino) {
+        const boton = obtenerBotonTab(destino);
 
-  seccionActiva.style.display = "block";
+        if (!boton) {
+            return;
+        }
 
-  seccionActiva
-    .querySelectorAll("input, select, textarea, button")
-    .forEach(function (campo) {
-      campo.disabled = false;
+        boton.classList.add("disabled");
+        boton.setAttribute("aria-disabled", "true");
+        boton.setAttribute("tabindex", "-1");
+        boton.style.pointerEvents = "none";
+        boton.style.opacity = "0.55";
 
-      if (campo.classList.contains("dynamic-required")) {
-        campo.required = true;
-      }
+
+        if (!boton.querySelector(".tab-lock-icon")) {
+            const icono = document.createElement("i");
+
+            icono.className = "ri-lock-2-line ms-1 tab-lock-icon";
+
+            boton.appendChild(icono);
+        }
     });
+}
+
+
+function desbloquearPestanasCliente() {
+    PESTANAS_DEPENDIENTES.forEach(function(destino) {
+        const boton = obtenerBotonTab(destino);
+
+        if (!boton) {
+            return;
+        }
+
+        boton.classList.remove("disabled");
+        boton.removeAttribute("aria-disabled");
+        boton.removeAttribute("tabindex");
+        boton.style.pointerEvents = "";
+        boton.style.opacity = "";
+
+        const iconoCandado = boton.querySelector(".tab-lock-icon");
+
+        if (iconoCandado) {
+            iconoCandado.remove();
+        }
+    });
+}
+
+
+function obtenerBotonTab(destino) {
+    return document.querySelector(`[data-bs-target="${destino}"]`);
+}
+
+
+function abrirPestana(destino) {
+    const boton = obtenerBotonTab(destino);
+
+    if (!boton) {
+        return;
+    }
+
+    if (typeof bootstrap !== "undefined" && bootstrap.Tab) {
+        const instancia = bootstrap.Tab.getOrCreateInstance(boton);
+
+        instancia.show();
+    } else {
+
+        boton.click();
+    }
 }
 
 /* ============================================================
- * 5. GENERACIÓN DEL CÓDIGO DEL CLIENTE
+ *  TPO DE CLIENTE Y SECCIONES DINÁMICAS
  * ============================================================ */
 
-/**
- * Configura la generación inicial cuando el formulario ya carga
- * con un tipo seleccionado pero todavía no cuenta con código.
- */
-function configurarGeneracionCodigo() {
-  const tipoCliente = document.querySelector("#idtipo_cliente");
+function configurarTipoCliente() {
+    const selectTipoCliente = document.querySelector("#idtipo_cliente");
 
-  const codigoCliente = document.querySelector("#codigo_cliente");
+    if (!selectTipoCliente) {
+        return;
+    }
 
-  if (!tipoCliente || !codigoCliente) {
-    return;
-  }
+    selectTipoCliente.addEventListener("change", async function() {
+        mostrarSeccionTipoCliente();
 
-  /*
-   * En edición no se reemplaza automáticamente un código existente.
-   */
-  if (tipoCliente.value && !codigoCliente.value && obtenerIdCliente() <= 0) {
-    generarCodigoCliente();
-  }
+        if (selectTipoCliente.value) {
+            await generarCodigoCliente();
+        } else {
+            limpiarCodigoCliente();
+        }
+    });
 }
 
-/**
- * Solicita al backend el siguiente código disponible.
- */
-async function generarCodigoCliente() {
-  const selectTipo = document.querySelector("#idtipo_cliente");
+function mostrarSeccionTipoCliente() {
+    const selectTipo = document.querySelector("#idtipo_cliente");
 
-  const inputCodigo = document.querySelector("#codigo_cliente");
+    const tipoSeleccionado = selectTipo ?
+        String(selectTipo.value).trim().toUpperCase() :
+        "";
 
-  if (!selectTipo || !inputCodigo) {
-    return false;
-  }
+    const secciones = {
+        1: document.querySelector("#sectionDistribuidor"),
 
-  const tipoCliente = String(selectTipo.value).trim();
+        2: document.querySelector("#sectionInterno"),
 
-  if (!tipoCliente) {
-    limpiarCodigoCliente();
+        3: document.querySelector("#sectionExterno"),
 
-    return false;
-  }
+        4: document.querySelector("#sectionGubernamental"),
+    };
 
-  if (estadoModuloClientes.generandoCodigo) {
-    return false;
-  }
 
-  estadoModuloClientes.generandoCodigo = true;
+    Object.values(secciones).forEach(function(seccion) {
+        if (!seccion) {
+            return;
+        }
 
-  const valorAnterior = inputCodigo.value;
+        seccion.style.display = "none";
 
-  inputCodigo.value = "Generando...";
-  inputCodigo.classList.add("text-muted");
+        seccion
+            .querySelectorAll("input, select, textarea, button")
+            .forEach(function(campo) {
+                campo.disabled = true;
 
-  try {
-    const url =
-      `${CLIENTES_ENDPOINTS.codigoCliente}/` + encodeURIComponent(tipoCliente);
-
-    const respuesta = await peticionJson(url, {
-      method: "GET",
+                if (campo.classList.contains("dynamic-required")) {
+                    campo.required = false;
+                }
+            });
     });
 
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message || "No fue posible generar el código del cliente.",
-      );
+    const seccionActiva = secciones[tipoSeleccionado];
+
+    if (!seccionActiva) {
+        return;
     }
 
-    const codigo = respuesta.data?.codigo_cliente || "";
+    seccionActiva.style.display = "block";
 
-    if (!codigo) {
-      throw new Error("El servidor no devolvió un código válido.");
+    seccionActiva
+        .querySelectorAll("input, select, textarea, button")
+        .forEach(function(campo) {
+            campo.disabled = false;
+
+            if (campo.classList.contains("dynamic-required")) {
+                campo.required = true;
+            }
+        });
+}
+
+/* ============================================================
+ *  GENERCIÓN DEL CÓDIGO DEL CLIENTE
+ * ============================================================ */
+
+
+function configurarGeneracionCodigo() {
+    const tipoCliente = document.querySelector("#idtipo_cliente");
+
+    const codigoCliente = document.querySelector("#codigo_cliente");
+
+    if (!tipoCliente || !codigoCliente) {
+        return;
     }
 
-    inputCodigo.value = codigo;
-    inputCodigo.classList.remove("text-muted");
 
-    estadoModuloClientes.codigoGenerado = codigo;
+    if (tipoCliente.value && !codigoCliente.value && obtenerIdCliente() <= 0) {
+        generarCodigoCliente();
+    }
+}
 
-    return true;
-  } catch (error) {
-    console.error("Error al generar código:", error);
 
-    inputCodigo.value = valorAnterior;
-    inputCodigo.classList.remove("text-muted");
+async function generarCodigoCliente() {
+    const selectTipo = document.querySelector("#idtipo_cliente");
 
-    mostrarError(
-      error.message || "No fue posible generar el código del cliente.",
-    );
+    const inputCodigo = document.querySelector("#codigo_cliente");
 
-    return false;
-  } finally {
-    estadoModuloClientes.generandoCodigo = false;
-  }
+    if (!selectTipo || !inputCodigo) {
+        return false;
+    }
+
+    const tipoCliente = String(selectTipo.value).trim();
+
+    if (!tipoCliente) {
+        limpiarCodigoCliente();
+
+        return false;
+    }
+
+    if (estadoModuloClientes.generandoCodigo) {
+        return false;
+    }
+
+    estadoModuloClientes.generandoCodigo = true;
+
+    const valorAnterior = inputCodigo.value;
+
+    inputCodigo.value = "Generando...";
+    inputCodigo.classList.add("text-muted");
+
+    try {
+        const url =
+            `${CLIENTES_ENDPOINTS.codigoCliente}/` + encodeURIComponent(tipoCliente);
+
+        const respuesta = await peticionJson(url, {
+            method: "GET",
+        });
+
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message || "No fue posible generar el código del cliente.",
+            );
+        }
+
+        const codigo = respuesta.data ? .codigo_cliente || "";
+
+        if (!codigo) {
+            throw new Error("El servidor no devolvió un código válido.");
+        }
+
+        inputCodigo.value = codigo;
+        inputCodigo.classList.remove("text-muted");
+
+        estadoModuloClientes.codigoGenerado = codigo;
+
+        return true;
+    } catch (error) {
+        console.error("Error al generar código:", error);
+
+        inputCodigo.value = valorAnterior;
+        inputCodigo.classList.remove("text-muted");
+
+        mostrarError(
+            error.message || "No fue posible generar el código del cliente.",
+        );
+
+        return false;
+    } finally {
+        estadoModuloClientes.generandoCodigo = false;
+    }
 }
 
 /**
- * Limpia el código generado.
+ * Limpiams el código generado.
  */
 function limpiarCodigoCliente() {
-  const inputCodigo = document.querySelector("#codigo_cliente");
+    const inputCodigo = document.querySelector("#codigo_cliente");
 
-  if (inputCodigo) {
-    inputCodigo.value = "";
-    inputCodigo.classList.remove("text-muted");
-  }
+    if (inputCodigo) {
+        inputCodigo.value = "";
+        inputCodigo.classList.remove("text-muted");
+    }
 
-  estadoModuloClientes.codigoGenerado = "";
+    estadoModuloClientes.codigoGenerado = "";
 }
 
 /* ============================================================
- * 6. TIPO DE PERSONA
+ *TIPO DE PERSONA
  * ============================================================ */
 
-/**
- * Configura los cambios del campo tipo de persona.
- */
+
 function configurarTipoPersona() {
-  const selectTipoPersona = document.querySelector("#tipo_persona");
+    const selectTipoPersona = document.querySelector("#tipo_persona");
 
-  if (!selectTipoPersona) {
-    return;
-  }
+    if (!selectTipoPersona) {
+        return;
+    }
 
-  selectTipoPersona.addEventListener("change", actualizarCamposTipoPersona);
+    selectTipoPersona.addEventListener("change", actualizarCamposTipoPersona);
 }
 
-/**
- * El campo CURP únicamente se muestra para persona física.
- */
+
 function actualizarCamposTipoPersona() {
-  const selectTipoPersona = document.querySelector("#tipo_persona");
+    const selectTipoPersona = document.querySelector("#tipo_persona");
 
-  const camposPersonaFisica = document.querySelectorAll(
-    ".persona-fisica-field",
-  );
+    const camposPersonaFisica = document.querySelectorAll(
+        ".persona-fisica-field",
+    );
 
-  const tipoPersona = selectTipoPersona
-    ? String(selectTipoPersona.value).toUpperCase()
-    : "";
+    const tipoPersona = selectTipoPersona ?
+        String(selectTipoPersona.value).toUpperCase() :
+        "";
 
-  camposPersonaFisica.forEach(function (contenedor) {
-    const campos = contenedor.querySelectorAll("input, select, textarea");
+    camposPersonaFisica.forEach(function(contenedor) {
+        const campos = contenedor.querySelectorAll("input, select, textarea");
 
-    if (tipoPersona === "FISICA") {
-      contenedor.style.display = "";
+        if (tipoPersona === "FISICA") {
+            contenedor.style.display = "";
 
-      campos.forEach(function (campo) {
-        campo.disabled = false;
-      });
-    } else {
-      contenedor.style.display = "none";
+            campos.forEach(function(campo) {
+                campo.disabled = false;
+            });
+        } else {
+            contenedor.style.display = "none";
 
-      campos.forEach(function (campo) {
-        campo.disabled = true;
-        campo.value = "";
-      });
-    }
-  });
+            campos.forEach(function(campo) {
+                campo.disabled = true;
+                campo.value = "";
+            });
+        }
+    });
 }
 
 /* ============================================================
- * 7. GUARDADO DE INFORMACIÓN GENERAL
+ * GUARDADO DE INFORMACIÓN GENERAL
  * ============================================================ */
 
-/**
- * Intercepta el submit principal del formulario.
- *
- * En esta etapa el botón principal solamente guarda la pestaña
- * General. Las otras pestañas tendrán botones independientes.
- */
 function configurarFormularioGeneral() {
-  const formulario = document.querySelector(SELECTORES_CLIENTE.formulario);
+    const formulario = document.querySelector(SELECTORES_CLIENTE.formulario);
 
-  if (!formulario) {
-    return;
-  }
+    if (!formulario) {
+        return;
+    }
 
-  formulario.addEventListener("submit", guardarInformacionGeneral);
+    formulario.addEventListener("submit", guardarInformacionGeneral);
 }
 
-/**
- * Guarda la información de la pestaña General.
- *
- * @param {SubmitEvent} event
- */
+
 async function guardarInformacionGeneral(event) {
-  event.preventDefault();
+    event.preventDefault();
 
-  if (estadoModuloClientes.guardandoGeneral) {
-    return;
-  }
+    if (estadoModuloClientes.guardandoGeneral) {
+        return;
+    }
 
-  const seccionGeneral = document.querySelector(SELECTORES_CLIENTE.tabGeneral);
+    const seccionGeneral = document.querySelector(SELECTORES_CLIENTE.tabGeneral);
 
-  if (!seccionGeneral) {
-    mostrarError("No se encontró la sección de información general.");
+    if (!seccionGeneral) {
+        mostrarError("No se encontró la sección de información general.");
 
-    return;
-  }
+        return;
+    }
 
-  /*
-   * Validamos exclusivamente los campos visibles de General.
-   *
-   * No usamos form.checkValidity() porque el formulario también
-   * contiene campos required de las demás pestañas.
-   */
-  if (!validarContenedor(seccionGeneral)) {
-    mostrarAdvertencia(
-      "Complete correctamente los campos obligatorios de la información general.",
+
+    if (!validarContenedor(seccionGeneral)) {
+        mostrarAdvertencia(
+            "Complete correctamente los campos obligatorios de la información general.",
+        );
+
+        return;
+    }
+
+    const selectTipo = document.querySelector("#idtipo_cliente");
+
+    const inputCodigo = document.querySelector("#codigo_cliente");
+
+
+    if (obtenerIdCliente() <= 0 && selectTipo ? .value && !inputCodigo ? .value) {
+        const generado = await generarCodigoCliente();
+
+        if (!generado) {
+            return;
+        }
+    }
+
+    const confirmado = await confirmarAccion(
+        obtenerIdCliente() > 0 ?
+        "¿Desea actualizar la información general del cliente?" :
+        "¿Desea guardar la información general del cliente?",
+        obtenerIdCliente() > 0 ? "Actualizar cliente" : "Guardar cliente",
     );
 
-    return;
-  }
-
-  const selectTipo = document.querySelector("#idtipo_cliente");
-
-  const inputCodigo = document.querySelector("#codigo_cliente");
-
-  /*
-   * Si es un registro nuevo y todavía no existe código, intentamos
-   * generarlo antes de guardar.
-   */
-  if (obtenerIdCliente() <= 0 && selectTipo?.value && !inputCodigo?.value) {
-    const generado = await generarCodigoCliente();
-
-    if (!generado) {
-      return;
-    }
-  }
-
-  const confirmado = await confirmarAccion(
-    obtenerIdCliente() > 0
-      ? "¿Desea actualizar la información general del cliente?"
-      : "¿Desea guardar la información general del cliente?",
-    obtenerIdCliente() > 0 ? "Actualizar cliente" : "Guardar cliente",
-  );
-
-  if (!confirmado) {
-    return;
-  }
-
-  estadoModuloClientes.guardandoGeneral = true;
-
-  const botonSubmit = document.querySelector(
-    `${SELECTORES_CLIENTE.formulario} button[type="submit"]`,
-  );
-
-  const contenidoOriginalBoton = botonSubmit?.innerHTML || "";
-
-  establecerEstadoBoton(
-    botonSubmit,
-    true,
-    obtenerIdCliente() > 0 ? "Actualizando..." : "Guardando...",
-  );
-
-  try {
-    const formData = crearFormDataDesdeContenedor(seccionGeneral);
-
-    /*
-     * Se agrega el ID porque está fuera de tab-general.
-     */
-    formData.set("idcliente", String(obtenerIdCliente()));
-
-    const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarGeneral, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message || "No fue posible guardar la información general.",
-      );
+    if (!confirmado) {
+        return;
     }
 
-    const idclienteRespuesta = Number(
-      respuesta.data?.idcliente || respuesta.idcliente || obtenerIdCliente(),
+    estadoModuloClientes.guardandoGeneral = true;
+
+    const botonSubmit = document.querySelector(
+        `${SELECTORES_CLIENTE.formulario} button[type="submit"]`,
     );
 
-    if (!Number.isInteger(idclienteRespuesta) || idclienteRespuesta <= 0) {
-      throw new Error("El servidor no devolvió el ID del cliente registrado.");
-    }
+    const contenidoOriginalBoton = botonSubmit ? .innerHTML || "";
 
-    establecerIdCliente(idclienteRespuesta);
-
-    estadoModuloClientes.clienteGuardado = true;
-
-    desbloquearPestanasCliente();
-
-    mostrarExito(
-      respuesta.message || "La información general se guardó correctamente.",
+    establecerEstadoBoton(
+        botonSubmit,
+        true,
+        obtenerIdCliente() > 0 ? "Actualizando..." : "Guardando...",
     );
 
-    /*
-     * Después del primer guardado abrimos Fiscal.
-     * Durante una actualización permanecemos en General.
-     */
-    if (
-      respuesta.data?.nuevo_registro === true ||
-      respuesta.data?.nuevo_registro === 1 ||
-      respuesta.data?.nuevo_registro === "1"
-    ) {
-      abrirPestana("#tab-fiscal");
-    } else if (respuesta.data?.accion === "insertar") {
-      abrirPestana("#tab-fiscal");
-    } else if (
-      !respuesta.data?.accion &&
-      estadoModuloClientes.idcliente === idclienteRespuesta
-    ) {
-      /*
-       * Respaldo para respuestas que no indican si fue inserción.
-       */
-      abrirPestana("#tab-fiscal");
+    try {
+        const formData = crearFormDataDesdeContenedor(seccionGeneral);
+
+
+        formData.set("idcliente", String(obtenerIdCliente()));
+
+        const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarGeneral, {
+            method: "POST",
+            body: formData,
+        });
+
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message || "No fue posible guardar la información general.",
+            );
+        }
+
+        const idclienteRespuesta = Number(
+            respuesta.data ? .idcliente || respuesta.idcliente || obtenerIdCliente(),
+        );
+
+        if (!Number.isInteger(idclienteRespuesta) || idclienteRespuesta <= 0) {
+            throw new Error("El servidor no devolvió el ID del cliente registrado.");
+        }
+
+        establecerIdCliente(idclienteRespuesta);
+
+        estadoModuloClientes.clienteGuardado = true;
+
+        desbloquearPestanasCliente();
+
+        mostrarExito(
+            respuesta.message || "La información general se guardó correctamente.",
+        );
+
+
+        if (
+            respuesta.data ? .nuevo_registro === true ||
+            respuesta.data ? .nuevo_registro === 1 ||
+            respuesta.data ? .nuevo_registro === "1"
+        ) {
+            abrirPestana("#tab-fiscal");
+        } else if (respuesta.data ? .accion === "insertar") {
+            abrirPestana("#tab-fiscal");
+        } else if (!respuesta.data ? .accion &&
+            estadoModuloClientes.idcliente === idclienteRespuesta
+        ) {
+
+            abrirPestana("#tab-fiscal");
+        }
+    } catch (error) {
+        console.error("Error al guardar información general:", error);
+
+        mostrarError(error.message || "Ocurrió un error al guardar el cliente.");
+    } finally {
+        estadoModuloClientes.guardandoGeneral = false;
+
+        restaurarBoton(botonSubmit, contenidoOriginalBoton);
     }
-  } catch (error) {
-    console.error("Error al guardar información general:", error);
-
-    mostrarError(error.message || "Ocurrió un error al guardar el cliente.");
-  } finally {
-    estadoModuloClientes.guardandoGeneral = false;
-
-    restaurarBoton(botonSubmit, contenidoOriginalBoton);
-  }
 }
 
 
@@ -844,27 +701,27 @@ async function cargarInformacionGeneralCliente(forzar = false) {
 
         const datos = respuesta.data || {};
 
-        Object.keys(datos).forEach(function(nombre){
+        Object.keys(datos).forEach(function(nombre) {
 
             const campo =
                 document.querySelector(
                     `[name="${nombre}"]`
                 );
 
-            if(!campo){
+            if (!campo) {
                 return;
             }
 
-            if(campo.type==="checkbox"){
+            if (campo.type === "checkbox") {
 
                 campo.checked =
-                    Number(datos[nombre])===1;
+                    Number(datos[nombre]) === 1;
 
                 return;
             }
 
             campo.value =
-                datos[nombre] ?? "";
+                datos[nombre] ? ? "";
 
         });
 
@@ -872,15 +729,13 @@ async function cargarInformacionGeneralCliente(forzar = false) {
 
         actualizarCamposTipoPersona();
 
-    }
-    catch(error){
+    } catch (error) {
 
         console.error(error);
 
         mostrarError(error.message);
 
-    }
-    finally{
+    } finally {
 
         estadoModuloClientes.cargandoGeneral = false;
 
@@ -893,633 +748,532 @@ async function cargarInformacionGeneralCliente(forzar = false) {
 
 
 /* ============================================================
- * 8. VALIDACIÓN DEL RFC
+ *  VALIDACÓN DEL RFC
  * ============================================================ */
 
-/**
- * Configura el botón y el campo RFC.
- */
 function configurarValidacionRFC() {
-  const inputRFC = document.querySelector("#rfc");
-  const botonValidar = document.querySelector("#btnValidarRFC");
+    const inputRFC = document.querySelector("#rfc");
+    const botonValidar = document.querySelector("#btnValidarRFC");
 
-  if (inputRFC) {
-    inputRFC.addEventListener("input", function () {
-      inputRFC.value = normalizarTextoMayusculas(inputRFC.value);
+    if (inputRFC) {
+        inputRFC.addEventListener("input", function() {
+            inputRFC.value = normalizarTextoMayusculas(inputRFC.value);
 
-      limpiarEstadoRFC();
-    });
+            limpiarEstadoRFC();
+        });
 
-    inputRFC.addEventListener("blur", function () {
-      if (inputRFC.value) {
-        validarFormatoRFC();
-      }
-    });
-  }
+        inputRFC.addEventListener("blur", function() {
+            if (inputRFC.value) {
+                validarFormatoRFC();
+            }
+        });
+    }
 
-  if (botonValidar) {
-    botonValidar.addEventListener("click", validarRFCCliente);
-  }
+    if (botonValidar) {
+        botonValidar.addEventListener("click", validarRFCCliente);
+    }
 }
 
-/**
- * Valida localmente el formato del RFC según el tipo de persona.
- *
- * Persona física: 13 caracteres.
- * Persona moral: 12 caracteres.
- *
- * @returns {boolean}
- */
+
 function validarFormatoRFC() {
-  const inputRFC = document.querySelector("#rfc");
-  const tipoPersona = document.querySelector("#tipo_persona");
+    const inputRFC = document.querySelector("#rfc");
+    const tipoPersona = document.querySelector("#tipo_persona");
 
-  if (!inputRFC) {
-    return false;
-  }
+    if (!inputRFC) {
+        return false;
+    }
 
-  const rfc = normalizarTextoMayusculas(inputRFC.value);
+    const rfc = normalizarTextoMayusculas(inputRFC.value);
 
-  inputRFC.value = rfc;
+    inputRFC.value = rfc;
 
-  if (!rfc) {
-    establecerEstadoRFC(false, "Ingrese el RFC.");
+    if (!rfc) {
+        establecerEstadoRFC(false, "Ingrese el RFC.");
 
-    return false;
-  }
+        return false;
+    }
 
-  /*
-   * Expresión para persona física.
-   */
-  const regexFisica = /^[A-ZÑ&]{4}\d{6}[A-Z0-9]{3}$/;
+    /*
+     * Expresin para persona física.
+     */
+    const regexFisica = /^[A-ZÑ&]{4}\d{6}[A-Z0-9]{3}$/;
 
-  /*
-   * Expresión para persona moral.
-   */
-  const regexMoral = /^[A-ZÑ&]{3}\d{6}[A-Z0-9]{3}$/;
 
-  let valido = false;
+    const regexMoral = /^[A-ZÑ&]{3}\d{6}[A-Z0-9]{3}$/;
 
-  if (tipoPersona?.value === "FISICA") {
-    valido = regexFisica.test(rfc);
-  } else if (tipoPersona?.value === "MORAL") {
-    valido = regexMoral.test(rfc);
-  } else {
-    valido = regexFisica.test(rfc) || regexMoral.test(rfc);
-  }
+    let valido = false;
 
-  if (!valido) {
-    establecerEstadoRFC(false, "El formato del RFC no es válido.");
+    if (tipoPersona ? .value === "FISICA") {
+        valido = regexFisica.test(rfc);
+    } else if (tipoPersona ? .value === "MORAL") {
+        valido = regexMoral.test(rfc);
+    } else {
+        valido = regexFisica.test(rfc) || regexMoral.test(rfc);
+    }
 
-    inputRFC.classList.add("is-invalid");
-    inputRFC.classList.remove("is-valid");
+    if (!valido) {
+        establecerEstadoRFC(false, "El formato del RFC no es válido.");
 
-    return false;
-  }
+        inputRFC.classList.add("is-invalid");
+        inputRFC.classList.remove("is-valid");
 
-  inputRFC.classList.remove("is-invalid");
-
-  establecerEstadoRFC(true, "El formato del RFC es correcto.");
-
-  return true;
-}
-
-/**
- * Valida el RFC en el backend.
- *
- * El endpoint puede verificar:
- *
- * - Formato.
- * - Duplicidad.
- * - Coincidencia con otro cliente.
- */
-async function validarRFCCliente() {
-  const inputRFC = document.querySelector("#rfc");
-  const boton = document.querySelector("#btnValidarRFC");
-
-  if (!inputRFC) {
-    return;
-  }
-
-  if (!validarFormatoRFC()) {
-    inputRFC.focus();
-
-    return;
-  }
-
-  const contenidoOriginal = boton?.innerHTML || "";
-
-  establecerEstadoBoton(boton, true, "Validando...");
-
-  try {
-    const formData = new FormData();
-
-    formData.append("idcliente", String(obtenerIdCliente()));
-
-    formData.append("rfc", inputRFC.value);
-
-    formData.append(
-      "tipo_persona",
-      document.querySelector("#tipo_persona")?.value || "",
-    );
-
-    const respuesta = await peticionJson(CLIENTES_ENDPOINTS.validarRFC, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!respuesta.status) {
-      inputRFC.classList.add("is-invalid");
-      inputRFC.classList.remove("is-valid");
-
-      establecerEstadoRFC(
-        false,
-        respuesta.message || "El RFC no pudo ser validado.",
-      );
-
-      return;
+        return false;
     }
 
     inputRFC.classList.remove("is-invalid");
-    inputRFC.classList.add("is-valid");
 
-    establecerEstadoRFC(
-      true,
-      respuesta.message || "RFC disponible y validado correctamente.",
-    );
-  } catch (error) {
-    console.error("Error al validar RFC:", error);
+    establecerEstadoRFC(true, "El formato del RFC es correcto.");
 
-    inputRFC.classList.add("is-invalid");
-    inputRFC.classList.remove("is-valid");
-
-    establecerEstadoRFC(
-      false,
-      error.message || "No fue posible validar el RFC.",
-    );
-  } finally {
-    restaurarBoton(boton, contenidoOriginal);
-  }
+    return true;
 }
 
-/**
- * Muestra el resultado de la validación del RFC.
- *
- * @param {boolean} valido
- * @param {string} mensaje
- */
+async function validarRFCCliente() {
+    const inputRFC = document.querySelector("#rfc");
+    const boton = document.querySelector("#btnValidarRFC");
+
+    if (!inputRFC) {
+        return;
+    }
+
+    if (!validarFormatoRFC()) {
+        inputRFC.focus();
+
+        return;
+    }
+
+    const contenidoOriginal = boton ? .innerHTML || "";
+
+    establecerEstadoBoton(boton, true, "Validando...");
+
+    try {
+        const formData = new FormData();
+
+        formData.append("idcliente", String(obtenerIdCliente()));
+
+        formData.append("rfc", inputRFC.value);
+
+        formData.append(
+            "tipo_persona",
+            document.querySelector("#tipo_persona") ? .value || "",
+        );
+
+        const respuesta = await peticionJson(CLIENTES_ENDPOINTS.validarRFC, {
+            method: "POST",
+            body: formData,
+        });
+
+        if (!respuesta.status) {
+            inputRFC.classList.add("is-invalid");
+            inputRFC.classList.remove("is-valid");
+
+            establecerEstadoRFC(
+                false,
+                respuesta.message || "El RFC no pudo ser validado.",
+            );
+
+            return;
+        }
+
+        inputRFC.classList.remove("is-invalid");
+        inputRFC.classList.add("is-valid");
+
+        establecerEstadoRFC(
+            true,
+            respuesta.message || "RFC disponible y validado correctamente.",
+        );
+    } catch (error) {
+        console.error("Error al validar RFC:", error);
+
+        inputRFC.classList.add("is-invalid");
+        inputRFC.classList.remove("is-valid");
+
+        establecerEstadoRFC(
+            false,
+            error.message || "No fue posible validar el RFC.",
+        );
+    } finally {
+        restaurarBoton(boton, contenidoOriginal);
+    }
+}
+
+
 function establecerEstadoRFC(valido, mensaje) {
-  const contenedor = document.querySelector("#rfcStatus");
+    const contenedor = document.querySelector("#rfcStatus");
 
-  if (!contenedor) {
-    return;
-  }
+    if (!contenedor) {
+        return;
+    }
 
-  contenedor.className = valido
-    ? "rfc-status text-success"
-    : "rfc-status text-danger";
+    contenedor.className = valido ?
+        "rfc-status text-success" :
+        "rfc-status text-danger";
 
-  contenedor.innerHTML = valido
-    ? `<i class="ri-checkbox-circle-line me-1"></i>${escaparHtml(mensaje)}`
-    : `<i class="ri-close-circle-line me-1"></i>${escaparHtml(mensaje)}`;
+    contenedor.innerHTML = valido ?
+        `<i class="ri-checkbox-circle-line me-1"></i>${escaparHtml(mensaje)}` :
+        `<i class="ri-close-circle-line me-1"></i>${escaparHtml(mensaje)}`;
 }
 
-/**
- * Limpia los estilos y mensajes del RFC.
- */
+
 function limpiarEstadoRFC() {
-  const contenedor = document.querySelector("#rfcStatus");
+    const contenedor = document.querySelector("#rfcStatus");
 
-  const inputRFC = document.querySelector("#rfc");
+    const inputRFC = document.querySelector("#rfc");
 
-  if (contenedor) {
-    contenedor.innerHTML = "";
-    contenedor.className = "rfc-status";
-  }
+    if (contenedor) {
+        contenedor.innerHTML = "";
+        contenedor.className = "rfc-status";
+    }
 
-  if (inputRFC) {
-    inputRFC.classList.remove("is-valid", "is-invalid");
-  }
+    if (inputRFC) {
+        inputRFC.classList.remove("is-valid", "is-invalid");
+    }
 }
 
 /* ============================================================
- * 9. TRANSFORMACIÓN Y RESTRICCIÓN DE CAMPOS
+ * TRANSFORMACIÓN Y RESTRCCIÓN DE CAMOS
  * ============================================================ */
 
-/**
- * Aplica transformaciones básicas conservando las validaciones
- * existentes del HTML.
- */
 function configurarTransformacionesCampos() {
-  const camposMayusculas = ["#rfc", "#curp", "#codigo_cliente"];
+    const camposMayusculas = ["#rfc", "#curp", "#codigo_cliente"];
 
-  camposMayusculas.forEach(function (selector) {
-    const campo = document.querySelector(selector);
+    camposMayusculas.forEach(function(selector) {
+        const campo = document.querySelector(selector);
 
-    if (!campo) {
-      return;
+        if (!campo) {
+            return;
+        }
+
+        campo.addEventListener("input", function() {
+            campo.value = normalizarTextoMayusculas(campo.value);
+        });
+    });
+
+    const camposSoloNumeros = [
+        "#telefono",
+        "#celular",
+        "#codigo_postal_fiscal",
+        "#clabe",
+    ];
+
+    camposSoloNumeros.forEach(function(selector) {
+        const campo = document.querySelector(selector);
+
+        if (!campo) {
+            return;
+        }
+
+        campo.addEventListener("input", function() {
+            campo.value = campo.value.replace(/\D/g, "");
+        });
+    });
+
+    const inputCurp = document.querySelector("#curp");
+
+    if (inputCurp) {
+        inputCurp.addEventListener("blur", function() {
+            validarCURP();
+        });
     }
 
-    campo.addEventListener("input", function () {
-      campo.value = normalizarTextoMayusculas(campo.value);
-    });
-  });
+    const inputClabe = document.querySelector("#clabe");
 
-  const camposSoloNumeros = [
-    "#telefono",
-    "#celular",
-    "#codigo_postal_fiscal",
-    "#clabe",
-  ];
-
-  camposSoloNumeros.forEach(function (selector) {
-    const campo = document.querySelector(selector);
-
-    if (!campo) {
-      return;
+    if (inputClabe) {
+        inputClabe.addEventListener("blur", function() {
+            validarCLABE();
+        });
     }
-
-    campo.addEventListener("input", function () {
-      campo.value = campo.value.replace(/\D/g, "");
-    });
-  });
-
-  const inputCurp = document.querySelector("#curp");
-
-  if (inputCurp) {
-    inputCurp.addEventListener("blur", function () {
-      validarCURP();
-    });
-  }
-
-  const inputClabe = document.querySelector("#clabe");
-
-  if (inputClabe) {
-    inputClabe.addEventListener("blur", function () {
-      validarCLABE();
-    });
-  }
 }
 
-/**
- * Valida el formato básico de CURP.
- *
- * @returns {boolean}
- */
+
 function validarCURP() {
-  const inputCurp = document.querySelector("#curp");
+    const inputCurp = document.querySelector("#curp");
 
-  if (!inputCurp || inputCurp.disabled || !inputCurp.value) {
-    return true;
-  }
+    if (!inputCurp || inputCurp.disabled || !inputCurp.value) {
+        return true;
+    }
 
-  const curp = normalizarTextoMayusculas(inputCurp.value);
+    const curp = normalizarTextoMayusculas(inputCurp.value);
 
-  inputCurp.value = curp;
+    inputCurp.value = curp;
 
-  const regexCURP = /^[A-Z][AEIOU][A-Z]{2}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/;
+    const regexCURP = /^[A-Z][AEIOU][A-Z]{2}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/;
 
-  const valido = regexCURP.test(curp);
+    const valido = regexCURP.test(curp);
 
-  inputCurp.classList.toggle("is-invalid", !valido);
+    inputCurp.classList.toggle("is-invalid", !valido);
 
-  inputCurp.classList.toggle("is-valid", valido);
+    inputCurp.classList.toggle("is-valid", valido);
 
-  return valido;
+    return valido;
 }
 
-/**
- * Valida que la CLABE tenga exactamente 18 números.
- *
- * @returns {boolean}
- */
+
 function validarCLABE() {
-  const inputClabe = document.querySelector("#clabe");
+    const inputClabe = document.querySelector("#clabe");
 
-  if (!inputClabe || !inputClabe.value) {
-    return true;
-  }
+    if (!inputClabe || !inputClabe.value) {
+        return true;
+    }
 
-  const valido = /^\d{18}$/.test(inputClabe.value);
+    const valido = /^\d{18}$/.test(inputClabe.value);
 
-  inputClabe.classList.toggle("is-invalid", !valido);
+    inputClabe.classList.toggle("is-invalid", !valido);
 
-  inputClabe.classList.toggle("is-valid", valido);
+    inputClabe.classList.toggle("is-valid", valido);
 
-  return valido;
+    return valido;
+}
+
+
+function configurarBotonLimpiar() {
+    const botonLimpiar = document.querySelector("#btnLimpiar");
+
+    if (!botonLimpiar) {
+        return;
+    }
+
+    botonLimpiar.addEventListener("click", async function(event) {
+        event.preventDefault();
+
+        const confirmado = await confirmarAccion(
+            "¿Desea limpiar la información capturada?",
+            "Limpiar formulario",
+        );
+
+        if (!confirmado) {
+            return;
+        }
+
+        limpiarFormularioCliente();
+    });
+}
+
+
+function limpiarFormularioCliente() {
+    const formulario = document.querySelector(SELECTORES_CLIENTE.formulario);
+
+    if (!formulario) {
+        return;
+    }
+
+    const idclienteActual = obtenerIdCliente();
+
+    formulario.reset();
+
+    establecerIdCliente(idclienteActual);
+
+    mostrarSeccionTipoCliente();
+    actualizarCamposTipoPersona();
+    limpiarEstadoRFC();
+
+    formulario
+        .querySelectorAll(".is-valid, .is-invalid")
+        .forEach(function(campo) {
+            campo.classList.remove("is-valid", "is-invalid");
+        });
+
+    if (idclienteActual <= 0) {
+        limpiarCodigoCliente();
+        bloquearPestanasCliente();
+        abrirPestana("#tab-general");
+    } else {
+        desbloquearPestanasCliente();
+    }
 }
 
 /* ============================================================
- * 10. BOTÓN LIMPIAR
+ * FUNIONES AUXILIARES 
  * ============================================================ */
 
-/**
- * Configura el botón Limpiar.
- */
-function configurarBotonLimpiar() {
-  const botonLimpiar = document.querySelector("#btnLimpiar");
 
-  if (!botonLimpiar) {
-    return;
-  }
+function obtenerIdCliente() {
+    const inputIdCliente = document.querySelector(SELECTORES_CLIENTE.idcliente);
 
-  botonLimpiar.addEventListener("click", async function (event) {
-    event.preventDefault();
+    const idcliente = Number(inputIdCliente ? .value || 0);
 
-    const confirmado = await confirmarAccion(
-      "¿Desea limpiar la información capturada?",
-      "Limpiar formulario",
-    );
-
-    if (!confirmado) {
-      return;
-    }
-
-    limpiarFormularioCliente();
-  });
+    return Number.isInteger(idcliente) && idcliente > 0 ? idcliente : 0;
 }
 
-/**
- * Limpia el formulario.
- *
- * Si el cliente ya fue registrado, conserva su ID para evitar que
- * los registros dependientes queden desligados accidentalmente.
- */
-function limpiarFormularioCliente() {
-  const formulario = document.querySelector(SELECTORES_CLIENTE.formulario);
 
-  if (!formulario) {
-    return;
-  }
+function establecerIdCliente(idcliente) {
+    const id = Number(idcliente);
 
-  const idclienteActual = obtenerIdCliente();
+    if (!Number.isInteger(id) || id <= 0) {
+        return;
+    }
 
-  formulario.reset();
+    const inputIdCliente = document.querySelector(SELECTORES_CLIENTE.idcliente);
 
-  establecerIdCliente(idclienteActual);
+    if (inputIdCliente) {
+        inputIdCliente.value = String(id);
+    }
 
-  mostrarSeccionTipoCliente();
-  actualizarCamposTipoPersona();
-  limpiarEstadoRFC();
+    estadoModuloClientes.idcliente = id;
+    estadoModuloClientes.clienteGuardado = true;
+}
 
-  formulario
-    .querySelectorAll(".is-valid, .is-invalid")
-    .forEach(function (campo) {
-      campo.classList.remove("is-valid", "is-invalid");
+
+function validarClienteGuardado() {
+    if (obtenerIdCliente() > 0) {
+        return true;
+    }
+
+    mostrarAdvertencia(
+        "Primero debe guardar la información general del cliente.",
+    );
+
+    abrirPestana("#tab-general");
+
+    return false;
+}
+
+
+function validarContenedor(contenedor) {
+    if (!contenedor) {
+        return false;
+    }
+
+    const campos = Array.from(
+        contenedor.querySelectorAll("input, select, textarea"),
+    ).filter(function(campo) {
+        return (!campo.disabled && campo.type !== "hidden" && esElementoVisible(campo));
     });
 
-  if (idclienteActual <= 0) {
-    limpiarCodigoCliente();
-    bloquearPestanasCliente();
-    abrirPestana("#tab-general");
-  } else {
-    desbloquearPestanasCliente();
-  }
-}
+    let primerCampoInvalido = null;
+    let formularioValido = true;
 
-/* ============================================================
- * 11. FUNCIONES AUXILIARES COMUNES
- * ============================================================ */
+    campos.forEach(function(campo) {
 
-/**
- * Obtiene el ID del cliente almacenado en el campo oculto.
- *
- * @returns {number}
- */
-function obtenerIdCliente() {
-  const inputIdCliente = document.querySelector(SELECTORES_CLIENTE.idcliente);
+        campo.classList.remove("is-valid", "is-invalid");
 
-  const idcliente = Number(inputIdCliente?.value || 0);
+        const esValido = campo.checkValidity();
 
-  return Number.isInteger(idcliente) && idcliente > 0 ? idcliente : 0;
-}
+        if (!esValido) {
+            formularioValido = false;
+            campo.classList.add("is-invalid");
 
-/**
- * Guarda el ID del cliente en el campo oculto y en el estado interno.
- *
- * @param {number} idcliente
- */
-function establecerIdCliente(idcliente) {
-  const id = Number(idcliente);
+            if (!primerCampoInvalido) {
+                primerCampoInvalido = campo;
+            }
+        } else if (campo.required && campo.value) {
+            campo.classList.add("is-valid");
+        }
+    });
 
-  if (!Number.isInteger(id) || id <= 0) {
-    return;
-  }
+    if (primerCampoInvalido) {
+        primerCampoInvalido.focus();
 
-  const inputIdCliente = document.querySelector(SELECTORES_CLIENTE.idcliente);
-
-  if (inputIdCliente) {
-    inputIdCliente.value = String(id);
-  }
-
-  estadoModuloClientes.idcliente = id;
-  estadoModuloClientes.clienteGuardado = true;
-}
-
-/**
- * Verifica que exista un cliente guardado.
- *
- * @returns {boolean}
- */
-function validarClienteGuardado() {
-  if (obtenerIdCliente() > 0) {
-    return true;
-  }
-
-  mostrarAdvertencia(
-    "Primero debe guardar la información general del cliente.",
-  );
-
-  abrirPestana("#tab-general");
-
-  return false;
-}
-
-/**
- * Valida los campos requeridos de un contenedor.
- *
- * Solo toma en cuenta campos visibles y habilitados.
- *
- * @param {HTMLElement} contenedor
- * @returns {boolean}
- */
-function validarContenedor(contenedor) {
-  if (!contenedor) {
-    return false;
-  }
-
-  const campos = Array.from(
-    contenedor.querySelectorAll("input, select, textarea"),
-  ).filter(function (campo) {
-    return (
-      !campo.disabled && campo.type !== "hidden" && esElementoVisible(campo)
-    );
-  });
-
-  let primerCampoInvalido = null;
-  let formularioValido = true;
-
-  campos.forEach(function (campo) {
-    /*
-     * Limpiamos clases anteriores.
-     */
-    campo.classList.remove("is-valid", "is-invalid");
-
-    const esValido = campo.checkValidity();
-
-    if (!esValido) {
-      formularioValido = false;
-      campo.classList.add("is-invalid");
-
-      if (!primerCampoInvalido) {
-        primerCampoInvalido = campo;
-      }
-    } else if (campo.required && campo.value) {
-      campo.classList.add("is-valid");
+        if (typeof primerCampoInvalido.reportValidity === "function") {
+            primerCampoInvalido.reportValidity();
+        }
     }
-  });
 
-  if (primerCampoInvalido) {
-    primerCampoInvalido.focus();
-
-    if (typeof primerCampoInvalido.reportValidity === "function") {
-      primerCampoInvalido.reportValidity();
-    }
-  }
-
-  return formularioValido;
+    return formularioValido;
 }
 
-/**
- * Determina si un elemento se encuentra visible.
- *
- * @param {HTMLElement} elemento
- * @returns {boolean}
- */
 function esElementoVisible(elemento) {
-  if (!elemento) {
-    return false;
-  }
-
-  return Boolean(
-    elemento.offsetWidth ||
-    elemento.offsetHeight ||
-    elemento.getClientRects().length,
-  );
-}
-
-/**
- * Genera un FormData utilizando únicamente campos habilitados
- * pertenecientes a un contenedor.
- *
- * @param {HTMLElement} contenedor
- * @returns {FormData}
- */
-function crearFormDataDesdeContenedor(contenedor) {
-  const formData = new FormData();
-
-  if (!contenedor) {
-    return formData;
-  }
-
-  const campos = contenedor.querySelectorAll("input, select, textarea");
-
-  campos.forEach(function (campo) {
-    if (campo.disabled || !campo.name) {
-      return;
+    if (!elemento) {
+        return false;
     }
 
-    if (
-      (campo.type === "checkbox" || campo.type === "radio") &&
-      !campo.checked
-    ) {
-      return;
-    }
-
-    if (campo.type === "file") {
-      Array.from(campo.files || []).forEach(function (archivo) {
-        formData.append(campo.name, archivo);
-      });
-
-      return;
-    }
-
-    formData.append(campo.name, campo.value);
-  });
-
-  return formData;
-}
-
-/**
- * Realiza una petición y exige una respuesta JSON válida.
- *
- * @param {string} url
- * @param {RequestInit} opciones
- * @returns {Promise<object>}
- */
-async function peticionJson(url, opciones = {}) {
-  const configuracion = {
-    method: "GET",
-    credentials: "same-origin",
-    headers: {
-      "X-Requested-With": "XMLHttpRequest",
-    },
-    ...opciones,
-  };
-
-  /*
-   * No establecemos Content-Type cuando el body es FormData.
-   * El navegador debe crear automáticamente el boundary.
-   */
-  if (configuracion.body instanceof FormData && configuracion.headers) {
-    delete configuracion.headers["Content-Type"];
-  }
-
-  let respuestaHttp;
-
-  try {
-    respuestaHttp = await fetch(url, configuracion);
-  } catch (error) {
-    throw new Error("No fue posible establecer comunicación con el servidor.");
-  }
-
-  const textoRespuesta = await respuestaHttp.text();
-
-  let respuestaJson;
-
-  try {
-    respuestaJson = textoRespuesta ? JSON.parse(textoRespuesta) : {};
-  } catch (error) {
-    console.error("Respuesta no JSON:", textoRespuesta);
-
-    throw new Error("La respuesta del servidor no tiene formato JSON.");
-  }
-
-  if (!respuestaHttp.ok) {
-    throw new Error(
-      respuestaJson.message || `Error HTTP ${respuestaHttp.status}.`,
+    return Boolean(
+        elemento.offsetWidth ||
+        elemento.offsetHeight ||
+        elemento.getClientRects().length,
     );
-  }
-
-  return respuestaJson;
 }
 
-/**
- * Activa o desactiva un botón durante una petición.
- *
- * @param {HTMLElement|null} boton
- * @param {boolean} cargando
- * @param {string} texto
- */
+
+function crearFormDataDesdeContenedor(contenedor) {
+    const formData = new FormData();
+
+    if (!contenedor) {
+        return formData;
+    }
+
+    const campos = contenedor.querySelectorAll("input, select, textarea");
+
+    campos.forEach(function(campo) {
+        if (campo.disabled || !campo.name) {
+            return;
+        }
+
+        if (
+            (campo.type === "checkbox" || campo.type === "radio") &&
+            !campo.checked
+        ) {
+            return;
+        }
+
+        if (campo.type === "file") {
+            Array.from(campo.files || []).forEach(function(archivo) {
+                formData.append(campo.name, archivo);
+            });
+
+            return;
+        }
+
+        formData.append(campo.name, campo.value);
+    });
+
+    return formData;
+}
+
+
+async function peticionJson(url, opciones = {}) {
+    const configuracion = {
+        method: "GET",
+        credentials: "same-origin",
+        headers: {
+            "X-Requested-With": "XMLHttpRequest",
+        },
+        ...opciones,
+    };
+
+
+    if (configuracion.body instanceof FormData && configuracion.headers) {
+        delete configuracion.headers["Content-Type"];
+    }
+
+    let respuestaHttp;
+
+    try {
+        respuestaHttp = await fetch(url, configuracion);
+    } catch (error) {
+        throw new Error("No fue posible establecer comunicación con el servidor.");
+    }
+
+    const textoRespuesta = await respuestaHttp.text();
+
+    let respuestaJson;
+
+    try {
+        respuestaJson = textoRespuesta ? JSON.parse(textoRespuesta) : {};
+    } catch (error) {
+        console.error("Respuesta no JSON:", textoRespuesta);
+
+        throw new Error("La respuesta del servidor no tiene formato JSON.");
+    }
+
+    if (!respuestaHttp.ok) {
+        throw new Error(
+            respuestaJson.message || `Error HTTP ${respuestaHttp.status}.`,
+        );
+    }
+
+    return respuestaJson;
+}
+
+
 function establecerEstadoBoton(boton, cargando, texto = "Procesando...") {
-  if (!boton) {
-    return;
-  }
+    if (!boton) {
+        return;
+    }
 
-  boton.disabled = cargando;
+    boton.disabled = cargando;
 
-  if (cargando) {
-    boton.innerHTML = `
+    if (cargando) {
+        boton.innerHTML = `
             <span
                 class="spinner-border spinner-border-sm me-1"
                 role="status"
@@ -1527,227 +1281,161 @@ function establecerEstadoBoton(boton, cargando, texto = "Procesando...") {
             </span>
             ${escaparHtml(texto)}
         `;
-  }
+    }
 }
 
-/**
- * Restaura el contenido original de un botón.
- *
- * @param {HTMLElement|null} boton
- * @param {string} contenidoOriginal
- */
+
 function restaurarBoton(boton, contenidoOriginal) {
-  if (!boton) {
-    return;
-  }
+    if (!boton) {
+        return;
+    }
 
-  boton.disabled = false;
-  boton.innerHTML = contenidoOriginal;
+    boton.disabled = false;
+    boton.innerHTML = contenidoOriginal;
 }
 
-/**
- * Convierte texto a mayúsculas y elimina espacios laterales.
- *
- * @param {string} valor
- * @returns {string}
- */
+
 function normalizarTextoMayusculas(valor) {
-  return String(valor || "")
-    .toLocaleUpperCase("es-MX")
-    .trimStart();
+    return String(valor || "")
+        .toLocaleUpperCase("es-MX")
+        .trimStart();
 }
 
-/**
- * Escapa contenido antes de colocarlo con innerHTML.
- *
- * @param {*} valor
- * @returns {string}
- */
+
 function escaparHtml(valor) {
-  const elemento = document.createElement("div");
+    const elemento = document.createElement("div");
 
-  elemento.textContent = String(valor ?? "");
+    elemento.textContent = String(valor ? ? "");
 
-  return elemento.innerHTML;
+    return elemento.innerHTML;
 }
 
-/**
- * Muestra una alerta de éxito.
- *
- * @param {string} mensaje
- */
+
 function mostrarExito(mensaje) {
-  if (typeof Swal !== "undefined" && Swal.fire) {
-    Swal.fire({
-      icon: "success",
-      title: "Proceso correcto",
-      text: mensaje,
-      confirmButtonText: "Aceptar",
-    });
+    if (typeof Swal !== "undefined" && Swal.fire) {
+        Swal.fire({
+            icon: "success",
+            title: "Proceso correcto",
+            text: mensaje,
+            confirmButtonText: "Aceptar",
+        });
 
-    return;
-  }
+        return;
+    }
 
-  alert(mensaje);
+    alert(mensaje);
 }
 
-/**
- * Muestra una alerta de error.
- *
- * @param {string} mensaje
- */
 function mostrarError(mensaje) {
-  if (typeof Swal !== "undefined" && Swal.fire) {
-    Swal.fire({
-      icon: "error",
-      title: "Ocurrió un error",
-      text: mensaje,
-      confirmButtonText: "Aceptar",
-    });
+    if (typeof Swal !== "undefined" && Swal.fire) {
+        Swal.fire({
+            icon: "error",
+            title: "Ocurrió un error",
+            text: mensaje,
+            confirmButtonText: "Aceptar",
+        });
 
-    return;
-  }
+        return;
+    }
 
-  alert(mensaje);
+    alert(mensaje);
 }
 
-/**
- * Muestra una advertencia.
- *
- * @param {string} mensaje
- */
+
 function mostrarAdvertencia(mensaje) {
-  if (typeof Swal !== "undefined" && Swal.fire) {
-    Swal.fire({
-      icon: "warning",
-      title: "Atención",
-      text: mensaje,
-      confirmButtonText: "Aceptar",
-    });
+    if (typeof Swal !== "undefined" && Swal.fire) {
+        Swal.fire({
+            icon: "warning",
+            title: "Atención",
+            text: mensaje,
+            confirmButtonText: "Aceptar",
+        });
 
-    return;
-  }
+        return;
+    }
 
-  alert(mensaje);
+    alert(mensaje);
 }
 
-/**
- * Solicita confirmación antes de realizar una acción.
- *
- * @param {string} mensaje
- * @param {string} textoConfirmar
- * @returns {Promise<boolean>}
- */
+
 async function confirmarAccion(mensaje, textoConfirmar = "Confirmar") {
-  if (typeof Swal !== "undefined" && Swal.fire) {
-    const resultado = await Swal.fire({
-      icon: "question",
-      title: "Confirmar operación",
-      text: mensaje,
-      showCancelButton: true,
-      confirmButtonText: textoConfirmar,
-      cancelButtonText: "Cancelar",
-      reverseButtons: true,
-    });
+    if (typeof Swal !== "undefined" && Swal.fire) {
+        const resultado = await Swal.fire({
+            icon: "question",
+            title: "Confirmar operación",
+            text: mensaje,
+            showCancelButton: true,
+            confirmButtonText: textoConfirmar,
+            cancelButtonText: "Cancelar",
+            reverseButtons: true,
+        });
 
-    return resultado.isConfirmed;
-  }
+        return resultado.isConfirmed;
+    }
 
-  return window.confirm(mensaje);
+    return window.confirm(mensaje);
 }
 
 /* ============================================================
- * PARTE 2
- *
- * - Guardado de información fiscal.
- * - Validaciones fiscales.
- * - Creación dinámica de contactos.
- * - Guardado individual de contactos.
- * - Actualización de contactos.
- * - Eliminación de contactos.
- * - Carga de contactos registrados.
- * - Contador de contactos en la pestaña.
+ * INFORMACIÓN FISCAL
  * ============================================================ */
 
-/* ============================================================
- * 12. INFORMACIÓN FISCAL
- * ============================================================ */
 
-/**
- * Estado interno de la sección fiscal.
- */
 const estadoFiscalCliente = {
-  guardando: false,
-  botonCreado: false,
-  informacionGuardada: false,
+    guardando: false,
+    botonCreado: false,
+    informacionGuardada: false,
 
-  cargando: false,
-  cargado: false,
+    cargando: false,
+    cargado: false,
 };
 
-/**
- * Inicializa la sección de información fiscal.
- *
- * Esta función:
- *
- * - Crea el botón Guardar información fiscal.
- * - Configura el evento del botón.
- * - Valida RFC, CURP y código postal.
- * - Controla si el cliente requiere factura.
- */
+
 function configurarSeccionFiscal() {
-  const contenedorFiscal = document.querySelector(SELECTORES_CLIENTE.tabFiscal);
+    const contenedorFiscal = document.querySelector(SELECTORES_CLIENTE.tabFiscal);
 
-  if (!contenedorFiscal) {
-    return;
-  }
+    if (!contenedorFiscal) {
+        return;
+    }
 
-  crearBotonGuardarFiscal();
-  configurarCamposFiscales();
+    crearBotonGuardarFiscal();
+    configurarCamposFiscales();
 
-  const botonTab = obtenerBotonTab("#tab-fiscal");
+    const botonTab = obtenerBotonTab("#tab-fiscal");
 
-  if (botonTab) {
-    botonTab.addEventListener("shown.bs.tab", function () {
-      if (validarClienteGuardado()) {
-        cargarInformacionFiscalCliente();
-      }
-    });
-  }
+    if (botonTab) {
+        botonTab.addEventListener("shown.bs.tab", function() {
+            if (validarClienteGuardado()) {
+                cargarInformacionFiscalCliente();
+            }
+        });
+    }
 }
 
-/**
- * Agrega el botón para guardar la información fiscal.
- *
- * El HTML original no contiene un botón exclusivo para Fiscal,
- * por lo que se genera dinámicamente al cargar el módulo.
- */
+
 function crearBotonGuardarFiscal() {
-  const contenedorFiscal = document.querySelector(SELECTORES_CLIENTE.tabFiscal);
+    const contenedorFiscal = document.querySelector(SELECTORES_CLIENTE.tabFiscal);
 
-  if (!contenedorFiscal || estadoFiscalCliente.botonCreado) {
-    return;
-  }
+    if (!contenedorFiscal || estadoFiscalCliente.botonCreado) {
+        return;
+    }
 
-  /*
-   * Evita crear dos veces el botón si la función se ejecuta
-   * nuevamente.
-   */
-  const botonExistente = document.querySelector("#btnGuardarFiscal");
 
-  if (botonExistente) {
-    botonExistente.addEventListener("click", guardarInformacionFiscal);
+    const botonExistente = document.querySelector("#btnGuardarFiscal");
 
-    estadoFiscalCliente.botonCreado = true;
+    if (botonExistente) {
+        botonExistente.addEventListener("click", guardarInformacionFiscal);
 
-    return;
-  }
+        estadoFiscalCliente.botonCreado = true;
 
-  const contenedorAcciones = document.createElement("div");
+        return;
+    }
 
-  contenedorAcciones.className = "d-flex justify-content-end gap-2 mt-4";
+    const contenedorAcciones = document.createElement("div");
 
-  contenedorAcciones.innerHTML = `
+    contenedorAcciones.className = "d-flex justify-content-end gap-2 mt-4";
+
+    contenedorAcciones.innerHTML = `
         <button
             type="button"
             class="btn btn-primary btn-label"
@@ -1761,447 +1449,395 @@ function crearBotonGuardarFiscal() {
         </button>
     `;
 
-  contenedorFiscal.appendChild(contenedorAcciones);
+    contenedorFiscal.appendChild(contenedorAcciones);
 
-  const botonGuardar = document.querySelector("#btnGuardarFiscal");
+    const botonGuardar = document.querySelector("#btnGuardarFiscal");
 
-  botonGuardar?.addEventListener("click", guardarInformacionFiscal);
+    botonGuardar ? .addEventListener("click", guardarInformacionFiscal);
 
-  estadoFiscalCliente.botonCreado = true;
+    estadoFiscalCliente.botonCreado = true;
 }
 
-/**
- * Configura las validaciones y cambios de los campos fiscales.
- */
 function configurarCamposFiscales() {
-  const inputRFC = document.querySelector("#rfc");
-  const inputCURP = document.querySelector("#curp");
-  const inputCodigoPostal = document.querySelector("#codigo_postal_fiscal");
+    const inputRFC = document.querySelector("#rfc");
+    const inputCURP = document.querySelector("#curp");
+    const inputCodigoPostal = document.querySelector("#codigo_postal_fiscal");
 
-  const selectRequiereFactura = document.querySelector("#requiere_factura");
+    const selectRequiereFactura = document.querySelector("#requiere_factura");
 
-  const selectRegimenFiscal = document.querySelector("#regimen_fiscal");
+    const selectRegimenFiscal = document.querySelector("#regimen_fiscal");
 
-  const selectUsoCFDI = document.querySelector("#uso_cfdi");
+    const selectUsoCFDI = document.querySelector("#uso_cfdi");
 
-  if (inputRFC) {
-    inputRFC.addEventListener("input", function () {
-      inputRFC.value = normalizarTextoMayusculas(inputRFC.value);
-    });
-  }
+    if (inputRFC) {
+        inputRFC.addEventListener("input", function() {
+            inputRFC.value = normalizarTextoMayusculas(inputRFC.value);
+        });
+    }
 
-  if (inputCURP) {
-    inputCURP.addEventListener("input", function () {
-      inputCURP.value = normalizarTextoMayusculas(inputCURP.value);
-    });
-  }
+    if (inputCURP) {
+        inputCURP.addEventListener("input", function() {
+            inputCURP.value = normalizarTextoMayusculas(inputCURP.value);
+        });
+    }
 
-  if (inputCodigoPostal) {
-    inputCodigoPostal.addEventListener("input", function () {
-      inputCodigoPostal.value = inputCodigoPostal.value
-        .replace(/\D/g, "")
-        .slice(0, 5);
-    });
-  }
+    if (inputCodigoPostal) {
+        inputCodigoPostal.addEventListener("input", function() {
+            inputCodigoPostal.value = inputCodigoPostal.value
+                .replace(/\D/g, "")
+                .slice(0, 5);
+        });
+    }
 
-  if (selectRequiereFactura) {
-    selectRequiereFactura.addEventListener(
-      "change",
-      actualizarRequerimientosFiscales,
-    );
-  }
+    if (selectRequiereFactura) {
+        selectRequiereFactura.addEventListener(
+            "change",
+            actualizarRequerimientosFiscales,
+        );
+    }
 
-  if (selectRegimenFiscal) {
-    selectRegimenFiscal.addEventListener("change", validarRegimenFiscalPersona);
-  }
+    if (selectRegimenFiscal) {
+        selectRegimenFiscal.addEventListener("change", validarRegimenFiscalPersona);
+    }
 
-  if (selectUsoCFDI) {
-    selectUsoCFDI.addEventListener("change", function () {
-      selectUsoCFDI.classList.remove("is-invalid");
-    });
-  }
+    if (selectUsoCFDI) {
+        selectUsoCFDI.addEventListener("change", function() {
+            selectUsoCFDI.classList.remove("is-invalid");
+        });
+    }
 
-  actualizarRequerimientosFiscales();
+    actualizarRequerimientosFiscales();
 }
 
-/**
- * Cambia la obligatoriedad de ciertos campos según si el cliente
- * requiere factura.
- */
+
 function actualizarRequerimientosFiscales() {
-  const selectRequiereFactura = document.querySelector("#requiere_factura");
+    const selectRequiereFactura = document.querySelector("#requiere_factura");
 
-  const requiereFactura = String(selectRequiereFactura?.value || "0") === "1";
+    const requiereFactura = String(selectRequiereFactura ? .value || "0") === "1";
 
-  const camposObligatorios = [
-    document.querySelector("#rfc"),
-    document.querySelector("#regimen_fiscal"),
-    document.querySelector("#uso_cfdi"),
-    document.querySelector("#codigo_postal_fiscal"),
-  ];
+    const camposObligatorios = [
+        document.querySelector("#rfc"),
+        document.querySelector("#regimen_fiscal"),
+        document.querySelector("#uso_cfdi"),
+        document.querySelector("#codigo_postal_fiscal"),
+    ];
 
-  camposObligatorios.forEach(function (campo) {
-    if (!campo) {
-      return;
-    }
+    camposObligatorios.forEach(function(campo) {
+        if (!campo) {
+            return;
+        }
 
-    campo.required = requiereFactura;
+        campo.required = requiereFactura;
 
-    const label = document.querySelector(`label[for="${campo.id}"]`);
+        const label = document.querySelector(`label[for="${campo.id}"]`);
 
-    if (label) {
-      label.classList.toggle("required", requiereFactura);
-    }
-  });
-}
-
-/**
- * Valida si el régimen fiscal tiene sentido para el tipo de
- * persona seleccionado.
- *
- * Esta validación es orientativa. El backend debe realizar la
- * validación definitiva.
- *
- * @returns {boolean}
- */
-function validarRegimenFiscalPersona() {
-  const tipoPersona = String(
-    document.querySelector("#tipo_persona")?.value || "",
-  ).toUpperCase();
-
-  const selectRegimen = document.querySelector("#regimen_fiscal");
-
-  if (!selectRegimen || !selectRegimen.value) {
-    return true;
-  }
-
-  const regimen = String(selectRegimen.value);
-
-  /*
-   * Regímenes normalmente asociados con personas morales.
-   */
-  const regimenesMorales = ["601", "603"];
-
-  /*
-   * Regímenes normalmente asociados con personas físicas.
-   */
-  const regimenesFisicas = ["605", "606", "612", "616", "621", "626"];
-
-  let valido = true;
-  let mensaje = "";
-
-  if (tipoPersona === "FISICA" && regimenesMorales.includes(regimen)) {
-    valido = false;
-    mensaje =
-      "El régimen seleccionado normalmente corresponde a una persona moral.";
-  }
-
-  if (tipoPersona === "MORAL" && regimenesFisicas.includes(regimen)) {
-    valido = false;
-    mensaje =
-      "El régimen seleccionado normalmente corresponde a una persona física.";
-  }
-
-  selectRegimen.classList.toggle("is-invalid", !valido);
-
-  if (!valido) {
-    mostrarAdvertencia(mensaje);
-  } else {
-    selectRegimen.classList.remove("is-invalid");
-  }
-
-  return valido;
-}
-
-/**
- * Valida los datos fiscales antes de enviarlos al servidor.
- *
- * @returns {boolean}
- */
-function validarDatosFiscales() {
-  const contenedorFiscal = document.querySelector(SELECTORES_CLIENTE.tabFiscal);
-
-  if (!contenedorFiscal) {
-    return false;
-  }
-
-  actualizarRequerimientosFiscales();
-
-  if (!validarContenedor(contenedorFiscal)) {
-    return false;
-  }
-
-  const requiereFactura =
-    document.querySelector("#requiere_factura")?.value === "1";
-
-  /*
-   * Si no requiere factura, los campos fiscales pueden estar
-   * vacíos. Si están capturados, se validan.
-   */
-  const inputRFC = document.querySelector("#rfc");
-
-  if (requiereFactura || inputRFC?.value) {
-    if (!validarFormatoRFC()) {
-      inputRFC?.focus();
-
-      return false;
-    }
-  }
-
-  const tipoPersona = document.querySelector("#tipo_persona")?.value;
-
-  const inputCURP = document.querySelector("#curp");
-
-  if (tipoPersona === "FISICA" && inputCURP?.value && !validarCURP()) {
-    mostrarAdvertencia("La CURP capturada no tiene un formato válido.");
-
-    inputCURP.focus();
-
-    return false;
-  }
-
-  const inputCodigoPostal = document.querySelector("#codigo_postal_fiscal");
-
-  if (inputCodigoPostal?.value && !/^\d{5}$/.test(inputCodigoPostal.value)) {
-    inputCodigoPostal.classList.add("is-invalid");
-
-    mostrarAdvertencia(
-      "El código postal fiscal debe contener exactamente 5 números.",
-    );
-
-    inputCodigoPostal.focus();
-
-    return false;
-  }
-
-  if (!validarRegimenFiscalPersona()) {
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Guarda o actualiza la información fiscal del cliente.
- */
-async function guardarInformacionFiscal() {
-  if (!validarClienteGuardado()) {
-    return;
-  }
-
-  if (estadoFiscalCliente.guardando) {
-    return;
-  }
-
-  if (!validarDatosFiscales()) {
-    mostrarAdvertencia("Revise los datos fiscales capturados.");
-
-    return;
-  }
-
-  const confirmado = await confirmarAccion(
-    "¿Desea guardar la información fiscal del cliente?",
-    "Guardar información fiscal",
-  );
-
-  if (!confirmado) {
-    return;
-  }
-
-  const boton = document.querySelector("#btnGuardarFiscal");
-
-  const contenidoOriginal = boton?.innerHTML || "";
-
-  estadoFiscalCliente.guardando = true;
-
-  establecerEstadoBoton(boton, true, "Guardando...");
-
-  try {
-    const contenedorFiscal = document.querySelector(
-      SELECTORES_CLIENTE.tabFiscal,
-    );
-
-    const formData = crearFormDataDesdeContenedor(contenedorFiscal);
-
-    formData.set("idcliente", String(obtenerIdCliente()));
-
-    /*
-     * El tipo de persona se encuentra en General, pero puede
-     * ser requerido por el endpoint fiscal.
-     */
-    formData.set(
-      "tipo_persona",
-      document.querySelector("#tipo_persona")?.value || "",
-    );
-
-    const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarFiscal, {
-      method: "POST",
-      body: formData,
+        if (label) {
+            label.classList.toggle("required", requiereFactura);
+        }
     });
+}
 
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message || "No fue posible guardar la información fiscal.",
-      );
+
+function validarRegimenFiscalPersona() {
+    const tipoPersona = String(
+        document.querySelector("#tipo_persona") ? .value || "",
+    ).toUpperCase();
+
+    const selectRegimen = document.querySelector("#regimen_fiscal");
+
+    if (!selectRegimen || !selectRegimen.value) {
+        return true;
     }
 
-    estadoFiscalCliente.informacionGuardada = true;
-
-    mostrarExito(
-      respuesta.message || "La información fiscal se guardó correctamente.",
-    );
+    const regimen = String(selectRegimen.value);
 
     /*
-     * Después del guardado se abre Contactos para continuar
-     * con la captura.
+     * Regímenes normamente asociados con personas morales.
      */
-    abrirPestana("#tab-contactos");
-  } catch (error) {
-    console.error("Error al guardar información fiscal:", error);
+    const regimenesMorales = ["601", "603"];
 
-    mostrarError(
-      error.message || "Ocurrió un error al guardar los datos fiscales.",
+    /*
+     * Regímenes normalmente asocados con personas físicas.
+     */
+    const regimenesFisicas = ["605", "606", "612", "616", "621", "626"];
+
+    let valido = true;
+    let mensaje = "";
+
+    if (tipoPersona === "FISICA" && regimenesMorales.includes(regimen)) {
+        valido = false;
+        mensaje =
+            "El régimen seleccionado normalmente corresponde a una persona moral.";
+    }
+
+    if (tipoPersona === "MORAL" && regimenesFisicas.includes(regimen)) {
+        valido = false;
+        mensaje =
+            "El régimen seleccionado normalmente corresponde a una persona física.";
+    }
+
+    selectRegimen.classList.toggle("is-invalid", !valido);
+
+    if (!valido) {
+        mostrarAdvertencia(mensaje);
+    } else {
+        selectRegimen.classList.remove("is-invalid");
+    }
+
+    return valido;
+}
+
+
+function validarDatosFiscales() {
+    const contenedorFiscal = document.querySelector(SELECTORES_CLIENTE.tabFiscal);
+
+    if (!contenedorFiscal) {
+        return false;
+    }
+
+    actualizarRequerimientosFiscales();
+
+    if (!validarContenedor(contenedorFiscal)) {
+        return false;
+    }
+
+    const requiereFactura =
+        document.querySelector("#requiere_factura") ? .value === "1";
+
+
+    const inputRFC = document.querySelector("#rfc");
+
+    if (requiereFactura || inputRFC ? .value) {
+        if (!validarFormatoRFC()) {
+            inputRFC ? .focus();
+
+            return false;
+        }
+    }
+
+    const tipoPersona = document.querySelector("#tipo_persona") ? .value;
+
+    const inputCURP = document.querySelector("#curp");
+
+    if (tipoPersona === "FISICA" && inputCURP ? .value && !validarCURP()) {
+        mostrarAdvertencia("La CURP capturada no tiene un formato válido.");
+
+        inputCURP.focus();
+
+        return false;
+    }
+
+    const inputCodigoPostal = document.querySelector("#codigo_postal_fiscal");
+
+    if (inputCodigoPostal ? .value && !/^\d{5}$/.test(inputCodigoPostal.value)) {
+        inputCodigoPostal.classList.add("is-invalid");
+
+        mostrarAdvertencia(
+            "El código postal fiscal debe contener exactamente 5 números.",
+        );
+
+        inputCodigoPostal.focus();
+
+        return false;
+    }
+
+    if (!validarRegimenFiscalPersona()) {
+        return false;
+    }
+
+    return true;
+}
+
+
+async function guardarInformacionFiscal() {
+    if (!validarClienteGuardado()) {
+        return;
+    }
+
+    if (estadoFiscalCliente.guardando) {
+        return;
+    }
+
+    if (!validarDatosFiscales()) {
+        mostrarAdvertencia("Revise los datos fiscales capturados.");
+
+        return;
+    }
+
+    const confirmado = await confirmarAccion(
+        "¿Desea guardar la información fiscal del cliente?",
+        "Guardar información fiscal",
     );
-  } finally {
-    estadoFiscalCliente.guardando = false;
 
-    restaurarBoton(boton, contenidoOriginal);
-  }
+    if (!confirmado) {
+        return;
+    }
+
+    const boton = document.querySelector("#btnGuardarFiscal");
+
+    const contenidoOriginal = boton ? .innerHTML || "";
+
+    estadoFiscalCliente.guardando = true;
+
+    establecerEstadoBoton(boton, true, "Guardando...");
+
+    try {
+        const contenedorFiscal = document.querySelector(
+            SELECTORES_CLIENTE.tabFiscal,
+        );
+
+        const formData = crearFormDataDesdeContenedor(contenedorFiscal);
+
+        formData.set("idcliente", String(obtenerIdCliente()));
+
+
+        formData.set(
+            "tipo_persona",
+            document.querySelector("#tipo_persona") ? .value || "",
+        );
+
+        const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarFiscal, {
+            method: "POST",
+            body: formData,
+        });
+
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message || "No fue posible guardar la información fiscal.",
+            );
+        }
+
+        estadoFiscalCliente.informacionGuardada = true;
+
+        mostrarExito(
+            respuesta.message || "La información fiscal se guardó correctamente.",
+        );
+
+
+        abrirPestana("#tab-contactos");
+    } catch (error) {
+        console.error("Error al guardar información fiscal:", error);
+
+        mostrarError(
+            error.message || "Ocurrió un error al guardar los datos fiscales.",
+        );
+    } finally {
+        estadoFiscalCliente.guardando = false;
+
+        restaurarBoton(boton, contenidoOriginal);
+    }
 }
 
 /* ============================================================
- * 13. CONTACTOS
+ * cONTACTOS
  * ============================================================ */
 
-/**
- * Estado interno de los contactos.
- */
+
 const estadoContactosCliente = {
-  cargando: false,
-  inicializado: false,
-  registros: new Map(),
+    cargando: false,
+    inicializado: false,
+    registros: new Map(),
 };
 
-/**
- * Inicializa todos los eventos de la sección Contactos.
- */
 function configurarSeccionContactos() {
-  const contenedorContactos = document.querySelector(
-    SELECTORES_CLIENTE.tabContactos,
-  );
+    const contenedorContactos = document.querySelector(
+        SELECTORES_CLIENTE.tabContactos,
+    );
 
-  if (!contenedorContactos || estadoContactosCliente.inicializado) {
-    return;
-  }
+    if (!contenedorContactos || estadoContactosCliente.inicializado) {
+        return;
+    }
 
-  const botonAgregar = document.querySelector("#btnAgregarContacto");
+    const botonAgregar = document.querySelector("#btnAgregarContacto");
 
-  if (botonAgregar) {
-    botonAgregar.addEventListener("click", agregarFilaContacto);
-  }
-
-  /*
-   * Delegación de eventos para botones creados dinámicamente.
-   */
-  const tbody = document.querySelector("#tbodyContactos");
-
-  if (tbody) {
-    tbody.addEventListener("click", manejarAccionesContacto);
-
-    tbody.addEventListener("input", manejarCambioContacto);
-
-    tbody.addEventListener("change", manejarCambioContacto);
-  }
-
-  /*
-   * Cuando se abre la pestaña, se consultan los registros
-   * guardados del cliente.
-   */
-  const botonTabContactos = obtenerBotonTab("#tab-contactos");
-
-  if (botonTabContactos) {
-    botonTabContactos.addEventListener("shown.bs.tab", function () {
-      if (validarClienteGuardado()) {
-        cargarContactosCliente();
-      }
-    });
-  }
-
-  /*
-   * Si estamos editando un cliente existente, podemos cargar los
-   * contactos desde el inicio.
-   */
+    if (botonAgregar) {
+        botonAgregar.addEventListener("click", agregarFilaContacto);
+    }
 
 
-  actualizarEstadoVacioContactos();
+    const tbody = document.querySelector("#tbodyContactos");
 
-  estadoContactosCliente.inicializado = true;
+    if (tbody) {
+        tbody.addEventListener("click", manejarAccionesContacto);
+
+        tbody.addEventListener("input", manejarCambioContacto);
+
+        tbody.addEventListener("change", manejarCambioContacto);
+    }
+
+
+    const botonTabContactos = obtenerBotonTab("#tab-contactos");
+
+    if (botonTabContactos) {
+        botonTabContactos.addEventListener("shown.bs.tab", function() {
+            if (validarClienteGuardado()) {
+                cargarContactosCliente();
+            }
+        });
+    }
+
+
+    actualizarEstadoVacioContactos();
+
+    estadoContactosCliente.inicializado = true;
 }
 
-/**
- * Crea una nueva fila para capturar un contacto.
- */
+
 function agregarFilaContacto() {
-  if (!validarClienteGuardado()) {
-    return;
-  }
+    if (!validarClienteGuardado()) {
+        return;
+    }
 
-  estadoModuloClientes.contadorContactos += 1;
+    estadoModuloClientes.contadorContactos += 1;
 
-  const identificadorTemporal =
-    `nuevo-${Date.now()}-` + estadoModuloClientes.contadorContactos;
+    const identificadorTemporal =
+        `nuevo-${Date.now()}-` + estadoModuloClientes.contadorContactos;
 
-  const contacto = {
-    idcontacto: 0,
-    identificadorTemporal: identificadorTemporal,
-    nombre: "",
-    puesto: "",
-    correo: "",
-    telefono: "",
-    tipo_contacto: "COMERCIAL",
-    notificar: "1",
-    nuevo: true,
-  };
+    const contacto = {
+        idcontacto: 0,
+        identificadorTemporal: identificadorTemporal,
+        nombre: "",
+        puesto: "",
+        correo: "",
+        telefono: "",
+        tipo_contacto: "COMERCIAL",
+        notificar: "1",
+        nuevo: true,
+    };
 
-  const fila = construirFilaContacto(contacto);
+    const fila = construirFilaContacto(contacto);
 
-  const tbody = document.querySelector("#tbodyContactos");
+    const tbody = document.querySelector("#tbodyContactos");
 
-  if (!tbody) {
-    return;
-  }
+    if (!tbody) {
+        return;
+    }
 
-  eliminarFilaVaciaContactos();
+    eliminarFilaVaciaContactos();
 
-  tbody.appendChild(fila);
+    tbody.appendChild(fila);
 
-  estadoContactosCliente.registros.set(identificadorTemporal, contacto);
+    estadoContactosCliente.registros.set(identificadorTemporal, contacto);
 
-  actualizarContadorContactos();
+    actualizarContadorContactos();
 
-  const inputNombre = fila.querySelector('[name="contacto_nombre"]');
+    const inputNombre = fila.querySelector('[name="contacto_nombre"]');
 
-  inputNombre?.focus();
+    inputNombre ? .focus();
 }
 
-/**
- * Construye el elemento TR correspondiente a un contacto.
- *
- * @param {object} contacto
- * @returns {HTMLTableRowElement}
- */
 function construirFilaContacto(contacto) {
-  const fila = document.createElement("tr");
+    const fila = document.createElement("tr");
 
-  const identificador =
-    contacto.idcontacto > 0
-      ? String(contacto.idcontacto)
-      : contacto.identificadorTemporal;
+    const identificador =
+        contacto.idcontacto > 0 ?
+        String(contacto.idcontacto) :
+        contacto.identificadorTemporal;
 
-  fila.dataset.contactoId = identificador;
-  fila.dataset.guardado = contacto.idcontacto > 0 ? "1" : "0";
+    fila.dataset.contactoId = identificador;
+    fila.dataset.guardado = contacto.idcontacto > 0 ? "1" : "0";
 
-  fila.innerHTML = `
+    fila.innerHTML = `
         <td style="min-width: 190px;">
             <input
                 type="hidden"
@@ -2330,453 +1966,416 @@ function construirFilaContacto(contacto) {
         </td>
     `;
 
-  /*
-   * Limita el teléfono a caracteres válidos.
-   */
-  const inputTelefono = fila.querySelector('[name="contacto_telefono"]');
 
-  inputTelefono?.addEventListener("input", function () {
-    inputTelefono.value = inputTelefono.value.replace(/[^\d+\s()-]/g, "");
-  });
-
-  return fila;
-}
-
-/**
- * Maneja los botones Guardar y Eliminar de los contactos.
- *
- * @param {MouseEvent} event
- */
-function manejarAccionesContacto(event) {
-  const botonGuardar = event.target.closest(".btn-guardar-contacto");
-
-  if (botonGuardar) {
-    const fila = botonGuardar.closest("tr");
-
-    guardarContacto(fila);
-
-    return;
-  }
-
-  const botonEliminar = event.target.closest(".btn-eliminar-contacto");
-
-  if (botonEliminar) {
-    const fila = botonEliminar.closest("tr");
-
-    eliminarContacto(fila);
-  }
-}
-
-/**
- * Marca visualmente la fila cuando el usuario cambia información.
- *
- * @param {Event} event
- */
-function manejarCambioContacto(event) {
-  const fila = event.target.closest("tr");
-
-  if (!fila) {
-    return;
-  }
-
-  fila.dataset.modificado = "1";
-
-  fila.classList.add("table-warning");
-
-  const botonGuardar = fila.querySelector(".btn-guardar-contacto");
-
-  if (botonGuardar) {
-    botonGuardar.title = "Guardar cambios del contacto";
-  }
-}
-
-/**
- * Obtiene los datos contenidos en una fila de contacto.
- *
- * @param {HTMLTableRowElement} fila
- * @returns {object}
- */
-function obtenerDatosFilaContacto(fila) {
-  const obtenerValor = function (nombre) {
-    return fila.querySelector(`[name="${nombre}"]`)?.value?.trim() || "";
-  };
-
-  return {
-    idcontacto: Number(obtenerValor("idcontacto") || 0),
-
-    nombre: obtenerValor("contacto_nombre"),
-
-    puesto: obtenerValor("contacto_puesto"),
-
-    correo: obtenerValor("contacto_correo").toLowerCase(),
-
-    telefono: obtenerValor("contacto_telefono"),
-
-    tipo_contacto: obtenerValor("tipo_contacto"),
-
-    notificar: fila.querySelector('[name="contacto_notificar"]')?.checked
-      ? "1"
-      : "0",
-  };
-}
-
-/**
- * Valida una fila de contacto.
- *
- * @param {HTMLTableRowElement} fila
- * @returns {boolean}
- */
-function validarFilaContacto(fila) {
-  if (!fila) {
-    return false;
-  }
-
-  const campos = fila.querySelectorAll('input:not([type="hidden"]), select');
-
-  let valido = true;
-  let primerInvalido = null;
-
-  campos.forEach(function (campo) {
-    campo.classList.remove("is-invalid", "is-valid");
-
-    if (!campo.checkValidity()) {
-      campo.classList.add("is-invalid");
-      valido = false;
-
-      if (!primerInvalido) {
-        primerInvalido = campo;
-      }
-    } else if (campo.required && campo.value) {
-      campo.classList.add("is-valid");
-    }
-  });
-
-  const datos = obtenerDatosFilaContacto(fila);
-
-  if (datos.correo && !validarCorreoElectronico(datos.correo)) {
-    const inputCorreo = fila.querySelector('[name="contacto_correo"]');
-
-    inputCorreo?.classList.add("is-invalid");
-
-    valido = false;
-
-    if (!primerInvalido) {
-      primerInvalido = inputCorreo;
-    }
-  }
-
-  if (datos.telefono && datos.telefono.replace(/\D/g, "").length < 10) {
     const inputTelefono = fila.querySelector('[name="contacto_telefono"]');
 
-    inputTelefono?.classList.add("is-invalid");
+    inputTelefono ? .addEventListener("input", function() {
+        inputTelefono.value = inputTelefono.value.replace(/[^\d+\s()-]/g, "");
+    });
 
-    valido = false;
-
-    if (!primerInvalido) {
-      primerInvalido = inputTelefono;
-    }
-  }
-
-  primerInvalido?.focus();
-
-  return valido;
+    return fila;
 }
 
-/**
- * Guarda o actualiza un contacto individual.
- *
- * @param {HTMLTableRowElement} fila
- */
+
+function manejarAccionesContacto(event) {
+    const botonGuardar = event.target.closest(".btn-guardar-contacto");
+
+    if (botonGuardar) {
+        const fila = botonGuardar.closest("tr");
+
+        guardarContacto(fila);
+
+        return;
+    }
+
+    const botonEliminar = event.target.closest(".btn-eliminar-contacto");
+
+    if (botonEliminar) {
+        const fila = botonEliminar.closest("tr");
+
+        eliminarContacto(fila);
+    }
+}
+
+
+function manejarCambioContacto(event) {
+    const fila = event.target.closest("tr");
+
+    if (!fila) {
+        return;
+    }
+
+    fila.dataset.modificado = "1";
+
+    fila.classList.add("table-warning");
+
+    const botonGuardar = fila.querySelector(".btn-guardar-contacto");
+
+    if (botonGuardar) {
+        botonGuardar.title = "Guardar cambios del contacto";
+    }
+}
+
+
+function obtenerDatosFilaContacto(fila) {
+    const obtenerValor = function(nombre) {
+        return fila.querySelector(`[name="${nombre}"]`) ? .value ? .trim() || "";
+    };
+
+    return {
+        idcontacto: Number(obtenerValor("idcontacto") || 0),
+
+        nombre: obtenerValor("contacto_nombre"),
+
+        puesto: obtenerValor("contacto_puesto"),
+
+        correo: obtenerValor("contacto_correo").toLowerCase(),
+
+        telefono: obtenerValor("contacto_telefono"),
+
+        tipo_contacto: obtenerValor("tipo_contacto"),
+
+        notificar: fila.querySelector('[name="contacto_notificar"]') ? .checked ?
+            "1" :
+            "0",
+    };
+}
+
+
+function validarFilaContacto(fila) {
+    if (!fila) {
+        return false;
+    }
+
+    const campos = fila.querySelectorAll('input:not([type="hidden"]), select');
+
+    let valido = true;
+    let primerInvalido = null;
+
+    campos.forEach(function(campo) {
+        campo.classList.remove("is-invalid", "is-valid");
+
+        if (!campo.checkValidity()) {
+            campo.classList.add("is-invalid");
+            valido = false;
+
+            if (!primerInvalido) {
+                primerInvalido = campo;
+            }
+        } else if (campo.required && campo.value) {
+            campo.classList.add("is-valid");
+        }
+    });
+
+    const datos = obtenerDatosFilaContacto(fila);
+
+    if (datos.correo && !validarCorreoElectronico(datos.correo)) {
+        const inputCorreo = fila.querySelector('[name="contacto_correo"]');
+
+        inputCorreo ? .classList.add("is-invalid");
+
+        valido = false;
+
+        if (!primerInvalido) {
+            primerInvalido = inputCorreo;
+        }
+    }
+
+    if (datos.telefono && datos.telefono.replace(/\D/g, "").length < 10) {
+        const inputTelefono = fila.querySelector('[name="contacto_telefono"]');
+
+        inputTelefono ? .classList.add("is-invalid");
+
+        valido = false;
+
+        if (!primerInvalido) {
+            primerInvalido = inputTelefono;
+        }
+    }
+
+    primerInvalido ? .focus();
+
+    return valido;
+}
+
+
 async function guardarContacto(fila) {
-  if (!validarClienteGuardado()) {
-    return;
-  }
-
-  if (!fila || fila.dataset.guardando === "1") {
-    return;
-  }
-
-  if (!validarFilaContacto(fila)) {
-    mostrarAdvertencia(
-      "Complete correctamente los datos obligatorios del contacto.",
-    );
-
-    return;
-  }
-
-  const datos = obtenerDatosFilaContacto(fila);
-
-  const confirmado = await confirmarAccion(
-    datos.idcontacto > 0
-      ? "¿Desea actualizar este contacto?"
-      : "¿Desea guardar este contacto?",
-    datos.idcontacto > 0 ? "Actualizar contacto" : "Guardar contacto",
-  );
-
-  if (!confirmado) {
-    return;
-  }
-
-  const botonGuardar = fila.querySelector(".btn-guardar-contacto");
-
-  const contenidoOriginal = botonGuardar?.innerHTML || "";
-
-  fila.dataset.guardando = "1";
-
-  establecerEstadoBoton(botonGuardar, true, "");
-
-  try {
-    const formData = new FormData();
-
-    formData.append("idcliente", String(obtenerIdCliente()));
-
-    formData.append("idcontacto", String(datos.idcontacto));
-
-    formData.append("nombre", datos.nombre);
-
-    formData.append("puesto", datos.puesto);
-
-    formData.append("correo", datos.correo);
-
-    formData.append("telefono", datos.telefono);
-
-    formData.append("tipo_contacto", datos.tipo_contacto);
-
-    formData.append("notificar", datos.notificar);
-
-    const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarContacto, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message || "No fue posible guardar el contacto.",
-      );
+    if (!validarClienteGuardado()) {
+        return;
     }
 
-    const idcontacto = Number(
-      respuesta.data?.idcontacto || respuesta.idcontacto || datos.idcontacto,
-    );
-
-    if (!Number.isInteger(idcontacto) || idcontacto <= 0) {
-      throw new Error("El servidor no devolvió un ID de contacto válido.");
+    if (!fila || fila.dataset.guardando === "1") {
+        return;
     }
 
-    const inputIdContacto = fila.querySelector('[name="idcontacto"]');
+    if (!validarFilaContacto(fila)) {
+        mostrarAdvertencia(
+            "Complete correctamente los datos obligatorios del contacto.",
+        );
 
-    if (inputIdContacto) {
-      inputIdContacto.value = String(idcontacto);
+        return;
     }
 
-    const identificadorAnterior = fila.dataset.contactoId;
+    const datos = obtenerDatosFilaContacto(fila);
 
-    fila.dataset.contactoId = String(idcontacto);
-
-    fila.dataset.guardado = "1";
-    fila.dataset.modificado = "0";
-
-    fila.classList.remove("table-warning", "table-danger");
-
-    fila.classList.add("table-success");
-
-    setTimeout(function () {
-      fila.classList.remove("table-success");
-    }, 1200);
-
-    estadoContactosCliente.registros.delete(identificadorAnterior);
-
-    estadoContactosCliente.registros.set(String(idcontacto), {
-      ...datos,
-      idcontacto: idcontacto,
-      nuevo: false,
-    });
-
-    actualizarContadorContactos();
-
-    mostrarExito(respuesta.message || "El contacto se guardó correctamente.");
-  } catch (error) {
-    console.error("Error al guardar contacto:", error);
-
-    fila.classList.add("table-danger");
-
-    mostrarError(error.message || "Ocurrió un error al guardar el contacto.");
-  } finally {
-    fila.dataset.guardando = "0";
-
-    restaurarBoton(botonGuardar, contenidoOriginal);
-  }
-}
-
-/**
- * Elimina un contacto.
- *
- * Si el contacto todavía no está guardado, solamente elimina
- * la fila del HTML.
- *
- * @param {HTMLTableRowElement} fila
- */
-async function eliminarContacto(fila) {
-  if (!fila) {
-    return;
-  }
-
-  const datos = obtenerDatosFilaContacto(fila);
-
-  /*
-   * El contacto aún no existe en la base de datos.
-   */
-  if (datos.idcontacto <= 0) {
     const confirmado = await confirmarAccion(
-      "¿Desea quitar este contacto sin guardar?",
-      "Quitar contacto",
+        datos.idcontacto > 0 ?
+        "¿Desea actualizar este contacto?" :
+        "¿Desea guardar este contacto?",
+        datos.idcontacto > 0 ? "Actualizar contacto" : "Guardar contacto",
     );
 
     if (!confirmado) {
-      return;
+        return;
     }
 
-    estadoContactosCliente.registros.delete(fila.dataset.contactoId);
+    const botonGuardar = fila.querySelector(".btn-guardar-contacto");
 
-    fila.remove();
+    const contenidoOriginal = botonGuardar ? .innerHTML || "";
 
-    actualizarEstadoVacioContactos();
-    actualizarContadorContactos();
+    fila.dataset.guardando = "1";
 
-    return;
-  }
+    establecerEstadoBoton(botonGuardar, true, "");
 
-  const confirmado = await confirmarAccion(
-    `¿Desea eliminar el contacto "${datos.nombre}"?`,
-    "Eliminar contacto",
-  );
+    try {
+        const formData = new FormData();
 
-  if (!confirmado) {
-    return;
-  }
+        formData.append("idcliente", String(obtenerIdCliente()));
 
-  const botonEliminar = fila.querySelector(".btn-eliminar-contacto");
+        formData.append("idcontacto", String(datos.idcontacto));
 
-  const contenidoOriginal = botonEliminar?.innerHTML || "";
+        formData.append("nombre", datos.nombre);
 
-  establecerEstadoBoton(botonEliminar, true, "");
+        formData.append("puesto", datos.puesto);
 
-  try {
-    const formData = new FormData();
+        formData.append("correo", datos.correo);
 
-    formData.append("idcliente", String(obtenerIdCliente()));
+        formData.append("telefono", datos.telefono);
 
-    formData.append("idcontacto", String(datos.idcontacto));
+        formData.append("tipo_contacto", datos.tipo_contacto);
 
-    const respuesta = await peticionJson(CLIENTES_ENDPOINTS.eliminarContacto, {
-      method: "POST",
-      body: formData,
-    });
+        formData.append("notificar", datos.notificar);
 
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message || "No fue posible eliminar el contacto.",
-      );
+        const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarContacto, {
+            method: "POST",
+            body: formData,
+        });
+
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message || "No fue posible guardar el contacto.",
+            );
+        }
+
+        const idcontacto = Number(
+            respuesta.data ? .idcontacto || respuesta.idcontacto || datos.idcontacto,
+        );
+
+        if (!Number.isInteger(idcontacto) || idcontacto <= 0) {
+            throw new Error("El servidor no devolvió un ID de contacto válido.");
+        }
+
+        const inputIdContacto = fila.querySelector('[name="idcontacto"]');
+
+        if (inputIdContacto) {
+            inputIdContacto.value = String(idcontacto);
+        }
+
+        const identificadorAnterior = fila.dataset.contactoId;
+
+        fila.dataset.contactoId = String(idcontacto);
+
+        fila.dataset.guardado = "1";
+        fila.dataset.modificado = "0";
+
+        fila.classList.remove("table-warning", "table-danger");
+
+        fila.classList.add("table-success");
+
+        setTimeout(function() {
+            fila.classList.remove("table-success");
+        }, 1200);
+
+        estadoContactosCliente.registros.delete(identificadorAnterior);
+
+        estadoContactosCliente.registros.set(String(idcontacto), {
+            ...datos,
+            idcontacto: idcontacto,
+            nuevo: false,
+        });
+
+        actualizarContadorContactos();
+
+        mostrarExito(respuesta.message || "El contacto se guardó correctamente.");
+    } catch (error) {
+        console.error("Error al guardar contacto:", error);
+
+        fila.classList.add("table-danger");
+
+        mostrarError(error.message || "Ocurrió un error al guardar el contacto.");
+    } finally {
+        fila.dataset.guardando = "0";
+
+        restaurarBoton(botonGuardar, contenidoOriginal);
+    }
+}
+
+
+async function eliminarContacto(fila) {
+    if (!fila) {
+        return;
     }
 
-    estadoContactosCliente.registros.delete(String(datos.idcontacto));
+    const datos = obtenerDatosFilaContacto(fila);
 
-    fila.remove();
 
-    actualizarEstadoVacioContactos();
-    actualizarContadorContactos();
+    if (datos.idcontacto <= 0) {
+        const confirmado = await confirmarAccion(
+            "¿Desea quitar este contacto sin guardar?",
+            "Quitar contacto",
+        );
 
-    mostrarExito(respuesta.message || "El contacto se eliminó correctamente.");
-  } catch (error) {
-    console.error("Error al eliminar contacto:", error);
+        if (!confirmado) {
+            return;
+        }
 
-    mostrarError(error.message || "Ocurrió un error al eliminar el contacto.");
+        estadoContactosCliente.registros.delete(fila.dataset.contactoId);
 
-    restaurarBoton(botonEliminar, contenidoOriginal);
-  }
+        fila.remove();
+
+        actualizarEstadoVacioContactos();
+        actualizarContadorContactos();
+
+        return;
+    }
+
+    const confirmado = await confirmarAccion(
+        `¿Desea eliminar el contacto "${datos.nombre}"?`,
+        "Eliminar contacto",
+    );
+
+    if (!confirmado) {
+        return;
+    }
+
+    const botonEliminar = fila.querySelector(".btn-eliminar-contacto");
+
+    const contenidoOriginal = botonEliminar ? .innerHTML || "";
+
+    establecerEstadoBoton(botonEliminar, true, "");
+
+    try {
+        const formData = new FormData();
+
+        formData.append("idcliente", String(obtenerIdCliente()));
+
+        formData.append("idcontacto", String(datos.idcontacto));
+
+        const respuesta = await peticionJson(CLIENTES_ENDPOINTS.eliminarContacto, {
+            method: "POST",
+            body: formData,
+        });
+
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message || "No fue posible eliminar el contacto.",
+            );
+        }
+
+        estadoContactosCliente.registros.delete(String(datos.idcontacto));
+
+        fila.remove();
+
+        actualizarEstadoVacioContactos();
+        actualizarContadorContactos();
+
+        mostrarExito(respuesta.message || "El contacto se eliminó correctamente.");
+    } catch (error) {
+        console.error("Error al eliminar contacto:", error);
+
+        mostrarError(error.message || "Ocurrió un error al eliminar el contacto.");
+
+        restaurarBoton(botonEliminar, contenidoOriginal);
+    }
 }
 
 async function cargarInformacionFiscalCliente(forzar = false) {
-  const idcliente = obtenerIdCliente();
+    const idcliente = obtenerIdCliente();
 
-  if (idcliente <= 0) {
-    return;
-  }
-
-  if (estadoFiscalCliente.cargando) {
-    return;
-  }
-
-  if (estadoFiscalCliente.cargado && !forzar) {
-    return;
-  }
-
-  estadoFiscalCliente.cargando = true;
-
-  try {
-    const respuesta = await peticionJson(
-      `${CLIENTES_ENDPOINTS.obtenerFiscal}/${idcliente}`,
-    );
-
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message || "No fue posible obtener la información fiscal.",
-      );
+    if (idcliente <= 0) {
+        return;
     }
 
-    const datos = respuesta.data || {};
-
-    Object.keys(datos).forEach(function (nombre) {
-      const campo = document.querySelector(`[name="${nombre}"]`);
-
-      if (!campo) {
+    if (estadoFiscalCliente.cargando) {
         return;
-      }
+    }
 
-      if (campo.type === "checkbox") {
-        campo.checked = Number(datos[nombre]) === 1;
-
+    if (estadoFiscalCliente.cargado && !forzar) {
         return;
-      }
+    }
 
-      campo.value = datos[nombre] ?? "";
-    });
+    estadoFiscalCliente.cargando = true;
 
-    estadoFiscalCliente.cargado = true;
-  } catch (error) {
-    console.error(error);
+    try {
+        const respuesta = await peticionJson(
+            `${CLIENTES_ENDPOINTS.obtenerFiscal}/${idcliente}`,
+        );
 
-    mostrarError(error.message);
-  } finally {
-    estadoFiscalCliente.cargando = false;
-  }
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message || "No fue posible obtener la información fiscal.",
+            );
+        }
+
+        const datos = respuesta.data || {};
+
+        Object.keys(datos).forEach(function(nombre) {
+            const campo = document.querySelector(`[name="${nombre}"]`);
+
+            if (!campo) {
+                return;
+            }
+
+            if (campo.type === "checkbox") {
+                campo.checked = Number(datos[nombre]) === 1;
+
+                return;
+            }
+
+            campo.value = datos[nombre] ? ? "";
+        });
+
+        estadoFiscalCliente.cargado = true;
+    } catch (error) {
+        console.error(error);
+
+        mostrarError(error.message);
+    } finally {
+        estadoFiscalCliente.cargando = false;
+    }
 }
 
-/**
- * Consulta y muestra los contactos registrados del cliente.
- *
- * @param {boolean} forzar Fuerza una nueva consulta.
- */
+
 async function cargarContactosCliente(forzar = false) {
-  const idcliente = obtenerIdCliente();
+    const idcliente = obtenerIdCliente();
 
-  if (idcliente <= 0 || estadoContactosCliente.cargando) {
-    return;
-  }
+    if (idcliente <= 0 || estadoContactosCliente.cargando) {
+        return;
+    }
 
-  if (estadoContactosCliente.registros.size > 0 && !forzar) {
-    return;
-  }
+    if (estadoContactosCliente.registros.size > 0 && !forzar) {
+        return;
+    }
 
-  const tbody = document.querySelector("#tbodyContactos");
+    const tbody = document.querySelector("#tbodyContactos");
 
-  if (!tbody) {
-    return;
-  }
+    if (!tbody) {
+        return;
+    }
 
-  estadoContactosCliente.cargando = true;
+    estadoContactosCliente.cargando = true;
 
-  tbody.innerHTML = `
+    tbody.innerHTML = `
         <tr>
             <td colspan="7" class="text-center py-4">
                 <span
@@ -2789,65 +2388,64 @@ async function cargarContactosCliente(forzar = false) {
         </tr>
     `;
 
-  try {
-    const url =
-      `${CLIENTES_ENDPOINTS.listarContactos}/` + encodeURIComponent(idcliente);
+    try {
+        const url =
+            `${CLIENTES_ENDPOINTS.listarContactos}/` + encodeURIComponent(idcliente);
 
-    const respuesta = await peticionJson(url, {
-      method: "GET",
-    });
+        const respuesta = await peticionJson(url, {
+            method: "GET",
+        });
 
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message || "No fue posible consultar los contactos.",
-      );
-    }
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message || "No fue posible consultar los contactos.",
+            );
+        }
 
-    const contactos = Array.isArray(respuesta.data)
-      ? respuesta.data
-      : Array.isArray(respuesta.data?.contactos)
-        ? respuesta.data.contactos
-        : [];
+        const contactos = Array.isArray(respuesta.data) ?
+            respuesta.data :
+            Array.isArray(respuesta.data ? .contactos) ?
+            respuesta.data.contactos : [];
 
-    tbody.innerHTML = "";
+        tbody.innerHTML = "";
 
-    estadoContactosCliente.registros.clear();
+        estadoContactosCliente.registros.clear();
 
-    contactos.forEach(function (registro) {
-      const contacto = {
-        idcontacto: Number(registro.idcontacto || registro.id || 0),
+        contactos.forEach(function(registro) {
+            const contacto = {
+                idcontacto: Number(registro.idcontacto || registro.id || 0),
 
-        nombre: registro.nombre || "",
+                nombre: registro.nombre || "",
 
-        puesto: registro.puesto || "",
+                puesto: registro.puesto || "",
 
-        correo: registro.correo || registro.email || "",
+                correo: registro.correo || registro.email || "",
 
-        telefono: registro.telefono || "",
+                telefono: registro.telefono || "",
 
-        tipo_contacto: registro.tipo_contacto || registro.tipo || "COMERCIAL",
+                tipo_contacto: registro.tipo_contacto || registro.tipo || "COMERCIAL",
 
-        notificar: String(registro.notificar ?? "1"),
+                notificar: String(registro.notificar ? ? "1"),
 
-        nuevo: false,
-      };
+                nuevo: false,
+            };
 
-      const fila = construirFilaContacto(contacto);
+            const fila = construirFilaContacto(contacto);
 
-      tbody.appendChild(fila);
+            tbody.appendChild(fila);
 
-      estadoContactosCliente.registros.set(
-        String(contacto.idcontacto),
-        contacto,
-      );
-    });
+            estadoContactosCliente.registros.set(
+                String(contacto.idcontacto),
+                contacto,
+            );
+        });
 
-    actualizarEstadoVacioContactos();
-    actualizarContadorContactos();
-  } catch (error) {
-    console.error("Error al cargar contactos:", error);
+        actualizarEstadoVacioContactos();
+        actualizarContadorContactos();
+    } catch (error) {
+        console.error("Error al cargar contactos:", error);
 
-    tbody.innerHTML = `
+        tbody.innerHTML = `
             <tr>
                 <td
                     colspan="7"
@@ -2873,35 +2471,35 @@ async function cargarContactosCliente(forzar = false) {
             </tr>
         `;
 
-    document
-      .querySelector("#btnReintentarContactos")
-      ?.addEventListener("click", function () {
-        cargarContactosCliente(true);
-      });
-  } finally {
-    estadoContactosCliente.cargando = false;
-  }
+        document
+            .querySelector("#btnReintentarContactos") ?
+            .addEventListener("click", function() {
+                cargarContactosCliente(true);
+            });
+    } finally {
+        estadoContactosCliente.cargando = false;
+    }
 }
 
 /**
  * Muestra una fila informativa cuando no existen contactos.
  */
 function actualizarEstadoVacioContactos() {
-  const tbody = document.querySelector("#tbodyContactos");
+    const tbody = document.querySelector("#tbodyContactos");
 
-  if (!tbody) {
-    return;
-  }
+    if (!tbody) {
+        return;
+    }
 
-  const filasReales = tbody.querySelectorAll("tr[data-contacto-id]");
+    const filasReales = tbody.querySelectorAll("tr[data-contacto-id]");
 
-  if (filasReales.length > 0) {
-    eliminarFilaVaciaContactos();
+    if (filasReales.length > 0) {
+        eliminarFilaVaciaContactos();
 
-    return;
-  }
+        return;
+    }
 
-  tbody.innerHTML = `
+    tbody.innerHTML = `
         <tr class="fila-contactos-vacia">
             <td
                 colspan="7"
@@ -2920,211 +2518,175 @@ function actualizarEstadoVacioContactos() {
 }
 
 /**
- * Elimina la fila que indica que no existen contactos.
+ * Eliminamps la fila que indica que no existen contactos.
  */
 function eliminarFilaVaciaContactos() {
-  const filaVacia = document.querySelector(
-    "#tbodyContactos .fila-contactos-vacia",
-  );
+    const filaVacia = document.querySelector(
+        "#tbodyContactos .fila-contactos-vacia",
+    );
 
-  filaVacia?.remove();
+    filaVacia ? .remove();
 }
 
-/**
- * Actualiza el contador que aparece en la pestaña Contactos.
- */
+
 function actualizarContadorContactos() {
-  const botonTab = obtenerBotonTab("#tab-contactos");
+    const botonTab = obtenerBotonTab("#tab-contactos");
 
-  if (!botonTab) {
-    return;
-  }
+    if (!botonTab) {
+        return;
+    }
 
-  const total = document.querySelectorAll(
-    "#tbodyContactos tr[data-contacto-id]",
-  ).length;
+    const total = document.querySelectorAll(
+        "#tbodyContactos tr[data-contacto-id]",
+    ).length;
 
-  let contador = botonTab.querySelector(".tab-counter-contactos");
+    let contador = botonTab.querySelector(".tab-counter-contactos");
 
-  if (!contador) {
-    contador = document.createElement("span");
+    if (!contador) {
+        contador = document.createElement("span");
 
-    contador.className =
-      "badge bg-primary-subtle text-primary tab-counter tab-counter-contactos";
+        contador.className =
+            "badge bg-primary-subtle text-primary tab-counter tab-counter-contactos";
 
-    botonTab.appendChild(contador);
-  }
+        botonTab.appendChild(contador);
+    }
 
-  contador.textContent = String(total);
+    contador.textContent = String(total);
 
-  contador.style.display = total > 0 ? "" : "none";
+    contador.style.display = total > 0 ? "" : "none";
 }
 
 /* ============================================================
- * 14. FUNCIONES AUXILIARES DE LA PARTE 2
+ * FUNCINES AUXILIARES DE LA PARTE 2
  * ============================================================ */
 
-/**
- * Valida una dirección de correo electrónico.
- *
- * @param {string} correo
- * @returns {boolean}
- */
+
 function validarCorreoElectronico(correo) {
-  const expresion = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    const expresion = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-  return expresion.test(String(correo || "").trim());
+    return expresion.test(String(correo || "").trim());
 }
 
-/**
- * Escapa un valor para colocarlo dentro de un atributo HTML.
- *
- * @param {*} valor
- * @returns {string}
- */
+
 function escaparAtributo(valor) {
-  return escaparHtml(String(valor ?? ""))
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    return escaparHtml(String(valor ? ? ""))
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
-/* ============================================================
- * PARTE 3
- *
- * - Creación dinámica de sucursales.
- * - Guardado y actualización de sucursales.
- * - Eliminación de sucursales.
- * - Consulta de sucursales registradas.
- * - Guardado de direcciones.
- * - Consulta de direcciones registradas.
- * - Edición y eliminación de direcciones.
- * ============================================================ */
 
 /* ============================================================
  * 15. SUCURSALES
  * ============================================================ */
 
-/**
- * Estado interno de la sección Sucursales.
- */
 const estadoSucursalesCliente = {
-  inicializado: false,
-  cargando: false,
-  registros: new Map(),
+    inicializado: false,
+    cargando: false,
+    registros: new Map(),
 };
 
-/**
- * Inicializa los eventos correspondientes a Sucursales.
- */
+
 function configurarSeccionSucursales() {
-  const contenedor = document.querySelector(SELECTORES_CLIENTE.tabSucursales);
+    const contenedor = document.querySelector(SELECTORES_CLIENTE.tabSucursales);
 
-  if (!contenedor || estadoSucursalesCliente.inicializado) {
-    return;
-  }
+    if (!contenedor || estadoSucursalesCliente.inicializado) {
+        return;
+    }
 
-  const botonAgregar = document.querySelector("#btnAgregarSucursal");
+    const botonAgregar = document.querySelector("#btnAgregarSucursal");
 
-  if (botonAgregar) {
-    botonAgregar.addEventListener("click", agregarFormularioSucursal);
-  }
+    if (botonAgregar) {
+        botonAgregar.addEventListener("click", agregarFormularioSucursal);
+    }
 
-  const contenedorSucursales = document.querySelector("#contenedorSucursales");
+    const contenedorSucursales = document.querySelector("#contenedorSucursales");
 
-  if (contenedorSucursales) {
-    contenedorSucursales.addEventListener("click", manejarAccionesSucursal);
+    if (contenedorSucursales) {
+        contenedorSucursales.addEventListener("click", manejarAccionesSucursal);
 
-    contenedorSucursales.addEventListener("input", manejarCambioSucursal);
+        contenedorSucursales.addEventListener("input", manejarCambioSucursal);
 
-    contenedorSucursales.addEventListener("change", manejarCambioSucursal);
-  }
+        contenedorSucursales.addEventListener("change", manejarCambioSucursal);
+    }
 
-  const botonTab = obtenerBotonTab("#tab-sucursales");
+    const botonTab = obtenerBotonTab("#tab-sucursales");
 
-  if (botonTab) {
-    botonTab.addEventListener("shown.bs.tab", function () {
-      if (validarClienteGuardado()) {
-        cargarSucursalesCliente();
-      }
-    });
-  }
+    if (botonTab) {
+        botonTab.addEventListener("shown.bs.tab", function() {
+            if (validarClienteGuardado()) {
+                cargarSucursalesCliente();
+            }
+        });
+    }
 
-  actualizarEstadoVacioSucursales();
+    actualizarEstadoVacioSucursales();
 
-  estadoSucursalesCliente.inicializado = true;
+    estadoSucursalesCliente.inicializado = true;
 }
 
-/**
- * Agrega un nuevo formulario para registrar una sucursal.
- */
 function agregarFormularioSucursal() {
-  if (!validarClienteGuardado()) {
-    return;
-  }
+    if (!validarClienteGuardado()) {
+        return;
+    }
 
-  estadoModuloClientes.contadorSucursales += 1;
+    estadoModuloClientes.contadorSucursales += 1;
 
-  const identificadorTemporal =
-    `nueva-${Date.now()}-` + estadoModuloClientes.contadorSucursales;
+    const identificadorTemporal =
+        `nueva-${Date.now()}-` + estadoModuloClientes.contadorSucursales;
 
-  const sucursal = {
-    idsucursal: 0,
-    identificadorTemporal: identificadorTemporal,
-    nombre_sucursal: "",
-    responsable: "",
-    correo: "",
-    telefono: "",
-    calle: "",
-    numero_exterior: "",
-    numero_interior: "",
-    colonia: "",
-    codigo_postal: "",
-    municipio: "",
-    estado_republica: "",
-    pais: "México",
-    estado: "2",
-    nuevo: true,
-  };
+    const sucursal = {
+        idsucursal: 0,
+        identificadorTemporal: identificadorTemporal,
+        nombre_sucursal: "",
+        responsable: "",
+        correo: "",
+        telefono: "",
+        calle: "",
+        numero_exterior: "",
+        numero_interior: "",
+        colonia: "",
+        codigo_postal: "",
+        municipio: "",
+        estado_republica: "",
+        pais: "México",
+        estado: "2",
+        nuevo: true,
+    };
 
-  const tarjeta = construirTarjetaSucursal(sucursal);
+    const tarjeta = construirTarjetaSucursal(sucursal);
 
-  const contenedor = document.querySelector("#contenedorSucursales");
+    const contenedor = document.querySelector("#contenedorSucursales");
 
-  if (!contenedor) {
-    return;
-  }
+    if (!contenedor) {
+        return;
+    }
 
-  eliminarEstadoVacioSucursales();
+    eliminarEstadoVacioSucursales();
 
-  contenedor.appendChild(tarjeta);
+    contenedor.appendChild(tarjeta);
 
-  estadoSucursalesCliente.registros.set(identificadorTemporal, sucursal);
+    estadoSucursalesCliente.registros.set(identificadorTemporal, sucursal);
 
-  actualizarContadorSucursales();
+    actualizarContadorSucursales();
 
-  tarjeta.querySelector('[name="sucursal_nombre"]')?.focus();
+    tarjeta.querySelector('[name="sucursal_nombre"]') ? .focus();
 }
 
-/**
- * Construye una tarjeta completa para una sucursal.
- *
- * @param {object} sucursal
- * @returns {HTMLDivElement}
- */
+
 function construirTarjetaSucursal(sucursal) {
-  const tarjeta = document.createElement("div");
+    const tarjeta = document.createElement("div");
 
-  const identificador =
-    sucursal.idsucursal > 0
-      ? String(sucursal.idsucursal)
-      : sucursal.identificadorTemporal;
+    const identificador =
+        sucursal.idsucursal > 0 ?
+        String(sucursal.idsucursal) :
+        sucursal.identificadorTemporal;
 
-  tarjeta.className = "card border shadow-none mb-3 tarjeta-sucursal";
+    tarjeta.className = "card border shadow-none mb-3 tarjeta-sucursal";
 
-  tarjeta.dataset.sucursalId = identificador;
-  tarjeta.dataset.guardado = sucursal.idsucursal > 0 ? "1" : "0";
+    tarjeta.dataset.sucursalId = identificador;
+    tarjeta.dataset.guardado = sucursal.idsucursal > 0 ? "1" : "0";
 
-  tarjeta.innerHTML = `
+    tarjeta.innerHTML = `
         <div class="card-header bg-light">
             <div
                 class="d-flex justify-content-between align-items-center gap-2">
@@ -3377,36 +2939,31 @@ function construirTarjetaSucursal(sucursal) {
         </div>
     `;
 
-  configurarCamposTarjetaSucursal(tarjeta);
+    configurarCamposTarjetaSucursal(tarjeta);
 
-  return tarjeta;
+    return tarjeta;
 }
 
-/**
- * Configura restricciones de los campos de una sucursal.
- *
- * @param {HTMLElement} tarjeta
- */
 function configurarCamposTarjetaSucursal(tarjeta) {
-  const telefono = tarjeta.querySelector('[name="sucursal_telefono"]');
+    const telefono = tarjeta.querySelector('[name="sucursal_telefono"]');
 
-  const codigoPostal = tarjeta.querySelector('[name="sucursal_codigo_postal"]');
+    const codigoPostal = tarjeta.querySelector('[name="sucursal_codigo_postal"]');
 
-  const nombre = tarjeta.querySelector('[name="sucursal_nombre"]');
+    const nombre = tarjeta.querySelector('[name="sucursal_nombre"]');
 
-  telefono?.addEventListener("input", function () {
-    telefono.value = telefono.value.replace(/[^\d+\s()-]/g, "");
-  });
+    telefono ? .addEventListener("input", function() {
+        telefono.value = telefono.value.replace(/[^\d+\s()-]/g, "");
+    });
 
-  codigoPostal?.addEventListener("input", function () {
-    codigoPostal.value = codigoPostal.value.replace(/\D/g, "").slice(0, 5);
-  });
+    codigoPostal ? .addEventListener("input", function() {
+        codigoPostal.value = codigoPostal.value.replace(/\D/g, "").slice(0, 5);
+    });
 
-  nombre?.addEventListener("input", function () {
-    const titulo = tarjeta.querySelector(".titulo-sucursal");
+    nombre ? .addEventListener("input", function() {
+        const titulo = tarjeta.querySelector(".titulo-sucursal");
 
-    if (titulo) {
-      titulo.innerHTML = `
+        if (titulo) {
+            titulo.innerHTML = `
                     <i class="ri-building-2-line me-1"></i>
                     ${
                       nombre.value.trim()
@@ -3414,377 +2971,349 @@ function configurarCamposTarjetaSucursal(tarjeta) {
                         : "Nueva sucursal"
                     }
                 `;
-    }
-  });
+        }
+    });
 }
 
-/**
- * Maneja los botones de las tarjetas de sucursales.
- *
- * @param {MouseEvent} event
- */
+
 function manejarAccionesSucursal(event) {
-  const botonGuardar = event.target.closest(".btn-guardar-sucursal");
+    const botonGuardar = event.target.closest(".btn-guardar-sucursal");
 
-  if (botonGuardar) {
-    guardarSucursal(botonGuardar.closest(".tarjeta-sucursal"));
+    if (botonGuardar) {
+        guardarSucursal(botonGuardar.closest(".tarjeta-sucursal"));
 
-    return;
-  }
+        return;
+    }
 
-  const botonEliminar = event.target.closest(".btn-eliminar-sucursal");
+    const botonEliminar = event.target.closest(".btn-eliminar-sucursal");
 
-  if (botonEliminar) {
-    eliminarSucursal(botonEliminar.closest(".tarjeta-sucursal"));
-  }
+    if (botonEliminar) {
+        eliminarSucursal(botonEliminar.closest(".tarjeta-sucursal"));
+    }
 }
 
-/**
- * Marca la tarjeta como modificada.
- *
- * @param {Event} event
- */
+
 function manejarCambioSucursal(event) {
-  const tarjeta = event.target.closest(".tarjeta-sucursal");
+    const tarjeta = event.target.closest(".tarjeta-sucursal");
 
-  if (!tarjeta) {
-    return;
-  }
+    if (!tarjeta) {
+        return;
+    }
 
-  tarjeta.dataset.modificado = "1";
-  tarjeta.classList.add("border-warning");
+    tarjeta.dataset.modificado = "1";
+    tarjeta.classList.add("border-warning");
 }
 
-/**
- * Obtiene los datos de una tarjeta de sucursal.
- *
- * @param {HTMLElement} tarjeta
- * @returns {object}
- */
+
 function obtenerDatosSucursal(tarjeta) {
-  const valor = function (nombre) {
-    return tarjeta.querySelector(`[name="${nombre}"]`)?.value?.trim() || "";
-  };
+    const valor = function(nombre) {
+        return tarjeta.querySelector(`[name="${nombre}"]`) ? .value ? .trim() || "";
+    };
 
-  return {
-    idsucursal: Number(valor("idsucursal") || 0),
+    return {
+        idsucursal: Number(valor("idsucursal") || 0),
 
-    nombre_sucursal: valor("sucursal_nombre"),
+        nombre_sucursal: valor("sucursal_nombre"),
 
-    responsable: valor("sucursal_responsable"),
+        responsable: valor("sucursal_responsable"),
 
-    correo: valor("sucursal_correo").toLowerCase(),
+        correo: valor("sucursal_correo").toLowerCase(),
 
-    telefono: valor("sucursal_telefono"),
+        telefono: valor("sucursal_telefono"),
 
-    calle: valor("sucursal_calle"),
+        calle: valor("sucursal_calle"),
 
-    numero_exterior: valor("sucursal_numero_exterior"),
+        numero_exterior: valor("sucursal_numero_exterior"),
 
-    numero_interior: valor("sucursal_numero_interior"),
+        numero_interior: valor("sucursal_numero_interior"),
 
-    colonia: valor("sucursal_colonia"),
+        colonia: valor("sucursal_colonia"),
 
-    codigo_postal: valor("sucursal_codigo_postal"),
+        codigo_postal: valor("sucursal_codigo_postal"),
 
-    municipio: valor("sucursal_municipio"),
+        municipio: valor("sucursal_municipio"),
 
-    estado_republica: valor("sucursal_estado_republica"),
+        estado_republica: valor("sucursal_estado_republica"),
 
-    pais: valor("sucursal_pais"),
+        pais: valor("sucursal_pais"),
 
-    estado: valor("sucursal_estado") || "2",
-  };
+        estado: valor("sucursal_estado") || "2",
+    };
 }
 
 /**
- * Valida todos los campos de una sucursal.
+ * Validamos todos los campos de una sucursal.
  *
- * @param {HTMLElement} tarjeta
- * @returns {boolean}
  */
 function validarTarjetaSucursal(tarjeta) {
-  if (!tarjeta) {
-    return false;
-  }
-
-  const campos = tarjeta.querySelectorAll(
-    'input:not([type="hidden"]), select, textarea',
-  );
-
-  let valido = true;
-  let primerInvalido = null;
-
-  campos.forEach(function (campo) {
-    campo.classList.remove("is-valid", "is-invalid");
-
-    if (!campo.checkValidity()) {
-      campo.classList.add("is-invalid");
-      valido = false;
-
-      primerInvalido = primerInvalido || campo;
-    } else if (campo.required && campo.value) {
-      campo.classList.add("is-valid");
+    if (!tarjeta) {
+        return false;
     }
-  });
 
-  const datos = obtenerDatosSucursal(tarjeta);
+    const campos = tarjeta.querySelectorAll(
+        'input:not([type="hidden"]), select, textarea',
+    );
 
-  if (datos.correo && !validarCorreoElectronico(datos.correo)) {
-    const correo = tarjeta.querySelector('[name="sucursal_correo"]');
+    let valido = true;
+    let primerInvalido = null;
 
-    correo?.classList.add("is-invalid");
+    campos.forEach(function(campo) {
+        campo.classList.remove("is-valid", "is-invalid");
 
-    valido = false;
-    primerInvalido = primerInvalido || correo;
-  }
+        if (!campo.checkValidity()) {
+            campo.classList.add("is-invalid");
+            valido = false;
 
-  if (datos.telefono && datos.telefono.replace(/\D/g, "").length < 10) {
-    const telefono = tarjeta.querySelector('[name="sucursal_telefono"]');
+            primerInvalido = primerInvalido || campo;
+        } else if (campo.required && campo.value) {
+            campo.classList.add("is-valid");
+        }
+    });
 
-    telefono?.classList.add("is-invalid");
+    const datos = obtenerDatosSucursal(tarjeta);
 
-    valido = false;
-    primerInvalido = primerInvalido || telefono;
-  }
+    if (datos.correo && !validarCorreoElectronico(datos.correo)) {
+        const correo = tarjeta.querySelector('[name="sucursal_correo"]');
 
-  if (!/^\d{5}$/.test(datos.codigo_postal)) {
-    const cp = tarjeta.querySelector('[name="sucursal_codigo_postal"]');
+        correo ? .classList.add("is-invalid");
 
-    cp?.classList.add("is-invalid");
+        valido = false;
+        primerInvalido = primerInvalido || correo;
+    }
 
-    valido = false;
-    primerInvalido = primerInvalido || cp;
-  }
+    if (datos.telefono && datos.telefono.replace(/\D/g, "").length < 10) {
+        const telefono = tarjeta.querySelector('[name="sucursal_telefono"]');
 
-  primerInvalido?.focus();
+        telefono ? .classList.add("is-invalid");
 
-  return valido;
+        valido = false;
+        primerInvalido = primerInvalido || telefono;
+    }
+
+    if (!/^\d{5}$/.test(datos.codigo_postal)) {
+        const cp = tarjeta.querySelector('[name="sucursal_codigo_postal"]');
+
+        cp ? .classList.add("is-invalid");
+
+        valido = false;
+        primerInvalido = primerInvalido || cp;
+    }
+
+    primerInvalido ? .focus();
+
+    return valido;
 }
 
-/**
- * Guarda o actualiza una sucursal.
- *
- * @param {HTMLElement} tarjeta
- */
+
 async function guardarSucursal(tarjeta) {
-  if (!validarClienteGuardado()) {
-    return;
-  }
-
-  if (!tarjeta || tarjeta.dataset.guardando === "1") {
-    return;
-  }
-
-  if (!validarTarjetaSucursal(tarjeta)) {
-    mostrarAdvertencia(
-      "Complete correctamente los datos obligatorios de la sucursal.",
-    );
-
-    return;
-  }
-
-  const datos = obtenerDatosSucursal(tarjeta);
-
-  const confirmado = await confirmarAccion(
-    datos.idsucursal > 0
-      ? "¿Desea actualizar esta sucursal?"
-      : "¿Desea guardar esta sucursal?",
-    datos.idsucursal > 0 ? "Actualizar sucursal" : "Guardar sucursal",
-  );
-
-  if (!confirmado) {
-    return;
-  }
-
-  const boton = tarjeta.querySelector(".btn-guardar-sucursal");
-
-  const contenidoOriginal = boton?.innerHTML || "";
-
-  tarjeta.dataset.guardando = "1";
-
-  establecerEstadoBoton(boton, true, "Guardando...");
-
-  try {
-    const formData = new FormData();
-
-    formData.append("idcliente", String(obtenerIdCliente()));
-
-    Object.entries(datos).forEach(function ([clave, valor]) {
-      formData.append(clave, String(valor ?? ""));
-    });
-
-    const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarSucursal, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message || "No fue posible guardar la sucursal.",
-      );
+    if (!validarClienteGuardado()) {
+        return;
     }
 
-    const idsucursal = Number(
-      respuesta.data?.idsucursal || respuesta.idsucursal || datos.idsucursal,
-    );
-
-    if (!Number.isInteger(idsucursal) || idsucursal <= 0) {
-      throw new Error("El servidor no devolvió un ID de sucursal válido.");
+    if (!tarjeta || tarjeta.dataset.guardando === "1") {
+        return;
     }
 
-    const identificadorAnterior = tarjeta.dataset.sucursalId;
+    if (!validarTarjetaSucursal(tarjeta)) {
+        mostrarAdvertencia(
+            "Complete correctamente los datos obligatorios de la sucursal.",
+        );
 
-    tarjeta.dataset.sucursalId = String(idsucursal);
-
-    tarjeta.dataset.guardado = "1";
-    tarjeta.dataset.modificado = "0";
-
-    const inputId = tarjeta.querySelector('[name="idsucursal"]');
-
-    if (inputId) {
-      inputId.value = String(idsucursal);
+        return;
     }
 
-    tarjeta.classList.remove("border-warning", "border-danger");
+    const datos = obtenerDatosSucursal(tarjeta);
 
-    tarjeta.classList.add("border-success");
-
-    setTimeout(function () {
-      tarjeta.classList.remove("border-success");
-    }, 1200);
-
-    estadoSucursalesCliente.registros.delete(identificadorAnterior);
-
-    estadoSucursalesCliente.registros.set(String(idsucursal), {
-      ...datos,
-      idsucursal: idsucursal,
-      nuevo: false,
-    });
-
-    actualizarContadorSucursales();
-
-    mostrarExito(respuesta.message || "La sucursal se guardó correctamente.");
-  } catch (error) {
-    console.error("Error al guardar sucursal:", error);
-
-    tarjeta.classList.add("border-danger");
-
-    mostrarError(error.message || "Ocurrió un error al guardar la sucursal.");
-  } finally {
-    tarjeta.dataset.guardando = "0";
-
-    restaurarBoton(boton, contenidoOriginal);
-  }
-}
-
-/**
- * Elimina una sucursal.
- *
- * @param {HTMLElement} tarjeta
- */
-async function eliminarSucursal(tarjeta) {
-  if (!tarjeta) {
-    return;
-  }
-
-  const datos = obtenerDatosSucursal(tarjeta);
-
-  if (datos.idsucursal <= 0) {
     const confirmado = await confirmarAccion(
-      "¿Desea quitar esta sucursal sin guardar?",
-      "Quitar sucursal",
+        datos.idsucursal > 0 ?
+        "¿Desea actualizar esta sucursal?" :
+        "¿Desea guardar esta sucursal?",
+        datos.idsucursal > 0 ? "Actualizar sucursal" : "Guardar sucursal",
     );
 
     if (!confirmado) {
-      return;
+        return;
     }
 
-    estadoSucursalesCliente.registros.delete(tarjeta.dataset.sucursalId);
+    const boton = tarjeta.querySelector(".btn-guardar-sucursal");
 
-    tarjeta.remove();
+    const contenidoOriginal = boton ? .innerHTML || "";
 
-    actualizarEstadoVacioSucursales();
-    actualizarContadorSucursales();
+    tarjeta.dataset.guardando = "1";
 
-    return;
-  }
+    establecerEstadoBoton(boton, true, "Guardando...");
 
-  const confirmado = await confirmarAccion(
-    `¿Desea eliminar la sucursal "${datos.nombre_sucursal}"?`,
-    "Eliminar sucursal",
-  );
+    try {
+        const formData = new FormData();
 
-  if (!confirmado) {
-    return;
-  }
+        formData.append("idcliente", String(obtenerIdCliente()));
 
-  const boton = tarjeta.querySelector(".btn-eliminar-sucursal");
+        Object.entries(datos).forEach(function([clave, valor]) {
+            formData.append(clave, String(valor ? ? ""));
+        });
 
-  const contenidoOriginal = boton?.innerHTML || "";
+        const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarSucursal, {
+            method: "POST",
+            body: formData,
+        });
 
-  establecerEstadoBoton(boton, true, "Eliminando...");
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message || "No fue posible guardar la sucursal.",
+            );
+        }
 
-  try {
-    const formData = new FormData();
+        const idsucursal = Number(
+            respuesta.data ? .idsucursal || respuesta.idsucursal || datos.idsucursal,
+        );
 
-    formData.append("idcliente", String(obtenerIdCliente()));
+        if (!Number.isInteger(idsucursal) || idsucursal <= 0) {
+            throw new Error("El servidor no devolvió un ID de sucursal válido.");
+        }
 
-    formData.append("idsucursal", String(datos.idsucursal));
+        const identificadorAnterior = tarjeta.dataset.sucursalId;
 
-    const respuesta = await peticionJson(CLIENTES_ENDPOINTS.eliminarSucursal, {
-      method: "POST",
-      body: formData,
-    });
+        tarjeta.dataset.sucursalId = String(idsucursal);
 
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message || "No fue posible eliminar la sucursal.",
-      );
+        tarjeta.dataset.guardado = "1";
+        tarjeta.dataset.modificado = "0";
+
+        const inputId = tarjeta.querySelector('[name="idsucursal"]');
+
+        if (inputId) {
+            inputId.value = String(idsucursal);
+        }
+
+        tarjeta.classList.remove("border-warning", "border-danger");
+
+        tarjeta.classList.add("border-success");
+
+        setTimeout(function() {
+            tarjeta.classList.remove("border-success");
+        }, 1200);
+
+        estadoSucursalesCliente.registros.delete(identificadorAnterior);
+
+        estadoSucursalesCliente.registros.set(String(idsucursal), {
+            ...datos,
+            idsucursal: idsucursal,
+            nuevo: false,
+        });
+
+        actualizarContadorSucursales();
+
+        mostrarExito(respuesta.message || "La sucursal se guardó correctamente.");
+    } catch (error) {
+        console.error("Error al guardar sucursal:", error);
+
+        tarjeta.classList.add("border-danger");
+
+        mostrarError(error.message || "Ocurrió un error al guardar la sucursal.");
+    } finally {
+        tarjeta.dataset.guardando = "0";
+
+        restaurarBoton(boton, contenidoOriginal);
     }
-
-    estadoSucursalesCliente.registros.delete(String(datos.idsucursal));
-
-    tarjeta.remove();
-
-    actualizarEstadoVacioSucursales();
-    actualizarContadorSucursales();
-
-    mostrarExito(respuesta.message || "La sucursal se eliminó correctamente.");
-  } catch (error) {
-    console.error("Error al eliminar sucursal:", error);
-
-    mostrarError(error.message || "Ocurrió un error al eliminar la sucursal.");
-
-    restaurarBoton(boton, contenidoOriginal);
-  }
 }
 
-/**
- * Consulta las sucursales registradas.
- *
- * @param {boolean} forzar
- */
+
+async function eliminarSucursal(tarjeta) {
+    if (!tarjeta) {
+        return;
+    }
+
+    const datos = obtenerDatosSucursal(tarjeta);
+
+    if (datos.idsucursal <= 0) {
+        const confirmado = await confirmarAccion(
+            "¿Desea quitar esta sucursal sin guardar?",
+            "Quitar sucursal",
+        );
+
+        if (!confirmado) {
+            return;
+        }
+
+        estadoSucursalesCliente.registros.delete(tarjeta.dataset.sucursalId);
+
+        tarjeta.remove();
+
+        actualizarEstadoVacioSucursales();
+        actualizarContadorSucursales();
+
+        return;
+    }
+
+    const confirmado = await confirmarAccion(
+        `¿Desea eliminar la sucursal "${datos.nombre_sucursal}"?`,
+        "Eliminar sucursal",
+    );
+
+    if (!confirmado) {
+        return;
+    }
+
+    const boton = tarjeta.querySelector(".btn-eliminar-sucursal");
+
+    const contenidoOriginal = boton ? .innerHTML || "";
+
+    establecerEstadoBoton(boton, true, "Eliminando...");
+
+    try {
+        const formData = new FormData();
+
+        formData.append("idcliente", String(obtenerIdCliente()));
+
+        formData.append("idsucursal", String(datos.idsucursal));
+
+        const respuesta = await peticionJson(CLIENTES_ENDPOINTS.eliminarSucursal, {
+            method: "POST",
+            body: formData,
+        });
+
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message || "No fue posible eliminar la sucursal.",
+            );
+        }
+
+        estadoSucursalesCliente.registros.delete(String(datos.idsucursal));
+
+        tarjeta.remove();
+
+        actualizarEstadoVacioSucursales();
+        actualizarContadorSucursales();
+
+        mostrarExito(respuesta.message || "La sucursal se eliminó correctamente.");
+    } catch (error) {
+        console.error("Error al eliminar sucursal:", error);
+
+        mostrarError(error.message || "Ocurrió un error al eliminar la sucursal.");
+
+        restaurarBoton(boton, contenidoOriginal);
+    }
+}
+
 async function cargarSucursalesCliente(forzar = false) {
-  const idcliente = obtenerIdCliente();
+    const idcliente = obtenerIdCliente();
 
-  if (idcliente <= 0 || estadoSucursalesCliente.cargando) {
-    return;
-  }
+    if (idcliente <= 0 || estadoSucursalesCliente.cargando) {
+        return;
+    }
 
-  if (estadoSucursalesCliente.registros.size > 0 && !forzar) {
-    return;
-  }
+    if (estadoSucursalesCliente.registros.size > 0 && !forzar) {
+        return;
+    }
 
-  const contenedor = document.querySelector("#contenedorSucursales");
+    const contenedor = document.querySelector("#contenedorSucursales");
 
-  if (!contenedor) {
-    return;
-  }
+    if (!contenedor) {
+        return;
+    }
 
-  estadoSucursalesCliente.cargando = true;
+    estadoSucursalesCliente.cargando = true;
 
-  contenedor.innerHTML = `
+    contenedor.innerHTML = `
         <div class="text-center py-4">
             <span
                 class="spinner-border spinner-border-sm me-2">
@@ -3794,80 +3323,78 @@ async function cargarSucursalesCliente(forzar = false) {
         </div>
     `;
 
-  try {
-    const url =
-      `${CLIENTES_ENDPOINTS.listarSucursales}/` + encodeURIComponent(idcliente);
+    try {
+        const url =
+            `${CLIENTES_ENDPOINTS.listarSucursales}/` + encodeURIComponent(idcliente);
 
-    const respuesta = await peticionJson(url, {
-      method: "GET",
-    });
+        const respuesta = await peticionJson(url, {
+            method: "GET",
+        });
 
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message || "No fue posible consultar las sucursales.",
-      );
-    }
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message || "No fue posible consultar las sucursales.",
+            );
+        }
 
-    const sucursales = Array.isArray(respuesta.data)
-      ? respuesta.data
-      : Array.isArray(respuesta.data?.sucursales)
-        ? respuesta.data.sucursales
-        : [];
+        const sucursales = Array.isArray(respuesta.data) ?
+            respuesta.data :
+            Array.isArray(respuesta.data ? .sucursales) ?
+            respuesta.data.sucursales : [];
 
-    contenedor.innerHTML = "";
+        contenedor.innerHTML = "";
 
-    estadoSucursalesCliente.registros.clear();
+        estadoSucursalesCliente.registros.clear();
 
-    sucursales.forEach(function (registro) {
-      const sucursal = {
-        idsucursal: Number(registro.idsucursal || registro.id || 0),
+        sucursales.forEach(function(registro) {
+            const sucursal = {
+                idsucursal: Number(registro.idsucursal || registro.id || 0),
 
-        nombre_sucursal: registro.nombre_sucursal || registro.nombre || "",
+                nombre_sucursal: registro.nombre_sucursal || registro.nombre || "",
 
-        responsable: registro.responsable || "",
+                responsable: registro.responsable || "",
 
-        correo: registro.correo || "",
+                correo: registro.correo || "",
 
-        telefono: registro.telefono || "",
+                telefono: registro.telefono || "",
 
-        calle: registro.calle || "",
+                calle: registro.calle || "",
 
-        numero_exterior: registro.numero_exterior || registro.num_ext || "",
+                numero_exterior: registro.numero_exterior || registro.num_ext || "",
 
-        numero_interior: registro.numero_interior || registro.num_int || "",
+                numero_interior: registro.numero_interior || registro.num_int || "",
 
-        colonia: registro.colonia || "",
+                colonia: registro.colonia || "",
 
-        codigo_postal: registro.codigo_postal || registro.cp || "",
+                codigo_postal: registro.codigo_postal || registro.cp || "",
 
-        municipio: registro.municipio || "",
+                municipio: registro.municipio || "",
 
-        estado_republica:
-          registro.estado_republica || registro.estado_nombre || "",
+                estado_republica: registro.estado_republica || registro.estado_nombre || "",
 
-        pais: registro.pais || "México",
+                pais: registro.pais || "México",
 
-        estado: String(registro.estado ?? "2"),
+                estado: String(registro.estado ? ? "2"),
 
-        nuevo: false,
-      };
+                nuevo: false,
+            };
 
-      const tarjeta = construirTarjetaSucursal(sucursal);
+            const tarjeta = construirTarjetaSucursal(sucursal);
 
-      contenedor.appendChild(tarjeta);
+            contenedor.appendChild(tarjeta);
 
-      estadoSucursalesCliente.registros.set(
-        String(sucursal.idsucursal),
-        sucursal,
-      );
-    });
+            estadoSucursalesCliente.registros.set(
+                String(sucursal.idsucursal),
+                sucursal,
+            );
+        });
 
-    actualizarEstadoVacioSucursales();
-    actualizarContadorSucursales();
-  } catch (error) {
-    console.error("Error al cargar sucursales:", error);
+        actualizarEstadoVacioSucursales();
+        actualizarContadorSucursales();
+    } catch (error) {
+        console.error("Error al cargar sucursales:", error);
 
-    contenedor.innerHTML = `
+        contenedor.innerHTML = `
             <div class="text-center text-danger py-4">
                 <i class="ri-error-warning-line me-1"></i>
 
@@ -3888,35 +3415,32 @@ async function cargarSucursalesCliente(forzar = false) {
             </div>
         `;
 
-    document
-      .querySelector("#btnReintentarSucursales")
-      ?.addEventListener("click", function () {
-        cargarSucursalesCliente(true);
-      });
-  } finally {
-    estadoSucursalesCliente.cargando = false;
-  }
+        document
+            .querySelector("#btnReintentarSucursales") ?
+            .addEventListener("click", function() {
+                cargarSucursalesCliente(true);
+            });
+    } finally {
+        estadoSucursalesCliente.cargando = false;
+    }
 }
 
-/**
- * Muestra el estado vacío cuando no existen sucursales.
- */
 function actualizarEstadoVacioSucursales() {
-  const contenedor = document.querySelector("#contenedorSucursales");
+    const contenedor = document.querySelector("#contenedorSucursales");
 
-  if (!contenedor) {
-    return;
-  }
+    if (!contenedor) {
+        return;
+    }
 
-  const tarjetas = contenedor.querySelectorAll(".tarjeta-sucursal");
+    const tarjetas = contenedor.querySelectorAll(".tarjeta-sucursal");
 
-  if (tarjetas.length > 0) {
-    eliminarEstadoVacioSucursales();
+    if (tarjetas.length > 0) {
+        eliminarEstadoVacioSucursales();
 
-    return;
-  }
+        return;
+    }
 
-  contenedor.innerHTML = `
+    contenedor.innerHTML = `
         <div
             class="text-center text-muted py-5 estado-vacio-sucursales">
 
@@ -3931,102 +3455,91 @@ function actualizarEstadoVacioSucursales() {
     `;
 }
 
-/**
- * Elimina el estado vacío de sucursales.
- */
+
 function eliminarEstadoVacioSucursales() {
-  document
-    .querySelector("#contenedorSucursales .estado-vacio-sucursales")
-    ?.remove();
+    document
+        .querySelector("#contenedorSucursales .estado-vacio-sucursales") ?
+        .remove();
 }
 
-/**
- * Actualiza el contador de la pestaña Sucursales.
- */
+
 function actualizarContadorSucursales() {
-  const botonTab = obtenerBotonTab("#tab-sucursales");
+    const botonTab = obtenerBotonTab("#tab-sucursales");
 
-  if (!botonTab) {
-    return;
-  }
+    if (!botonTab) {
+        return;
+    }
 
-  const total = document.querySelectorAll(
-    "#contenedorSucursales .tarjeta-sucursal",
-  ).length;
+    const total = document.querySelectorAll(
+        "#contenedorSucursales .tarjeta-sucursal",
+    ).length;
 
-  let contador = botonTab.querySelector(".tab-counter-sucursales");
+    let contador = botonTab.querySelector(".tab-counter-sucursales");
 
-  if (!contador) {
-    contador = document.createElement("span");
+    if (!contador) {
+        contador = document.createElement("span");
 
-    contador.className =
-      "badge bg-primary-subtle text-primary tab-counter tab-counter-sucursales";
+        contador.className =
+            "badge bg-primary-subtle text-primary tab-counter tab-counter-sucursales";
 
-    botonTab.appendChild(contador);
-  }
+        botonTab.appendChild(contador);
+    }
 
-  contador.textContent = String(total);
+    contador.textContent = String(total);
 
-  contador.style.display = total > 0 ? "" : "none";
+    contador.style.display = total > 0 ? "" : "none";
 }
 
 /* ============================================================
- * 16. DIRECCIONES
+ *  DRECCIONES
  * ============================================================ */
 
-/**
- * Estado interno de Direcciones.
- */
+
 const estadoDireccionesCliente = {
-  inicializado: false,
-  guardando: false,
-  cargando: false,
-  iddireccionActual: 0,
-  registros: [],
+    inicializado: false,
+    guardando: false,
+    cargando: false,
+    iddireccionActual: 0,
+    registros: [],
 };
 
-/**
- * Inicializa la sección Direcciones.
- */
+
 function configurarSeccionDirecciones() {
-  const contenedor = document.querySelector(SELECTORES_CLIENTE.tabDirecciones);
+    const contenedor = document.querySelector(SELECTORES_CLIENTE.tabDirecciones);
 
-  if (!contenedor || estadoDireccionesCliente.inicializado) {
-    return;
-  }
-
-  crearAccionesDirecciones();
-  crearListadoDirecciones();
-  configurarCamposDireccion();
-
-  const botonTab = obtenerBotonTab("#tab-direcciones");
-
-  botonTab?.addEventListener("shown.bs.tab", function () {
-    if (validarClienteGuardado()) {
-      cargarDireccionesCliente();
+    if (!contenedor || estadoDireccionesCliente.inicializado) {
+        return;
     }
-  });
 
-  estadoDireccionesCliente.inicializado = true;
+    crearAccionesDirecciones();
+    crearListadoDirecciones();
+    configurarCamposDireccion();
+
+    const botonTab = obtenerBotonTab("#tab-direcciones");
+
+    botonTab ? .addEventListener("shown.bs.tab", function() {
+        if (validarClienteGuardado()) {
+            cargarDireccionesCliente();
+        }
+    });
+
+    estadoDireccionesCliente.inicializado = true;
 }
 
-/**
- * Agrega los botones Guardar y Limpiar dirección.
- */
 function crearAccionesDirecciones() {
-  const contenedor = document.querySelector(SELECTORES_CLIENTE.tabDirecciones);
+    const contenedor = document.querySelector(SELECTORES_CLIENTE.tabDirecciones);
 
-  if (!contenedor || document.querySelector("#accionesDirecciones")) {
-    return;
-  }
+    if (!contenedor || document.querySelector("#accionesDirecciones")) {
+        return;
+    }
 
-  const acciones = document.createElement("div");
+    const acciones = document.createElement("div");
 
-  acciones.id = "accionesDirecciones";
+    acciones.id = "accionesDirecciones";
 
-  acciones.className = "d-flex justify-content-end gap-2 mt-4";
+    acciones.className = "d-flex justify-content-end gap-2 mt-4";
 
-  acciones.innerHTML = `
+    acciones.innerHTML = `
         <button
             type="button"
             class="btn btn-light"
@@ -4049,33 +3562,31 @@ function crearAccionesDirecciones() {
         </button>
     `;
 
-  contenedor.appendChild(acciones);
+    contenedor.appendChild(acciones);
 
-  document
-    .querySelector("#btnGuardarDireccion")
-    ?.addEventListener("click", guardarDireccion);
+    document
+        .querySelector("#btnGuardarDireccion") ?
+        .addEventListener("click", guardarDireccion);
 
-  document
-    .querySelector("#btnNuevaDireccion")
-    ?.addEventListener("click", limpiarFormularioDireccion);
+    document
+        .querySelector("#btnNuevaDireccion") ?
+        .addEventListener("click", limpiarFormularioDireccion);
 }
 
-/**
- * Crea el contenedor donde se mostrarán las direcciones.
- */
+
 function crearListadoDirecciones() {
-  const contenedor = document.querySelector(SELECTORES_CLIENTE.tabDirecciones);
+    const contenedor = document.querySelector(SELECTORES_CLIENTE.tabDirecciones);
 
-  if (!contenedor || document.querySelector("#listadoDirecciones")) {
-    return;
-  }
+    if (!contenedor || document.querySelector("#listadoDirecciones")) {
+        return;
+    }
 
-  const listado = document.createElement("div");
+    const listado = document.createElement("div");
 
-  listado.id = "listadoDirecciones";
-  listado.className = "mt-4";
+    listado.id = "listadoDirecciones";
+    listado.className = "mt-4";
 
-  listado.innerHTML = `
+    listado.innerHTML = `
         <hr>
 
         <div class="section-title">
@@ -4088,20 +3599,20 @@ function crearListadoDirecciones() {
         </div>
     `;
 
-  contenedor.appendChild(listado);
+    contenedor.appendChild(listado);
 
-  listado.addEventListener("click", manejarAccionesDireccion);
+    listado.addEventListener("click", manejarAccionesDireccion);
 }
 
 /**
  * Configura restricciones de campos de dirección.
  */
 function configurarCamposDireccion() {
-  const cp = obtenerCampoDireccion("codigo_postal");
+    const cp = obtenerCampoDireccion("codigo_postal");
 
-  cp?.addEventListener("input", function () {
-    cp.value = cp.value.replace(/\D/g, "").slice(0, 5);
-  });
+    cp ? .addEventListener("input", function() {
+        cp.value = cp.value.replace(/\D/g, "").slice(0, 5);
+    });
 }
 
 /**
@@ -4111,301 +3622,270 @@ function configurarCamposDireccion() {
  * @returns {HTMLElement|null}
  */
 function obtenerCampoDireccion(nombre) {
-  return document.querySelector(
-    `${SELECTORES_CLIENTE.tabDirecciones} [name="${nombre}"]`,
-  );
+    return document.querySelector(
+        `${SELECTORES_CLIENTE.tabDirecciones} [name="${nombre}"]`,
+    );
 }
 
-/**
- * Obtiene los datos capturados en la dirección.
- *
- * @returns {object}
- */
+
 function obtenerDatosDireccion() {
-  const valor = function (nombre) {
-    return (
-      obtenerCampoDireccion(nombre)
-        ?.value
-        ?.trim() || ""
+    const valor = function(nombre) {
+        return (
+            obtenerCampoDireccion(nombre) ?
+            .value ?
+            .trim() || ""
+        );
+    };
+
+    const iddireccion = Number(
+        estadoDireccionesCliente.iddireccionActual || 0,
     );
-  };
 
-  const iddireccion = Number(
-    estadoDireccionesCliente.iddireccionActual || 0,
-  );
+    return {
+        iddireccion: Number.isInteger(iddireccion) &&
+            iddireccion > 0 ?
+            iddireccion : 0,
 
-  return {
-    iddireccion:
-      Number.isInteger(iddireccion) &&
-      iddireccion > 0
-        ? iddireccion
-        : 0,
+        tipo_direccion: valor("tipo_direccion"),
 
-    tipo_direccion:
-      valor("tipo_direccion"),
+        calle: valor("calle"),
 
-    calle:
-      valor("calle"),
+        numero_exterior: valor("numero_exterior"),
 
-    numero_exterior:
-      valor("numero_exterior"),
+        numero_interior: valor("numero_interior"),
 
-    numero_interior:
-      valor("numero_interior"),
+        colonia: valor("colonia"),
 
-    colonia:
-      valor("colonia"),
+        codigo_postal: valor("codigo_postal"),
 
-    codigo_postal:
-      valor("codigo_postal"),
+        municipio: valor("municipio"),
 
-    municipio:
-      valor("municipio"),
+        estado_republica: valor("estado_republica"),
 
-    estado_republica:
-      valor("estado_republica"),
+        pais: valor("pais"),
 
-    pais:
-      valor("pais"),
-
-    referencias:
-      valor("referencias"),
-  };
+        referencias: valor("referencias"),
+    };
 }
 
-/**
- * Valida la información de una dirección.
- *
- * @returns {boolean}
- */
+
 function validarDatosDireccion() {
-  const contenedor = document.querySelector(SELECTORES_CLIENTE.tabDirecciones);
+    const contenedor = document.querySelector(SELECTORES_CLIENTE.tabDirecciones);
 
-  if (!validarContenedor(contenedor)) {
-    return false;
-  }
-
-  const datos = obtenerDatosDireccion();
-
-  if (!/^\d{5}$/.test(datos.codigo_postal)) {
-    const cp = obtenerCampoDireccion("codigo_postal");
-
-    cp?.classList.add("is-invalid");
-    cp?.focus();
-
-    mostrarAdvertencia("El código postal debe contener exactamente 5 números.");
-
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Guarda o actualiza una dirección.
- */
-async function guardarDireccion() {
-  if (!validarClienteGuardado()) {
-    return;
-  }
-
-  if (estadoDireccionesCliente.guardando) {
-    return;
-  }
-
-  if (!validarDatosDireccion()) {
-    mostrarAdvertencia(
-      "Complete correctamente los datos obligatorios de la dirección.",
-    );
-
-    return;
-  }
-
-  const datos = obtenerDatosDireccion();
-
-  /*
-   * Convertimos explícitamente el ID a número.
-   * Si estamos editando debe ser mayor a cero.
-   */
-  const iddireccion = Number(datos.iddireccion || 0);
-
-  const esEdicion =
-    Number.isInteger(iddireccion) &&
-    iddireccion > 0;
-
-  const confirmado = await confirmarAccion(
-    esEdicion
-      ? "¿Desea actualizar esta dirección?"
-      : "¿Desea guardar esta dirección?",
-    esEdicion
-      ? "Actualizar dirección"
-      : "Guardar dirección",
-  );
-
-  if (!confirmado) {
-    return;
-  }
-
-  const boton = document.querySelector(
-    "#btnGuardarDireccion",
-  );
-
-  const contenidoOriginal =
-    boton?.innerHTML || "";
-
-  estadoDireccionesCliente.guardando = true;
-
-  establecerEstadoBoton(
-    boton,
-    true,
-    esEdicion
-      ? "Actualizando..."
-      : "Guardando...",
-  );
-
-  try {
-    const formData = new FormData();
-
-    formData.set(
-      "idcliente",
-      String(obtenerIdCliente()),
-    );
-
-    /*
-     * Este valor es el que determina si el backend
-     * debe insertar o actualizar.
-     */
-    formData.set(
-      "iddireccion",
-      String(iddireccion),
-    );
-
-    formData.set(
-      "tipo_direccion",
-      datos.tipo_direccion,
-    );
-
-    formData.set(
-      "calle",
-      datos.calle,
-    );
-
-    formData.set(
-      "numero_exterior",
-      datos.numero_exterior,
-    );
-
-    formData.set(
-      "numero_interior",
-      datos.numero_interior,
-    );
-
-    formData.set(
-      "colonia",
-      datos.colonia,
-    );
-
-    formData.set(
-      "codigo_postal",
-      datos.codigo_postal,
-    );
-
-    formData.set(
-      "municipio",
-      datos.municipio,
-    );
-
-    formData.set(
-      "estado_republica",
-      datos.estado_republica,
-    );
-
-    formData.set(
-      "pais",
-      datos.pais,
-    );
-
-    formData.set(
-      "referencias",
-      datos.referencias,
-    );
-
-    const respuesta = await peticionJson(
-      CLIENTES_ENDPOINTS.guardarDireccion,
-      {
-        method: "POST",
-        body: formData,
-      },
-    );
-
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message ||
-        (
-          esEdicion
-            ? "No fue posible actualizar la dirección."
-            : "No fue posible guardar la dirección."
-        ),
-      );
+    if (!validarContenedor(contenedor)) {
+        return false;
     }
 
-    mostrarExito(
-      respuesta.message ||
-      (
-        esEdicion
-          ? "La dirección se actualizó correctamente."
-          : "La dirección se guardó correctamente."
-      ),
-    );
+    const datos = obtenerDatosDireccion();
 
-    limpiarFormularioDireccion();
+    if (!/^\d{5}$/.test(datos.codigo_postal)) {
+        const cp = obtenerCampoDireccion("codigo_postal");
 
-    await cargarDireccionesCliente(true);
-  } catch (error) {
-    console.error(
-      "Error al guardar dirección:",
-      error,
-    );
+        cp ? .classList.add("is-invalid");
+        cp ? .focus();
 
-    mostrarError(
-      error.message ||
-      "Ocurrió un error al guardar la dirección.",
-    );
-  } finally {
-    estadoDireccionesCliente.guardando = false;
+        mostrarAdvertencia("El código postal debe contener exactamente 5 números.");
 
-    restaurarBoton(
-      boton,
-      contenidoOriginal,
-    );
-  }
+        return false;
+    }
+
+    return true;
 }
 
 /**
- * Consulta las direcciones registradas.
- *
- * @param {boolean} forzar
+ * Guardamos o actualiza una dirección.
  */
+async function guardarDireccion() {
+    if (!validarClienteGuardado()) {
+        return;
+    }
+
+    if (estadoDireccionesCliente.guardando) {
+        return;
+    }
+
+    if (!validarDatosDireccion()) {
+        mostrarAdvertencia(
+            "Complete correctamente los datos obligatorios de la dirección.",
+        );
+
+        return;
+    }
+
+    const datos = obtenerDatosDireccion();
+
+
+    const iddireccion = Number(datos.iddireccion || 0);
+
+    const esEdicion =
+        Number.isInteger(iddireccion) &&
+        iddireccion > 0;
+
+    const confirmado = await confirmarAccion(
+        esEdicion ?
+        "¿Desea actualizar esta dirección?" :
+        "¿Desea guardar esta dirección?",
+        esEdicion ?
+        "Actualizar dirección" :
+        "Guardar dirección",
+    );
+
+    if (!confirmado) {
+        return;
+    }
+
+    const boton = document.querySelector(
+        "#btnGuardarDireccion",
+    );
+
+    const contenidoOriginal =
+        boton ? .innerHTML || "";
+
+    estadoDireccionesCliente.guardando = true;
+
+    establecerEstadoBoton(
+        boton,
+        true,
+        esEdicion ?
+        "Actualizando..." :
+        "Guardando...",
+    );
+
+    try {
+        const formData = new FormData();
+
+        formData.set(
+            "idcliente",
+            String(obtenerIdCliente()),
+        );
+
+
+        formData.set(
+            "iddireccion",
+            String(iddireccion),
+        );
+
+        formData.set(
+            "tipo_direccion",
+            datos.tipo_direccion,
+        );
+
+        formData.set(
+            "calle",
+            datos.calle,
+        );
+
+        formData.set(
+            "numero_exterior",
+            datos.numero_exterior,
+        );
+
+        formData.set(
+            "numero_interior",
+            datos.numero_interior,
+        );
+
+        formData.set(
+            "colonia",
+            datos.colonia,
+        );
+
+        formData.set(
+            "codigo_postal",
+            datos.codigo_postal,
+        );
+
+        formData.set(
+            "municipio",
+            datos.municipio,
+        );
+
+        formData.set(
+            "estado_republica",
+            datos.estado_republica,
+        );
+
+        formData.set(
+            "pais",
+            datos.pais,
+        );
+
+        formData.set(
+            "referencias",
+            datos.referencias,
+        );
+
+        const respuesta = await peticionJson(
+            CLIENTES_ENDPOINTS.guardarDireccion, {
+                method: "POST",
+                body: formData,
+            },
+        );
+
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message ||
+                (
+                    esEdicion ?
+                    "No fue posible actualizar la dirección." :
+                    "No fue posible guardar la dirección."
+                ),
+            );
+        }
+
+        mostrarExito(
+            respuesta.message ||
+            (
+                esEdicion ?
+                "La dirección se actualizó correctamente." :
+                "La dirección se guardó correctamente."
+            ),
+        );
+
+        limpiarFormularioDireccion();
+
+        await cargarDireccionesCliente(true);
+    } catch (error) {
+        console.error(
+            "Error al guardar dirección:",
+            error,
+        );
+
+        mostrarError(
+            error.message ||
+            "Ocurrió un error al guardar la dirección.",
+        );
+    } finally {
+        estadoDireccionesCliente.guardando = false;
+
+        restaurarBoton(
+            boton,
+            contenidoOriginal,
+        );
+    }
+}
+
+
 async function cargarDireccionesCliente(forzar = false) {
-  const idcliente = obtenerIdCliente();
+    const idcliente = obtenerIdCliente();
 
-  if (idcliente <= 0 || estadoDireccionesCliente.cargando) {
-    return;
-  }
+    if (idcliente <= 0 || estadoDireccionesCliente.cargando) {
+        return;
+    }
 
-  if (estadoDireccionesCliente.registros.length > 0 && !forzar) {
-    return;
-  }
+    if (estadoDireccionesCliente.registros.length > 0 && !forzar) {
+        return;
+    }
 
-  const contenedor = document.querySelector("#contenedorListadoDirecciones");
+    const contenedor = document.querySelector("#contenedorListadoDirecciones");
 
-  if (!contenedor) {
-    return;
-  }
+    if (!contenedor) {
+        return;
+    }
 
-  estadoDireccionesCliente.cargando = true;
+    estadoDireccionesCliente.cargando = true;
 
-  contenedor.innerHTML = `
+    contenedor.innerHTML = `
         <div class="col-12 text-center py-4">
             <span
                 class="spinner-border spinner-border-sm me-2">
@@ -4415,68 +3895,67 @@ async function cargarDireccionesCliente(forzar = false) {
         </div>
     `;
 
-  try {
-    const url =
-      `${CLIENTES_ENDPOINTS.listarDirecciones}/` +
-      encodeURIComponent(idcliente);
+    try {
+        const url =
+            `${CLIENTES_ENDPOINTS.listarDirecciones}/` +
+            encodeURIComponent(idcliente);
 
-    const respuesta = await peticionJson(url, {
-      method: "GET",
-    });
+        const respuesta = await peticionJson(url, {
+            method: "GET",
+        });
 
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message || "No fue posible consultar las direcciones.",
-      );
-    }
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message || "No fue posible consultar las direcciones.",
+            );
+        }
 
-    estadoDireccionesCliente.registros = Array.isArray(respuesta.data)
-      ? respuesta.data
-      : Array.isArray(respuesta.data?.direcciones)
-        ? respuesta.data.direcciones
-        : [];
+        estadoDireccionesCliente.registros = Array.isArray(respuesta.data) ?
+            respuesta.data :
+            Array.isArray(respuesta.data ? .direcciones) ?
+            respuesta.data.direcciones : [];
 
-    renderizarDirecciones();
-  } catch (error) {
-    console.error("Error al cargar direcciones:", error);
+        renderizarDirecciones();
+    } catch (error) {
+        console.error("Error al cargar direcciones:", error);
 
-    contenedor.innerHTML = `
+        contenedor.innerHTML = `
             <div class="col-12 text-center text-danger py-4">
                 ${escaparHtml(error.message)}
             </div>
         `;
-  } finally {
-    estadoDireccionesCliente.cargando = false;
-  }
+    } finally {
+        estadoDireccionesCliente.cargando = false;
+    }
 }
 
 /**
- * Renderiza las tarjetas de direcciones.
+ * Renderizamos las tarjetas de direcciones.
  */
 function renderizarDirecciones() {
-  const contenedor = document.querySelector("#contenedorListadoDirecciones");
+    const contenedor = document.querySelector("#contenedorListadoDirecciones");
 
-  if (!contenedor) {
-    return;
-  }
+    if (!contenedor) {
+        return;
+    }
 
-  if (estadoDireccionesCliente.registros.length === 0) {
-    contenedor.innerHTML = `
+    if (estadoDireccionesCliente.registros.length === 0) {
+        contenedor.innerHTML = `
             <div class="col-12 text-center text-muted py-4">
                 No hay direcciones registradas.
             </div>
         `;
 
-    actualizarContadorDirecciones();
+        actualizarContadorDirecciones();
 
-    return;
-  }
+        return;
+    }
 
-  contenedor.innerHTML = estadoDireccionesCliente.registros
-    .map(function (direccion) {
-      const iddireccion = Number(direccion.iddireccion || direccion.id || 0);
+    contenedor.innerHTML = estadoDireccionesCliente.registros
+        .map(function(direccion) {
+            const iddireccion = Number(direccion.iddireccion || direccion.id || 0);
 
-      return `
+            return `
                     <div class="col-lg-6">
                         <div class="card border shadow-none h-100">
                             <div class="card-body">
@@ -4536,362 +4015,317 @@ function renderizarDirecciones() {
                         </div>
                     </div>
                 `;
-    })
-    .join("");
+        })
+        .join("");
 
-  actualizarContadorDirecciones();
+    actualizarContadorDirecciones();
 }
 
-/**
- * Maneja editar y eliminar dirección.
- *
- * @param {MouseEvent} event
- */
+
 function manejarAccionesDireccion(event) {
-  const botonEditar = event.target.closest(".btn-editar-direccion");
+    const botonEditar = event.target.closest(".btn-editar-direccion");
 
-  if (botonEditar) {
-    editarDireccion(Number(botonEditar.dataset.id));
+    if (botonEditar) {
+        editarDireccion(Number(botonEditar.dataset.id));
 
-    return;
-  }
+        return;
+    }
 
-  const botonEliminar = event.target.closest(".btn-eliminar-direccion");
+    const botonEliminar = event.target.closest(".btn-eliminar-direccion");
 
-  if (botonEliminar) {
-    eliminarDireccion(Number(botonEliminar.dataset.id));
-  }
+    if (botonEliminar) {
+        eliminarDireccion(Number(botonEliminar.dataset.id));
+    }
 }
 
-/**
- * Carga una dirección en el formulario para editarla.
- *
- * @param {number} iddireccion
- */
 function editarDireccion(iddireccion) {
-  const id = Number(iddireccion);
+    const id = Number(iddireccion);
 
-  if (
-    !Number.isInteger(id) ||
-    id <= 0
-  ) {
-    mostrarError(
-      "El ID de la dirección no es válido.",
-    );
+    if (!Number.isInteger(id) ||
+        id <= 0
+    ) {
+        mostrarError(
+            "El ID de la dirección no es válido.",
+        );
 
-    return;
-  }
-
-  const direccion =
-    estadoDireccionesCliente.registros.find(
-      function (registro) {
-        return Number(
-          registro.iddireccion ||
-          registro.id ||
-          0,
-        ) === id;
-      },
-    );
-
-  if (!direccion) {
-    mostrarError(
-      "No se encontró la dirección seleccionada.",
-    );
-
-    return;
-  }
-
-  /*
-   * Este valor debe conservarse hasta que el usuario
-   * guarde o presione Nueva dirección.
-   */
-  estadoDireccionesCliente.iddireccionActual = id;
-
-  const campos = {
-    tipo_direccion:
-      direccion.tipo_direccion || "",
-
-    calle:
-      direccion.calle || "",
-
-    numero_exterior:
-      direccion.numero_exterior || "",
-
-    numero_interior:
-      direccion.numero_interior || "",
-
-    colonia:
-      direccion.colonia || "",
-
-    codigo_postal:
-      direccion.codigo_postal || "",
-
-    municipio:
-      direccion.municipio || "",
-
-    estado_republica:
-      direccion.estado_republica || "",
-
-    pais:
-      direccion.pais || "México",
-
-    referencias:
-      direccion.referencias || "",
-  };
-
-  Object.entries(campos).forEach(
-    function ([nombre, valor]) {
-      const campo =
-        obtenerCampoDireccion(nombre);
-
-      if (!campo) {
         return;
-      }
+    }
 
-      campo.value = valor;
+    const direccion =
+        estadoDireccionesCliente.registros.find(
+            function(registro) {
+                return Number(
+                    registro.iddireccion ||
+                    registro.id ||
+                    0,
+                ) === id;
+            },
+        );
 
-      campo.classList.remove(
-        "is-valid",
-        "is-invalid",
-      );
-    },
-  );
+    if (!direccion) {
+        mostrarError(
+            "No se encontró la dirección seleccionada.",
+        );
 
-  const botonGuardar =
-    document.querySelector(
-      "#btnGuardarDireccion",
+        return;
+    }
+
+
+    estadoDireccionesCliente.iddireccionActual = id;
+
+    const campos = {
+        tipo_direccion: direccion.tipo_direccion || "",
+
+        calle: direccion.calle || "",
+
+        numero_exterior: direccion.numero_exterior || "",
+
+        numero_interior: direccion.numero_interior || "",
+
+        colonia: direccion.colonia || "",
+
+        codigo_postal: direccion.codigo_postal || "",
+
+        municipio: direccion.municipio || "",
+
+        estado_republica: direccion.estado_republica || "",
+
+        pais: direccion.pais || "México",
+
+        referencias: direccion.referencias || "",
+    };
+
+    Object.entries(campos).forEach(
+        function([nombre, valor]) {
+            const campo =
+                obtenerCampoDireccion(nombre);
+
+            if (!campo) {
+                return;
+            }
+
+            campo.value = valor;
+
+            campo.classList.remove(
+                "is-valid",
+                "is-invalid",
+            );
+        },
     );
 
-  if (botonGuardar) {
-    botonGuardar.innerHTML = `
+    const botonGuardar =
+        document.querySelector(
+            "#btnGuardarDireccion",
+        );
+
+    if (botonGuardar) {
+        botonGuardar.innerHTML = `
       <i
         class="ri-save-3-line label-icon align-middle fs-16 me-2">
       </i>
       Actualizar dirección
     `;
 
-    botonGuardar.dataset.modo =
-      "editar";
+        botonGuardar.dataset.modo =
+            "editar";
 
-    botonGuardar.dataset.iddireccion =
-      String(id);
-  }
+        botonGuardar.dataset.iddireccion =
+            String(id);
+    }
 
-  document
-    .querySelector(
-      SELECTORES_CLIENTE.tabDirecciones,
-    )
-    ?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+    document
+        .querySelector(
+            SELECTORES_CLIENTE.tabDirecciones,
+        ) ?
+        .scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+        });
 }
 
-/**
- * Elimina una dirección.
- *
- * @param {number} iddireccion
- */
 async function eliminarDireccion(iddireccion) {
-  if (iddireccion <= 0) {
-    return;
-  }
-
-  const confirmado = await confirmarAccion(
-    "¿Desea eliminar esta dirección?",
-    "Eliminar dirección",
-  );
-
-  if (!confirmado) {
-    return;
-  }
-
-  try {
-    const formData = new FormData();
-
-    formData.append("idcliente", String(obtenerIdCliente()));
-
-    formData.append("iddireccion", String(iddireccion));
-
-    const respuesta = await peticionJson(CLIENTES_ENDPOINTS.eliminarDireccion, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message || "No fue posible eliminar la dirección.",
-      );
+    if (iddireccion <= 0) {
+        return;
     }
 
-    mostrarExito(respuesta.message || "La dirección se eliminó correctamente.");
+    const confirmado = await confirmarAccion(
+        "¿Desea eliminar esta dirección?",
+        "Eliminar dirección",
+    );
 
-    if (estadoDireccionesCliente.iddireccionActual === iddireccion) {
-      limpiarFormularioDireccion();
+    if (!confirmado) {
+        return;
     }
 
-    await cargarDireccionesCliente(true);
-  } catch (error) {
-    console.error("Error al eliminar dirección:", error);
+    try {
+        const formData = new FormData();
 
-    mostrarError(error.message || "Ocurrió un error al eliminar la dirección.");
-  }
+        formData.append("idcliente", String(obtenerIdCliente()));
+
+        formData.append("iddireccion", String(iddireccion));
+
+        const respuesta = await peticionJson(CLIENTES_ENDPOINTS.eliminarDireccion, {
+            method: "POST",
+            body: formData,
+        });
+
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message || "No fue posible eliminar la dirección.",
+            );
+        }
+
+        mostrarExito(respuesta.message || "La dirección se eliminó correctamente.");
+
+        if (estadoDireccionesCliente.iddireccionActual === iddireccion) {
+            limpiarFormularioDireccion();
+        }
+
+        await cargarDireccionesCliente(true);
+    } catch (error) {
+        console.error("Error al eliminar dirección:", error);
+
+        mostrarError(error.message || "Ocurrió un error al eliminar la dirección.");
+    }
 }
 
-/**
- * Limpia el formulario y lo coloca en modo nueva dirección.
- */
+
 function limpiarFormularioDireccion() {
-  estadoDireccionesCliente.iddireccionActual = 0;
+    estadoDireccionesCliente.iddireccionActual = 0;
 
-  const nombres = [
-    "tipo_direccion",
-    "calle",
-    "numero_exterior",
-    "numero_interior",
-    "colonia",
-    "codigo_postal",
-    "municipio",
-    "estado_republica",
-    "pais",
-    "referencias",
-  ];
+    const nombres = [
+        "tipo_direccion",
+        "calle",
+        "numero_exterior",
+        "numero_interior",
+        "colonia",
+        "codigo_postal",
+        "municipio",
+        "estado_republica",
+        "pais",
+        "referencias",
+    ];
 
-  nombres.forEach(function (nombre) {
-    const campo =
-      obtenerCampoDireccion(nombre);
+    nombres.forEach(function(nombre) {
+        const campo =
+            obtenerCampoDireccion(nombre);
 
-    if (!campo) {
-      return;
-    }
+        if (!campo) {
+            return;
+        }
 
-    campo.value =
-      nombre === "pais"
-        ? "México"
-        : "";
+        campo.value =
+            nombre === "pais" ?
+            "México" :
+            "";
 
-    campo.classList.remove(
-      "is-valid",
-      "is-invalid",
-    );
-  });
+        campo.classList.remove(
+            "is-valid",
+            "is-invalid",
+        );
+    });
 
-  const boton =
-    document.querySelector(
-      "#btnGuardarDireccion",
-    );
+    const boton =
+        document.querySelector(
+            "#btnGuardarDireccion",
+        );
 
-  if (boton) {
-    boton.innerHTML = `
+    if (boton) {
+        boton.innerHTML = `
       <i
         class="ri-save-3-line label-icon align-middle fs-16 me-2">
       </i>
       Guardar dirección
     `;
 
-    boton.dataset.modo = "nuevo";
-    boton.dataset.iddireccion = "0";
-  }
+        boton.dataset.modo = "nuevo";
+        boton.dataset.iddireccion = "0";
+    }
 }
 
 /**
  * Actualiza el contador de direcciones.
  */
 function actualizarContadorDirecciones() {
-  const botonTab = obtenerBotonTab("#tab-direcciones");
+    const botonTab = obtenerBotonTab("#tab-direcciones");
 
-  if (!botonTab) {
-    return;
-  }
+    if (!botonTab) {
+        return;
+    }
 
-  const total = estadoDireccionesCliente.registros.length;
+    const total = estadoDireccionesCliente.registros.length;
 
-  let contador = botonTab.querySelector(".tab-counter-direcciones");
+    let contador = botonTab.querySelector(".tab-counter-direcciones");
 
-  if (!contador) {
-    contador = document.createElement("span");
+    if (!contador) {
+        contador = document.createElement("span");
 
-    contador.className =
-      "badge bg-primary-subtle text-primary tab-counter tab-counter-direcciones";
+        contador.className =
+            "badge bg-primary-subtle text-primary tab-counter tab-counter-direcciones";
 
-    botonTab.appendChild(contador);
-  }
+        botonTab.appendChild(contador);
+    }
 
-  contador.textContent = String(total);
+    contador.textContent = String(total);
 
-  contador.style.display = total > 0 ? "" : "none";
+    contador.style.display = total > 0 ? "" : "none";
 }
 
-/* ============================================================
- * PARTE 4
- *
- * - Información comercial.
- * - Crédito y condiciones de pago.
- * - Registro de cuentas bancarias.
- * - Consulta, edición y eliminación de bancos.
- * - Carga de documentos.
- * - Validación de extensiones y tamaños.
- * - Consulta, descarga y eliminación de documentos.
- * ============================================================ */
 
 /* ============================================================
- * 17. INFORMACIÓN COMERCIAL
+ * INFOMACIÓN COMERCIAL
  * ============================================================ */
 
-/**
- * Estado interno de la sección Comercial.
- */
+
 const estadoComercialCliente = {
 
-    guardando:false,
+    guardando: false,
 
-    botonCreado:false,
+    botonCreado: false,
 
-    informacionGuardada:false,
+    informacionGuardada: false,
 
-    cargando:false,
+    cargando: false,
 
-    cargado:false
+    cargado: false
 
 };
 
-/**
- * Inicializa la sección de información comercial.
- */
+
 function configurarSeccionComercial() {
-  const contenedor = document.querySelector(SELECTORES_CLIENTE.tabComercial);
+    const contenedor = document.querySelector(SELECTORES_CLIENTE.tabComercial);
 
-  if (!contenedor || estadoComercialCliente.inicializado) {
-    return;
-  }
+    if (!contenedor || estadoComercialCliente.inicializado) {
+        return;
+    }
 
-  crearBotonGuardarComercial();
-  configurarCamposComerciales();
+    crearBotonGuardarComercial();
+    configurarCamposComerciales();
 
-  estadoComercialCliente.inicializado = true;
-
-
+    estadoComercialCliente.inicializado = true;
 
 
 
-const botonTab = obtenerBotonTab("#tab-comercial");
 
-if (botonTab) {
 
-    botonTab.addEventListener(
-        "shown.bs.tab",
-        function(){
+    const botonTab = obtenerBotonTab("#tab-comercial");
 
-            if(validarClienteGuardado()){
+    if (botonTab) {
 
-                cargarInformacionComercialCliente();
+        botonTab.addEventListener(
+            "shown.bs.tab",
+            function() {
+
+                if (validarClienteGuardado()) {
+
+                    cargarInformacionComercialCliente();
+
+                }
 
             }
+        );
 
-        }
-    );
-
-}
+    }
 
 
 }
@@ -4940,41 +4374,39 @@ async function cargarInformacionComercialCliente(forzar = false) {
 
         const datos = respuesta.data || {};
 
-        Object.keys(datos).forEach(function(nombre){
+        Object.keys(datos).forEach(function(nombre) {
 
             const campo =
                 document.querySelector(
                     `[name="${nombre}"]`
                 );
 
-            if(!campo){
+            if (!campo) {
                 return;
             }
 
-            if(campo.type==="checkbox"){
+            if (campo.type === "checkbox") {
 
                 campo.checked =
-                    Number(datos[nombre])===1;
+                    Number(datos[nombre]) === 1;
 
                 return;
             }
 
             campo.value =
-                datos[nombre] ?? "";
+                datos[nombre] ? ? "";
 
         });
 
         estadoComercialCliente.cargado = true;
 
-    }
-    catch(error){
+    } catch (error) {
 
         console.error(error);
 
         mostrarError(error.message);
 
-    }
-    finally{
+    } finally {
 
         estadoComercialCliente.cargando = false;
 
@@ -4982,21 +4414,19 @@ async function cargarInformacionComercialCliente(forzar = false) {
 
 }
 
-/**
- * Crea el botón para guardar información comercial.
- */
+
 function crearBotonGuardarComercial() {
-  const contenedor = document.querySelector(SELECTORES_CLIENTE.tabComercial);
+    const contenedor = document.querySelector(SELECTORES_CLIENTE.tabComercial);
 
-  if (!contenedor || document.querySelector("#btnGuardarComercial")) {
-    return;
-  }
+    if (!contenedor || document.querySelector("#btnGuardarComercial")) {
+        return;
+    }
 
-  const acciones = document.createElement("div");
+    const acciones = document.createElement("div");
 
-  acciones.className = "d-flex justify-content-end gap-2 mt-4";
+    acciones.className = "d-flex justify-content-end gap-2 mt-4";
 
-  acciones.innerHTML = `
+    acciones.innerHTML = `
         <button
             type="button"
             class="btn btn-primary btn-label"
@@ -5010,359 +4440,343 @@ function crearBotonGuardarComercial() {
         </button>
     `;
 
-  contenedor.appendChild(acciones);
+    contenedor.appendChild(acciones);
 
-  document
-    .querySelector("#btnGuardarComercial")
-    ?.addEventListener("click", guardarInformacionComercial);
+    document
+        .querySelector("#btnGuardarComercial") ?
+        .addEventListener("click", guardarInformacionComercial);
 }
 
 /**
  * Configura restricciones y eventos de campos comerciales.
  */
 function configurarCamposComerciales() {
-  const limiteCredito = document.querySelector(
-    `${SELECTORES_CLIENTE.tabComercial} [name="limite_credito"]`,
-  );
+    const limiteCredito = document.querySelector(
+        `${SELECTORES_CLIENTE.tabComercial} [name="limite_credito"]`,
+    );
 
-  const diasCredito = document.querySelector(
-    `${SELECTORES_CLIENTE.tabComercial} [name="dias_credito"]`,
-  );
+    const diasCredito = document.querySelector(
+        `${SELECTORES_CLIENTE.tabComercial} [name="dias_credito"]`,
+    );
 
-  const descuento = document.querySelector(
-    `${SELECTORES_CLIENTE.tabComercial} [name="porcentaje_descuento"]`,
-  );
+    const descuento = document.querySelector(
+        `${SELECTORES_CLIENTE.tabComercial} [name="porcentaje_descuento"]`,
+    );
 
-  const requiereCredito = document.querySelector(
-    `${SELECTORES_CLIENTE.tabComercial} [name="maneja_credito"]`,
-  );
+    const requiereCredito = document.querySelector(
+        `${SELECTORES_CLIENTE.tabComercial} [name="maneja_credito"]`,
+    );
 
-  limiteCredito?.addEventListener("input", function () {
-    limiteCredito.value = limpiarNumeroDecimal(limiteCredito.value, 2);
-  });
+    limiteCredito ? .addEventListener("input", function() {
+        limiteCredito.value = limpiarNumeroDecimal(limiteCredito.value, 2);
+    });
 
-  diasCredito?.addEventListener("input", function () {
-    diasCredito.value = diasCredito.value.replace(/\D/g, "").slice(0, 3);
-  });
+    diasCredito ? .addEventListener("input", function() {
+        diasCredito.value = diasCredito.value.replace(/\D/g, "").slice(0, 3);
+    });
 
-  descuento?.addEventListener("input", function () {
-    descuento.value = limpiarNumeroDecimal(descuento.value, 2);
+    descuento ? .addEventListener("input", function() {
+        descuento.value = limpiarNumeroDecimal(descuento.value, 2);
 
-    const valor = Number(descuento.value || 0);
+        const valor = Number(descuento.value || 0);
 
-    if (valor > 100) {
-      descuento.value = "100";
-    }
-  });
+        if (valor > 100) {
+            descuento.value = "100";
+        }
+    });
 
-  requiereCredito?.addEventListener("change", actualizarCamposCredito);
+    requiereCredito ? .addEventListener("change", actualizarCamposCredito);
 
-  actualizarCamposCredito();
+    actualizarCamposCredito();
 }
 
-/**
- * Habilita o deshabilita los campos de crédito.
- */
+
 function actualizarCamposCredito() {
-  const campoManejaCredito = document.querySelector(
-    `${SELECTORES_CLIENTE.tabComercial} [name="maneja_credito"]`,
-  );
+    const campoManejaCredito = document.querySelector(
+        `${SELECTORES_CLIENTE.tabComercial} [name="maneja_credito"]`,
+    );
 
-  if (!campoManejaCredito) {
-    return;
-  }
-
-  const manejaCredito = obtenerValorBooleanoCampo(campoManejaCredito);
-
-  const camposCredito = [
-    document.querySelector(
-      `${SELECTORES_CLIENTE.tabComercial} [name="limite_credito"]`,
-    ),
-
-    document.querySelector(
-      `${SELECTORES_CLIENTE.tabComercial} [name="dias_credito"]`,
-    ),
-
-    document.querySelector(
-      `${SELECTORES_CLIENTE.tabComercial} [name="tipo_credito"]`,
-    ),
-  ];
-
-  camposCredito.forEach(function (campo) {
-    if (!campo) {
-      return;
+    if (!campoManejaCredito) {
+        return;
     }
 
-    campo.disabled = !manejaCredito;
-    campo.required = manejaCredito;
+    const manejaCredito = obtenerValorBooleanoCampo(campoManejaCredito);
 
-    if (!manejaCredito) {
-      if (campo.name === "limite_credito") {
-        campo.value = "0.00";
-      } else if (campo.name === "dias_credito") {
-        campo.value = "0";
-      } else {
-        campo.value = "";
-      }
+    const camposCredito = [
+        document.querySelector(
+            `${SELECTORES_CLIENTE.tabComercial} [name="limite_credito"]`,
+        ),
 
-      campo.classList.remove("is-valid", "is-invalid");
-    }
-  });
+        document.querySelector(
+            `${SELECTORES_CLIENTE.tabComercial} [name="dias_credito"]`,
+        ),
+
+        document.querySelector(
+            `${SELECTORES_CLIENTE.tabComercial} [name="tipo_credito"]`,
+        ),
+    ];
+
+    camposCredito.forEach(function(campo) {
+        if (!campo) {
+            return;
+        }
+
+        campo.disabled = !manejaCredito;
+        campo.required = manejaCredito;
+
+        if (!manejaCredito) {
+            if (campo.name === "limite_credito") {
+                campo.value = "0.00";
+            } else if (campo.name === "dias_credito") {
+                campo.value = "0";
+            } else {
+                campo.value = "";
+            }
+
+            campo.classList.remove("is-valid", "is-invalid");
+        }
+    });
 }
 
-/**
- * Obtiene los datos comerciales capturados.
- *
- * @returns {object}
- */
+
 function obtenerDatosComerciales() {
-  const contenedor = document.querySelector(SELECTORES_CLIENTE.tabComercial);
+    const contenedor = document.querySelector(SELECTORES_CLIENTE.tabComercial);
 
-  const obtenerValor = function (nombre) {
-    const campo = contenedor?.querySelector(`[name="${nombre}"]`);
+    const obtenerValor = function(nombre) {
+        const campo = contenedor ? .querySelector(`[name="${nombre}"]`);
 
-    if (!campo) {
-      return "";
-    }
+        if (!campo) {
+            return "";
+        }
 
-    if (campo.type === "checkbox") {
-      return campo.checked ? "1" : "0";
-    }
+        if (campo.type === "checkbox") {
+            return campo.checked ? "1" : "0";
+        }
 
-    return campo.value?.trim() || "";
-  };
+        return campo.value ? .trim() || "";
+    };
 
-  return {
-    idcliente: obtenerIdCliente(),
+    return {
+        idcliente: obtenerIdCliente(),
 
-    maneja_credito: obtenerValor("maneja_credito") || "0",
+        maneja_credito: obtenerValor("maneja_credito") || "0",
 
-    limite_credito: obtenerValor("limite_credito") || "0",
+        limite_credito: obtenerValor("limite_credito") || "0",
 
-    dias_credito: obtenerValor("dias_credito") || "0",
+        dias_credito: obtenerValor("dias_credito") || "0",
 
-    tipo_credito: obtenerValor("tipo_credito"),
+        tipo_credito: obtenerValor("tipo_credito"),
 
-    condicion_pago: obtenerValor("condicion_pago"),
+        condicion_pago: obtenerValor("condicion_pago"),
 
-    forma_pago: obtenerValor("forma_pago"),
+        forma_pago: obtenerValor("forma_pago"),
 
-    metodo_pago: obtenerValor("metodo_pago"),
+        metodo_pago: obtenerValor("metodo_pago"),
 
-    moneda: obtenerValor("moneda") || "MXN",
+        moneda: obtenerValor("moneda") || "MXN",
 
-    lista_precio: obtenerValor("lista_precio"),
+        lista_precio: obtenerValor("lista_precio"),
 
-    porcentaje_descuento: obtenerValor("porcentaje_descuento") || "0",
+        porcentaje_descuento: obtenerValor("porcentaje_descuento") || "0",
 
-    ejecutivo_asignado: obtenerValor("ejecutivo_cuenta"),
+        ejecutivo_asignado: obtenerValor("ejecutivo_cuenta"),
 
-    zona_comercial: obtenerValor("zona_comercial"),
+        zona_comercial: obtenerValor("zona_comercial"),
 
-    territorio: obtenerValor("territorio"),
+        territorio: obtenerValor("territorio"),
 
-    segmento_mercado: obtenerValor("segmento_mercado"),
+        segmento_mercado: obtenerValor("segmento_mercado"),
 
-    origen_cliente: obtenerValor("origen_cliente"),
+        origen_cliente: obtenerValor("origen_cliente"),
 
-    observaciones_comerciales: obtenerValor("observaciones_comerciales"),
-  };
+        observaciones_comerciales: obtenerValor("observaciones_comerciales"),
+    };
 }
 
-/**
- * Valida la información comercial.
- *
- * @returns {boolean}
- */
+
 function validarDatosComerciales() {
-  const contenedor = document.querySelector(SELECTORES_CLIENTE.tabComercial);
+    const contenedor = document.querySelector(SELECTORES_CLIENTE.tabComercial);
 
-  if (!contenedor) {
-    return false;
-  }
-
-  actualizarCamposCredito();
-
-  if (!validarContenedor(contenedor)) {
-    return false;
-  }
-
-  const datos = obtenerDatosComerciales();
-
-  if (String(datos.maneja_credito) === "1") {
-    const limite = Number(datos.limite_credito);
-
-    const dias = Number(datos.dias_credito);
-
-    if (!Number.isFinite(limite) || limite <= 0) {
-      const campo = contenedor.querySelector('[name="limite_credito"]');
-
-      campo?.classList.add("is-invalid");
-      campo?.focus();
-
-      mostrarAdvertencia("El límite de crédito debe ser mayor a cero.");
-
-      return false;
+    if (!contenedor) {
+        return false;
     }
 
-    if (!Number.isInteger(dias) || dias <= 0) {
-      const campo = contenedor.querySelector('[name="dias_credito"]');
+    actualizarCamposCredito();
 
-      campo?.classList.add("is-invalid");
-      campo?.focus();
-
-      mostrarAdvertencia("Los días de crédito deben ser mayores a cero.");
-
-      return false;
+    if (!validarContenedor(contenedor)) {
+        return false;
     }
-  }
 
-  const descuento = Number(datos.porcentaje_descuento || 0);
+    const datos = obtenerDatosComerciales();
 
-  if (!Number.isFinite(descuento) || descuento < 0 || descuento > 100) {
-    const campo = contenedor.querySelector('[name="porcentaje_descuento"]');
+    if (String(datos.maneja_credito) === "1") {
+        const limite = Number(datos.limite_credito);
 
-    campo?.classList.add("is-invalid");
-    campo?.focus();
+        const dias = Number(datos.dias_credito);
 
-    mostrarAdvertencia("El porcentaje de descuento debe estar entre 0 y 100.");
+        if (!Number.isFinite(limite) || limite <= 0) {
+            const campo = contenedor.querySelector('[name="limite_credito"]');
 
-    return false;
-  }
+            campo ? .classList.add("is-invalid");
+            campo ? .focus();
 
-  return true;
+            mostrarAdvertencia("El límite de crédito debe ser mayor a cero.");
+
+            return false;
+        }
+
+        if (!Number.isInteger(dias) || dias <= 0) {
+            const campo = contenedor.querySelector('[name="dias_credito"]');
+
+            campo ? .classList.add("is-invalid");
+            campo ? .focus();
+
+            mostrarAdvertencia("Los días de crédito deben ser mayores a cero.");
+
+            return false;
+        }
+    }
+
+    const descuento = Number(datos.porcentaje_descuento || 0);
+
+    if (!Number.isFinite(descuento) || descuento < 0 || descuento > 100) {
+        const campo = contenedor.querySelector('[name="porcentaje_descuento"]');
+
+        campo ? .classList.add("is-invalid");
+        campo ? .focus();
+
+        mostrarAdvertencia("El porcentaje de descuento debe estar entre 0 y 100.");
+
+        return false;
+    }
+
+    return true;
 }
 
 /**
- * Guarda la información comercial.
+ * Guardamos la información comercial.
  */
 async function guardarInformacionComercial() {
-  if (!validarClienteGuardado()) {
-    return;
-  }
-
-  if (estadoComercialCliente.guardando) {
-    return;
-  }
-
-  if (!validarDatosComerciales()) {
-    mostrarAdvertencia("Revise la información comercial capturada.");
-
-    return;
-  }
-
-  const confirmado = await confirmarAccion(
-    "¿Desea guardar la información comercial del cliente?",
-    "Guardar información",
-  );
-
-  if (!confirmado) {
-    return;
-  }
-
-  const boton = document.querySelector("#btnGuardarComercial");
-
-  const contenidoOriginal = boton?.innerHTML || "";
-
-  estadoComercialCliente.guardando = true;
-
-  establecerEstadoBoton(boton, true, "Guardando...");
-
-  try {
-    const datos = obtenerDatosComerciales();
-    const formData = new FormData();
-
-    Object.entries(datos).forEach(function ([clave, valor]) {
-      formData.append(clave, String(valor ?? ""));
-    });
-
-    const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarComercial, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message || "No fue posible guardar la información comercial.",
-      );
+    if (!validarClienteGuardado()) {
+        return;
     }
 
-    mostrarExito(
-      respuesta.message || "La información comercial se guardó correctamente.",
+    if (estadoComercialCliente.guardando) {
+        return;
+    }
+
+    if (!validarDatosComerciales()) {
+        mostrarAdvertencia("Revise la información comercial capturada.");
+
+        return;
+    }
+
+    const confirmado = await confirmarAccion(
+        "¿Desea guardar la información comercial del cliente?",
+        "Guardar información",
     );
 
-    abrirPestana("#tab-bancos");
-  } catch (error) {
-    console.error("Error al guardar información comercial:", error);
+    if (!confirmado) {
+        return;
+    }
 
-    mostrarError(
-      error.message || "Ocurrió un error al guardar la información comercial.",
-    );
-  } finally {
-    estadoComercialCliente.guardando = false;
+    const boton = document.querySelector("#btnGuardarComercial");
 
-    restaurarBoton(boton, contenidoOriginal);
-  }
+    const contenidoOriginal = boton ? .innerHTML || "";
+
+    estadoComercialCliente.guardando = true;
+
+    establecerEstadoBoton(boton, true, "Guardando...");
+
+    try {
+        const datos = obtenerDatosComerciales();
+        const formData = new FormData();
+
+        Object.entries(datos).forEach(function([clave, valor]) {
+            formData.append(clave, String(valor ? ? ""));
+        });
+
+        const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarComercial, {
+            method: "POST",
+            body: formData,
+        });
+
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message || "No fue posible guardar la información comercial.",
+            );
+        }
+
+        mostrarExito(
+            respuesta.message || "La información comercial se guardó correctamente.",
+        );
+
+        abrirPestana("#tab-bancos");
+    } catch (error) {
+        console.error("Error al guardar información comercial:", error);
+
+        mostrarError(
+            error.message || "Ocurrió un error al guardar la información comercial.",
+        );
+    } finally {
+        estadoComercialCliente.guardando = false;
+
+        restaurarBoton(boton, contenidoOriginal);
+    }
 }
 
 /* ============================================================
- * 18. CUENTAS BANCARIAS
+ * CUENTAS BANCARIAS
  * ============================================================ */
 
-/**
- * Estado interno de la sección Bancos.
- */
+
 
 const estadoBancosCliente = {
-  inicializado: false,
-  guardando: false,
-  cargando: false,
-  cargado: false,
-  idbancoActual: 0,
-  registros: [],
+    inicializado: false,
+    guardando: false,
+    cargando: false,
+    cargado: false,
+    idbancoActual: 0,
+    registros: [],
 };
 
-/**
- * Inicializa la sección Bancos.
- */
+
 function configurarSeccionBancos() {
-  const contenedor = document.querySelector(SELECTORES_CLIENTE.tabBancos);
+    const contenedor = document.querySelector(SELECTORES_CLIENTE.tabBancos);
 
-  if (!contenedor || estadoBancosCliente.inicializado) {
-    return;
-  }
-
-  crearAccionesBancos();
-  crearListadoBancos();
-  configurarCamposBancarios();
-
-  const botonTab = obtenerBotonTab("#tab-bancos");
-
-  botonTab?.addEventListener("shown.bs.tab", function () {
-    if (validarClienteGuardado()) {
-      cargarBancosCliente();
+    if (!contenedor || estadoBancosCliente.inicializado) {
+        return;
     }
-  });
 
-  estadoBancosCliente.inicializado = true;
+    crearAccionesBancos();
+    crearListadoBancos();
+    configurarCamposBancarios();
+
+    const botonTab = obtenerBotonTab("#tab-bancos");
+
+    botonTab ? .addEventListener("shown.bs.tab", function() {
+        if (validarClienteGuardado()) {
+            cargarBancosCliente();
+        }
+    });
+
+    estadoBancosCliente.inicializado = true;
 }
 
-/**
- * Crea los botones para guardar y limpiar bancos.
- */
+
 function crearAccionesBancos() {
-  const contenedor = document.querySelector(SELECTORES_CLIENTE.tabBancos);
+    const contenedor = document.querySelector(SELECTORES_CLIENTE.tabBancos);
 
-  if (!contenedor || document.querySelector("#accionesBancos")) {
-    return;
-  }
+    if (!contenedor || document.querySelector("#accionesBancos")) {
+        return;
+    }
 
-  const acciones = document.createElement("div");
+    const acciones = document.createElement("div");
 
-  acciones.id = "accionesBancos";
-  acciones.className = "d-flex justify-content-end gap-2 mt-4";
+    acciones.id = "accionesBancos";
+    acciones.className = "d-flex justify-content-end gap-2 mt-4";
 
-  acciones.innerHTML = `
+    acciones.innerHTML = `
         <button
             type="button"
             class="btn btn-light"
@@ -5385,33 +4799,33 @@ function crearAccionesBancos() {
         </button>
     `;
 
-  contenedor.appendChild(acciones);
+    contenedor.appendChild(acciones);
 
-  document
-    .querySelector("#btnGuardarBanco")
-    ?.addEventListener("click", guardarBanco);
+    document
+        .querySelector("#btnGuardarBanco") ?
+        .addEventListener("click", guardarBanco);
 
-  document
-    .querySelector("#btnNuevoBanco")
-    ?.addEventListener("click", limpiarFormularioBanco);
+    document
+        .querySelector("#btnNuevoBanco") ?
+        .addEventListener("click", limpiarFormularioBanco);
 }
 
 /**
  * Crea el listado visual de cuentas bancarias.
  */
 function crearListadoBancos() {
-  const contenedor = document.querySelector(SELECTORES_CLIENTE.tabBancos);
+    const contenedor = document.querySelector(SELECTORES_CLIENTE.tabBancos);
 
-  if (!contenedor || document.querySelector("#listadoBancos")) {
-    return;
-  }
+    if (!contenedor || document.querySelector("#listadoBancos")) {
+        return;
+    }
 
-  const listado = document.createElement("div");
+    const listado = document.createElement("div");
 
-  listado.id = "listadoBancos";
-  listado.className = "mt-4";
+    listado.id = "listadoBancos";
+    listado.className = "mt-4";
 
-  listado.innerHTML = `
+    listado.innerHTML = `
         <hr>
 
         <div class="section-title">
@@ -5424,431 +4838,395 @@ function crearListadoBancos() {
         </div>
     `;
 
-  contenedor.appendChild(listado);
+    contenedor.appendChild(listado);
 
-  listado.addEventListener("click", manejarAccionesBanco);
+    listado.addEventListener("click", manejarAccionesBanco);
 }
 
 /**
  * Configura validaciones de campos bancarios.
  */
 function configurarCamposBancarios() {
-  const cuenta = obtenerCampoBanco("numero_cuenta");
+    const cuenta = obtenerCampoBanco("numero_cuenta");
 
-  const clabe = obtenerCampoBanco("clabe");
+    const clabe = obtenerCampoBanco("clabe");
 
-  cuenta?.addEventListener("input", function () {
-    cuenta.value = cuenta.value.replace(/\D/g, "");
-  });
+    cuenta ? .addEventListener("input", function() {
+        cuenta.value = cuenta.value.replace(/\D/g, "");
+    });
 
-  clabe?.addEventListener("input", function () {
-    clabe.value = clabe.value.replace(/\D/g, "").slice(0, 18);
+    clabe ? .addEventListener("input", function() {
+        clabe.value = clabe.value.replace(/\D/g, "").slice(0, 18);
 
-    clabe.classList.remove("is-valid", "is-invalid");
-  });
+        clabe.classList.remove("is-valid", "is-invalid");
+    });
 
-  clabe?.addEventListener("blur", validarClabeBanco);
+    clabe ? .addEventListener("blur", validarClabeBanco);
 }
 
-/**
- * Obtiene un campo de la pestaña Bancos.
- *
- * @param {string} nombre
- * @returns {HTMLElement|null}
- */
+
 function obtenerCampoBanco(nombre) {
-  return document.querySelector(
-    `${SELECTORES_CLIENTE.tabBancos} [name="${nombre}"]`,
-  );
+    return document.querySelector(
+        `${SELECTORES_CLIENTE.tabBancos} [name="${nombre}"]`,
+    );
 }
 
-/**
- * Obtiene los datos bancarios capturados.
- *
- * @returns {object}
- */
+
 function obtenerDatosBanco() {
-  const valor = function (nombre) {
-    const campo =
-      obtenerCampoBanco(nombre);
+    const valor = function(nombre) {
+        const campo =
+            obtenerCampoBanco(nombre);
 
-    if (!campo) {
-      return "";
-    }
+        if (!campo) {
+            return "";
+        }
 
-    return (
-      campo.value?.trim() || ""
+        return (
+            campo.value ? .trim() || ""
+        );
+    };
+
+    const idbanco = Number(
+        estadoBancosCliente.idbancoActual || 0,
     );
-  };
 
-  const idbanco = Number(
-    estadoBancosCliente.idbancoActual || 0,
-  );
+    return {
+        idbanco: Number.isInteger(idbanco) &&
+            idbanco > 0 ?
+            idbanco : 0,
 
-  return {
-    idbanco:
-      Number.isInteger(idbanco) &&
-      idbanco > 0
-        ? idbanco
-        : 0,
+        banco: valor("banco"),
 
-    banco:
-      valor("banco"),
+        titular_cuenta: valor("titular_cuenta"),
 
-    titular_cuenta:
-      valor("titular_cuenta"),
+        numero_cuenta: valor("numero_cuenta"),
 
-    numero_cuenta:
-      valor("numero_cuenta"),
+        clabe: valor("clabe"),
 
-    clabe:
-      valor("clabe"),
+        moneda_cuenta: valor("moneda_cuenta") ||
+            "MXN",
 
-    moneda_cuenta:
-      valor("moneda_cuenta") ||
-      "MXN",
+        referencia_bancaria: valor("referencia_bancaria"),
 
-    referencia_bancaria:
-      valor("referencia_bancaria"),
-
-    estado:
-      "2",
-  };
+        estado: "2",
+    };
 }
 
-/**
- * Valida CLABE de 18 dígitos.
- *
- * Además utiliza el algoritmo de validación de dígito verificador.
- *
- * @returns {boolean}
- */
+
 function validarClabeBanco() {
-  const inputClabe = obtenerCampoBanco("clabe");
+    const inputClabe = obtenerCampoBanco("clabe");
 
-  if (!inputClabe || !inputClabe.value) {
-    return true;
-  }
-
-  const clabe = inputClabe.value.replace(/\D/g, "");
-
-  inputClabe.value = clabe;
-
-  if (!/^\d{18}$/.test(clabe)) {
-    inputClabe.classList.add("is-invalid");
-    inputClabe.classList.remove("is-valid");
-
-    return false;
-  }
-
-  const factores = [3, 7, 1];
-  let suma = 0;
-
-  for (let indice = 0; indice < 17; indice++) {
-    suma += (Number(clabe[indice]) * factores[indice % 3]) % 10;
-  }
-
-  const digitoEsperado = (10 - (suma % 10)) % 10;
-
-  const valida = digitoEsperado === Number(clabe[17]);
-
-  inputClabe.classList.toggle("is-valid", valida);
-
-  inputClabe.classList.toggle("is-invalid", !valida);
-
-  return valida;
-}
-
-/**
- * Valida el formulario bancario.
- *
- * @returns {boolean}
- */
-function validarDatosBanco() {
-  const contenedor =
-    document.querySelector(
-      SELECTORES_CLIENTE.tabBancos,
-    );
-
-  if (!contenedor) {
-    return false;
-  }
-
-  if (!validarContenedor(contenedor)) {
-    return false;
-  }
-
-  const datos =
-    obtenerDatosBanco();
-
-  if (!datos.banco) {
-    mostrarAdvertencia(
-      "Capture el nombre del banco.",
-    );
-
-    obtenerCampoBanco("banco")?.focus();
-
-    return false;
-  }
-
-  if (!datos.titular_cuenta) {
-    mostrarAdvertencia(
-      "Capture el titular de la cuenta.",
-    );
-
-    (
-      obtenerCampoBanco("titular_cuenta") ||
-      obtenerCampoBanco("titular")
-    )?.focus();
-
-    return false;
-  }
-
-  if (
-    datos.numero_cuenta &&
-    datos.numero_cuenta.length < 6
-  ) {
-    const campo =
-      obtenerCampoBanco("numero_cuenta");
-
-    campo?.classList.add(
-      "is-invalid",
-    );
-
-    campo?.focus();
-
-    mostrarAdvertencia(
-      "El número de cuenta debe contener al menos 6 dígitos.",
-    );
-
-    return false;
-  }
-
-  if (
-    datos.clabe &&
-    !validarClabeBanco()
-  ) {
-    obtenerCampoBanco("clabe")
-      ?.focus();
-
-    mostrarAdvertencia(
-      "La CLABE capturada no es válida.",
-    );
-
-    return false;
-  }
-
-  if (
-    !datos.numero_cuenta &&
-    !datos.clabe
-  ) {
-    mostrarAdvertencia(
-      "Capture el número de cuenta o la CLABE bancaria.",
-    );
-
-    obtenerCampoBanco(
-      "numero_cuenta",
-    )?.focus();
-
-    return false;
-  }
-
-  return true;
-}
-/**
- * Guarda o actualiza una cuenta bancaria.
- */
-async function guardarBanco() {
-  if (!validarClienteGuardado()) {
-    return;
-  }
-
-  if (estadoBancosCliente.guardando) {
-    return;
-  }
-
-  if (!validarDatosBanco()) {
-    return;
-  }
-
-  const datos = obtenerDatosBanco();
-
-  const idbanco = Number(
-    datos.idbanco || 0,
-  );
-
-  const esEdicion =
-    Number.isInteger(idbanco) &&
-    idbanco > 0;
-
-  const confirmado = await confirmarAccion(
-    esEdicion
-      ? "¿Desea actualizar esta cuenta bancaria?"
-      : "¿Desea guardar esta cuenta bancaria?",
-    esEdicion
-      ? "Actualizar cuenta"
-      : "Guardar cuenta",
-  );
-
-  if (!confirmado) {
-    return;
-  }
-
-  const boton =
-    document.querySelector(
-      "#btnGuardarBanco",
-    );
-
-  const contenidoOriginal =
-    boton?.innerHTML || "";
-
-  estadoBancosCliente.guardando = true;
-
-  establecerEstadoBoton(
-    boton,
-    true,
-    esEdicion
-      ? "Actualizando..."
-      : "Guardando...",
-  );
-
-  try {
-    const formData = new FormData();
-
-    formData.set(
-      "idcliente",
-      String(obtenerIdCliente()),
-    );
-
-    formData.set(
-      "idbanco",
-      String(idbanco),
-    );
-
-    formData.set(
-      "banco",
-      datos.banco,
-    );
-
-    formData.set(
-      "titular_cuenta",
-      datos.titular_cuenta,
-    );
-
-    formData.set(
-      "numero_cuenta",
-      datos.numero_cuenta,
-    );
-
-    formData.set(
-      "clabe",
-      datos.clabe,
-    );
-
-    formData.set(
-      "moneda_cuenta",
-      datos.moneda_cuenta,
-    );
-
-    formData.set(
-      "referencia_bancaria",
-      datos.referencia_bancaria,
-    );
-
-    formData.set(
-      "estado",
-      datos.estado,
-    );
-
-    const respuesta = await peticionJson(
-      CLIENTES_ENDPOINTS.guardarBanco,
-      {
-        method: "POST",
-        body: formData,
-      },
-    );
-
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message ||
-        (
-          esEdicion
-            ? "No fue posible actualizar la cuenta bancaria."
-            : "No fue posible guardar la cuenta bancaria."
-        ),
-      );
+    if (!inputClabe || !inputClabe.value) {
+        return true;
     }
 
-    mostrarExito(
-      respuesta.message ||
-      (
-        esEdicion
-          ? "La cuenta bancaria se actualizó correctamente."
-          : "La cuenta bancaria se registró correctamente."
-      ),
-    );
+    const clabe = inputClabe.value.replace(/\D/g, "");
 
-    limpiarFormularioBanco();
+    inputClabe.value = clabe;
 
-    await cargarBancosCliente(true);
-  } catch (error) {
-    console.error(
-      "Error al guardar cuenta bancaria:",
-      error,
-    );
+    if (!/^\d{18}$/.test(clabe)) {
+        inputClabe.classList.add("is-invalid");
+        inputClabe.classList.remove("is-valid");
 
-    mostrarError(
-      error.message ||
-      "Ocurrió un error al guardar la cuenta bancaria.",
-    );
-  } finally {
-    estadoBancosCliente.guardando = false;
+        return false;
+    }
 
-    restaurarBoton(
-      boton,
-      contenidoOriginal,
-    );
-  }
+    const factores = [3, 7, 1];
+    let suma = 0;
+
+    for (let indice = 0; indice < 17; indice++) {
+        suma += (Number(clabe[indice]) * factores[indice % 3]) % 10;
+    }
+
+    const digitoEsperado = (10 - (suma % 10)) % 10;
+
+    const valida = digitoEsperado === Number(clabe[17]);
+
+    inputClabe.classList.toggle("is-valid", valida);
+
+    inputClabe.classList.toggle("is-invalid", !valida);
+
+    return valida;
 }
 
-/**
- * Consulta las cuentas bancarias registradas.
- *
- * @param {boolean} forzar
- */
+
+function validarDatosBanco() {
+    const contenedor =
+        document.querySelector(
+            SELECTORES_CLIENTE.tabBancos,
+        );
+
+    if (!contenedor) {
+        return false;
+    }
+
+    if (!validarContenedor(contenedor)) {
+        return false;
+    }
+
+    const datos =
+        obtenerDatosBanco();
+
+    if (!datos.banco) {
+        mostrarAdvertencia(
+            "Capture el nombre del banco.",
+        );
+
+        obtenerCampoBanco("banco") ? .focus();
+
+        return false;
+    }
+
+    if (!datos.titular_cuenta) {
+        mostrarAdvertencia(
+            "Capture el titular de la cuenta.",
+        );
+
+        (
+            obtenerCampoBanco("titular_cuenta") ||
+            obtenerCampoBanco("titular")
+        ) ? .focus();
+
+        return false;
+    }
+
+    if (
+        datos.numero_cuenta &&
+        datos.numero_cuenta.length < 6
+    ) {
+        const campo =
+            obtenerCampoBanco("numero_cuenta");
+
+        campo ? .classList.add(
+            "is-invalid",
+        );
+
+        campo ? .focus();
+
+        mostrarAdvertencia(
+            "El número de cuenta debe contener al menos 6 dígitos.",
+        );
+
+        return false;
+    }
+
+    if (
+        datos.clabe &&
+        !validarClabeBanco()
+    ) {
+        obtenerCampoBanco("clabe") ?
+            .focus();
+
+        mostrarAdvertencia(
+            "La CLABE capturada no es válida.",
+        );
+
+        return false;
+    }
+
+    if (!datos.numero_cuenta &&
+        !datos.clabe
+    ) {
+        mostrarAdvertencia(
+            "Capture el número de cuenta o la CLABE bancaria.",
+        );
+
+        obtenerCampoBanco(
+            "numero_cuenta",
+        ) ? .focus();
+
+        return false;
+    }
+
+    return true;
+}
+
+async function guardarBanco() {
+    if (!validarClienteGuardado()) {
+        return;
+    }
+
+    if (estadoBancosCliente.guardando) {
+        return;
+    }
+
+    if (!validarDatosBanco()) {
+        return;
+    }
+
+    const datos = obtenerDatosBanco();
+
+    const idbanco = Number(
+        datos.idbanco || 0,
+    );
+
+    const esEdicion =
+        Number.isInteger(idbanco) &&
+        idbanco > 0;
+
+    const confirmado = await confirmarAccion(
+        esEdicion ?
+        "¿Desea actualizar esta cuenta bancaria?" :
+        "¿Desea guardar esta cuenta bancaria?",
+        esEdicion ?
+        "Actualizar cuenta" :
+        "Guardar cuenta",
+    );
+
+    if (!confirmado) {
+        return;
+    }
+
+    const boton =
+        document.querySelector(
+            "#btnGuardarBanco",
+        );
+
+    const contenidoOriginal =
+        boton ? .innerHTML || "";
+
+    estadoBancosCliente.guardando = true;
+
+    establecerEstadoBoton(
+        boton,
+        true,
+        esEdicion ?
+        "Actualizando..." :
+        "Guardando...",
+    );
+
+    try {
+        const formData = new FormData();
+
+        formData.set(
+            "idcliente",
+            String(obtenerIdCliente()),
+        );
+
+        formData.set(
+            "idbanco",
+            String(idbanco),
+        );
+
+        formData.set(
+            "banco",
+            datos.banco,
+        );
+
+        formData.set(
+            "titular_cuenta",
+            datos.titular_cuenta,
+        );
+
+        formData.set(
+            "numero_cuenta",
+            datos.numero_cuenta,
+        );
+
+        formData.set(
+            "clabe",
+            datos.clabe,
+        );
+
+        formData.set(
+            "moneda_cuenta",
+            datos.moneda_cuenta,
+        );
+
+        formData.set(
+            "referencia_bancaria",
+            datos.referencia_bancaria,
+        );
+
+        formData.set(
+            "estado",
+            datos.estado,
+        );
+
+        const respuesta = await peticionJson(
+            CLIENTES_ENDPOINTS.guardarBanco, {
+                method: "POST",
+                body: formData,
+            },
+        );
+
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message ||
+                (
+                    esEdicion ?
+                    "No fue posible actualizar la cuenta bancaria." :
+                    "No fue posible guardar la cuenta bancaria."
+                ),
+            );
+        }
+
+        mostrarExito(
+            respuesta.message ||
+            (
+                esEdicion ?
+                "La cuenta bancaria se actualizó correctamente." :
+                "La cuenta bancaria se registró correctamente."
+            ),
+        );
+
+        limpiarFormularioBanco();
+
+        await cargarBancosCliente(true);
+    } catch (error) {
+        console.error(
+            "Error al guardar cuenta bancaria:",
+            error,
+        );
+
+        mostrarError(
+            error.message ||
+            "Ocurrió un error al guardar la cuenta bancaria.",
+        );
+    } finally {
+        estadoBancosCliente.guardando = false;
+
+        restaurarBoton(
+            boton,
+            contenidoOriginal,
+        );
+    }
+}
+
+
 
 async function cargarBancosCliente(
-  forzar = false,
+    forzar = false,
 ) {
-  const idcliente =
-    obtenerIdCliente();
+    const idcliente =
+        obtenerIdCliente();
 
-  if (
-    idcliente <= 0 ||
-    estadoBancosCliente.cargando
-  ) {
-    return;
-  }
+    if (
+        idcliente <= 0 ||
+        estadoBancosCliente.cargando
+    ) {
+        return;
+    }
 
-  if (
-    estadoBancosCliente.cargado &&
-    !forzar
-  ) {
-    return;
-  }
+    if (
+        estadoBancosCliente.cargado &&
+        !forzar
+    ) {
+        return;
+    }
 
-  const contenedor =
-    document.querySelector(
-      "#contenedorListadoBancos",
-    );
+    const contenedor =
+        document.querySelector(
+            "#contenedorListadoBancos",
+        );
 
-  if (!contenedor) {
-    return;
-  }
+    if (!contenedor) {
+        return;
+    }
 
-  estadoBancosCliente.cargando = true;
+    estadoBancosCliente.cargando = true;
 
-  contenedor.innerHTML = `
+    contenedor.innerHTML = `
     <div class="col-12 text-center py-4">
       <span
         class="spinner-border spinner-border-sm me-2">
@@ -5857,45 +5235,43 @@ async function cargarBancosCliente(
     </div>
   `;
 
-  try {
-    const url =
-      `${CLIENTES_ENDPOINTS.listarBancos}/` +
-      encodeURIComponent(idcliente);
+    try {
+        const url =
+            `${CLIENTES_ENDPOINTS.listarBancos}/` +
+            encodeURIComponent(idcliente);
 
-    const respuesta =
-      await peticionJson(
-        url,
-        {
-          method: "GET",
-        },
-      );
+        const respuesta =
+            await peticionJson(
+                url, {
+                    method: "GET",
+                },
+            );
 
-    if (!respuesta.status) {
-      throw new Error(
-        respuesta.message ||
-        "No fue posible consultar las cuentas bancarias.",
-      );
-    }
+        if (!respuesta.status) {
+            throw new Error(
+                respuesta.message ||
+                "No fue posible consultar las cuentas bancarias.",
+            );
+        }
 
-    estadoBancosCliente.registros =
-      Array.isArray(respuesta.data)
-        ? respuesta.data
-        : Array.isArray(
-              respuesta.data?.bancos,
-            )
-          ? respuesta.data.bancos
-          : [];
+        estadoBancosCliente.registros =
+            Array.isArray(respuesta.data) ?
+            respuesta.data :
+            Array.isArray(
+                respuesta.data ? .bancos,
+            ) ?
+            respuesta.data.bancos : [];
 
-    estadoBancosCliente.cargado = true;
+        estadoBancosCliente.cargado = true;
 
-    renderizarBancos();
-  } catch (error) {
-    console.error(
-      "Error al cargar bancos:",
-      error,
-    );
+        renderizarBancos();
+    } catch (error) {
+        console.error(
+            "Error al cargar bancos:",
+            error,
+        );
 
-    contenedor.innerHTML = `
+        contenedor.innerHTML = `
       <div class="col-12 text-center text-danger py-4">
         ${escaparHtml(
           error.message ||
@@ -5915,63 +5291,63 @@ async function cargarBancosCliente(
       </div>
     `;
 
-    document
-      .querySelector(
-        "#btnReintentarBancos",
-      )
-      ?.addEventListener(
-        "click",
-        function () {
-          cargarBancosCliente(true);
-        },
-      );
-  } finally {
-    estadoBancosCliente.cargando = false;
-  }
+        document
+            .querySelector(
+                "#btnReintentarBancos",
+            ) ?
+            .addEventListener(
+                "click",
+                function() {
+                    cargarBancosCliente(true);
+                },
+            );
+    } finally {
+        estadoBancosCliente.cargando = false;
+    }
 }
 
 function renderizarBancos() {
-  const contenedor =
-    document.querySelector(
-      "#contenedorListadoBancos",
-    );
+    const contenedor =
+        document.querySelector(
+            "#contenedorListadoBancos",
+        );
 
-  if (!contenedor) {
-    return;
-  }
+    if (!contenedor) {
+        return;
+    }
 
-  if (
-    estadoBancosCliente.registros.length === 0
-  ) {
-    contenedor.innerHTML = `
+    if (
+        estadoBancosCliente.registros.length === 0
+    ) {
+        contenedor.innerHTML = `
       <div class="col-12 text-center text-muted py-4">
         <i class="ri-bank-line fs-3 d-block mb-2"></i>
         No hay cuentas bancarias registradas.
       </div>
     `;
 
-    actualizarContadorBancos();
+        actualizarContadorBancos();
 
-    return;
-  }
+        return;
+    }
 
-  contenedor.innerHTML =
-    estadoBancosCliente.registros
-      .map(function (banco) {
-        const idbanco = Number(
-          banco.idbanco ||
-          banco.id ||
-          0,
-        );
+    contenedor.innerHTML =
+        estadoBancosCliente.registros
+        .map(function(banco) {
+                const idbanco = Number(
+                    banco.idbanco ||
+                    banco.id ||
+                    0,
+                );
 
-        const cuentaProtegida =
-          protegerCuentaBancaria(
-            banco.clabe ||
-            banco.numero_cuenta ||
-            "",
-          );
+                const cuentaProtegida =
+                    protegerCuentaBancaria(
+                        banco.clabe ||
+                        banco.numero_cuenta ||
+                        "",
+                    );
 
-        return `
+                return `
           <div class="col-lg-6">
             <div class="card border shadow-none h-100">
 
@@ -6058,11 +5434,6 @@ function renderizarBancos() {
   actualizarContadorBancos();
 }
 
-/**
- * Maneja editar y eliminar cuentas.
- *
- * @param {MouseEvent} event
- */
 function manejarAccionesBanco(event) {
   const botonEditar = event.target.closest(".btn-editar-banco");
 
@@ -6079,16 +5450,7 @@ function manejarAccionesBanco(event) {
   }
 }
 
-/**
- * Carga una cuenta en el formulario.
- *
- * @param {number} idbanco
- */
-/**
- * Carga una cuenta bancaria en el formulario para editarla.
- *
- * @param {number} idbanco
- */
+
 function editarBanco(idbanco) {
   const id = Number(idbanco);
 
@@ -6122,15 +5484,10 @@ function editarBanco(idbanco) {
     return;
   }
 
-  /*
-   * Guardamos el ID del banco que se está editando.
-   */
+ 
   estadoBancosCliente.idbancoActual = id;
 
-  /*
-   * Los nombres deben coincidir EXACTAMENTE
-   * con los name="" de tu HTML.
-   */
+
   const campos = {
     banco:
       banco.banco || "",
@@ -6175,7 +5532,7 @@ function editarBanco(idbanco) {
   );
 
   /*
-   * Actualizamos el texto del botón.
+   * Actualiamos el texto del botón.
    */
   const boton =
     document.querySelector(
@@ -6197,9 +5554,7 @@ function editarBanco(idbanco) {
       String(id);
   }
 
-  /*
-   * Nos posicionamos en el formulario.
-   */
+ 
   document
     .querySelector(
       SELECTORES_CLIENTE.tabBancos,
@@ -6210,11 +5565,6 @@ function editarBanco(idbanco) {
     });
 }
 
-/**
- * Elimina una cuenta bancaria.
- *
- * @param {number} idbanco
- */
 async function eliminarBanco(idbanco) {
   if (idbanco <= 0) {
     return;
@@ -6321,12 +5671,7 @@ function limpiarFormularioBanco() {
   }
 }
 
-/**
- * Oculta la mayor parte de una cuenta o CLABE.
- *
- * @param {string} valor
- * @returns {string}
- */
+
 function protegerCuentaBancaria(valor) {
   const texto = String(valor || "");
 
@@ -6337,9 +5682,7 @@ function protegerCuentaBancaria(valor) {
   return `${"•".repeat(Math.max(texto.length - 4, 4))}${texto.slice(-4)}`;
 }
 
-/**
- * Actualiza el contador de bancos.
- */
+
 function actualizarContadorBancos() {
   const botonTab = obtenerBotonTab("#tab-bancos");
 
@@ -6366,12 +5709,10 @@ function actualizarContadorBancos() {
 }
 
 /* ============================================================
- * 19. DOCUMENTOS
+ * DOCUMENTOS
  * ============================================================ */
 
-/**
- * Configuración permitida para documentos.
- */
+
 const CONFIGURACION_DOCUMENTOS = {
   extensionesPermitidas: [
     "pdf",
@@ -6408,9 +5749,7 @@ const estadoDocumentosCliente = {
   registros: [],
 };
 
-/**
- * Inicializa la sección Documentos.
- */
+
 function configurarSeccionDocumentos() {
   const contenedor = document.querySelector(SELECTORES_CLIENTE.tabDocumentos);
 
@@ -6434,7 +5773,7 @@ function configurarSeccionDocumentos() {
 }
 
 /**
- * Crea el botón para subir documentos.
+ * Cream9os el botón para subir documentos.
  */
 function crearAccionesDocumentos() {
   const contenedor = document.querySelector(SELECTORES_CLIENTE.tabDocumentos);
@@ -6515,9 +5854,7 @@ function crearListadoDocumentos() {
   listado.addEventListener("click", manejarAccionesDocumento);
 }
 
-/**
- * Configura el input file.
- */
+
 function configurarCampoArchivoDocumento() {
   const inputArchivo =
     obtenerCampoDocumento("archivo") || obtenerCampoDocumento("documento");
@@ -6554,24 +5891,14 @@ function configurarCampoArchivoDocumento() {
   });
 }
 
-/**
- * Obtiene un campo dentro de Documentos.
- *
- * @param {string} nombre
- * @returns {HTMLElement|null}
- */
+
 function obtenerCampoDocumento(nombre) {
   return document.querySelector(
     `${SELECTORES_CLIENTE.tabDocumentos} [name="${nombre}"]`,
   );
 }
 
-/**
- * Valida extensión y tamaño del documento.
- *
- * @param {File} archivo
- * @returns {boolean}
- */
+
 function validarArchivoDocumento(archivo) {
   if (!(archivo instanceof File)) {
     mostrarAdvertencia("Seleccione un archivo válido.");
@@ -6609,11 +5936,7 @@ function validarArchivoDocumento(archivo) {
   return true;
 }
 
-/**
- * Muestra la información del archivo seleccionado.
- *
- * @param {File} archivo
- */
+
 function mostrarInformacionArchivo(archivo) {
   let contenedor = document.querySelector("#informacionArchivoSeleccionado");
 
@@ -6653,11 +5976,7 @@ function mostrarInformacionArchivo(archivo) {
     `;
 }
 
-/**
- * Obtiene los datos del documento.
- *
- * @returns {object}
- */
+
 function obtenerDatosDocumento() {
   const valor = function (nombre) {
     return obtenerCampoDocumento(nombre)?.value?.trim() || "";
@@ -6678,11 +5997,7 @@ function obtenerDatosDocumento() {
   };
 }
 
-/**
- * Valida los datos antes de subir un documento.
- *
- * @returns {boolean}
- */
+
 function validarDatosDocumento() {
   const contenedor = document.querySelector(SELECTORES_CLIENTE.tabDocumentos);
 
@@ -6690,10 +6005,7 @@ function validarDatosDocumento() {
     return false;
   }
 
-  /*
-   * El campo de archivo se valida manualmente para evitar conflictos
-   * en ediciones o controles de arrastrar y soltar.
-   */
+
   const campos = Array.from(
     contenedor.querySelectorAll('input:not([type="file"]), select, textarea'),
   ).filter(function (campo) {
@@ -6805,11 +6117,7 @@ async function guardarDocumento() {
   }
 }
 
-/**
- * Consulta los documentos registrados.
- *
- * @param {boolean} forzar
- */
+
 async function cargarDocumentosCliente(forzar = false) {
   const idcliente = obtenerIdCliente();
 
@@ -7043,11 +6351,7 @@ function renderizarDocumentos() {
   actualizarContadorDocumentos();
 }
 
-/**
- * Maneja acciones de documentos.
- *
- * @param {MouseEvent} event
- */
+
 function manejarAccionesDocumento(event) {
   const botonEliminar = event.target.closest(".btn-eliminar-documento");
 
@@ -7056,11 +6360,7 @@ function manejarAccionesDocumento(event) {
   }
 }
 
-/**
- * Elimina un documento.
- *
- * @param {number} iddocumento
- */
+
 async function eliminarDocumento(iddocumento) {
   if (iddocumento <= 0) {
     return;
@@ -7103,9 +6403,7 @@ async function eliminarDocumento(iddocumento) {
   }
 }
 
-/**
- * Limpia el formulario de documentos.
- */
+
 function limpiarFormularioDocumento() {
   const nombres = [
     "tipo_documento",
@@ -7146,12 +6444,7 @@ function limpiarFormularioDocumento() {
   document.querySelector("#informacionArchivoSeleccionado")?.remove();
 }
 
-/**
- * Obtiene la extensión de un archivo.
- *
- * @param {string} nombre
- * @returns {string}
- */
+
 function obtenerExtensionArchivo(nombre) {
   const partes = String(nombre || "")
     .toLowerCase()
@@ -7160,12 +6453,7 @@ function obtenerExtensionArchivo(nombre) {
   return partes.length > 1 ? partes.pop() : "";
 }
 
-/**
- * Devuelve un icono según la extensión.
- *
- * @param {string} extension
- * @returns {string}
- */
+
 function obtenerIconoDocumento(extension) {
   const ext = String(extension || "").toLowerCase();
 
@@ -7183,12 +6471,7 @@ function obtenerIconoDocumento(extension) {
   return iconos[ext] || "ri-file-3-line text-muted";
 }
 
-/**
- * Formatea el tamaño de un archivo.
- *
- * @param {number} bytes
- * @returns {string}
- */
+
 function formatearTamanoArchivo(bytes) {
   const tamano = Number(bytes || 0);
 
@@ -7208,9 +6491,7 @@ function formatearTamanoArchivo(bytes) {
   return `${valor.toFixed(indice === 0 ? 0 : 2)} ${unidades[indice]}`;
 }
 
-/**
- * Actualiza el contador de documentos.
- */
+
 function actualizarContadorDocumentos() {
   const botonTab = obtenerBotonTab("#tab-documentos");
 
@@ -7237,22 +6518,13 @@ function actualizarContadorDocumentos() {
 }
 
 /* ============================================================
- * 20. FUNCIONES AUXILIARES DE LA PARTE 4
+ *  FUNCIONES AUXILARES DE LA PARTE 4
  * ============================================================ */
 
-/**
- * Limpia un valor decimal.
- *
- * @param {string} valor
- * @param {number} decimales
- * @returns {string}
- */
 function limpiarNumeroDecimal(valor, decimales = 2) {
   let texto = String(valor || "").replace(/[^\d.]/g, "");
 
-  /*
-   * Conserva únicamente el primer punto decimal.
-   */
+ 
   const partes = texto.split(".");
 
   if (partes.length > 1) {
@@ -7270,12 +6542,7 @@ function limpiarNumeroDecimal(valor, decimales = 2) {
   return texto;
 }
 
-/**
- * Obtiene el valor booleano de checkbox, select o input.
- *
- * @param {HTMLElement} campo
- * @returns {boolean}
- */
+
 function obtenerValorBooleanoCampo(campo) {
   if (!campo) {
     return false;
