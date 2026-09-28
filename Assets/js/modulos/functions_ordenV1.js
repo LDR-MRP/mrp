@@ -281,10 +281,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const supervisorId =
       Number(MRP_STATE?.supervisorid || 0);
 
-    return (
-      rol === 1 ||                // Administrador
-      userId === supervisorId     // Supervisor de producción
-    );
+    // return (
+    //   rol === 1 ||                // Administrador
+    //   userId === supervisorId     // Supervisor de producción
+    // );
+
+      return [1, 7].includes(rol) || userId === supervisorId;
   }
 
   function esUsuarioCalidad() {

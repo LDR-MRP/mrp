@@ -13,7 +13,7 @@ function obtenerBaseUrl() {
 }
 
 
-const CLIENTES_ENDPOINTS = {
+const CLIENTES_ENDPOINTS = {    
     codigoCliente: `${obtenerBaseUrl()}/cli_clientes/getCodigoCliente`,
     guardarGeneral: `${obtenerBaseUrl()}/cli_clientes/setGeneral`,
     validarRFC: `${obtenerBaseUrl()}/cli_clientes/validarRFC`,
@@ -2472,8 +2472,7 @@ async function cargarContactosCliente(forzar = false) {
         `;
 
         document
-            .querySelector("#btnReintentarContactos") ?
-            .addEventListener("click", function() {
+            .querySelector("#btnReintentarContactos") ?.addEventListener("click", function() {
                 cargarContactosCliente(true);
             });
     } finally {
