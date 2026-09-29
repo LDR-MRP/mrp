@@ -225,7 +225,7 @@ if (btnCompSub) {
     btnNuevaPlaneacion.addEventListener('click', async () => {
       await limpiarNuevaPlaneacion(true);
       goNueva();
-           await initFechaInicioPicker();
+          //  await initFechaInicioPicker();
            initFechaRequeridaPicker();
     });
   }
@@ -2442,101 +2442,101 @@ function updateRequeridaMinByDay() {
 // =========================================================
 // INIT INICIO PRODUCCIÓN 
 // =========================================================
-async function initFechaInicioPicker() {
-  const input = document.getElementById("fechaInicio");
-  if (!input) return;
+// async function initFechaInicioPicker() {
+//   const input = document.getElementById("fechaInicio");
+//   if (!input) return;
 
-  prepareInputForManualFlatpickr(input);
-  if (fpInicio) fpInicio.destroy();
+//   prepareInputForManualFlatpickr(input);
+//   if (fpInicio) fpInicio.destroy();
 
-  let ranges = await getRangosOcupados();
-  console.log("Rangos ocupados:", ranges);
+//   let ranges = await getRangosOcupados();
+//   console.log("Rangos ocupados:", ranges);
 
-  let _ajustando = false;
+//   let _ajustando = false;
 
-  fpInicio = flatpickr(input, {
-    locale: "es",
-    enableTime: true,
-    time_24hr: true,
-    minuteIncrement: 5,
-    minDate: "today",
-    defaultHour: 9,
-    defaultMinute: 0,
+//   fpInicio = flatpickr(input, {
+//     locale: "es",
+//     enableTime: true,
+//     time_24hr: true,
+//     minuteIncrement: 5,
+//     minDate: "today",
+//     defaultHour: 9,
+//     defaultMinute: 0,
 
    
-    altInput: true,
-    altFormat: "d.m.Y H:i",
+//     altInput: true,
+//     altFormat: "d.m.Y H:i",
 
-    dateFormat: "Y-m-d H:i",
-
-
-    disable: [
-      (date) => isWeekend(date) || dayIsFullyBlocked(date, ranges)
-    ],
-
-    onOpen: async (selectedDates, dateStr, instance) => {
-      ranges = await getRangosOcupados();
-      instance.set("disable", [
-        (date) => isWeekend(date) || dayIsFullyBlocked(date, ranges)
-      ]);
-    },
-
-    onChange: (selectedDates, dateStr, instance) => {
-      if (_ajustando) return;
-      if (!selectedDates?.length) return;
-
-      const picked = selectedDates[0];
+//     dateFormat: "Y-m-d H:i",
 
 
-      const soloDia = (picked.getHours() === 12 && picked.getMinutes() === 0);
+//     disable: [
+//       (date) => isWeekend(date) || dayIsFullyBlocked(date, ranges)
+//     ],
 
-      let candidate = picked;
-      if (soloDia) {
-        candidate = new Date(
-          picked.getFullYear(),
-          picked.getMonth(),
-          picked.getDate(),
-          9, 0, 0
-        );
-      }
+//     onOpen: async (selectedDates, dateStr, instance) => {
+//       ranges = await getRangosOcupados();
+//       instance.set("disable", [
+//         (date) => isWeekend(date) || dayIsFullyBlocked(date, ranges)
+//       ]);
+//     },
+
+//     onChange: (selectedDates, dateStr, instance) => {
+//       if (_ajustando) return;
+//       if (!selectedDates?.length) return;
+
+//       const picked = selectedDates[0];
 
 
-      const col = findCollision(candidate, ranges);
-      if (col) {
-        const next = nextAvailable(candidate, ranges, 15);
+//       const soloDia = (picked.getHours() === 12 && picked.getMinutes() === 0);
 
-        _ajustando = true;
-        instance.setDate(next, true); 
-        _ajustando = false;
+//       let candidate = picked;
+//       if (soloDia) {
+//         candidate = new Date(
+//           picked.getFullYear(),
+//           picked.getMonth(),
+//           picked.getDate(),
+//           9, 0, 0
+//         );
+//       }
 
-        if (window.Swal) {
-          Swal.fire({
-            toast: true,
-            position: "top-end",
-            icon: "info",
-            title: "Horario ocupado",
-            text: "Se ajustó automáticamente al siguiente horario disponible (+15 min).",
-            showConfirmButton: false,
-            timer: 2200
-          });
-        }
-      } else if (soloDia) {
+
+//       const col = findCollision(candidate, ranges);
+//       if (col) {
+//         const next = nextAvailable(candidate, ranges, 15);
+
+//         _ajustando = true;
+//         instance.setDate(next, true); 
+//         _ajustando = false;
+
+//         if (window.Swal) {
+//           Swal.fire({
+//             toast: true,
+//             position: "top-end",
+//             icon: "info",
+//             title: "Horario ocupado",
+//             text: "Se ajustó automáticamente al siguiente horario disponible (+15 min).",
+//             showConfirmButton: false,
+//             timer: 2200
+//           });
+//         }
+//       } else if (soloDia) {
      
-        if (picked.getHours() !== 9 || picked.getMinutes() !== 0) {
-          _ajustando = true;
-          instance.setDate(candidate, true);
-          _ajustando = false;
-        }
-      }
+//         if (picked.getHours() !== 9 || picked.getMinutes() !== 0) {
+//           _ajustando = true;
+//           instance.setDate(candidate, true);
+//           _ajustando = false;
+//         }
+//       }
 
 
-      updateRequeridaMinByDay();
-    }
-  });
+//       updateRequeridaMinByDay();
+//     }
+//   });
 
 
-  updateRequeridaMinByDay();
-}
+//   updateRequeridaMinByDay();
+// }
 
 
 function initFechaRequeridaPicker() {
