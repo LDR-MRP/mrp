@@ -256,7 +256,7 @@ class Lgs_envios extends Controllers
                 $idEstadoStr = intval($existingEnvio['id_estado']);
                 $canEdit = ($idEstadoStr === 1 || $idEstadoStr === 8);
                 if ($idEstadoStr === 2) {
-                    $estadoPlan = $this->model->getPlaneacionEstadoByEnvio($idEnvio);
+                    $estadoPlan = $model->getPlaneacionEstadoByEnvio($idEnvio);
                     if ($estadoPlan === null || $estadoPlan < 3) {
                         $canEdit = true;
                     }
@@ -526,7 +526,7 @@ class Lgs_envios extends Controllers
             $idEstadoStr = intval($existingEnvio['id_estado']);
             $canEdit = ($idEstadoStr === 1 || $idEstadoStr === 8);
             if ($idEstadoStr === 2) {
-                $estadoPlan = $this->model->getPlaneacionEstadoByEnvio($idEnvio);
+                $estadoPlan = $model->getPlaneacionEstadoByEnvio($idEnvio);
                 if ($estadoPlan === null || $estadoPlan < 3) {
                     $canEdit = true;
                 }
@@ -707,7 +707,7 @@ class Lgs_envios extends Controllers
             $idEstadoStr = intval($existingEnvio['id_estado']);
             $canEdit = ($idEstadoStr === 1 || $idEstadoStr === 8);
             if ($idEstadoStr === 2) {
-                $estadoPlan = $this->model->getPlaneacionEstadoByEnvio($idEnvio);
+                $estadoPlan = $model->getPlaneacionEstadoByEnvio($idEnvio);
                 if ($estadoPlan === null || $estadoPlan < 3) {
                     $canEdit = true;
                 }
@@ -836,13 +836,25 @@ class Lgs_envios extends Controllers
 
             // Resolver información de Segmento y Tarifas
             $segId = $this->service->resolveSegmentoForUnit($db, $idUnidad);
-            $segmentosInfo = [
-                1 => ['nombre' => 'LDT (Ligeros)', 'tarifa' => 27.00],
-                2 => ['nombre' => 'MDT (Medianos)', 'tarifa' => 30.00],
-                3 => ['nombre' => 'HDT (Pesados)', 'tarifa' => 40.00],
-                4 => ['nombre' => 'BUSES', 'tarifa' => 50.00],
-                5 => ['nombre' => 'LOWBOY', 'tarifa' => 60.00],
-            ];
+            $idTipoTraslado = (int)($detalle['id_tipo_traslado'] ?? 1);
+            if ($idTipoTraslado === 2) {
+                // Tarifas rodando (Chofer)
+                $segmentosInfo = [
+                    1 => ['nombre' => 'LDT (Ligeros)', 'tarifa' => 18.00],
+                    2 => ['nombre' => 'MDT (Medianos)', 'tarifa' => 20.00],
+                    3 => ['nombre' => 'HDT (Pesados)', 'tarifa' => 25.00],
+                    4 => ['nombre' => 'BUSES', 'tarifa' => 25.00],
+                    5 => ['nombre' => 'LOWBOY', 'tarifa' => 25.00],
+                ];
+            } else {
+                $segmentosInfo = [
+                    1 => ['nombre' => 'LDT (Ligeros)', 'tarifa' => 27.00],
+                    2 => ['nombre' => 'MDT (Medianos)', 'tarifa' => 30.00],
+                    3 => ['nombre' => 'HDT (Pesados)', 'tarifa' => 40.00],
+                    4 => ['nombre' => 'BUSES', 'tarifa' => 50.00],
+                    5 => ['nombre' => 'LOWBOY', 'tarifa' => 60.00],
+                ];
+            }
             $sInfo = $segmentosInfo[$segId] ?? $segmentosInfo[1];
 
             $detalle['segmento'] = $sInfo['nombre'];

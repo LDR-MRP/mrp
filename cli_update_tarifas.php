@@ -89,11 +89,10 @@ try {
             $factor = round($precio / $base, 4);
             $stmtIns->execute([0, 3, $id_seg, $u, $u, $base, $factor, 0]);
         }
-        // Chofer
+        // Chofer (Rodando: tarifa fija por km por unidad, factor 1.0000)
         if (isset($chofer_global[$id_seg])) {
             $precioC = $chofer_global[$id_seg];
-            $factorC = round($precioC / $base, 4);
-            $stmtIns->execute([0, 2, $id_seg, 1, 1, $precioC, $factorC, 0]);
+            $stmtIns->execute([0, 2, $id_seg, 1, 1, $precioC, 1.0000, 0]);
         }
     }
 
@@ -147,19 +146,84 @@ try {
                     $stmtIns->execute([$id_prov, 3, $id_seg, $u, $u, $base, $factor, 0]);
                     $count++;
                 }
-                // Chofer
+                // Chofer (Rodando: tarifa fija por km por unidad, factor 1.0000)
                 if (isset($chofer_precios[$id_seg])) {
                     $precioC = $chofer_precios[$id_seg];
-                    $factorC = round($precioC / $base, 4);
-                    $stmtIns->execute([$id_prov, 2, $id_seg, 1, 1, $precioC, $factorC, 0]);
+                    $stmtIns->execute([$id_prov, 2, $id_seg, 1, 1, $precioC, 1.0000, 0]);
                     $count++;
                 }
             }
         }
     }
 
+    // Asegurar factor 1.0000 en cualquier tarifa de chofer existente
+    $db->exec("UPDATE lgs_tarifas_proveedores SET factor = 1.0000 WHERE id_tipo_traslado = 2");
+
+    // =========================================================================
+    // CATALOGACIÓN COMPLETA DE MODELOS Y SEGMENTOS (LIGEROS / PESADOS / ETC.)
+    // =========================================================================
+    $modelosCatalog = [
+        // LIGEROS (Segmento 1)
+        ['modelo' => 'S5-E6 MT', 'id_segmento' => 1, 'vin_base' => 'LVBV18'],
+        ['modelo' => 'Aumark S5-E6', 'id_segmento' => 1, 'vin_base' => 'LVBV18'],
+        ['modelo' => 'Aumark S5-E6-MT', 'id_segmento' => 1, 'vin_base' => 'LVBV18'],
+        ['modelo' => 'S3-E6 MT', 'id_segmento' => 1, 'vin_base' => 'LVBV14'],
+        ['modelo' => 'Tunland V7 gasolina 4X4', 'id_segmento' => 1, 'vin_base' => '3LDC2A2F-4X4'],
+        ['modelo' => 'Tunland G7 4K22-DC', 'id_segmento' => 1, 'vin_base' => '3LDC2A2F-G7'],
+        ['modelo' => 'Tunland V7 (MHEV)', 'id_segmento' => 1, 'vin_base' => '3LDC2B2F'],
+        ['modelo' => 'Tunland V9 (MHEV)', 'id_segmento' => 1, 'vin_base' => '3LDC2B2F9'],
+        ['modelo' => 'Tunland V7 gasolina 4X2', 'id_segmento' => 1, 'vin_base' => '3LDC2A2F-4X2'],
+        ['modelo' => 'HiVan Pasajeros', 'id_segmento' => 1, 'vin_base' => '3LDA2B2F'],
+        ['modelo' => 'TM3 1.6L', 'id_segmento' => 1, 'vin_base' => 'LVAV2JVB'],
+        ['modelo' => 'Wonder DC', 'id_segmento' => 1, 'vin_base' => 'LVBV27-DC'],
+        ['modelo' => 'VIEW CS2 Pasajeros', 'id_segmento' => 1, 'vin_base' => '3LDA2A2F'],
+        ['modelo' => 'TUNLAND EV', 'id_segmento' => 1, 'vin_base' => 'LVBV36'],
+        ['modelo' => 'Tunland G7 TM GS 4x2', 'id_segmento' => 1, 'vin_base' => '3LDC1A2F-TA'],
+        ['modelo' => 'Tunland G7 MT Gasolina', 'id_segmento' => 1, 'vin_base' => '3LDC2A2FX'],
+        ['modelo' => 'Tunland G7 4X4', 'id_segmento' => 1, 'vin_base' => '3LDC2A2F6'],
+        ['modelo' => 'VIEW CS2-2501 Pasajeros', 'id_segmento' => 1, 'vin_base' => '3LDA2A2F'],
+        ['modelo' => 'View CS2 Royal', 'id_segmento' => 1, 'vin_base' => '3LDA2A2F9'],
+        ['modelo' => 'HiVan Panel', 'id_segmento' => 1, 'vin_base' => '3LDA2B2FX'],
+        ['modelo' => 'HiVan Cargo', 'id_segmento' => 1, 'vin_base' => '3LDA2B2F3'],
+
+        // PESADOS (Segmento 3)
+        ['modelo' => 'GTL / 2491', 'id_segmento' => 3, 'vin_base' => 'LVBV76'],
+        ['modelo' => 'EST-A 6X4', 'id_segmento' => 3, 'vin_base' => '3LD34B4J'],
+        ['modelo' => 'EST-A 6X4 X13-E6', 'id_segmento' => 3, 'vin_base' => '3LD34B4J3'],
+        ['modelo' => 'EST-S38 / AMT 6X4', 'id_segmento' => 3, 'vin_base' => '3LD24B3J'],
+        ['modelo' => 'GALAXUS', 'id_segmento' => 3, 'vin_base' => 'LVBV74'],
+        ['modelo' => 'Galaxy 3256', 'id_segmento' => 3, 'vin_base' => 'LVBV70'],
+
+        // MEDIANOS (Segmento 2)
+        ['modelo' => 'S8-E6 AMT', 'id_segmento' => 2, 'vin_base' => '3LD23B2J'],
+    ];
+
+    $stmtCheckMod = $db->prepare("SELECT id_cat_modelo_vin FROM cat_modelos_vin WHERE LOWER(TRIM(modelo)) = LOWER(TRIM(?)) LIMIT 1");
+    $stmtUpdMod = $db->prepare("UPDATE cat_modelos_vin SET id_segmento = ?, vin_base = COALESCE(vin_base, ?) WHERE id_cat_modelo_vin = ?");
+    $stmtInsMod = $db->prepare("INSERT INTO cat_modelos_vin (modelo, id_fabricante, id_tipo_vehiculo, peso_bruto_kg, id_tipo_motor, potencia_hp, distancia_ejes, id_cat_anio_vin, id_planta, id_segmento, vin_base, fecha_creacion, estado) VALUES (?, 1, 1, 12000, 1, 350, 4500, 1, 1, ?, ?, NOW(), 2)");
+
+    $modsActualizados = 0;
+    foreach ($modelosCatalog as $m) {
+        $stmtCheckMod->execute([$m['modelo']]);
+        $existingId = $stmtCheckMod->fetchColumn();
+        if ($existingId) {
+            $stmtUpdMod->execute([$m['id_segmento'], $m['vin_base'], $existingId]);
+        } else {
+            $stmtInsMod->execute([$m['modelo'], $m['id_segmento'], $m['vin_base']]);
+        }
+        $modsActualizados++;
+    }
+
+    // Reglas maestras de actualización por familia de modelo
+    $db->exec("UPDATE cat_modelos_vin SET id_segmento = 3 WHERE modelo LIKE '%EST%' OR modelo LIKE '%Galaxy%' OR modelo LIKE '%Galaxus%' OR modelo LIKE '%GTL%' OR modelo LIKE '%S35%' OR modelo LIKE '%S38%' OR modelo LIKE '%S40%'");
+    $db->exec("UPDATE cat_modelos_vin SET id_segmento = 2 WHERE (modelo LIKE '%S8%' OR modelo LIKE '%S12%' OR modelo LIKE '%S13%' OR modelo LIKE '%S20%') AND id_segmento != 3");
+    $db->exec("UPDATE cat_modelos_vin SET id_segmento = 4 WHERE (modelo LIKE '%AUV%' OR modelo LIKE '%Midibus%' OR modelo LIKE '%Bus%' OR modelo LIKE '%URBI%' OR modelo LIKE '%ORION%')");
+    $db->exec("UPDATE cat_modelos_vin SET id_segmento = 5 WHERE (modelo LIKE '%Lowboy%' OR modelo LIKE '%Sobredimensionado%')");
+    $db->exec("UPDATE cat_modelos_vin SET id_segmento = 1 WHERE (modelo LIKE '%Tunland%' OR modelo LIKE '%HiVan%' OR modelo LIKE '%View%' OR modelo LIKE '%Wonder%' OR modelo LIKE '%TM%' OR modelo LIKE '%Miler%' OR modelo LIKE '%Toano%' OR (modelo LIKE '%S3%' AND modelo NOT LIKE '%S35%' AND modelo NOT LIKE '%S38%') OR modelo LIKE '%S5%' OR modelo LIKE '%S6%') AND (id_segmento IS NULL OR id_segmento = 1)");
+    $db->exec("UPDATE cat_modelos_vin SET id_segmento = 1 WHERE id_cat_modelo_vin = 1");
+
     $db->commit();
-    echo "Exito! Se insertaron $count tarifas basadas en el Excel de forma precisa.\n";
+    echo "Exito! Se insertaron $count tarifas y se catalogaron correctamente los modelos vehiculares (Ligeros, Pesados, etc.).\n";
 
 } catch (Exception $e) {
     if (isset($db) && $db->inTransaction()) {

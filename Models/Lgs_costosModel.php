@@ -506,11 +506,11 @@ class Lgs_costosModel extends Mysql
 
     public function selectModelosVin(): array
     {
-        $sql = "SELECT m.id_cat_modelo_vin, m.modelo, m.vin_base, s.nombre AS segmento 
+        $sql = "SELECT m.id_cat_modelo_vin, m.modelo, m.vin_base, m.id_segmento, s.nombre AS segmento, s.descripcion AS segmento_desc
                 FROM cat_modelos_vin m
                 LEFT JOIN lgs_cat_segmentos s ON m.id_segmento = s.id_segmento
                 WHERE m.estado != 0
-                ORDER BY m.modelo ASC";
+                ORDER BY m.id_segmento ASC, m.modelo ASC";
         return $this->select_all($sql) ?: [];
     }
 
@@ -518,6 +518,17 @@ class Lgs_costosModel extends Mysql
     {
         $sql = "UPDATE cat_modelos_vin SET id_segmento = ? WHERE id_cat_modelo_vin = $idModelo";
         return $this->update($sql, [$idSegmento]);
+    }
+
+    public function insertModeloVin(string $modelo, int $idSegmento, ?string $vinBase = null): bool
+    {
+        $chk = $this->select("SELECT id_cat_modelo_vin FROM cat_modelos_vin WHERE LOWER(TRIM(modelo)) = LOWER(TRIM(?)) LIMIT 1", [$modelo]);
+        if (!empty($chk)) {
+            $sql = "UPDATE cat_modelos_vin SET id_segmento = ?, vin_base = COALESCE(?, vin_base) WHERE id_cat_modelo_vin = ?";
+            return $this->update($sql, [$idSegmento, $vinBase, $chk['id_cat_modelo_vin']]);
+        }
+        $sql = "INSERT INTO cat_modelos_vin (modelo, id_fabricante, id_tipo_vehiculo, peso_bruto_kg, id_tipo_motor, potencia_hp, distancia_ejes, id_cat_anio_vin, id_planta, id_segmento, vin_base, fecha_creacion, estado) VALUES (?, 1, 1, 12000, 1, 350, 4500, 1, 1, ?, ?, NOW(), 2)";
+        return (bool)$this->insert($sql, [$modelo, $idSegmento, $vinBase]);
     }
 
 }

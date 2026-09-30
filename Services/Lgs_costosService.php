@@ -128,4 +128,13 @@ class Lgs_costosService
         }
         return $this->model->updateModeloSegmento($idModelo, $idSegmento);
     }
+
+    public function addModeloVin(string $modelo, int $idSegmento, ?string $vinBase = null): bool
+    {
+        if (empty(trim($modelo))) {
+            throw new Exception("El nombre del modelo es requerido.", 400);
+        }
+        return $this->model->insertModeloVin($modelo, $idSegmento, $vinBase);
+    }
 }
+

@@ -1191,3 +1191,225 @@ function resetTarifasProveedor() {
     });
 }
 
+// ==============================================================
+// GESTIÓN DE MODELOS Y SEGMENTOS VEHICULARES (TAB 3)
+// ==============================================================
+let sysModelosData = [];
+
+function loadModelosSegmentos() {
+    const tbody = document.getElementById("tbodyModelosSegmentos");
+    if (!tbody) return;
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="6" class="text-center py-4 text-muted">
+                <div class="spinner-border spinner-border-sm text-primary me-2"></div> Cargando catálogo de modelos...
+            </td>
+        </tr>
+    `;
+
+    fetch(base_url + "/Lgs_costos/getModelosVin")
+    .then(res => res.json())
+    .then(data => {
+        sysModelosData = Array.isArray(data) ? data : [];
+
+        // Calcular KPIs
+        let total = sysModelosData.length;
+        let ligeros = 0, pesados = 0, medianos = 0;
+
+        sysModelosData.forEach(m => {
+            const seg = parseInt(m.id_segmento);
+            if (seg === 1) ligeros++;
+            else if (seg === 2) medianos++;
+            else if (seg === 3) pesados++;
+        });
+
+        if (document.getElementById("kpi-mod-total")) document.getElementById("kpi-mod-total").innerText = total;
+        if (document.getElementById("kpi-mod-ligeros")) document.getElementById("kpi-mod-ligeros").innerText = ligeros;
+        if (document.getElementById("kpi-mod-pesados")) document.getElementById("kpi-mod-pesados").innerText = pesados;
+        if (document.getElementById("kpi-mod-medianos")) document.getElementById("kpi-mod-medianos").innerText = medianos;
+
+        filtrarTablaModelos();
+    })
+    .catch(err => {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-4 text-danger">
+                    <i class="ri-error-warning-line me-1"></i> Error al cargar el catálogo de modelos.
+                </td>
+            </tr>
+        `;
+    });
+}
+
+function renderTablaModelos(lista) {
+    const tbody = document.getElementById("tbodyModelosSegmentos");
+    if (!tbody) return;
+
+    if (!lista || lista.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-4 text-muted">
+                    No se encontraron modelos con los criterios de búsqueda.
+                </td>
+            </tr>
+        `;
+        if (document.getElementById("lblContadorModelos")) {
+            document.getElementById("lblContadorModelos").innerText = "Mostrando 0 modelos";
+        }
+        return;
+    }
+
+    let html = "";
+    lista.forEach((item, idx) => {
+        const vinBase = item.vin_base ? `<span class="badge bg-light text-dark font-monospace">${item.vin_base}</span>` : '<span class="text-muted fs-11">Genérico</span>';
+        html += `
+            <tr class="align-middle">
+                <td class="text-center text-muted fw-semibold fs-12">${idx + 1}</td>
+                <td>
+                    <b class="text-dark fs-13">${item.modelo}</b>
+                </td>
+                <td>${vinBase}</td>
+                <td class="text-center">${item.segmento_html || '<span class="badge bg-secondary">Sin Asignar</span>'}</td>
+                <td class="text-center">${item.costo_rodando_html || '$0.00 / km'}</td>
+                <td>${item.options || ''}</td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+
+    if (document.getElementById("lblContadorModelos")) {
+        document.getElementById("lblContadorModelos").innerText = `Mostrando ${lista.length} de ${sysModelosData.length} modelos`;
+    }
+}
+
+function filtrarTablaModelos() {
+    const busqueda = (document.getElementById("inputBuscarModelo")?.value || "").toLowerCase().trim();
+    const filtroSegmento = document.getElementById("selectFiltroSegmento")?.value || "";
+
+    const filtrados = sysModelosData.filter(item => {
+        const matchTexto = !busqueda || 
+            (item.modelo && item.modelo.toLowerCase().includes(busqueda)) || 
+            (item.vin_base && item.vin_base.toLowerCase().includes(busqueda));
+
+        const matchSeg = !filtroSegmento || (parseInt(item.id_segmento) === parseInt(filtroSegmento));
+
+        return matchTexto && matchSeg;
+    });
+
+    renderTablaModelos(filtrados);
+}
+
+function fntAsignarSegmento(idModelo, nombreModelo, idSegmentoActual) {
+    document.getElementById("asig_id_modelo_vin").value = idModelo;
+    document.getElementById("asig_nombre_modelo").value = nombreModelo;
+    
+    const sel = document.getElementById("asig_select_segmento");
+    if (sel) {
+        sel.value = idSegmentoActual > 0 ? idSegmentoActual : "1";
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById("modalAsignarSegmento"));
+    modal.show();
+}
+
+function guardarSegmentoModelo() {
+    const idModelo = document.getElementById("asig_id_modelo_vin").value;
+    const idSegmento = document.getElementById("asig_select_segmento").value;
+
+    if (!idModelo || !idSegmento) {
+        Swal.fire("Atención", "Debe seleccionar un segmento válido.", "warning");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("id_modelo_vin", idModelo);
+    formData.append("id_segmento", idSegmento);
+
+    Swal.fire({
+        title: "Guardando...",
+        text: "Actualizando segmentación del modelo",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    fetch(base_url + "/Lgs_costos/setSegmentoModelo", {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        Swal.close();
+        if (data.status) {
+            const modalEl = document.getElementById("modalAsignarSegmento");
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+
+            Swal.fire("¡Guardado!", data.msg, "success");
+            loadModelosSegmentos();
+        } else {
+            Swal.fire("Error", data.msg, "error");
+        }
+    })
+    .catch(err => {
+        Swal.close();
+        Swal.fire("Error", "Ocurrió un error al asignar el segmento.", "error");
+    });
+}
+
+function abrirModalNuevoModelo() {
+    document.getElementById("formNuevoModelo").reset();
+    const modal = new bootstrap.Modal(document.getElementById("modalNuevoModelo"));
+    modal.show();
+}
+
+function guardarNuevoModelo(e) {
+    e.preventDefault();
+
+    const modelo = document.getElementById("nuevo_modelo_nombre").value.trim();
+    const vinBase = document.getElementById("nuevo_modelo_vin_base").value.trim();
+    const idSegmento = document.getElementById("nuevo_modelo_segmento").value;
+
+    if (!modelo) {
+        Swal.fire("Atención", "El nombre del modelo es requerido.", "warning");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("modelo", modelo);
+    formData.append("vin_base", vinBase);
+    formData.append("id_segmento", idSegmento);
+
+    Swal.fire({
+        title: "Registrando...",
+        text: "Catalogando nuevo modelo en la base de datos",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    fetch(base_url + "/Lgs_costos/storeModeloVin", {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        Swal.close();
+        if (data.status) {
+            const modalEl = document.getElementById("modalNuevoModelo");
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+
+            Swal.fire("¡Registrado!", data.msg, "success");
+            loadModelosSegmentos();
+        } else {
+            Swal.fire("Error", data.msg, "error");
+        }
+    })
+    .catch(err => {
+        Swal.close();
+        Swal.fire("Error", "Ocurrió un error al registrar el modelo.", "error");
+    });
+}
+
+

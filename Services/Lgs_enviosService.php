@@ -117,10 +117,17 @@ class Lgs_enviosService {
         }
         unset($vin);
 
-        // Agrupar por Madrina (si es madrina) o Chofer (si es rodando)
+        // Agrupar por Madrina (si es madrina o plataforma) o Chofer (si es rodando)
         $unidadesAsignadas = []; // id_madrina_o_chofer => array de vins
         foreach ($vins as $vin) {
-            $key = ($idTipoTraslado === 1 || $idTipoTraslado === 3) ? ((int)$vin['id_madrina']) : ((int)$vin['id_chofer']);
+            if ($idTipoTraslado === 2) {
+                // En rodando (chofer), cada unidad viaja individualmente en sus propias ruedas.
+                // Si ya tiene chofer asignado se agrupa por id_chofer; si aún no se le asigna chofer,
+                // se usa 'vin_' . $vin['id'] para que cada unidad se calcule según su propio modelo y segmento.
+                $key = !empty($vin['id_chofer']) ? ((int)$vin['id_chofer']) : ('vin_' . $vin['id']);
+            } else {
+                $key = (int)($vin['id_madrina'] ?? 0);
+            }
             $unidadesAsignadas[$key][] = $vin;
         }
 
@@ -238,6 +245,11 @@ class Lgs_enviosService {
                 $costoPorKm = (float)($tarifa['costo_por_km'] ?? 0);
                 $factor = ((float)($tarifa['factor'] ?? 0) > 0) ? (float)$tarifa['factor'] : 1.0;
                 $costoPlano = (float)($tarifa['precio_plano'] ?? 0);
+
+                // En Chofer (Rodando), el costo por km es directo de la tarifa por unidad
+                if ($idTipoTraslado === 2) {
+                    $factor = 1.0;
+                }
 
                 // El factor representa el multiplicador del costo POR UNIDAD.
                 // Por lo tanto, el costo del tramo es el Costo_Unidad * Volumen
@@ -429,8 +441,8 @@ class Lgs_enviosService {
         $vin = '';
         $modelo = '';
         if ($mock) {
-            $vin = $mock['vin'] ?? '';
-            $modelo = $mock['modelo'] ?? '';
+            $vin = trim($mock['vin'] ?? '');
+            $modelo = trim($mock['modelo'] ?? '');
         } else {
             // Intentar desde mrp_unidades_terminadas
             $stmtReal = $db->prepare("
@@ -444,8 +456,8 @@ class Lgs_enviosService {
             $stmtReal->execute([$idUnidad]);
             $real = $stmtReal->fetch(PDO::FETCH_ASSOC);
             if ($real) {
-                $vin = $real['vin'] ?? '';
-                $modelo = $real['modelo'] ?? '';
+                $vin = trim($real['vin'] ?? '');
+                $modelo = trim($real['modelo'] ?? '');
             }
         }
 
@@ -453,37 +465,78 @@ class Lgs_enviosService {
             return 1; // Default LIGEROS
         }
 
-        // 2. Buscar en cat_modelos_vin por coincidencia de vin_base (prefijo) o modelo string
-        $stmtModel = $db->prepare("
-            SELECT id_segmento 
-            FROM cat_modelos_vin 
-            WHERE (? LIKE CONCAT(vin_base, '%') OR LOWER(modelo) = ? OR ? LIKE CONCAT('%', LOWER(modelo), '%'))
-              AND id_segmento IS NOT NULL
-            LIMIT 1
-        ");
-        $stmtModel->execute([$vin, strtolower($modelo), strtolower($modelo)]);
-        $res = $stmtModel->fetch(PDO::FETCH_ASSOC);
-        
-        if ($res && !empty($res['id_segmento'])) {
-            return (int)$res['id_segmento'];
+        $modeloLower = strtolower($modelo);
+
+        // 2. Buscar en cat_modelos_vin
+        // A) Coincidencia exacta por nombre de modelo
+        if (!empty($modelo)) {
+            $stmtExact = $db->prepare("SELECT id_segmento FROM cat_modelos_vin WHERE LOWER(TRIM(modelo)) = ? AND id_segmento IS NOT NULL LIMIT 1");
+            $stmtExact->execute([$modeloLower]);
+            $resExact = $stmtExact->fetch(PDO::FETCH_ASSOC);
+            if ($resExact && !empty($resExact['id_segmento'])) {
+                return (int)$resExact['id_segmento'];
+            }
         }
 
-        // 3. Fallback: Parsear por nombre del modelo
-        $modeloLower = strtolower($modelo);
-        if (strpos($modeloLower, 'miller') !== false || strpos($modeloLower, 's3') !== false || strpos($modeloLower, 's5') !== false || strpos($modeloLower, 's6') !== false || strpos($modeloLower, 'van') !== false || strpos($modeloLower, 'pickup') !== false || strpos($modeloLower, 'panel') !== false) {
-            return 1; // LIGEROS
+        // B) Coincidencia por VIN base (prefijo) o coincidencia bidireccional en modelo
+        if (!empty($vin) || !empty($modelo)) {
+            $stmtModel = $db->prepare("
+                SELECT id_segmento 
+                FROM cat_modelos_vin 
+                WHERE (
+                    (? != '' AND vin_base IS NOT NULL AND vin_base != '' AND ? LIKE CONCAT(vin_base, '%'))
+                    OR (? != '' AND ? LIKE CONCAT('%', LOWER(modelo), '%'))
+                    OR (? != '' AND LOWER(modelo) LIKE CONCAT('%', ?, '%'))
+                )
+                AND id_segmento IS NOT NULL
+                ORDER BY LENGTH(modelo) DESC
+                LIMIT 1
+            ");
+            $stmtModel->execute([$vin, $vin, $modeloLower, $modeloLower, $modeloLower, $modeloLower]);
+            $res = $stmtModel->fetch(PDO::FETCH_ASSOC);
+            if ($res && !empty($res['id_segmento'])) {
+                return (int)$res['id_segmento'];
+            }
         }
-        if (strpos($modeloLower, 's8') !== false || strpos($modeloLower, 's12') !== false || strpos($modeloLower, 's20') !== false || strpos($modeloLower, 'chasis') !== false) {
-            return 2; // MEDIANO
+
+        // 3. Fallback inteligente por palabras clave del modelo (Normalizado)
+        // 3.1 LOWBOY
+        if (strpos($modeloLower, 'lowboy') !== false || strpos($modeloLower, 'sobredimensionado') !== false) {
+            return 5;
         }
-        if (strpos($modeloLower, 'est') !== false || strpos($modeloLower, 'galaxy') !== false || strpos($modeloLower, 's35') !== false || strpos($modeloLower, 's38') !== false || strpos($modeloLower, 'isg') !== false || strpos($modeloLower, 'tracto') !== false || strpos($modeloLower, 'volteo') !== false) {
-            return 3; // PESADO
+
+        // 3.2 BUSES
+        if (strpos($modeloLower, 'auv') !== false || strpos($modeloLower, 'araña') !== false || strpos($modeloLower, 'arana') !== false 
+            || strpos($modeloLower, 'bus') !== false || strpos($modeloLower, 'autob') !== false 
+            || strpos($modeloLower, 'beccar') !== false || strpos($modeloLower, 'orion') !== false || strpos($modeloLower, 'urbi') !== false) {
+            return 4;
         }
-        if (strpos($modeloLower, 'auv') !== false || strpos($modeloLower, 'araña') !== false || strpos($modeloLower, 'bus') !== false || strpos($modeloLower, 'autob') !== false) {
-            return 4; // BUSES
+
+        // 3.3 PESADOS (HEAVY)
+        if (strpos($modeloLower, 'est') !== false || strpos($modeloLower, 'galaxy') !== false || strpos($modeloLower, 'galaxus') !== false 
+            || strpos($modeloLower, 'gtl') !== false || strpos($modeloLower, '2491') !== false || strpos($modeloLower, '3256') !== false
+            || strpos($modeloLower, 's35') !== false || strpos($modeloLower, 's38') !== false || strpos($modeloLower, 's40') !== false 
+            || strpos($modeloLower, 'isg') !== false || strpos($modeloLower, 'tracto') !== false || strpos($modeloLower, 'volteo') !== false
+            || strpos($modeloLower, 'heavy') !== false || strpos($modeloLower, 'pesado') !== false) {
+            return 3;
         }
-        if (strpos($modeloLower, 'lowboy') !== false) {
-            return 5; // LOWBOY
+
+        // 3.4 MEDIANOS
+        if (strpos($modeloLower, 's8') !== false || strpos($modeloLower, 's12') !== false || strpos($modeloLower, 's13') !== false 
+            || strpos($modeloLower, 's20') !== false || strpos($modeloLower, 'mediano') !== false || strpos($modeloLower, 'medium') !== false) {
+            return 2;
+        }
+
+        // 3.5 LIGEROS (LIGHT)
+        if (strpos($modeloLower, 's3') !== false || strpos($modeloLower, 's5') !== false || strpos($modeloLower, 's6') !== false 
+            || strpos($modeloLower, 'tunland') !== false || strpos($modeloLower, 'wonder') !== false 
+            || strpos($modeloLower, 'tm3') !== false || strpos($modeloLower, 'tm') !== false 
+            || strpos($modeloLower, 'miler') !== false || strpos($modeloLower, 'miller') !== false 
+            || strpos($modeloLower, 'hivan') !== false || strpos($modeloLower, 'view') !== false 
+            || strpos($modeloLower, 'toano') !== false || strpos($modeloLower, 'van') !== false 
+            || strpos($modeloLower, 'pickup') !== false || strpos($modeloLower, 'panel') !== false
+            || strpos($modeloLower, 'ligero') !== false || strpos($modeloLower, 'light') !== false) {
+            return 1;
         }
 
         return 1; // Default LIGEROS
