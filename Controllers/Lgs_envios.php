@@ -584,6 +584,7 @@ class Lgs_envios extends Controllers
 
             // Si el usuario confirma finalizar el envío, pasarlo a estado 8 (Confirmado / Listo para planear)
             $finalizar = !empty($dataJson['finalizar']) && $dataJson['finalizar'] == true;
+            $enviosAfectados = [];
             if ($finalizar) {
                 $stmtFinalizar = $db->prepare("UPDATE lgs_envios SET id_estado = 8 WHERE id_envio = ?");
                 $stmtFinalizar->execute([$idEnvio]);
@@ -591,6 +592,17 @@ class Lgs_envios extends Controllers
                 // Si el envío se confirma, eliminamos estos VINs de cualquier OTRO envío que esté en Borrador (1)
                 if (!empty($assignedUnitIds)) {
                     $inIds = implode(',', array_fill(0, count($assignedUnitIds), '?'));
+
+                    // Detectar otros envíos en borrador que contenían estos VINs para recalcularlos y no dejar costos fantasmas
+                    $sqlAfectados = "SELECT DISTINCT e.id_envio FROM lgs_envios_vins ev
+                                     INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
+                                     WHERE e.id_estado = 1 
+                                       AND e.id_envio != ? 
+                                       AND ev.id_unidad IN ($inIds)";
+                    $stmtAf = $db->prepare($sqlAfectados);
+                    $stmtAf->execute(array_merge([$idEnvio], $assignedUnitIds));
+                    $enviosAfectados = $stmtAf->fetchAll(PDO::FETCH_COLUMN);
+
                     $sqlDelVins = "DELETE ev FROM lgs_envios_vins ev
                                    INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
                                    WHERE e.id_estado = 1 
@@ -607,6 +619,15 @@ class Lgs_envios extends Controllers
             // 4. Recalcular costos con el motor de factores y memoria de distancias
             $service = new Lgs_enviosService();
             $costoTotal = $service->recalcularCostoTotal($idEnvio);
+
+            // Recalcular los otros envíos afectados que perdieron unidades
+            if (!empty($enviosAfectados)) {
+                foreach ($enviosAfectados as $idAf) {
+                    try {
+                        $service->recalcularCostoTotal((int)$idAf);
+                    } catch (Throwable $th) {}
+                }
+            }
 
             echo $this->successResponse([
                 'id_envio' => $idEnvio,
@@ -721,7 +742,7 @@ class Lgs_envios extends Controllers
             $db->beginTransaction();
 
             // 1. Borrado lógico de la cabecera
-            $stmt = $db->prepare("UPDATE lgs_envios SET deleted_at = NOW(), id_estado = 0 WHERE id_envio = ?");
+            $stmt = $db->prepare("UPDATE lgs_envios SET deleted_at = NOW(), id_estado = 0, costo_total = 0.00 WHERE id_envio = ?");
             $stmt->execute([$idEnvio]);
 
             // 2. Liberar el acomodo (eliminar relaciones de lgs_envios_vins)

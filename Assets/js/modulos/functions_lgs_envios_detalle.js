@@ -93,7 +93,9 @@ function cargarDatosDetalle() {
                     
                     const numTramos = g_nodosEnvio.length > 1 ? (g_nodosEnvio.length - 1) : (g_paradasEnvio.length || 0);
                     if (lblPar)  lblPar.innerHTML  = `<strong>${numTramos} tramo(s) (${g_nodosEnvio.length || (g_paradasEnvio.length + 1)} puntos)</strong><small class="d-block text-muted fs-10 mt-1">${desgloseTramos.join(' ➔ ')}</small>`;
-                    if (lblCost) lblCost.innerText = g_envioData.costo_total ? '$' + parseFloat(g_envioData.costo_total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00';
+                    const tieneVinsAsignados = objData.data.existentes && objData.data.existentes.length > 0;
+                    const costoInicial = tieneVinsAsignados ? (parseFloat(g_envioData.costo_total || 0)) : 0;
+                    if (lblCost) lblCost.innerText = costoInicial > 0 ? '$' + costoInicial.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00';
 
                     const idTipoTraslado = parseInt(g_envioData.id_tipo_traslado || 1);
                     const btnAdd = document.getElementById('btn-agregar-vehiculo');
@@ -114,8 +116,10 @@ function cargarDatosDetalle() {
                     // 4. Inicializar Sortables
                     initSortables();
 
-                    // 5. Recalcular costo si ya existen asignaciones cargadas
-                    if (objData.data.existentes && objData.data.existentes.length > 0) {
+                    // 5. Recalcular costo si ya existen asignaciones cargadas o auto-sincronizar si quedó inconsistente en BD
+                    if (tieneVinsAsignados) {
+                        guardarAcomodoAuto();
+                    } else if (parseFloat(g_envioData.costo_total || 0) > 0) {
                         guardarAcomodoAuto();
                     }
                 }

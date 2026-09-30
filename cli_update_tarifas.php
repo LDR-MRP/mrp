@@ -1,8 +1,13 @@
 <?php
 require_once __DIR__ . '/Config/Config.php';
 
+$dbHost = defined('DB_HOST') ? DB_HOST : 'localhost';
+if (file_exists('/.dockerenv') && $dbHost === 'localhost') {
+    $dbHost = 'mrp-db';
+}
+
 try {
-    $db = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET, DB_USER, DB_PASSWORD);
+    $db = new PDO("mysql:host=" . $dbHost . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET, DB_USER, DB_PASSWORD);
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     // Auto-migrar columna si no existe
@@ -222,8 +227,29 @@ try {
     $db->exec("UPDATE cat_modelos_vin SET id_segmento = 1 WHERE (modelo LIKE '%Tunland%' OR modelo LIKE '%HiVan%' OR modelo LIKE '%View%' OR modelo LIKE '%Wonder%' OR modelo LIKE '%TM%' OR modelo LIKE '%Miler%' OR modelo LIKE '%Toano%' OR (modelo LIKE '%S3%' AND modelo NOT LIKE '%S35%' AND modelo NOT LIKE '%S38%') OR modelo LIKE '%S5%' OR modelo LIKE '%S6%') AND (id_segmento IS NULL OR id_segmento = 1)");
     $db->exec("UPDATE cat_modelos_vin SET id_segmento = 1 WHERE id_cat_modelo_vin = 1");
 
+    // Limpiar costos de envíos que se quedaron sin VINs asignados
+    $numReseteados = $db->exec("
+        UPDATE lgs_envios e 
+        SET e.costo_total = 0.00 
+        WHERE e.id_estado != 7 
+          AND (
+            e.id_envio NOT IN (SELECT DISTINCT id_envio FROM lgs_envios_vins)
+            OR (SELECT COUNT(*) FROM lgs_envios_vins ev WHERE ev.id_envio = e.id_envio) = 0
+          )
+    ");
+    $db->exec("
+        DELETE tc FROM lgs_envios_tramos_costos tc
+        INNER JOIN lgs_envios e ON tc.id_envio = e.id_envio
+        WHERE e.id_estado != 7 
+          AND (
+            e.id_envio NOT IN (SELECT DISTINCT id_envio FROM lgs_envios_vins)
+            OR (SELECT COUNT(*) FROM lgs_envios_vins ev WHERE ev.id_envio = e.id_envio) = 0
+          )
+    ");
+    $db->exec("UPDATE lgs_envios SET costo_total = 0.00 WHERE deleted_at IS NOT NULL");
+
     $db->commit();
-    echo "Exito! Se insertaron $count tarifas y se catalogaron correctamente los modelos vehiculares (Ligeros, Pesados, etc.).\n";
+    echo "Exito! Se insertaron $count tarifas, se catalogaron correctamente los modelos vehiculares y se resetearon a $0.00 los envios sin VINs ($numReseteados corregidos).\n";
 
 } catch (Exception $e) {
     if (isset($db) && $db->inTransaction()) {

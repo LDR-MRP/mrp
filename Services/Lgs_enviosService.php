@@ -96,7 +96,11 @@ class Lgs_enviosService {
         $stmtNodos->execute([$idEnvio]);
         $nodos = $stmtNodos->fetchAll(PDO::FETCH_ASSOC);
 
-        if (empty($nodos) || count($nodos) < 2) return 0.0; // Mínimo origen y 1 destino
+        if (empty($nodos) || count($nodos) < 2) {
+            $db->prepare("DELETE FROM lgs_envios_tramos_costos WHERE id_envio = ?")->execute([$idEnvio]);
+            $db->prepare("UPDATE lgs_envios SET costo_total = 0.00 WHERE id_envio = ?")->execute([$idEnvio]);
+            return 0.0;
+        }
 
         // Mapear nombre de ubicaciones
         $ubicaciones = [];
@@ -110,7 +114,11 @@ class Lgs_enviosService {
         $stmtVins->execute([$idEnvio]);
         $vins = $stmtVins->fetchAll(PDO::FETCH_ASSOC);
 
-        if (empty($vins)) return 0.0;
+        if (empty($vins)) {
+            $db->prepare("DELETE FROM lgs_envios_tramos_costos WHERE id_envio = ?")->execute([$idEnvio]);
+            $db->prepare("UPDATE lgs_envios SET costo_total = 0.00 WHERE id_envio = ?")->execute([$idEnvio]);
+            return 0.0;
+        }
 
         foreach ($vins as &$vin) {
             $vin['id_segmento'] = $this->resolveSegmentoForUnit($db, (int)$vin['id_unidad']);

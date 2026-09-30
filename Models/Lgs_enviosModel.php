@@ -121,7 +121,10 @@ class Lgs_enviosModel extends Mysql
                         'Sin Destino'
                     ) AS destino,
                     e.km_total,
-                    e.costo_total,
+                    CASE 
+                        WHEN (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) = 0 THEN 0.00 
+                        ELSE COALESCE(e.costo_total, 0.00) 
+                    END AS costo_total,
                     e.fecha_tentativa_envio,
                     e.id_estado,
                     (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) AS total_vins,
