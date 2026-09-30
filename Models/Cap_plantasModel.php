@@ -81,7 +81,7 @@ public function generarClave()
 		{
                $plantaid = $_SESSION['userData']['plantaid'];
 			$sql = "SELECT * FROM  mrp_planta 
-					WHERE estado != 0 AND idplanta = $plantaid";
+					WHERE estado != 0";
 			$request = $this->select_all($sql);
 			return $request;
 		} 
@@ -90,7 +90,7 @@ public function generarClave()
 		{
             $plantaid = $_SESSION['userData']['plantaid'];
 			$sql = "SELECT * FROM  mrp_planta 
-					WHERE estado = 2 AND idplanta = $plantaid";
+					WHERE estado = 2";
 			$request = $this->select_all($sql);
 			return $request;
 		}
