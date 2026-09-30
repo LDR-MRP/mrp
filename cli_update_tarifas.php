@@ -1,6 +1,8 @@
 <?php
+require_once __DIR__ . '/Config/Config.php';
+
 try {
-    $db = new PDO("mysql:host=mrp-db;dbname=db_mrp;charset=utf8", "mrp_user", "mrp_password");
+    $db = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET, DB_USER, DB_PASSWORD);
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     $db->beginTransaction();
