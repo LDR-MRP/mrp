@@ -1103,6 +1103,7 @@ function saveEnvio() {
     let id_motivo        = document.querySelector('#id_motivo') ? document.querySelector('#id_motivo').value : '';
     let id_proveedor     = document.querySelector('#id_proveedor').value;
     let fecha_tentativa_envio = document.querySelector('#fecha_tentativa_envio') ? document.querySelector('#fecha_tentativa_envio').value : '';
+    let is_lowboy = (document.getElementById('is_lowboy') && document.getElementById('is_lowboy').checked) ? 1 : 0;
 
     const nodosRaw = document.getElementById('nodos_json') ? document.getElementById('nodos_json').value : '[]';
     const nodos = JSON.parse(nodosRaw);
@@ -1515,6 +1516,16 @@ function handleTipoTrasladoEnvio() {
                 }
                 actualizarSecuenciaNodos();
             }
+        }
+    }
+    
+    const divCheckLowboy = document.getElementById('divCheckLowboy');
+    if (divCheckLowboy) {
+        if (idTipoTraslado == '3') { // Plataforma
+            divCheckLowboy.style.display = 'block';
+        } else {
+            divCheckLowboy.style.display = 'none';
+            document.getElementById('is_lowboy').checked = false;
         }
     } else {
         if (btnAddCarga) btnAddCarga.style.display = '';

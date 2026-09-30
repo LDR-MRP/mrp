@@ -127,18 +127,76 @@ function fntDeleteDistancia(idDistancia, rutaNombre) {
  * ==========================================
  */
 
+let sysTarifasGlobales = null;
+let sysModoPropagacion = 'respetar';
+
+function calcularDiferenciasConGlobal(madrinaMatriz, plataformaMatriz) {
+    if (!sysTarifasGlobales) return { count: 0, detalles: [] };
+    let count = 0;
+    const detalles = [];
+
+    const baseMadrinaMap = {};
+    (sysTarifasGlobales.madrina || []).forEach(b => {
+        baseMadrinaMap[b.id_segmento] = b;
+    });
+
+    (madrinaMatriz || []).forEach(m => {
+        const b = baseMadrinaMap[m.id_segmento];
+        if (!b) return;
+        const mCost = parseFloat(m.costo_por_km) || 0;
+        const bCost = parseFloat(b.costo_por_km) || 0;
+        for (let u = 1; u <= 10; u++) {
+            const mFact = m.factores_15 && m.factores_15[u] !== undefined ? parseFloat(m.factores_15[u]) : 1.0;
+            const bFact = b.factores_15 && b.factores_15[u] !== undefined ? parseFloat(b.factores_15[u]) : (1.0 - ((u - 1) * 0.02));
+            const mPrice = Math.round(mCost * mFact * 100) / 100;
+            const bPrice = Math.round(bCost * bFact * 100) / 100;
+            if (Math.abs(mPrice - bPrice) > 0.01) {
+                count++;
+                detalles.push(`Madrina Factor ${u}: $${mPrice.toFixed(2)} vs $${bPrice.toFixed(2)} global`);
+            }
+        }
+    });
+
+    const basePlatMap = {};
+    (sysTarifasGlobales.plataforma || []).forEach(b => {
+        basePlatMap[b.id_segmento] = b;
+    });
+
+    (plataformaMatriz || []).forEach(m => {
+        const b = basePlatMap[m.id_segmento];
+        if (!b) return;
+        const mCost = parseFloat(m.costo_por_km) || 0;
+        const bCost = parseFloat(b.costo_por_km) || 0;
+        for (let u = 1; u <= 3; u++) {
+            const mFact = m.factores_15 && m.factores_15[u] !== undefined ? parseFloat(m.factores_15[u]) : 1.0;
+            const bFact = b.factores_15 && b.factores_15[u] !== undefined ? parseFloat(b.factores_15[u]) : (4.4444 / u);
+            const mPrice = Math.round(mCost * mFact * 100) / 100;
+            const bPrice = Math.round(bCost * bFact * 100) / 100;
+            if (Math.abs(mPrice - bPrice) > 0.01) {
+                count++;
+                detalles.push(`Plataforma ${m.segmento_nombre || ''} Factor ${u}: $${mPrice.toFixed(2)} vs $${bPrice.toFixed(2)} global`);
+            }
+        }
+    });
+
+    return { count, detalles };
+}
+
 function loadTarifasProveedor() {
     const idProveedor = document.getElementById("select_tarifa_proveedor").value;
     const tbodyMadrina = document.getElementById("tbodyTarifasMadrina");
     const tbodyChofer = document.getElementById("tbodyTarifasChofer");
     const badgeStatus = document.getElementById("tarifa_status_badge");
     const btnRestablecer = document.getElementById("btnRestablecerGlobal");
+    const btnAjustar = document.getElementById("btnAjustarAlGlobal");
     const lblBtnGuardar = document.getElementById("btnGuardarTarifasTexto");
 
     if (!tbodyMadrina || !tbodyChofer) return;
 
     tbodyMadrina.innerHTML = `<tr><td colspan="4" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><br>Cargando Tarifas...</td></tr>`;
     tbodyChofer.innerHTML = `<tr><td colspan="4" class="text-center py-4"><div class="spinner-border text-warning" role="status"></div><br>Cargando Tarifas...</td></tr>`;
+    const tbodyPlataforma = document.getElementById("tbodyTarifasPlataforma");
+    if (tbodyPlataforma) tbodyPlataforma.innerHTML = `<tr><td colspan="4" class="text-center py-4"><div class="spinner-border text-info" role="status"></div><br>Cargando Tarifas...</td></tr>`;
 
     fetch(base_url + "/Lgs_costos/getTarifasProveedor?id_proveedor=" + idProveedor)
     .then(response => response.json())
@@ -146,10 +204,22 @@ function loadTarifasProveedor() {
         if (data.status) {
             const info = data.data;
 
+            // Cachear tarifas globales
+            if (idProveedor === "0") {
+                sysTarifasGlobales = {
+                    madrina: info.madrina || [],
+                    chofer: info.chofer || [],
+                    plataforma: info.plataforma || []
+                };
+            } else if (info.base_general) {
+                sysTarifasGlobales = info.base_general;
+            }
+
             // Gestión de interfaz según tipo de tarifa
             if (idProveedor === "0") {
                 if (lblBtnGuardar) lblBtnGuardar.textContent = "Guardar Tarifa Base General...";
                 if (btnRestablecer) btnRestablecer.classList.add("d-none");
+                if (btnAjustar) btnAjustar.classList.add("d-none");
                 if (badgeStatus) {
                     badgeStatus.innerHTML = `
                         <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1 fs-11">
@@ -159,21 +229,29 @@ function loadTarifasProveedor() {
                 }
             } else {
                 if (lblBtnGuardar) lblBtnGuardar.textContent = "Guardar Tarifas del Proveedor";
+                if (btnAjustar) btnAjustar.classList.remove("d-none");
+
                 if (info.tiene_tarifas_propias) {
                     if (btnRestablecer) btnRestablecer.classList.remove("d-none");
-                    if (badgeStatus) {
-                        badgeStatus.innerHTML = `
-                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1 fs-11">
-                                <i class="ri-checkbox-circle-line me-1"></i> <b>Tarifas Personalizadas:</b> Este proveedor cuenta con tarifas específicas guardadas.
-                            </span>
-                        `;
-                    }
                 } else {
                     if (btnRestablecer) btnRestablecer.classList.add("d-none");
-                    if (badgeStatus) {
+                }
+
+                const diff = calcularDiferenciasConGlobal(info.madrina || [], info.plataforma || []);
+                const esPersonalizada = !!info.es_personalizada;
+
+                if (badgeStatus) {
+                    if (esPersonalizada || diff.count > 0) {
+                        const diffTxt = diff.count > 0 ? ` (${diff.count} factor(es) difieren del global)` : '';
                         badgeStatus.innerHTML = `
                             <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-2 py-1 fs-11">
-                                <i class="ri-information-line me-1"></i> <b>Precargado de Tarifa Base General:</b> Modifique los costos o factores que requiera y presione "Guardar" para personalizar este proveedor.
+                                <i class="ri-edit-2-line me-1"></i> <b>Tarifa Personalizada:</b> Este proveedor cuenta con tarifas manuales${diffTxt}.
+                            </span>
+                        `;
+                    } else {
+                        badgeStatus.innerHTML = `
+                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1 fs-11">
+                                <i class="ri-checkbox-circle-line me-1"></i> <b>Tarifa Idéntica al Global:</b> Los valores coinciden exactamente con la base general.
                             </span>
                         `;
                     }
@@ -182,7 +260,9 @@ function loadTarifasProveedor() {
 
             renderTarifasMadrina(info.madrina || []);
             renderTarifasChofer(info.chofer || []);
+            renderTarifasPlataforma(info.plataforma || []);
             recalcularTotalesTarifas();
+            recalcularTotalesTarifasPlataforma();
         } else {
             Swal.fire("Error", data.msg, "error");
         }
@@ -197,24 +277,28 @@ function renderTarifasMadrina(madrinaMatriz) {
     tbody.replaceChildren();
 
     madrinaMatriz.forEach((item, idx) => {
+        const isHidden = idx > 0 ? "d-none" : "";
+        const rowTitle = idx === 0 ? "Costos Universales Madrina (Aplica a todos los segmentos)" : item.segmento_nombre;
+
         const trMain = document.createElement("tr");
-        trMain.className = "align-middle bg-white";
+        trMain.className = "align-middle bg-white " + isHidden;
 
         const tdSeg = document.createElement("td");
         tdSeg.innerHTML = `
             <input type="hidden" name="madrina_segmentos[${idx}][id_segmento]" value="${item.id_segmento}">
-            <span class="fw-bold text-dark fs-14 d-block">${item.segmento_nombre}</span>
-            <small class="text-muted fs-11">${item.segmento_descripcion || ""}</small>
+            <span class="fw-bold text-dark fs-14 d-block">${rowTitle}</span>
+            <small class="text-muted fs-11">${idx === 0 ? "Todas las unidades comparten el mismo factoraje" : (item.segmento_descripcion || "")}</small>
         `;
 
         const tdCostoKm = document.createElement("td");
+        tdCostoKm.style.display = "none";
         tdCostoKm.innerHTML = `
             <div class="input-group input-group-sm">
                 <span class="input-group-text bg-light">$</span>
                 <input type="number" step="0.01" class="form-control text-end fw-bold madrina-costo-km" 
                        data-idx="${idx}" name="madrina_segmentos[${idx}][costo_por_km]" 
                        value="${parseFloat(item.costo_por_km || 0).toFixed(2)}" 
-                       oninput="recalcularTotalesTarifas();">
+                       oninput="syncMadrinaCostoKm(this); recalcularTotalesTarifas();">
             </div>
         `;
 
@@ -228,7 +312,7 @@ function renderTarifasMadrina(madrinaMatriz) {
         tdFactores.innerHTML = `
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center">
-                    <span class="badge bg-primary-subtle text-primary border me-2 fs-12 px-2 py-1"><i class="ri-stack-line me-1"></i> 1 a 15 VINs</span>
+                    <span class="badge bg-primary-subtle text-primary border me-2 fs-12 px-2 py-1"><i class="ri-stack-line me-1"></i> 1 a 10 VINs</span>
                 </div>
                 <button type="button" class="btn btn-sm btn-outline-primary shadow-xs" 
                         data-bs-toggle="collapse" data-bs-target="#collapseMadrinaFactores_${idx}" 
@@ -246,7 +330,7 @@ function renderTarifasMadrina(madrinaMatriz) {
 
         // FILA EXPANDIBLE
         const trCollapse = document.createElement("tr");
-        trCollapse.className = "bg-light-subtle collapse-madrina-factores-row";
+        trCollapse.className = "bg-light-subtle collapse-madrina-factores-row " + isHidden;
         
         const tdCollapse = document.createElement("td");
         tdCollapse.colSpan = 4;
@@ -256,32 +340,60 @@ function renderTarifasMadrina(madrinaMatriz) {
         const factores15 = item.factores_15 || {};
         const baseCost = parseFloat(item.costo_por_km) || 0;
 
-        for (let u = 1; u <= 15; u++) {
+        for (let u = 1; u <= 10; u++) {
             const fVal = parseFloat(factores15[u] !== undefined ? factores15[u] : (1.0 - ((u - 1) * 0.02)));
             const initUnitCost = (baseCost * fVal).toFixed(2);
 
+            let esDiferente = false;
+            let precioGlobalRef = null;
+            if (sysTarifasGlobales && sysTarifasGlobales.madrina) {
+                const segGlobal = sysTarifasGlobales.madrina.find(s => s.id_segmento == item.id_segmento);
+                if (segGlobal) {
+                    const gCost = parseFloat(segGlobal.costo_por_km) || 0;
+                    const gFact = segGlobal.factores_15 && segGlobal.factores_15[u] !== undefined 
+                        ? parseFloat(segGlobal.factores_15[u]) 
+                        : (1.0 - ((u - 1) * 0.02));
+                    precioGlobalRef = (gCost * gFact).toFixed(2);
+                    const idProvActual = document.getElementById("select_tarifa_proveedor") ? document.getElementById("select_tarifa_proveedor").value : "0";
+                    if (idProvActual !== "0" && Math.abs(parseFloat(initUnitCost) - parseFloat(precioGlobalRef)) > 0.01) {
+                        esDiferente = true;
+                    }
+                }
+            }
+
+            const cardHeaderClass = esDiferente 
+                ? "card-header bg-warning text-dark py-1 px-2 text-center border-bottom border-warning"
+                : "card-header bg-primary text-white py-1 px-2 text-center border-bottom";
+            const cardBorderClass = esDiferente
+                ? "card border-2 border-warning shadow-none rounded-2 mb-2 bg-warning-subtle bg-opacity-10"
+                : "card border border-light-subtle shadow-none rounded-2 mb-2 bg-white";
+            const subTitle = esDiferente
+                ? `<small class="fs-9 text-dark-50 fw-semibold">${u} VINs • Global: $${precioGlobalRef}</small>`
+                : `<small class="fs-9 text-white-50">${u} VINs</small>`;
+            const badgeIcon = esDiferente ? `<i class="ri-edit-2-fill text-danger ms-1" title="Personalizado (Global: $${precioGlobalRef})"></i>` : '';
+
             cardsHtml += `
                 <div class="col" style="min-width: 140px; max-width: 150px;">
-                    <div class="card border border-light-subtle shadow-none rounded-2 mb-2 bg-white">
-                        <div class="card-header bg-primary text-white py-1 px-2 text-center border-bottom">
-                            <span class="fw-bold fs-12 text-white d-block">Factor ${u}</span>
-                            <small class="fs-9 text-white-50">${u} VINs</small>
+                    <div class="${cardBorderClass}">
+                        <div class="${cardHeaderClass}">
+                            <span class="fw-bold fs-12 d-block">Factor ${u} ${badgeIcon}</span>
+                            ${subTitle}
                         </div>
                         <div class="card-body p-2 text-center">
-                            <label class="fs-10 text-muted mb-0 d-block text-uppercase fw-semibold">Multiplicador</label>
+                            <label class="fs-10 text-muted mb-0 d-block text-uppercase fw-semibold">Precio por Unidad</label>
                             <div class="input-group input-group-sm mb-1">
-                                <span class="input-group-text p-1 fs-11">x</span>
-                                <input type="number" step="0.0001" 
-                                       class="form-control form-control-sm text-end fw-bold factor-madrina-${idx}" 
+                                <span class="input-group-text p-1 fs-11">$</span>
+                                <input type="number" step="0.01" 
+                                       class="form-control form-control-sm text-end fw-bold factor-madrina-${idx} ${esDiferente ? 'text-danger' : ''}" 
                                        data-idx="${idx}" data-unit="${u}" 
                                        name="madrina_segmentos[${idx}][factores][${u}]" 
                                        id="madrina_factor_${idx}_${u}" 
-                                       value="${fVal.toFixed(4)}" 
-                                       oninput="recalcularTotalesTarifas();">
+                                       value="${initUnitCost}" 
+                                       oninput="syncMadrinaUniversal(this, ${u}); recalcularTotalesTarifas();">
                             </div>
                             <div class="mt-1 border-top pt-1 text-start">
-                                <span class="fs-9 text-muted d-block">Preview (x 1 KM):</span>
-                                <span class="fs-10 fw-bold text-dark preview-madrina-${idx}-${u}">$ ${initUnitCost} / km</span>
+                                <span class="fs-9 text-muted d-block">Total Camión (x 1 KM):</span>
+                                <span class="fs-10 fw-bold text-dark preview-madrina-${idx}-${u}">$ ${(parseFloat(initUnitCost) * u).toFixed(2)} / km</span>
                             </div>
                         </div>
                     </div>
@@ -289,14 +401,41 @@ function renderTarifasMadrina(madrinaMatriz) {
             `;
         }
 
+        let segDiffCount = 0;
+        const idProvActual = document.getElementById("select_tarifa_proveedor") ? document.getElementById("select_tarifa_proveedor").value : "0";
+        if (idProvActual !== "0" && sysTarifasGlobales && sysTarifasGlobales.madrina) {
+            const segGlobal = sysTarifasGlobales.madrina.find(s => s.id_segmento == item.id_segmento);
+            if (segGlobal) {
+                const gCost = parseFloat(segGlobal.costo_por_km) || 0;
+                for (let u = 1; u <= 10; u++) {
+                    const fVal = parseFloat(factores15[u] !== undefined ? factores15[u] : (1.0 - ((u - 1) * 0.02)));
+                    const initUnitCost = (baseCost * fVal).toFixed(2);
+                    const gFact = segGlobal.factores_15 && segGlobal.factores_15[u] !== undefined 
+                        ? parseFloat(segGlobal.factores_15[u]) 
+                        : (1.0 - ((u - 1) * 0.02));
+                    const precioGlobalRef = (gCost * gFact).toFixed(2);
+                    if (Math.abs(parseFloat(initUnitCost) - parseFloat(precioGlobalRef)) > 0.01) {
+                        segDiffCount++;
+                    }
+                }
+            }
+        }
+
+        let labelInfoHtml = '';
+        if (idProvActual === "0") {
+            labelInfoHtml = `<span class="badge bg-primary-subtle text-primary border border-primary px-3 py-1 fs-12"><i class="ri-global-line me-1"></i> Costo Global Base</span>`;
+        } else if (segDiffCount > 0) {
+            labelInfoHtml = `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-3 py-1 fs-12"><i class="ri-edit-2-line me-1"></i> Costo Personalizado (${segDiffCount} editado${segDiffCount > 1 ? 's' : ''})</span>`;
+        } else {
+            labelInfoHtml = `<span class="badge bg-success-subtle text-success border border-success px-3 py-1 fs-12"><i class="ri-checkbox-circle-line me-1"></i> Costo Global (Heredado)</span>`;
+        }
+
         tdCollapse.innerHTML = `
             <div class="collapse p-3 border-top border-bottom bg-light-subtle" id="collapseMadrinaFactores_${idx}">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <span class="fw-bold fs-12 text-dark"><i class="ri-price-tag-3-line text-primary me-1"></i> Configuración de Factores para <b>${item.segmento_nombre}</b>:</span>
-                    <div class="btn-group btn-group-sm">
-                        <button type="button" class="btn btn-outline-secondary" onclick="aplicarPresetMadrina(${idx}, 0.00);">Plano (x1.0)</button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="aplicarPresetMadrina(${idx}, 0.02);">-2% por VIN</button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="aplicarPresetMadrina(${idx}, 0.03);">-3% por VIN</button>
+                    <div>
+                        ${labelInfoHtml}
                     </div>
                 </div>
                 <div class="row row-cols-auto g-2 justify-content-start">
@@ -354,6 +493,187 @@ function renderTarifasChofer(choferMatriz) {
     });
 }
 
+function renderTarifasPlataforma(plataformaMatriz) {
+    const tbody = document.getElementById("tbodyTarifasPlataforma");
+    if (!tbody) return;
+    tbody.replaceChildren();
+
+    plataformaMatriz.forEach((item, idx) => {
+        const isHidden = idx > 0 ? "d-none" : "";
+        const rowTitle = idx === 0 ? "Costos Universales Plataforma (Aplica a todos los segmentos)" : item.segmento_nombre;
+
+        const trMain = document.createElement("tr");
+        trMain.className = "align-middle bg-white " + isHidden;
+
+        const tdSeg = document.createElement("td");
+        tdSeg.innerHTML = `
+            <input type="hidden" name="plataforma_segmentos[${idx}][id_segmento]" value="${item.id_segmento}">
+            <span class="fw-bold text-dark fs-14 d-block">${rowTitle}</span>
+            <small class="text-muted fs-11">${idx === 0 ? "Todas las unidades comparten el mismo factoraje" : (item.segmento_descripcion || "")}</small>
+        `;
+
+        const tdCostoKm = document.createElement("td");
+        tdCostoKm.style.display = "none";
+        tdCostoKm.innerHTML = `
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light">$</span>
+                <input type="number" step="0.01" class="form-control text-end fw-bold plataforma-costo-km" 
+                       data-idx="${idx}" name="plataforma_segmentos[${idx}][costo_por_km]" 
+                       value="${parseFloat(item.costo_por_km || 0).toFixed(2)}" 
+                       oninput="syncPlataformaCostoKm(this); recalcularTotalesTarifasPlataforma();">
+            </div>
+        `;
+
+        const tdPlano = document.createElement("td");
+        tdPlano.style.display = "none";
+        tdPlano.innerHTML = `
+            <input type="hidden" name="plataforma_segmentos[${idx}][precio_plano]" value="${parseFloat(item.precio_plano || 0).toFixed(2)}">
+        `;
+
+        const tdFactores = document.createElement("td");
+        tdFactores.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-info-subtle text-info border me-2 fs-12 px-2 py-1"><i class="ri-stack-line me-1"></i> 1 a 3 VINs</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-info shadow-xs" 
+                        data-bs-toggle="collapse" data-bs-target="#collapsePlataformaFactores_${idx}" 
+                        aria-expanded="false">
+                    Ver Factores <i class="ri-arrow-down-s-line"></i>
+                </button>
+            </div>
+        `;
+
+        trMain.appendChild(tdSeg);
+        trMain.appendChild(tdCostoKm);
+        trMain.appendChild(tdPlano);
+        trMain.appendChild(tdFactores);
+        tbody.appendChild(trMain);
+
+        // FILA EXPANDIBLE
+        const trCollapse = document.createElement("tr");
+        trCollapse.className = "bg-light-subtle collapse-plataforma-factores-row " + isHidden;
+        
+        const tdCollapse = document.createElement("td");
+        tdCollapse.colSpan = 4;
+        tdCollapse.className = "p-0 border-0";
+
+        let cardsHtml = '';
+        const factores15 = item.factores_15 || {};
+        const baseCost = parseFloat(item.costo_por_km) || 0;
+
+        for (let u = 1; u <= 4; u++) {
+            const fVal = parseFloat(factores15[u] !== undefined ? factores15[u] : (4.4444 / u));
+            const initUnitCost = (baseCost * fVal).toFixed(2);
+
+            let esDiferente = false;
+            let precioGlobalRef = null;
+            if (sysTarifasGlobales && sysTarifasGlobales.plataforma) {
+                const segGlobal = sysTarifasGlobales.plataforma.find(s => s.id_segmento == item.id_segmento);
+                if (segGlobal) {
+                    const gCost = parseFloat(segGlobal.costo_por_km) || 0;
+                    const gFact = segGlobal.factores_15 && segGlobal.factores_15[u] !== undefined 
+                        ? parseFloat(segGlobal.factores_15[u]) 
+                        : (4.4444 / u);
+                    precioGlobalRef = (gCost * gFact).toFixed(2);
+                    const idProvActual = document.getElementById("select_tarifa_proveedor") ? document.getElementById("select_tarifa_proveedor").value : "0";
+                    if (idProvActual !== "0" && Math.abs(parseFloat(initUnitCost) - parseFloat(precioGlobalRef)) > 0.01) {
+                        esDiferente = true;
+                    }
+                }
+            }
+
+            const isLowboy = (u === 4);
+            const titleLabel = isLowboy ? "Check Lowboy" : `Factor ${u}`;
+            
+            const cardHeaderClass = esDiferente 
+                ? "card-header bg-warning text-dark py-1 px-2 text-center border-bottom border-warning"
+                : (isLowboy ? "card-header bg-dark text-white py-1 px-2 text-center border-bottom" : "card-header bg-info text-white py-1 px-2 text-center border-bottom");
+            const cardBorderClass = esDiferente
+                ? "card border-2 border-warning shadow-none rounded-2 mb-2 bg-warning-subtle bg-opacity-10"
+                : (isLowboy ? "card border-2 border-dark shadow-none rounded-2 mb-2 bg-white" : "card border border-light-subtle shadow-none rounded-2 mb-2 bg-white");
+            const subTitle = esDiferente
+                ? `<small class="fs-9 text-dark-50 fw-semibold">${isLowboy ? "1 VIN Especial" : u + " VINs"} • Global: $${precioGlobalRef}</small>`
+                : `<small class="fs-9 text-white-50">${isLowboy ? "1 VIN Especial" : u + " VINs"}</small>`;
+            const badgeIcon = esDiferente ? `<i class="ri-edit-2-fill text-danger ms-1" title="Personalizado (Global: $${precioGlobalRef})"></i>` : '';
+
+            cardsHtml += `
+                <div class="col" style="min-width: 140px; max-width: 150px;">
+                    <div class="${cardBorderClass}">
+                        <div class="${cardHeaderClass}">
+                            <span class="fw-bold fs-12 d-block">${titleLabel} ${badgeIcon}</span>
+                            ${subTitle}
+                        </div>
+                        <div class="card-body p-2 text-center">
+                            <label class="fs-10 text-muted mb-0 d-block text-uppercase fw-semibold">Precio por Unidad</label>
+                            <div class="input-group input-group-sm mb-1">
+                                <span class="input-group-text p-1 fs-11">$</span>
+                                <input type="number" step="0.01" 
+                                       class="form-control form-control-sm text-end fw-bold factor-plataforma-${idx} ${esDiferente ? 'text-danger' : ''}" 
+                                       data-idx="${idx}" data-unit="${u}" 
+                                       name="plataforma_segmentos[${idx}][factores][${u}]" 
+                                       id="plataforma_factor_${idx}_${u}" 
+                                       value="${initUnitCost}" 
+                                       oninput="syncPlataformaUniversal(this, ${u}); recalcularTotalesTarifasPlataforma();">
+                            </div>
+                            <div class="mt-1 border-top pt-1 text-start">
+                                <span class="fs-9 text-muted d-block">Total Camión (x 1 KM):</span>
+                                <span class="fs-10 fw-bold text-dark preview-plataforma-${idx}-${u}">$ ${(parseFloat(initUnitCost) * (isLowboy ? 1 : u)).toFixed(2)} / km</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        let segDiffCountPlat = 0;
+        const idProvActualPlat = document.getElementById("select_tarifa_proveedor") ? document.getElementById("select_tarifa_proveedor").value : "0";
+        if (idProvActualPlat !== "0" && sysTarifasGlobales && sysTarifasGlobales.plataforma) {
+            const segGlobal = sysTarifasGlobales.plataforma.find(s => s.id_segmento == item.id_segmento);
+            if (segGlobal) {
+                const gCost = parseFloat(segGlobal.costo_por_km) || 0;
+                for (let u = 1; u <= 4; u++) {
+                    const fVal = parseFloat(factores15[u] !== undefined ? factores15[u] : (4.4444 / u));
+                    const initUnitCost = (baseCost * fVal).toFixed(2);
+                    const gFact = segGlobal.factores_15 && segGlobal.factores_15[u] !== undefined 
+                        ? parseFloat(segGlobal.factores_15[u]) 
+                        : (4.4444 / u);
+                    const precioGlobalRef = (gCost * gFact).toFixed(2);
+                    if (Math.abs(parseFloat(initUnitCost) - parseFloat(precioGlobalRef)) > 0.01) {
+                        segDiffCountPlat++;
+                    }
+                }
+            }
+        }
+
+        let labelInfoPlatHtml = '';
+        if (idProvActualPlat === "0") {
+            labelInfoPlatHtml = `<span class="badge bg-primary-subtle text-primary border border-primary px-3 py-1 fs-12"><i class="ri-global-line me-1"></i> Costo Global Base</span>`;
+        } else if (segDiffCountPlat > 0) {
+            labelInfoPlatHtml = `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-3 py-1 fs-12"><i class="ri-edit-2-line me-1"></i> Costo Personalizado (${segDiffCountPlat} editado${segDiffCountPlat > 1 ? 's' : ''})</span>`;
+        } else {
+            labelInfoPlatHtml = `<span class="badge bg-success-subtle text-success border border-success px-3 py-1 fs-12"><i class="ri-checkbox-circle-line me-1"></i> Costo Global (Heredado)</span>`;
+        }
+
+        tdCollapse.innerHTML = `
+            <div class="collapse p-3 border-top border-bottom bg-light-subtle" id="collapsePlataformaFactores_${idx}">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-bold fs-12 text-dark"><i class="ri-price-tag-3-line text-info me-1"></i> ${idx === 0 ? 'Configuración Universal de Factores (Aplica a todos los segmentos):' : `Configuración de Factores para <b>${item.segmento_nombre}</b>:`}</span>
+                    <div>
+                        ${labelInfoPlatHtml}
+                    </div>
+                </div>
+                <div class="row row-cols-auto g-2 justify-content-start">
+                    ${cardsHtml}
+                </div>
+            </div>
+        `;
+
+        trCollapse.appendChild(tdCollapse);
+        tbody.appendChild(trCollapse);
+    });
+}
+
 function toggleFactoresMadrina(expand) {
     const collapses = document.querySelectorAll('#tbodyTarifasMadrina .collapse');
     collapses.forEach(el => {
@@ -369,12 +689,12 @@ function aplicarPresetMadrina(idx, tasaDescuento) {
     const inputCostoKm = document.querySelector(`.madrina-costo-km[data-idx="${idx}"]`);
     const costoKm = parseFloat(inputCostoKm ? inputCostoKm.value : 0) || 0;
 
-    for (let u = 1; u <= 15; u++) {
+    for (let u = 1; u <= 10; u++) {
         let f = 1.0 - ((u - 1) * tasaDescuento);
         if (f < 0.20) f = 0.20;
 
         const inputFactor = document.getElementById(`madrina_factor_${idx}_${u}`);
-        if (inputFactor) inputFactor.value = f.toFixed(4);
+        if (inputFactor) inputFactor.value = (costoKm * f).toFixed(2);
     }
     recalcularTotalesTarifas();
 }
@@ -385,15 +705,114 @@ function recalcularTotalesTarifas() {
         const idx = input.getAttribute("data-idx");
         const costoKm = parseFloat(input.value) || 0;
 
-        for (let u = 1; u <= 15; u++) {
+        for (let u = 1; u <= 10; u++) {
             const inputFactor = document.getElementById(`madrina_factor_${idx}_${u}`);
             const previewSpan = document.querySelector(`.preview-madrina-${idx}-${u}`);
 
             if (inputFactor && previewSpan) {
-                const factorVal = parseFloat(inputFactor.value) || 1.0;
-                const unitCost = costoKm * factorVal;
-                previewSpan.textContent = "$ " + unitCost.toFixed(2) + " / km";
+                const unitCost = parseFloat(inputFactor.value) || 0.0;
+                const totalTruckCost = unitCost * u;
+                previewSpan.textContent = "Camión: $ " + totalTruckCost.toFixed(2) + " / km";
             }
+        }
+    });
+}
+
+function syncMadrinaUniversal(inputElement, unidad) {
+    const val = inputElement.value;
+    const allInputs = document.querySelectorAll(`input[id^="madrina_factor_"][data-unit="${unidad}"]`);
+    allInputs.forEach(input => {
+        if (input !== inputElement) {
+            input.value = val;
+        }
+    });
+}
+
+function syncMadrinaCostoKm(inputElement) {
+    const val = inputElement.value;
+    const allInputs = document.querySelectorAll('.madrina-costo-km');
+    allInputs.forEach(input => {
+        if (input !== inputElement) {
+            input.value = val;
+        }
+    });
+}
+
+function syncMadrinaUniversal(inputElement, unidad) {
+    const val = inputElement.value;
+    const allInputs = document.querySelectorAll(`input[id^="madrina_factor_"][data-unit="${unidad}"]`);
+    allInputs.forEach(input => {
+        if (input !== inputElement) {
+            input.value = val;
+        }
+    });
+}
+
+function toggleFactoresPlataforma(expand) {
+    const collapses = document.querySelectorAll('#tbodyTarifasPlataforma .collapse');
+    collapses.forEach(el => {
+        if (expand) {
+            $(el).collapse('show');
+        } else {
+            $(el).collapse('hide');
+        }
+    });
+}
+
+function aplicarPresetPlataforma(idx, tasaDescuento) {
+    const inputCostoKm = document.querySelector(`.plataforma-costo-km[data-idx="${idx}"]`);
+    const costoKm = parseFloat(inputCostoKm ? inputCostoKm.value : 0) || 0;
+
+    for (let u = 1; u <= 3; u++) {
+        let f = 1.0;
+        if (tasaDescuento === -1) {
+            f = 4.4444 / u;
+        } else {
+            f = 1.0 - ((u - 1) * tasaDescuento);
+        }
+        if (f < 0.20) f = 0.20;
+
+        const inputFactor = document.getElementById(`plataforma_factor_${idx}_${u}`);
+        if (inputFactor) inputFactor.value = (costoKm * f).toFixed(2);
+    }
+    recalcularTotalesTarifasPlataforma();
+}
+
+function recalcularTotalesTarifasPlataforma() {
+    const inputsPlataforma = document.querySelectorAll(".plataforma-costo-km");
+    inputsPlataforma.forEach((input) => {
+        const idx = input.getAttribute("data-idx");
+        const costoKm = parseFloat(input.value) || 0;
+
+        for (let u = 1; u <= 4; u++) {
+            const inputFactor = document.getElementById(`plataforma_factor_${idx}_${u}`);
+            const previewSpan = document.querySelector(`.preview-plataforma-${idx}-${u}`);
+
+            if (inputFactor && previewSpan) {
+                const unitCost = parseFloat(inputFactor.value) || 0.0;
+                const totalTruckCost = unitCost * (u === 4 ? 1 : u);
+                previewSpan.textContent = "Camión: $ " + totalTruckCost.toFixed(2) + " / km";
+            }
+        }
+    });
+}
+
+function syncPlataformaUniversal(inputElement, unidad) {
+    const val = inputElement.value;
+    const allInputs = document.querySelectorAll(`input[id^="plataforma_factor_"][data-unit="${unidad}"]`);
+    allInputs.forEach(input => {
+        if (input !== inputElement) {
+            input.value = val;
+        }
+    });
+}
+
+function syncPlataformaCostoKm(inputElement) {
+    const val = inputElement.value;
+    const allInputs = document.querySelectorAll('.plataforma-costo-km');
+    allInputs.forEach(input => {
+        if (input !== inputElement) {
+            input.value = val;
         }
     });
 }
@@ -443,6 +862,52 @@ function saveTarifasProveedorIndividual() {
     });
 }
 
+function ajustarAlGlobal() {
+    const idProveedor = document.getElementById("select_tarifa_proveedor").value;
+    if (idProveedor === "0") return;
+
+    if (!sysTarifasGlobales || !sysTarifasGlobales.madrina) {
+        Swal.fire("Error", "No se encontraron las tarifas globales de referencia.", "error");
+        return;
+    }
+
+    Swal.fire({
+        title: "¿Ajustar Costos al Global?",
+        text: "Se precargarán todos los factores y costos de la Tarifa Base General en este formulario. Podrá revisarlos en pantalla y presionar 'Guardar Tarifas del Proveedor' para confirmarlos.",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#0ab39c",
+        cancelButtonColor: "#6c757d",
+        confirmButtonText: "Sí, ajustar campos",
+        cancelButtonText: "Cancelar"
+    }).then(result => {
+        if (result.isConfirmed) {
+            renderTarifasMadrina(sysTarifasGlobales.madrina || []);
+            renderTarifasChofer(sysTarifasGlobales.chofer || []);
+            renderTarifasPlataforma(sysTarifasGlobales.plataforma || []);
+            recalcularTotalesTarifas();
+            recalcularTotalesTarifasPlataforma();
+
+            const badgeStatus = document.getElementById("tarifa_status_badge");
+            if (badgeStatus) {
+                badgeStatus.innerHTML = `
+                    <span class="badge bg-info-subtle text-info border border-info px-2 py-1 fs-11">
+                        <i class="ri-refresh-line me-1"></i> <b>Campos precargados con la Base General:</b> Presione "Guardar Tarifas del Proveedor" para aplicar los cambios a este transportista.
+                    </span>
+                `;
+            }
+
+            Swal.fire({
+                icon: "success",
+                title: "Campos Precargados",
+                text: "Los valores globales se cargaron en el formulario. Presione 'Guardar' para confirmar.",
+                timer: 2000,
+                showConfirmButton: false
+            });
+        }
+    });
+}
+
 /**
  * ==============================================================
  * REPLICACIÓN SELECTIVA DE TARIFA BASE A PROVEEDORES
@@ -451,10 +916,38 @@ function saveTarifasProveedorIndividual() {
 
 let sysProveedoresEstado = [];
 
+function onCambioModoPropagacion(modo) {
+    sysModoPropagacion = modo;
+    const checkboxes = document.querySelectorAll(".chk-proveedor-replicar");
+    checkboxes.forEach(chk => {
+        const esPersonalizada = chk.getAttribute("data-personalizada") === "1";
+        const tr = chk.closest("tr");
+        if (modo === 'respetar') {
+            if (esPersonalizada) {
+                chk.checked = false;
+                chk.disabled = true;
+                if (tr) tr.classList.add("opacity-50");
+            } else {
+                chk.disabled = false;
+                if (tr) tr.classList.remove("opacity-50");
+            }
+        } else {
+            chk.disabled = false;
+            if (tr) tr.classList.remove("opacity-50");
+        }
+    });
+    actualizarContadorReplicar();
+}
+
 function openModalReplicarTarifaBase() {
     const modalEl = document.getElementById("modalReplicarTarifaBase");
     if (!modalEl) return;
     const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+    // Resetear a modo por defecto (respetar personalizadas)
+    sysModoPropagacion = 'respetar';
+    const radioRespetar = document.getElementById("modoPropagarRespetar");
+    if (radioRespetar) radioRespetar.checked = true;
     
     const tbody = document.getElementById("tbodyReplicarProveedores");
     tbody.innerHTML = `
@@ -492,6 +985,8 @@ function renderProveedoresReplicar(proveedores) {
         return;
     }
 
+    const isRespetar = (sysModoPropagacion === 'respetar');
+
     proveedores.forEach(p => {
         const tr = document.createElement("tr");
         tr.className = "align-middle";
@@ -501,12 +996,19 @@ function renderProveedoresReplicar(proveedores) {
             ? `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-2 py-1"><i class="ri-edit-2-line me-1"></i> Tarifa Personalizada</span>`
             : `<span class="badge bg-light text-muted border px-2 py-1"><i class="ri-global-line me-1"></i> Tarifa General</span>`;
 
+        const isChecked = isRespetar ? !esPersonalizada : true;
+        const isDisabled = isRespetar && esPersonalizada;
+        if (isDisabled) {
+            tr.classList.add("opacity-50");
+        }
+
         tr.innerHTML = `
             <td class="text-center">
                 <input type="checkbox" class="form-check-input chk-proveedor-replicar" 
                        value="${p.id_proveedor}" 
                        data-personalizada="${esPersonalizada ? '1' : '0'}" 
-                       checked 
+                       ${isChecked ? 'checked' : ''} 
+                       ${isDisabled ? 'disabled' : ''} 
                        onchange="actualizarContadorReplicar();">
             </td>
             <td>
@@ -555,9 +1057,9 @@ function actualizarContadorReplicar() {
     const alerta = document.getElementById("alertaPersonalizadosSeleccionados");
     const txtAlerta = document.getElementById("txtAlertaPersonalizados");
     if (alerta && txtAlerta) {
-        if (personalizadosSeleccionados > 0) {
+        if (personalizadosSeleccionados > 0 && sysModoPropagacion === 'forzar') {
             alerta.classList.remove("d-none");
-            txtAlerta.innerHTML = `Ha seleccionado <b>${personalizadosSeleccionados} proveedor(es) con tarifas personalizadas previas</b>. Al continuar, sus tarifas personalizadas serán reemplazadas por la nueva base general.`;
+            txtAlerta.innerHTML = `Ha seleccionado <b>${personalizadosSeleccionados} proveedor(es) con tarifas personalizadas previas</b> en modo "Forzar". Sus tarifas manuales serán sobreescritas por la nueva base general.`;
         } else {
             alerta.classList.add("d-none");
         }
@@ -567,7 +1069,9 @@ function actualizarContadorReplicar() {
 function toggleReplicarMaster(masterEl) {
     const checkboxes = document.querySelectorAll(".chk-proveedor-replicar");
     checkboxes.forEach(chk => {
-        chk.checked = masterEl.checked;
+        if (!chk.disabled) {
+            chk.checked = masterEl.checked;
+        }
     });
     actualizarContadorReplicar();
 }
@@ -576,7 +1080,7 @@ function filtrarSeleccionReplicar(tipo) {
     const checkboxes = document.querySelectorAll(".chk-proveedor-replicar");
     checkboxes.forEach(chk => {
         if (tipo === 'todos') {
-            chk.checked = true;
+            if (!chk.disabled) chk.checked = true;
         } else if (tipo === 'ninguno') {
             chk.checked = false;
         } else if (tipo === 'solo_base') {
@@ -597,6 +1101,7 @@ function ejecutarGuardadoConReplicacion(soloBase = false) {
             formData.append("proveedores_replicar[]", chk.value);
             seleccionados.push(chk.value);
         });
+        formData.append("mantener_personalizadas", (sysModoPropagacion === 'respetar') ? "1" : "0");
     }
 
     Swal.fire({

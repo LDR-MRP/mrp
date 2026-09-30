@@ -231,6 +231,7 @@ class Lgs_envios extends Controllers
                 'id_destino'       => $lastLoc > 0 ? $lastLoc : intval($_POST['id_destino'] ?? 0),
                 'destino_nombre_libre' => !empty($lastFree) ? $lastFree : ($_POST['destino_nombre_libre'] ?? ''),
                 'km_total'         => 0,
+                'is_lowboy'        => intval($_POST['is_lowboy'] ?? 0),
                 'fecha_tentativa_envio'   => !empty($_POST['fecha_tentativa_envio']) ? str_replace('T', ' ', $_POST['fecha_tentativa_envio']) : null,
                 'fecha_tentativa_llegada' => !empty($_POST['fecha_tentativa_llegada']) ? str_replace('T', ' ', $_POST['fecha_tentativa_llegada']) : null,
                 'observaciones'    => $_POST['observaciones'] ?? '',

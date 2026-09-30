@@ -173,16 +173,37 @@ class Lgs_costos extends Controllers
                 $proveedoresReplicar = [];
             }
 
-            $success = $this->service->saveTarifasBaseConReplicacion($data, $proveedoresReplicar);
+            $mantenerPersonalizadas = !empty($data['mantener_personalizadas']) && $data['mantener_personalizadas'] != '0';
+
+            $success = $this->service->saveTarifasBaseConReplicacion($data, $proveedoresReplicar, $mantenerPersonalizadas);
             if ($success) {
                 $count = count($proveedoresReplicar);
                 $msg = $count > 0
                     ? "Tarifa Base General guardada y replicada a {$count} proveedor(es) seleccionado(s)."
                     : "Tarifa Base General guardada exitosamente (sin replicar a proveedores).";
+                if ($mantenerPersonalizadas) {
+                    $msg .= " Las tarifas de proveedores configurados manualmente se mantuvieron intactas.";
+                }
                 echo $this->successResponse(null, $msg);
             } else {
                 echo $this->errorResponse("No se pudieron guardar las tarifas.", 500);
             }
+        } catch (Throwable $t) {
+            echo $this->errorResponse($t->getMessage(), 500);
+        }
+        die();
+    }
+
+    public function compareProveedorConGlobal(): void
+    {
+        try {
+            $idProveedor = isset($_GET['id_proveedor']) ? intval($_GET['id_proveedor']) : 0;
+            if ($idProveedor <= 0) {
+                echo $this->errorResponse("Debe proporcionar un ID de proveedor válido.", 400);
+                die();
+            }
+            $data = $this->service->compareProveedorConGlobal($idProveedor);
+            echo $this->successResponse($data, "Comparación realizada con éxito.");
         } catch (Throwable $t) {
             echo $this->errorResponse($t->getMessage(), 500);
         }

@@ -232,6 +232,9 @@
                                             </div>
                                         </div>
                                         <div class="d-flex align-items-center gap-2 flex-wrap">
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-medium d-none shadow-xs" id="btnAjustarAlGlobal" onclick="ajustarAlGlobal();" title="Carga los valores de la Tarifa Base General en este formulario para revisarlos antes de guardar">
+                                                <i class="ri-equalizer-line me-1"></i> Ajustar al Global
+                                            </button>
                                             <button type="button" class="btn btn-sm btn-outline-danger fw-medium d-none shadow-xs" id="btnRestablecerGlobal" onclick="resetTarifasProveedor();" title="Elimina las tarifas personalizadas de este proveedor para volver a heredar la Tarifa Base General">
                                                 <i class="ri-history-line me-1"></i> Restablecer a Base General
                                             </button>
@@ -262,8 +265,8 @@
                                                         <table class="table table-bordered align-middle mb-0">
                                                             <thead class="table-light">
                                                                 <tr class="text-uppercase fs-12 text-muted">
-                                                                    <th style="width: 250px;">Segmento</th>
-                                                                    <th style="width: 150px;">Costo Base / KM ($)</th>
+                                                                    <th style="width: 250px;"></th>
+                                                                    <th style="display: none;">Costo Base / KM ($)</th>
                                                                     <th style="display: none;">Precio Plano Fijo</th>
                                                                     <th>Desglose de Factores (1 a 15 Unidades)</th>
                                                                 </tr>
@@ -278,7 +281,7 @@
                                         </div>
 
                                         <!-- CHOFER RODANDO -->
-                                        <div class="accordion-item shadow-sm border-0 rounded-3">
+                                        <div class="accordion-item shadow-sm border-0 rounded-3 mb-3">
                                             <h2 class="accordion-header" id="headingChofer">
                                                 <button class="accordion-button collapsed fw-bold fs-15 bg-warning-subtle text-warning-emphasis rounded-top" type="button" data-bs-toggle="collapse" data-bs-target="#collapseChofer" aria-expanded="false" aria-controls="collapseChofer">
                                                     <i class="ri-steering-2-line me-2 fs-18"></i> 2. Tarifas Chofer / Rodando (Tarifa Fija 1 Unidad)
@@ -301,6 +304,38 @@
                                                                 </tr>
                                                             </thead>
                                                             <tbody id="tbodyTarifasChofer">
+                                                                <!-- Renderizado vía JS -->
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- PLATAFORMA -->
+                                        <div class="accordion-item shadow-sm border-0 rounded-3">
+                                            <h2 class="accordion-header" id="headingPlataforma">
+                                                <button class="accordion-button collapsed fw-bold fs-15 bg-info-subtle text-info rounded-top" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePlataforma" aria-expanded="false" aria-controls="collapsePlataforma">
+                                                    <i class="ri-truck-fill me-2 fs-18"></i> 3. Tarifas Plataforma (Máximo 3 Unidades)
+                                                </button>
+                                            </h2>
+                                            <div id="collapsePlataforma" class="accordion-collapse collapse" aria-labelledby="headingPlataforma" data-bs-parent="#accordionTarifas">
+                                                <div class="accordion-body bg-white">
+                                                    <div class="d-flex justify-content-end mb-2">
+                                                        <button type="button" class="btn btn-sm btn-soft-secondary me-2" onclick="toggleFactoresPlataforma(true);"><i class="ri-arrow-down-s-line"></i> Expandir Factores</button>
+                                                        <button type="button" class="btn btn-sm btn-soft-secondary" onclick="toggleFactoresPlataforma(false);"><i class="ri-arrow-up-s-line"></i> Contraer Factores</button>
+                                                    </div>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-bordered align-middle mb-0">
+                                                            <thead class="table-light">
+                                                                <tr class="text-uppercase fs-12 text-muted">
+                                                                    <th style="width: 250px;"></th>
+                                                                    <th style="display: none;">Costo Base / KM ($)</th>
+                                                                    <th style="display: none;">Precio Plano Fijo</th>
+                                                                    <th>Desglose de Factores (1 a 3 Unidades)</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody id="tbodyTarifasPlataforma">
                                                                 <!-- Renderizado vía JS -->
                                                             </tbody>
                                                         </table>
@@ -337,11 +372,32 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4 bg-light-subtle">
-                <!-- Alerta informativa -->
-                <div class="alert alert-info border-0 shadow-xs d-flex align-items-center mb-3 p-3 rounded-3">
-                    <i class="ri-information-fill fs-22 text-info me-3 flex-shrink-0"></i>
-                    <div class="fs-12">
-                        Los proveedores que <b>no seleccione</b> conservarán intactas sus tarifas personalizadas actuales sin sufrir ninguna modificación.
+                <!-- Opciones de propagación -->
+                <div class="card border border-primary-subtle bg-white mb-3 shadow-xs">
+                    <div class="card-body p-3">
+                        <label class="form-label fw-bold text-dark fs-13 mb-2">
+                            <i class="ri-settings-4-line text-primary me-1"></i> Modo de Propagación:
+                        </label>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="form-check p-2 bg-light-subtle rounded border h-100">
+                                    <input class="form-check-input ms-1 me-2" type="radio" name="modo_propagacion" id="modoPropagarRespetar" value="respetar" checked onchange="onCambioModoPropagacion(this.value);">
+                                    <label class="form-check-label fw-semibold text-dark fs-12 cursor-pointer" for="modoPropagarRespetar">
+                                        <span class="d-block text-success fw-bold"><i class="ri-shield-check-line me-1"></i> Mantener personalizadas (Recomendado)</span>
+                                        <small class="text-muted fs-11">Solo actualiza la base y proveedores con Tarifa General. No altera transportistas configurados manualmente.</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check p-2 bg-light-subtle rounded border h-100">
+                                    <input class="form-check-input ms-1 me-2" type="radio" name="modo_propagacion" id="modoPropagarForzar" value="forzar" onchange="onCambioModoPropagacion(this.value);">
+                                    <label class="form-check-label fw-semibold text-dark fs-12 cursor-pointer" for="modoPropagarForzar">
+                                        <span class="d-block text-danger fw-bold"><i class="ri-error-warning-line me-1"></i> Forzar actualización a todos</span>
+                                        <small class="text-muted fs-11">Sobreescribe TODOS los seleccionados, reemplazando incluso tarifas manuales previas.</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

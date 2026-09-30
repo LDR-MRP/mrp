@@ -75,7 +75,7 @@ class Lgs_enviosService {
         }
 
         // 1. Cabecera del envío
-        $stmtEnvio = $db->prepare("SELECT id_tipo_traslado, id_proveedor, id_origen, id_destino, km_total, id_estado, costo_total FROM lgs_envios WHERE id_envio = :id");
+        $stmtEnvio = $db->prepare("SELECT id_tipo_traslado, id_proveedor, id_origen, id_destino, km_total, id_estado, costo_total, is_lowboy FROM lgs_envios WHERE id_envio = :id");
         $stmtEnvio->execute(['id' => $idEnvio]);
         $envio = $stmtEnvio->fetch(PDO::FETCH_ASSOC);
 
@@ -89,6 +89,7 @@ class Lgs_enviosService {
 
         $idTipoTraslado = (int)$envio['id_tipo_traslado'];
         $idProveedor    = (int)$envio['id_proveedor'];
+        $isLowboy       = (int)($envio['is_lowboy'] ?? 0);
 
         // 2. Obtener los nodos ordenados
         $stmtNodos = $db->prepare("SELECT id_nodo, orden, id_ubicacion, destino_nombre_libre, km_tramo_anterior FROM lgs_envios_nodos WHERE id_envio = ? ORDER BY orden ASC");
@@ -119,7 +120,7 @@ class Lgs_enviosService {
         // Agrupar por Madrina (si es madrina) o Chofer (si es rodando)
         $unidadesAsignadas = []; // id_madrina_o_chofer => array de vins
         foreach ($vins as $vin) {
-            $key = ($idTipoTraslado === 1) ? ((int)$vin['id_madrina']) : ((int)$vin['id_chofer']);
+            $key = ($idTipoTraslado === 1 || $idTipoTraslado === 3) ? ((int)$vin['id_madrina']) : ((int)$vin['id_chofer']);
             $unidadesAsignadas[$key][] = $vin;
         }
 
@@ -221,25 +222,26 @@ class Lgs_enviosService {
 
                 // Determinar el segmento dominante (el más pesado)
                 $segmentoDominante = 1;
-                if ($vinsEspeciales > 0) $segmentoDominante = 5;
+                if ($vinsEspeciales > 0 || ($idTipoTraslado === 3 && $isLowboy)) $segmentoDominante = 5;
                 elseif ($vinsBuses > 0) $segmentoDominante = 4;
                 elseif ($vinsPesados > 0) $segmentoDominante = 3;
                 elseif ($vinsMedianos > 0) $segmentoDominante = 2;
 
-                // 2. Intentar tarifa de ruta estricta
-                $tarifa = $this->getTarifaRutaEstricta($db, $idTipoTraslado, $idLocOrigen, $idLocDestino, $segmentoDominante, $volumenTotal, $idProveedor);
-
-                // Si no hay tarifa estricta, aplicar costeo base ($/km proveedor/segmento * factor)
-                if (!$tarifa) {
-                    $tarifa = $this->getTarifaFallbackBase($db, $idTipoTraslado, $idProveedor, $segmentoDominante, $volumenTotal);
+                // 2. Obtener tarifa aplicable según proveedor, tipo, segmento y volumen
+                $volumenParaTarifa = $volumenTotal;
+                if ($idTipoTraslado === 3 && $isLowboy) {
+                    $volumenParaTarifa = 4; // Forzar lectura del factor 4 (Lowboy) en Plataformas
                 }
+                $tarifa = $this->getTarifaAplicable($db, $idTipoTraslado, $idProveedor, $segmentoDominante, $volumenParaTarifa);
 
-                $distanciaUsar = ((float)($tarifa['km'] ?? 0) > 0) ? (float)$tarifa['km'] : $kmTramo;
+                $distanciaUsar = $kmTramo; // La distancia siempre viene de la ruta/memoria
                 $costoPorKm = (float)($tarifa['costo_por_km'] ?? 0);
                 $factor = ((float)($tarifa['factor'] ?? 0) > 0) ? (float)$tarifa['factor'] : 1.0;
                 $costoPlano = (float)($tarifa['precio_plano'] ?? 0);
 
-                $costoTramo = ($distanciaUsar * $costoPorKm + $costoPlano) * $factor;
+                // El factor representa el multiplicador del costo POR UNIDAD.
+                // Por lo tanto, el costo del tramo es el Costo_Unidad * Volumen
+                $costoTramo = ($distanciaUsar * $costoPorKm * $factor * $volumenTotal) + $costoPlano;
 
                 // Insertar el costo del tramo
                 $stmtInsertCosto = $db->prepare("
@@ -249,7 +251,7 @@ class Lgs_enviosService {
                 ");
                 $stmtInsertCosto->execute([
                     $idEnvio,
-                    ($idTipoTraslado === 1) ? $idAgrupador : null,
+                    ($idTipoTraslado === 1 || $idTipoTraslado === 3) ? $idAgrupador : null,
                     ($idTipoTraslado === 2) ? $idAgrupador : null,
                     $nodoOrigen['id_nodo'],
                     $nodoDestino['id_nodo'],
@@ -488,111 +490,63 @@ class Lgs_enviosService {
     }
 
     /**
-     * Helper: Busca tarifa ESTRICTA, sin fallbacks globales. Si no hay, retorna nulo.
+     * Helper: Obtiene la tarifa aplicable consultando lgs_tarifas_proveedores (nuevo esquema unificado)
      */
-    private function getTarifaRutaEstricta(PDO $db, int $idTipoTraslado, int $idOrigen, int $idDestino, int $idSegmento, int $volumenVins, int $idProveedor): ?array {
+    private function getTarifaAplicable(PDO $db, int $idTipoTraslado, int $idProveedor, int $idSegmento, int $volumenVins): array {
         
-        // 1. Intentar con id_proveedor específico
+        // 1. Intentar tarifa del proveedor específico
         if ($idProveedor > 0) {
-            $sql0 = "SELECT id, km, costo_por_km, precio_plano, factor 
-                     FROM lgs_costos_rutas 
-                     WHERE id_proveedor = ?
-                       AND id_tipo_traslado = ? 
-                       AND id_origen = ? 
-                       AND id_destino = ? 
-                       AND id_segmento = ?
-                       AND ? BETWEEN num_vins_min AND num_vins_max
-                       AND activo != 0
-                     LIMIT 1";
-            $stmt0 = $db->prepare($sql0);
-            $stmt0->execute([$idProveedor, $idTipoTraslado, $idOrigen, $idDestino, $idSegmento, $volumenVins]);
-            $tarifa = $stmt0->fetch(PDO::FETCH_ASSOC);
+            $sql = "SELECT id_tarifa as id, costo_por_km, precio_plano, factor 
+                    FROM lgs_tarifas_proveedores 
+                    WHERE id_proveedor = ? AND id_tipo_traslado = ? AND id_segmento = ? 
+                      AND ? BETWEEN num_vins_min AND num_vins_max 
+                      AND activo != 0 
+                    LIMIT 1";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$idProveedor, $idTipoTraslado, $idSegmento, $volumenVins]);
+            $tarifa = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($tarifa) return $tarifa;
         }
 
-        // 2. Intentar tarifa general (id_proveedor IS NULL o 0)
-        $sql = "SELECT id, km, costo_por_km, precio_plano, factor 
-                FROM lgs_costos_rutas 
-                WHERE id_tipo_traslado = ? 
-                  AND id_origen = ? 
-                  AND id_destino = ? 
-                  AND id_segmento = ?
-                  AND ? BETWEEN num_vins_min AND num_vins_max
-                  AND activo != 0
-                  AND (id_proveedor IS NULL OR id_proveedor = 0)
+        // 2. Intentar tarifa base general (id_proveedor = 0)
+        $sql = "SELECT id_tarifa as id, costo_por_km, precio_plano, factor 
+                FROM lgs_tarifas_proveedores 
+                WHERE id_proveedor = 0 AND id_tipo_traslado = ? AND id_segmento = ? 
+                  AND ? BETWEEN num_vins_min AND num_vins_max 
+                  AND activo != 0 
                 LIMIT 1";
         $stmt = $db->prepare($sql);
-        $stmt->execute([$idTipoTraslado, $idOrigen, $idDestino, $idSegmento, $volumenVins]);
+        $stmt->execute([$idTipoTraslado, $idSegmento, $volumenVins]);
         $tarifa = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($tarifa) return $tarifa;
+
+        // 3. Fallback en código por si la tabla está vacía
+        $defaultSegmentos = [
+            1 => 27.0000, // Ligeros
+            2 => 30.0000, // Medianos
+            3 => 40.0000, // Pesados
+            4 => 50.0000, // Autobuses
+            5 => 60.0000  // Lowboy
+        ];
+        $costoPorKm = $defaultSegmentos[$idSegmento] ?? 20.0000;
         
-        return $tarifa ?: null;
-    }
-
-    /**
-     * Helper: Obtiene la tarifa fallback cuando una ruta no tiene tarifa estricta definida.
-     * Consulta costo base por km del proveedor o del segmento y el factor volumétrico.
-     */
-    private function getTarifaFallbackBase(PDO $db, int $idTipoTraslado, int $idProveedor, int $idSegmento, int $volumenVins): array {
-        $costoPorKm = 0.0;
+        // Factor progresivo por defecto si es madrina/plataforma
         $factor = 1.0;
-
-        // 1. Intentar costo_por_km para este proveedor y segmento en cualquier ruta
-        if ($idProveedor > 0) {
-            $stmtProv = $db->prepare("SELECT costo_por_km, factor FROM lgs_costos_rutas 
-                                      WHERE id_proveedor = ? AND id_tipo_traslado = ? AND id_segmento = ? AND costo_por_km > 0 AND activo != 0 
-                                      ORDER BY id DESC LIMIT 1");
-            $stmtProv->execute([$idProveedor, $idTipoTraslado, $idSegmento]);
-            $rowProv = $stmtProv->fetch(PDO::FETCH_ASSOC);
-            if ($rowProv && floatval($rowProv['costo_por_km']) > 0) {
-                $costoPorKm = (float)$rowProv['costo_por_km'];
-            }
-        }
-
-        // 2. Si no hay tarifa del proveedor, buscar costo base general del segmento en lgs_costos_rutas
-        if ($costoPorKm <= 0) {
-            $stmtBase = $db->prepare("SELECT costo_por_km FROM lgs_costos_rutas 
-                                      WHERE id_tipo_traslado = ? AND id_segmento = ? AND costo_por_km > 0 AND activo != 0 
-                                      ORDER BY id DESC LIMIT 1");
-            $stmtBase->execute([$idTipoTraslado, $idSegmento]);
-            $rowBase = $stmtBase->fetch(PDO::FETCH_ASSOC);
-            if ($rowBase && floatval($rowBase['costo_por_km']) > 0) {
-                $costoPorKm = (float)$rowBase['costo_por_km'];
-            }
-        }
-
-        // 3. Si aún no hay, usar tarifas base oficiales por segmento
-        if ($costoPorKm <= 0) {
-            $defaultSegmentos = [
-                1 => 18.0000, // Ligeros
-                2 => 20.0000, // Medianos
-                3 => 25.0000, // Pesados
-                4 => 28.0000, // Autobuses
-                5 => 80.0000  // Lowboy
-            ];
-            $costoPorKm = $defaultSegmentos[$idSegmento] ?? 20.0000;
-        }
-
-        // 4. Factor volumétrico según volumenTotal (1 al 15)
-        if ($idTipoTraslado === 1 && $volumenVins > 1) {
-            $stmtFactor = $db->prepare("SELECT factor FROM lgs_costos_rutas 
-                                        WHERE id_tipo_traslado = 1 
-                                          AND ? BETWEEN num_vins_min AND num_vins_max 
-                                          AND factor > 0 AND activo != 0 
-                                        ORDER BY id DESC LIMIT 1");
-            $stmtFactor->execute([$volumenVins]);
-            $rowFactor = $stmtFactor->fetch(PDO::FETCH_ASSOC);
-            if ($rowFactor && floatval($rowFactor['factor']) > 0) {
-                $factor = (float)$rowFactor['factor'];
-            }
+        if ($idTipoTraslado === 1) { // Madrina
+            $sacbePrecios = [1=>17, 2=>17, 3=>17, 4=>17, 5=>17, 6=>17, 7=>15, 8=>15, 9=>13, 10=>13];
+            $precioBaseMadrina = $sacbePrecios[$volumenVins] ?? 13;
+            $factor = round($precioBaseMadrina / $costoPorKm, 4);
+        } elseif ($idTipoTraslado === 3) { // Plataforma
+            // Plataformas cobran un equivalente a mover un Lowboy (~$80/km total)
+            // Factor = (80 / 18) / N = 4.4444 / N
+            $factor = max(0.20, 4.4444 / $volumenVins);
         }
 
         return [
             'id' => null,
-            'km' => 0.00,
             'costo_por_km' => $costoPorKm,
             'precio_plano' => 0.00,
-            'factor' => $factor,
-            'es_fallback' => true
+            'factor' => $factor
         ];
     }
 

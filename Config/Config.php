@@ -13,7 +13,6 @@ date_default_timezone_set('America/Mexico_City');
 // const DB_CHARSET = "utf8";
 
 
-
 const DB_HOST = "localhost";
 const DB_NAME = "u546825723_dbmrp";
 const DB_USER = "u546825723_mrpuser";
@@ -119,7 +118,6 @@ const ING_TRANSMISIONES = 79;
 const ING_CERTIFICACIONES = 80;
 const ING_ESPECIFICACIONES = 81; 
 const ING_CONFIGURACIONES = 82; 
-
 //Submodulos Capacidad
 
 const MCESTACIONESTRABAJO = 27;
