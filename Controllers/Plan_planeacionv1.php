@@ -963,7 +963,7 @@ class Plan_planeacionv1 extends Controllers
         'supervisor' => ['status' => true, 'msg' => 'OK', 'to_count' => 1],
       ];
 
-      $cc = 'carlos.cruz@ldrsolutions.com.mx';
+      $cc = 'carlos.cruz@ldrsolutions.com.mx,alejandro.hernandez@ldrsolutions.com.mx';
 
       // ---------------------------------------------------------
       // SUPERVISOR
