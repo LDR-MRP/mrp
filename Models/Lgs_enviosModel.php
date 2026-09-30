@@ -232,13 +232,15 @@ class Lgs_enviosModel extends Mysql
             if (empty($tiposTraslado)) {
                 $tiposTraslado = [
                     ['id' => 1, 'nombre' => 'Madrina'],
-                    ['id' => 2, 'nombre' => 'Chofer (Rodando)']
+                    ['id' => 2, 'nombre' => 'Chofer (Rodando)'],
+                    ['id' => 3, 'nombre' => 'Plataforma'],
                 ];
             }
         } catch (Throwable $e) {
             $tiposTraslado = [
                 ['id' => 1, 'nombre' => 'Madrina'],
-                ['id' => 2, 'nombre' => 'Chofer (Rodando)']
+                ['id' => 2, 'nombre' => 'Chofer (Rodando)'],
+                ['id' => 3, 'nombre' => 'Plataforma'],
             ];
         }
 
@@ -796,6 +798,10 @@ class Lgs_enviosModel extends Mysql
             } catch (Throwable $e) {}
             try {
                 $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `is_lowboy` TINYINT(1) NOT NULL DEFAULT 0 AFTER `id_destino`");
+            } catch (Throwable $e) {}
+            // Asegurar que existan los 3 tipos de traslado
+            try {
+                $db->exec("INSERT IGNORE INTO `lgs_cat_tipo_traslado` (id_tipo_traslado, nombre, activo) VALUES (1,'Madrina',1),(2,'Chofer (Rodando)',1),(3,'Plataforma',1)");
             } catch (Throwable $e) {}
             try {
                 $db->exec("CREATE TABLE IF NOT EXISTS `lgs_envios_tramos_costos` (
