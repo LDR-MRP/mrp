@@ -795,6 +795,9 @@ class Lgs_enviosModel extends Mysql
                 $db->exec("ALTER TABLE `lgs_envios_nodos` ADD COLUMN `fecha_estimada` DATETIME NULL AFTER `observaciones`");
             } catch (Throwable $e) {}
             try {
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `is_lowboy` TINYINT(1) NOT NULL DEFAULT 0 AFTER `id_destino`");
+            } catch (Throwable $e) {}
+            try {
                 $db->exec("CREATE TABLE IF NOT EXISTS `lgs_envios_tramos_costos` (
                     `id_tramo_costo` BIGINT AUTO_INCREMENT PRIMARY KEY,
                     `id_envio` BIGINT NOT NULL,
