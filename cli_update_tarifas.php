@@ -5,6 +5,11 @@ try {
     $db = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET, DB_USER, DB_PASSWORD);
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+    // Auto-migrar columna si no existe
+    try {
+        $db->exec("ALTER TABLE `lgs_tarifas_proveedores` ADD COLUMN `es_personalizada` TINYINT(1) NOT NULL DEFAULT 0");
+    } catch (Throwable $e) {}
+
     $db->beginTransaction();
 
     // Limpiar tarifas anteriores
