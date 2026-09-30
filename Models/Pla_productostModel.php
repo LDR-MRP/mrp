@@ -214,7 +214,7 @@ class Pla_productostModel extends Mysql
   }
 
 
-  public function selectPlanTodas()
+  public function selectPlanTodasOLD()
   {
     $rolId = 0;
     $userIdSes = 0;
@@ -270,7 +270,7 @@ class Pla_productostModel extends Mysql
   }
 
 
-  public function selectPlanPendientes()
+  public function selectPlanPendientesOLD()
   {
     $rolId = 0;
     $userIdSes = 0;
@@ -330,7 +330,7 @@ class Pla_productostModel extends Mysql
 
 
 
-  public function selectPlanFinalizadas()
+  public function selectPlanFinalizadasOLD()
   {
     $rolId = 0;
     $userIdSes = 0;
@@ -388,7 +388,7 @@ class Pla_productostModel extends Mysql
   }
 
 
-  public function selectPlanEnProceso()
+  public function selectPlanEnProcesoOLD()
   {
     $rolId = 0;
     $userIdSes = 0;
@@ -444,6 +444,75 @@ class Pla_productostModel extends Mysql
 
     return $this->select_all($sql);
   }
+
+
+
+  public function selectPlanTodas()
+{
+    $sql = "SELECT
+                pla.*,
+                pla.estado AS estado_planeacion,
+                pro.cve_producto,
+                pro.descripcion AS descripcion_producto
+            FROM mrp_planeacion AS pla
+            INNER JOIN mrp_productos AS pro
+                ON pla.productoid = pro.idproducto
+            WHERE pla.estado != 0
+            ORDER BY pla.idplaneacion DESC";
+
+    return $this->select_all($sql);
+}
+
+public function selectPlanPendientes()
+{
+    $sql = "SELECT
+                pla.*,
+                pla.estado AS estado_planeacion,
+                pro.cve_producto,
+                pro.descripcion AS descripcion_producto
+            FROM mrp_planeacion AS pla
+            INNER JOIN mrp_productos AS pro
+                ON pla.productoid = pro.idproducto
+            WHERE pla.fase = 2
+                AND pla.estado != 0
+            ORDER BY pla.idplaneacion DESC";
+
+    return $this->select_all($sql);
+}
+
+public function selectPlanFinalizadas()
+{
+    $sql = "SELECT
+                pla.*,
+                pla.estado AS estado_planeacion,
+                pro.cve_producto,
+                pro.descripcion AS descripcion_producto
+            FROM mrp_planeacion AS pla
+            INNER JOIN mrp_productos AS pro
+                ON pla.productoid = pro.idproducto
+            WHERE pla.fase = 5
+                AND pla.estado != 0
+            ORDER BY pla.idplaneacion DESC";
+
+    return $this->select_all($sql);
+}
+
+public function selectPlanEnProceso()
+{
+    $sql = "SELECT
+                pla.*,
+                pla.estado AS estado_planeacion,
+                pro.cve_producto,
+                pro.descripcion AS descripcion_producto
+            FROM mrp_planeacion AS pla
+            INNER JOIN mrp_productos AS pro
+                ON pla.productoid = pro.idproducto
+            WHERE pla.fase = 3
+                AND pla.estado != 0
+            ORDER BY pla.idplaneacion DESC";
+
+    return $this->select_all($sql);
+}
 
 
 public function selectUnidadTerminadaPdf(string $num_unidad)
