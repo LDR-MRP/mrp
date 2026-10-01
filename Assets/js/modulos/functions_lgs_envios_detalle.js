@@ -1,4 +1,5 @@
 let g_madrinasProveedor = [];
+let g_plataformasProveedor = [];
 let g_choferesProveedor = [];
 let g_envioData = null;
 let g_paradasEnvio = [];
@@ -48,6 +49,7 @@ function cargarDatosDetalle() {
                 if (objData.status) {
                     g_envioData = objData.data.envio || {};
                     g_madrinasProveedor = objData.data.madrinas || [];
+                    g_plataformasProveedor = objData.data.plataformas || [];
                     g_choferesProveedor = objData.data.choferes || [];
                     g_paradasEnvio = objData.data.paradas || [];
                     g_nodosEnvio = objData.data.nodos || [];
@@ -102,6 +104,8 @@ function cargarDatosDetalle() {
                     if (btnAdd) {
                         if (idTipoTraslado === 1) {
                             btnAdd.innerHTML = '<i class="ri-truck-line me-1"></i> Agregar Madrina';
+                        } else if (idTipoTraslado === 3) {
+                            btnAdd.innerHTML = '<i class="ri-truck-line me-1"></i> Agregar Plataforma';
                         } else {
                             btnAdd.innerHTML = '<i class="ri-steering-2-line me-1"></i> Seleccionar Chofer (Rodando)';
                         }
@@ -147,8 +151,14 @@ function renderPoolVins(vins) {
         const mod = v.modelo || 'Unidad';
         const orig = v.origen || 'Origen';
         const dest = v.destino || 'Destino';
+        
+        let coincide = (v.coincide_destino !== false);
+        let liClass = coincide ? "cursor-move shadow-sm bg-white" : "disabled-vin bg-light opacity-50";
+        let dragger = coincide ? '<i class="ri-draggable fs-18 text-muted"></i>' : '<i class="ri-close-circle-line fs-18 text-danger"></i>';
+        let badgeWarn = coincide ? '' : '<span class="badge bg-warning text-dark ms-2" title="El destino de este VIN no está en la ruta del envío">Destino Diferente</span>';
+
         html += `
-        <li class="list-group-item cursor-move shadow-sm mb-2 rounded border-start border-3 border-primary bg-white" 
+        <li class="list-group-item mb-2 rounded border-start border-3 border-primary ${liClass}" 
             data-id-unidad="${v.id_unidad}"
             data-vin="${v.vin}"
             data-num-serie="${v.num_serie || ''}"
@@ -157,12 +167,12 @@ function renderPoolVins(vins) {
             data-destino="${dest}">
             <div class="d-flex align-items-center">
                 <div class="flex-shrink-0 me-2">
-                    <i class="ri-draggable fs-18 text-muted"></i>
+                    ${dragger}
                 </div>
                 <div class="flex-grow-1">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <h6 class="mb-0 fs-13 text-primary fw-bold">${v.vin}</h6>
-                        <span class="badge bg-soft-info text-info fs-11">${mod}</span>
+                        <div><span class="badge bg-soft-info text-info fs-11">${mod}</span>${badgeWarn}</div>
                     </div>
                     <p class="text-dark mb-0 fs-11 fw-semibold">
                         <i class="ri-map-pin-line text-danger me-1"></i>${orig} 
@@ -180,15 +190,20 @@ function renderPoolVins(vins) {
 function renderAcomodoExistente(existentes) {
     if (!Array.isArray(existentes) || existentes.length === 0) return;
 
-    // Agrupar por Madrina o Chofer
+    // Agrupar por Madrina, Plataforma o Chofer
     const grupos = {};
     existentes.forEach(item => {
-        let key = item.id_madrina ? 'madrina_' + item.id_madrina : 'chofer_' + item.id_chofer;
+        let key = item.id_madrina ? 'madrina_' + item.id_madrina : (item.id_plataforma ? 'plataforma_' + item.id_plataforma : 'chofer_' + item.id_chofer);
         if (!grupos[key]) {
+            let nombre = 'Chofer: ' + (item.chofer_nombre || 'Rodando');
+            if (item.id_madrina) nombre = 'Madrina: ' + item.madrina_nombre;
+            if (item.id_plataforma) nombre = 'Plataforma: ' + item.plataforma_nombre;
+            
             grupos[key] = {
                 id_madrina: item.id_madrina,
+                id_plataforma: item.id_plataforma,
                 id_chofer: item.id_chofer,
-                nombre: item.madrina_nombre ? 'Madrina: ' + item.madrina_nombre : 'Chofer: ' + (item.chofer_nombre || 'Rodando'),
+                nombre: nombre,
                 vins: []
             };
         }
@@ -200,13 +215,24 @@ function renderAcomodoExistente(existentes) {
             let m = g_madrinasProveedor.find(x => x.id_madrina == grupo.id_madrina);
             inyectarContenedorVehiculo({
                 id_madrina: grupo.id_madrina,
+                id_plataforma: null,
                 id_chofer: null,
                 titulo: grupo.nombre + (m && m.placas ? ' (' + m.placas + ')' : ''),
                 capacidad: m ? m.capacidad_vehiculos : 99
             }, grupo.vins);
+        } else if (grupo.id_plataforma) {
+            let p = g_plataformasProveedor.find(x => x.id_plataforma == grupo.id_plataforma);
+            inyectarContenedorVehiculo({
+                id_madrina: null,
+                id_plataforma: grupo.id_plataforma,
+                id_chofer: null,
+                titulo: grupo.nombre + (p && p.placas ? ' (' + p.placas + ')' : ''),
+                capacidad: p ? p.capacidad_vehiculos : 99
+            }, grupo.vins);
         } else if (grupo.id_chofer) {
             inyectarContenedorVehiculo({
                 id_madrina: null,
+                id_plataforma: null,
                 id_chofer: grupo.id_chofer,
                 titulo: grupo.nombre,
                 capacidad: 1
@@ -229,6 +255,8 @@ function initSortables() {
             group: 'shared',
             animation: 150,
             disabled: (typeof ENVIO_READONLY !== 'undefined' && ENVIO_READONLY),
+            filter: '.disabled-vin',
+            preventOnFilter: true,
             ghostClass: 'sortable-ghost',
             onAdd: function (evt) {
                 actualizarConteoYSecuencia(evt.from);
@@ -777,36 +805,87 @@ function agregarVehiculo() {
         }
     }
 
-    // Filtrar pestañas según Tipo de Traslado (1 = Madrina, 2 = Chofer Rodando)
+    // Llenar tabla de Plataformas en el Modal
+    const tbodyP = document.getElementById('tbodyModalPlataformas');
+    if (tbodyP) {
+        if (g_plataformasProveedor.length === 0) {
+            tbodyP.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No hay plataformas registradas para este trasladista.</td></tr>`;
+        } else {
+            let htmlP = '';
+            g_plataformasProveedor.forEach(p => {
+                htmlP += `
+                <tr>
+                    <td><strong class="text-primary">${p.numero_economico || 'S/N'}</strong></td>
+                    <td>${p.placas || '-'}</td>
+                    <td><span class="badge bg-soft-info text-info fs-12">${p.capacidad_vehiculos || 0} Vehículos</span></td>
+                    <td>${p.chofer_asignado || '<span class="text-muted">Sin Chofer Asignado</span>'}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-success px-3" onclick="seleccionarPlataforma(${p.id_plataforma})">
+                            <i class="ri-check-line me-1"></i> Asignar
+                        </button>
+                    </td>
+                </tr>`;
+            });
+            tbodyP.innerHTML = htmlP;
+        }
+    }
+
+    // Filtrar pestañas según Tipo de Traslado (1 = Madrina, 2 = Chofer Rodando, 3 = Plataforma)
     const idTipoTraslado = parseInt(g_envioData ? g_envioData.id_tipo_traslado : 1);
     const tabMadrinasNav = document.getElementById('nav-tab-madrinas');
     const tabChoferesNav = document.getElementById('nav-tab-choferes');
+    const tabPlataformasNav = document.getElementById('nav-tab-plataformas');
     const linkMadrinas  = document.getElementById('link-tab-madrinas');
     const linkChoferes  = document.getElementById('link-tab-choferes');
+    const linkPlataformas  = document.getElementById('link-tab-plataformas');
     const paneMadrinas  = document.getElementById('tab-madrinas');
     const paneChoferes  = document.getElementById('tab-choferes');
+    const panePlataformas  = document.getElementById('tab-plataformas');
     const modalTitle    = document.getElementById('modalVehiculoLabel');
 
     if (idTipoTraslado === 1) {
         // Es Traslado en Madrina: Mostrar solo pestaña de Madrinas
         if (tabMadrinasNav) tabMadrinasNav.style.display = 'block';
         if (tabChoferesNav) tabChoferesNav.style.display = 'none';
+        if (tabPlataformasNav) tabPlataformasNav.style.display = 'none';
 
         if (linkMadrinas) linkMadrinas.classList.add('active');
         if (linkChoferes) linkChoferes.classList.remove('active');
+        if (linkPlataformas) linkPlataformas.classList.remove('active');
+        
         if (paneMadrinas) paneMadrinas.classList.add('show', 'active');
         if (paneChoferes) paneChoferes.classList.remove('show', 'active');
+        if (panePlataformas) panePlataformas.classList.remove('show', 'active');
 
         if (modalTitle) modalTitle.innerHTML = '<i class="ri-truck-line me-2"></i> Seleccionar Madrina del Trasladista';
+    } else if (idTipoTraslado === 3) {
+        // Es Traslado en Plataforma: Mostrar solo pestaña de Plataformas
+        if (tabMadrinasNav) tabMadrinasNav.style.display = 'none';
+        if (tabChoferesNav) tabChoferesNav.style.display = 'none';
+        if (tabPlataformasNav) tabPlataformasNav.style.display = 'block';
+
+        if (linkPlataformas) linkPlataformas.classList.add('active');
+        if (linkMadrinas) linkMadrinas.classList.remove('active');
+        if (linkChoferes) linkChoferes.classList.remove('active');
+        
+        if (panePlataformas) panePlataformas.classList.add('show', 'active');
+        if (paneMadrinas) paneMadrinas.classList.remove('show', 'active');
+        if (paneChoferes) paneChoferes.classList.remove('show', 'active');
+
+        if (modalTitle) modalTitle.innerHTML = '<i class="ri-truck-line me-2"></i> Seleccionar Plataforma del Trasladista';
     } else {
         // Es Traslado por Chofer (Rodando): Mostrar solo pestaña de Choferes
         if (tabMadrinasNav) tabMadrinasNav.style.display = 'none';
         if (tabChoferesNav) tabChoferesNav.style.display = 'block';
+        if (tabPlataformasNav) tabPlataformasNav.style.display = 'none';
 
         if (linkChoferes) linkChoferes.classList.add('active');
         if (linkMadrinas) linkMadrinas.classList.remove('active');
+        if (linkPlataformas) linkPlataformas.classList.remove('active');
+        
         if (paneChoferes) paneChoferes.classList.add('show', 'active');
         if (paneMadrinas) paneMadrinas.classList.remove('show', 'active');
+        if (panePlataformas) panePlataformas.classList.remove('show', 'active');
 
         if (modalTitle) modalTitle.innerHTML = '<i class="ri-steering-2-line me-2"></i> Seleccionar Conductor (Rodando) del Trasladista';
     }
@@ -831,6 +910,7 @@ function seleccionarMadrina(idMadrina) {
 
     inyectarContenedorVehiculo({
         id_madrina: idMadrina,
+        id_plataforma: null,
         id_chofer: null,
         titulo: `Madrina ${madrina.numero_economico} (Placas: ${madrina.placas || 'S/P'}) - Chofer: ${madrina.chofer_asignado || 'Sin asignar'}`,
         capacidad: madrina.capacidad_vehiculos || 99
@@ -838,6 +918,27 @@ function seleccionarMadrina(idMadrina) {
 
     if (modalVehiculoBs) modalVehiculoBs.hide();
 }
+
+function seleccionarPlataforma(idPlataforma) {
+    const plataforma = g_plataformasProveedor.find(p => p.id_plataforma == idPlataforma);
+    if (!plataforma) return;
+
+    if (document.querySelector(`.vehiculo-list[data-id-plataforma="${idPlataforma}"]`)) {
+        Swal.fire("Atención", "Esta Plataforma ya ha sido agregada a la lista.", "warning");
+        return;
+    }
+
+    inyectarContenedorVehiculo({
+        id_madrina: null,
+        id_plataforma: idPlataforma,
+        id_chofer: null,
+        titulo: `Plataforma ${plataforma.numero_economico} (Placas: ${plataforma.placas || 'S/P'}) - Chofer: ${plataforma.chofer_asignado || 'Sin asignar'}`,
+        capacidad: plataforma.capacidad_vehiculos || 99
+    });
+
+    if (modalVehiculoBs) modalVehiculoBs.hide();
+}
+
 
 function seleccionarChofer(idChofer) {
     const chofer = g_choferesProveedor.find(c => c.id_chofer == idChofer);
@@ -912,13 +1013,18 @@ function inyectarContenedorVehiculo(vehiculo, vinsIniciales = []) {
         </li>`;
     });
 
-    let attrMadrina = vehiculo.id_madrina ? `data-id-madrina="${vehiculo.id_madrina}"` : '';
-    let attrChofer  = vehiculo.id_chofer ? `data-id-chofer="${vehiculo.id_chofer}"` : '';
+    let attrMadrina    = vehiculo.id_madrina ? `data-id-madrina="${vehiculo.id_madrina}"` : '';
+    let attrPlataforma = vehiculo.id_plataforma ? `data-id-plataforma="${vehiculo.id_plataforma}"` : '';
+    let attrChofer     = vehiculo.id_chofer ? `data-id-chofer="${vehiculo.id_chofer}"` : '';
+
+    let iconoTitulo = 'ri-steering-2-line text-warning';
+    if (vehiculo.id_madrina) iconoTitulo = 'ri-truck-line text-primary';
+    if (vehiculo.id_plataforma) iconoTitulo = 'ri-truck-line text-info';
 
     divCard.innerHTML = `
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="fw-bold text-dark mb-0 fs-14">
-                <i class="${vehiculo.id_madrina ? 'ri-truck-line text-primary' : 'ri-steering-2-line text-warning'} me-2"></i>
+                <i class="${iconoTitulo} me-2"></i>
                 ${vehiculo.titulo}
             </h6>
             <div class="d-flex align-items-center">
@@ -928,7 +1034,7 @@ function inyectarContenedorVehiculo(vehiculo, vinsIniciales = []) {
                 </button>
             </div>
         </div>
-        <ul class="list-group sortable-list vehiculo-list" ${attrMadrina} ${attrChofer} data-capacidad="${vehiculo.capacidad}" style="min-height: 100px; border: 2px dashed #bbb; border-radius: 8px;">
+        <ul class="list-group sortable-list vehiculo-list" ${attrMadrina} ${attrPlataforma} ${attrChofer} data-capacidad="${vehiculo.capacidad}" style="min-height: 100px; border: 2px dashed #bbb; border-radius: 8px;">
             ${htmlVins}
         </ul>
     `;
@@ -970,8 +1076,9 @@ function guardarAcomodoAuto() {
     const vehiculos = document.querySelectorAll('.vehiculo-list');
 
     vehiculos.forEach(v => {
-        const idMadrina = v.getAttribute('data-id-madrina') || null;
-        const idChofer  = v.getAttribute('data-id-chofer') || null;
+        const idMadrina    = v.getAttribute('data-id-madrina') || null;
+        const idPlataforma = v.getAttribute('data-id-plataforma') || null;
+        const idChofer     = v.getAttribute('data-id-chofer') || null;
         const items     = v.querySelectorAll('li');
 
         let posicion = 1;
@@ -1004,6 +1111,7 @@ function guardarAcomodoAuto() {
                         id_nodo_subida: idSubida,
                         id_nodo_bajada: idBajada,
                         id_madrina: idMadrina,
+                        id_plataforma: idPlataforma,
                         id_chofer: idChofer,
                         posicion_acomodo: posicion
                     });

@@ -48,6 +48,7 @@ class Lgs_enviosModel extends Mysql
             'id_nodo_bajada',
             'destino_nombre_libre',
             'id_madrina',
+            'id_plataforma',
             'id_chofer',
             'posicion_acomodo',
             'costo_unidad',
@@ -423,6 +424,8 @@ class Lgs_enviosModel extends Mysql
                     e.id_envio,
                     e.folio,
                     e.id_tipo_traslado,
+                    e.tipo_servicio,
+                    e.is_lowboy,
                     e.id_motivo,
                     e.id_proveedor,
                     pr.razon_social AS trasladista,
@@ -488,6 +491,29 @@ class Lgs_enviosModel extends Mysql
     }
 
     /**
+     * Obtiene las plataformas activas pertenecientes al proveedor del envío
+     */
+    public function getPlataformasPorProveedor(int $idProveedor): array
+    {
+        $sql = "SELECT 
+                    m.id_plataforma,
+                    m.numero_economico,
+                    m.placas,
+                    m.marca,
+                    m.modelo,
+                    m.capacidad_vehiculos,
+                    (SELECT CONCAT(c.nombre, ' ', c.apellidos) 
+                     FROM prv_det_plataforma_chofer_historial h
+                     INNER JOIN prv_det_choferes c ON c.id_chofer = h.id_chofer
+                     WHERE h.id_plataforma = m.id_plataforma AND h.activo = 1 LIMIT 1) AS chofer_asignado
+                FROM prv_det_plataformas m
+                WHERE (m.id_proveedor = ? OR ? = 0) AND m.deleted_at IS NULL
+                ORDER BY m.numero_economico ASC";
+        $res = $this->select_all($sql, [$idProveedor, $idProveedor]);
+        return $res ?: [];
+    }
+
+    /**
      * Obtiene VINs disponibles en el origen que no estén asignados a otros envíos activos
      */
     public function getVinsDisponiblesOrigen(int $idOrigen = 0, int $idEnvioActual = 0): array
@@ -539,20 +565,23 @@ class Lgs_enviosModel extends Mysql
 
             $res = $this->select_all($sql) ?: [];
 
-            // 2. Si no hay en lgs_unidades, buscar en lgs_unidades_envios
-            if (empty($res)) {
-                $sql2 = "SELECT 
-                            u.id_unidad,
-                            u.vin,
-                            u.num_serie,
-                            u.modelo,
-                            COALESCE(u.origen, 'Planta Lagos de Moreno') AS origen,
-                            COALESCE(NULLIF(TRIM(u.destino), ''), 'Sin Asignar') AS destino
-                        FROM lgs_unidades_envios u
-                        WHERE u.id_unidad NOT IN ({$sqlExclude})
-                          AND u.id_unidad NOT IN ({$sqlExcludeThis})
-                        ORDER BY u.id_unidad ASC";
-                $res = $this->select_all($sql2) ?: [];
+            // 2. Buscar TAMBIÉN en lgs_unidades_envios (ya que es tabla auxiliar y tiene VINs sin alta en WMS/lgs_unidades)
+            $sql2 = "SELECT 
+                        u.id_unidad,
+                        u.vin,
+                        u.num_serie,
+                        u.modelo,
+                        COALESCE(u.origen, 'Planta Lagos de Moreno') AS origen,
+                        COALESCE(NULLIF(TRIM(u.destino), ''), 'Sin Asignar') AS destino
+                    FROM lgs_unidades_envios u
+                    WHERE u.id_unidad NOT IN ({$sqlExclude})
+                      AND u.id_unidad NOT IN ({$sqlExcludeThis})
+                      AND u.id_unidad NOT IN (SELECT id_unidad FROM lgs_unidades)
+                    ORDER BY u.id_unidad ASC";
+            $resAux = $this->select_all($sql2) ?: [];
+            
+            if (!empty($resAux)) {
+                $res = array_merge($res, $resAux);
             }
 
             return $res;
@@ -582,21 +611,24 @@ class Lgs_enviosModel extends Mysql
                             'Destino'
                         ) AS destino,
                         v.id_madrina,
+                        v.id_plataforma,
                         v.id_chofer,
                         v.id_parada,
                         v.id_nodo_subida,
                         v.id_nodo_bajada,
                         v.posicion_acomodo,
                         m.numero_economico AS madrina_nombre,
+                        p.numero_economico AS plataforma_nombre,
                         CONCAT(c.nombre, ' ', c.apellidos) AS chofer_nombre
                     FROM lgs_envios_vins v
                     LEFT JOIN lgs_unidades_envios u ON v.id_unidad = u.id_unidad
                     LEFT JOIN lgs_unidades lu ON lu.id_unidad = v.id_unidad
                     LEFT JOIN mrp_unidades_terminadas ut ON v.id_unidad = ut.idunidad
                     LEFT JOIN prv_det_madrinas m ON v.id_madrina = m.id_madrina
+                    LEFT JOIN prv_det_plataformas p ON v.id_plataforma = p.id_plataforma
                     LEFT JOIN prv_det_choferes c ON v.id_chofer = c.id_chofer
                     WHERE v.id_envio = ?
-                    ORDER BY v.id_madrina ASC, v.id_chofer ASC, v.posicion_acomodo ASC";
+                    ORDER BY v.id_madrina ASC, v.id_plataforma ASC, v.id_chofer ASC, v.posicion_acomodo ASC";
             $res = $this->select_all($sql, [$idEnvio]);
             return $res ?: [];
         } catch (Throwable $e) {

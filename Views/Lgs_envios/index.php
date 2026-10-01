@@ -244,6 +244,14 @@
                                                 </label>
                                             </div>
                                         </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Tipo de Servicio</label>
+                                            <select class="form-select form-select-lg bg-light border-0" id="tipo_servicio" name="tipo_servicio">
+                                                <option value="FORANEO">Foráneo (Costo por KM)</option>
+                                                <option value="SLC">Local Corto SLC (0-40 KM)</option>
+                                                <option value="SLL">Local Largo SLL (41-80 KM)</option>
+                                            </select>
+                                        </div>
 
                                         <div class="col-md-4">
                                             <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Motivo <span class="text-danger">*</span></label>

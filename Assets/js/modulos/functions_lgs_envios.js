@@ -1279,6 +1279,7 @@ function fntEditRuta(idEnvio) {
                     actualizarEstatusLateralEnvio(envio.id_estado);
 
                     if (document.querySelector('#id_tipo_traslado')) document.querySelector('#id_tipo_traslado').value = envio.id_tipo_traslado || '';
+                    if (document.querySelector('#tipo_servicio')) document.querySelector('#tipo_servicio').value = envio.tipo_servicio || 'FORANEO';
                     handleTipoTrasladoEnvio();
                     if (document.querySelector('#id_motivo')) document.querySelector('#id_motivo').value = envio.id_motivo || '';
                     if (document.querySelector('#id_proveedor')) document.querySelector('#id_proveedor').value = envio.id_proveedor || '';

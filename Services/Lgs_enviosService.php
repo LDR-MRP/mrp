@@ -75,7 +75,7 @@ class Lgs_enviosService {
         }
 
         // 1. Cabecera del envío
-        $stmtEnvio = $db->prepare("SELECT id_tipo_traslado, id_proveedor, id_origen, id_destino, km_total, id_estado, costo_total, is_lowboy FROM lgs_envios WHERE id_envio = :id");
+        $stmtEnvio = $db->prepare("SELECT id_tipo_traslado, id_proveedor, id_origen, id_destino, km_total, id_estado, costo_total, is_lowboy, tipo_servicio FROM lgs_envios WHERE id_envio = :id");
         $stmtEnvio->execute(['id' => $idEnvio]);
         $envio = $stmtEnvio->fetch(PDO::FETCH_ASSOC);
 
@@ -259,9 +259,23 @@ class Lgs_enviosService {
                     $factor = 1.0;
                 }
 
+                $tipoServicio = $envio['tipo_servicio'] ?? 'FORANEO';
+                if ($tipoServicio === 'SLC') {
+                    $costoPlano = (float)($tarifa['precio_slc'] ?? 0);
+                    $distanciaUsar = 0; // Se cobra plano
+                } elseif ($tipoServicio === 'SLL') {
+                    $costoPlano = (float)($tarifa['precio_sll'] ?? 0);
+                    $distanciaUsar = 0; // Se cobra plano
+                }
+
                 // El factor representa el multiplicador del costo POR UNIDAD.
                 // Por lo tanto, el costo del tramo es el Costo_Unidad * Volumen
                 $costoTramo = ($distanciaUsar * $costoPorKm * $factor * $volumenTotal) + $costoPlano;
+
+                // Regla de negocio: si los km reales del tramo son 0, el costo es 0 independientemente de si hay tarifa plana
+                if ($kmTramo == 0) {
+                    $costoTramo = 0;
+                }
 
                 // Insertar el costo del tramo
                 $stmtInsertCosto = $db->prepare("
@@ -320,6 +334,14 @@ class Lgs_enviosService {
         $stmtKmTotal->execute([$idEnvio]);
         $rowKmTotal = $stmtKmTotal->fetch(PDO::FETCH_ASSOC);
         $kmTotalCalculado = (float)($rowKmTotal['total_km'] ?? 0);
+
+        $tipoServicio = $envio['tipo_servicio'] ?? 'FORANEO';
+        if ($tipoServicio === 'SLC' && $kmTotalCalculado > 40) {
+            throw new Exception("El envío supera los 40km ({$kmTotalCalculado} km) y no puede ser clasificado como Local Corto (SLC).");
+        }
+        if ($tipoServicio === 'SLL' && ($kmTotalCalculado <= 40 || $kmTotalCalculado > 80)) {
+            throw new Exception("El envío tiene {$kmTotalCalculado} km, lo cual no corresponde al rango de Local Largo SLL (41-80 KM).");
+        }
 
         $stmtUpdate = $db->prepare("UPDATE lgs_envios SET costo_total = :costo, km_total = :km WHERE id_envio = :id");
         $stmtUpdate->execute([
@@ -557,7 +579,7 @@ class Lgs_enviosService {
         
         // 1. Intentar tarifa del proveedor específico
         if ($idProveedor > 0) {
-            $sql = "SELECT id_tarifa as id, costo_por_km, precio_plano, factor 
+            $sql = "SELECT id_tarifa as id, costo_por_km, precio_plano, precio_slc, precio_sll, factor 
                     FROM lgs_tarifas_proveedores 
                     WHERE id_proveedor = ? AND id_tipo_traslado = ? AND id_segmento = ? 
                       AND ? BETWEEN num_vins_min AND num_vins_max 
@@ -570,7 +592,7 @@ class Lgs_enviosService {
         }
 
         // 2. Intentar tarifa base general (id_proveedor = 0)
-        $sql = "SELECT id_tarifa as id, costo_por_km, precio_plano, factor 
+        $sql = "SELECT id_tarifa as id, costo_por_km, precio_plano, precio_slc, precio_sll, factor 
                 FROM lgs_tarifas_proveedores 
                 WHERE id_proveedor = 0 AND id_tipo_traslado = ? AND id_segmento = ? 
                   AND ? BETWEEN num_vins_min AND num_vins_max 

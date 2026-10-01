@@ -225,6 +225,7 @@ class Lgs_envios extends Controllers
 
             $data = [
                 'id_tipo_traslado' => intval($_POST['id_tipo_traslado'] ?? 0),
+                'tipo_servicio'    => $_POST['tipo_servicio'] ?? 'FORANEO',
                 'id_motivo'        => intval($_POST['id_motivo'] ?? 0),
                 'id_proveedor'     => intval($_POST['id_proveedor'] ?? 0),
                 'id_origen'        => $firstLoc > 0 ? $firstLoc : intval($_POST['id_origen'] ?? 0),
@@ -270,10 +271,16 @@ class Lgs_envios extends Controllers
                 // Si estaba Confirmado (8) y lo editan, lo regresamos a Borrador (1) para que deba confirmarse de nuevo
                 $newEstado = ($idEstadoStr === 8) ? 1 : $idEstadoStr;
 
+                // Si se cambió el tipo de traslado, borrar las unidades asignadas previamente
+                if (intval($existingEnvio['id_tipo_traslado']) !== intval($data['id_tipo_traslado'])) {
+                    $model->deleteAcomodoEnvio($db, $idEnvio);
+                }
+
                 // Actualizar cabecera existente
                 $stmtUpd = $db->prepare("UPDATE lgs_envios SET 
                                             id_estado = :id_estado,
                                             id_tipo_traslado = :id_tipo_traslado,
+                                            tipo_servicio = :tipo_servicio,
                                             id_motivo = :id_motivo,
                                             id_proveedor = :id_proveedor,
                                             id_origen = :id_origen,
@@ -281,6 +288,7 @@ class Lgs_envios extends Controllers
                                             destino_nombre_libre = :destino_nombre_libre,
                                             fecha_tentativa_envio = :fecha_tentativa_envio,
                                             fecha_tentativa_llegada = :fecha_tentativa_llegada,
+                                            is_lowboy = :is_lowboy,
                                             observaciones = :observaciones,
                                             updated_by = :updated_by,
                                             updated_at = NOW()
@@ -288,13 +296,15 @@ class Lgs_envios extends Controllers
                 $stmtUpd->execute([
                     'id_estado'        => $newEstado,
                     'id_tipo_traslado' => $data['id_tipo_traslado'],
+                    'tipo_servicio'    => $data['tipo_servicio'],
                     'id_motivo'        => $data['id_motivo'],
                     'id_proveedor'     => $data['id_proveedor'],
                     'id_origen'        => $data['id_origen'],
                     'id_destino'       => $data['id_destino'],
                     'destino_nombre_libre' => $data['destino_nombre_libre'],
-                    'fecha_tentativa_envio' => $data['fecha_tentativa_envio'],
+                    'fecha_tentativa_envio'   => $data['fecha_tentativa_envio'],
                     'fecha_tentativa_llegada' => $data['fecha_tentativa_llegada'],
+                    'is_lowboy'        => $data['is_lowboy'],
                     'observaciones'    => $data['observaciones'],
                     'updated_by'       => $userId,
                     'id_envio'         => $idEnvio
@@ -442,9 +452,10 @@ class Lgs_envios extends Controllers
             $idProveedor = intval($envio['id_proveedor'] ?? 0);
             $idOrigen    = intval($envio['id_origen'] ?? 0);
 
-            $madrinas   = $model->getMadrinasPorProveedor($idProveedor);
-            $choferes   = $model->getChoferesPorProveedor($idProveedor);
-            $vins       = $model->getVinsDisponiblesOrigen($idOrigen, $idEnvio);
+            $madrinas    = $model->getMadrinasPorProveedor($idProveedor);
+            $plataformas = $model->getPlataformasPorProveedor($idProveedor);
+            $choferes    = $model->getChoferesPorProveedor($idProveedor);
+            $vins        = $model->getVinsDisponiblesOrigen($idOrigen, $idEnvio);
             $existentes = $model->getAcomodoExistenteEnvio($idEnvio);
             $paradas    = $model->getParadasEnvio($idEnvio);
             $nodos      = $model->getNodosEnvio($idEnvio);
@@ -473,19 +484,19 @@ class Lgs_envios extends Controllers
                                 break;
                             }
                         }
-                        if ($coincide) {
-                            $vinsFiltrados[] = $vin;
-                        }
+                        $vin['coincide_destino'] = $coincide;
+                        $vinsFiltrados[] = $vin;
                     }
                     $vins = array_values($vinsFiltrados);
                 }
             }
 
             $data = [
-                'envio'      => $envio,
-                'madrinas'   => $madrinas,
-                'choferes'   => $choferes,
-                'vins'       => $vins,
+                'envio'       => $envio,
+                'madrinas'    => $madrinas,
+                'plataformas' => $plataformas,
+                'choferes'    => $choferes,
+                'vins'        => $vins,
                 'existentes' => $existentes,
                 'paradas'    => $paradas,
                 'nodos'      => $nodos,
@@ -546,9 +557,31 @@ class Lgs_envios extends Controllers
 
             // 2. Insertar las nuevas asignaciones con id_nodo_subida e id_nodo_bajada
             $assignedUnitIds = [];
+            $tipoTraslado = intval($existingEnvio['id_tipo_traslado'] ?? 0);
+
             foreach ($asignaciones as $asig) {
                 $uId = intval($asig['id_unidad'] ?? 0);
                 if ($uId > 0) {
+                    $hasMadrina = !empty($asig['id_madrina']);
+                    $hasChofer = !empty($asig['id_chofer']);
+                    $hasPlataforma = !empty($asig['id_plataforma']);
+
+                    if ($tipoTraslado === 1 && ($hasChofer || $hasPlataforma)) {
+                        $db->rollBack();
+                        echo $this->errorResponse("Combinación inválida: El envío es por Madrina, no se permiten choferes rodando ni plataformas.", 400);
+                        return;
+                    }
+                    if ($tipoTraslado === 2 && ($hasMadrina || $hasPlataforma)) {
+                        $db->rollBack();
+                        echo $this->errorResponse("Combinación inválida: El envío es Rodando (Chofer), no se permiten madrinas ni plataformas.", 400);
+                        return;
+                    }
+                    if ($tipoTraslado === 3 && ($hasMadrina || $hasChofer)) {
+                        $db->rollBack();
+                        echo $this->errorResponse("Combinación inválida: El envío es por Plataforma, no se permiten madrinas ni choferes rodando.", 400);
+                        return;
+                    }
+
                     $assignedUnitIds[] = $uId;
                     $model->insertVin($db, [
                         'id_envio'         => $idEnvio,
@@ -557,6 +590,7 @@ class Lgs_envios extends Controllers
                         'id_nodo_subida'   => !empty($asig['id_nodo_subida']) ? intval($asig['id_nodo_subida']) : null,
                         'id_nodo_bajada'   => !empty($asig['id_nodo_bajada']) ? intval($asig['id_nodo_bajada']) : null,
                         'id_madrina'       => !empty($asig['id_madrina']) ? intval($asig['id_madrina']) : null,
+                        'id_plataforma'    => !empty($asig['id_plataforma']) ? intval($asig['id_plataforma']) : null,
                         'id_chofer'        => !empty($asig['id_chofer']) ? intval($asig['id_chofer']) : null,
                         'posicion_acomodo' => !empty($asig['posicion_acomodo']) ? intval($asig['posicion_acomodo']) : null,
                     ]);
