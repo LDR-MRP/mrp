@@ -46,7 +46,7 @@ function cargarDatosDetalle() {
         if (request.readyState == 4 && request.status == 200) {
             try {
                 let objData = JSON.parse(request.responseText);
-                if (objData.status) {
+                if (objData.status === 'success' || objData.status === true) {
                     g_envioData = objData.data.envio || {};
                     g_madrinasProveedor = objData.data.madrinas || [];
                     g_plataformasProveedor = objData.data.plataformas || [];
@@ -126,9 +126,14 @@ function cargarDatosDetalle() {
                     } else if (parseFloat(g_envioData.costo_total || 0) > 0) {
                         guardarAcomodoAuto();
                     }
+                } else {
+                    Swal.fire("Error", objData.message || "No se pudieron cargar los datos del envío.", "error").then(() => {
+                        window.location.href = base_url + '/Lgs_envios';
+                    });
                 }
             } catch (e) {
                 console.error("Error al procesar datos de detalle: ", e);
+                Swal.fire("Error", "Ocurrió un error al cargar la información.", "error");
             }
         }
     }
@@ -1479,7 +1484,7 @@ function regresarABorrador() {
                     if (request.status == 200) {
                         try {
                             let objData = JSON.parse(request.responseText);
-                            if (objData.status) {
+                            if (objData.status === 'success' || objData.status === true) {
                                 Swal.fire("Éxito", objData.msg, "success").then(() => {
                                     window.location.reload();
                                 });
