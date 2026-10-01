@@ -157,7 +157,11 @@ class Lgs_planeacionesModel extends Mysql
                     e.folio,
                     e.costo_total,
                     e.km_total,
-                    o.nombre AS origen,
+                    COALESCE(
+                        (SELECT u0.nombre FROM lgs_envios_nodos n0 LEFT JOIN lgs_cat_ubicaciones u0 ON n0.id_ubicacion = u0.id_ubicacion WHERE n0.id_envio = e.id_envio AND n0.orden = 0 LIMIT 1),
+                        o.nombre,
+                        'Origen'
+                    ) AS origen,
                     pr.razon_social AS trasladista,
                     (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) AS total_vins
                 FROM lgs_envios e
@@ -200,7 +204,11 @@ class Lgs_planeacionesModel extends Mysql
                         e.id_tipo_traslado,
                         tt.nombre AS tipo_traslado,
                         pr.razon_social AS trasladista,
-                        o.nombre AS origen,
+                        COALESCE(
+                            (SELECT u0.nombre FROM lgs_envios_nodos n0 LEFT JOIN lgs_cat_ubicaciones u0 ON n0.id_ubicacion = u0.id_ubicacion WHERE n0.id_envio = e.id_envio AND n0.orden = 0 LIMIT 1),
+                            o.nombre,
+                            'Origen'
+                        ) AS origen,
                         e.id_estado
                       FROM lgs_planeaciones_envios pe
                       INNER JOIN lgs_envios e ON pe.id_envio = e.id_envio
