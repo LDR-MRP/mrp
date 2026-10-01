@@ -79,7 +79,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 "render": function (data, type, row) {
                     let btnActionExtra = '';
                     if (parseInt(row.id_estado) === 1) {
-                        btnActionExtra = `<button class="btn btn-sm btn-soft-success rounded-pill px-3 fw-semibold me-1" onClick="fntEnviarAprobacionPlan(${data})" title="Enviar a Aprobación">
+                        btnActionExtra = `<button class="btn btn-sm btn-soft-primary rounded-pill px-3 fw-semibold me-1" onClick="fntEditPlan(${data})" title="Editar Planeación">
+                                            <i class="ri-pencil-fill me-1"></i> Editar
+                                          </button>
+                                          <button class="btn btn-sm btn-soft-success rounded-pill px-3 fw-semibold me-1" onClick="fntEnviarAprobacionPlan(${data})" title="Enviar a Aprobación">
                                             <i class="ri-send-plane-fill me-1"></i> Enviar
                                           </button>`;
                     } else if (parseInt(row.id_estado) === 3 || parseInt(row.id_estado) === 2) {
@@ -127,6 +130,11 @@ function actualizarMetricasPlaneaciones(data) {
 function openModalPlan() {
     let form = document.querySelector("#formPlan");
     if (form) form.reset();
+    document.querySelector("#id_planeacion").value = '';
+    document.querySelector("#form-plan-title").innerText = 'Agrupar Envíos en Nueva Planeación';
+    document.querySelector("#breadcrumb-form-plan").innerText = 'Nueva Planeación';
+    document.querySelector("#btnTextPlan").innerText = 'Enviar a Revisión';
+
     let container = document.getElementById('containerEnviosDisponibles');
     if (container) {
         container.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm" role="status"></div> Cargando envíos...</div>';
@@ -135,9 +143,9 @@ function openModalPlan() {
     cargarEnviosDisponibles();
 }
 
-function cargarEnviosDisponibles() {
+function cargarEnviosDisponibles(idPlaneacion = 0, enviosAsignados = []) {
     let request = new XMLHttpRequest();
-    let ajaxUrl = base_url + '/Lgs_planeaciones/getEnviosDisponibles';
+    let ajaxUrl = base_url + '/Lgs_planeaciones/getEnviosDisponibles?id_planeacion=' + idPlaneacion;
     
     request.open("GET", ajaxUrl, true);
     request.send();
@@ -148,11 +156,19 @@ function cargarEnviosDisponibles() {
             
             if (objData.status && objData.data.length > 0) {
                 htmlBody = '<div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="bg-light"><tr><th width="40"><input class="form-check-input" type="checkbox" id="checkAllEnvios" onchange="toggleAllEnvios(this);"></th><th>Folio</th><th>Origen</th><th>Trasladista</th><th>VINs</th><th>Costo Est.</th></tr></thead><tbody>';
+                let totalCosto = 0;
+                let totalDistancia = 0;
+                
                 objData.data.forEach(envio => {
+                    let isChecked = enviosAsignados.includes(parseInt(envio.id_envio)) ? 'checked' : '';
+                    if (isChecked) {
+                        totalCosto += parseFloat(envio.costo_total) || 0;
+                        totalDistancia += parseFloat(envio.km_total) || 0;
+                    }
                     htmlBody += `
                         <tr>
                             <td>
-                                <input class="form-check-input chk-envio" type="checkbox" value="${envio.id_envio}" data-costo="${envio.costo_total}" data-distancia="${envio.km_total || 0}" onchange="calcularTotalesPlan();">
+                                <input class="form-check-input chk-envio" type="checkbox" value="${envio.id_envio}" data-costo="${envio.costo_total}" data-distancia="${envio.km_total || 0}" onchange="calcularTotalesPlan();" ${isChecked}>
                             </td>
                             <td class="fw-bold">${envio.folio}</td>
                             <td>${envio.origen}</td>
@@ -164,11 +180,12 @@ function cargarEnviosDisponibles() {
                 });
                 htmlBody += '</tbody></table></div>';
             } else {
-                htmlBody = '<div class="text-center text-muted py-4"><i class="ri-error-warning-line fs-20 me-1"></i>No hay envíos en estado "En Planeación" pendientes de agrupar.</div>';
+                htmlBody = '<div class="text-center text-muted py-4"><i class="ri-error-warning-line fs-20 me-1"></i>No hay envíos disponibles pendientes de agrupar.</div>';
             }
             
             let container = document.getElementById('containerEnviosDisponibles');
             if (container) container.innerHTML = htmlBody;
+            calcularTotalesPlan();
         }
     }
 }
@@ -189,10 +206,10 @@ function calcularTotalesPlan() {
         totalDistancia += parseFloat(chk.getAttribute('data-distancia')) || 0;
     });
     
-    let lblMonto = document.getElementById('lbl-monto-plan-display');
+    let lblMonto = document.getElementById('lblTotalCostoForm');
     if (lblMonto) lblMonto.innerText = '$' + totalCosto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    let lblDistancia = document.getElementById('lbl-distancia-plan-display');
+    let lblDistancia = document.getElementById('lblTotalKmForm');
     if (lblDistancia) lblDistancia.innerText = totalDistancia.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km';
 }
 
@@ -212,7 +229,7 @@ function savePlaneacion() {
     formData.append('envios_ids', idsArr.join(','));
 
     Swal.fire({
-        title: 'Enviando a Aprobación...',
+        title: 'Guardando Planeación...',
         text: 'Por favor espere.',
         allowOutsideClick: false,
         didOpen: () => { Swal.showLoading() }
@@ -224,7 +241,7 @@ function savePlaneacion() {
         if (request.readyState == 4 && request.status == 200) {
             let objData = JSON.parse(request.responseText);
             if (objData.status) {
-                Swal.fire("¡Planeación Creada!", objData.msg || "Planeación enviada a aprobación correctamente", "success");
+                Swal.fire("¡Éxito!", objData.msg, "success");
                 tablePlaneaciones.ajax.reload();
                 fntSwitchView('grid');
             } else {
@@ -232,6 +249,54 @@ function savePlaneacion() {
             }
         }
     }
+}
+
+function fntEditPlan(idPlaneacion) {
+    Swal.fire({
+        title: 'Cargando datos...',
+        text: 'Por favor espere',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading() }
+    });
+
+    let request = new XMLHttpRequest();
+    let ajaxUrl = base_url + '/Lgs_planeaciones/getDetalleCompletoPlan/' + idPlaneacion;
+
+    request.open("GET", ajaxUrl, true);
+    request.send();
+    request.onreadystatechange = function () {
+        if (request.readyState == 4 && request.status == 200) {
+            Swal.close();
+            try {
+                let objData = JSON.parse(request.responseText);
+                if (objData.status && objData.data) {
+                    const plan = objData.data;
+                    
+                    document.querySelector("#id_planeacion").value = plan.id_planeacion;
+                    document.querySelector("#titulo_plan").value = plan.descripcion || '';
+                    
+                    document.querySelector("#form-plan-title").innerText = 'Editar Planeación ' + plan.folio;
+                    document.querySelector("#breadcrumb-form-plan").innerText = 'Editar Planeación';
+                    document.querySelector("#btnTextPlan").innerText = 'Guardar Cambios';
+
+                    fntSwitchView('form');
+                    
+                    let enviosIds = [];
+                    if (plan.envios) {
+                        plan.envios.forEach(e => {
+                            enviosIds.push(parseInt(e.id_envio));
+                        });
+                    }
+                    
+                    cargarEnviosDisponibles(plan.id_planeacion, enviosIds);
+                } else {
+                    Swal.fire("Error", objData.msg || "No se pudo obtener la información", "error");
+                }
+            } catch (e) {
+                Swal.fire("Error", "Error al procesar los datos de la planeación", "error");
+            }
+        }
+    };
 }
 
 function fntViewPlan(idPlaneacion) {

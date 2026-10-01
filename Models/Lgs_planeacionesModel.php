@@ -103,10 +103,55 @@ class Lgs_planeacionesModel extends Mysql
     }
 
     /**
-     * Obtiene los envíos listos para ser planeados (Estado 1 - Creado)
+     * Elimina los envíos vinculados a la planeación y devuelve los IDs de los envíos eliminados.
      */
-    public function getEnviosDisponiblesPlan(): array
+    public function deletePlanEnvios(PDO $db, int $idPlaneacion): array
     {
+        $sqlSelect = "SELECT id_envio FROM lgs_planeaciones_envios WHERE id_planeacion = ?";
+        $stmtSelect = $db->prepare($sqlSelect);
+        $stmtSelect->execute([$idPlaneacion]);
+        $enviosIds = $stmtSelect->fetchAll(PDO::FETCH_COLUMN);
+
+        if (!empty($enviosIds)) {
+            $sqlDelete = "DELETE FROM lgs_planeaciones_envios WHERE id_planeacion = ?";
+            $stmtDelete = $db->prepare($sqlDelete);
+            $stmtDelete->execute([$idPlaneacion]);
+        }
+
+        return $enviosIds;
+    }
+
+    /**
+     * Actualiza la cabecera de la planeación
+     */
+    public function updatePlaneacion(PDO $db, int $idPlaneacion, array $data): void
+    {
+        $campos = $this->prepararCampos(self::SCHEMA['lgs_planeaciones'], $data);
+        
+        $setValues = [];
+        foreach (array_keys($campos) as $key) {
+            $setValues[] = "{$key} = :{$key}";
+        }
+        $setValuesStr = implode(', ', $setValues);
+        
+        $campos['id_planeacion_where'] = $idPlaneacion;
+        
+        $sql = "UPDATE lgs_planeaciones SET {$setValuesStr} WHERE id_planeacion = :id_planeacion_where";
+        $stmt = $db->prepare($sql);
+        $stmt->execute($campos);
+    }
+
+    /**
+     * Obtiene los envíos listos para ser planeados (Estado 8 - En Planeación), 
+     * o los envíos que ya están en la planeación indicada.
+     */
+    public function getEnviosDisponiblesPlan(int $idPlaneacion = 0): array
+    {
+        $whereClause = "e.id_estado = 8";
+        if ($idPlaneacion > 0) {
+            $whereClause = "(e.id_estado = 8 OR e.id_envio IN (SELECT id_envio FROM lgs_planeaciones_envios WHERE id_planeacion = " . (int)$idPlaneacion . "))";
+        }
+
         $sql = "SELECT 
                     e.id_envio, 
                     e.folio,
@@ -118,7 +163,7 @@ class Lgs_planeacionesModel extends Mysql
                 FROM lgs_envios e
                 LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
                 LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
-                WHERE e.id_estado = 8 AND e.deleted_at IS NULL";
+                WHERE {$whereClause} AND e.deleted_at IS NULL";
         
         return $this->select_all($sql);
     }

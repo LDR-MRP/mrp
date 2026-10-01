@@ -54,7 +54,8 @@ class Lgs_planeaciones extends Controllers
     public function getEnviosDisponibles(): void
     {
         try {
-            $data = $this->service->getEnviosDisponibles();
+            $idPlaneacion = intval($_GET['id_planeacion'] ?? 0);
+            $data = $this->service->getEnviosDisponibles($idPlaneacion);
             echo $this->successResponse($data, "Listado de envíos disponibles obtenido");
         } catch (Exception $e) {
             echo $this->errorResponse($e->getMessage(), 500);
@@ -70,7 +71,7 @@ class Lgs_planeaciones extends Controllers
         try {
             $userId = $_SESSION['idUser'] ?? 1;
             
-            $descripcion = $_POST['descripcion'] ?? '';
+            $descripcion = $_POST['titulo'] ?? '';
             // envios_ids debería venir como un array desde el frontend
             $enviosIdsStr = $_POST['envios_ids'] ?? ''; 
             $enviosIds = !empty($enviosIdsStr) ? explode(',', $enviosIdsStr) : [];
@@ -83,9 +84,15 @@ class Lgs_planeaciones extends Controllers
                 'obs_operador' => $_POST['obs_operador'] ?? ''
             ];
 
-            $idPlan = $this->service->createPlaneacion($data, $enviosIds, $userId);
-            
-            echo $this->successResponse(['id_planeacion' => $idPlan], "Planeación enviada a aprobación exitosamente.");
+            $idPlanRequest = intval($_POST['id_planeacion'] ?? 0);
+
+            if ($idPlanRequest > 0) {
+                $this->service->updatePlaneacion($idPlanRequest, $data, $enviosIds, $userId);
+                echo $this->successResponse(['id_planeacion' => $idPlanRequest], "Planeación actualizada exitosamente.");
+            } else {
+                $idPlan = $this->service->createPlaneacion($data, $enviosIds, $userId);
+                echo $this->successResponse(['id_planeacion' => $idPlan], "Planeación enviada a aprobación exitosamente.");
+            }
 
         } catch (Exception $e) {
             echo $this->errorResponse($e->getMessage(), 500);
