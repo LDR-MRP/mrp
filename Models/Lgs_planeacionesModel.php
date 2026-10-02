@@ -394,4 +394,28 @@ class Lgs_planeacionesModel extends Mysql
         }
     }
 
+    /**
+     * Actualiza el costo y km total de la planeación basado en sus envíos
+     */
+    public function actualizarCostoYKmPlan(int $idPlaneacion): void
+    {
+        $db = $this->getConexion();
+        $sql = "UPDATE lgs_planeaciones p
+                SET p.km_total = (
+                    SELECT COALESCE(SUM(e.km_total), 0)
+                    FROM lgs_envios e
+                    INNER JOIN lgs_planeaciones_envios pe ON e.id_envio = pe.id_envio
+                    WHERE pe.id_planeacion = p.id_planeacion
+                ),
+                p.costo_total = (
+                    SELECT COALESCE(SUM(e.costo_total), 0)
+                    FROM lgs_envios e
+                    INNER JOIN lgs_planeaciones_envios pe ON e.id_envio = pe.id_envio
+                    WHERE pe.id_planeacion = p.id_planeacion
+                )
+                WHERE p.id_planeacion = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$idPlaneacion]);
+    }
+
 }

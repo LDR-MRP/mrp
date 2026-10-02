@@ -158,9 +158,21 @@ function renderPoolVins(vins) {
         const dest = v.destino || 'Destino';
         
         let coincide = (v.coincide_destino !== false);
-        let liClass = coincide ? "cursor-move shadow-sm bg-white" : "disabled-vin bg-light opacity-50";
-        let dragger = coincide ? '<i class="ri-draggable fs-18 text-muted"></i>' : '<i class="ri-close-circle-line fs-18 text-danger"></i>';
-        let badgeWarn = coincide ? '' : '<span class="badge bg-warning text-dark ms-2" title="El destino de este VIN no está en la ruta del envío">Destino Diferente</span>';
+        
+        let estaAsignado = v.asignado_folio ? true : false;
+        
+        // Si está asignado, lo deshabilitamos sin importar si coincide o no
+        let isDraggable = coincide && !estaAsignado;
+        
+        let liClass = isDraggable ? "cursor-move shadow-sm bg-white" : "disabled-vin bg-light opacity-50";
+        let dragger = isDraggable ? '<i class="ri-draggable fs-18 text-muted"></i>' : '<i class="ri-close-circle-line fs-18 text-danger"></i>';
+        
+        let badgeWarn = '';
+        if (estaAsignado) {
+            badgeWarn = `<span class="badge bg-danger ms-2" title="Esta unidad ya se encuentra asignada al envío ${v.asignado_folio}">Asignado (Envío ${v.asignado_folio})</span>`;
+        } else if (!coincide) {
+            badgeWarn = '<span class="badge bg-warning text-dark ms-2" title="El destino de este VIN no está en la ruta del envío">Destino Diferente</span>';
+        }
 
         html += `
         <li class="list-group-item mb-2 rounded border-start border-3 border-primary ${liClass}" 

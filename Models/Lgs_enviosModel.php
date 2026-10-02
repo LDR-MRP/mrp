@@ -537,12 +537,13 @@ class Lgs_enviosModel extends Mysql
 
         try {
             // Excluir unidades asignadas a otros envíos que ya estén confirmados o en planeación/ejecución
-            $sqlExclude = "SELECT ev.id_unidad 
+            // Subconsulta para encontrar en qué envío están asignadas (excluyendo el actual)
+            $sqlAsignado = "SELECT ev.id_unidad, e.id_envio, e.folio 
                            FROM lgs_envios_vins ev
                            INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
                            WHERE e.deleted_at IS NULL AND e.id_estado IN (2, 3, 5, 6, 7, 8)";
-            
-            // Excluir también las que ya están en el acomodo de este envío para no duplicarlas en el pool disponible
+
+            // Excluir las que ya están en el acomodo de ESTE envío
             $sqlExcludeThis = ($idEnvioActual > 0) 
                 ? "SELECT ev2.id_unidad FROM lgs_envios_vins ev2 WHERE ev2.id_envio = " . intval($idEnvioActual)
                 : "SELECT 0";
@@ -554,12 +555,13 @@ class Lgs_enviosModel extends Mysql
                         COALESCE(u.num_serie, ut.num_unidad, 'S/N') AS num_serie,
                         COALESCE(u.modelo, 'Unidad Terminada') AS modelo,
                         COALESCE(u.origen, 'Planta Lagos de Moreno') AS origen,
-                        COALESCE(NULLIF(TRIM(lu.destino_descripcion), ''), NULLIF(TRIM(u.destino), ''), 'Sin Asignar') AS destino
+                        COALESCE(NULLIF(TRIM(lu.destino_descripcion), ''), NULLIF(TRIM(u.destino), ''), 'Sin Asignar') AS destino,
+                        asig.folio AS asignado_folio
                     FROM lgs_unidades lu
                     LEFT JOIN lgs_unidades_envios u ON u.id_unidad = lu.id_unidad
                     LEFT JOIN mrp_unidades_terminadas ut ON ut.idunidad = lu.id_unidad
+                    LEFT JOIN ($sqlAsignado) asig ON asig.id_unidad = COALESCE(u.id_unidad, lu.id_unidad, ut.idunidad)
                     WHERE (lu.id_estado_proceso = 1 OR lu.id_estado_proceso IS NULL)
-                      AND lu.id_unidad NOT IN ({$sqlExclude})
                       AND lu.id_unidad NOT IN ({$sqlExcludeThis})
                     ORDER BY lu.id_lgs_unidad ASC";
 
@@ -572,10 +574,11 @@ class Lgs_enviosModel extends Mysql
                         u.num_serie,
                         u.modelo,
                         COALESCE(u.origen, 'Planta Lagos de Moreno') AS origen,
-                        COALESCE(NULLIF(TRIM(u.destino), ''), 'Sin Asignar') AS destino
+                        COALESCE(NULLIF(TRIM(u.destino), ''), 'Sin Asignar') AS destino,
+                        asig.folio AS asignado_folio
                     FROM lgs_unidades_envios u
-                    WHERE u.id_unidad NOT IN ({$sqlExclude})
-                      AND u.id_unidad NOT IN ({$sqlExcludeThis})
+                    LEFT JOIN ($sqlAsignado) asig ON asig.id_unidad = u.id_unidad
+                    WHERE u.id_unidad NOT IN ({$sqlExcludeThis})
                       AND u.id_unidad NOT IN (SELECT id_unidad FROM lgs_unidades)
                     ORDER BY u.id_unidad ASC";
             $resAux = $this->select_all($sql2) ?: [];

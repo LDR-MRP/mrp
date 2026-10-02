@@ -133,6 +133,24 @@ class Lgs_planeacionesService {
     }
 
     public function getDetalleCompletoPlan(int $idPlaneacion): array {
+        // 1. Recalcular costos de los envíos de esta planeación para evitar desfazamientos
+        $db = $this->model->getConexion();
+        $stmt = $db->prepare("SELECT id_envio FROM lgs_planeaciones_envios WHERE id_planeacion = ?");
+        $stmt->execute([$idPlaneacion]);
+        $envios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!empty($envios)) {
+            require_once 'Lgs_enviosService.php';
+            $enviosService = new Lgs_enviosService();
+            foreach ($envios as $envio) {
+                $enviosService->recalcularCostoTotal((int)$envio['id_envio']);
+                $enviosService->asegurarCostosVins((int)$envio['id_envio']);
+            }
+            
+            // Recalcular también el costo y km total de la planeación
+            $this->model->actualizarCostoYKmPlan($idPlaneacion);
+        }
+
         return $this->model->getDetalleCompletoPlan($idPlaneacion);
     }
 

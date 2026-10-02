@@ -412,6 +412,9 @@ class Lgs_envios extends Controllers
         $estadoPlan = 0;
         if (!empty($envio)) {
             $estadoPlan = $model->getPlaneacionEstadoByEnvio($idEnvio);
+            // Recalcular costos para evitar desfazamientos
+            $this->service->recalcularCostoTotal($idEnvio);
+            $this->service->asegurarCostosVins($idEnvio);
         }
 
         $this->views->getView(
