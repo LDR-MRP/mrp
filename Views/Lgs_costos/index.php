@@ -272,8 +272,9 @@
                                                                 <tr class="text-uppercase fs-12 text-muted">
                                                                     <th style="width: 250px;"></th>
                                                                     <th style="display: none;">Costo Base / KM ($)</th>
-                                                                    <th style="display: none;">Precio Plano Fijo</th>
-                                                                    <th>Desglose de Factores (1 a 15 Unidades)</th>
+                                                                    <th style="width: 150px;">Local Corto SLC<br><small>(0-40 KM)</small><br><span class="badge bg-warning text-dark fs-10 mt-1">A partir de 3 unidades</span></th>
+                                                                    <th style="width: 150px;">Local Largo SLL<br><small>(41-80 KM)</small><br><span class="badge bg-warning text-dark fs-10 mt-1">A partir de 3 unidades</span></th>
+                                                                    <th>Desglose de Factores (2 a 9 Unidades)</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody id="tbodyTarifasMadrina">
@@ -303,8 +304,9 @@
                                                             <thead class="table-light">
                                                                 <tr class="text-uppercase fs-12 text-muted">
                                                                     <th style="width: 250px;">Segmento</th>
-                                                                    <th style="width: 200px;">Costo / KM ($)</th>
-                                                                    <th style="display: none;">Precio Plano Fijo</th>
+                                                                    <th style="width: 150px;">Costo / KM ($)</th>
+                                                                    <th style="width: 150px;">Local Corto SLC<br><small>(0-40 KM)</small></th>
+                                                                    <th style="width: 150px;">Local Largo SLL<br><small>(41-80 KM)</small></th>
                                                                     <th></th>
                                                                 </tr>
                                                             </thead>
@@ -326,6 +328,10 @@
                                             </h2>
                                             <div id="collapsePlataforma" class="accordion-collapse collapse" aria-labelledby="headingPlataforma" data-bs-parent="#accordionTarifas">
                                                 <div class="accordion-body bg-white">
+                                                    <div class="alert alert-info border-0 d-flex align-items-center mb-3 p-3 rounded">
+                                                        <i class="ri-information-line fs-20 text-info me-3"></i>
+                                                        <div>Los precios de <b>Local Corto (SLC)</b> y <b>Local Largo (SLL)</b> en plataforma se configuran dentro de cada factor, ya que varían según la cantidad de unidades transportadas (1 unidad vs 2 o más unidades).</div>
+                                                    </div>
                                                     <div class="d-flex justify-content-end mb-2">
                                                         <button type="button" class="btn btn-sm btn-soft-secondary me-2" onclick="toggleFactoresPlataforma(true);"><i class="ri-arrow-down-s-line"></i> Expandir Factores</button>
                                                         <button type="button" class="btn btn-sm btn-soft-secondary" onclick="toggleFactoresPlataforma(false);"><i class="ri-arrow-up-s-line"></i> Contraer Factores</button>
@@ -336,8 +342,9 @@
                                                                 <tr class="text-uppercase fs-12 text-muted">
                                                                     <th style="width: 250px;"></th>
                                                                     <th style="display: none;">Costo Base / KM ($)</th>
-                                                                    <th style="display: none;">Precio Plano Fijo</th>
-                                                                    <th>Desglose de Factores (1 a 3 Unidades)</th>
+                                                                    <th style="display: none;">Local Corto SLC<br><small>(0-40 KM)</small></th>
+                                                                    <th style="display: none;">Local Largo SLL<br><small>(41-80 KM)</small></th>
+                                                                    <th>Desglose de Factores (1 a 3 Unidades y Lowboy)</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody id="tbodyTarifasPlataforma">

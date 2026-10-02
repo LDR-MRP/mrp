@@ -145,7 +145,7 @@ function calcularDiferenciasConGlobal(madrinaMatriz, plataformaMatriz) {
         if (!b) return;
         const mCost = parseFloat(m.costo_por_km) || 0;
         const bCost = parseFloat(b.costo_por_km) || 0;
-        for (let u = 1; u <= 10; u++) {
+        for (let u = 2; u <= 9; u++) {
             const mFact = m.factores_15 && m.factores_15[u] !== undefined ? parseFloat(m.factores_15[u]) : 1.0;
             const bFact = b.factores_15 && b.factores_15[u] !== undefined ? parseFloat(b.factores_15[u]) : (1.0 - ((u - 1) * 0.02));
             const mPrice = Math.round(mCost * mFact * 100) / 100;
@@ -302,17 +302,33 @@ function renderTarifasMadrina(madrinaMatriz) {
             </div>
         `;
 
-        const tdPlano = document.createElement("td");
-        tdPlano.style.display = "none";
-        tdPlano.innerHTML = `
-            <input type="hidden" name="madrina_segmentos[${idx}][precio_plano]" value="${parseFloat(item.precio_plano || 0).toFixed(2)}">
+        const tdSlc = document.createElement("td");
+        tdSlc.innerHTML = `
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light">$</span>
+                <input type="number" step="0.01" class="form-control text-end fw-bold madrina-slc" 
+                       name="madrina_segmentos[${idx}][precio_slc]" 
+                       value="${parseFloat(item.precio_slc || 0).toFixed(2)}"
+                       oninput="syncMadrinaSlc(this)">
+            </div>
+        `;
+
+        const tdSll = document.createElement("td");
+        tdSll.innerHTML = `
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light">$</span>
+                <input type="number" step="0.01" class="form-control text-end fw-bold madrina-sll" 
+                       name="madrina_segmentos[${idx}][precio_sll]" 
+                       value="${parseFloat(item.precio_sll || 0).toFixed(2)}"
+                       oninput="syncMadrinaSll(this)">
+            </div>
         `;
 
         const tdFactores = document.createElement("td");
         tdFactores.innerHTML = `
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center">
-                    <span class="badge bg-primary-subtle text-primary border me-2 fs-12 px-2 py-1"><i class="ri-stack-line me-1"></i> 1 a 10 VINs</span>
+                    <span class="badge bg-primary-subtle text-primary border me-2 fs-12 px-2 py-1"><i class="ri-stack-line me-1"></i> 2 a 9 VINs</span>
                 </div>
                 <button type="button" class="btn btn-sm btn-outline-primary shadow-xs" 
                         data-bs-toggle="collapse" data-bs-target="#collapseMadrinaFactores_${idx}" 
@@ -324,7 +340,8 @@ function renderTarifasMadrina(madrinaMatriz) {
 
         trMain.appendChild(tdSeg);
         trMain.appendChild(tdCostoKm);
-        trMain.appendChild(tdPlano);
+        trMain.appendChild(tdSlc);
+        trMain.appendChild(tdSll);
         trMain.appendChild(tdFactores);
         tbody.appendChild(trMain);
 
@@ -333,14 +350,14 @@ function renderTarifasMadrina(madrinaMatriz) {
         trCollapse.className = "bg-light-subtle collapse-madrina-factores-row " + isHidden;
         
         const tdCollapse = document.createElement("td");
-        tdCollapse.colSpan = 4;
+        tdCollapse.colSpan = 5;
         tdCollapse.className = "p-0 border-0";
 
         let cardsHtml = '';
         const factores15 = item.factores_15 || {};
         const baseCost = parseFloat(item.costo_por_km) || 0;
 
-        for (let u = 1; u <= 10; u++) {
+        for (let u = 2; u <= 9; u++) {
             const fVal = parseFloat(factores15[u] !== undefined ? factores15[u] : (1.0 - ((u - 1) * 0.02)));
             const initUnitCost = (baseCost * fVal).toFixed(2);
 
@@ -407,7 +424,7 @@ function renderTarifasMadrina(madrinaMatriz) {
             const segGlobal = sysTarifasGlobales.madrina.find(s => s.id_segmento == item.id_segmento);
             if (segGlobal) {
                 const gCost = parseFloat(segGlobal.costo_por_km) || 0;
-                for (let u = 1; u <= 10; u++) {
+                for (let u = 2; u <= 9; u++) {
                     const fVal = parseFloat(factores15[u] !== undefined ? factores15[u] : (1.0 - ((u - 1) * 0.02)));
                     const initUnitCost = (baseCost * fVal).toFixed(2);
                     const gFact = segGlobal.factores_15 && segGlobal.factores_15[u] !== undefined 
@@ -474,10 +491,24 @@ function renderTarifasChofer(choferMatriz) {
             </div>
         `;
 
-        const tdCPlano = document.createElement("td");
-        tdCPlano.style.display = "none";
-        tdCPlano.innerHTML = `
-            <input type="hidden" name="chofer_segmentos[${cIdx}][precio_plano]" value="${parseFloat(cItem.precio_plano || 0).toFixed(2)}">
+        const tdCSlc = document.createElement("td");
+        tdCSlc.innerHTML = `
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light">$</span>
+                <input type="number" step="0.01" class="form-control text-end fw-bold" 
+                       name="chofer_segmentos[${cIdx}][precio_slc]" 
+                       value="${parseFloat(cItem.precio_slc || 0).toFixed(2)}">
+            </div>
+        `;
+
+        const tdCSll = document.createElement("td");
+        tdCSll.innerHTML = `
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light">$</span>
+                <input type="number" step="0.01" class="form-control text-end fw-bold" 
+                       name="chofer_segmentos[${cIdx}][precio_sll]" 
+                       value="${parseFloat(cItem.precio_sll || 0).toFixed(2)}">
+            </div>
         `;
         
         const tdCTotal = document.createElement("td");
@@ -487,7 +518,8 @@ function renderTarifasChofer(choferMatriz) {
 
         trC.appendChild(tdCSeg);
         trC.appendChild(tdCCostoKm);
-        trC.appendChild(tdCPlano);
+        trC.appendChild(tdCSlc);
+        trC.appendChild(tdCSll);
         trC.appendChild(tdCTotal);
         tbody.appendChild(trC);
     });
@@ -524,10 +556,16 @@ function renderTarifasPlataforma(plataformaMatriz) {
             </div>
         `;
 
-        const tdPlano = document.createElement("td");
-        tdPlano.style.display = "none";
-        tdPlano.innerHTML = `
-            <input type="hidden" name="plataforma_segmentos[${idx}][precio_plano]" value="${parseFloat(item.precio_plano || 0).toFixed(2)}">
+        const tdSlc = document.createElement("td");
+        tdSlc.style.display = "none";
+        tdSlc.innerHTML = `
+            <input type="hidden" name="plataforma_segmentos[${idx}][precio_slc]" value="${parseFloat(item.precio_slc || 0).toFixed(2)}">
+        `;
+
+        const tdSll = document.createElement("td");
+        tdSll.style.display = "none";
+        tdSll.innerHTML = `
+            <input type="hidden" name="plataforma_segmentos[${idx}][precio_sll]" value="${parseFloat(item.precio_sll || 0).toFixed(2)}">
         `;
 
         const tdFactores = document.createElement("td");
@@ -546,7 +584,8 @@ function renderTarifasPlataforma(plataformaMatriz) {
 
         trMain.appendChild(tdSeg);
         trMain.appendChild(tdCostoKm);
-        trMain.appendChild(tdPlano);
+        trMain.appendChild(tdSlc);
+        trMain.appendChild(tdSll);
         trMain.appendChild(tdFactores);
         tbody.appendChild(trMain);
 
@@ -555,7 +594,7 @@ function renderTarifasPlataforma(plataformaMatriz) {
         trCollapse.className = "bg-light-subtle collapse-plataforma-factores-row " + isHidden;
         
         const tdCollapse = document.createElement("td");
-        tdCollapse.colSpan = 4;
+        tdCollapse.colSpan = 5;
         tdCollapse.className = "p-0 border-0";
 
         let cardsHtml = '';
@@ -619,6 +658,26 @@ function renderTarifasPlataforma(plataformaMatriz) {
                             <div class="mt-1 border-top pt-1 text-start">
                                 <span class="fs-9 text-muted d-block">Total Camión (x 1 KM):</span>
                                 <span class="fs-10 fw-bold text-dark preview-plataforma-${idx}-${u}">$ ${(parseFloat(initUnitCost) * (isLowboy ? 1 : u)).toFixed(2)} / km</span>
+                            </div>
+                            <div class="mt-1 border-top pt-1 text-center">
+                                <label class="fs-10 text-muted mb-0 d-block text-uppercase fw-semibold">Local Corto SLC</label>
+                                <div class="input-group input-group-sm mb-1">
+                                    <span class="input-group-text p-1 fs-11">$</span>
+                                    <input type="number" step="0.01" 
+                                           class="form-control form-control-sm text-end fw-bold plataforma-slc-${u}" 
+                                           name="plataforma_segmentos[${idx}][slc][${u}]" 
+                                           value="${parseFloat((item.slc_factores && item.slc_factores[u]) ? item.slc_factores[u] : (item.precio_slc || 0)).toFixed(2)}"
+                                           oninput="syncPlataformaFactorSlc(this, ${u})">
+                                </div>
+                                <label class="fs-10 text-muted mb-0 d-block text-uppercase fw-semibold">Local Largo SLL</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text p-1 fs-11">$</span>
+                                    <input type="number" step="0.01" 
+                                           class="form-control form-control-sm text-end fw-bold plataforma-sll-${u}" 
+                                           name="plataforma_segmentos[${idx}][sll][${u}]" 
+                                           value="${parseFloat((item.sll_factores && item.sll_factores[u]) ? item.sll_factores[u] : (item.precio_sll || 0)).toFixed(2)}"
+                                           oninput="syncPlataformaFactorSll(this, ${u})">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -689,7 +748,7 @@ function aplicarPresetMadrina(idx, tasaDescuento) {
     const inputCostoKm = document.querySelector(`.madrina-costo-km[data-idx="${idx}"]`);
     const costoKm = parseFloat(inputCostoKm ? inputCostoKm.value : 0) || 0;
 
-    for (let u = 1; u <= 10; u++) {
+    for (let u = 2; u <= 9; u++) {
         let f = 1.0 - ((u - 1) * tasaDescuento);
         if (f < 0.20) f = 0.20;
 
@@ -705,7 +764,7 @@ function recalcularTotalesTarifas() {
         const idx = input.getAttribute("data-idx");
         const costoKm = parseFloat(input.value) || 0;
 
-        for (let u = 1; u <= 10; u++) {
+        for (let u = 2; u <= 9; u++) {
             const inputFactor = document.getElementById(`madrina_factor_${idx}_${u}`);
             const previewSpan = document.querySelector(`.preview-madrina-${idx}-${u}`);
 
@@ -738,9 +797,59 @@ function syncMadrinaCostoKm(inputElement) {
     });
 }
 
-function syncMadrinaUniversal(inputElement, unidad) {
+function syncMadrinaSlc(inputElement) {
     const val = inputElement.value;
-    const allInputs = document.querySelectorAll(`input[id^="madrina_factor_"][data-unit="${unidad}"]`);
+    const allInputs = document.querySelectorAll('.madrina-slc');
+    allInputs.forEach(input => {
+        if (input !== inputElement) {
+            input.value = val;
+        }
+    });
+}
+
+function syncMadrinaSll(inputElement) {
+    const val = inputElement.value;
+    const allInputs = document.querySelectorAll('.madrina-sll');
+    allInputs.forEach(input => {
+        if (input !== inputElement) {
+            input.value = val;
+        }
+    });
+}
+
+function syncPlataformaSlc(inputElement) {
+    const val = inputElement.value;
+    const allInputs = document.querySelectorAll('.plataforma-slc');
+    allInputs.forEach(input => {
+        if (input !== inputElement) {
+            input.value = val;
+        }
+    });
+}
+
+function syncPlataformaSll(inputElement) {
+    const val = inputElement.value;
+    const allInputs = document.querySelectorAll('.plataforma-sll');
+    allInputs.forEach(input => {
+        if (input !== inputElement) {
+            input.value = val;
+        }
+    });
+}
+
+function syncPlataformaFactorSlc(inputElement, unidad) {
+    const val = inputElement.value;
+    const allInputs = document.querySelectorAll(`.plataforma-slc-${unidad}`);
+    allInputs.forEach(input => {
+        if (input !== inputElement) {
+            input.value = val;
+        }
+    });
+}
+
+function syncPlataformaFactorSll(inputElement, unidad) {
+    const val = inputElement.value;
+    const allInputs = document.querySelectorAll(`.plataforma-sll-${unidad}`);
     allInputs.forEach(input => {
         if (input !== inputElement) {
             input.value = val;

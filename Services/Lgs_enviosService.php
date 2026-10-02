@@ -244,8 +244,12 @@ class Lgs_enviosService {
 
                 // 2. Obtener tarifa aplicable según proveedor, tipo, segmento y volumen
                 $volumenParaTarifa = $volumenTotal;
-                if ($idTipoTraslado === 3 && $isLowboy) {
+                if ($idTipoTraslado === 1 && $volumenTotal > 9) {
+                    $volumenParaTarifa = 9; // Madrina factor máximo es 9
+                } elseif ($idTipoTraslado === 3 && $isLowboy) {
                     $volumenParaTarifa = 4; // Forzar lectura del factor 4 (Lowboy) en Plataformas
+                } elseif ($idTipoTraslado === 3 && $volumenTotal > 3) {
+                    $volumenParaTarifa = 3; // Plataforma factor máximo estándar es 3
                 }
                 $tarifa = $this->getTarifaAplicable($db, $idTipoTraslado, $idProveedor, $segmentoDominante, $volumenParaTarifa);
 
@@ -261,9 +265,15 @@ class Lgs_enviosService {
 
                 $tipoServicio = $envio['tipo_servicio'] ?? 'FORANEO';
                 if ($tipoServicio === 'SLC') {
+                    if ($idTipoTraslado === 1 && $volumenTotal < 3) {
+                        throw new Exception("El servicio Local Corto (SLC) en Madrina solo está permitido a partir de 3 unidades. Actualmente el envío tiene {$volumenTotal} unidades.");
+                    }
                     $costoPlano = (float)($tarifa['precio_slc'] ?? 0);
                     $distanciaUsar = 0; // Se cobra plano
                 } elseif ($tipoServicio === 'SLL') {
+                    if ($idTipoTraslado === 1 && $volumenTotal < 3) {
+                        throw new Exception("El servicio Local Largo (SLL) en Madrina solo está permitido a partir de 3 unidades. Actualmente el envío tiene {$volumenTotal} unidades.");
+                    }
                     $costoPlano = (float)($tarifa['precio_sll'] ?? 0);
                     $distanciaUsar = 0; // Se cobra plano
                 }
@@ -629,6 +639,8 @@ class Lgs_enviosService {
             'id' => null,
             'costo_por_km' => $costoPorKm,
             'precio_plano' => 0.00,
+            'precio_slc' => 0.00,
+            'precio_sll' => 0.00,
             'factor' => $factor
         ];
     }

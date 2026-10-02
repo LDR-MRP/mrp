@@ -66,7 +66,7 @@ class Lgs_costosModel extends Mysql
         $provVal = ($idProveedor !== null && $idProveedor > 0) ? $idProveedor : 0;
 
         // 2. Consultar tarifas en BD
-        $sqlTarifas = "SELECT id_tipo_traslado, id_segmento, num_vins_min, num_vins_max, costo_por_km, precio_plano, factor, es_personalizada
+        $sqlTarifas = "SELECT id_tipo_traslado, id_segmento, num_vins_min, num_vins_max, costo_por_km, precio_plano, precio_slc, precio_sll, factor, es_personalizada
                        FROM lgs_tarifas_proveedores
                        WHERE id_proveedor = ? AND activo != 0
                        ORDER BY num_vins_min ASC";
@@ -125,22 +125,42 @@ class Lgs_costosModel extends Mysql
 
                 $costoPorKm = 0.00;
                 $precioPlano = 0.00;
+                $precioSlc = 0.00;
+                $precioSll = 0.00;
                 $factorBase = 1.00;
 
                 if (!empty($items)) {
                     $costoPorKm = (float)$items[0]['costo_por_km'];
                     $precioPlano = (float)$items[0]['precio_plano'];
+                    $precioSlc = (float)($items[0]['precio_slc'] ?? 0);
+                    $precioSll = (float)($items[0]['precio_sll'] ?? 0);
                     $factorBase = (float)$items[0]['factor'];
                 }
 
                 $factores15 = [];
-                $maxU = ($tipoTraslado === 3) ? 4 : 10;
-                for ($u = 1; $u <= $maxU; $u++) {
+                $slc_factores = [];
+                $sll_factores = [];
+
+                $minU = 1;
+                $maxU = 1;
+                if ($tipoTraslado === 1) {
+                    $minU = 2;
+                    $maxU = 9;
+                } elseif ($tipoTraslado === 3) {
+                    $minU = 1;
+                    $maxU = 4;
+                }
+
+                for ($u = $minU; $u <= $maxU; $u++) {
                     if (!empty($items)) {
                         $f = $factorBase;
+                        $slc_f = $precioSlc;
+                        $sll_f = $precioSll;
                         foreach ($items as $it) {
                             if ($u >= (int)$it['num_vins_min'] && $u <= (int)$it['num_vins_max']) {
                                 $f = (float)$it['factor'];
+                                $slc_f = (float)($it['precio_slc'] ?? 0);
+                                $sll_f = (float)($it['precio_sll'] ?? 0);
                                 break;
                             }
                         }
@@ -154,6 +174,10 @@ class Lgs_costosModel extends Mysql
                         }
                     }
                     $factores15[$u] = $f;
+                    if ($tipoTraslado === 3) {
+                        $slc_factores[$u] = $slc_f ?? $precioSlc;
+                        $sll_factores[$u] = $sll_f ?? $precioSll;
+                    }
                 }
 
                 $matriz[] = [
@@ -162,8 +186,12 @@ class Lgs_costosModel extends Mysql
                     'segmento_descripcion' => $seg['descripcion'],
                     'costo_por_km' => $costoPorKm,
                     'precio_plano' => $precioPlano,
+                    'precio_slc' => $precioSlc,
+                    'precio_sll' => $precioSll,
                     'factor_base' => $factorBase,
                     'factores_15' => $factores15,
+                    'slc_factores' => $slc_factores,
+                    'sll_factores' => $sll_factores,
                     'es_heredado' => $esHeredado,
                     'tarifas_raw' => $items
                 ];
@@ -207,29 +235,31 @@ class Lgs_costosModel extends Mysql
 
         $stmtIns = $db->prepare("INSERT INTO lgs_tarifas_proveedores (
                                     id_proveedor, id_tipo_traslado, id_segmento,
-                                    num_vins_min, num_vins_max, costo_por_km, precio_plano, factor, es_personalizada
-                                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                                    num_vins_min, num_vins_max, costo_por_km, precio_plano, precio_slc, precio_sll, factor, es_personalizada
+                                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-        // Guardar Madrina (Factores 1-10)
+        // Guardar Madrina (Factores 2-9)
         if (!empty($madrinaSegs)) {
             foreach ($madrinaSegs as $seg) {
                 $idSegmento = intval($seg['id_segmento']);
                 $costoPorKm = floatval($seg['costo_por_km'] ?? 0);
                 $precioPlano = floatval($seg['precio_plano'] ?? 0);
+                $precioSlcSegment = floatval($seg['precio_slc'] ?? 0);
+                $precioSllSegment = floatval($seg['precio_sll'] ?? 0);
 
                 if (isset($seg['factores']) && is_array($seg['factores']) && count($seg['factores']) > 0) {
                     foreach ($seg['factores'] as $unidad => $valIngresado) {
                         $u = intval($unidad);
                         $precioReal = floatval($valIngresado);
-                        if ($u >= 1 && $u <= 10) {
+                        if ($u >= 2 && $u <= 9) {
                             $fFinal = ($costoPorKm > 0) ? ($precioReal / $costoPorKm) : 1.0;
-                            $stmtIns->execute([$provVal, 1, $idSegmento, $u, $u, $costoPorKm, $precioPlano, $fFinal, $flagPersonalizada]);
+                            $stmtIns->execute([$provVal, 1, $idSegmento, $u, $u, $costoPorKm, $precioPlano, $precioSlcSegment, $precioSllSegment, $fFinal, $flagPersonalizada]);
                         }
                     }
                 } else {
                     $valIngresado = floatval($seg['factor'] ?? 0);
                     $fFinal = ($costoPorKm > 0 && $valIngresado > 0) ? ($valIngresado / $costoPorKm) : 1.0;
-                    $stmtIns->execute([$provVal, 1, $idSegmento, 1, 10, $costoPorKm, $precioPlano, $fFinal, $flagPersonalizada]);
+                    $stmtIns->execute([$provVal, 1, $idSegmento, 2, 9, $costoPorKm, $precioPlano, $precioSlcSegment, $precioSllSegment, $fFinal, $flagPersonalizada]);
                 }
             }
         }
@@ -240,7 +270,9 @@ class Lgs_costosModel extends Mysql
                 $idSegmento = intval($seg['id_segmento']);
                 $costoPorKm = floatval($seg['costo_por_km'] ?? 0);
                 $precioPlano = floatval($seg['precio_plano'] ?? 0);
-                $stmtIns->execute([$provVal, 2, $idSegmento, 1, 1, $costoPorKm, $precioPlano, 1.00, $flagPersonalizada]);
+                $precioSlc = floatval($seg['precio_slc'] ?? 0);
+                $precioSll = floatval($seg['precio_sll'] ?? 0);
+                $stmtIns->execute([$provVal, 2, $idSegmento, 1, 1, $costoPorKm, $precioPlano, $precioSlc, $precioSll, 1.00, $flagPersonalizada]);
             }
         }
         // Guardar Plataforma (Factores 1-4)
@@ -249,6 +281,8 @@ class Lgs_costosModel extends Mysql
                 $idSegmento = intval($seg['id_segmento']);
                 $costoPorKm = floatval($seg['costo_por_km'] ?? 0);
                 $precioPlano = floatval($seg['precio_plano'] ?? 0);
+                $precioSlcSegment = floatval($seg['precio_slc'] ?? 0);
+                $precioSllSegment = floatval($seg['precio_sll'] ?? 0);
 
                 if (isset($seg['factores']) && is_array($seg['factores']) && count($seg['factores']) > 0) {
                     foreach ($seg['factores'] as $unidad => $valIngresado) {
@@ -256,13 +290,15 @@ class Lgs_costosModel extends Mysql
                         $precioReal = floatval($valIngresado);
                         if ($u >= 1 && $u <= 4) {
                             $fFinal = ($costoPorKm > 0) ? ($precioReal / $costoPorKm) : 1.0;
-                            $stmtIns->execute([$provVal, 3, $idSegmento, $u, $u, $costoPorKm, $precioPlano, $fFinal, $flagPersonalizada]);
+                            $precioSlc = isset($seg['slc'][$u]) ? floatval($seg['slc'][$u]) : $precioSlcSegment;
+                            $precioSll = isset($seg['sll'][$u]) ? floatval($seg['sll'][$u]) : $precioSllSegment;
+                            $stmtIns->execute([$provVal, 3, $idSegmento, $u, $u, $costoPorKm, $precioPlano, $precioSlc, $precioSll, $fFinal, $flagPersonalizada]);
                         }
                     }
                 } else {
                     $valIngresado = floatval($seg['factor'] ?? 0);
                     $fFinal = ($costoPorKm > 0 && $valIngresado > 0) ? ($valIngresado / $costoPorKm) : 1.0;
-                    $stmtIns->execute([$provVal, 3, $idSegmento, 1, 4, $costoPorKm, $precioPlano, $fFinal, $flagPersonalizada]);
+                    $stmtIns->execute([$provVal, 3, $idSegmento, 1, 4, $costoPorKm, $precioPlano, $precioSlcSegment, $precioSllSegment, $fFinal, $flagPersonalizada]);
                 }
             }
         }
