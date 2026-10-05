@@ -358,7 +358,7 @@
                     </li>
                     <li class="nav-item" id="liTabVines" hidden>
                         <a class="nav-link" data-bs-toggle="tab" href="#tabVines">
-                            VINes
+                            VIN / NIV
                         </a>
                     </li>
                 </ul>

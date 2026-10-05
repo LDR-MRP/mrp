@@ -191,7 +191,6 @@ class Prv_proveedorModel extends Mysql
             "INSERT INTO prv_cat_proveedores (
                 -- id_empresa,
                 rfc,
-                rfc_activo,
                 razon_social,
                 nombre_comercial,
                 id_tipo_persona,
@@ -202,10 +201,9 @@ class Prv_proveedorModel extends Mysql
             [
                 // $h['id_empresa'],
                 $h['rfc'],
-                $h['rfc'],
-                $h['razon_social'], 
+                $h['razon_social'],
                 $h['nombre_comercial'],
-                $h['id_tipo_persona'], 
+                $h['id_tipo_persona'],
                 $h['id_regimen_fiscal'],
                 $h['origen'],
                 $userId,
