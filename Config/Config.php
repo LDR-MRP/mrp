@@ -116,8 +116,10 @@ const ING_MODELOS = 77;
 const ING_MOTORES = 78;
 const ING_TRANSMISIONES = 79;
 const ING_CERTIFICACIONES = 80;
-const ING_ESPECIFICACIONES = 81; 
-const ING_CONFIGURACIONES = 82; 
+const ING_ESPECIFICACIONES = 81;
+const ING_CONFIGURACIONES = 82;
+const ING_JURIDICO = 84; // Perfil Jurídico: solo carga de certificaciones
+
 //Submodulos Capacidad
 
 const MCESTACIONESTRABAJO = 27;

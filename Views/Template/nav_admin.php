@@ -997,7 +997,7 @@
                       <!-- ==============================================================================
                         INGENIERÍA (CATÁLOGO MAESTRO DE VEHÍCULOS)
                         ============================================================================== -->
-                      <li class="nav-item" data-permiso="ING_MODELOS|r">
+                      <li class="nav-item" data-permiso="ING_MODELOS|r,ING_JURIDICO|r">
                           <a class="nav-link menu-link" href="#sidebarIngenieria" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="sidebarIngenieria">
                               <i class="ri-settings-3-line icon-dual"></i> <span>Ingeniería</span>
                           </a>
@@ -1018,8 +1018,14 @@
                                       </a>
                                   </li>
 
-                                  <li class="nav-item"><div class="dropdown-divider my-1"></div></li>
-                                  <li class="nav-item"><h6 class="dropdown-header py-1 mb-0">Catálogos</h6></li>
+                                  <li class="nav-item" data-permiso="ING_JURIDICO|r">
+                                      <a href="<?= base_url(); ?>/ing_juridico" class="nav-link">
+                                          <i class="ri-award-line align-bottom me-1"></i> Certificaciones (Jurídico)
+                                      </a>
+                                  </li>
+
+                                  <li class="nav-item" data-permiso="ING_MOTORES|r,ING_TRANSMISIONES|r,ING_CERTIFICACIONES|r,ING_ESPECIFICACIONES|r"><div class="dropdown-divider my-1"></div></li>
+                                  <li class="nav-item" data-permiso="ING_MOTORES|r,ING_TRANSMISIONES|r,ING_CERTIFICACIONES|r,ING_ESPECIFICACIONES|r"><h6 class="dropdown-header py-1 mb-0">Catálogos</h6></li>
 
                                   <li class="nav-item" data-permiso="ING_MOTORES|r">
                                       <a href="<?= base_url(); ?>/ing_motores" class="nav-link">
@@ -1045,9 +1051,9 @@
                                       </a>
                                   </li>
 
-                                  <li class="nav-item"><div class="dropdown-divider my-1"></div></li>
+                                  <li class="nav-item" data-permiso="ING_MODELOS|r,ING_MOTORES|r,ING_TRANSMISIONES|r,ING_CERTIFICACIONES|r,ING_ESPECIFICACIONES|r,ING_CONFIGURACIONES|r"><div class="dropdown-divider my-1"></div></li>
 
-                                  <li class="nav-item">
+                                  <li class="nav-item" data-permiso="ING_MODELOS|r,ING_MOTORES|r,ING_TRANSMISIONES|r,ING_CERTIFICACIONES|r,ING_ESPECIFICACIONES|r,ING_CONFIGURACIONES|r">
                                       <a href="<?= base_url(); ?>/ing_bitacora" class="nav-link">
                                           <i class="ri-history-line align-bottom me-1"></i> Bitácora
                                       </a>

@@ -133,19 +133,19 @@
                             <a class="nav-link active" data-bs-toggle="tab" href="#listConfiguraciones" role="tab"><i class="ri-list-unordered align-bottom me-1"></i>LISTADO</a>
                         </li>
                         <?php if (!empty($_SESSION['permisosMod']['w'])) { ?>
-                            <li class="nav-item">
+                            <li class="nav-item tab-hija d-none">
                                 <a class="nav-link" data-bs-toggle="tab" href="#datosGenerales" role="tab"><i class="ri-file-edit-line align-bottom me-1"></i>DATOS GENERALES</a>
                             </li>
-                            <li class="nav-item">
+                            <li class="nav-item tab-hija d-none">
                                 <a class="nav-link disabled" id="tabEspecificaciones" data-bs-toggle="tab" href="#especificaciones" role="tab"><i class="ri-list-check-2 align-bottom me-1"></i>ESPECIFICACIONES</a>
                             </li>
-                            <li class="nav-item">
+                            <li class="nav-item tab-hija d-none">
                                 <a class="nav-link disabled" id="tabCertificaciones" data-bs-toggle="tab" href="#certificaciones" role="tab"><i class="ri-shield-check-line align-bottom me-1"></i>CERTIFICACIONES</a>
                             </li>
-                            <li class="nav-item">
+                            <li class="nav-item tab-hija d-none">
                                 <a class="nav-link disabled" id="tabHistorial" data-bs-toggle="tab" href="#historial" role="tab"><i class="ri-history-line align-bottom me-1"></i>HISTORIAL</a>
                             </li>
-                            <li class="nav-item">
+                            <li class="nav-item tab-hija d-none">
                                 <a class="nav-link disabled" id="tabFichaTecnica" data-bs-toggle="tab" href="#fichaTecnica" role="tab"><i class="ri-file-text-line align-bottom me-1"></i>FICHA TÉCNICA</a>
                             </li>
                         <?php } ?>
@@ -168,9 +168,9 @@
                         <div class="tab-pane active" id="listConfiguraciones" role="tabpanel">
                             <div class="d-flex justify-content-end gap-2 mb-3">
                                 <?php if (!empty($_SESSION['permisosMod']['u'])) { ?>
-                                    <button type="button" id="btnReevaluarTodas" class="btn btn-outline-primary btn-sm">
+                                    <!-- <button type="button" id="btnReevaluarTodas" class="btn btn-outline-primary btn-sm">
                                         <i class="ri-refresh-line align-bottom me-1"></i>Reevaluar todas ahora
-                                    </button>
+                                    </button> -->
                                 <?php } ?>
                             </div>
                             <div class="table-responsive">
@@ -289,7 +289,17 @@
                                     <div class="col-lg-3 col-sm-6">
                                         <div class="mb-3">
                                             <label class="form-label" for="combustible-input">COMBUSTIBLE</label>
-                                            <input type="text" class="form-control" id="combustible-input" name="combustible-input">
+                                            <select class="form-select" id="combustible-input" name="combustible-input">
+                                                <option value="">Seleccione...</option>
+                                                <option value="DSL">DSL</option>
+                                                <option value="GSL">GSL</option>
+                                                <option value="CNG">CNG</option>
+                                                <option value="LNG">LNG</option>
+                                                <option value="EV">EV</option>
+                                                <option value="PHEV">PHEV</option>
+                                                <option value="MHEV">MHEV</option>
+                                                <option value="FCEV">FCEV</option>
+                                            </select>
                                         </div>
                                     </div>
                                     <div class="col-lg-3 col-sm-6">
@@ -309,8 +319,8 @@
                                     </div>
                                     <div class="col-lg-6 col-sm-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="version-input">VERSIÓN</label>
-                                            <input type="text" class="form-control" id="version-input" name="version-input">
+                                            <label class="form-label" for="version-input">CONFIGURACIÓN</label>
+                                            <input type="text" class="form-control" id="version-input" name="version-input" placeholder="4X4">
                                         </div>
                                     </div>
                                 </div>

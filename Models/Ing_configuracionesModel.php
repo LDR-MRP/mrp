@@ -46,7 +46,7 @@ class Ing_configuracionesModel extends Mysql
                 LEFT JOIN ing_cat_motor m ON m.id_motor = c.id_motor
                 LEFT JOIN ing_cat_transmision t ON t.id_transmision = c.id_transmision
                 WHERE c.deleted_at IS NULL
-                ORDER BY l.descripcion, s.descripcion, c.nombre_unidad";
+                ORDER BY c.id_configuracion DESC";
 
         return $this->select_all($sql);
     }
@@ -177,11 +177,16 @@ class Ing_configuracionesModel extends Mysql
                     c.nombre_unidad,
                     c.tipo_origen,
                     c.combustible,
+                    c.version,
+                    c.id_sublineaproducto,
+                    l.idlineaproducto,
                     l.descripcion AS segmento,
-                    s.descripcion AS modelo
+                    s.descripcion AS modelo,
+                    t.tipo AS transmision_tipo
                 FROM ing_modelo_configuracion c
                 INNER JOIN wms_sublinea_producto s ON s.idsublineaproducto = c.id_sublineaproducto
                 INNER JOIN wms_linea_producto l ON l.idlineaproducto = s.lineaproductoid
+                LEFT JOIN ing_cat_transmision t ON t.id_transmision = c.id_transmision
                 WHERE c.id_configuracion = ? AND c.deleted_at IS NULL";
 
         return $this->select($sql, [$id]);
@@ -192,16 +197,17 @@ class Ing_configuracionesModel extends Mysql
     // la configuracion. Reglas confirmadas con el usuario (09-sep-2026,
     // ajustadas el mismo dia: se quitaron Carroceria/Version y el formato
     // paso de "todo separado por guion" a "solo la marca/segmento separada":
-    //   - Segmento:        primera + letra intermedia + ultima letra   (FOTON      -> FTN)
-    //   - Nombre unidad:   primera + ultima letra                     (Wonder     -> WR)
+    //   - Segmento:        YA NO SE USA en el SKU (se quito FTN el 06-oct-2026)
+    //   - Nombre unidad:   2 primeras letras + 2 primeras de la palabra siguiente (Aumark S3-E6-AMT -> AUS3) [06-oct-2026]
     //   - Modelo/sublinea: inicial de cada palabra                    (MINI TRUCK -> MT)
     //   - Origen:          N (Nacional) / I (Importado)
     //   - Combustible:     codigo de 3 letras via catalogo interno (GSL/DSL/ELE/HIB/GLP/GNC...),
     //                      si no se reconoce toma las primeras 3 letras
-    // Formato final: "<SEGMENTO>-<restodelSKUjunto>" — solo el segmento
-    // (la marca) va separado por guion, todo lo demas se concatena sin
-    // separadores. Los segmentos vacios (dato no capturado todavia) se
-    // omiten. Si el codigo base ya existe en inventario se agrega un
+    //   - Tipo transmision: TM / AMT / AT (catalogo ing_cat_transmision)  [agregado 05-oct-2026]
+    //   - Configuracion:   al final, texto limpio sin espacios           (4 X 4      -> 4X4) [antes "version"]
+    // Formato final (06-oct-2026): "<NOMBRE>-<RESTO>" (un solo guion, sin segmento),
+    // ej. AUS3-LDTNDSLTMA4X2. Las partes vacias (dato no capturado todavia)
+    // se omiten. Si el codigo base ya existe en inventario se agrega un
     // consecutivo numerico (-02, -03...) hasta encontrar uno libre: el
     // generador nunca rechaza por choque ni reutiliza un SKU ajeno.
     // ------------------------------------------------------------------
@@ -235,17 +241,15 @@ class Ing_configuracionesModel extends Mysql
         return $primera . $intermedia . $ultima;
     }
 
-    private function extraerPrimeraUltima(string $texto)
+    private function extraerPrimerasDos(string $texto)
     {
         $limpio = str_replace(' ', '', $this->normalizarTexto($texto));
-        $len = mb_strlen($limpio);
-        if ($len === 0) {
-            return '';
-        }
-        if ($len === 1) {
-            return $limpio;
-        }
-        return mb_substr($limpio, 0, 1) . mb_substr($limpio, -1, 1);
+        return mb_substr($limpio, 0, 2);
+    }
+
+    private function limpiarVersion(string $texto)
+    {
+        return str_replace(' ', '', $this->normalizarTexto($texto));
     }
 
     private function extraerIniciales(string $texto)
@@ -273,6 +277,11 @@ class Ing_configuracionesModel extends Mysql
         if ($limpio === '') {
             return '';
         }
+        // Códigos vigentes del catálogo (select): se usan tal cual en el SKU.
+        if (in_array($limpio, ['DSL', 'GSL', 'CNG', 'LNG', 'EV', 'PHEV', 'MHEV', 'FCEV'], true)) {
+            return $limpio;
+        }
+        // Valores anteriores de texto libre.
         $mapa = [
             'GASOLINA'    => 'GSL',
             'DIESEL'      => 'DSL',
@@ -291,26 +300,45 @@ class Ing_configuracionesModel extends Mysql
 
     public function generarSku(array $ficha)
     {
-        $segmento = $this->extraerPrimeraIntermediaUltima($ficha['segmento'] ?? '');
+        // Formato (06-oct-2026): "<NOMBRE>-<RESTO>", sin segmento. Solo un guion,
+        // entre el codigo del nombre de unidad y el resto concatenado.
+        // Ej.: AUS3-LDTNDSLTMA4X2. Las partes vacias se omiten.
+        $nombre = $this->codigoNombreUnidad($ficha['nombre_unidad'] ?? '');
 
-        $resto = [
-            $this->extraerPrimeraUltima($ficha['nombre_unidad'] ?? ''),
+        $resto = implode('', array_filter([
             $this->extraerIniciales($ficha['modelo'] ?? ''),
             ($ficha['tipo_origen'] ?? '') === 'IMPORTADO' ? 'I' : 'N',
             $this->codigoCombustible($ficha['combustible'] ?? ''),
-        ];
-        $resto = implode('', array_filter($resto, function ($p) {
+            $this->limpiarVersion($ficha['transmision_tipo'] ?? ''), // TM / AMT / AT (catalogo de transmisiones)
+            $this->limpiarVersion($ficha['version'] ?? ''),          // campo "Configuracion" (ej. 4X4)
+        ], function ($p) {
             return $p !== '';
         }));
 
-        $partes = array_filter([$segmento, $resto], function ($p) {
+        return implode('-', array_filter([$nombre, $resto], function ($p) {
             return $p !== '';
-        });
-
-        return implode('-', $partes);
+        }));
     }
 
-    public function generarSkuUnico(array $ficha)
+    // Nombre de unidad: primeras 2 letras de la 1a palabra + primeras 2 de la 2a
+    // palabra (despues del primer espacio). "Aumark S3-E6-AMT" -> AU + S3 = AUS3.
+    // Si el nombre es de una sola palabra, solo las primeras 2 letras ("Wonder" -> WO).
+    private function codigoNombreUnidad(string $texto)
+    {
+        $palabras = preg_split('/\s+/', $this->normalizarTexto($texto), -1, PREG_SPLIT_NO_EMPTY);
+        if (empty($palabras)) {
+            return '';
+        }
+        $codigo = mb_substr($palabras[0], 0, 2);
+        if (isset($palabras[1])) {
+            $codigo .= mb_substr($palabras[1], 0, 2);
+        }
+        return $codigo;
+    }
+
+    // $excluirIdInventario: al ACTUALIZAR el SKU de un articulo ya dado de alta,
+    // su propio registro no cuenta como colision.
+    public function generarSkuUnico(array $ficha, ?int $excluirIdInventario = null)
     {
         $base = $this->generarSku($ficha);
         if ($base === '') {
@@ -318,7 +346,7 @@ class Ing_configuracionesModel extends Mysql
         }
         $sku = $base;
         $intento = 1;
-        while ($this->existeSku($sku)) {
+        while ($this->existeSku($sku, $excluirIdInventario)) {
             $intento++;
             $sku = $base . '-' . str_pad((string) $intento, 2, '0', STR_PAD_LEFT);
         }
@@ -332,14 +360,17 @@ class Ing_configuracionesModel extends Mysql
     public function crearInventarioParaConfiguracion(array $config, string $cveArticulo)
     {
         $sql = "INSERT INTO wms_inventario
-            (cve_articulo, descripcion, notas, unidad_entrada, unidad_salida, unidad_empaque,
+            (cve_articulo, descripcion, lineaproductoid, notas, unidad_entrada, unidad_salida, unidad_empaque,
              ultimo_costo, ubicacion, idmarca, tipo_elemento, factor_unidades, tiempo_surtido,
              peso, volumen, serie, lote, pedimiento, fecha_creacion, estado)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),2)";
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),2)";
 
+        // lineaproductoid = segmento (wms_linea_producto) que la configuración
+        // ya trae vía su sublínea; el MRP necesita esta FK.
         return $this->insert($sql, [
             $cveArticulo,
             $config['nombre_unidad'] . ' (' . $config['tipo_origen'] . ')',
+            (int) $config['idlineaproducto'],
             'Generado automáticamente por el módulo de Ingeniería para la configuración #' . $config['id_configuracion'],
             'PZA', 'PZA', 'PZA',
             0, '', null, 'P', 1, 0, 0, 0,
@@ -347,10 +378,30 @@ class Ing_configuracionesModel extends Mysql
         ]);
     }
 
-    public function existeSku(string $cveArticulo)
+    // Registra también la sublínea (modelo) en wms_inventario_linea, igual
+    // que lo hace la pestaña Configuración de Inv_inventario.
+    public function insertarSublineaInventario(int $idInventario, int $idSublinea)
+    {
+        $sql = "INSERT INTO wms_inventario_linea (inventarioid, sublineaproductoid, fecha_creacion, estado)
+                VALUES (?, ?, NOW(), 2)";
+        return $this->insert($sql, [$idInventario, $idSublinea]);
+    }
+
+    public function existeSku(string $cveArticulo, ?int $excluirIdInventario = null)
     {
         $sql = "SELECT idinventario FROM wms_inventario WHERE cve_articulo = ?";
-        return !empty($this->select($sql, [$cveArticulo]));
+        $params = [$cveArticulo];
+        if ($excluirIdInventario !== null) {
+            $sql .= " AND idinventario <> ?";
+            $params[] = $excluirIdInventario;
+        }
+        return !empty($this->select($sql, $params));
+    }
+
+    public function actualizarSkuInventario(int $idInventario, string $cveArticulo)
+    {
+        $sql = "UPDATE wms_inventario SET cve_articulo = ? WHERE idinventario = ?";
+        return $this->update($sql, [$cveArticulo, $idInventario]);
     }
 
     public function vincularInventarioConfiguracion(int $idConfiguracion, int $idInventario)

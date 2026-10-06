@@ -160,13 +160,13 @@
                                     </div>
                                     <div class="col-lg-3 col-sm-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="capacidad-bateria-input">CAPACIDAD</label>
+                                            <label class="form-label" for="capacidad-bateria-input">CAPACIDAD NOMINAL (Ah)</label>
                                             <input type="text" class="form-control" id="capacidad-bateria-input" name="capacidad-bateria-input">
                                         </div>
                                     </div>
                                     <div class="col-lg-3 col-sm-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="consumo-input">CONSUMO</label>
+                                            <label class="form-label" for="consumo-input">CONSUMO ENERGÍA (kW/h)</label>
                                             <input type="text" class="form-control" id="consumo-input" name="consumo-input">
                                         </div>
                                     </div>
@@ -184,7 +184,7 @@
                                     </div>
                                     <div class="col-lg-3 col-sm-6">
                                         <div class="mb-3">
-                                            <label class="form-label" for="sistema-electrico-input">SISTEMA ELÉCTRICO</label>
+                                            <label class="form-label" for="sistema-electrico-input">SISTEMA NÓMINAL (V)</label>
                                             <input type="text" class="form-control" id="sistema-electrico-input" name="sistema-electrico-input" placeholder="Ej. 12V">
                                         </div>
                                     </div>

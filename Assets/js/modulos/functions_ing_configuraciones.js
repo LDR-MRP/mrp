@@ -23,6 +23,15 @@ let spanBtnText = null;
 // Ejes, Suspensión, Llantas, Frenos, Seguridad, Electricidad, Combustible,
 // Dirección, Equipamiento, Batería, Carrocería) — no requiere traducción.
 
+// Las subpestañas (DATOS GENERALES, ESPECIFICACIONES, CERTIFICACIONES, HISTORIAL,
+// FICHA TÉCNICA) solo se muestran al crear o editar una configuración; en el
+// LISTADO permanecen ocultas.
+function mostrarSubtabs(mostrar) {
+  document.querySelectorAll("#nav-tab li.tab-hija").forEach(function (li) {
+    li.classList.toggle("d-none", !mostrar);
+  });
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   divLoading = document.querySelector("#divLoading");
   formConfiguraciones = document.querySelector("#formConfiguraciones");
@@ -97,6 +106,7 @@ document.addEventListener("DOMContentLoaded", function () {
     autoWidth: false,
     destroy: true,
     pageLength: 10,
+    order: [], // respeta el orden del servidor: última configuración primero
   });
 
   // --------------------------------------------------------------
@@ -144,11 +154,13 @@ document.addEventListener("DOMContentLoaded", function () {
   if (btnNuevaConfiguracion) {
     btnNuevaConfiguracion.addEventListener("click", function () {
       resetForm();
+      mostrarSubtabs(true);
       if (firstTab) firstTab.show();
     });
   }
 
   function resetForm() {
+    mostrarSubtabs(false);
     if (tabNuevo) tabNuevo.textContent = "DATOS GENERALES";
     if (spanBtnText) spanBtnText.textContent = "REGISTRAR";
     if (idConfiguracionInput) idConfiguracionInput.value = "0";
@@ -617,6 +629,7 @@ function setDisplay(selector, display) {
 }
 
 function fntEditInfo(idConfiguracion) {
+  mostrarSubtabs(true);
   if (tabNuevo) tabNuevo.textContent = "ACTUALIZAR";
   if (spanBtnText) spanBtnText.textContent = "ACTUALIZAR";
 
@@ -648,6 +661,13 @@ function fntEditInfo(idConfiguracion) {
     setFieldValue("#nombre-comercial-input", d.nombre_comercial || "");
     setFieldValue("#clave-vehicular-input", d.clave_vehicular || "");
     setFieldValue("#codigo-modelo-input", d.codigo_modelo || "");
+    // Registros anteriores pudieron guardarse con texto libre (ej. "Gasolina"): se agrega
+    // como opción temporal para no perder el dato al editar.
+    let selComb = document.querySelector("#combustible-input");
+    if (selComb) selComb.querySelectorAll("option[data-legacy]").forEach(function (o) { o.remove(); });
+    if (selComb && d.combustible && !Array.from(selComb.options).some(function (o) { return o.value === d.combustible; })) {
+      selComb.insertAdjacentHTML("beforeend", '<option value="' + String(d.combustible).replace(/"/g, "&quot;") + '" data-legacy="1">' + d.combustible + " (valor anterior)</option>");
+    }
     setFieldValue("#combustible-input", d.combustible || "");
     setFieldValue("#peso-bruto-input", d.peso_bruto || "");
     setFieldValue("#nivel-emisiones-input", d.nivel_emisiones || "");
@@ -760,7 +780,7 @@ function renderFichaTecnica(objData) {
   html += c.estado_label;
   html += "</div>";
 
-  if (c.estado === "AUTORIZADO") {
+  if (c.estado === "AUTORIZADO" || c.inv_cve_articulo) {
     html += '<div class="card border-0 shadow-sm mb-3">';
     html += '<div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">';
     if (c.inv_cve_articulo) {
@@ -769,13 +789,17 @@ function renderFichaTecnica(objData) {
       html +=
         '<span class="text-muted">SKU: <strong>' +
         c.inv_cve_articulo +
-        '</strong> — los VIN de las unidades físicas se generan desde el módulo VIN.</span>';
+        '</strong> — los NIV de las unidades físicas se generan desde el módulo VIN/NIV.</span>';
       html += '</div>';
+      html +=
+        '<button type="button" class="btn btn-warning btn-label" onclick="actualizarSku(' +
+        c.id_configuracion +
+        ')"><i class="ri-refresh-line label-icon align-middle fs-16 me-2"></i>Actualizar SKU</button>';
     } else {
       html += '<div>';
       html += '<h6 class="mb-1">Alta en inventario</h6>';
       html +=
-        '<span class="text-muted">Crea el artículo (SKU) en inventario para poder generar después los VIN de las unidades físicas.</span>';
+        '<span class="text-muted">Crea el artículo (SKU) en inventario para poder generar después los NIV de las unidades físicas.</span>';
       html += '</div>';
       html +=
         '<button type="button" class="btn btn-primary btn-label" onclick="darDeAltaInventario(' +
@@ -799,7 +823,7 @@ function renderFichaTecnica(objData) {
   html += fichaFila("Combustible", c.combustible);
   html += fichaFila("Peso bruto vehicular", c.peso_bruto, "kg");
   html += fichaFila("Nivel de emisiones", c.nivel_emisiones);
-  html += fichaFila("Versión", c.version);
+  html += fichaFila("Configuración", c.version);
   html += "</table></div></div></div>";
 
   // MOTOR
@@ -899,10 +923,63 @@ function renderFichaTecnica(objData) {
   cont.innerHTML = html;
 }
 
+// Recalcula el SKU con los datos actuales de la configuración (incluye tipo de
+// transmisión y configuración). Primero muestra el cambio y pide confirmación.
+function actualizarSku(idConfiguracion) {
+  function llamar(confirmar, callback) {
+    if (divLoading) divLoading.style.display = "flex";
+    let request = new XMLHttpRequest();
+    request.open("POST", base_url + "/Ing_configuraciones/setActualizarSku", true);
+    request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    request.send("id_configuracion=" + idConfiguracion + "&confirmar=" + (confirmar ? 1 : 0));
+    request.onreadystatechange = function () {
+      if (request.readyState !== 4) return;
+      if (divLoading) divLoading.style.display = "none";
+      if (request.status !== 200) {
+        Swal.fire("Error", "Ocurrió un error en el servidor.", "error");
+        return;
+      }
+      callback(JSON.parse(request.responseText));
+    };
+  }
+
+  llamar(false, function (objData) {
+    if (!objData.status) {
+      Swal.fire("Atención", objData.msg, "warning");
+      return;
+    }
+    if (!objData.cambia) {
+      Swal.fire("Sin cambios", "El SKU ya está actualizado: " + objData.actual, "info");
+      return;
+    }
+    Swal.fire({
+      title: "Actualizar SKU",
+      html:
+        "SKU actual: <strong>" + objData.actual + "</strong><br>SKU nuevo: <strong>" + objData.nuevo + "</strong>" +
+        "<br><br>Se cambiará el SKU del artículo en inventario. ¿Continuar?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Actualizar",
+      cancelButtonText: "Cancelar",
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      llamar(true, function (resp) {
+        if (resp.status) {
+          Swal.fire("¡Operación exitosa!", resp.msg + " SKU: " + resp.nuevo, "success").then(() => {
+            cargarFichaTecnica(idConfiguracion);
+          });
+        } else {
+          Swal.fire("Atención", resp.msg, "warning");
+        }
+      });
+    });
+  });
+}
+
 function darDeAltaInventario(idConfiguracion) {
   Swal.fire({
     title: "Dar de alta en inventario",
-    text: "El SKU se genera automáticamente a partir de las especificaciones de esta configuración (segmento, modelo, nombre de unidad, origen, carrocería, versión y combustible). ¿Continuar?",
+    text: "El SKU se genera automáticamente a partir de las especificaciones de esta configuración (segmento, nombre de unidad, modelo, origen, combustible, tipo de transmisión y configuración). ¿Continuar?",
     icon: "question",
     showCancelButton: true,
     confirmButtonText: "Dar de alta",

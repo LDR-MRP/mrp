@@ -241,62 +241,14 @@ class Ing_configuraciones extends Controllers
             } else if (empty($_SESSION['permisosMod']['u']) && empty($_SESSION['permisosMod']['w'])) {
                 $arrResponse = array('status' => false, 'msg' => 'No tienes permiso para esta acción.');
             } else {
-                $idusuario = $_SESSION['userData']['idusuario'] ?? null;
                 $certificaciones = json_decode($_POST['certificaciones'] ?? '[]', true);
-                $ok = true;
-                if (is_array($certificaciones)) {
-                    foreach ($certificaciones as $cert) {
-                        $idCertificacion = intval($cert['id_certificacion']);
-
-                        // archivo adjunto (constancia/certificado): opcional, solo se procesa si se subió uno nuevo.
-                        $archivo = null;
-                        $campoArchivo = 'archivo_' . $idCertificacion;
-                        if (isset($_FILES[$campoArchivo]) && $_FILES[$campoArchivo]['error'] === UPLOAD_ERR_OK) {
-                            $directorio = 'Assets/uploads/ing_certificaciones/';
-                            if (!file_exists($directorio)) {
-                                mkdir($directorio, 0777, true);
-                            }
-                            $extension = pathinfo($_FILES[$campoArchivo]['name'], PATHINFO_EXTENSION);
-                            $nombreArchivo = 'cert_' . $intIdConfiguracion . '_' . $idCertificacion . '_' . date('YmdHis') . '_' . substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 5) . '.' . $extension;
-                            $rutaDestino = $directorio . $nombreArchivo;
-
-                            if (move_uploaded_file($_FILES[$campoArchivo]['tmp_name'], $rutaDestino)) {
-                                $archivo = $nombreArchivo;
-                            }
-                        }
-
-                        $data = [
-                            'obligatoria'        => !empty($cert['obligatoria']) ? 1 : 0,
-                            'estado'             => strClean($cert['estado'] ?? 'PENDIENTE'),
-                            'numero_certificado' => strClean($cert['numero_certificado'] ?? ''),
-                            'fecha_emision'      => !empty($cert['fecha_emision']) ? $cert['fecha_emision'] : null,
-                            'fecha_inicio'       => !empty($cert['fecha_inicio']) ? $cert['fecha_inicio'] : null,
-                            'fecha_vencimiento'  => !empty($cert['fecha_vencimiento']) ? $cert['fecha_vencimiento'] : null,
-                            'observaciones'      => strClean($cert['observaciones'] ?? ''),
-                            'archivo'            => $archivo,
-                        ];
-                        $result = $this->model->upsertCertificacionConfiguracion($intIdConfiguracion, $idCertificacion, $data);
-                        if (!$result) {
-                            $ok = false;
-                        }
-                    }
-                }
-                if ($ok) {
-                    $this->model->logAudit(
-                        $intIdConfiguracion,
-                        AuditAction::UPDATED,
-                        'Certificaciones actualizadas (' . count($certificaciones) . ' certificaciones capturadas).',
-                        $idusuario
-                    );
-                    $arrResponse = array('status' => true, 'msg' => 'Las certificaciones se guardaron correctamente.');
-                    $evaluacion = (new Ing_reglasService())->evaluarConfiguracion($intIdConfiguracion, 'GUARDADO');
-                    if ($evaluacion['cambio']) {
-                        $arrResponse['msg'] .= ' ' . $this->mensajeEvaluacion($evaluacion);
-                    }
-                    $arrResponse['evaluacion'] = $evaluacion;
-                } else {
-                    $arrResponse = array('status' => false, 'msg' => 'Ocurrió un error al guardar alguna de las certificaciones.');
-                }
+                $arrResponse = (new Ing_certificacionesService())->guardar(
+                    $intIdConfiguracion,
+                    is_array($certificaciones) ? $certificaciones : [],
+                    $_FILES,
+                    $_SESSION['userData']['idusuario'] ?? null,
+                    'Ingeniería'
+                );
             }
             echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         }
@@ -404,8 +356,14 @@ class Ing_configuraciones extends Controllers
                 die();
             }
 
+
             if ($config['estado'] !== 'AUTORIZADO') {
                 echo json_encode(array('status' => false, 'msg' => 'Solo se puede dar de alta en inventario una configuración AUTORIZADA. Estado actual: ' . $config['estado'] . '.'), JSON_UNESCAPED_UNICODE);
+                die();
+            }
+
+            if (empty($config['idlineaproducto'])) {
+                echo json_encode(array('status' => false, 'msg' => 'La configuración no tiene línea de producto (segmento) asociada.'), JSON_UNESCAPED_UNICODE);
                 die();
             }
 
@@ -417,6 +375,13 @@ class Ing_configuraciones extends Controllers
                 $idInventario = $this->model->crearInventarioParaConfiguracion($config, $sku);
                 if (empty($idInventario)) {
                     throw new Exception('No fue posible crear el artículo de inventario.');
+                }
+
+                if (!empty($config['id_sublineaproducto'])) {
+                    $idLinea = $this->model->insertarSublineaInventario((int) $idInventario, (int) $config['id_sublineaproducto']);
+                    if (empty($idLinea)) {
+                        throw new Exception('No fue posible registrar la sublínea del artículo de inventario.');
+                    }
                 }
 
                 $ok = $this->model->vincularInventarioConfiguracion($intId, $idInventario);
@@ -445,6 +410,63 @@ class Ing_configuraciones extends Controllers
                 $pdo->rollBack();
                 echo json_encode(array('status' => false, 'msg' => 'Error al dar de alta en inventario: ' . $e->getMessage()), JSON_UNESCAPED_UNICODE);
             }
+        }
+        die();
+    }
+
+    // ------------------------------------------------------------------
+    // ACTUALIZAR SKU — vuelve a generar el SKU interno con los datos actuales
+    // de la configuración (ya dada de alta) y lo aplica a wms_inventario.
+    // confirmar=0 solo calcula y compara (vista previa); confirmar=1 aplica.
+    // ------------------------------------------------------------------
+    public function setActualizarSku()
+    {
+        if ($_POST) {
+            if (empty($_SESSION['permisosMod']['w'])) {
+                echo json_encode(array('status' => false, 'msg' => 'No tienes permiso para esta acción.'), JSON_UNESCAPED_UNICODE);
+                die();
+            }
+
+            $intId = intval($_POST['id_configuracion'] ?? 0);
+            $confirmar = !empty($_POST['confirmar']);
+            $config = $intId > 0 ? $this->model->selectConfiguracionParaAltaInventario($intId) : null;
+
+            if (empty($config)) {
+                echo json_encode(array('status' => false, 'msg' => 'La configuración no existe.'), JSON_UNESCAPED_UNICODE);
+                die();
+            }
+            if (empty($config['id_inventario'])) {
+                echo json_encode(array('status' => false, 'msg' => 'La configuración todavía no está dada de alta en inventario.'), JSON_UNESCAPED_UNICODE);
+                die();
+            }
+
+            $idInventario = (int) $config['id_inventario'];
+            $actual = $this->model->selectSkuInventario($idInventario)['cve_articulo'] ?? '';
+            $nuevo = $this->model->generarSkuUnico($config, $idInventario);
+
+            if ($nuevo === $actual) {
+                echo json_encode(array('status' => true, 'cambia' => false, 'actual' => $actual, 'nuevo' => $nuevo, 'msg' => 'El SKU ya está actualizado.'), JSON_UNESCAPED_UNICODE);
+                die();
+            }
+
+            if (!$confirmar) {
+                echo json_encode(array('status' => true, 'cambia' => true, 'actual' => $actual, 'nuevo' => $nuevo), JSON_UNESCAPED_UNICODE);
+                die();
+            }
+
+            if (!$this->model->actualizarSkuInventario($idInventario, $nuevo)) {
+                echo json_encode(array('status' => false, 'msg' => 'No fue posible actualizar el SKU en inventario.'), JSON_UNESCAPED_UNICODE);
+                die();
+            }
+
+            $this->model->logAudit(
+                $intId,
+                AuditAction::UPDATED,
+                "SKU actualizado: '" . $actual . "' -> '" . $nuevo . "'",
+                $_SESSION['userData']['idusuario'] ?? null
+            );
+
+            echo json_encode(array('status' => true, 'cambia' => true, 'actual' => $actual, 'nuevo' => $nuevo, 'msg' => 'SKU actualizado correctamente.'), JSON_UNESCAPED_UNICODE);
         }
         die();
     }
