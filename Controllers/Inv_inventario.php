@@ -299,68 +299,108 @@ class Inv_inventario extends Controllers
 	}
 
 
+	/**
+	 * Listado principal paginado del lado del servidor (DataTables serverSide).
+	 * Antes se mandaban TODOS los registros (13k+) con su HTML de botones y el
+	 * navegador los pintaba; ahora solo viaja la pagina visible.
+	 */
 	public function getInventarios()
 	{
-		if ($_SESSION['permisosMod']['r']) {
-
-			$arrData = $this->model->selectInventarios();
-
-			for ($i = 0; $i < count($arrData); $i++) {
-
-				// Estado
-				$arrData[$i]['estado'] = ($arrData[$i]['estado'] == 2)
-					? '<span class="badge bg-success">Activo</span>'
-					: '<span class="badge bg-danger">Inactivo</span>';
-
-				$tipoRaw = $arrData[$i]['tipo_elemento'];
-
-				// Tipo
-				if ($arrData[$i]['tipo_elemento'] == 'P') $arrData[$i]['tipo_elemento'] = 'Producto';
-				if ($arrData[$i]['tipo_elemento'] == 'S') $arrData[$i]['tipo_elemento'] = 'Servicio';
-				if ($arrData[$i]['tipo_elemento'] == 'K') $arrData[$i]['tipo_elemento'] = 'Kit';
-				if ($arrData[$i]['tipo_elemento'] == 'C') $arrData[$i]['tipo_elemento'] = 'Componente';
-				if ($arrData[$i]['tipo_elemento'] == 'H') $arrData[$i]['tipo_elemento'] = 'Herramienta';
-				if ($arrData[$i]['tipo_elemento'] == 'R') $arrData[$i]['tipo_elemento'] = 'Refacción';
-
-
-				// Botones
-				$btnView = '';
-				$btnEdit = '';
-				$btnDelete = '';
-				$btnConfig = '';
-
-				if ($_SESSION['permisosMod']['r']) {
-					$btnView = '<button class="btn btn-sm btn-soft-info" onClick="fntViewInventario(' . $arrData[$i]['idinventario'] . ')">
-                                <i class="ri-eye-fill"></i>
-                            </button>';
-				}
-
-				if ($_SESSION['permisosMod']['u']) {
-					$btnEdit = '<button class="btn btn-sm btn-soft-warning" onClick="fntEditInventario(' . $arrData[$i]['idinventario'] . ')">
-                                <i class="ri-pencil-fill"></i>
-                            </button>';
-				}
-
-				if ($_SESSION['permisosMod']['d']) {
-					$btnDelete = '<button class="btn btn-sm btn-soft-danger" onClick="fntDelInventario(' . $arrData[$i]['idinventario'] . ')">
-                                <i class="ri-delete-bin-5-fill"></i>
-                            </button>';
-				}
-				if (in_array($tipoRaw, ['P', 'C', 'H', 'K', 'R'])) {
-					$btnConfig = '<button class="btn btn-sm btn-soft-primary" title="Configurar" onClick="fntConfigInventario(' . $arrData[$i]['idinventario'] . ')"><i class="ri-settings-3-fill"></i></button>';
-				}
-
-
-
-				$arrData[$i]['options'] = '<div class="text-center">'
-					. $btnView . ' '
-					. $btnEdit . ' '
-					. $btnConfig .
-					'</div>';
-			}
-
-			echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+		if (empty($_SESSION['permisosMod']['r'])) {
+			die();
 		}
+
+		$req = $_POST + $_GET;
+
+		$tiposMap = [
+			'P' => 'Producto',
+			'S' => 'Servicio',
+			'K' => 'Kit',
+			'C' => 'Componente',
+			'H' => 'Herramienta',
+			'R' => 'Refacción',
+		];
+
+		// --- Busqueda general ---
+		$search = trim((string)($req['search']['value'] ?? ''));
+		$search = mb_substr($search, 0, 100);
+
+		// Si el texto buscado coincide con el nombre de un tipo (ej. "kit", "refac")
+		// tambien se incluyen los registros de ese tipo, como hacia el buscador anterior.
+		$tiposBusqueda = [];
+		if ($search !== '') {
+			$needle = mb_strtolower($search);
+			foreach ($tiposMap as $code => $label) {
+				if (mb_strpos(mb_strtolower($label), $needle) !== false) {
+					$tiposBusqueda[] = $code;
+				}
+			}
+		}
+
+		// --- Filtros de la caja "Filtros" ---
+		$tipo = (string)($req['filtro_tipo'] ?? '');
+		if (!isset($tiposMap[$tipo])) {
+			$code = array_search($tipo, $tiposMap, true);
+			$tipo = ($code !== false) ? $code : '';
+		}
+
+		$estado = mb_strtolower((string)($req['filtro_estado'] ?? ''));
+		if (!in_array($estado, ['activo', 'inactivo'], true)) {
+			$estado = '';
+		}
+
+		// --- Orden (lista blanca por indice de columna) ---
+		$columnas = [0 => 'cve_articulo', 1 => 'descripcion', 2 => 'tipo_elemento', 3 => 'estado'];
+		$orderIdx = (int)($req['order'][0]['column'] ?? 0);
+		$orderCol = $columnas[$orderIdx] ?? 'cve_articulo';
+		$orderDir = (strtolower($req['order'][0]['dir'] ?? 'asc') === 'desc') ? 'DESC' : 'ASC';
+
+		$result = $this->model->selectInventariosPaginado([
+			'start'          => (int)($req['start'] ?? 0),
+			'length'         => (int)($req['length'] ?? 10),
+			'search'         => $search,
+			'tipos_busqueda' => $tiposBusqueda,
+			'tipo'           => $tipo,
+			'estado'         => $estado,
+			'order_col'      => $orderCol,
+			'order_dir'      => $orderDir,
+		]);
+
+		$puedeEditar = !empty($_SESSION['permisosMod']['u']);
+		$arrData = $result['data'];
+
+		foreach ($arrData as $i => $row) {
+			$id      = (int)$row['idinventario'];
+			$tipoRaw = $row['tipo_elemento'];
+
+			$arrData[$i]['cve_articulo'] = htmlspecialchars((string)$row['cve_articulo'], ENT_QUOTES, 'UTF-8');
+			$arrData[$i]['descripcion']  = htmlspecialchars((string)$row['descripcion'], ENT_QUOTES, 'UTF-8');
+
+			$arrData[$i]['estado'] = ($row['estado'] == 2)
+				? '<span class="badge bg-success">Activo</span>'
+				: '<span class="badge bg-danger">Inactivo</span>';
+
+			$arrData[$i]['tipo_elemento'] = $tiposMap[$tipoRaw] ?? $tipoRaw;
+
+			$btnView = '<button class="btn btn-sm btn-soft-info" onClick="fntViewInventario(' . $id . ')"><i class="ri-eye-fill"></i></button>';
+
+			$btnEdit = $puedeEditar
+				? '<button class="btn btn-sm btn-soft-warning" onClick="fntEditInventario(' . $id . ')"><i class="ri-pencil-fill"></i></button>'
+				: '';
+
+			$btnConfig = in_array($tipoRaw, ['P', 'C', 'H', 'K', 'R'], true)
+				? '<button class="btn btn-sm btn-soft-primary" title="Configurar" onClick="fntConfigInventario(' . $id . ')"><i class="ri-settings-3-fill"></i></button>'
+				: '';
+
+			$arrData[$i]['options'] = '<div class="text-center">' . $btnView . ' ' . $btnEdit . ' ' . $btnConfig . '</div>';
+		}
+
+		echo json_encode([
+			'draw'            => (int)($req['draw'] ?? 0),
+			'recordsTotal'    => $result['recordsTotal'],
+			'recordsFiltered' => $result['recordsFiltered'],
+			'data'            => $arrData,
+		], JSON_UNESCAPED_UNICODE);
 		die();
 	}
 

@@ -23,18 +23,32 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   ocultarMovimientoInicial();
+  // Listado paginado del lado del servidor: solo se pide la pagina visible.
+  // Busqueda, orden y filtros (Tipo / Estado) se resuelven en MySQL
+  // (Inv_inventario::getInventarios -> selectInventariosPaginado).
   tableInventarios = $("#tableInventarios").DataTable({
     destroy: true,
+    processing: true,
+    serverSide: true,
+    searchDelay: 400,
+    pageLength: 10,
+    order: [[0, "asc"]],
     ajax: {
       url: base_url + "/Inv_inventario/getInventarios",
-      dataSrc: "",
+      type: "POST",
+      data: function (d) {
+        d.filtro_tipo =
+          document.getElementById("filtroTipoInventario")?.value || "";
+        d.filtro_estado =
+          document.getElementById("filtroEstadoInventario")?.value || "";
+      },
     },
     columns: [
       { data: "cve_articulo" },
       { data: "descripcion" },
       { data: "tipo_elemento" },
       { data: "estado" },
-      { data: "options" },
+      { data: "options", orderable: false, searchable: false },
     ],
     language: {
       url: "https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json",
@@ -43,33 +57,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ================================
   // FILTROS DE LA TABLA (Tipo / Estado)
+  // Se mandan al servidor en ajax.data; aqui solo se recarga la tabla.
   // ================================
 
   document
     .getElementById("filtroTipoInventario")
     ?.addEventListener("change", function () {
-      // columna 2 = TIPO -- valores sin traslape entre si (Producto,
-      // Servicio, Kit, Componente, Herramienta, Refaccion), busqueda simple
-      tableInventarios.column(2).search(this.value).draw();
+      tableInventarios.ajax.reload();
     });
 
   document
     .getElementById("filtroEstadoInventario")
     ?.addEventListener("change", function () {
-      const valor = this.value;
-
-      if (!valor) {
-        tableInventarios.column(3).search("").draw();
-        return;
-      }
-
-      // columna 3 = ESTADO, viene como badge HTML (<span ...>Activo</span>).
-      // DataTables detecta que la columna trae HTML y para buscar le quita
-      // las etiquetas -- el texto que realmente compara es "Activo" o
-      // "Inactivo" a secas (sin < >). Como "Activo" es substring de
-      // "Inactivo", hay que anclar con ^...$ para que no traiga ambos.
-      const patron = "^" + valor + "$";
-      tableInventarios.column(3).search(patron, true, false).draw();
+      tableInventarios.ajax.reload();
     });
 
   document
@@ -81,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (filtroTipo) filtroTipo.value = "";
       if (filtroEstado) filtroEstado.value = "";
 
-      tableInventarios.search("").columns().search("").draw();
+      tableInventarios.search("").draw();
     });
 
   // ================================

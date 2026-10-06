@@ -129,6 +129,93 @@ VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),2)";
     }
 
     /* ===============================
+       LISTADO PAGINADO (DataTables server-side)
+       Solo trae la pagina visible (10/25/50/100 filas) en lugar de
+       toda la tabla. Filtros, busqueda y orden se resuelven en MySQL.
+       $p = [
+         'start' => int, 'length' => int,
+         'search' => string,
+         'tipos_busqueda' => ['P','K',...]  (codigos cuyo nombre coincide con la busqueda),
+         'tipo' => 'P'|'S'|'K'|'C'|'H'|'R'|'',
+         'estado' => 'activo'|'inactivo'|'',
+         'order_col' => 'cve_articulo'|'descripcion'|'tipo_elemento'|'estado',
+         'order_dir' => 'ASC'|'DESC'
+       ]
+    =============================== */
+    public function selectInventariosPaginado(array $p): array
+    {
+        $where  = ["i.estado != 0"];
+        $params = [];
+
+        if (!empty($p['tipo'])) {
+            $where[]  = "i.tipo_elemento = ?";
+            $params[] = $p['tipo'];
+        }
+
+        if ($p['estado'] === 'activo') {
+            $where[] = "i.estado = 2";
+        } elseif ($p['estado'] === 'inactivo') {
+            $where[] = "i.estado <> 2";
+        }
+
+        if ($p['search'] !== '') {
+            $like = '%' . $p['search'] . '%';
+            $or   = ["i.cve_articulo LIKE ?", "i.descripcion LIKE ?"];
+            $params[] = $like;
+            $params[] = $like;
+
+            if (!empty($p['tipos_busqueda'])) {
+                $in   = implode(',', array_fill(0, count($p['tipos_busqueda']), '?'));
+                $or[] = "i.tipo_elemento IN ($in)";
+                foreach ($p['tipos_busqueda'] as $t) $params[] = $t;
+            }
+            $where[] = '(' . implode(' OR ', $or) . ')';
+        }
+
+        $whereSql = 'WHERE ' . implode(' AND ', $where);
+
+        // Total sin filtros (solo lo que el listado puede mostrar)
+        $total = $this->select("SELECT COUNT(*) AS total FROM wms_inventario i WHERE i.estado != 0");
+        $recordsTotal = (int)($total['total'] ?? 0);
+
+        // Total con filtros
+        if (count($where) === 1) {
+            $recordsFiltered = $recordsTotal;
+        } else {
+            $filt = $this->select("SELECT COUNT(*) AS total FROM wms_inventario i $whereSql", $params);
+            $recordsFiltered = (int)($filt['total'] ?? 0);
+        }
+
+        // Orden: columna validada contra lista blanca en el controlador
+        $orderCol = in_array($p['order_col'], ['cve_articulo', 'descripcion', 'tipo_elemento', 'estado'], true)
+            ? $p['order_col'] : 'cve_articulo';
+        $orderDir = ($p['order_dir'] === 'DESC') ? 'DESC' : 'ASC';
+
+        $start  = max(0, (int)$p['start']);
+        $length = (int)$p['length'];
+        $limit  = ($length > 0) ? "LIMIT " . min($length, 500) . " OFFSET $start" : "LIMIT 500 OFFSET $start";
+
+        $sql = "SELECT 
+                    i.idinventario,
+                    i.cve_articulo,
+                    i.descripcion,
+                    i.tipo_elemento,
+                    i.estado
+                FROM wms_inventario i
+                $whereSql
+                ORDER BY i.$orderCol $orderDir, i.idinventario $orderDir
+                $limit";
+
+        $data = $this->select_all($sql, $params);
+
+        return [
+            'recordsTotal'    => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data'            => $data,
+        ];
+    }
+
+    /* ===============================
        SELECT ONE
     =============================== */
     public function selectInventario(int $idinventario)
