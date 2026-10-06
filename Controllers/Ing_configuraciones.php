@@ -441,32 +441,57 @@ class Ing_configuraciones extends Controllers
             }
 
             $idInventario = (int) $config['id_inventario'];
-            $actual = $this->model->selectSkuInventario($idInventario)['cve_articulo'] ?? '';
+            $inv = $this->model->selectSkuInventario($idInventario);
+            $actual = $inv['cve_articulo'] ?? '';
+            $descActual = $inv['descripcion'] ?? '';
             $nuevo = $this->model->generarSkuUnico($config, $idInventario);
+            $descNueva = $this->model->descripcionInventario($config);
 
-            if ($nuevo === $actual) {
-                echo json_encode(array('status' => true, 'cambia' => false, 'actual' => $actual, 'nuevo' => $nuevo, 'msg' => 'El SKU ya está actualizado.'), JSON_UNESCAPED_UNICODE);
+            $cambiaSku = $nuevo !== $actual;
+            $cambiaDesc = $descNueva !== $descActual;
+            $datos = array(
+                'status'      => true,
+                'cambia'      => ($cambiaSku || $cambiaDesc),
+                'cambia_sku'  => $cambiaSku,
+                'cambia_desc' => $cambiaDesc,
+                'actual'      => $actual,
+                'nuevo'       => $nuevo,
+                'desc_actual' => $descActual,
+                'desc_nueva'  => $descNueva,
+            );
+
+            if (!$datos['cambia']) {
+                $datos['msg'] = 'El SKU y la descripción ya están actualizados.';
+                echo json_encode($datos, JSON_UNESCAPED_UNICODE);
                 die();
             }
 
             if (!$confirmar) {
-                echo json_encode(array('status' => true, 'cambia' => true, 'actual' => $actual, 'nuevo' => $nuevo), JSON_UNESCAPED_UNICODE);
+                echo json_encode($datos, JSON_UNESCAPED_UNICODE);
                 die();
             }
 
-            if (!$this->model->actualizarSkuInventario($idInventario, $nuevo)) {
+            if (!$this->model->actualizarSkuInventario($idInventario, $nuevo, $descNueva)) {
                 echo json_encode(array('status' => false, 'msg' => 'No fue posible actualizar el SKU en inventario.'), JSON_UNESCAPED_UNICODE);
                 die();
             }
 
+            $detalle = array();
+            if ($cambiaSku) {
+                $detalle[] = "SKU: '" . $actual . "' -> '" . $nuevo . "'";
+            }
+            if ($cambiaDesc) {
+                $detalle[] = "descripción: '" . $descActual . "' -> '" . $descNueva . "'";
+            }
             $this->model->logAudit(
                 $intId,
                 AuditAction::UPDATED,
-                "SKU actualizado: '" . $actual . "' -> '" . $nuevo . "'",
+                'Inventario actualizado (' . implode('; ', $detalle) . ')',
                 $_SESSION['userData']['idusuario'] ?? null
             );
 
-            echo json_encode(array('status' => true, 'cambia' => true, 'actual' => $actual, 'nuevo' => $nuevo, 'msg' => 'SKU actualizado correctamente.'), JSON_UNESCAPED_UNICODE);
+            $datos['msg'] = 'SKU y descripción actualizados correctamente.';
+            echo json_encode($datos, JSON_UNESCAPED_UNICODE);
         }
         die();
     }

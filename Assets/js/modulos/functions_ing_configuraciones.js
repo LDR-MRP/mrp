@@ -949,14 +949,15 @@ function actualizarSku(idConfiguracion) {
       return;
     }
     if (!objData.cambia) {
-      Swal.fire("Sin cambios", "El SKU ya está actualizado: " + objData.actual, "info");
+      Swal.fire("Sin cambios", "El SKU y la descripción ya están actualizados (" + objData.actual + ").", "info");
       return;
     }
     Swal.fire({
       title: "Actualizar SKU",
       html:
         "SKU actual: <strong>" + objData.actual + "</strong><br>SKU nuevo: <strong>" + objData.nuevo + "</strong>" +
-        "<br><br>Se cambiará el SKU del artículo en inventario. ¿Continuar?",
+        "<br><br>Descripción actual: <strong>" + objData.desc_actual + "</strong><br>Descripción nueva: <strong>" + objData.desc_nueva + "</strong>" +
+        "<br><br>Se actualizarán el SKU y la descripción del artículo en inventario. ¿Continuar?",
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Actualizar",

@@ -369,7 +369,7 @@ class Ing_configuracionesModel extends Mysql
         // ya trae vía su sublínea; el MRP necesita esta FK.
         return $this->insert($sql, [
             $cveArticulo,
-            $config['nombre_unidad'] . ' (' . $config['tipo_origen'] . ')',
+            $this->descripcionInventario($config),
             (int) $config['idlineaproducto'],
             'Generado automáticamente por el módulo de Ingeniería para la configuración #' . $config['id_configuracion'],
             'PZA', 'PZA', 'PZA',
@@ -398,10 +398,17 @@ class Ing_configuracionesModel extends Mysql
         return !empty($this->select($sql, $params));
     }
 
-    public function actualizarSkuInventario(int $idInventario, string $cveArticulo)
+    // Descripcion del articulo en wms_inventario: "<nombre de unidad> (<origen>)".
+    // Se usa al dar de alta y al actualizar el SKU, para que ambas coincidan.
+    public function descripcionInventario(array $config)
     {
-        $sql = "UPDATE wms_inventario SET cve_articulo = ? WHERE idinventario = ?";
-        return $this->update($sql, [$cveArticulo, $idInventario]);
+        return $config['nombre_unidad'] . ' (' . $config['tipo_origen'] . ')';
+    }
+
+    public function actualizarSkuInventario(int $idInventario, string $cveArticulo, ?string $descripcion = null)
+    {
+        $sql = "UPDATE wms_inventario SET cve_articulo = ?, descripcion = COALESCE(?, descripcion) WHERE idinventario = ?";
+        return $this->update($sql, [$cveArticulo, $descripcion, $idInventario]);
     }
 
     public function vincularInventarioConfiguracion(int $idConfiguracion, int $idInventario)
@@ -412,7 +419,7 @@ class Ing_configuracionesModel extends Mysql
 
     public function selectSkuInventario(int $idInventario)
     {
-        $sql = "SELECT cve_articulo FROM wms_inventario WHERE idinventario = ?";
+        $sql = "SELECT cve_articulo, descripcion FROM wms_inventario WHERE idinventario = ?";
         return $this->select($sql, [$idInventario]);
     }
 
