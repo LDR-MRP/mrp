@@ -76,16 +76,26 @@ class Lgs_costosService
         
         $madrinaSegs = $data['madrina_segmentos'] ?? [];
         $choferSegs = $data['chofer_segmentos'] ?? [];
+        $plataformaSegs = $data['plataforma_segmentos'] ?? [];
 
-        return $this->model->saveTarifasProveedor($idProveedor, $madrinaSegs, $choferSegs);
+        return $this->model->saveTarifasProveedor($idProveedor, $madrinaSegs, $choferSegs, $plataformaSegs);
     }
 
-    public function saveTarifasBaseConReplicacion(array $data, array $proveedoresReplicar): bool
+    public function saveTarifasBaseConReplicacion(array $data, array $proveedoresReplicar, bool $mantenerPersonalizadas = false): bool
     {
         $madrinaSegs = $data['madrina_segmentos'] ?? [];
         $choferSegs = $data['chofer_segmentos'] ?? [];
+        $plataformaSegs = $data['plataforma_segmentos'] ?? [];
 
-        return $this->model->saveTarifasBaseConReplicacion($madrinaSegs, $choferSegs, $proveedoresReplicar);
+        return $this->model->saveTarifasBaseConReplicacion($madrinaSegs, $choferSegs, $plataformaSegs, $proveedoresReplicar, $mantenerPersonalizadas);
+    }
+
+    public function compareProveedorConGlobal(int $idProveedor): array
+    {
+        if ($idProveedor <= 0) {
+            throw new Exception("ID de proveedor inválido para comparar.", 400);
+        }
+        return $this->model->compareProveedorConGlobal($idProveedor);
     }
 
     public function getProveedoresConEstadoTarifa(): array
@@ -118,4 +128,13 @@ class Lgs_costosService
         }
         return $this->model->updateModeloSegmento($idModelo, $idSegmento);
     }
+
+    public function addModeloVin(string $modelo, int $idSegmento, ?string $vinBase = null): bool
+    {
+        if (empty(trim($modelo))) {
+            throw new Exception("El nombre del modelo es requerido.", 400);
+        }
+        return $this->model->insertModeloVin($modelo, $idSegmento, $vinBase);
+    }
 }
+

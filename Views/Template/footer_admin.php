@@ -862,7 +862,6 @@ Se utiliza con fines de configuración y ajustes visuales del layout.
     <!-- Sweet alert init js-->
     <!-- <script src="<?= media(); ?>/minimal/js/pages/sweetalerts.init.js"></script> -->
 
-    <script src="<?= media(); ?>/js/sys_core.js?v=1.0.9"></script>
     <script src="<?= media(); ?>/js/sys_core.js?v=<?= time(); ?>"></script>
     <!-- [FIX] Se retiró el <script> de page_functions_js que estaba aquí (duplicado):
          ya se carga una sola vez más abajo, en el bloque "if (!empty($data['page_functions_js']))",

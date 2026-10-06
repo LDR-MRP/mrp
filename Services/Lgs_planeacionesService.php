@@ -12,8 +12,8 @@ class Lgs_planeacionesService {
         return $this->model->getPlaneacionesDataTable();
     }
 
-    public function getEnviosDisponibles(): array {
-        return $this->model->getEnviosDisponiblesPlan();
+    public function getEnviosDisponibles(int $idPlaneacion = 0): array {
+        return $this->model->getEnviosDisponiblesPlan($idPlaneacion);
     }
 
     /**
@@ -71,7 +71,86 @@ class Lgs_planeacionesService {
         }
     }
 
+    /**
+     * Actualiza una planeación existente (en estado 1 - Borrador)
+     */
+    public function updatePlaneacion(int $idPlaneacion, array $data, array $enviosIds, int $userId): void {
+        if (empty($enviosIds)) {
+            throw new Exception("Debe seleccionar al menos un envío para la planeación.");
+        }
+
+        $db = $this->model->getConexion();
+        try {
+            $db->beginTransaction();
+
+            $data['updated_at'] = date('Y-m-d H:i:s');
+            
+            // Recalcular el gran total de la planeación sumando los envíos
+            $costoAcumulado = 0.0;
+            $kmAcumulados = 0.0;
+
+            // Bloqueamos los envíos para lectura segura
+            $inIds = implode(',', array_fill(0, count($enviosIds), '?'));
+            $stmt = $db->prepare("SELECT id_envio, costo_total, km_total FROM lgs_envios WHERE id_envio IN ($inIds) FOR UPDATE");
+            $stmt->execute($enviosIds);
+            $enviosData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($enviosData as $e) {
+                $costoAcumulado += (float)$e['costo_total'];
+                $kmAcumulados += (float)$e['km_total'];
+            }
+
+            $data['costo_total'] = $costoAcumulado;
+            $data['km_total'] = $kmAcumulados;
+
+            // 1. Actualizar cabecera de la Planeación
+            $this->model->updatePlaneacion($db, $idPlaneacion, $data);
+            
+            // 2. Liberar los envíos anteriores (volver a estado 8)
+            $oldEnvios = $this->model->deletePlanEnvios($db, $idPlaneacion);
+            if (!empty($oldEnvios)) {
+                $inOldIds = implode(',', array_fill(0, count($oldEnvios), '?'));
+                $stmtRelease = $db->prepare("UPDATE lgs_envios SET id_estado = 8 WHERE id_envio IN ($inOldIds)");
+                $stmtRelease->execute($oldEnvios);
+            }
+            
+            // 3. Vincular los nuevos envíos y cambiarles el estado
+            // Nota: Si se guarda un borrador, el estado de los envíos debería ser 1, pero según reabrirPlaneacion, el estado es 1 (editable).
+            // Sin embargo, si al crear se envían a aprobación, id_estado es 2.
+            // Para mantener coherencia, si el estado de la planeación se mantiene en 1 (Borrador), los envíos deberían ser 1.
+            $stmtUpdateEnvio = $db->prepare("UPDATE lgs_envios SET id_estado = 1 WHERE id_envio = ?");
+            
+            foreach ($enviosIds as $idEnvio) {
+                $this->model->insertPlanEnvio($db, $idPlaneacion, $idEnvio);
+                $stmtUpdateEnvio->execute([$idEnvio]);
+            }
+            
+            $db->commit();
+        } catch (Exception $e) {
+            $db->rollBack();
+            throw $e;
+        }
+    }
+
     public function getDetalleCompletoPlan(int $idPlaneacion): array {
+        // 1. Recalcular costos de los envíos de esta planeación para evitar desfazamientos
+        $db = $this->model->getConexion();
+        $stmt = $db->prepare("SELECT id_envio FROM lgs_planeaciones_envios WHERE id_planeacion = ?");
+        $stmt->execute([$idPlaneacion]);
+        $envios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!empty($envios)) {
+            require_once 'Lgs_enviosService.php';
+            $enviosService = new Lgs_enviosService();
+            foreach ($envios as $envio) {
+                $enviosService->recalcularCostoTotal((int)$envio['id_envio']);
+                $enviosService->asegurarCostosVins((int)$envio['id_envio']);
+            }
+            
+            // Recalcular también el costo y km total de la planeación
+            $this->model->actualizarCostoYKmPlan($idPlaneacion);
+        }
+
         return $this->model->getDetalleCompletoPlan($idPlaneacion);
     }
 

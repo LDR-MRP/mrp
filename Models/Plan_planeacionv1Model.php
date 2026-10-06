@@ -3352,7 +3352,7 @@ class Plan_planeacionv1Model extends Mysql
 
 
 
-  public function selectOrdenesCalendar()
+  public function selectOrdenesCalendaOLD01102026()
   {
     $rolId = isset($_SESSION['rolid']) ? (int) $_SESSION['rolid'] : 0;
     $isAdmin = in_array($rolId, [1, 5, 7]); //  ahora 1 y 5 ven todo
@@ -3363,7 +3363,7 @@ class Plan_planeacionv1Model extends Mysql
     }
 
     $whereUser = "";
-    if (!$isAdmin) {
+    if (!$isAdmin) { 
 
       $whereUser = " AND (
         pla.supervisorid = {$userIdSes}
@@ -3404,6 +3404,131 @@ class Plan_planeacionv1Model extends Mysql
 
     return $this->select_all($sql);
   }
+
+
+public function selectOrdenesCalendarv1()
+{
+    $plantaid = (int) ($_SESSION['userData']['plantaid'] ?? 0);
+
+    $rolId = (int) (
+        $_SESSION['rolid']
+        ?? $_SESSION['userData']['rolid']
+        ?? 0
+    );
+
+    $userIdSes = (int) (
+        $_SESSION['idUser']
+        ?? $_SESSION['userData']['idusuario']
+        ?? 0
+    );
+
+    $isAdmin = in_array($rolId, [1, 5, 7], true);
+
+    if ($plantaid <= 0) {
+        return [];
+    }
+
+    if (!$isAdmin && $userIdSes <= 0) {
+        return [];
+    }
+
+    $whereUser = "";
+
+    if (!$isAdmin) {
+        $whereUser = " AND (
+            pla.supervisorid = {$userIdSes}
+            OR pla.idplaneacion IN (
+                SELECT DISTINCT pe.planeacionid
+                FROM mrp_planeacion_estacion pe
+                INNER JOIN mrp_planeacion_estacion_operador o
+                    ON o.planeacion_estacionid = pe.id_planeacion_estacion
+                WHERE pe.estado = 2
+                    AND o.estado = 2
+                    AND o.usuarioid = {$userIdSes}
+            )
+        )";
+    }
+
+    $sql = "SELECT
+                pla.idplaneacion,
+                pla.num_orden,
+                pla.productoid,
+                pla.num_pedido,
+                pla.supervisorid,
+                CONCAT(us.nombres, ' ', us.apellidos) AS supervisor,
+                pla.prioridad,
+                pla.cantidad,
+                pla.fecha_requerida,
+                pla.fecha_inicio,
+                pla.fecha_fin,
+                pla.notas,
+                pla.estado,
+                pla.plantaid,
+                pla.fase
+            FROM mrp_planeacion pla
+            INNER JOIN usuarios AS us
+                ON pla.supervisorid = us.idusuario
+            WHERE pla.fecha_inicio IS NOT NULL
+                AND pla.estado != 0
+                AND pla.plantaid = {$plantaid}
+                {$whereUser}
+            ORDER BY pla.fecha_inicio DESC";
+
+    return $this->select_all($sql);
+}
+
+public function selectOrdenesCalendar()
+{
+    $rolId = (int) (
+        $_SESSION['rolid']
+        ?? $_SESSION['userData']['rolid']
+        ?? 0
+    );
+
+    $plantaid = (int) ($_SESSION['userData']['plantaid'] ?? 0);
+
+    // Solo el administrador (rol 1) puede ver todas las plantas.
+    $isAdmin = ($rolId === 1);
+
+    $wherePlanta = "";
+
+    // Los demás usuarios ven únicamente las planeaciones de su planta.
+    if (!$isAdmin) {
+        if ($plantaid <= 0) {
+            return [];
+        }
+
+        $wherePlanta = " AND pla.plantaid = {$plantaid}";
+    }
+
+    $sql = "SELECT
+                pla.idplaneacion,
+                pla.num_orden,
+                pla.productoid,
+                pla.num_pedido,
+                pla.supervisorid,
+                CONCAT(us.nombres, ' ', us.apellidos) AS supervisor,
+                pla.prioridad,
+                pla.cantidad,
+                pla.fecha_requerida,
+                pla.fecha_inicio,
+                pla.fecha_fin,
+                pla.notas,
+                pla.estado,
+                pla.plantaid,
+                pla.fase
+            FROM mrp_planeacion pla
+            INNER JOIN usuarios AS us
+                ON pla.supervisorid = us.idusuario
+            WHERE pla.fecha_inicio IS NOT NULL
+                AND pla.estado != 0
+                {$wherePlanta}
+            ORDER BY pla.fecha_inicio DESC";
+
+    return $this->select_all($sql);
+}
+  
+
 
 
   ////////////////////////////////////

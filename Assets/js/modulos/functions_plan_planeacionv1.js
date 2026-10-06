@@ -2449,8 +2449,9 @@ async function initFechaInicioPicker() {
   prepareInputForManualFlatpickr(input);
   if (fpInicio) fpInicio.destroy();
 
-  let ranges = await getRangosOcupados();
-  console.log("Rangos ocupados:", ranges);
+  // let ranges = await getRangosOcupados(); SE BLOQUEAN FECHAS EN CALENDARIO
+  // console.log("Rangos ocupados:", ranges); 
+  let ranges = [];
 
   let _ajustando = false;
 
@@ -2471,15 +2472,16 @@ async function initFechaInicioPicker() {
 
 
     disable: [
-      (date) => isWeekend(date) || dayIsFullyBlocked(date, ranges)
+      // (date) => isWeekend(date) || dayIsFullyBlocked(date, ranges) BLOQUEAR FECHAS EN CALENDARIO
+        (date) => isWeekend(date)
     ],
 
-    onOpen: async (selectedDates, dateStr, instance) => {
-      ranges = await getRangosOcupados();
-      instance.set("disable", [
-        (date) => isWeekend(date) || dayIsFullyBlocked(date, ranges)
-      ]);
-    },
+    // onOpen: async (selectedDates, dateStr, instance) => {
+    //   ranges = await getRangosOcupados();
+    //   instance.set("disable", [
+    //     (date) => isWeekend(date) || dayIsFullyBlocked(date, ranges) BLOQUEAR FECHAS EN CALENDARIO
+    //   ]);
+    // },
 
     onChange: (selectedDates, dateStr, instance) => {
       if (_ajustando) return;

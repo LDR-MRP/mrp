@@ -236,6 +236,21 @@
                                                     <option value="<?= $t['id']; ?>"><?= htmlspecialchars($t['nombre'], ENT_QUOTES, 'UTF-8'); ?></option>
                                                 <?php endforeach; ?>
                                             </select>
+                                            <!-- Check Lowboy (Oculto por defecto, visible solo si es Plataforma) -->
+                                            <div id="divCheckLowboy" class="mt-2 form-check form-switch" style="display: none;">
+                                                <input class="form-check-input border-dark bg-secondary" type="checkbox" role="switch" id="is_lowboy" name="is_lowboy" value="1">
+                                                <label class="form-check-label fw-bold text-dark fs-12" for="is_lowboy">
+                                                    Check Lowboy <span class="badge bg-dark ms-1">Tarifa $80</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Tipo de Servicio</label>
+                                            <select class="form-select form-select-lg bg-light border-0" id="tipo_servicio" name="tipo_servicio">
+                                                <option value="FORANEO">Foráneo (Costo por KM)</option>
+                                                <option value="SLC">Local Corto SLC (0-40 KM)</option>
+                                                <option value="SLL">Local Largo SLL (41-80 KM)</option>
+                                            </select>
                                         </div>
 
                                         <div class="col-md-4">

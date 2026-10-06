@@ -173,16 +173,37 @@ class Lgs_costos extends Controllers
                 $proveedoresReplicar = [];
             }
 
-            $success = $this->service->saveTarifasBaseConReplicacion($data, $proveedoresReplicar);
+            $mantenerPersonalizadas = !empty($data['mantener_personalizadas']) && $data['mantener_personalizadas'] != '0';
+
+            $success = $this->service->saveTarifasBaseConReplicacion($data, $proveedoresReplicar, $mantenerPersonalizadas);
             if ($success) {
                 $count = count($proveedoresReplicar);
                 $msg = $count > 0
                     ? "Tarifa Base General guardada y replicada a {$count} proveedor(es) seleccionado(s)."
                     : "Tarifa Base General guardada exitosamente (sin replicar a proveedores).";
+                if ($mantenerPersonalizadas) {
+                    $msg .= " Las tarifas de proveedores configurados manualmente se mantuvieron intactas.";
+                }
                 echo $this->successResponse(null, $msg);
             } else {
                 echo $this->errorResponse("No se pudieron guardar las tarifas.", 500);
             }
+        } catch (Throwable $t) {
+            echo $this->errorResponse($t->getMessage(), 500);
+        }
+        die();
+    }
+
+    public function compareProveedorConGlobal(): void
+    {
+        try {
+            $idProveedor = isset($_GET['id_proveedor']) ? intval($_GET['id_proveedor']) : 0;
+            if ($idProveedor <= 0) {
+                echo $this->errorResponse("Debe proporcionar un ID de proveedor válido.", 400);
+                die();
+            }
+            $data = $this->service->compareProveedorConGlobal($idProveedor);
+            echo $this->successResponse($data, "Comparación realizada con éxito.");
         } catch (Throwable $t) {
             echo $this->errorResponse($t->getMessage(), 500);
         }
@@ -223,10 +244,26 @@ class Lgs_costos extends Controllers
         try {
             $data = $this->service->listModelosVin();
             for ($i = 0; $i < count($data); $i++) {
-                $segmento = $data[$i]['segmento'] ?? '<span class="badge bg-danger-subtle text-danger">Sin Asignar</span>';
-                $data[$i]['segmento_html'] = $segmento;
+                $idSeg = (int)($data[$i]['id_segmento'] ?? 0);
+                $badgeClass = 'bg-secondary-subtle text-secondary';
+                if ($idSeg === 1) $badgeClass = 'bg-success-subtle text-success border border-success-subtle';
+                elseif ($idSeg === 2) $badgeClass = 'bg-primary-subtle text-primary border border-primary-subtle';
+                elseif ($idSeg === 3) $badgeClass = 'bg-danger-subtle text-danger border border-danger-subtle';
+                elseif ($idSeg === 4) $badgeClass = 'bg-warning-subtle text-warning border border-warning-subtle';
+                elseif ($idSeg === 5) $badgeClass = 'bg-dark-subtle text-dark border border-dark-subtle';
 
-                $btnLink = '<button class="btn btn-sm btn-soft-primary" title="Asignar Segmento" onClick="fntAsignarSegmento(' . $data[$i]['id_cat_modelo_vin'] . ', \'' . addslashes($data[$i]['modelo']) . '\')"><i class="ri-link"></i> Asignar</button>';
+                $segNombre = $data[$i]['segmento'] ?? 'Sin Asignar';
+                $data[$i]['segmento_html'] = '<span class="badge ' . $badgeClass . ' fs-12 px-2 py-1"><i class="ri-checkbox-circle-line me-1"></i>' . htmlspecialchars($segNombre) . '</span>';
+
+                // Costo por km en Rodando
+                $costoRodando = '$0.00 / km';
+                if ($idSeg === 1) $costoRodando = '<span class="badge bg-success-subtle text-success fw-bold fs-12">$18.00 / km</span>';
+                elseif ($idSeg === 2) $costoRodando = '<span class="badge bg-primary-subtle text-primary fw-bold fs-12">$20.00 / km</span>';
+                elseif ($idSeg === 3) $costoRodando = '<span class="badge bg-danger-subtle text-danger fw-bold fs-12">$25.00 / km</span>';
+                elseif ($idSeg === 4 || $idSeg === 5) $costoRodando = '<span class="badge bg-dark-subtle text-dark fw-bold fs-12">$25.00 / km</span>';
+                $data[$i]['costo_rodando_html'] = $costoRodando;
+
+                $btnLink = '<button type="button" class="btn btn-sm btn-soft-primary fw-bold shadow-sm" title="Cambiar Segmento" onClick="fntAsignarSegmento(' . $data[$i]['id_cat_modelo_vin'] . ', \'' . addslashes($data[$i]['modelo']) . '\', ' . $idSeg . ')"><i class="ri-edit-line me-1"></i> Cambiar Segmento</button>';
                 $data[$i]['options'] = '<div class="text-center">' . $btnLink . '</div>';
             }
             echo json_encode($data, JSON_UNESCAPED_UNICODE);
@@ -251,6 +288,29 @@ class Lgs_costos extends Controllers
                 echo $this->successResponse(null, "Segmento asignado correctamente al modelo.");
             } else {
                 echo $this->errorResponse("No se pudo realizar la asignación.", 500);
+            }
+        } catch (Throwable $t) {
+            echo $this->errorResponse($t->getMessage(), 400);
+        }
+        die();
+    }
+
+    public function storeModeloVin(): void
+    {
+        try {
+            if (empty($_POST['modelo'])) {
+                echo $this->errorResponse("El nombre del modelo es requerido.", 400);
+                die();
+            }
+            $modelo = trim($_POST['modelo']);
+            $idSegmento = !empty($_POST['id_segmento']) ? intval($_POST['id_segmento']) : 1;
+            $vinBase = !empty($_POST['vin_base']) ? trim($_POST['vin_base']) : null;
+
+            $success = $this->service->addModeloVin($modelo, $idSegmento, $vinBase);
+            if ($success) {
+                echo $this->successResponse(null, "Modelo registrado y catalogado exitosamente.");
+            } else {
+                echo $this->errorResponse("No se pudo registrar el modelo.", 500);
             }
         } catch (Throwable $t) {
             echo $this->errorResponse($t->getMessage(), 400);

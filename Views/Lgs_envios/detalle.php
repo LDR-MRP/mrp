@@ -173,6 +173,11 @@
                             <i class="ri-steering-2-line me-1"></i> Choferes (Rodando)
                         </a>
                     </li>
+                    <li class="nav-item" id="nav-tab-plataformas" style="display: none;">
+                        <a class="nav-link" id="link-tab-plataformas" data-bs-toggle="tab" href="#tab-plataformas" role="tab">
+                            <i class="ri-truck-line me-1"></i> Plataformas del Catálogo
+                        </a>
+                    </li>
                 </ul>
 
                 <div class="tab-content text-muted">
@@ -207,6 +212,24 @@
                                     </tr>
                                 </thead>
                                 <tbody id="tbodyModalChoferes"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Pestaña Plataformas -->
+                    <div class="tab-pane" id="tab-plataformas" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="tblModalPlataformas">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th>Económico</th>
+                                        <th>Placas</th>
+                                        <th>Capacidad</th>
+                                        <th>Chofer Asignado</th>
+                                        <th class="text-end">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyModalPlataformas"></tbody>
                             </table>
                         </div>
                     </div>

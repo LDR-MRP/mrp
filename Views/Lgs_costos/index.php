@@ -135,6 +135,11 @@
                                     <i class="ri-truck-line me-1 align-bottom"></i> 2. Tarifas por Proveedor
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link fw-bold fs-15 text-uppercase px-4" data-bs-toggle="tab" href="#tab-modelos" role="tab" onclick="loadModelosSegmentos();">
+                                    <i class="ri-car-line me-1 align-bottom"></i> 3. Modelos y Segmentos (Catálogo)
+                                </a>
+                            </li>
                         </ul>
                     </div>
                     
@@ -232,6 +237,9 @@
                                             </div>
                                         </div>
                                         <div class="d-flex align-items-center gap-2 flex-wrap">
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-medium d-none shadow-xs" id="btnAjustarAlGlobal" onclick="ajustarAlGlobal();" title="Carga los valores de la Tarifa Base General en este formulario para revisarlos antes de guardar">
+                                                <i class="ri-equalizer-line me-1"></i> Ajustar al Global
+                                            </button>
                                             <button type="button" class="btn btn-sm btn-outline-danger fw-medium d-none shadow-xs" id="btnRestablecerGlobal" onclick="resetTarifasProveedor();" title="Elimina las tarifas personalizadas de este proveedor para volver a heredar la Tarifa Base General">
                                                 <i class="ri-history-line me-1"></i> Restablecer a Base General
                                             </button>
@@ -262,10 +270,11 @@
                                                         <table class="table table-bordered align-middle mb-0">
                                                             <thead class="table-light">
                                                                 <tr class="text-uppercase fs-12 text-muted">
-                                                                    <th style="width: 250px;">Segmento</th>
-                                                                    <th style="width: 150px;">Costo Base / KM ($)</th>
-                                                                    <th style="display: none;">Precio Plano Fijo</th>
-                                                                    <th>Desglose de Factores (1 a 15 Unidades)</th>
+                                                                    <th style="width: 250px;"></th>
+                                                                    <th style="display: none;">Costo Base / KM ($)</th>
+                                                                    <th style="width: 150px;">Local Corto SLC<br><small>(0-40 KM)</small><br><span class="badge bg-warning text-dark fs-10 mt-1">A partir de 3 unidades</span></th>
+                                                                    <th style="width: 150px;">Local Largo SLL<br><small>(41-80 KM)</small><br><span class="badge bg-warning text-dark fs-10 mt-1">A partir de 3 unidades</span></th>
+                                                                    <th>Desglose de Factores (2 a 9 Unidades)</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody id="tbodyTarifasMadrina">
@@ -278,7 +287,7 @@
                                         </div>
 
                                         <!-- CHOFER RODANDO -->
-                                        <div class="accordion-item shadow-sm border-0 rounded-3">
+                                        <div class="accordion-item shadow-sm border-0 rounded-3 mb-3">
                                             <h2 class="accordion-header" id="headingChofer">
                                                 <button class="accordion-button collapsed fw-bold fs-15 bg-warning-subtle text-warning-emphasis rounded-top" type="button" data-bs-toggle="collapse" data-bs-target="#collapseChofer" aria-expanded="false" aria-controls="collapseChofer">
                                                     <i class="ri-steering-2-line me-2 fs-18"></i> 2. Tarifas Chofer / Rodando (Tarifa Fija 1 Unidad)
@@ -295,8 +304,9 @@
                                                             <thead class="table-light">
                                                                 <tr class="text-uppercase fs-12 text-muted">
                                                                     <th style="width: 250px;">Segmento</th>
-                                                                    <th style="width: 200px;">Costo / KM ($)</th>
-                                                                    <th style="display: none;">Precio Plano Fijo</th>
+                                                                    <th style="width: 150px;">Costo / KM ($)</th>
+                                                                    <th style="width: 150px;">Local Corto SLC<br><small>(0-40 KM)</small></th>
+                                                                    <th style="width: 150px;">Local Largo SLL<br><small>(41-80 KM)</small></th>
                                                                     <th></th>
                                                                 </tr>
                                                             </thead>
@@ -308,8 +318,148 @@
                                                 </div>
                                             </div>
                                         </div>
+
+                                        <!-- PLATAFORMA -->
+                                        <div class="accordion-item shadow-sm border-0 rounded-3">
+                                            <h2 class="accordion-header" id="headingPlataforma">
+                                                <button class="accordion-button collapsed fw-bold fs-15 bg-info-subtle text-info rounded-top" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePlataforma" aria-expanded="false" aria-controls="collapsePlataforma">
+                                                    <i class="ri-truck-fill me-2 fs-18"></i> 3. Tarifas Plataforma (Máximo 3 Unidades)
+                                                </button>
+                                            </h2>
+                                            <div id="collapsePlataforma" class="accordion-collapse collapse" aria-labelledby="headingPlataforma" data-bs-parent="#accordionTarifas">
+                                                <div class="accordion-body bg-white">
+                                                    <div class="alert alert-info border-0 d-flex align-items-center mb-3 p-3 rounded">
+                                                        <i class="ri-information-line fs-20 text-info me-3"></i>
+                                                        <div>Los precios de <b>Local Corto (SLC)</b> y <b>Local Largo (SLL)</b> en plataforma se configuran dentro de cada factor, ya que varían según la cantidad de unidades transportadas (1 unidad vs 2 o más unidades).</div>
+                                                    </div>
+                                                    <div class="d-flex justify-content-end mb-2">
+                                                        <button type="button" class="btn btn-sm btn-soft-secondary me-2" onclick="toggleFactoresPlataforma(true);"><i class="ri-arrow-down-s-line"></i> Expandir Factores</button>
+                                                        <button type="button" class="btn btn-sm btn-soft-secondary" onclick="toggleFactoresPlataforma(false);"><i class="ri-arrow-up-s-line"></i> Contraer Factores</button>
+                                                    </div>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-bordered align-middle mb-0">
+                                                            <thead class="table-light">
+                                                                <tr class="text-uppercase fs-12 text-muted">
+                                                                    <th style="width: 250px;"></th>
+                                                                    <th style="display: none;">Costo Base / KM ($)</th>
+                                                                    <th style="display: none;">Local Corto SLC<br><small>(0-40 KM)</small></th>
+                                                                    <th style="display: none;">Local Largo SLL<br><small>(41-80 KM)</small></th>
+                                                                    <th>Desglose de Factores (1 a 3 Unidades y Lowboy)</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody id="tbodyTarifasPlataforma">
+                                                                <!-- Renderizado vía JS -->
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </form>
+                            </div>
+
+                            <!-- ============================================== -->
+                            <!-- TAB 3: MODELOS Y SEGMENTOS                     -->
+                            <!-- ============================================== -->
+                            <div class="tab-pane" id="tab-modelos" role="tabpanel">
+                                <div class="card border border-light-subtle shadow-none mb-4">
+                                    <div class="card-body p-4 bg-white rounded">
+                                        <!-- Header de la sección -->
+                                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 pb-3 border-bottom">
+                                            <div>
+                                                <h5 class="fs-16 fw-bold mb-1 text-dark">
+                                                    <i class="ri-car-line me-2 text-primary"></i>Catálogo de Modelos y Segmentación
+                                                </h5>
+                                                <p class="text-muted fs-13 mb-0">
+                                                    Clasifica los modelos vehiculares en sus segmentos correspondientes (Ligeros, Medianos, Pesados, Buses, Lowboy) para el cálculo preciso de fletes y traslados rodando.
+                                                </p>
+                                            </div>
+                                            <div class="d-flex gap-2">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold" onclick="loadModelosSegmentos();">
+                                                    <i class="ri-refresh-line me-1"></i> Actualizar
+                                                </button>
+                                                <button type="button" class="btn btn-primary btn-sm fw-bold shadow-sm" onclick="abrirModalNuevoModelo();">
+                                                    <i class="ri-add-circle-line me-1"></i> Registrar Modelo
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- KPIs resumidos de modelos -->
+                                        <div class="row g-3 mb-4">
+                                            <div class="col-6 col-md-3">
+                                                <div class="p-3 bg-light rounded-3 border text-center">
+                                                    <span class="text-muted fs-12 fw-semibold text-uppercase d-block mb-1">Total Modelos</span>
+                                                    <h4 class="fs-20 fw-bold mb-0 text-dark" id="kpi-mod-total">0</h4>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <div class="p-3 bg-success-subtle rounded-3 border border-success-subtle text-center">
+                                                    <span class="text-success fs-12 fw-bold text-uppercase d-block mb-1">Ligeros ($18/km)</span>
+                                                    <h4 class="fs-20 fw-bold mb-0 text-success" id="kpi-mod-ligeros">0</h4>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <div class="p-3 bg-danger-subtle rounded-3 border border-danger-subtle text-center">
+                                                    <span class="text-danger fs-12 fw-bold text-uppercase d-block mb-1">Pesados ($25/km)</span>
+                                                    <h4 class="fs-20 fw-bold mb-0 text-danger" id="kpi-mod-pesados">0</h4>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <div class="p-3 bg-primary-subtle rounded-3 border border-primary-subtle text-center">
+                                                    <span class="text-primary fs-12 fw-bold text-uppercase d-block mb-1">Medianos ($20/km)</span>
+                                                    <h4 class="fs-20 fw-bold mb-0 text-primary" id="kpi-mod-medianos">0</h4>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Filtros y Búsqueda -->
+                                        <div class="row g-3 align-items-center mb-3">
+                                            <div class="col-md-4">
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text bg-light border-end-0"><i class="ri-search-line text-muted"></i></span>
+                                                    <input type="text" class="form-control border-start-0" id="inputBuscarModelo" placeholder="Buscar modelo o prefijo VIN..." onkeyup="filtrarTablaModelos();">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <select class="form-select form-select-sm" id="selectFiltroSegmento" onchange="filtrarTablaModelos();">
+                                                    <option value="">-- Todos los Segmentos --</option>
+                                                    <option value="1">LIGEROS (LDT)</option>
+                                                    <option value="2">MEDIANO (MDT)</option>
+                                                    <option value="3">PESADO (HDT)</option>
+                                                    <option value="4">BUSES</option>
+                                                    <option value="5">LOWBOY</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4 text-md-end text-muted fs-12">
+                                                <span id="lblContadorModelos">Mostrando 0 modelos</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Tabla de Modelos -->
+                                        <div class="table-responsive">
+                                            <table class="table table-hover table-bordered align-middle mb-0" id="tablaModelosSegmentos">
+                                                <thead class="table-light">
+                                                    <tr class="fs-12 text-uppercase text-muted">
+                                                        <th style="width: 60px;" class="text-center">#</th>
+                                                        <th>Modelo Vehicular</th>
+                                                        <th style="width: 180px;">Prefijo / VIN Base</th>
+                                                        <th style="width: 220px;" class="text-center">Segmento Actual</th>
+                                                        <th style="width: 180px;" class="text-center">Tarifa Rodando</th>
+                                                        <th style="width: 170px;" class="text-center">Acciones</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="tbodyModelosSegmentos">
+                                                    <tr>
+                                                        <td colspan="6" class="text-center py-4 text-muted">
+                                                            <div class="spinner-border spinner-border-sm text-primary me-2"></div> Cargando catálogo de modelos...
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                         </div>
@@ -337,11 +487,32 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4 bg-light-subtle">
-                <!-- Alerta informativa -->
-                <div class="alert alert-info border-0 shadow-xs d-flex align-items-center mb-3 p-3 rounded-3">
-                    <i class="ri-information-fill fs-22 text-info me-3 flex-shrink-0"></i>
-                    <div class="fs-12">
-                        Los proveedores que <b>no seleccione</b> conservarán intactas sus tarifas personalizadas actuales sin sufrir ninguna modificación.
+                <!-- Opciones de propagación -->
+                <div class="card border border-primary-subtle bg-white mb-3 shadow-xs">
+                    <div class="card-body p-3">
+                        <label class="form-label fw-bold text-dark fs-13 mb-2">
+                            <i class="ri-settings-4-line text-primary me-1"></i> Modo de Propagación:
+                        </label>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="form-check p-2 bg-light-subtle rounded border h-100">
+                                    <input class="form-check-input ms-1 me-2" type="radio" name="modo_propagacion" id="modoPropagarRespetar" value="respetar" checked onchange="onCambioModoPropagacion(this.value);">
+                                    <label class="form-check-label fw-semibold text-dark fs-12 cursor-pointer" for="modoPropagarRespetar">
+                                        <span class="d-block text-success fw-bold"><i class="ri-shield-check-line me-1"></i> Mantener personalizadas (Recomendado)</span>
+                                        <small class="text-muted fs-11">Solo actualiza la base y proveedores con Tarifa General. No altera transportistas configurados manualmente.</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check p-2 bg-light-subtle rounded border h-100">
+                                    <input class="form-check-input ms-1 me-2" type="radio" name="modo_propagacion" id="modoPropagarForzar" value="forzar" onchange="onCambioModoPropagacion(this.value);">
+                                    <label class="form-check-label fw-semibold text-dark fs-12 cursor-pointer" for="modoPropagarForzar">
+                                        <span class="d-block text-danger fw-bold"><i class="ri-error-warning-line me-1"></i> Forzar actualización a todos</span>
+                                        <small class="text-muted fs-11">Sobreescribe TODOS los seleccionados, reemplazando incluso tarifas manuales previas.</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -408,6 +579,91 @@
                         <i class="ri-check-double-line me-1"></i> Guardar y Replicar a Seleccionados
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+<!-- ============================================================== -->
+<!-- MODAL: ASIGNAR / CAMBIAR SEGMENTO A MODELO                     -->
+<!-- ============================================================== -->
+<div class="modal fade" id="modalAsignarSegmento" tabindex="-1" aria-labelledby="modalAsignarSegmentoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold text-white fs-16" id="modalAsignarSegmentoLabel">
+                    <i class="ri-link me-1"></i> Asignar Segmento Vehicular
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-white">
+                <input type="hidden" id="asig_id_modelo_vin" value="">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-muted fs-12 text-uppercase mb-1">Modelo</label>
+                    <input type="text" class="form-control fw-bold bg-light" id="asig_nombre_modelo" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-muted fs-12 text-uppercase mb-1">Seleccionar Segmento</label>
+                    <select class="form-select" id="asig_select_segmento" required>
+                        <option value="1">1 - LIGEROS (Tarifa Chofer: $18.00 / km)</option>
+                        <option value="2">2 - MEDIANO (Tarifa Chofer: $20.00 / km)</option>
+                        <option value="3">3 - PESADO (Tarifa Chofer: $25.00 / km)</option>
+                        <option value="4">4 - BUSES (Tarifa Chofer: $25.00 / km)</option>
+                        <option value="5">5 - LOWBOY (Tarifa Chofer: $25.00 / km)</option>
+                    </select>
+                </div>
+                <div class="alert alert-info border-0 p-3 fs-12 rounded mb-0">
+                    <i class="ri-information-line me-1 fw-bold"></i> Al asignar este segmento, todos los VINs y traslados por Chofer (Rodando) de este modelo calcularán sus costos automáticamente con la tarifa establecida para dicho segmento.
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top p-3">
+                <button type="button" class="btn btn-soft-secondary fw-semibold" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary fw-bold shadow-sm" onclick="guardarSegmentoModelo();">
+                    <i class="ri-save-line me-1"></i> Guardar Asignación
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL: REGISTRAR NUEVO MODELO VEHICULAR                        -->
+<!-- ============================================================== -->
+<div class="modal fade" id="modalNuevoModelo" tabindex="-1" aria-labelledby="modalNuevoModeloLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white py-3">
+                <h5 class="modal-title fw-bold text-white fs-16" id="modalNuevoModeloLabel">
+                    <i class="ri-add-circle-line me-1"></i> Registrar Nuevo Modelo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-white">
+                <form id="formNuevoModelo" onsubmit="guardarNuevoModelo(event);">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted fs-12 text-uppercase mb-1">Nombre del Modelo <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control fw-bold" id="nuevo_modelo_nombre" placeholder="Ej. Tunland G7 4K22-DC" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted fs-12 text-uppercase mb-1">Prefijo / VIN Base (Opcional)</label>
+                        <input type="text" class="form-control" id="nuevo_modelo_vin_base" placeholder="Ej. 3LDC2A2F">
+                        <small class="text-muted fs-11">Si se especifica, cualquier unidad con este prefijo de VIN se vinculará automáticamente a este modelo.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted fs-12 text-uppercase mb-1">Segmento Vehicular <span class="text-danger">*</span></label>
+                        <select class="form-select" id="nuevo_modelo_segmento" required>
+                            <option value="1">1 - LIGEROS (Tarifa Chofer: $18.00 / km)</option>
+                            <option value="2">2 - MEDIANO (Tarifa Chofer: $20.00 / km)</option>
+                            <option value="3">3 - PESADO (Tarifa Chofer: $25.00 / km)</option>
+                            <option value="4">4 - BUSES (Tarifa Chofer: $25.00 / km)</option>
+                            <option value="5">5 - LOWBOY (Tarifa Chofer: $25.00 / km)</option>
+                        </select>
+                    </div>
+                    <div class="modal-footer bg-light border-top p-3 px-0 pb-0">
+                        <button type="button" class="btn btn-soft-secondary fw-semibold" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success fw-bold shadow-sm">
+                            <i class="ri-save-line me-1"></i> Registrar y Catalogar
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

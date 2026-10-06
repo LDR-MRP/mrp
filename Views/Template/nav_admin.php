@@ -540,18 +540,38 @@
                                 </a>
                             </li>
 
-                            <!-- Madrinas -->
+                            <!-- Catálogos (Madrinas, Choferes, Plataformas) -->
                             <li class="nav-item">
-                                <a href="<?= base_url(); ?>/prv_madrinas" class="nav-link" data-key="t-madrinas">
-                                    <i class="ri-truck-fill align-bottom me-1"></i> Madrinas
+                                <a href="#sidebarLogisticaCatalogos" class="nav-link" data-bs-toggle="collapse" role="button"
+                                    aria-expanded="false" aria-controls="sidebarLogisticaCatalogos" data-key="t-lgs-catalogos">
+                                    <i class="ri-folder-2-line align-bottom me-1"></i> Catálogos
                                 </a>
-                            </li>
+                                <div class="collapse menu-dropdown" id="sidebarLogisticaCatalogos">
+                                    <ul class="nav nav-sm flex-column">
 
-                            <!-- Choferes -->
-                            <li class="nav-item">
-                                <a href="<?= base_url(); ?>/prv_choferes" class="nav-link" data-key="t-choferes">
-                                    <i class="ri-steering-2-line align-bottom me-1"></i> Choferes
-                                </a>
+                                        <!-- Madrinas -->
+                                        <li class="nav-item">
+                                            <a href="<?= base_url(); ?>/prv_madrinas" class="nav-link" data-key="t-madrinas">
+                                                <i class="ri-truck-fill align-bottom me-1"></i> Madrinas
+                                            </a>
+                                        </li>
+
+                                        <!-- Choferes -->
+                                        <li class="nav-item">
+                                            <a href="<?= base_url(); ?>/prv_choferes" class="nav-link" data-key="t-choferes">
+                                                <i class="ri-steering-2-line align-bottom me-1"></i> Choferes
+                                            </a>
+                                        </li>
+
+                                        <!-- Plataformas -->
+                                        <li class="nav-item">
+                                            <a href="<?= base_url(); ?>/prv_plataformas" class="nav-link" data-key="t-plataformas">
+                                                <i class="ri-truck-line align-bottom me-1"></i> Plataformas
+                                            </a>
+                                        </li>
+
+                                    </ul>
+                                </div>
                             </li>
 
                             <!-- Mis Envíos -->

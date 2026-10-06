@@ -102,7 +102,7 @@ public function generarClave(int $idPlanta)
 		$sql = "SELECT li.*, pla.nombre_planta
 FROM mrp_linea AS li
 INNER JOIN mrp_planta AS pla ON li.plantaid = pla.idplanta
-		WHERE li.estado != 0 AND li.plantaid = $plantaid";
+		WHERE li.estado != 0    ";
 		$request = $this->select_all($sql);
 		return $request;
 	}

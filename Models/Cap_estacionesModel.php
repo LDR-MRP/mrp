@@ -300,7 +300,7 @@ $plantaid = $_SESSION['userData']['plantaid'];
             ) AS mem 
                 ON mem.estacionid = est.idestacion
 
-            WHERE est.estado != 0 AND est.plantaid = $plantaid;
+            WHERE est.estado != 0;
 ";
 
     $request = $this->select_all($sql);

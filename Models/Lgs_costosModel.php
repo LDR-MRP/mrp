@@ -66,7 +66,7 @@ class Lgs_costosModel extends Mysql
         $provVal = ($idProveedor !== null && $idProveedor > 0) ? $idProveedor : 0;
 
         // 2. Consultar tarifas en BD
-        $sqlTarifas = "SELECT id_tipo_traslado, id_segmento, num_vins_min, num_vins_max, costo_por_km, precio_plano, factor
+        $sqlTarifas = "SELECT id_tipo_traslado, id_segmento, num_vins_min, num_vins_max, costo_por_km, precio_plano, precio_slc, precio_sll, factor, es_personalizada
                        FROM lgs_tarifas_proveedores
                        WHERE id_proveedor = ? AND activo != 0
                        ORDER BY num_vins_min ASC";
@@ -81,32 +81,41 @@ class Lgs_costosModel extends Mysql
         }
 
         // Agrupar globales por [tipo_traslado][id_segmento]
-        $globalMap = [1 => [], 2 => []];
+        $globalMap = [1 => [], 2 => [], 3 => []];
         foreach ($tarifasGlobal as $t) {
             $globalMap[(int)$t['id_tipo_traslado']][(int)$t['id_segmento']][] = $t;
         }
 
         // Agrupar proveedor por [tipo_traslado][id_segmento]
-        $provMap = [1 => [], 2 => []];
+        $provMap = [1 => [], 2 => [], 3 => []];
         foreach ($tarifasProv as $t) {
             $provMap[(int)$t['id_tipo_traslado']][(int)$t['id_segmento']][] = $t;
         }
 
         $tieneTarifasPropias = !empty($tarifasProv);
+        $esPersonalizada = false;
+        if ($provVal > 0 && !empty($tarifasProv)) {
+            foreach ($tarifasProv as $tp) {
+                if (!empty($tp['es_personalizada'])) {
+                    $esPersonalizada = true;
+                    break;
+                }
+            }
+        }
 
-        $generarMatriz = function($tipoTraslado) use ($segmentos, $provMap, $globalMap, $provVal) {
+        $generarMatriz = function($tipoTraslado, $forzarGlobal = false) use ($segmentos, $provMap, $globalMap, $provVal) {
             $matriz = [];
             foreach ($segmentos as $seg) {
                 $idSeg = (int)$seg['id_segmento'];
                 
-                // Prioridad 1: Tarifa propia del proveedor
-                $items = ($provVal > 0 && !empty($provMap[$tipoTraslado][$idSeg])) 
+                // Prioridad 1: Tarifa propia del proveedor (si no se fuerza global)
+                $items = (!$forzarGlobal && $provVal > 0 && !empty($provMap[$tipoTraslado][$idSeg])) 
                     ? $provMap[$tipoTraslado][$idSeg] 
                     : [];
 
                 $esHeredado = false;
 
-                // Prioridad 2: Si no tiene tarifa propia y es un proveedor específico, precargar de la global
+                // Prioridad 2: Si no tiene tarifa propia o se fuerza global, precargar de la global
                 if (empty($items)) {
                     $items = $globalMap[$tipoTraslado][$idSeg] ?? [];
                     if ($provVal > 0 && !empty($items)) {
@@ -116,29 +125,59 @@ class Lgs_costosModel extends Mysql
 
                 $costoPorKm = 0.00;
                 $precioPlano = 0.00;
+                $precioSlc = 0.00;
+                $precioSll = 0.00;
                 $factorBase = 1.00;
 
                 if (!empty($items)) {
                     $costoPorKm = (float)$items[0]['costo_por_km'];
                     $precioPlano = (float)$items[0]['precio_plano'];
+                    $precioSlc = (float)($items[0]['precio_slc'] ?? 0);
+                    $precioSll = (float)($items[0]['precio_sll'] ?? 0);
                     $factorBase = (float)$items[0]['factor'];
                 }
 
                 $factores15 = [];
-                for ($u = 1; $u <= 15; $u++) {
+                $slc_factores = [];
+                $sll_factores = [];
+
+                $minU = 1;
+                $maxU = 1;
+                if ($tipoTraslado === 1) {
+                    $minU = 2;
+                    $maxU = 9;
+                } elseif ($tipoTraslado === 3) {
+                    $minU = 1;
+                    $maxU = 4;
+                }
+
+                for ($u = $minU; $u <= $maxU; $u++) {
                     if (!empty($items)) {
                         $f = $factorBase;
+                        $slc_f = $precioSlc;
+                        $sll_f = $precioSll;
                         foreach ($items as $it) {
                             if ($u >= (int)$it['num_vins_min'] && $u <= (int)$it['num_vins_max']) {
                                 $f = (float)$it['factor'];
+                                $slc_f = (float)($it['precio_slc'] ?? 0);
+                                $sll_f = (float)($it['precio_sll'] ?? 0);
                                 break;
                             }
                         }
                     } else {
-                        // Descuento progresivo estimado por defecto (-2% por VIN)
-                        $f = max(0.20, 1.0 - (($u - 1) * 0.02));
+                        if ($tipoTraslado === 3) {
+                            // Plataforma (1 a 3 unidades): asume un cobro equivalente a mover un lowboy ($80)
+                            $f = max(0.20, (80.0 / ($costoPorKm > 0 ? $costoPorKm : 27.0)) / $u);
+                        } else {
+                            // Descuento progresivo estimado por defecto (-2% por VIN)
+                            $f = max(0.20, 1.0 - (($u - 1) * 0.02));
+                        }
                     }
                     $factores15[$u] = $f;
+                    if ($tipoTraslado === 3) {
+                        $slc_factores[$u] = $slc_f ?? $precioSlc;
+                        $sll_factores[$u] = $sll_f ?? $precioSll;
+                    }
                 }
 
                 $matriz[] = [
@@ -147,8 +186,12 @@ class Lgs_costosModel extends Mysql
                     'segmento_descripcion' => $seg['descripcion'],
                     'costo_por_km' => $costoPorKm,
                     'precio_plano' => $precioPlano,
+                    'precio_slc' => $precioSlc,
+                    'precio_sll' => $precioSll,
                     'factor_base' => $factorBase,
                     'factores_15' => $factores15,
+                    'slc_factores' => $slc_factores,
+                    'sll_factores' => $sll_factores,
                     'es_heredado' => $esHeredado,
                     'tarifas_raw' => $items
                 ];
@@ -159,17 +202,32 @@ class Lgs_costosModel extends Mysql
         return [
             'id_proveedor' => $provVal,
             'tiene_tarifas_propias' => $tieneTarifasPropias,
+            'es_personalizada' => $esPersonalizada,
             'madrina' => $generarMatriz(1),
-            'chofer'  => $generarMatriz(2)
+            'chofer'  => $generarMatriz(2),
+            'plataforma' => $generarMatriz(3),
+            'base_general' => [
+                'madrina' => $generarMatriz(1, true),
+                'chofer'  => $generarMatriz(2, true),
+                'plataforma' => $generarMatriz(3, true)
+            ]
         ];
     }
 
     /**
      * Helper privado para guardar las tarifas de un proveedor individual o base general
      */
-    private function saveTarifasProveedorInterno(PDO $db, int $idProveedor, array $madrinaSegs, array $choferSegs): void
+    private function saveTarifasProveedorInterno(
+        PDO $db, 
+        int $idProveedor, 
+        array $madrinaSegs, 
+        array $choferSegs, 
+        array $plataformaSegs = [], 
+        bool $esPersonalizada = false
+    ): void
     {
         $provVal = $idProveedor;
+        $flagPersonalizada = $esPersonalizada ? 1 : 0;
 
         // Limpiar tarifas actuales para este proveedor
         $stmtDel = $db->prepare("DELETE FROM lgs_tarifas_proveedores WHERE id_proveedor = ?");
@@ -177,27 +235,31 @@ class Lgs_costosModel extends Mysql
 
         $stmtIns = $db->prepare("INSERT INTO lgs_tarifas_proveedores (
                                     id_proveedor, id_tipo_traslado, id_segmento,
-                                    num_vins_min, num_vins_max, costo_por_km, precio_plano, factor
-                                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                                    num_vins_min, num_vins_max, costo_por_km, precio_plano, precio_slc, precio_sll, factor, es_personalizada
+                                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-        // Guardar Madrina (Factores 1-15)
+        // Guardar Madrina (Factores 2-9)
         if (!empty($madrinaSegs)) {
             foreach ($madrinaSegs as $seg) {
                 $idSegmento = intval($seg['id_segmento']);
                 $costoPorKm = floatval($seg['costo_por_km'] ?? 0);
                 $precioPlano = floatval($seg['precio_plano'] ?? 0);
+                $precioSlcSegment = floatval($seg['precio_slc'] ?? 0);
+                $precioSllSegment = floatval($seg['precio_sll'] ?? 0);
 
                 if (isset($seg['factores']) && is_array($seg['factores']) && count($seg['factores']) > 0) {
-                    foreach ($seg['factores'] as $unidad => $factorVal) {
+                    foreach ($seg['factores'] as $unidad => $valIngresado) {
                         $u = intval($unidad);
-                        $f = floatval($factorVal);
-                        if ($u >= 1 && $u <= 15) {
-                            $stmtIns->execute([$provVal, 1, $idSegmento, $u, $u, $costoPorKm, $precioPlano, $f]);
+                        $precioReal = floatval($valIngresado);
+                        if ($u >= 2 && $u <= 9) {
+                            $fFinal = ($costoPorKm > 0) ? ($precioReal / $costoPorKm) : 1.0;
+                            $stmtIns->execute([$provVal, 1, $idSegmento, $u, $u, $costoPorKm, $precioPlano, $precioSlcSegment, $precioSllSegment, $fFinal, $flagPersonalizada]);
                         }
                     }
                 } else {
-                    $factor = floatval($seg['factor'] ?? 1.0);
-                    $stmtIns->execute([$provVal, 1, $idSegmento, 1, 15, $costoPorKm, $precioPlano, $factor]);
+                    $valIngresado = floatval($seg['factor'] ?? 0);
+                    $fFinal = ($costoPorKm > 0 && $valIngresado > 0) ? ($valIngresado / $costoPorKm) : 1.0;
+                    $stmtIns->execute([$provVal, 1, $idSegmento, 2, 9, $costoPorKm, $precioPlano, $precioSlcSegment, $precioSllSegment, $fFinal, $flagPersonalizada]);
                 }
             }
         }
@@ -208,17 +270,48 @@ class Lgs_costosModel extends Mysql
                 $idSegmento = intval($seg['id_segmento']);
                 $costoPorKm = floatval($seg['costo_por_km'] ?? 0);
                 $precioPlano = floatval($seg['precio_plano'] ?? 0);
-                $stmtIns->execute([$provVal, 2, $idSegmento, 1, 1, $costoPorKm, $precioPlano, 1.00]);
+                $precioSlc = floatval($seg['precio_slc'] ?? 0);
+                $precioSll = floatval($seg['precio_sll'] ?? 0);
+                $stmtIns->execute([$provVal, 2, $idSegmento, 1, 1, $costoPorKm, $precioPlano, $precioSlc, $precioSll, 1.00, $flagPersonalizada]);
+            }
+        }
+        // Guardar Plataforma (Factores 1-4)
+        if (!empty($plataformaSegs)) {
+            foreach ($plataformaSegs as $seg) {
+                $idSegmento = intval($seg['id_segmento']);
+                $costoPorKm = floatval($seg['costo_por_km'] ?? 0);
+                $precioPlano = floatval($seg['precio_plano'] ?? 0);
+                $precioSlcSegment = floatval($seg['precio_slc'] ?? 0);
+                $precioSllSegment = floatval($seg['precio_sll'] ?? 0);
+
+                if (isset($seg['factores']) && is_array($seg['factores']) && count($seg['factores']) > 0) {
+                    foreach ($seg['factores'] as $unidad => $valIngresado) {
+                        $u = intval($unidad);
+                        $precioReal = floatval($valIngresado);
+                        if ($u >= 1 && $u <= 4) {
+                            $fFinal = ($costoPorKm > 0) ? ($precioReal / $costoPorKm) : 1.0;
+                            $precioSlc = isset($seg['slc'][$u]) ? floatval($seg['slc'][$u]) : $precioSlcSegment;
+                            $precioSll = isset($seg['sll'][$u]) ? floatval($seg['sll'][$u]) : $precioSllSegment;
+                            $stmtIns->execute([$provVal, 3, $idSegmento, $u, $u, $costoPorKm, $precioPlano, $precioSlc, $precioSll, $fFinal, $flagPersonalizada]);
+                        }
+                    }
+                } else {
+                    $valIngresado = floatval($seg['factor'] ?? 0);
+                    $fFinal = ($costoPorKm > 0 && $valIngresado > 0) ? ($valIngresado / $costoPorKm) : 1.0;
+                    $stmtIns->execute([$provVal, 3, $idSegmento, 1, 4, $costoPorKm, $precioPlano, $precioSlcSegment, $precioSllSegment, $fFinal, $flagPersonalizada]);
+                }
             }
         }
     }
 
-    public function saveTarifasProveedor(int $idProveedor, array $madrinaSegs, array $choferSegs): bool
+    public function saveTarifasProveedor(int $idProveedor, array $madrinaSegs, array $choferSegs, array $plataformaSegs = []): bool
     {
         $db = $this->getConexion();
         try {
             $db->beginTransaction();
-            $this->saveTarifasProveedorInterno($db, $idProveedor, $madrinaSegs, $choferSegs);
+            // Al guardar tarifas para un proveedor específico (>0), se marcan como personalizadas (1)
+            $esPersonalizada = ($idProveedor > 0);
+            $this->saveTarifasProveedorInterno($db, $idProveedor, $madrinaSegs, $choferSegs, $plataformaSegs, $esPersonalizada);
             $db->commit();
             return true;
         } catch (Throwable $e) {
@@ -230,20 +323,36 @@ class Lgs_costosModel extends Mysql
     /**
      * Guarda la Tarifa Base General (id=0) y opcionalmente la replica a los proveedores seleccionados
      */
-    public function saveTarifasBaseConReplicacion(array $madrinaSegs, array $choferSegs, array $proveedoresReplicar = []): bool
+    public function saveTarifasBaseConReplicacion(
+        array $madrinaSegs, 
+        array $choferSegs, 
+        array $plataformaSegs = [], 
+        array $proveedoresReplicar = [],
+        bool $mantenerPersonalizadas = false
+    ): bool
     {
         $db = $this->getConexion();
         try {
             $db->beginTransaction();
 
-            // 1. Guardar la Base General (id_proveedor = 0)
-            $this->saveTarifasProveedorInterno($db, 0, $madrinaSegs, $choferSegs);
+            // 1. Guardar la Base General (id_proveedor = 0, es_personalizada = 0)
+            $this->saveTarifasProveedorInterno($db, 0, $madrinaSegs, $choferSegs, $plataformaSegs, false);
 
             // 2. Replicar a los proveedores seleccionados (id_proveedor > 0)
+            $stmtCheck = $db->prepare("SELECT COUNT(*) FROM lgs_tarifas_proveedores WHERE id_proveedor = ? AND es_personalizada = 1 AND activo != 0");
+
             foreach ($proveedoresReplicar as $idProv) {
                 $idProvVal = intval($idProv);
                 if ($idProvVal > 0) {
-                    $this->saveTarifasProveedorInterno($db, $idProvVal, $madrinaSegs, $choferSegs);
+                    if ($mantenerPersonalizadas) {
+                        $stmtCheck->execute([$idProvVal]);
+                        if ((int)$stmtCheck->fetchColumn() > 0) {
+                            // Este proveedor tiene tarifas personalizadas y se solicitó conservarlas
+                            continue;
+                        }
+                    }
+                    // La réplica hereda del global, por ende es_personalizada = 0
+                    $this->saveTarifasProveedorInterno($db, $idProvVal, $madrinaSegs, $choferSegs, $plataformaSegs, false);
                 }
             }
 
@@ -253,6 +362,88 @@ class Lgs_costosModel extends Mysql
             $db->rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Compara las tarifas de un proveedor específico contra la Base General
+     */
+    public function compareProveedorConGlobal(int $idProveedor): array
+    {
+        $info = $this->selectTarifasProveedor($idProveedor);
+        $provMadrina = $info['madrina'] ?? [];
+        $baseMadrina = $info['base_general']['madrina'] ?? [];
+
+        $diferencias = [];
+        if (!empty($provMadrina) && !empty($baseMadrina)) {
+            $baseMap = [];
+            foreach ($baseMadrina as $b) {
+                $baseMap[$b['id_segmento']] = $b;
+            }
+            foreach ($provMadrina as $p) {
+                $idSeg = $p['id_segmento'];
+                $b = $baseMap[$idSeg] ?? null;
+                if (!$b) continue;
+
+                $pCost = (float)$p['costo_por_km'];
+                $bCost = (float)$b['costo_por_km'];
+
+                for ($u = 1; $u <= 10; $u++) {
+                    $pUnit = round($pCost * (float)($p['factores_15'][$u] ?? 1.0), 2);
+                    $bUnit = round($bCost * (float)($b['factores_15'][$u] ?? 1.0), 2);
+                    if (abs($pUnit - $bUnit) > 0.01) {
+                        $diferencias[] = [
+                            'tipo' => 'Madrina',
+                            'id_segmento' => $idSeg,
+                            'segmento' => $p['segmento_nombre'],
+                            'unidad' => $u,
+                            'precio_proveedor' => $pUnit,
+                            'precio_global' => $bUnit,
+                            'diferencia' => round($pUnit - $bUnit, 2)
+                        ];
+                    }
+                }
+            }
+        }
+
+        $provPlat = $info['plataforma'] ?? [];
+        $basePlat = $info['base_general']['plataforma'] ?? [];
+        if (!empty($provPlat) && !empty($basePlat)) {
+            $basePlatMap = [];
+            foreach ($basePlat as $b) {
+                $basePlatMap[$b['id_segmento']] = $b;
+            }
+            foreach ($provPlat as $p) {
+                $idSeg = $p['id_segmento'];
+                $b = $basePlatMap[$idSeg] ?? null;
+                if (!$b) continue;
+
+                $pCost = (float)$p['costo_por_km'];
+                $bCost = (float)$b['costo_por_km'];
+
+                for ($u = 1; $u <= 4; $u++) {
+                    $pUnit = round($pCost * (float)($p['factores_15'][$u] ?? 1.0), 2);
+                    $bUnit = round($bCost * (float)($b['factores_15'][$u] ?? 1.0), 2);
+                    if (abs($pUnit - $bUnit) > 0.01) {
+                        $diferencias[] = [
+                            'tipo' => 'Plataforma',
+                            'id_segmento' => $idSeg,
+                            'segmento' => $p['segmento_nombre'],
+                            'unidad' => $u,
+                            'precio_proveedor' => $pUnit,
+                            'precio_global' => $bUnit,
+                            'diferencia' => round($pUnit - $bUnit, 2)
+                        ];
+                    }
+                }
+            }
+        }
+
+        return [
+            'id_proveedor' => $idProveedor,
+            'es_personalizada' => !empty($info['es_personalizada']),
+            'total_diferencias' => count($diferencias),
+            'diferencias' => $diferencias
+        ];
     }
 
     /**
@@ -277,7 +468,8 @@ class Lgs_costosModel extends Mysql
                     p.id_proveedor,
                     p.razon_social,
                     p.nombre_comercial,
-                    (CASE WHEN COUNT(t.id_tarifa) > 0 THEN 1 ELSE 0 END) AS tiene_personalizada,
+                    (CASE WHEN MAX(t.es_personalizada) = 1 THEN 1 ELSE 0 END) AS tiene_personalizada,
+                    (CASE WHEN COUNT(t.id_tarifa) > 0 THEN 1 ELSE 0 END) AS tiene_tarifas_registradas,
                     MAX(t.updated_at) AS ultima_actualizacion
                 FROM prv_cat_proveedores p
                 INNER JOIN prv_rel_proveedores_actividades r ON p.id_proveedor = r.id_proveedor
@@ -350,11 +542,11 @@ class Lgs_costosModel extends Mysql
 
     public function selectModelosVin(): array
     {
-        $sql = "SELECT m.id_cat_modelo_vin, m.modelo, m.vin_base, s.nombre AS segmento 
+        $sql = "SELECT m.id_cat_modelo_vin, m.modelo, m.vin_base, m.id_segmento, s.nombre AS segmento, s.descripcion AS segmento_desc
                 FROM cat_modelos_vin m
                 LEFT JOIN lgs_cat_segmentos s ON m.id_segmento = s.id_segmento
                 WHERE m.estado != 0
-                ORDER BY m.modelo ASC";
+                ORDER BY m.id_segmento ASC, m.modelo ASC";
         return $this->select_all($sql) ?: [];
     }
 
@@ -362,6 +554,17 @@ class Lgs_costosModel extends Mysql
     {
         $sql = "UPDATE cat_modelos_vin SET id_segmento = ? WHERE id_cat_modelo_vin = $idModelo";
         return $this->update($sql, [$idSegmento]);
+    }
+
+    public function insertModeloVin(string $modelo, int $idSegmento, ?string $vinBase = null): bool
+    {
+        $chk = $this->select("SELECT id_cat_modelo_vin FROM cat_modelos_vin WHERE LOWER(TRIM(modelo)) = LOWER(TRIM(?)) LIMIT 1", [$modelo]);
+        if (!empty($chk)) {
+            $sql = "UPDATE cat_modelos_vin SET id_segmento = ?, vin_base = COALESCE(?, vin_base) WHERE id_cat_modelo_vin = ?";
+            return $this->update($sql, [$idSegmento, $vinBase, $chk['id_cat_modelo_vin']]);
+        }
+        $sql = "INSERT INTO cat_modelos_vin (modelo, id_fabricante, id_tipo_vehiculo, peso_bruto_kg, id_tipo_motor, potencia_hp, distancia_ejes, id_cat_anio_vin, id_planta, id_segmento, vin_base, fecha_creacion, estado) VALUES (?, 1, 1, 12000, 1, 350, 4500, 1, 1, ?, ?, NOW(), 2)";
+        return (bool)$this->insert($sql, [$modelo, $idSegmento, $vinBase]);
     }
 
 }

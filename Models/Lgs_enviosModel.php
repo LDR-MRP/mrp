@@ -48,6 +48,7 @@ class Lgs_enviosModel extends Mysql
             'id_nodo_bajada',
             'destino_nombre_libre',
             'id_madrina',
+            'id_plataforma',
             'id_chofer',
             'posicion_acomodo',
             'costo_unidad',
@@ -121,7 +122,10 @@ class Lgs_enviosModel extends Mysql
                         'Sin Destino'
                     ) AS destino,
                     e.km_total,
-                    e.costo_total,
+                    CASE 
+                        WHEN (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) = 0 THEN 0.00 
+                        ELSE COALESCE(e.costo_total, 0.00) 
+                    END AS costo_total,
                     e.fecha_tentativa_envio,
                     e.id_estado,
                     (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) AS total_vins,
@@ -232,13 +236,15 @@ class Lgs_enviosModel extends Mysql
             if (empty($tiposTraslado)) {
                 $tiposTraslado = [
                     ['id' => 1, 'nombre' => 'Madrina'],
-                    ['id' => 2, 'nombre' => 'Chofer (Rodando)']
+                    ['id' => 2, 'nombre' => 'Chofer (Rodando)'],
+                    ['id' => 3, 'nombre' => 'Plataforma'],
                 ];
             }
         } catch (Throwable $e) {
             $tiposTraslado = [
                 ['id' => 1, 'nombre' => 'Madrina'],
-                ['id' => 2, 'nombre' => 'Chofer (Rodando)']
+                ['id' => 2, 'nombre' => 'Chofer (Rodando)'],
+                ['id' => 3, 'nombre' => 'Plataforma'],
             ];
         }
 
@@ -418,6 +424,8 @@ class Lgs_enviosModel extends Mysql
                     e.id_envio,
                     e.folio,
                     e.id_tipo_traslado,
+                    e.tipo_servicio,
+                    e.is_lowboy,
                     e.id_motivo,
                     e.id_proveedor,
                     pr.razon_social AS trasladista,
@@ -483,6 +491,29 @@ class Lgs_enviosModel extends Mysql
     }
 
     /**
+     * Obtiene las plataformas activas pertenecientes al proveedor del envío
+     */
+    public function getPlataformasPorProveedor(int $idProveedor): array
+    {
+        $sql = "SELECT 
+                    m.id_plataforma,
+                    m.numero_economico,
+                    m.placas,
+                    m.marca,
+                    m.modelo,
+                    m.capacidad_vehiculos,
+                    (SELECT CONCAT(c.nombre, ' ', c.apellidos) 
+                     FROM prv_det_plataforma_chofer_historial h
+                     INNER JOIN prv_det_choferes c ON c.id_chofer = h.id_chofer
+                     WHERE h.id_plataforma = m.id_plataforma AND h.activo = 1 LIMIT 1) AS chofer_asignado
+                FROM prv_det_plataformas m
+                WHERE (m.id_proveedor = ? OR ? = 0) AND m.deleted_at IS NULL
+                ORDER BY m.numero_economico ASC";
+        $res = $this->select_all($sql, [$idProveedor, $idProveedor]);
+        return $res ?: [];
+    }
+
+    /**
      * Obtiene VINs disponibles en el origen que no estén asignados a otros envíos activos
      */
     public function getVinsDisponiblesOrigen(int $idOrigen = 0, int $idEnvioActual = 0): array
@@ -506,12 +537,13 @@ class Lgs_enviosModel extends Mysql
 
         try {
             // Excluir unidades asignadas a otros envíos que ya estén confirmados o en planeación/ejecución
-            $sqlExclude = "SELECT ev.id_unidad 
+            // Subconsulta para encontrar en qué envío están asignadas (excluyendo el actual)
+            $sqlAsignado = "SELECT ev.id_unidad, e.id_envio, e.folio 
                            FROM lgs_envios_vins ev
                            INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
                            WHERE e.deleted_at IS NULL AND e.id_estado IN (2, 3, 5, 6, 7, 8)";
-            
-            // Excluir también las que ya están en el acomodo de este envío para no duplicarlas en el pool disponible
+
+            // Excluir las que ya están en el acomodo de ESTE envío
             $sqlExcludeThis = ($idEnvioActual > 0) 
                 ? "SELECT ev2.id_unidad FROM lgs_envios_vins ev2 WHERE ev2.id_envio = " . intval($idEnvioActual)
                 : "SELECT 0";
@@ -523,31 +555,36 @@ class Lgs_enviosModel extends Mysql
                         COALESCE(u.num_serie, ut.num_unidad, 'S/N') AS num_serie,
                         COALESCE(u.modelo, 'Unidad Terminada') AS modelo,
                         COALESCE(u.origen, 'Planta Lagos de Moreno') AS origen,
-                        COALESCE(NULLIF(TRIM(lu.destino_descripcion), ''), NULLIF(TRIM(u.destino), ''), 'Sin Asignar') AS destino
+                        COALESCE(NULLIF(TRIM(lu.destino_descripcion), ''), NULLIF(TRIM(u.destino), ''), 'Sin Asignar') AS destino,
+                        asig.folio AS asignado_folio
                     FROM lgs_unidades lu
                     LEFT JOIN lgs_unidades_envios u ON u.id_unidad = lu.id_unidad
                     LEFT JOIN mrp_unidades_terminadas ut ON ut.idunidad = lu.id_unidad
+                    LEFT JOIN ($sqlAsignado) asig ON asig.id_unidad = COALESCE(u.id_unidad, lu.id_unidad, ut.idunidad)
                     WHERE (lu.id_estado_proceso = 1 OR lu.id_estado_proceso IS NULL)
-                      AND lu.id_unidad NOT IN ({$sqlExclude})
                       AND lu.id_unidad NOT IN ({$sqlExcludeThis})
                     ORDER BY lu.id_lgs_unidad ASC";
 
             $res = $this->select_all($sql) ?: [];
 
-            // 2. Si no hay en lgs_unidades, buscar en lgs_unidades_envios
-            if (empty($res)) {
-                $sql2 = "SELECT 
-                            u.id_unidad,
-                            u.vin,
-                            u.num_serie,
-                            u.modelo,
-                            COALESCE(u.origen, 'Planta Lagos de Moreno') AS origen,
-                            COALESCE(NULLIF(TRIM(u.destino), ''), 'Sin Asignar') AS destino
-                        FROM lgs_unidades_envios u
-                        WHERE u.id_unidad NOT IN ({$sqlExclude})
-                          AND u.id_unidad NOT IN ({$sqlExcludeThis})
-                        ORDER BY u.id_unidad ASC";
-                $res = $this->select_all($sql2) ?: [];
+            // 2. Buscar TAMBIÉN en lgs_unidades_envios (ya que es tabla auxiliar y tiene VINs sin alta en WMS/lgs_unidades)
+            $sql2 = "SELECT 
+                        u.id_unidad,
+                        u.vin,
+                        u.num_serie,
+                        u.modelo,
+                        COALESCE(u.origen, 'Planta Lagos de Moreno') AS origen,
+                        COALESCE(NULLIF(TRIM(u.destino), ''), 'Sin Asignar') AS destino,
+                        asig.folio AS asignado_folio
+                    FROM lgs_unidades_envios u
+                    LEFT JOIN ($sqlAsignado) asig ON asig.id_unidad = u.id_unidad
+                    WHERE u.id_unidad NOT IN ({$sqlExcludeThis})
+                      AND u.id_unidad NOT IN (SELECT id_unidad FROM lgs_unidades)
+                    ORDER BY u.id_unidad ASC";
+            $resAux = $this->select_all($sql2) ?: [];
+            
+            if (!empty($resAux)) {
+                $res = array_merge($res, $resAux);
             }
 
             return $res;
@@ -577,21 +614,24 @@ class Lgs_enviosModel extends Mysql
                             'Destino'
                         ) AS destino,
                         v.id_madrina,
+                        v.id_plataforma,
                         v.id_chofer,
                         v.id_parada,
                         v.id_nodo_subida,
                         v.id_nodo_bajada,
                         v.posicion_acomodo,
                         m.numero_economico AS madrina_nombre,
+                        p.numero_economico AS plataforma_nombre,
                         CONCAT(c.nombre, ' ', c.apellidos) AS chofer_nombre
                     FROM lgs_envios_vins v
                     LEFT JOIN lgs_unidades_envios u ON v.id_unidad = u.id_unidad
                     LEFT JOIN lgs_unidades lu ON lu.id_unidad = v.id_unidad
                     LEFT JOIN mrp_unidades_terminadas ut ON v.id_unidad = ut.idunidad
                     LEFT JOIN prv_det_madrinas m ON v.id_madrina = m.id_madrina
+                    LEFT JOIN prv_det_plataformas p ON v.id_plataforma = p.id_plataforma
                     LEFT JOIN prv_det_choferes c ON v.id_chofer = c.id_chofer
                     WHERE v.id_envio = ?
-                    ORDER BY v.id_madrina ASC, v.id_chofer ASC, v.posicion_acomodo ASC";
+                    ORDER BY v.id_madrina ASC, v.id_plataforma ASC, v.id_chofer ASC, v.posicion_acomodo ASC";
             $res = $this->select_all($sql, [$idEnvio]);
             return $res ?: [];
         } catch (Throwable $e) {
@@ -793,6 +833,13 @@ class Lgs_enviosModel extends Mysql
             } catch (Throwable $e) {}
             try {
                 $db->exec("ALTER TABLE `lgs_envios_nodos` ADD COLUMN `fecha_estimada` DATETIME NULL AFTER `observaciones`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `is_lowboy` TINYINT(1) NOT NULL DEFAULT 0 AFTER `id_destino`");
+            } catch (Throwable $e) {}
+            // Asegurar que existan los 3 tipos de traslado
+            try {
+                $db->exec("INSERT IGNORE INTO `lgs_cat_tipo_traslado` (id_tipo_traslado, nombre, activo) VALUES (1,'Madrina',1),(2,'Chofer (Rodando)',1),(3,'Plataforma',1)");
             } catch (Throwable $e) {}
             try {
                 $db->exec("CREATE TABLE IF NOT EXISTS `lgs_envios_tramos_costos` (

@@ -20,7 +20,8 @@ function badgePrioridad($prioridad)
     default:
       return '<span class="badge rounded-pill bg-secondary-subtle text-body border">N/D</span>';
   }
-}
+} 
+
 
 function badgeEstadoOrden($estatus)
 {

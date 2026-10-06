@@ -225,12 +225,14 @@ class Lgs_envios extends Controllers
 
             $data = [
                 'id_tipo_traslado' => intval($_POST['id_tipo_traslado'] ?? 0),
+                'tipo_servicio'    => $_POST['tipo_servicio'] ?? 'FORANEO',
                 'id_motivo'        => intval($_POST['id_motivo'] ?? 0),
                 'id_proveedor'     => intval($_POST['id_proveedor'] ?? 0),
                 'id_origen'        => $firstLoc > 0 ? $firstLoc : intval($_POST['id_origen'] ?? 0),
                 'id_destino'       => $lastLoc > 0 ? $lastLoc : intval($_POST['id_destino'] ?? 0),
                 'destino_nombre_libre' => !empty($lastFree) ? $lastFree : ($_POST['destino_nombre_libre'] ?? ''),
                 'km_total'         => 0,
+                'is_lowboy'        => intval($_POST['is_lowboy'] ?? 0),
                 'fecha_tentativa_envio'   => !empty($_POST['fecha_tentativa_envio']) ? str_replace('T', ' ', $_POST['fecha_tentativa_envio']) : null,
                 'fecha_tentativa_llegada' => !empty($_POST['fecha_tentativa_llegada']) ? str_replace('T', ' ', $_POST['fecha_tentativa_llegada']) : null,
                 'observaciones'    => $_POST['observaciones'] ?? '',
@@ -255,7 +257,7 @@ class Lgs_envios extends Controllers
                 $idEstadoStr = intval($existingEnvio['id_estado']);
                 $canEdit = ($idEstadoStr === 1 || $idEstadoStr === 8);
                 if ($idEstadoStr === 2) {
-                    $estadoPlan = $this->model->getPlaneacionEstadoByEnvio($idEnvio);
+                    $estadoPlan = $model->getPlaneacionEstadoByEnvio($idEnvio);
                     if ($estadoPlan === null || $estadoPlan < 3) {
                         $canEdit = true;
                     }
@@ -269,10 +271,16 @@ class Lgs_envios extends Controllers
                 // Si estaba Confirmado (8) y lo editan, lo regresamos a Borrador (1) para que deba confirmarse de nuevo
                 $newEstado = ($idEstadoStr === 8) ? 1 : $idEstadoStr;
 
+                // Si se cambió el tipo de traslado, borrar las unidades asignadas previamente
+                if (intval($existingEnvio['id_tipo_traslado']) !== intval($data['id_tipo_traslado'])) {
+                    $model->deleteAcomodoEnvio($db, $idEnvio);
+                }
+
                 // Actualizar cabecera existente
                 $stmtUpd = $db->prepare("UPDATE lgs_envios SET 
                                             id_estado = :id_estado,
                                             id_tipo_traslado = :id_tipo_traslado,
+                                            tipo_servicio = :tipo_servicio,
                                             id_motivo = :id_motivo,
                                             id_proveedor = :id_proveedor,
                                             id_origen = :id_origen,
@@ -280,6 +288,7 @@ class Lgs_envios extends Controllers
                                             destino_nombre_libre = :destino_nombre_libre,
                                             fecha_tentativa_envio = :fecha_tentativa_envio,
                                             fecha_tentativa_llegada = :fecha_tentativa_llegada,
+                                            is_lowboy = :is_lowboy,
                                             observaciones = :observaciones,
                                             updated_by = :updated_by,
                                             updated_at = NOW()
@@ -287,13 +296,15 @@ class Lgs_envios extends Controllers
                 $stmtUpd->execute([
                     'id_estado'        => $newEstado,
                     'id_tipo_traslado' => $data['id_tipo_traslado'],
+                    'tipo_servicio'    => $data['tipo_servicio'],
                     'id_motivo'        => $data['id_motivo'],
                     'id_proveedor'     => $data['id_proveedor'],
                     'id_origen'        => $data['id_origen'],
                     'id_destino'       => $data['id_destino'],
                     'destino_nombre_libre' => $data['destino_nombre_libre'],
-                    'fecha_tentativa_envio' => $data['fecha_tentativa_envio'],
+                    'fecha_tentativa_envio'   => $data['fecha_tentativa_envio'],
                     'fecha_tentativa_llegada' => $data['fecha_tentativa_llegada'],
+                    'is_lowboy'        => $data['is_lowboy'],
                     'observaciones'    => $data['observaciones'],
                     'updated_by'       => $userId,
                     'id_envio'         => $idEnvio
@@ -401,6 +412,9 @@ class Lgs_envios extends Controllers
         $estadoPlan = 0;
         if (!empty($envio)) {
             $estadoPlan = $model->getPlaneacionEstadoByEnvio($idEnvio);
+            // Recalcular costos para evitar desfazamientos
+            $this->service->recalcularCostoTotal($idEnvio);
+            $this->service->asegurarCostosVins($idEnvio);
         }
 
         $this->views->getView(
@@ -441,9 +455,10 @@ class Lgs_envios extends Controllers
             $idProveedor = intval($envio['id_proveedor'] ?? 0);
             $idOrigen    = intval($envio['id_origen'] ?? 0);
 
-            $madrinas   = $model->getMadrinasPorProveedor($idProveedor);
-            $choferes   = $model->getChoferesPorProveedor($idProveedor);
-            $vins       = $model->getVinsDisponiblesOrigen($idOrigen, $idEnvio);
+            $madrinas    = $model->getMadrinasPorProveedor($idProveedor);
+            $plataformas = $model->getPlataformasPorProveedor($idProveedor);
+            $choferes    = $model->getChoferesPorProveedor($idProveedor);
+            $vins        = $model->getVinsDisponiblesOrigen($idOrigen, $idEnvio);
             $existentes = $model->getAcomodoExistenteEnvio($idEnvio);
             $paradas    = $model->getParadasEnvio($idEnvio);
             $nodos      = $model->getNodosEnvio($idEnvio);
@@ -472,19 +487,19 @@ class Lgs_envios extends Controllers
                                 break;
                             }
                         }
-                        if ($coincide) {
-                            $vinsFiltrados[] = $vin;
-                        }
+                        $vin['coincide_destino'] = $coincide;
+                        $vinsFiltrados[] = $vin;
                     }
                     $vins = array_values($vinsFiltrados);
                 }
             }
 
             $data = [
-                'envio'      => $envio,
-                'madrinas'   => $madrinas,
-                'choferes'   => $choferes,
-                'vins'       => $vins,
+                'envio'       => $envio,
+                'madrinas'    => $madrinas,
+                'plataformas' => $plataformas,
+                'choferes'    => $choferes,
+                'vins'        => $vins,
                 'existentes' => $existentes,
                 'paradas'    => $paradas,
                 'nodos'      => $nodos,
@@ -525,7 +540,7 @@ class Lgs_envios extends Controllers
             $idEstadoStr = intval($existingEnvio['id_estado']);
             $canEdit = ($idEstadoStr === 1 || $idEstadoStr === 8);
             if ($idEstadoStr === 2) {
-                $estadoPlan = $this->model->getPlaneacionEstadoByEnvio($idEnvio);
+                $estadoPlan = $model->getPlaneacionEstadoByEnvio($idEnvio);
                 if ($estadoPlan === null || $estadoPlan < 3) {
                     $canEdit = true;
                 }
@@ -545,9 +560,31 @@ class Lgs_envios extends Controllers
 
             // 2. Insertar las nuevas asignaciones con id_nodo_subida e id_nodo_bajada
             $assignedUnitIds = [];
+            $tipoTraslado = intval($existingEnvio['id_tipo_traslado'] ?? 0);
+
             foreach ($asignaciones as $asig) {
                 $uId = intval($asig['id_unidad'] ?? 0);
                 if ($uId > 0) {
+                    $hasMadrina = !empty($asig['id_madrina']);
+                    $hasChofer = !empty($asig['id_chofer']);
+                    $hasPlataforma = !empty($asig['id_plataforma']);
+
+                    if ($tipoTraslado === 1 && ($hasChofer || $hasPlataforma)) {
+                        $db->rollBack();
+                        echo $this->errorResponse("Combinación inválida: El envío es por Madrina, no se permiten choferes rodando ni plataformas.", 400);
+                        return;
+                    }
+                    if ($tipoTraslado === 2 && ($hasMadrina || $hasPlataforma)) {
+                        $db->rollBack();
+                        echo $this->errorResponse("Combinación inválida: El envío es Rodando (Chofer), no se permiten madrinas ni plataformas.", 400);
+                        return;
+                    }
+                    if ($tipoTraslado === 3 && ($hasMadrina || $hasChofer)) {
+                        $db->rollBack();
+                        echo $this->errorResponse("Combinación inválida: El envío es por Plataforma, no se permiten madrinas ni choferes rodando.", 400);
+                        return;
+                    }
+
                     $assignedUnitIds[] = $uId;
                     $model->insertVin($db, [
                         'id_envio'         => $idEnvio,
@@ -556,6 +593,7 @@ class Lgs_envios extends Controllers
                         'id_nodo_subida'   => !empty($asig['id_nodo_subida']) ? intval($asig['id_nodo_subida']) : null,
                         'id_nodo_bajada'   => !empty($asig['id_nodo_bajada']) ? intval($asig['id_nodo_bajada']) : null,
                         'id_madrina'       => !empty($asig['id_madrina']) ? intval($asig['id_madrina']) : null,
+                        'id_plataforma'    => !empty($asig['id_plataforma']) ? intval($asig['id_plataforma']) : null,
                         'id_chofer'        => !empty($asig['id_chofer']) ? intval($asig['id_chofer']) : null,
                         'posicion_acomodo' => !empty($asig['posicion_acomodo']) ? intval($asig['posicion_acomodo']) : null,
                     ]);
@@ -583,6 +621,7 @@ class Lgs_envios extends Controllers
 
             // Si el usuario confirma finalizar el envío, pasarlo a estado 8 (Confirmado / Listo para planear)
             $finalizar = !empty($dataJson['finalizar']) && $dataJson['finalizar'] == true;
+            $enviosAfectados = [];
             if ($finalizar) {
                 $stmtFinalizar = $db->prepare("UPDATE lgs_envios SET id_estado = 8 WHERE id_envio = ?");
                 $stmtFinalizar->execute([$idEnvio]);
@@ -590,6 +629,17 @@ class Lgs_envios extends Controllers
                 // Si el envío se confirma, eliminamos estos VINs de cualquier OTRO envío que esté en Borrador (1)
                 if (!empty($assignedUnitIds)) {
                     $inIds = implode(',', array_fill(0, count($assignedUnitIds), '?'));
+
+                    // Detectar otros envíos en borrador que contenían estos VINs para recalcularlos y no dejar costos fantasmas
+                    $sqlAfectados = "SELECT DISTINCT e.id_envio FROM lgs_envios_vins ev
+                                     INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
+                                     WHERE e.id_estado = 1 
+                                       AND e.id_envio != ? 
+                                       AND ev.id_unidad IN ($inIds)";
+                    $stmtAf = $db->prepare($sqlAfectados);
+                    $stmtAf->execute(array_merge([$idEnvio], $assignedUnitIds));
+                    $enviosAfectados = $stmtAf->fetchAll(PDO::FETCH_COLUMN);
+
                     $sqlDelVins = "DELETE ev FROM lgs_envios_vins ev
                                    INNER JOIN lgs_envios e ON ev.id_envio = e.id_envio
                                    WHERE e.id_estado = 1 
@@ -606,6 +656,15 @@ class Lgs_envios extends Controllers
             // 4. Recalcular costos con el motor de factores y memoria de distancias
             $service = new Lgs_enviosService();
             $costoTotal = $service->recalcularCostoTotal($idEnvio);
+
+            // Recalcular los otros envíos afectados que perdieron unidades
+            if (!empty($enviosAfectados)) {
+                foreach ($enviosAfectados as $idAf) {
+                    try {
+                        $service->recalcularCostoTotal((int)$idAf);
+                    } catch (Throwable $th) {}
+                }
+            }
 
             echo $this->successResponse([
                 'id_envio' => $idEnvio,
@@ -706,7 +765,7 @@ class Lgs_envios extends Controllers
             $idEstadoStr = intval($existingEnvio['id_estado']);
             $canEdit = ($idEstadoStr === 1 || $idEstadoStr === 8);
             if ($idEstadoStr === 2) {
-                $estadoPlan = $this->model->getPlaneacionEstadoByEnvio($idEnvio);
+                $estadoPlan = $model->getPlaneacionEstadoByEnvio($idEnvio);
                 if ($estadoPlan === null || $estadoPlan < 3) {
                     $canEdit = true;
                 }
@@ -720,7 +779,7 @@ class Lgs_envios extends Controllers
             $db->beginTransaction();
 
             // 1. Borrado lógico de la cabecera
-            $stmt = $db->prepare("UPDATE lgs_envios SET deleted_at = NOW(), id_estado = 0 WHERE id_envio = ?");
+            $stmt = $db->prepare("UPDATE lgs_envios SET deleted_at = NOW(), id_estado = 0, costo_total = 0.00 WHERE id_envio = ?");
             $stmt->execute([$idEnvio]);
 
             // 2. Liberar el acomodo (eliminar relaciones de lgs_envios_vins)
@@ -835,13 +894,25 @@ class Lgs_envios extends Controllers
 
             // Resolver información de Segmento y Tarifas
             $segId = $this->service->resolveSegmentoForUnit($db, $idUnidad);
-            $segmentosInfo = [
-                1 => ['nombre' => 'LDT (Ligeros)', 'tarifa' => 27.00],
-                2 => ['nombre' => 'MDT (Medianos)', 'tarifa' => 30.00],
-                3 => ['nombre' => 'HDT (Pesados)', 'tarifa' => 40.00],
-                4 => ['nombre' => 'BUSES', 'tarifa' => 50.00],
-                5 => ['nombre' => 'LOWBOY', 'tarifa' => 60.00],
-            ];
+            $idTipoTraslado = (int)($detalle['id_tipo_traslado'] ?? 1);
+            if ($idTipoTraslado === 2) {
+                // Tarifas rodando (Chofer)
+                $segmentosInfo = [
+                    1 => ['nombre' => 'LDT (Ligeros)', 'tarifa' => 18.00],
+                    2 => ['nombre' => 'MDT (Medianos)', 'tarifa' => 20.00],
+                    3 => ['nombre' => 'HDT (Pesados)', 'tarifa' => 25.00],
+                    4 => ['nombre' => 'BUSES', 'tarifa' => 25.00],
+                    5 => ['nombre' => 'LOWBOY', 'tarifa' => 25.00],
+                ];
+            } else {
+                $segmentosInfo = [
+                    1 => ['nombre' => 'LDT (Ligeros)', 'tarifa' => 27.00],
+                    2 => ['nombre' => 'MDT (Medianos)', 'tarifa' => 30.00],
+                    3 => ['nombre' => 'HDT (Pesados)', 'tarifa' => 40.00],
+                    4 => ['nombre' => 'BUSES', 'tarifa' => 50.00],
+                    5 => ['nombre' => 'LOWBOY', 'tarifa' => 60.00],
+                ];
+            }
             $sInfo = $segmentosInfo[$segId] ?? $segmentosInfo[1];
 
             $detalle['segmento'] = $sInfo['nombre'];

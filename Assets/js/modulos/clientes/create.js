@@ -13,7 +13,7 @@ function obtenerBaseUrl() {
 }
 
 
-const CLIENTES_ENDPOINTS = {
+const CLIENTES_ENDPOINTS = {    
     codigoCliente: `${obtenerBaseUrl()}/cli_clientes/getCodigoCliente`,
     guardarGeneral: `${obtenerBaseUrl()}/cli_clientes/setGeneral`,
     validarRFC: `${obtenerBaseUrl()}/cli_clientes/validarRFC`,
@@ -433,7 +433,7 @@ async function generarCodigoCliente() {
             );
         }
 
-        const codigo = respuesta.data ? .codigo_cliente || "";
+        const codigo = respuesta.data ?.codigo_cliente || "";
 
         if (!codigo) {
             throw new Error("El servidor no devolvió un código válido.");
@@ -566,7 +566,7 @@ async function guardarInformacionGeneral(event) {
     const inputCodigo = document.querySelector("#codigo_cliente");
 
 
-    if (obtenerIdCliente() <= 0 && selectTipo ? .value && !inputCodigo ? .value) {
+    if (obtenerIdCliente() <= 0 && selectTipo ?.value && !inputCodigo ?.value) {
         const generado = await generarCodigoCliente();
 
         if (!generado) {
@@ -591,7 +591,7 @@ async function guardarInformacionGeneral(event) {
         `${SELECTORES_CLIENTE.formulario} button[type="submit"]`,
     );
 
-    const contenidoOriginalBoton = botonSubmit ? .innerHTML || "";
+    const contenidoOriginalBoton = botonSubmit ?.innerHTML || "";
 
     establecerEstadoBoton(
         botonSubmit,
@@ -617,7 +617,7 @@ async function guardarInformacionGeneral(event) {
         }
 
         const idclienteRespuesta = Number(
-            respuesta.data ? .idcliente || respuesta.idcliente || obtenerIdCliente(),
+            respuesta.data ?.idcliente || respuesta.idcliente || obtenerIdCliente(),
         );
 
         if (!Number.isInteger(idclienteRespuesta) || idclienteRespuesta <= 0) {
@@ -636,14 +636,14 @@ async function guardarInformacionGeneral(event) {
 
 
         if (
-            respuesta.data ? .nuevo_registro === true ||
-            respuesta.data ? .nuevo_registro === 1 ||
-            respuesta.data ? .nuevo_registro === "1"
+            respuesta.data ?.nuevo_registro === true ||
+            respuesta.data ?.nuevo_registro === 1 ||
+            respuesta.data ?.nuevo_registro === "1"
         ) {
             abrirPestana("#tab-fiscal");
-        } else if (respuesta.data ? .accion === "insertar") {
+        } else if (respuesta.data ?.accion === "insertar") {
             abrirPestana("#tab-fiscal");
-        } else if (!respuesta.data ? .accion &&
+        } else if (!respuesta.data ?.accion &&
             estadoModuloClientes.idcliente === idclienteRespuesta
         ) {
 
@@ -721,7 +721,7 @@ async function cargarInformacionGeneralCliente(forzar = false) {
             }
 
             campo.value =
-                datos[nombre] ? ? "";
+                datos[nombre] ?? "";
 
         });
 
@@ -803,9 +803,9 @@ function validarFormatoRFC() {
 
     let valido = false;
 
-    if (tipoPersona ? .value === "FISICA") {
+    if (tipoPersona ?.value === "FISICA") {
         valido = regexFisica.test(rfc);
-    } else if (tipoPersona ? .value === "MORAL") {
+    } else if (tipoPersona ?.value === "MORAL") {
         valido = regexMoral.test(rfc);
     } else {
         valido = regexFisica.test(rfc) || regexMoral.test(rfc);
@@ -841,7 +841,7 @@ async function validarRFCCliente() {
         return;
     }
 
-    const contenidoOriginal = boton ? .innerHTML || "";
+    const contenidoOriginal = boton ?.innerHTML || "";
 
     establecerEstadoBoton(boton, true, "Validando...");
 
@@ -854,7 +854,7 @@ async function validarRFCCliente() {
 
         formData.append(
             "tipo_persona",
-            document.querySelector("#tipo_persona") ? .value || "",
+            document.querySelector("#tipo_persona") ?.value || "",
         );
 
         const respuesta = await peticionJson(CLIENTES_ENDPOINTS.validarRFC, {
@@ -1089,7 +1089,7 @@ function limpiarFormularioCliente() {
 function obtenerIdCliente() {
     const inputIdCliente = document.querySelector(SELECTORES_CLIENTE.idcliente);
 
-    const idcliente = Number(inputIdCliente ? .value || 0);
+    const idcliente = Number(inputIdCliente ?.value || 0);
 
     return Number.isInteger(idcliente) && idcliente > 0 ? idcliente : 0;
 }
@@ -1305,7 +1305,7 @@ function normalizarTextoMayusculas(valor) {
 function escaparHtml(valor) {
     const elemento = document.createElement("div");
 
-    elemento.textContent = String(valor ? ? "");
+    elemento.textContent = String(valor ?? "");
 
     return elemento.innerHTML;
 }
@@ -1453,7 +1453,7 @@ function crearBotonGuardarFiscal() {
 
     const botonGuardar = document.querySelector("#btnGuardarFiscal");
 
-    botonGuardar ? .addEventListener("click", guardarInformacionFiscal);
+    botonGuardar ?.addEventListener("click", guardarInformacionFiscal);
 
     estadoFiscalCliente.botonCreado = true;
 }
@@ -1513,7 +1513,7 @@ function configurarCamposFiscales() {
 function actualizarRequerimientosFiscales() {
     const selectRequiereFactura = document.querySelector("#requiere_factura");
 
-    const requiereFactura = String(selectRequiereFactura ? .value || "0") === "1";
+    const requiereFactura = String(selectRequiereFactura ?.value || "0") === "1";
 
     const camposObligatorios = [
         document.querySelector("#rfc"),
@@ -1540,7 +1540,7 @@ function actualizarRequerimientosFiscales() {
 
 function validarRegimenFiscalPersona() {
     const tipoPersona = String(
-        document.querySelector("#tipo_persona") ? .value || "",
+        document.querySelector("#tipo_persona") ?.value || "",
     ).toUpperCase();
 
     const selectRegimen = document.querySelector("#regimen_fiscal");
@@ -1602,24 +1602,24 @@ function validarDatosFiscales() {
     }
 
     const requiereFactura =
-        document.querySelector("#requiere_factura") ? .value === "1";
+        document.querySelector("#requiere_factura") ?.value === "1";
 
 
     const inputRFC = document.querySelector("#rfc");
 
-    if (requiereFactura || inputRFC ? .value) {
+    if (requiereFactura || inputRFC ?.value) {
         if (!validarFormatoRFC()) {
-            inputRFC ? .focus();
+            inputRFC ?.focus();
 
             return false;
         }
     }
 
-    const tipoPersona = document.querySelector("#tipo_persona") ? .value;
+    const tipoPersona = document.querySelector("#tipo_persona") ?.value;
 
     const inputCURP = document.querySelector("#curp");
 
-    if (tipoPersona === "FISICA" && inputCURP ? .value && !validarCURP()) {
+    if (tipoPersona === "FISICA" && inputCURP ?.value && !validarCURP()) {
         mostrarAdvertencia("La CURP capturada no tiene un formato válido.");
 
         inputCURP.focus();
@@ -1629,7 +1629,7 @@ function validarDatosFiscales() {
 
     const inputCodigoPostal = document.querySelector("#codigo_postal_fiscal");
 
-    if (inputCodigoPostal ? .value && !/^\d{5}$/.test(inputCodigoPostal.value)) {
+    if (inputCodigoPostal ?.value && !/^\d{5}$/.test(inputCodigoPostal.value)) {
         inputCodigoPostal.classList.add("is-invalid");
 
         mostrarAdvertencia(
@@ -1675,7 +1675,7 @@ async function guardarInformacionFiscal() {
 
     const boton = document.querySelector("#btnGuardarFiscal");
 
-    const contenidoOriginal = boton ? .innerHTML || "";
+    const contenidoOriginal = boton ?.innerHTML || "";
 
     estadoFiscalCliente.guardando = true;
 
@@ -1693,7 +1693,7 @@ async function guardarInformacionFiscal() {
 
         formData.set(
             "tipo_persona",
-            document.querySelector("#tipo_persona") ? .value || "",
+            document.querySelector("#tipo_persona") ?.value || "",
         );
 
         const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarFiscal, {
@@ -1823,7 +1823,7 @@ function agregarFilaContacto() {
 
     const inputNombre = fila.querySelector('[name="contacto_nombre"]');
 
-    inputNombre ? .focus();
+    inputNombre ?.focus();
 }
 
 function construirFilaContacto(contacto) {
@@ -1969,7 +1969,7 @@ function construirFilaContacto(contacto) {
 
     const inputTelefono = fila.querySelector('[name="contacto_telefono"]');
 
-    inputTelefono ? .addEventListener("input", function() {
+    inputTelefono ?.addEventListener("input", function() {
         inputTelefono.value = inputTelefono.value.replace(/[^\d+\s()-]/g, "");
     });
 
@@ -2019,7 +2019,7 @@ function manejarCambioContacto(event) {
 
 function obtenerDatosFilaContacto(fila) {
     const obtenerValor = function(nombre) {
-        return fila.querySelector(`[name="${nombre}"]`) ? .value ? .trim() || "";
+        return fila.querySelector(`[name="${nombre}"]`) ?.value ?.trim() || "";
     };
 
     return {
@@ -2035,7 +2035,7 @@ function obtenerDatosFilaContacto(fila) {
 
         tipo_contacto: obtenerValor("tipo_contacto"),
 
-        notificar: fila.querySelector('[name="contacto_notificar"]') ? .checked ?
+        notificar: fila.querySelector('[name="contacto_notificar"]') ?.checked ?
             "1" :
             "0",
     };
@@ -2072,7 +2072,7 @@ function validarFilaContacto(fila) {
     if (datos.correo && !validarCorreoElectronico(datos.correo)) {
         const inputCorreo = fila.querySelector('[name="contacto_correo"]');
 
-        inputCorreo ? .classList.add("is-invalid");
+        inputCorreo ?.classList.add("is-invalid");
 
         valido = false;
 
@@ -2084,7 +2084,7 @@ function validarFilaContacto(fila) {
     if (datos.telefono && datos.telefono.replace(/\D/g, "").length < 10) {
         const inputTelefono = fila.querySelector('[name="contacto_telefono"]');
 
-        inputTelefono ? .classList.add("is-invalid");
+        inputTelefono ?.classList.add("is-invalid");
 
         valido = false;
 
@@ -2093,7 +2093,7 @@ function validarFilaContacto(fila) {
         }
     }
 
-    primerInvalido ? .focus();
+    primerInvalido ?.focus();
 
     return valido;
 }
@@ -2131,7 +2131,7 @@ async function guardarContacto(fila) {
 
     const botonGuardar = fila.querySelector(".btn-guardar-contacto");
 
-    const contenidoOriginal = botonGuardar ? .innerHTML || "";
+    const contenidoOriginal = botonGuardar ?.innerHTML || "";
 
     fila.dataset.guardando = "1";
 
@@ -2168,7 +2168,7 @@ async function guardarContacto(fila) {
         }
 
         const idcontacto = Number(
-            respuesta.data ? .idcontacto || respuesta.idcontacto || datos.idcontacto,
+            respuesta.data ?.idcontacto || respuesta.idcontacto || datos.idcontacto,
         );
 
         if (!Number.isInteger(idcontacto) || idcontacto <= 0) {
@@ -2260,7 +2260,7 @@ async function eliminarContacto(fila) {
 
     const botonEliminar = fila.querySelector(".btn-eliminar-contacto");
 
-    const contenidoOriginal = botonEliminar ? .innerHTML || "";
+    const contenidoOriginal = botonEliminar ?.innerHTML || "";
 
     establecerEstadoBoton(botonEliminar, true, "");
 
@@ -2342,7 +2342,7 @@ async function cargarInformacionFiscalCliente(forzar = false) {
                 return;
             }
 
-            campo.value = datos[nombre] ? ? "";
+            campo.value = datos[nombre] ?? "";
         });
 
         estadoFiscalCliente.cargado = true;
@@ -2404,7 +2404,7 @@ async function cargarContactosCliente(forzar = false) {
 
         const contactos = Array.isArray(respuesta.data) ?
             respuesta.data :
-            Array.isArray(respuesta.data ? .contactos) ?
+            Array.isArray(respuesta.data ?.contactos) ?
             respuesta.data.contactos : [];
 
         tbody.innerHTML = "";
@@ -2425,7 +2425,7 @@ async function cargarContactosCliente(forzar = false) {
 
                 tipo_contacto: registro.tipo_contacto || registro.tipo || "COMERCIAL",
 
-                notificar: String(registro.notificar ? ? "1"),
+                notificar: String(registro.notificar ?? "1"),
 
                 nuevo: false,
             };
@@ -2472,8 +2472,7 @@ async function cargarContactosCliente(forzar = false) {
         `;
 
         document
-            .querySelector("#btnReintentarContactos") ?
-            .addEventListener("click", function() {
+            .querySelector("#btnReintentarContactos") ?.addEventListener("click", function() {
                 cargarContactosCliente(true);
             });
     } finally {
@@ -2525,7 +2524,7 @@ function eliminarFilaVaciaContactos() {
         "#tbodyContactos .fila-contactos-vacia",
     );
 
-    filaVacia ? .remove();
+    filaVacia ?.remove();
 }
 
 
@@ -2569,7 +2568,7 @@ function validarCorreoElectronico(correo) {
 
 
 function escaparAtributo(valor) {
-    return escaparHtml(String(valor ? ? ""))
+    return escaparHtml(String(valor ?? ""))
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
@@ -2669,7 +2668,7 @@ function agregarFormularioSucursal() {
 
     actualizarContadorSucursales();
 
-    tarjeta.querySelector('[name="sucursal_nombre"]') ? .focus();
+    tarjeta.querySelector('[name="sucursal_nombre"]') ?.focus();
 }
 
 
@@ -2951,15 +2950,15 @@ function configurarCamposTarjetaSucursal(tarjeta) {
 
     const nombre = tarjeta.querySelector('[name="sucursal_nombre"]');
 
-    telefono ? .addEventListener("input", function() {
+    telefono ?.addEventListener("input", function() {
         telefono.value = telefono.value.replace(/[^\d+\s()-]/g, "");
     });
 
-    codigoPostal ? .addEventListener("input", function() {
+    codigoPostal ?.addEventListener("input", function() {
         codigoPostal.value = codigoPostal.value.replace(/\D/g, "").slice(0, 5);
     });
 
-    nombre ? .addEventListener("input", function() {
+    nombre ?.addEventListener("input", function() {
         const titulo = tarjeta.querySelector(".titulo-sucursal");
 
         if (titulo) {
@@ -3007,7 +3006,7 @@ function manejarCambioSucursal(event) {
 
 function obtenerDatosSucursal(tarjeta) {
     const valor = function(nombre) {
-        return tarjeta.querySelector(`[name="${nombre}"]`) ? .value ? .trim() || "";
+        return tarjeta.querySelector(`[name="${nombre}"]`) ?.value ?.trim() || "";
     };
 
     return {
@@ -3075,7 +3074,7 @@ function validarTarjetaSucursal(tarjeta) {
     if (datos.correo && !validarCorreoElectronico(datos.correo)) {
         const correo = tarjeta.querySelector('[name="sucursal_correo"]');
 
-        correo ? .classList.add("is-invalid");
+        correo ?.classList.add("is-invalid");
 
         valido = false;
         primerInvalido = primerInvalido || correo;
@@ -3084,7 +3083,7 @@ function validarTarjetaSucursal(tarjeta) {
     if (datos.telefono && datos.telefono.replace(/\D/g, "").length < 10) {
         const telefono = tarjeta.querySelector('[name="sucursal_telefono"]');
 
-        telefono ? .classList.add("is-invalid");
+        telefono ?.classList.add("is-invalid");
 
         valido = false;
         primerInvalido = primerInvalido || telefono;
@@ -3093,13 +3092,13 @@ function validarTarjetaSucursal(tarjeta) {
     if (!/^\d{5}$/.test(datos.codigo_postal)) {
         const cp = tarjeta.querySelector('[name="sucursal_codigo_postal"]');
 
-        cp ? .classList.add("is-invalid");
+        cp ?.classList.add("is-invalid");
 
         valido = false;
         primerInvalido = primerInvalido || cp;
     }
 
-    primerInvalido ? .focus();
+    primerInvalido ?.focus();
 
     return valido;
 }
@@ -3137,7 +3136,7 @@ async function guardarSucursal(tarjeta) {
 
     const boton = tarjeta.querySelector(".btn-guardar-sucursal");
 
-    const contenidoOriginal = boton ? .innerHTML || "";
+    const contenidoOriginal = boton ?.innerHTML || "";
 
     tarjeta.dataset.guardando = "1";
 
@@ -3149,7 +3148,7 @@ async function guardarSucursal(tarjeta) {
         formData.append("idcliente", String(obtenerIdCliente()));
 
         Object.entries(datos).forEach(function([clave, valor]) {
-            formData.append(clave, String(valor ? ? ""));
+            formData.append(clave, String(valor ?? ""));
         });
 
         const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarSucursal, {
@@ -3164,7 +3163,7 @@ async function guardarSucursal(tarjeta) {
         }
 
         const idsucursal = Number(
-            respuesta.data ? .idsucursal || respuesta.idsucursal || datos.idsucursal,
+            respuesta.data ?.idsucursal || respuesta.idsucursal || datos.idsucursal,
         );
 
         if (!Number.isInteger(idsucursal) || idsucursal <= 0) {
@@ -3255,7 +3254,7 @@ async function eliminarSucursal(tarjeta) {
 
     const boton = tarjeta.querySelector(".btn-eliminar-sucursal");
 
-    const contenidoOriginal = boton ? .innerHTML || "";
+    const contenidoOriginal = boton ?.innerHTML || "";
 
     establecerEstadoBoton(boton, true, "Eliminando...");
 
@@ -3339,7 +3338,7 @@ async function cargarSucursalesCliente(forzar = false) {
 
         const sucursales = Array.isArray(respuesta.data) ?
             respuesta.data :
-            Array.isArray(respuesta.data ? .sucursales) ?
+            Array.isArray(respuesta.data ?.sucursales) ?
             respuesta.data.sucursales : [];
 
         contenedor.innerHTML = "";
@@ -3374,7 +3373,7 @@ async function cargarSucursalesCliente(forzar = false) {
 
                 pais: registro.pais || "México",
 
-                estado: String(registro.estado ? ? "2"),
+                estado: String(registro.estado ?? "2"),
 
                 nuevo: false,
             };
@@ -3416,8 +3415,7 @@ async function cargarSucursalesCliente(forzar = false) {
         `;
 
         document
-            .querySelector("#btnReintentarSucursales") ?
-            .addEventListener("click", function() {
+            .querySelector("#btnReintentarSucursales") ?.addEventListener("click", function() {
                 cargarSucursalesCliente(true);
             });
     } finally {
@@ -3457,9 +3455,7 @@ function actualizarEstadoVacioSucursales() {
 
 
 function eliminarEstadoVacioSucursales() {
-    document
-        .querySelector("#contenedorSucursales .estado-vacio-sucursales") ?
-        .remove();
+    document.querySelector("#contenedorSucursales .estado-vacio-sucursales") ?.remove();
 }
 
 
@@ -3517,7 +3513,7 @@ function configurarSeccionDirecciones() {
 
     const botonTab = obtenerBotonTab("#tab-direcciones");
 
-    botonTab ? .addEventListener("shown.bs.tab", function() {
+    botonTab ?.addEventListener("shown.bs.tab", function() {
         if (validarClienteGuardado()) {
             cargarDireccionesCliente();
         }
@@ -3565,12 +3561,10 @@ function crearAccionesDirecciones() {
     contenedor.appendChild(acciones);
 
     document
-        .querySelector("#btnGuardarDireccion") ?
-        .addEventListener("click", guardarDireccion);
+        .querySelector("#btnGuardarDireccion") ?.addEventListener("click", guardarDireccion);
 
     document
-        .querySelector("#btnNuevaDireccion") ?
-        .addEventListener("click", limpiarFormularioDireccion);
+        .querySelector("#btnNuevaDireccion") ?.addEventListener("click", limpiarFormularioDireccion);
 }
 
 
@@ -3610,7 +3604,7 @@ function crearListadoDirecciones() {
 function configurarCamposDireccion() {
     const cp = obtenerCampoDireccion("codigo_postal");
 
-    cp ? .addEventListener("input", function() {
+    cp ?.addEventListener("input", function() {
         cp.value = cp.value.replace(/\D/g, "").slice(0, 5);
     });
 }
@@ -3631,9 +3625,7 @@ function obtenerCampoDireccion(nombre) {
 function obtenerDatosDireccion() {
     const valor = function(nombre) {
         return (
-            obtenerCampoDireccion(nombre) ?
-            .value ?
-            .trim() || ""
+            obtenerCampoDireccion(nombre) ?.value ?.trim() || ""
         );
     };
 
@@ -3681,8 +3673,8 @@ function validarDatosDireccion() {
     if (!/^\d{5}$/.test(datos.codigo_postal)) {
         const cp = obtenerCampoDireccion("codigo_postal");
 
-        cp ? .classList.add("is-invalid");
-        cp ? .focus();
+        cp ?.classList.add("is-invalid");
+        cp ?.focus();
 
         mostrarAdvertencia("El código postal debe contener exactamente 5 números.");
 
@@ -3739,7 +3731,7 @@ async function guardarDireccion() {
     );
 
     const contenidoOriginal =
-        boton ? .innerHTML || "";
+        boton ?.innerHTML || "";
 
     estadoDireccionesCliente.guardando = true;
 
@@ -3912,7 +3904,7 @@ async function cargarDireccionesCliente(forzar = false) {
 
         estadoDireccionesCliente.registros = Array.isArray(respuesta.data) ?
             respuesta.data :
-            Array.isArray(respuesta.data ? .direcciones) ?
+            Array.isArray(respuesta.data ?.direcciones) ?
             respuesta.data.direcciones : [];
 
         renderizarDirecciones();
@@ -4136,8 +4128,7 @@ function editarDireccion(iddireccion) {
     document
         .querySelector(
             SELECTORES_CLIENTE.tabDirecciones,
-        ) ?
-        .scrollIntoView({
+        ) ?.scrollIntoView({
             behavior: "smooth",
             block: "start",
         });
@@ -4394,7 +4385,7 @@ async function cargarInformacionComercialCliente(forzar = false) {
             }
 
             campo.value =
-                datos[nombre] ? ? "";
+                datos[nombre] ?? "";
 
         });
 
@@ -4443,8 +4434,7 @@ function crearBotonGuardarComercial() {
     contenedor.appendChild(acciones);
 
     document
-        .querySelector("#btnGuardarComercial") ?
-        .addEventListener("click", guardarInformacionComercial);
+        .querySelector("#btnGuardarComercial") ?.addEventListener("click", guardarInformacionComercial);
 }
 
 /**
@@ -4467,15 +4457,15 @@ function configurarCamposComerciales() {
         `${SELECTORES_CLIENTE.tabComercial} [name="maneja_credito"]`,
     );
 
-    limiteCredito ? .addEventListener("input", function() {
+    limiteCredito ?.addEventListener("input", function() {
         limiteCredito.value = limpiarNumeroDecimal(limiteCredito.value, 2);
     });
 
-    diasCredito ? .addEventListener("input", function() {
+    diasCredito ?.addEventListener("input", function() {
         diasCredito.value = diasCredito.value.replace(/\D/g, "").slice(0, 3);
     });
 
-    descuento ? .addEventListener("input", function() {
+    descuento ?.addEventListener("input", function() {
         descuento.value = limpiarNumeroDecimal(descuento.value, 2);
 
         const valor = Number(descuento.value || 0);
@@ -4485,7 +4475,7 @@ function configurarCamposComerciales() {
         }
     });
 
-    requiereCredito ? .addEventListener("change", actualizarCamposCredito);
+    requiereCredito ?.addEventListener("change", actualizarCamposCredito);
 
     actualizarCamposCredito();
 }
@@ -4543,7 +4533,7 @@ function obtenerDatosComerciales() {
     const contenedor = document.querySelector(SELECTORES_CLIENTE.tabComercial);
 
     const obtenerValor = function(nombre) {
-        const campo = contenedor ? .querySelector(`[name="${nombre}"]`);
+        const campo = contenedor ?.querySelector(`[name="${nombre}"]`);
 
         if (!campo) {
             return "";
@@ -4553,7 +4543,7 @@ function obtenerDatosComerciales() {
             return campo.checked ? "1" : "0";
         }
 
-        return campo.value ? .trim() || "";
+        return campo.value ?.trim() || "";
     };
 
     return {
@@ -4617,8 +4607,8 @@ function validarDatosComerciales() {
         if (!Number.isFinite(limite) || limite <= 0) {
             const campo = contenedor.querySelector('[name="limite_credito"]');
 
-            campo ? .classList.add("is-invalid");
-            campo ? .focus();
+            campo ?.classList.add("is-invalid");
+            campo ?.focus();
 
             mostrarAdvertencia("El límite de crédito debe ser mayor a cero.");
 
@@ -4628,8 +4618,8 @@ function validarDatosComerciales() {
         if (!Number.isInteger(dias) || dias <= 0) {
             const campo = contenedor.querySelector('[name="dias_credito"]');
 
-            campo ? .classList.add("is-invalid");
-            campo ? .focus();
+            campo ?.classList.add("is-invalid");
+            campo ?.focus();
 
             mostrarAdvertencia("Los días de crédito deben ser mayores a cero.");
 
@@ -4642,8 +4632,8 @@ function validarDatosComerciales() {
     if (!Number.isFinite(descuento) || descuento < 0 || descuento > 100) {
         const campo = contenedor.querySelector('[name="porcentaje_descuento"]');
 
-        campo ? .classList.add("is-invalid");
-        campo ? .focus();
+        campo ?.classList.add("is-invalid");
+        campo ?.focus();
 
         mostrarAdvertencia("El porcentaje de descuento debe estar entre 0 y 100.");
 
@@ -4682,7 +4672,7 @@ async function guardarInformacionComercial() {
 
     const boton = document.querySelector("#btnGuardarComercial");
 
-    const contenidoOriginal = boton ? .innerHTML || "";
+    const contenidoOriginal = boton ?.innerHTML || "";
 
     estadoComercialCliente.guardando = true;
 
@@ -4693,7 +4683,7 @@ async function guardarInformacionComercial() {
         const formData = new FormData();
 
         Object.entries(datos).forEach(function([clave, valor]) {
-            formData.append(clave, String(valor ? ? ""));
+            formData.append(clave, String(valor ?? ""));
         });
 
         const respuesta = await peticionJson(CLIENTES_ENDPOINTS.guardarComercial, {
@@ -4754,7 +4744,7 @@ function configurarSeccionBancos() {
 
     const botonTab = obtenerBotonTab("#tab-bancos");
 
-    botonTab ? .addEventListener("shown.bs.tab", function() {
+    botonTab ?.addEventListener("shown.bs.tab", function() {
         if (validarClienteGuardado()) {
             cargarBancosCliente();
         }
@@ -4802,12 +4792,10 @@ function crearAccionesBancos() {
     contenedor.appendChild(acciones);
 
     document
-        .querySelector("#btnGuardarBanco") ?
-        .addEventListener("click", guardarBanco);
+        .querySelector("#btnGuardarBanco") ?.addEventListener("click", guardarBanco);
 
     document
-        .querySelector("#btnNuevoBanco") ?
-        .addEventListener("click", limpiarFormularioBanco);
+        .querySelector("#btnNuevoBanco") ?.addEventListener("click", limpiarFormularioBanco);
 }
 
 /**
@@ -4851,17 +4839,17 @@ function configurarCamposBancarios() {
 
     const clabe = obtenerCampoBanco("clabe");
 
-    cuenta ? .addEventListener("input", function() {
+    cuenta ?.addEventListener("input", function() {
         cuenta.value = cuenta.value.replace(/\D/g, "");
     });
 
-    clabe ? .addEventListener("input", function() {
+    clabe ?.addEventListener("input", function() {
         clabe.value = clabe.value.replace(/\D/g, "").slice(0, 18);
 
         clabe.classList.remove("is-valid", "is-invalid");
     });
 
-    clabe ? .addEventListener("blur", validarClabeBanco);
+    clabe ?.addEventListener("blur", validarClabeBanco);
 }
 
 
@@ -4882,7 +4870,7 @@ function obtenerDatosBanco() {
         }
 
         return (
-            campo.value ? .trim() || ""
+            campo.value ?.trim() || ""
         );
     };
 
@@ -4972,7 +4960,7 @@ function validarDatosBanco() {
             "Capture el nombre del banco.",
         );
 
-        obtenerCampoBanco("banco") ? .focus();
+        obtenerCampoBanco("banco") ?.focus();
 
         return false;
     }
@@ -4985,7 +4973,7 @@ function validarDatosBanco() {
         (
             obtenerCampoBanco("titular_cuenta") ||
             obtenerCampoBanco("titular")
-        ) ? .focus();
+        ) ?.focus();
 
         return false;
     }
@@ -4997,11 +4985,11 @@ function validarDatosBanco() {
         const campo =
             obtenerCampoBanco("numero_cuenta");
 
-        campo ? .classList.add(
+        campo ?.classList.add(
             "is-invalid",
         );
 
-        campo ? .focus();
+        campo ?.focus();
 
         mostrarAdvertencia(
             "El número de cuenta debe contener al menos 6 dígitos.",
@@ -5014,8 +5002,7 @@ function validarDatosBanco() {
         datos.clabe &&
         !validarClabeBanco()
     ) {
-        obtenerCampoBanco("clabe") ?
-            .focus();
+        obtenerCampoBanco("clabe") ?.focus();
 
         mostrarAdvertencia(
             "La CLABE capturada no es válida.",
@@ -5033,7 +5020,7 @@ function validarDatosBanco() {
 
         obtenerCampoBanco(
             "numero_cuenta",
-        ) ? .focus();
+        ) ?.focus();
 
         return false;
     }
@@ -5083,7 +5070,7 @@ async function guardarBanco() {
         );
 
     const contenidoOriginal =
-        boton ? .innerHTML || "";
+        boton ?.innerHTML || "";
 
     estadoBancosCliente.guardando = true;
 
@@ -5258,7 +5245,7 @@ async function cargarBancosCliente(
             Array.isArray(respuesta.data) ?
             respuesta.data :
             Array.isArray(
-                respuesta.data ? .bancos,
+                respuesta.data ?.bancos,
             ) ?
             respuesta.data.bancos : [];
 
@@ -5294,8 +5281,7 @@ async function cargarBancosCliente(
         document
             .querySelector(
                 "#btnReintentarBancos",
-            ) ?
-            .addEventListener(
+            ) ?.addEventListener(
                 "click",
                 function() {
                     cargarBancosCliente(true);
