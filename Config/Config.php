@@ -1,17 +1,16 @@
 <?php
 //const BASE_URL = "http://mrp.com";
-const BASE_URL ="http://pruebasmrp.ldrhumanresources.com";
+ const BASE_URL ="http://pruebasmrp.ldrhumanresources.com";
 //Zona horaria
 date_default_timezone_set('America/Mexico_City');
 
 
 //Datos de conexión a Base de Datos
 // const DB_HOST = "localhost";
-// const DB_NAME = "db_mrp";
+// const DB_NAME = "db_mrp_test";
 // const DB_USER = "root";
 // const DB_PASSWORD = "";
 // const DB_CHARSET = "utf8";
-
 
 
 const DB_HOST = "localhost";
@@ -118,7 +117,8 @@ const ING_MOTORES = 78;
 const ING_TRANSMISIONES = 79;
 const ING_CERTIFICACIONES = 80;
 const ING_ESPECIFICACIONES = 81;
-const ING_CONFIGURACIONES = 82; 
+const ING_CONFIGURACIONES = 82;
+const ING_JURIDICO = 84; // Perfil Jurídico: solo carga de certificaciones
 
 //Submodulos Capacidad
 

@@ -66,11 +66,15 @@ const Sys_Core = {
          */
         applyUIPermissions: function() {
             $('[data-permiso]').each(function() {
-                const [modKey, action] = $(this).data('permiso').split('|');
-                const moduleId = MODS[modKey];
+                // Admite varias alternativas separadas por coma (basta con tener UNA):
+                // data-permiso="ING_MODELOS|r,ING_JURIDICO|r"
+                const permitido = String($(this).data('permiso')).split(',').some(function(par) {
+                    const [modKey, action] = par.trim().split('|');
+                    // Usamos el nuevo nombre de la función internamente
+                    return Sys_Core.Auth.hasPermissions(MODS[modKey], action);
+                });
 
-                // Usamos el nuevo nombre de la función internamente
-                if (!Sys_Core.Auth.hasPermissions(moduleId, action)) {
+                if (!permitido) {
                     $(this).remove(); 
                 }
             });
