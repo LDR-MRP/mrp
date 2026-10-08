@@ -120,6 +120,21 @@ const ING_ESPECIFICACIONES = 81;
 const ING_CONFIGURACIONES = 82;
 const ING_JURIDICO = 84; // Perfil Jurídico: solo carga de certificaciones
 
+//Submodulos Logistica
+const LGS_BANDEJA = 150;
+const LGS_COSTOS = 151;
+const LGS_MADRINAS = 152;
+const LGS_CHOFERES = 153;
+const LGS_PLATAFORMAS = 154;
+const LGS_ENVIOS = 155;
+const LGS_PLANEACIONES = 156;
+const LGS_APROBACIONES = 157;
+const LGS_EJECUCION = 158;
+const LGS_EVIDENCIAS = 159;
+const LGS_PANELRUTAS = 160;
+const LGS_INCIDENCIAS = 161;
+const LGS_GASTOSADICIONALES = 162;
+
 //Submodulos Capacidad
 
 const MCESTACIONESTRABAJO = 27;
