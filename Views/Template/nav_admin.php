@@ -518,69 +518,85 @@
                 <!-- ==============================================================================
                         CATEGORÍA: LOGÍSTICA (TRASLADISTAS, MADRINAS, CHOFERES)
                         ============================================================================== -->
+                <?php if (!empty($_SESSION['permisos'][LGS_BANDEJA]['r']) || !empty($_SESSION['permisos'][LGS_COSTOS]['r']) || !empty($_SESSION['permisos'][LGS_MADRINAS]['r']) || !empty($_SESSION['permisos'][LGS_CHOFERES]['r']) || !empty($_SESSION['permisos'][LGS_PLATAFORMAS]['r']) || !empty($_SESSION['permisos'][LGS_ENVIOS]['r']) || !empty($_SESSION['permisos'][LGS_PLANEACIONES]['r']) || !empty($_SESSION['permisos'][LGS_APROBACIONES]['r']) || !empty($_SESSION['permisos'][LGS_EJECUCION]['r']) || !empty($_SESSION['permisos'][LGS_EVIDENCIAS]['r']) || !empty($_SESSION['permisos'][LGS_PANELRUTAS]['r']) || !empty($_SESSION['permisos'][LGS_INCIDENCIAS]['r']) || !empty($_SESSION['permisos'][LGS_GASTOSADICIONALES]['r'])) { ?>
                 <li class="nav-item">
-                    <a class="nav-link menu-link" href="#sidebarLogistica" data-bs-toggle="collapse" role="button"
+                    <a class="nav-link menu-link" href="#sidebarLogistica" data-bs-toggle="collapse" role="button" 
                         aria-expanded="false" aria-controls="sidebarLogistica">
                         <i class="ri-truck-line icon-dual"></i> <span data-key="t-logistica">Logística</span>
                     </a>
                     <div class="collapse menu-dropdown" id="sidebarLogistica">
                         <ul class="nav nav-sm flex-column">
 
+                            <?php if (!empty($_SESSION['permisos'][LGS_BANDEJA]['r'])) { ?>
                             <!-- Bandeja de Logística -->
                             <li class="nav-item">
                                 <a href="<?= base_url(); ?>/Lgs_bandeja" class="nav-link" data-key="t-lgs-bandeja">
                                     <i class="ri-inbox-archive-line align-bottom me-1"></i> Bandeja de Unidades
                                 </a>
                             </li>
+                            <?php } ?>
 
+                            <?php if (!empty($_SESSION['permisos'][LGS_COSTOS]['r'])) { ?>
                             <!-- Tarifas y Costos -->
                             <li class="nav-item">
                                 <a href="<?= base_url(); ?>/Lgs_costos" class="nav-link" data-key="t-lgs-costos">
                                     <i class="ri-money-dollar-circle-line align-bottom me-1"></i> Tarifas y Costos
                                 </a>
                             </li>
+                            <?php } ?>
 
-                            <!-- Catálogos (Madrinas, Choferes, Plataformas) -->
+                            <?php if (!empty($_SESSION['permisos'][LGS_MADRINAS]['r']) || !empty($_SESSION['permisos'][LGS_CHOFERES]['r']) || !empty($_SESSION['permisos'][LGS_PLATAFORMAS]['r'])) { ?>
+                            <!-- Catálogos \(Madrinas, Choferes, Plataformas\) -->
                             <li class="nav-item">
-                                <a href="#sidebarLogisticaCatalogos" class="nav-link" data-bs-toggle="collapse" role="button"
+                                <a href="#sidebarLogisticaCatalogos" class="nav-link" data-bs-toggle="collapse" role="button" 
                                     aria-expanded="false" aria-controls="sidebarLogisticaCatalogos" data-key="t-lgs-catalogos">
                                     <i class="ri-folder-2-line align-bottom me-1"></i> Catálogos
                                 </a>
                                 <div class="collapse menu-dropdown" id="sidebarLogisticaCatalogos">
                                     <ul class="nav nav-sm flex-column">
 
-                                        <!-- Madrinas -->
+                                        <?php if (!empty($_SESSION['permisos'][LGS_MADRINAS]['r'])) { ?>
+                            <!-- Madrinas -->
                                         <li class="nav-item">
                                             <a href="<?= base_url(); ?>/prv_madrinas" class="nav-link" data-key="t-madrinas">
                                                 <i class="ri-truck-fill align-bottom me-1"></i> Madrinas
                                             </a>
                                         </li>
+                            <?php } ?>
 
-                                        <!-- Choferes -->
+                                        <?php if (!empty($_SESSION['permisos'][LGS_CHOFERES]['r'])) { ?>
+                            <!-- Choferes -->
                                         <li class="nav-item">
                                             <a href="<?= base_url(); ?>/prv_choferes" class="nav-link" data-key="t-choferes">
                                                 <i class="ri-steering-2-line align-bottom me-1"></i> Choferes
                                             </a>
                                         </li>
+                            <?php } ?>
 
-                                        <!-- Plataformas -->
+                                        <?php if (!empty($_SESSION['permisos'][LGS_PLATAFORMAS]['r'])) { ?>
+                            <!-- Plataformas -->
                                         <li class="nav-item">
                                             <a href="<?= base_url(); ?>/prv_plataformas" class="nav-link" data-key="t-plataformas">
                                                 <i class="ri-truck-line align-bottom me-1"></i> Plataformas
                                             </a>
                                         </li>
+                            <?php } ?>
 
                                     </ul>
                                 </div>
                             </li>
+                            <?php } ?>
 
+                            <?php if (!empty($_SESSION['permisos'][LGS_ENVIOS]['r'])) { ?>
                             <!-- Mis Envíos -->
                             <li class="nav-item">
                                 <a href="<?= base_url(); ?>/Lgs_envios" class="nav-link" data-key="t-lgs-envios">
                                     <i class="ri-route-line align-bottom me-1"></i> Mis Envíos
                                 </a>
                             </li>
+                            <?php } ?>
 
+                            <?php if (!empty($_SESSION['permisos'][LGS_PLANEACIONES]['r'])) { ?>
                             <!-- Mis Planeaciones -->
                             <li class="nav-item">
                                 <a href="<?= base_url(); ?>/Lgs_planeaciones" class="nav-link"
@@ -588,7 +604,9 @@
                                     <i class="ri-file-list-3-line align-bottom me-1"></i> Mis Planeaciones
                                 </a>
                             </li>
+                            <?php } ?>
 
+                            <?php if (!empty($_SESSION['permisos'][LGS_APROBACIONES]['r'])) { ?>
                             <!-- Aprobaciones -->
                             <li class="nav-item">
                                 <a href="<?= base_url(); ?>/Lgs_aprobaciones" class="nav-link"
@@ -596,14 +614,18 @@
                                     <i class="ri-checkbox-circle-line align-bottom me-1"></i> Aprobaciones
                                 </a>
                             </li>
+                            <?php } ?>
 
+                            <?php if (!empty($_SESSION['permisos'][LGS_EJECUCION]['r'])) { ?>
                             <!-- Mesa de Despacho -->
                             <li class="nav-item">
                                 <a href="<?= base_url(); ?>/Lgs_ejecucion" class="nav-link" data-key="t-lgs-ejecucion">
                                     <i class="ri-ship-line align-bottom me-1"></i> Mesa de Despacho
                                 </a>
                             </li>
+                            <?php } ?>
 
+                            <?php if (!empty($_SESSION['permisos'][LGS_EVIDENCIAS]['r'])) { ?>
                             <!-- Evidencias y Cierre -->
                             <li class="nav-item">
                                 <a href="<?= base_url(); ?>/Lgs_evidencias" class="nav-link"
@@ -611,7 +633,9 @@
                                     <i class="ri-camera-lens-line align-bottom me-1"></i> Evidencias y Cierre
                                 </a>
                             </li>
+                            <?php } ?>
 
+                            <?php if (!empty($_SESSION['permisos'][LGS_PANELRUTAS]['r'])) { ?>
                             <!-- Monitoreo GPS -->
                             <li class="nav-item">
                                 <a href="<?= base_url(); ?>/Lgs_panelrutas" class="nav-link"
@@ -619,7 +643,29 @@
                                     <i class="ri-map-pin-user-line align-bottom me-1"></i> Monitoreo GPS
                                 </a>
                             </li>
+                            <?php } ?>
 
+                            <?php if (!empty($_SESSION['permisos'][LGS_INCIDENCIAS]['r'])) { ?>
+                            <!-- Incidencias Operativas -->
+                            <li class="nav-item">
+                                <a href="<?= base_url(); ?>/Lgs_incidencias" class="nav-link"
+                                    data-key="t-lgs-incidencias">
+                                    <i class="ri-alert-line align-bottom me-1 text-danger"></i> Incidencias en Ruta
+                                </a>
+                            </li>
+                            <?php } ?>
+
+                            <?php if (!empty($_SESSION['permisos'][LGS_GASTOSADICIONALES]['r'])) { ?>
+                            <!-- Gastos Adicionales -->
+                            <li class="nav-item">
+                                <a href="<?= base_url(); ?>/Lgs_gastosadicionales" class="nav-link"
+                                    data-key="t-lgs-gastosadicionales">
+                                    <i class="ri-money-dollar-circle-line align-bottom me-1 text-warning"></i> Gastos Adicionales
+                                </a>
+                            </li>
+                            <?php } ?>
+
+                            <?php if (!empty($_SESSION['permisos'][LGS_EJECUCION]['r'])) { ?>
                             <!-- Portal Trasladista (Móvil) -->
                             <li class="nav-item">
                                 <a href="<?= base_url(); ?>/Lgs_ejecucion/chofer_movil" target="_blank"
@@ -627,7 +673,9 @@
                                     <i class="ri-smartphone-line align-bottom me-1"></i> Portal Trasladista
                                 </a>
                             </li>
+                            <?php } ?>
 
+                            <?php if (!empty($_SESSION['permisos'][LGS_EJECUCION]['r'])) { ?>
                             <!-- Entrega en Destino (QR) -->
                             <li class="nav-item">
                                 <a href="<?= base_url(); ?>/Lgs_ejecucion/entrega_destino" target="_blank"
@@ -635,10 +683,12 @@
                                     <i class="ri-qr-code-line align-bottom me-1"></i> Recepción Destino (QR)
                                 </a>
                             </li>
+                            <?php } ?>
 
                         </ul>
                     </div>
                 </li>
+                <?php } ?>
 
                 <!-- ==============================================================================
                         CATEGORÍA 2: PROVEEDORES (CATÁLOGOS / ONBOARDING)

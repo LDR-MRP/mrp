@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 "data": "costo_total",
                 "render": function (data) {
                     if (data == null) return '$0.00';
-                    return '<strong class="text-success">$' + parseFloat(data).toFixed(2) + '</strong>';
+                    return '<strong class="text-success">$' + parseFloat(data).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</strong>';
                 }
             },
             { 
@@ -94,9 +94,9 @@ function actualizarMetricasAprobaciones(data) {
     let montoAutorizado = autorizadas.reduce((acc, p) => acc + (parseFloat(p.costo_total) || 0), 0);
 
     if (document.getElementById('cardAprobPendientes')) document.getElementById('cardAprobPendientes').innerText = countPendientes;
-    if (document.getElementById('cardMontoPendiente')) document.getElementById('cardMontoPendiente').innerText = '$' + montoPendiente.toFixed(2);
+    if (document.getElementById('cardMontoPendiente')) document.getElementById('cardMontoPendiente').innerText = '$' + montoPendiente.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (document.getElementById('cardAprobAutorizadas')) document.getElementById('cardAprobAutorizadas').innerText = countAutorizadas;
-    if (document.getElementById('cardMontoAutorizado')) document.getElementById('cardMontoAutorizado').innerText = '$' + montoAutorizado.toFixed(2);
+    if (document.getElementById('cardMontoAutorizado')) document.getElementById('cardMontoAutorizado').innerText = '$' + montoAutorizado.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
@@ -104,7 +104,7 @@ function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
     document.querySelector("#formAprobacion").reset();
     document.getElementById('id_planeacion').value = idPlaneacion;
     document.getElementById('lblFolioModal').innerText = folio || ('PL-' + idPlaneacion);
-    document.getElementById('lblCostoModal').innerText = '$' + (parseFloat(costo) || 0).toFixed(2);
+    document.getElementById('lblCostoModal').innerText = '$' + (parseFloat(costo) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     document.getElementById('lblKmModal').innerText = (parseFloat(km) || 0).toFixed(2) + ' km';
     document.getElementById('lblObsOperador').innerText = (obs == 'null' || !obs) ? 'Sin observaciones del operador.' : obs;
     
@@ -156,7 +156,7 @@ function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
                                     <td><span class="badge bg-soft-secondary text-dark">${v.modelo}</span></td>
                                     <td><i class="ri-map-pin-line text-danger me-1"></i>${v.destino_parada}</td>
                                     <td><i class="ri-truck-line text-info me-1"></i>${v.madrina}</td>
-                                    <td class="text-end fw-bold text-success">$${(parseFloat(v.costo_unidad) || 0).toFixed(2)}</td>
+                                    <td class="text-end fw-bold text-success">$${(parseFloat(v.costo_unidad) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                 </tr>
                             `;
                         });
@@ -175,7 +175,7 @@ function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
                                 </div>
                                 <div class="d-flex align-items-center gap-3">
                                     <span class="fs-12 text-muted"><i class="ri-car-line me-1"></i>${env.total_vins} unidad(es)</span>
-                                    <strong class="fs-14 text-success">$${(parseFloat(env.costo_total) || 0).toFixed(2)}</strong>
+                                    <strong class="fs-14 text-success">$${(parseFloat(env.costo_total) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                                 </div>
                             </div>
                             <div class="card-body p-0">
@@ -205,7 +205,7 @@ function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
 
                 // Si no venía costo o km en cabecera, actualizar con la suma de las rutas
                 if (!costo || parseFloat(costo) === 0) {
-                    document.getElementById('lblCostoModal').innerText = '$' + calcCosto.toFixed(2);
+                    document.getElementById('lblCostoModal').innerText = '$' + calcCosto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
                 if (!km || parseFloat(km) === 0) {
                     document.getElementById('lblKmModal').innerText = calcKm.toFixed(2) + ' km';

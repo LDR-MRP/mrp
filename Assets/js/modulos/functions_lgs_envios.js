@@ -159,10 +159,23 @@ document.addEventListener('DOMContentLoaded', function () {
                                 </button>`;
                     }
 
+                    let btnIncidencia = '';
+                    let btnGasto = '';
+                    if (estado === 3 || estado === 6 || estado === 7) {
+                        btnIncidencia = `<a href="${base_url}/Lgs_incidencias?envio=${data}" class="btn btn-sm btn-soft-danger rounded-circle p-1 me-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;" title="Reportar Incidencia">
+                                            <i class="ri-alarm-warning-line"></i>
+                                         </a>`;
+                        btnGasto = `<a href="${base_url}/Lgs_gastosadicionales?envio=${data}" class="btn btn-sm btn-soft-success rounded-circle p-1 me-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;" title="Registrar Gasto Adicional">
+                                        <i class="ri-money-dollar-circle-line"></i>
+                                    </a>`;
+                    }
+
                     return `<div class="text-end">
                                 ${btnReabrir}
                                 ${btnRuta}
                                 ${btnAcomodo}
+                                ${btnIncidencia}
+                                ${btnGasto}
                                 ${btnEliminar}
                             </div>`;
                 }

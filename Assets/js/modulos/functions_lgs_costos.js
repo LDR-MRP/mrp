@@ -410,7 +410,7 @@ function renderTarifasMadrina(madrinaMatriz) {
                             </div>
                             <div class="mt-1 border-top pt-1 text-start">
                                 <span class="fs-9 text-muted d-block">Total Camión (x 1 KM):</span>
-                                <span class="fs-10 fw-bold text-dark preview-madrina-${idx}-${u}">$ ${(parseFloat(initUnitCost) * u).toFixed(2)} / km</span>
+                                <span class="fs-10 fw-bold text-dark preview-madrina-${idx}-${u}">$ ${(parseFloat(initUnitCost) * u).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / km</span>
                             </div>
                         </div>
                     </div>
@@ -657,7 +657,7 @@ function renderTarifasPlataforma(plataformaMatriz) {
                             </div>
                             <div class="mt-1 border-top pt-1 text-start">
                                 <span class="fs-9 text-muted d-block">Total Camión (x 1 KM):</span>
-                                <span class="fs-10 fw-bold text-dark preview-plataforma-${idx}-${u}">$ ${(parseFloat(initUnitCost) * (isLowboy ? 1 : u)).toFixed(2)} / km</span>
+                                <span class="fs-10 fw-bold text-dark preview-plataforma-${idx}-${u}">$ ${(parseFloat(initUnitCost) * (isLowboy ? 1 : u)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / km</span>
                             </div>
                             <div class="mt-1 border-top pt-1 text-center">
                                 <label class="fs-10 text-muted mb-0 d-block text-uppercase fw-semibold">Local Corto SLC</label>
@@ -771,7 +771,7 @@ function recalcularTotalesTarifas() {
             if (inputFactor && previewSpan) {
                 const unitCost = parseFloat(inputFactor.value) || 0.0;
                 const totalTruckCost = unitCost * u;
-                previewSpan.textContent = "Camión: $ " + totalTruckCost.toFixed(2) + " / km";
+                previewSpan.textContent = "Camión: $ " + totalTruckCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " / km";
             }
         }
     });
@@ -900,7 +900,7 @@ function recalcularTotalesTarifasPlataforma() {
             if (inputFactor && previewSpan) {
                 const unitCost = parseFloat(inputFactor.value) || 0.0;
                 const totalTruckCost = unitCost * (u === 4 ? 1 : u);
-                previewSpan.textContent = "Camión: $ " + totalTruckCost.toFixed(2) + " / km";
+                previewSpan.textContent = "Camión: $ " + totalTruckCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " / km";
             }
         }
     });
