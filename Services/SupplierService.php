@@ -69,9 +69,13 @@ class SupplierService
             return \ServiceResponse::validation(errors: $i->getMessage());
         } catch (\PDOException $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
-            // Manejo de duplicados (RFC / Razón Social)
+            // Manejo de duplicados (RFC / Razón Social / Email)
             if ($e->getCode() == 23000) {
-                return ServiceResponse::validation(['db' => "El RFC o Razón Social ya están registrados."]);
+                $errorMsg = $e->getMessage();
+                if (str_contains($errorMsg, 'prv_cat_usuarios.email')) {
+                    return ServiceResponse::validation(['email' => "El correo electrónico ya está registrado en el sistema."]);
+                }
+                return ServiceResponse::validation(['db' => "El RFC o Razón Social ya están registrados. " . $e->getMessage()]);
             }
             return ServiceResponse::error("Error de integridad en base de datos.");
         } catch (\Exception $e) {
@@ -85,6 +89,16 @@ class SupplierService
      */
     private function processCreation(array $data, int $userId): ServiceResponse
     {
+        // Validar que el email no esté duplicado antes de crear el proveedor
+        try {
+            if ($this->proveedorModel->emailExists($data['email'])) {
+                throw new \InvalidArgumentException("El correo electrónico ya está registrado en el sistema.");
+            }
+        } catch (\Exception $e) {
+            // Si falla la verificación, permitir continuar (podría ser error en la tabla)
+            error_log("Error verificando email duplicado: " . $e->getMessage());
+        }
+
         $id = $this->proveedorModel->insertSupplier($data, $userId);
         if (!$id) throw new \Exception("No se pudo crear el maestro.");
 
@@ -93,8 +107,24 @@ class SupplierService
         $this->proveedorModel->insertFinancialConfig($data, $id, $userId);
         $this->proveedorModel->insertContact($data, $id, $userId);
         $this->proveedorModel->insertOnboarding($id, $userId);
-
+        $pass = $this->proveedorModel->store_prv_cat_usuario($data, $id, $userId);
         $this->proveedorModel->logAudit($id, AuditAction::CREATED, "Alta de proveedor RFC: {$data['rfc']}", $userId);
+
+        // El método sendNotification buscará en 'sys_notification_distribution'
+        // a quién avisarle según el evento y la planta del proveedor.
+        $emailData = [
+            'supplier_name' => $data['razon_social'],
+            'email' => $data['email'],
+            'nombre' => $data['nombre'],
+            'password' => $pass
+        ];
+        $recipients = [$data['email']];
+
+        $this->sendNotification(
+            'supplier_new_user',
+            $emailData,
+            $recipients
+        );
 
         return ServiceResponse::success(['id' => $id], "Proveedor registrado exitosamente.", 201);
     }
