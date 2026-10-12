@@ -805,7 +805,7 @@
 
                         <i class="ri-file-edit-line me-2"></i>
 
-                        <span>Cotizaciones</span>
+                        <span>Propuestas comerciales</span>
 
                     </a>
 
