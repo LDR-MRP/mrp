@@ -7,7 +7,7 @@ date_default_timezone_set('America/Mexico_City');
 
 //Datos de conexión a Base de Datos
 // const DB_HOST = "localhost";
-// const DB_NAME = "db_mrp_test";
+// const DB_NAME = "db_mrp";
 // const DB_USER = "root";
 // const DB_PASSWORD = "";
 // const DB_CHARSET = "utf8";
@@ -146,15 +146,19 @@ const MPPROVEEDORES = 35;
 
 
 //Submodulos pedidos
-CONST MCPEDIDOS=36;
-const MCCLIENTES = 37;
-const MCMARCAS = 40;
-const MCDEPARTAMENTOS = 41;
-const MCLI_GRUPOS = 42;
-const MCLI_PUESTOS = 43;
-const MCLI_CONTACTOS = 44;
-const MCLI_REGIONALES = 45;
-const MCLI_TIPOS_CLIENTES = 46;
+const MCLIENTES_CLIENTES = 37;
+const MCLIENTES_PEDIDOS = 37;
+const MCLIENTES_PROPUESTAS_COMERCIALES = 38;
+const MCLIENTES_AUTORIZACIONES = 39;
+const MCLIENTES_ASIGNACION_UNIDADES = 40;
+const MCLIENTES_BACKORDERS = 41;
+const MCLIENTES_FACTURAS = 42;
+const MCLIENTES_ENTREGAS = 43;
+const MCLIENTES_CANCELACIONES = 44;
+const MCLIENTES_DEVOLUCIONES = 45;
+const MCLIENTES_SEGUIMIENTO = 46;
+const MCLIENTES_REPORTES = 47;
+const MCLIENTES_BITACORA = 48;
 
 //Submodulos Compras
 const COM_COMPRAS = 50;

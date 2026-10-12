@@ -121,14 +121,18 @@ class Login extends Controllers
 					$arrResponse = array('status' => false, 'msg' => 'El usuario se encuentra inactivo. Contacte al administrador.');
 				} else {
 					$requestUser = $this->model->loginUser($strUsuario, $strPassword);
+
+				
 					$arrData = $requestUser;
-					if ($arrData['status'] == 1) {
+					if ($arrData['status'] == 1) { 
 						$_SESSION['idUser'] = $arrData['idusuario'];
 						$_SESSION['login'] = true;
 						$_SESSION['avatar_file'] = $arrData['avatar_file'];
 						$_SESSION['rolid'] = $arrData['rolid'];
 
 						$arrData = $this->model->sessionLogin($_SESSION['idUser']);
+
+				
 
 						$evento = 'Inicio de Sesión';
 						$ip = $_SERVER['REMOTE_ADDR'];

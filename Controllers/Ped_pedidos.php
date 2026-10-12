@@ -10,7 +10,7 @@ class Ped_pedidos extends Controllers
             header('Location: ' . base_url() . '/login');
             die();
         }
-        getPermisos(MCPEDIDOS);
+        getPermisos(MCLIENTES_PEDIDOS);
     }
 
     public function Ped_pedidos()

@@ -12,7 +12,9 @@
                         </div>
                     </div>
                     <!-- <a href="<?= base_url(); ?>/ped_cotizaciones/nueva" class="btn btn-primary"><i class="ri-add-line me-1"></i>Nueva propuesta</a> -->
+                          <?php if($_SESSION['permisosMod']['w']){ ?>
                           <a href="<?= base_url(); ?>/ped_cotizaciones/nueva" class="btn btn-primary"><i class="ri-add-line me-1"></i>Nueva propuesta</a>
+                         <?php   } ?>
                 </div>
             </div>
             <div class="card border-warning mb-3" id="panelBandejaAutorizaciones" style="display:none">

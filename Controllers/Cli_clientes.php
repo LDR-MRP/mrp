@@ -10,7 +10,7 @@ class Cli_clientes extends Controllers
             header('Location: ' . base_url() . '/login');
             die();
         }
-        getPermisos(MCCLIENTES);
+        getPermisos(MCLIENTES_CLIENTES);
     }
 
     /*

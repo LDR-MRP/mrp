@@ -749,7 +749,11 @@
                     </div>
                 </li> 
  
-           <?php if (!empty($_SESSION['permisos'][39]['r'])) { ?>
+
+
+
+   <?php if (!empty($_SESSION['permisos'][MCLIENTES_CLIENTES]['r']) || !empty($_SESSION['permisos'][MCLIENTES_PEDIDOS]['r']) || !empty($_SESSION['permisos'][MCLIENTES_PROPUESTAS_COMERCIALES]['r']) || !empty($_SESSION['permisos'][MCLIENTES_AUTORIZACIONES]['r']) || !empty($_SESSION['permisos'][MCLIENTES_ASIGNACION_UNIDADES]['r']) || !empty($_SESSION['permisos'][MCLIENTES_BACKORDERS]['r']) || !empty($_SESSION['permisos'][MCLIENTES_FACTURAS]['r']) || !empty($_SESSION['permisos'][MCLIENTES_ENTREGAS]['r']) || !empty($_SESSION['permisos'][MCLIENTES_CANCELACIONES]['r']) || !empty($_SESSION['permisos'][MCLIENTES_DEVOLUCIONES]['r']) || !empty($_SESSION['permisos'][MCLIENTES_SEGUIMIENTO]['r']) || !empty($_SESSION['permisos'][MCLIENTES_REPORTES]['r']) || !empty($_SESSION['permisos'][MCLIENTES_BITACORA]['r'])) { ?>
+
 
     <li class="nav-item">
 
@@ -777,7 +781,7 @@
                 <!-- =================================================
                      CLIENTES
                 ================================================== -->
-       
+        <?php if (!empty($_SESSION['permisos'][MCLIENTES_CLIENTES]['r'])) { ?>
 
                     <li class="nav-item">
 
@@ -792,12 +796,13 @@
 
                     </li>
 
-          
+               <?php } ?>
 
 
                 <!-- =================================================
                      COTIZACIONES
                 ================================================== -->
+                    <?php if (!empty($_SESSION['permisos'][MCLIENTES_PROPUESTAS_COMERCIALES]['r'])) { ?>
                 <li class="nav-item">
 
                     <a href="<?= base_url(); ?>/ped_cotizaciones"
@@ -810,11 +815,12 @@
                     </a>
 
                 </li>
-
+<?php } ?>
 
                 <!-- =================================================
                      PEDIDOS
                 ================================================== -->
+                     <?php if (!empty($_SESSION['permisos'][MCLIENTES_PEDIDOS]['r'])) { ?>
                 <li class="nav-item">
 
                     <a href="<?= base_url(); ?>/ped_pedidos"
@@ -828,10 +834,11 @@
 
                 </li>
 
-
+<?php } ?>
                 <!-- =================================================
                      AUTORIZACIONES
                 ================================================== -->
+                 <?php if (!empty($_SESSION['permisos'][MCLIENTES_AUTORIZACIONES]['r'])) { ?>
                 <li class="nav-item">
 
                     <a href="<?= base_url(); ?>/ped_autorizaciones"
@@ -844,11 +851,13 @@
                     </a>
 
                 </li>
+                <?php } ?>
 
 
                 <!-- =================================================
                      ASIGNACIÓN DE UNIDADES
                 ================================================== -->
+                   <?php if (!empty($_SESSION['permisos'][MCLIENTES_ASIGNACION_UNIDADES]['r'])) { ?>
                 <li class="nav-item">
 
                     <a href="<?= base_url(); ?>/ped_asignacion_unidades"
@@ -861,11 +870,13 @@
                     </a>
 
                 </li>
+                     <?php } ?>
 
 
                 <!-- =================================================
                      BACKORDERS
                 ================================================== -->
+                <?php if (!empty($_SESSION['permisos'][MCLIENTES_BACKORDERS]['r'])) { ?>
                 <li class="nav-item">
 
                     <a href="<?= base_url(); ?>/ped_backorders"
@@ -878,11 +889,12 @@
                     </a>
 
                 </li>
-
+   <?php } ?>
 
                 <!-- =================================================
                      FACTURAS
                 ================================================== -->
+                 <?php if (!empty($_SESSION['permisos'][MCLIENTES_FACTURAS]['r'])) { ?>
                 <li class="nav-item">
 
                     <a href="<?= base_url(); ?>/ped_facturas"
@@ -895,11 +907,12 @@
                     </a>
 
                 </li>
-
+   <?php } ?>
 
                 <!-- =================================================
                      ENTREGAS
                 ================================================== -->
+                <?php if (!empty($_SESSION['permisos'][MCLIENTES_ENTREGAS]['r'])) { ?>
                 <li class="nav-item">
 
                     <a href="<?= base_url(); ?>/ped_entregas"
@@ -913,10 +926,11 @@
 
                 </li>
 
-
+   <?php } ?>
                 <!-- =================================================
                      CANCELACIONES
                 ================================================== -->
+                <?php if (!empty($_SESSION['permisos'][MCLIENTES_CANCELACIONES]['r'])) { ?>
                 <li class="nav-item">
 
                     <a href="<?= base_url(); ?>/ped_cancelaciones"
@@ -929,11 +943,12 @@
                     </a>
 
                 </li>
-
+   <?php } ?>
 
                 <!-- =================================================
                      DEVOLUCIONES
                 ================================================== -->
+                <?php if (!empty($_SESSION['permisos'][MCLIENTES_DEVOLUCIONES]['r'])) { ?>
                 <li class="nav-item">
 
                     <a href="<?= base_url(); ?>/ped_devoluciones"
@@ -946,11 +961,12 @@
                     </a>
 
                 </li>
-
+   <?php } ?>
 
                 <!-- =================================================
                      SEGUIMIENTO
                 ================================================== -->
+                    <?php if (!empty($_SESSION['permisos'][MCLIENTES_SEGUIMIENTO]['r'])) { ?>
                 <li class="nav-item">
 
                     <a href="<?= base_url(); ?>/ped_seguimiento"
@@ -963,28 +979,14 @@
                     </a>
 
                 </li>
+   <?php } ?>
 
-
-                <!-- =================================================
-                     DOCUMENTOS
-                ================================================== -->
-                <li class="nav-item">
-
-                    <a href="<?= base_url(); ?>/ped_documentos"
-                        class="nav-link d-flex align-items-center">
-
-                        <i class="ri-folder-2-line me-2"></i>
-
-                        <span>Documentos</span>
-
-                    </a>
-
-                </li>
 
 
                 <!-- =================================================
                      REPORTES
                 ================================================== -->
+                       <?php if (!empty($_SESSION['permisos'][MCLIENTES_REPORTES]['r'])) { ?>
                 <li class="nav-item">
 
                     <a href="<?= base_url(); ?>/ped_reportes"
@@ -997,11 +999,12 @@
                     </a>
 
                 </li>
-
+   <?php } ?>
 
                 <!-- =================================================
                      BITÁCORA
                 ================================================== -->
+                    <?php if (!empty($_SESSION['permisos'][MCLIENTES_BITACORA]['r'])) { ?>
                 <li class="nav-item">
 
                     <a href="<?= base_url(); ?>/ped_bitacora"
@@ -1014,7 +1017,7 @@
                     </a>
 
                 </li>
-
+   <?php } ?>
 
             </ul>
 

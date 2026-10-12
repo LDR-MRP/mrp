@@ -222,7 +222,7 @@ class Ped_cotizaciones extends Controllers
                 $input['modelos'] = $input['partidas'];
             }
             if (!isset($input['tipo_propuesta']) && isset($input['tipo_cotizacion'])) {
-                $input['tipo_propuesta'] = $input['tipo_cotizacion'];
+                $input['tipo_propuesta'] = $input['tipo_cotizacion']; 
             }
 
             if (!method_exists($this->model, 'crearPropuestaComercial')) {
