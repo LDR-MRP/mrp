@@ -170,7 +170,7 @@ const SrmDossier = {
             url: `${base_url}/api/v1/srm/dossier/upload`,
             method: "POST",
             paramName: "archivo",
-            maxFilesize: 5,
+            maxFilesize: 10,
             acceptedFiles: "application/pdf",
             headers: {
                 'Authorization': token ? `Bearer ${token}` : ''

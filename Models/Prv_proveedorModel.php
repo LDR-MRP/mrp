@@ -352,7 +352,7 @@ class Prv_proveedorModel extends Mysql
             [
                 $supplierId,
                 $data['email'],
-                hash("SHA256", $pass),
+                password_hash($pass, PASSWORD_DEFAULT),
                 $data['nombre'],
                 $userId,
             ]

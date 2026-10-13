@@ -89,7 +89,7 @@
           </tr>
         </table>
         <p style="text-align: center;">
-          <a href="<?= BASE_URL . '/smr/login'; ?>" target="_blank"
+          <a href="<?= BASE_URL . '/srm/login'; ?>" target="_blank"
             style="background-color: #e97e2e; color: #fff; text-decoration: none;
                   padding: 10px 25px; border-radius: 6px; font-weight: bold; 
                   display: inline-block;">

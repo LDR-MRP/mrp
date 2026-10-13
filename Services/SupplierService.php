@@ -207,11 +207,36 @@ class SupplierService
             $fileName = "{$docType}_" . bin2hex(random_bytes(4)) . ".pdf";
             $fullPath = $uploadPath . $fileName;
 
+            // --- VALIDACIÓN DE PESO Y COMPRESIÓN ZIP ---
+            $fileSize = filesize($file['tmp_name']);
+            $fileSizeMB = $fileSize / (1024 * 1024); // Convertir a MB
+            
+            if ($fileSizeMB > 5) {
+                // Si el archivo es mayor a 5MB, comprimir en ZIP
+                $zipFileName = "{$docType}_" . bin2hex(random_bytes(4)) . ".zip";
+                $zipFullPath = $uploadPath . $zipFileName;
+                
+                $zip = new \ZipArchive();
+                if ($zip->open($zipFullPath, \ZipArchive::CREATE) === TRUE) {
+                    $zip->addFile($file['tmp_name'], $fileName);
+                    $zip->close();
+                    
+                    // Actualizar la ruta para usar el archivo ZIP
+                    $fullPath = $zipFullPath;
+                    $fileName = $zipFileName;
+                } else {
+                    throw new Exception("Error al crear el archivo ZIP.", 500);
+                }
+            }
+            // --- FIN DE VALIDACIÓN DE PESO Y COMPRESIÓN ZIP ---
+
             $this->db->beginTransaction();
 
-            // 3. Mover archivo al almacenamiento
-            if (!move_uploaded_file($file['tmp_name'], $fullPath)) {
-                throw new Exception("Error técnico al mover el archivo al servidor.", 500);
+            // 3. Mover archivo al almacenamiento (si no fue comprimido, ya está en su lugar)
+            if ($fileSizeMB <= 5) {
+                if (!move_uploaded_file($file['tmp_name'], $fullPath)) {
+                    throw new Exception("Error técnico al mover el archivo al servidor.", 500);
+                }
             }
 
             // 4. Registro en Base de Datos (Upsert)

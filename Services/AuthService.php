@@ -48,7 +48,7 @@ class AuthService{
                 if (!$user) {
                     return \ServiceResponse::error("El usuario no se encuentra registrado.", 401);
                 }
-
+                
                 if (!password_verify($rawPassword, $user['password'])) {
                     return \ServiceResponse::error("La contraseña ingresada es incorrecta.", 401);
                 }

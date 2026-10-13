@@ -26,10 +26,10 @@ class UploadDocumentRequest extends Requests
         } else {
             $file = $this->files()['archivo'];
             
-            // Límite de 5MB
-            $maxSize = 5 * 1024 * 1024;
+            // Límite de 10MB
+            $maxSize = 10 * 1024 * 1024;
             if ($file['size'] > $maxSize) {
-                $this->addError('archivo', 'El archivo excede el límite de 5MB.');
+                $this->addError('archivo', 'El archivo excede el límite de 10MB.');
             }
 
             // Validar que sea PDF real (MIME type)
