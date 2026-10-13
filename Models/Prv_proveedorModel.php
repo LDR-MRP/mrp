@@ -70,7 +70,22 @@ class Prv_proveedorModel extends Mysql
             'created_at',
             'updated_at',
             'deleted_at',
-        ]
+        ],
+        'prv_cat_usuarios' =>[
+            'proveedor_id',
+            'emai',
+            'password',
+            'nombre_contacto',
+            'estatus',
+            'ultimo_acceso',
+            'reset_token',
+            'created_at',
+            'updated_at',
+            'deleted_at',
+            'created_by',
+            'updated_by',
+            'deleted_by'
+        ],
     ];
 
     public function getTableName(): string 
@@ -307,7 +322,56 @@ class Prv_proveedorModel extends Mysql
             ]
         );
     }
+    /**
+     * Verifica si un email ya existe en prv_cat_usuarios
+     */
+    public function emailExists(string $email): bool
+    {
+        $sql = "SELECT COUNT(*) as total FROM prv_cat_usuarios WHERE email = ?";
+        $result = $this->select($sql, [$email]);
+        if ($result === false || !isset($result['total'])) {
+            return false;
+        }
+        return (int)$result['total'] > 0;
+    }
 
+    /**
+     * Realiza la creación de la cuenta de usuario registrada en el alta de proveedor
+     */
+    public function store_prv_cat_usuario(array $data, int $supplierId, int $userId){
+        $pass = $this->generatePassword(8);
+        $this->insert("INSERT INTO prv_cat_usuarios(
+            proveedor_id,
+            email,
+            password,
+            nombre_contacto,
+            created_by
+            )
+                VALUES
+            (?,?,?,?,?)",
+            [
+                $supplierId,
+                $data['email'],
+                password_hash($pass, PASSWORD_DEFAULT),
+                $data['nombre'],
+                $userId,
+            ]
+        );
+        return $pass;
+    }
+    /**
+     * Generador de contraseña
+     */
+    function generatePassword($length)
+    {
+        $key = "";
+        $pattern = "1234567890abcdefghijklmnopqrstuvwxyz";
+        $max = strlen($pattern)-1;
+        for($i = 0; $i < $length; $i++){
+            $key .= substr($pattern, mt_rand(0,$max), 1);
+        }
+        return $key;
+    }
     /**
      * Realiza una actualización dinámica sobre una tabla específica.
      * Construye la sentencia SET basada en los campos "sucios" (dirty data).

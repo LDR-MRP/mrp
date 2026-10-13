@@ -120,11 +120,24 @@ class StoreSupplierRequest extends Requests
     {
         $supplierId = $this->data['id'] ?? null;
 
+        // Validar email duplicado en prv_cat_usuarios
+        if (!empty($this->data['email'])) {
+            try {
+                if ($this->prvProveedorModel->emailExists($this->data['email'])) {
+                    $this->addError('email', 'El correo electrónico ya está registrado en el sistema.');
+                    return; // Detenemos validaciones posteriores
+                }
+            } catch (\Exception $e) {
+                // Si falla la verificación, loguear pero no bloquear
+                error_log("Error verificando email duplicado: " . $e->getMessage());
+            }
+        }
+
         if (!empty($supplierId)) {
             // Regla: Si es edición, el proveedor DEBE existir
             // Traemos el registro y lo guardamos en caché de clase para que el Servicio lo pueda usar después
             $this->currentSupplier = current($this->prvProveedorModel->findByCriteria(['id_proveedor' => $supplierId]));
-            
+
             if (!$this->currentSupplier) {
                 $this->addError('id_proveedor', 'El proveedor que intentas actualizar no existe en el sistema.');
                 return; // Detenemos validaciones posteriores
@@ -132,7 +145,7 @@ class StoreSupplierRequest extends Requests
 
             // Regla: Bloqueo de RFC para proveedores activos
             if (
-                isset($this->data['rfc']) && 
+                isset($this->data['rfc']) &&
                 $this->currentSupplier['estatus_operativo'] == 1 &&
                 $this->currentSupplier['rfc'] !== $this->data['rfc']
             ) {
