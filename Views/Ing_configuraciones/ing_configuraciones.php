@@ -311,16 +311,22 @@
                                 </div>
 
                                 <div class="row">
-                                    <div class="col-lg-6 col-sm-6">
+                                    <div class="col-lg-4 col-sm-6">
                                         <div class="mb-3">
                                             <label class="form-label" for="nivel-emisiones-input">NIVEL DE EMISIONES</label>
                                             <input type="text" class="form-control" id="nivel-emisiones-input" name="nivel-emisiones-input" placeholder="Ej. EURO VI">
                                         </div>
                                     </div>
-                                    <div class="col-lg-6 col-sm-6">
+                                    <div class="col-lg-4 col-sm-6">
                                         <div class="mb-3">
                                             <label class="form-label" for="version-input">CONFIGURACIÓN</label>
                                             <input type="text" class="form-control" id="version-input" name="version-input" placeholder="4X4">
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4 col-sm-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="version-unidad-input">VERSIÓN</label>
+                                            <input type="text" class="form-control" id="version-unidad-input" name="version-unidad-input" placeholder="Ej. V2" maxlength="50">
                                         </div>
                                     </div>
                                 </div>

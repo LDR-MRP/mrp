@@ -1595,6 +1595,99 @@ function mostrarMovimientoInicial() {
 //------------------configuracio del inventario PCH para asignarle monedas, lotes/pedimentos/etc-----------------------
 //---------------------------------------------------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------------------------------------------
+//----------------------------------------- PERMISOS CONFIGURACIÓN DE PRODUCTO ------------------------------------
+//-----------------------------------------------------------------------------------------------------------------
+// Cada pestaña del modal tiene su propio módulo de permisos (constantes MICFG_* de Config.php):
+// r = ver la pestaña, w = crear/registrar, u = actualizar/editar, d = eliminar.
+// El backend valida lo mismo; aquí solo se oculta lo que el rol no puede usar.
+const CFG_TABS_PERMISO = {
+  "#tabMoneda": "MONEDA",
+  "#tabPrecio": "PRECIO",
+  "#tabFiscal": "FISCAL",
+  "#tabImpuesto": "IMPUESTO",
+  "#tabLinea": "LINEA",
+  "#tabUbicaciones": "UBICACIONES",
+  "#tabProveedores": "PROVEEDORES",
+  "#tabCantidades": "CANTIDADES",
+  "#tabPortalWeb": "PORTALWEB",
+  "#tabVines": "VINES",
+};
+
+function cfgPuede(clave, accion = "r") {
+  try {
+    const idModulo = MODS["MICFG_" + clave];
+    const permisos = USER_PERMS && idModulo ? USER_PERMS[idModulo] : null;
+    return !!(permisos && parseInt(permisos[accion], 10) === 1);
+  } catch (e) {
+    return false;
+  }
+}
+
+function aplicarPermisosCfg() {
+  const links = document.querySelectorAll("#modalConfigInventario .nav-tabs .nav-link");
+
+  links.forEach((link) => {
+    const clave = CFG_TABS_PERMISO[link.getAttribute("href")];
+    const li = link.closest("li");
+    if (!clave || !li) return;
+
+    if (clave === "PORTALWEB" || clave === "VINES") {
+      // Estas dos además dependen del tipo de elemento (lo decide su cargarTab*)
+      if (!cfgPuede(clave)) li.hidden = true;
+    } else {
+      li.hidden = !cfgPuede(clave);
+    }
+  });
+
+  // Si la pestaña activa quedó oculta, abrir la primera visible
+  const activa = document.querySelector("#modalConfigInventario .nav-tabs .nav-link.active");
+  if (!activa || activa.closest("li").hidden) {
+    const primera = Array.from(links).find((l) => !l.closest("li").hidden);
+    if (primera) new bootstrap.Tab(primera).show();
+  }
+
+  // Formularios de alta (Crear)
+  const formsAlta = {
+    formImpuestoInventario: "IMPUESTO",
+    formUbicacionInventario: "UBICACIONES",
+    formProveedores: "PROVEEDORES",
+  };
+  Object.entries(formsAlta).forEach(([id, clave]) => {
+    const f = document.getElementById(id);
+    if (f) f.classList.toggle("d-none", !cfgPuede(clave, "w"));
+  });
+
+  // Portal Web: subir imágenes = Crear, cambiar carátula = Actualizar, borrar carátula = Eliminar
+  const pwW = cfgPuede("PORTALWEB", "w");
+  ["contenedorNuevasImagenesPortalWeb", "btnAgregarImagenPortalWeb", "btnSubirImagenesPortalWeb"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle("d-none", !pwW);
+  });
+  const btnActCaratula = document.getElementById("pw_btn_actualizar_caratula");
+  if (btnActCaratula) btnActCaratula.classList.toggle("d-none", !cfgPuede("PORTALWEB", "u"));
+  const btnDelCaratula = document.getElementById("pw_btn_eliminar_caratula");
+  if (btnDelCaratula) btnDelCaratula.classList.toggle("d-none", !cfgPuede("PORTALWEB", "d"));
+}
+
+// Fiscal: los bloques vacíos son altas (Crear); editar uno existente es Actualizar
+function cfgAjustarFiscal(enEdicion = false) {
+  if (!enEdicion && !cfgPuede("FISCAL", "w")) {
+    document.querySelectorAll(".bloqueFiscalForm").forEach((b) => b.classList.add("d-none"));
+  }
+  const hayVisible = Array.from(document.querySelectorAll(".bloqueFiscalForm")).some(
+    (b) => !b.classList.contains("d-none"),
+  );
+  const btn = document.getElementById("btnGuardarFiscal");
+  if (btn) btn.classList.toggle("d-none", !hayVisible);
+}
+
+// Línea: el mismo formulario sirve para alta (Crear) y edición (Actualizar)
+function cfgAjustarFormLinea() {
+  const row = document.querySelector("#contentLinea .row.g-3.mb-3");
+  if (row) row.classList.toggle("d-none", !cfgPuede("LINEA", "w") && !modoEdicion);
+}
+
 function fntConfigInventario(idinventario) {
   currentInventarioId = idinventario; // 👈 AQUI
 
@@ -1628,15 +1721,16 @@ function fntConfigInventario(idinventario) {
       bootstrap.Modal.getOrCreateInstance(modal).show();
 
       setTimeout(() => {
-        cargarTabMoneda(idinventario);
-        cargartabPrecio(idinventario);
-        cargarTabLineas(idinventario);
-        refrescarFiscal(idinventario);
-        cargarTabImpuestos(idinventario);
-        cargarTabUbicaciones(idinventario);
-        cargarTabProveedores(idinventario);
-        cargarTabPortalWeb(idinventario, d.tipo_elemento);
-        cargarTabVines(idinventario, d.tipo_elemento);
+        if (cfgPuede("MONEDA")) cargarTabMoneda(idinventario);
+        if (cfgPuede("PRECIO")) cargartabPrecio(idinventario);
+        if (cfgPuede("LINEA")) cargarTabLineas(idinventario);
+        if (cfgPuede("FISCAL")) refrescarFiscal(idinventario);
+        if (cfgPuede("IMPUESTO")) cargarTabImpuestos(idinventario);
+        if (cfgPuede("UBICACIONES")) cargarTabUbicaciones(idinventario);
+        if (cfgPuede("PROVEEDORES")) cargarTabProveedores(idinventario);
+        if (cfgPuede("PORTALWEB")) cargarTabPortalWeb(idinventario, d.tipo_elemento);
+        if (cfgPuede("VINES")) cargarTabVines(idinventario, d.tipo_elemento);
+        aplicarPermisosCfg();
       }, 150);
     });
 }
@@ -1690,6 +1784,8 @@ function cargarTabMoneda(idinventario) {
           </table>
         </div>
       `;
+
+      if (!cfgPuede("MONEDA", "w")) cont.querySelector(".row.g-3.mb-3")?.remove();
 
       // ✅ ahora sí existe el tbody
       refrescarTablaMonedas(idinventario);
@@ -1747,6 +1843,8 @@ function cargartabPrecio(idinventario) {
           </table>
         </div>
       `;
+
+      if (!cfgPuede("PRECIO", "w")) cont.querySelector(".row.g-3.mb-3")?.remove();
 
       refrescarTablaPrecios(idinventario);
     });
@@ -1871,6 +1969,8 @@ function cargarTabLineas(idinventario) {
         </div>
       `;
 
+      cfgAjustarFormLinea();
+
       // 🔥 evento cambio línea
       document
         .getElementById("cfg_linea")
@@ -1914,10 +2014,10 @@ function refrescarTablaLineas(idinventario) {
             <td>${linea.fecha_creacion}</td>
             <td>${linea.estado == 2 ? "Activo" : "Inactivo"}</td>
             <td>
-              <button class="btn btn-sm btn-warning"
+              ${cfgPuede("LINEA", "u") ? `<button class="btn btn-sm btn-warning"
                 onclick="editarLinea(${linea.id_inv_linea}, ${linea.idsublineaproducto}, ${linea.idlinea})">
                 Editar
-              </button>
+              </button>` : ""}
             </td>
           </tr>
         `;
@@ -1990,6 +2090,7 @@ function editarLinea(id_inv_linea, idsublinea, idlinea) {
   // 🔹 activar modo edición
   modoEdicion = true;
   idLineaEditando = id_inv_linea;
+  cfgAjustarFormLinea();
 
   btn.textContent = "Actualizar Línea";
   btn.classList.remove("btn-primary");
@@ -2011,6 +2112,8 @@ function limpiarFormularioLinea() {
   btn.textContent = "Guardar";
   btn.classList.remove("btn-warning");
   btn.classList.add("btn-primary");
+
+  cfgAjustarFormLinea();
 }
 
 //-----------------------------------------------------------------------------------------------------------------
@@ -2085,7 +2188,7 @@ function refrescarTablaMonedas(idinventario) {
 
 // Cuando se abra el modal, refrescar la tabla de monedas
 $("#modalConfigInventario").on("shown.bs.modal", function () {
-  if (currentInventarioId) {
+  if (currentInventarioId && cfgPuede("MONEDA")) {
     refrescarTablaMonedas(currentInventarioId);
   }
 });
@@ -2720,7 +2823,7 @@ function refrescarFiscal(idinventario) {
           <td>${f.clave_sat}</td>
           <td>${f.desc_sat}</td>
           <td class="text-center">
-            <button class="btn btn-sm btn-warning" onclick="editarFiscal('sat')">Editar</button>
+            ${cfgPuede("FISCAL", "u") ? `<button class="btn btn-sm btn-warning" onclick="editarFiscal('sat')">Editar</button>` : ""}
           </td>
         </tr>`;
       }
@@ -2732,7 +2835,7 @@ function refrescarFiscal(idinventario) {
           <td>${f.clave_unidad_sat}</td>
           <td>${f.desc_unidad_sat}</td>
           <td class="text-center">
-            <button class="btn btn-sm btn-warning" onclick="editarFiscal('unidad')">Editar</button>
+            ${cfgPuede("FISCAL", "u") ? `<button class="btn btn-sm btn-warning" onclick="editarFiscal('unidad')">Editar</button>` : ""}
           </td>
         </tr>`;
       }
@@ -2744,7 +2847,7 @@ function refrescarFiscal(idinventario) {
           <td>${f.clave_fraccion_sat}</td>
           <td>${f.desc_fraccion_sat}</td>
           <td class="text-center">
-            <button class="btn btn-sm btn-warning" onclick="editarFiscal('fraccion')">Editar</button>
+            ${cfgPuede("FISCAL", "u") ? `<button class="btn btn-sm btn-warning" onclick="editarFiscal('fraccion')">Editar</button>` : ""}
           </td>
         </tr>`;
       }
@@ -2756,7 +2859,7 @@ function refrescarFiscal(idinventario) {
           <td>${f.clave_aduana_sat}</td>
           <td>${f.desc_aduana_sat}</td>
           <td class="text-center">
-            <button class="btn btn-sm btn-warning" onclick="editarFiscal('aduana')">Editar</button>
+            ${cfgPuede("FISCAL", "u") ? `<button class="btn btn-sm btn-warning" onclick="editarFiscal('aduana')">Editar</button>` : ""}
           </td>
         </tr>`;
       }
@@ -2784,6 +2887,8 @@ function ocultarBloquesConValor(f) {
       b.classList.remove("d-none");
     }
   });
+
+  cfgAjustarFiscal();
 }
 
 function ocultarFormularioFiscal() {
@@ -2796,6 +2901,8 @@ function mostrarFormularioFiscal() {
   document.querySelectorAll(".bloqueFiscalForm").forEach((b) => {
     b.classList.remove("d-none");
   });
+
+  cfgAjustarFiscal();
 }
 
 function editarFiscal(grupo) {
@@ -2808,11 +2915,13 @@ function editarFiscal(grupo) {
   });
 
   document.getElementById("bloqueFiscalTabla").classList.add("d-none");
+
+  cfgAjustarFiscal(true);
 }
 
 document.addEventListener("shown.bs.tab", function (e) {
   if (e.target.getAttribute("href") === "#tabFiscal") {
-    if (currentInventarioId) {
+    if (currentInventarioId && cfgPuede("FISCAL")) {
       refrescarFiscal(currentInventarioId);
     }
   }
@@ -3504,6 +3613,11 @@ function cargarTabPortalWeb(idinventario, tipoElemento) {
         if (radioActivo) radioActivo.checked = true;
       }
 
+      const btnGuardarPw = document.getElementById("btnGuardarPortalWeb");
+      if (btnGuardarPw) {
+        btnGuardarPw.classList.toggle("d-none", !cfgPuede("PORTALWEB", registro ? "u" : "w"));
+      }
+
       if (stock) stock.value = res.data.stock_actual ?? 0;
       if (aviso) aviso.style.display = registro ? "none" : "block";
 
@@ -3534,6 +3648,8 @@ function renderGaleriaPortalWeb(imagenes, modo) {
   }
 
   let html = "";
+  const puedeMarcarPw = cfgPuede("PORTALWEB", "u");
+  const puedeEliminarPw = cfgPuede("PORTALWEB", "d");
 
   imagenes.forEach((img) => {
     const esPrincipal = parseInt(img.es_principal, 10) === 1;
@@ -3545,15 +3661,15 @@ function renderGaleriaPortalWeb(imagenes, modo) {
           <img src="${base_url}/Assets/${img.ruta_archivo}"
                class="img-fluid rounded mb-1" style="max-height:120px;object-fit:cover;">
           <div class="d-flex justify-content-center gap-1">
-            <button type="button" class="btn btn-sm ${esPrincipal ? "btn-warning" : "btn-outline-warning"}"
+            ${puedeMarcarPw ? `<button type="button" class="btn btn-sm ${esPrincipal ? "btn-warning" : "btn-outline-warning"}"
               title="${esPrincipal ? "Imagen principal" : "Marcar como principal"}"
               onclick="marcarImagenPrincipalPortalWeb(${idImg}, '${modoActual}')">
               <i class="bi bi-star${esPrincipal ? "-fill" : ""}">Principal</i>
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-danger"
+            </button>` : (esPrincipal ? `<span class="badge bg-warning">Principal</span>` : "")}
+            ${puedeEliminarPw ? `<button type="button" class="btn btn-sm btn-outline-danger"
               onclick="eliminarImagenPortalWeb(${idImg}, '${modoActual}')">
               <i class="bi bi-trash">Eliminar</i>
-            </button>
+            </button>` : ""}
           </div>
         </div>
       </div>

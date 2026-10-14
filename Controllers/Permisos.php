@@ -17,24 +17,22 @@
 				$arrPermisos = array('r' => 0, 'w' => 0, 'u' => 0, 'd' => 0);
 				$arrPermisoRol = array('idrol' => $rolid, 'rol' => $arrRol['nombrerol']);
 
-				if(empty($arrPermisosRol))
-				{
-					for ($i=0; $i < count($arrModulos) ; $i++) { 
-
-						$arrModulos[$i]['permisos'] = $arrPermisos;
+				// Emparejar por idmodulo (antes era por posición del arreglo)
+				$mapaPermisos = array();
+				foreach ($arrPermisosRol as $permisoRol) {
+					$mapaPermisos[$permisoRol['moduloid']] = $permisoRol;
+				}
+				for ($i=0; $i < count($arrModulos); $i++) {
+					$arrPermisos = array('r' => 0, 'w' => 0, 'u' => 0, 'd' => 0);
+					$idModulo = $arrModulos[$i]['idmodulo'];
+					if (isset($mapaPermisos[$idModulo])) {
+						$arrPermisos = array('r' => $mapaPermisos[$idModulo]['r'],
+											 'w' => $mapaPermisos[$idModulo]['w'],
+											 'u' => $mapaPermisos[$idModulo]['u'],
+											 'd' => $mapaPermisos[$idModulo]['d']
+											);
 					}
-				}else{
-					for ($i=0; $i < count($arrModulos); $i++) {
-						$arrPermisos = array('r' => 0, 'w' => 0, 'u' => 0, 'd' => 0);
-						if(isset($arrPermisosRol[$i])){
-							$arrPermisos = array('r' => $arrPermisosRol[$i]['r'], 
-												 'w' => $arrPermisosRol[$i]['w'], 
-												 'u' => $arrPermisosRol[$i]['u'], 
-												 'd' => $arrPermisosRol[$i]['d'] 
-												);
-						}
-						$arrModulos[$i]['permisos'] = $arrPermisos;
-					}
+					$arrModulos[$i]['permisos'] = $arrPermisos;
 				}
 				$arrPermisoRol['modulos'] = $arrModulos;
 				$html = getModal("modalPermisos",$arrPermisoRol);

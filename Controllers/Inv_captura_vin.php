@@ -99,4 +99,24 @@ class Inv_captura_vin extends Controllers
 		echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
 		die();
 	}
+
+	// Datos de Ingeniería para precargar el NIV base al elegir el modelo
+	public function getDatosIngenieria()
+	{
+		$request = $this->service->getDatosIngenieria($_GET['id_inventario'] ?? 0);
+		echo json_encode($request, JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	// Historial de cambios del VIN base (modelo del glosario)
+	public function getHistorial()
+	{
+		if (empty($_SESSION['permisosMod']['r'])) {
+			echo json_encode(["success" => false, "data" => []]);
+			die();
+		}
+		$request = $this->service->getHistorial($_GET['id'] ?? 0);
+		echo json_encode($request, JSON_UNESCAPED_UNICODE);
+		die();
+	}
 }

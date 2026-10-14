@@ -134,6 +134,17 @@ const LGS_EVIDENCIAS = 159;
 const LGS_PANELRUTAS = 160;
 const LGS_INCIDENCIAS = 161;
 const LGS_GASTOSADICIONALES = 162;
+//Permisos por pestaña del modal "Configuración de productos" (Inv_inventario)
+const MICFG_MONEDA = 180;
+const MICFG_PRECIO = 181;
+const MICFG_FISCAL = 182;
+const MICFG_IMPUESTO = 183;
+const MICFG_LINEA = 184;
+const MICFG_UBICACIONES = 185;
+const MICFG_PROVEEDORES = 186;
+const MICFG_CANTIDADES = 187;
+const MICFG_PORTALWEB = 188;
+const MICFG_VINES = 189;
 
 //Submodulos Capacidad
 

@@ -672,6 +672,7 @@ function fntEditInfo(idConfiguracion) {
     setFieldValue("#peso-bruto-input", d.peso_bruto || "");
     setFieldValue("#nivel-emisiones-input", d.nivel_emisiones || "");
     setFieldValue("#version-input", d.version || "");
+    setFieldValue("#version-unidad-input", d.version_unidad || "");
 
     cargarSelectModelos(d.idlineaproducto, d.id_sublineaproducto);
 
@@ -824,6 +825,7 @@ function renderFichaTecnica(objData) {
   html += fichaFila("Peso bruto vehicular", c.peso_bruto, "kg");
   html += fichaFila("Nivel de emisiones", c.nivel_emisiones);
   html += fichaFila("Configuración", c.version);
+  html += fichaFila("Versión", c.version_unidad);
   html += "</table></div></div></div>";
 
   // MOTOR
@@ -980,7 +982,7 @@ function actualizarSku(idConfiguracion) {
 function darDeAltaInventario(idConfiguracion) {
   Swal.fire({
     title: "Dar de alta en inventario",
-    text: "El SKU se genera automáticamente a partir de las especificaciones de esta configuración (segmento, nombre de unidad, modelo, origen, combustible, tipo de transmisión y configuración). ¿Continuar?",
+    text: "El SKU se genera automáticamente a partir de las especificaciones de esta configuración (segmento, nombre de unidad, modelo, origen, combustible, tipo de transmisión, configuración y versión). ¿Continuar?",
     icon: "question",
     showCancelButton: true,
     confirmButtonText: "Dar de alta",
