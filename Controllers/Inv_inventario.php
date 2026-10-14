@@ -367,6 +367,7 @@ class Inv_inventario extends Controllers
 		]);
 
 		$puedeEditar = !empty($_SESSION['permisosMod']['u']);
+		$puedeConfig = $this->puedeVerConfigProducto();
 		$arrData = $result['data'];
 
 		foreach ($arrData as $i => $row) {
@@ -388,7 +389,7 @@ class Inv_inventario extends Controllers
 				? '<button class="btn btn-sm btn-soft-warning" onClick="fntEditInventario(' . $id . ')"><i class="ri-pencil-fill"></i></button>'
 				: '';
 
-			$btnConfig = in_array($tipoRaw, ['P', 'C', 'H', 'K', 'R'], true)
+			$btnConfig = $puedeConfig && in_array($tipoRaw, ['P', 'C', 'H', 'K', 'R'], true)
 				? '<button class="btn btn-sm btn-soft-primary" title="Configurar" onClick="fntConfigInventario(' . $id . ')"><i class="ri-settings-3-fill"></i></button>'
 				: '';
 
@@ -798,13 +799,34 @@ class Inv_inventario extends Controllers
 		die();
 	}
 
+	//---------------------------------------------------------------------- PERMISOS CONFIGURACIÓN DE PRODUCTO
+	// Cada pestaña del modal "Configuración de productos" tiene su propio módulo
+	// de permisos (MICFG_* en Config.php): r = ver pestaña, w = crear,
+	// u = actualizar, d = eliminar.
+	private function exigirPermisoCfg(int $modulo, string $accion): void
+	{
+		if (!hasPermissions($modulo, $accion)) {
+			header('Content-Type: application/json; charset=utf-8');
+			echo json_encode(['status' => false, 'msg' => 'No tienes permiso para realizar esta acción'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+	}
+
+	private function puedeVerConfigProducto(): bool
+	{
+		$modulos = [MICFG_MONEDA, MICFG_PRECIO, MICFG_FISCAL, MICFG_IMPUESTO, MICFG_LINEA, MICFG_UBICACIONES, MICFG_PROVEEDORES, MICFG_CANTIDADES, MICFG_PORTALWEB, MICFG_VINES];
+		foreach ($modulos as $modulo) {
+			if (hasPermissions($modulo, 'r')) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	//----------------------------------------------------------------------MONEDAS INVENTARIO
 	public function setMoneda()
 	{
-		if (!$_SESSION['permisosMod']['w']) {
-			echo json_encode(['status' => false, 'msg' => 'Sin permisos']);
-			die();
-		}
+		$this->exigirPermisoCfg(MICFG_MONEDA, 'w');
 
 		if ($_POST) {
 
@@ -841,6 +863,7 @@ class Inv_inventario extends Controllers
 	//MONEDAS ASIGNADAS
 	public function getMonedasAsignadas($idinventario)
 	{
+		$this->exigirPermisoCfg(MICFG_MONEDA, 'r');
 		$monedas = $this->model->getMonedasAsignadas($idinventario);
 
 		echo json_encode([
@@ -855,10 +878,7 @@ class Inv_inventario extends Controllers
 	// GUARDAR PRECIO
 	public function setPrecioInventario()
 	{
-		if (!$_SESSION['permisosMod']['w']) {
-			echo json_encode(['status' => false, 'msg' => 'Sin permisos']);
-			die();
-		}
+		$this->exigirPermisoCfg(MICFG_PRECIO, 'w');
 
 		if ($_POST) {
 
@@ -895,6 +915,7 @@ class Inv_inventario extends Controllers
 	//PRECIOS ASIGNADOS
 	public function getPreciosAsignados($idinventario)
 	{
+		$this->exigirPermisoCfg(MICFG_PRECIO, 'r');
 		$monedas = $this->model->getPreciosAsignados($idinventario);
 
 		echo json_encode([
@@ -910,10 +931,7 @@ class Inv_inventario extends Controllers
 	//---------------------------------------------------------------------- LINEAS INVENTARIO
 	public function setLinea()
 	{
-		if (!$_SESSION['permisosMod']['w']) {
-			echo json_encode(['status' => false, 'msg' => 'Sin permisos']);
-			die();
-		}
+		$this->exigirPermisoCfg(MICFG_LINEA, 'w');
 
 		if ($_POST) {
 
@@ -961,6 +979,7 @@ class Inv_inventario extends Controllers
 
 	public function updateLinea()
 	{
+		$this->exigirPermisoCfg(MICFG_LINEA, 'u');
 		if ($_POST) {
 
 			$id_inv_linea = intval($_POST['id_inv_linea']);
@@ -1007,6 +1026,7 @@ class Inv_inventario extends Controllers
 
 	public function getLineasAsignadas($idinventario)
 	{
+		$this->exigirPermisoCfg(MICFG_LINEA, 'r');
 		// Usar el modelo principal del controlador
 		$lineas = $this->model->getLineasAsignadas($idinventario);
 
@@ -1215,6 +1235,13 @@ class Inv_inventario extends Controllers
 			die();
 		}
 
+		// Permiso: alta de un dato fiscal = Crear (w); cambiar uno que ya existe = Actualizar (u)
+		$camposGrupoFiscal = ['sat' => 'clave_sat', 'unidad' => 'clave_unidad_sat', 'fraccion' => 'clave_fraccion_sat', 'aduana' => 'clave_aduana_sat'];
+		$fiscalActual = $this->model->getFiscalByInventario($inventarioid);
+		$campoGrupo = $camposGrupoFiscal[$grupo] ?? null;
+		$esEdicionFiscal = !empty($fiscalActual) && $campoGrupo !== null && !empty($fiscalActual[$campoGrupo]);
+		$this->exigirPermisoCfg(MICFG_FISCAL, $esEdicionFiscal ? 'u' : 'w');
+
 		$data = [
 			'inventarioid'        => $inventarioid,
 			'clave_sat'          => strClean($_POST['clave_sat'] ?? ''),
@@ -1274,6 +1301,7 @@ class Inv_inventario extends Controllers
 
 	public function getFiscalByInventario($idinventario)
 	{
+		$this->exigirPermisoCfg(MICFG_FISCAL, 'r');
 		$data = $this->model->getFiscalByInventario((int)$idinventario);
 
 		if (empty($data)) {
@@ -1302,6 +1330,7 @@ class Inv_inventario extends Controllers
 
 	public function setImpuesto()
 	{
+		$this->exigirPermisoCfg(MICFG_IMPUESTO, 'w');
 		header('Content-Type: application/json; charset=utf-8');
 
 		if (empty($_POST['inventarioid']) || empty($_POST['idimpuesto'])) {
@@ -1337,6 +1366,7 @@ class Inv_inventario extends Controllers
 
 	public function getImpuestosAsignados($idinventario)
 	{
+		$this->exigirPermisoCfg(MICFG_IMPUESTO, 'r');
 		$data = $this->model->getImpuestosAsignados($idinventario);
 
 		header('Content-Type: application/json; charset=utf-8');
@@ -1368,6 +1398,7 @@ class Inv_inventario extends Controllers
 	//----------------------------- INSERT
 	public function setUbicacion()
 	{
+		$this->exigirPermisoCfg(MICFG_UBICACIONES, 'w');
 		header('Content-Type: application/json');
 
 		if (empty($_POST['inventarioid']) || empty($_POST['ubicacionid'])) {
@@ -1416,6 +1447,7 @@ class Inv_inventario extends Controllers
 	//----------------------------- TABLA
 	public function getUbicacionesAsignadas($idinventario)
 	{
+		$this->exigirPermisoCfg(MICFG_UBICACIONES, 'r');
 		$data = $this->model->getUbicacionesAsignadas($idinventario);
 
 		echo json_encode([
@@ -1449,6 +1481,7 @@ class Inv_inventario extends Controllers
 
 	public function setProveedor()
 	{
+		$this->exigirPermisoCfg(MICFG_PROVEEDORES, 'w');
 		header('Content-Type: application/json; charset=utf-8');
 
 		if (empty($_POST['inventarioid']) || empty($_POST['id_proveedor'])) {
@@ -1484,6 +1517,7 @@ class Inv_inventario extends Controllers
 
 	public function getProveedoresAsignados($idinventario)
 	{
+		$this->exigirPermisoCfg(MICFG_PROVEEDORES, 'r');
 		$data = $this->model->getProveedoresAsignados($idinventario);
 
 		header('Content-Type: application/json; charset=utf-8');
@@ -1521,6 +1555,7 @@ class Inv_inventario extends Controllers
 
 	public function getPortalWeb($idinventario)
 	{
+		$this->exigirPermisoCfg(MICFG_PORTALWEB, 'r');
 		header('Content-Type: application/json; charset=utf-8');
 
 		$inventarioid = intval($idinventario);
@@ -1618,6 +1653,15 @@ class Inv_inventario extends Controllers
 		}
 
 		$modo = $this->tipoPortalWeb($inventarioid);
+
+		// Permiso: crear el registro de portal web = Crear (w); modificar uno existente = Actualizar (u)
+		$registroPw = null;
+		if ($modo === 'unidad') {
+			$registroPw = $this->model->getWebUnidadByInventario($inventarioid);
+		} elseif ($modo === 'refaccion') {
+			$registroPw = $this->model->getPortalWebRefaccionByInventario($inventarioid);
+		}
+		$this->exigirPermisoCfg(MICFG_PORTALWEB, !empty($registroPw) ? 'u' : 'w');
 
 		if ($modo === 'unidad' || $modo === 'refaccion') {
 			$claveModelo = strClean($_POST['clave_modelo'] ?? '');
@@ -1772,6 +1816,7 @@ class Inv_inventario extends Controllers
 
 	public function subirImagenPortalWeb()
 	{
+		$this->exigirPermisoCfg(MICFG_PORTALWEB, 'w');
 		header('Content-Type: application/json; charset=utf-8');
 
 		$inventarioid = intval($_POST['inventarioid'] ?? 0);
@@ -1939,6 +1984,7 @@ class Inv_inventario extends Controllers
 
 	public function eliminarCaratulaPortalWeb()
 	{
+		$this->exigirPermisoCfg(MICFG_PORTALWEB, 'd');
 		header('Content-Type: application/json; charset=utf-8');
 
 		$inventarioid = intval($_POST['inventarioid'] ?? 0);
@@ -2004,6 +2050,7 @@ class Inv_inventario extends Controllers
 
 	public function deleteImagenPortalWeb()
 	{
+		$this->exigirPermisoCfg(MICFG_PORTALWEB, 'd');
 		header('Content-Type: application/json; charset=utf-8');
 
 		// El modo se distingue por el nombre del campo recibido, para no
@@ -2095,6 +2142,7 @@ class Inv_inventario extends Controllers
 
 	public function marcarImagenPrincipalPortalWeb()
 	{
+		$this->exigirPermisoCfg(MICFG_PORTALWEB, 'u');
 		header('Content-Type: application/json; charset=utf-8');
 
 		if (isset($_POST['idfotoportalweb'])) {
@@ -2155,6 +2203,7 @@ class Inv_inventario extends Controllers
 
 	public function getCantidadesProducto()
 	{
+		$this->exigirPermisoCfg(MICFG_CANTIDADES, 'r');
 		if ($_POST) {
 
 			$inventarioid = intval($_POST['inventarioid']);
@@ -2168,6 +2217,7 @@ class Inv_inventario extends Controllers
 
 	public function getAlmacenesProducto()
 	{
+		$this->exigirPermisoCfg(MICFG_CANTIDADES, 'r');
 		if ($_POST) {
 
 			$inventarioid = intval($_POST['inventarioid']);
@@ -2181,6 +2231,7 @@ class Inv_inventario extends Controllers
 
 	public function getVinesProducto()
 	{
+		$this->exigirPermisoCfg(MICFG_VINES, 'r');
 		if ($_POST) {
 
 			$inventarioid = intval($_POST['inventarioid']);

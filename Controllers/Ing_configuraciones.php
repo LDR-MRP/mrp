@@ -99,6 +99,7 @@ class Ing_configuraciones extends Controllers
                     'combustible'         => strClean($_POST['combustible-input'] ?? ''),
                     'estado'              => $estado,
                     'version'             => strClean($_POST['version-input'] ?? ''),
+                    'version_unidad'      => strClean($_POST['version-unidad-input'] ?? ''),
                 ];
 
                 if ($intIdConfiguracion == 0) {

@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const firstTabEl  = document.querySelector('#nav-tab a[href="#agregarplanta"]');
 
     if (primerTabEl && firstTabEl && spanBtnText) {
-        // ⚠️ IMPORTANTE: NO usar "let" aquí, usamos las globales
+        
         primerTab = new bootstrap.Tab(primerTabEl); // LISTA
         firstTab  = new bootstrap.Tab(firstTabEl);  // NUEVO / ACTUALIZAR
         tabNuevo  = firstTabEl;                     // elemento del tab

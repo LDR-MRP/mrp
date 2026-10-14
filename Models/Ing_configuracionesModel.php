@@ -34,6 +34,7 @@ class Ing_configuracionesModel extends Mysql
                     c.combustible,
                     c.estado,
                     c.version,
+                    c.version_unidad,
                     l.descripcion AS segmento,
                     s.descripcion AS modelo,
                     m.fabricante AS motor_fabricante,
@@ -77,13 +78,13 @@ class Ing_configuracionesModel extends Mysql
 
         $sql = "INSERT INTO ing_modelo_configuracion
             (id_sublineaproducto, tipo_origen, nombre_unidad, nombre_comercial, codigo_modelo, clave_vehicular,
-             peso_bruto, nivel_emisiones, id_motor, id_transmision, combustible, estado, version, created_by)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+             peso_bruto, nivel_emisiones, id_motor, id_transmision, combustible, estado, version, version_unidad, created_by)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         return $this->insert($sql, [
             $data['id_sublineaproducto'], $data['tipo_origen'], $data['nombre_unidad'], $data['nombre_comercial'],
             $data['codigo_modelo'], $data['clave_vehicular'], $data['peso_bruto'], $data['nivel_emisiones'],
-            $data['id_motor'], $data['id_transmision'], $data['combustible'], $data['estado'], $data['version'],
+            $data['id_motor'], $data['id_transmision'], $data['combustible'], $data['estado'], $data['version'], $data['version_unidad'],
             $_SESSION['userData']['idusuario'] ?? null,
         ]);
     }
@@ -100,13 +101,13 @@ class Ing_configuracionesModel extends Mysql
         $sql = "UPDATE ing_modelo_configuracion SET
             id_sublineaproducto = ?, tipo_origen = ?, nombre_unidad = ?, nombre_comercial = ?, codigo_modelo = ?,
             clave_vehicular = ?, peso_bruto = ?, nivel_emisiones = ?, id_motor = ?, id_transmision = ?,
-            combustible = ?, estado = ?, version = ?, updated_by = ?
+            combustible = ?, estado = ?, version = ?, version_unidad = ?, updated_by = ?
             WHERE id_configuracion = ?";
 
         return $this->update($sql, [
             $data['id_sublineaproducto'], $data['tipo_origen'], $data['nombre_unidad'], $data['nombre_comercial'],
             $data['codigo_modelo'], $data['clave_vehicular'], $data['peso_bruto'], $data['nivel_emisiones'],
-            $data['id_motor'], $data['id_transmision'], $data['combustible'], $data['estado'], $data['version'],
+            $data['id_motor'], $data['id_transmision'], $data['combustible'], $data['estado'], $data['version'], $data['version_unidad'],
             $_SESSION['userData']['idusuario'] ?? null, $id,
         ]);
     }
@@ -178,6 +179,7 @@ class Ing_configuracionesModel extends Mysql
                     c.tipo_origen,
                     c.combustible,
                     c.version,
+                    c.version_unidad,
                     c.id_sublineaproducto,
                     l.idlineaproducto,
                     l.descripcion AS segmento,
@@ -204,7 +206,8 @@ class Ing_configuracionesModel extends Mysql
     //   - Combustible:     codigo de 3 letras via catalogo interno (GSL/DSL/ELE/HIB/GLP/GNC...),
     //                      si no se reconoce toma las primeras 3 letras
     //   - Tipo transmision: TM / AMT / AT (catalogo ing_cat_transmision)  [agregado 05-oct-2026]
-    //   - Configuracion:   al final, texto limpio sin espacios           (4 X 4      -> 4X4) [antes "version"]
+    //   - Configuracion:   texto limpio sin espacios                     (4 X 4      -> 4X4) [antes "version"]
+    //   - Version:         al final, opcional, texto limpio sin espacios (columna version_unidad) [13-oct-2026]
     // Formato final (06-oct-2026): "<NOMBRE>-<RESTO>" (un solo guion, sin segmento),
     // ej. AUS3-LDTNDSLTMA4X2. Las partes vacias (dato no capturado todavia)
     // se omiten. Si el codigo base ya existe en inventario se agrega un
@@ -311,6 +314,7 @@ class Ing_configuracionesModel extends Mysql
             $this->codigoCombustible($ficha['combustible'] ?? ''),
             $this->limpiarVersion($ficha['transmision_tipo'] ?? ''), // TM / AMT / AT (catalogo de transmisiones)
             $this->limpiarVersion($ficha['version'] ?? ''),          // campo "Configuracion" (ej. 4X4)
+            $this->limpiarVersion($ficha['version_unidad'] ?? ''),   // campo "Version" (opcional, ej. V2) [13-oct-2026]
         ], function ($p) {
             return $p !== '';
         }));
