@@ -227,4 +227,80 @@ class Lgs_ejecucionService {
             throw $e;
         }
     }
+
+    /**
+     * Finaliza la entrega en destino (cierre del viaje, remisión, firma y paso a Estado 7)
+     */
+    public function finalizarEntregaDestino(int $idEnvio, string $nombreRecibe, string $comentarios, array $fotosFiles, int $userId): void {
+        $db = $this->model->getConexion();
+        try {
+            if (!$db->inTransaction()) {
+                $db->beginTransaction();
+            }
+
+            // 1. Guardar archivos de remisión y firma
+            $uploadDir = 'Assets/images/uploads/evidencias/';
+            if (!file_exists($uploadDir)) {
+                if (!mkdir($uploadDir, 0777, true)) {
+                    error_log("No se pudo crear el directorio: " . $uploadDir);
+                }
+            }
+
+            foreach ($fotosFiles as $key => $file) {
+                if (isset($file['tmp_name']) && !empty($file['tmp_name'])) {
+                    $ext = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'jpg';
+                    $fileName = 'entrega_' . $idEnvio . '_' . $key . '_' . md5(uniqid()) . '.' . $ext;
+                    $destFile = $uploadDir . $fileName;
+
+                    if (move_uploaded_file($file['tmp_name'], $destFile)) {
+                        $obs = ($key === 'evidencia_remision') 
+                            ? "Remisión Sellada - Recibe: {$nombreRecibe}" 
+                            : "Firma / Foto Receptor - {$nombreRecibe}";
+                        if (!empty($comentarios)) {
+                            $obs .= " | " . $comentarios;
+                        }
+                        $this->model->insertarEvidenciaUnificada($db, $idEnvio, 0, 2, $destFile, $obs, $userId);
+                    }
+                }
+            }
+
+            // 2. Marcar todos los VINs del envío como ENTREGADO
+            $stmtVins = $db->prepare("
+                UPDATE lgs_envios_vins 
+                SET estado_unidad_fisico = 'ENTREGADO', 
+                    fecha_entrega_real = COALESCE(fecha_entrega_real, NOW()),
+                    recibe_nombre = ?
+                WHERE id_envio = ?
+            ");
+            $stmtVins->execute([$nombreRecibe, $idEnvio]);
+
+            // 3. Pasar envío a Estado 7 (Entregado / Finalizado) y fijar fecha_llegada_real
+            $stmtEnvio = $db->prepare("
+                UPDATE lgs_envios 
+                SET id_estado = 7, 
+                    fecha_llegada_real = NOW()
+                WHERE id_envio = ?
+            ");
+            $stmtEnvio->execute([$idEnvio]);
+
+            // 4. Liberar unidades en lgs_unidades (cambiar id_estado_proceso a 3 = Entregado)
+            $stmtIds = $db->prepare("SELECT id_unidad FROM lgs_envios_vins WHERE id_envio = ?");
+            $stmtIds->execute([$idEnvio]);
+            $unitIds = $stmtIds->fetchAll(PDO::FETCH_COLUMN);
+            if (!empty($unitIds)) {
+                $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
+                $stmtUnidades = $db->prepare("UPDATE lgs_unidades SET id_estado_proceso = 3, updated_at = NOW() WHERE id_unidad IN ({$placeholders})");
+                $stmtUnidades->execute($unitIds);
+            }
+
+            if ($db->inTransaction()) {
+                $db->commit();
+            }
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            throw $e;
+        }
+    }
 }

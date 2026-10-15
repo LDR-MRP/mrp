@@ -65,6 +65,14 @@ class Lgs_costosModel extends Mysql
 
         $provVal = ($idProveedor !== null && $idProveedor > 0) ? $idProveedor : 0;
 
+        $modalidadDefault = 'DIRECTO';
+        if ($provVal > 0) {
+            $rowProv = $this->select("SELECT modalidad_envio_default FROM prv_cat_proveedores WHERE id_proveedor = $provVal");
+            if (!empty($rowProv['modalidad_envio_default'])) {
+                $modalidadDefault = strtoupper($rowProv['modalidad_envio_default']);
+            }
+        }
+
         // 2. Consultar tarifas en BD
         $sqlTarifas = "SELECT id_tipo_traslado, id_segmento, num_vins_min, num_vins_max, costo_por_km, precio_plano, precio_slc, precio_sll, factor, es_personalizada
                        FROM lgs_tarifas_proveedores
@@ -201,6 +209,7 @@ class Lgs_costosModel extends Mysql
 
         return [
             'id_proveedor' => $provVal,
+            'modalidad_envio_default' => $modalidadDefault,
             'tiene_tarifas_propias' => $tieneTarifasPropias,
             'es_personalizada' => $esPersonalizada,
             'madrina' => $generarMatriz(1),
@@ -304,7 +313,7 @@ class Lgs_costosModel extends Mysql
         }
     }
 
-    public function saveTarifasProveedor(int $idProveedor, array $madrinaSegs, array $choferSegs, array $plataformaSegs = []): bool
+    public function saveTarifasProveedor(int $idProveedor, array $madrinaSegs, array $choferSegs, array $plataformaSegs = [], string $modalidadDefault = 'DIRECTO'): bool
     {
         $db = $this->getConexion();
         try {
@@ -312,6 +321,11 @@ class Lgs_costosModel extends Mysql
             // Al guardar tarifas para un proveedor específico (>0), se marcan como personalizadas (1)
             $esPersonalizada = ($idProveedor > 0);
             $this->saveTarifasProveedorInterno($db, $idProveedor, $madrinaSegs, $choferSegs, $plataformaSegs, $esPersonalizada);
+            if ($idProveedor > 0) {
+                $modVal = in_array(strtoupper($modalidadDefault), ['ESCALONADO', 'DIRECTO']) ? strtoupper($modalidadDefault) : 'DIRECTO';
+                $stmtMod = $db->prepare("UPDATE prv_cat_proveedores SET modalidad_envio_default = ? WHERE id_proveedor = ?");
+                $stmtMod->execute([$modVal, $idProveedor]);
+            }
             $db->commit();
             return true;
         } catch (Throwable $e) {
@@ -468,6 +482,7 @@ class Lgs_costosModel extends Mysql
                     p.id_proveedor,
                     p.razon_social,
                     p.nombre_comercial,
+                    p.modalidad_envio_default,
                     (CASE WHEN MAX(t.es_personalizada) = 1 THEN 1 ELSE 0 END) AS tiene_personalizada,
                     (CASE WHEN COUNT(t.id_tarifa) > 0 THEN 1 ELSE 0 END) AS tiene_tarifas_registradas,
                     MAX(t.updated_at) AS ultima_actualizacion
@@ -477,7 +492,7 @@ class Lgs_costosModel extends Mysql
                 LEFT JOIN lgs_tarifas_proveedores t ON t.id_proveedor = p.id_proveedor AND t.activo != 0
                 WHERE a.cve_actividad = 'TRASLADO_UNIDADES' 
                   AND p.deleted_at IS NULL
-                GROUP BY p.id_proveedor, p.razon_social, p.nombre_comercial
+                GROUP BY p.id_proveedor, p.razon_social, p.nombre_comercial, p.modalidad_envio_default
                 ORDER BY p.razon_social ASC";
         return $this->select_all($sql) ?: [];
     }
@@ -530,7 +545,8 @@ class Lgs_costosModel extends Mysql
         $sql = "SELECT DISTINCT
                     p.id_proveedor,
                     p.razon_social,
-                    p.nombre_comercial
+                    p.nombre_comercial,
+                    p.modalidad_envio_default
                 FROM prv_cat_proveedores p
                 INNER JOIN prv_rel_proveedores_actividades r ON p.id_proveedor = r.id_proveedor
                 INNER JOIN prv_cat_actividades a ON a.id_actividad = r.id_actividad

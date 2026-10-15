@@ -446,14 +446,24 @@ function getPermisos(int $idmodulo)
     require_once("Models/PermisosModel.php");
     $objPermisos = new PermisosModel();
     if (!empty($_SESSION['userData'])) {
-        $idrol = $_SESSION['userData']['idrol'];
-        $arrPermisos = $objPermisos->permisosModulo($idrol);
-        $permisos = '';
-        $permisosMod = '';
-        if (count($arrPermisos) > 0) {
-            $permisos = $arrPermisos;
-            $permisosMod = isset($arrPermisos[$idmodulo]) ? $arrPermisos[$idmodulo] : "";
+        $idrol = (int)$_SESSION['userData']['idrol'];
+        $arrPermisos = $objPermisos->permisosModulo($idrol) ?: [];
+        $permisos = is_array($arrPermisos) ? $arrPermisos : [];
+        $permisosMod = $permisos[$idmodulo] ?? "";
+
+        // Si es Administrador (rol 1), garantizar acceso completo a módulos del sistema y logística
+        if ($idrol === 1) {
+            $logisticaModulos = [150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162];
+            foreach ($logisticaModulos as $modId) {
+                if (empty($permisos[$modId]['r'])) {
+                    $permisos[$modId] = ['r' => 1, 'w' => 1, 'u' => 1, 'd' => 1];
+                }
+            }
+            if (empty($permisosMod) && in_array($idmodulo, $logisticaModulos)) {
+                $permisosMod = ['r' => 1, 'w' => 1, 'u' => 1, 'd' => 1];
+            }
         }
+
         $_SESSION['permisos'] = $permisos;
         $_SESSION['permisosMod'] = $permisosMod;
     }

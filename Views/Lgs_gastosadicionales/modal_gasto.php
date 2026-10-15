@@ -1,16 +1,15 @@
 <!-- Modal Registro de Gasto Adicional -->
 <div class="modal fade" id="modalFormGasto" tabindex="-1" aria-labelledby="modalFormGastoLabel" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow-lg">
+        <form id="formGasto" class="modal-content border-0 shadow-lg" autocomplete="off" enctype="multipart/form-data">
+            <input type="hidden" id="id_gasto" name="id_gasto" value="">
             <div class="modal-header bg-light p-3">
                 <h5 class="modal-title fw-bold" id="modalFormGastoLabel">
                     <i class="ri-money-dollar-circle-fill text-success me-1"></i> Registrar Gasto Adicional
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="formGasto" autocomplete="off" enctype="multipart/form-data">
-                <input type="hidden" id="id_gasto" name="id_gasto" value="">
-                <div class="modal-body p-4">
+            <div class="modal-body p-4" style="max-height: calc(85vh - 130px); overflow-y: auto;">
                     
                     <!-- PASO 1: ORIGEN DEL GASTO (LIGADO VS INDEPENDIENTE) -->
                     <div class="card border border-light-subtle shadow-none mb-3 bg-light-subtle">
@@ -249,7 +248,6 @@
                         <i class="ri-save-line me-1"></i> Guardar Gasto
                     </button>
                 </div>
-            </form>
-        </div>
+        </form>
     </div>
 </div>

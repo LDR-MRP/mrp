@@ -157,6 +157,21 @@ $logoPath = realpath(__DIR__ . '/../../Assets/images/ldr_negro.png');
         <th>Placas Madrina</th>
         <td><?= htmlspecialchars($detalle['madrina_placas'] ?? 'N/A') ?></td>
     </tr>
+    <tr>
+        <th>Tipo de Servicio</th>
+        <td colspan="3">
+            <?php 
+                $tipoServ = strtoupper($detalle['tipo_servicio'] ?? 'FORANEO');
+                if ($tipoServ === 'SLC') {
+                    echo '<span class="badge" style="background-color: #dcfce7; color: #166534;">SLC - Local Corto (Tarifa Plana 0-40 KM)</span>';
+                } elseif ($tipoServ === 'SLL') {
+                    echo '<span class="badge" style="background-color: #fef9c3; color: #854d0e;">SLL - Local Largo (Tarifa Plana 41-80 KM)</span>';
+                } else {
+                    echo '<span class="badge" style="background-color: #e0f2fe; color: #0284c7;">FORÁNEO (Factorizado por KM y Segmento)</span>';
+                }
+            ?>
+        </td>
+    </tr>
 </table>
 
 <div class="section-title">Detalle del Traslado (Real)</div>

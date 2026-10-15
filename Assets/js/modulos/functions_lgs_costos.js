@@ -122,6 +122,23 @@ function fntDeleteDistancia(idDistancia, rutaNombre) {
 }
 
 /**
+ * Filtro de búsqueda en tiempo real para la tabla de distancias
+ */
+function filtrarTablaDistancias(val) {
+    if (typeof tableDistancias !== "undefined" && tableDistancias) {
+        tableDistancias.search(val).draw();
+    }
+}
+
+function limpiarFiltroDistancias() {
+    const input = document.getElementById("buscarDistanciaTabla");
+    if (input) input.value = "";
+    if (typeof tableDistancias !== "undefined" && tableDistancias) {
+        tableDistancias.search("").draw();
+    }
+}
+
+/**
  * ==========================================
  * MÓDULO 2: TARIFAS POR PROVEEDOR
  * ==========================================
@@ -222,9 +239,9 @@ function loadTarifasProveedor() {
                 if (btnAjustar) btnAjustar.classList.add("d-none");
                 if (badgeStatus) {
                     badgeStatus.innerHTML = `
-                        <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1 fs-11">
-                            <i class="ri-global-line me-1"></i> <b>Tarifa Base General:</b> Plantilla maestra que aplica por defecto a todos los transportistas.
-                        </span>
+                        <div class="badge bg-primary-subtle text-primary border border-primary px-3 py-2 fs-12 text-wrap text-start rounded-pill shadow-xs">
+                            <i class="ri-global-line me-1 fs-14 align-middle"></i> <b>Tarifa Base General:</b> Plantilla maestra que aplica por defecto a todos los transportistas.
+                        </div>
                     `;
                 }
             } else {
@@ -244,18 +261,34 @@ function loadTarifasProveedor() {
                     if (esPersonalizada || diff.count > 0) {
                         const diffTxt = diff.count > 0 ? ` (${diff.count} factor(es) difieren del global)` : '';
                         badgeStatus.innerHTML = `
-                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-2 py-1 fs-11">
-                                <i class="ri-edit-2-line me-1"></i> <b>Tarifa Personalizada:</b> Este proveedor cuenta con tarifas manuales${diffTxt}.
-                            </span>
+                            <div class="badge bg-warning-subtle text-warning-emphasis border border-warning px-3 py-2 fs-12 text-wrap text-start rounded-pill shadow-xs">
+                                <i class="ri-edit-2-line me-1 fs-14 align-middle"></i> <b>Tarifa Personalizada:</b> Este proveedor cuenta con tarifas manuales${diffTxt}.
+                            </div>
                         `;
                     } else {
                         badgeStatus.innerHTML = `
-                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1 fs-11">
-                                <i class="ri-checkbox-circle-line me-1"></i> <b>Tarifa Idéntica al Global:</b> Los valores coinciden exactamente con la base general.
-                            </span>
+                            <div class="badge bg-success-subtle text-success border border-success px-3 py-2 fs-12 text-wrap text-start rounded-pill shadow-xs">
+                                <i class="ri-checkbox-circle-line me-1 fs-14 align-middle"></i> <b>Tarifa Idéntica al Global:</b> Los valores coinciden exactamente con la base general.
+                            </div>
                         `;
                     }
                 }
+            }
+
+            // Actualizar selector de modalidad por defecto
+            const selModProv = document.getElementById("modalidad_envio_default_prov");
+            const txtHelpMod = document.getElementById("txtHelpModalidadDefault");
+            if (selModProv) {
+                if (idProveedor === "0") {
+                    selModProv.value = "DIRECTO";
+                    selModProv.disabled = true;
+                    if (txtHelpMod) txtHelpMod.textContent = "Modalidad estándar base que aplica a todos los transportistas sin configuración específica.";
+                } else {
+                    selModProv.disabled = false;
+                    selModProv.value = (info.modalidad_envio_default && info.modalidad_envio_default === "ESCALONADO") ? "ESCALONADO" : "DIRECTO";
+                    if (txtHelpMod) txtHelpMod.textContent = "Regla de cálculo sugerida automáticamente al programar viajes con este transportista.";
+                }
+                syncModalidadCardsUI(selModProv.value, selModProv.disabled);
             }
 
             renderTarifasMadrina(info.madrina || []);
@@ -270,6 +303,53 @@ function loadTarifasProveedor() {
     .catch(error => {
         Swal.fire("Error", "No se pudieron cargar las tarifas", "error");
     });
+}
+
+/**
+ * Sincroniza la visualización de las tarjetas interactivas de Modalidad de Envío
+ */
+function syncModalidadCardsUI(modalidad, disabled) {
+    const cardDirecto = document.getElementById("cardModDirecto");
+    const cardEscalonado = document.getElementById("cardModEscalonado");
+    const badgeEstado = document.getElementById("badgeModalidadEstado");
+    const idProv = document.getElementById("select_tarifa_proveedor") ? document.getElementById("select_tarifa_proveedor").value : "0";
+
+    if (!cardDirecto || !cardEscalonado) return;
+
+    if (disabled || idProv === "0") {
+        cardDirecto.classList.add("disabled");
+        cardEscalonado.classList.add("disabled");
+        if (badgeEstado) {
+            badgeEstado.textContent = "Estándar Base (Directo)";
+            badgeEstado.className = "badge bg-primary-subtle text-primary border border-primary px-2 py-1 fs-11";
+        }
+    } else {
+        cardDirecto.classList.remove("disabled");
+        cardEscalonado.classList.remove("disabled");
+        if (badgeEstado) {
+            badgeEstado.textContent = "Configuración por Proveedor";
+            badgeEstado.className = "badge bg-light text-muted border px-2 py-1 fs-11";
+        }
+    }
+
+    if (modalidad === "ESCALONADO") {
+        cardEscalonado.classList.add("active");
+        cardDirecto.classList.remove("active");
+    } else {
+        cardDirecto.classList.add("active");
+        cardEscalonado.classList.remove("active");
+    }
+}
+
+/**
+ * Click handler para seleccionar la modalidad interactiva
+ */
+function seleccionarModalidadCard(modalidad) {
+    const selModProv = document.getElementById("modalidad_envio_default_prov");
+    if (!selModProv || selModProv.disabled) return;
+
+    selModProv.value = modalidad;
+    syncModalidadCardsUI(modalidad, false);
 }
 
 function renderTarifasMadrina(madrinaMatriz) {
@@ -942,6 +1022,11 @@ function saveTarifasProveedorIndividual() {
     const idProveedor = document.getElementById("select_tarifa_proveedor").value;
     formData.append("id_proveedor", idProveedor);
 
+    const selMod = document.getElementById("modalidad_envio_default_prov");
+    if (selMod && !formData.has("modalidad_envio_default")) {
+        formData.append("modalidad_envio_default", selMod.value);
+    }
+
     Swal.fire({
         title: "Guardando Tarifas",
         text: "Actualizando tarifas del proveedor...",
@@ -1000,9 +1085,9 @@ function ajustarAlGlobal() {
             const badgeStatus = document.getElementById("tarifa_status_badge");
             if (badgeStatus) {
                 badgeStatus.innerHTML = `
-                    <span class="badge bg-info-subtle text-info border border-info px-2 py-1 fs-11">
-                        <i class="ri-refresh-line me-1"></i> <b>Campos precargados con la Base General:</b> Presione "Guardar Tarifas del Proveedor" para aplicar los cambios a este transportista.
-                    </span>
+                    <div class="badge bg-info-subtle text-info border border-info px-3 py-2 fs-12 text-wrap text-start rounded-pill shadow-xs">
+                        <i class="ri-refresh-line me-1 fs-14 align-middle"></i> <b>Campos precargados con la Base General:</b> Presione "Guardar Tarifas del Proveedor" para aplicar los cambios a este transportista.
+                    </div>
                 `;
             }
 

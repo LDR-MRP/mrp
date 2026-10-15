@@ -21,6 +21,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Configuración de agentes y reglas locales
+.agents/
+
 # Documentación interna de desarrollo, bases de datos y scripts
 docs_desarrollo/
 docs_desarrollo_logistica/

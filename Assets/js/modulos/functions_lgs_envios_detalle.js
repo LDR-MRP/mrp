@@ -332,7 +332,7 @@ function initSortables() {
 function actualizarConteoYSecuencia(listaUl) {
     if (!listaUl || listaUl.id === 'vins-disponibles') return;
 
-    const container = listaUl.closest('div.border');
+    const container = listaUl.closest('.envios-surface-card') || listaUl.closest('div.border');
     const items = listaUl.querySelectorAll('li');
     const cap = parseInt(listaUl.getAttribute('data-capacidad') || 99, 10);
     const tieneNodos = Array.isArray(g_nodosEnvio) && g_nodosEnvio.length > 0;
@@ -444,6 +444,35 @@ function actualizarConteoYSecuencia(listaUl) {
                 }
             });
 
+            // Determinar tipo de servicio y badge según distancia del VIN
+            const tipoServicioEnvio = (g_envioData && g_envioData.tipo_servicio ? g_envioData.tipo_servicio : 'AUTOMATICO').toUpperCase();
+            let tipoServicioVin = 'FORANEO';
+            let badgeServicio = '';
+
+            if (tipoServicioEnvio === 'SLC') {
+                tipoServicioVin = 'SLC';
+                badgeServicio = `<span class="badge bg-soft-success text-success border border-success fs-10 fw-bold ms-1" title="Servicio Local Corto (0-40 KM)"><i class="ri-map-pin-user-line me-1"></i>SLC (Local)</span>`;
+            } else if (tipoServicioEnvio === 'SLL') {
+                tipoServicioVin = 'SLL';
+                badgeServicio = `<span class="badge bg-soft-warning text-warning border border-warning fs-10 fw-bold ms-1" title="Servicio Local Largo (41-80 KM)"><i class="ri-map-pin-range-line me-1"></i>SLL (Local Largo)</span>`;
+            } else if (tipoServicioEnvio === 'FORANEO') {
+                tipoServicioVin = 'FORANEO';
+                badgeServicio = `<span class="badge bg-soft-primary text-primary border border-primary fs-10 fw-bold ms-1" title="Servicio Foráneo por KM"><i class="ri-road-map-line me-1"></i>FORÁNEO</span>`;
+            } else {
+                // AUTOMATICO / MIXTO
+                if (kmVin > 0 && kmVin <= 40) {
+                    tipoServicioVin = 'SLC';
+                    badgeServicio = `<span class="badge bg-soft-success text-success border border-success fs-10 fw-bold ms-1" title="Cálculo Automático: 0-40 KM (Tarifa Fija SLC)"><i class="ri-map-pin-user-line me-1"></i>SLC (Local)</span>`;
+                } else if (kmVin > 40 && kmVin <= 80) {
+                    tipoServicioVin = 'SLL';
+                    badgeServicio = `<span class="badge bg-soft-warning text-warning border border-warning fs-10 fw-bold ms-1" title="Cálculo Automático: 41-80 KM (Tarifa Fija SLL)"><i class="ri-map-pin-range-line me-1"></i>SLL (Local Largo)</span>`;
+                } else {
+                    tipoServicioVin = 'FORANEO';
+                    badgeServicio = `<span class="badge bg-soft-primary text-primary border border-primary fs-10 fw-bold ms-1" title="Cálculo Automático: >80 KM (Factor por KM)"><i class="ri-road-map-line me-1"></i>FORÁNEO</span>`;
+                }
+            }
+            li.setAttribute('data-tipo-servicio', tipoServicioVin);
+
             li.innerHTML = `
             <div class="d-flex align-items-center">
                 <div class="flex-shrink-0 me-2">
@@ -483,10 +512,13 @@ function actualizarConteoYSecuencia(listaUl) {
                                 </select>
                             </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mt-1">
-                            <span class="badge bg-soft-info text-info border border-info fs-10 fw-bold">
-                                <i class="ri-route-line me-1"></i>${kmVin.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km (${tramosVin} tramo${tramosVin > 1 ? 's' : ''} a bordo)
-                            </span>
+                        <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap gap-1">
+                            <div>
+                                <span class="badge bg-soft-info text-info border border-info fs-10 fw-bold">
+                                    <i class="ri-route-line me-1"></i>${kmVin.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km (${tramosVin} tramo${tramosVin > 1 ? 's' : ''} a bordo)
+                                </span>
+                                ${badgeServicio}
+                            </div>
                             <small class="text-muted fs-10">N/S: ${numSerie || 'N/A'}</small>
                         </div>
                     </div>
@@ -514,6 +546,33 @@ function actualizarConteoYSecuencia(listaUl) {
             const objParadaSel = (g_paradasEnvio || []).find(p => String(p.id_parada) === String(paradaAutoselect));
             const kmTramo = objParadaSel ? parseFloat(objParadaSel.km_tramo || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : null;
             const kmAcum = objParadaSel ? parseFloat(objParadaSel.km_acumulado || objParadaSel.km_tramo || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : null;
+
+            const kmAcumNum = objParadaSel ? parseFloat(objParadaSel.km_acumulado || objParadaSel.km_tramo || 0) : 0;
+            const tipoServicioEnvioLegacy = (g_envioData && g_envioData.tipo_servicio ? g_envioData.tipo_servicio : 'AUTOMATICO').toUpperCase();
+            let tipoServicioVinLegacy = 'FORANEO';
+            let badgeServicioLegacy = '';
+            if (tipoServicioEnvioLegacy === 'SLC') {
+                tipoServicioVinLegacy = 'SLC';
+                badgeServicioLegacy = `<span class="badge bg-soft-success text-success border border-success fs-10 fw-bold ms-1">SLC (Local)</span>`;
+            } else if (tipoServicioEnvioLegacy === 'SLL') {
+                tipoServicioVinLegacy = 'SLL';
+                badgeServicioLegacy = `<span class="badge bg-soft-warning text-warning border border-warning fs-10 fw-bold ms-1">SLL (Local Largo)</span>`;
+            } else if (tipoServicioEnvioLegacy === 'FORANEO') {
+                tipoServicioVinLegacy = 'FORANEO';
+                badgeServicioLegacy = `<span class="badge bg-soft-primary text-primary border border-primary fs-10 fw-bold ms-1">FORÁNEO</span>`;
+            } else {
+                if (kmAcumNum > 0 && kmAcumNum <= 40) {
+                    tipoServicioVinLegacy = 'SLC';
+                    badgeServicioLegacy = `<span class="badge bg-soft-success text-success border border-success fs-10 fw-bold ms-1">SLC (Local)</span>`;
+                } else if (kmAcumNum > 40 && kmAcumNum <= 80) {
+                    tipoServicioVinLegacy = 'SLL';
+                    badgeServicioLegacy = `<span class="badge bg-soft-warning text-warning border border-warning fs-10 fw-bold ms-1">SLL (Local Largo)</span>`;
+                } else {
+                    tipoServicioVinLegacy = 'FORANEO';
+                    badgeServicioLegacy = `<span class="badge bg-soft-primary text-primary border border-primary fs-10 fw-bold ms-1">FORÁNEO</span>`;
+                }
+            }
+            li.setAttribute('data-tipo-servicio', tipoServicioVinLegacy);
 
             let opts = '<option value="">-- Sin parada --</option>';
             if (g_paradasEnvio && g_paradasEnvio.length > 0) {
@@ -554,6 +613,7 @@ function actualizarConteoYSecuencia(listaUl) {
                         <span class="badge bg-soft-info text-info border border-info fs-11 fw-bold vin-km-tramo-badge" style="${kmTramo ? '' : 'display:none;'}">
                             <i class="ri-map-pin-distance-line me-1"></i>+${kmTramo || 0} km (Total: ${kmAcum || 0} km)
                         </span>
+                        ${badgeServicioLegacy}
                     </div>` : ''}
                     <small class="text-muted fs-11">N/S: ${numSerie || 'N/A'}</small>
                 </div>
@@ -984,7 +1044,7 @@ function inyectarContenedorVehiculo(vehiculo, vinsIniciales = []) {
     if (!contenedor) return;
 
     const divCard = document.createElement('div');
-    divCard.className = 'border rounded p-3 mb-4 bg-light shadow-sm';
+    divCard.className = 'envios-surface-card vehiculo-card-item p-3 mb-4';
     
     let htmlVins = '';
     vinsIniciales.forEach((v, idx) => {
@@ -997,7 +1057,7 @@ function inyectarContenedorVehiculo(vehiculo, vinsIniciales = []) {
             : `<span class="badge bg-info px-2 py-1 fs-11 me-1"><i class="ri-truck-line me-1"></i>${posIndex}º EN CARGAR</span>`;
 
         htmlVins += `
-        <li class="list-group-item cursor-move shadow-sm mb-2 rounded border-start border-3 border-success bg-white" 
+        <li class="list-group-item cursor-move shadow-sm mb-2 rounded-3 border-start border-3 border-success bg-white" 
             data-id-unidad="${v.id_unidad}"
             data-vin="${v.vin}"
             data-num-serie="${v.num_serie || ''}"
@@ -1039,19 +1099,19 @@ function inyectarContenedorVehiculo(vehiculo, vinsIniciales = []) {
     if (vehiculo.id_plataforma) iconoTitulo = 'ri-truck-line text-info';
 
     divCard.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
             <h6 class="fw-bold text-dark mb-0 fs-14">
-                <i class="${iconoTitulo} me-2"></i>
+                <i class="${iconoTitulo} me-2 fs-16 align-middle"></i>
                 ${vehiculo.titulo}
             </h6>
             <div class="d-flex align-items-center">
-                <span class="badge bg-primary rounded-pill me-2">${vinsIniciales.length} / ${vehiculo.capacidad} VINs</span>
+                <span class="badge bg-primary-subtle text-primary rounded-pill me-2 fs-11 px-2 py-1 fw-bold">${vinsIniciales.length} / ${vehiculo.capacidad} VINs</span>
                 <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removerContenedorVehiculo(this)" title="Quitar Vehículo">
-                    <i class="ri-close-circle-fill fs-18"></i>
+                    <i class="ri-delete-bin-line fs-16"></i>
                 </button>
             </div>
         </div>
-        <ul class="list-group sortable-list vehiculo-list" ${attrMadrina} ${attrPlataforma} ${attrChofer} data-capacidad="${vehiculo.capacidad}" style="min-height: 100px; border: 2px dashed #bbb; border-radius: 8px;">
+        <ul class="list-group sortable-list vehiculo-list" ${attrMadrina} ${attrPlataforma} ${attrChofer} data-capacidad="${vehiculo.capacidad}" style="min-height: 110px; border: 2px dashed #CBD5E1; border-radius: 12px;">
             ${htmlVins}
         </ul>
     `;
@@ -1061,7 +1121,7 @@ function inyectarContenedorVehiculo(vehiculo, vinsIniciales = []) {
 }
 
 function removerContenedorVehiculo(btn) {
-    const card = btn.closest('div.border');
+    const card = btn.closest('.envios-surface-card') || btn.closest('div.border');
     if (!card) return;
 
     // Regresar VINs al pool disponible antes de remover
@@ -1077,7 +1137,7 @@ function removerContenedorVehiculo(btn) {
     card.remove();
 
     const contenedor = document.getElementById('contenedor-vehiculos');
-    if (contenedor && contenedor.querySelectorAll('div.border').length === 0) {
+    if (contenedor && contenedor.querySelectorAll('.vehiculo-card-item, .envios-surface-card, div.border').length === 0) {
         const msgEmpty = document.getElementById('empty-vehiculos-msg');
         if (msgEmpty) msgEmpty.style.display = 'block';
     }
@@ -1120,6 +1180,8 @@ function guardarAcomodoAuto() {
                 if (!idBajada) idBajada = selLegacy.value;
             }
 
+            let tipoServicio = li.getAttribute('data-tipo-servicio') || null;
+
             if (idUnidad) {
                 if (!asignaciones.some(a => a.id_unidad == idUnidad)) {
                     asignaciones.push({
@@ -1130,7 +1192,8 @@ function guardarAcomodoAuto() {
                         id_madrina: idMadrina,
                         id_plataforma: idPlataforma,
                         id_chofer: idChofer,
-                        posicion_acomodo: posicion
+                        posicion_acomodo: posicion,
+                        tipo_servicio: tipoServicio
                     });
                     posicion++;
                 }
@@ -1139,6 +1202,13 @@ function guardarAcomodoAuto() {
     });
 
     const lblCosto = document.getElementById('lbl-resumen-costo');
+
+    const idTipoTrasladoAct = parseInt(g_envioData ? g_envioData.id_tipo_traslado : 1);
+    if (idTipoTrasladoAct === 1 && asignaciones.length === 1) {
+        if (lblCosto) lblCosto.innerHTML = '<span class="text-warning fs-11 fw-semibold" title="Mínimo 2 unidades en Madrina"><i class="ri-alert-line me-1"></i>Requiere mín. 2 uds en Madrina</span>';
+        return;
+    }
+
     if (lblCosto) lblCosto.innerHTML = '<i class="spinner-border spinner-border-sm me-1"></i> Calculando...';
 
     let request = new XMLHttpRequest();
@@ -1200,9 +1270,10 @@ function procesarAcomodo(finalizar) {
     const vehiculos = document.querySelectorAll('.vehiculo-list');
 
     vehiculos.forEach(v => {
-        const idMadrina = v.getAttribute('data-id-madrina') || null;
-        const idChofer  = v.getAttribute('data-id-chofer') || null;
-        const items     = v.querySelectorAll('li');
+        const idMadrina    = v.getAttribute('data-id-madrina') || null;
+        const idPlataforma = v.getAttribute('data-id-plataforma') || null;
+        const idChofer     = v.getAttribute('data-id-chofer') || null;
+        const items        = v.querySelectorAll('li');
 
         let posicion = 1;
         items.forEach(li => {
@@ -1226,6 +1297,8 @@ function procesarAcomodo(finalizar) {
                 if (!idBajada) idBajada = selLegacy.value;
             }
 
+            let tipoServicio = li.getAttribute('data-tipo-servicio') || null;
+
             if (idUnidad) {
                 if (asignaciones.some(a => a.id_unidad == idUnidad)) {
                     return;
@@ -1236,8 +1309,10 @@ function procesarAcomodo(finalizar) {
                     id_nodo_subida: idSubida,
                     id_nodo_bajada: idBajada,
                     id_madrina: idMadrina,
+                    id_plataforma: idPlataforma,
                     id_chofer: idChofer,
-                    posicion_acomodo: posicion
+                    posicion_acomodo: posicion,
+                    tipo_servicio: tipoServicio
                 });
                 posicion++;
             }
@@ -1246,6 +1321,16 @@ function procesarAcomodo(finalizar) {
 
     if (asignaciones.length === 0) {
         Swal.fire("Atención", "Arrastre al menos un VIN desde el pool disponible hacia una Madrina o Chofer.", "warning");
+        return;
+    }
+
+    const idTipoTrasladoAct = parseInt(g_envioData ? g_envioData.id_tipo_traslado : 1);
+    if (idTipoTrasladoAct === 1 && asignaciones.length === 1) {
+        Swal.fire({
+            title: "Capacidad Mínima de Madrina",
+            text: "No se puede enviar solo 1 unidad en una Madrina. Para traslados individuales de una sola unidad debe utilizarse Plataforma o Chofer (Rodando).",
+            icon: "warning"
+        });
         return;
     }
 
@@ -1360,12 +1445,20 @@ function renderInfografiaRuta() {
         return;
     }
 
+    const modalidad = (g_envioData && g_envioData.modalidad_calculo) ? g_envioData.modalidad_calculo : 'ESCALONADO';
+    const esDirecto = (modalidad === 'DIRECTO');
+
     let html = `
     <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px; background: linear-gradient(to right, #f8f9fa, #ffffff);">
-        <div class="card-header border-bottom border-light bg-transparent py-3">
+        <div class="card-header border-bottom border-light bg-transparent py-3 d-flex align-items-center justify-content-between">
             <h6 class="card-title mb-0 fw-bold text-uppercase fs-12 text-primary">
                 <i class="ri-git-merge-line me-1 fs-15 align-middle"></i> Infografía de Factoraje y Ruta
             </h6>
+            <div>
+                ${esDirecto 
+                    ? '<span class="badge bg-soft-info text-info border border-info fs-11"><i class="ri-direction-line me-1"></i>Modalidad: Directo con Escalas por Origen</span>' 
+                    : '<span class="badge bg-soft-secondary text-secondary border fs-11"><i class="ri-route-line me-1"></i>Modalidad: Escalonado Proporcional</span>'}
+            </div>
         </div>
         <div class="card-body p-4">
             <div class="d-flex align-items-stretch justify-content-start overflow-auto pb-3" style="min-width: max-content;">
@@ -1458,7 +1551,12 @@ function renderInfografiaRuta() {
             </div>
         </div>
         <div class="card-footer bg-light py-2">
-            <small class="text-muted fs-11"><i class="ri-information-line me-1 text-info"></i>El factoraje volumétrico se ajusta progresivamente por tramo según las unidades a bordo. Unidades en el pool no asignadas no contabilizan factor.</small>
+            <small class="text-muted fs-11">
+                <i class="ri-information-line me-1 text-info"></i>
+                ${esDirecto
+                    ? 'En <strong>Envío Directo con Escalas</strong>, cada destino se cotiza de forma independiente desde su punto de salida asignado, aplicando el factor correspondiente al volumen de unidades que comparten ese destino.'
+                    : 'El factoraje volumétrico se ajusta progresivamente por tramo según las unidades a bordo. Unidades en el pool no asignadas no contabilizan factor.'}
+            </small>
         </div>
     </div>`;
 

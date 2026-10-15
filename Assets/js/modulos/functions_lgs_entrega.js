@@ -235,20 +235,24 @@ function guardarEntregaDestino() {
         didOpen: () => { Swal.showLoading(); }
     });
 
-    // Subimos evidencias finales del envío
-    fetch(base_url + '/Lgs_ejecucion/registrarDespacho', { // Reutilizamos registro de evidencias final del viaje
+    // Subimos evidencias finales del envío y cerramos el viaje
+    fetch(base_url + '/Lgs_ejecucion/finalizarEntregaDestino', {
         method: 'POST',
         body: formData
     })
     .then(response => response.json())
     .then(res => {
-        Swal.fire({
-            title: '¡Viaje Completado!',
-            text: 'El traslado ha sido cerrado y registrado exitosamente en el sistema MRP.',
-            icon: 'success'
-        }).then(() => {
-            window.location.href = base_url + "/Lgs_ejecucion/chofer_movil";
-        });
+        if (res.status === 'success' || res.status === true) {
+            Swal.fire({
+                title: '¡Viaje Completado!',
+                text: res.message || 'El traslado ha sido cerrado y registrado exitosamente en el sistema MRP.',
+                icon: 'success'
+            }).then(() => {
+                window.location.href = base_url + "/Lgs_ejecucion/chofer_movil";
+            });
+        } else {
+            Swal.fire("Error", res.message || res.msg || "No se pudo finalizar la entrega.", "error");
+        }
     })
     .catch(err => {
         Swal.fire("Error", "Error de red al completar el traslado.", "error");

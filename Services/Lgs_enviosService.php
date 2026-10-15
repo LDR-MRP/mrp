@@ -75,7 +75,7 @@ class Lgs_enviosService {
         }
 
         // 1. Cabecera del envío
-        $stmtEnvio = $db->prepare("SELECT id_tipo_traslado, id_proveedor, id_origen, id_destino, km_total, id_estado, costo_total, is_lowboy, tipo_servicio FROM lgs_envios WHERE id_envio = :id");
+        $stmtEnvio = $db->prepare("SELECT id_tipo_traslado, id_proveedor, id_origen, id_destino, km_total, id_estado, costo_total, is_lowboy, tipo_servicio, modalidad_calculo FROM lgs_envios WHERE id_envio = :id");
         $stmtEnvio->execute(['id' => $idEnvio]);
         $envio = $stmtEnvio->fetch(PDO::FETCH_ASSOC);
 
@@ -90,9 +90,10 @@ class Lgs_enviosService {
         $idTipoTraslado = (int)$envio['id_tipo_traslado'];
         $idProveedor    = (int)$envio['id_proveedor'];
         $isLowboy       = (int)($envio['is_lowboy'] ?? 0);
+        $modalidad      = strtoupper($envio['modalidad_calculo'] ?? 'ESCALONADO');
 
         // 2. Obtener los nodos ordenados
-        $stmtNodos = $db->prepare("SELECT id_nodo, orden, id_ubicacion, destino_nombre_libre, km_tramo_anterior FROM lgs_envios_nodos WHERE id_envio = ? ORDER BY orden ASC");
+        $stmtNodos = $db->prepare("SELECT id_nodo, orden, tipo_nodo, id_ubicacion, id_origen_referencia, destino_nombre_libre, km_tramo_anterior FROM lgs_envios_nodos WHERE id_envio = ? ORDER BY orden ASC");
         $stmtNodos->execute([$idEnvio]);
         $nodos = $stmtNodos->fetchAll(PDO::FETCH_ASSOC);
 
@@ -110,7 +111,7 @@ class Lgs_enviosService {
         }
 
         // 3. Obtener VINs
-        $stmtVins = $db->prepare("SELECT id, id_unidad, id_madrina, id_chofer, id_nodo_subida, id_nodo_bajada FROM lgs_envios_vins WHERE id_envio = ?");
+        $stmtVins = $db->prepare("SELECT id, id_unidad, id_madrina, id_plataforma, id_chofer, id_nodo_subida, id_nodo_bajada FROM lgs_envios_vins WHERE id_envio = ?");
         $stmtVins->execute([$idEnvio]);
         $vins = $stmtVins->fetchAll(PDO::FETCH_ASSOC);
 
@@ -118,6 +119,11 @@ class Lgs_enviosService {
             $db->prepare("DELETE FROM lgs_envios_tramos_costos WHERE id_envio = ?")->execute([$idEnvio]);
             $db->prepare("UPDATE lgs_envios SET costo_total = 0.00 WHERE id_envio = ?")->execute([$idEnvio]);
             return 0.0;
+        }
+
+        // Candado de negocio: en Madrina (1) no se puede enviar solo 1 unidad
+        if ($idTipoTraslado === 1 && count($vins) === 1) {
+            throw new Exception("No es posible enviar una sola unidad en Madrina. Para traslados individuales debe utilizarse Plataforma o Chofer (Rodando).");
         }
 
         foreach ($vins as &$vin) {
@@ -130,9 +136,9 @@ class Lgs_enviosService {
         foreach ($vins as $vin) {
             if ($idTipoTraslado === 2) {
                 // En rodando (chofer), cada unidad viaja individualmente en sus propias ruedas.
-                // Si ya tiene chofer asignado se agrupa por id_chofer; si aún no se le asigna chofer,
-                // se usa 'vin_' . $vin['id'] para que cada unidad se calcule según su propio modelo y segmento.
                 $key = !empty($vin['id_chofer']) ? ((int)$vin['id_chofer']) : ('vin_' . $vin['id']);
+            } elseif ($idTipoTraslado === 3) {
+                $key = !empty($vin['id_plataforma']) ? ((int)$vin['id_plataforma']) : ((int)($vin['id_madrina'] ?? 0));
             } else {
                 $key = (int)($vin['id_madrina'] ?? 0);
             }
@@ -144,187 +150,419 @@ class Lgs_enviosService {
         $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = 0 WHERE id_envio = ?")->execute([$idEnvio]);
 
         $costoTotalEnvio = 0.0;
-
-        // Ponderación tarifaria base por segmento:
-        // Segmento 1 (LDT / Ligeros): $27.00
-        // Segmento 2 (MDT / Medianos): $30.00
-        // Segmento 3 (HDT / Pesados): $40.00
-        // Segmento 4 (Buses): $50.00
-        // Segmento 5 (Lowboy): $60.00
         $tarifasBasePond = [1 => 27.0, 2 => 30.0, 3 => 40.0, 4 => 50.0, 5 => 60.0];
 
-        // Recorrer cada madrina/chofer
-        foreach ($unidadesAsignadas as $idAgrupador => $vinsGrupo) {
-            
-            // Recorrer los tramos (nodos consecutivos)
-            for ($i = 1; $i < count($nodos); $i++) {
-                $nodoOrigen = $nodos[$i-1];
-                $nodoDestino = $nodos[$i];
-
-                $idLocOrigen = (int)$nodoOrigen['id_ubicacion'];
-                $idLocDestino = (int)$nodoDestino['id_ubicacion'];
-                $kmTramo = (float)$nodoDestino['km_tramo_anterior'];
-
-                // 1. Resolver distancia desde la memoria progresiva (lgs_distancias)
-                if ($idLocOrigen > 0 && $idLocDestino > 0) {
-                    $distanciaMemoria = $this->model->getDistanciaEntre($idLocOrigen, $idLocDestino, $db);
-                    if ($distanciaMemoria !== null && $distanciaMemoria > 0) {
-                        $kmTramo = $distanciaMemoria;
-                    } elseif ($kmTramo > 0) {
-                        // Si ya tenía km_tramo_anterior pero no en memoria, aprenderlo
-                        $this->model->saveDistancia($idLocOrigen, $idLocDestino, $kmTramo, $db);
-                    }
-                }
-
-                // Guardar el snapshot de distancia en el nodo de destino si cambió
-                if ($kmTramo > 0 && (float)$nodoDestino['km_tramo_anterior'] != $kmTramo) {
-                    $db->prepare("UPDATE lgs_envios_nodos SET km_tramo_anterior = ? WHERE id_nodo = ?")
-                       ->execute([$kmTramo, $nodoDestino['id_nodo']]);
-                }
-
-                // Determinar qué VINs van en la madrina durante este tramo
-                $vinsEnTramo = [];
-                $vinsLigeros = 0;
-                $vinsMedianos = 0;
-                $vinsPesados = 0;
-                $vinsBuses = 0;
-                $vinsEspeciales = 0; // Lowboy
-                
+        if ($modalidad === 'DIRECTO') {
+            // ══════════════════════════════════════════════════════════════════════
+            // MODALIDAD: ENVÍO DIRECTO CON ESCALAS (SUB-ENVÍOS POR DESTINO)
+            // ══════════════════════════════════════════════════════════════════════
+            foreach ($unidadesAsignadas as $idAgrupador => $vinsGrupo) {
+                // Agrupar VINs de este transporte por su nodo de destino (bajada)
+                $gruposPorDestino = [];
                 foreach ($vinsGrupo as $vin) {
-                    $ordenSubida = null;
-                    $ordenBajada = null;
-
-                    foreach ($nodos as $n) {
-                        if (!empty($vin['id_nodo_subida']) && $n['id_nodo'] == $vin['id_nodo_subida']) {
-                            $ordenSubida = (int)$n['orden'];
-                        }
-                        if (!empty($vin['id_nodo_bajada']) && $n['id_nodo'] == $vin['id_nodo_bajada']) {
-                            $ordenBajada = (int)$n['orden'];
-                        }
-                    }
-
-                    // Defaults si no están explícitamente fijados
-                    if ($ordenSubida === null) {
-                        $ordenSubida = 0; // Sube al inicio
-                    }
-                    if ($ordenBajada === null) {
+                    $idNodoBajada = !empty($vin['id_nodo_bajada']) ? (int)$vin['id_nodo_bajada'] : null;
+                    if ($idNodoBajada === null) {
                         if (!empty($vin['id_parada'])) {
+                            $idNodoBajada = (int)$vin['id_parada'];
+                        } else {
+                            $idNodoBajada = (int)$nodos[count($nodos) - 1]['id_nodo'];
+                        }
+                    }
+                    $gruposPorDestino[$idNodoBajada][] = $vin;
+                }
+
+                foreach ($gruposPorDestino as $idNodoDestino => $vinsDestino) {
+                    $numVinsDest = count($vinsDestino);
+                    if ($numVinsDest === 0) continue;
+
+                    // Localizar el nodo de destino en el itinerario
+                    $nodoDestino = null;
+                    foreach ($nodos as $n) {
+                        if ((int)$n['id_nodo'] === $idNodoDestino) {
+                            $nodoDestino = $n;
+                            break;
+                        }
+                    }
+                    if (!$nodoDestino) {
+                        $nodoDestino = $nodos[count($nodos) - 1];
+                    }
+
+                    // Determinar el origen de referencia para este destino
+                    $nodoOrigen = null;
+                    if (!empty($nodoDestino['id_origen_referencia'])) {
+                        foreach ($nodos as $n) {
+                            if ((int)$n['id_nodo'] === (int)$nodoDestino['id_origen_referencia']
+                                || (int)$n['orden'] === (int)$nodoDestino['id_origen_referencia']
+                                || (int)$n['id_ubicacion'] === (int)$nodoDestino['id_origen_referencia']) {
+                                $nodoOrigen = $n;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!$nodoOrigen) {
+                        // Si las unidades comparten un nodo de subida explícito
+                        $subidasComunes = array_unique(array_filter(array_column($vinsDestino, 'id_nodo_subida')));
+                        if (count($subidasComunes) === 1) {
+                            $idSub = (int)reset($subidasComunes);
                             foreach ($nodos as $n) {
-                                if ($n['id_nodo'] == $vin['id_parada']) {
-                                    $ordenBajada = (int)$n['orden'];
+                                if ((int)$n['id_nodo'] === $idSub) {
+                                    $nodoOrigen = $n;
                                     break;
                                 }
                             }
                         }
-                        if ($ordenBajada === null) {
-                            $ordenBajada = count($nodos) - 1; // Baja al final
+                    }
+
+                    if (!$nodoOrigen) {
+                        $nodoOrigen = $nodos[0]; // Origen de partida inicial
+                    }
+
+                    $idLocOrigen = (int)$nodoOrigen['id_ubicacion'];
+                    $idLocDestino = (int)$nodoDestino['id_ubicacion'];
+
+                    // Resolver distancia directa Origen -> Destino
+                    $kmTramo = 0.0;
+                    if ($idLocOrigen > 0 && $idLocDestino > 0) {
+                        $distMemoria = $this->model->getDistanciaEntre($idLocOrigen, $idLocDestino, $db);
+                        if ($distMemoria !== null && $distMemoria > 0) {
+                            $kmTramo = $distMemoria;
                         }
                     }
 
-                    if ($ordenSubida <= (int)$nodoOrigen['orden'] && $ordenBajada >= (int)$nodoDestino['orden']) {
-                        $vinsEnTramo[] = $vin;
-                        $seg = $vin['id_segmento'];
+                    if ($kmTramo <= 0) {
+                        // Acumular tramos intermedios de la ruta como fallback si no hay memoria directa
+                        $ordOrig = (int)$nodoOrigen['orden'];
+                        $ordDest = (int)$nodoDestino['orden'];
+                        $distAcum = 0.0;
+                        foreach ($nodos as $n) {
+                            $ordN = (int)$n['orden'];
+                            if ($ordN > $ordOrig && $ordN <= $ordDest) {
+                                $distAcum += (float)$n['km_tramo_anterior'];
+                            }
+                        }
+                        if ($distAcum > 0) {
+                            $kmTramo = $distAcum;
+                            if ($idLocOrigen > 0 && $idLocDestino > 0) {
+                                $this->model->saveDistancia($idLocOrigen, $idLocDestino, $kmTramo, $db);
+                            }
+                        } else {
+                            $kmTramo = (float)$nodoDestino['km_tramo_anterior'];
+                        }
+                    }
+
+                    $vinsLigeros = 0;
+                    $vinsMedianos = 0;
+                    $vinsPesados = 0;
+                    $vinsBuses = 0;
+                    $vinsEspeciales = 0;
+
+                    foreach ($vinsDestino as $v) {
+                        $seg = (int)($v['id_segmento'] ?? 1);
                         if ($seg == 1) $vinsLigeros++;
                         elseif ($seg == 2) $vinsMedianos++;
                         elseif ($seg == 3) $vinsPesados++;
                         elseif ($seg == 4) $vinsBuses++;
                         elseif ($seg == 5) $vinsEspeciales++;
                     }
-                }
 
-                $volumenTotal = count($vinsEnTramo);
-                if ($volumenTotal === 0) continue; // Madrina vacía en este tramo
-
-                // Determinar el segmento dominante (el más pesado)
-                $segmentoDominante = 1;
-                if ($vinsEspeciales > 0 || ($idTipoTraslado === 3 && $isLowboy)) $segmentoDominante = 5;
-                elseif ($vinsBuses > 0) $segmentoDominante = 4;
-                elseif ($vinsPesados > 0) $segmentoDominante = 3;
-                elseif ($vinsMedianos > 0) $segmentoDominante = 2;
-
-                // 2. Obtener tarifa aplicable según proveedor, tipo, segmento y volumen
-                $volumenParaTarifa = $volumenTotal;
-                if ($idTipoTraslado === 1 && $volumenTotal > 9) {
-                    $volumenParaTarifa = 9; // Madrina factor máximo es 9
-                } elseif ($idTipoTraslado === 3 && $isLowboy) {
-                    $volumenParaTarifa = 4; // Forzar lectura del factor 4 (Lowboy) en Plataformas
-                } elseif ($idTipoTraslado === 3 && $volumenTotal > 3) {
-                    $volumenParaTarifa = 3; // Plataforma factor máximo estándar es 3
-                }
-                $tarifa = $this->getTarifaAplicable($db, $idTipoTraslado, $idProveedor, $segmentoDominante, $volumenParaTarifa);
-
-                $distanciaUsar = $kmTramo; // La distancia siempre viene de la ruta/memoria
-                $costoPorKm = (float)($tarifa['costo_por_km'] ?? 0);
-                $factor = ((float)($tarifa['factor'] ?? 0) > 0) ? (float)$tarifa['factor'] : 1.0;
-                $costoPlano = (float)($tarifa['precio_plano'] ?? 0);
-
-                // En Chofer (Rodando), el costo por km es directo de la tarifa por unidad
-                if ($idTipoTraslado === 2) {
-                    $factor = 1.0;
-                }
-
-                $tipoServicio = $envio['tipo_servicio'] ?? 'FORANEO';
-                if ($tipoServicio === 'SLC') {
-                    if ($idTipoTraslado === 1 && $volumenTotal < 3) {
-                        throw new Exception("El servicio Local Corto (SLC) en Madrina solo está permitido a partir de 3 unidades. Actualmente el envío tiene {$volumenTotal} unidades.");
+                    // Regla de negocio: En Madrina y Plataforma el segmento no pondera tarifa base
+                    $segmentoDominante = 1;
+                    if ($idTipoTraslado === 3 && $isLowboy) {
+                        $segmentoDominante = 5;
+                    } elseif ($idTipoTraslado === 2) {
+                        if ($vinsEspeciales > 0) $segmentoDominante = 5;
+                        elseif ($vinsBuses > 0) $segmentoDominante = 4;
+                        elseif ($vinsPesados > 0) $segmentoDominante = 3;
+                        elseif ($vinsMedianos > 0) $segmentoDominante = 2;
                     }
-                    $costoPlano = (float)($tarifa['precio_slc'] ?? 0);
-                    $distanciaUsar = 0; // Se cobra plano
-                } elseif ($tipoServicio === 'SLL') {
-                    if ($idTipoTraslado === 1 && $volumenTotal < 3) {
-                        throw new Exception("El servicio Local Largo (SLL) en Madrina solo está permitido a partir de 3 unidades. Actualmente el envío tiene {$volumenTotal} unidades.");
+
+                    // El factoraje en Envío Directo se calcula según el total de unidades a bordo en la Madrina/Plataforma
+                    $volumenParaTarifa = ($idTipoTraslado === 1 || $idTipoTraslado === 3) ? count($vins) : $numVinsDest;
+                    if ($idTipoTraslado === 1 && $volumenParaTarifa > 9) {
+                        $volumenParaTarifa = 9;
+                    } elseif ($idTipoTraslado === 3 && $isLowboy) {
+                        $volumenParaTarifa = 4;
+                    } elseif ($idTipoTraslado === 3 && $volumenParaTarifa > 3) {
+                        $volumenParaTarifa = 3;
                     }
-                    $costoPlano = (float)($tarifa['precio_sll'] ?? 0);
-                    $distanciaUsar = 0; // Se cobra plano
+
+                    $tarifa = $this->getTarifaAplicable($db, $idTipoTraslado, $idProveedor, $segmentoDominante, $volumenParaTarifa);
+
+                    $distanciaUsar = $kmTramo;
+                    $costoPorKm = (float)($tarifa['costo_por_km'] ?? 0);
+                    $factor = ((float)($tarifa['factor'] ?? 0) > 0) ? (float)$tarifa['factor'] : 1.0;
+                    $costoPlano = (float)($tarifa['precio_plano'] ?? 0);
+
+                    if ($idTipoTraslado === 2) {
+                        $factor = 1.0;
+                    }
+
+                    $tipoServicioEnvio = strtoupper($envio['tipo_servicio'] ?? 'AUTOMATICO');
+                    $servicioSubEnvio = 'FORANEO';
+
+                    if ($tipoServicioEnvio === 'SLC') {
+                        $servicioSubEnvio = 'SLC';
+                    } elseif ($tipoServicioEnvio === 'SLL') {
+                        $servicioSubEnvio = 'SLL';
+                    } elseif ($tipoServicioEnvio === 'FORANEO') {
+                        $servicioSubEnvio = 'FORANEO';
+                    } else {
+                        // AUTOMATICO o MIXTO: Clasifica según la distancia real hacia este destino
+                        if ($kmTramo > 0 && $kmTramo <= 40) {
+                            $servicioSubEnvio = 'SLC';
+                        } elseif ($kmTramo > 40 && $kmTramo <= 80) {
+                            $servicioSubEnvio = 'SLL';
+                        } else {
+                            $servicioSubEnvio = 'FORANEO';
+                        }
+                    }
+
+                    if ($servicioSubEnvio === 'SLC') {
+                        if ($idTipoTraslado === 1 && count($vins) < 3) {
+                            throw new Exception("El servicio Local Corto (SLC) en Madrina requiere al menos 3 unidades a bordo.");
+                        }
+                        $costoPlano = (float)($tarifa['precio_slc'] ?? 0);
+                        $distanciaUsar = 0;
+                    } elseif ($servicioSubEnvio === 'SLL') {
+                        if ($idTipoTraslado === 1 && count($vins) < 3) {
+                            throw new Exception("El servicio Local Largo (SLL) en Madrina requiere al menos 3 unidades a bordo.");
+                        }
+                        $costoPlano = (float)($tarifa['precio_sll'] ?? 0);
+                        $distanciaUsar = 0;
+                    }
+
+                    $costoSubEnvio = ($distanciaUsar * $costoPorKm * $factor * $numVinsDest) + $costoPlano;
+                    if ($kmTramo == 0 && $costoPlano == 0) {
+                        $costoSubEnvio = 0;
+                    }
+
+                    $stmtInsertCosto = $db->prepare("
+                        INSERT INTO lgs_envios_tramos_costos 
+                        (id_envio, id_madrina, id_chofer, id_nodo_origen, id_nodo_destino, km_tramo, vins_ligeros, vins_medianos, vins_pesados, vins_especiales, factor_aplicado, costo_estimado, tarifa_usada_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $stmtInsertCosto->execute([
+                        $idEnvio,
+                        ($idTipoTraslado === 1 || $idTipoTraslado === 3) ? $idAgrupador : null,
+                        ($idTipoTraslado === 2) ? $idAgrupador : null,
+                        $nodoOrigen['id_nodo'],
+                        $nodoDestino['id_nodo'],
+                        $distanciaUsar,
+                        $vinsLigeros,
+                        $vinsMedianos,
+                        $vinsPesados,
+                        ($vinsBuses + $vinsEspeciales),
+                        $factor,
+                        $costoSubEnvio,
+                        $tarifa['id'] ?? null
+                    ]);
+
+                    $costoTotalEnvio += $costoSubEnvio;
+
+                    // En Madrina y Plataforma el costo del sub-envío se divide equitativamente entre sus unidades
+                    $costoUnitarioBase = round($costoSubEnvio / $numVinsDest, 2);
+                    $stmtUpdateVin = $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = ?, tipo_servicio = ? WHERE id = ?");
+                    foreach ($vinsDestino as $v) {
+                        $stmtUpdateVin->execute([$costoUnitarioBase, $servicioSubEnvio, $v['id']]);
+                    }
                 }
+            }
+        } else {
+            // ══════════════════════════════════════════════════════════════════════
+            // MODALIDAD: ENVÍO ESCALONADO (TRADICIONAL POR TRAMOS CONSECUTIVOS)
+            // ══════════════════════════════════════════════════════════════════════
+            foreach ($unidadesAsignadas as $idAgrupador => $vinsGrupo) {
+                
+                for ($i = 1; $i < count($nodos); $i++) {
+                    $nodoOrigen = $nodos[$i-1];
+                    $nodoDestino = $nodos[$i];
 
-                // El factor representa el multiplicador del costo POR UNIDAD.
-                // Por lo tanto, el costo del tramo es el Costo_Unidad * Volumen
-                $costoTramo = ($distanciaUsar * $costoPorKm * $factor * $volumenTotal) + $costoPlano;
+                    $idLocOrigen = (int)$nodoOrigen['id_ubicacion'];
+                    $idLocDestino = (int)$nodoDestino['id_ubicacion'];
+                    $kmTramo = (float)$nodoDestino['km_tramo_anterior'];
 
-                // Regla de negocio: si los km reales del tramo son 0, el costo es 0 independientemente de si hay tarifa plana
-                if ($kmTramo == 0) {
-                    $costoTramo = 0;
-                }
+                    if ($idLocOrigen > 0 && $idLocDestino > 0) {
+                        $distanciaMemoria = $this->model->getDistanciaEntre($idLocOrigen, $idLocDestino, $db);
+                        if ($distanciaMemoria !== null && $distanciaMemoria > 0) {
+                            $kmTramo = $distanciaMemoria;
+                        } elseif ($kmTramo > 0) {
+                            $this->model->saveDistancia($idLocOrigen, $idLocDestino, $kmTramo, $db);
+                        }
+                    }
 
-                // Insertar el costo del tramo
-                $stmtInsertCosto = $db->prepare("
-                    INSERT INTO lgs_envios_tramos_costos 
-                    (id_envio, id_madrina, id_chofer, id_nodo_origen, id_nodo_destino, km_tramo, vins_ligeros, vins_medianos, vins_pesados, vins_especiales, factor_aplicado, costo_estimado, tarifa_usada_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ");
-                $stmtInsertCosto->execute([
-                    $idEnvio,
-                    ($idTipoTraslado === 1 || $idTipoTraslado === 3) ? $idAgrupador : null,
-                    ($idTipoTraslado === 2) ? $idAgrupador : null,
-                    $nodoOrigen['id_nodo'],
-                    $nodoDestino['id_nodo'],
-                    $distanciaUsar,
-                    $vinsLigeros,
-                    $vinsMedianos,
-                    $vinsPesados,
-                    ($vinsBuses + $vinsEspeciales),
-                    $factor,
-                    $costoTramo,
-                    $tarifa['id'] ?? null
-                ]);
+                    if ($kmTramo > 0 && (float)$nodoDestino['km_tramo_anterior'] != $kmTramo) {
+                        $db->prepare("UPDATE lgs_envios_nodos SET km_tramo_anterior = ? WHERE id_nodo = ?")
+                           ->execute([$kmTramo, $nodoDestino['id_nodo']]);
+                    }
 
-                $costoTotalEnvio += $costoTramo;
+                    $vinsEnTramo = [];
+                    $vinsLigeros = 0;
+                    $vinsMedianos = 0;
+                    $vinsPesados = 0;
+                    $vinsBuses = 0;
+                    $vinsEspeciales = 0;
+                    
+                    foreach ($vinsGrupo as $vin) {
+                        $ordenSubida = null;
+                        $ordenBajada = null;
 
-                // Actualizar costo unitario ponderado por segmento tarifario
-                $sumaPonderaciones = 0.0;
-                foreach ($vinsEnTramo as $v) {
-                    $segId = (int)($v['id_segmento'] ?? 1);
-                    $sumaPonderaciones += ($tarifasBasePond[$segId] ?? 27.0);
-                }
-                if ($sumaPonderaciones <= 0) $sumaPonderaciones = (float)$volumenTotal;
+                        foreach ($nodos as $n) {
+                            if (!empty($vin['id_nodo_subida']) && $n['id_nodo'] == $vin['id_nodo_subida']) {
+                                $ordenSubida = (int)$n['orden'];
+                            }
+                            if (!empty($vin['id_nodo_bajada']) && $n['id_nodo'] == $vin['id_nodo_bajada']) {
+                                $ordenBajada = (int)$n['orden'];
+                            }
+                        }
 
-                $stmtUpdateVin = $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = COALESCE(costo_unidad, 0) + ? WHERE id = ?");
-                foreach ($vinsEnTramo as $v) {
-                    $segId = (int)($v['id_segmento'] ?? 1);
-                    $peso = $tarifasBasePond[$segId] ?? 27.0;
-                    $costoUnitarioTramo = $costoTramo * ($peso / $sumaPonderaciones);
-                    $stmtUpdateVin->execute([round($costoUnitarioTramo, 2), $v['id']]);
+                        if ($ordenSubida === null) {
+                            $ordenSubida = 0;
+                        }
+                        if ($ordenBajada === null) {
+                            if (!empty($vin['id_parada'])) {
+                                foreach ($nodos as $n) {
+                                    if ($n['id_nodo'] == $vin['id_parada']) {
+                                        $ordenBajada = (int)$n['orden'];
+                                        break;
+                                    }
+                                }
+                            }
+                            if ($ordenBajada === null) {
+                                $ordenBajada = count($nodos) - 1;
+                            }
+                        }
+
+                        if ($ordenSubida <= (int)$nodoOrigen['orden'] && $ordenBajada >= (int)$nodoDestino['orden']) {
+                            $vinsEnTramo[] = $vin;
+                            $seg = $vin['id_segmento'];
+                            if ($seg == 1) $vinsLigeros++;
+                            elseif ($seg == 2) $vinsMedianos++;
+                            elseif ($seg == 3) $vinsPesados++;
+                            elseif ($seg == 4) $vinsBuses++;
+                            elseif ($seg == 5) $vinsEspeciales++;
+                        }
+                    }
+
+                    $volumenTotal = count($vinsEnTramo);
+                    if ($volumenTotal === 0) continue;
+
+                    // En Madrina y Plataforma el segmento no altera la tarifa
+                    if ($idTipoTraslado === 1 || $idTipoTraslado === 3) {
+                        $segmentoDominante = ($idTipoTraslado === 3 && $isLowboy) ? 5 : 1;
+                    } else {
+                        $segmentoDominante = 1;
+                        if ($vinsEspeciales > 0) $segmentoDominante = 5;
+                        elseif ($vinsBuses > 0) $segmentoDominante = 4;
+                        elseif ($vinsPesados > 0) $segmentoDominante = 3;
+                        elseif ($vinsMedianos > 0) $segmentoDominante = 2;
+                    }
+
+                    $volumenParaTarifa = $volumenTotal;
+                    if ($idTipoTraslado === 1 && $volumenTotal > 9) {
+                        $volumenParaTarifa = 9;
+                    } elseif ($idTipoTraslado === 3 && $isLowboy) {
+                        $volumenParaTarifa = 4;
+                    } elseif ($idTipoTraslado === 3 && $volumenTotal > 3) {
+                        $volumenParaTarifa = 3;
+                    }
+                    $tarifa = $this->getTarifaAplicable($db, $idTipoTraslado, $idProveedor, $segmentoDominante, $volumenParaTarifa);
+
+                    $distanciaUsar = $kmTramo;
+                    $costoPorKm = (float)($tarifa['costo_por_km'] ?? 0);
+                    $factor = ((float)($tarifa['factor'] ?? 0) > 0) ? (float)$tarifa['factor'] : 1.0;
+                    $costoPlano = (float)($tarifa['precio_plano'] ?? 0);
+
+                    if ($idTipoTraslado === 2) {
+                        $factor = 1.0;
+                    }
+
+                    $tipoServicioEnvio = strtoupper($envio['tipo_servicio'] ?? 'AUTOMATICO');
+                    $servicioTramo = 'FORANEO';
+
+                    if ($tipoServicioEnvio === 'SLC') {
+                        $servicioTramo = 'SLC';
+                    } elseif ($tipoServicioEnvio === 'SLL') {
+                        $servicioTramo = 'SLL';
+                    } elseif ($tipoServicioEnvio === 'FORANEO') {
+                        $servicioTramo = 'FORANEO';
+                    } else {
+                        // AUTOMATICO o MIXTO: Clasifica según la distancia de este tramo
+                        if ($kmTramo > 0 && $kmTramo <= 40) {
+                            $servicioTramo = 'SLC';
+                        } elseif ($kmTramo > 40 && $kmTramo <= 80) {
+                            $servicioTramo = 'SLL';
+                        } else {
+                            $servicioTramo = 'FORANEO';
+                        }
+                    }
+
+                    if ($servicioTramo === 'SLC') {
+                        if ($idTipoTraslado === 1 && count($vins) < 3) {
+                            throw new Exception("El servicio Local Corto (SLC) en Madrina solo está permitido a partir de 3 unidades a bordo.");
+                        }
+                        $costoPlano = (float)($tarifa['precio_slc'] ?? 0);
+                        $distanciaUsar = 0;
+                    } elseif ($servicioTramo === 'SLL') {
+                        if ($idTipoTraslado === 1 && count($vins) < 3) {
+                            throw new Exception("El servicio Local Largo (SLL) en Madrina solo está permitido a partir de 3 unidades a bordo.");
+                        }
+                        $costoPlano = (float)($tarifa['precio_sll'] ?? 0);
+                        $distanciaUsar = 0;
+                    }
+
+                    $costoTramo = ($distanciaUsar * $costoPorKm * $factor * $volumenTotal) + $costoPlano;
+                    if ($kmTramo == 0 && $costoPlano == 0) {
+                        $costoTramo = 0;
+                    }
+
+                    $stmtInsertCosto = $db->prepare("
+                        INSERT INTO lgs_envios_tramos_costos 
+                        (id_envio, id_madrina, id_chofer, id_nodo_origen, id_nodo_destino, km_tramo, vins_ligeros, vins_medianos, vins_pesados, vins_especiales, factor_aplicado, costo_estimado, tarifa_usada_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $stmtInsertCosto->execute([
+                        $idEnvio,
+                        ($idTipoTraslado === 1 || $idTipoTraslado === 3) ? $idAgrupador : null,
+                        ($idTipoTraslado === 2) ? $idAgrupador : null,
+                        $nodoOrigen['id_nodo'],
+                        $nodoDestino['id_nodo'],
+                        $distanciaUsar,
+                        $vinsLigeros,
+                        $vinsMedianos,
+                        $vinsPesados,
+                        ($vinsBuses + $vinsEspeciales),
+                        $factor,
+                        $costoTramo,
+                        $tarifa['id'] ?? null
+                    ]);
+
+                    $costoTotalEnvio += $costoTramo;
+
+                    if ($idTipoTraslado === 1 || $idTipoTraslado === 3) {
+                        // En Madrina y Plataforma el tramo se reparte equitativamente entre las unidades
+                        $costoUnitarioTramo = $costoTramo / $volumenTotal;
+                        $stmtUpdateVin = $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = COALESCE(costo_unidad, 0) + ? WHERE id = ?");
+                        foreach ($vinsEnTramo as $v) {
+                            $stmtUpdateVin->execute([round($costoUnitarioTramo, 2), $v['id']]);
+                        }
+                    } else {
+                        // En Chofer rodando se pondera por segmento
+                        $sumaPonderaciones = 0.0;
+                        foreach ($vinsEnTramo as $v) {
+                            $segId = (int)($v['id_segmento'] ?? 1);
+                            $sumaPonderaciones += ($tarifasBasePond[$segId] ?? 27.0);
+                        }
+                        if ($sumaPonderaciones <= 0) $sumaPonderaciones = (float)$volumenTotal;
+
+                        $stmtUpdateVin = $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = COALESCE(costo_unidad, 0) + ? WHERE id = ?");
+                        foreach ($vinsEnTramo as $v) {
+                            $segId = (int)($v['id_segmento'] ?? 1);
+                            $peso = $tarifasBasePond[$segId] ?? 27.0;
+                            $costoUnitarioTramo = $costoTramo * ($peso / $sumaPonderaciones);
+                            $stmtUpdateVin->execute([round($costoUnitarioTramo, 2), $v['id']]);
+                        }
+                    }
                 }
             }
         }
@@ -339,18 +577,54 @@ class Lgs_enviosService {
             $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = costo_unidad + ? WHERE id = ?")->execute([$dif, $lastVinId]);
         }
 
+        // Clasificación de tipo_servicio por VIN para Escalonado o Automático
+        $tipoServicioEnvio = strtoupper($envio['tipo_servicio'] ?? 'AUTOMATICO');
+        $stmtUpVinServ = $db->prepare("UPDATE lgs_envios_vins SET tipo_servicio = ? WHERE id = ?");
+        foreach ($vins as $v) {
+            $servVin = 'FORANEO';
+            if ($tipoServicioEnvio === 'SLC') {
+                $servVin = 'SLC';
+            } elseif ($tipoServicioEnvio === 'SLL') {
+                $servVin = 'SLL';
+            } elseif ($tipoServicioEnvio === 'FORANEO') {
+                $servVin = 'FORANEO';
+            } else {
+                $ordSub = 0;
+                $ordBaj = count($nodos) - 1;
+                foreach ($nodos as $n) {
+                    if (!empty($v['id_nodo_subida']) && $n['id_nodo'] == $v['id_nodo_subida']) $ordSub = (int)$n['orden'];
+                    if (!empty($v['id_nodo_bajada']) && $n['id_nodo'] == $v['id_nodo_bajada']) $ordBaj = (int)$n['orden'];
+                }
+                $distVin = 0.0;
+                foreach ($nodos as $n) {
+                    $ordN = (int)$n['orden'];
+                    if ($ordN > $ordSub && $ordN <= $ordBaj) {
+                        $distVin += (float)$n['km_tramo_anterior'];
+                    }
+                }
+                if ($distVin > 0 && $distVin <= 40) {
+                    $servVin = 'SLC';
+                } elseif ($distVin > 40 && $distVin <= 80) {
+                    $servVin = 'SLL';
+                } else {
+                    $servVin = 'FORANEO';
+                }
+            }
+            $stmtUpVinServ->execute([$servVin, $v['id']]);
+        }
+
         // 3. Actualizar el Costo Total y KM Total en la Cabecera
         $stmtKmTotal = $db->prepare("SELECT SUM(km_tramo_anterior) AS total_km FROM lgs_envios_nodos WHERE id_envio = ?");
         $stmtKmTotal->execute([$idEnvio]);
         $rowKmTotal = $stmtKmTotal->fetch(PDO::FETCH_ASSOC);
         $kmTotalCalculado = (float)($rowKmTotal['total_km'] ?? 0);
 
-        $tipoServicio = $envio['tipo_servicio'] ?? 'FORANEO';
+        $tipoServicio = strtoupper($envio['tipo_servicio'] ?? 'AUTOMATICO');
         if ($tipoServicio === 'SLC' && $kmTotalCalculado > 40) {
-            throw new Exception("El envío supera los 40km ({$kmTotalCalculado} km) y no puede ser clasificado como Local Corto (SLC).");
+            throw new Exception("El envío supera los 40km ({$kmTotalCalculado} km) y no puede ser clasificado como Local Corto (SLC). Utilice la modalidad Automático / Mixto o Foráneo.");
         }
         if ($tipoServicio === 'SLL' && ($kmTotalCalculado <= 40 || $kmTotalCalculado > 80)) {
-            throw new Exception("El envío tiene {$kmTotalCalculado} km, lo cual no corresponde al rango de Local Largo SLL (41-80 KM).");
+            throw new Exception("El envío tiene {$kmTotalCalculado} km, lo cual no corresponde al rango de Local Largo SLL (41-80 KM). Utilice la modalidad Automático / Mixto o Foráneo.");
         }
 
         $stmtUpdate = $db->prepare("UPDATE lgs_envios SET costo_total = :costo, km_total = :km WHERE id_envio = :id");
@@ -387,7 +661,7 @@ class Lgs_enviosService {
         $stmtNodos->execute([$idEnvio]);
         $nodos = $stmtNodos->fetchAll(PDO::FETCH_ASSOC);
 
-        $stmtVins = $db->prepare("SELECT id, id_unidad, id_nodo_subida, id_nodo_bajada FROM lgs_envios_vins WHERE id_envio = ?");
+        $stmtVins = $db->prepare("SELECT id, id_unidad, id_madrina, id_plataforma, id_chofer, id_nodo_subida, id_nodo_bajada FROM lgs_envios_vins WHERE id_envio = ?");
         $stmtVins->execute([$idEnvio]);
         $vins = $stmtVins->fetchAll(PDO::FETCH_ASSOC);
         if (empty($vins)) return;
@@ -401,19 +675,103 @@ class Lgs_enviosService {
 
         $tarifasBasePond = [1 => 27.0, 2 => 30.0, 3 => 40.0, 4 => 50.0, 5 => 60.0];
 
-        if (!empty($tramos) && !empty($nodos)) {
-            foreach ($tramos as $tr) {
-                $costoTramo = (float)$tr['costo_estimado'];
-                if ($costoTramo <= 0) continue;
+        $stmtEnvioInfo = $db->prepare("SELECT id_tipo_traslado, modalidad_calculo, costo_total, tipo_servicio FROM lgs_envios WHERE id_envio = ?");
+        $stmtEnvioInfo->execute([$idEnvio]);
+        $envioRow = $stmtEnvioInfo->fetch(PDO::FETCH_ASSOC);
+        $modalidadEnvio = strtoupper($envioRow['modalidad_calculo'] ?? 'ESCALONADO');
+        $idTipoTrasladoEnvio = (int)($envioRow['id_tipo_traslado'] ?? 1);
+        $tipoServicioEnvio = strtoupper($envioRow['tipo_servicio'] ?? 'AUTOMATICO');
 
-                $ordOrigen = 0;
-                $ordDestino = 1;
-                foreach ($nodos as $n) {
-                    if ($n['id_nodo'] == $tr['id_nodo_origen']) $ordOrigen = (int)$n['orden'];
-                    if ($n['id_nodo'] == $tr['id_nodo_destino']) $ordDestino = (int)$n['orden'];
+        if (!empty($tramos) && !empty($nodos)) {
+            if ($modalidadEnvio === 'DIRECTO') {
+                // En DIRECTO cada tramo corresponde a un sub-envío hacia id_nodo_destino
+                foreach ($tramos as $tr) {
+                    $costoTramo = (float)$tr['costo_estimado'];
+                    if ($costoTramo <= 0) continue;
+
+                    $vinsEnTramo = [];
+                    foreach ($vins as $vin) {
+                        $bajId = !empty($vin['id_nodo_bajada']) ? (int)$vin['id_nodo_bajada'] : (int)$nodos[count($nodos) - 1]['id_nodo'];
+                        if ($bajId == $tr['id_nodo_destino']) {
+                            $vinsEnTramo[] = $vin;
+                        }
+                    }
+
+                    $vol = count($vinsEnTramo);
+                    if ($vol === 0) continue;
+
+                    $kmSub = (float)$tr['km_tramo'];
+                    $servVin = 'FORANEO';
+                    if ($tipoServicioEnvio === 'SLC') $servVin = 'SLC';
+                    elseif ($tipoServicioEnvio === 'SLL') $servVin = 'SLL';
+                    elseif ($tipoServicioEnvio === 'FORANEO') $servVin = 'FORANEO';
+                    else {
+                        if ($kmSub > 0 && $kmSub <= 40) $servVin = 'SLC';
+                        elseif ($kmSub > 40 && $kmSub <= 80) $servVin = 'SLL';
+                        else $servVin = 'FORANEO';
+                    }
+
+                    $cUnit = round($costoTramo / $vol, 2);
+                    $stmtUp = $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = ?, tipo_servicio = ? WHERE id = ?");
+                    foreach ($vinsEnTramo as $v) {
+                        $stmtUp->execute([$cUnit, $servVin, $v['id']]);
+                    }
+                }
+            } else {
+                // En ESCALONADO
+                foreach ($tramos as $tr) {
+                    $costoTramo = (float)$tr['costo_estimado'];
+                    if ($costoTramo <= 0) continue;
+
+                    $ordOrigen = 0;
+                    $ordDestino = 1;
+                    foreach ($nodos as $n) {
+                        if ($n['id_nodo'] == $tr['id_nodo_origen']) $ordOrigen = (int)$n['orden'];
+                        if ($n['id_nodo'] == $tr['id_nodo_destino']) $ordDestino = (int)$n['orden'];
+                    }
+
+                    $vinsEnTramo = [];
+                    foreach ($vins as $vin) {
+                        $ordSub = 0;
+                        $ordBaj = count($nodos) - 1;
+                        foreach ($nodos as $n) {
+                            if (!empty($vin['id_nodo_subida']) && $n['id_nodo'] == $vin['id_nodo_subida']) $ordSub = (int)$n['orden'];
+                            if (!empty($vin['id_nodo_bajada']) && $n['id_nodo'] == $vin['id_nodo_bajada']) $ordBaj = (int)$n['orden'];
+                        }
+                        if ($ordSub <= $ordOrigen && $ordBaj >= $ordDestino) {
+                            $vinsEnTramo[] = $vin;
+                        }
+                    }
+
+                    $vol = count($vinsEnTramo);
+                    if ($vol === 0) continue;
+
+                    if ($idTipoTrasladoEnvio === 1 || $idTipoTrasladoEnvio === 3) {
+                        $cUnit = round($costoTramo / $vol, 2);
+                        $stmtUp = $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = COALESCE(costo_unidad, 0) + ? WHERE id = ?");
+                        foreach ($vinsEnTramo as $v) {
+                            $stmtUp->execute([$cUnit, $v['id']]);
+                        }
+                    } else {
+                        $sumaPond = 0.0;
+                        foreach ($vinsEnTramo as $v) {
+                            $segId = (int)($v['id_segmento'] ?? 1);
+                            $sumaPond += ($tarifasBasePond[$segId] ?? 27.0);
+                        }
+                        if ($sumaPond <= 0) $sumaPond = (float)$vol;
+
+                        $stmtUp = $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = COALESCE(costo_unidad, 0) + ? WHERE id = ?");
+                        foreach ($vinsEnTramo as $v) {
+                            $segId = (int)($v['id_segmento'] ?? 1);
+                            $peso = $tarifasBasePond[$segId] ?? 27.0;
+                            $cUnit = $costoTramo * ($peso / $sumaPond);
+                            $stmtUp->execute([round($cUnit, 2), $v['id']]);
+                        }
+                    }
                 }
 
-                $vinsEnTramo = [];
+                // Clasificación de tipo_servicio por VIN para Escalonado en asegurarCostosVins
+                $stmtUpServ = $db->prepare("UPDATE lgs_envios_vins SET tipo_servicio = ? WHERE id = ?");
                 foreach ($vins as $vin) {
                     $ordSub = 0;
                     $ordBaj = count($nodos) - 1;
@@ -421,27 +779,23 @@ class Lgs_enviosService {
                         if (!empty($vin['id_nodo_subida']) && $n['id_nodo'] == $vin['id_nodo_subida']) $ordSub = (int)$n['orden'];
                         if (!empty($vin['id_nodo_bajada']) && $n['id_nodo'] == $vin['id_nodo_bajada']) $ordBaj = (int)$n['orden'];
                     }
-                    if ($ordSub <= $ordOrigen && $ordBaj >= $ordDestino) {
-                        $vinsEnTramo[] = $vin;
+                    $distVin = 0.0;
+                    foreach ($nodos as $n) {
+                        $ordN = (int)$n['orden'];
+                        if ($ordN > $ordSub && $ordN <= $ordBaj) {
+                            $distVin += (float)$n['km_tramo_anterior'];
+                        }
                     }
-                }
-
-                $vol = count($vinsEnTramo);
-                if ($vol === 0) continue;
-
-                $sumaPond = 0.0;
-                foreach ($vinsEnTramo as $v) {
-                    $segId = (int)($v['id_segmento'] ?? 1);
-                    $sumaPond += ($tarifasBasePond[$segId] ?? 27.0);
-                }
-                if ($sumaPond <= 0) $sumaPond = (float)$vol;
-
-                $stmtUp = $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = COALESCE(costo_unidad, 0) + ? WHERE id = ?");
-                foreach ($vinsEnTramo as $v) {
-                    $segId = (int)($v['id_segmento'] ?? 1);
-                    $peso = $tarifasBasePond[$segId] ?? 27.0;
-                    $cUnit = $costoTramo * ($peso / $sumaPond);
-                    $stmtUp->execute([round($cUnit, 2), $v['id']]);
+                    $servVin = 'FORANEO';
+                    if ($tipoServicioEnvio === 'SLC') $servVin = 'SLC';
+                    elseif ($tipoServicioEnvio === 'SLL') $servVin = 'SLL';
+                    elseif ($tipoServicioEnvio === 'FORANEO') $servVin = 'FORANEO';
+                    else {
+                        if ($distVin > 0 && $distVin <= 40) $servVin = 'SLC';
+                        elseif ($distVin > 40 && $distVin <= 80) $servVin = 'SLL';
+                        else $servVin = 'FORANEO';
+                    }
+                    $stmtUpServ->execute([$servVin, $vin['id']]);
                 }
             }
         } else {

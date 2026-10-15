@@ -303,4 +303,38 @@ class Lgs_ejecucion extends Controllers
             echo $this->errorResponse($e->getMessage(), 500);
         }
     }
+
+    /**
+     * POST: Finaliza la entrega en destino y cierra el viaje (Estado 7)
+     * URL: {{base_url}}/Lgs_ejecucion/finalizarEntregaDestino
+     */
+    public function finalizarEntregaDestino(): void
+    {
+        try {
+            $userId = $_SESSION['idUser'] ?? 1;
+            
+            $idEnvio = intval($_POST['id_envio'] ?? 0);
+            $nombreRecibe = trim($_POST['nombre_recibe'] ?? '');
+            $comentarios = trim($_POST['comentarios'] ?? '');
+
+            if ($idEnvio === 0 || empty($nombreRecibe)) {
+                throw new Exception("El ID de envío y el nombre de quien recibe son requeridos.");
+            }
+
+            $fotos = [];
+            if (!empty($_FILES)) {
+                foreach ($_FILES as $key => $file) {
+                    if ($file['error'] === UPLOAD_ERR_OK) {
+                        $fotos[$key] = $file;
+                    }
+                }
+            }
+
+            $this->service->finalizarEntregaDestino($idEnvio, $nombreRecibe, $comentarios, $fotos, $userId);
+            
+            echo $this->successResponse(null, "Entrega finalizada con éxito. El viaje ha sido cerrado en el sistema.");
+        } catch (Throwable $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
 }

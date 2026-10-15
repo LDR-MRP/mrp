@@ -114,7 +114,19 @@ document.addEventListener('DOMContentLoaded', function () {
                            '<div class="text-muted fs-11 mt-1">' + nParadas + ' parada(s)</div>';
                 }
             },
-            { "data": "tipo_traslado" },
+            { 
+                "data": "tipo_traslado",
+                "render": function(data, type, row) {
+                    let html = '<span class="fw-medium text-dark">' + (data || '-') + '</span>';
+                    if (row.modalidad_calculo) {
+                        let modBadge = (row.modalidad_calculo === 'DIRECTO')
+                            ? '<span class="badge bg-soft-info text-info fs-10 d-block mt-1" title="Directo con escalas"><i class="ri-direction-line me-1"></i>Directo</span>'
+                            : '<span class="badge bg-soft-secondary text-muted fs-10 d-block mt-1" title="Escalonado tradicional"><i class="ri-route-line me-1"></i>Escalonado</span>';
+                        html += modBadge;
+                    }
+                    return html;
+                }
+            },
             { "data": "motivo" },
             { "data": "id_envio" },
             {
@@ -201,6 +213,19 @@ document.addEventListener('DOMContentLoaded', function () {
 function filtrarTablaPorVin(term) {
     if (tableEnvios) {
         tableEnvios.search(term).draw();
+    }
+}
+
+/**
+ * Filtra el DataTable por estado usando los chips de acceso rápido
+ */
+function filtrarPorEstadoChip(filtro, btn) {
+    document.querySelectorAll('.filter-chip-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    const inputSearch = document.getElementById('buscarVinBandeja');
+    if (inputSearch) inputSearch.value = filtro;
+    if (typeof tableEnvios !== "undefined" && tableEnvios) {
+        tableEnvios.search(filtro).draw();
     }
 }
 
@@ -424,6 +449,228 @@ function formatDateTimeLocal(val) {
 
 let _nodoCounter = 0;
 
+/** Obtiene los puntos de partida / carga disponibles en el itinerario */
+function getOrigenesDisponibles() {
+    const items = document.querySelectorAll('#contenedor-nodos-ruta .nodo-item');
+    const origenes = [];
+    items.forEach((card, idx) => {
+        const esPrimero = (idx === 0);
+        const isCarga = card.getAttribute('data-tipo-nodo') === 'carga';
+        if (esPrimero || isCarga) {
+            const selUbi = card.querySelector('.nodo-select-ubicacion');
+            let nombre = 'Punto ' + (idx + 1);
+            let ubiId = selUbi ? selUbi.value : '';
+            if (selUbi && selUbi.selectedIndex >= 0 && selUbi.value) {
+                nombre = 'Punto ' + (idx + 1) + ' (' + selUbi.options[selUbi.selectedIndex].text.split('—')[0].trim() + ')';
+            }
+            const idNodo = card.getAttribute('data-id-nodo-bd') || String(idx);
+            origenes.push({
+                index: idx,
+                idNodo: idNodo,
+                idUbicacion: ubiId,
+                nombre: nombre
+            });
+        }
+    });
+    return origenes;
+}
+
+/** Construye las opciones para el select de origen de salida por destino */
+function buildOrigenReferenciaOptions(selId) {
+    const origenes = getOrigenesDisponibles();
+    if (origenes.length === 0) {
+        return '<option value="0">Punto 1 (Salida)</option>';
+    }
+    let html = '';
+    origenes.forEach((orig, i) => {
+        const val = orig.idNodo || String(orig.index);
+        const isSelected = (selId !== null && selId !== undefined && selId !== '' && (String(val) === String(selId) || String(orig.idUbicacion) === String(selId) || String(orig.index) === String(selId))) || ((selId === null || selId === undefined || selId === '') && i === 0);
+        html += `<option value="${val}" ${isSelected ? 'selected' : ''}>${orig.nombre}</option>`;
+    });
+    return html;
+}
+
+/** Actualiza las opciones del selector de origen en todos los nodos de descarga */
+function actualizarOpcionesOrigenReferencia() {
+    const items = document.querySelectorAll('#contenedor-nodos-ruta .nodo-item');
+    const origenes = getOrigenesDisponibles();
+    const esDirecto = (document.getElementById('modalidad_calculo') && document.getElementById('modalidad_calculo').value === 'DIRECTO');
+
+    items.forEach((card, idx) => {
+        const esPrimero = (idx === 0);
+        const isCarga = card.getAttribute('data-tipo-nodo') === 'carga';
+        const secOrigenRef = card.querySelector('.seccion-origen-referencia');
+        const colUbi = card.querySelector('.col-ubi-wrapper');
+
+        if (!esPrimero && !isCarga) {
+            if (secOrigenRef) {
+                secOrigenRef.style.display = esDirecto ? 'block' : 'none';
+                const sel = secOrigenRef.querySelector('.nodo-select-origen-ref');
+                if (sel) {
+                    const currentVal = sel.value;
+                    let opts = '';
+                    origenes.forEach((orig, i) => {
+                        const val = orig.idNodo || String(orig.index);
+                        const isSelected = (currentVal !== null && currentVal !== undefined && currentVal !== '' && (String(val) === String(currentVal) || String(orig.idUbicacion) === String(currentVal) || String(orig.index) === String(currentVal))) || ((currentVal === null || currentVal === undefined || currentVal === '') && i === 0);
+                        opts += `<option value="${val}" ${isSelected ? 'selected' : ''}>${orig.nombre}</option>`;
+                    });
+                    sel.innerHTML = opts;
+                }
+            }
+            if (colUbi) {
+                colUbi.className = esDirecto ? 'col-md-4 col-ubi-wrapper' : 'col-md-7 col-ubi-wrapper';
+            }
+        } else {
+            if (secOrigenRef) secOrigenRef.style.display = 'none';
+        }
+    });
+}
+
+/**
+ * Detecta si el tipo de traslado corresponde a Madrina (1) o Plataforma (3)
+ */
+function esMadrinaOPlataforma(idTipoTraslado) {
+    const sel = document.getElementById('id_tipo_traslado');
+    const id = (idTipoTraslado !== undefined && idTipoTraslado !== null && idTipoTraslado !== '')
+        ? String(idTipoTraslado)
+        : (sel ? String(sel.value) : '');
+
+    if (id === '1' || id === '3') return true;
+    if (id === '2') return false; // Chofer (Rodando)
+    if (sel && id) {
+        const opt = sel.querySelector(`option[value="${id}"]`);
+        if (opt) {
+            const text = (opt.text || '').toLowerCase();
+            if (text.includes('madrina') || text.includes('plataforma')) return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Detecta si el proveedor seleccionado corresponde a TEROMO
+ */
+function esProveedorTeromo(idProveedor) {
+    const sel = document.getElementById('id_proveedor');
+    const id = (idProveedor !== undefined && idProveedor !== null && idProveedor !== '')
+        ? String(idProveedor)
+        : (sel ? String(sel.value) : '');
+
+    if (!id) return false;
+    if (id === '1000000202') return true;
+
+    if (sel) {
+        const opt = sel.querySelector(`option[value="${id}"]`) || (sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex] : null);
+        if (opt) {
+            const dataNom = (opt.getAttribute('data-nombre') || '').toUpperCase();
+            const text = (opt.text || '').toUpperCase();
+            if (dataNom.includes('TEROMO') || text.includes('TEROMO')) return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Aplica la modalidad de cálculo por defecto según la regla de negocio:
+ * - Solo aplica para Plataformas (3) y Madrinas (1):
+ *     * Teromo => ESCALONADO por default.
+ *     * Todos los demás trasladistas => DIRECTO (Directo con escalas por origen) por default.
+ * - Para Chofer (Rodando) y otros tipos => ESCALONADO por default.
+ * - Permite al usuario cambiarlo libremente en cualquier momento.
+ * @param {boolean} forzar Si es true, sobrescribe el valor actual (ej. al cambiar de proveedor)
+ */
+function aplicarDefaultModalidadCalculo(forzar = false) {
+    const selTipo = document.getElementById('id_tipo_traslado');
+    const selProv = document.getElementById('id_proveedor');
+    const selMod  = document.getElementById('modalidad_calculo');
+    if (!selMod) return;
+
+    const idTipo = selTipo ? selTipo.value : '';
+    let modalidadSugerida = 'ESCALONADO';
+
+    if (esMadrinaOPlataforma(idTipo)) {
+        let modConfigurada = '';
+        if (selProv && selProv.value) {
+            const opt = selProv.querySelector(`option[value="${selProv.value}"]`) || (selProv.selectedIndex >= 0 ? selProv.options[selProv.selectedIndex] : null);
+            if (opt && opt.getAttribute('data-modalidad')) {
+                modConfigurada = opt.getAttribute('data-modalidad').toUpperCase();
+            }
+        }
+        if (modConfigurada === 'ESCALONADO' || modConfigurada === 'DIRECTO') {
+            modalidadSugerida = modConfigurada;
+        } else {
+            const idProv = selProv ? selProv.value : '';
+            const isTeromo = idProv ? esProveedorTeromo(idProv) : false;
+            modalidadSugerida = isTeromo ? 'ESCALONADO' : 'DIRECTO';
+        }
+    } else {
+        // Para cualquier otro caso (Chofer rodando, o sin tipo definido aún): ESCALONADO
+        modalidadSugerida = 'ESCALONADO';
+    }
+
+    if (forzar || !window.g_modalidadModificadaManualmente) {
+        if (selMod.value !== modalidadSugerida) {
+            selMod.value = modalidadSugerida;
+            handleModalidadCalculoChange(false);
+        }
+    }
+}
+
+/** Maneja el cambio de proveedor trasladista */
+function handleProveedorChange() {
+    window.g_modalidadModificadaManualmente = false;
+    aplicarDefaultModalidadCalculo(true);
+    verificarYCalcularRuta();
+}
+
+/** Sincroniza visualmente las tarjetas interactivas de Modalidad */
+function syncModalidadCardsUI(val) {
+    const cardDirecto = document.getElementById('card-modalidad-directo');
+    const cardEscalonado = document.getElementById('card-modalidad-escalonado');
+    if (!cardDirecto || !cardEscalonado) return;
+
+    if (val === 'DIRECTO') {
+        cardDirecto.classList.add('active');
+        cardEscalonado.classList.remove('active');
+    } else {
+        cardEscalonado.classList.add('active');
+        cardDirecto.classList.remove('active');
+    }
+}
+
+/** Maneja la selección desde las tarjetas interactivas de Modalidad */
+function seleccionarModalidadCard(val) {
+    const sel = document.getElementById('modalidad_calculo');
+    if (sel) {
+        sel.value = val;
+        handleModalidadCalculoChange(true);
+    }
+    syncModalidadCardsUI(val);
+}
+
+/** Maneja el cambio de modalidad de cálculo */
+function handleModalidadCalculoChange(esCambioManual = false) {
+    if (esCambioManual) {
+        window.g_modalidadModificadaManualmente = true;
+    }
+    const sel = document.getElementById('modalidad_calculo');
+    const modalidad = sel ? sel.value : 'ESCALONADO';
+    
+    // Sincronizar tarjetas de UI
+    syncModalidadCardsUI(modalidad);
+
+    const helpTxt = document.getElementById('helpModalidadCalculo');
+    if (helpTxt) {
+        if (modalidad === 'DIRECTO') {
+            helpTxt.innerHTML = '<span class="text-primary fw-medium"><i class="ri-direction-line me-1"></i>Directo con escalas por origen de referencia.</span>';
+        } else {
+            helpTxt.innerHTML = '<span class="text-muted"><i class="ri-route-line me-1"></i>Prorrateo escalonado tradicional por tramo.</span>';
+        }
+    }
+    actualizarSecuenciaNodos();
+    verificarYCalcularRuta();
+}
+
 /** Agrega un nuevo nodo / punto al recorrido de la ruta */
 function agregarNodoRuta(data, isCarga = false) {
     const idTipoTraslado = document.getElementById('id_tipo_traslado') ? document.getElementById('id_tipo_traslado').value : '';
@@ -448,8 +695,12 @@ function agregarNodoRuta(data, isCarga = false) {
     const div = document.createElement('div');
     div.className = 'card border shadow-sm p-3 mb-0 nodo-item';
     div.setAttribute('data-nodo-id', _nodoCounter);
+    if (data && data.id_nodo) {
+        div.setAttribute('data-id-nodo-bd', data.id_nodo);
+    }
 
     const selUbicacionId = data ? (data.id_ubicacion || data.id_destino_cat || '') : '';
+    const selOrigenRefId = data ? (data.id_origen_referencia || '') : '';
     const nombreLibre = data ? (data.destino_nombre_libre || '') : '';
     const kmTramo = data ? parseFloat(data.km_tramo || data.km_tramo_anterior || 0) : 0;
     const obs = data ? (data.observaciones || '') : '';
@@ -469,6 +720,8 @@ function agregarNodoRuta(data, isCarga = false) {
     }
     div.setAttribute('data-tipo-nodo', isCargaVal ? 'carga' : 'entrega');
     div.style.borderLeft = esOrigen ? '4px solid #0ab39c' : (isCargaVal ? '4px solid #0d6efd' : '4px solid #fd7e14');
+
+    const esDirecto = (document.getElementById('modalidad_calculo') && document.getElementById('modalidad_calculo').value === 'DIRECTO');
 
     // Determinar si la ubicación seleccionada es un distribuidor (para preseleccionar la cascada)
     let selDistribuidorId = '';
@@ -538,9 +791,19 @@ function agregarNodoRuta(data, isCarga = false) {
             </div>
         </div>
         <div class="row g-2 align-items-center">
-            <div class="${esOrigen ? 'col-md-9' : 'col-md-7'} col-ubi-wrapper">
+            <div class="${esOrigen ? 'col-md-9' : (esDirecto && !isCargaVal ? 'col-md-4' : 'col-md-7')} col-ubi-wrapper">
                 ${htmlUbicacion}
                 <small class="text-muted fs-10 d-block mt-1 nodo-direccion-preview"></small>
+            </div>
+            <!-- SECCIÓN ORIGEN DE SALIDA (MODALIDAD DIRECTA) -->
+            <div class="col-md-3 seccion-origen-referencia" style="display: ${(!esOrigen && !isCargaVal && esDirecto) ? 'block' : 'none'};">
+                <label class="form-label fs-11 text-muted mb-1 fw-bold">
+                    <i class="ri-map-pin-user-line text-success me-1"></i>Punto de Salida
+                </label>
+                <select class="form-select form-select-sm nodo-select-origen-ref" onchange="serializarNodos(); verificarYCalcularRuta();">
+                    ${buildOrigenReferenciaOptions(selOrigenRefId)}
+                </select>
+                <small class="text-muted fs-10 d-block mt-1">Origen para cálculo directo</small>
             </div>
             <!-- Input oculto para conservar la propiedad en el objeto al guardar, si fuera necesario, o simplemente se manda vacío -->
             <input type="hidden" class="nodo-nombre-libre" value="${nombreLibre}">
@@ -694,6 +957,8 @@ function alCambiarUbicacionNodo(selObj) {
 /** Actualiza numeración, badges visuales y botones de los nodos */
 function actualizarSecuenciaNodos() {
     const items = document.querySelectorAll('#contenedor-nodos-ruta .nodo-item');
+    const esDirecto = (document.getElementById('modalidad_calculo') && document.getElementById('modalidad_calculo').value === 'DIRECTO');
+
     items.forEach((card, idx) => {
         const esPrimero = (idx === 0);
         const isCarga = card.getAttribute('data-tipo-nodo') === 'carga';
@@ -701,12 +966,14 @@ function actualizarSecuenciaNodos() {
         const txtTipo = card.querySelector('.nodo-tipo-txt');
         const descTxt = card.querySelector('.nodo-desc-txt');
         const colUbi   = card.querySelector('.col-ubi-wrapper');
+        const secOrigenRef = card.querySelector('.seccion-origen-referencia');
         const secFecha = card.querySelector('.seccion-fecha-estimada');
         const lblFecha = card.querySelector('.nodo-lbl-fecha-estimada');
         const secKm    = card.querySelector('.seccion-km-tramo');
 
         if (esPrimero) {
             if (colUbi) colUbi.className = 'col-md-9 col-ubi-wrapper';
+            if (secOrigenRef) secOrigenRef.style.display = 'none';
             if (secFecha) secFecha.style.display = '';
             if (lblFecha) lblFecha.innerHTML = '<i class="ri-calendar-event-line text-success me-1"></i>Fecha/Hora Salida <span class="text-danger">*</span>';
             if (secKm) secKm.style.display = 'none';
@@ -718,11 +985,12 @@ function actualizarSecuenciaNodos() {
             }
             if (descTxt) descTxt.innerText = 'Lugar de salida de la madrina o chofer';
         } else {
-            if (colUbi) colUbi.className = 'col-md-7 col-ubi-wrapper';
             if (secFecha) secFecha.style.display = '';
             if (secKm) secKm.style.display = '';
 
             if (isCarga) {
+                if (colUbi) colUbi.className = 'col-md-7 col-ubi-wrapper';
+                if (secOrigenRef) secOrigenRef.style.display = 'none';
                 card.style.borderLeft = '4px solid #0d6efd';
                 if (badge) {
                     badge.className = 'badge text-white badge-nodo-tipo px-2 py-1 fs-11';
@@ -732,6 +1000,8 @@ function actualizarSecuenciaNodos() {
                 if (descTxt) descTxt.innerText = 'Punto de recolección o carga de unidades';
                 if (lblFecha) lblFecha.innerHTML = '<i class="ri-calendar-event-line me-1" style="color: #0d6efd;"></i>Est. Recolección';
             } else {
+                if (colUbi) colUbi.className = esDirecto ? 'col-md-4 col-ubi-wrapper' : 'col-md-7 col-ubi-wrapper';
+                if (secOrigenRef) secOrigenRef.style.display = esDirecto ? 'block' : 'none';
                 card.style.borderLeft = '4px solid #fd7e14';
                 if (badge) {
                     badge.className = 'badge text-white badge-nodo-tipo px-2 py-1 fs-11';
@@ -744,6 +1014,7 @@ function actualizarSecuenciaNodos() {
         }
     });
 
+    actualizarOpcionesOrigenReferencia();
     serializarNodos();
 }
 
@@ -758,14 +1029,21 @@ function serializarNodos() {
         const tipoNodo = (idx === 0) ? 'origen' : (isCarga ? 'carga' : 'entrega');
         const selUbi = card.querySelector('.nodo-select-ubicacion');
         const idUbi  = selUbi && selUbi.value ? parseInt(selUbi.value) : null;
+        const selOrigenRef = card.querySelector('.nodo-select-origen-ref');
+        let idOrigenRef = null;
+        if (selOrigenRef && selOrigenRef.value !== '' && selOrigenRef.value !== null) {
+            idOrigenRef = selOrigenRef.value;
+        }
         const nombreLibre = card.querySelector('.nodo-nombre-libre') ? card.querySelector('.nodo-nombre-libre').value.trim() : '';
         const kmVal  = card.querySelector('.nodo-km-tramo') ? (parseFloat(card.querySelector('.nodo-km-tramo').value) || 0) : 0;
         const fechaEst = card.querySelector('.nodo-fecha-estimada') ? card.querySelector('.nodo-fecha-estimada').value : '';
 
         nodos.push({
+            id_nodo: card.getAttribute('data-id-nodo-bd') ? parseInt(card.getAttribute('data-id-nodo-bd')) : null,
             orden: idx,
             tipo_nodo: tipoNodo,
             id_ubicacion: idUbi,
+            id_origen_referencia: idOrigenRef,
             destino_nombre_libre: nombreLibre,
             km_tramo: (idx === 0) ? 0 : kmVal,
             fecha_estimada: fechaEst
@@ -776,6 +1054,7 @@ function serializarNodos() {
                 orden: idx,
                 tipo_nodo: tipoNodo,
                 id_destino_cat: idUbi,
+                id_origen_referencia: idOrigenRef,
                 destino_nombre_libre: nombreLibre,
                 km_tramo: kmVal,
                 fecha_estimada: fechaEst
@@ -1080,11 +1359,25 @@ function actualizarEstatusLateralEnvio(idEstado) {
 }
 
 function openModal() {
+    window.g_editEnvioTipoTrasladoOriginal = null;
+    window.g_editEnvioTieneVins = false;
+
     document.querySelector('#id_envio').value = "";
     document.querySelector('#btnText').innerHTML = "Guardar Envío";
     document.querySelector('#form-envio-title').innerHTML = "Crear Solicitud de Traslado";
     document.querySelector("#formEnvio").reset();
     actualizarEstatusLateralEnvio(1);
+
+    window.g_modalidadModificadaManualmente = false;
+
+    if (document.querySelector('#modalidad_calculo')) {
+        document.querySelector('#modalidad_calculo').value = 'ESCALONADO';
+        handleModalidadCalculoChange(false);
+    }
+
+    if (document.querySelector('#tipo_servicio')) {
+        document.querySelector('#tipo_servicio').value = 'AUTOMATICO';
+    }
 
     // Resetear botones de acción
     const btnAction = document.getElementById('btnActionForm');
@@ -1285,6 +1578,10 @@ function fntEditRuta(idEnvio) {
                 if (objData.status && objData.data) {
                     const envio = objData.data.envio;
                     const nodos = objData.data.nodos || [];
+                    const existentes = objData.data.existentes || [];
+
+                    window.g_editEnvioTipoTrasladoOriginal = envio.id_tipo_traslado || '';
+                    window.g_editEnvioTieneVins = (existentes.length > 0);
 
                     document.querySelector('#id_envio').value = envio.id_envio;
                     document.querySelector('#btnText').innerHTML = "Actualizar Envío";
@@ -1292,10 +1589,16 @@ function fntEditRuta(idEnvio) {
                     actualizarEstatusLateralEnvio(envio.id_estado);
 
                     if (document.querySelector('#id_tipo_traslado')) document.querySelector('#id_tipo_traslado').value = envio.id_tipo_traslado || '';
-                    if (document.querySelector('#tipo_servicio')) document.querySelector('#tipo_servicio').value = envio.tipo_servicio || 'FORANEO';
+                    if (document.querySelector('#tipo_servicio')) document.querySelector('#tipo_servicio').value = envio.tipo_servicio || 'AUTOMATICO';
                     handleTipoTrasladoEnvio();
                     if (document.querySelector('#id_motivo')) document.querySelector('#id_motivo').value = envio.id_motivo || '';
                     if (document.querySelector('#id_proveedor')) document.querySelector('#id_proveedor').value = envio.id_proveedor || '';
+
+                    if (document.querySelector('#modalidad_calculo')) {
+                        document.querySelector('#modalidad_calculo').value = envio.modalidad_calculo || 'ESCALONADO';
+                        window.g_modalidadModificadaManualmente = true;
+                        handleModalidadCalculoChange(false);
+                    }
 
                     if (document.querySelector('#fecha_tentativa_envio')) document.querySelector('#fecha_tentativa_envio').value = formatDateTimeLocal(envio.fecha_tentativa_envio);
                     if (document.querySelector('#fecha_tentativa_llegada')) document.querySelector('#fecha_tentativa_llegada').value = formatDateTimeLocal(envio.fecha_tentativa_llegada);
@@ -1495,11 +1798,11 @@ function fntReabrirEnvio(idEnvio) {
                 if (request.readyState == 4 && request.status == 200) {
                     try {
                         let objData = JSON.parse(request.responseText);
-                        if (objData.status) {
-                            Swal.fire("¡Envío Reabierto!", objData.msg, "success");
+                        if (objData.status === 'success' || objData.status === true || objData.code === 200) {
+                            Swal.fire("¡Envío Reabierto!", objData.message || objData.msg || "Envío reabierto y desbloqueado exitosamente.", "success");
                             if (typeof tableEnvios !== 'undefined' && tableEnvios) tableEnvios.ajax.reload();
                         } else {
-                            Swal.fire("Error", objData.msg || "No se pudo reabrir el envío", "error");
+                            Swal.fire("Error", objData.message || objData.msg || "No se pudo reabrir el envío", "error");
                         }
                     } catch (e) {
                         Swal.fire("Error", "Error al procesar la respuesta del servidor", "error");
@@ -1513,6 +1816,18 @@ function fntReabrirEnvio(idEnvio) {
 
 function handleTipoTrasladoEnvio() {
     const idTipoTraslado = document.getElementById('id_tipo_traslado') ? document.getElementById('id_tipo_traslado').value : '';
+
+    // Candado: Si el envío ya cuenta con unidades (VINs) asignadas, no permitir cambiar el tipo de traslado
+    if (window.g_editEnvioTieneVins && window.g_editEnvioTipoTrasladoOriginal && idTipoTraslado != window.g_editEnvioTipoTrasladoOriginal) {
+        document.getElementById('id_tipo_traslado').value = window.g_editEnvioTipoTrasladoOriginal;
+        Swal.fire({
+            title: "Cambio no permitido",
+            text: "No es posible cambiar el tipo de traslado (Madrina / Plataforma / Chofer) porque este envío ya cuenta con unidades asignadas. Debe desasignar los VINs en la pantalla de Acomodo antes de cambiar de modalidad.",
+            icon: "warning"
+        });
+        return;
+    }
+
     const btnAddCarga = document.querySelector('button[onclick="agregarNodoRuta(null, true)"]');
     const btnAddDescarga = document.querySelector('button[onclick="agregarNodoRuta(null, false)"]');
     
@@ -1533,6 +1848,11 @@ function handleTipoTrasladoEnvio() {
         }
     }
     
+    if (idTipoTraslado != '2') {
+        if (btnAddCarga) btnAddCarga.style.display = '';
+        if (btnAddDescarga) btnAddDescarga.style.display = '';
+    }
+
     const divCheckLowboy = document.getElementById('divCheckLowboy');
     if (divCheckLowboy) {
         if (idTipoTraslado == '3') { // Plataforma
@@ -1541,8 +1861,13 @@ function handleTipoTrasladoEnvio() {
             divCheckLowboy.style.display = 'none';
             document.getElementById('is_lowboy').checked = false;
         }
+    }
+
+    // Regla de negocio: Modalidad por defecto solo para Plataformas (3) y Madrinas (1)
+    if (idTipoTraslado == '2') {
+        window.g_modalidadModificadaManualmente = false;
+        aplicarDefaultModalidadCalculo(true);
     } else {
-        if (btnAddCarga) btnAddCarga.style.display = '';
-        if (btnAddDescarga) btnAddDescarga.style.display = '';
+        aplicarDefaultModalidadCalculo(false);
     }
 }

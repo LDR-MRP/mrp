@@ -77,8 +77,9 @@ class Lgs_costosService
         $madrinaSegs = $data['madrina_segmentos'] ?? [];
         $choferSegs = $data['chofer_segmentos'] ?? [];
         $plataformaSegs = $data['plataforma_segmentos'] ?? [];
+        $modalidadDefault = $data['modalidad_envio_default'] ?? 'DIRECTO';
 
-        return $this->model->saveTarifasProveedor($idProveedor, $madrinaSegs, $choferSegs, $plataformaSegs);
+        return $this->model->saveTarifasProveedor($idProveedor, $madrinaSegs, $choferSegs, $plataformaSegs, $modalidadDefault);
     }
 
     public function saveTarifasBaseConReplicacion(array $data, array $proveedoresReplicar, bool $mantenerPersonalizadas = false): bool

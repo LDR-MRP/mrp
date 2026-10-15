@@ -223,11 +223,38 @@ class Lgs_envios extends Controllers
             $lastLoc  = intval($nodos[count($nodos) - 1]['id_ubicacion'] ?? 0);
             $lastFree = $nodos[count($nodos) - 1]['destino_nombre_libre'] ?? '';
 
+            $idTipoTraslado = intval($_POST['id_tipo_traslado'] ?? 0);
+            $idProveedor    = intval($_POST['id_proveedor'] ?? 0);
+            $defaultModalidad = 'ESCALONADO';
+            if ($idTipoTraslado === 1 || $idTipoTraslado === 3) {
+                if ($idProveedor > 0) {
+                    $stmtProv = $db->prepare("SELECT modalidad_envio_default, razon_social, nombre_comercial FROM prv_cat_proveedores WHERE id_proveedor = ?");
+                    $stmtProv->execute([$idProveedor]);
+                    $pRow = $stmtProv->fetch(PDO::FETCH_ASSOC);
+                    if ($pRow && !empty($pRow['modalidad_envio_default'])) {
+                        $defaultModalidad = strtoupper($pRow['modalidad_envio_default']);
+                    } else {
+                        $isTeromo = ($idProveedor === 1000000202);
+                        if ($pRow) {
+                            $pNom = strtoupper(($pRow['razon_social'] ?? '') . ' ' . ($pRow['nombre_comercial'] ?? ''));
+                            if (strpos($pNom, 'TEROMO') !== false) {
+                                $isTeromo = true;
+                            }
+                        }
+                        $defaultModalidad = $isTeromo ? 'ESCALONADO' : 'DIRECTO';
+                    }
+                } else {
+                    $defaultModalidad = 'DIRECTO';
+                }
+            }
+            $modalidadCalculo = in_array($_POST['modalidad_calculo'] ?? '', ['ESCALONADO', 'DIRECTO']) ? $_POST['modalidad_calculo'] : $defaultModalidad;
+
             $data = [
-                'id_tipo_traslado' => intval($_POST['id_tipo_traslado'] ?? 0),
-                'tipo_servicio'    => $_POST['tipo_servicio'] ?? 'FORANEO',
+                'id_tipo_traslado' => $idTipoTraslado,
+                'tipo_servicio'    => in_array($_POST['tipo_servicio'] ?? '', ['AUTOMATICO', 'FORANEO', 'SLC', 'SLL']) ? $_POST['tipo_servicio'] : 'AUTOMATICO',
+                'modalidad_calculo'=> $modalidadCalculo,
                 'id_motivo'        => intval($_POST['id_motivo'] ?? 0),
-                'id_proveedor'     => intval($_POST['id_proveedor'] ?? 0),
+                'id_proveedor'     => $idProveedor,
                 'id_origen'        => $firstLoc > 0 ? $firstLoc : intval($_POST['id_origen'] ?? 0),
                 'id_destino'       => $lastLoc > 0 ? $lastLoc : intval($_POST['id_destino'] ?? 0),
                 'destino_nombre_libre' => !empty($lastFree) ? $lastFree : ($_POST['destino_nombre_libre'] ?? ''),
@@ -268,19 +295,26 @@ class Lgs_envios extends Controllers
                     return;
                 }
 
+                // Candado de tipo de traslado si ya tiene unidades asignadas
+                if (intval($existingEnvio['id_tipo_traslado']) !== intval($data['id_tipo_traslado'])) {
+                    $stmtCheckVins = $db->prepare("SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = ?");
+                    $stmtCheckVins->execute([$idEnvio]);
+                    if ((int)$stmtCheckVins->fetchColumn() > 0) {
+                        $db->rollBack();
+                        echo $this->errorResponse("No es posible cambiar el tipo de traslado porque ya existen unidades asignadas a este envío. Debe liberar las unidades en Acomodo antes de cambiar el tipo de traslado.", 400);
+                        return;
+                    }
+                }
+
                 // Si estaba Confirmado (8) y lo editan, lo regresamos a Borrador (1) para que deba confirmarse de nuevo
                 $newEstado = ($idEstadoStr === 8) ? 1 : $idEstadoStr;
-
-                // Si se cambió el tipo de traslado, borrar las unidades asignadas previamente
-                if (intval($existingEnvio['id_tipo_traslado']) !== intval($data['id_tipo_traslado'])) {
-                    $model->deleteAcomodoEnvio($db, $idEnvio);
-                }
 
                 // Actualizar cabecera existente
                 $stmtUpd = $db->prepare("UPDATE lgs_envios SET 
                                             id_estado = :id_estado,
                                             id_tipo_traslado = :id_tipo_traslado,
                                             tipo_servicio = :tipo_servicio,
+                                            modalidad_calculo = :modalidad_calculo,
                                             id_motivo = :id_motivo,
                                             id_proveedor = :id_proveedor,
                                             id_origen = :id_origen,
@@ -297,6 +331,7 @@ class Lgs_envios extends Controllers
                     'id_estado'        => $newEstado,
                     'id_tipo_traslado' => $data['id_tipo_traslado'],
                     'tipo_servicio'    => $data['tipo_servicio'],
+                    'modalidad_calculo'=> $data['modalidad_calculo'],
                     'id_motivo'        => $data['id_motivo'],
                     'id_proveedor'     => $data['id_proveedor'],
                     'id_origen'        => $data['id_origen'],
@@ -316,6 +351,9 @@ class Lgs_envios extends Controllers
 
             $kmTotalAcumulado = 0.0;
             $hasNewCols = true;
+            $nodoIdMapByIndex = [];
+            $oldToNewNodoMap = [];
+
             foreach ($nodos as $idx => $nodo) {
                 $locId = !empty($nodo['id_ubicacion']) ? intval($nodo['id_ubicacion']) : (!empty($nodo['id_destino_cat']) ? intval($nodo['id_destino_cat']) : null);
                 $kmTramo = floatval($nodo['km_tramo'] ?? 0);
@@ -352,20 +390,28 @@ class Lgs_envios extends Controllers
                 if ($hasNewCols) {
                     $tipoNodo = !empty($nodo['tipo_nodo']) ? $nodo['tipo_nodo'] : ($idx === 0 ? 'origen' : 'entrega');
                     $fechaEstimada = !empty($nodo['fecha_estimada']) ? str_replace('T', ' ', $nodo['fecha_estimada']) : null;
+                    $idOrigenRef = isset($nodo['id_origen_referencia']) && $nodo['id_origen_referencia'] !== '' && $nodo['id_origen_referencia'] !== null ? intval($nodo['id_origen_referencia']) : null;
 
                     $stmtInsertNodo = $db->prepare("INSERT INTO lgs_envios_nodos 
-                        (id_envio, orden, tipo_nodo, id_ubicacion, destino_nombre_libre, km_tramo_anterior, observaciones, fecha_estimada) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                        (id_envio, orden, tipo_nodo, id_ubicacion, id_origen_referencia, destino_nombre_libre, km_tramo_anterior, observaciones, fecha_estimada) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmtInsertNodo->execute([
                         $idEnvio,
                         $idx,
                         $tipoNodo,
                         $locId,
+                        $idOrigenRef,
                         htmlspecialchars(trim($nodo['destino_nombre_libre'] ?? ''), ENT_QUOTES, 'UTF-8'),
                         $kmTramo,
                         htmlspecialchars(trim($nodo['observaciones'] ?? ''), ENT_QUOTES, 'UTF-8'),
                         $fechaEstimada
                     ]);
+
+                    $newNodoId = (int)$db->lastInsertId();
+                    $nodoIdMapByIndex[$idx] = $newNodoId;
+                    if (!empty($nodo['id_nodo'])) {
+                        $oldToNewNodoMap[intval($nodo['id_nodo'])] = $newNodoId;
+                    }
                 } else {
                     $stmtInsertNodo = $db->prepare("INSERT INTO lgs_envios_nodos 
                         (id_envio, orden, id_ubicacion, destino_nombre_libre, km_tramo_anterior, observaciones) 
@@ -378,6 +424,30 @@ class Lgs_envios extends Controllers
                         $kmTramo,
                         htmlspecialchars(trim($nodo['observaciones'] ?? ''), ENT_QUOTES, 'UTF-8')
                     ]);
+                }
+            }
+
+            // Mapear id_origen_referencia a los nuevos id_nodo generados
+            if ($hasNewCols && !empty($nodoIdMapByIndex)) {
+                foreach ($nodos as $idx => $nodo) {
+                    if ($idx === 0) continue;
+                    $rawRef = $nodo['id_origen_referencia'] ?? null;
+                    if ($rawRef !== null && $rawRef !== '') {
+                        $refInt = intval($rawRef);
+                        $resolvedRef = null;
+                        if (isset($nodoIdMapByIndex[$refInt])) {
+                            $resolvedRef = $nodoIdMapByIndex[$refInt];
+                        } elseif (isset($oldToNewNodoMap[$refInt])) {
+                            $resolvedRef = $oldToNewNodoMap[$refInt];
+                        } elseif (in_array($refInt, $nodoIdMapByIndex, true)) {
+                            $resolvedRef = $refInt;
+                        }
+
+                        if ($resolvedRef !== null && isset($nodoIdMapByIndex[$idx])) {
+                            $db->prepare("UPDATE lgs_envios_nodos SET id_origen_referencia = ? WHERE id_nodo = ?")
+                               ->execute([$resolvedRef, $nodoIdMapByIndex[$idx]]);
+                        }
+                    }
                 }
             }
 
@@ -573,6 +643,13 @@ class Lgs_envios extends Controllers
             $assignedUnitIds = [];
             $tipoTraslado = intval($existingEnvio['id_tipo_traslado'] ?? 0);
 
+            $validUnits = array_filter($asignaciones, fn($a) => intval($a['id_unidad'] ?? 0) > 0);
+            if ($tipoTraslado === 1 && count($validUnits) === 1) {
+                $db->rollBack();
+                echo $this->errorResponse("No es posible enviar una sola unidad en Madrina. Para traslados individuales debe utilizarse Plataforma o Chofer (Rodando).", 400);
+                return;
+            }
+
             foreach ($asignaciones as $asig) {
                 $uId = intval($asig['id_unidad'] ?? 0);
                 if ($uId > 0) {
@@ -607,6 +684,7 @@ class Lgs_envios extends Controllers
                         'id_plataforma'    => !empty($asig['id_plataforma']) ? intval($asig['id_plataforma']) : null,
                         'id_chofer'        => !empty($asig['id_chofer']) ? intval($asig['id_chofer']) : null,
                         'posicion_acomodo' => !empty($asig['posicion_acomodo']) ? intval($asig['posicion_acomodo']) : null,
+                        'tipo_servicio'    => !empty($asig['tipo_servicio']) ? $asig['tipo_servicio'] : 'FORANEO',
                     ]);
                 }
             }
@@ -861,11 +939,13 @@ class Lgs_envios extends Controllers
             $stmt = $db->prepare("
                 SELECT 
                     e.folio, e.fecha_tentativa_envio, e.fecha_tentativa_llegada, e.km_total, e.costo_total,
+                    e.id_tipo_traslado, e.modalidad_calculo,
                     mo.descripcion AS motivo_nombre,
                     COALESCE(u.vin, ut.clave, CONCAT('VIN-', ev.id_unidad)) AS vin,
                     COALESCE(u.modelo, 'Unidad') AS modelo,
                     'Blanco' AS color,
                     ev.costo_unidad,
+                    ev.tipo_servicio,
                     COALESCE(pr.nombre_comercial, pr.razon_social, 'LDR Solutions') AS proveedor_nombre,
                     COALESCE(m.numero_economico, 'Sin Asignar') AS madrina_nombre,
                     COALESCE(m.placas, 'S/P') AS madrina_placas,
@@ -994,58 +1074,121 @@ class Lgs_envios extends Controllers
             $kmRecorridosTotal = 0.0;
             $costoTotalCalculado = 0.0;
 
+            $modalidad = strtoupper($detalle['modalidad_calculo'] ?? 'ESCALONADO');
+            $nodoBajadaVinId = !empty($currentVin['id_nodo_bajada']) ? (int)$currentVin['id_nodo_bajada'] : (!empty($currentVin['id_parada']) ? (int)$currentVin['id_parada'] : (!empty($nodos) ? (int)$nodos[count($nodos) - 1]['id_nodo'] : 0));
+
             if (!empty($tramos)) {
                 $idx = 1;
-                foreach ($tramos as $tr) {
-                    $ordOrig = 0;
-                    $ordDest = 1;
-                    $nomOrig = 'Origen';
-                    $nomDest = 'Destino';
-                    if (isset($nodosMap[$tr['id_nodo_origen']])) {
-                        $ordOrig = (int)$nodosMap[$tr['id_nodo_origen']]['orden'];
-                        $nomOrig = $nodosMap[$tr['id_nodo_origen']]['nombre'];
-                    }
-                    if (isset($nodosMap[$tr['id_nodo_destino']])) {
-                        $ordDest = (int)$nodosMap[$tr['id_nodo_destino']]['orden'];
-                        $nomDest = $nodosMap[$tr['id_nodo_destino']]['nombre'];
-                    }
-
-                    // ¿Este VIN estuvo presente en este tramo?
-                    if (!($ordenSubidaVin <= $ordOrig && $ordenBajadaVin >= $ordDest)) {
-                        continue;
-                    }
-
-                    // Vins a bordo en este tramo
-                    $vinsEnTramo = [];
-                    $sumaPondTramo = 0.0;
-                    foreach ($allVins as $v) {
-                        if ($v['ord_sub'] <= $ordOrig && $v['ord_baj'] >= $ordDest) {
-                            $vinsEnTramo[] = $v;
-                            $seg = (int)($v['id_segmento'] ?? 1);
-                            $sumaPondTramo += ($tarifasBasePond[$seg] ?? 27.0);
+                if ($modalidad === 'DIRECTO') {
+                    foreach ($tramos as $tr) {
+                        // En DIRECTO cada tramo es un sub-envío hacia id_nodo_destino
+                        if ((int)$tr['id_nodo_destino'] !== $nodoBajadaVinId) {
+                            continue;
                         }
+
+                        $nomOrig = 'Origen';
+                        $nomDest = 'Destino';
+                        if (isset($nodosMap[$tr['id_nodo_origen']])) {
+                            $nomOrig = $nodosMap[$tr['id_nodo_origen']]['nombre'];
+                        }
+                        if (isset($nodosMap[$tr['id_nodo_destino']])) {
+                            $nomDest = $nodosMap[$tr['id_nodo_destino']]['nombre'];
+                        }
+
+                        // Vins que comparten este destino
+                        $vinsEnTramo = [];
+                        $sumaPondTramo = 0.0;
+                        foreach ($allVins as $v) {
+                            $vBaj = !empty($v['id_nodo_bajada']) ? (int)$v['id_nodo_bajada'] : (!empty($v['id_parada']) ? (int)$v['id_parada'] : (!empty($nodos) ? (int)$nodos[count($nodos) - 1]['id_nodo'] : 0));
+                            if ($vBaj === $nodoBajadaVinId) {
+                                $vinsEnTramo[] = $v;
+                                $seg = (int)($v['id_segmento'] ?? 1);
+                                $sumaPondTramo += ($tarifasBasePond[$seg] ?? 27.0);
+                            }
+                        }
+                        $volumenTramo = count($vinsEnTramo);
+                        if ($sumaPondTramo <= 0) $sumaPondTramo = (float)$volumenTramo;
+
+                        $costoTramo = (float)$tr['costo_estimado'];
+                        if ($idTipoTraslado === 1 || $idTipoTraslado === 3) {
+                            // En Madrina y Plataforma el costo del sub-envío se divide equitativamente
+                            $cuotaUnidadTramo = ($volumenTramo > 0) ? ($costoTramo / $volumenTramo) : 0.0;
+                        } else {
+                            $cuotaUnidadTramo = ($sumaPondTramo > 0) ? ($costoTramo * ($miPeso / $sumaPondTramo)) : 0.0;
+                        }
+                        $kmTramo = (float)$tr['km_tramo'];
+
+                        $kmRecorridosTotal += $kmTramo;
+                        $costoTotalCalculado += $cuotaUnidadTramo;
+
+                        $tramosRecorridos[] = [
+                            'num' => $idx++,
+                            'origen' => $nomOrig,
+                            'destino' => $nomDest,
+                            'km' => $kmTramo,
+                            'unidades_a_bordo' => $volumenTramo,
+                            'factor' => (float)$tr['factor_aplicado'],
+                            'costo_tramo' => $costoTramo,
+                            'cuota_unidad' => round($cuotaUnidadTramo, 2),
+                            'porcentaje' => ($costoTramo > 0) ? round(($cuotaUnidadTramo / $costoTramo) * 100, 1) : 100
+                        ];
                     }
-                    $volumenTramo = count($vinsEnTramo);
-                    if ($sumaPondTramo <= 0) $sumaPondTramo = (float)$volumenTramo;
+                } else {
+                    foreach ($tramos as $tr) {
+                        $ordOrig = 0;
+                        $ordDest = 1;
+                        $nomOrig = 'Origen';
+                        $nomDest = 'Destino';
+                        if (isset($nodosMap[$tr['id_nodo_origen']])) {
+                            $ordOrig = (int)$nodosMap[$tr['id_nodo_origen']]['orden'];
+                            $nomOrig = $nodosMap[$tr['id_nodo_origen']]['nombre'];
+                        }
+                        if (isset($nodosMap[$tr['id_nodo_destino']])) {
+                            $ordDest = (int)$nodosMap[$tr['id_nodo_destino']]['orden'];
+                            $nomDest = $nodosMap[$tr['id_nodo_destino']]['nombre'];
+                        }
 
-                    $costoTramo = (float)$tr['costo_estimado'];
-                    $cuotaUnidadTramo = ($sumaPondTramo > 0) ? ($costoTramo * ($miPeso / $sumaPondTramo)) : 0.0;
-                    $kmTramo = (float)$tr['km_tramo'];
+                        // ¿Este VIN estuvo presente en este tramo?
+                        if (!($ordenSubidaVin <= $ordOrig && $ordenBajadaVin >= $ordDest)) {
+                            continue;
+                        }
 
-                    $kmRecorridosTotal += $kmTramo;
-                    $costoTotalCalculado += $cuotaUnidadTramo;
+                        // Vins a bordo en este tramo
+                        $vinsEnTramo = [];
+                        $sumaPondTramo = 0.0;
+                        foreach ($allVins as $v) {
+                            if ($v['ord_sub'] <= $ordOrig && $v['ord_baj'] >= $ordDest) {
+                                $vinsEnTramo[] = $v;
+                                $seg = (int)($v['id_segmento'] ?? 1);
+                                $sumaPondTramo += ($tarifasBasePond[$seg] ?? 27.0);
+                            }
+                        }
+                        $volumenTramo = count($vinsEnTramo);
+                        if ($sumaPondTramo <= 0) $sumaPondTramo = (float)$volumenTramo;
 
-                    $tramosRecorridos[] = [
-                        'num' => $idx++,
-                        'origen' => $nomOrig,
-                        'destino' => $nomDest,
-                        'km' => $kmTramo,
-                        'unidades_a_bordo' => $volumenTramo,
-                        'factor' => (float)$tr['factor_aplicado'],
-                        'costo_tramo' => $costoTramo,
-                        'cuota_unidad' => round($cuotaUnidadTramo, 2),
-                        'porcentaje' => ($costoTramo > 0) ? round(($cuotaUnidadTramo / $costoTramo) * 100, 1) : 100
-                    ];
+                        $costoTramo = (float)$tr['costo_estimado'];
+                        if ($idTipoTraslado === 1 || $idTipoTraslado === 3) {
+                            $cuotaUnidadTramo = ($volumenTramo > 0) ? ($costoTramo / $volumenTramo) : 0.0;
+                        } else {
+                            $cuotaUnidadTramo = ($sumaPondTramo > 0) ? ($costoTramo * ($miPeso / $sumaPondTramo)) : 0.0;
+                        }
+                        $kmTramo = (float)$tr['km_tramo'];
+
+                        $kmRecorridosTotal += $kmTramo;
+                        $costoTotalCalculado += $cuotaUnidadTramo;
+
+                        $tramosRecorridos[] = [
+                            'num' => $idx++,
+                            'origen' => $nomOrig,
+                            'destino' => $nomDest,
+                            'km' => $kmTramo,
+                            'unidades_a_bordo' => $volumenTramo,
+                            'factor' => (float)$tr['factor_aplicado'],
+                            'costo_tramo' => $costoTramo,
+                            'cuota_unidad' => round($cuotaUnidadTramo, 2),
+                            'porcentaje' => ($costoTramo > 0) ? round(($cuotaUnidadTramo / $costoTramo) * 100, 1) : 100
+                        ];
+                    }
                 }
             }
 

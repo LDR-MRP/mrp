@@ -1,17 +1,114 @@
 <?php headerAdmin($data); ?>
 
+<style>
+/* Modern UI Tokens Scoped to Detalle de Envíos */
+:root {
+    --brand-primary: #C46623;
+    --brand-primary-hover: #b0571c;
+    --brand-dark: #0F172A;
+    --surface-card: #FFFFFF;
+    --surface-border: #E2E8F0;
+    --surface-bg: #F8FAFC;
+}
+
+.envios-surface-card {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 18px;
+    box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Smart Search Pill */
+.search-pill-modern {
+    background: #FFFFFF;
+    border: 1px solid #CBD5E1;
+    border-radius: 30px;
+    padding: 6px 14px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+}
+.search-pill-modern:focus-within {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px rgba(196, 102, 35, 0.15);
+}
+.search-pill-modern input {
+    border: none;
+    outline: none;
+    box-shadow: none;
+    font-size: 12.5px;
+    background: transparent;
+}
+
+/* Segmented Pill Tabs */
+.nav-segmented {
+    background: #F1F5F9;
+    padding: 4px;
+    border-radius: 12px;
+    display: inline-flex;
+    border: none;
+    gap: 4px;
+}
+.nav-segmented .nav-link {
+    border: none;
+    border-radius: 8px;
+    padding: 7px 16px;
+    color: #64748B;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    background: transparent;
+}
+.nav-segmented .nav-link:hover {
+    color: #0F172A;
+}
+.nav-segmented .nav-link.active {
+    background: #FFFFFF;
+    color: var(--brand-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Drag & Drop Visual Enhancements */
+.cursor-move { 
+    cursor: grab; 
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.cursor-move:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px -2px rgba(15, 23, 42, 0.08) !important;
+}
+.cursor-move:active { 
+    cursor: grabbing; 
+}
+.sortable-list { 
+    background-color: #F8FAFC; 
+    padding: 12px; 
+    border-radius: 14px;
+    transition: all 0.2s ease;
+}
+.sortable-ghost { 
+    opacity: 0.45; 
+    background-color: #FFF7ED !important; 
+    border: 2px dashed var(--brand-primary) !important;
+    transform: scale(0.98);
+}
+.sortable-chosen {
+    box-shadow: 0 12px 24px -4px rgba(196, 102, 35, 0.2) !important;
+}
+</style>
+
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">
             <!-- HEADER -->
-            <div class="row align-items-center mb-4">
+            <div class="row align-items-center mb-3">
                 <div class="col-12">
-                    <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-sm rounded px-3 py-2 bg-transparent">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between shadow-xs rounded px-3 py-2 bg-transparent">
                         <div class="page-title-right">
                             <ol class="breadcrumb m-0 fs-13">
                                 <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Dashboard</a></li>
                                 <li class="breadcrumb-item"><a href="<?= base_url(); ?>/Lgs_envios">Envíos</a></li>
-                                <li class="breadcrumb-item active text-primary">Acomodo de VINs</li>
+                                <li class="breadcrumb-item active text-primary fw-semibold">Acomodo de VINs</li>
                             </ol>
                         </div>
                     </div>
@@ -19,14 +116,23 @@
             </div>
 
             <!-- TÍTULO -->
-            <div class="row mb-4">
-                <div class="col-md-8">
-                    <h4 class="mb-1 text-primary fw-bold">
-                        <i class="ri-drag-move-2-line me-2"></i> Asignación y Acomodo (Envío #<?= $data['id_envio'] ?>)
-                    </h4>
-                    <p class="text-muted fs-14 mb-0">Arrastre los VINs desde el pool disponible hacia la Madrina/Chofer y ordénelos según su destino de entrega.</p>
+            <div class="row mb-4 align-items-center">
+                <div class="col-md-7">
+                    <div class="d-flex align-items-center">
+                        <div class="avatar-md me-3">
+                            <span class="avatar-title text-white rounded-circle fs-2 shadow-sm border border-light" style="background-color: var(--brand-primary) !important;">
+                                <i class="ri-drag-move-2-line"></i>
+                            </span>
+                        </div>
+                        <div>
+                            <h3 class="mb-1 fw-bold text-dark text-uppercase ls-1">
+                                Asignación y Acomodo (Envío #<?= $data['id_envio'] ?>)
+                            </h3>
+                            <p class="text-muted fs-13 mb-0">Arrastre los VINs desde el pool disponible hacia la Madrina/Chofer y ordénelos según su destino de entrega.</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <div class="col-md-5 text-md-end mt-3 mt-md-0">
                     <?php 
                         $estadoEnvio = intval($data['envio']['id_estado'] ?? 1);
                         $estadoPlan = intval($data['estado_planeacion'] ?? 0);
@@ -36,26 +142,26 @@
                         
                         if ($estadoEnvio === 1): 
                     ?>
-                        <button class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="guardarAcomodo(true);">
+                        <button class="btn btn-primary rounded-pill px-4 py-2 shadow-sm fw-bold" onclick="guardarAcomodo(true);" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
                             <i class="ri-check-double-line me-1"></i> Finalizar y Volver
                         </button>
                     <?php elseif ($puedeEditar): ?>
-                        <a href="<?= base_url(); ?>/Lgs_envios" class="btn btn-soft-secondary rounded-pill px-4 shadow-sm me-2">
+                        <a href="<?= base_url(); ?>/Lgs_envios" class="btn btn-light border rounded-pill px-4 py-2 shadow-sm me-2 fw-semibold text-secondary">
                             <i class="ri-arrow-go-back-line me-1"></i> Volver
                         </a>
-                        <button class="btn btn-warning rounded-pill px-4 shadow-sm" onclick="regresarABorrador();">
+                        <button class="btn btn-warning rounded-pill px-4 py-2 shadow-sm fw-semibold" onclick="regresarABorrador();">
                             <i class="ri-edit-line me-1"></i> <?= $enPlaneacionAbierta ? 'Editar (Regresa a Borrador)' : 'Editar (Regresa a Borrador)' ?>
                         </button>
                     <?php else: ?>
                         <?php if ($estadoEnvio >= 3): ?>
-                            <a href="<?= base_url(); ?>/Lgs_incidencias?envio=<?= $data['id_envio'] ?>" class="btn btn-soft-danger rounded-pill px-3 shadow-sm me-2" title="Reportar Incidencia Operativa">
+                            <a href="<?= base_url(); ?>/Lgs_incidencias?envio=<?= $data['id_envio'] ?>" class="btn btn-soft-danger rounded-pill px-3 py-2 shadow-sm me-2 fw-medium" title="Reportar Incidencia Operativa">
                                 <i class="ri-alarm-warning-line me-1"></i> Incidencia
                             </a>
-                            <a href="<?= base_url(); ?>/Lgs_gastosadicionales?envio=<?= $data['id_envio'] ?>" class="btn btn-soft-success rounded-pill px-3 shadow-sm me-2" title="Registrar Gasto Adicional">
+                            <a href="<?= base_url(); ?>/Lgs_gastosadicionales?envio=<?= $data['id_envio'] ?>" class="btn btn-soft-success rounded-pill px-3 py-2 shadow-sm me-2 fw-medium" title="Registrar Gasto Adicional">
                                 <i class="ri-money-dollar-circle-line me-1"></i> + Gasto Adicional
                             </a>
                         <?php endif; ?>
-                        <a href="<?= base_url(); ?>/Lgs_envios" class="btn btn-soft-secondary rounded-pill px-4 shadow-sm">
+                        <a href="<?= base_url(); ?>/Lgs_envios" class="btn btn-light border rounded-pill px-4 py-2 shadow-sm fw-semibold text-secondary">
                             <i class="ri-arrow-go-back-line me-1"></i> Volver (Solo Lectura)
                         </a>
                     <?php endif; ?>
@@ -63,8 +169,8 @@
             </div>
 
             <!-- LEYENDA INFORMATIVA ORDEN DE CARGA Y LOGÍSTICA MULTI-ORIGEN / MULTI-DESTINO -->
-            <div class="alert alert-info border-0 shadow-sm rounded-3 mb-4 d-flex align-items-center">
-                <i class="ri-route-line fs-20 me-3 text-info"></i>
+            <div class="alert alert-soft-primary border-0 shadow-xs rounded-3 mb-4 d-flex align-items-center">
+                <i class="ri-information-line fs-22 me-3 text-primary flex-shrink-0"></i>
                 <div class="fs-13">
                     <strong class="text-dark">Ruta Multi-Origen y Multi-Destino:</strong>
                     Para cada unidad asignada a la madrina, defina el nodo de <span class="badge bg-success">🟢 Subida (Carga)</span> y el nodo de <span class="badge text-white" style="background-color: #fd7e14;">🟠 Descarga (Bajada)</span>. El sistema adicionará el factor volumétrico en las recolecciones y lo descontará en las entregas intermedias, calculando el costo exacto por tramo con tarifas o memoria de distancias $/km.
@@ -74,26 +180,24 @@
             <!-- RESUMEN EJECUTIVO DE LA RUTA Y KM -->
             <div class="row mb-4" id="card-resumen-ruta-envio">
                 <div class="col-12">
-                    <div class="card border-0 shadow-sm rounded-3 bg-soft-primary border-start border-4 border-primary">
-                        <div class="card-body py-3">
-                            <div class="row align-items-center">
-                                <div class="col-md-3 border-end">
-                                    <span class="text-muted fs-11 text-uppercase fw-bold d-block"><i class="ri-map-pin-line text-danger me-1"></i> Origen Salida</span>
-                                    <strong class="fs-13 text-dark" id="lbl-resumen-origen">Cargando...</strong>
-                                </div>
-                                <div class="col-md-3 border-end">
-                                    <span class="text-muted fs-11 text-uppercase fw-bold d-block"><i class="ri-route-line text-primary me-1"></i> Distancia Ruta Total</span>
-                                    <span class="badge bg-primary fs-13" id="lbl-resumen-km-total">0 km</span>
-                                    <small class="text-muted fs-11 ms-1">(Tarifario)</small>
-                                </div>
-                                <div class="col-md-3 border-end">
-                                    <span class="text-muted fs-11 text-uppercase fw-bold d-block"><i class="ri-flag-line text-success me-1"></i> Paradas de la Ruta</span>
-                                    <strong class="fs-13 text-dark" id="lbl-resumen-paradas">0 paradas</strong>
-                                </div>
-                                <div class="col-md-3">
-                                    <span class="text-muted fs-11 text-uppercase fw-bold d-block"><i class="ri-money-dollar-circle-line text-success me-1"></i> Costo Est. Envío</span>
-                                    <strong class="fs-14 text-success fw-bold" id="lbl-resumen-costo">$0.00</strong>
-                                </div>
+                    <div class="envios-surface-card p-3">
+                        <div class="row align-items-center g-3">
+                            <div class="col-md-3 border-end border-light-subtle">
+                                <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1"><i class="ri-map-pin-line text-danger me-1"></i> Origen Salida</span>
+                                <strong class="fs-13 text-dark" id="lbl-resumen-origen">Cargando...</strong>
+                            </div>
+                            <div class="col-md-3 border-end border-light-subtle">
+                                <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1"><i class="ri-route-line text-primary me-1"></i> Distancia Ruta Total</span>
+                                <span class="badge bg-primary fs-12 px-2 py-1 rounded-pill" id="lbl-resumen-km-total">0 km</span>
+                                <small class="text-muted fs-11 ms-1">(Tarifario)</small>
+                            </div>
+                            <div class="col-md-3 border-end border-light-subtle">
+                                <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1"><i class="ri-flag-line text-success me-1"></i> Paradas del Viaje</span>
+                                <div class="fs-13 text-dark" id="lbl-resumen-paradas">0 paradas</div>
+                            </div>
+                            <div class="col-md-3">
+                                <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1"><i class="ri-money-dollar-circle-line text-success me-1"></i> Costo Est. Envío</span>
+                                <strong class="fs-18 text-success fw-bold" id="lbl-resumen-costo">$0.00</strong>
                             </div>
                         </div>
                     </div>
@@ -169,20 +273,20 @@
                         </div>
                     </div>
 
-                    <!-- TABS INTERNAS -->
-                    <ul class="nav nav-pills nav-custom-primary mb-3" role="tablist">
+                    <!-- TABS INTERNAS SEGMENTADAS -->
+                    <ul class="nav nav-segmented mb-3" role="tablist">
                         <li class="nav-item">
-                            <a class="nav-link active rounded-pill px-3 py-1 fs-13" data-bs-toggle="pill" href="#tab-audit-vins" role="tab">
+                            <a class="nav-link active" data-bs-toggle="pill" href="#tab-audit-vins" role="tab">
                                 <i class="ri-car-line me-1"></i> Costo Real por VIN (<?= count($audit['vins'] ?? []) ?>)
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link rounded-pill px-3 py-1 fs-13" data-bs-toggle="pill" href="#tab-audit-gastos" role="tab">
+                            <a class="nav-link" data-bs-toggle="pill" href="#tab-audit-gastos" role="tab">
                                 <i class="ri-money-dollar-circle-line me-1"></i> Gastos Adicionales (<?= count($audit['gastos'] ?? []) ?>)
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link rounded-pill px-3 py-1 fs-13" data-bs-toggle="pill" href="#tab-audit-incidencias" role="tab">
+                            <a class="nav-link" data-bs-toggle="pill" href="#tab-audit-incidencias" role="tab">
                                 <i class="ri-alarm-warning-line me-1"></i> Incidencias Operativas (<?= count($audit['incidencias'] ?? []) ?>)
                             </a>
                         </li>
@@ -350,20 +454,29 @@
 
             <input type="hidden" id="id_envio" value="<?= $data['id_envio'] ?>">
 
-            <div class="row">
+            <div class="row g-4">
                 <!-- POOL DE VINS DISPONIBLES (Izquierda) -->
                 <div class="col-lg-4">
-                    <div class="card shadow-sm border-0 rounded-3 h-100">
-                        <div class="card-header bg-light border-bottom-0 pt-3 pb-2">
-                            <h6 class="card-title mb-0 fw-bold text-secondary"><i class="ri-car-line me-1"></i> VINs Disponibles</h6>
-                            <small class="text-muted">Unidades listas en el origen del envío</small>
-                            <div class="mt-2">
-                                <input type="text" id="buscar-vin-pool" class="form-control form-control-sm rounded-pill" placeholder="🔍 Buscar por VIN o N/S...">
+                    <div class="envios-surface-card p-3 h-100 d-flex flex-column">
+                        <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                            <div>
+                                <h6 class="card-title mb-0 fw-bold text-dark fs-14">
+                                    <i class="ri-car-line text-primary me-1 align-middle"></i> VINs Disponibles
+                                </h6>
+                                <small class="text-muted fs-11">Unidades listas en el origen del envío</small>
                             </div>
+                            <span class="badge bg-primary-subtle text-primary rounded-pill fs-11" id="badge-total-pool-vins">Pool</span>
                         </div>
-                        <div class="card-body bg-light" style="min-height: 500px;">
+                        
+                        <!-- Buscador en tiempo real estilo Search Pill -->
+                        <div class="search-pill-modern d-flex align-items-center w-100 my-2">
+                            <i class="ri-search-line text-muted me-2"></i>
+                            <input type="text" id="buscar-vin-pool" class="w-100" placeholder="Buscar por VIN, N/S o Modelo...">
+                        </div>
+
+                        <div class="flex-grow-1 overflow-auto mt-2" style="max-height: 600px;">
                             <!-- Lista Sortable -->
-                            <ul id="vins-disponibles" class="list-group list-group-flush sortable-list rounded" style="min-height: 400px; border: 2px dashed #ccc;">
+                            <ul id="vins-disponibles" class="list-group list-group-flush sortable-list" style="min-height: 400px; border: 2px dashed #CBD5E1;">
                                 <!-- Se llena dinámicamente desde JS -->
                             </ul>
                         </div>
@@ -372,23 +485,29 @@
 
                 <!-- CAMIONES / MADRINAS (Derecha) -->
                 <div class="col-lg-8">
-                    <div class="card shadow-sm border-0 rounded-3 h-100">
-                        <div class="card-header border-bottom-0 pt-3 pb-2 d-flex justify-content-between align-items-center">
+                    <div class="envios-surface-card p-3 h-100 d-flex flex-column">
+                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom flex-wrap gap-2">
                             <div>
-                                <h6 class="card-title mb-0 fw-bold text-secondary"><i class="ri-truck-line me-1"></i> Asignación a Vehículos</h6>
-                                <small class="text-muted">Arrastre aquí para cargar (El de arriba se baja al último)</small>
+                                <h6 class="card-title mb-0 fw-bold text-dark fs-14">
+                                    <i class="ri-truck-line text-primary me-1 align-middle"></i> Asignación y Estiba a Vehículos
+                                </h6>
+                                <small class="text-muted fs-11">Arrastra aquí para cargar (el de arriba se baja al final del trayecto)</small>
                             </div>
                             <!-- Botón para agregar más madrinas/choferes a este envío -->
-                            <button class="btn btn-sm btn-outline-primary rounded-pill px-3" id="btn-agregar-vehiculo" onclick="agregarVehiculo();">
+                            <button class="btn btn-sm btn-primary rounded-pill px-3 shadow-xs fw-semibold" id="btn-agregar-vehiculo" onclick="agregarVehiculo();" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
                                 <i class="ri-add-line me-1"></i> Agregar Vehículo
                             </button>
                         </div>
-                        <div class="card-body" id="contenedor-vehiculos">
+                        <div class="flex-grow-1" id="contenedor-vehiculos">
                             <!-- Se inyecta dinámicamente las madrinas/choferes asignados -->
                             <div class="text-center text-muted py-5" id="empty-vehiculos-msg">
-                                <i class="ri-truck-line fs-1 display-4 text-muted opacity-50"></i>
-                                <p class="mt-2 mb-0">No se han asignado vehículos a este envío.</p>
-                                <small class="text-muted">Haga clic en <strong>"Agregar Vehículo / Madrina"</strong> para seleccionar del catálogo del trasladista.</small>
+                                <div class="avatar-lg mx-auto mb-3">
+                                    <span class="avatar-title bg-light text-muted rounded-circle fs-36 border">
+                                        <i class="ri-truck-line opacity-50"></i>
+                                    </span>
+                                </div>
+                                <h6 class="fw-bold text-dark mb-1">Sin vehículos asignados</h6>
+                                <p class="text-muted fs-12 mb-0">Haga clic en <strong>"Agregar Vehículo"</strong> para seleccionar del catálogo del trasladista.</p>
                             </div>
                         </div>
                     </div>
@@ -402,20 +521,20 @@
 <!-- MODAL AGREGAR VEHÍCULO / MADRINA DEL PROVEEDOR -->
 <div class="modal fade" id="modalAgregarVehiculo" tabindex="-1" aria-labelledby="modalVehiculoLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-light border-bottom-0">
-                <h5 class="modal-title fw-bold text-primary" id="modalVehiculoLabel">
-                    <i class="ri-truck-line me-2"></i> Seleccionar Vehículo / Conductor del Trasladista
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-light border-bottom-0 py-3">
+                <h5 class="modal-title fw-bold text-dark fs-16" id="modalVehiculoLabel">
+                    <i class="ri-truck-line me-2 text-primary"></i> Seleccionar Vehículo / Conductor del Trasladista
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
-                <div class="alert alert-info border-0 shadow-sm mb-4">
-                    <i class="ri-information-line me-1 fs-15 align-middle"></i> 
-                    Empresa Trasladista: <strong id="lbl-trasladista-nombre">Cargando...</strong>
+                <div class="alert alert-soft-primary border-0 shadow-xs mb-4">
+                    <i class="ri-information-line me-1 fs-15 align-middle text-primary"></i> 
+                    Empresa Trasladista: <strong id="lbl-trasladista-nombre" class="text-dark">Cargando...</strong>
                 </div>
 
-                <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" role="tablist" id="modal-vehiculo-nav-tabs">
+                <ul class="nav nav-segmented mb-3" role="tablist" id="modal-vehiculo-nav-tabs">
                     <li class="nav-item" id="nav-tab-madrinas">
                         <a class="nav-link active" id="link-tab-madrinas" data-bs-toggle="tab" href="#tab-madrinas" role="tab">
                             <i class="ri-truck-line me-1"></i> Madrinas del Catálogo
@@ -438,7 +557,7 @@
                     <div class="tab-pane active" id="tab-madrinas" role="tabpanel">
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0" id="tblModalMadrinas">
-                                <thead class="bg-light">
+                                <thead class="table-light fs-11 text-uppercase text-muted">
                                     <tr>
                                         <th>Económico</th>
                                         <th>Placas</th>
@@ -456,7 +575,7 @@
                     <div class="tab-pane" id="tab-choferes" role="tabpanel">
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0" id="tblModalChoferes">
-                                <thead class="bg-light">
+                                <thead class="table-light fs-11 text-uppercase text-muted">
                                     <tr>
                                         <th>Nombre del Conductor</th>
                                         <th>N° Licencia</th>
@@ -473,7 +592,7 @@
                     <div class="tab-pane" id="tab-plataformas" role="tabpanel">
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0" id="tblModalPlataformas">
-                                <thead class="bg-light">
+                                <thead class="table-light fs-11 text-uppercase text-muted">
                                     <tr>
                                         <th>Económico</th>
                                         <th>Placas</th>
@@ -491,13 +610,6 @@
         </div>
     </div>
 </div>
-
-<style>
-    .cursor-move { cursor: grab; }
-    .cursor-move:active { cursor: grabbing; }
-    .sortable-list { background-color: #f8f9fa; padding: 10px; }
-    .sortable-ghost { opacity: 0.4; background-color: #e9ecef; }
-</style>
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 

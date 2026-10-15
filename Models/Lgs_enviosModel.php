@@ -19,6 +19,9 @@ class Lgs_enviosModel extends Mysql
             'id_envio',
             'folio',
             'id_tipo_traslado',
+            'tipo_servicio',
+            'modalidad_calculo',
+            'is_lowboy',
             'id_motivo',
             'id_proveedor',
             'id_origen',
@@ -52,6 +55,7 @@ class Lgs_enviosModel extends Mysql
             'id_chofer',
             'posicion_acomodo',
             'costo_unidad',
+            'tipo_servicio',
             'fecha_entrega_real',
             'recibe_nombre',
             'id_estado',
@@ -63,6 +67,7 @@ class Lgs_enviosModel extends Mysql
             'orden',
             'tipo_nodo',
             'id_ubicacion',
+            'id_origen_referencia',
             'destino_nombre_libre',
             'km_tramo_anterior',
             'observaciones',
@@ -108,6 +113,8 @@ class Lgs_enviosModel extends Mysql
                     tt.nombre AS tipo_traslado,
                     mo.descripcion AS motivo,
                     pr.razon_social AS trasladista,
+                    e.modalidad_calculo,
+                    e.tipo_servicio,
                     COALESCE(
                         (SELECT u0.nombre FROM lgs_envios_nodos n0 LEFT JOIN lgs_cat_ubicaciones u0 ON n0.id_ubicacion = u0.id_ubicacion WHERE n0.id_envio = e.id_envio AND n0.orden = 0 LIMIT 1),
                         o.nombre,
@@ -274,7 +281,7 @@ class Lgs_enviosModel extends Mysql
 
         // 3. Proveedores / Trasladistas
         try {
-            $sqlProv = "SELECT p.id_proveedor AS id, CONCAT(p.razon_social, ' (', p.rfc, ')') AS nombre 
+            $sqlProv = "SELECT p.id_proveedor AS id, CONCAT(p.razon_social, ' (', p.rfc, ')') AS nombre, p.modalidad_envio_default 
                         FROM prv_cat_proveedores p
                         INNER JOIN prv_rel_proveedores_actividades r ON r.id_proveedor = p.id_proveedor
                         INNER JOIN prv_cat_actividades a ON a.id_actividad = r.id_actividad
@@ -282,11 +289,11 @@ class Lgs_enviosModel extends Mysql
                         ORDER BY p.razon_social ASC";
             $proveedores = $this->select_all($sqlProv);
             if (empty($proveedores)) {
-                $proveedores = $this->select_all("SELECT id_proveedor AS id, razon_social AS nombre FROM prv_cat_proveedores WHERE deleted_at IS NULL ORDER BY razon_social ASC");
+                $proveedores = $this->select_all("SELECT id_proveedor AS id, razon_social AS nombre, modalidad_envio_default FROM prv_cat_proveedores WHERE deleted_at IS NULL ORDER BY razon_social ASC");
             }
         } catch (Throwable $e) {
             try {
-                $proveedores = $this->select_all("SELECT id_proveedor AS id, razon_social AS nombre FROM prv_cat_proveedores WHERE deleted_at IS NULL ORDER BY razon_social ASC");
+                $proveedores = $this->select_all("SELECT id_proveedor AS id, razon_social AS nombre, modalidad_envio_default FROM prv_cat_proveedores WHERE deleted_at IS NULL ORDER BY razon_social ASC");
             } catch (Throwable $e2) {
                 $proveedores = [];
             }
@@ -425,6 +432,7 @@ class Lgs_enviosModel extends Mysql
                     e.folio,
                     e.id_tipo_traslado,
                     e.tipo_servicio,
+                    e.modalidad_calculo,
                     e.is_lowboy,
                     e.id_motivo,
                     e.id_proveedor,
@@ -620,6 +628,8 @@ class Lgs_enviosModel extends Mysql
                         v.id_nodo_subida,
                         v.id_nodo_bajada,
                         v.posicion_acomodo,
+                        v.costo_unidad,
+                        v.tipo_servicio,
                         m.numero_economico AS madrina_nombre,
                         p.numero_economico AS plataforma_nombre,
                         CONCAT(c.nombre, ' ', c.apellidos) AS chofer_nombre
@@ -867,6 +877,18 @@ class Lgs_enviosModel extends Mysql
             try {
                 $db->exec("ALTER TABLE `lgs_envios_vins` ADD COLUMN `id_nodo_bajada` BIGINT NULL AFTER `id_nodo_subida`");
             } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios_vins` ADD COLUMN `tipo_servicio` VARCHAR(20) NOT NULL DEFAULT 'FORANEO' AFTER `costo_unidad`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `modalidad_calculo` ENUM('ESCALONADO', 'DIRECTO') NOT NULL DEFAULT 'ESCALONADO' AFTER `tipo_servicio`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios_nodos` ADD COLUMN `id_origen_referencia` BIGINT NULL DEFAULT NULL AFTER `id_ubicacion`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `prv_cat_proveedores` ADD COLUMN `modalidad_envio_default` ENUM('ESCALONADO', 'DIRECTO') NOT NULL DEFAULT 'DIRECTO' AFTER `origen`");
+            } catch (Throwable $e) {}
         } catch (Throwable $e) {
             // Silencioso si ya existe o no hay permisos DDL
         }
@@ -1031,6 +1053,7 @@ class Lgs_enviosModel extends Mysql
                         n.orden,
                         n.tipo_nodo,
                         n.id_ubicacion,
+                        n.id_origen_referencia,
                         COALESCE(u.nombre, n.destino_nombre_libre, 'Sin Nombre') AS nombre,
                         u.direccion,
                         u.id_tipo_destino,
@@ -1050,6 +1073,7 @@ class Lgs_enviosModel extends Mysql
                         n.id_envio,
                         n.orden,
                         n.id_ubicacion,
+                        n.id_origen_referencia,
                         COALESCE(u.nombre, n.destino_nombre_libre, 'Sin Nombre') AS nombre,
                         u.direccion,
                         u.id_tipo_destino,

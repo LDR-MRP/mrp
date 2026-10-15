@@ -92,6 +92,18 @@ const MIPICKING = 74;
 const MICAPTURAVIN = 65;
 const MITIPOCAMBIOMONEDA = 66;
 const MIRECEPCION = 64;
+const MIDESCUENTOS = 63;
+const MITRASLADOS = 75;
+const MIOPTRASLADOS = 76;
+
+// Submódulos Ingeniería (vehículos)
+const ING_MODELOS = 77;
+const ING_MOTORES = 78;
+const ING_TRANSMISIONES = 79;
+const ING_CERTIFICACIONES = 80;
+const ING_ESPECIFICACIONES = 81;
+const ING_CONFIGURACIONES = 82;
+const ING_JURIDICO = 84; // Perfil Jurídico: solo carga de certificaciones
 
 // Submódulos Capacidad
 const MCESTACIONESTRABAJO = 27;
@@ -101,7 +113,22 @@ const MCPLANTAS = 29;
 // Submódulos Proveedores
 const MPPROVEEDORES = 35;
 
-// Submódulos Clientes
+// Submódulos pedidos / Clientes
+const MCLIENTES_CLIENTES = 37;
+const MCLIENTES_PEDIDOS = 37;
+const MCLIENTES_PROPUESTAS_COMERCIALES = 38;
+const MCLIENTES_AUTORIZACIONES = 39;
+const MCLIENTES_ASIGNACION_UNIDADES = 40;
+const MCLIENTES_BACKORDERS = 41;
+const MCLIENTES_FACTURAS = 42;
+const MCLIENTES_ENTREGAS = 43;
+const MCLIENTES_CANCELACIONES = 44;
+const MCLIENTES_DEVOLUCIONES = 45;
+const MCLIENTES_SEGUIMIENTO = 46;
+const MCLIENTES_REPORTES = 47;
+const MCLIENTES_BITACORA = 48;
+
+// Submódulos Clientes (anteriores)
 const MCCLIENTES = 39;
 const MCMARCAS = 40;
 const MCDEPARTAMENTOS = 41;
@@ -119,6 +146,21 @@ const COM_ORDENES = 52;
 const PRV_PROVEEDORES = 53;
 const CXP_FACTURAS = 54;
 const CXP_PAGOS = 55;
+
+// Módulos Logística
+const LGS_BANDEJA = 150;
+const LGS_COSTOS = 151;
+const LGS_MADRINAS = 152;
+const LGS_CHOFERES = 153;
+const LGS_PLATAFORMAS = 154;
+const LGS_ENVIOS = 155;
+const LGS_PLANEACIONES = 156;
+const LGS_APROBACIONES = 157;
+const LGS_EJECUCION = 158;
+const LGS_EVIDENCIAS = 159;
+const LGS_PANELRUTAS = 160;
+const LGS_INCIDENCIAS = 161;
+const LGS_GASTOSADICIONALES = 162;
 
 const PERROR = 9;
 
