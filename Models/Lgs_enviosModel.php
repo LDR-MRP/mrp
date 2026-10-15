@@ -116,7 +116,7 @@ class Lgs_enviosModel extends Mysql
                     e.modalidad_calculo,
                     e.tipo_servicio,
                     COALESCE(
-                        (SELECT u0.nombre FROM lgs_envios_nodos n0 LEFT JOIN lgs_cat_ubicaciones u0 ON n0.id_ubicacion = u0.id_ubicacion WHERE n0.id_envio = e.id_envio AND n0.orden = 0 LIMIT 1),
+                        (SELECT COALESCE(u0.nombre, n0.destino_nombre_libre) FROM lgs_envios_nodos n0 LEFT JOIN lgs_cat_ubicaciones u0 ON n0.id_ubicacion = u0.id_ubicacion WHERE n0.id_envio = e.id_envio AND n0.orden = 0 LIMIT 1),
                         o.nombre,
                         'Origen'
                     ) AS origen,
@@ -438,7 +438,11 @@ class Lgs_enviosModel extends Mysql
                     e.id_proveedor,
                     pr.razon_social AS trasladista,
                     e.id_origen,
-                    o.nombre AS origen,
+                    COALESCE(
+                        (SELECT COALESCE(u0.nombre, n0.destino_nombre_libre) FROM lgs_envios_nodos n0 LEFT JOIN lgs_cat_ubicaciones u0 ON n0.id_ubicacion = u0.id_ubicacion WHERE n0.id_envio = e.id_envio AND n0.orden = 0 LIMIT 1),
+                        o.nombre,
+                        'Sin Origen'
+                    ) AS origen,
                     e.id_destino,
                     e.destino_nombre_libre,
                     COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social, d.nombre, e.destino_nombre_libre, 'Sin Destino') AS destino,
@@ -710,13 +714,15 @@ class Lgs_enviosModel extends Mysql
     public function insertParada(PDO $db, array $data): int
     {
         // En frontend envían formato de lgs_envios_paradas, lo transformamos a lgs_envios_nodos
+        $locId = !empty($data['id_destino_cat']) ? (int)$data['id_destino_cat'] : (!empty($data['id_ubicacion']) ? (int)$data['id_ubicacion'] : null);
         $nodoData = [
             'id_envio'             => $data['id_envio'] ?? null,
             'orden'                => $data['orden'] ?? 1,
             'tipo_nodo'            => $data['tipo_nodo'] ?? 'entrega',
-            'id_ubicacion'         => $data['id_destino_cat'] ?? null,
-            'destino_nombre_libre' => $data['destino_nombre_libre'] ?? null,
-            'km_tramo_anterior'    => $data['km_tramo'] ?? 0.00,
+            'id_ubicacion'         => $locId > 0 ? $locId : null,
+            'id_origen_referencia' => !empty($data['id_origen_referencia']) ? (int)$data['id_origen_referencia'] : null,
+            'destino_nombre_libre' => !empty($data['destino_nombre_libre']) ? trim($data['destino_nombre_libre']) : null,
+            'km_tramo_anterior'    => !empty($data['km_tramo']) ? floatval($data['km_tramo']) : (!empty($data['km_tramo_anterior']) ? floatval($data['km_tramo_anterior']) : 0.00),
             'observaciones'        => $data['observaciones'] ?? null,
             'fecha_estimada'       => !empty($data['fecha_estimada']) ? str_replace('T', ' ', $data['fecha_estimada']) : null,
         ];
@@ -769,10 +775,11 @@ class Lgs_enviosModel extends Mysql
         // Nota: Mantenemos la lógica pero basándonos en nodos.
         $sql = "UPDATE lgs_envios
                 SET km_total   = COALESCE((SELECT SUM(km_tramo_anterior) FROM lgs_envios_nodos WHERE id_envio = ?), 0),
-                    id_destino = COALESCE((SELECT id_ubicacion FROM lgs_envios_nodos WHERE id_envio = ? ORDER BY orden DESC LIMIT 1), id_destino)
+                    id_destino = (SELECT id_ubicacion FROM lgs_envios_nodos WHERE id_envio = ? ORDER BY orden DESC LIMIT 1),
+                    destino_nombre_libre = (SELECT destino_nombre_libre FROM lgs_envios_nodos WHERE id_envio = ? ORDER BY orden DESC LIMIT 1)
                 WHERE id_envio = ?";
         $stmt = $db->prepare($sql);
-        $stmt->execute([$idEnvio, $idEnvio, $idEnvio]);
+        $stmt->execute([$idEnvio, $idEnvio, $idEnvio, $idEnvio]);
     }
 
     /**
@@ -992,13 +999,25 @@ class Lgs_enviosModel extends Mysql
             $idA = intval($nodoPrev['id_ubicacion'] ?? $nodoPrev['id_destino_cat'] ?? 0);
             $idB = intval($nodoCurr['id_ubicacion'] ?? $nodoCurr['id_destino_cat'] ?? 0);
 
-            $nomA = $ubicacionesMap[$idA] ?? ($nodoPrev['destino_nombre_libre'] ?? "Ubicación #{$idA}");
-            $nomB = $ubicacionesMap[$idB] ?? ($nodoCurr['destino_nombre_libre'] ?? "Ubicación #{$idB}");
+            $nomA = $ubicacionesMap[$idA] ?? (!empty($nodoPrev['destino_nombre_libre']) ? $nodoPrev['destino_nombre_libre'] : "Ubicación #{$idA}");
+            $nomB = $ubicacionesMap[$idB] ?? (!empty($nodoCurr['destino_nombre_libre']) ? $nodoCurr['destino_nombre_libre'] : "Ubicación #{$idB}");
+
+            $esAbiertoCurr = empty($idB) && !empty($nodoCurr['destino_nombre_libre']);
+            $esAbiertoPrev = empty($idA) && !empty($nodoPrev['destino_nombre_libre']);
 
             $km = null;
             if ($idA > 0 && $idB > 0 && $idA === $idB) {
                 // Si origen y destino del tramo son la misma ubicación, la distancia es 0 y no es faltante
                 $km = 0.00;
+            } elseif ($esAbiertoCurr || $esAbiertoPrev) {
+                // Destino abierto (fuera de catálogo) o tramo que parte de un destino abierto
+                // Se utiliza exclusivamente el KM manual capturado en el nodo para el costeo de este envío.
+                // NO se persiste en lgs_distancias ni se registra en memoria general.
+                if (!empty($nodoCurr['km_tramo']) && floatval($nodoCurr['km_tramo']) > 0) {
+                    $km = floatval($nodoCurr['km_tramo']);
+                } else {
+                    $km = null;
+                }
             } elseif (!empty($nodoCurr['km_tramo']) && floatval($nodoCurr['km_tramo']) > 0) {
                 $km = floatval($nodoCurr['km_tramo']);
                 if ($idA > 0 && $idB > 0) {
@@ -1016,6 +1035,7 @@ class Lgs_enviosModel extends Mysql
                         'id_ubicacion_b' => $idB,
                         'nombre_a' => $nomA,
                         'nombre_b' => $nomB,
+                        'es_abierto' => ($esAbiertoCurr || $esAbiertoPrev)
                     ];
                 }
             } else {
@@ -1028,7 +1048,8 @@ class Lgs_enviosModel extends Mysql
                 'id_ubicacion_b' => $idB,
                 'nombre_a' => $nomA,
                 'nombre_b' => $nomB,
-                'km' => $km ?: 0.00
+                'km' => $km ?: 0.00,
+                'es_abierto' => ($esAbiertoCurr || $esAbiertoPrev)
             ];
         }
 

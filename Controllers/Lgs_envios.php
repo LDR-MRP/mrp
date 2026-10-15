@@ -203,12 +203,38 @@ class Lgs_envios extends Controllers
                 return;
             }
 
-            // Validar que no haya tramos consecutivos con origen y destino idénticos
+            // Validar punto de partida (Punto 1)
+            $loc0 = intval($nodos[0]['id_ubicacion'] ?? 0);
+            $nom0 = trim($nodos[0]['destino_nombre_libre'] ?? '');
+            if ($loc0 <= 0 && empty($nom0)) {
+                echo $this->errorResponse("El Punto #1 (Punto de Partida / Carga) debe tener una ubicación del catálogo seleccionada o un nombre abierto.", 400);
+                return;
+            }
+
+            // Validar tramos
             for ($i = 1; $i < count($nodos); $i++) {
                 $locA = intval($nodos[$i - 1]['id_ubicacion'] ?? 0);
                 $locB = intval($nodos[$i]['id_ubicacion'] ?? 0);
                 if ($locA > 0 && $locB > 0 && $locA === $locB) {
                     echo $this->errorResponse("El Punto #" . ($i + 1) . " no puede ser la misma ubicación que el Punto #" . $i . ". Una ruta no puede tener tramos que salgan y lleguen al mismo punto.", 400);
+                    return;
+                }
+
+                $nomLibre = trim($nodos[$i]['destino_nombre_libre'] ?? '');
+                $kmTr = floatval($nodos[$i]['km_tramo'] ?? 0);
+                if ($locB <= 0 && empty($nomLibre)) {
+                    echo $this->errorResponse("El Punto #" . ($i + 1) . " debe tener una ubicación del catálogo seleccionada o un nombre de punto abierto.", 400);
+                    return;
+                }
+                if ($locB <= 0 && !empty($nomLibre) && $kmTr <= 0) {
+                    echo $this->errorResponse("El Punto #" . ($i + 1) . " (\"" . $nomLibre . "\") es un punto abierto y requiere indicar los kilómetros del tramo para el cálculo del flete.", 400);
+                    return;
+                }
+
+                // Si el punto anterior fue abierto, este tramo también requiere indicar KM manuales
+                $nomPrevLibre = trim($nodos[$i - 1]['destino_nombre_libre'] ?? '');
+                if ($locA <= 0 && !empty($nomPrevLibre) && $kmTr <= 0) {
+                    echo $this->errorResponse("El tramo desde el Punto #" . $i . " (\"" . $nomPrevLibre . "\") hacia el Punto #" . ($i + 1) . " requiere indicar los kilómetros del tramo.", 400);
                     return;
                 }
             }
@@ -255,8 +281,8 @@ class Lgs_envios extends Controllers
                 'modalidad_calculo'=> $modalidadCalculo,
                 'id_motivo'        => intval($_POST['id_motivo'] ?? 0),
                 'id_proveedor'     => $idProveedor,
-                'id_origen'        => $firstLoc > 0 ? $firstLoc : intval($_POST['id_origen'] ?? 0),
-                'id_destino'       => $lastLoc > 0 ? $lastLoc : intval($_POST['id_destino'] ?? 0),
+                'id_origen'        => $firstLoc > 0 ? $firstLoc : (intval($_POST['id_origen'] ?? 0) ?: null),
+                'id_destino'       => $lastLoc > 0 ? $lastLoc : (intval($_POST['id_destino'] ?? 0) ?: null),
                 'destino_nombre_libre' => !empty($lastFree) ? $lastFree : ($_POST['destino_nombre_libre'] ?? ''),
                 'km_total'         => 0,
                 'is_lowboy'        => intval($_POST['is_lowboy'] ?? 0),

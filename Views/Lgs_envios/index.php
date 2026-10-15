@@ -567,6 +567,7 @@
                                 <input type="hidden" id="paradas_json" name="paradas" value="[]">
                                 <input type="hidden" id="id_origen" name="id_origen" value="">
                                 <input type="hidden" id="id_destino" name="id_destino" value="">
+                                <input type="hidden" id="destino_nombre_libre" name="destino_nombre_libre" value="">
 
                                 <!-- Catálogos completos para el JS -->
                                 <script id="catalogoUbicaciones" type="application/json">

@@ -671,6 +671,17 @@ function handleModalidadCalculoChange(esCambioManual = false) {
     verificarYCalcularRuta();
 }
 
+/** Escapa caracteres HTML para prevenir inyecciones XSS en nombres y atributos */
+function escapeHtmlEnvios(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
 /** Agrega un nuevo nodo / punto al recorrido de la ruta */
 function agregarNodoRuta(data, isCarga = false) {
     const idTipoTraslado = document.getElementById('id_tipo_traslado') ? document.getElementById('id_tipo_traslado').value : '';
@@ -722,6 +733,10 @@ function agregarNodoRuta(data, isCarga = false) {
     div.style.borderLeft = esOrigen ? '4px solid #0ab39c' : (isCargaVal ? '4px solid #0d6efd' : '4px solid #fd7e14');
 
     const esDirecto = (document.getElementById('modalidad_calculo') && document.getElementById('modalidad_calculo').value === 'DIRECTO');
+    const esAbiertoInicial = (!selUbicacionId && Boolean(nombreLibre));
+    if (esAbiertoInicial) {
+        div.setAttribute('data-destino-abierto', '1');
+    }
 
     // Determinar si la ubicación seleccionada es un distribuidor (para preseleccionar la cascada)
     let selDistribuidorId = '';
@@ -736,35 +751,111 @@ function agregarNodoRuta(data, isCarga = false) {
     // Construir HTML del bloque de ubicación según tipo de nodo
     let htmlUbicacion = '';
     if (!esOrigen && !isCargaVal) {
-        // NODOS DE DESCARGA: Cascada Distribuidor → Sede + fallback ubicación directa
+        // NODOS DE DESCARGA: Switch Catálogo vs Destino Abierto (fuera de catálogo)
         htmlUbicacion = `
-            <div class="row g-2 mb-1">
-                <div class="col-md-6">
-                    <label class="form-label fs-11 text-muted mb-1 fw-bold"><i class="ri-building-2-line text-primary me-1"></i>Distribuidor</label>
-                    <select class="form-select form-select-sm nodo-select-distribuidor" onchange="onDistribuidorChange(this)">
-                        ${buildDistribuidorOptions(selDistribuidorId)}
-                    </select>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fs-11 text-muted mb-1 fw-bold"><i class="ri-map-pin-2-line text-warning me-1"></i>Sede</label>
-                    <select class="form-select form-select-sm nodo-select-sede" onchange="onSedeChange(this)" ${selDistribuidorId ? '' : 'disabled'}>
-                        <option value="">Primero seleccione distribuidor</option>
-                    </select>
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="fs-11 text-muted fw-bold"><i class="ri-map-pin-2-line text-warning me-1"></i>Punto de Descarga</span>
+                <div class="form-check form-switch form-check-inline m-0">
+                    <input class="form-check-input nodo-check-abierto" type="checkbox" id="check_abierto_${_nodoCounter}" ${esAbiertoInicial ? 'checked' : ''} onchange="toggleNodoDestinoAbierto(this)">
+                    <label class="form-check-label fs-11 text-primary fw-medium" for="check_abierto_${_nodoCounter}" style="cursor:pointer;" title="Permite ingresar un destino fuera de catálogo con KM manuales">
+                        <i class="ri-edit-line me-1"></i>Destino abierto
+                    </label>
                 </div>
             </div>
-            <details class="mt-1">
-                <summary class="fs-10 text-muted" style="cursor:pointer;"><i class="ri-arrow-down-s-line me-1"></i>Selección directa (sin distribuidor)</summary>
-                <select class="form-select form-select-sm nodo-select-ubicacion mt-1" onchange="alCambiarUbicacionNodo(this)">
+            <!-- Bloque Catálogo (Distribuidor / Sede) -->
+            <div class="nodo-bloque-catalogo" style="${esAbiertoInicial ? 'display: none;' : ''}">
+                <div class="row g-2 mb-1">
+                    <div class="col-md-6">
+                        <label class="form-label fs-11 text-muted mb-1 fw-bold"><i class="ri-building-2-line text-primary me-1"></i>Distribuidor</label>
+                        <select class="form-select form-select-sm nodo-select-distribuidor" onchange="onDistribuidorChange(this)">
+                            ${buildDistribuidorOptions(selDistribuidorId)}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fs-11 text-muted mb-1 fw-bold"><i class="ri-store-2-line text-warning me-1"></i>Sede</label>
+                        <select class="form-select form-select-sm nodo-select-sede" onchange="onSedeChange(this)" ${selDistribuidorId ? '' : 'disabled'}>
+                            <option value="">Primero seleccione distribuidor</option>
+                        </select>
+                    </div>
+                </div>
+                <details class="mt-1">
+                    <summary class="fs-10 text-muted" style="cursor:pointer;"><i class="ri-arrow-down-s-line me-1"></i>Selección directa (sin distribuidor)</summary>
+                    <select class="form-select form-select-sm nodo-select-ubicacion mt-1" onchange="alCambiarUbicacionNodo(this)">
+                        ${buildUbicacionOptions(selUbicacionId)}
+                    </select>
+                </details>
+            </div>
+            <!-- Bloque Destino Abierto (Texto libre para descarga fuera de catálogo) -->
+            <div class="nodo-bloque-abierto" style="${esAbiertoInicial ? '' : 'display: none;'}">
+                <label class="form-label fs-11 text-muted mb-1 fw-bold">
+                    <i class="ri-map-pin-user-line text-danger me-1"></i>Nombre / Dirección de Entrega Libre <span class="text-danger">*</span>
+                </label>
+                <input type="text" class="form-control form-control-sm nodo-nombre-libre" 
+                    value="${escapeHtmlEnvios(nombreLibre)}" 
+                    placeholder="Ej. Bodega Particular El Roble, Carr. México-Puebla Km 45" 
+                    oninput="alCambiarNombreLibreNodo(this)">
+                <small class="text-muted fs-10 d-block mt-1"><i class="ri-information-line me-1 text-primary"></i>Punto fuera de catálogo. Se calculará el costo usando los KM capturados sin registrarlo en la memoria general.</small>
+            </div>`;
+    } else if (isCargaVal && !esOrigen) {
+        // NODOS DE CARGA ADICIONAL: Switch Catálogo vs Carga Abierta (ej. Expo, evento, patio temporal)
+        htmlUbicacion = `
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="fs-11 text-muted fw-bold"><i class="ri-map-pin-add-line text-primary me-1"></i>Punto de Carga</span>
+                <div class="form-check form-switch form-check-inline m-0">
+                    <input class="form-check-input nodo-check-abierto" type="checkbox" id="check_abierto_${_nodoCounter}" ${esAbiertoInicial ? 'checked' : ''} onchange="toggleNodoDestinoAbierto(this)">
+                    <label class="form-check-label fs-11 text-primary fw-medium" for="check_abierto_${_nodoCounter}" style="cursor:pointer;" title="Permite ingresar un punto de recolección fuera de catálogo (ej. Expo, evento) con KM manuales">
+                        <i class="ri-edit-line me-1"></i>Carga abierta
+                    </label>
+                </div>
+            </div>
+            <!-- Bloque Catálogo -->
+            <div class="nodo-bloque-catalogo" style="${esAbiertoInicial ? 'display: none;' : ''}">
+                <label class="form-label fs-11 text-muted mb-1 fw-bold">Ubicación del Catálogo <span class="text-danger">*</span></label>
+                <select class="form-select form-select-sm nodo-select-ubicacion" onchange="alCambiarUbicacionNodo(this)">
                     ${buildUbicacionOptions(selUbicacionId)}
                 </select>
-            </details>`;
+            </div>
+            <!-- Bloque Abierto -->
+            <div class="nodo-bloque-abierto" style="${esAbiertoInicial ? '' : 'display: none;'}">
+                <label class="form-label fs-11 text-muted mb-1 fw-bold">
+                    <i class="ri-map-pin-user-line text-danger me-1"></i>Nombre / Dirección de Recolección Libre <span class="text-danger">*</span>
+                </label>
+                <input type="text" class="form-control form-control-sm nodo-nombre-libre" 
+                    value="${escapeHtmlEnvios(nombreLibre)}" 
+                    placeholder="Ej. Expo Transporte Guadalajara, Stand D-12 / Patio Temporal" 
+                    oninput="alCambiarNombreLibreNodo(this)">
+                <small class="text-muted fs-10 d-block mt-1"><i class="ri-information-line me-1 text-primary"></i>Punto de recolección fuera de catálogo. Se calculará el costo usando los KM capturados sin registrarlo en la memoria general.</small>
+            </div>`;
     } else {
-        // NODOS DE CARGA / ORIGEN: Select unificado
+        // PUNTO 1 (PUNTO DE PARTIDA / ORIGEN): Switch Catálogo vs Origen Abierto
         htmlUbicacion = `
-            <label class="form-label fs-11 text-muted mb-1 fw-bold">Ubicación del Catálogo <span class="text-danger">*</span></label>
-            <select class="form-select form-select-sm nodo-select-ubicacion" onchange="alCambiarUbicacionNodo(this)">
-                ${buildUbicacionOptions(selUbicacionId)}
-            </select>`;
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="fs-11 text-muted fw-bold"><i class="ri-map-pin-user-line text-success me-1"></i>Punto de Partida / Carga</span>
+                <div class="form-check form-switch form-check-inline m-0">
+                    <input class="form-check-input nodo-check-abierto" type="checkbox" id="check_abierto_${_nodoCounter}" ${esAbiertoInicial ? 'checked' : ''} onchange="toggleNodoDestinoAbierto(this)">
+                    <label class="form-check-label fs-11 text-primary fw-medium" for="check_abierto_${_nodoCounter}" style="cursor:pointer;" title="Permite ingresar un punto de partida fuera de catálogo (ej. Expo, evento)">
+                        <i class="ri-edit-line me-1"></i>Origen abierto
+                    </label>
+                </div>
+            </div>
+            <!-- Bloque Catálogo -->
+            <div class="nodo-bloque-catalogo" style="${esAbiertoInicial ? 'display: none;' : ''}">
+                <label class="form-label fs-11 text-muted mb-1 fw-bold">Ubicación del Catálogo <span class="text-danger">*</span></label>
+                <select class="form-select form-select-sm nodo-select-ubicacion" onchange="alCambiarUbicacionNodo(this)">
+                    ${buildUbicacionOptions(selUbicacionId)}
+                </select>
+            </div>
+            <!-- Bloque Abierto -->
+            <div class="nodo-bloque-abierto" style="${esAbiertoInicial ? '' : 'display: none;'}">
+                <label class="form-label fs-11 text-muted mb-1 fw-bold">
+                    <i class="ri-map-pin-user-line text-danger me-1"></i>Nombre / Dirección de Salida Libre <span class="text-danger">*</span>
+                </label>
+                <input type="text" class="form-control form-control-sm nodo-nombre-libre" 
+                    value="${escapeHtmlEnvios(nombreLibre)}" 
+                    placeholder="Ej. Expo Transporte Guadalajara / Patio Temporal" 
+                    oninput="alCambiarNombreLibreNodo(this)">
+                <small class="text-muted fs-10 d-block mt-1"><i class="ri-information-line me-1 text-primary"></i>Punto de salida fuera de catálogo. El tramo hacia el siguiente punto usará KM manuales sin grabarlo en la memoria general.</small>
+            </div>`;
     }
 
     div.innerHTML = `
@@ -805,8 +896,6 @@ function agregarNodoRuta(data, isCarga = false) {
                 </select>
                 <small class="text-muted fs-10 d-block mt-1">Origen para cálculo directo</small>
             </div>
-            <!-- Input oculto para conservar la propiedad en el objeto al guardar, si fuera necesario, o simplemente se manda vacío -->
-            <input type="hidden" class="nodo-nombre-libre" value="${nombreLibre}">
             <div class="col-md-3 seccion-fecha-estimada">
                 <label class="form-label fs-11 text-muted mb-1 fw-bold nodo-lbl-fecha-estimada">
                     <i class="ri-calendar-event-line me-1" style="color: ${esOrigen ? '#0ab39c' : (isCargaVal ? '#0d6efd' : '#fd7e14')};"></i>${esOrigen ? 'Fecha/Hora Salida <span class="text-danger">*</span>' : (isCargaVal ? 'Est. Recolección' : 'Est. Descarga')}
@@ -822,12 +911,12 @@ function agregarNodoRuta(data, isCarga = false) {
                 <div class="input-group input-group-sm">
                     <input type="number" class="form-control form-control-sm nodo-km-tramo" min="0" step="0.1"
                         value="${kmTramo > 0 ? kmTramo : ''}" 
-                        placeholder="0.0"
-                        oninput="serializarNodos()">
+                        placeholder="${esAbiertoInicial ? 'KM manual' : '0.0'}"
+                        oninput="serializarNodos(); recalcularKmTotalVisual();">
                     <span class="input-group-text bg-light text-muted fs-11 px-1">km</span>
                 </div>
                 <small class="text-muted fs-10 d-block mt-1 nodo-memoria-badge">
-                    <i class="ri-history-line me-1"></i>Memoria
+                    ${esAbiertoInicial ? '<span class="text-warning"><i class="ri-pencil-line me-1"></i>Manual (Solo este envío)</span>' : '<i class="ri-history-line me-1"></i>Memoria'}
                 </small>
             </div>
         </div>`;
@@ -954,6 +1043,94 @@ function alCambiarUbicacionNodo(selObj) {
     verificarYCalcularRuta();
 }
 
+/** Alterna entre selección de catálogo y captura de destino abierto (fuera de catálogo) */
+function toggleNodoDestinoAbierto(chk) {
+    const card = chk.closest('.nodo-item');
+    if (!card) return;
+    const esAbierto = chk.checked;
+    const bloqueCat = card.querySelector('.nodo-bloque-catalogo');
+    const bloqueAbierto = card.querySelector('.nodo-bloque-abierto');
+    const inpLibre = card.querySelector('.nodo-nombre-libre');
+    const selDist = card.querySelector('.nodo-select-distribuidor');
+    const selSede = card.querySelector('.nodo-select-sede');
+    const selUbi = card.querySelector('.nodo-select-ubicacion');
+    const inpKm = card.querySelector('.nodo-km-tramo');
+    const badgeKm = card.querySelector('.nodo-memoria-badge');
+    const infoSpan = card.querySelector('.nodo-direccion-preview');
+
+    if (esAbierto) {
+        card.setAttribute('data-destino-abierto', '1');
+        if (bloqueCat) bloqueCat.style.display = 'none';
+        if (bloqueAbierto) bloqueAbierto.style.display = '';
+        if (infoSpan) infoSpan.innerHTML = '';
+        if (selDist) selDist.value = '';
+        if (selSede) {
+            selSede.innerHTML = '<option value="">Primero seleccione distribuidor</option>';
+            selSede.disabled = true;
+        }
+        if (selUbi) selUbi.value = '';
+
+        if (inpKm) {
+            inpKm.placeholder = 'KM manual';
+        }
+        if (badgeKm) {
+            badgeKm.innerHTML = '<span class="text-warning"><i class="ri-pencil-line me-1"></i>Manual (Solo este envío)</span>';
+        }
+        if (inpLibre) {
+            inpLibre.focus();
+        }
+    } else {
+        card.removeAttribute('data-destino-abierto');
+        if (bloqueAbierto) bloqueAbierto.style.display = 'none';
+        if (bloqueCat) bloqueCat.style.display = '';
+        if (inpLibre) inpLibre.value = '';
+        if (inpKm) {
+            inpKm.placeholder = '0.0';
+            inpKm.value = '';
+        }
+        if (badgeKm) {
+            badgeKm.innerHTML = '<i class="ri-history-line me-1"></i>Memoria';
+        }
+    }
+
+    serializarNodos();
+    recalcularKmTotalVisual();
+    verificarYCalcularRuta();
+}
+
+/** Evento al modificar el nombre libre del destino fuera de catálogo */
+function alCambiarNombreLibreNodo(inp) {
+    serializarNodos();
+}
+
+/** Recalcula y actualiza visualmente la suma de kilómetros en la tarjeta superior */
+function recalcularKmTotalVisual() {
+    const items = document.querySelectorAll('#contenedor-nodos-ruta .nodo-item');
+    let total = 0;
+    let tieneAbierto = false;
+
+    items.forEach((card, idx) => {
+        if (idx > 0) {
+            const inp = card.querySelector('.nodo-km-tramo');
+            const km = inp ? (parseFloat(inp.value) || 0) : 0;
+            total += km;
+            const chkAbierto = card.querySelector('.nodo-check-abierto');
+            if ((chkAbierto && chkAbierto.checked) || card.getAttribute('data-destino-abierto') === '1') {
+                tieneAbierto = true;
+            }
+        }
+    });
+
+    const alertTotal = document.getElementById('badge-distancia-total-container');
+    const spanVal = document.getElementById('badge-km-total-val');
+    if (alertTotal && spanVal) {
+        if (total > 0) {
+            alertTotal.style.setProperty('display', 'flex', 'important');
+            spanVal.innerText = total.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + (tieneAbierto ? ' km (Incluye KM manuales)' : ' km (Memoria Progresiva)');
+        }
+    }
+}
+
 /** Actualiza numeración, badges visuales y botones de los nodos */
 function actualizarSecuenciaNodos() {
     const items = document.querySelectorAll('#contenedor-nodos-ruta .nodo-item');
@@ -1011,6 +1188,16 @@ function actualizarSecuenciaNodos() {
                 if (descTxt) descTxt.innerText = 'Punto de entrega o descarga de unidades';
                 if (lblFecha) lblFecha.innerHTML = '<i class="ri-calendar-event-line me-1" style="color: #fd7e14;"></i>Est. Descarga';
             }
+
+            // Mantener apariencia de Punto Abierto si está activo en cualquier parada/nodo con tramo
+            const chkAbierto = card.querySelector('.nodo-check-abierto');
+            const esAbierto = (chkAbierto && chkAbierto.checked) || card.getAttribute('data-destino-abierto') === '1';
+            const inpKm = card.querySelector('.nodo-km-tramo');
+            const badgeKm = card.querySelector('.nodo-memoria-badge');
+            if (esAbierto) {
+                if (inpKm) inpKm.placeholder = 'KM manual';
+                if (badgeKm) badgeKm.innerHTML = '<span class="text-warning"><i class="ri-pencil-line me-1"></i>Manual (Solo este envío)</span>';
+            }
         }
     });
 
@@ -1027,14 +1214,28 @@ function serializarNodos() {
     items.forEach((card, idx) => {
         const isCarga = card.getAttribute('data-tipo-nodo') === 'carga';
         const tipoNodo = (idx === 0) ? 'origen' : (isCarga ? 'carga' : 'entrega');
-        const selUbi = card.querySelector('.nodo-select-ubicacion');
-        const idUbi  = selUbi && selUbi.value ? parseInt(selUbi.value) : null;
+
+        const chkAbierto = card.querySelector('.nodo-check-abierto');
+        const esAbierto = (chkAbierto && chkAbierto.checked) || card.getAttribute('data-destino-abierto') === '1';
+
+        let idUbi = null;
+        let nombreLibre = '';
+        if (esAbierto) {
+            idUbi = null;
+            const inpLibre = card.querySelector('.nodo-nombre-libre');
+            nombreLibre = inpLibre ? inpLibre.value.trim() : '';
+        } else {
+            const selUbi = card.querySelector('.nodo-select-ubicacion');
+            idUbi = selUbi && selUbi.value ? parseInt(selUbi.value) : null;
+            const inpLibreHidden = card.querySelector('.nodo-nombre-libre');
+            nombreLibre = inpLibreHidden ? inpLibreHidden.value.trim() : '';
+        }
+
         const selOrigenRef = card.querySelector('.nodo-select-origen-ref');
         let idOrigenRef = null;
         if (selOrigenRef && selOrigenRef.value !== '' && selOrigenRef.value !== null) {
             idOrigenRef = selOrigenRef.value;
         }
-        const nombreLibre = card.querySelector('.nodo-nombre-libre') ? card.querySelector('.nodo-nombre-libre').value.trim() : '';
         const kmVal  = card.querySelector('.nodo-km-tramo') ? (parseFloat(card.querySelector('.nodo-km-tramo').value) || 0) : 0;
         const fechaEst = card.querySelector('.nodo-fecha-estimada') ? card.querySelector('.nodo-fecha-estimada').value : '';
 
@@ -1045,6 +1246,7 @@ function serializarNodos() {
             id_ubicacion: idUbi,
             id_origen_referencia: idOrigenRef,
             destino_nombre_libre: nombreLibre,
+            destino_abierto: esAbierto,
             km_tramo: (idx === 0) ? 0 : kmVal,
             fecha_estimada: fechaEst
         });
@@ -1056,6 +1258,7 @@ function serializarNodos() {
                 id_destino_cat: idUbi,
                 id_origen_referencia: idOrigenRef,
                 destino_nombre_libre: nombreLibre,
+                destino_abierto: esAbierto,
                 km_tramo: kmVal,
                 fecha_estimada: fechaEst
             });
@@ -1076,6 +1279,10 @@ function serializarNodos() {
     const campoDestino = document.getElementById('id_destino');
     if (campoDestino && nodos.length > 1) {
         campoDestino.value = nodos[nodos.length - 1].id_ubicacion || '';
+    }
+    const campoDestinoLibre = document.getElementById('destino_nombre_libre');
+    if (campoDestinoLibre && nodos.length > 1) {
+        campoDestinoLibre.value = nodos[nodos.length - 1].destino_nombre_libre || '';
     }
 
     // Sincronizar fechas maestras de salida (Punto 1) y llegada (Último Punto)
@@ -1101,10 +1308,10 @@ function verificarYCalcularRuta(callbackOnSuccess, isManual = false) {
         return;
     }
 
-    // Verificar si todos los nodos tienen ubicación seleccionada
+    // Verificar si todos los nodos tienen ubicación seleccionada o destino abierto capturado
     for (let i = 0; i < nodos.length; i++) {
         if (!nodos[i].id_ubicacion && !nodos[i].destino_nombre_libre) {
-            Swal.fire("Atención", "Por favor seleccione una ubicación para todos los puntos de la ruta antes de verificar.", "warning");
+            Swal.fire("Atención", "Por favor seleccione una ubicación o ingrese el nombre del destino abierto para todos los puntos de la ruta.", "warning");
             return;
         }
     }
@@ -1152,7 +1359,8 @@ function verificarYCalcularRuta(callbackOnSuccess, isManual = false) {
                     const spanVal = document.getElementById('badge-km-total-val');
                     if (alertTotal && spanVal) {
                         alertTotal.style.setProperty('display', 'flex', 'important');
-                        spanVal.innerText = (data.km_total || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km (Memoria Progresiva)';
+                        const tieneAbierto = nodos.some(n => !n.id_ubicacion && Boolean(n.destino_nombre_libre));
+                        spanVal.innerText = (data.km_total || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + (tieneAbierto ? ' km (Incluye KM manuales)' : ' km (Memoria Progresiva)');
                     }
 
                     // Si faltan distancias y se requería para guardar o continuar
@@ -1190,8 +1398,12 @@ function abrirModalDistanciasFaltantes(faltantes, callbackOnSuccess) {
     const tbody = document.getElementById('tbodyDistanciasFaltantes');
     if (!tbody || !Array.isArray(faltantes)) return;
 
-    // Filtrar cualquier tramo inválido donde origen y destino sean idénticos
-    faltantes = faltantes.filter(f => f.id_ubicacion_a !== f.id_ubicacion_b && (f.id_ubicacion_a > 0 || f.id_ubicacion_b > 0));
+    // Filtrar tramos inválidos donde origen y destino sean idénticos en catálogo, pero permitir tramos abiertos
+    faltantes = faltantes.filter(f => {
+        if (f.es_abierto) return true;
+        return (f.id_ubicacion_a !== f.id_ubicacion_b) && (f.id_ubicacion_a > 0 || f.id_ubicacion_b > 0);
+    });
+
     if (faltantes.length === 0) {
         if (typeof callbackOnSuccess === 'function') {
             callbackOnSuccess();
@@ -1201,12 +1413,15 @@ function abrirModalDistanciasFaltantes(faltantes, callbackOnSuccess) {
 
     let html = '';
     faltantes.forEach((f, idx) => {
+        const badgeAbierto = f.es_abierto 
+            ? '<span class="badge bg-warning-subtle text-warning fs-10 ms-1"><i class="ri-pencil-line me-1"></i>Punto Abierto</span>' 
+            : '';
         html += `
-        <tr data-id-a="${f.id_ubicacion_a}" data-id-b="${f.id_ubicacion_b}" data-tramo-idx="${f.tramo_indice}">
+        <tr data-id-a="${f.id_ubicacion_a || 0}" data-id-b="${f.id_ubicacion_b || 0}" data-tramo-idx="${f.tramo_indice}" data-es-abierto="${f.es_abierto ? 1 : 0}">
             <td class="fw-bold text-primary">T${f.tramo_indice}</td>
-            <td><strong class="text-dark">${f.nombre_a}</strong></td>
+            <td><strong class="text-dark">${escapeHtmlEnvios(f.nombre_a)}</strong></td>
             <td class="text-center text-muted">➔</td>
-            <td><strong class="text-dark">${f.nombre_b}</strong></td>
+            <td><strong class="text-dark">${escapeHtmlEnvios(f.nombre_b)}</strong> ${badgeAbierto}</td>
             <td>
                 <div class="input-group input-group-sm">
                     <input type="number" class="form-control form-control-sm input-modal-km" min="1" step="0.1" placeholder="Ej: 145.5" required>
@@ -1228,12 +1443,15 @@ function abrirModalDistanciasFaltantes(faltantes, callbackOnSuccess) {
 /** Guarda las distancias capturadas en el modal en lgs_distancias y actualiza la ruta */
 function guardarDistanciasFaltantesModal() {
     const rows = document.querySelectorAll('#tbodyDistanciasFaltantes tr');
-    const distancias = [];
+    const distanciasParaGuardar = [];
     let valido = true;
+    const items = document.querySelectorAll('#contenedor-nodos-ruta .nodo-item');
 
     rows.forEach(tr => {
         const idA = parseInt(tr.getAttribute('data-id-a')) || 0;
         const idB = parseInt(tr.getAttribute('data-id-b')) || 0;
+        const tramoIdx = parseInt(tr.getAttribute('data-tramo-idx')) || 0;
+        const esAbierto = tr.getAttribute('data-es-abierto') === '1' || idA <= 0 || idB <= 0;
         const inp = tr.querySelector('.input-modal-km');
         const km  = inp ? parseFloat(inp.value) : 0;
 
@@ -1242,57 +1460,85 @@ function guardarDistanciasFaltantesModal() {
             if (inp) inp.classList.add('is-invalid');
         } else {
             if (inp) inp.classList.remove('is-invalid');
-            distancias.push({
-                id_ubicacion_a: idA,
-                id_ubicacion_b: idB,
-                km: km
-            });
+
+            // Asignar los kilómetros directamente en la tarjeta del nodo correspondiente
+            if (items[tramoIdx]) {
+                const cardKm = items[tramoIdx].querySelector('.nodo-km-tramo');
+                if (cardKm) {
+                    cardKm.value = km;
+                }
+            }
+
+            // Solo los pares del catálogo se guardan en lgs_distancias (memoria progresiva global)
+            if (!esAbierto && idA > 0 && idB > 0) {
+                distanciasParaGuardar.push({
+                    id_ubicacion_a: idA,
+                    id_ubicacion_b: idB,
+                    km: km
+                });
+            }
         }
     });
 
-    if (!valido || distancias.length === 0) {
+    if (!valido) {
         Swal.fire("Atención", "Por favor ingresa los kilómetros para todos los tramos solicitados.", "warning");
         return;
     }
 
-    let request = new XMLHttpRequest();
-    let ajaxUrl = base_url + '/Lgs_envios/guardarDistanciasFaltantes';
+    // Cerrar modal
+    const modalEl = document.getElementById('modalDistanciasFaltantes');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+    }
 
-    request.open("POST", ajaxUrl, true);
-    request.setRequestHeader("Content-Type", "application/json");
-    request.send(JSON.stringify({ distancias: distancias }));
+    // Si hay distancias de catálogo que registrar en la memoria progresiva
+    if (distanciasParaGuardar.length > 0) {
+        let request = new XMLHttpRequest();
+        let ajaxUrl = base_url + '/Lgs_envios/guardarDistanciasFaltantes';
 
-    request.onreadystatechange = function () {
-        if (request.readyState == 4 && request.status == 200) {
-            try {
-                let res = JSON.parse(request.responseText);
-                if (res.status) {
-                    // Cerrar modal
-                    const modalEl = document.getElementById('modalDistanciasFaltantes');
-                    if (modalEl && typeof bootstrap !== 'undefined') {
-                        const modalInstance = bootstrap.Modal.getInstance(modalEl);
-                        if (modalInstance) modalInstance.hide();
+        request.open("POST", ajaxUrl, true);
+        request.setRequestHeader("Content-Type", "application/json");
+        request.send(JSON.stringify({ distancias: distanciasParaGuardar }));
+
+        request.onreadystatechange = function () {
+            if (request.readyState == 4 && request.status == 200) {
+                try {
+                    let res = JSON.parse(request.responseText);
+                    if (res.status) {
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Distancias aprendidas en memoria progresiva',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                        serializarNodos();
+                        recalcularKmTotalVisual();
+                        verificarYCalcularRuta(_callbackDistanciasPendiente);
+                    } else {
+                        Swal.fire("Error", res.message || "No se pudieron guardar las distancias", "error");
                     }
-
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: 'success',
-                        title: 'Distancias aprendidas en memoria progresiva',
-                        showConfirmButton: false,
-                        timer: 2000
-                    });
-
-                    // Re-verificar la ruta para que actualice la UI
-                    verificarYCalcularRuta(_callbackDistanciasPendiente);
-                } else {
-                    Swal.fire("Error", res.message || "No se pudieron guardar las distancias", "error");
+                } catch (e) {
+                    Swal.fire("Error", "Error al procesar la respuesta del servidor", "error");
                 }
-            } catch (e) {
-                Swal.fire("Error", "Error al procesar la respuesta del servidor", "error");
             }
-        }
-    };
+        };
+    } else {
+        // Eran destinos abiertos; se asignaron los KM directamente a las tarjetas del envío
+        serializarNodos();
+        recalcularKmTotalVisual();
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Kilómetros manuales asignados a la ruta',
+            showConfirmButton: false,
+            timer: 2000
+        });
+        verificarYCalcularRuta(_callbackDistanciasPendiente);
+    }
 }
 
 function actualizarEstatusLateralEnvio(idEstado) {
@@ -1431,7 +1677,21 @@ function saveEnvio() {
 
     for (let i = 0; i < nodos.length; i++) {
         if (!nodos[i].id_ubicacion && !nodos[i].destino_nombre_libre) {
-            Swal.fire("Atención", `El Punto #${i + 1} debe tener una ubicación seleccionada o un nombre libre.`, "warning");
+            Swal.fire("Atención", `El Punto #${i + 1} debe tener una ubicación seleccionada o un nombre de punto abierto.`, "warning");
+            return false;
+        }
+        if (!nodos[i].id_ubicacion && nodos[i].destino_nombre_libre && i > 0) {
+            if (!nodos[i].km_tramo || parseFloat(nodos[i].km_tramo) <= 0) {
+                Swal.fire("Atención", `El Punto #${i + 1} (${nodos[i].destino_nombre_libre}) es un punto abierto y requiere que ingrese los kilómetros del tramo.`, "warning");
+                return false;
+            }
+        }
+    }
+
+    // Si el Punto 1 (Origen) es abierto, validar que el tramo hacia el Punto 2 tenga kilómetros
+    if (nodos.length > 1 && !nodos[0].id_ubicacion && nodos[0].destino_nombre_libre) {
+        if (!nodos[1].km_tramo || parseFloat(nodos[1].km_tramo) <= 0) {
+            Swal.fire("Atención", `El Punto #1 (${nodos[0].destino_nombre_libre}) es un origen abierto. Debe ingresar los kilómetros del primer tramo hacia el Punto #2.`, "warning");
             return false;
         }
     }
