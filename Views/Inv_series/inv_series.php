@@ -27,6 +27,7 @@
     }
     .tipo-lote  { --tipo-rgb: var(--vz-success-rgb); }
     .tipo-orden { --tipo-rgb: var(--vz-primary-rgb); }
+    .tipo-carga { --tipo-rgb: var(--vz-warning-rgb); }
     .modo-card {
         position: relative; display: flex; gap: 1rem; align-items: center;
         padding: 1.1rem 1.25rem 1.1rem 1.4rem; border: 1px solid var(--vz-border-color);
@@ -599,6 +600,8 @@
                                 <label class="btn btn-outline-light text-body" for="refTipoLote">Lotes</label>
                                 <input type="radio" class="btn-check" name="filtroTipoRef" id="refTipoOrden" value="orden">
                                 <label class="btn btn-outline-light text-body" for="refTipoOrden">Órdenes</label>
+                                <input type="radio" class="btn-check" name="filtroTipoRef" id="refTipoCarga" value="carga">
+                                <label class="btn btn-outline-light text-body" for="refTipoCarga">Carga inicial</label>
                             </div>
                         </div>
                         <div class="ref-list" id="listaRefsAsoc">

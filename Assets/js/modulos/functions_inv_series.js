@@ -55,16 +55,17 @@ document.addEventListener("DOMContentLoaded", function () {
     return filtro === "si" ? asociado : !asociado;
   });
 
-  // Encabezado de grupo: tipo de generación (lote / orden) y modelo(s) VIN del grupo
+  // Etiqueta del tipo de generación: lote / orden de trabajo / carga inicial (Excel de inventario)
+  function pillTipo(t, extra = "") {
+    if (t === "lote") return `<span class="tipo-pill tipo-lote ${extra}"><i class="ri-stack-line"></i>Lote</span>`;
+    if (t === "carga") return `<span class="tipo-pill tipo-carga ${extra}"><i class="ri-upload-2-line"></i>Carga inicial</span>`;
+    return `<span class="tipo-pill tipo-orden ${extra}"><i class="ri-file-list-3-line"></i>Orden de trabajo</span>`;
+  }
+
+  // Encabezado de grupo: tipo de generación (lote / orden / carga) y modelo(s) VIN del grupo
   function tipoGrupo(rows) {
     const tipos = [...new Set(rows.data().toArray().map((r) => r.tipo_generacion))];
-    return tipos
-      .map((t) =>
-        t === "lote"
-          ? '<span class="tipo-pill tipo-lote ms-2"><i class="ri-stack-line"></i>Lote</span>'
-          : '<span class="tipo-pill tipo-orden ms-2"><i class="ri-file-list-3-line"></i>Orden de trabajo</span>',
-      )
-      .join("");
+    return tipos.map((t) => pillTipo(t, "ms-2")).join("");
   }
 
   function modelosGrupo(rows) {
@@ -840,10 +841,7 @@ document.addEventListener("DOMContentLoaded", function () {
           const asoc = parseInt(r.asociados, 10) || 0;
           const pct = total ? Math.round((asoc * 100) / total) : 0;
           const completo = total > 0 && asoc === total;
-          const tipoPill =
-            r.tipo_generacion === "lote"
-              ? '<span class="tipo-pill tipo-lote"><i class="ri-stack-line"></i>Lote</span>'
-              : '<span class="tipo-pill tipo-orden"><i class="ri-file-list-3-line"></i>Orden de trabajo</span>';
+          const tipoPill = pillTipo(r.tipo_generacion);
           const marcado = refsSel.has(r.referencia);
           return `<label class="ref-item ${marcado ? "is-checked" : ""}">
               <input type="checkbox" class="form-check-input ref-check" value="${escapeHtml(r.referencia)}" ${marcado ? "checked" : ""}>
