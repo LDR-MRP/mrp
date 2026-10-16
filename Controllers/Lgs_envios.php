@@ -114,8 +114,9 @@ class Lgs_envios extends Controllers
                 return;
             }
 
+            $modalidad = strtoupper($reqData['modalidad_calculo'] ?? $_POST['modalidad_calculo'] ?? 'ESCALONADO');
             $model = new Lgs_enviosModel();
-            $result = $model->verificarDistanciasRuta($nodos);
+            $result = $model->verificarDistanciasRuta($nodos, null, $modalidad);
 
             echo $this->successResponse($result, "Verificación de distancias completada");
         } catch (Throwable $e) {
@@ -828,8 +829,9 @@ class Lgs_envios extends Controllers
                 return;
             }
 
+            $modalidad = strtoupper($reqData['modalidad_calculo'] ?? $_POST['modalidad_calculo'] ?? 'ESCALONADO');
             $model = new Lgs_enviosModel();
-            $verif = $model->verificarDistanciasRuta($nodos);
+            $verif = $model->verificarDistanciasRuta($nodos, null, $modalidad);
 
             // Mapear respuesta compatible para el frontend
             $paradasCalculadas = [];

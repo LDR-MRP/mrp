@@ -604,8 +604,8 @@ function aplicarDefaultModalidadCalculo(forzar = false) {
             modalidadSugerida = isTeromo ? 'ESCALONADO' : 'DIRECTO';
         }
     } else {
-        // Para cualquier otro caso (Chofer rodando, o sin tipo definido aún): ESCALONADO
-        modalidadSugerida = 'ESCALONADO';
+        // En la operación de Logística, los traslados y repartos miden la distancia desde el origen de recolección al destino final
+        modalidadSugerida = 'DIRECTO';
     }
 
     if (forzar || !window.g_modalidadModificadaManualmente) {
@@ -1327,9 +1327,10 @@ function verificarYCalcularRuta(callbackOnSuccess, isManual = false) {
     let request = new XMLHttpRequest();
     let ajaxUrl = base_url + '/Lgs_envios/verificarDistanciasRuta';
 
+    const modCalc = (document.getElementById('modalidad_calculo') ? document.getElementById('modalidad_calculo').value : 'DIRECTO') || 'DIRECTO';
     request.open("POST", ajaxUrl, true);
     request.setRequestHeader("Content-Type", "application/json");
-    request.send(JSON.stringify({ nodos: nodos }));
+    request.send(JSON.stringify({ nodos: nodos, modalidad_calculo: modCalc }));
 
     request.onreadystatechange = function () {
         if (request.readyState == 4 && request.status == 200) {
@@ -1617,7 +1618,7 @@ function openModal() {
     window.g_modalidadModificadaManualmente = false;
 
     if (document.querySelector('#modalidad_calculo')) {
-        document.querySelector('#modalidad_calculo').value = 'ESCALONADO';
+        document.querySelector('#modalidad_calculo').value = 'DIRECTO';
         handleModalidadCalculoChange(false);
     }
 
@@ -1782,7 +1783,8 @@ function cargarProveedoresTrasladistas() {
                 if (objData.status) {
                     let htmlProv = '<option value="">Seleccione Trasladista...</option>';
                     objData.data.proveedores.forEach(p => {
-                        htmlProv += `<option value="${p.id}">${p.nombre}</option>`;
+                        const modDef = p.modalidad_envio_default || 'DIRECTO';
+                        htmlProv += `<option value="${p.id}" data-modalidad="${modDef}" data-nombre="${p.nombre}">${p.nombre}</option>`;
                     });
                     if (document.getElementById('id_proveedor')) document.getElementById('id_proveedor').innerHTML = htmlProv;
 

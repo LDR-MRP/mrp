@@ -590,6 +590,44 @@
 
                     <!-- Pestaña Plataformas -->
                     <div class="tab-pane" id="tab-plataformas" role="tabpanel">
+                        <!-- Botón y formulario para Plataformas Subcontratadas (Live Transfer) -->
+                        <div class="p-3 mb-3 bg-light rounded border">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="fs-13 fw-bold text-dark mb-0"><i class="ri-truck-line text-info me-1"></i>Plataforma Subcontratada o Temporal</h6>
+                                    <small class="text-muted">Para empresas como Live Transfer que subcontratan equipos y operadores por evento sin alta previa en catálogo.</small>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-info text-white" onclick="toggleFormPlataformaTemporal()">
+                                    <i class="ri-add-line me-1"></i>Capturar Temporal
+                                </button>
+                            </div>
+                            
+                            <div id="form-plataforma-temporal" class="mt-3 pt-3 border-top" style="display: none;">
+                                <div class="row g-2">
+                                    <div class="col-md-3">
+                                        <label class="form-label fs-11 text-muted mb-1">Económico / Ref *</label>
+                                        <input type="text" class="form-control form-control-sm" id="tmp_plat_economico" placeholder="Ej. Subcontratada 1" value="Subcontratada">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label fs-11 text-muted mb-1">Placas</label>
+                                        <input type="text" class="form-control form-control-sm" id="tmp_plat_placas" placeholder="Ej. S/P o 123-AB-4">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fs-11 text-muted mb-1">Operador / Chofer</label>
+                                        <input type="text" class="form-control form-control-sm" id="tmp_plat_chofer" placeholder="Ej. Operador por confirmar">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label fs-11 text-muted mb-1">Capacidad *</label>
+                                        <input type="number" class="form-control form-control-sm" id="tmp_plat_capacidad" min="1" max="10" value="1">
+                                    </div>
+                                    <div class="col-12 text-end mt-2">
+                                        <button type="button" class="btn btn-sm btn-light me-1" onclick="toggleFormPlataformaTemporal()">Cancelar</button>
+                                        <button type="button" class="btn btn-sm btn-primary" onclick="agregarPlataformaTemporal()"><i class="ri-check-line me-1"></i>Usar esta Plataforma</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0" id="tblModalPlataformas">
                                 <thead class="table-light fs-11 text-uppercase text-muted">

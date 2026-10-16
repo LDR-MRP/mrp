@@ -1,19 +1,19 @@
 -- ==============================================================================
 -- SCRIPT DE MIGRACIÓN: PRODUCCIÓN - MÓDULO LOGÍSTICA & ENVÍOS DIRECTOS
--- Base de Datos: u546825723_dbmrp (MariaDB 11.8+ / MySQL 8.0+)
--- Fecha: 15 de Octubre de 2026
--- Descripción: 
---   1. Creación de tablas faltantes para incidencias y evidencias.
+-- Base de Datos: u546825723_dbmrp (Hostinger - MariaDB 10.6+ / 11.x / MySQL 8.0+)
+-- Fecha: Octubre 2026
+-- Descripción:
+--   1. Creación de tablas faltantes para incidencias, evidencias y checklists.
 --   2. Incorporación de campos de modalidad de cálculo (Directo vs Escalonado).
 --   3. Poblado de catálogos y seeders operativos pendientes.
---   4. Idempotente y seguro para ejecución en Producción.
+--   4. Idempotente y seguro para ejecución en Producción (NO elimina datos).
 -- ==============================================================================
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ------------------------------------------------------------------------------
--- FASE 1: CREACIÓN DE TABLAS FALTANTES
+-- FASE 1: CREACIÓN DE TABLAS FALTANTES (IF NOT EXISTS)
 -- ------------------------------------------------------------------------------
 
 -- 1.1 Detalle de evidencias multimedia para incidencias
@@ -46,27 +46,75 @@ CREATE TABLE IF NOT EXISTS `log_lgs_incidencias` (
   KEY `idx_log_inc_inc` (`id_incidencia`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 1.3 Checklist digital para trasladistas en Origen y Destino
+CREATE TABLE IF NOT EXISTS `lgs_trasladistas_checklist` (
+  `id_checklist` INT NOT NULL AUTO_INCREMENT,
+  `id_envio` INT NOT NULL,
+  `id_unidad` INT NOT NULL,
+  `tipo_checklist` ENUM('ORIGEN', 'DESTINO') NOT NULL,
+  `vin_escaneado` VARCHAR(50) NULL,
+  `usuario_registro_id` INT NOT NULL,
+  `comentarios` TEXT NULL,
+  `fecha_registro` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_checklist`),
+  KEY `idx_chk_envio` (`id_envio`),
+  KEY `idx_chk_unidad` (`id_unidad`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 1.4 Evidencias fotográficas asociadas al checklist
+CREATE TABLE IF NOT EXISTS `lgs_checklist_evidencias` (
+  `id_evidencia` INT NOT NULL AUTO_INCREMENT,
+  `id_checklist` INT NOT NULL,
+  `tipo_foto` VARCHAR(50) NOT NULL,
+  `ruta_archivo` VARCHAR(255) NOT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_evidencia`),
+  KEY `idx_chk_evi_chk` (`id_checklist`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 -- ------------------------------------------------------------------------------
 -- FASE 2: INCORPORACIÓN DE COLUMNAS FALTANTES
--- (En MariaDB 11.8+ se usa 'ADD COLUMN IF NOT EXISTS' para máxima idempotencia)
+-- (Compatible con MariaDB mediante 'IF NOT EXISTS' y con MySQL 8.0 vía PROCEDURE)
 -- ------------------------------------------------------------------------------
 
+-- Procedimiento temporal para agregar columnas de forma 100% segura e idempotente
+DROP PROCEDURE IF EXISTS `sp_add_column_if_missing`;
+DELIMITER //
+CREATE PROCEDURE `sp_add_column_if_missing`(
+    IN `p_table` VARCHAR(64),
+    IN `p_column` VARCHAR(64),
+    IN `p_def` VARCHAR(255)
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+          AND TABLE_NAME = p_table 
+          AND COLUMN_NAME = p_column
+    ) THEN
+        SET @sql = CONCAT('ALTER TABLE `', p_table, '` ADD COLUMN `', p_column, '` ', p_def);
+        PREPARE stmt FROM @sql;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END //
+DELIMITER ;
+
 -- 2.1 Modalidad de envío por defecto en catálogo de proveedores
-ALTER TABLE `prv_cat_proveedores` 
-ADD COLUMN IF NOT EXISTS `modalidad_envio_default` ENUM('ESCALONADO', 'DIRECTO') NOT NULL DEFAULT 'DIRECTO' AFTER `origen`;
+CALL sp_add_column_if_missing('prv_cat_proveedores', 'modalidad_envio_default', "ENUM('ESCALONADO', 'DIRECTO') NOT NULL DEFAULT 'DIRECTO' AFTER `origen`");
 
 -- 2.2 Modalidad de cálculo en envíos
-ALTER TABLE `lgs_envios` 
-ADD COLUMN IF NOT EXISTS `modalidad_calculo` ENUM('ESCALONADO', 'DIRECTO') NOT NULL DEFAULT 'ESCALONADO' AFTER `tipo_servicio`;
+CALL sp_add_column_if_missing('lgs_envios', 'modalidad_calculo', "ENUM('ESCALONADO', 'DIRECTO') NOT NULL DEFAULT 'ESCALONADO' AFTER `tipo_servicio`");
 
 -- 2.3 Origen de referencia en paradas / nodos de ruta
-ALTER TABLE `lgs_envios_nodos` 
-ADD COLUMN IF NOT EXISTS `id_origen_referencia` BIGINT NULL DEFAULT NULL AFTER `id_ubicacion`;
+CALL sp_add_column_if_missing('lgs_envios_nodos', 'id_origen_referencia', "BIGINT NULL DEFAULT NULL AFTER `id_ubicacion`");
 
 -- 2.4 Tipo de servicio en unidades / VINs del envío
-ALTER TABLE `lgs_envios_vins` 
-ADD COLUMN IF NOT EXISTS `tipo_servicio` VARCHAR(20) NOT NULL DEFAULT 'FORANEO' AFTER `costo_unidad`;
+CALL sp_add_column_if_missing('lgs_envios_vins', 'tipo_servicio', "VARCHAR(20) NOT NULL DEFAULT 'FORANEO' AFTER `costo_unidad`");
+
+-- Eliminar procedimiento temporal
+DROP PROCEDURE IF EXISTS `sp_add_column_if_missing`;
 
 
 -- ------------------------------------------------------------------------------
@@ -112,7 +160,7 @@ INSERT IGNORE INTO `lgs_cat_motivos_gasto_adicional` (`id_tipo_gasto`, `descripc
 
 
 -- ------------------------------------------------------------------------------
--- FASE 4: VINCULACIONES Y CONFIGURACIONES ESPECÍFICAS
+-- FASE 4: VINCULACIONES Y CONFIGURACIONES OPERATIVAS
 -- ------------------------------------------------------------------------------
 
 -- 4.1 Enlazar tipos de incidencia existentes con los tipos de gasto sugeridos
@@ -140,18 +188,30 @@ UPDATE `lgs_cat_tipos_incidencia`
 SET `id_tipo_gasto_sugerido` = (SELECT `id_tipo_gasto` FROM `lgs_cat_tipos_gasto_adicional` WHERE `clave`='DANIO_UNIDAD') 
 WHERE `clave` IN ('DANIO_UNIDAD', 'FALTANTE_ACCESORIO', 'RECLAMO_CLIENTE');
 
--- 4.2 Establecer modalidad de cálculo para el proveedor Teromo (Escalonado por defecto)
+-- 4.2 Modalidad de cálculo para proveedor Teromo (Escalonado por defecto)
 UPDATE `prv_cat_proveedores` 
 SET `modalidad_envio_default` = 'ESCALONADO' 
 WHERE `razon_social` LIKE '%TEROMO%' OR `id_proveedor` = 1000000202;
 
+-- 4.3 Motivo de entrega a Cliente Final (Punto 1 Observaciones ERP-Logística)
+INSERT IGNORE INTO `lgs_cat_motivo_envio` (`cve_motivo`, `descripcion`, `activo`) 
+VALUES ('CLIENTE_FINAL', 'Entrega a Cliente Final', 1);
+
+-- 4.4 Plataforma subcontratada base para Live Transfer (Punto 5 Observaciones ERP-Logística)
+INSERT INTO `prv_det_plataformas` (`id_proveedor`, `numero_economico`, `placas`, `capacidad_vehiculos`, `estatus_operativo`, `created_by`, `created_at`) 
+SELECT 1000000195, 'PLATAFORMA SUBCONTRATADA', 'POR ASIGNAR', 1, 1, 1, NOW()
+WHERE NOT EXISTS (SELECT 1 FROM `prv_det_plataformas` WHERE `id_proveedor` = 1000000195);
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ==============================================================================
--- CONSULTA DE VERIFICACIÓN POSTERIOR
+-- FASE 5: CONSULTAS DE VERIFICACIÓN POST-EJECUCIÓN
 -- ==============================================================================
--- SELECT 'lgs_det_incidencias_evidencias' AS tabla, COUNT(*) AS registros FROM lgs_det_incidencias_evidencias
--- UNION ALL SELECT 'log_lgs_incidencias', COUNT(*) FROM log_lgs_incidencias
--- UNION ALL SELECT 'lgs_cat_absorcion_danios', COUNT(*) FROM lgs_cat_absorcion_danios
--- UNION ALL SELECT 'lgs_cat_tipos_gasto_adicional', COUNT(*) FROM lgs_cat_tipos_gasto_adicional
--- UNION ALL SELECT 'lgs_cat_motivos_gasto_adicional', COUNT(*) FROM lgs_cat_motivos_gasto_adicional;
+SELECT 'lgs_det_incidencias_evidencias' AS tabla, COUNT(*) AS registros FROM `lgs_det_incidencias_evidencias`
+UNION ALL SELECT 'log_lgs_incidencias', COUNT(*) FROM `log_lgs_incidencias`
+UNION ALL SELECT 'lgs_trasladistas_checklist', COUNT(*) FROM `lgs_trasladistas_checklist`
+UNION ALL SELECT 'lgs_checklist_evidencias', COUNT(*) FROM `lgs_checklist_evidencias`
+UNION ALL SELECT 'lgs_cat_absorcion_danios', COUNT(*) FROM `lgs_cat_absorcion_danios`
+UNION ALL SELECT 'lgs_cat_tipos_gasto_adicional', COUNT(*) FROM `lgs_cat_tipos_gasto_adicional`
+UNION ALL SELECT 'lgs_cat_motivos_gasto_adicional', COUNT(*) FROM `lgs_cat_motivos_gasto_adicional`
+UNION ALL SELECT 'lgs_cat_motivo_envio (activos)', COUNT(*) FROM `lgs_cat_motivo_envio` WHERE `activo` = 1;

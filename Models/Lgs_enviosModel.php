@@ -261,21 +261,25 @@ class Lgs_enviosModel extends Mysql
             if (empty($motivos)) {
                 $motivos = [
                     ['id' => 1, 'nombre' => 'Entrega a Distribuidor'],
-                    ['id' => 2, 'nombre' => 'Traslado a Carrocería'],
-                    ['id' => 3, 'nombre' => 'Traslado entre Almacenes'],
-                    ['id' => 4, 'nombre' => 'Traslado a Planta'],
-                    ['id' => 5, 'nombre' => 'Devolución de Unidad'],
-                    ['id' => 6, 'nombre' => 'Otro motivo']
+                    ['id' => 2, 'nombre' => 'Entrega a Cliente Final'],
+                    ['id' => 3, 'nombre' => 'Traslado a Carrocería'],
+                    ['id' => 4, 'nombre' => 'Traslado entre Almacenes'],
+                    ['id' => 5, 'nombre' => 'Traslado a Planta'],
+                    ['id' => 6, 'nombre' => 'Marketing / Exposición'],
+                    ['id' => 7, 'nombre' => 'Devolución de Unidad'],
+                    ['id' => 8, 'nombre' => 'Otro motivo']
                 ];
             }
         } catch (Throwable $e) {
             $motivos = [
                 ['id' => 1, 'nombre' => 'Entrega a Distribuidor'],
-                ['id' => 2, 'nombre' => 'Traslado a Carrocería'],
-                ['id' => 3, 'nombre' => 'Traslado entre Almacenes'],
-                ['id' => 4, 'nombre' => 'Traslado a Planta'],
-                ['id' => 5, 'nombre' => 'Devolución de Unidad'],
-                ['id' => 6, 'nombre' => 'Otro motivo']
+                ['id' => 2, 'nombre' => 'Entrega a Cliente Final'],
+                ['id' => 3, 'nombre' => 'Traslado a Carrocería'],
+                ['id' => 4, 'nombre' => 'Traslado entre Almacenes'],
+                ['id' => 5, 'nombre' => 'Traslado a Planta'],
+                ['id' => 6, 'nombre' => 'Marketing / Exposición'],
+                ['id' => 7, 'nombre' => 'Devolución de Unidad'],
+                ['id' => 8, 'nombre' => 'Otro motivo']
             ];
         }
 
@@ -635,9 +639,10 @@ class Lgs_enviosModel extends Mysql
                         v.costo_unidad,
                         v.tipo_servicio,
                         m.numero_economico AS madrina_nombre,
-                        p.numero_economico AS plataforma_nombre,
+                        COALESCE(p.numero_economico, IF(e.id_tipo_traslado = 3, 'Plataforma Subcontratada', NULL)) AS plataforma_nombre,
                         CONCAT(c.nombre, ' ', c.apellidos) AS chofer_nombre
                     FROM lgs_envios_vins v
+                    INNER JOIN lgs_envios e ON v.id_envio = e.id_envio
                     LEFT JOIN lgs_unidades_envios u ON v.id_unidad = u.id_unidad
                     LEFT JOIN lgs_unidades lu ON lu.id_unidad = v.id_unidad
                     LEFT JOIN mrp_unidades_terminadas ut ON v.id_unidad = ut.idunidad
@@ -971,10 +976,12 @@ class Lgs_enviosModel extends Mysql
     }
 
     /**
-     * Verifica una cadena de nodos secuenciales.
-     * Retorna si todas las distancias consecutivas son conocidas y la lista de tramos faltantes.
+     * Verifica una ruta de nodos contra la memoria progresiva de distancias (lgs_distancias).
+     * En modalidad DIRECTO (Reparto), evalúa la distancia desde el Origen inicial a cada Parada.
+     * En modalidad ESCALONADO, evalúa tramo a tramo consecutivo.
+     * Retorna si todas las distancias son conocidas y la lista de tramos faltantes.
      */
-    public function verificarDistanciasRuta(array $nodos, ?PDO $db = null): array
+    public function verificarDistanciasRuta(array $nodos, ?PDO $db = null, string $modalidad = 'ESCALONADO'): array
     {
         if ($db === null) $db = $this->getConexion();
         $this->ensureDistanciasTable($db);
@@ -992,8 +999,12 @@ class Lgs_enviosModel extends Mysql
             }
         } catch (Throwable $e) {}
 
+        $esDirecto = (strtoupper($modalidad) === 'DIRECTO');
+        $nodoOrigenInicial = $nodos[0] ?? null;
+
         for ($i = 1; $i < count($nodos); $i++) {
-            $nodoPrev = $nodos[$i - 1];
+            // En DIRECTO (reparto) la referencia de distancia es el punto de recolección / origen de partida
+            $nodoPrev = ($esDirecto && $nodoOrigenInicial) ? $nodoOrigenInicial : $nodos[$i - 1];
             $nodoCurr = $nodos[$i];
 
             $idA = intval($nodoPrev['id_ubicacion'] ?? $nodoPrev['id_destino_cat'] ?? 0);

@@ -158,20 +158,26 @@ function renderPoolVins(vins) {
         const dest = v.destino || 'Destino';
         
         let coincide = (v.coincide_destino !== false);
+        let estaAsignado = Boolean(v.asignado_folio);
         
-        let estaAsignado = v.asignado_folio ? true : false;
-        
-        // Si está asignado, lo deshabilitamos sin importar si coincide o no
-        let isDraggable = coincide && !estaAsignado;
+        // Solo deshabilitamos el arrastre si la unidad ya se encuentra asignada a otro envío activo
+        let isDraggable = !estaAsignado;
         
         let liClass = isDraggable ? "cursor-move shadow-sm bg-white" : "disabled-vin bg-light opacity-50";
         let dragger = isDraggable ? '<i class="ri-draggable fs-18 text-muted"></i>' : '<i class="ri-close-circle-line fs-18 text-danger"></i>';
         
         let badgeWarn = '';
+        let btnAsignar = '';
+
         if (estaAsignado) {
             badgeWarn = `<span class="badge bg-danger ms-2" title="Esta unidad ya se encuentra asignada al envío ${v.asignado_folio}">Asignado (Envío ${v.asignado_folio})</span>`;
-        } else if (!coincide) {
-            badgeWarn = '<span class="badge bg-warning text-dark ms-2" title="El destino de este VIN no está en la ruta del envío">Destino Diferente</span>';
+        } else {
+            if (!coincide) {
+                badgeWarn = '<span class="badge bg-warning-subtle text-warning border border-warning ms-2" title="El destino registrado en la unidad difiere textualmente de las paradas del envío. Puede asignarse con normalidad."><i class="ri-alert-line me-1"></i>Destino Diferente</span>';
+            }
+            if (!ENVIO_READONLY) {
+                btnAsignar = `<button type="button" class="btn btn-sm btn-outline-success py-0 px-2 fs-11 ms-2" onclick="asignarVinRapido(this)" title="Asignar al vehículo activo"><i class="ri-arrow-right-line me-1"></i>Asignar</button>`;
+            }
         }
 
         html += `
@@ -189,7 +195,11 @@ function renderPoolVins(vins) {
                 <div class="flex-grow-1">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <h6 class="mb-0 fs-13 text-primary fw-bold">${v.vin}</h6>
-                        <div><span class="badge bg-soft-info text-info fs-11">${mod}</span>${badgeWarn}</div>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-soft-info text-info fs-11">${mod}</span>
+                            ${badgeWarn}
+                            ${btnAsignar}
+                        </div>
                     </div>
                     <p class="text-dark mb-0 fs-11 fw-semibold">
                         <i class="ri-map-pin-line text-danger me-1"></i>${orig} 
@@ -210,11 +220,16 @@ function renderAcomodoExistente(existentes) {
     // Agrupar por Madrina, Plataforma o Chofer
     const grupos = {};
     existentes.forEach(item => {
-        let key = item.id_madrina ? 'madrina_' + item.id_madrina : (item.id_plataforma ? 'plataforma_' + item.id_plataforma : 'chofer_' + item.id_chofer);
+        let key = item.id_madrina 
+            ? 'madrina_' + item.id_madrina 
+            : (item.id_plataforma || item.plataforma_nombre 
+                ? 'plataforma_' + (item.id_plataforma || 'sub_' + (item.posicion_acomodo || 1)) 
+                : 'chofer_' + item.id_chofer);
+
         if (!grupos[key]) {
             let nombre = 'Chofer: ' + (item.chofer_nombre || 'Rodando');
-            if (item.id_madrina) nombre = 'Madrina: ' + item.madrina_nombre;
-            if (item.id_plataforma) nombre = 'Plataforma: ' + item.plataforma_nombre;
+            if (item.id_madrina) nombre = 'Madrina: ' + (item.madrina_nombre || 'S/N');
+            if (item.id_plataforma || item.plataforma_nombre) nombre = 'Plataforma: ' + (item.plataforma_nombre || 'Subcontratada');
             
             grupos[key] = {
                 id_madrina: item.id_madrina,
@@ -237,14 +252,14 @@ function renderAcomodoExistente(existentes) {
                 titulo: grupo.nombre + (m && m.placas ? ' (' + m.placas + ')' : ''),
                 capacidad: m ? m.capacidad_vehiculos : 99
             }, grupo.vins);
-        } else if (grupo.id_plataforma) {
+        } else if (grupo.id_plataforma || grupo.nombre.includes('Plataforma')) {
             let p = g_plataformasProveedor.find(x => x.id_plataforma == grupo.id_plataforma);
             inyectarContenedorVehiculo({
                 id_madrina: null,
-                id_plataforma: grupo.id_plataforma,
+                id_plataforma: grupo.id_plataforma || null,
                 id_chofer: null,
                 titulo: grupo.nombre + (p && p.placas ? ' (' + p.placas + ')' : ''),
-                capacidad: p ? p.capacidad_vehiculos : 99
+                capacidad: p ? p.capacidad_vehiculos : Math.max(1, grupo.vins.length)
             }, grupo.vins);
         } else if (grupo.id_chofer) {
             inyectarContenedorVehiculo({
@@ -801,6 +816,42 @@ function agruparYOrdenarParadas(ul) {
     }
 }
 
+function asignarVinRapido(btn) {
+    if (typeof ENVIO_READONLY !== 'undefined' && ENVIO_READONLY) return;
+    const li = btn.closest('li');
+    if (!li) return;
+
+    // Buscar contenedores de vehículos en la columna derecha
+    const vehiculos = Array.from(document.querySelectorAll('.vehiculo-list'));
+    if (vehiculos.length === 0) {
+        Swal.fire("Atención", "Primero debes agregar un vehículo o conductor con el botón 'Agregar Vehículo' para poder asignarle unidades.", "warning");
+        return;
+    }
+
+    // Encontrar el primer vehículo con espacio disponible
+    let destinoUl = null;
+    for (const vUl of vehiculos) {
+        const cap = parseInt(vUl.getAttribute('data-capacidad') || '99', 10);
+        const asignados = vUl.querySelectorAll('li').length;
+        if (asignados < cap) {
+            destinoUl = vUl;
+            break;
+        }
+    }
+
+    if (!destinoUl) {
+        Swal.fire("Capacidad Llena", "Todos los vehículos agregados han alcanzado su capacidad máxima. Agrega otro vehículo si requieres asignar más unidades.", "warning");
+        return;
+    }
+
+    // Mover el elemento li
+    destinoUl.appendChild(li);
+    btn.remove();
+    actualizarConteoYSecuencia(destinoUl);
+    agruparYOrdenarParadas(destinoUl);
+    guardarAcomodoAuto();
+}
+
 function limpiarBadgesPool(li) {
     if (!li) return;
     li.classList.remove('border-success');
@@ -812,6 +863,10 @@ function limpiarBadgesPool(li) {
     const origen = li.getAttribute('data-origen') || 'Origen';
     const destino = li.getAttribute('data-destino') || 'Destino';
 
+    let btnAsignar = (typeof ENVIO_READONLY === 'undefined' || !ENVIO_READONLY)
+        ? `<button type="button" class="btn btn-sm btn-outline-success py-0 px-2 fs-11 ms-2" onclick="asignarVinRapido(this)" title="Asignar al vehículo activo"><i class="ri-arrow-right-line me-1"></i>Asignar</button>`
+        : '';
+
     li.innerHTML = `
     <div class="d-flex align-items-center">
         <div class="flex-shrink-0 me-2">
@@ -820,7 +875,10 @@ function limpiarBadgesPool(li) {
         <div class="flex-grow-1">
             <div class="d-flex justify-content-between align-items-center mb-1">
                 <h6 class="mb-0 fs-13 text-primary fw-bold">${vin}</h6>
-                <span class="badge bg-soft-info text-info fs-11">${modelo}</span>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-soft-info text-info fs-11">${modelo}</span>
+                    ${btnAsignar}
+                </div>
             </div>
             <p class="text-dark mb-0 fs-11 fw-semibold">
                 <i class="ri-map-pin-line text-danger me-1"></i>${origen} 
@@ -1011,6 +1069,37 @@ function seleccionarPlataforma(idPlataforma) {
         id_chofer: null,
         titulo: `Plataforma ${plataforma.numero_economico} (Placas: ${plataforma.placas || 'S/P'}) - Chofer: ${plataforma.chofer_asignado || 'Sin asignar'}`,
         capacidad: plataforma.capacidad_vehiculos || 99
+    });
+
+    if (modalVehiculoBs) modalVehiculoBs.hide();
+}
+
+function toggleFormPlataformaTemporal() {
+    const f = document.getElementById('form-plataforma-temporal');
+    if (!f) return;
+    f.style.display = (f.style.display === 'none' || !f.style.display) ? 'block' : 'none';
+}
+
+function agregarPlataformaTemporal() {
+    const inpEco = document.getElementById('tmp_plat_economico');
+    const inpPlacas = document.getElementById('tmp_plat_placas');
+    const inpChofer = document.getElementById('tmp_plat_chofer');
+    const inpCap = document.getElementById('tmp_plat_capacidad');
+
+    const eco = (inpEco?.value || 'Subcontratada').trim();
+    const placas = (inpPlacas?.value || 'S/P').trim();
+    const chofer = (inpChofer?.value || 'Por confirmar').trim();
+    const cap = parseInt(inpCap?.value || '1', 10) || 1;
+
+    // Asignar ID temporal único
+    const tmpId = -1 * (Math.floor(Date.now() / 1000) + Math.floor(Math.random() * 500));
+
+    inyectarContenedorVehiculo({
+        id_madrina: null,
+        id_plataforma: tmpId,
+        id_chofer: null,
+        titulo: `Plataforma Subcontratada: ${eco} (Placas: ${placas}) - Operador: ${chofer}`,
+        capacidad: cap
     });
 
     if (modalVehiculoBs) modalVehiculoBs.hide();
