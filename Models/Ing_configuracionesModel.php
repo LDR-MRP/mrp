@@ -78,13 +78,14 @@ class Ing_configuracionesModel extends Mysql
 
         $sql = "INSERT INTO ing_modelo_configuracion
             (id_sublineaproducto, tipo_origen, nombre_unidad, nombre_comercial, codigo_modelo, clave_vehicular,
-             peso_bruto, nivel_emisiones, id_motor, id_transmision, combustible, estado, version, version_unidad, created_by)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+             peso_bruto, nivel_emisiones, id_motor, id_transmision, combustible, estado, version, version_unidad, paso_diferencial, created_by)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         return $this->insert($sql, [
             $data['id_sublineaproducto'], $data['tipo_origen'], $data['nombre_unidad'], $data['nombre_comercial'],
             $data['codigo_modelo'], $data['clave_vehicular'], $data['peso_bruto'], $data['nivel_emisiones'],
             $data['id_motor'], $data['id_transmision'], $data['combustible'], $data['estado'], $data['version'], $data['version_unidad'],
+            $data['paso_diferencial'],
             $_SESSION['userData']['idusuario'] ?? null,
         ]);
     }
@@ -101,15 +102,27 @@ class Ing_configuracionesModel extends Mysql
         $sql = "UPDATE ing_modelo_configuracion SET
             id_sublineaproducto = ?, tipo_origen = ?, nombre_unidad = ?, nombre_comercial = ?, codigo_modelo = ?,
             clave_vehicular = ?, peso_bruto = ?, nivel_emisiones = ?, id_motor = ?, id_transmision = ?,
-            combustible = ?, estado = ?, version = ?, version_unidad = ?, updated_by = ?
+            combustible = ?, estado = ?, version = ?, version_unidad = ?, paso_diferencial = ?, updated_by = ?
             WHERE id_configuracion = ?";
 
         return $this->update($sql, [
             $data['id_sublineaproducto'], $data['tipo_origen'], $data['nombre_unidad'], $data['nombre_comercial'],
             $data['codigo_modelo'], $data['clave_vehicular'], $data['peso_bruto'], $data['nivel_emisiones'],
             $data['id_motor'], $data['id_transmision'], $data['combustible'], $data['estado'], $data['version'], $data['version_unidad'],
+            $data['paso_diferencial'],
             $_SESSION['userData']['idusuario'] ?? null, $id,
         ]);
+    }
+
+    // PASO DIFERENCIAL (16-oct-2026): obligatorio solo para el modelo
+    // HEAVY DUTY TRUCK. Se identifica por la clave de la sublínea ('HDT'),
+    // no por el id, para que funcione igual en local y producción.
+    public const CVE_SUBLINEA_PASO_DIFERENCIAL = 'HDT';
+
+    public function requierePasoDiferencial(int $idSublinea): bool
+    {
+        $row = $this->select("SELECT cve_sublinea_producto FROM wms_sublinea_producto WHERE idsublineaproducto = ?", [$idSublinea]);
+        return !empty($row) && strtoupper(trim($row['cve_sublinea_producto'])) === self::CVE_SUBLINEA_PASO_DIFERENCIAL;
     }
 
     public function deleteConfiguracion(int $id)
@@ -147,7 +160,7 @@ class Ing_configuracionesModel extends Mysql
                     m.sistema_electrico,
                     t.fabricante AS transmision_fabricante,
                     t.modelo AS transmision_modelo,
-                    t.tipo AS transmision_tipo,
+                    tt.clave AS transmision_tipo,
                     t.numero_velocidades,
                     t.descripcion AS transmision_descripcion
                 FROM ing_modelo_configuracion c
@@ -155,6 +168,7 @@ class Ing_configuracionesModel extends Mysql
                 INNER JOIN wms_linea_producto l ON l.idlineaproducto = s.lineaproductoid
                 LEFT JOIN ing_cat_motor m ON m.id_motor = c.id_motor
                 LEFT JOIN ing_cat_transmision t ON t.id_transmision = c.id_transmision
+                LEFT JOIN ing_cat_tipo_transmision tt ON tt.id_tipo_transmision = t.id_tipo_transmision
                 LEFT JOIN wms_inventario wi ON wi.idinventario = c.id_inventario
                 WHERE c.id_configuracion = ? AND c.deleted_at IS NULL";
 
@@ -184,11 +198,12 @@ class Ing_configuracionesModel extends Mysql
                     l.idlineaproducto,
                     l.descripcion AS segmento,
                     s.descripcion AS modelo,
-                    t.tipo AS transmision_tipo
+                    tt.clave AS transmision_tipo
                 FROM ing_modelo_configuracion c
                 INNER JOIN wms_sublinea_producto s ON s.idsublineaproducto = c.id_sublineaproducto
                 INNER JOIN wms_linea_producto l ON l.idlineaproducto = s.lineaproductoid
                 LEFT JOIN ing_cat_transmision t ON t.id_transmision = c.id_transmision
+                LEFT JOIN ing_cat_tipo_transmision tt ON tt.id_tipo_transmision = t.id_tipo_transmision
                 WHERE c.id_configuracion = ? AND c.deleted_at IS NULL";
 
         return $this->select($sql, [$id]);
@@ -205,7 +220,7 @@ class Ing_configuracionesModel extends Mysql
     //   - Origen:          N (Nacional) / I (Importado)
     //   - Combustible:     codigo de 3 letras via catalogo interno (GSL/DSL/ELE/HIB/GLP/GNC...),
     //                      si no se reconoce toma las primeras 3 letras
-    //   - Tipo transmision: TM / AMT / AT (catalogo ing_cat_transmision)  [agregado 05-oct-2026]
+    //   - Tipo transmision: clave de ing_cat_tipo_transmision (TM / AMT / AT / ...) [05-oct-2026, catalogo 16-oct-2026]
     //   - Configuracion:   texto limpio sin espacios                     (4 X 4      -> 4X4) [antes "version"]
     //   - Version:         al final, opcional, texto limpio sin espacios (columna version_unidad) [13-oct-2026]
     // Formato final (06-oct-2026): "<NOMBRE>-<RESTO>" (un solo guion, sin segmento),

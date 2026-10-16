@@ -901,11 +901,43 @@ class Inv_inventario extends Controllers
 				$estado
 			);
 
-			if (is_numeric($request) && $request > 0) {
+			if ($request === 'exist') {
+				$arrResponse = ['status' => false, 'msg' => 'Ese precio ya está asignado al producto. Usa el botón Editar en la tabla para modificarlo.'];
+			} else if (is_numeric($request) && $request > 0) {
 				$arrResponse = ['status' => true, 'msg' => 'Precio asignado correctamente'];
 			} else {
 				$arrResponse = ['status' => false, 'msg' => 'Error al guardar precio'];
 			}
+
+			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+		}
+
+		die();
+	}
+	// EDITAR PRECIO ASIGNADO
+	public function updatePrecioInventario()
+	{
+		$this->exigirPermisoCfg(MICFG_PRECIO, 'w');
+
+		if ($_POST) {
+			$id_inv_precio = intval($_POST['id_inv_precio'] ?? 0);
+			$inventarioid  = intval($_POST['inventarioid'] ?? 0);
+			$precio        = floatval($_POST['precio'] ?? 0);
+
+			if ($id_inv_precio <= 0 || $inventarioid <= 0) {
+				echo json_encode(['status' => false, 'msg' => 'Datos obligatorios'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+			if ($precio <= 0) {
+				echo json_encode(['status' => false, 'msg' => 'Ingrese un precio válido'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			$request = $this->model->updateInventarioPrecio($id_inv_precio, $inventarioid, $precio);
+
+			$arrResponse = $request
+				? ['status' => true, 'msg' => 'Precio actualizado correctamente']
+				: ['status' => false, 'msg' => 'Error al actualizar el precio'];
 
 			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 		}

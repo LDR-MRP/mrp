@@ -134,7 +134,6 @@ const LGS_EVIDENCIAS = 159;
 const LGS_PANELRUTAS = 160;
 const LGS_INCIDENCIAS = 161;
 const LGS_GASTOSADICIONALES = 162;
-
 //Permisos por pestaña del modal "Configuración de productos" (Inv_inventario)
 const MICFG_MONEDA = 180;
 const MICFG_PRECIO = 181;
