@@ -369,8 +369,27 @@ class Inv_seriesModel extends Mysql
                   AND SUBSTRING(numero_serie, 12, 6) REGEXP '^[0-9]{6}$'";
 
         $result = $this->select($sql, [$anio]);
+        $ultimo = !empty($result['ultimo']) ? intval($result['ultimo']) : 0;
 
-        return !empty($result['ultimo']) ? intval($result['ultimo']) : 0;
+        // VIN reales del Excel INVENTARIO_LDR_2027 que aun no se pueden dar de
+        // alta (modelo sin SKU en Ingenieria): su consecutivo ya esta troquelado
+        // en una unidad, asi que tambien cuenta para no volver a usarlo.
+        // Ver Docs/desarrollo/2026-10-16_carga_vin_inventario_ldr_2027.sql
+        try {
+            $sqlCarga = "SELECT MAX(CAST(SUBSTRING(vin, 12, 6) AS UNSIGNED)) AS ultimo
+                         FROM vin_carga_inv2027
+                         WHERE LENGTH(vin) = 17
+                           AND SUBSTRING(vin, 10, 1) = ?
+                           AND SUBSTRING(vin, 12, 6) REGEXP '^[0-9]{6}$'";
+            $carga = $this->select($sqlCarga, [$anio]);
+            if (!empty($carga['ultimo'])) {
+                $ultimo = max($ultimo, intval($carga['ultimo']));
+            }
+        } catch (\Throwable $e) {
+            // La tabla de carga no existe en este ambiente: se ignora.
+        }
+
+        return $ultimo;
     }
 
     /* =================================================================
