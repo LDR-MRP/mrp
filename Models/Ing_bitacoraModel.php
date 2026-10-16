@@ -19,6 +19,7 @@ class Ing_bitacoraModel extends LogAuditModel
         'ing_modelo_configuracion'   => 'Configuraciones',
         'ing_cat_motor'              => 'Motores',
         'ing_cat_transmision'        => 'Transmisiones',
+        'ing_cat_tipo_transmision'   => 'Tipos de transmisión',
         'ing_cat_certificacion'      => 'Certificaciones (catálogo)',
         'ing_cat_especificacion'     => 'Especificaciones (catálogo)',
     ];

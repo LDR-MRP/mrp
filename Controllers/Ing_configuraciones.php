@@ -100,7 +100,19 @@ class Ing_configuraciones extends Controllers
                     'estado'              => $estado,
                     'version'             => strClean($_POST['version-input'] ?? ''),
                     'version_unidad'      => strClean($_POST['version-unidad-input'] ?? ''),
+                    // Solo HEAVY DUTY TRUCK; en otros modelos se guarda NULL. No entra al SKU. [16-oct-2026]
+                    'paso_diferencial'    => null,
                 ];
+
+                $requierePasoDif = $this->model->requierePasoDiferencial($data['id_sublineaproducto']);
+                if ($requierePasoDif) {
+                    $pasoDif = strClean($_POST['paso-diferencial-input'] ?? '');
+                    if ($pasoDif === '') {
+                        echo json_encode(array('status' => false, 'msg' => 'El paso diferencial es obligatorio para el modelo HEAVY DUTY TRUCK.'), JSON_UNESCAPED_UNICODE);
+                        die();
+                    }
+                    $data['paso_diferencial'] = mb_substr($pasoDif, 0, 50);
+                }
 
                 if ($intIdConfiguracion == 0) {
                     if (!empty($_SESSION['permisosMod']['w'])) {

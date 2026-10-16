@@ -464,6 +464,18 @@ function generarPdfTraslado(traslado, detalle, trasladista, urlQr) {
         ],
         margin: [30, 0, 30, 0],
       },
+
+      // Hojas individuales: una página por VIN, cada una con su propio QR
+      ...construirHojasPorUnidad(detalle, {
+        folio,
+        origen,
+        destino,
+        tipoTraslado,
+        proveedor,
+        fechaProgramada,
+        nombreTrasladista,
+        fechaImpresion,
+      }),
     ],
 
     defaultStyle: {
@@ -472,6 +484,152 @@ function generarPdfTraslado(traslado, detalle, trasladista, urlQr) {
   };
 
   pdfMake.createPdf(docDefinition).download("Traslado_" + folio + ".pdf");
+}
+
+/* =====================================================
+   HOJA POR UNIDAD (una página por VIN)
+   El QR contiene el VIN en texto plano: el escáner de VIN de
+   Inv_operaciones_traslados (extraerVin) lo acepta tal cual, así
+   seguridad escanea primero el QR del folio (reporte general) y
+   después unidad por unidad con estas hojas.
+===================================================== */
+function construirHojasPorUnidad(detalle, info) {
+  const unidades = detalle || [];
+  const total = unidades.length;
+  const paginas = [];
+
+  unidades.forEach((row, idx) => {
+    const vin = (row.vin || "").toString().trim().toUpperCase();
+    if (!vin) return;
+
+    const llaves = row.llaves
+      ? row.llaves.toString().toUpperCase()
+      : "SIN LLAVE ASIGNADA";
+
+    paginas.push(
+      {
+        canvas: [
+          {
+            type: "rect",
+            x: 0,
+            y: 0,
+            w: 559,
+            h: 763,
+            r: 8,
+            lineWidth: 1.2,
+            lineColor: "#999999",
+          },
+        ],
+        absolutePosition: { x: 18, y: 14 },
+        pageBreak: "before",
+      },
+
+      logoLdr(),
+
+      {
+        text: "HOJA DE UNIDAD - TRASLADO",
+        alignment: "center",
+        fontSize: 13,
+        bold: true,
+        color: "#222222",
+        margin: [0, 2, 0, 0],
+      },
+      {
+        text: `Folio ${info.folio}  ·  Unidad ${idx + 1} de ${total}`,
+        alignment: "center",
+        fontSize: 9,
+        color: "#555555",
+        margin: [0, 0, 0, 8],
+      },
+
+      {
+        text: vin,
+        alignment: "center",
+        fontSize: 20,
+        bold: true,
+        characterSpacing: 1.5,
+        color: "#111111",
+        margin: [0, 0, 0, 4],
+      },
+
+      {
+        qr: vin,
+        fit: 125,
+        alignment: "center",
+        margin: [0, 0, 0, 2],
+      },
+      {
+        text: "Escanear en Operaciones de traslado para validar esta unidad",
+        alignment: "center",
+        fontSize: 7.5,
+        italics: true,
+        color: "#555555",
+        margin: [0, 0, 0, 10],
+      },
+
+      sectionTitle("DATOS DE LA UNIDAD"),
+      {
+        table: {
+          widths: ["40%", "60%"],
+          body: [
+            [label("VIN"), valueBold(vin)],
+            [label("MODELO"), valueBold(row.modelo || "N/A")],
+            [label("CLAVE"), value(row.cve_articulo || "N/A")],
+            [label("COLOR"), value(row.color || "N/A")],
+            [label("LLAVE(S) ENTREGADA(S)"), value(llaves)],
+          ],
+        },
+        layout: tableLayout(),
+        margin: [30, 0, 30, 8],
+      },
+
+      sectionTitle("DATOS DEL TRASLADO"),
+      {
+        table: {
+          widths: ["40%", "60%"],
+          body: [
+            [label("FOLIO"), valueBold(info.folio)],
+            [label("ALMACÉN ORIGEN"), value(info.origen)],
+            [label("ALMACÉN DESTINO"), value(info.destino)],
+            [label("TIPO DE TRASLADO"), value(info.tipoTraslado)],
+            [label("PROVEEDOR / TRANSPORTISTA"), value(info.proveedor)],
+            [label("TRASLADISTA"), value(info.nombreTrasladista)],
+            [label("FECHA PROGRAMADA"), value(info.fechaProgramada)],
+          ],
+        },
+        layout: tableLayout(),
+        margin: [30, 0, 30, 8],
+      },
+
+      {
+        columns: [
+          {
+            width: "33%",
+            text: "LDR Solutions México\nSistema MRP de Producción",
+            fontSize: 7.5,
+            color: "#444444",
+          },
+          {
+            width: "33%",
+            text: `Hoja ${idx + 1} de ${total}\nTraslado ${info.folio}`,
+            fontSize: 7.5,
+            color: "#444444",
+            alignment: "center",
+          },
+          {
+            width: "33%",
+            text: "Fecha de impresión\n" + info.fechaImpresion + " hrs",
+            fontSize: 7.5,
+            color: "#444444",
+            alignment: "right",
+          },
+        ],
+        margin: [30, 0, 30, 0],
+      },
+    );
+  });
+
+  return paginas;
 }
 
 

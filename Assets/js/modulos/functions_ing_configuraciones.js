@@ -122,6 +122,10 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  if (sublineaSelect) {
+    sublineaSelect.addEventListener("change", fntTogglePasoDiferencial);
+  }
+
   // --------------------------------------------------------------
   // TABS
   // --------------------------------------------------------------
@@ -169,6 +173,7 @@ document.addEventListener("DOMContentLoaded", function () {
       sublineaSelect.innerHTML = '<option value="">--Seleccione un segmento--</option>';
       sublineaSelect.disabled = true;
     }
+    fntTogglePasoDiferencial();
     deshabilitarTabsHijas();
   }
 
@@ -418,6 +423,7 @@ function cargarSelectModelos(idLinea, idSublineaSeleccionada) {
   if (!idLinea) {
     sublineaSelect.innerHTML = '<option value="">--Seleccione un segmento--</option>';
     sublineaSelect.disabled = true;
+    fntTogglePasoDiferencial();
     return;
   }
 
@@ -430,7 +436,7 @@ function cargarSelectModelos(idLinea, idSublineaSeleccionada) {
     let html = '<option value="">--Seleccione--</option>';
     arrData.forEach(function (row) {
       if (row.estado == 2) {
-        html += '<option value="' + row.idsublineaproducto + '">' + row.descripcion + "</option>";
+        html += '<option value="' + row.idsublineaproducto + '" data-cve="' + String(row.cve_sublinea_producto || "").toUpperCase() + '">' + row.descripcion + "</option>";
       }
     });
     sublineaSelect.innerHTML = html;
@@ -438,7 +444,25 @@ function cargarSelectModelos(idLinea, idSublineaSeleccionada) {
     if (idSublineaSeleccionada) {
       sublineaSelect.value = idSublineaSeleccionada;
     }
+    fntTogglePasoDiferencial();
   };
+}
+
+// PASO DIFERENCIAL (16-oct-2026): solo para el modelo HEAVY DUTY TRUCK
+// (clave de sublínea HDT). Se muestra al final del formulario, es
+// obligatorio y no entra al SKU. En otros modelos se oculta y se
+// deshabilita para que no se envíe.
+const CVE_SUBLINEA_PASO_DIFERENCIAL = "HDT";
+
+function fntTogglePasoDiferencial() {
+  const row = document.querySelector("#rowPasoDiferencial");
+  const input = document.querySelector("#paso-diferencial-input");
+  if (!row || !input) return;
+  const opt = sublineaSelect && sublineaSelect.selectedOptions ? sublineaSelect.selectedOptions[0] : null;
+  const aplica = !!opt && (opt.dataset.cve || "") === CVE_SUBLINEA_PASO_DIFERENCIAL;
+  row.style.display = aplica ? "" : "none";
+  input.disabled = !aplica;
+  input.required = aplica;
 }
 
 function cargarSelectMotores() {
@@ -673,6 +697,7 @@ function fntEditInfo(idConfiguracion) {
     setFieldValue("#nivel-emisiones-input", d.nivel_emisiones || "");
     setFieldValue("#version-input", d.version || "");
     setFieldValue("#version-unidad-input", d.version_unidad || "");
+    setFieldValue("#paso-diferencial-input", d.paso_diferencial || "");
 
     cargarSelectModelos(d.idlineaproducto, d.id_sublineaproducto);
 
@@ -826,6 +851,7 @@ function renderFichaTecnica(objData) {
   html += fichaFila("Nivel de emisiones", c.nivel_emisiones);
   html += fichaFila("Configuración", c.version);
   html += fichaFila("Versión", c.version_unidad);
+  if (c.paso_diferencial) html += fichaFila("Paso diferencial", c.paso_diferencial);
   html += "</table></div></div></div>";
 
   // MOTOR

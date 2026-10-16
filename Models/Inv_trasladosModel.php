@@ -61,6 +61,7 @@ class Inv_trasladosModel extends Mysql
     LEFT JOIN wms_almacenes a
         ON a.idalmacen = ns.almacenid
     WHERE va.estado = 1
+    AND ns.estado = '2' -- solo VINs tatuados (estampados en Planeación)
     AND i.tipo_elemento = 'P'
     AND ns.almacenid = $idalmacen
     AND NOT EXISTS (
@@ -172,6 +173,10 @@ class Inv_trasladosModel extends Mysql
 
             foreach ($unidades as $unidad) {
 
+                if (!$this->esUnidadTatuada($unidad['vinid'])) {
+                    throw new Exception("El VIN " . $unidad['vin'] . " no está asignado/tatuado a ninguna unidad");
+                }
+
                 if ($this->validarUnidadEnTraslado($unidad['vinid'])) {
                     throw new Exception("La unidad " . $unidad['vin'] . " ya tiene un traslado pendiente");
                 }
@@ -212,6 +217,23 @@ class Inv_trasladosModel extends Mysql
         } catch (Exception $e) {
             return ["error" => $e->getMessage()];
         }
+    }
+
+    /**
+     * Un VIN pertenece a una unidad cuando tiene asignación activa en
+     * mrp_vin_asignaciones (estampado en Planeación) y quedó como
+     * No disponible (estado 2) en wms_numeros_series.
+     */
+    public function esUnidadTatuada($vinid): bool
+    {
+        $row = $this->select(
+            "SELECT COUNT(*) AS total
+             FROM mrp_vin_asignaciones va
+             INNER JOIN wms_numeros_series ns ON ns.id_numeros_serie = va.numero_serie_id
+             WHERE va.numero_serie_id = ? AND va.estado = 1 AND ns.estado = '2'",
+            [intval($vinid)]
+        );
+        return !empty($row) && intval($row['total']) > 0;
     }
 
     public function validarUnidadEnTraslado($vinid, $excludeTrasladoId = null)
@@ -388,6 +410,8 @@ ON a.idalmacen = ns.almacenid
 
 WHERE va.estado=1
 
+AND ns.estado='2' -- solo VINs tatuados
+
 AND i.tipo_elemento='P'
 
 ";
@@ -514,16 +538,35 @@ LIMIT 1
 
     SELECT
 
+        d.iddetalle,
+
         d.vin,
 
-        i.descripcion AS modelo
+        d.color,
+
+        i.descripcion AS modelo,
+
+        i.cve_articulo,
+
+        tl.llaves
 
     FROM wms_traslados_unidades_detalle d
 
     INNER JOIN wms_inventario i
         ON i.idinventario = d.inventarioid
 
+    LEFT JOIN (
+        SELECT iddetalle,
+               GROUP_CONCAT(DISTINCT tipo_llave ORDER BY tipo_llave SEPARATOR ', ') AS llaves
+        FROM wms_traslados_llaves
+        WHERE trasladoid = $idTraslado
+          AND entrega_llave = 1
+        GROUP BY iddetalle
+    ) tl ON tl.iddetalle = d.iddetalle
+
     WHERE d.trasladoid = $idTraslado
+
+    ORDER BY d.iddetalle
 
     ";
 
@@ -729,6 +772,10 @@ LIMIT 1
             $vins = [];
 
             foreach ($unidades as $unidad) {
+
+                if (!$this->esUnidadTatuada($unidad['vinid'])) {
+                    throw new Exception("El VIN " . $unidad['vin'] . " no está asignado/tatuado a ninguna unidad");
+                }
 
                 if ($this->validarUnidadEnTraslado($unidad['vinid'], $idtraslado)) {
                     throw new Exception("La unidad " . $unidad['vin'] . " ya tiene un traslado pendiente");

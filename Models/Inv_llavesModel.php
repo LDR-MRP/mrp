@@ -46,6 +46,7 @@ class Inv_llavesModel extends Mysql
             LEFT JOIN wms_almacenes a
                 ON a.idalmacen = ns.almacenid
             WHERE va.estado = 1
+            AND ns.estado = '2' -- solo VINs tatuados
             AND i.tipo_elemento = 'P'
         ";
 

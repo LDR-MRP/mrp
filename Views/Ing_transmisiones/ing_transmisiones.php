@@ -30,6 +30,9 @@
                                 <a class="nav-link" data-bs-toggle="tab" href="#agregarTransmision" role="tab">NUEVO</a>
                             </li>
                         <?php } ?>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#tiposTransmision" role="tab">TIPOS</a>
+                        </li>
                     </ul>
                 </div>
                 <div class="card-body">
@@ -71,11 +74,11 @@
                                     <div class="col-lg-2 col-sm-6">
                                         <div class="mb-3">
                                             <label class="form-label" for="tipo-select">TIPO</label>
-                                            <select class="form-select" id="tipo-select" name="tipo-select">
-                                                <option value="TM" selected>TM</option>
-                                                <option value="AMT">AMT</option>
-                                                <option value="AT">AT</option>
+                                            <!-- Opciones desde ing_cat_tipo_transmision (pestaña TIPOS) -->
+                                            <select class="form-select" id="tipo-select" name="tipo-select" required>
+                                                <option value="">--Seleccione--</option>
                                             </select>
+                                            <div class="invalid-feedback">Selecciona el tipo</div>
                                         </div>
                                     </div>
                                     <div class="col-lg-2 col-sm-6">
@@ -109,6 +112,57 @@
                                     </button>
                                 </div>
                             </form>
+                        </div>
+
+                        <!-- Catálogo de tipos de transmisión (ing_cat_tipo_transmision) -->
+                        <div class="tab-pane" id="tiposTransmision" role="tabpanel">
+                            <?php if (!empty($_SESSION['permisosMod']['w']) || !empty($_SESSION['permisosMod']['u'])) { ?>
+                                <form id="formTipoTransmision" autocomplete="off" class="mb-4">
+                                    <input type="hidden" id="id_tipo_transmision" name="id_tipo_transmision" value="0">
+                                    <div class="row align-items-end">
+                                        <div class="col-lg-2 col-sm-4">
+                                            <div class="mb-3">
+                                                <label class="form-label" for="tipo-clave-input">CLAVE</label>
+                                                <input type="text" class="form-control text-uppercase" id="tipo-clave-input" name="tipo-clave-input" maxlength="10" placeholder="Ej. CVT" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-5 col-sm-8">
+                                            <div class="mb-3">
+                                                <label class="form-label" for="tipo-descripcion-input">DESCRIPCIÓN</label>
+                                                <input type="text" class="form-control" id="tipo-descripcion-input" name="tipo-descripcion-input" maxlength="100" placeholder="Ej. Transmisión continuamente variable">
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-2 col-sm-4">
+                                            <div class="mb-3">
+                                                <label class="form-label" for="tipo-activo-select">ESTATUS</label>
+                                                <select class="form-select" id="tipo-activo-select" name="tipo-activo-select">
+                                                    <option value="1" selected>Activo</option>
+                                                    <option value="0">Inactivo</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-3 col-sm-8">
+                                            <div class="mb-3 d-flex gap-2">
+                                                <button type="submit" class="btn btn-success flex-grow-1"><i class="ri-save-line align-middle me-1"></i><span id="btnTextTipo">REGISTRAR</span></button>
+                                                <button type="button" class="btn btn-light" id="btnCancelarTipo" title="Limpiar"><i class="ri-close-line"></i></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">La clave es la que se usa en el SKU de las configuraciones. Cambiarla afecta solo a los SKU que se generen después.</small>
+                                </form>
+                            <?php } ?>
+                            <table id="tableTiposTransmision" class="table table-bordered dt-responsive nowrap table-striped align-middle" style="width:100%">
+                                <thead>
+                                    <tr>
+                                        <th>CLAVE</th>
+                                        <th>DESCRIPCIÓN</th>
+                                        <th>TRANSMISIONES</th>
+                                        <th>ESTATUS</th>
+                                        <th>ACCIÓN</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
                         </div>
 
                     </div>

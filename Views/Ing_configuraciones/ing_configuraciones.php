@@ -331,6 +331,17 @@
                                     </div>
                                 </div>
 
+                                <!-- PASO DIFERENCIAL: solo visible y obligatorio para el modelo HEAVY DUTY TRUCK (HDT). No entra al SKU. [16-oct-2026] -->
+                                <div class="row" id="rowPasoDiferencial" style="display:none">
+                                    <div class="col-lg-4 col-sm-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="paso-diferencial-input">PASO DIFERENCIAL <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="paso-diferencial-input" name="paso-diferencial-input" placeholder="Ej. 3.08" maxlength="50" disabled>
+                                            <div class="invalid-feedback">El paso diferencial es obligatorio para Heavy Duty Truck</div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="d-flex align-items-start gap-3 mt-4">
                                     <button type="submit" id="btnActionForm" class="btn btn-success btn-label right ms-auto">
                                         <i class="ri-save-line label-icon align-middle fs-16 ms-2"></i><span id="btnText">REGISTRAR</span>

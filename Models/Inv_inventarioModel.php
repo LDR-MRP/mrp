@@ -968,7 +968,8 @@ WHERE idinventario = ?";
     {
         $idinventario = intval($idinventario);
 
-        $sql = "SELECT ip.idprecio,
+        $sql = "SELECT ip.id_inv_precio,
+                   ip.idprecio,
                    p.cve_precio,
                    p.descripcion,
                    ip.precio,
@@ -978,6 +979,16 @@ WHERE idinventario = ?";
             WHERE ip.inventarioid = $idinventario";
 
         return $this->select_all($sql);
+    }
+
+    // EDITAR PRECIO ASIGNADO (valida que el registro pertenezca al producto)
+    public function updateInventarioPrecio(int $id_inv_precio, int $inventarioid, float $precio)
+    {
+        $sql = "UPDATE wms_inventario_precios
+            SET precio = ?
+            WHERE id_inv_precio = ? AND inventarioid = ?";
+
+        return $this->update($sql, [$precio, $id_inv_precio, $inventarioid]);
     }
 
 

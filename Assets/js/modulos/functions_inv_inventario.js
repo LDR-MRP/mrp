@@ -1837,6 +1837,7 @@ function cargartabPrecio(idinventario) {
                 <th>Descripción</th>
                 <th>Precio</th>
                 <th>Fecha</th>
+                ${cfgPuede("PRECIO", "w") ? '<th class="text-center" style="width:90px;">Acciones</th>' : ""}
               </tr>
             </thead>
             <tbody id="tbodyPrecios"></tbody>
@@ -1897,22 +1898,72 @@ function refrescarTablaPrecios(idinventario) {
       if (!tbody) return;
 
       tbody.innerHTML = "";
+      const puedeEditar = cfgPuede("PRECIO", "w");
+      const cols = puedeEditar ? 5 : 4;
 
       if (data.status && data.data.length > 0) {
         data.data.forEach((item) => {
+          const btnEditar = puedeEditar
+            ? `<td class="text-center">
+                <button type="button" class="btn btn-sm btn-outline-primary" title="Editar precio"
+                  onclick="editarPrecio(${item.id_inv_precio}, ${idinventario}, ${Number(item.precio) || 0})">
+                  <i class="ri-pencil-line"></i>
+                </button>
+              </td>`
+            : "";
           tbody.innerHTML += `
             <tr>
               <td>${item.cve_precio}</td>
               <td>${item.descripcion}</td>
               <td>$${item.precio}</td>
-              <td>${item.fecha_creacion}</td>
+              <td>${item.fecha_creacion ?? ""}</td>
+              ${btnEditar}
             </tr>
           `;
         });
       } else {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center">Sin precios asignados</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center">Sin precios asignados</td></tr>`;
       }
     });
+}
+
+function editarPrecio(id_inv_precio, idinventario, precioActual) {
+  Swal.fire({
+    title: "Editar precio",
+    // Renderizar dentro del modal de Bootstrap: su focus-trap bloquea inputs fuera de él
+    target: document.getElementById("modalConfigInventario") || "body",
+    input: "number",
+    inputValue: precioActual,
+    inputAttributes: { step: "0.01", min: "0.01" },
+    showCancelButton: true,
+    confirmButtonText: "Guardar",
+    cancelButtonText: "Cancelar",
+    inputValidator: (value) => {
+      if (!value || Number(value) <= 0) return "Ingrese un precio válido";
+    },
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+
+    const fd = new FormData();
+    fd.append("id_inv_precio", id_inv_precio);
+    fd.append("inventarioid", idinventario);
+    fd.append("precio", result.value);
+
+    fetch(base_url + "/Inv_inventario/updatePrecioInventario", {
+      method: "POST",
+      body: fd,
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status) {
+          Swal.fire("Correcto", data.msg, "success");
+          refrescarTablaPrecios(idinventario);
+        } else {
+          Swal.fire("Error", data.msg, "error");
+        }
+      })
+      .catch(() => Swal.fire("Error", "No se pudo actualizar el precio", "error"));
+  });
 }
 
 //-----------------------------------------------------------------------------------------------------------------
