@@ -69,9 +69,17 @@ class Ing_configuracionesModel extends Mysql
 
     public function insertConfiguracion(array $data)
     {
+        // Duplicado = mismo modelo + origen + clave vehicular + VERSIÓN + PASO DIFERENCIAL.
+        // Ingeniería da de alta el mismo modelo con iguales especificaciones que solo
+        // se distinguen por versión y/o paso diferencial (HEAVY DUTY TRUCK). [20-oct-2026]
         $sql = "SELECT id_configuracion FROM ing_modelo_configuracion
-                WHERE id_sublineaproducto = ? AND tipo_origen = ? AND clave_vehicular = ? AND deleted_at IS NULL";
-        $exist = $this->select($sql, [$data['id_sublineaproducto'], $data['tipo_origen'], $data['clave_vehicular']]);
+                WHERE id_sublineaproducto = ? AND tipo_origen = ? AND clave_vehicular = ?
+                  AND COALESCE(version_unidad, '') = ? AND COALESCE(paso_diferencial, '') = ?
+                  AND deleted_at IS NULL";
+        $exist = $this->select($sql, [
+            $data['id_sublineaproducto'], $data['tipo_origen'], $data['clave_vehicular'],
+            (string) ($data['version_unidad'] ?? ''), (string) ($data['paso_diferencial'] ?? ''),
+        ]);
         if (!empty($exist)) {
             return "exist";
         }
@@ -93,8 +101,13 @@ class Ing_configuracionesModel extends Mysql
     public function updateConfiguracion(int $id, array $data)
     {
         $sql = "SELECT id_configuracion FROM ing_modelo_configuracion
-                WHERE id_sublineaproducto = ? AND tipo_origen = ? AND clave_vehicular = ? AND id_configuracion != ? AND deleted_at IS NULL";
-        $exist = $this->select($sql, [$data['id_sublineaproducto'], $data['tipo_origen'], $data['clave_vehicular'], $id]);
+                WHERE id_sublineaproducto = ? AND tipo_origen = ? AND clave_vehicular = ?
+                  AND COALESCE(version_unidad, '') = ? AND COALESCE(paso_diferencial, '') = ?
+                  AND id_configuracion != ? AND deleted_at IS NULL";
+        $exist = $this->select($sql, [
+            $data['id_sublineaproducto'], $data['tipo_origen'], $data['clave_vehicular'],
+            (string) ($data['version_unidad'] ?? ''), (string) ($data['paso_diferencial'] ?? ''), $id,
+        ]);
         if (!empty($exist)) {
             return "exist";
         }
@@ -194,6 +207,7 @@ class Ing_configuracionesModel extends Mysql
                     c.combustible,
                     c.version,
                     c.version_unidad,
+                    c.paso_diferencial,
                     c.id_sublineaproducto,
                     l.idlineaproducto,
                     l.descripcion AS segmento,
@@ -223,6 +237,7 @@ class Ing_configuracionesModel extends Mysql
     //   - Tipo transmision: clave de ing_cat_tipo_transmision (TM / AMT / AT / ...) [05-oct-2026, catalogo 16-oct-2026]
     //   - Configuracion:   texto limpio sin espacios                     (4 X 4      -> 4X4) [antes "version"]
     //   - Version:         al final, opcional, texto limpio sin espacios (columna version_unidad) [13-oct-2026]
+    //   - Paso diferencial: solo HEAVY DUTY TRUCK, al final tras un guion, con punto (ej. -3.78) [20-oct-2026]
     // Formato final (06-oct-2026): "<NOMBRE>-<RESTO>" (un solo guion, sin segmento),
     // ej. AUS3-LDTNDSLTMA4X2. Las partes vacias (dato no capturado todavia)
     // se omiten. Si el codigo base ya existe en inventario se agrega un
@@ -334,9 +349,22 @@ class Ing_configuracionesModel extends Mysql
             return $p !== '';
         }));
 
-        return implode('-', array_filter([$nombre, $resto], function ($p) {
+        // Paso diferencial (solo HEAVY DUTY TRUCK) al final, separado por guion y
+        // conservando el punto para que se lea igual que en pantalla:
+        // ej. GA33-HDTNDSLAMT6X4-3.78. En los demás modelos va vacío y se omite. [20-oct-2026]
+        $pasoDif = $this->limpiarPasoDiferencial($ficha['paso_diferencial'] ?? '');
+
+        return implode('-', array_filter([$nombre, $resto, $pasoDif], function ($p) {
             return $p !== '';
         }));
+    }
+
+    // "3.78" -> "3.78", "3,78" -> "3.78", "Rel. 3.08" -> "3.08". Solo dígitos y punto.
+    private function limpiarPasoDiferencial($texto)
+    {
+        $texto = str_replace(',', '.', trim((string) $texto));
+        $texto = preg_replace('/[^0-9.]+/', '', $texto);
+        return trim($texto, '.');
     }
 
     // Nombre de unidad: primeras 2 letras de la 1a palabra + primeras 2 de la 2a

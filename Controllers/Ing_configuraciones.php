@@ -100,7 +100,7 @@ class Ing_configuraciones extends Controllers
                     'estado'              => $estado,
                     'version'             => strClean($_POST['version-input'] ?? ''),
                     'version_unidad'      => strClean($_POST['version-unidad-input'] ?? ''),
-                    // Solo HEAVY DUTY TRUCK; en otros modelos se guarda NULL. No entra al SKU. [16-oct-2026]
+                    // Solo HEAVY DUTY TRUCK; en otros modelos se guarda NULL. Entra al SKU al final (ej. -3.78) desde el 20-oct-2026.
                     'paso_diferencial'    => null,
                 ];
 
@@ -145,7 +145,7 @@ class Ing_configuraciones extends Controllers
                 }
 
                 if ($request === 'exist') {
-                    $arrResponse = array('status' => false, 'msg' => '¡Atención! Ya existe una configuración con ese modelo, origen y clave vehicular.');
+                    $arrResponse = array('status' => false, 'msg' => '¡Atención! Ya existe una configuración con ese modelo, origen, clave vehicular, versión y paso diferencial. Cambie la versión o el paso diferencial para registrarla como una variante.');
                 } else if (!empty($request)) {
                     $idConfiguracionGuardada = $option == 1 ? intval($request) : $intIdConfiguracion;
                     $arrResponse = $option == 1
