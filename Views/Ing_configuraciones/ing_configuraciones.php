@@ -331,7 +331,7 @@
                                     </div>
                                 </div>
 
-                                <!-- PASO DIFERENCIAL: solo visible y obligatorio para el modelo HEAVY DUTY TRUCK (HDT). No entra al SKU. [16-oct-2026] -->
+                                <!-- PASO DIFERENCIAL: solo visible y obligatorio para el modelo HEAVY DUTY TRUCK (HDT). Entra al SKU al final (ej. -3.78) desde el 20-oct-2026. -->
                                 <div class="row" id="rowPasoDiferencial" style="display:none">
                                     <div class="col-lg-4 col-sm-6">
                                         <div class="mb-3">
