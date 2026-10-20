@@ -23,7 +23,8 @@ class Com_ordenCompraModel extends Mysql {
     public function getAll(array $filters = []): array {
         $where = " WHERE oc.deleted_at IS NULL ";
         $params = [];
-
+        // var_dump($filters);
+        // die();
         // Filtro por Proveedor
         if (!empty($filters['proveedorid'])) {
             $where .= " AND oc.proveedorid = ? ";
@@ -65,7 +66,9 @@ class Com_ordenCompraModel extends Mysql {
                 $where
                 GROUP BY oc.idcompra
                 ORDER BY oc.idcompra DESC";
-
+        // var_dump($query);
+        // var_dump($params);
+        // die();
         return $this->select_all($query, $params);
     }
 

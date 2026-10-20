@@ -120,12 +120,24 @@ class SupplierService
         ];
         $recipients = [$data['email']];
 
-        $this->sendNotification(
-            'supplier_new_user',
-            $emailData,
-            $recipients
-        );
-
+        // $this->sendNotification(
+        //     'supplier_new_user',
+        //     $emailData,
+        //     $recipients
+        // );
+        if (!empty($data['plantas']) && is_array($data['plantas'])) {
+            $plantasIds = array_map('intval', $data['plantas']);
+            $plantaPrincipalId = !empty($data['planta_principal']) ? (int)$data['planta_principal'] : $plantasIds[0];
+            
+            $this->proveedorModel->assignPlantas(
+                $id, 
+                $plantasIds, 
+                $plantaPrincipalId, 
+                $userId
+            );
+        } else {
+            throw new \InvalidArgumentException("Debe seleccionar al menos una planta");
+        }
         return ServiceResponse::success(['id' => $id], "Proveedor registrado exitosamente.", 201);
     }
 
@@ -148,8 +160,21 @@ class SupplierService
             }
         }
 
+        // Procesar asignación de plantas siempre en edición (independientemente de cambios)
+        if (!empty($data['plantas']) && is_array($data['plantas'])) {
+            $plantasIds = array_map('intval', $data['plantas']);
+            $plantaPrincipalId = !empty($data['planta_principal']) ? (int)$data['planta_principal'] : $plantasIds[0];
+            
+            $this->proveedorModel->assignPlantas(
+                $id,
+                $plantasIds,
+                $plantaPrincipalId,
+                $userId
+            );
+        }
+
         if (empty($dirtyData)) {
-            return ServiceResponse::success(['id' => $id], "No se detectaron cambios.");
+            return ServiceResponse::success(['id' => $id], "Asignación de plantas actualizada correctamente.");
         }
 
         // Repartimos los cambios en las tablas correspondientes según el SCHEMA del modelo
@@ -211,7 +236,7 @@ class SupplierService
             $fileSize = filesize($file['tmp_name']);
             $fileSizeMB = $fileSize / (1024 * 1024); // Convertir a MB
             
-            if ($fileSizeMB > 5) {
+            if ($fileSizeMB > MAX_FILE_SIZE_MB) {
                 // Si el archivo es mayor a 5MB, comprimir en ZIP
                 $zipFileName = "{$docType}_" . bin2hex(random_bytes(4)) . ".zip";
                 $zipFullPath = $uploadPath . $zipFileName;
@@ -404,7 +429,7 @@ class SupplierService
             if (!$updated) throw new \Exception("No se encontró el documento para auditar.", 404);
 
             // 2. Determinar acción de auditoría para el log
-            $auditAction = ($status === 1) ? AuditAction::APPROVE_L1 : AuditAction::REJECTED;
+            $auditAction = ($status === 1) ? \AuditAction::APPROVE_L1 : \AuditAction::REJECTED;
             $logMsg = ($status === 1) ? "Documento verificado correctamente." : "Documento rechazado: " . $motivo;
 
             $this->expedienteModel->logAudit($supplierId, $auditAction, $logMsg, $userId);
@@ -413,13 +438,13 @@ class SupplierService
             $onboardingComplete = false;
             if ($status === 1) {
                 $onboardingComplete = $this->checkAndActivateSupplier($supplierId, $userId);
-
+                
                 if ($onboardingComplete) {
                     // 1. Resolvemos quiénes deben recibir el correo
                     $recipients = $this->usuarioModel->resolveRecipients('supplier_onboarding_complete', $supplierData['id_planta']);
                     
                     if (empty($recipients)) {
-                       ['erick.pulido@ldrsolutions.com.mx'];
+                       $recipients = ['alfredo.sanchez@ldrsolutions.com.mx'];
                     }
                     // NOTIFICACIÓN: Documentos Listos
                     $this->sendNotification(
@@ -458,9 +483,12 @@ class SupplierService
             ]);
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
             
-        } catch (\Exception $e) {
-            if ($this->db->inTransaction()) $this->db->rollBack();
-            return ServiceResponse::error($e->getMessage(), (int)$e->getCode() ?: 500);
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log("[auditDocument ERROR] " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+            return ServiceResponse::error(message: "Error al auditar documento: " . $e->getMessage());
         }
     }
 

@@ -10,6 +10,7 @@ class Prv_proveedorModel extends Mysql
         'prv_cat_proveedores' => [
             'id_proveedor',
             'id_empresa',
+            'id_planta',
             'rfc',
             'razon_social',
             'nombre_comercial',
@@ -86,6 +87,16 @@ class Prv_proveedorModel extends Mysql
             'updated_by',
             'deleted_by'
         ],
+        'prv_rel_proveedores_plantas' => [
+            'id_proveedor_planta',
+            'id_proveedor',
+            'id_planta',
+            'created_by',
+            'updated_by',
+            'created_at',
+            'updated_at',
+            'deleted_at'
+        ]
     ];
 
     public function getTableName(): string 
@@ -106,7 +117,7 @@ class Prv_proveedorModel extends Mysql
                 `prv_cat_proveedores`.`nombre_comercial`,
                 `prv_cat_proveedores`.`origen`,
                 `prv_cat_proveedores`.`estatus_onboarding`,
-                `prv_cat_proveedores`.`estatus_operativo`,
+                `prv_cat_proveedores`.`estatus_operativo`,          
                 `prv_cat_proveedores`.`created_at`,
                 `prv_cat_proveedores`.`created_by`,
                 -- Addresses Columns
@@ -248,7 +259,7 @@ class Prv_proveedorModel extends Mysql
                 $d['calle'],
                 $d['num_ext'], 
                 $d['num_int'],
-                $d['colonia'],
+                strtoupper($d['colonia']) == 'OTRA' ? $d['colonia_manual'] : strtoupper($d['colonia']),
                 $d['cp'],
                 $d['municipio'], 
                 $d['ciudad'], 
@@ -613,5 +624,67 @@ class Prv_proveedorModel extends Mysql
         ];
 
         return (int)$this->insert($query, $params);
+    }
+    /**
+     * Obtiene todas las plantas asignadas a un proveedor
+     */
+    public function getPlantasByProveedor(int $proveedorId): array{
+        $sql = "
+            SELECT 
+                rp.id_relacion,
+                rp.id_planta,
+                rp.es_principal,
+                p.cve_planta,
+                p.nombre_planta,
+                p.direccion
+            FROM prv_rel_proveedores_plantas rp
+            INNER JOIN mrp_planta p ON p.idplanta = rp.id_planta
+            WHERE rp.id_proveedor = ?
+            AND p.estado = 2
+            ORDER BY rp.es_principal DESC, p.nombre_planta ASC";
+        return $this->select_all($sql, [$proveedorId]);
+    }
+    /**
+     * Asigna plantas a un proveedor
+     */
+    public function assignPlantas(int $proveedorId, array $plantasIds, int $plantaPrincipalId, int $userId): bool{
+        try {
+            // NO iniciar transacción aquí - asume que ya existe una desde el caller
+            
+            // 1. Eliminar asignaciones anteriores
+            $stmt = $this->conexion->prepare("DELETE FROM prv_rel_proveedores_plantas WHERE id_proveedor = ?");
+            $stmt->execute([$proveedorId]);
+            
+            // 2. Insertar nuevas asignaciones
+            foreach ($plantasIds as $plantaId) {
+                $esPrincipal = ($plantaId == $plantaPrincipalId) ? 1 : 0;
+                $sql = "INSERT INTO prv_rel_proveedores_plantas 
+                        (id_proveedor, id_planta, es_principal, created_by) 
+                        VALUES (?, ?, ?, ?)";
+                $this->insert($sql, [$proveedorId, $plantaId, $esPrincipal, $userId]);
+            }
+            
+            // 3. Actualizar id_planta en tabla maestra
+            $this->update("UPDATE prv_cat_proveedores SET id_planta = ? WHERE id_proveedor = ?", 
+                    [$plantaPrincipalId, $proveedorId]);
+            
+            return true;
+        } catch (Exception $e) {
+            error_log("[assignPlantas ERROR] " . $e->getMessage() . " | proveedorId: " . $proveedorId . " | plantas: " . implode(',', $plantasIds));
+            throw $e;
+        }
+    }
+    /**
+     * Obtiene la planta principal de un proveedor
+     */
+    public function getPlantaPrincipal(int $proveedorId): ?array{
+
+        $sql = "SELECT p.idplanta, p.cve_planta, p.nombre_planta
+                FROM prv_rel_proveedores_plantas rp
+                INNER JOIN mrp_planta p ON p.idplanta = rp.id_planta
+                WHERE rp.id_proveedor = ? AND rp.es_principal = 1
+                LIMIT 1";
+        
+        return $this->select($sql, [$proveedorId]) ?: null;
     }
 }
