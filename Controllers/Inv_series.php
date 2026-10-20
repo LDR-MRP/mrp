@@ -442,6 +442,18 @@ class Inv_series extends Controllers
         die();
     }
 
+    // Colores ya capturados (sugerencias del campo Color)
+    public function getColores()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        if (empty($_SESSION['permisosMod']['r'])) {
+            echo json_encode([]);
+            die();
+        }
+        echo json_encode($this->model->selectColores(), JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
     // Alta / modificación individual
     public function setAsociacion()
     {
@@ -462,7 +474,8 @@ class Inv_series extends Controllers
             $_POST['numero_motor'] ?? '',
             $_POST['vin_origen'] ?? '',
             $_SESSION['idUser'] ?? null,
-            'INDIVIDUAL'
+            'INDIVIDUAL',
+            $_POST['color'] ?? ''
         );
 
         echo json_encode($request, JSON_UNESCAPED_UNICODE);
@@ -545,7 +558,7 @@ class Inv_series extends Controllers
             }
             $pendientes = $this->model->select_all(
                 "SELECT s.numero_serie, s.referencia, i.descripcion AS producto,
-                        va.numero_motor, va.vin_origen
+                        va.numero_motor, va.vin_origen, va.color
                  FROM wms_numeros_series s
                  INNER JOIN wms_inventario i ON i.idinventario = s.inventarioid
                  LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = s.id_numeros_serie
@@ -559,7 +572,7 @@ class Inv_series extends Controllers
         $ss->getProperties()
             ->setCreator('LDR Solutions · MRP')
             ->setTitle('Plantilla asociación VIN')
-            ->setDescription('VIN generado, número de motor y VIN de origen');
+            ->setDescription('VIN generado, número de motor, VIN de origen y color');
 
         /* ---------- Instrucciones ---------- */
         $h1 = $ss->getActiveSheet();
@@ -572,10 +585,11 @@ class Inv_series extends Controllers
             '2. VIN: número VIN generado en el sistema (17 caracteres). Debe existir en Generar VIN.',
             '3. NUMERO_MOTOR: número de motor de la unidad (hasta 30 caracteres; letras, números, espacio, guion, diagonal y punto).',
             '4. VIN_ORIGEN: VIN del fabricante (17 caracteres, sin las letras I, O ni Q).',
-            '5. Un número de motor y un VIN de origen solo pueden estar asociados a un VIN generado.',
-            '6. Si el VIN ya tenía asociación y los datos son distintos, se ACTUALIZA y el cambio queda en el historial.',
-            '7. Las filas con NUMERO_MOTOR y VIN_ORIGEN vacíos se ignoran. Los VIN que ya tenían asociación vienen llenos: si no los cambias, se quedan igual.',
-            '8. Al terminar puedes descargar un log en Excel con las filas que no se procesaron y el motivo.',
+            '5. COLOR: color de la unidad (opcional, ej. Blanco, Negro, Rojo). Si lo dejas vacío se conserva el color que ya tenga.',
+            '6. Un número de motor y un VIN de origen solo pueden estar asociados a un VIN generado.',
+            '7. Si el VIN ya tenía asociación y los datos son distintos, se ACTUALIZA y el cambio queda en el historial.',
+            '8. Las filas con NUMERO_MOTOR y VIN_ORIGEN vacíos se ignoran. Los VIN que ya tenían asociación vienen llenos: si no los cambias, se quedan igual.',
+            '9. Al terminar puedes descargar un log en Excel con las filas que no se procesaron y el motivo.',
         ];
         $f = 3;
         foreach ($textos as $t) {
@@ -586,25 +600,25 @@ class Inv_series extends Controllers
         $h1->setCellValue('A' . $f, 'Ejemplo de una fila (en la hoja "Asociaciones"):');
         $h1->getStyle('A' . $f)->getFont()->setBold(true);
         $f++;
-        $h1->setCellValue('A' . $f, 'VIN = 3LD12B2J2VA000123   ·   NUMERO_MOTOR = 4D30-A123456   ·   VIN_ORIGEN = LFV3A28K0A3000001');
+        $h1->setCellValue('A' . $f, 'VIN = 3LD12B2J2VA000123   ·   NUMERO_MOTOR = 4D30-A123456   ·   VIN_ORIGEN = LFV3A28K0A3000001   ·   COLOR = Blanco');
         $h1->getColumnDimension('A')->setWidth(120);
 
         /* ---------- Asociaciones ---------- */
         $h2 = $ss->createSheet();
         $h2->setTitle('Asociaciones');
-        $h2->fromArray(['VIN', 'NUMERO_MOTOR', 'VIN_ORIGEN', 'REFERENCIA (informativo)', 'PRODUCTO (informativo)'], null, 'A1');
-        $h2->getStyle('A1:E1')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-        $h2->getStyle('A1:C1')->getFill()
+        $h2->fromArray(['VIN', 'NUMERO_MOTOR', 'VIN_ORIGEN', 'COLOR', 'REFERENCIA (informativo)', 'PRODUCTO (informativo)'], null, 'A1');
+        $h2->getStyle('A1:F1')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+        $h2->getStyle('A1:D1')->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FF2E7D32');
-        $h2->getStyle('D1:E1')->getFill()
+        $h2->getStyle('E1:F1')->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FF9E9E9E');
         $h2->freezePane('A2');
 
         $ultimaFila = max(500, count($pendientes) + 1);
         // Todo como TEXTO: evita que Excel convierta motores numéricos a notación científica
-        $h2->getStyle('A2:C' . $ultimaFila)->getNumberFormat()
+        $h2->getStyle('A2:D' . $ultimaFila)->getNumberFormat()
             ->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
 
         $r = 2;
@@ -615,16 +629,20 @@ class Inv_series extends Controllers
                 $h2->setCellValueExplicit('B' . $r, $p['numero_motor'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
                 $h2->setCellValueExplicit('C' . $r, $p['vin_origen'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             }
-            $h2->setCellValue('D' . $r, $p['referencia']);
-            $h2->setCellValue('E' . $r, $p['producto']);
+            if (!empty($p['color'])) {
+                $h2->setCellValueExplicit('D' . $r, $p['color'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            }
+            $h2->setCellValue('E' . $r, $p['referencia']);
+            $h2->setCellValue('F' . $r, $p['producto']);
             $r++;
         }
 
         $h2->getColumnDimension('A')->setWidth(24);
         $h2->getColumnDimension('B')->setWidth(24);
         $h2->getColumnDimension('C')->setWidth(24);
-        $h2->getColumnDimension('D')->setWidth(22);
-        $h2->getColumnDimension('E')->setWidth(40);
+        $h2->getColumnDimension('D')->setWidth(16);
+        $h2->getColumnDimension('E')->setWidth(22);
+        $h2->getColumnDimension('F')->setWidth(40);
         $ss->setActiveSheetIndex(1);
 
         if (empty($pendientes)) {
@@ -687,7 +705,8 @@ class Inv_series extends Controllers
             $vin = strtoupper(preg_replace('/\s+/', '', $r['vin']));
             $motor = Inv_seriesModel::normalizarMotor($r['motor']);
             $origen = Inv_seriesModel::normalizarVinOrigen($r['origen']);
-            $logBase = ['fila' => $fila, 'vin' => $vin, 'motor' => $motor, 'origen' => $origen];
+            $color = Inv_seriesModel::normalizarColor($r['color'] ?? '');
+            $logBase = ['fila' => $fila, 'vin' => $vin, 'motor' => $motor, 'origen' => $origen, 'color' => $color];
 
             if ($motor === '' && $origen === '') {
                 continue; // fila de la plantilla de pendientes sin llenar
@@ -700,7 +719,7 @@ class Inv_series extends Controllers
                 $log[] = $logBase + ['motivo' => 'El VIN no está registrado en los VIN generados.'];
                 continue;
             }
-            $error = Inv_seriesModel::validarDatosAsociacion($motor, $origen);
+            $error = Inv_seriesModel::validarDatosAsociacion($motor, $origen) ?? Inv_seriesModel::validarColor($color);
             if ($error) {
                 $log[] = $logBase + ['motivo' => $error];
                 continue;
@@ -726,7 +745,8 @@ class Inv_series extends Controllers
                 $motor,
                 $origen,
                 $_SESSION['idUser'] ?? null,
-                'MASIVO'
+                'MASIVO',
+                $color
             );
 
             if (!$r2['status']) {
@@ -767,9 +787,9 @@ class Inv_series extends Controllers
         $sh->setCellValue('A1', 'Log de asociaciones de VIN NO registradas (carga masiva)');
         $sh->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $sh->setCellValue('A2', 'Generado: ' . date('Y-m-d H:i:s'));
-        $sh->fromArray(['FILA_ARCHIVO', 'VIN', 'NUMERO_MOTOR', 'VIN_ORIGEN', 'MOTIVO'], null, 'A4');
-        $sh->getStyle('A4:E4')->getFont()->setBold(true);
-        $sh->getStyle('A4:E4')->getFill()
+        $sh->fromArray(['FILA_ARCHIVO', 'VIN', 'NUMERO_MOTOR', 'VIN_ORIGEN', 'COLOR', 'MOTIVO'], null, 'A4');
+        $sh->getStyle('A4:F4')->getFont()->setBold(true);
+        $sh->getStyle('A4:F4')->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FFEFEFEF');
         $sh->freezePane('A5');
@@ -781,13 +801,14 @@ class Inv_series extends Controllers
             $sh->setCellValueExplicit('B' . $r, (string) $l['vin'], $txt);
             $sh->setCellValueExplicit('C' . $r, (string) $l['motor'], $txt);
             $sh->setCellValueExplicit('D' . $r, (string) $l['origen'], $txt);
-            $sh->setCellValueExplicit('E' . $r, (string) $l['motivo'], $txt);
+            $sh->setCellValueExplicit('E' . $r, (string) ($l['color'] ?? ''), $txt);
+            $sh->setCellValueExplicit('F' . $r, (string) $l['motivo'], $txt);
             $r++;
         }
-        foreach (['A', 'B', 'C', 'D'] as $c) {
+        foreach (['A', 'B', 'C', 'D', 'E'] as $c) {
             $sh->getColumnDimension($c)->setWidth(22);
         }
-        $sh->getColumnDimension('E')->setWidth(70);
+        $sh->getColumnDimension('F')->setWidth(70);
 
         $this->enviarExcel($ss, 'Log_Asociacion_VIN_' . date('Ymd_His') . '.xlsx');
     }
@@ -824,6 +845,7 @@ class Inv_series extends Controllers
             'MOTOR' => 'motor',
             'VIN_ORIGEN' => 'origen',
             'VIN_DE_ORIGEN' => 'origen',
+            'COLOR' => 'color',
         ];
 
         $columnas = [];
@@ -844,7 +866,7 @@ class Inv_series extends Controllers
 
         $rows = [];
         for ($fila = 2; $fila <= $highestRow; $fila++) {
-            $reg = ['vin' => '', 'motor' => '', 'origen' => ''];
+            $reg = ['vin' => '', 'motor' => '', 'origen' => '', 'color' => ''];
             foreach ($columnas as $col => $campo) {
                 $reg[$campo] = $this->valorComoTexto($sheet->getCellByColumnAndRow($col, $fila)->getValue());
             }

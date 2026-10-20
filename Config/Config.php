@@ -96,6 +96,7 @@ const MICONCEPTOSMOVIMIENTOS = 23;
 const MIKARDEX = 24;
 const MILOTESPEDIMENTOS = 25;
 const MIMULTIALMACENES = 26;
+const MIUNIDADES = 83; // Inventario > Unidades por año modelo (Inv_unidades)
 const MIMONEDAS = 70;
 const MIASIGNACIONESINV = 71;
 const MIREPORTES = 72;

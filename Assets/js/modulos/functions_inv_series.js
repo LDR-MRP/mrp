@@ -89,6 +89,15 @@ document.addEventListener("DOMContentLoaded", function () {
       url: base_url + "/Inv_series/getSeries",
       dataSrc: function (json) {
         const data = Array.isArray(json) ? json : [];
+        // Llave para mantener juntas las filas de cada referencia: el agrupador (rowGroup)
+        // abre un grupo nuevo cada vez que cambia la referencia entre filas consecutivas,
+        // y con fechas empatadas (cargas masivas) las referencias se intercalaban.
+        // Grupos: el más reciente primero; dentro del grupo manda el orden que elija el usuario.
+        const fechaGrupo = {};
+        data.forEach((r) => {
+          if (!fechaGrupo[r.referencia] || r.fecha > fechaGrupo[r.referencia]) fechaGrupo[r.referencia] = r.fecha;
+        });
+        data.forEach((r) => (r.orden_grupo = fechaGrupo[r.referencia] + "|" + r.referencia));
         const asociados = data.filter((r) => r.numero_motor).length;
         document.getElementById("kpiAsociados").innerHTML =
           `<i class="ri-links-line align-bottom me-1"></i> ${asociados} asociados`;
@@ -104,6 +113,7 @@ document.addEventListener("DOMContentLoaded", function () {
       { data: "numero_serie", responsivePriority: 1, render: (d) => `<span class="mono fw-semibold">${escapeHtml(d)}</span>` },
       { data: "numero_motor", responsivePriority: 3, defaultContent: "", render: (d) => (d ? `<span class="mono">${escapeHtml(d)}</span>` : sinAsociar) },
       { data: "vin_origen", responsivePriority: 4, defaultContent: "", render: (d) => (d ? `<span class="mono">${escapeHtml(d)}</span>` : sinAsociar) },
+      { data: "color", responsivePriority: 10, defaultContent: "", render: (d) => (d ? escapeHtml(d) : '<span class="text-muted">—</span>') },
       { data: "referencia", responsivePriority: 6 },
       { data: "fecha", responsivePriority: 9 },
       { data: "estado", responsivePriority: 7 },
@@ -130,11 +140,14 @@ document.addEventListener("DOMContentLoaded", function () {
             </a>`;
         },
       },
+      // Oculta: solo para mantener juntas las filas de cada grupo (ver dataSrc)
+      { data: "orden_grupo", visible: false, searchable: false, defaultContent: "" },
     ],
     responsive: true,
     bDestroy: true,
     paging: false,
-    order: [[6, "desc"]],
+    order: [[7, "desc"]],
+    orderFixed: { pre: [[10, "desc"]] }, // columna oculta orden_grupo
     rowGroup: {
       dataSrc: "referencia",
       startRender: function (rows, group) {
@@ -145,7 +158,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         return $(`
           <tr class="group-row" data-name="${escapeHtml(group)}">
-            <td colspan="9">
+            <td colspan="10">
               <i class="${collapsed ? "ri-arrow-right-s-line" : "ri-arrow-down-s-line"} align-middle fs-16 me-1"></i>
               <strong>Referencia:</strong> ${escapeHtml(group)}
               ${tipoGrupo(rows)}
@@ -628,7 +641,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /* ================================================================
    * ASOCIACIÓN: número de motor + VIN de origen
-   * Flujo con lector: VIN [Enter] → motor [Enter] → VIN origen [Enter] = guardar
+   * Flujo con lector: VIN [Enter] → motor [Enter] → VIN origen [Enter] → color [Enter] = guardar
+   * (el color es opcional: Enter con el color vacío también guarda)
    * ============================================================== */
   const asoc = {
     modal: byId("modalAsociarVin") ? new bootstrap.Modal(byId("modalAsociarVin")) : null,
@@ -636,6 +650,7 @@ document.addEventListener("DOMContentLoaded", function () {
     id: byId("asoc_id_serie"),
     motor: byId("asoc_motor"),
     origen: byId("asoc_origen"),
+    color: byId("asoc_color"),
     info: byId("asocInfoVin"),
     guardar: byId("btnGuardarAsociacion"),
     continuar: byId("asocContinuar"),
@@ -653,6 +668,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function asocHabilitar(on) {
     asoc.motor.disabled = !on;
     asoc.origen.disabled = !on;
+    asoc.color.disabled = !on;
     asocValidar();
   }
 
@@ -674,6 +690,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     asoc.motor.value = "";
     asoc.origen.value = "";
+    asoc.color.value = "";
     asoc.info.innerHTML = "";
     asoc.origen.classList.remove("is-invalid");
     asocHabilitar(false);
@@ -701,6 +718,7 @@ document.addEventListener("DOMContentLoaded", function () {
         asoc.id.value = d.id_numeros_serie;
         asoc.motor.value = d.numero_motor || "";
         asoc.origen.value = d.vin_origen || "";
+        asoc.color.value = d.color || "";
         const estadoAsoc = d.id_asociacion
           ? `<span class="badge bg-success-subtle text-success">Ya asociado · se editará</span>`
           : `<span class="badge bg-warning-subtle text-warning">Sin asociar</span>`;
@@ -719,8 +737,22 @@ document.addEventListener("DOMContentLoaded", function () {
       });
   }
 
+  // Sugerencias de color: los ya capturados (evita "Blanco" / "Blanca" / "BLANCO")
+  let coloresCargados = false;
+  function cargarColores() {
+    if (coloresCargados) return;
+    coloresCargados = true;
+    fetch(base_url + "/Inv_series/getColores")
+      .then((r) => r.json())
+      .then((lista) => {
+        byId("asocColores").innerHTML = (lista || []).map((c) => `<option value="${escapeHtml(c)}">`).join("");
+      })
+      .catch(() => (coloresCargados = false));
+  }
+
   function abrirAsociar(vin) {
     if (!asoc.modal) return;
+    cargarColores();
     asocLimpiar(false);
     asoc.continuar.checked = !vin; // desde el encabezado: modo lector continuo
     if (vin) {
@@ -764,6 +796,9 @@ document.addEventListener("DOMContentLoaded", function () {
       asocValidar();
     });
     asoc.origen.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); asoc.color.focus(); asoc.color.select(); }
+    });
+    asoc.color.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); if (!asoc.guardar.disabled) asoc.guardar.click(); }
     });
 
@@ -774,6 +809,7 @@ document.addEventListener("DOMContentLoaded", function () {
       fd.append("id_numeros_serie", asoc.id.value);
       fd.append("numero_motor", asoc.motor.value);
       fd.append("vin_origen", asoc.origen.value);
+      fd.append("color", asoc.color.value);
 
       const btn = this;
       const txt = btn.innerHTML;
@@ -1011,7 +1047,7 @@ function renderHistorialVin(rows) {
   };
   const ACCIONES = { GENERACION: "Generación", ALTA: "Alta", MODIFICACION: "Modificación" };
   const CAMPOS = {
-    numero_serie: "VIN", numero_motor: "Número de motor", vin_origen: "VIN de origen",
+    numero_serie: "VIN", numero_motor: "Número de motor", vin_origen: "VIN de origen", color: "Color",
     vin_base: "VIN base", modelo: "Modelo", fabricante: "Fabricante", tipo_vehiculo: "Tipo de vehículo",
     peso_bruto_kg: "Peso bruto (kg)", tipo_motor: "Tipo de motor", potencia_hp: "Potencia (HP)",
     distancia_ejes: "Distancia entre ejes", anio: "Año", planta: "Planta", estado: "Estado",

@@ -361,6 +361,13 @@
                                     </li>
                                 <?php } ?>
 
+                                <?php if (!empty($_SESSION['permisos'][83]['r'])) { ?>
+                                    <li class="nav-item">
+                                        <a href="<?= base_url(); ?>/inv_unidades" class="nav-link"
+                                            data-key="t-detached">Unidades PT</a>
+                                    </li>
+                                <?php } ?>
+
                                 <?php if (!empty($_SESSION['permisos'][74]['r'])) { ?>
                                     <li class="nav-item">
                                         <a href="<?= base_url(); ?>/inv_picking" class="nav-link"
