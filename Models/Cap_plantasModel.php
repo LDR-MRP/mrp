@@ -154,6 +154,10 @@ public function generarClave()
             $query .= " AND idplanta = :plantaid";
             $params[':plantaid'] = (int)$filters['plantaid'];
         }
+        if (!empty($filters['estado'])) {
+            $query .= " AND estado = :estado";
+            $params[':estado'] = (int)$filters['estado'];
+        }
         // --- FIN FILTROS ---
 
         $query .= " ORDER BY cve_planta DESC";

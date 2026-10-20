@@ -28,8 +28,27 @@ const supplierManager = {
         $('#formProveedor').on('submit', function(e) {
             e.preventDefault();
             const data = new FormData(this);
-            const payload = Object.fromEntries(data.entries());
+            
+            // Convertir FormData a objeto manejando arrays múltiples
+            const payload = {};
+            for (let [key, value] of data.entries()) {
+                if (key.endsWith('[]')) {
+                    const cleanKey = key.slice(0, -2); // Remover []
+                    if (!payload[cleanKey]) {
+                        payload[cleanKey] = [];
+                    }
+                    payload[cleanKey].push(value);
+                } else {
+                    payload[key] = value;
+                }
+            }
+            
             payload.id = self.currentId || null;
+
+            // Si se seleccionó "Otra" en colonia, usar el valor manual
+            if (payload.colonia === 'OTRA' && payload.colonia_manual) {
+                payload.colonia = payload.colonia_manual.trim();
+            }
 
             // LIMPIEZA: Antes de enviar, convertimos a número real
             if (payload.limite_credito) {
@@ -144,19 +163,38 @@ const supplierManager = {
                         cascadeCatalogs.searchCP(data.cp, () => {
                             const valToSearch = data.colonia.toLowerCase().trim();
                             let exactValue = data.colonia; // Fallback por defecto
+                            let found = false;
 
                             // Escaneamos las opciones cargadas en el select de forma insensible a mayúsculas [4]
                             $('#colonia option').each(function() {
                                 if ($(this).val().toLowerCase().trim() === valToSearch) {
                                     exactValue = $(this).val(); // Obtenemos el valor exacto del option (Mayúsculas)
+                                    found = true;
                                     return false; // Break loop de jQuery
                                 }
                             });
 
-                            // Asignamos el valor exacto que el navegador sí reconoce
-                            $('[name="colonia"]').val(exactValue).trigger('change');
+                            if (found) {
+                                // Asignamos el valor exacto que el navegador sí reconoce
+                                $('[name="colonia"]').val(exactValue).trigger('change');
+                            } else {
+                                // La colonia no está en el catálogo, mostrar en input manual
+                                $('#colonia').val('OTRA');
+                                $('#colonia_manual').removeClass('d-none').val(data.colonia);
+                            }
                         });
                     }
+
+                    // 4. Cargar plantas asignadas
+                    Sys_Core.Net.get({
+                        url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers/${id}/plantas`,
+                        silent: true,
+                        onSuccess: (plantasRes) => {
+                            if (plantasRes.status && plantasRes.data) {
+                                plantasManager.markSelected(plantasRes.data);
+                            }
+                        }
+                    });
                 }
                 Sys_Core.UI.toggleLoader('.page-content', false);
             }
@@ -183,6 +221,19 @@ const cascadeCatalogs = {
                 cascadeCatalogs.searchRegime(tipoPersona);
             }
         });
+
+        // Manejar selección de "Otra" en colonia
+        $('#colonia').on('change', function() {
+            if ($(this).val() === 'OTRA') {
+                $('#colonia_manual').removeClass('d-none').focus();
+                $('#colonia_manual').val('');
+            } else {
+                $('#colonia_manual').addClass('d-none').val('');
+            }
+        });
+
+        // NO sincronizar valor manual al select para evitar validación
+        // El valor manual se usa directamente en el payload
     },
 
     searchCP: function(cp, callback = null) {
@@ -200,6 +251,9 @@ const cascadeCatalogs = {
                         textField: 'asentamiento',
                         placeholder: 'Selecciona colonia...'
                     });
+                    
+                    // Agregar opción "Otra"
+                    $('#colonia').append('<option value="OTRA">Otra (ingresar manualmente)</option>');
                     
                     if (callback) callback();
                 }
@@ -901,9 +955,117 @@ const onboardingManager = {
     }
 };
 
+const plantasManager = {
+    init: function() {
+        this.loadPlantas();
+        this.events();
+    },
+    
+    loadPlantas: function() {
+        Sys_Core.Net.get({
+            url: `${Sys_Core.Config.baseUrl}/api/v1/catalogs/plants`,
+            onSuccess: (res) => {
+                if (res.status && res.data) {
+                    this.renderPlantas(res.data);
+                }
+            }
+        });
+    },
+    
+    renderPlantas: function(plantas) {
+        const $container = $('#plantas-list');
+        $container.empty();
+        
+        plantas.forEach(planta => {
+            const $div = $('<div class="form-check mb-2 border rounded bg-light-subtle"></div>');
+            
+            const $chk = $('<input type="checkbox">')
+                .addClass('form-check-input chk-planta')
+                .attr('name', 'plantas[]')
+                .attr('value', planta.idplanta)
+                .attr('id', 'planta_' + planta.idplanta);
+            
+            const $label = $('<label>')
+                .addClass('form-check-label fw-medium')
+                .attr('for', 'planta_' + planta.idplanta)
+                .html(planta.nombre_planta + ' <span class="badge bg-secondary fs-10">' + planta.cve_planta + '</span>');
+            
+            const $radioDiv = $('<div class="mt-2 ms-4"></div>');
+            
+            const $radio = $('<input type="radio">')
+                .addClass('form-check-input radio-principal')
+                .attr('name', 'planta_principal')
+                .attr('value', planta.idplanta)
+                .attr('id', 'principal_' + planta.idplanta);
+            
+            const $radioLabel = $('<label>')
+                .addClass('form-check-label fs-11 text-primary fw-bold')
+                .attr('for', 'principal_' + planta.idplanta)
+                .html('<i class="ri-star-fill"></i> Principal');
+            
+            $radioDiv.append($radio).append($radioLabel);
+            $div.append($chk).append($label).append($radioDiv);
+            $container.append($div);
+        });
+    },
+    
+    events: function() {
+        // Checkbox seleccionado → Habilitar radio de esa planta
+        $(document).on('change', '.chk-planta', function() {
+            const $chk = $(this);
+            const $radio = $chk.closest('.form-check').find('.radio-principal');
+            
+            if ($chk.prop('checked')) {
+                $radio.prop('disabled', false);
+                
+                // Si no hay principal seleccionado, auto-marcar esta
+                if ($('.radio-principal:checked').length === 0) {
+                    $radio.prop('checked', true);
+                }
+            } else {
+                $radio.prop('disabled', true).prop('checked', false);
+                
+                // Si se desmarcó la principal, alertar
+                if ($('.radio-principal:checked').length === 0 && $('.chk-planta:checked').length > 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Planta Principal Eliminada',
+                        text: 'Seleccione otra planta como principal',
+                        timer: 2000
+                    });
+                }
+            }
+        });
+        
+        // Validación al submit
+        $('#formProveedor').on('submit', function(e) {
+            if ($('.chk-planta:checked').length === 0) {
+                e.preventDefault();
+                $('#plantas-error').removeClass('d-none');
+                return false;
+            } else {
+                $('#plantas-error').addClass('d-none');
+            }
+        });
+    },
+    
+    markSelected: function(plantasAsignadas) {
+        plantasAsignadas.forEach(planta => {
+            // Marcar checkbox
+            $(`#planta_${planta.id_planta}`).prop('checked', true);
+            
+            // Si es principal, marcar radio
+            if (planta.es_principal == 1) {
+                $(`#principal_${planta.id_planta}`).prop('checked', true);
+            }
+        });
+    }
+};
+
 $(document).ready(() => {
     cascadeCatalogs.init();
     supplierManager.init();
+    plantasManager.init();
     files.init();
     bankingManager.init();
     onboardingManager.init();

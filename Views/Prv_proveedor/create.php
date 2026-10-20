@@ -9,7 +9,7 @@
                 .text-danger-asterisk {
                     color: #ef4444; /* Rojo vibrante */
                     font-weight: bold;
-                    margin-left: 2px;
+                    margin-left: 2px;+
                 }
                 .custom-timeline-container {
                     position: relative;
@@ -250,8 +250,9 @@
                                                             <div class="col-md-6">
                                                                 <label class="form-label text-uppercase fs-11 fw-bold text-muted">Colonia <span class="text-danger-asterisk">*</span></label>
                                                                 <select name="colonia" id="colonia" class="form-select border-dashed">
-                                                                    <option>Selecciona una opción...</option>
+                                                                    <option value="">Selecciona una opción...</option>
                                                                 </select>
+                                                                <input type="text" name="colonia_manual" id="colonia_manual" class="form-control mt-2 d-none" placeholder="Ingrese la colonia manualmente">
                                                             </div>
                                                             <div class="col-md-6">
                                                                 <label class="form-label text-uppercase fs-11 fw-bold text-muted">Municipio</label>
@@ -331,7 +332,29 @@
                                             </div>
                                         </div>
                                     </div>
-
+                                    <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px; border-top: 4px solid #0ab39c;">
+                                        <div class="card-body p-4 text-start">
+                                            <h5 class="card-title mb-4 text-uppercase fw-bold text-muted fs-12 ls-1">
+                                                <i class="ri-building-4-line text-success me-1 fs-14 align-middle"></i> Asignación de Plantas
+                                            </h5>
+                                            
+                                            <div class="mb-3" id="plantas-container">
+                                                <div class="alert alert-info fs-12 mb-3">
+                                                    <i class="ri-information-line me-1"></i>
+                                                    Seleccione las plantas donde operará este proveedor. 
+                                                    Marque una como <strong>PRINCIPAL</strong> usando el radio button.
+                                                </div>
+                                                
+                                                <div id="plantas-list" style="max-height: 300px; overflow-y: auto; padding-right: 10px;">
+                                                    <!-- Plantas cargadas dinámicamente -->
+                                                </div>
+                                            </div>
+                                            
+                                            <div id="plantas-error" class="text-danger fs-11 d-none">
+                                                <i class="ri-error-warning-line"></i> Debe seleccionar al menos una planta
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px; border-top: 4px solid #0ab39c;">
                                         <div class="card-body p-4 text-start">
                                             <h5 class="card-title mb-4 text-uppercase fw-bold text-muted fs-12 ls-1">

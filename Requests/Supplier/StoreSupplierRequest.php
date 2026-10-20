@@ -62,6 +62,10 @@ class StoreSupplierRequest extends Requests
             'puesto'            => 'Especifique el cargo o puesto del contacto.',
             'email'             => 'El correo electrónico es necesario para el envío de O.C.',
             'telefono'          => 'El número telefónico es obligatorio para seguimiento.',
+            
+            // Plantas
+            'plantas' => 'Debe seleccionar al menos una planta.',
+            'planta_principal' => 'Debe seleccionar una planta principal.',
         ];
 
         foreach ($requiredFields as $field => $message) {
@@ -123,9 +127,27 @@ class StoreSupplierRequest extends Requests
         // Validar email duplicado en prv_cat_usuarios
         if (!empty($this->data['email'])) {
             try {
-                if ($this->prvProveedorModel->emailExists($this->data['email'])) {
-                    $this->addError('email', 'El correo electrónico ya está registrado en el sistema.');
-                    return; // Detenemos validaciones posteriores
+                // En edición, excluimos el email del proveedor actual de la verificación
+                if (!empty($supplierId)) {
+                    $current = $this->prvProveedorModel->findByCriteria(['id_proveedor' => $supplierId]);
+                    $currentEmail = $current[0]['email'] ?? null;
+                    
+                    // Si el email no cambió, no validar duplicado
+                    if ($currentEmail === $this->data['email']) {
+                        // Email sin cambios, saltar validación
+                    } else {
+                        // Email cambió, validar que no esté duplicado con OTRO proveedor
+                        if ($this->prvProveedorModel->emailExists($this->data['email'])) {
+                            $this->addError('email', 'El correo electrónico ya está registrado en el sistema.');
+                            return;
+                        }
+                    }
+                } else {
+                    // Alta: validar que el email no exista
+                    if ($this->prvProveedorModel->emailExists($this->data['email'])) {
+                        $this->addError('email', 'El correo electrónico ya está registrado en el sistema.');
+                        return;
+                    }
                 }
             } catch (\Exception $e) {
                 // Si falla la verificación, loguear pero no bloquear
@@ -150,6 +172,26 @@ class StoreSupplierRequest extends Requests
                 $this->currentSupplier['rfc'] !== $this->data['rfc']
             ) {
                 $this->addError('rfc', "Intento de cambio de RFC bloqueado para el proveedor ID: {$supplierId}");
+            }
+        }
+        if (!empty($this->data['plantas']) && is_array($this->data['plantas'])) {
+            // Validar que al menos una planta esté seleccionada
+            if (count($this->data['plantas']) === 0) {
+                $this->addError('plantas', 'Debe seleccionar al menos una planta.');
+            }
+            
+            // Validar que planta_principal esté en plantas[]
+            if (!empty($this->data['planta_principal']) && !in_array($this->data['planta_principal'], $this->data['plantas'])) {
+                $this->addError('planta_principal', 'La planta principal debe estar entre las plantas seleccionadas.');
+            }
+            
+            // Validar que las plantas existan y estén activas
+            $plantaModel = new \Cap_plantasModel();
+            foreach ($this->data['plantas'] as $plantaId) {
+                $planta = $plantaModel->selectPlanta((int)$plantaId);
+                if (!$planta || $planta['estado'] != 2) {
+                    $this->addError('plantas', "La planta con ID {$plantaId} no existe o no está activa.");
+                }
             }
         }
     }

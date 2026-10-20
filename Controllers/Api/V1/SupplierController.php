@@ -6,12 +6,14 @@ class SupplierController
     use \ApiResponser;
 
     private readonly \SupplierService $supplierService;
+    private readonly \Prv_proveedorModel $proveedorModel;
 
     public array $request = [];
 
     public function __construct()
     {
         $this->supplierService = new \SupplierService;
+        $this->proveedorModel = new \Prv_proveedorModel;
     }
 
     public function index()
@@ -155,5 +157,18 @@ class SupplierController
 
         $response = $this->supplierService->getOnboardingReport($filters, $userContext);
         return $this->apiResponse($response);
+    }
+    /**
+     * Obtiene las plantas asignadas a un proveedor
+     * GET /api/v1/suppliers/{id}/plantas
+     */
+    public function getPlantas(int $id): void
+    {
+        try {
+            $plantas = $this->proveedorModel->getPlantasByProveedor($id);
+            $this->successResponse($plantas);
+        } catch (Throwable $t) {
+            $this->errorResponse($t->getMessage(), 500);
+        }
     }
 }

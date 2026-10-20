@@ -55,7 +55,8 @@ class Catalogo extends Controllers
     {
         // Capturamos el filtro opcional de la URL
         $filters = [
-            'plantaid' => $_GET['plantaid'] ?? null
+            'plantaid' => $_GET['plantaid'] ?? null,
+            'estado' => 2
         ];
 
         return $this->apiResponse($this->catalogoService->getPlants($filters));

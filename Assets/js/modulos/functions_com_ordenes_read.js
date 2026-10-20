@@ -220,9 +220,10 @@ const PurchaseOrderRead = {
         if (status === 'emitida') {
             html += `<button class="btn btn-warning action-btn" data-action="transit"><i class="ri-truck-line"></i> Marcar En Tránsito</button>`;
             html += `<button class="btn btn-soft-danger action-btn" data-action="cancel"><i class="ri-close-line"></i> Cancelar OC</button>`;
-        } else if (status === 'en_transito' || status === 'recibida_parcial') {
-            html += `<button class="btn btn-success" data-redirect="inv_recepcion/create?oc_id=${this.state.id}"><i class="ri-inbox-archive-line"></i> Recibir Mercancía</button>`;
-        }
+        } 
+        // else if (status === 'en_transito' || status === 'recibida_parcial') {
+        //     html += `<button class="btn btn-success" data-redirect="inv_recepcion/create?oc_id=${this.state.id}"><i class="ri-inbox-archive-line"></i> Recibir Mercancía</button>`;
+        // }
 
         this.dom.$actionContainer.html(html);
     }

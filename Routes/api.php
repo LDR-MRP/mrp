@@ -186,8 +186,10 @@ Route::get('api/v1/catalogs/product-lines', [Catalogo::class, 'productLines'])->
 // -- PAYMENT METHODS --
 Route::get('api/v1/catalogs/payment-methods', [Catalogo::class, 'paymentMethods'])->middleware([AuthMiddleware::class]);
 
-// -- 
+// -- Plantas
 Route::get('api/v1/catalogs/plants', [Catalogo::class, 'plants'])->middleware([AuthMiddleware::class]);
+Route::get('api/v1/suppliers/{id}/plantas', [SupplierController::class, 'getPlantas'])->middleware([AuthMiddleware::class]);
+
 
 /**
  * ==============================================================================

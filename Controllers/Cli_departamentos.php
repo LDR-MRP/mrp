@@ -161,6 +161,11 @@ class Cli_departamentos extends Controllers
      * ====================================================== */
     public function indexapi()
     {
-        return $this->apiResponse($this->departamentoService->index($filters = sanitizeGet()));
+        try {
+            return $this->apiResponse($this->departamentoService->index($filters = sanitizeGet()));
+        } catch (Throwable $e) {
+            error_log("[ERROR indexapi] " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+            return $this->errorResponse("Error interno del servidor: " . $e->getMessage(), 500);
+        }
     }
 }
