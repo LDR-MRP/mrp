@@ -15,6 +15,7 @@ class Inv_seriesModel extends Mysql
                    a.descripcion AS almacen,
                    va.numero_motor,
                    va.vin_origen,
+                   va.color,
                    mv.modelo AS modelo_vin,
                    mv.vin_base
             FROM wms_numeros_series s
@@ -347,6 +348,9 @@ class Inv_seriesModel extends Mysql
     /**
      * Último consecutivo (posiciones 12-17) del AÑO del VIN (posición 10),
      * sin importar el modelo, la planta ni el resto de la estructura.
+     * Solo cuenta VIN del mismo fabricante (WMI, posiciones 1-3, ej. 3LD):
+     * los VIN de unidades importadas (LVA..., LVC...) traen su propio
+     * consecutivo y no deben mover el nuestro.
      * Ej. si existe 3LD12B2J2VA000006, el siguiente VIN con año "V"
      * de cualquier modelo toma el 000007.
      *
@@ -357,18 +361,20 @@ class Inv_seriesModel extends Mysql
     {
         $vin = strtoupper(trim($vin));
         $anio = substr($vin, 9, 1);
+        $wmi = substr($vin, 0, 3);
 
-        if ($anio === false || $anio === '') {
+        if ($anio === false || $anio === '' || strlen($wmi) !== 3) {
             return 0;
         }
 
         $sql = "SELECT MAX(CAST(SUBSTRING(numero_serie, 12, 6) AS UNSIGNED)) AS ultimo
                 FROM wms_numeros_series
                 WHERE LENGTH(numero_serie) = 17
+                  AND LEFT(numero_serie, 3) = ?
                   AND SUBSTRING(numero_serie, 10, 1) = ?
                   AND SUBSTRING(numero_serie, 12, 6) REGEXP '^[0-9]{6}$'";
 
-        $result = $this->select($sql, [$anio]);
+        $result = $this->select($sql, [$wmi, $anio]);
         $ultimo = !empty($result['ultimo']) ? intval($result['ultimo']) : 0;
 
         // VIN reales del Excel INVENTARIO_LDR_2027 que aun no se pueden dar de
@@ -379,9 +385,10 @@ class Inv_seriesModel extends Mysql
             $sqlCarga = "SELECT MAX(CAST(SUBSTRING(vin, 12, 6) AS UNSIGNED)) AS ultimo
                          FROM vin_carga_inv2027
                          WHERE LENGTH(vin) = 17
+                           AND LEFT(vin, 3) = ?
                            AND SUBSTRING(vin, 10, 1) = ?
                            AND SUBSTRING(vin, 12, 6) REGEXP '^[0-9]{6}$'";
-            $carga = $this->select($sqlCarga, [$anio]);
+            $carga = $this->select($sqlCarga, [$wmi, $anio]);
             if (!empty($carga['ultimo'])) {
                 $ultimo = max($ultimo, intval($carga['ultimo']));
             }
@@ -418,6 +425,36 @@ class Inv_seriesModel extends Mysql
         return strtoupper(preg_replace('/\s+/', '', (string) $vin));
     }
 
+    /** Color de la unidad: "BLANCO  perla" -> "Blanco Perla" (vacío = sin color). */
+    public static function normalizarColor($color): string
+    {
+        $color = preg_replace('/\s+/', ' ', trim((string) $color));
+        return $color === '' ? '' : mb_convert_case(mb_strtolower($color, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
+    }
+
+    public static function validarColor(string $color): ?string
+    {
+        if ($color === '') {
+            return null;
+        }
+        if (mb_strlen($color) > 30) {
+            return 'El color no puede exceder 30 caracteres.';
+        }
+        if (!preg_match('/^[\p{L}0-9][\p{L}0-9 \-\/\.]*$/u', $color)) {
+            return 'El color solo admite letras, números, espacio, guion, diagonal y punto.';
+        }
+        return null;
+    }
+
+    /** Colores ya capturados (para sugerirlos en el formulario y no tener "Blanco" y "Blanca"). */
+    public function selectColores(): array
+    {
+        return array_column($this->select_all(
+            "SELECT color, COUNT(*) AS n FROM wms_vin_asociaciones
+             WHERE color IS NOT NULL AND color <> '' GROUP BY color ORDER BY n DESC, color"
+        ), 'color');
+    }
+
     /** Regresa el motivo del error o null si los datos son válidos (ya normalizados). */
     public static function validarDatosAsociacion(string $motor, string $vinOrigen): ?string
     {
@@ -451,7 +488,7 @@ class Inv_seriesModel extends Mysql
         $sql = "SELECT s.id_numeros_serie, s.numero_serie, s.referencia, s.tipo_generacion,
                        s.id_cat_modelo_vin, s.estado,
                        i.descripcion AS producto,
-                       va.id_asociacion, va.numero_motor, va.vin_origen,
+                       va.id_asociacion, va.numero_motor, va.vin_origen, va.color,
                        va.fecha_alta, va.fecha_modifica
                 FROM wms_numeros_series s
                 INNER JOIN wms_inventario i ON i.idinventario = s.inventarioid
@@ -486,7 +523,7 @@ class Inv_seriesModel extends Mysql
         foreach (array_chunk($vins, 500) as $bloque) {
             $in = implode(',', array_fill(0, count($bloque), '?'));
             $sql = "SELECT s.id_numeros_serie, s.numero_serie, s.id_cat_modelo_vin,
-                           va.numero_motor, va.vin_origen
+                           va.numero_motor, va.vin_origen, va.color
                     FROM wms_numeros_series s
                     LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = s.id_numeros_serie
                     WHERE s.estado != 0 AND s.numero_serie IN ($in)";
@@ -500,14 +537,16 @@ class Inv_seriesModel extends Mysql
     /**
      * Alta o modificación de la asociación de un VIN.
      * $origenCaptura: INDIVIDUAL | MASIVO
+     * $color: null o '' = no se toca el color que ya tenga (la carga masiva puede venir sin color)
      * Respuesta: ['status' => bool, 'msg' => string, 'tipo' => 'nueva'|'actualizada'|'sin_cambios']
      */
-    public function guardarAsociacion(int $idSerie, string $motor, string $vinOrigen, $usuarioid, string $origenCaptura = 'INDIVIDUAL'): array
+    public function guardarAsociacion(int $idSerie, string $motor, string $vinOrigen, $usuarioid, string $origenCaptura = 'INDIVIDUAL', ?string $color = null): array
     {
         $motor = self::normalizarMotor($motor);
         $vinOrigen = self::normalizarVinOrigen($vinOrigen);
+        $color = self::normalizarColor($color);
 
-        $error = self::validarDatosAsociacion($motor, $vinOrigen);
+        $error = self::validarDatosAsociacion($motor, $vinOrigen) ?? self::validarColor($color);
         if ($error) {
             return ['status' => false, 'msg' => $error];
         }
@@ -539,7 +578,7 @@ class Inv_seriesModel extends Mysql
         }
 
         $actual = $this->select(
-            "SELECT id_asociacion, numero_motor, vin_origen FROM wms_vin_asociaciones WHERE id_numeros_serie = ?",
+            "SELECT id_asociacion, numero_motor, vin_origen, color FROM wms_vin_asociaciones WHERE id_numeros_serie = ?",
             [$idSerie]
         );
 
@@ -549,12 +588,21 @@ class Inv_seriesModel extends Mysql
                 ['campo' => 'numero_motor', 'antes' => null, 'despues' => $motor],
                 ['campo' => 'vin_origen', 'antes' => null, 'despues' => $vinOrigen],
             ];
+            if ($color !== '') {
+                $cambios[] = ['campo' => 'color', 'antes' => null, 'despues' => $color];
+            }
         } else {
             if ($actual['numero_motor'] !== $motor) {
                 $cambios[] = ['campo' => 'numero_motor', 'antes' => $actual['numero_motor'], 'despues' => $motor];
             }
             if ($actual['vin_origen'] !== $vinOrigen) {
                 $cambios[] = ['campo' => 'vin_origen', 'antes' => $actual['vin_origen'], 'despues' => $vinOrigen];
+            }
+            if ($color !== '' && (string) $actual['color'] !== $color) {
+                $cambios[] = ['campo' => 'color', 'antes' => $actual['color'], 'despues' => $color];
+            }
+            if ($color === '') {
+                $color = $actual['color']; // se conserva
             }
             if (empty($cambios)) {
                 return ['status' => true, 'msg' => 'Sin cambios: el VIN ya tenía esa asociación.', 'tipo' => 'sin_cambios'];
@@ -576,16 +624,16 @@ class Inv_seriesModel extends Mysql
             if (empty($actual)) {
                 $this->insert(
                     "INSERT INTO wms_vin_asociaciones
-                     (id_numeros_serie, numero_motor, vin_origen, usuario_alta, fecha_alta)
-                     VALUES (?,?,?,?,NOW())",
-                    [$idSerie, $motor, $vinOrigen, $usuarioid]
+                     (id_numeros_serie, numero_motor, vin_origen, color, usuario_alta, fecha_alta)
+                     VALUES (?,?,?,?,?,NOW())",
+                    [$idSerie, $motor, $vinOrigen, $color !== '' ? $color : null, $usuarioid]
                 );
             } else {
                 $this->update(
                     "UPDATE wms_vin_asociaciones
-                     SET numero_motor = ?, vin_origen = ?, usuario_modifica = ?, fecha_modifica = NOW()
+                     SET numero_motor = ?, vin_origen = ?, color = ?, usuario_modifica = ?, fecha_modifica = NOW()
                      WHERE id_asociacion = ?",
-                    [$motor, $vinOrigen, $usuarioid, $actual['id_asociacion']]
+                    [$motor, $vinOrigen, ($color ?? '') !== '' ? $color : null, $usuarioid, $actual['id_asociacion']]
                 );
             }
 

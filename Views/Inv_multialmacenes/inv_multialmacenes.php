@@ -1,5 +1,42 @@
 <?php headerAdmin($data);
 ?>
+<style>
+    .kpi-matriz {
+        display: flex; flex-direction: column; gap: .15rem; height: 100%;
+        padding: .75rem 1rem; border: 1px solid var(--vz-border-color); border-radius: .5rem;
+        background: var(--vz-card-bg);
+    }
+    .kpi-matriz .kpi-label { font-size: .75rem; color: var(--vz-secondary-color, #878a99); }
+    .kpi-matriz .kpi-valor { font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    .matriz-scroll { overflow-x: auto; border: 1px solid var(--vz-border-color); border-radius: .375rem; }
+    .tabla-matriz { border-collapse: separate; border-spacing: 0; }
+    .tabla-matriz th, .tabla-matriz td { white-space: nowrap; }
+    .tabla-matriz thead th { font-size: .72rem; vertical-align: bottom; background: var(--vz-light); }
+    .tabla-matriz td.num, .tabla-matriz th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    /* Clave y descripcion fijas al desplazar a la derecha */
+    /* !important: DataTables pone position:relative a los encabezados ordenables */
+    .tabla-matriz th.fija, .tabla-matriz td.fija { position: sticky !important; z-index: 2; background: var(--vz-card-bg); }
+    .tabla-matriz thead th.fija { background: var(--vz-light); z-index: 3; }
+    .tabla-matriz .fija-1 { left: 0; }
+    .tabla-matriz .fija-2 { left: var(--ancho-fija-1, 160px); max-width: 280px; overflow: hidden; text-overflow: ellipsis;
+                            box-shadow: inset -1px 0 0 var(--vz-border-color); }
+    .tabla-matriz td.col-total { font-weight: 600; background: rgba(var(--vz-primary-rgb), .06); }
+    .tabla-matriz th.col-almacen .planta { display: block; font-weight: 400; color: var(--vz-secondary-color, #878a99); }
+    .tabla-matriz td .cero { color: var(--vz-secondary-color, #878a99); opacity: .5; }
+    .tabla-matriz td .negativo { color: var(--vz-danger); font-weight: 600; }
+    .celda-bajo-min { background: rgba(var(--vz-warning-rgb), .18); border-radius: .25rem; }
+    .tabla-matriz tbody tr { cursor: pointer; }
+    .tipo-badge { font-size: .68rem; }
+    /* Vista desglose: un chip por almacén con existencia */
+    .tabla-matriz td.col-desglose { white-space: normal; min-width: 260px; }
+    .chip-alm { display: inline-flex; align-items: center; gap: .35rem; margin: .1rem .25rem .1rem 0;
+                padding: .1rem .45rem; border: 1px solid var(--vz-border-color); border-radius: 1rem;
+                font-size: .72rem; line-height: 1.4; background: var(--vz-light); }
+    .chip-alm b { font-variant-numeric: tabular-nums; }
+    .chip-alm.bajo-min { background: rgba(var(--vz-warning-rgb), .18); border-color: rgba(var(--vz-warning-rgb), .5); }
+    .chip-alm.negativo b { color: var(--vz-danger); }
+</style>
 <div id="contentAjax"></div>
 <div class="main-content">
 
@@ -52,21 +89,84 @@
                     <div class="tab-content">
                         <div class="tab-pane active" id="listMultialmacenes" role="tabpanel">
 
+                            <!-- KPIs (se recalculan con los filtros) -->
+                            <div class="row g-3 mb-3" id="kpisMatriz">
+                                <div class="col-6 col-lg-3">
+                                    <div class="kpi-matriz">
+                                        <span class="kpi-label">Artículos</span>
+                                        <span class="kpi-valor" id="kpiArticulos">—</span>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-lg-3">
+                                    <div class="kpi-matriz">
+                                        <span class="kpi-label">Con existencia</span>
+                                        <span class="kpi-valor" id="kpiConExistencia">—</span>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-lg-3">
+                                    <div class="kpi-matriz">
+                                        <span class="kpi-label">Unidades en almacenes</span>
+                                        <span class="kpi-valor" id="kpiUnidades">—</span>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-lg-3">
+                                    <div class="kpi-matriz">
+                                        <span class="kpi-label">Almacenes con existencia</span>
+                                        <span class="kpi-valor" id="kpiAlmacenes">—</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filtros -->
+                            <div class="row g-2 align-items-end mb-3">
+                                <div class="col-sm-6 col-lg-2">
+                                    <label class="form-label fs-12 text-muted mb-1" for="filtroTipoMatriz">Tipo</label>
+                                    <select class="form-select form-select-sm" id="filtroTipoMatriz">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-6 col-lg-2">
+                                    <label class="form-label fs-12 text-muted mb-1" for="filtroPlantaMatriz">Planta</label>
+                                    <select class="form-select form-select-sm" id="filtroPlantaMatriz">
+                                        <option value="">Todas</option>
+                                    </select>
+                                </div>
+                                <div class="col-lg-4 d-flex flex-wrap gap-3 pb-1">
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" id="soloExistenciaMatriz">
+                                        <label class="form-check-label fs-13" for="soloExistenciaMatriz">Solo artículos con existencia</label>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" id="ocultarVaciosMatriz" checked>
+                                        <label class="form-check-label fs-13" for="ocultarVaciosMatriz">Ocultar almacenes sin existencia</label>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4 d-flex justify-content-lg-end align-items-center gap-2">
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Vista">
+                                        <input type="radio" class="btn-check" name="vistaMatriz" id="vistaMatriz" value="matriz" checked>
+                                        <label class="btn btn-outline-primary" for="vistaMatriz" title="Una columna por almacén">
+                                            <i class="ri-grid-line align-bottom"></i> Matriz</label>
+                                        <input type="radio" class="btn-check" name="vistaMatriz" id="vistaDesglose" value="desglose">
+                                        <label class="btn btn-outline-primary" for="vistaDesglose" title="Total y solo los almacenes con existencia">
+                                            <i class="ri-list-check-2 align-bottom"></i> Desglose</label>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-soft-success" id="btnExportarMatriz">
+                                        <i class="ri-file-excel-2-line align-bottom me-1"></i> Exportar a Excel
+                                    </button>
+                                </div>
+                            </div>
+
                             <table id="tableMultialmacenes"
-                                class="table table-bordered dt-responsive nowrap table-striped align-middle"
+                                class="table table-bordered table-hover table-sm align-middle mb-0 tabla-matriz"
                                 style="width:100%">
-                                <thead>
-                                    <tr>
-                                        <th>INVENTARIO</th>
-                                        <th>ALMACÉN</th>
-                                        <th>EXISTENCIA</th>
-
-                                    </tr>
-                                </thead>
-                                <tbody>
-
-                                </tbody>
+                                <thead></thead>
+                                <tbody></tbody>
                             </table>
+                            <div class="fs-12 text-muted mt-2">
+                                <i class="ri-information-line align-bottom"></i>
+                                Clic en un artículo para ver el detalle por almacén y ajustar stock mínimo / máximo.
+                                <span class="celda-bajo-min px-1 ms-2">12</span> = por debajo del stock mínimo.
+                            </div>
 
                         </div>
                         <!-- end tab-pane -->

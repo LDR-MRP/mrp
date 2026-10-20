@@ -258,10 +258,12 @@
                                                     <th>NÚMERO VIN</th>
                                                     <th>NÚMERO DE MOTOR</th>
                                                     <th>VIN DE ORIGEN</th>
+                                                    <th>COLOR</th>
                                                     <th>REFERENCIA</th>
                                                     <th>FECHA</th>
                                                     <th>ESTADO</th>
                                                     <th>ACCIONES</th>
+                                                    <th>ORDEN GRUPO</th>
                                                 </tr>
                                             </thead>
                             </table>
@@ -550,6 +552,15 @@
                                 <div class="invalid-feedback" id="asocOrigenError"></div>
                             </div>
                         </div>
+
+                        <div class="asoc-paso mb-0 mt-3">
+                            <span class="asoc-num">4</span>
+                            <div class="flex-grow-1">
+                                <label class="form-label" for="asoc_color">Color <span class="text-muted fw-normal fs-12">(opcional)</span></label>
+                                <input type="text" class="form-control" id="asoc_color" maxlength="30" list="asocColores" placeholder="Ej. Blanco" disabled>
+                                <datalist id="asocColores"></datalist>
+                            </div>
+                        </div>
                     </div>
                     <div class="modal-footer justify-content-between">
                         <div class="form-check form-switch mb-0">
@@ -575,7 +586,7 @@
                 <div class="modal-header border-bottom">
                     <div>
                         <h5 class="modal-title mb-0">Carga masiva de asociaciones</h5>
-                        <p class="text-muted mb-0 fs-12">VIN generado · número de motor · VIN de origen</p>
+                        <p class="text-muted mb-0 fs-12">VIN generado · número de motor · VIN de origen · color</p>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
@@ -620,10 +631,10 @@
                     </div>
 
                     <!-- Paso 2: subir -->
-                    <h6 class="mb-2"><span class="carga-paso">2</span> Llena el motor y el VIN de origen y sube el archivo</h6>
+                    <h6 class="mb-2"><span class="carga-paso">2</span> Llena el motor, el VIN de origen y el color, y sube el archivo</h6>
                     <div class="alert alert-info fs-13 py-2 mb-2">
                         Si un VIN ya tiene asociación y el archivo trae datos distintos, se <strong>actualiza</strong> y el cambio queda en su historial.
-                        Las filas con motor y VIN de origen vacíos se ignoran.
+                        Las filas con motor y VIN de origen vacíos se ignoran. El color es opcional: si viene vacío se conserva el que ya tenga.
                     </div>
                     <form id="formCargaAsociacion" onsubmit="return false;">
                         <label class="form-label fs-13 text-muted" for="archivoAsociacion">Archivo (.xlsx, .xls o .csv)</label>

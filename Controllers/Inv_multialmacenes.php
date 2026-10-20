@@ -227,4 +227,133 @@ public function buscarArticulos()
 }
 
 
+
+    /* =================================================================
+     * MATRIZ DE EXISTENCIAS (articulo x almacen)
+     * ================================================================= */
+
+    private const TIPOS_MATRIZ = [
+        'P' => 'Producto',
+        'C' => 'Componente',
+        'K' => 'Kit',
+        'H' => 'Herramienta',
+        'R' => 'Refacción',
+        'S' => 'Servicio',
+    ];
+
+    // Columnas de almacen para armar el encabezado de la matriz
+    public function getAlmacenesMatriz()
+    {
+        if (empty($_SESSION['permisosMod']['r'])) {
+            die();
+        }
+        echo json_encode([
+            'almacenes' => $this->model->selectAlmacenesMatriz(),
+            'tipos'     => self::TIPOS_MATRIZ,
+        ], JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    /** Filtros comunes de la matriz (tabla y exportacion), saneados. */
+    private function filtrosMatriz(array $req): array
+    {
+        $search = mb_substr(trim((string)($req['search']['value'] ?? $req['q'] ?? '')), 0, 100);
+
+        $tipo = (string)($req['filtro_tipo'] ?? '');
+        if (!isset(self::TIPOS_MATRIZ[$tipo])) {
+            $tipo = '';
+        }
+
+        // Alcance: almacenes de la planta elegida (o todos)
+        $planta = strtoupper((string)($req['filtro_planta'] ?? ''));
+        $almacenes = [];
+        foreach ($this->model->selectAlmacenesMatriz() as $a) {
+            if ($planta === '' || $a['planta'] === $planta) {
+                $almacenes[] = (int)$a['idalmacen'];
+            }
+        }
+
+        return [
+            'search'          => $search,
+            'tipo'            => $tipo,
+            'solo_existencia' => !empty($req['solo_existencia']) && $req['solo_existencia'] !== '0',
+            'almacenes'       => $almacenes,
+        ];
+    }
+
+    // DataTables server-side
+    public function getMatriz()
+    {
+        if (empty($_SESSION['permisosMod']['r'])) {
+            die();
+        }
+        $req = $_POST + $_GET;
+        $p = $this->filtrosMatriz($req);
+
+        // Orden: la llave es el "data" de la columna (validada en el modelo)
+        $idx = (int)($req['order'][0]['column'] ?? 0);
+        $p['order_key'] = (string)($req['columns'][$idx]['data'] ?? 'cve_articulo');
+        $p['order_dir'] = (strtolower($req['order'][0]['dir'] ?? 'asc') === 'desc') ? 'DESC' : 'ASC';
+        $p['start']     = (int)($req['start'] ?? 0);
+        $p['length']    = (int)($req['length'] ?? 25);
+
+        $result = $this->model->selectMatrizPaginada($p);
+
+        echo json_encode([
+            'draw'            => (int)($req['draw'] ?? 0),
+            'recordsTotal'    => $result['recordsTotal'],
+            'recordsFiltered' => $result['recordsFiltered'],
+            'resumen'         => $result['resumen'],
+            'data'            => $result['data'],
+        ], JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    // Exportar la matriz completa (con los filtros actuales) a CSV para Excel
+    public function exportarMatriz()
+    {
+        if (empty($_SESSION['permisosMod']['r'])) {
+            die();
+        }
+        $p = $this->filtrosMatriz($_GET);
+        $p['order_key']  = 'cve_articulo';
+        $p['order_dir']  = 'ASC';
+        $p['sin_limite'] = true;
+
+        $almacenes = array_values(array_filter(
+            $this->model->selectAlmacenesMatriz(),
+            fn($a) => in_array((int)$a['idalmacen'], $p['almacenes'], true)
+        ));
+        $result = $this->model->selectMatrizPaginada($p);
+
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="existencias_por_almacen_' . date('Ymd_His') . '.csv"');
+
+        $out = fopen('php://output', 'w');
+        fwrite($out, "\xEF\xBB\xBF"); // BOM para que Excel respete acentos
+        $head = ['Clave', 'Descripción', 'Tipo', 'Total'];
+        foreach ($almacenes as $a) {
+            $head[] = $a['cve_almacen'];
+        }
+        fputcsv($out, $head);
+        foreach ($result['data'] as $r) {
+            $row = [
+                $r['cve_articulo'],
+                $r['descripcion'],
+                self::TIPOS_MATRIZ[$r['tipo_elemento']] ?? $r['tipo_elemento'],
+                (float)$r['total'],
+            ];
+            foreach ($almacenes as $a) {
+                $v = $r['a_' . $a['idalmacen']];
+                $row[] = ($v === null) ? '' : (float)$v;
+            }
+            fputcsv($out, $row);
+        }
+        fclose($out);
+        die();
+    }
+
 }
