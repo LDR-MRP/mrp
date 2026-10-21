@@ -118,6 +118,11 @@ CALL sp_add_column_if_missing('lgs_envios_nodos', 'id_origen_referencia', "BIGIN
 -- 2.4 Tipo de servicio en unidades / VINs del envío
 CALL sp_add_column_if_missing('lgs_envios_vins', 'tipo_servicio', "VARCHAR(20) NOT NULL DEFAULT 'FORANEO' AFTER `costo_unidad`");
 
+-- 2.5 Campos de Monto Abierto (Acuerdos Comerciales / MKT / Estadías)
+CALL sp_add_column_if_missing('lgs_envios', 'es_monto_abierto', "TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1=Monto manual por acuerdo comercial, 0=Cálculo estándar tarifario' AFTER `modalidad_calculo`");
+CALL sp_add_column_if_missing('lgs_envios', 'monto_pactado', "DECIMAL(12,2) DEFAULT NULL COMMENT 'Monto total acordado cuando es monto abierto' AFTER `es_monto_abierto`");
+CALL sp_add_column_if_missing('lgs_envios', 'motivo_monto_abierto', "VARCHAR(255) DEFAULT NULL COMMENT 'Justificación del acuerdo comercial' AFTER `monto_pactado`");
+
 -- Eliminar procedimiento temporal
 DROP PROCEDURE IF EXISTS `sp_add_column_if_missing`;
 
@@ -262,34 +267,73 @@ WHERE `nombre` IN (
 );
 
 -- 5.2 Garantizar las 26 Razones Sociales Oficiales del Excel en lgs_cat_distribuidores
-INSERT INTO `lgs_cat_distribuidores` (`nombre`, `activo`) VALUES
-('397 CAP', 1),
-('ARG BROKER', 1),
-('AUTOS EMCG', 1),
-('AUTOS ORIENTALES PICACHO', 1),
-('AUTOS Y CAMIONES ASIA CENTRAL', 1),
-('BUILT 2 WORK MOTORS', 1),
-('CAMIONES BUGO', 1),
-('CAMIONES INNOVADORES DEL PACIFICO', 1),
-('CAMIONES METROPOLITANOS DEL VALLE', 1),
-('CAMIONES METROPOLITANOS GR', 1),
-('CAMIONES ORIENTALES DE LEON', 1),
-('CAMIONES PREMIUM DEL CENTRO', 1),
-('CAMIONES Y TRACTOCAMIONES DE SONORA', 1),
-('CARROCERA L GODINEZ PREMIUM', 1),
-('CASANOVA RENTING', 1),
-('ECO TRUCKS', 1),
-('GAD VEHICULOS COMERCIALES', 1),
-('GENERADOR', 1),
-('GRUPO CARROCERO MILENIO', 1),
-('LEASING DRIVE RENTAL', 1),
-('PROFESIONAL EN SERVICIO Y DIAGNOSTICO', 1),
-('SIN FACTURA', 1),
-('VEHICULOS COMERCIALES PENINSULA', 1),
-('VELCEN MOTORS', 1),
-('XIAN MOTORS', 1),
-('YUNYI TRANSPORTATION MEXICO', 1)
-ON DUPLICATE KEY UPDATE `activo` = 1;
+-- A) Activar existentes
+UPDATE `lgs_cat_distribuidores`
+SET `activo` = 1
+WHERE `nombre` IN (
+    '397 CAP',
+    'ARG BROKER',
+    'AUTOS EMCG',
+    'AUTOS ORIENTALES PICACHO',
+    'AUTOS Y CAMIONES ASIA CENTRAL',
+    'BUILT 2 WORK MOTORS',
+    'CAMIONES BUGO',
+    'CAMIONES INNOVADORES DEL PACIFICO',
+    'CAMIONES METROPOLITANOS DEL VALLE',
+    'CAMIONES METROPOLITANOS GR',
+    'CAMIONES ORIENTALES DE LEON',
+    'CAMIONES PREMIUM DEL CENTRO',
+    'CAMIONES Y TRACTOCAMIONES DE SONORA',
+    'CARROCERA L GODINEZ PREMIUM',
+    'CASANOVA RENTING',
+    'ECO TRUCKS',
+    'GAD VEHICULOS COMERCIALES',
+    'GENERADOR',
+    'GRUPO CARROCERO MILENIO',
+    'LEASING DRIVE RENTAL',
+    'PROFESIONAL EN SERVICIO Y DIAGNOSTICO',
+    'SIN FACTURA',
+    'VEHICULOS COMERCIALES PENINSULA',
+    'VELCEN MOTORS',
+    'XIAN MOTORS',
+    'YUNYI TRANSPORTATION MEXICO'
+);
+
+-- B) Insertar las que no existan
+INSERT INTO `lgs_cat_distribuidores` (`nombre`, `activo`)
+SELECT d.nombre, 1
+FROM (
+    SELECT '397 CAP' AS nombre UNION ALL
+    SELECT 'ARG BROKER' UNION ALL
+    SELECT 'AUTOS EMCG' UNION ALL
+    SELECT 'AUTOS ORIENTALES PICACHO' UNION ALL
+    SELECT 'AUTOS Y CAMIONES ASIA CENTRAL' UNION ALL
+    SELECT 'BUILT 2 WORK MOTORS' UNION ALL
+    SELECT 'CAMIONES BUGO' UNION ALL
+    SELECT 'CAMIONES INNOVADORES DEL PACIFICO' UNION ALL
+    SELECT 'CAMIONES METROPOLITANOS DEL VALLE' UNION ALL
+    SELECT 'CAMIONES METROPOLITANOS GR' UNION ALL
+    SELECT 'CAMIONES ORIENTALES DE LEON' UNION ALL
+    SELECT 'CAMIONES PREMIUM DEL CENTRO' UNION ALL
+    SELECT 'CAMIONES Y TRACTOCAMIONES DE SONORA' UNION ALL
+    SELECT 'CARROCERA L GODINEZ PREMIUM' UNION ALL
+    SELECT 'CASANOVA RENTING' UNION ALL
+    SELECT 'ECO TRUCKS' UNION ALL
+    SELECT 'GAD VEHICULOS COMERCIALES' UNION ALL
+    SELECT 'GENERADOR' UNION ALL
+    SELECT 'GRUPO CARROCERO MILENIO' UNION ALL
+    SELECT 'LEASING DRIVE RENTAL' UNION ALL
+    SELECT 'PROFESIONAL EN SERVICIO Y DIAGNOSTICO' UNION ALL
+    SELECT 'SIN FACTURA' UNION ALL
+    SELECT 'VEHICULOS COMERCIALES PENINSULA' UNION ALL
+    SELECT 'VELCEN MOTORS' UNION ALL
+    SELECT 'XIAN MOTORS' UNION ALL
+    SELECT 'YUNYI TRANSPORTATION MEXICO'
+) d
+WHERE NOT EXISTS (
+    SELECT 1 FROM `lgs_cat_distribuidores` WHERE `nombre` = d.nombre
+);
+
 
 -- 5.3 Desactivar ubicaciones ficticias / nombres genéricos en lgs_cat_ubicaciones (activo = 0)
 UPDATE `lgs_cat_ubicaciones`
@@ -402,16 +446,16 @@ INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor
 SELECT 'FOTON CANCUN', 1, (SELECT id_distribuidor FROM lgs_cat_distribuidores WHERE nombre = 'VEHICULOS COMERCIALES PENINSULA' LIMIT 1), 1
 WHERE NOT EXISTS (SELECT 1 FROM `lgs_cat_ubicaciones` WHERE `nombre` = 'FOTON CANCUN');
 
-INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `activo`)
-SELECT 'FOTON CHINA POBLANA', 1, 1
+INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor`, `activo`)
+SELECT 'FOTON CHINA POBLANA', 1, (SELECT id_distribuidor FROM lgs_cat_distribuidores WHERE nombre = 'XIAN MOTORS' LIMIT 1), 1
 WHERE NOT EXISTS (SELECT 1 FROM `lgs_cat_ubicaciones` WHERE `nombre` = 'FOTON CHINA POBLANA');
 
-INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `activo`)
-SELECT 'FOTON CUERNAVACA', 1, 1
+INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor`, `activo`)
+SELECT 'FOTON CUERNAVACA', 1, (SELECT id_distribuidor FROM lgs_cat_distribuidores WHERE nombre = 'XIAN MOTORS' LIMIT 1), 1
 WHERE NOT EXISTS (SELECT 1 FROM `lgs_cat_ubicaciones` WHERE `nombre` = 'FOTON CUERNAVACA');
 
-INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `activo`)
-SELECT 'FOTON GONZALEZ GALLO', 1, 1
+INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor`, `activo`)
+SELECT 'FOTON GONZALEZ GALLO', 1, (SELECT id_distribuidor FROM lgs_cat_distribuidores WHERE nombre = 'XIAN MOTORS' LIMIT 1), 1
 WHERE NOT EXISTS (SELECT 1 FROM `lgs_cat_ubicaciones` WHERE `nombre` = 'FOTON GONZALEZ GALLO');
 
 INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor`, `activo`)
@@ -430,8 +474,8 @@ INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor
 SELECT 'FOTON MONTERREY', 1, (SELECT id_distribuidor FROM lgs_cat_distribuidores WHERE nombre = 'VELCEN MOTORS' LIMIT 1), 1
 WHERE NOT EXISTS (SELECT 1 FROM `lgs_cat_ubicaciones` WHERE `nombre` = 'FOTON MONTERREY');
 
-INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `activo`)
-SELECT 'FOTON PUEBLA (ASTURCAR)', 1, 1
+INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor`, `activo`)
+SELECT 'FOTON PUEBLA (ASTURCAR)', 1, (SELECT id_distribuidor FROM lgs_cat_distribuidores WHERE nombre = 'AUTOS EMCG' LIMIT 1), 1
 WHERE NOT EXISTS (SELECT 1 FROM `lgs_cat_ubicaciones` WHERE `nombre` = 'FOTON PUEBLA (ASTURCAR)');
 
 INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor`, `activo`)
@@ -446,8 +490,8 @@ INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor
 SELECT 'FOTON SLP', 1, (SELECT id_distribuidor FROM lgs_cat_distribuidores WHERE nombre = 'AUTOS Y CAMIONES ASIA CENTRAL' LIMIT 1), 1
 WHERE NOT EXISTS (SELECT 1 FROM `lgs_cat_ubicaciones` WHERE `nombre` = 'FOTON SLP');
 
-INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `activo`)
-SELECT 'FOTON TEPIC', 1, 1
+INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor`, `activo`)
+SELECT 'FOTON TEPIC', 1, (SELECT id_distribuidor FROM lgs_cat_distribuidores WHERE nombre = 'CAMIONES INNOVADORES DEL PACIFICO' LIMIT 1), 1
 WHERE NOT EXISTS (SELECT 1 FROM `lgs_cat_ubicaciones` WHERE `nombre` = 'FOTON TEPIC');
 
 INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor`, `activo`)
@@ -462,8 +506,8 @@ INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor
 SELECT 'FOTON TOLUCA', 1, (SELECT id_distribuidor FROM lgs_cat_distribuidores WHERE nombre = 'BUILT 2 WORK MOTORS' LIMIT 1), 1
 WHERE NOT EXISTS (SELECT 1 FROM `lgs_cat_ubicaciones` WHERE `nombre` = 'FOTON TOLUCA');
 
-INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `activo`)
-SELECT 'FOTON TULA', 1, 1
+INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor`, `activo`)
+SELECT 'FOTON TULA', 1, (SELECT id_distribuidor FROM lgs_cat_distribuidores WHERE nombre = 'GRUPO CARROCERO MILENIO' LIMIT 1), 1
 WHERE NOT EXISTS (SELECT 1 FROM `lgs_cat_ubicaciones` WHERE `nombre` = 'FOTON TULA');
 
 INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor`, `activo`)
@@ -473,6 +517,23 @@ WHERE NOT EXISTS (SELECT 1 FROM `lgs_cat_ubicaciones` WHERE `nombre` = 'FOTON XI
 INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `id_distribuidor`, `activo`)
 SELECT 'FOTON ZACATECAS', 1, (SELECT id_distribuidor FROM lgs_cat_distribuidores WHERE nombre = 'GAD VEHICULOS COMERCIALES' LIMIT 1), 1
 WHERE NOT EXISTS (SELECT 1 FROM `lgs_cat_ubicaciones` WHERE `nombre` = 'FOTON ZACATECAS');
+
+-- 5.4.1 Actualización forzosa de id_distribuidor para sedes que ya existían previamente en BD
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'VEHICULOS COMERCIALES PENINSULA' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON MERIDA', 'FOTON CANCUN');
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'VELCEN MOTORS' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON MONTERREY', 'FOTON APODACA', 'FOTON ALLENDE');
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'XIAN MOTORS' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON XIAN', 'FOTON GONZALEZ GALLO', 'FOTON CUERNAVACA', 'FOTON CHINA POBLANA', 'ALMACEN GDL', 'ALMACEN GDL (XIAN)');
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'CAMIONES METROPOLITANOS DEL VALLE' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON TLALNEPANTLA', 'CMV Tlalnepantla');
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'CAMIONES PREMIUM DEL CENTRO' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON QUERETARO');
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'BUILT 2 WORK MOTORS' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON TOLUCA');
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'AUTOS Y CAMIONES ASIA CENTRAL' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON SAN LUIS', 'FOTON SLP');
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'ARG BROKER' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON ALTAMIRA');
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'CAMIONES ORIENTALES DE LEON' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON LEON');
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'CAMIONES Y TRACTOCAMIONES DE SONORA' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON HERMOSILLO');
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'GAD VEHICULOS COMERCIALES' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON ZACATECAS');
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'CAMIONES INNOVADORES DEL PACIFICO' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON TEPIC');
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'AUTOS EMCG' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON PUEBLA (ASTURCAR)');
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'ECO TRUCKS' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON TLAXCALA');
+UPDATE `lgs_cat_ubicaciones` SET `id_distribuidor` = (SELECT `id_distribuidor` FROM `lgs_cat_distribuidores` WHERE `nombre` = 'GRUPO CARROCERO MILENIO' LIMIT 1), `activo` = 1 WHERE `nombre` IN ('FOTON TULA');
 
 INSERT INTO `lgs_cat_ubicaciones` (`nombre`, `id_tipo_destino`, `activo`)
 SELECT 'GALLEGO PLANTA TRAILERS MANILA', 3, 1
@@ -534,6 +595,61 @@ WHERE `id_tipo_destino` = 5
    OR `nombre` LIKE '%Tlajomulco%' 
    OR `nombre` LIKE '%Lagos de Moreno%';
 
+-- 5.7 Asegurar distancias en lgs_distancias para las sedes operativas oficiales
+INSERT INTO `lgs_distancias` (`id_ubicacion_a`, `id_ubicacion_b`, `km`, `created_at`, `updated_at`)
+SELECT 
+    LEAST(o.id_ubicacion, d.id_ubicacion),
+    GREATEST(o.id_ubicacion, d.id_ubicacion),
+    r.km,
+    NOW(),
+    NOW()
+FROM (
+    SELECT 'PLANTA' AS origen, 'FOTON MERIDA' AS destino, 1891.00 AS km UNION ALL
+    SELECT 'PLANTA', 'FOTON CANCUN', 2241.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON QUERETARO', 249.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON SAN LUIS', 160.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON SLP', 160.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON MONTERREY', 683.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON APODACA', 832.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON TLALNEPANTLA', 407.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON TOLUCA', 450.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON ALTAMIRA', 610.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON LEON', 85.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON HERMOSILLO', 1540.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON ZACATECAS', 403.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON TEPIC', 375.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON CHINA POBLANA', 545.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON GONZALEZ GALLO', 178.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON PUEBLA (ASTURCAR)', 544.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON TULA', 439.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON XIAN', 32.00 UNION ALL
+    SELECT 'PLANTA', 'ALMACEN GDL', 38.00 UNION ALL
+    SELECT 'PLANTA', 'ALMACEN GDL (XIAN)', 38.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON CUERNAVACA', 506.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON TLAXCALA', 645.00 UNION ALL
+    SELECT 'PLANTA', 'FOTON ALLENDE', 683.00 UNION ALL
+    SELECT 'PLANTA', 'CARROCERIA AGUIRRE', 673.00 UNION ALL
+    SELECT 'PLANTA', 'Carrocerías y Remolques Israel', 425.00 UNION ALL
+    SELECT 'PLANTA', 'GALLEGO PLANTA TRAILERS MANILA', 602.00 UNION ALL
+    SELECT 'PLANTA', 'Transportes Forja (TAV)', 778.00 UNION ALL
+    SELECT 'ALMACEN GDL', 'FOTON APODACA', 832.00 UNION ALL
+    SELECT 'ALMACEN GDL', 'FOTON ALTAMIRA', 800.00 UNION ALL
+    SELECT 'ALMACEN GDL', 'FOTON CUERNAVACA', 506.00 UNION ALL
+    SELECT 'ALMACEN GDL', 'FOTON TLAXCALA', 645.00 UNION ALL
+    SELECT 'ALMACEN GDL', 'CD. DE MEXICO', 533.00 UNION ALL
+    SELECT 'Planta 3 Tlajomulco', 'FOTON MERIDA', 1891.00 UNION ALL
+    SELECT 'Planta 3 Tlajomulco', 'FOTON CANCUN', 2241.00 UNION ALL
+    SELECT 'Planta 3 Tlajomulco', 'FOTON SAN LUIS', 397.00 UNION ALL
+    SELECT 'Planta 3 Tlajomulco', 'FOTON TOLUCA', 533.00 UNION ALL
+    SELECT 'Planta 3 Tlajomulco', 'FOTON ZACATECAS', 403.00 UNION ALL
+    SELECT 'Planta 3 Tlajomulco', 'FOTON XIAN', 32.00 UNION ALL
+    SELECT 'Planta 3 Tlajomulco', 'ALMACEN GDL (XIAN)', 38.00
+) r
+JOIN `lgs_cat_ubicaciones` o ON o.nombre = r.origen AND o.activo = 1
+JOIN `lgs_cat_ubicaciones` d ON d.nombre = r.destino AND d.activo = 1
+WHERE o.id_ubicacion <> d.id_ubicacion
+ON DUPLICATE KEY UPDATE `km` = VALUES(`km`), `updated_at` = NOW();
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 
@@ -554,4 +670,5 @@ UNION ALL SELECT '3. Destinos Homologados con Excel', '', 0
 UNION ALL SELECT 'Distribuidores Activos (Razones Sociales)', 'Activos', COUNT(*) FROM `lgs_cat_distribuidores` WHERE `activo` = 1
 UNION ALL SELECT 'Distribuidores Dummy Inactivos', 'Inactivos', COUNT(*) FROM `lgs_cat_distribuidores` WHERE `activo` = 0
 UNION ALL SELECT 'Ubicaciones Activas (Sedes + Clientes + Plantas)', 'Activas', COUNT(*) FROM `lgs_cat_ubicaciones` WHERE `activo` = 1
-UNION ALL SELECT 'Ubicaciones Dummy Inactivas', 'Inactivas', COUNT(*) FROM `lgs_cat_ubicaciones` WHERE `activo` = 0;
+UNION ALL SELECT 'Ubicaciones Dummy Inactivas', 'Inactivas', COUNT(*) FROM `lgs_cat_ubicaciones` WHERE `activo` = 0
+UNION ALL SELECT '4. Estructura Monto Abierto en lgs_envios', 'Columnas', COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lgs_envios' AND COLUMN_NAME IN ('es_monto_abierto', 'monto_pactado', 'motivo_monto_abierto');

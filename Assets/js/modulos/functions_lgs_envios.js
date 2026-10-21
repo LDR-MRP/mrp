@@ -100,9 +100,13 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             { 
                 "data": "costo_total",
-                "render": function (data) {
+                "render": function (data, type, row) {
                     if (data == null) return '$0.00';
-                    return '<span class="fw-bold text-success">$' + parseFloat(data).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</span>';
+                    let formatted = '<span class="fw-bold text-success">$' + parseFloat(data).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</span>';
+                    if (row && parseInt(row.es_monto_abierto) === 1) {
+                        formatted += '<span class="badge bg-soft-warning text-warning fs-10 d-block mt-1" title="' + (row.motivo_monto_abierto || 'Acuerdo Comercial') + '"><i class="ri-hand-coin-line me-1"></i>Monto Abierto</span>';
+                    }
+                    return formatted;
                 }
             },
             { 
@@ -1605,6 +1609,36 @@ function actualizarEstatusLateralEnvio(idEstado) {
     if (desc) desc.innerHTML = descripcion;
 }
 
+function toggleMontoAbierto(activo) {
+    const inputEsAbierto = document.getElementById('es_monto_abierto');
+    const camposCont     = document.getElementById('campos_monto_abierto');
+    const helpInactivo   = document.getElementById('help_monto_abierto_inactivo');
+
+    if (inputEsAbierto) inputEsAbierto.value = activo ? '1' : '0';
+    if (camposCont) camposCont.style.display = activo ? 'block' : 'none';
+    if (helpInactivo) helpInactivo.style.display = activo ? 'none' : 'block';
+
+    if (activo) {
+        actualizarCostoEstimadoPorMontoAbierto();
+    } else {
+        if (typeof verificarYCalcularRuta === 'function') {
+            verificarYCalcularRuta(null, false);
+        }
+    }
+}
+
+function actualizarCostoEstimadoPorMontoAbierto() {
+    const inputEsAbierto = document.getElementById('es_monto_abierto');
+    if (inputEsAbierto && inputEsAbierto.value === '1') {
+        const inputMonto = document.getElementById('monto_pactado');
+        const val = inputMonto ? parseFloat(inputMonto.value || 0) : 0;
+        const badgeCosto = document.getElementById('lbl-resumen-costo');
+        if (badgeCosto) {
+            badgeCosto.innerHTML = '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+    }
+}
+
 function openModal() {
     window.g_editEnvioTipoTrasladoOriginal = null;
     window.g_editEnvioTieneVins = false;
@@ -1625,6 +1659,14 @@ function openModal() {
     if (document.querySelector('#tipo_servicio')) {
         document.querySelector('#tipo_servicio').value = 'AUTOMATICO';
     }
+
+    // Resetear Monto Abierto
+    if (document.getElementById('check_monto_abierto')) {
+        document.getElementById('check_monto_abierto').checked = false;
+    }
+    toggleMontoAbierto(false);
+    if (document.getElementById('monto_pactado')) document.getElementById('monto_pactado').value = '';
+    if (document.getElementById('motivo_monto_abierto')) document.getElementById('motivo_monto_abierto').value = '';
 
     // Resetear botones de acción
     const btnAction = document.getElementById('btnActionForm');
@@ -1657,6 +1699,21 @@ function saveEnvio() {
     let id_proveedor     = document.querySelector('#id_proveedor').value;
     let fecha_tentativa_envio = document.querySelector('#fecha_tentativa_envio') ? document.querySelector('#fecha_tentativa_envio').value : '';
     let is_lowboy = (document.getElementById('is_lowboy') && document.getElementById('is_lowboy').checked) ? 1 : 0;
+
+    let es_monto_abierto = (document.getElementById('check_monto_abierto') && document.getElementById('check_monto_abierto').checked) ? 1 : 0;
+    let monto_pactado    = document.getElementById('monto_pactado') ? parseFloat(document.getElementById('monto_pactado').value || 0) : 0;
+    let motivo_monto_abierto = document.getElementById('motivo_monto_abierto') ? document.getElementById('motivo_monto_abierto').value.trim() : '';
+
+    if (es_monto_abierto === 1) {
+        if (!monto_pactado || monto_pactado <= 0) {
+            Swal.fire("Atención", "Al activar Monto Abierto, debe ingresar el Monto Total Pactado mayor a cero.", "warning");
+            return false;
+        }
+        if (!motivo_monto_abierto) {
+            Swal.fire("Atención", "Al activar Monto Abierto, debe ingresar el motivo o justificación del acuerdo comercial.", "warning");
+            return false;
+        }
+    }
 
     const nodosRaw = document.getElementById('nodos_json') ? document.getElementById('nodos_json').value : '[]';
     const nodos = JSON.parse(nodosRaw);
@@ -1865,6 +1922,19 @@ function fntEditRuta(idEnvio) {
                     if (document.querySelector('#fecha_tentativa_envio')) document.querySelector('#fecha_tentativa_envio').value = formatDateTimeLocal(envio.fecha_tentativa_envio);
                     if (document.querySelector('#fecha_tentativa_llegada')) document.querySelector('#fecha_tentativa_llegada').value = formatDateTimeLocal(envio.fecha_tentativa_llegada);
                     if (document.querySelector('#observaciones')) document.querySelector('#observaciones').value = envio.observaciones || '';
+
+                    // Cargar Monto Abierto si aplica
+                    const esAbierto = (parseInt(envio.es_monto_abierto) === 1);
+                    if (document.getElementById('check_monto_abierto')) {
+                        document.getElementById('check_monto_abierto').checked = esAbierto;
+                    }
+                    toggleMontoAbierto(esAbierto);
+                    if (document.getElementById('monto_pactado')) {
+                        document.getElementById('monto_pactado').value = envio.monto_pactado ? parseFloat(envio.monto_pactado) : '';
+                    }
+                    if (document.getElementById('motivo_monto_abierto')) {
+                        document.getElementById('motivo_monto_abierto').value = envio.motivo_monto_abierto || '';
+                    }
 
                     // Llenar los nodos
                     const cont = document.getElementById('contenedor-nodos-ruta');

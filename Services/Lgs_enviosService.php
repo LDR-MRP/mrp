@@ -75,7 +75,7 @@ class Lgs_enviosService {
         }
 
         // 1. Cabecera del envío
-        $stmtEnvio = $db->prepare("SELECT id_tipo_traslado, id_proveedor, id_origen, id_destino, km_total, id_estado, costo_total, is_lowboy, tipo_servicio, modalidad_calculo FROM lgs_envios WHERE id_envio = :id");
+        $stmtEnvio = $db->prepare("SELECT id_tipo_traslado, id_proveedor, id_origen, id_destino, km_total, id_estado, costo_total, is_lowboy, tipo_servicio, modalidad_calculo, es_monto_abierto, monto_pactado FROM lgs_envios WHERE id_envio = :id");
         $stmtEnvio->execute(['id' => $idEnvio]);
         $envio = $stmtEnvio->fetch(PDO::FETCH_ASSOC);
 
@@ -85,6 +85,22 @@ class Lgs_enviosService {
         if (isset($envio['id_estado']) && (int)$envio['id_estado'] === 7) {
             $this->asegurarCostosVins($idEnvio, $db);
             return (float)($envio['costo_total'] ?? 0.0);
+        }
+
+        // Regla Monto Abierto: Respetar acuerdo comercial y no sobreescribir con tabulador
+        if (!empty($envio['es_monto_abierto']) && floatval($envio['monto_pactado'] ?? 0) > 0) {
+            $montoPactado = floatval($envio['monto_pactado']);
+            $db->prepare("UPDATE lgs_envios SET costo_total = ? WHERE id_envio = ?")->execute([$montoPactado, $idEnvio]);
+            
+            // Asignar costo a los VINs asignados
+            $stmtVins = $db->prepare("SELECT id FROM lgs_envios_vins WHERE id_envio = ?");
+            $stmtVins->execute([$idEnvio]);
+            $vins = $stmtVins->fetchAll(PDO::FETCH_ASSOC);
+            if (!empty($vins)) {
+                $costoPorVin = round($montoPactado / count($vins), 2);
+                $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = ? WHERE id_envio = ?")->execute([$costoPorVin, $idEnvio]);
+            }
+            return $montoPactado;
         }
 
         $idTipoTraslado = (int)$envio['id_tipo_traslado'];
@@ -648,6 +664,23 @@ class Lgs_enviosService {
         $stmtCheck = $db->prepare("SELECT COUNT(*) as t FROM lgs_envios_vins WHERE id_envio = ? AND (costo_unidad IS NULL OR costo_unidad = 0)");
         $stmtCheck->execute([$idEnvio]);
         $faltanCostos = (int)($stmtCheck->fetch(PDO::FETCH_ASSOC)['t'] ?? 0);
+
+        // Si es Monto Abierto (acuerdo comercial), prorratear el monto pactado entre los VINs
+        $stmtEnvio = $db->prepare("SELECT es_monto_abierto, monto_pactado FROM lgs_envios WHERE id_envio = ?");
+        $stmtEnvio->execute([$idEnvio]);
+        $rowEnv = $stmtEnvio->fetch(PDO::FETCH_ASSOC);
+        if ($rowEnv && (int)($rowEnv['es_monto_abierto'] ?? 0) === 1) {
+            $montoPactado = (float)($rowEnv['monto_pactado'] ?? 0);
+            $stmtCount = $db->prepare("SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = ?");
+            $stmtCount->execute([$idEnvio]);
+            $numVins = (int)$stmtCount->fetchColumn();
+            if ($numVins > 0 && $montoPactado > 0) {
+                $costoUnitario = round($montoPactado / $numVins, 2);
+                $stmtUpdateVins = $db->prepare("UPDATE lgs_envios_vins SET costo_unidad = ? WHERE id_envio = ?");
+                $stmtUpdateVins->execute([$costoUnitario, $idEnvio]);
+            }
+            return;
+        }
 
         if ($faltanCostos === 0) {
             return; // Ya están calculados

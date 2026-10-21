@@ -165,12 +165,15 @@ function cargarEnviosDisponibles(idPlaneacion = 0, enviosAsignados = []) {
                         totalCosto += parseFloat(envio.costo_total) || 0;
                         totalDistancia += parseFloat(envio.km_total) || 0;
                     }
+                    const tagMontoAbierto = (parseInt(envio.es_monto_abierto) === 1)
+                        ? `<span class="badge bg-soft-warning text-warning fs-10 ms-1" title="${envio.motivo_monto_abierto || 'Acuerdo Comercial'}"><i class="ri-hand-coin-line me-1"></i>Monto Abierto</span>`
+                        : '';
                     htmlBody += `
                         <tr>
                             <td>
                                 <input class="form-check-input chk-envio" type="checkbox" value="${envio.id_envio}" data-costo="${envio.costo_total}" data-distancia="${envio.km_total || 0}" onchange="calcularTotalesPlan();" ${isChecked}>
                             </td>
-                            <td class="fw-bold">${envio.folio}</td>
+                            <td class="fw-bold">${envio.folio} ${tagMontoAbierto}</td>
                             <td>${envio.origen}</td>
                             <td>${envio.trasladista}</td>
                             <td><span class="badge bg-soft-info text-info">${envio.total_vins} VINs</span></td>
@@ -394,6 +397,7 @@ function fntViewPlan(idPlaneacion) {
                                     <div class="card-header bg-light d-flex justify-content-between align-items-center py-2 px-3">
                                         <div class="d-flex align-items-center gap-2">
                                             <span class="badge bg-primary fs-12 fw-bold">${env.folio}</span>
+                                            ${(parseInt(env.es_monto_abierto) === 1) ? `<span class="badge bg-soft-warning text-warning fs-10"><i class="ri-hand-coin-line me-1"></i>Monto Abierto</span>` : ''}
                                             <span class="badge bg-soft-info text-info border">${env.tipo_traslado || 'Madrina'}</span>
                                             <span class="fs-12 text-dark fw-medium"><i class="ri-map-pin-range-line text-muted me-1"></i>${env.origen}</span>
                                             <span class="fs-12 text-muted">| ${env.trasladista || 'Sin Trasladista'}</span>

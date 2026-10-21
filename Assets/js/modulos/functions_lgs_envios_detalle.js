@@ -99,6 +99,20 @@ function cargarDatosDetalle() {
                     const costoInicial = tieneVinsAsignados ? (parseFloat(g_envioData.costo_total || 0)) : 0;
                     if (lblCost) lblCost.innerText = costoInicial > 0 ? '$' + costoInicial.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00';
 
+                    // Indicador de Monto Abierto en el Detalle
+                    const badgeAbierto = document.getElementById('badge-monto-abierto-detalle');
+                    const lblMotivo = document.getElementById('lbl-motivo-monto-abierto');
+                    if (parseInt(g_envioData.es_monto_abierto || 0) === 1) {
+                        if (badgeAbierto) badgeAbierto.classList.remove('d-none');
+                        if (lblMotivo && g_envioData.motivo_monto_abierto) {
+                            lblMotivo.style.display = 'block';
+                            lblMotivo.innerHTML = `<i class="ri-information-line me-1 text-warning"></i>${g_envioData.motivo_monto_abierto}`;
+                        }
+                    } else {
+                        if (badgeAbierto) badgeAbierto.classList.add('d-none');
+                        if (lblMotivo) lblMotivo.style.display = 'none';
+                    }
+
                     const idTipoTraslado = parseInt(g_envioData.id_tipo_traslado || 1);
                     const btnAdd = document.getElementById('btn-agregar-vehiculo');
                     if (btnAdd) {
@@ -1544,9 +1558,11 @@ function renderInfografiaRuta() {
                 <i class="ri-git-merge-line me-1 fs-15 align-middle"></i> Infografía de Factoraje y Ruta
             </h6>
             <div>
-                ${esDirecto 
-                    ? '<span class="badge bg-soft-info text-info border border-info fs-11"><i class="ri-direction-line me-1"></i>Modalidad: Directo con Escalas por Origen</span>' 
-                    : '<span class="badge bg-soft-secondary text-secondary border fs-11"><i class="ri-route-line me-1"></i>Modalidad: Escalonado Proporcional</span>'}
+                ${(g_envioData && parseInt(g_envioData.es_monto_abierto || 0) === 1)
+                    ? '<span class="badge bg-warning text-dark border border-warning fs-11" title="' + (g_envioData.motivo_monto_abierto || 'Acuerdo Comercial') + '"><i class="ri-hand-coin-line me-1"></i>Acuerdo Comercial (Monto Abierto)</span>'
+                    : (esDirecto 
+                        ? '<span class="badge bg-soft-info text-info border border-info fs-11"><i class="ri-direction-line me-1"></i>Modalidad: Directo con Escalas por Origen</span>' 
+                        : '<span class="badge bg-soft-secondary text-secondary border fs-11"><i class="ri-route-line me-1"></i>Modalidad: Escalonado Proporcional</span>')}
             </div>
         </div>
         <div class="card-body p-4">

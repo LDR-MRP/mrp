@@ -520,6 +520,49 @@
                                 </div>
                             </div>
 
+                            <!-- 2.1 MONTO ABIERTO / ACUERDO COMERCIAL -->
+                            <div class="envios-surface-card p-4 mb-4" id="card-monto-abierto-container">
+                                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h6 class="mb-0 fw-bold text-dark fs-14">
+                                            <i class="ri-hand-coin-line text-warning me-2 align-middle"></i> Modalidad Comercial: Monto Abierto
+                                        </h6>
+                                        <span class="badge bg-soft-warning text-warning fs-11 fw-semibold">Acuerdo Especial / MKT</span>
+                                    </div>
+                                    <div class="form-check form-switch form-switch-md mb-0">
+                                        <input class="form-check-input" type="checkbox" id="check_monto_abierto" onchange="toggleMontoAbierto(this.checked);">
+                                        <label class="form-check-label fs-12 fw-medium text-dark" for="check_monto_abierto">Habilitar Monto Abierto</label>
+                                    </div>
+                                </div>
+
+                                <input type="hidden" id="es_monto_abierto" name="es_monto_abierto" value="0">
+
+                                <div id="campos_monto_abierto" style="display: none;">
+                                    <div class="alert alert-soft-warning border-0 p-3 mb-3 rounded-3 d-flex align-items-center gap-2">
+                                        <i class="ri-information-line text-warning fs-20 flex-shrink-0"></i>
+                                        <div class="fs-12 text-dark">
+                                            Al activar <strong>Monto Abierto</strong>, el sistema respetará el costo pactado directamente con el proveedor (para estadías de operadores, vuelos, viáticos o condiciones de Marketing), omitiendo el recálculo tarifario estándar por kilómetro.
+                                        </div>
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-md-5">
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Monto Total Pactado ($ MXN) <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light border fw-bold text-muted">$</span>
+                                                <input type="number" step="0.01" min="0" class="form-control fw-bold fs-14 text-success" id="monto_pactado" name="monto_pactado" placeholder="0.00" oninput="actualizarCostoEstimadoPorMontoAbierto();">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-7">
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Motivo / Justificación del Acuerdo <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="motivo_monto_abierto" name="motivo_monto_abierto" placeholder="Ej. Movimiento MKT: estadías toda la semana y vuelo operador Cancún">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="help_monto_abierto_inactivo" class="text-muted fs-11">
+                                    <i class="ri-checkbox-blank-circle-line me-1 text-muted" style="font-size: 8px;"></i> Tabulador estándar activo por defecto. Active esta opción solo si existe un acuerdo comercial o gasto extraordinario fuera de tabulador.
+                                </div>
+                            </div>
+
                             <!-- 3. ITINERARIO Y SECUENCIA DE PARADAS (MULTI-ORIGEN Y MULTI-DESTINO) -->
                             <div class="envios-surface-card p-4 mb-4">
                                 <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2 flex-wrap gap-2">

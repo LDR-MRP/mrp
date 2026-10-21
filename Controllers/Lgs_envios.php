@@ -276,10 +276,28 @@ class Lgs_envios extends Controllers
             }
             $modalidadCalculo = in_array($_POST['modalidad_calculo'] ?? '', ['ESCALONADO', 'DIRECTO']) ? $_POST['modalidad_calculo'] : $defaultModalidad;
 
+            $esMontoAbierto     = intval($_POST['es_monto_abierto'] ?? 0);
+            $montoPactado       = ($esMontoAbierto === 1) ? floatval($_POST['monto_pactado'] ?? 0) : null;
+            $motivoMontoAbierto = ($esMontoAbierto === 1) ? htmlspecialchars(trim($_POST['motivo_monto_abierto'] ?? ''), ENT_QUOTES, 'UTF-8') : null;
+
+            if ($esMontoAbierto === 1) {
+                if ($montoPactado === null || $montoPactado <= 0) {
+                    echo $this->errorResponse("Para un envío con Monto Abierto, debe especificar un monto pactado mayor a cero.", 400);
+                    return;
+                }
+                if (empty($motivoMontoAbierto)) {
+                    echo $this->errorResponse("Para un envío con Monto Abierto, debe especificar la justificación o motivo del acuerdo comercial.", 400);
+                    return;
+                }
+            }
+
             $data = [
                 'id_tipo_traslado' => $idTipoTraslado,
                 'tipo_servicio'    => in_array($_POST['tipo_servicio'] ?? '', ['AUTOMATICO', 'FORANEO', 'SLC', 'SLL']) ? $_POST['tipo_servicio'] : 'AUTOMATICO',
                 'modalidad_calculo'=> $modalidadCalculo,
+                'es_monto_abierto' => $esMontoAbierto,
+                'monto_pactado'    => $montoPactado,
+                'motivo_monto_abierto' => $motivoMontoAbierto,
                 'id_motivo'        => intval($_POST['id_motivo'] ?? 0),
                 'id_proveedor'     => $idProveedor,
                 'id_origen'        => $firstLoc > 0 ? $firstLoc : (intval($_POST['id_origen'] ?? 0) ?: null),
@@ -342,6 +360,9 @@ class Lgs_envios extends Controllers
                                             id_tipo_traslado = :id_tipo_traslado,
                                             tipo_servicio = :tipo_servicio,
                                             modalidad_calculo = :modalidad_calculo,
+                                            es_monto_abierto = :es_monto_abierto,
+                                            monto_pactado = :monto_pactado,
+                                            motivo_monto_abierto = :motivo_monto_abierto,
                                             id_motivo = :id_motivo,
                                             id_proveedor = :id_proveedor,
                                             id_origen = :id_origen,
@@ -359,6 +380,9 @@ class Lgs_envios extends Controllers
                     'id_tipo_traslado' => $data['id_tipo_traslado'],
                     'tipo_servicio'    => $data['tipo_servicio'],
                     'modalidad_calculo'=> $data['modalidad_calculo'],
+                    'es_monto_abierto' => $data['es_monto_abierto'],
+                    'monto_pactado'    => $data['monto_pactado'],
+                    'motivo_monto_abierto' => $data['motivo_monto_abierto'],
                     'id_motivo'        => $data['id_motivo'],
                     'id_proveedor'     => $data['id_proveedor'],
                     'id_origen'        => $data['id_origen'],

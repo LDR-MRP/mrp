@@ -197,7 +197,11 @@
                             </div>
                             <div class="col-md-3">
                                 <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1"><i class="ri-money-dollar-circle-line text-success me-1"></i> Costo Est. Envío</span>
-                                <strong class="fs-18 text-success fw-bold" id="lbl-resumen-costo">$0.00</strong>
+                                <div class="d-flex align-items-center flex-wrap gap-2">
+                                    <strong class="fs-18 text-success fw-bold" id="lbl-resumen-costo">$0.00</strong>
+                                    <span id="badge-monto-abierto-detalle" class="badge bg-warning text-dark fs-11 d-none"><i class="ri-hand-coin-line me-1"></i>Monto Abierto</span>
+                                </div>
+                                <small class="text-muted fs-11 d-block mt-1" id="lbl-motivo-monto-abierto" style="display:none;"></small>
                             </div>
                         </div>
                     </div>
