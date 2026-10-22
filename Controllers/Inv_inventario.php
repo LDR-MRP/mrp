@@ -367,7 +367,7 @@ class Inv_inventario extends Controllers
 		]);
 
 		$puedeEditar = !empty($_SESSION['permisosMod']['u']);
-		$puedeConfig = $this->puedeVerConfigProducto();
+		$tiposConfigurables = $this->tiposConfigurablesCfg();
 		$arrData = $result['data'];
 
 		foreach ($arrData as $i => $row) {
@@ -389,7 +389,7 @@ class Inv_inventario extends Controllers
 				? '<button class="btn btn-sm btn-soft-warning" onClick="fntEditInventario(' . $id . ')"><i class="ri-pencil-fill"></i></button>'
 				: '';
 
-			$btnConfig = $puedeConfig && in_array($tipoRaw, ['P', 'C', 'H', 'K', 'R'], true)
+			$btnConfig = in_array($tipoRaw, $tiposConfigurables, true)
 				? '<button class="btn btn-sm btn-soft-primary" title="Configurar" onClick="fntConfigInventario(' . $id . ')"><i class="ri-settings-3-fill"></i></button>'
 				: '';
 
@@ -814,13 +814,42 @@ class Inv_inventario extends Controllers
 
 	private function puedeVerConfigProducto(): bool
 	{
-		$modulos = [MICFG_MONEDA, MICFG_PRECIO, MICFG_FISCAL, MICFG_IMPUESTO, MICFG_LINEA, MICFG_UBICACIONES, MICFG_PROVEEDORES, MICFG_CANTIDADES, MICFG_PORTALWEB, MICFG_VINES];
+		$modulos = [MICFG_MONEDA, MICFG_PRECIO, MICFG_FISCAL, MICFG_IMPUESTO, MICFG_LINEA, MICFG_UBICACIONES, MICFG_PROVEEDORES, MICFG_CANTIDADES, MICFG_PORTALWEB, MICFG_VINES, MICFG_FOTOSWEB];
 		foreach ($modulos as $modulo) {
 			if (hasPermissions($modulo, 'r')) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	// Tipos de elemento en los que el rol tiene al menos una pestaña visible del
+	// modal "Configuración de productos". Portal Web solo aplica a P/R y VINes
+	// solo a P/R, Fotos portal y VINes solo a P; así un rol que solo tiene
+	// Fotos portal (p. ej. Marketing) no ve el
+	// engrane en Componentes/Herramientas/Kits, donde el modal le saldría vacío.
+	private function tiposConfigurablesCfg(): array
+	{
+		$todos = ['P', 'C', 'H', 'K', 'R'];
+		$generales = [MICFG_MONEDA, MICFG_PRECIO, MICFG_FISCAL, MICFG_IMPUESTO, MICFG_LINEA, MICFG_UBICACIONES, MICFG_PROVEEDORES, MICFG_CANTIDADES];
+		foreach ($generales as $modulo) {
+			if (hasPermissions($modulo, 'r')) {
+				return $todos;
+			}
+		}
+
+		$tipos = [];
+		if (hasPermissions(MICFG_PORTALWEB, 'r')) {
+			$tipos[] = 'P';
+			$tipos[] = 'R';
+		}
+		if (hasPermissions(MICFG_FOTOSWEB, 'r')) {
+			$tipos[] = 'P'; // Fotos portal: solo Productos (unidades)
+		}
+		if (hasPermissions(MICFG_VINES, 'r')) {
+			$tipos[] = 'P';
+		}
+		return array_values(array_unique($tipos));
 	}
 
 	//----------------------------------------------------------------------MONEDAS INVENTARIO
@@ -1569,6 +1598,228 @@ class Inv_inventario extends Controllers
 	//  - 'R' (Refaccion) -> tablas propias (wms_refacciones_portalweb /
 	//    wms_refacciones_portalweb_imagenes), mismas columnas que 'P'.
 
+	// ---- Fotos del portal (galería y carátula) ----
+	// Las pueden manejar quienes tienen la pestaña Portal Web completa o solo la
+	// pestaña "Fotos portal" (MICFG_FOTOSWEB, perfil Marketing), que no ve
+	// precio, descripción, estatus ni datos del modelo.
+	private function exigirPermisoFotos(string $accion): void
+	{
+		if (!hasPermissions(MICFG_PORTALWEB, $accion) && !hasPermissions(MICFG_FOTOSWEB, $accion)) {
+			header('Content-Type: application/json; charset=utf-8');
+			echo json_encode(['status' => false, 'msg' => 'No tienes permiso para realizar esta acción'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+	}
+
+	private function esImagenPermitida(string $nombreArchivo): bool
+	{
+		$ext = strtolower(pathinfo($nombreArchivo, PATHINFO_EXTENSION));
+		return in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
+	}
+
+	// Mueve $_FILES['imagen_caratula'] a la carpeta de carátulas y regresa la
+	// ruta "Assets/uploads/..." que se guarda en BD, o null si no llegó archivo
+	// válido.
+	private function guardarArchivoCaratula(string $modo, int $inventarioid): ?string
+	{
+		if (empty($_FILES['imagen_caratula']['tmp_name']) || $_FILES['imagen_caratula']['error'] !== 0) {
+			return null;
+		}
+
+		if (!$this->esImagenPermitida($_FILES['imagen_caratula']['name'])) {
+			return null;
+		}
+
+		$carpetaCaratulas = ($modo === 'unidad') ? 'unidades_web' : 'refacciones_web';
+		$rutaCaratulas = __DIR__ . "/../Assets/uploads/{$carpetaCaratulas}/img_caratulas/";
+
+		// [DevSecOps] Permisos 0750: Solo el owner (www-data) y el grupo pueden leer/escribir.
+		if (!is_dir($rutaCaratulas) && !mkdir($rutaCaratulas, 0750, true) && !is_dir($rutaCaratulas)) {
+			echo json_encode(['status' => false, 'msg' => 'No se pudo crear el directorio de destino para la imagen principal']);
+			die();
+		}
+
+		$extCaratula = strtolower(pathinfo($_FILES['imagen_caratula']['name'], PATHINFO_EXTENSION));
+		$fechaCaratula = date("Ymd_His") . "_" . substr(microtime(), 2, 3);
+		$nombreArchivoCaratula = "caratula_" . $inventarioid . "_" . $fechaCaratula . "." . $extCaratula;
+
+		if (move_uploaded_file($_FILES['imagen_caratula']['tmp_name'], $rutaCaratulas . $nombreArchivoCaratula)) {
+			return "Assets/uploads/{$carpetaCaratulas}/img_caratulas/" . $nombreArchivoCaratula;
+		}
+
+		error_log("❌ Error al mover archivo (imagen_caratula): " . $_FILES['imagen_caratula']['tmp_name']);
+		return null;
+	}
+
+	// Registro de portal web del producto (web_unidades o wms_refacciones_portalweb)
+	private function registroPortalWeb(?string $modo, int $inventarioid)
+	{
+		if ($modo === 'unidad') {
+			return $this->model->getWebUnidadByInventario($inventarioid);
+		}
+		if ($modo === 'refaccion') {
+			return $this->model->getPortalWebRefaccionByInventario($inventarioid);
+		}
+		return null;
+	}
+
+	// Si un Producto aún no tiene registro en web_unidades y se suben fotos
+	// (p. ej. Marketing desde "Fotos portal"), se crea uno NO publicado
+	// (estado 0) con los datos sugeridos del producto. Quien administra Portal
+	// Web después revisa precio/descripción y lo publica.
+	private function crearWebUnidadBorrador(int $inventarioid)
+	{
+		$producto = $this->model->selectInventario($inventarioid);
+		if (empty($producto)) {
+			return null;
+		}
+
+		$nombre = $producto['descripcion'] ?? '';
+		$this->model->insertWebUnidad([
+			'inventarioid' => $inventarioid,
+			'modelo' => $nombre,
+			'clave_modelo' => $producto['cve_articulo'] ?? '',
+			'nombre' => $nombre,
+			'version' => '',
+			'descripcion' => '',
+			'anio' => (int) date('Y'),
+			'marca' => $this->model->getMarcaAutoPorLinea($inventarioid),
+			'motor' => '',
+			'stock' => $this->model->getStockTotalAuto($inventarioid),
+			'precio_estimado' => (float) $this->model->getPrecioPublicoAuto($inventarioid),
+			'imagen_caratula' => '',
+			'estado' => 0,
+		]);
+
+		return $this->model->getWebUnidadByInventario($inventarioid);
+	}
+
+	// Datos generales de la ficha técnica de Ingeniería para mostrarlos (solo
+	// lectura) en "Fotos portal". Si la tabla de Ingeniería no existe en esta
+	// base o el producto no viene de Ingeniería, regresa null sin romper la pestaña.
+	private function fichaGeneralIngenieria(int $inventarioid): ?array
+	{
+		try {
+			$c = $this->model->selectFichaIngenieriaByInventario($inventarioid);
+		} catch (\Throwable $e) {
+			error_log("Ficha Ingeniería no disponible (inventario {$inventarioid}): " . $e->getMessage());
+			return null;
+		}
+
+		if (empty($c)) {
+			return null;
+		}
+
+		return [
+			'nombre_unidad' => $c['nombre_unidad'] ?? '',
+			'tipo_origen' => ($c['tipo_origen'] ?? '') === 'IMPORTADO' ? 'Importado' : 'Nacional',
+			'estado' => $c['estado'] ?? '',
+			'datos' => [
+				['Segmento', $c['segmento'] ?? '', ''],
+				['Modelo', $c['modelo'] ?? '', ''],
+				['Nombre comercial', $c['nombre_comercial'] ?? '', ''],
+				['Código de modelo', $c['codigo_modelo'] ?? '', ''],
+				['Clave vehicular', $c['clave_vehicular'] ?? '', ''],
+				['Combustible', $c['combustible'] ?? '', ''],
+				['Peso bruto vehicular', $c['peso_bruto'] ?? '', 'kg'],
+				['Nivel de emisiones', $c['nivel_emisiones'] ?? '', ''],
+				['Configuración', $c['version'] ?? '', ''],
+				['Versión', $c['version_unidad'] ?? '', ''],
+				['Paso diferencial', $c['paso_diferencial'] ?? '', ''],
+			],
+		];
+	}
+
+	// Pestaña "Fotos portal": solo carátula y galería, sin datos comerciales.
+	public function getFotosWeb($idinventario)
+	{
+		$this->exigirPermisoFotos('r');
+		header('Content-Type: application/json; charset=utf-8');
+
+		$inventarioid = intval($idinventario);
+		$modo = $inventarioid > 0 ? $this->tipoPortalWeb($inventarioid) : null;
+
+		if ($modo !== 'unidad') {
+			echo json_encode(['status' => false, 'msg' => 'Fotos portal solo aplica a Productos']);
+			die();
+		}
+
+		$registro = $this->registroPortalWeb($modo, $inventarioid);
+		$imagenes = [];
+
+		if (!empty($registro)) {
+			$imagenes = ($modo === 'unidad')
+				? $this->model->selectImagenesWebUnidad((int) $registro['idunidad'])
+				: $this->model->selectImagenesPortalWebRefaccion((int) $registro['idportalweb']);
+		}
+
+		echo json_encode([
+			'status' => true,
+			'data' => [
+				'modo' => $modo,
+				'registro_existe' => !empty($registro),
+				'imagen_caratula' => $registro['imagen_caratula'] ?? '',
+				'imagenes' => $imagenes,
+				'ficha' => $this->fichaGeneralIngenieria($inventarioid),
+			]
+		], JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	// Sube/reemplaza solo la imagen principal (carátula), sin tocar el resto
+	// de la configuración del portal.
+	public function subirCaratulaPortalWeb()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+
+		$inventarioid = intval($_POST['inventarioid'] ?? 0);
+		$modo = $inventarioid > 0 ? $this->tipoPortalWeb($inventarioid) : null;
+
+		// Si solo tiene Fotos portal (Marketing), únicamente Productos
+		if ($modo === null || ($modo !== 'unidad' && !hasPermissions(MICFG_PORTALWEB, 'r'))) {
+			echo json_encode(['status' => false, 'msg' => 'Fotos portal solo aplica a Productos']);
+			die();
+		}
+
+		$registro = $this->registroPortalWeb($modo, $inventarioid);
+		$rutaAnterior = $registro['imagen_caratula'] ?? '';
+		$this->exigirPermisoFotos(!empty($rutaAnterior) ? 'u' : 'w');
+
+		if (empty($registro) && $modo === 'unidad') {
+			$registro = $this->crearWebUnidadBorrador($inventarioid);
+		}
+
+		if (empty($registro)) {
+			echo json_encode(['status' => false, 'msg' => 'Primero guarda la configuración de portal web antes de subir imágenes']);
+			die();
+		}
+
+		$rutaNueva = $this->guardarArchivoCaratula($modo, $inventarioid);
+
+		if ($rutaNueva === null) {
+			echo json_encode(['status' => false, 'msg' => 'Selecciona una imagen válida (jpg, png, webp o gif)']);
+			die();
+		}
+
+		$resp = ($modo === 'unidad')
+			? $this->model->updateImagenCaratulaWebUnidad((int) $registro['idunidad'], $rutaNueva)
+			: $this->model->updateImagenCaratulaPortalWebRefaccion((int) $registro['idportalweb'], $rutaNueva);
+
+		if ($resp && !empty($rutaAnterior) && $rutaAnterior !== $rutaNueva) {
+			$rutaAnteriorAbsoluta = $this->rutaAbsolutaPortalWeb($rutaAnterior);
+			if (file_exists($rutaAnteriorAbsoluta)) {
+				@unlink($rutaAnteriorAbsoluta);
+			}
+		}
+
+		echo json_encode([
+			'status' => $resp ? true : false,
+			'msg' => $resp ? 'Imagen principal guardada' : 'Error al guardar la imagen principal',
+			'imagen_caratula' => $resp ? $rutaNueva : $rutaAnterior,
+		], JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
 	private function tipoPortalWeb($inventarioid)
 	{
 		$producto = $this->model->selectInventario($inventarioid);
@@ -1724,29 +1975,7 @@ class Inv_inventario extends Controllers
 			// Imagen principal (caratula) - opcional, se sube junto con el formulario
 			// principal. Es distinta de las imagenes adicionales (evidencias) que se
 			// suben aparte en la galeria (web_unidades_imagenes / wms_refacciones_portalweb_imagenes).
-			$rutaCaratulaNueva = null;
-			$carpetaCaratulas = ($modo === 'unidad') ? 'unidades_web' : 'refacciones_web';
-
-			if (!empty($_FILES['imagen_caratula']['tmp_name']) && $_FILES['imagen_caratula']['error'] === 0) {
-				$rutaCaratulas = __DIR__ . "/../Assets/uploads/{$carpetaCaratulas}/img_caratulas/";
-
-				// [DevSecOps] Permisos 0750: Solo el owner (www-data) y el grupo pueden leer/escribir.
-				if (!is_dir($rutaCaratulas) && !mkdir($rutaCaratulas, 0750, true) && !is_dir($rutaCaratulas)) {
-					echo json_encode(['status' => false, 'msg' => 'No se pudo crear el directorio de destino para la imagen principal']);
-					die();
-				}
-
-				$extCaratula = pathinfo($_FILES['imagen_caratula']['name'], PATHINFO_EXTENSION);
-				$fechaCaratula = date("Ymd_His") . "_" . substr(microtime(), 2, 3);
-				$nombreArchivoCaratula = "caratula_" . $inventarioid . "_" . $fechaCaratula . "." . $extCaratula;
-				$destinoCaratula = $rutaCaratulas . $nombreArchivoCaratula;
-
-				if (move_uploaded_file($_FILES['imagen_caratula']['tmp_name'], $destinoCaratula)) {
-					$rutaCaratulaNueva = "Assets/uploads/{$carpetaCaratulas}/img_caratulas/" . $nombreArchivoCaratula;
-				} else {
-					error_log("❌ Error al mover archivo (imagen_caratula): " . $_FILES['imagen_caratula']['tmp_name']);
-				}
-			}
+			$rutaCaratulaNueva = $this->guardarArchivoCaratula($modo, $inventarioid);
 
 			$data = [
 				'inventarioid' => $inventarioid,
@@ -1848,7 +2077,7 @@ class Inv_inventario extends Controllers
 
 	public function subirImagenPortalWeb()
 	{
-		$this->exigirPermisoCfg(MICFG_PORTALWEB, 'w');
+		$this->exigirPermisoFotos('w');
 		header('Content-Type: application/json; charset=utf-8');
 
 		$inventarioid = intval($_POST['inventarioid'] ?? 0);
@@ -1870,7 +2099,11 @@ class Inv_inventario extends Controllers
 			$unidad = $this->model->getWebUnidadByInventario($inventarioid);
 
 			if (empty($unidad)) {
-				echo json_encode(['status' => false, 'msg' => 'Primero guarda la configuración de portal web antes de subir imágenes']);
+				$unidad = $this->crearWebUnidadBorrador($inventarioid);
+			}
+
+			if (empty($unidad)) {
+				echo json_encode(['status' => false, 'msg' => 'No se pudo crear el registro de portal web del producto']);
 				die();
 			}
 
@@ -1906,12 +2139,15 @@ class Inv_inventario extends Controllers
 				if ($_FILES['imagenes']['error'][$key] === 0) {
 
 					$nombreOriginal = $_FILES['imagenes']['name'][$key];
-					$ext = pathinfo($nombreOriginal, PATHINFO_EXTENSION);
+					if (!$this->esImagenPermitida($nombreOriginal)) {
+						continue;
+					}
+					$ext = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
 					$fecha = date("Ymd_His") . "_" . substr(microtime(), 2, 3);
 					$nombreArchivo = "unidad_" . $idunidad . "_" . $fecha . "." . $ext;
 
 					$destino = $ruta . $nombreArchivo;
-					$rutaRelativa = "uploads/unidades_web/img_slider/" . $nombreArchivo;
+					$rutaRelativa = "Assets/uploads/unidades_web/img_slider/" . $nombreArchivo;
 
 					if (move_uploaded_file($tmp, $destino)) {
 						$orden++;
@@ -1978,7 +2214,10 @@ class Inv_inventario extends Controllers
 				if ($_FILES['imagenes']['error'][$key] === 0) {
 
 					$nombreOriginal = $_FILES['imagenes']['name'][$key];
-					$ext = pathinfo($nombreOriginal, PATHINFO_EXTENSION);
+					if (!$this->esImagenPermitida($nombreOriginal)) {
+						continue;
+					}
+					$ext = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
 					$fecha = date("Ymd_His") . "_" . substr(microtime(), 2, 3);
 					$nombreArchivo = "refaccion_" . $idportalweb . "_" . $fecha . "." . $ext;
 
@@ -2016,7 +2255,7 @@ class Inv_inventario extends Controllers
 
 	public function eliminarCaratulaPortalWeb()
 	{
-		$this->exigirPermisoCfg(MICFG_PORTALWEB, 'd');
+		$this->exigirPermisoFotos('d');
 		header('Content-Type: application/json; charset=utf-8');
 
 		$inventarioid = intval($_POST['inventarioid'] ?? 0);
@@ -2080,9 +2319,19 @@ class Inv_inventario extends Controllers
 		die();
 	}
 
+	// ruta_archivo de la galería se guarda como "Assets/uploads/..." (igual que la
+	// carátula). Los registros viejos pueden venir sin el prefijo "Assets/".
+	private function rutaAbsolutaPortalWeb(string $rutaArchivo): string
+	{
+		$relativa = (strpos($rutaArchivo, 'Assets/') === 0)
+			? substr($rutaArchivo, strlen('Assets/'))
+			: $rutaArchivo;
+		return __DIR__ . "/../Assets/" . $relativa;
+	}
+
 	public function deleteImagenPortalWeb()
 	{
-		$this->exigirPermisoCfg(MICFG_PORTALWEB, 'd');
+		$this->exigirPermisoFotos('d');
 		header('Content-Type: application/json; charset=utf-8');
 
 		// El modo se distingue por el nombre del campo recibido, para no
@@ -2105,7 +2354,7 @@ class Inv_inventario extends Controllers
 
 			$idportalweb = (int) $imagen['idportalweb'];
 			$eraPrincipal = (int) $imagen['es_principal'] === 1;
-			$ruta = __DIR__ . "/../Assets/" . $imagen['ruta_archivo'];
+			$ruta = $this->rutaAbsolutaPortalWeb($imagen['ruta_archivo']);
 
 			if (file_exists($ruta)) {
 				@unlink($ruta);
@@ -2147,7 +2396,7 @@ class Inv_inventario extends Controllers
 		$idunidad = (int) $imagen['idunidad'];
 		$eraPrincipal = (int) $imagen['es_principal'] === 1;
 
-		$ruta = __DIR__ . "/../Assets/" . $imagen['ruta_archivo'];
+		$ruta = $this->rutaAbsolutaPortalWeb($imagen['ruta_archivo']);
 
 		if (file_exists($ruta)) {
 			@unlink($ruta);
@@ -2172,9 +2421,69 @@ class Inv_inventario extends Controllers
 		die();
 	}
 
+	// Reemplaza el archivo de una foto de la galería de un Producto (unidad),
+	// conservando su posición y si es la principal. Usado por "Fotos portal".
+	public function reemplazarImagenPortalWeb()
+	{
+		$this->exigirPermisoFotos('u');
+		header('Content-Type: application/json; charset=utf-8');
+
+		$idimagen = intval($_POST['idimagen'] ?? 0);
+		$imagen = $idimagen > 0 ? $this->model->selectImagenWebUnidad($idimagen) : null;
+
+		if (empty($imagen)) {
+			echo json_encode(['status' => false, 'msg' => 'No se encontró la foto']);
+			die();
+		}
+
+		if (empty($_FILES['imagen']['tmp_name']) || $_FILES['imagen']['error'] !== 0 || !$this->esImagenPermitida($_FILES['imagen']['name'])) {
+			echo json_encode(['status' => false, 'msg' => 'Selecciona una imagen válida (jpg, png, webp o gif)']);
+			die();
+		}
+
+		$idunidad = (int) $imagen['idunidad'];
+		$ruta = __DIR__ . "/../Assets/uploads/unidades_web/img_slider/";
+
+		// [DevSecOps] Permisos 0750: Solo el owner (www-data) y el grupo pueden leer/escribir.
+		if (!is_dir($ruta) && !mkdir($ruta, 0750, true) && !is_dir($ruta)) {
+			echo json_encode(['status' => false, 'msg' => 'No se pudo crear el directorio de destino']);
+			die();
+		}
+
+		$nombreOriginal = $_FILES['imagen']['name'];
+		$ext = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
+		$fecha = date("Ymd_His") . "_" . substr(microtime(), 2, 3);
+		$nombreArchivo = "unidad_" . $idunidad . "_" . $fecha . "." . $ext;
+
+		if (!move_uploaded_file($_FILES['imagen']['tmp_name'], $ruta . $nombreArchivo)) {
+			error_log("❌ Error al mover archivo (reemplazo unidades_web/img_slider): " . $_FILES['imagen']['tmp_name']);
+			echo json_encode(['status' => false, 'msg' => 'No se pudo guardar la foto']);
+			die();
+		}
+
+		$rutaRelativa = "Assets/uploads/unidades_web/img_slider/" . $nombreArchivo;
+		$resp = $this->model->updateArchivoImagenWebUnidad($idimagen, $nombreOriginal, $nombreArchivo, $rutaRelativa);
+
+		if ($resp) {
+			$rutaAnterior = $this->rutaAbsolutaPortalWeb($imagen['ruta_archivo']);
+			if (file_exists($rutaAnterior)) {
+				@unlink($rutaAnterior);
+			}
+		} else {
+			@unlink($ruta . $nombreArchivo);
+		}
+
+		echo json_encode([
+			'status' => $resp ? true : false,
+			'msg' => $resp ? 'Foto reemplazada' : 'Error al reemplazar la foto',
+			'imagenes' => $this->model->selectImagenesWebUnidad($idunidad)
+		], JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
 	public function marcarImagenPrincipalPortalWeb()
 	{
-		$this->exigirPermisoCfg(MICFG_PORTALWEB, 'u');
+		$this->exigirPermisoFotos('u');
 		header('Content-Type: application/json; charset=utf-8');
 
 		if (isset($_POST['idfotoportalweb'])) {

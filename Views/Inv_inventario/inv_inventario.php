@@ -356,6 +356,11 @@
                             Portal Web
                         </a>
                     </li>
+                    <li class="nav-item" id="liTabFotosWeb" hidden>
+                        <a class="nav-link" data-bs-toggle="tab" href="#tabFotosWeb">
+                            Fotos portal
+                        </a>
+                    </li>
                     <li class="nav-item" id="liTabVines" hidden>
                         <a class="nav-link" data-bs-toggle="tab" href="#tabVines">
                             VIN / NIV
@@ -817,7 +822,8 @@
                                         <small class="text-muted">Se calcula solo con la existencia real del producto; se actualiza al guardar.</small>
                                     </div>
 
-                                    <div class="col-12">
+                                    <!-- Solo Refacciones: en Productos las imágenes se manejan en la pestaña "Fotos portal" -->
+                                    <div class="col-12" id="pw_bloque_caratula">
                                         <label class="form-label">Imagen principal (carátula)</label>
 
                                         <div id="pw_caratula_actual" class="align-items-center gap-3 mb-2 d-none">
@@ -866,6 +872,13 @@
                             </div>
                         </form>
 
+                        <div class="alert alert-light border small mt-3 mb-0 d-flex align-items-center gap-2" id="pw_aviso_fotos_portal" hidden>
+                            <i class="ri-image-2-line fs-5 lh-1"></i>
+                            <span>Las imágenes de este producto (imagen principal y galería) se administran en la pestaña <strong>Fotos portal</strong>.</span>
+                        </div>
+
+                        <!-- Solo Refacciones: en Productos las imágenes se manejan en la pestaña "Fotos portal" -->
+                        <div id="pw_bloque_imagenes">
                         <hr>
 
                         <h5>Imágenes WEB</h5>
@@ -893,7 +906,145 @@
                                 <i class="ri-upload-2-line"></i> Subir imágenes
                             </button>
                         </div>
+                        </div>
 
+                    </div>
+
+                    <!--tab de fotos del portal web (perfil Marketing): solo carátula y galería (Productos)-->
+                    <div class="tab-pane fade" id="tabFotosWeb">
+                        <style>
+                            #tabFotosWeb .fw-card { border: 1px solid var(--bs-border-color, #e9ebec); border-radius: .6rem; box-shadow: 0 1px 3px rgba(56, 65, 74, .08); margin-bottom: 0; }
+                            #tabFotosWeb .fw-card > .card-header { background: transparent; border-bottom: 1px solid var(--bs-border-color, #e9ebec); padding: .85rem 1.1rem; }
+                            #tabFotosWeb .fw-titulo { font-size: .95rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: .4rem; }
+                            #tabFotosWeb .fw-titulo i { font-size: 1.15rem; color: var(--bs-primary); }
+                            #tabFotosWeb .fw-subtitulo { font-size: .78rem; color: var(--bs-secondary-color, #878a99); }
+                            #tabFotosWeb .fw-caratula { position: relative; aspect-ratio: 4 / 3; border-radius: .5rem; overflow: hidden; background: var(--bs-tertiary-bg, #f3f6f9); border: 2px dashed var(--bs-border-color, #ced4da); cursor: pointer; transition: border-color .15s; }
+                            #tabFotosWeb .fw-caratula:hover { border-color: var(--bs-primary); }
+                            #tabFotosWeb .fw-caratula.tiene-imagen { border-style: solid; border-width: 1px; cursor: zoom-in; }
+                            #tabFotosWeb .fw-caratula img { width: 100%; height: 100%; object-fit: cover; display: block; }
+                            #tabFotosWeb .fw-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .2rem; color: var(--bs-secondary-color, #878a99); text-align: center; padding: 1rem; }
+                            #tabFotosWeb .fw-placeholder i { font-size: 2.4rem; line-height: 1; opacity: .7; }
+                            #tabFotosWeb .fw-placeholder span { font-weight: 600; font-size: .85rem; }
+                            #tabFotosWeb .fw-placeholder small { font-size: .75rem; }
+                            #tabFotosWeb .fw-foto { height: 100%; display: flex; flex-direction: column; border: 1px solid var(--bs-border-color, #e9ebec); border-radius: .5rem; overflow: hidden; background: var(--bs-body-bg, #fff); transition: box-shadow .15s, transform .15s; }
+                            #tabFotosWeb .fw-foto:hover { box-shadow: 0 6px 16px rgba(56, 65, 74, .14); transform: translateY(-1px); }
+                            #tabFotosWeb .fw-foto.es-principal { border-color: #f7b84b; box-shadow: 0 0 0 2px rgba(247, 184, 75, .35); }
+                            #tabFotosWeb .fw-foto-img { position: relative; aspect-ratio: 4 / 3; background: var(--bs-tertiary-bg, #f3f6f9); cursor: zoom-in; }
+                            #tabFotosWeb .fw-foto-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+                            #tabFotosWeb .fw-badge-principal { position: absolute; top: .45rem; left: .45rem; background: #f7b84b; color: #fff; font-size: .68rem; font-weight: 600; padding: .18rem .55rem; border-radius: 1rem; display: inline-flex; align-items: center; gap: .2rem; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
+                            #tabFotosWeb .fw-num { position: absolute; top: .45rem; right: .45rem; background: rgba(0, 0, 0, .55); color: #fff; font-size: .68rem; font-weight: 600; width: 1.4rem; height: 1.4rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+                            #tabFotosWeb .fw-acciones { display: flex; border-top: 1px solid var(--bs-border-color, #e9ebec); margin-top: auto; }
+                            #tabFotosWeb .fw-acciones button { flex: 1; border: 0; background: transparent; padding: .45rem .2rem; display: flex; flex-direction: column; align-items: center; gap: .05rem; font-size: .68rem; color: var(--bs-secondary-color, #6c757d); transition: background .15s, color .15s; }
+                            #tabFotosWeb .fw-acciones button i { font-size: 1.05rem; line-height: 1.1; }
+                            #tabFotosWeb .fw-acciones button + button { border-left: 1px solid var(--bs-border-color, #e9ebec); }
+                            #tabFotosWeb .fw-acciones button:hover:not(:disabled) { background: var(--bs-tertiary-bg, #f3f6f9); }
+                            #tabFotosWeb .fw-acciones .fw-acc-principal:hover:not(:disabled), #tabFotosWeb .fw-acciones .fw-acc-principal.activa { color: #f7b84b; }
+                            #tabFotosWeb .fw-acciones .fw-acc-cambiar:hover { color: var(--bs-primary); }
+                            #tabFotosWeb .fw-acciones .fw-acc-eliminar:hover { color: var(--bs-danger); }
+                            #tabFotosWeb .fw-acciones button:disabled { cursor: default; opacity: 1; }
+                            #tabFotosWeb .fw-agregar { width: 100%; height: 100%; min-height: 140px; border: 2px dashed var(--bs-border-color, #ced4da); border-radius: .5rem; background: transparent; color: var(--bs-secondary-color, #878a99); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15rem; transition: border-color .15s, color .15s, background .15s; }
+                            #tabFotosWeb .fw-agregar:hover { border-color: var(--bs-primary); color: var(--bs-primary); background: rgba(var(--bs-primary-rgb, 64, 81, 137), .04); }
+                            #tabFotosWeb .fw-agregar i { font-size: 1.9rem; line-height: 1; }
+                            #tabFotosWeb .fw-agregar span { font-weight: 600; font-size: .85rem; }
+                            #tabFotosWeb .fw-agregar small { font-size: .72rem; }
+                            #tabFotosWeb .fw-vacio { border: 1px dashed var(--bs-border-color, #ced4da); border-radius: .5rem; padding: 2rem 1rem; text-align: center; color: var(--bs-secondary-color, #878a99); }
+                            #tabFotosWeb .fw-vacio i { font-size: 2.2rem; opacity: .6; }
+                            #tabFotosWeb .fw-ficha-dato { padding: .55rem .75rem; border-radius: .4rem; background: var(--bs-tertiary-bg, #f3f6f9); height: 100%; }
+                            #tabFotosWeb .fw-ficha-dato .fw-ficha-label { font-size: .72rem; color: var(--bs-secondary-color, #878a99); text-transform: uppercase; letter-spacing: .02em; margin-bottom: .1rem; }
+                            #tabFotosWeb .fw-ficha-dato .fw-ficha-valor { font-size: .9rem; font-weight: 600; color: var(--bs-body-color, #212529); word-break: break-word; }
+                            #tabFotosWeb .fw-nota { font-size: .75rem; color: var(--bs-secondary-color, #878a99); }
+                            @media (max-width: 575.98px) { #tabFotosWeb .fw-acciones button { font-size: .6rem; padding: .4rem 0; } #tabFotosWeb .fw-acciones button i { font-size: .95rem; } }
+                        </style>
+
+                        <input type="hidden" id="fw_inventarioid">
+                        <input type="file" id="fw_input_caratula" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+                        <input type="file" id="fw_input_galeria" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
+                        <input type="file" id="fw_input_reemplazo" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+
+                        <div class="alert alert-info border-0 d-flex align-items-start gap-2 small d-none" id="fw_aviso_sin_registro">
+                            <i class="ri-information-line fs-5 lh-1"></i>
+                            <div>
+                                Este producto todavía no está dado de alta en el Portal Web. Puedes subir las fotos de todos modos:
+                                quedará como <strong>no publicado</strong> hasta que quien administra el Portal Web lo revise y lo publique.
+                            </div>
+                        </div>
+
+                        <div class="row g-3" id="fw_contenido" hidden>
+                            <!-- Ficha técnica (Ingeniería) - solo lectura -->
+                            <div class="col-12" id="fw_ficha_wrap" hidden>
+                                <div class="card fw-card">
+                                    <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                        <div>
+                                            <h6 class="fw-titulo"><i class="ri-file-list-3-line"></i> Ficha técnica · Datos generales</h6>
+                                            <div class="fw-subtitulo">Información registrada por Ingeniería (solo lectura)</div>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="fw-ficha-nombre fw-semibold" id="fw_ficha_nombre"></span>
+                                            <span class="badge bg-primary" id="fw_ficha_origen"></span>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-2" id="fw_ficha_datos"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Imagen principal (carátula) -->
+                            <div class="col-lg-4">
+                                <div class="card fw-card h-100">
+                                    <div class="card-header d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <h6 class="fw-titulo"><i class="ri-image-2-line"></i> Imagen principal</h6>
+                                            <div class="fw-subtitulo">Portada de la unidad en el portal</div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="fw-caratula" id="fw_caratula_box" title="Imagen principal">
+                                            <img id="fw_caratula_preview" src="" alt="Imagen principal" class="d-none">
+                                            <div class="fw-placeholder" id="fw_caratula_vacia">
+                                                <i class="ri-image-add-line"></i>
+                                                <span>Sin imagen principal</span>
+                                                <small>Haz clic para subirla</small>
+                                            </div>
+                                        </div>
+                                        <p class="fw-nota mt-2 mb-3">Es lo primero que ven los distribuidores. Se recomienda foto horizontal (4:3) de al menos 1200 px.</p>
+                                        <div class="d-flex gap-2 mt-auto" id="fw_caratula_acciones">
+                                            <button type="button" class="btn btn-primary btn-sm flex-fill" id="fw_btn_subir_caratula">
+                                                <i class="ri-upload-2-line align-middle me-1"></i><span id="fw_btn_subir_caratula_txt">Subir imagen</span>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger btn-sm d-none" id="fw_btn_eliminar_caratula" title="Quitar imagen principal">
+                                                <i class="ri-delete-bin-line align-middle"></i> Quitar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Galería -->
+                            <div class="col-lg-8">
+                                <div class="card fw-card h-100">
+                                    <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                        <div>
+                                            <h6 class="fw-titulo"><i class="ri-gallery-line"></i> Galería de fotos</h6>
+                                            <div class="fw-subtitulo">Fotos adicionales que se muestran en el detalle de la unidad</div>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge rounded-pill border text-body bg-transparent px-2 py-1" id="fw_contador">0 / 5</span>
+                                            <button type="button" class="btn btn-success btn-sm" id="fw_btn_agregar_fotos">
+                                                <i class="ri-add-line align-middle me-1"></i>Agregar fotos
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-3" id="fw_galeria"></div>
+                                        <p class="fw-nota mb-0 mt-3">
+                                            <i class="ri-information-line align-middle"></i>
+                                            JPG, PNG, WEBP o GIF, hasta 10 MB por foto. Haz clic en una foto para verla en grande.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!--tab de VINes asociados al producto (tipo_elemento = P)-->
