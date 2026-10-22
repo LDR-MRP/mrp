@@ -756,6 +756,32 @@ WHERE idinventario = ?";
         return $this->select($sql);
     }
 
+    // Ficha técnica de Ingeniería (ing_modelo_configuracion) ligada al producto
+    // por id_inventario. Solo lectura; se muestra en la pestaña "Fotos portal".
+    // Se usa c.* porque algunas columnas (version_unidad, paso_diferencial)
+    // se agregaron después y pueden no existir en todas las bases.
+    public function selectFichaIngenieriaByInventario(int $inventarioid)
+    {
+        $sql = "SELECT c.*,
+                    l.descripcion AS segmento,
+                    s.descripcion AS modelo
+                FROM ing_modelo_configuracion c
+                LEFT JOIN wms_sublinea_producto s ON s.idsublineaproducto = c.id_sublineaproducto
+                LEFT JOIN wms_linea_producto l ON l.idlineaproducto = s.lineaproductoid
+                WHERE c.id_inventario = ? AND c.deleted_at IS NULL
+                ORDER BY c.id_configuracion DESC
+                LIMIT 1";
+
+        return $this->select($sql, [$inventarioid]);
+    }
+
+    // Reemplaza el archivo de una foto de la galería conservando su orden y si es principal
+    public function updateArchivoImagenWebUnidad(int $idimagen, string $nombreOriginal, string $nombreArchivo, string $rutaArchivo)
+    {
+        $sql = "UPDATE web_unidades_imagenes SET nombre_original = ?, nombre_archivo = ?, ruta_archivo = ? WHERE idimagen = ?";
+        return $this->update($sql, [$nombreOriginal, $nombreArchivo, $rutaArchivo, $idimagen]);
+    }
+
     public function deleteImagenWebUnidad(int $idimagen)
     {
         $sql = "DELETE FROM web_unidades_imagenes WHERE idimagen = $idimagen";

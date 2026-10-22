@@ -146,6 +146,7 @@ const MICFG_PROVEEDORES = 186;
 const MICFG_CANTIDADES = 187;
 const MICFG_PORTALWEB = 188;
 const MICFG_VINES = 189;
+const MICFG_FOTOSWEB = 190; // Pestaña "Fotos portal" (solo carátula y galería; perfil Marketing)
 
 //Submodulos Capacidad
 

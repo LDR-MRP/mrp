@@ -1611,6 +1611,7 @@ const CFG_TABS_PERMISO = {
   "#tabProveedores": "PROVEEDORES",
   "#tabCantidades": "CANTIDADES",
   "#tabPortalWeb": "PORTALWEB",
+  "#tabFotosWeb": "FOTOSWEB",
   "#tabVines": "VINES",
 };
 
@@ -1632,7 +1633,7 @@ function aplicarPermisosCfg() {
     const li = link.closest("li");
     if (!clave || !li) return;
 
-    if (clave === "PORTALWEB" || clave === "VINES") {
+    if (clave === "PORTALWEB" || clave === "VINES" || clave === "FOTOSWEB") {
       // Estas dos además dependen del tipo de elemento (lo decide su cargarTab*)
       if (!cfgPuede(clave)) li.hidden = true;
     } else {
@@ -1730,6 +1731,7 @@ function fntConfigInventario(idinventario) {
         if (cfgPuede("PROVEEDORES")) cargarTabProveedores(idinventario);
         if (cfgPuede("PORTALWEB")) cargarTabPortalWeb(idinventario, d.tipo_elemento);
         if (cfgPuede("VINES")) cargarTabVines(idinventario, d.tipo_elemento);
+        if (cfgPuede("FOTOSWEB")) cargarTabFotosWeb(idinventario, d.tipo_elemento);
         aplicarPermisosCfg();
       }, 150);
     });
@@ -3596,6 +3598,16 @@ function cargarTabPortalWeb(idinventario, tipoElemento) {
     if (el) el.hidden = pwModoActual !== "unidad";
   });
 
+  // En Productos las imágenes (carátula y galería) se manejan en la pestaña
+  // "Fotos portal"; aquí solo quedan para Refacciones.
+  const esProducto = pwModoActual === "unidad";
+  ["pw_bloque_caratula", "pw_bloque_imagenes"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.hidden = esProducto;
+  });
+  const avisoFotos = document.getElementById("pw_aviso_fotos_portal");
+  if (avisoFotos) avisoFotos.hidden = !esProducto;
+
   const hid = document.getElementById("pw_inventarioid");
   if (hid) hid.value = idinventario;
 
@@ -3709,7 +3721,7 @@ function renderGaleriaPortalWeb(imagenes, modo) {
     html += `
       <div class="col-md-3 col-sm-4 col-6 text-center imagen-portalweb-existente">
         <div class="border rounded p-1 ${esPrincipal ? "border-warning border-2" : ""}">
-          <img src="${base_url}/Assets/${img.ruta_archivo}"
+          <img src="${buildRutaCaratulaPortalWeb(img.ruta_archivo)}"
                class="img-fluid rounded mb-1" style="max-height:120px;object-fit:cover;">
           <div class="d-flex justify-content-center gap-1">
             ${puedeMarcarPw ? `<button type="button" class="btn btn-sm ${esPrincipal ? "btn-warning" : "btn-outline-warning"}"
@@ -4074,3 +4086,579 @@ function marcarImagenPrincipalPortalWeb(idimagen, modo) {
       Swal.fire("Error", "No se pudo marcar la imagen como principal", "error");
     });
 }
+
+//-----------------------------------------------------------------------------------------------------------------
+//--------------------------------------------- FOTOS PORTAL (perfil Marketing) ----------------------------------
+//-----------------------------------------------------------------------------------------------------------------
+// Pestaña solo de fotos del Portal Web para Productos (unidades): imagen
+// principal (carátula) y galería. No muestra precio, descripción, estatus ni
+// datos del modelo. Permiso propio: MICFG_FOTOSWEB.
+
+const FW_TIPOS_PERMITIDOS = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const FW_MAX_MB = 10;
+
+let fwModoActual = null;
+let fwTotalImagenes = 0;
+let fwTieneCaratula = false;
+let fwIdReemplazo = null;
+
+function cargarTabFotosWeb(idinventario, tipoElemento) {
+  const li = document.getElementById("liTabFotosWeb");
+
+  // Fotos portal solo aplica a Productos (unidades)
+  fwModoActual = tipoElemento === "P" ? "unidad" : null;
+
+  if (li) li.hidden = fwModoActual === null;
+  if (fwModoActual === null) return;
+
+  const hid = document.getElementById("fw_inventarioid");
+  if (hid) hid.value = idinventario;
+
+  refrescarFotosWeb(idinventario);
+}
+
+function refrescarFotosWeb(idinventario) {
+  fetch(base_url + "/Inv_inventario/getFotosWeb/" + idinventario)
+    .then((r) => r.json())
+    .then((res) => {
+      if (!res.status) return;
+
+      const d = res.data || {};
+      // Si el producto aún no tiene registro en el portal, se crea solo (no
+      // publicado) al subir la primera foto; solo se muestra el aviso.
+      fwMostrarAvisoSinRegistro(!d.registro_existe);
+
+      const contenido = document.getElementById("fw_contenido");
+      if (contenido) contenido.hidden = false;
+
+      renderFichaFotosWeb(d.ficha || null);
+      renderCaratulaFotosWeb(d.imagen_caratula || "");
+      renderGaleriaFotosWeb(d.imagenes || []);
+    })
+    .catch((err) => console.error(err));
+}
+
+function fwMostrarAvisoSinRegistro(mostrar) {
+  const aviso = document.getElementById("fw_aviso_sin_registro");
+  if (aviso) aviso.classList.toggle("d-none", !mostrar);
+}
+
+// ---------- utilidades ----------
+
+function fwValidarArchivos(archivos) {
+  for (const f of archivos) {
+    if (!FW_TIPOS_PERMITIDOS.includes(f.type)) {
+      return `"${f.name}" no es una imagen válida. Usa JPG, PNG, WEBP o GIF.`;
+    }
+    if (f.size > FW_MAX_MB * 1024 * 1024) {
+      return `"${f.name}" pesa más de ${FW_MAX_MB} MB.`;
+    }
+  }
+  return null;
+}
+
+function fwCargando(titulo) {
+  Swal.fire({
+    title: titulo,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    didOpen: () => Swal.showLoading(),
+  });
+}
+
+function fwPost(endpoint, fd) {
+  return fetch(base_url + "/Inv_inventario/" + endpoint, {
+    method: "POST",
+    body: fd,
+  }).then((r) => r.json());
+}
+
+function fwToast(msg) {
+  Swal.fire({
+    toast: true,
+    position: "top-end",
+    icon: "success",
+    title: msg,
+    showConfirmButton: false,
+    timer: 2200,
+    timerProgressBar: true,
+  });
+}
+
+function fwError(msg) {
+  Swal.fire("Error", msg, "error");
+}
+
+function fwVerFoto(src, titulo) {
+  if (!src) return;
+  Swal.fire({
+    imageUrl: src,
+    imageAlt: titulo || "Foto",
+    title: titulo || "",
+    showConfirmButton: false,
+    showCloseButton: true,
+    width: "min(900px, 95vw)",
+    padding: "1rem",
+  });
+}
+
+// ---------- ficha técnica (Ingeniería, solo lectura) ----------
+
+function fwEscape(v) {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderFichaFotosWeb(ficha) {
+  const wrap = document.getElementById("fw_ficha_wrap");
+  const cont = document.getElementById("fw_ficha_datos");
+  if (!wrap || !cont) return;
+
+  // Productos que no vienen de Ingeniería no tienen ficha: se oculta el apartado
+  if (!ficha || !Array.isArray(ficha.datos)) {
+    wrap.hidden = true;
+    cont.innerHTML = "";
+    return;
+  }
+
+  const nombre = document.getElementById("fw_ficha_nombre");
+  const origen = document.getElementById("fw_ficha_origen");
+  if (nombre) nombre.textContent = ficha.nombre_unidad || "";
+  if (origen) {
+    origen.textContent = ficha.tipo_origen || "";
+    origen.classList.toggle("d-none", !ficha.tipo_origen);
+  }
+
+  cont.innerHTML = ficha.datos
+    .filter(([label, valor]) => !(label === "Paso diferencial" && (valor === null || valor === "")))
+    .map(([label, valor, unidad]) => {
+      const vacio = valor === null || valor === undefined || valor === "";
+      const texto = vacio ? "—" : fwEscape(valor) + (unidad ? " " + fwEscape(unidad) : "");
+      return `
+        <div class="col-6 col-md-4 col-xl-3">
+          <div class="fw-ficha-dato">
+            <div class="fw-ficha-label">${fwEscape(label)}</div>
+            <div class="fw-ficha-valor ${vacio ? "text-muted fw-normal" : ""}">${texto}</div>
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  wrap.hidden = false;
+}
+
+// ---------- imagen principal (carátula) ----------
+
+function renderCaratulaFotosWeb(ruta) {
+  fwTieneCaratula = !!ruta;
+
+  const box = document.getElementById("fw_caratula_box");
+  const preview = document.getElementById("fw_caratula_preview");
+  const vacia = document.getElementById("fw_caratula_vacia");
+  const btnSubir = document.getElementById("fw_btn_subir_caratula");
+  const btnSubirTxt = document.getElementById("fw_btn_subir_caratula_txt");
+  const btnDel = document.getElementById("fw_btn_eliminar_caratula");
+
+  if (preview) {
+    preview.src = ruta ? buildRutaCaratulaPortalWeb(ruta) : "";
+    preview.classList.toggle("d-none", !ruta);
+  }
+  if (vacia) vacia.classList.toggle("d-none", !!ruta);
+  if (box) box.classList.toggle("tiene-imagen", !!ruta);
+  if (btnSubirTxt) btnSubirTxt.textContent = ruta ? "Cambiar imagen" : "Subir imagen";
+  if (btnSubir) btnSubir.classList.toggle("d-none", !cfgPuede("FOTOSWEB", ruta ? "u" : "w"));
+  if (btnDel) btnDel.classList.toggle("d-none", !ruta || !cfgPuede("FOTOSWEB", "d"));
+
+  if (ruta) fwMostrarAvisoSinRegistro(false);
+}
+
+function fwAbrirSelectorCaratula() {
+  if (!cfgPuede("FOTOSWEB", fwTieneCaratula ? "u" : "w")) return;
+  const input = document.getElementById("fw_input_caratula");
+  if (input) {
+    input.value = "";
+    input.click();
+  }
+}
+
+function fwSubirCaratula(archivo) {
+  const idinventario = document.getElementById("fw_inventarioid")?.value;
+  if (!idinventario || !archivo) return;
+
+  const error = fwValidarArchivos([archivo]);
+  if (error) {
+    Swal.fire("Aviso", error, "warning");
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("inventarioid", idinventario);
+  fd.append("imagen_caratula", archivo);
+
+  fwCargando("Subiendo imagen principal...");
+  fwPost("subirCaratulaPortalWeb", fd)
+    .then((res) => {
+      if (res.status) {
+        renderCaratulaFotosWeb(res.imagen_caratula || "");
+        fwToast(res.msg);
+      } else {
+        fwError(res.msg);
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      fwError("No se pudo guardar la imagen principal");
+    });
+}
+
+function fwQuitarCaratula() {
+  const idinventario = document.getElementById("fw_inventarioid")?.value;
+  if (!idinventario) return;
+
+  Swal.fire({
+    title: "¿Quitar imagen principal?",
+    text: "La unidad se quedará sin portada en el portal.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, quitar",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#d33",
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+
+    const fd = new FormData();
+    fd.append("inventarioid", idinventario);
+
+    fwPost("eliminarCaratulaPortalWeb", fd)
+      .then((res) => {
+        if (res.status) {
+          renderCaratulaFotosWeb("");
+          fwToast(res.msg);
+        } else {
+          fwError(res.msg);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        fwError("No se pudo quitar la imagen principal");
+      });
+  });
+}
+
+// ---------- galería ----------
+
+function renderGaleriaFotosWeb(imagenes) {
+  const cont = document.getElementById("fw_galeria");
+  const contador = document.getElementById("fw_contador");
+  const btnAgregar = document.getElementById("fw_btn_agregar_fotos");
+
+  fwTotalImagenes = imagenes.length;
+  if (imagenes.length) fwMostrarAvisoSinRegistro(false);
+
+  const puedeAgregar = cfgPuede("FOTOSWEB", "w");
+  const puedeActualizar = cfgPuede("FOTOSWEB", "u");
+  const puedeEliminar = cfgPuede("FOTOSWEB", "d");
+  const restantes = MAX_IMAGENES_PORTAL_WEB - fwTotalImagenes;
+
+  if (contador) {
+    contador.textContent = `${fwTotalImagenes} / ${MAX_IMAGENES_PORTAL_WEB}`;
+    contador.classList.toggle("border-warning", restantes <= 0);
+  }
+  if (btnAgregar) {
+    btnAgregar.classList.toggle("d-none", !puedeAgregar);
+    btnAgregar.disabled = restantes <= 0;
+    btnAgregar.title = restantes <= 0 ? "Ya tienes el máximo de fotos" : "";
+  }
+  if (!cont) return;
+
+  if (!imagenes.length && !puedeAgregar) {
+    cont.innerHTML = `
+      <div class="col-12">
+        <div class="fw-vacio"><i class="ri-image-line d-block mb-1"></i>Sin fotos todavía.</div>
+      </div>`;
+    return;
+  }
+
+  let html = "";
+
+  imagenes.forEach((img, i) => {
+    const esPrincipal = parseInt(img.es_principal, 10) === 1;
+    const id = parseInt(img.idimagen, 10);
+    const src = buildRutaCaratulaPortalWeb(img.ruta_archivo);
+
+    let acciones = "";
+    if (puedeActualizar) {
+      acciones += `
+        <button type="button" class="fw-acc-principal ${esPrincipal ? "activa" : ""}" data-accion="principal" data-id="${id}"
+          ${esPrincipal ? "disabled" : ""} title="${esPrincipal ? "Es la foto principal" : "Marcar como principal"}">
+          <i class="${esPrincipal ? "ri-star-fill" : "ri-star-line"}"></i>Principal
+        </button>
+        <button type="button" class="fw-acc-cambiar" data-accion="cambiar" data-id="${id}" title="Reemplazar esta foto">
+          <i class="ri-image-edit-line"></i>Cambiar
+        </button>`;
+    }
+    if (puedeEliminar) {
+      acciones += `
+        <button type="button" class="fw-acc-eliminar" data-accion="eliminar" data-id="${id}" title="Eliminar esta foto">
+          <i class="ri-delete-bin-line"></i>Eliminar
+        </button>`;
+    }
+
+    html += `
+      <div class="col-6 col-md-4 col-xl-3">
+        <div class="fw-foto ${esPrincipal ? "es-principal" : ""}">
+          <div class="fw-foto-img" data-accion="ver" data-id="${id}">
+            <img src="${src}" alt="Foto ${i + 1}" loading="lazy">
+            ${esPrincipal ? `<span class="fw-badge-principal"><i class="ri-star-fill"></i>Principal</span>` : ""}
+            <span class="fw-num">${i + 1}</span>
+          </div>
+          ${acciones ? `<div class="fw-acciones">${acciones}</div>` : ""}
+        </div>
+      </div>`;
+  });
+
+  if (puedeAgregar && restantes > 0) {
+    html += `
+      <div class="col-6 col-md-4 col-xl-3">
+        <button type="button" class="fw-agregar" data-accion="agregar">
+          <i class="ri-add-line"></i>
+          <span>Agregar foto</span>
+          <small>${restantes === 1 ? "Queda 1 espacio" : `Quedan ${restantes} espacios`}</small>
+        </button>
+      </div>`;
+  }
+
+  cont.innerHTML = html;
+}
+
+function fwAbrirSelectorGaleria() {
+  if (!cfgPuede("FOTOSWEB", "w")) return;
+  if (fwTotalImagenes >= MAX_IMAGENES_PORTAL_WEB) {
+    Swal.fire("Límite alcanzado", `Solo puedes tener máximo ${MAX_IMAGENES_PORTAL_WEB} fotos.`, "warning");
+    return;
+  }
+  const input = document.getElementById("fw_input_galeria");
+  if (input) {
+    input.value = "";
+    input.click();
+  }
+}
+
+function fwSubirFotos(archivos) {
+  const idinventario = document.getElementById("fw_inventarioid")?.value;
+  if (!idinventario || !archivos.length) return;
+
+  const disponibles = MAX_IMAGENES_PORTAL_WEB - fwTotalImagenes;
+  if (archivos.length > disponibles) {
+    Swal.fire(
+      "Límite alcanzado",
+      `Solo puedes tener máximo ${MAX_IMAGENES_PORTAL_WEB} fotos. Puedes agregar ${disponibles} más.`,
+      "warning",
+    );
+    return;
+  }
+
+  const error = fwValidarArchivos(archivos);
+  if (error) {
+    Swal.fire("Aviso", error, "warning");
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("inventarioid", idinventario);
+  archivos.forEach((f) => fd.append("imagenes[]", f));
+
+  fwCargando(archivos.length === 1 ? "Subiendo foto..." : `Subiendo ${archivos.length} fotos...`);
+  fwPost("subirImagenPortalWeb", fd)
+    .then((res) => {
+      if (res.status) {
+        renderGaleriaFotosWeb(res.imagenes || []);
+        fwToast(res.msg);
+      } else {
+        fwError(res.msg);
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      fwError("No se pudieron subir las fotos");
+    });
+}
+
+function fwAbrirSelectorReemplazo(id) {
+  fwIdReemplazo = id;
+  const input = document.getElementById("fw_input_reemplazo");
+  if (input) {
+    input.value = "";
+    input.click();
+  }
+}
+
+function fwReemplazarFoto(id, archivo) {
+  if (!id || !archivo) return;
+
+  const error = fwValidarArchivos([archivo]);
+  if (error) {
+    Swal.fire("Aviso", error, "warning");
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("idimagen", id);
+  fd.append("imagen", archivo);
+
+  fwCargando("Reemplazando foto...");
+  fwPost("reemplazarImagenPortalWeb", fd)
+    .then((res) => {
+      if (res.status) {
+        renderGaleriaFotosWeb(res.imagenes || []);
+        fwToast(res.msg);
+      } else {
+        fwError(res.msg);
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      fwError("No se pudo reemplazar la foto");
+    });
+}
+
+function marcarPrincipalFotosWeb(id) {
+  const fd = new FormData();
+  fd.append("idimagen", id);
+
+  fwPost("marcarImagenPrincipalPortalWeb", fd)
+    .then((res) => {
+      if (res.status) {
+        renderGaleriaFotosWeb(res.imagenes || []);
+        fwToast("Foto marcada como principal");
+      } else {
+        fwError(res.msg);
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      fwError("No se pudo marcar la foto como principal");
+    });
+}
+
+function eliminarFotoFotosWeb(id) {
+  Swal.fire({
+    title: "¿Eliminar foto?",
+    text: "Esta foto se quitará del portal web.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#d33",
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+
+    const fd = new FormData();
+    fd.append("idimagen", id);
+
+    fwPost("deleteImagenPortalWeb", fd)
+      .then((res) => {
+        if (res.status) {
+          renderGaleriaFotosWeb(res.imagenes || []);
+          fwToast(res.msg);
+        } else {
+          fwError(res.msg);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        fwError("No se pudo eliminar la foto");
+      });
+  });
+}
+
+// ---------- eventos ----------
+
+(function initFotosWeb() {
+  const box = document.getElementById("fw_caratula_box");
+  if (box) {
+    box.addEventListener("click", function () {
+      if (fwTieneCaratula) {
+        fwVerFoto(document.getElementById("fw_caratula_preview")?.src, "Imagen principal");
+      } else {
+        fwAbrirSelectorCaratula();
+      }
+    });
+  }
+
+  document.getElementById("fw_btn_subir_caratula")?.addEventListener("click", fwAbrirSelectorCaratula);
+  document.getElementById("fw_btn_eliminar_caratula")?.addEventListener("click", fwQuitarCaratula);
+  document.getElementById("fw_btn_agregar_fotos")?.addEventListener("click", fwAbrirSelectorGaleria);
+
+  document.getElementById("fw_input_caratula")?.addEventListener("change", function () {
+    if (this.files && this.files[0]) fwSubirCaratula(this.files[0]);
+  });
+
+  document.getElementById("fw_input_galeria")?.addEventListener("change", function () {
+    fwSubirFotos(this.files ? Array.from(this.files) : []);
+  });
+
+  document.getElementById("fw_input_reemplazo")?.addEventListener("change", function () {
+    if (this.files && this.files[0]) fwReemplazarFoto(fwIdReemplazo, this.files[0]);
+    fwIdReemplazo = null;
+  });
+
+  const galeria = document.getElementById("fw_galeria");
+  if (galeria) {
+    galeria.addEventListener("click", function (e) {
+      const el = e.target.closest("[data-accion]");
+      if (!el || el.disabled) return;
+
+      const id = parseInt(el.dataset.id, 10);
+
+      switch (el.dataset.accion) {
+        case "ver":
+          fwVerFoto(el.querySelector("img")?.src, "Foto de galería");
+          break;
+        case "principal":
+          marcarPrincipalFotosWeb(id);
+          break;
+        case "cambiar":
+          fwAbrirSelectorReemplazo(id);
+          break;
+        case "eliminar":
+          eliminarFotoFotosWeb(id);
+          break;
+        case "agregar":
+          fwAbrirSelectorGaleria();
+          break;
+      }
+    });
+  }
+
+  // Limpieza al cerrar el modal de configuración
+  const modal = document.getElementById("modalConfigInventario");
+  if (modal) {
+    modal.addEventListener("hidden.bs.modal", function () {
+      fwModoActual = null;
+      fwTotalImagenes = 0;
+      fwIdReemplazo = null;
+
+      const li = document.getElementById("liTabFotosWeb");
+      if (li) li.hidden = true;
+
+      const hid = document.getElementById("fw_inventarioid");
+      if (hid) hid.value = "";
+
+      const contenido = document.getElementById("fw_contenido");
+      if (contenido) contenido.hidden = true;
+
+      fwMostrarAvisoSinRegistro(false);
+
+      const galeria = document.getElementById("fw_galeria");
+      if (galeria) galeria.innerHTML = "";
+
+      renderFichaFotosWeb(null);
+      renderCaratulaFotosWeb("");
+    });
+  }
+})();

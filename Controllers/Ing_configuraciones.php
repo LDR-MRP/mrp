@@ -145,7 +145,7 @@ class Ing_configuraciones extends Controllers
                 }
 
                 if ($request === 'exist') {
-                    $arrResponse = array('status' => false, 'msg' => '¡Atención! Ya existe una configuración con ese modelo, origen, clave vehicular, versión y paso diferencial. Cambie la versión o el paso diferencial para registrarla como una variante.');
+                    $arrResponse = array('status' => false, 'msg' => '¡Atención! Ya existe una configuración con ese modelo, origen, clave vehicular, configuración, versión y paso diferencial. Cambie la configuración, la versión o el paso diferencial para registrarla como una variante.');
                 } else if (!empty($request)) {
                     $idConfiguracionGuardada = $option == 1 ? intval($request) : $intIdConfiguracion;
                     $arrResponse = $option == 1

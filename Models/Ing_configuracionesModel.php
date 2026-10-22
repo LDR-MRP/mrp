@@ -69,21 +69,8 @@ class Ing_configuracionesModel extends Mysql
 
     public function insertConfiguracion(array $data)
     {
-        // Duplicado = mismo modelo + origen + clave vehicular + VERSIÓN + PASO DIFERENCIAL.
-        // Ingeniería da de alta el mismo modelo con iguales especificaciones que solo
-        // se distinguen por versión y/o paso diferencial (HEAVY DUTY TRUCK). [20-oct-2026]
-        $sql = "SELECT id_configuracion FROM ing_modelo_configuracion
-                WHERE id_sublineaproducto = ? AND tipo_origen = ? AND clave_vehicular = ?
-                  AND COALESCE(version_unidad, '') = ? AND COALESCE(paso_diferencial, '') = ?
-                  AND deleted_at IS NULL";
-        $exist = $this->select($sql, [
-            $data['id_sublineaproducto'], $data['tipo_origen'], $data['clave_vehicular'],
-            (string) ($data['version_unidad'] ?? ''), (string) ($data['paso_diferencial'] ?? ''),
-        ]);
-        if (!empty($exist)) {
-            return "exist";
-        }
-
+        // Sin validación de duplicados: Ingeniería puede registrar configuraciones
+        // idénticas (decisión 22-oct-2026).
         $sql = "INSERT INTO ing_modelo_configuracion
             (id_sublineaproducto, tipo_origen, nombre_unidad, nombre_comercial, codigo_modelo, clave_vehicular,
              peso_bruto, nivel_emisiones, id_motor, id_transmision, combustible, estado, version, version_unidad, paso_diferencial, created_by)
@@ -100,18 +87,7 @@ class Ing_configuracionesModel extends Mysql
 
     public function updateConfiguracion(int $id, array $data)
     {
-        $sql = "SELECT id_configuracion FROM ing_modelo_configuracion
-                WHERE id_sublineaproducto = ? AND tipo_origen = ? AND clave_vehicular = ?
-                  AND COALESCE(version_unidad, '') = ? AND COALESCE(paso_diferencial, '') = ?
-                  AND id_configuracion != ? AND deleted_at IS NULL";
-        $exist = $this->select($sql, [
-            $data['id_sublineaproducto'], $data['tipo_origen'], $data['clave_vehicular'],
-            (string) ($data['version_unidad'] ?? ''), (string) ($data['paso_diferencial'] ?? ''), $id,
-        ]);
-        if (!empty($exist)) {
-            return "exist";
-        }
-
+        // Sin validación de duplicados (decisión 22-oct-2026).
         $sql = "UPDATE ing_modelo_configuracion SET
             id_sublineaproducto = ?, tipo_origen = ?, nombre_unidad = ?, nombre_comercial = ?, codigo_modelo = ?,
             clave_vehicular = ?, peso_bruto = ?, nivel_emisiones = ?, id_motor = ?, id_transmision = ?,
