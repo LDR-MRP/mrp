@@ -5078,6 +5078,114 @@ public function selectOrdenesCalendar()
 
 
 
+  // [VIN 2026-10-16] Obtiene la produccion y el inventario desde el ID de la sub-OT.
+  public function obtenerContextoVin(int $idorden, bool $bloquear = false)
+  {
+    $sql = "SELECT ot.idorden, ot.num_sub_orden, ot.estampado,
+                   pe.estampado AS estacion_estampado,
+                   pla.idplaneacion, pla.num_orden, pla.cantidad,
+                   pla.tipo_estampado_vin, pla.referencia_lote_vin,
+                   pro.inventarioid
+            FROM mrp_ordenes_trabajo ot
+            INNER JOIN mrp_planeacion_estacion pe ON pe.id_planeacion_estacion = ot.planeacion_estacionid
+            INNER JOIN mrp_planeacion pla ON pla.idplaneacion = pe.planeacionid
+            INNER JOIN mrp_productos pro ON pro.idproducto = pla.productoid
+            WHERE ot.idorden = $idorden
+            LIMIT 1";
+    return $this->select($sql);
+  }
+
+  // [VIN 2026-10-16] Lotes del mismo producto; se muestra tambien si un lote es insuficiente.
+  public function obtenerLotesVin(int $inventarioId, int $cantidad)
+  {
+    $sql = "SELECT referencia AS lote, COUNT(*) AS disponibles,
+                   IF(COUNT(*) >= $cantidad, 1, 0) AS suficiente
+            FROM wms_numeros_series
+            WHERE inventarioid = $inventarioId AND estado = '1'
+              AND UPPER(tipo_generacion) = 'LOTE'
+              AND referencia IS NOT NULL AND TRIM(referencia) <> ''
+            GROUP BY referencia ORDER BY referencia";
+    return $this->select_all($sql);
+  }
+
+  // [VIN 2026-10-16] Filtrado por inventario, modalidad y referencia exacta.
+  public function obtenerVinesModalidad(int $inventarioId, string $modalidad, string $referencia)
+  {
+    $sql = "SELECT id_numeros_serie AS id, numero_serie AS vin
+            FROM wms_numeros_series
+            WHERE inventarioid = $inventarioId AND estado = '1'
+              AND UPPER(tipo_generacion) = ? AND referencia = ?
+            ORDER BY id_numeros_serie DESC";
+    return $this->select_all($sql, [$modalidad, $referencia]);
+  }
+
+  // [VIN 2026-10-16] Guardado atomico: el bloqueo de la planeacion serializa la primera modalidad.
+  public function guardarVinModalidad(int $idorden, int $serieId, string $modalidad,
+      string $lote, string $motor, string $origen, string $transmision, int $usuarioId)
+  {
+    $pdo = $this->getConexion();
+    if ($pdo->inTransaction()) {
+      throw new RuntimeException('Ya existe una transaccion activa.');
+    }
+    $pdo->beginTransaction();
+    try {
+      $ctx = $this->obtenerContextoVin($idorden);
+      if (!$ctx) throw new RuntimeException('Orden de trabajo no encontrada.');
+      $planeacionId = (int)$ctx['idplaneacion'];
+      $sql = "SELECT tipo_estampado_vin, referencia_lote_vin FROM mrp_planeacion
+              WHERE idplaneacion = $planeacionId FOR UPDATE";
+      $config = $this->select($sql);
+      if (!$config) throw new RuntimeException('Planeacion no encontrada.');
+      if ((int)$ctx['estacion_estampado'] !== 1) throw new RuntimeException('Esta estacion no permite estampar VIN.');
+      if ((int)$ctx['estampado'] === 2) throw new RuntimeException('Esta unidad ya tiene VIN asignado.');
+      $modoFijo = strtoupper(trim((string)($config['tipo_estampado_vin'] ?? '')));
+      $loteFijo = trim((string)($config['referencia_lote_vin'] ?? ''));
+      if ($modoFijo !== '' && $modoFijo !== $modalidad) throw new RuntimeException('La modalidad ya fue fijada para esta produccion.');
+      if ($modalidad === 'LOTE' && $lote === '') throw new RuntimeException('Selecciona un lote.');
+      if ($modalidad === 'LOTE' && $modoFijo !== '' && $lote !== $loteFijo) throw new RuntimeException('El lote ya fue fijado para esta produccion.');
+      $referencia = $modalidad === 'ORDEN' ? (string)$ctx['num_orden'] : $lote;
+      $inventarioId = (int)$ctx['inventarioid'];
+      $serie = $this->select("SELECT id_numeros_serie FROM wms_numeros_series
+        WHERE id_numeros_serie = $serieId AND inventarioid = $inventarioId AND estado = '1'
+          AND UPPER(tipo_generacion) = ? AND referencia = ? LIMIT 1 FOR UPDATE", [$modalidad, $referencia]);
+      if (!$serie) throw new RuntimeException('El VIN no esta disponible para esta modalidad, producto y referencia.');
+      $unidad = (string)$ctx['num_sub_orden'];
+      $repetida = $this->select("SELECT a.idasignacion FROM mrp_vin_asignaciones a
+        INNER JOIN mrp_ordenes_trabajo ot ON ot.idorden = a.orden_trabajo_id
+        INNER JOIN mrp_planeacion_estacion pe ON pe.id_planeacion_estacion = ot.planeacion_estacionid
+        WHERE pe.planeacionid = $planeacionId AND ot.num_sub_orden = ? AND a.estado = 1 LIMIT 1", [$unidad]);
+      if ($repetida) throw new RuntimeException('Esta unidad fisica ya tiene un VIN asignado.');
+      if ($modoFijo === '' && $modalidad === 'LOTE') {
+        $suficientes = $this->select("SELECT COUNT(*) AS total FROM wms_numeros_series
+          WHERE inventarioid = $inventarioId AND estado = '1' AND UPPER(tipo_generacion) = 'LOTE' AND referencia = ?", [$lote]);
+        if ((int)$suficientes['total'] < (int)$ctx['cantidad']) throw new RuntimeException('El lote no tiene suficientes VIN para toda la produccion.');
+      }
+      if ($modoFijo === '') {
+        $ok = $this->updateAffected("UPDATE mrp_planeacion SET tipo_estampado_vin = ?, referencia_lote_vin = ?
+          WHERE idplaneacion = $planeacionId AND (tipo_estampado_vin IS NULL OR tipo_estampado_vin = '')",
+          [$modalidad, $modalidad === 'LOTE' ? $lote : null]);
+        if ($ok !== 1) throw new RuntimeException('No fue posible establecer la modalidad.');
+      }
+      $ok = $this->updateAffected("UPDATE wms_numeros_series SET estado = '2'
+        WHERE id_numeros_serie = $serieId AND estado = '1'", []);
+      if ($ok !== 1) throw new RuntimeException('El VIN fue ocupado por otro usuario.');
+      $fecha = date('Y-m-d H:i:s');
+      $idAsignacion = $this->insertVinAsignacion($idorden, $unidad, $serieId,
+        $modalidad === 'ORDEN' ? $motor : '', $modalidad === 'ORDEN' ? $origen : '',
+        $transmision, $usuarioId, $fecha);
+      if ((int)$idAsignacion <= 0) throw new RuntimeException('No se pudo registrar la asignacion.');
+      $ok = $this->updateAffected("UPDATE mrp_ordenes_trabajo SET estampado = 2
+        WHERE idorden = $idorden AND (estampado IS NULL OR estampado <> 2)", []);
+      if ($ok !== 1) throw new RuntimeException('No se pudo actualizar el estampado de la unidad.');
+      $pdo->commit();
+      return (int)$idAsignacion;
+    } catch (Throwable $e) {
+      // [VIN 2026-10-16] Reversion necesaria para evitar un VIN consumido sin asignacion.
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      throw $e;
+    }
+  }
+
   public function getVinesDisponiblesByReferencia(string $referencia)
   {
     $sql = "SELECT id_numeros_serie, numero_serie

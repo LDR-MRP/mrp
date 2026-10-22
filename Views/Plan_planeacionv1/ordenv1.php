@@ -2945,99 +2945,260 @@ foreach ($estaciones as $est) {
 </div>
 
 
+
 <div class="modal fade" id="modalIdentificacion" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 shadow">
 
-      <!-- Header -->
+      <!-- HEADER -->
       <div class="modal-header bg-soft-warning">
         <div>
           <h5 class="modal-title mb-0">
             <i class="ri-barcode-line me-1"></i>
-            Identificación de unidad: <span id="numSubOrdenIdenti">-</span>
+            Identificación de unidad:
+            <span id="numSubOrdenIdenti">-</span>
           </h5>
+
           <div class="small text-muted mt-1">
-            <span class="me-2"><i class="ri-map-pin-line me-1"></i><span id="titleEstacionIdenti">Estación</span></span>
-            <span class="me-2"><i class="ri-settings-3-line me-1"></i><span
-                id="titleProcesoIdenti">Proceso</span></span>
-            <!-- <span class="badge rounded-pill bg-warning text-dark">
-              <i class="ri-hashtag me-1"></i>UNIDAD ACTUAL : <span id="numSubOrdenIdenti">-</span>
-            </span> -->
+            <span class="me-2">
+              <i class="ri-map-pin-line me-1"></i>
+              <span id="titleEstacionIdenti">Estación</span>
+            </span>
+
+            <span class="me-2">
+              <i class="ri-settings-3-line me-1"></i>
+              <span id="titleProcesoIdenti">Proceso</span>
+            </span>
           </div>
         </div>
 
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close"
+          data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
 
-      <!-- Body -->
+      <!-- BODY -->
       <div class="modal-body">
 
-        <!-- INFO EXTRA (solo lectura cuando es Ver VIN) -->
-        <div id="boxInfoVinAsignado" class="alert alert-info d-none mb-3">
-          <!-- Se llena por JS -->
+        <!-- INFORMACIÓN DEL VIN ASIGNADO / MODO CONSULTA -->
+        <div id="boxInfoVinAsignado"
+          class="alert alert-info d-none mb-3">
         </div>
 
-        <!-- FORM -->
-        <form id="formIdentificacionUnidad" class="form-identificacion-unidad" autocomplete="off">
+        <form id="formIdentificacionUnidad"
+          class="form-identificacion-unidad"
+          autocomplete="off">
 
-          <!-- idorden hidden -->
+          <!-- DATOS INTERNOS -->
           <input type="hidden" id="ordenid" name="orden_trabajo_id">
-           <input type="hidden" id="numunidad" name="numunidad">
+          <input type="hidden" id="numunidad" name="numunidad">
 
+          <!-- [VIN 2026-10-16] Modalidad y lote vinculados al contexto de produccion. -->
+          <!-- MODALIDAD DEFINITIVA DE LA OT -->
+          <input type="hidden"
+            id="inputModalidadVinIdenti"
+            name="tipo_generacion">
+
+          <!-- ESTADO DE CONFIGURACIÓN -->
+          <input type="hidden"
+            id="inputModalidadBloqueadaIdenti"
+            value="0">
+
+          <!-- SELECCIÓN DE MODALIDAD -->
+          <div id="boxSeleccionModalidadIdenti"
+            class="border rounded-3 p-3 mb-3 bg-light">
+
+            <h6 class="fw-bold mb-2">
+              <i class="ri-question-line me-1 text-warning"></i>
+              ¿Cómo se va a realizar el estampado de VIN?
+            </h6>
+
+            <p class="text-muted small mb-3">
+              Selecciona la modalidad de estampado.
+              Esta configuración se conservará para las
+              demás unidades de la orden de trabajo.
+            </p>
+
+            <div class="row g-2">
+
+              <div class="col-md-6">
+                <div class="form-check border rounded p-3 bg-white h-100">
+                  <input class="form-check-input"
+                    type="radio"
+                    name="modalidadEstampadoIdenti"
+                    id="radioEstampadoOrden"
+                    value="ORDEN">
+
+                  <label class="form-check-label fw-semibold"
+                    for="radioEstampadoOrden">
+                    <i class="ri-file-list-3-line me-1"></i>
+                    Por orden de trabajo
+                  </label>
+
+                  <div class="small text-muted mt-1">
+                    Utilizar los VIN disponibles
+                    correspondientes a esta OT.
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="form-check border rounded p-3 bg-white h-100">
+                  <input class="form-check-input"
+                    type="radio"
+                    name="modalidadEstampadoIdenti"
+                    id="radioEstampadoLote"
+                    value="LOTE">
+
+                  <label class="form-check-label fw-semibold"
+                    for="radioEstampadoLote">
+                    <i class="ri-stack-line me-1"></i>
+                    Por lote
+                  </label>
+
+                  <div class="small text-muted mt-1">
+                    Seleccionar un lote del modelo
+                    y posteriormente un VIN disponible.
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- MODALIDAD YA REGISTRADA -->
+          <div id="boxModalidadRegistradaIdenti"
+            class="alert alert-success d-none mb-3">
+
+            <div class="fw-semibold">
+              <i class="ri-checkbox-circle-line me-1"></i>
+              Modalidad de estampado registrada
+            </div>
+
+            <div class="small mt-1">
+              Esta orden de trabajo utiliza estampado
+              <strong id="textoModalidadRegistradaIdenti">-</strong>.
+              La modalidad no puede modificarse desde
+              la asignación de las siguientes unidades.
+            </div>
+          </div>
+
+          <!-- CAMPOS DE IDENTIFICACIÓN -->
           <div class="row g-3">
 
+            <!-- SELECCIÓN DE LOTE -->
+            <div class="col-12 d-none" id="boxLoteIdenti">
+
+              <label for="selectLoteIdenti"
+                class="form-label fw-semibold">
+                <i class="ri-stack-line me-1"></i>
+                Selecciona el lote de VIN
+              </label>
+
+              <div class="input-group">
+                <span class="input-group-text bg-soft-warning text-warning">
+                  <i class="ri-archive-line"></i>
+                </span>
+
+                <select class="form-select"
+                  id="selectLoteIdenti"
+                  name="referencia_lote"
+                  disabled>
+                  <option value="" selected>
+                    — Selecciona un lote —
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-text">
+                Se mostrarán únicamente los lotes
+                disponibles que correspondan al modelo.
+              </div>
+            </div>
+
             <!-- SELECT VIN -->
-            <div class="col-12 col-md-6">
-              <label for="selectVinIdenti" class="form-label fw-semibold">
-                <i class="ri-barcode-line me-1"></i> Selecciona el VIN
+            <div class="col-12 col-md-6"
+              id="boxSelectVinIdenti">
+
+              <label for="selectVinIdenti"
+                class="form-label fw-semibold">
+                <i class="ri-barcode-line me-1"></i>
+                Selecciona el VIN
               </label>
 
               <div class="input-group">
                 <span class="input-group-text bg-soft-primary text-primary">
                   <i class="ri-qr-scan-2-line"></i>
                 </span>
-                <select class="form-select" id="selectVinIdenti" name="vin" required>
-                  <option value="" selected disabled>— Selecciona —</option>
-                  <!-- Opciones dinámicas -->
+
+                <select class="form-select"
+                  id="selectVinIdenti"
+                  name="vin"
+                  required
+                  disabled>
+                  <option value="" selected>
+                    — Selecciona la modalidad —
+                  </option>
                 </select>
               </div>
 
-              <div class="form-text">
-                Asegúrate de que el VIN corresponda a la unidad y a la sub-OT seleccionada.
+              <div class="form-text" id="textoAyudaVinIdenti">
+                Primero selecciona cómo se realizará
+                el estampado.
               </div>
             </div>
 
-            <!-- INPUT MOTOR -->
-            <div class="col-12 col-md-6">
-              <label for="inputMotorIdenti" class="form-label fw-semibold">
-                <i class="ri-engine-line me-1"></i> Ingresa el número de motor
+            <!-- NÚMERO DE MOTOR -->
+            <div class="col-12 col-md-6"
+              id="boxMotorIdenti">
+
+              <label for="inputMotorIdenti"
+                class="form-label fw-semibold">
+                <i class="ri-engine-line me-1"></i>
+                Ingresa el número de motor
               </label>
 
               <div class="input-group">
                 <span class="input-group-text bg-soft-warning text-warning">
                   <i class="ri-settings-3-line"></i>
                 </span>
-                <input type="text" class="form-control" id="inputMotorIdenti" name="numero_motor"
-                  placeholder="Ej: ENG-AX12-99831" maxlength="60" required>
+
+                <input type="text"
+                  class="form-control"
+                  id="inputMotorIdenti"
+                  name="numero_motor"
+                  placeholder="Ej: ENG-AX12-99831"
+                  maxlength="60"
+                  required>
               </div>
 
               <div class="form-text">
-                Captura el número exactamente como aparece en la unidad.
+                Captura el número exactamente como
+                aparece en la unidad.
               </div>
             </div>
 
-            <!-- INPUT VIN ORIGEN -->
-            <div class="col-12 col-md-6">
-              <label for="inputVinOrigenIdenti" class="form-label fw-semibold">
-                <i class="ri-barcode-box-line me-1"></i> VIN de origen
+            <!-- VIN DE ORIGEN -->
+            <div class="col-12 col-md-6"
+              id="boxVinOrigenIdenti">
+
+              <label for="inputVinOrigenIdenti"
+                class="form-label fw-semibold">
+                <i class="ri-barcode-box-line me-1"></i>
+                VIN de origen
               </label>
 
               <div class="input-group">
                 <span class="input-group-text bg-soft-info text-info">
                   <i class="ri-barcode-line"></i>
                 </span>
-                <input type="text" class="form-control" id="inputVinOrigenIdenti" name="vin_origen"
-                  placeholder="Ej: 3N1AB8CV7PY123456" maxlength="80" required>
+
+                <input type="text"
+                  class="form-control"
+                  id="inputVinOrigenIdenti"
+                  name="vin_origen"
+                  placeholder="Ej: 3N1AB8CV7PY123456"
+                  maxlength="80"
+                  required>
               </div>
 
               <div class="form-text">
@@ -3045,48 +3206,65 @@ foreach ($estaciones as $est) {
               </div>
             </div>
 
-            <!-- INPUT TRANSMISIÓN -->
-            <div class="col-12 col-md-6">
-              <label for="inputTransmisionIdenti" class="form-label fw-semibold">
-                <i class="ri-settings-5-line me-1"></i> Número de transmisión
+            <!-- NÚMERO DE TRANSMISIÓN -->
+            <div class="col-12 col-md-6"
+              id="boxTransmisionIdenti">
+
+              <label for="inputTransmisionIdenti"
+                class="form-label fw-semibold">
+                <i class="ri-settings-5-line me-1"></i>
+                Número de transmisión
               </label>
 
               <div class="input-group">
                 <span class="input-group-text bg-soft-secondary text-secondary">
                   <i class="ri-tools-line"></i>
                 </span>
-                <input type="text" class="form-control" id="inputTransmisionIdenti" name="numero_transmision"
-                  placeholder="Ej: TRM-AX12-77452" maxlength="80" required>
+
+                <input type="text"
+                  class="form-control"
+                  id="inputTransmisionIdenti"
+                  name="numero_transmision"
+                  placeholder="Ej: TRM-AX12-77452"
+                  maxlength="80"
+                  required>
               </div>
 
               <div class="form-text">
-                Captura el número de transmisión correspondiente a la unidad.
+                Captura el número de transmisión
+                correspondiente a la unidad.
               </div>
             </div>
 
           </div>
-
-        </form>
-
+        </form> 
       </div>
 
-      <!-- Footer -->
+      <!-- FOOTER -->
       <div class="modal-footer d-flex justify-content-between">
+
         <div class="d-flex gap-2">
-          <button type="button" class="btn btn-soft-secondary" data-bs-dismiss="modal">
-            <i class="ri-close-line me-1"></i> Cerrar
+          <button type="button"
+            class="btn btn-soft-secondary"
+            data-bs-dismiss="modal">
+            <i class="ri-close-line me-1"></i>
+            Cerrar
           </button>
 
-          <!-- Botón guardar (se oculta en modo Ver VIN con JS) -->
-          <button type="button" class="btn btn-warning" id="btnGuardarIdenti">
-            <i class="ri-save-3-line me-1"></i> Guardar asignación
+          <button type="button"
+            class="btn btn-warning"
+            id="btnGuardarIdenti">
+            <i class="ri-save-3-line me-1"></i>
+            Guardar asignación
           </button>
         </div>
+
       </div>
 
     </div>
   </div>
 </div>
+
 
 
 

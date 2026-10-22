@@ -2811,191 +2811,99 @@ class Plan_planeacionv1 extends Controllers
     }
   }
 
-  public function setVinAsignacion()
-  { 
+  // [VIN 2026-10-16] Configuracion, lotes y VIN para una sub-OT; inventario siempre resuelto en servidor.
+  public function getConfiguracionVin($idorden = 0)
+  {
     header('Content-Type: application/json; charset=utf-8');
-
-    $idusuario = $_SESSION['userData']['idusuario'] ?? 0;
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-    $detalle = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    $fechaEvento = date('Y-m-d H:i:s');
-
     try {
-
-      if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        echo json_encode([
-          'status' => false,
-          'msg' => 'Método no permitido'
-        ]);
-        die();
+      $idorden = (int)$idorden;
+      if ($idorden <= 0) throw new RuntimeException('Orden de trabajo invalida.');
+      $ctx = $this->model->obtenerContextoVin($idorden);
+      if (!$ctx) throw new RuntimeException('No se encontro la orden.');
+      if ((int)$ctx['estacion_estampado'] !== 1) throw new RuntimeException('Esta estacion no permite estampar VIN.');
+      $modalidad = strtoupper(trim((string)($ctx['tipo_estampado_vin'] ?? '')));
+      $lote = trim((string)($ctx['referencia_lote_vin'] ?? ''));
+      $inventarioId = (int)$ctx['inventarioid'];
+      $lotes = $modalidad === '' || $modalidad === 'LOTE'
+        ? $this->model->obtenerLotesVin($inventarioId, (int)$ctx['cantidad']) : [];
+      if ($modalidad === 'LOTE' && $lote !== '') {
+        $encontrado = false;
+        foreach ($lotes as $l) if ($l['lote'] === $lote) $encontrado = true;
+        if (!$encontrado) $lotes[] = ['lote' => $lote, 'disponibles' => 0, 'suficiente' => 0];
       }
-
-      $ordenId = isset($_POST['orden_trabajo_id'])
-        ? intval($_POST['orden_trabajo_id'])
-        : 0;
-
-      $numeroSerieId = isset($_POST['numero_serie_id'])
-        ? intval($_POST['numero_serie_id'])
-        : 0;
-
-      $numeroMotor = isset($_POST['numero_motor'])
-        ? trim($_POST['numero_motor'])
-        : '';
-
-      // NUEVOS
-      $vinOrigen = isset($_POST['vin_origen'])
-        ? trim($_POST['vin_origen'])
-        : '';
-
-      $numeroTransmision = isset($_POST['numero_transmision'])
-        ? trim($_POST['numero_transmision'])
-        : '';
-
-          $numUnidad = isset($_POST['num_unidad'])
-        ? trim($_POST['num_unidad'])
-        : '';
-
-
-      if ($ordenId <= 0) {
-        echo json_encode([
-          'status' => false,
-          'msg' => 'Orden de trabajo inválida'
-        ]);
-        die();
-      }
-
-      if ($numeroSerieId <= 0) {
-        echo json_encode([
-          'status' => false,
-          'msg' => 'Número de serie inválido'
-        ]);
-        die();
-      }
-
-      // dep($numUnidad);
-      // exit;
-
-      // if ($numeroMotor === '' || strlen($numeroMotor) < 3) {
-      //   echo json_encode([
-      //     'status' => false,
-      //     'msg' => 'Número de motor obligatorio'
-      //   ]);
-      //   die();
-      // }
-
-      // if ($vinOrigen === '' || strlen($vinOrigen) < 3) {
-      //   echo json_encode([
-      //     'status' => false,
-      //     'msg' => 'VIN origen obligatorio'
-      //   ]);
-      //   die();
-      // }
-
-      // if ($numeroTransmision === '' || strlen($numeroTransmision) < 3) {
-      //   echo json_encode([
-      //     'status' => false,
-      //     'msg' => 'Número de transmisión obligatorio'
-      //   ]);
-      //   die();
-      // }
-
-      $usuarioId = intval($_SESSION['userData']['idusuario'] ?? 0);
-
-      if ($usuarioId <= 0) {
-        echo json_encode([
-          'status' => false,
-          'msg' => 'Sesión no válida'
-        ]);
-        die();
-      }
-
-      $fecha = date('Y-m-d');
-
-
-      $insertId = $this->model->insertVinAsignacion(
-        $ordenId,
-        $numUnidad,
-        $numeroSerieId,
-        $numeroMotor,
-        $vinOrigen,
-        $numeroTransmision,
-        $usuarioId,
-        $fecha
-      );
-
-
-      if ($insertId <= 0) {
-
-        echo json_encode([
-          'status' => false,
-          'msg' => 'No se pudo guardar la asignación.'
-        ]);
-        die();
-      }
-
-
-      $this->model->insertAuditoria(
-        MPPLANPRODUCCION,
-        1,
-        $idusuario,
-        'mrp_vin_asignaciones',
-        $insertId,
-        $fechaEvento,
-        $ip,
-        $detalle
-      );
-
-
-      $okOT = $this->model->setEstatusEstampadoVin($ordenId);
-
-      if (!$okOT) {
-
-        echo json_encode([
-          'status' => false,
-          'msg' => 'Se asignó el VIN, pero no se pudo actualizar la OT.'
-        ]);
-        die();
-      }
-
-
-      $okSerie = $this->model->setEstadoNumeroSerie($numeroSerieId, 2);
-
-      if (!$okSerie) {
-
-        echo json_encode([
-          'status' => false,
-          'msg' => 'Se asignó el VIN, pero no se pudo actualizar el estado de serie.'
-        ]);
-        die();
-      }
-
-
-      echo json_encode([
-        'status' => true,
-        'msg' => 'VIN asignado correctamente.',
-        'data' => [
-          'idasignacion' => $insertId,
-          'orden_trabajo_id' => $ordenId,
-          'numero_serie_id' => $numeroSerieId,
-          'numero_motor' => $numeroMotor,
-          'vin_origen' => $vinOrigen,
-          'numero_transmision' => $numeroTransmision,
-          'usuario_id' => $usuarioId,
-          'fecha_asignacion' => $fecha,
-          'estado' => 1
-        ]
-      ]);
-      die();
-
-    } catch (Exception $e) {
-
-      echo json_encode([
-        'status' => false,
-        'msg' => 'Error: ' . $e->getMessage()
-      ]);
-      die();
+      echo json_encode(['status'=>true, 'data'=>[
+        'modalidad'=>$modalidad, 'lote'=>$lote, 'lotes'=>$lotes,
+        'asignado'=>(int)$ctx['estampado'] === 2,
+        'cantidad'=>(int)$ctx['cantidad']
+      ]]);
+    } catch (Throwable $e) {
+      echo json_encode(['status'=>false, 'msg'=>$e->getMessage()]);
     }
+    die();
   }
+
+  // [VIN 2026-10-16] VIN disponibles por modalidad; valida lote fijo.
+  public function getVinesModalidad($idorden = 0)
+  {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+      $idorden = (int)$idorden;
+      $ctx = $this->model->obtenerContextoVin($idorden);
+      if (!$ctx) throw new RuntimeException('Orden no encontrada.');
+      if ((int)$ctx['estacion_estampado'] !== 1) throw new RuntimeException('Estacion no autorizada.');
+      if ((int)$ctx['estampado'] === 2) throw new RuntimeException('Esta unidad ya tiene VIN asignado.');
+      $modalidad = strtoupper(trim((string)($_GET['modalidad'] ?? '')));
+      $lote = trim((string)($_GET['lote'] ?? ''));
+      if (!in_array($modalidad, ['ORDEN','LOTE'], true)) throw new RuntimeException('Modalidad invalida.');
+      $fija = strtoupper(trim((string)($ctx['tipo_estampado_vin'] ?? '')));
+      if ($fija !== '' && $fija !== $modalidad) throw new RuntimeException('Modalidad bloqueada.');
+      if ($modalidad === 'LOTE' && $lote === '') throw new RuntimeException('Selecciona un lote.');
+      if ($modalidad === 'LOTE' && $fija === 'LOTE' && $lote !== (string)$ctx['referencia_lote_vin']) throw new RuntimeException('Lote bloqueado.');
+      $ref = $modalidad === 'ORDEN' ? $ctx['num_orden'] : $lote;
+      $data = $this->model->obtenerVinesModalidad((int)$ctx['inventarioid'], $modalidad, $ref);
+      echo json_encode(['status'=>true, 'data'=>$data]);
+    } catch (Throwable $e) {
+      echo json_encode(['status'=>false, 'msg'=>$e->getMessage(), 'data'=>[]]);
+    }
+    die();
+  }
+
+  // [VIN 2026-10-16] Guardado validado por modelo y auditado al finalizar.
+  public function setVinAsignacion()
+  {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+      if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new RuntimeException('Metodo no permitido.');
+      $usuarioId = (int)($_SESSION['userData']['idusuario'] ?? 0);
+      $idorden = (int)($_POST['orden_trabajo_id'] ?? 0);
+      $serieId = (int)($_POST['numero_serie_id'] ?? 0);
+      $modalidad = strtoupper(trim((string)($_POST['modalidad'] ?? '')));
+      $lote = trim((string)($_POST['referencia_lote'] ?? ''));
+      $motor = trim((string)($_POST['numero_motor'] ?? ''));
+      $origen = trim((string)($_POST['vin_origen'] ?? ''));
+      $transmision = trim((string)($_POST['numero_transmision'] ?? ''));
+      if ($usuarioId <= 0) throw new RuntimeException('Sesion no valida.');
+      if ($idorden <= 0 || $serieId <= 0) throw new RuntimeException('Selecciona una orden y un VIN validos.');
+      if (!in_array($modalidad, ['ORDEN','LOTE'], true)) throw new RuntimeException('Selecciona la modalidad.');
+      if ($modalidad === 'ORDEN' && ($motor === '' || $origen === '')) throw new RuntimeException('Ingresa el numero de motor y VIN de origen.');
+      if ($transmision === '') throw new RuntimeException('Ingresa el numero de transmision.');
+      $id = $this->model->guardarVinModalidad($idorden, $serieId, $modalidad, $lote,
+        $motor, $origen, $transmision, $usuarioId);
+      // [VIN 2026-10-16] Auditoria despues del commit; no invalida una asignacion exitosa.
+      try {
+        $this->model->insertAuditoria(MPPLANPRODUCCION, 1, $usuarioId,
+          'mrp_vin_asignaciones', $id, date('Y-m-d H:i:s'),
+          $_SERVER['REMOTE_ADDR'] ?? '', $_SERVER['HTTP_USER_AGENT'] ?? '');
+      } catch (Throwable $auditError) {
+        error_log('Auditoria VIN: '.$auditError->getMessage());
+      }
+      echo json_encode(['status'=>true, 'msg'=>'VIN asignado correctamente.', 'data'=>['idasignacion'=>$id]]);
+    } catch (Throwable $e) {
+      echo json_encode(['status'=>false, 'msg'=>$e->getMessage()]);
+    }
+    die();
+  }
+
 
   public function getVinAsignado($idorden = 0)
   {
