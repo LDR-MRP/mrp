@@ -757,7 +757,7 @@ function agregarNodoRuta(data, isCarga = false) {
     if (!esOrigen && !isCargaVal) {
         // NODOS DE DESCARGA: Switch Catálogo vs Destino Abierto (fuera de catálogo)
         htmlUbicacion = `
-            <div class="d-flex align-items-center justify-content-between mb-1">
+            <div class="d-flex align-items-center gap-3 mb-1">
                 <span class="fs-11 text-muted fw-bold"><i class="ri-map-pin-2-line text-warning me-1"></i>Punto de Descarga</span>
                 <div class="form-check form-switch form-check-inline m-0">
                     <input class="form-check-input nodo-check-abierto" type="checkbox" id="check_abierto_${_nodoCounter}" ${esAbiertoInicial ? 'checked' : ''} onchange="toggleNodoDestinoAbierto(this)">
@@ -803,7 +803,7 @@ function agregarNodoRuta(data, isCarga = false) {
     } else if (isCargaVal && !esOrigen) {
         // NODOS DE CARGA ADICIONAL: Switch Catálogo vs Carga Abierta (ej. Expo, evento, patio temporal)
         htmlUbicacion = `
-            <div class="d-flex align-items-center justify-content-between mb-1">
+            <div class="d-flex align-items-center gap-3 mb-1">
                 <span class="fs-11 text-muted fw-bold"><i class="ri-map-pin-add-line text-primary me-1"></i>Punto de Carga</span>
                 <div class="form-check form-switch form-check-inline m-0">
                     <input class="form-check-input nodo-check-abierto" type="checkbox" id="check_abierto_${_nodoCounter}" ${esAbiertoInicial ? 'checked' : ''} onchange="toggleNodoDestinoAbierto(this)">
@@ -833,7 +833,7 @@ function agregarNodoRuta(data, isCarga = false) {
     } else {
         // PUNTO 1 (PUNTO DE PARTIDA / ORIGEN): Switch Catálogo vs Origen Abierto
         htmlUbicacion = `
-            <div class="d-flex align-items-center justify-content-between mb-1">
+            <div class="d-flex align-items-center gap-3 mb-1">
                 <span class="fs-11 text-muted fw-bold"><i class="ri-map-pin-user-line text-success me-1"></i>Punto de Partida / Carga</span>
                 <div class="form-check form-switch form-check-inline m-0">
                     <input class="form-check-input nodo-check-abierto" type="checkbox" id="check_abierto_${_nodoCounter}" ${esAbiertoInicial ? 'checked' : ''} onchange="toggleNodoDestinoAbierto(this)">
