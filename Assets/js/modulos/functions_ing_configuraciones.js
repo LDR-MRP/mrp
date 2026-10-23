@@ -95,6 +95,7 @@ document.addEventListener("DOMContentLoaded", function () {
       { data: "tipo_origen_label" },
       { data: "nombre_unidad" },
       { data: "nombre_comercial" },
+      { data: "sku_label" },
       { data: "clave_vehicular" },
       { data: "motor_label" },
       { data: "transmision_label" },
@@ -194,6 +195,10 @@ document.addEventListener("DOMContentLoaded", function () {
     if (progresoWrapperEl) progresoWrapperEl.style.display = "none";
     if (stepperConfiguracionEl) stepperConfiguracionEl.innerHTML = "";
     if (progresoEstadoBadgeEl) progresoEstadoBadgeEl.innerHTML = "";
+    let nomUnidadEl = document.querySelector("#progresoNombreUnidad");
+    if (nomUnidadEl) nomUnidadEl.textContent = "";
+    let nomUnidadWrap = document.querySelector("#progresoNombreUnidadWrap");
+    if (nomUnidadWrap) nomUnidadWrap.style.setProperty("display", "none", "important");
   }
 
   function habilitarTabsHijas(idConfiguracion) {
@@ -1056,6 +1061,26 @@ const ESTADO_STEPPER_MAP = {
   OBSOLETO: { icon: "ri-archive-line", css: "dark", label: "Obsoleto" },
 };
 
+// Nombre de la unidad (+ configuración 4X2/4X4 y versión) en la esquina derecha del
+// progreso, para que en Especificaciones/Certificaciones sepan qué unidad están editando.
+function pintarNombreUnidad() {
+  let el = document.querySelector("#progresoNombreUnidad");
+  if (!el) return;
+  let val = function (sel) {
+    let i = document.querySelector(sel);
+    return i ? String(i.value || "").trim() : "";
+  };
+  let partes = [val("#nombre-unidad-input"), val("#version-input"), val("#version-unidad-input")].filter(function (p) {
+    return p !== "";
+  });
+  el.textContent = partes.join(" · ");
+  let wrap = document.querySelector("#progresoNombreUnidadWrap");
+  if (wrap) {
+    if (partes.length) wrap.style.setProperty("display", "flex", "important");
+    else wrap.style.setProperty("display", "none", "important");
+  }
+}
+
 function cargarProgreso(idConfiguracion) {
   if (progresoWrapperEl) progresoWrapperEl.style.display = "block";
 
@@ -1093,6 +1118,7 @@ function stepperNodo(opts) {
 function renderProgreso(objData) {
   if (!stepperConfiguracionEl) return;
   if (progresoEstadoBadgeEl) progresoEstadoBadgeEl.innerHTML = objData.estado_label || "";
+  pintarNombreUnidad();
 
   let datos = objData.datos_generales || {};
   let specs = objData.especificaciones || {};

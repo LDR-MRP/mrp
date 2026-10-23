@@ -37,6 +37,10 @@ class Ing_configuraciones extends Controllers
                 $arrData[$i]['motor_label'] = trim(($arrData[$i]['motor_fabricante'] ?? ''));
                 $arrData[$i]['transmision_label'] = trim(($arrData[$i]['transmision_fabricante'] ?? '') . ' ' . ($arrData[$i]['transmision_modelo'] ?? ''));
                 $arrData[$i]['estado_label'] = $this->estadoBadge($arrData[$i]['estado']);
+                // SKU generado al dar de alta en inventario (wms_inventario.cve_articulo) [22-oct-2026]
+                $arrData[$i]['sku_label'] = !empty($arrData[$i]['sku'])
+                    ? '<span class="fw-semibold">' . htmlspecialchars($arrData[$i]['sku']) . '</span>'
+                    : '<span class="badge bg-light text-muted">Sin alta</span>';
 
                 $btnEdit = '';
                 $btnDelete = '';

@@ -157,7 +157,17 @@
                     <div id="progresoConfiguracionWrapper" class="mb-4 pb-3 border-bottom" style="display:none">
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                             <h6 class="text-uppercase text-muted fs-13 mb-0">Progreso de la configuración</h6>
-                            <span id="progresoEstadoBadge"></span>
+                            <div class="d-flex align-items-center gap-2">
+                                <!-- Unidad que se está configurando, visible en todas las pestañas [22-oct-2026] -->
+                                <div id="progresoNombreUnidadWrap" class="d-flex align-items-center gap-2 rounded-pill border border-primary bg-primary-subtle shadow-sm ps-1 pe-3 py-1" style="display:none !important">
+                                    <span class="avatar-xs"><span class="avatar-title bg-primary text-white rounded-circle fs-15"><i class="ri-truck-line"></i></span></span>
+                                    <span class="d-flex flex-column lh-sm">
+                                        <span class="text-uppercase text-muted fw-semibold" style="font-size:10px;letter-spacing:.5px">Unidad en edición</span>
+                                        <span id="progresoNombreUnidad" class="fw-bold text-primary fs-15"></span>
+                                    </span>
+                                </div>
+                                <span id="progresoEstadoBadge"></span>
+                            </div>
                         </div>
                         <div id="stepperConfiguracion" class="stepper-configuracion"></div>
                     </div>
@@ -182,6 +192,7 @@
                                             <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">ORIGEN</th>
                                             <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">NOMBRE UNIDAD</th>
                                             <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">NOMBRE COMERCIAL</th>
+                                            <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">SKU</th>
                                             <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">CLAVE VEHICULAR</th>
                                             <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">MOTOR</th>
                                             <th class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">TRANSMISIÓN</th>

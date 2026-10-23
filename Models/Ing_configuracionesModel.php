@@ -40,12 +40,14 @@ class Ing_configuracionesModel extends Mysql
                     m.fabricante AS motor_fabricante,
                     m.modelo_motor,
                     t.fabricante AS transmision_fabricante,
-                    t.modelo AS transmision_modelo
+                    t.modelo AS transmision_modelo,
+                    wi.cve_articulo AS sku
                 FROM ing_modelo_configuracion c
                 INNER JOIN wms_sublinea_producto s ON s.idsublineaproducto = c.id_sublineaproducto
                 INNER JOIN wms_linea_producto l ON l.idlineaproducto = s.lineaproductoid
                 LEFT JOIN ing_cat_motor m ON m.id_motor = c.id_motor
                 LEFT JOIN ing_cat_transmision t ON t.id_transmision = c.id_transmision
+                LEFT JOIN wms_inventario wi ON wi.idinventario = c.id_inventario
                 WHERE c.deleted_at IS NULL
                 ORDER BY c.id_configuracion DESC";
 
