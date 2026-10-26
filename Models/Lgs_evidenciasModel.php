@@ -65,9 +65,31 @@ class Lgs_evidenciasModel extends Mysql
                 WHERE ev.id_envio = :id_envio
                 ORDER BY ev.tipo_evidencia ASC, ev.created_at DESC";
         
-        $stmt = $this->getConexion()->prepare($sql);
-        $stmt->execute(['id_envio' => $idEnvio]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->getConexion()->prepare($sql);
+            $stmt->execute(['id_envio' => $idEnvio]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            $sqlFallback = "SELECT 
+                        ev.id_evidencia, 
+                        ev.id_envio, 
+                        ev.id_unidad, 
+                        ev.tipo_evidencia, 
+                        ev.ruta_archivo, 
+                        ev.observaciones, 
+                        ev.created_at,
+                        COALESCE(u.vin, ut.clave, 'General de Envío') AS vin,
+                        COALESCE(u.modelo, 'General') AS modelo,
+                        '' AS usuario_nombre
+                    FROM lgs_evidencias ev
+                    LEFT JOIN lgs_unidades_envios u ON ev.id_unidad = u.id_unidad
+                    LEFT JOIN mrp_unidades_terminadas ut ON ev.id_unidad = ut.idunidad
+                    WHERE ev.id_envio = :id_envio
+                    ORDER BY ev.tipo_evidencia ASC, ev.created_at DESC";
+            $stmt = $this->getConexion()->prepare($sqlFallback);
+            $stmt->execute(['id_envio' => $idEnvio]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
     }
 
     /**

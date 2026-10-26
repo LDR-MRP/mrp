@@ -51,6 +51,7 @@ class Lgs_envios extends Controllers
             echo json_encode($data, JSON_UNESCAPED_UNICODE);
             exit;
         } catch (Throwable $e) {
+            error_log("ERROR en Lgs_envios::getEnvios: " . $e->getMessage() . "\n" . $e->getTraceAsString());
             echo json_encode([]);
             exit;
         }

@@ -118,74 +118,147 @@ class Lgs_enviosModel extends Mysql
      */
     public function getEnviosDataTable(): array
     {
-        $sql = "SELECT 
-                    e.id_envio, 
-                    e.folio, 
-                    tt.nombre AS tipo_traslado,
-                    mo.descripcion AS motivo,
-                    pr.razon_social AS trasladista,
-                    e.modalidad_calculo,
-                    e.tipo_servicio,
-                    e.es_monto_abierto,
-                    e.monto_pactado,
-                    e.motivo_monto_abierto,
-                    COALESCE(
-                        (SELECT COALESCE(u0.nombre, n0.destino_nombre_libre) FROM lgs_envios_nodos n0 LEFT JOIN lgs_cat_ubicaciones u0 ON n0.id_ubicacion = u0.id_ubicacion WHERE n0.id_envio = e.id_envio AND n0.orden = 0 LIMIT 1),
-                        o.nombre,
-                        'Origen'
-                    ) AS origen,
-                    COALESCE(
-                        (SELECT COALESCE(uLast.nombre, nLast.destino_nombre_libre) FROM lgs_envios_nodos nLast LEFT JOIN lgs_cat_ubicaciones uLast ON nLast.id_ubicacion = uLast.id_ubicacion WHERE nLast.id_envio = e.id_envio ORDER BY nLast.orden DESC LIMIT 1),
-                        NULLIF(c.nombre_comercial, ''),
-                        c.razon_social,
-                        d.nombre,
-                        e.destino_nombre_libre,
-                        'Sin Destino'
-                    ) AS destino,
-                    e.km_total,
-                    CASE 
-                        WHEN (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) = 0 THEN 0.00 
-                        ELSE COALESCE(e.costo_total, 0.00) 
-                    END AS costo_total,
-                    e.fecha_tentativa_envio,
-                    e.id_estado,
-                    COALESCE(e.is_pausado, 0) AS is_pausado,
-                    e.motivo_pausa,
-                    e.fecha_pausa,
-                    e.fecha_reanudacion,
-                    e.notas_reanudacion,
-                    (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) AS total_vins,
-                    (SELECT COUNT(*) FROM lgs_envios_nodos WHERE id_envio = e.id_envio AND orden > 0) AS total_paradas,
-                    COALESCE(
-                        (SELECT GROUP_CONCAT(u.vin SEPARATOR ', ') 
-                         FROM lgs_envios_vins ev 
-                         INNER JOIN lgs_unidades_envios u ON ev.id_unidad = u.id_unidad 
-                         WHERE ev.id_envio = e.id_envio),
-                        (SELECT GROUP_CONCAT(ut.clave SEPARATOR ', ') 
-                         FROM lgs_envios_vins ev 
-                         INNER JOIN mrp_unidades_terminadas ut ON ev.id_unidad = ut.idunidad 
-                         WHERE ev.id_envio = e.id_envio),
-                        ''
-                    ) AS vins_list,
-                    (SELECT GROUP_CONCAT(
-                        COALESCE(u.nombre, n.destino_nombre_libre, 'Sin Nombre') 
-                        ORDER BY n.orden ASC SEPARATOR ' ➔ '
-                     )
-                     FROM lgs_envios_nodos n
-                     LEFT JOIN lgs_cat_ubicaciones u ON n.id_ubicacion = u.id_ubicacion
-                     WHERE n.id_envio = e.id_envio) AS paradas_list
-                FROM lgs_envios e
-                LEFT JOIN lgs_cat_tipo_traslado tt ON e.id_tipo_traslado = tt.id_tipo_traslado
-                LEFT JOIN lgs_cat_motivo_envio mo ON e.id_motivo = mo.id_motivo
-                LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
-                LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
-                LEFT JOIN cli_clientes c ON e.id_destino = c.idcliente
-                LEFT JOIN lgs_cat_destinos d ON e.id_destino = d.id_destino
-                WHERE e.deleted_at IS NULL
-                ORDER BY e.id_envio DESC";
-        
-        $request = $this->select_all($sql);
-        return $request ?: [];
+        $this->ensureDistanciasTable();
+
+        try {
+            $sql = "SELECT 
+                        e.id_envio, 
+                        e.folio, 
+                        tt.nombre AS tipo_traslado,
+                        mo.descripcion AS motivo,
+                        pr.razon_social AS trasladista,
+                        e.modalidad_calculo,
+                        e.tipo_servicio,
+                        e.es_monto_abierto,
+                        e.monto_pactado,
+                        e.motivo_monto_abierto,
+                        COALESCE(
+                            (SELECT COALESCE(u0.nombre, n0.destino_nombre_libre) FROM lgs_envios_nodos n0 LEFT JOIN lgs_cat_ubicaciones u0 ON n0.id_ubicacion = u0.id_ubicacion WHERE n0.id_envio = e.id_envio AND n0.orden = 0 LIMIT 1),
+                            o.nombre,
+                            'Origen'
+                        ) AS origen,
+                        COALESCE(
+                            (SELECT COALESCE(uLast.nombre, nLast.destino_nombre_libre) FROM lgs_envios_nodos nLast LEFT JOIN lgs_cat_ubicaciones uLast ON nLast.id_ubicacion = uLast.id_ubicacion WHERE nLast.id_envio = e.id_envio ORDER BY nLast.orden DESC LIMIT 1),
+                            NULLIF(c.nombre_comercial, ''),
+                            c.razon_social,
+                            d.nombre,
+                            e.destino_nombre_libre,
+                            'Sin Destino'
+                        ) AS destino,
+                        e.km_total,
+                        CASE 
+                            WHEN (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) = 0 THEN 0.00 
+                            ELSE COALESCE(e.costo_total, 0.00) 
+                        END AS costo_total,
+                        e.fecha_tentativa_envio,
+                        e.id_estado,
+                        COALESCE(e.is_pausado, 0) AS is_pausado,
+                        e.motivo_pausa,
+                        e.fecha_pausa,
+                        e.fecha_reanudacion,
+                        e.notas_reanudacion,
+                        (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) AS total_vins,
+                        (SELECT COUNT(*) FROM lgs_envios_nodos WHERE id_envio = e.id_envio AND orden > 0) AS total_paradas,
+                        COALESCE(
+                            (SELECT GROUP_CONCAT(u.vin SEPARATOR ', ') 
+                             FROM lgs_envios_vins ev 
+                             INNER JOIN lgs_unidades_envios u ON ev.id_unidad = u.id_unidad 
+                             WHERE ev.id_envio = e.id_envio),
+                            (SELECT GROUP_CONCAT(ut.clave SEPARATOR ', ') 
+                             FROM lgs_envios_vins ev 
+                             INNER JOIN mrp_unidades_terminadas ut ON ev.id_unidad = ut.idunidad 
+                             WHERE ev.id_envio = e.id_envio),
+                            ''
+                        ) AS vins_list,
+                        (SELECT GROUP_CONCAT(
+                            COALESCE(u.nombre, n.destino_nombre_libre, 'Sin Nombre') 
+                            ORDER BY n.orden ASC SEPARATOR ' ➔ '
+                         )
+                         FROM lgs_envios_nodos n
+                         LEFT JOIN lgs_cat_ubicaciones u ON n.id_ubicacion = u.id_ubicacion
+                         WHERE n.id_envio = e.id_envio) AS paradas_list
+                    FROM lgs_envios e
+                    LEFT JOIN lgs_cat_tipo_traslado tt ON e.id_tipo_traslado = tt.id_tipo_traslado
+                    LEFT JOIN lgs_cat_motivo_envio mo ON e.id_motivo = mo.id_motivo
+                    LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
+                    LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
+                    LEFT JOIN cli_clientes c ON e.id_destino = c.idcliente
+                    LEFT JOIN lgs_cat_destinos d ON e.id_destino = d.id_destino
+                    WHERE e.deleted_at IS NULL
+                    ORDER BY e.id_envio DESC";
+            
+            $request = $this->select_all($sql);
+            return $request ?: [];
+        } catch (Throwable $e) {
+            error_log("Fallo consulta principal getEnviosDataTable: " . $e->getMessage() . " -> Ejecutando fallback de compatibilidad");
+            $sqlFallback = "SELECT 
+                        e.id_envio, 
+                        e.folio, 
+                        tt.nombre AS tipo_traslado,
+                        mo.descripcion AS motivo,
+                        pr.razon_social AS trasladista,
+                        e.modalidad_calculo,
+                        e.tipo_servicio,
+                        e.es_monto_abierto,
+                        e.monto_pactado,
+                        e.motivo_monto_abierto,
+                        COALESCE(
+                            (SELECT COALESCE(u0.nombre, n0.destino_nombre_libre) FROM lgs_envios_nodos n0 LEFT JOIN lgs_cat_ubicaciones u0 ON n0.id_ubicacion = u0.id_ubicacion WHERE n0.id_envio = e.id_envio AND n0.orden = 0 LIMIT 1),
+                            o.nombre,
+                            'Origen'
+                        ) AS origen,
+                        COALESCE(
+                            (SELECT COALESCE(uLast.nombre, nLast.destino_nombre_libre) FROM lgs_envios_nodos nLast LEFT JOIN lgs_cat_ubicaciones uLast ON nLast.id_ubicacion = uLast.id_ubicacion WHERE nLast.id_envio = e.id_envio ORDER BY nLast.orden DESC LIMIT 1),
+                            NULLIF(c.nombre_comercial, ''),
+                            c.razon_social,
+                            d.nombre,
+                            e.destino_nombre_libre,
+                            'Sin Destino'
+                        ) AS destino,
+                        e.km_total,
+                        CASE 
+                            WHEN (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) = 0 THEN 0.00 
+                            ELSE COALESCE(e.costo_total, 0.00) 
+                        END AS costo_total,
+                        e.fecha_tentativa_envio,
+                        e.id_estado,
+                        0 AS is_pausado,
+                        NULL AS motivo_pausa,
+                        NULL AS fecha_pausa,
+                        NULL AS fecha_reanudacion,
+                        NULL AS notas_reanudacion,
+                        (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) AS total_vins,
+                        (SELECT COUNT(*) FROM lgs_envios_nodos WHERE id_envio = e.id_envio AND orden > 0) AS total_paradas,
+                        COALESCE(
+                            (SELECT GROUP_CONCAT(u.vin SEPARATOR ', ') 
+                             FROM lgs_envios_vins ev 
+                             INNER JOIN lgs_unidades_envios u ON ev.id_unidad = u.id_unidad 
+                             WHERE ev.id_envio = e.id_envio),
+                            (SELECT GROUP_CONCAT(ut.clave SEPARATOR ', ') 
+                             FROM lgs_envios_vins ev 
+                             INNER JOIN mrp_unidades_terminadas ut ON ev.id_unidad = ut.idunidad 
+                             WHERE ev.id_envio = e.id_envio),
+                            ''
+                        ) AS vins_list,
+                        (SELECT GROUP_CONCAT(
+                            COALESCE(u.nombre, n.destino_nombre_libre, 'Sin Nombre') 
+                            ORDER BY n.orden ASC SEPARATOR ' ➔ '
+                         )
+                         FROM lgs_envios_nodos n
+                         LEFT JOIN lgs_cat_ubicaciones u ON n.id_ubicacion = u.id_ubicacion
+                         WHERE n.id_envio = e.id_envio) AS paradas_list
+                    FROM lgs_envios e
+                    LEFT JOIN lgs_cat_tipo_traslado tt ON e.id_tipo_traslado = tt.id_tipo_traslado
+                    LEFT JOIN lgs_cat_motivo_envio mo ON e.id_motivo = mo.id_motivo
+                    LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
+                    LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
+                    LEFT JOIN cli_clientes c ON e.id_destino = c.idcliente
+                    LEFT JOIN lgs_cat_destinos d ON e.id_destino = d.id_destino
+                    WHERE e.deleted_at IS NULL
+                    ORDER BY e.id_envio DESC";
+            $resFallback = $this->select_all($sqlFallback);
+            return $resFallback ?: [];
+        }
     }
 
     /**
@@ -450,49 +523,93 @@ class Lgs_enviosModel extends Mysql
 
     public function getEnvioCabecera(int $idEnvio): array
     {
-        $sql = "SELECT 
-                    e.id_envio,
-                    e.folio,
-                    e.id_tipo_traslado,
-                    e.tipo_servicio,
-                    e.modalidad_calculo,
-                    e.es_monto_abierto,
-                    e.monto_pactado,
-                    e.motivo_monto_abierto,
-                    e.is_lowboy,
-                    e.id_motivo,
-                    e.id_proveedor,
-                    pr.razon_social AS trasladista,
-                    e.id_origen,
-                    COALESCE(
-                        (SELECT COALESCE(u0.nombre, n0.destino_nombre_libre) FROM lgs_envios_nodos n0 LEFT JOIN lgs_cat_ubicaciones u0 ON n0.id_ubicacion = u0.id_ubicacion WHERE n0.id_envio = e.id_envio AND n0.orden = 0 LIMIT 1),
-                        o.nombre,
-                        'Sin Origen'
-                    ) AS origen,
-                    e.id_destino,
-                    e.destino_nombre_libre,
-                    COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social, d.nombre, e.destino_nombre_libre, 'Sin Destino') AS destino,
-                    e.km_total,
-                    e.costo_total,
-                    e.fecha_tentativa_envio,
-                    e.fecha_tentativa_llegada,
-                    e.observaciones,
-                    e.id_estado,
-                    COALESCE(e.is_pausado, 0) AS is_pausado,
-                    e.motivo_pausa,
-                    e.fecha_pausa,
-                    e.pausado_by,
-                    e.fecha_reanudacion,
-                    e.reanudado_by,
-                    e.notas_reanudacion
-                FROM lgs_envios e
-                LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
-                LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
-                LEFT JOIN cli_clientes c ON e.id_destino = c.idcliente
-                LEFT JOIN lgs_cat_destinos d ON e.id_destino = d.id_destino
-                WHERE e.id_envio = ? AND e.deleted_at IS NULL";
-        $res = $this->select($sql, [$idEnvio]);
-        return $res ?: [];
+        try {
+            $sql = "SELECT 
+                        e.id_envio,
+                        e.folio,
+                        e.id_tipo_traslado,
+                        e.tipo_servicio,
+                        e.modalidad_calculo,
+                        e.es_monto_abierto,
+                        e.monto_pactado,
+                        e.motivo_monto_abierto,
+                        e.is_lowboy,
+                        e.id_motivo,
+                        e.id_proveedor,
+                        pr.razon_social AS trasladista,
+                        e.id_origen,
+                        COALESCE(
+                            (SELECT COALESCE(u0.nombre, n0.destino_nombre_libre) FROM lgs_envios_nodos n0 LEFT JOIN lgs_cat_ubicaciones u0 ON n0.id_ubicacion = u0.id_ubicacion WHERE n0.id_envio = e.id_envio AND n0.orden = 0 LIMIT 1),
+                            o.nombre,
+                            'Sin Origen'
+                        ) AS origen,
+                        e.id_destino,
+                        e.destino_nombre_libre,
+                        COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social, d.nombre, e.destino_nombre_libre, 'Sin Destino') AS destino,
+                        e.km_total,
+                        e.costo_total,
+                        e.fecha_tentativa_envio,
+                        e.fecha_tentativa_llegada,
+                        e.observaciones,
+                        e.id_estado,
+                        COALESCE(e.is_pausado, 0) AS is_pausado,
+                        e.motivo_pausa,
+                        e.fecha_pausa,
+                        e.pausado_by,
+                        e.fecha_reanudacion,
+                        e.reanudado_by,
+                        e.notas_reanudacion
+                    FROM lgs_envios e
+                    LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
+                    LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
+                    LEFT JOIN cli_clientes c ON e.id_destino = c.idcliente
+                    LEFT JOIN lgs_cat_destinos d ON e.id_destino = d.id_destino
+                    WHERE e.id_envio = ? AND e.deleted_at IS NULL";
+            $res = $this->select($sql, [$idEnvio]);
+            return $res ?: [];
+        } catch (Throwable $e) {
+            $sqlFallback = "SELECT 
+                        e.id_envio,
+                        e.folio,
+                        e.id_tipo_traslado,
+                        e.tipo_servicio,
+                        e.modalidad_calculo,
+                        e.es_monto_abierto,
+                        e.monto_pactado,
+                        e.motivo_monto_abierto,
+                        e.is_lowboy,
+                        e.id_motivo,
+                        e.id_proveedor,
+                        pr.razon_social AS trasladista,
+                        e.id_origen,
+                        COALESCE(
+                            (SELECT COALESCE(u0.nombre, n0.destino_nombre_libre) FROM lgs_envios_nodos n0 LEFT JOIN lgs_cat_ubicaciones u0 ON n0.id_ubicacion = u0.id_ubicacion WHERE n0.id_envio = e.id_envio AND n0.orden = 0 LIMIT 1),
+                            o.nombre,
+                            'Sin Origen'
+                        ) AS origen,
+                        e.id_destino,
+                        e.destino_nombre_libre,
+                        COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social, d.nombre, e.destino_nombre_libre, 'Sin Destino') AS destino,
+                        e.km_total,
+                        e.costo_total,
+                        e.fecha_tentativa_envio,
+                        e.fecha_tentativa_llegada,
+                        e.observaciones,
+                        e.id_estado,
+                        0 AS is_pausado,
+                        NULL AS motivo_pausa,
+                        NULL AS fecha_pausa,
+                        NULL AS fecha_reanudacion,
+                        NULL AS notas_reanudacion
+                    FROM lgs_envios e
+                    LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
+                    LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
+                    LEFT JOIN cli_clientes c ON e.id_destino = c.idcliente
+                    LEFT JOIN lgs_cat_destinos d ON e.id_destino = d.id_destino
+                    WHERE e.id_envio = ? AND e.deleted_at IS NULL";
+            $res = $this->select($sqlFallback, [$idEnvio]);
+            return $res ?: [];
+        }
     }
 
     /**
