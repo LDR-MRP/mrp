@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             { 
                 "data": "id_estado",
-                "render": function (data) {
+                "render": function (data, type, row) {
                     let badge = '';
                     switch(parseInt(data)) {
                         case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>Creado</span>'; break;
@@ -58,6 +58,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         case 7: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-double-line me-1"></i>Entregado</span>'; break;
                         case 8: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-line me-1"></i>Confirmado</span>'; break;
                         default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
+                    }
+                    if (row && parseInt(row.is_pausado) === 1) {
+                        badge = `<div class="d-flex flex-column gap-1 align-items-start">
+                                    <span class="badge bg-danger text-white fs-11" title="Motivo: ${row.motivo_pausa || 'Pausa por Incidencia'}"><i class="ri-pause-circle-line me-1"></i>PAUSADO</span>
+                                    ${badge}
+                                 </div>`;
                     }
                     return badge;
                 }
@@ -177,6 +183,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     let btnIncidencia = '';
                     let btnGasto = '';
+                    let btnPausa = '';
+
                     if ([1, 2, 3, 5, 6, 7, 8].includes(estado)) {
                         btnIncidencia = `<a href="${base_url}/Lgs_incidencias?envio=${data}" class="btn btn-sm btn-soft-danger rounded-circle p-1 me-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;" title="Reportar Incidencia">
                                             <i class="ri-alarm-warning-line"></i>
@@ -186,10 +194,23 @@ document.addEventListener('DOMContentLoaded', function () {
                                     </a>`;
                     }
 
+                    if ([1, 2, 3, 5, 6].includes(estado)) {
+                        if (parseInt(row.is_pausado) === 1) {
+                            btnPausa = `<button class="btn btn-sm btn-soft-success rounded-pill px-2 py-1 fw-semibold me-1" onClick="fntReanudarEnvio(${data}, '${row.folio}')" title="Reanudar Envío (Pausado: ${row.motivo_pausa || ''})">
+                                            <i class="ri-play-circle-line me-1"></i> Reanudar
+                                        </button>`;
+                        } else {
+                            btnPausa = `<button class="btn btn-sm btn-soft-warning rounded-circle p-1 me-1 text-warning-emphasis" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;" onClick="fntPausarEnvio(${data}, '${row.folio}')" title="Pausar Envío por Incidencia">
+                                            <i class="ri-pause-circle-line"></i>
+                                        </button>`;
+                        }
+                    }
+
                     return `<div class="text-end">
                                 ${btnReabrir}
                                 ${btnRuta}
                                 ${btnAcomodo}
+                                ${btnPausa}
                                 ${btnIncidencia}
                                 ${btnGasto}
                                 ${btnEliminar}
@@ -959,6 +980,7 @@ function agregarNodoRuta(data, isCarga = false) {
     if (selDistribuidorId) {
         const selDist = div.querySelector('.nodo-select-distribuidor');
         if (selDist) {
+            selDist.value = String(selDistribuidorId);
             onDistribuidorChange(selDist);
             const selSede = div.querySelector('.nodo-select-sede');
             if (selSede && selUbicacionId) {
@@ -2220,3 +2242,118 @@ function handleTipoTrasladoEnvio() {
         aplicarDefaultModalidadCalculo(false);
     }
 }
+
+/**
+ * Pausa un envío por incidencia y notifica automáticamente al área comercial
+ */
+function fntPausarEnvio(idEnvio, folio) {
+    Swal.fire({
+        title: `Pausar Envío ${folio}`,
+        html: `
+            <p class="text-muted fs-13 mb-3 text-start">
+                Indique el motivo o la incidencia ocurrida en ruta para pausar el envío. 
+                <br><span class="text-danger fw-semibold"><i class="ri-notification-3-line me-1"></i> Se enviará una alerta automática al equipo comercial.</span>
+            </p>
+            <textarea id="swal_motivo_pausa" class="form-control fs-13" rows="3" placeholder="Ej: Falla mecánica en tractocamión, bloqueo en autopista km 140, demora por trámites aduanales..."></textarea>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#f59e0b',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="ri-pause-circle-line me-1"></i> Confirmar y Notificar Pausa',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            const motivo = document.getElementById('swal_motivo_pausa') ? document.getElementById('swal_motivo_pausa').value.trim() : '';
+            if (!motivo) {
+                Swal.showValidationMessage('Debe ingresar el motivo de la pausa.');
+                return false;
+            }
+            return motivo;
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Pausando Envío...',
+                text: 'Notificando al área comercial y actualizando estado...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            let formData = new FormData();
+            formData.append('id_envio', idEnvio);
+            formData.append('motivo_pausa', result.value);
+
+            fetch(base_url + '/Lgs_envios/pausarEnvio', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(objData => {
+                if (objData.status === 'success' || objData.status === true) {
+                    Swal.fire("¡Envío Pausado!", objData.message || "El envío ha sido pausado y se notificó al área comercial.", "success");
+                    if (typeof tableEnvios !== 'undefined' && tableEnvios) tableEnvios.ajax.reload();
+                } else {
+                    Swal.fire("Error", objData.message || "No se pudo pausar el envío.", "error");
+                }
+            })
+            .catch(() => {
+                Swal.fire("Error", "Error de red al pausar el envío.", "error");
+            });
+        }
+    });
+}
+
+/**
+ * Reanuda un envío previamente pausado y notifica al área comercial
+ */
+function fntReanudarEnvio(idEnvio, folio) {
+    Swal.fire({
+        title: `Reanudar Envío ${folio}`,
+        html: `
+            <p class="text-muted fs-13 mb-3 text-start">
+                ¿Confirmar la reanudación del viaje? 
+                <br><span class="text-success fw-semibold"><i class="ri-notification-3-line me-1"></i> Se notificará al equipo comercial que el envío continúa su ruta normal.</span>
+            </p>
+            <textarea id="swal_notas_reanudacion" class="form-control fs-13" rows="3" placeholder="Observaciones de reanudación (opcional): Ej. Se resolvió la falla y continúa hacia destino..."></textarea>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="ri-play-circle-line me-1"></i> Reanudar y Notificar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const notas = document.getElementById('swal_notas_reanudacion') ? document.getElementById('swal_notas_reanudacion').value.trim() : '';
+
+            Swal.fire({
+                title: 'Reanudando Envío...',
+                text: 'Notificando al área comercial y restableciendo operación...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            let formData = new FormData();
+            formData.append('id_envio', idEnvio);
+            formData.append('notas_reanudacion', notas);
+
+            fetch(base_url + '/Lgs_envios/reanudarEnvio', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(objData => {
+                if (objData.status === 'success' || objData.status === true) {
+                    Swal.fire("¡Envío Reanudado!", objData.message || "El viaje ha sido reanudado y se notificó al área comercial.", "success");
+                    if (typeof tableEnvios !== 'undefined' && tableEnvios) tableEnvios.ajax.reload();
+                } else {
+                    Swal.fire("Error", objData.message || "No se pudo reanudar el envío.", "error");
+                }
+            })
+            .catch(() => {
+                Swal.fire("Error", "Error de red al reanudar el envío.", "error");
+            });
+        }
+    });
+}
+

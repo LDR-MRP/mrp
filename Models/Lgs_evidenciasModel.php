@@ -15,7 +15,7 @@ class Lgs_evidenciasModel extends Mysql
     }
 
     /**
-     * Obtiene los envíos en tránsito (Estado 6) o completados (Estado 7) para gestión de evidencias y entrega final
+     * Obtiene los envíos aprobados, programados, en tránsito o completados (Estados 3, 5, 6, 7) para gestión de evidencias
      */
     public function getEnviosParaEvidencias(): array
     {
@@ -29,12 +29,14 @@ class Lgs_evidenciasModel extends Mysql
                     pr.razon_social AS trasladista,
                     tt.nombre AS tipo_traslado,
                     (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) AS total_vins,
+                    (SELECT COUNT(*) FROM lgs_evidencias WHERE id_envio = e.id_envio AND tipo_evidencia = 1) AS total_evidencias_planta,
+                    (SELECT COUNT(*) FROM lgs_evidencias WHERE id_envio = e.id_envio AND tipo_evidencia = 2) AS total_evidencias_destino,
                     (SELECT COUNT(*) FROM lgs_evidencias WHERE id_envio = e.id_envio) AS total_evidencias
                 FROM lgs_envios e
                 LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
                 LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
                 LEFT JOIN lgs_cat_tipo_traslado tt ON e.id_tipo_traslado = tt.id_tipo_traslado
-                WHERE e.id_estado IN (6, 7) AND e.deleted_at IS NULL
+                WHERE e.id_estado IN (3, 5, 6, 7) AND e.deleted_at IS NULL
                 ORDER BY e.id_estado ASC, e.id_envio DESC";
         
         return $this->select_all($sql);
@@ -54,12 +56,14 @@ class Lgs_evidenciasModel extends Mysql
                     ev.observaciones, 
                     ev.created_at,
                     COALESCE(u.vin, ut.clave, 'General de Envío') AS vin,
-                    COALESCE(u.modelo, 'General') AS modelo
+                    COALESCE(u.modelo, 'General') AS modelo,
+                    CONCAT(COALESCE(usr.nombres, ''), ' ', COALESCE(usr.apellidos, '')) AS usuario_nombre
                 FROM lgs_evidencias ev
                 LEFT JOIN lgs_unidades_envios u ON ev.id_unidad = u.id_unidad
                 LEFT JOIN mrp_unidades_terminadas ut ON ev.id_unidad = ut.idunidad
+                LEFT JOIN usuarios usr ON ev.created_by = usr.idusuario
                 WHERE ev.id_envio = :id_envio
-                ORDER BY ev.created_at DESC";
+                ORDER BY ev.tipo_evidencia ASC, ev.created_at DESC";
         
         $stmt = $this->getConexion()->prepare($sql);
         $stmt->execute(['id_envio' => $idEnvio]);

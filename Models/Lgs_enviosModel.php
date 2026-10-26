@@ -38,6 +38,13 @@ class Lgs_enviosModel extends Mysql
             'fecha_llegada_real',
             'observaciones',
             'id_estado',
+            'is_pausado',
+            'motivo_pausa',
+            'fecha_pausa',
+            'pausado_by',
+            'fecha_reanudacion',
+            'reanudado_by',
+            'notas_reanudacion',
             'created_by',
             'updated_by',
             'created_at',
@@ -142,6 +149,11 @@ class Lgs_enviosModel extends Mysql
                     END AS costo_total,
                     e.fecha_tentativa_envio,
                     e.id_estado,
+                    COALESCE(e.is_pausado, 0) AS is_pausado,
+                    e.motivo_pausa,
+                    e.fecha_pausa,
+                    e.fecha_reanudacion,
+                    e.notas_reanudacion,
                     (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) AS total_vins,
                     (SELECT COUNT(*) FROM lgs_envios_nodos WHERE id_envio = e.id_envio AND orden > 0) AS total_paradas,
                     COALESCE(
@@ -465,7 +477,14 @@ class Lgs_enviosModel extends Mysql
                     e.fecha_tentativa_envio,
                     e.fecha_tentativa_llegada,
                     e.observaciones,
-                    e.id_estado
+                    e.id_estado,
+                    COALESCE(e.is_pausado, 0) AS is_pausado,
+                    e.motivo_pausa,
+                    e.fecha_pausa,
+                    e.pausado_by,
+                    e.fecha_reanudacion,
+                    e.reanudado_by,
+                    e.notas_reanudacion
                 FROM lgs_envios e
                 LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
                 LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
@@ -916,6 +935,27 @@ class Lgs_enviosModel extends Mysql
                 $db->exec("ALTER TABLE `lgs_envios_nodos` ADD COLUMN `id_distribuidor` BIGINT NULL DEFAULT NULL AFTER `id_ubicacion`");
             } catch (Throwable $e) {}
             try {
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `is_pausado` TINYINT(1) NOT NULL DEFAULT 0 AFTER `id_estado`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `motivo_pausa` TEXT NULL AFTER `is_pausado`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `fecha_pausa` DATETIME NULL AFTER `motivo_pausa`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `pausado_by` BIGINT NULL AFTER `fecha_pausa`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `fecha_reanudacion` DATETIME NULL AFTER `pausado_by`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `reanudado_by` BIGINT NULL AFTER `fecha_reanudacion`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `notas_reanudacion` TEXT NULL AFTER `reanudado_by`");
+            } catch (Throwable $e) {}
+            try {
                 $db->exec("ALTER TABLE `prv_cat_proveedores` ADD COLUMN `modalidad_envio_default` ENUM('ESCALONADO', 'DIRECTO') NOT NULL DEFAULT 'DIRECTO' AFTER `origen`");
             } catch (Throwable $e) {}
         } catch (Throwable $e) {
@@ -1139,6 +1179,48 @@ class Lgs_enviosModel extends Mysql
             $res = $this->select_all($sql, [$idEnvio]);
             return $res ?: [];
         }
+    }
+
+    /**
+     * Pausa un envío debido a incidencias operativas o en ruta
+     */
+    public function pausarEnvio(int $idEnvio, string $motivo, int $userId): bool
+    {
+        $sql = "UPDATE lgs_envios 
+                SET is_pausado = 1, 
+                    motivo_pausa = :motivo, 
+                    fecha_pausa = NOW(), 
+                    pausado_by = :user_id,
+                    updated_at = NOW()
+                WHERE id_envio = :id_envio";
+        
+        $stmt = $this->getConexion()->prepare($sql);
+        return $stmt->execute([
+            'motivo'   => $motivo,
+            'user_id'  => $userId,
+            'id_envio' => $idEnvio
+        ]);
+    }
+
+    /**
+     * Reanuda un envío previamente pausado
+     */
+    public function reanudarEnvio(int $idEnvio, string $notas, int $userId): bool
+    {
+        $sql = "UPDATE lgs_envios 
+                SET is_pausado = 0, 
+                    fecha_reanudacion = NOW(), 
+                    reanudado_by = :user_id, 
+                    notas_reanudacion = :notas,
+                    updated_at = NOW()
+                WHERE id_envio = :id_envio";
+        
+        $stmt = $this->getConexion()->prepare($sql);
+        return $stmt->execute([
+            'notas'    => $notas,
+            'user_id'  => $userId,
+            'id_envio' => $idEnvio
+        ]);
     }
 }
 

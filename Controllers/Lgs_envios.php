@@ -5,16 +5,15 @@ class Lgs_envios extends Controllers
     use ApiResponser;
 
     private Lgs_enviosService $service;
+    private Lgs_enviosModel $enviosModel;
 
     public function __construct()
     {
         parent::__construct();
         session_start();
         
-        // Asumiendo que LGS_ENVIOS es la constante de permiso, se puede adaptar
-        // getPermisos(LGS_ENVIOS);
-        
         $this->service = new Lgs_enviosService();
+        $this->enviosModel = new Lgs_enviosModel();
     }
 
     /**
@@ -1357,6 +1356,200 @@ class Lgs_envios extends Controllers
 
         } catch (Throwable $e) {
             echo "Error crítico: " . $e->getMessage();
+        }
+    }
+
+    /**
+     * POST: Pausa un envío por incidencia u operación y notifica a comercial
+     * URL: {{base_url}}/Lgs_envios/pausarEnvio
+     */
+    public function pausarEnvio(): void
+    {
+        try {
+            $idEnvio = intval($_POST['id_envio'] ?? 0);
+            $motivo = trim($_POST['motivo_pausa'] ?? '');
+            $userId = intval($_SESSION['idUser'] ?? 1);
+            $userName = $_SESSION['userData']['nombres'] ?? 'Usuario Logística';
+
+            if ($idEnvio <= 0) {
+                throw new Exception("ID de envío no válido.");
+            }
+
+            if (empty($motivo)) {
+                throw new Exception("Debe especificar el motivo o la incidencia por la cual se pausa el envío.");
+            }
+
+            $envio = $this->enviosModel->getEnvioCabecera($idEnvio);
+            if (empty($envio)) {
+                throw new Exception("El envío solicitado no existe.");
+            }
+
+            $ok = $this->enviosModel->pausarEnvio($idEnvio, $motivo, $userId);
+            if (!$ok) {
+                throw new Exception("No se pudo actualizar el estado de pausa del envío.");
+            }
+
+            // Notificar a comercial vía correo
+            $this->notificarComercialPausaReanudacion($envio, 'PAUSA', $motivo, $userName);
+
+            echo $this->successResponse([
+                'id_envio' => $idEnvio,
+                'is_pausado' => 1
+            ], "Envío pausado correctamente. Se ha notificado al equipo comercial.");
+        } catch (Throwable $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST: Reanuda un envío previamente pausado y notifica a comercial
+     * URL: {{base_url}}/Lgs_envios/reanudarEnvio
+     */
+    public function reanudarEnvio(): void
+    {
+        try {
+            $idEnvio = intval($_POST['id_envio'] ?? 0);
+            $notas = trim($_POST['notas_reanudacion'] ?? '');
+            $userId = intval($_SESSION['idUser'] ?? 1);
+            $userName = $_SESSION['userData']['nombres'] ?? 'Usuario Logística';
+
+            if ($idEnvio <= 0) {
+                throw new Exception("ID de envío no válido.");
+            }
+
+            $envio = $this->enviosModel->getEnvioCabecera($idEnvio);
+            if (empty($envio)) {
+                throw new Exception("El envío solicitado no existe.");
+            }
+
+            $ok = $this->enviosModel->reanudarEnvio($idEnvio, $notas, $userId);
+            if (!$ok) {
+                throw new Exception("No se pudo reanudar el envío.");
+            }
+
+            // Notificar a comercial vía correo
+            $this->notificarComercialPausaReanudacion($envio, 'REANUDACION', $notas ?: 'Operación reanudada normalmente.', $userName);
+
+            echo $this->successResponse([
+                'id_envio' => $idEnvio,
+                'is_pausado' => 0
+            ], "Envío reanudado correctamente. Se ha notificado al equipo comercial.");
+        } catch (Throwable $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Envía notificación a comercial cuando un envío se pausa o reanuda
+     */
+    private function notificarComercialPausaReanudacion(array $envio, string $accion, string $motivo, string $usuario): void
+    {
+        try {
+            $folio = $envio['folio'] ?? 'Sin Folio';
+            $origen = $envio['origen'] ?? '-';
+            $destino = $envio['destino'] ?? '-';
+            $trasladista = $envio['trasladista'] ?? '-';
+            $esPausa = ($accion === 'PAUSA');
+
+            $asunto = $esPausa 
+                ? "⚠️ ALERTA LOGÍSTICA: Envío {$folio} PAUSADO en Ruta"
+                : "✅ AVISO LOGÍSTICA: Envío {$folio} REANUDADO";
+
+            // Consultar correos del equipo comercial (roles 60: Admin Clientes, 69: Pedidos a Distribuidores, 1: Admin)
+            $db = $this->enviosModel->getConexion();
+            $sqlUsuarios = "SELECT email_user FROM usuarios WHERE rolid IN (60, 69, 1) AND status = 1 AND email_user IS NOT NULL";
+            $stmt = $db->query($sqlUsuarios);
+            $correos = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+            // Filtrar correos válidos y agregar webmaster si está definido
+            $destinatarios = array_filter(array_unique($correos), function($e) {
+                return filter_var(trim($e), FILTER_VALIDATE_EMAIL);
+            });
+
+            if (defined('MAIL_WEBMASTER') && filter_var(MAIL_WEBMASTER, FILTER_VALIDATE_EMAIL)) {
+                $destinatarios[] = MAIL_WEBMASTER;
+            }
+
+            if (empty($destinatarios)) {
+                return;
+            }
+
+            // Cuerpo del correo HTML estilizado
+            $colorHeader = $esPausa ? '#DC2626' : '#16A34A';
+            $tituloHeader = $esPausa ? 'ENVÍO PAUSADO POR INCIDENCIA' : 'ENVÍO REANUDADO';
+            $labelMotivo = $esPausa ? 'Motivo de la Pausa / Incidencia' : 'Observaciones de Reanudación';
+
+            $cuerpoHtml = "
+            <div style='font-family: Arial, sans-serif; max-width: 650px; margin: auto; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);'>
+                <div style='background-color: {$colorHeader}; color: #ffffff; padding: 24px; text-align: center;'>
+                    <h2 style='margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px;'>{$tituloHeader}</h2>
+                    <p style='margin: 8px 0 0 0; font-size: 14px; opacity: 0.9;'>Folio: <strong>{$folio}</strong></p>
+                </div>
+                <div style='padding: 24px; background-color: #ffffff;'>
+                    <p style='font-size: 14px; color: #334155; margin-bottom: 20px;'>
+                        Se ha registrado un evento de <strong>" . ($esPausa ? 'PAUSA' : 'REANUDACIÓN') . "</strong> en el monitoreo logístico del envío. A continuación los detalles para seguimiento comercial:
+                    </p>
+                    <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px;'>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B; width: 35%;'><strong>Folio Envío:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'><strong>{$folio}</strong></td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Origen ➔ Destino:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>{$origen} ➔ {$destino}</td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Trasladista:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>{$trasladista}</td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Registrado por:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>{$usuario}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Fecha / Hora:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>" . date('Y-m-d H:i:s') . "</td>
+                        </tr>
+                    </table>
+                    <div style='background-color: " . ($esPausa ? '#FEF2F2' : '#F0FDF4') . "; border-left: 4px solid {$colorHeader}; padding: 14px 18px; border-radius: 6px; margin-bottom: 20px;'>
+                        <strong style='color: " . ($esPausa ? '#991B1B' : '#166534') . "; font-size: 13px; display: block; margin-bottom: 4px;'>{$labelMotivo}:</strong>
+                        <p style='margin: 0; font-size: 13px; color: #1E293B;'>{$motivo}</p>
+                    </div>
+                    <div style='text-align: center; margin-top: 25px;'>
+                        <a href='" . base_url() . "/Lgs_envios' style='background-color: #1E293B; color: #ffffff; padding: 10px 24px; text-decoration: none; border-radius: 20px; font-size: 13px; font-weight: bold;'>Ver en Sistema de Logística</a>
+                    </div>
+                </div>
+                <div style='background-color: #F8FAFC; padding: 14px; text-align: center; font-size: 11px; color: #94A3B8; border-top: 1px solid #E2E8F0;'>
+                    Este es un aviso automático generado por el Módulo de Logística MRP LDR Solutions.
+                </div>
+            </div>
+            ";
+
+            // Enviar con PHPMailer
+            $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+            $mail->isSMTP();
+            $mail->Host       = MAIL_HOST;
+            $mail->SMTPAuth   = true;
+            $mail->Username   = MAIL_USER;
+            $mail->Password   = MAIL_PASS;
+            $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+            $mail->Port       = MAIL_PORT;
+            $mail->CharSet    = 'UTF-8';
+
+            $mail->setFrom(MAIL_USER, MAIL_FROM_NAME);
+            $primerDest = array_shift($destinatarios);
+            $mail->addAddress($primerDest);
+
+            foreach ($destinatarios as $correoCc) {
+                $mail->addCC($correoCc);
+            }
+
+            $mail->isHTML(true);
+            $mail->Subject = $asunto;
+            $mail->Body    = $cuerpoHtml;
+            $mail->send();
+        } catch (Throwable $e) {
+            error_log("Error al notificar pausa/reanudación a comercial: " . $e->getMessage());
         }
     }
 }

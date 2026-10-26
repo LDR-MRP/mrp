@@ -159,45 +159,46 @@
             <div class="modal-header bg-light border-bottom-0 pb-3">
                 <div>
                     <h5 class="modal-title fw-bold text-primary mb-0" id="titleModalEvidencia">
-                        <i class="ri-checkbox-circle-line me-1 text-success"></i> Recepción y Evidencias de Entrega en Destino <span id="lblFolioEvidencia" class="badge bg-primary text-white fs-13 ms-2"></span>
+                        <i id="icoModalHeader" class="ri-checkbox-circle-line me-1 text-success"></i> <span id="txtModalHeaderTitulo">Recepción y Evidencias de Entrega en Destino</span> <span id="lblFolioEvidencia" class="badge bg-primary text-white fs-13 ms-2"></span>
                     </h5>
-                    <small class="text-muted">Inspección física en destino, fotografías de recepción y cierre final de viaje</small>
+                    <small class="text-muted" id="subModalHeaderDesc">Inspección física en destino, fotografías de recepción y cierre final de viaje</small>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
-                <!-- FORMULARIO DE INSPECCIÓN DE ENTREGA EN DESTINO -->
-                <div class="card border border-success-subtle rounded-4 p-3 mb-4" style="background: #F0FDF4;">
+                <!-- FORMULARIO DE INSPECCIÓN (ADAPTABLE A PLANTA O DESTINO) -->
+                <div class="card border rounded-4 p-3 mb-4" id="cardFormularioInspeccion" style="background: #F0FDF4; border-color: #BBF7D0 !important;">
                     <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
-                        <h6 class="fw-bold fs-14 text-dark mb-0">
-                            <i class="ri-camera-lens-fill me-1 text-success"></i> Capturar Inspección de Entrega en Destino
+                        <h6 class="fw-bold fs-14 text-dark mb-0" id="titleFormularioInspeccion">
+                            <i id="icoFormulario" class="ri-camera-lens-fill me-1 text-success"></i> <span id="txtTituloFormulario">Capturar Inspección de Entrega en Destino</span>
                         </h6>
-                        <span class="badge bg-success-subtle text-success border border-success px-2 py-1 fs-11">
-                            <i class="ri-shield-check-line me-1"></i> Recepción en Destino
+                        <span class="badge px-2 py-1 fs-11" id="badgeFormularioInspeccion" style="background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;">
+                            <i class="ri-shield-check-line me-1"></i> <span id="txtBadgeFormulario">Recepción en Destino</span>
                         </span>
                     </div>
 
                     <form id="formEvidenciaEntrega" enctype="multipart/form-data">
                         <input type="hidden" id="id_envio_evidencia" name="id_envio" value="">
-                        <input type="hidden" name="tipo_checklist" value="entrega_destino">
+                        <input type="hidden" id="tipo_checklist_input" name="tipo_checklist" value="entrega_destino">
+                        <input type="hidden" id="modo_evidencia_actual" value="destino">
                         
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label class="form-label fw-bold text-muted fs-11 text-uppercase">Seleccionar Unidad / VIN a Entregar <span class="text-danger">*</span></label>
+                                <label class="form-label fw-bold text-muted fs-11 text-uppercase" id="labelSelectUnidad">Seleccionar Unidad / VIN a Entregar <span class="text-danger">*</span></label>
                                 <select class="form-select fs-13 fw-semibold border-success" id="select_evid_unidad" name="id_unidad" onchange="actualizarVinSeleccionado(this);" required>
                                     <option value="">-- Seleccionar Unidad --</option>
                                 </select>
                                 <input type="hidden" id="vin_confirmado_entrega" name="vin" value="">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold text-muted fs-11 text-uppercase">Notas u Observaciones de Recepción</label>
-                                <input type="text" class="form-control fs-13" id="chk_comentarios_entrega" name="comentarios" placeholder="Condiciones de llegada, firma de recibo, etc.">
+                                <label class="form-label fw-bold text-muted fs-11 text-uppercase" id="labelComentariosInspeccion">Notas u Observaciones de Inspección</label>
+                                <input type="text" class="form-control fs-13" id="chk_comentarios_entrega" name="comentarios" placeholder="Condiciones físicas, fallas detectadas, firma de recibo, etc.">
                             </div>
                         </div>
 
-                        <!-- 5 FOTOS OBLIGATORIAS DE ENTREGA -->
+                        <!-- 5 FOTOS OBLIGATORIAS DE INSPECCIÓN -->
                         <div class="mb-3">
-                            <span class="fs-12 fw-bold text-dark d-block mb-2"><i class="ri-image-line me-1 text-success"></i> Fotografías de Inspección de Entrega (5 Puntos):</span>
+                            <span class="fs-12 fw-bold text-dark d-block mb-2" id="lblTituloFotos"><i class="ri-image-line me-1 text-success"></i> Fotografías de Inspección (5 Puntos):</span>
                             
                             <style>
                             .photo-preview-dest {
@@ -245,7 +246,7 @@
                                 </div>
 
                                 <div class="col-md-4 col-6">
-                                    <span class="fs-11 text-muted fw-bold d-block mb-1">5. Odómetro / Km Llegada</span>
+                                    <span class="fs-11 text-muted fw-bold d-block mb-1" id="lblFotoOdometro">5. Odómetro / Km</span>
                                     <div class="photo-preview-dest text-muted" onclick="triggerFileDest('file_dest_odometro')">
                                         <img id="img_dest_odometro" class="d-none">
                                         <i id="ico_dest_odometro" class="ri-dashboard-3-line fs-2 text-muted opacity-50"></i>
@@ -258,12 +259,12 @@
                             <div id="contenedor_extras_entrega" class="row g-3 mb-2"></div>
                             
                             <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
-                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill border-dashed fw-semibold" onclick="agregarExtraEntrega();">
-                                    <i class="ri-add-circle-line me-1"></i> + Foto Adicional / Remisión Firmada
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill border-dashed fw-semibold" id="btnAgregarExtraInspeccion" onclick="agregarExtraEntrega();">
+                                    <i class="ri-add-circle-line me-1"></i> <span id="txtBtnAgregarExtra">+ Foto Adicional / Remisión</span>
                                 </button>
                                 
-                                <button type="button" class="btn btn-success px-4 rounded-pill fw-semibold fs-13 shadow-sm" onclick="guardarInspeccionEntrega();">
-                                    <i class="ri-checkbox-circle-line me-1"></i> Guardar Evidencia de Entrega
+                                <button type="button" class="btn btn-success px-4 rounded-pill fw-semibold fs-13 shadow-sm" id="btnGuardarInspeccion" onclick="guardarInspeccionEntrega();">
+                                    <i class="ri-checkbox-circle-line me-1" id="icoBtnGuardar"></i> <span id="txtBtnGuardar">Guardar Evidencia de Entrega</span>
                                 </button>
                             </div>
                         </div>
