@@ -5,10 +5,10 @@
 -- Paso 1: Si la tabla no existe, crearla con la nueva estructura
 CREATE TABLE IF NOT EXISTS sys_notification_distribution (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    rolid INT NULL,
-    userid INT NULL,
+    rolid BIGINT NULL,
+    userid BIGINT NULL,
     event_key VARCHAR(100) NOT NULL,
-    plantaid INT NULL,
+    plantaid BIGINT NULL,
     is_active TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

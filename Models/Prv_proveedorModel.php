@@ -543,12 +543,12 @@ class Prv_proveedorModel extends Mysql
         // --- INICIO ADICIÓN: Filtro Dinámico por Planta ---
         if (!empty($filters['plantaid'])) {
             $query .= " AND p.id_planta = :plantaid";
-            $params[':plantaid'] = (int)$filters['plantaid'];
+            $params['plantaid'] = (int)$filters['plantaid'];
         }
 
         if (!empty($filters['id_proveedor'])) {
             $query .= " AND p.id_proveedor = :id_proveedor";
-            $params[':id_proveedor'] = $filters['id_proveedor'];
+            $params['id_proveedor'] = $filters['id_proveedor'];
         }
         // --- FIN ADICIÓN ---
 
