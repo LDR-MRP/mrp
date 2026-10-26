@@ -129,16 +129,9 @@ function renderizarTablaBuscadorEnvios(lista) {
 
     let html = '';
     lista.forEach(e => {
-        let idEstado = parseInt(e.id_estado);
-        let estTexto = 'Aprobado';
-        let estBadge = 'bg-soft-success text-success';
-        if (idEstado === 6) {
-            estTexto = 'En Tránsito';
-            estBadge = 'bg-soft-primary text-primary';
-        } else if (idEstado === 7) {
-            estTexto = 'Entregado';
-            estBadge = 'bg-soft-secondary text-secondary';
-        }
+        const estInfo = obtenerBadgeEstadoEnvio(e.id_estado);
+        let estTexto = estInfo.texto;
+        let estBadge = estInfo.badge;
 
         let planHtml = e.id_planeacion && parseInt(e.id_planeacion) > 0
             ? `<span class="badge bg-soft-info text-info fs-12"><i class="ri-calendar-todo-line me-1"></i>${escapeHtmlBuscador(e.folio_planeacion || 'PLN-' + e.id_planeacion)}</span>`
@@ -209,9 +202,9 @@ function seleccionarEnvioDesdeBuscador(idEnvio) {
         return;
     }
 
-    let idEstado = parseInt(envio.id_estado);
-    let estTexto = idEstado === 3 ? 'Aprobado' : (idEstado === 6 ? 'En Tránsito' : 'Entregado');
-    let estBadge = idEstado === 3 ? 'bg-soft-success text-success' : (idEstado === 6 ? 'bg-soft-primary text-primary' : 'bg-soft-secondary text-secondary');
+    const estInfo = obtenerBadgeEstadoEnvio(envio.id_estado);
+    let estTexto = estInfo.texto;
+    let estBadge = estInfo.badge;
 
     if (buscadorEnvioContexto === 'incidencia') {
         // Asignar al formulario de Incidencia
@@ -355,6 +348,28 @@ function escapeHtmlBuscador(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+function obtenerBadgeEstadoEnvio(idEstado) {
+    idEstado = parseInt(idEstado);
+    switch (idEstado) {
+        case 1:
+            return { texto: 'En Creación', badge: 'bg-soft-secondary text-secondary' };
+        case 2:
+            return { texto: 'En Aprobación', badge: 'bg-soft-warning text-warning' };
+        case 3:
+            return { texto: 'Aprobado', badge: 'bg-soft-primary text-primary' };
+        case 5:
+            return { texto: 'Programado', badge: 'bg-soft-info text-info' };
+        case 6:
+            return { texto: 'En Tránsito', badge: 'bg-soft-primary text-primary' };
+        case 7:
+            return { texto: 'Entregado', badge: 'bg-soft-secondary text-secondary' };
+        case 8:
+            return { texto: 'Confirmado', badge: 'bg-soft-success text-success' };
+        default:
+            return { texto: `Estado ${idEstado}`, badge: 'bg-light text-dark' };
+    }
 }
 
 // Control de apilamiento de modales (Stacked Modals en Bootstrap 5)

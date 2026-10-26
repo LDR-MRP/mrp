@@ -59,8 +59,12 @@
                                     <label class="form-label fs-11 text-uppercase fw-bold text-muted mb-1">Estado de Envío</label>
                                     <select id="modalFiltroEstadoEnvio" class="form-select form-select-sm" onchange="recargarEnviosServidor();">
                                         <option value="">Todos los Estados Permitidos</option>
-                                        <option value="3">🟢 3 - Aprobado</option>
-                                        <option value="6">🔵 6 - En Tránsito (Ejecutado)</option>
+                                        <option value="1">⚪ 1 - En Creación (Borrador)</option>
+                                        <option value="8">🟢 8 - Confirmado</option>
+                                        <option value="2">🟡 2 - En Aprobación</option>
+                                        <option value="3">🔵 3 - Aprobado</option>
+                                        <option value="5">📅 5 - Programado</option>
+                                        <option value="6">🚚 6 - En Tránsito (Ejecutado)</option>
                                         <option value="7">🟣 7 - Entregado</option>
                                     </select>
                                 </div>

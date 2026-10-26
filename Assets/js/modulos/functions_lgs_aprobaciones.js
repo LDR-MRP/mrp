@@ -172,6 +172,8 @@ function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
                                     <span class="badge bg-soft-info text-info border">${env.tipo_traslado || 'Madrina'}</span>
                                     <span class="fs-12 text-dark fw-medium"><i class="ri-map-pin-range-line text-muted me-1"></i>${env.origen}</span>
                                     <span class="fs-12 text-muted">| ${env.trasladista || 'Sin Trasladista'}</span>
+                                    ${parseInt(env.total_incidencias || 0) > 0 ? `<a href="${base_url}/Lgs_incidencias?envio=${env.id_envio}" target="_blank" class="badge bg-soft-danger text-danger border border-danger-subtle fs-11 text-decoration-none ms-1" title="Ver ${env.total_incidencias} incidencia(s)"><i class="ri-alarm-warning-line me-1"></i>${env.total_incidencias} Inc.</a>` : ''}
+                                    ${parseFloat(env.total_gastos || 0) > 0 ? `<a href="${base_url}/Lgs_gastosadicionales?envio=${env.id_envio}" target="_blank" class="badge bg-soft-warning text-dark border border-warning-subtle fs-11 text-decoration-none ms-1" title="Gastos Adicionales"><i class="ri-money-dollar-circle-line me-1"></i>+$${parseFloat(env.total_gastos).toLocaleString('en-US', { minimumFractionDigits: 2 })}</a>` : ''}
                                 </div>
                                 <div class="d-flex align-items-center gap-3">
                                     <span class="fs-12 text-muted"><i class="ri-car-line me-1"></i>${env.total_vins} unidad(es)</span>

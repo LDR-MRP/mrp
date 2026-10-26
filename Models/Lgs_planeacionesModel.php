@@ -215,7 +215,9 @@ class Lgs_planeacionesModel extends Mysql
                             o.nombre,
                             'Origen'
                         ) AS origen,
-                        e.id_estado
+                        e.id_estado,
+                        (SELECT COUNT(*) FROM lgs_tra_incidencias inc WHERE inc.id_envio = e.id_envio AND inc.deleted_at IS NULL) AS total_incidencias,
+                        (SELECT COALESCE(SUM(g.monto_final), 0) FROM lgs_tra_gastos_adicionales g WHERE g.id_envio = e.id_envio AND g.deleted_at IS NULL AND g.id_estado IN (3, 5)) AS total_gastos
                       FROM lgs_planeaciones_envios pe
                       INNER JOIN lgs_envios e ON pe.id_envio = e.id_envio
                       LEFT JOIN lgs_cat_tipo_traslado tt ON e.id_tipo_traslado = tt.id_tipo_traslado

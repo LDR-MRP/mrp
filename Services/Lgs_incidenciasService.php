@@ -75,7 +75,7 @@ class Lgs_incidenciasService
         try {
             $db->beginTransaction();
 
-            // 1. Validar estado del envío (3: Aprobado, 6: Ejecutado, 7: Entregado)
+            // 1. Validar estado del envío (1: Creado, 8: Confirmado, 2: En Aprobación, 3: Aprobado, 5: Programado, 6: Ejecutado, 7: Entregado)
             $stmtEnvio = $db->prepare("SELECT id_estado, id_proveedor FROM lgs_envios WHERE id_envio = ? AND deleted_at IS NULL FOR UPDATE");
             $stmtEnvio->execute([$idEnvio]);
             $envio = $stmtEnvio->fetch(PDO::FETCH_ASSOC);
@@ -85,8 +85,8 @@ class Lgs_incidenciasService
             }
 
             $estadoEnvio = intval($envio['id_estado']);
-            if (!in_array($estadoEnvio, [3, 6, 7], true)) {
-                throw new Exception("Solo se pueden registrar incidencias en envíos Aprobados (3), En Tránsito/Ejecutados (6) o Entregados (7). Estado actual: {$estadoEnvio}.");
+            if (!in_array($estadoEnvio, [1, 2, 3, 5, 6, 7, 8], true)) {
+                throw new Exception("Solo se pueden registrar incidencias en envíos activos (En Creación, Confirmados, En Aprobación, Aprobados, Programados, En Tránsito o Entregados). Estado actual: {$estadoEnvio}.");
             }
 
             $esPostEntrega = ($estadoEnvio === 7) ? 1 : 0;

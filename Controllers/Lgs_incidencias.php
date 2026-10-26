@@ -55,7 +55,7 @@ class Lgs_incidencias extends Controllers
     }
 
     /**
-     * Devuelve envíos elegibles (estados 3, 6, 7) para select/buscador
+     * Devuelve envíos elegibles (estados activos: 1, 8, 2, 3, 5, 6, 7) para select/buscador
      * URL: {{base_url}}/Lgs_incidencias/getEnviosElegibles?q=...
      */
     public function getEnviosElegibles(): void

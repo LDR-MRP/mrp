@@ -64,12 +64,12 @@ class Lgs_incidenciasModel extends Mysql
         $whereQuery = "";
         $params = [];
 
-        // Filtro por Estado (3: Aprobado, 6: En Tránsito, 7: Entregado)
+        // Filtro por Estado (1: Creado, 8: Confirmado, 2: En Aprobación, 3: Aprobado, 5: Programado, 6: En Tránsito, 7: Entregado)
         if (!empty($filtros['id_estado'])) {
             $whereQuery .= " AND e.id_estado = ?";
             $params[] = intval($filtros['id_estado']);
         } else {
-            $whereQuery .= " AND e.id_estado IN (3, 6, 7)";
+            $whereQuery .= " AND e.id_estado IN (1, 2, 3, 5, 6, 7, 8)";
         }
 
         // Filtro por Proveedor / Trasladista

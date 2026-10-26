@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     let btnIncidencia = '';
                     let btnGasto = '';
-                    if (estado === 3 || estado === 6 || estado === 7) {
+                    if ([1, 2, 3, 5, 6, 7, 8].includes(estado)) {
                         btnIncidencia = `<a href="${base_url}/Lgs_incidencias?envio=${data}" class="btn btn-sm btn-soft-danger rounded-circle p-1 me-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;" title="Reportar Incidencia">
                                             <i class="ri-alarm-warning-line"></i>
                                          </a>`;

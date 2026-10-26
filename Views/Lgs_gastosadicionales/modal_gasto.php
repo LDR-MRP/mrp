@@ -101,7 +101,7 @@
                                 <div class="col-12 mb-2">
                                     <div class="mb-1">
                                         <label class="form-label fs-12 fw-bold text-primary mb-0">
-                                            <i class="ri-truck-line me-1"></i> Envío Afectado (Aprobado, En Tránsito o Entregado) <span class="text-danger">*</span>
+                                            <i class="ri-truck-line me-1"></i> Envío Afectado (En Creación, Confirmado, En Tránsito o Entregado) <span class="text-danger">*</span>
                                         </label>
                                     </div>
                                     <input type="hidden" id="id_envio_indep" name="id_envio" value="">

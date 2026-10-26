@@ -64,7 +64,7 @@
                                         </div>
                                     </div>
                                     <div class="mt-2 pt-2 border-top fs-11 text-muted" id="txtEnvioVinsResumenCont">
-                                        <strong>VINs en tránsito:</strong> <span id="txtEnvioVinsResumen" class="font-monospace text-secondary">-</span>
+                                        <strong>VINs del envío:</strong> <span id="txtEnvioVinsResumen" class="font-monospace text-secondary">-</span>
                                     </div>
                                 </div>
                             </div>

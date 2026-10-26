@@ -198,12 +198,12 @@ class Lgs_gastosadicionalesService
                 $idProveedor = !empty($envioRow['id_proveedor']) ? intval($envioRow['id_proveedor']) : null;
             }
 
-            // 3. Validar estado del envío (3, 6, 7)
+            // 3. Validar estado del envío (1: Creado, 8: Confirmado, 2: En Aprobación, 3: Aprobado, 5: Programado, 6: Ejecutado, 7: Entregado)
             $stmtEnvio = $db->prepare("SELECT id_estado FROM lgs_envios WHERE id_envio = ? AND deleted_at IS NULL");
             $stmtEnvio->execute([$idEnvio]);
             $estadoEnvio = intval($stmtEnvio->fetchColumn());
-            if (!in_array($estadoEnvio, [3, 6, 7], true)) {
-                throw new Exception("Solo se pueden registrar gastos en envíos Aprobados (3), En Tránsito (6) o Entregados (7).");
+            if (!in_array($estadoEnvio, [1, 2, 3, 5, 6, 7, 8], true)) {
+                throw new Exception("Solo se pueden registrar gastos en envíos activos (En Creación, Confirmados, En Aprobación, Aprobados, Programados, En Tránsito o Entregados).");
             }
 
             // 4. Calcular importes

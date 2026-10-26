@@ -539,7 +539,7 @@ class Lgs_envios extends Controllers
             $this->service->asegurarCostosVins($idEnvio);
 
             $idEstadoEnvio = intval($envio['id_estado'] ?? 0);
-            if ($idEstadoEnvio >= 3) {
+            if ($idEstadoEnvio > 0 && $idEstadoEnvio !== 4) {
                 if (file_exists("Models/Lgs_gastosadicionalesModel.php")) {
                     require_once("Models/Lgs_gastosadicionalesModel.php");
                     $gaModel = new Lgs_gastosadicionalesModel();

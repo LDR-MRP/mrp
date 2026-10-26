@@ -139,7 +139,14 @@
                         
                         $enPlaneacionAbierta = ($estadoEnvio === 2 && $estadoPlan < 2);
                         $puedeEditar = ($estadoEnvio === 8 || $enPlaneacionAbierta);
-                        
+                    ?>
+                    <a href="<?= base_url(); ?>/Lgs_incidencias?envio=<?= $data['id_envio'] ?>" class="btn btn-soft-danger rounded-pill px-3 py-2 shadow-sm me-2 fw-medium" title="Reportar Incidencia Operativa">
+                        <i class="ri-alarm-warning-line me-1"></i> Incidencia
+                    </a>
+                    <a href="<?= base_url(); ?>/Lgs_gastosadicionales?envio=<?= $data['id_envio'] ?>" class="btn btn-soft-success rounded-pill px-3 py-2 shadow-sm me-2 fw-medium" title="Registrar Gasto Adicional">
+                        <i class="ri-money-dollar-circle-line me-1"></i> + Gasto Adicional
+                    </a>
+                    <?php 
                         if ($estadoEnvio === 1): 
                     ?>
                         <button class="btn btn-primary rounded-pill px-4 py-2 shadow-sm fw-bold" onclick="guardarAcomodo(true);" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
@@ -153,14 +160,6 @@
                             <i class="ri-edit-line me-1"></i> <?= $enPlaneacionAbierta ? 'Editar (Regresa a Borrador)' : 'Editar (Regresa a Borrador)' ?>
                         </button>
                     <?php else: ?>
-                        <?php if ($estadoEnvio >= 3): ?>
-                            <a href="<?= base_url(); ?>/Lgs_incidencias?envio=<?= $data['id_envio'] ?>" class="btn btn-soft-danger rounded-pill px-3 py-2 shadow-sm me-2 fw-medium" title="Reportar Incidencia Operativa">
-                                <i class="ri-alarm-warning-line me-1"></i> Incidencia
-                            </a>
-                            <a href="<?= base_url(); ?>/Lgs_gastosadicionales?envio=<?= $data['id_envio'] ?>" class="btn btn-soft-success rounded-pill px-3 py-2 shadow-sm me-2 fw-medium" title="Registrar Gasto Adicional">
-                                <i class="ri-money-dollar-circle-line me-1"></i> + Gasto Adicional
-                            </a>
-                        <?php endif; ?>
                         <a href="<?= base_url(); ?>/Lgs_envios" class="btn btn-light border rounded-pill px-4 py-2 shadow-sm fw-semibold text-secondary">
                             <i class="ri-arrow-go-back-line me-1"></i> Volver (Solo Lectura)
                         </a>
@@ -213,7 +212,7 @@
 
             <?php 
                 $audit = $data['auditoria_financiera'] ?? null;
-                if ($estadoEnvio >= 3 && !empty($audit)): 
+                if (!empty($audit)): 
                     $totales = $audit['totales'] ?? [];
             ?>
             <!-- ── SECCIÓN: AUDITORÍA FINANCIERA, INCIDENCIAS Y COSTO REAL POR VIN ── -->
