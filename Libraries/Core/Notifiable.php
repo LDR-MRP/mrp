@@ -19,17 +19,18 @@ trait Notifiable
      * @param string $event    Nombre del evento/template (ej: 'supplier_approved')
      * @param array  $data     Datos dinámicos para el cuerpo del correo
      * @param array  $to       Lista de correos destinatarios
+     * @param string $recipientType Tipo de destinatario: 'colaborador' o 'proveedor' (opcional)
      */
-    public function sendNotification(string $event, array $data, array $to): void
+    public function sendNotification(string $event, array $data, array $to, string $recipientType = 'colaborador'): void
     {
         // Instanciamos el servicio (puedes usar un Singleton si prefieres)
         $notificationService = new NotificationService();
 
         // Si tu trait Loggable está presente en la misma clase, lo aprovechamos
         if (method_exists($this, 'logMessage')) {
-            $this->logMessage("Disparando notificación: {$event}", \LogLevel::INFO, ['to' => $to]);
+            $this->logMessage("Disparando notificación: {$event} ({$recipientType})", \LogLevel::INFO, ['to' => $to]);
         }
 
-        $notificationService->sendEmailByEvent($event, $data, $to);
+        $notificationService->sendEmailByEvent($event, $data, $to, $recipientType);
     }
 }

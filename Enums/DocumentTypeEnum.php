@@ -12,7 +12,7 @@ enum DocumentTypeEnum: string
     case DOMICILIO = 'comprobante_domicilio';
     case TAX_ID = 'tax_id_extranjero';
     case PASAPORTE = 'pasaporte_internacional';
-
+    case REPSE = 'repse';
     /**
      * Retorna la configuración de documentos requeridos según el perfil del proveedor.
      * 
@@ -29,6 +29,7 @@ enum DocumentTypeEnum: string
             if ($tipoPersona === 'M') {
                 $list[] = self::CONSTITUTIVA;
                 $list[] = self::PODER;
+                $list[] = self::REPSE;
             }
             $list[] = self::CSF;
             $list[] = self::RFC;
@@ -57,13 +58,14 @@ enum DocumentTypeEnum: string
     {
         return match($this) {
             self::CONSTITUTIVA => ['name' => 'Acta Constitutiva', 'required' => true, 'ext' => 'pdf'],
-            self::PODER => ['name' => 'Poder Notarial', 'required' => true, 'ext' => 'pdf'],
+            self::PODER => ['name' => 'Poder Notarial', 'required' => false, 'ext' => 'pdf'],
             self::CSF => ['name' => 'Constancia de Situación Fiscal', 'required' => true, 'ext' => 'pdf'],
-            self::RFC => ['name' => 'Cédula de RFC', 'required' => true, 'ext' => 'pdf'],
+            self::RFC => ['name' => 'Cédula de RFC', 'required' => false, 'ext' => 'pdf'],
             self::ID => ['name' => 'Identificación Oficial', 'required' => true, 'ext' => 'pdf'],
             self::DOMICILIO => ['name' => 'Comprobante de Domicilio', 'required' => true, 'ext' => 'pdf'],
             self::TAX_ID => ['name' => 'Tax ID / Registro Fiscal', 'required' => true, 'ext' => 'pdf'],
             self::PASAPORTE => ['name' => 'Pasaporte o ID Internacional', 'required' => true, 'ext' => 'pdf'],
+            self::REPSE => ['name' => 'REPSE', 'required' => false, 'ext' => 'pdf'],
         };
     }
 }

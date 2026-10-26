@@ -687,4 +687,19 @@ class Prv_proveedorModel extends Mysql
         
         return $this->select($sql, [$proveedorId]) ?: null;
     }
+
+    /**
+     * Obtiene el email de contacto de un proveedor
+     */
+    public function getContactEmail(int $proveedorId): ?string
+    {
+        $sql = "SELECT email 
+                FROM prv_det_contactos 
+                WHERE id_proveedor = ? 
+                AND deleted_at IS NULL 
+                LIMIT 1";
+        
+        $result = $this->select($sql, [$proveedorId]);
+        return $result['email'] ?? null;
+    }
 }

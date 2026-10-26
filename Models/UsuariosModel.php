@@ -294,7 +294,8 @@ class UsuariosModel extends Mysql
 	{
 		$sql = "SELECT DISTINCT u.email_user 
 				FROM usuarios u
-				INNER JOIN sys_notification_distribution d ON u.rolid = d.rolid
+				INNER JOIN sys_notification_distribution d ON 
+				    (u.rolid = d.rolid OR u.idusuario = d.userid)
 				WHERE d.event_key = ? 
 				AND (d.plantaid = ? OR d.plantaid IS NULL) -- Local o Global
 				AND d.is_active = 1

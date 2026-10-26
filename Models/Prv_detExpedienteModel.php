@@ -118,7 +118,7 @@ class Prv_detExpedienteModel extends Mysql
         // Por eso validamos que sea >= 1.
         return $rowCount >= 1;
     }
-
+             
     /**
      * 
      */

@@ -2,11 +2,15 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <!-- 
+        Variables inyectadas dinámicamente por NotificationService::renderTemplate():
+        $razon_social, $rfc, $origen, $tipo, $created_at, $link_expediente, $destinatario
+    -->
     <style>
         body { margin: 0; padding: 0; background-color: #ffffff; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
         .container { width: 100%; max-width:800px; margin: 0 auto; background-color: #ffffff; }
         .header { padding: 20px 40px; }
-        .header-logo { float: left; width: 150px; }
+        .header-logo { float: left; width: 150px; transform: rotate(0deg); }
         .header-info { float: right; text-align: right; color: #575756; font-size: 14px; }
         .main-card { 
             background-color: #E3E3E2; 
@@ -24,7 +28,7 @@
             margin-bottom: 30px;
             text-transform: uppercase;
         }
-        .megaphone-icon { float: right; width: 100px; opacity: 0.7; }
+        .megaphone-icon { float: right; width: 100px; opacity: 0.7; transform: rotate(0deg); }
         .body-text { color: #575756; font-size: 18px; line-height: 1.4; margin-bottom: 20px; }
         .highlight { color: #e87b24; font-weight: bold; } /* Orange highlight from the brand */
         
@@ -70,10 +74,10 @@
         <!-- MAIN CONTENT CARD -->
         <div class="main-card">
             <img src="<?= base_url(); ?>/Assets/images/emails/icon-megaphone.png" class="megaphone-icon" alt="Aviso">
-            <div class="title">ESTIMADO<br>COLABORADOR:</div>
+            <div class="title">ESTIMADO<br><?= $destinatario ?>:</div>
             
             <div class="body-text">
-                Les informamos que el proveedor <span class="highlight">{{razon_social}}</span> ha completado satisfactoriamente la carga de su <strong>expediente digital</strong>.
+                Les informamos que el proveedor <span class="highlight"><?= $razon_social ?></span> ha completado satisfactoriamente la carga de su <strong>expediente digital</strong>.
             </div>
 
             <div class="body-text">
@@ -86,24 +90,24 @@
                     <tr>
                         <td width="50%" style="padding-bottom: 10px;">
                             <span class="label">RFC / Tax ID</span><br>
-                            <span class="value">{{rfc}}</span>
+                            <span class="value"><?= $rfc ?></span>
                         </td>
                         <td width="50%" style="padding-bottom: 10px;">
                             <span class="label">Origen</span><br>
-                            <span class="value">{{origen}} ({{tipo}})</span>
+                            <span class="value"><?= $origen ?> (<?= $tipo ?>)</span>
                         </td>
                     </tr>
                     <tr>
                         <td colspan="2">
                             <span class="label">Fecha de Registro</span><br>
-                            <span class="value">{{created_at}}</span>
+                            <span class="value"><?= $created_at ?></span>
                         </td>
                     </tr>
                 </table>
             </div>
 
             <div style="text-align: center;">
-                <a href="{{link_expediente}}" class="btn-action">Iniciar Validación de Expediente</a>
+                <a href="<?= $link_expediente ?>" class="btn-action">Iniciar Validación de Expediente</a>
             </div>
             
             <div class="body-text" style="margin-top: 30px;">
