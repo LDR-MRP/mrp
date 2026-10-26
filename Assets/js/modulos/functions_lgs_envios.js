@@ -341,6 +341,7 @@ function buildDistribuidorOptions(selectedDistribuidorId) {
 function onDistribuidorChange(selectDistribuidor) {
     const card = selectDistribuidor.closest('.nodo-item');
     if (!card) return;
+    const isAbierto = (card.getAttribute('data-destino-abierto') === '1');
     const selectSede = card.querySelector('.nodo-select-sede');
     const selectUbi = card.querySelector('.nodo-select-ubicacion');
     const infoSpan = card.querySelector('.nodo-direccion-preview');
@@ -351,8 +352,10 @@ function onDistribuidorChange(selectDistribuidor) {
             selectSede.innerHTML = '<option value="">Primero seleccione distribuidor</option>';
             selectSede.disabled = true;
         }
-        if (selectUbi) selectUbi.value = '';
-        if (infoSpan) infoSpan.innerHTML = '';
+        if (!isAbierto) {
+            if (selectUbi) selectUbi.value = '';
+            if (infoSpan) infoSpan.innerHTML = '';
+        }
         serializarNodos();
         return;
     }
@@ -366,8 +369,10 @@ function onDistribuidorChange(selectDistribuidor) {
             // Auto-seleccionar la única sede
             selectSede.innerHTML = `<option value="${sedes[0].id || sedes[0].id_ubicacion}" selected>${sedes[0].nombre}${sedes[0].direccion ? ' — ' + sedes[0].direccion : ''}</option>`;
             selectSede.disabled = false;
-            if (selectUbi) selectUbi.value = sedes[0].id || sedes[0].id_ubicacion;
-            if (infoSpan) infoSpan.innerHTML = sedes[0].direccion ? `<i class="ri-map-pin-line text-danger me-1"></i>${sedes[0].direccion}` : '';
+            if (!isAbierto) {
+                if (selectUbi) selectUbi.value = sedes[0].id || sedes[0].id_ubicacion;
+                if (infoSpan) infoSpan.innerHTML = sedes[0].direccion ? `<i class="ri-map-pin-line text-danger me-1"></i>${sedes[0].direccion}` : '';
+            }
         } else if (sedes.length > 1) {
             let opts = '<option value="">Seleccione sede...</option>';
             sedes.forEach(s => {
@@ -376,8 +381,10 @@ function onDistribuidorChange(selectDistribuidor) {
             });
             selectSede.innerHTML = opts;
             selectSede.disabled = false;
-            if (selectUbi) selectUbi.value = '';
-            if (infoSpan) infoSpan.innerHTML = `<span class="text-info"><i class="ri-building-2-line me-1"></i>${sedes.length} sedes disponibles</span>`;
+            if (!isAbierto) {
+                if (selectUbi) selectUbi.value = '';
+                if (infoSpan) infoSpan.innerHTML = `<span class="text-info"><i class="ri-building-2-line me-1"></i>${sedes.length} sedes disponibles</span>`;
+            }
         } else {
             // Sin sedes en catálogo local, intentar AJAX
             selectSede.innerHTML = '<option value="">Cargando sedes...</option>';
@@ -398,7 +405,7 @@ function onDistribuidorChange(selectDistribuidor) {
                             });
                             selectSede.innerHTML = opts;
                             selectSede.disabled = false;
-                            if (res.data.length === 1) {
+                            if (!isAbierto && res.data.length === 1) {
                                 if (selectUbi) selectUbi.value = res.data[0].id;
                                 if (infoSpan) infoSpan.innerHTML = res.data[0].direccion ? `<i class="ri-map-pin-line text-danger me-1"></i>${res.data[0].direccion}` : '';
                             }
@@ -744,7 +751,9 @@ function agregarNodoRuta(data, isCarga = false) {
 
     // Determinar si la ubicación seleccionada es un distribuidor (para preseleccionar la cascada)
     let selDistribuidorId = '';
-    if (selUbicacionId && !esOrigen && !isCargaVal) {
+    if (data && data.id_distribuidor) {
+        selDistribuidorId = data.id_distribuidor;
+    } else if (selUbicacionId && !esOrigen && !isCargaVal) {
         const ubicaciones = getCatalogoUbicaciones();
         const ubiSel = ubicaciones.find(u => String(u.id || u.id_ubicacion) === String(selUbicacionId));
         if (ubiSel && ubiSel.id_distribuidor) {
@@ -766,39 +775,43 @@ function agregarNodoRuta(data, isCarga = false) {
                     </label>
                 </div>
             </div>
-            <!-- Bloque Catálogo (Distribuidor / Sede) -->
-            <div class="nodo-bloque-catalogo" style="${esAbiertoInicial ? 'display: none;' : ''}">
-                <div class="row g-2 mb-1">
-                    <div class="col-md-6">
-                        <label class="form-label fs-11 text-muted mb-1 fw-bold"><i class="ri-building-2-line text-primary me-1"></i>Distribuidor</label>
-                        <select class="form-select form-select-sm nodo-select-distribuidor" onchange="onDistribuidorChange(this)">
-                            ${buildDistribuidorOptions(selDistribuidorId)}
-                        </select>
-                    </div>
-                    <div class="col-md-6">
+            <div class="row g-2 mb-1">
+                <!-- Columna Izquierda: Distribuidor (Siempre visible a la izquierda) -->
+                <div class="col-md-5">
+                    <label class="form-label fs-11 text-muted mb-1 fw-bold">
+                        <i class="ri-building-2-line text-primary me-1"></i>Distribuidor <span class="badge bg-soft-info text-info fs-10 fw-normal ms-1">Bandeja / Ref.</span>
+                    </label>
+                    <select class="form-select form-select-sm nodo-select-distribuidor" onchange="onDistribuidorChange(this)">
+                        ${buildDistribuidorOptions(selDistribuidorId)}
+                    </select>
+                </div>
+                <!-- Columna Derecha: Sede de Catálogo (si no es abierto) o Destino Abierto (si es abierto) -->
+                <div class="col-md-7">
+                    <!-- Modo Catálogo: Sede -->
+                    <div class="nodo-bloque-catalogo" style="${esAbiertoInicial ? 'display: none;' : ''}">
                         <label class="form-label fs-11 text-muted mb-1 fw-bold"><i class="ri-store-2-line text-warning me-1"></i>Sede</label>
                         <select class="form-select form-select-sm nodo-select-sede" onchange="onSedeChange(this)" ${selDistribuidorId ? '' : 'disabled'}>
                             <option value="">Primero seleccione distribuidor</option>
                         </select>
+                        <details class="mt-1">
+                            <summary class="fs-10 text-muted" style="cursor:pointer;"><i class="ri-arrow-down-s-line me-1"></i>Selección directa (sin distribuidor)</summary>
+                            <select class="form-select form-select-sm nodo-select-ubicacion mt-1" onchange="alCambiarUbicacionNodo(this)">
+                                ${buildUbicacionOptions(selUbicacionId)}
+                            </select>
+                        </details>
+                    </div>
+                    <!-- Modo Abierto: Nombre / Dirección libre -->
+                    <div class="nodo-bloque-abierto" style="${esAbiertoInicial ? '' : 'display: none;'}">
+                        <label class="form-label fs-11 text-muted mb-1 fw-bold">
+                            <i class="ri-map-pin-user-line text-danger me-1"></i>Destino Abierto / Dirección Real <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control form-control-sm nodo-nombre-libre" 
+                            value="${escapeHtmlEnvios(nombreLibre)}" 
+                            placeholder="Ej. Bodega Particular El Roble, Carr. México-Puebla Km 45" 
+                            oninput="alCambiarNombreLibreNodo(this)">
+                        <small class="text-muted fs-10 d-block mt-1"><i class="ri-information-line me-1 text-primary"></i>Punto fuera de catálogo con KM manuales.</small>
                     </div>
                 </div>
-                <details class="mt-1">
-                    <summary class="fs-10 text-muted" style="cursor:pointer;"><i class="ri-arrow-down-s-line me-1"></i>Selección directa (sin distribuidor)</summary>
-                    <select class="form-select form-select-sm nodo-select-ubicacion mt-1" onchange="alCambiarUbicacionNodo(this)">
-                        ${buildUbicacionOptions(selUbicacionId)}
-                    </select>
-                </details>
-            </div>
-            <!-- Bloque Destino Abierto (Texto libre para descarga fuera de catálogo) -->
-            <div class="nodo-bloque-abierto" style="${esAbiertoInicial ? '' : 'display: none;'}">
-                <label class="form-label fs-11 text-muted mb-1 fw-bold">
-                    <i class="ri-map-pin-user-line text-danger me-1"></i>Nombre / Dirección de Entrega Libre <span class="text-danger">*</span>
-                </label>
-                <input type="text" class="form-control form-control-sm nodo-nombre-libre" 
-                    value="${escapeHtmlEnvios(nombreLibre)}" 
-                    placeholder="Ej. Bodega Particular El Roble, Carr. México-Puebla Km 45" 
-                    oninput="alCambiarNombreLibreNodo(this)">
-                <small class="text-muted fs-10 d-block mt-1"><i class="ri-information-line me-1 text-primary"></i>Punto fuera de catálogo. Se calculará el costo usando los KM capturados sin registrarlo en la memoria general.</small>
             </div>`;
     } else if (isCargaVal && !esOrigen) {
         // NODOS DE CARGA ADICIONAL: Switch Catálogo vs Carga Abierta (ej. Expo, evento, patio temporal)
@@ -1067,11 +1080,7 @@ function toggleNodoDestinoAbierto(chk) {
         if (bloqueCat) bloqueCat.style.display = 'none';
         if (bloqueAbierto) bloqueAbierto.style.display = '';
         if (infoSpan) infoSpan.innerHTML = '';
-        if (selDist) selDist.value = '';
-        if (selSede) {
-            selSede.innerHTML = '<option value="">Primero seleccione distribuidor</option>';
-            selSede.disabled = true;
-        }
+        // NO limpiamos selDist.value para conservar el distribuidor a la izquierda como referencia
         if (selUbi) selUbi.value = '';
 
         if (inpKm) {
@@ -1094,6 +1103,9 @@ function toggleNodoDestinoAbierto(chk) {
         }
         if (badgeKm) {
             badgeKm.innerHTML = '<i class="ri-history-line me-1"></i>Memoria';
+        }
+        if (selDist && selDist.value) {
+            onDistribuidorChange(selDist);
         }
     }
 
@@ -1235,6 +1247,9 @@ function serializarNodos() {
             nombreLibre = inpLibreHidden ? inpLibreHidden.value.trim() : '';
         }
 
+        const selDist = card.querySelector('.nodo-select-distribuidor');
+        const idDist = (selDist && selDist.value) ? parseInt(selDist.value) : null;
+
         const selOrigenRef = card.querySelector('.nodo-select-origen-ref');
         let idOrigenRef = null;
         if (selOrigenRef && selOrigenRef.value !== '' && selOrigenRef.value !== null) {
@@ -1248,6 +1263,7 @@ function serializarNodos() {
             orden: idx,
             tipo_nodo: tipoNodo,
             id_ubicacion: idUbi,
+            id_distribuidor: idDist,
             id_origen_referencia: idOrigenRef,
             destino_nombre_libre: nombreLibre,
             destino_abierto: esAbierto,
@@ -1260,6 +1276,7 @@ function serializarNodos() {
                 orden: idx,
                 tipo_nodo: tipoNodo,
                 id_destino_cat: idUbi,
+                id_distribuidor: idDist,
                 id_origen_referencia: idOrigenRef,
                 destino_nombre_libre: nombreLibre,
                 destino_abierto: esAbierto,

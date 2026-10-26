@@ -442,15 +442,27 @@ class Lgs_envios extends Controllers
                     $tipoNodo = !empty($nodo['tipo_nodo']) ? $nodo['tipo_nodo'] : ($idx === 0 ? 'origen' : 'entrega');
                     $fechaEstimada = !empty($nodo['fecha_estimada']) ? str_replace('T', ' ', $nodo['fecha_estimada']) : null;
                     $idOrigenRef = isset($nodo['id_origen_referencia']) && $nodo['id_origen_referencia'] !== '' && $nodo['id_origen_referencia'] !== null ? intval($nodo['id_origen_referencia']) : null;
+                    $idDistribuidor = isset($nodo['id_distribuidor']) && $nodo['id_distribuidor'] !== '' && $nodo['id_distribuidor'] !== null ? intval($nodo['id_distribuidor']) : null;
+                    if (!$idDistribuidor && $locId) {
+                        try {
+                            $ubiDistStmt = $db->prepare("SELECT id_distribuidor FROM lgs_cat_ubicaciones WHERE id_ubicacion = ?");
+                            $ubiDistStmt->execute([$locId]);
+                            $foundDist = $ubiDistStmt->fetchColumn();
+                            if ($foundDist) {
+                                $idDistribuidor = intval($foundDist);
+                            }
+                        } catch (Throwable $e) {}
+                    }
 
                     $stmtInsertNodo = $db->prepare("INSERT INTO lgs_envios_nodos 
-                        (id_envio, orden, tipo_nodo, id_ubicacion, id_origen_referencia, destino_nombre_libre, km_tramo_anterior, observaciones, fecha_estimada) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                        (id_envio, orden, tipo_nodo, id_ubicacion, id_distribuidor, id_origen_referencia, destino_nombre_libre, km_tramo_anterior, observaciones, fecha_estimada) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmtInsertNodo->execute([
                         $idEnvio,
                         $idx,
                         $tipoNodo,
                         $locId,
+                        $idDistribuidor,
                         $idOrigenRef,
                         htmlspecialchars(trim($nodo['destino_nombre_libre'] ?? ''), ENT_QUOTES, 'UTF-8'),
                         $kmTramo,
@@ -611,6 +623,10 @@ class Lgs_envios extends Controllers
                         $nombreDestino = strtolower(trim($nodo['nombre'] ?? ''));
                         if (!empty($nombreDestino)) {
                             $destinosValidos[] = $nombreDestino;
+                        }
+                        $nombreDist = strtolower(trim($nodo['distribuidor_nombre'] ?? ''));
+                        if (!empty($nombreDist)) {
+                            $destinosValidos[] = $nombreDist;
                         }
                     }
                 }

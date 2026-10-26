@@ -70,6 +70,7 @@ class Lgs_enviosModel extends Mysql
             'orden',
             'tipo_nodo',
             'id_ubicacion',
+            'id_distribuidor',
             'id_origen_referencia',
             'destino_nombre_libre',
             'km_tramo_anterior',
@@ -692,6 +693,8 @@ class Lgs_enviosModel extends Mysql
                         n.orden,
                         n.tipo_nodo,
                         n.id_ubicacion AS id_destino_cat,
+                        COALESCE(u.id_distribuidor, n.id_distribuidor) AS id_distribuidor,
+                        d.nombre AS distribuidor_nombre,
                         COALESCE(u.nombre, n.destino_nombre_libre, 'Sin Nombre') AS destino_nombre,
                         n.destino_nombre_libre,
                         n.km_tramo_anterior AS km_tramo,
@@ -699,6 +702,7 @@ class Lgs_enviosModel extends Mysql
                         n.fecha_estimada
                     FROM lgs_envios_nodos n
                     LEFT JOIN lgs_cat_ubicaciones u ON n.id_ubicacion = u.id_ubicacion
+                    LEFT JOIN lgs_cat_distribuidores d ON d.id_distribuidor = COALESCE(u.id_distribuidor, n.id_distribuidor)
                     WHERE n.id_envio = ? AND n.orden > 0
                     ORDER BY n.orden ASC";
             $res = $this->select_all($sql, [$idEnvio]);
@@ -734,6 +738,7 @@ class Lgs_enviosModel extends Mysql
             'orden'                => $data['orden'] ?? 1,
             'tipo_nodo'            => $data['tipo_nodo'] ?? 'entrega',
             'id_ubicacion'         => $locId > 0 ? $locId : null,
+            'id_distribuidor'      => !empty($data['id_distribuidor']) ? (int)$data['id_distribuidor'] : null,
             'id_origen_referencia' => !empty($data['id_origen_referencia']) ? (int)$data['id_origen_referencia'] : null,
             'destino_nombre_libre' => !empty($data['destino_nombre_libre']) ? trim($data['destino_nombre_libre']) : null,
             'km_tramo_anterior'    => !empty($data['km_tramo']) ? floatval($data['km_tramo']) : (!empty($data['km_tramo_anterior']) ? floatval($data['km_tramo_anterior']) : 0.00),
@@ -906,6 +911,9 @@ class Lgs_enviosModel extends Mysql
             } catch (Throwable $e) {}
             try {
                 $db->exec("ALTER TABLE `lgs_envios_nodos` ADD COLUMN `id_origen_referencia` BIGINT NULL DEFAULT NULL AFTER `id_ubicacion`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios_nodos` ADD COLUMN `id_distribuidor` BIGINT NULL DEFAULT NULL AFTER `id_ubicacion`");
             } catch (Throwable $e) {}
             try {
                 $db->exec("ALTER TABLE `prv_cat_proveedores` ADD COLUMN `modalidad_envio_default` ENUM('ESCALONADO', 'DIRECTO') NOT NULL DEFAULT 'DIRECTO' AFTER `origen`");
@@ -1094,6 +1102,8 @@ class Lgs_enviosModel extends Mysql
                         n.orden,
                         n.tipo_nodo,
                         n.id_ubicacion,
+                        COALESCE(u.id_distribuidor, n.id_distribuidor) AS id_distribuidor,
+                        d.nombre AS distribuidor_nombre,
                         n.id_origen_referencia,
                         COALESCE(u.nombre, n.destino_nombre_libre, 'Sin Nombre') AS nombre,
                         u.direccion,
@@ -1104,6 +1114,7 @@ class Lgs_enviosModel extends Mysql
                         n.fecha_estimada
                     FROM lgs_envios_nodos n
                     LEFT JOIN lgs_cat_ubicaciones u ON n.id_ubicacion = u.id_ubicacion
+                    LEFT JOIN lgs_cat_distribuidores d ON d.id_distribuidor = COALESCE(u.id_distribuidor, n.id_distribuidor)
                     WHERE n.id_envio = ?
                     ORDER BY n.orden ASC";
             $res = $this->select_all($sql, [$idEnvio]);
