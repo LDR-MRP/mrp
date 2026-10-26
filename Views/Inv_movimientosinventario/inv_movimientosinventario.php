@@ -145,6 +145,14 @@
                                             style="display:none;">
                                             <option value="">-- Seleccione proveedor --</option>
                                         </select>
+                                        <select
+                                            class="form-control"
+                                            id="id_cliente"
+                                            name="id_cliente"
+                                            style="display:none;"
+                                            disabled>
+                                            <option value="">-- Seleccione cliente --</option>
+                                        </select>
                                     </div>
 
 
@@ -193,6 +201,13 @@
                                                         <td>
                                                             <input type="text" class="form-control invSearch">
                                                             <input type="hidden" name="inventarioid[]">
+                                                            <input type="hidden" name="series_json[]" class="seriesJson" value="[]">
+                                                            <div class="vinBox mt-1" style="display:none;">
+                                                                <button type="button" class="btn btn-sm btn-soft-primary btnVines">
+                                                                    <i class="ri-barcode-line"></i> Seleccionar VINs
+                                                                </button>
+                                                                <span class="vinResumen small ms-2"></span>
+                                                            </div>
                                                         </td>
                                                         <td><input name="costo_cantidad[]" type="number" class="form-control costo"></td>
                                                         <td><input name="total[]" type="number" class="form-control total" readonly></td>
@@ -261,6 +276,44 @@
 </div>
 
 
+
+<!-- Modal: selección de VINs para salidas de unidades (tipo P) -->
+<div class="modal fade" id="modalVinesMov" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">VINs que salen <small class="text-muted" id="vinesMovProducto"></small></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group mb-2">
+                    <span class="input-group-text"><i class="ri-barcode-line"></i></span>
+                    <input type="text" class="form-control" id="vinesMovBuscar"
+                        placeholder="Escanea o escribe el VIN (Enter para marcarlo)" autocomplete="off">
+                </div>
+                <div class="small text-muted mb-2" id="vinesMovInfo"></div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="40"></th>
+                                <th>VIN</th>
+                                <th>Color</th>
+                                <th>No. motor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vinesMovBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span class="me-auto fw-semibold" id="vinesMovContador">0 seleccionados</span>
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnVinesMovAceptar">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade" id="modalViewPrecio" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">

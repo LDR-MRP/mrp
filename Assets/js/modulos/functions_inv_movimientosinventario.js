@@ -175,6 +175,22 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    // Salidas de unidades: cada partida debe traer sus VINs
+    let faltanVines = null;
+    document.querySelectorAll("#tablaPartidas tbody tr").forEach((tr) => {
+      if (faltanVines || !filaRequiereVin(tr)) return;
+      const ids = JSON.parse(tr.querySelector(".seriesJson").value || "[]");
+      if (ids.length === 0) faltanVines = tr.querySelector(".invSearch").value;
+    });
+    if (faltanVines) {
+      Swal.fire(
+        "Faltan VINs",
+        "Selecciona los VINs que salen para: " + faltanVines,
+        "warning",
+      );
+      return;
+    }
+
     let formData = new FormData(this);
 
     fetch(base_url + "/Inv_movimientosinventario/setMovimiento", {
@@ -220,6 +236,20 @@ document.addEventListener("DOMContentLoaded", function () {
             selectProveedorReset.disabled = true;
             selectProveedorReset.value = "";
           }
+          const selectClienteReset = document.querySelector("#id_cliente");
+          if (selectClienteReset) {
+            selectClienteReset.style.display = "none";
+            selectClienteReset.required = false;
+            selectClienteReset.disabled = true;
+            selectClienteReset.value = "";
+          }
+
+          conceptoSignoMov = 0;
+          document.querySelectorAll("#tablaPartidas tbody tr").forEach((tr) => {
+            tr.dataset.tipo = "";
+            limpiarVinesFila(tr);
+            evaluarFilaVin(tr);
+          });
 
           $("#tableMovimientos").DataTable().ajax.reload();
         } else {
@@ -267,6 +297,13 @@ if (tbody && btnAddRow) {
       <td>
         <input type="text" class="form-control invSearch">
         <input type="hidden" name="inventarioid[]">
+        <input type="hidden" name="series_json[]" class="seriesJson" value="[]">
+        <div class="vinBox mt-1" style="display:none;">
+          <button type="button" class="btn btn-sm btn-soft-primary btnVines">
+            <i class="ri-barcode-line"></i> Seleccionar VINs
+          </button>
+          <span class="vinResumen small ms-2"></span>
+        </div>
       </td>
       <td><input name="costo_cantidad[]" type="number" class="form-control costo"></td>
       <td><input name="total[]" type="number" class="form-control total" readonly></td>
@@ -337,6 +374,9 @@ document.addEventListener("input", function (e) {
       item.addEventListener("click", function () {
         input.value = `${p.cve_articulo} - ${p.descripcion}`;
         hidden.value = p.idinventario;
+        tr.dataset.tipo = p.tipo_elemento || "";
+        limpiarVinesFila(tr);
+        evaluarFilaVin(tr);
         cerrarListaMov();
       });
 
@@ -364,11 +404,38 @@ function cargarSelectProveedoresMov() {
     });
 }
 
+let clientesMovLoaded = false;
+
+function cargarSelectClientesMov() {
+  if (clientesMovLoaded) return;
+
+  fetch(base_url + "/Inv_movimientosinventario/getSelectClientes")
+    .then((res) => res.text())
+    .then((html) => {
+      document.querySelector("#id_cliente").innerHTML = html;
+      clientesMovLoaded = true;
+    });
+}
+
+function ocultarSelectClienteMov() {
+  const selectCliente = document.querySelector("#id_cliente");
+  if (!selectCliente) return;
+  selectCliente.style.display = "none";
+  selectCliente.required = false;
+  selectCliente.disabled = true;
+  selectCliente.value = "";
+}
+
 document.querySelector("#concepmovid").addEventListener("change", function () {
   const id = this.value;
   const bloque = document.querySelector("#bloqueCPN");
   const input = document.querySelector("#cpnValor");
   const selectProveedor = document.querySelector("#id_proveedor");
+  const selectCliente = document.querySelector("#id_cliente");
+
+  ocultarSelectClienteMov();
+  conceptoSignoMov = 0;
+  reevaluarFilasVin(true);
 
   if (!id) {
     bloque.style.display = "none";
@@ -385,6 +452,9 @@ document.querySelector("#concepmovid").addEventListener("change", function () {
     .then((r) => r.json())
     .then((data) => {
       if (!data) return;
+
+      conceptoSignoMov = parseInt(data.signo, 10) || 0;
+      reevaluarFilasVin(false);
 
       bloque.style.display = "block";
 
@@ -404,11 +474,18 @@ document.querySelector("#concepmovid").addEventListener("change", function () {
         selectProveedor.disabled = true;
         selectProveedor.value = "";
 
-        input.style.display = "";
-
         if (data.cpn === "C") {
-          input.value = "Cliente";
+          // Concepto tipo Cliente (ej. Ventas): select conectado a cli_clientes
+          cargarSelectClientesMov();
+
+          input.style.display = "none";
+          input.value = "";
+
+          selectCliente.style.display = "block";
+          selectCliente.disabled = false;
+          selectCliente.required = true;
         } else {
+          input.style.display = "";
           input.value = "Ninguno";
         }
       }
@@ -427,3 +504,188 @@ document.addEventListener("click", function (e) {
     "_blank",
   );
 });
+
+
+/* =====================================================
+   VINs en salidas de unidades (productos tipo P)
+   Cada partida de salida de una unidad guarda en series_json[]
+   los id_numeros_serie seleccionados; la cantidad = # de VINs.
+===================================================== */
+let conceptoSignoMov = 0;
+let filaVinActiva = null;
+let vinesModalSel = new Set();
+let vinesModalData = [];
+
+function filaRequiereVin(tr) {
+  return (
+    conceptoSignoMov < 0 &&
+    tr.dataset.tipo === "P" &&
+    !!tr.querySelector('input[name="inventarioid[]"]').value
+  );
+}
+
+function limpiarVinesFila(tr) {
+  const hid = tr.querySelector(".seriesJson");
+  if (hid) hid.value = "[]";
+  tr.dataset.vines = "";
+  const res = tr.querySelector(".vinResumen");
+  if (res) res.innerHTML = "";
+}
+
+function evaluarFilaVin(tr) {
+  const box = tr.querySelector(".vinBox");
+  const cant = tr.querySelector(".cantidad");
+  if (!box || !cant) return;
+
+  if (filaRequiereVin(tr)) {
+    box.style.display = "";
+    cant.readOnly = true;
+    const ids = JSON.parse(tr.querySelector(".seriesJson").value || "[]");
+    cant.value = ids.length || "";
+    const res = tr.querySelector(".vinResumen");
+    res.innerHTML = ids.length
+      ? `<span class="badge bg-primary-subtle text-primary">${ids.length} VIN(s)</span> ` +
+        `<span class="text-muted">${tr.dataset.vines || ""}</span>`
+      : '<span class="text-danger">Sin VINs seleccionados</span>';
+  } else {
+    box.style.display = "none";
+    cant.readOnly = false;
+  }
+  cant.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function reevaluarFilasVin(limpiar) {
+  document.querySelectorAll("#tablaPartidas tbody tr").forEach((tr) => {
+    if (limpiar) limpiarVinesFila(tr);
+    evaluarFilaVin(tr);
+  });
+}
+
+// Cambiar de almacén invalida los VINs elegidos (eran de otro almacén)
+document.querySelector("#almacenid").addEventListener("change", function () {
+  reevaluarFilasVin(true);
+});
+
+function pintarVinesModal() {
+  const body = document.querySelector("#vinesMovBody");
+  const filtro = document.querySelector("#vinesMovBuscar").value.trim().toUpperCase();
+  const filas = vinesModalData.filter(
+    (v) => !filtro || v.numero_serie.toUpperCase().includes(filtro),
+  );
+
+  body.innerHTML = filas.length
+    ? filas
+        .map(
+          (v) => `
+      <tr>
+        <td><input type="checkbox" class="form-check-input chkVinMov" value="${v.id_numeros_serie}"
+             ${vinesModalSel.has(String(v.id_numeros_serie)) ? "checked" : ""}></td>
+        <td><span class="badge bg-primary-subtle text-primary">${v.numero_serie}</span></td>
+        <td>${v.color || ""}</td>
+        <td>${v.numero_motor || ""}</td>
+      </tr>`,
+        )
+        .join("")
+    : '<tr><td colspan="4" class="text-center text-muted py-3">No hay VINs disponibles</td></tr>';
+
+  document.querySelector("#vinesMovContador").textContent =
+    vinesModalSel.size + " seleccionados";
+}
+
+document.addEventListener("click", function (e) {
+  const btn = e.target.closest(".btnVines");
+  if (!btn) return;
+
+  const tr = btn.closest("tr");
+  const almacenid = document.querySelector("#almacenid").value;
+  const inventarioid = tr.querySelector('input[name="inventarioid[]"]').value;
+
+  if (!almacenid) {
+    Swal.fire("Selecciona primero el almacén", "", "warning");
+    return;
+  }
+
+  filaVinActiva = tr;
+  vinesModalSel = new Set(
+    JSON.parse(tr.querySelector(".seriesJson").value || "[]").map(String),
+  );
+
+  // VINs ya elegidos en otras partidas no se ofrecen otra vez
+  const usadosOtras = new Set();
+  document.querySelectorAll("#tablaPartidas tbody tr").forEach((o) => {
+    if (o === tr) return;
+    JSON.parse(o.querySelector(".seriesJson")?.value || "[]").forEach((id) =>
+      usadosOtras.add(String(id)),
+    );
+  });
+
+  document.querySelector("#vinesMovProducto").textContent =
+    tr.querySelector(".invSearch").value;
+  document.querySelector("#vinesMovBuscar").value = "";
+  document.querySelector("#vinesMovInfo").textContent = "Cargando...";
+  vinesModalData = [];
+  pintarVinesModal();
+  bootstrap.Modal.getOrCreateInstance(document.querySelector("#modalVinesMov")).show();
+
+  fetch(
+    base_url +
+      "/Inv_movimientosinventario/getVinesDisponibles?inventarioid=" +
+      encodeURIComponent(inventarioid) +
+      "&almacenid=" +
+      encodeURIComponent(almacenid),
+  )
+    .then((r) => r.json())
+    .then((data) => {
+      vinesModalData = (data || []).filter(
+        (v) => !usadosOtras.has(String(v.id_numeros_serie)),
+      );
+      document.querySelector("#vinesMovInfo").textContent =
+        vinesModalData.length + " unidad(es) en este almacén";
+      pintarVinesModal();
+      document.querySelector("#vinesMovBuscar").focus();
+    });
+});
+
+document.addEventListener("change", function (e) {
+  if (!e.target.classList.contains("chkVinMov")) return;
+  if (e.target.checked) vinesModalSel.add(e.target.value);
+  else vinesModalSel.delete(e.target.value);
+  document.querySelector("#vinesMovContador").textContent =
+    vinesModalSel.size + " seleccionados";
+});
+
+const inputVinesBuscar = document.querySelector("#vinesMovBuscar");
+if (inputVinesBuscar) {
+  inputVinesBuscar.addEventListener("input", pintarVinesModal);
+
+  // Lector de pistola: escanea el VIN y Enter lo marca
+  inputVinesBuscar.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const val = this.value.trim().toUpperCase();
+    if (!val) return;
+    const vin = vinesModalData.find((v) => v.numero_serie.toUpperCase() === val);
+    if (vin) {
+      vinesModalSel.add(String(vin.id_numeros_serie));
+      this.value = "";
+      pintarVinesModal();
+    } else {
+      Swal.fire("VIN no disponible", val + " no está en este almacén para este producto", "warning");
+    }
+  });
+}
+
+const btnVinesAceptar = document.querySelector("#btnVinesMovAceptar");
+if (btnVinesAceptar) {
+  btnVinesAceptar.addEventListener("click", function () {
+    if (!filaVinActiva) return;
+    const ids = Array.from(vinesModalSel).map(Number);
+    filaVinActiva.querySelector(".seriesJson").value = JSON.stringify(ids);
+    filaVinActiva.dataset.vines = vinesModalData
+      .filter((v) => vinesModalSel.has(String(v.id_numeros_serie)))
+      .map((v) => v.numero_serie)
+      .join(", ");
+    evaluarFilaVin(filaVinActiva);
+    bootstrap.Modal.getInstance(document.querySelector("#modalVinesMov")).hide();
+  });
+}

@@ -51,6 +51,16 @@ class Inv_movimientosinventario extends Controllers
 
             $id_proveedor = !empty($_POST['id_proveedor']) ? intval($_POST['id_proveedor']) : null;
             $lote = !empty($_POST['lote']) ? strClean($_POST['lote']) : null;
+            $id_cliente = !empty($_POST['id_cliente']) ? intval($_POST['id_cliente']) : null;
+
+            // VINs por partida: un JSON por renglón, mismo índice que inventarioid[]
+            $series = [];
+            foreach ($inventarios as $i => $inv) {
+                $json = $_POST['series_json'][$i] ?? '[]';
+                $ids = json_decode($json, true);
+                $series[$i] = is_array($ids) ? array_map('intval', $ids) : [];
+            }
+            $usuarioid = !empty($_SESSION['idUser']) ? intval($_SESSION['idUser']) : null;
 
             $request = $this->model->insertMovimientoMasivo(
                 $almacenid,
@@ -60,7 +70,10 @@ class Inv_movimientosinventario extends Controllers
                 $cantidades,
                 $costos,
                 $id_proveedor,
-                $lote
+                $lote,
+                $id_cliente,
+                $series,
+                $usuarioid
             );
 
             if (is_array($request)) {
@@ -142,6 +155,38 @@ class Inv_movimientosinventario extends Controllers
                     '</option>';
             }
             echo $htmlOptions;
+        }
+        die();
+    }
+
+    public function getSelectClientes()
+    {
+        if ($_SESSION['permisosMod']['r']) {
+            $htmlOptions = '<option value="">-- Seleccione cliente --</option>';
+            $arrData = $this->model->selectClientes();
+
+            foreach ($arrData as $row) {
+                $texto = $row['codigo_cliente'] !== '' && $row['codigo_cliente'] !== null
+                    ? $row['codigo_cliente'] . ' - ' . $row['nombre']
+                    : $row['nombre'];
+                $htmlOptions .= '<option value="' . $row['idcliente'] . '">'
+                    . htmlspecialchars($texto, ENT_QUOTES, 'UTF-8') .
+                    '</option>';
+            }
+            echo $htmlOptions;
+        }
+        die();
+    }
+
+    public function getVinesDisponibles()
+    {
+        if (!empty($_SESSION['permisosMod']['r'])) {
+            $inventarioid = intval($_GET['inventarioid'] ?? 0);
+            $almacenid = intval($_GET['almacenid'] ?? 0);
+            $arrData = ($inventarioid && $almacenid)
+                ? $this->model->selectVinesDisponibles($inventarioid, $almacenid)
+                : [];
+            echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
         }
         die();
     }

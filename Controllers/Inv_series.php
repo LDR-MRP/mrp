@@ -35,6 +35,8 @@ class Inv_series extends Controllers
 
                 if ($arrData[$i]['estado'] == 1) {
                     $arrData[$i]['estado'] = '<span class="badge bg-success">Disponible</span>';
+                } elseif ($arrData[$i]['estado'] == 3) {
+                    $arrData[$i]['estado'] = '<span class="badge bg-secondary">Salida</span>';
                 } else {
                     $arrData[$i]['estado'] = '<span class="badge bg-danger">No disponible</span>';
                 }
