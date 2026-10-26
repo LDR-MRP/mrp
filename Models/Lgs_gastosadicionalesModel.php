@@ -522,58 +522,95 @@ class Lgs_gastosadicionalesModel extends Mysql
      */
     public function getAuditoriaCostoRealEnvio(int $idEnvio): array
     {
-        $sqlVins = "SELECT 
-                        cr.id_envio_vin,
-                        cr.id_envio,
-                        cr.id_unidad,
-                        cr.vin,
-                        cr.costo_planeado_unidad,
-                        cr.total_cargos_adicionales,
-                        cr.total_deducciones,
-                        cr.costo_real_unidad,
-                        cr.costo_neto_unidad,
-                        cr.total_gastos_activos
-                    FROM vw_lgs_costo_real_vin cr
-                    WHERE cr.id_envio = ?
-                    ORDER BY cr.id_envio_vin ASC";
-        $vins = $this->select_all($sqlVins, [$idEnvio]) ?: [];
+        $vins = [];
+        $gastos = [];
+        $incidencias = [];
 
-        $sqlGastos = "SELECT 
-                        g.id_gasto,
-                        g.folio,
-                        g.id_incidencia,
-                        inc.folio AS folio_incidencia,
-                        tg.nombre AS tipo_gasto,
-                        g.monto_final,
-                        g.naturaleza,
-                        g.responsable,
-                        g.id_estado,
-                        g.fecha_gasto,
-                        g.doc_tipo,
-                        g.doc_folio,
-                        (SELECT COUNT(*) FROM lgs_det_gastos_adicionales_vins gv WHERE gv.id_gasto = g.id_gasto) AS vins_afectados
-                      FROM lgs_tra_gastos_adicionales g
-                      LEFT JOIN lgs_cat_tipos_gasto_adicional tg ON g.id_tipo_gasto = tg.id_tipo_gasto
-                      LEFT JOIN lgs_tra_incidencias inc ON g.id_incidencia = inc.id_incidencia
-                      WHERE g.id_envio = ? AND g.deleted_at IS NULL
-                      ORDER BY g.id_gasto DESC";
-        $gastos = $this->select_all($sqlGastos, [$idEnvio]) ?: [];
+        try {
+            $sqlVins = "SELECT 
+                            cr.id_envio_vin,
+                            cr.id_envio,
+                            cr.id_unidad,
+                            cr.vin,
+                            cr.costo_planeado_unidad,
+                            cr.total_cargos_adicionales,
+                            cr.total_deducciones,
+                            cr.costo_real_unidad,
+                            cr.costo_neto_unidad,
+                            cr.total_gastos_activos
+                        FROM vw_lgs_costo_real_vin cr
+                        WHERE cr.id_envio = ?
+                        ORDER BY cr.id_envio_vin ASC";
+            $vins = $this->select_all($sqlVins, [$idEnvio]) ?: [];
+        } catch (Throwable $e) {
+            // Fallback seguro directo a lgs_envios_vins si la vista de costos aún no existe en base de datos
+            try {
+                $sqlFallback = "SELECT 
+                                    ev.id AS id_envio_vin,
+                                    ev.id_envio,
+                                    ev.id_unidad,
+                                    COALESCE(u.vin, ut.clave, CONCAT('VIN-', ev.id_unidad)) AS vin,
+                                    COALESCE(ev.costo_unidad, 0.00) AS costo_planeado_unidad,
+                                    0.00 AS total_cargos_adicionales,
+                                    0.00 AS total_deducciones,
+                                    COALESCE(ev.costo_unidad, 0.00) AS costo_real_unidad,
+                                    COALESCE(ev.costo_unidad, 0.00) AS costo_neto_unidad,
+                                    0 AS total_gastos_activos
+                                FROM lgs_envios_vins ev
+                                LEFT JOIN lgs_unidades_envios u ON u.id_unidad = ev.id_unidad
+                                LEFT JOIN mrp_unidades_terminadas ut ON ut.idunidad = ev.id_unidad
+                                WHERE ev.id_envio = ?
+                                ORDER BY ev.id ASC";
+                $vins = $this->select_all($sqlFallback, [$idEnvio]) ?: [];
+            } catch (Throwable $e2) {
+                $vins = [];
+            }
+        }
 
-        $sqlIncidencias = "SELECT 
-                            i.id_incidencia,
-                            i.folio,
-                            ti.nombre AS tipo_incidencia,
-                            i.id_estado,
-                            i.fecha_incidente,
-                            i.es_post_entrega,
-                            (SELECT COUNT(*) FROM lgs_det_incidencias_vins iv WHERE iv.id_incidencia = i.id_incidencia) AS vins_afectados,
-                            ad.nombre AS absorcion
-                           FROM lgs_tra_incidencias i
-                           LEFT JOIN lgs_cat_tipos_incidencia ti ON i.id_tipo_incidencia = ti.id_tipo_incidencia
-                           LEFT JOIN lgs_cat_absorcion_danios ad ON i.id_absorcion = ad.id_absorcion
-                           WHERE i.id_envio = ? AND i.deleted_at IS NULL
-                           ORDER BY i.id_incidencia DESC";
-        $incidencias = $this->select_all($sqlIncidencias, [$idEnvio]) ?: [];
+        try {
+            $sqlGastos = "SELECT 
+                            g.id_gasto,
+                            g.folio,
+                            g.id_incidencia,
+                            inc.folio AS folio_incidencia,
+                            tg.nombre AS tipo_gasto,
+                            g.monto_final,
+                            g.naturaleza,
+                            g.responsable,
+                            g.id_estado,
+                            g.fecha_gasto,
+                            g.doc_tipo,
+                            g.doc_folio,
+                            (SELECT COUNT(*) FROM lgs_det_gastos_adicionales_vins gv WHERE gv.id_gasto = g.id_gasto) AS vins_afectados
+                          FROM lgs_tra_gastos_adicionales g
+                          LEFT JOIN lgs_cat_tipos_gasto_adicional tg ON g.id_tipo_gasto = tg.id_tipo_gasto
+                          LEFT JOIN lgs_tra_incidencias inc ON g.id_incidencia = inc.id_incidencia
+                          WHERE g.id_envio = ? AND g.deleted_at IS NULL
+                          ORDER BY g.id_gasto DESC";
+            $gastos = $this->select_all($sqlGastos, [$idEnvio]) ?: [];
+        } catch (Throwable $e) {
+            $gastos = [];
+        }
+
+        try {
+            $sqlIncidencias = "SELECT 
+                                i.id_incidencia,
+                                i.folio,
+                                ti.nombre AS tipo_incidencia,
+                                i.id_estado,
+                                i.fecha_incidente,
+                                i.es_post_entrega,
+                                (SELECT COUNT(*) FROM lgs_det_incidencias_vins iv WHERE iv.id_incidencia = i.id_incidencia) AS vins_afectados,
+                                ad.nombre AS absorcion
+                               FROM lgs_tra_incidencias i
+                               LEFT JOIN lgs_cat_tipos_incidencia ti ON i.id_tipo_incidencia = ti.id_tipo_incidencia
+                               LEFT JOIN lgs_cat_absorcion_danios ad ON i.id_absorcion = ad.id_absorcion
+                               WHERE i.id_envio = ? AND i.deleted_at IS NULL
+                               ORDER BY i.id_incidencia DESC";
+            $incidencias = $this->select_all($sqlIncidencias, [$idEnvio]) ?: [];
+        } catch (Throwable $e) {
+            $incidencias = [];
+        }
 
         $totalCostoPlaneado = 0;
         $totalCargos = 0;
@@ -581,10 +618,10 @@ class Lgs_gastosadicionalesModel extends Mysql
         $totalCostoReal = 0;
 
         foreach ($vins as $v) {
-            $totalCostoPlaneado += floatval($v['costo_planeado_unidad']);
-            $totalCargos += floatval($v['total_cargos_adicionales']);
-            $totalDeducciones += floatval($v['total_deducciones']);
-            $totalCostoReal += floatval($v['costo_real_unidad']);
+            $totalCostoPlaneado += floatval($v['costo_planeado_unidad'] ?? 0);
+            $totalCargos += floatval($v['total_cargos_adicionales'] ?? 0);
+            $totalDeducciones += floatval($v['total_deducciones'] ?? 0);
+            $totalCostoReal += floatval($v['costo_real_unidad'] ?? 0);
         }
 
         return [

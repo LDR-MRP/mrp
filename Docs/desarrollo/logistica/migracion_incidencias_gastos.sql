@@ -319,6 +319,6 @@ LEFT JOIN lgs_unidades_envios u ON u.id_unidad = ev.id_unidad
 LEFT JOIN mrp_unidades_terminadas ut ON ut.idunidad = ev.id_unidad
 LEFT JOIN lgs_det_gastos_adicionales_vins gv ON gv.id_envio_vin = ev.id
 LEFT JOIN lgs_tra_gastos_adicionales g ON g.id_gasto = gv.id_gasto AND g.deleted_at IS NULL
-GROUP BY ev.id, ev.id_envio, ev.id_unidad;
+GROUP BY ev.id, ev.id_envio, ev.id_unidad, u.vin, ut.clave, ev.costo_unidad;
 
 SET FOREIGN_KEY_CHECKS = 1;

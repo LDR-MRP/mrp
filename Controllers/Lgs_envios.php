@@ -533,17 +533,25 @@ class Lgs_envios extends Controllers
         $estadoPlan = 0;
         $auditoriaFinanciera = null;
         if (!empty($envio)) {
-            $estadoPlan = $model->getPlaneacionEstadoByEnvio($idEnvio);
-            // Recalcular costos para evitar desfazamientos
-            $this->service->recalcularCostoTotal($idEnvio);
-            $this->service->asegurarCostosVins($idEnvio);
+            try {
+                $estadoPlan = $model->getPlaneacionEstadoByEnvio($idEnvio);
+                // Recalcular costos para evitar desfazamientos
+                $this->service->recalcularCostoTotal($idEnvio);
+                $this->service->asegurarCostosVins($idEnvio);
+            } catch (Throwable $e) {
+                // Silencioso para no bloquear la carga visual del acomodo
+            }
 
             $idEstadoEnvio = intval($envio['id_estado'] ?? 0);
             if ($idEstadoEnvio > 0 && $idEstadoEnvio !== 4) {
                 if (file_exists("Models/Lgs_gastosadicionalesModel.php")) {
-                    require_once("Models/Lgs_gastosadicionalesModel.php");
-                    $gaModel = new Lgs_gastosadicionalesModel();
-                    $auditoriaFinanciera = $gaModel->getAuditoriaCostoRealEnvio($idEnvio);
+                    try {
+                        require_once("Models/Lgs_gastosadicionalesModel.php");
+                        $gaModel = new Lgs_gastosadicionalesModel();
+                        $auditoriaFinanciera = $gaModel->getAuditoriaCostoRealEnvio($idEnvio);
+                    } catch (Throwable $e) {
+                        $auditoriaFinanciera = null;
+                    }
                 }
             }
         }

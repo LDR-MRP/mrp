@@ -534,8 +534,13 @@ class Lgs_gastosadicionalesService
      */
     public function getResumenEnvioCostoReal(int $idEnvio): array
     {
-        $sql = "SELECT * FROM vw_lgs_costo_real_vin WHERE id_envio = ? ORDER BY id_envio_vin ASC";
-        $vins = $this->model->select_all($sql, [$idEnvio]) ?: [];
+        $vins = [];
+        try {
+            $sql = "SELECT * FROM vw_lgs_costo_real_vin WHERE id_envio = ? ORDER BY id_envio_vin ASC";
+            $vins = $this->model->select_all($sql, [$idEnvio]) ?: [];
+        } catch (Throwable $e) {
+            $vins = [];
+        }
 
         $totalPlaneado = 0.0;
         $totalCargos = 0.0;
