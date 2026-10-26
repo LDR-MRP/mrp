@@ -237,10 +237,14 @@ class SupplierService
             $fileSize = filesize($file['tmp_name']);
             $fileSizeMB = $fileSize / (1024 * 1024); // Convertir a MB
             
-            if ($fileSizeMB > MAX_FILE_SIZE_MB) {
+            $this->logMessage("[uploadDocument] Tamaño archivo: {$fileSizeMB}MB, MAX_FILE_SIZE_MB: " . (defined('MAX_FILE_SIZE_MB') ? MAX_FILE_SIZE_MB : 'NO DEFINIDO'));
+            
+            if (defined('MAX_FILE_SIZE_MB') && $fileSizeMB >= MAX_FILE_SIZE_MB) {
                 // Si el archivo es mayor a 5MB, comprimir en ZIP
                 $zipFileName = "{$docType}_" . bin2hex(random_bytes(4)) . ".zip";
                 $zipFullPath = $uploadPath . $zipFileName;
+                
+                $this->logMessage("[uploadDocument] Creando ZIP: {$zipFullPath}");
                 
                 $zip = new \ZipArchive();
                 if ($zip->open($zipFullPath, \ZipArchive::CREATE) === TRUE) {
@@ -250,7 +254,10 @@ class SupplierService
                     // Actualizar la ruta para usar el archivo ZIP
                     $fullPath = $zipFullPath;
                     $fileName = $zipFileName;
+                    
+                    $this->logMessage("[uploadDocument] ZIP creado exitosamente");
                 } else {
+                    $this->logMessage("[uploadDocument] Error al crear ZIP");
                     throw new Exception("Error al crear el archivo ZIP.", 500);
                 }
             }
@@ -273,7 +280,11 @@ class SupplierService
                 'created_by'      => $userId
             ];
             
+            $this->logMessage("[uploadDocument] Guardando en DB: " . json_encode($dbData));
+            
             $this->expedienteModel->upsertDocument($dbData);
+            
+            $this->logMessage("[uploadDocument] Documento guardado en DB exitosamente");
 
             // 5. Auditoría
             $this->expedienteModel->logAudit($supplierId, AuditAction::UPLOAD_FILE, "Subida de documento: {$docType}", $userId);

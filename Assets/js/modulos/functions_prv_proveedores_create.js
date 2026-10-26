@@ -435,7 +435,7 @@ const files = {
                     dropzoneClass = 'bg-danger-subtle border-danger';
                     iconClass = 'text-danger';
                     const motivo = fileData.motivo_rechazo ? `: ${fileData.motivo_rechazo}` : '';
-                    statusHtml = `<i class="ri-close-circle-fill me-1 text-danger"></i> <span class="text-danger">Documento devuelto${motivo}</span>`;
+                    statusHtml = `<i class="ri-close-circle-fill me-1 text-danger"></i> <span class="text-danger">Documento devuelto${motivo}. <strong>Haga clic en "Reemplazar" para cargar una versión corregida.</strong></span>`;
                 } else {
                     dropzoneClass = 'bg-info-subtle border-info';
                     iconClass = 'text-info';
@@ -469,7 +469,10 @@ const files = {
                     `;
                 }
                 
-                if (!canAudit && estado !== 1) {
+                // Permitir reemplazar si:
+                // - Es proveedor (no auditor) y documento está pendiente (0)
+                // - O documento está rechazado (2) - independientemente del rol
+                if ((!canAudit && estado === 0) || estado === 2) {
                     actionButtons += `<button type="button" class="btn btn-sm btn-soft-warning btn-replace" data-type="${key}"><i class="ri-refresh-line align-middle me-1"></i> Reemplazar</button>`;
                 }
 
