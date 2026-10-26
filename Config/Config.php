@@ -211,4 +211,8 @@ const COMPRAS_TESORERO = 58;
 
 
 const STATUS = array('Completo', 'Aprobado', 'Cancelado', 'Reembolsado', 'Pendiente', 'Entregado');
+
+// Configuración de subida de archivos
+const MAX_FILE_SIZE_MB = 5; // Tamaño máximo en MB antes de comprimir en ZIP
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // Tamaño máximo en bytes
 ?>

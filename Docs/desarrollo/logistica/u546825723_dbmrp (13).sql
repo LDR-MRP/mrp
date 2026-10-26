@@ -206900,7 +206900,7 @@ CREATE TABLE `sys_notification_distribution` (
   `plantaid` bigint(20) UNSIGNED DEFAULT NULL COMMENT 'NULL significa que aplica a todas las plantas (Global)',
   `is_active` tinyint(1) DEFAULT 1,
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `sys_notification_distribution`

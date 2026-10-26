@@ -12,7 +12,7 @@ class NotificationService
     /**
      * Envía un correo electrónico basado en un evento y una plantilla HTML.
      */
-    public function sendEmailByEvent(string $event, array $data, array $recipients): bool
+    public function sendEmailByEvent(string $event, array $data, array $recipients, string $recipientType = 'colaborador'): bool
     {
         $mail = new PHPMailer(true);
 
@@ -42,17 +42,17 @@ class NotificationService
             }
 
             // 3. Cargar y Renderizar Plantilla
-            $html = $this->renderTemplate($event, $data);
+            $html = $this->renderTemplate($event, $data, $recipientType);
 
             // 4. Contenido del Correo
             $mail->isHTML(true);
-            $mail->Subject = $this->getSubjectByEvent($event);
+            $mail->Subject = $this->getSubjectByEvent($event, $recipientType);
             $mail->Body    = $html;
 
             $result = $mail->send();
 
             if (defined('ENV_TYPE') && ENV_TYPE === 'local') {
-                error_log("Email enviado exitosamente a: " . implode(', ', $recipients));
+                error_log("Email enviado exitosamente a: " . implode(', ', $recipients) . " (Tipo: {$recipientType})");
             }
 
             return $result;
@@ -60,7 +60,7 @@ class NotificationService
         } catch (Exception $e) {
             // Aquí puedes usar tu trait Loggable si lo necesitas
             error_log("PHPMailer Error: " . $mail->ErrorInfo);
-            error_log("Event: $event, Recipients: " . implode(', ', $recipients));
+            error_log("Event: $event, Recipients: " . implode(', ', $recipients) . ", Tipo: {$recipientType}");
             return false;
         }
     }
@@ -69,9 +69,18 @@ class NotificationService
      * Lee el archivo HTML y reemplaza los placeholders {{variable}} por datos reales.
      * Soporta tanto sintaxis {{variable}} como sintaxis PHP <?= $data['variable'] ?>
      */
-    private function renderTemplate(string $event, array $data): string
+    private function renderTemplate(string $event, array $data, string $recipientType = 'colaborador'): string
     {
-        $path = __DIR__ . "/../Views/Emails/{$event}.php";
+        // Para proveedores, usar un template diferente si existe
+        if ($recipientType === 'proveedor') {
+            $path = __DIR__ . "/../Views/Emails/{$event}_supplier.php";
+            if (!file_exists($path)) {
+                $path = __DIR__ . "/../Views/Emails/{$event}.php"; // Fallback al template original
+            }
+        } else {
+            $path = __DIR__ . "/../Views/Emails/{$event}.php";
+        }
+        
         if (!file_exists($path)) return "Template {$event} no encontrado.";
 
         // Verificar si el template usa sintaxis PHP
@@ -96,10 +105,16 @@ class NotificationService
         return $html;
     }
 
-    private function getSubjectByEvent(string $event): string
+    private function getSubjectByEvent(string $event, string $recipientType = 'colaborador'): string
     {
         return match($event) {
-            'supplier_onboarding_complete' => 'Acción Requerida: Expediente de Proveedor para Validación',
+            'supplier_onboarding_complete' => $recipientType === 'colaborador' 
+                ? 'Proveedor ha completado carga de expediente - Requiere validación'
+                : 'Su expediente digital ha sido completado',
+            'supplier_ready_for_approval' => $recipientType === 'proveedor'
+                ? 'Su expediente ha sido aprobado - Cuenta activa'
+                : 'Acción Requerida: Expediente de Proveedor para Validación',
+            'supplier_document_rejected' => 'Documento de su expediente ha sido rechazado - Por favor revise',
             'bank_account_approved'        => 'Cuenta Bancaria Autorizada',
             'supplier_new_user'            => 'Bienvenido al Sistema de Proveedores - Credenciales de Acceso',
             default                        => 'Notificación de Sistema MRP'

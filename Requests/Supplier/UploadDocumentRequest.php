@@ -15,9 +15,26 @@ class UploadDocumentRequest extends Requests
             $this->addError('id_proveedor', 'ID de proveedor inválido.');
         }
 
-        // 2. Validar Tipo de Documento (Debe ser uno de los permitidos)
+        // 2. Validar Tipo de Documento (Debe ser uno de los permitidos según el perfil)
         if (empty($this->data['tipo_documento'])) {
             $this->addError('tipo_documento', 'El tipo de documento es obligatorio.');
+        } else {
+            // Obtener el perfil del proveedor
+            $supplierId = (int)$this->data['id_proveedor'];
+            $proveedorModel = new \Prv_proveedorModel();
+            $supplier = $proveedorModel->getById($supplierId);
+            
+            if (!$supplier) {
+                $this->addError('id_proveedor', 'El proveedor no existe.');
+            } else {
+                // Obtener lista de documentos permitidos según perfil
+                $allowedDocs = \DocumentTypeEnum::getRequiredList($supplier['id_tipo_persona'], $supplier['origen']);
+                
+                // Verificar que el tipo de documento sea válido
+                if (!array_key_exists($this->data['tipo_documento'], $allowedDocs)) {
+                    $this->addError('tipo_documento', 'El tipo de documento no es válido para el perfil de este proveedor.');
+                }
+            }
         }
 
         // 3. Validar el Archivo Físico

@@ -1,5 +1,5 @@
 <?php
-    headerAdmin($data);
+headerAdmin($data);
 ?>
 
 <div class="main-content">
@@ -7,10 +7,13 @@
         <div class="container-fluid">
             <style>
                 .text-danger-asterisk {
-                    color: #ef4444; /* Rojo vibrante */
+                    color: #ef4444;
+                    /* Rojo vibrante */
                     font-weight: bold;
-                    margin-left: 2px;+
+                    margin-left: 2px;
+                    +
                 }
+
                 .custom-timeline-container {
                     position: relative;
                     width: 100%;
@@ -29,7 +32,8 @@
                 .custom-timeline-list::before {
                     content: "";
                     position: absolute;
-                    top: 20px; /* Centrado con el icono */
+                    top: 20px;
+                    /* Centrado con el icono */
                     left: 10%;
                     right: 10%;
                     height: 4px;
@@ -55,8 +59,9 @@
                     align-items: center;
                     justify-content: center;
                     margin-bottom: 15px;
-                    border: 4px solid #fff; /* Esto hace que la línea no atraviese el icono */
-                    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+                    border: 4px solid #fff;
+                    /* Esto hace que la línea no atraviese el icono */
+                    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
                 }
 
                 /* La card amarilla que tienes en tu diseño */
@@ -69,14 +74,15 @@
                 }
 
                 /* Color de la línea para pasos completados */
-                .timeline-item.completed + .timeline-item::after {
+                .timeline-item.completed+.timeline-item::after {
                     content: "";
                     position: absolute;
                     top: 20px;
                     left: -50%;
                     width: 100%;
                     height: 4px;
-                    background: #0ab39c; /* Verde éxito de Velzon */
+                    background: #0ab39c;
+                    /* Verde éxito de Velzon */
                     z-index: -1;
                 }
             </style>
@@ -136,15 +142,14 @@
                     </li>
                 </ul>
                 <!-- End Tabs Section -->
-
                 <!-- Tabs Content Section -->
-                <div class="tab-content">    
+                <div class="tab-content">
                     <!-- Master Data -->
                     <section class="tab-pane active" id="tab-datos-generales" role="tabpanel">
                         <form id="formProveedor" autocomplete="off">
                             <div class="row">
                                 <div class="col-lg-8">
-                                    
+
                                     <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px; border-top: 4px solid #405189;">
                                         <div class="card-body p-4 text-start">
                                             <h5 class="card-title mb-4 text-uppercase fw-bold text-muted fs-12 ls-1">
@@ -201,7 +206,6 @@
                                             </div>
                                         </div>
                                     </div>
-
                                     <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
                                         <div class="card-body p-4 text-start">
                                             <h5 class="card-title mb-4 text-uppercase fw-bold text-muted fs-12 ls-1">
@@ -243,7 +247,6 @@
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Int</label>
                                                     <input type="text" name="num_int" class="form-control" placeholder="N/A">
                                                 </div>
-
                                                 <div class="col-md-12">
                                                     <div class="p-3 bg-light-subtle rounded-3 border border-light">
                                                         <div class="row g-3">
@@ -272,7 +275,6 @@
                                             </div>
                                         </div>
                                     </div>
-
                                     <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
                                         <div class="card-body p-4 text-start">
                                             <h5 class="card-title mb-4 text-uppercase fw-bold text-muted fs-12 ls-1">
@@ -319,9 +321,7 @@
                                         </div>
                                     </div>
                                 </div>
-
                                 <div class="col-lg-4">
-                                    
                                     <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
                                         <div class="card-body p-4 text-start">
                                             <div class="d-grid gap-2">
@@ -337,19 +337,19 @@
                                             <h5 class="card-title mb-4 text-uppercase fw-bold text-muted fs-12 ls-1">
                                                 <i class="ri-building-4-line text-success me-1 fs-14 align-middle"></i> Asignación de Plantas
                                             </h5>
-                                            
+
                                             <div class="mb-3" id="plantas-container">
                                                 <div class="alert alert-info fs-12 mb-3">
                                                     <i class="ri-information-line me-1"></i>
-                                                    Seleccione las plantas donde operará este proveedor. 
+                                                    Seleccione las plantas donde operará este proveedor.
                                                     Marque una como <strong>PRINCIPAL</strong> usando el radio button.
                                                 </div>
-                                                
+
                                                 <div id="plantas-list" style="max-height: 300px; overflow-y: auto; padding-right: 10px;">
                                                     <!-- Plantas cargadas dinámicamente -->
                                                 </div>
                                             </div>
-                                            
+
                                             <div id="plantas-error" class="text-danger fs-11 d-none">
                                                 <i class="ri-error-warning-line"></i> Debe seleccionar al menos una planta
                                             </div>
@@ -365,9 +365,9 @@
                                                 <label class="form-label text-uppercase fs-11 fw-bold text-muted">Cuenta Contable <span class="text-danger-asterisk">*</span></label>
                                                 <div class="input-group border rounded-3 overflow-hidden shadow-none">
                                                     <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-git-repository-line"></i></span>
-                                                    <input name="cuenta_contable" class="form-control border-0 fs-16"/>
+                                                    <input name="cuenta_contable" class="form-control border-0 fs-16" />
                                                 </div>
-                                            </div>                                            
+                                            </div>
 
                                             <div class="mb-3">
                                                 <label class="form-label text-uppercase fs-11 fw-semibold text-muted">IVA</label>
@@ -378,8 +378,8 @@
                                                         </span>
                                                         <span class="text-muted fs-11 align-self-center">Desliza para ajustar</span>
                                                     </div>
-                                                    <input type="range" name="tasa_iva_default" class="form-range custom-range" 
-                                                        min="0" max="16" step="1" 
+                                                    <input type="range" name="tasa_iva_default" class="form-range custom-range"
+                                                        min="0" max="16" step="1"
                                                         oninput="document.getElementById('iva-label').innerText = this.value + '.00%'">
                                                     <div class="d-flex justify-content-between mt-1 px-1">
                                                         <span class="fs-10 text-muted">0%</span>
@@ -453,7 +453,6 @@
                         </form>
                     </section>
                     <!-- End Master Data -->
-
                     <!-- File Section -->
                     <section class="tab-pane mt-4 edit-only-tab d-none" id="tab-expediente" role="tabpanel">
                         <div class="row">
@@ -463,7 +462,7 @@
                                         <div class="d-flex align-items-center">
                                             <div class="flex-grow-1">
                                                 <h5 class="fs-14 mb-1">Progreso de Documentación</h5>
-                                                <p class="text-muted mb-0">Completa los  documentos obligatorios para avanzar al siguiente nivel.</p>
+                                                <p class="text-muted mb-0">Completa los documentos obligatorios para avanzar al siguiente nivel.</p>
                                             </div>
                                             <div class="flex-shrink-0">
                                                 <h4 id="global-progress-text" class="text-success mb-0">0%</h4>
@@ -474,26 +473,23 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>                            
+                            </div>
                             <div id="document-cards-container" class="row w-100 m-0">
-                             </div>
+                            </div>
                         </div>
                     </section>
                     <!-- End File Section -->
-
                     <!-- Banking Data Section -->
                     <section class="tab-pane mt-4 edit-only-tab d-none" id="tab-banking" role="tabpanel">
                         <form id="formDatosBancarios" autocomplete="off">
                             <div class="row">
                                 <div class="col-lg-8">
-                                    
                                     <!-- Formulario de Alta de Cuenta -->
                                     <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px; border-top: 4px solid #0ab39c;">
                                         <div class="card-body p-4 text-start">
                                             <h5 class="card-title mb-4 text-uppercase fw-bold text-muted fs-12 ls-1">
                                                 <i class="ri-bank-card-line text-success me-1 fs-14 align-middle"></i> Nueva Cuenta Bancaria
                                             </h5>
-
                                             <div class="row g-3">
                                                 <!-- Banco -->
                                                 <div class="col-md-8">
@@ -503,7 +499,6 @@
                                                         <!-- Opciones cargadas por JS desde cat_bancos -->
                                                     </select>
                                                 </div>
-
                                                 <!-- Moneda -->
                                                 <div class="col-md-4">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Moneda <span class="text-danger-asterisk">*</span></label>
@@ -513,7 +508,6 @@
                                                         <option value="EUR">EUR - Euro</option>
                                                     </select>
                                                 </div>
-
                                                 <!-- CLABE -->
                                                 <div class="col-md-12">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">CLABE Interbancaria (Nacional) <span class="text-danger-asterisk">*</span></label>
@@ -522,7 +516,6 @@
                                                         <input type="text" name="clabe" class="form-control border-0 fs-16 fw-medium" maxlength="18" placeholder="18 dígitos">
                                                     </div>
                                                 </div>
-
                                                 <!-- Cuenta -->
                                                 <div class="col-md-6">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Número de Cuenta</label>
@@ -531,7 +524,6 @@
                                                         <input type="text" name="cuenta" class="form-control border-0 fs-15" maxlength="20" placeholder="Ej. 0123456789">
                                                     </div>
                                                 </div>
-
                                                 <!-- Es Principal -->
                                                 <div class="col-md-6">
                                                     <label class="form-label text-uppercase fs-11 fw-semibold text-muted d-block">¿Es Cuenta Principal?</label>
@@ -542,7 +534,6 @@
                                                         <label class="btn btn-outline-light w-100 border fs-12" for="banco_principal_no">NO</label>
                                                     </div>
                                                 </div>
-
                                                 <!-- CARÁTULA -->
                                                 <div class="col-12 mb-3">
                                                     <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Carátula Bancaria (PDF) <span class="text-danger">*</span></label>
@@ -553,7 +544,6 @@
                                                     </div>
                                                     <small class="text-muted fs-11 mt-1 d-block">Obligatorio para que Finanzas L2 realice el cotejo y la auditoría antifraude.</small>
                                                 </div>
-
                                                 <!-- Divisor: Transferencias Internacionales -->
                                                 <div class="col-12 mt-4">
                                                     <div class="d-flex align-items-center mb-2">
@@ -562,7 +552,6 @@
                                                         <div class="flex-grow-1 border-top border-dashed"></div>
                                                     </div>
                                                 </div>
-
                                                 <!-- SWIFT/BIC -->
                                                 <div class="col-md-6">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">SWIFT / BIC</label>
@@ -571,7 +560,6 @@
                                                         <input type="text" name="swift_bic" class="form-control border-0 fs-15" maxlength="15" placeholder="Código SWIFT">
                                                     </div>
                                                 </div>
-
                                                 <!-- IBAN -->
                                                 <div class="col-md-6">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">IBAN</label>
@@ -583,7 +571,6 @@
                                             </div>
                                         </div>
                                     </div>
-
                                     <!-- Lista de Cuentas Registradas -->
                                     <div class="card border-0 shadow-sm mt-4">
                                         <div class="card-header bg-transparent border-bottom border-light pt-3 pb-2">
@@ -617,9 +604,7 @@
                                         </div>
                                     </div>
                                 </div>
-
                                 <div class="col-lg-4">
-                                    
                                     <!-- Botón de Acción -->
                                     <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
                                         <div class="card-body p-4 text-start">
@@ -630,7 +615,6 @@
                                             </div>
                                         </div>
                                     </div>
-
                                     <!-- Tarjeta de Seguridad y Compliance -->
                                     <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px; border-top: 4px solid #f06548;">
                                         <div class="card-body p-4">
@@ -643,12 +627,11 @@
                                                 </div>
                                             </div>
                                             <p class="text-muted fs-12 mb-0">
-                                                Por seguridad contra fraude, toda nueva cuenta bancaria pasará a estatus <span class="badge bg-warning text-white">PENDIENTE</span>. 
+                                                Por seguridad contra fraude, toda nueva cuenta bancaria pasará a estatus <span class="badge bg-warning text-white">PENDIENTE</span>.
                                                 Finanzas (Nivel 2) deberá cruzar esta información con la Carátula Bancaria del Expediente antes de autorizar pagos.
                                             </p>
                                         </div>
                                     </div>
-
                                     <!-- Tooltip Card -->
                                     <div class="card border-0 shadow-sm" style="background-color: #e1ebfd;">
                                         <div class="card-body p-3">
@@ -671,15 +654,14 @@
                         </form>
                     </section>
                     <!-- End Banking Data Section -->
-
                     <!-- Onboarding Section -->
                     <section class="tab-pane mt-4 edit-only-tab d-none" id="tab-onboarding" role="tabpanel">
                         <div class="row">
                             <div class="col-12">
                                 <div class="card shadow-none border mb-0">
-                                    <div class="card-body p-5">                                        
+                                    <div class="card-body p-5">
                                         <div cl
-                                        ass="text-center mb-5">
+                                            ass="text-center mb-5">
                                             <div class="avatar-md mx-auto mb-3">
                                                 <div class="avatar-title bg-warning-subtle text-warning display-5 rounded-circle shadow">
                                                     <i class="ri-loader-4-line ri-spin"></i>
@@ -687,14 +669,12 @@
                                             </div>
                                             <h4 class="fw-bold">Estatus: En Proceso de Documentación</h4>
                                             <p class="text-muted mb-0 max-w-600 mx-auto">
-                                                Por favor, asegúrate de subir todos los documentos obligatorios en la pestaña 
+                                                Por favor, asegúrate de subir todos los documentos obligatorios en la pestaña
                                                 <strong>Expediente Digital</strong> para avanzar a la fase de validación.
                                             </p>
                                         </div>
                                         <div class="custom-timeline-container py-4">
                                             <ul class="custom-timeline-list">
-                                                
-                                            
                                                 <li class="timeline-item completed">
                                                     <div class="timeline-icon bg-success">
                                                         <i class="ri-check-line text-white"></i>
@@ -716,9 +696,6 @@
                                                         <p class="text-muted fs-12 mb-0">07 Mar, 2026</p>
                                                     </div>
                                                 </li>
-
-
-
                                                 <li class="timeline-item">
                                                     <div class="timeline-icon bg-light">
                                                         <i class="ri-shield-check-line text-muted"></i>
@@ -729,9 +706,6 @@
                                                         <p class="text-muted fs-12 mb-0">08 Mar, 2026</p>
                                                     </div>
                                                 </li>
-
-
-
                                                 <li class="timeline-item">
                                                     <div class="timeline-icon bg-light">
                                                         <i class="ri-bank-card-2-line text-muted"></i>

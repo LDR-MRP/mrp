@@ -35,7 +35,14 @@ class AuditDocumentRequest extends Requests
         // 4. Lógica Condicional: Motivo de Rechazo
         // Si el estatus es 2 (Rechazado), el motivo NO puede estar vacío.
         if ((int)$status === 2) {
-            $motivo = trim((string)($this->data['motivo_rechazo'] ?? ''));
+            $motivoRechazo = $this->data['motivo_rechazo'] ?? '';
+            
+            // Manejar si llega como array (tomar primer valor)
+            if (is_array($motivoRechazo)) {
+                $motivoRechazo = $motivoRechazo[0] ?? '';
+            }
+            
+            $motivo = trim((string)$motivoRechazo);
             if (empty($motivo)) {
                 $this->addError('motivo_rechazo', 'Debe proporcionar un motivo para rechazar el documento.');
             } elseif (strlen($motivo) < 5) {

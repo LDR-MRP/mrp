@@ -2,17 +2,21 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <!-- 
+        Variables inyectadas dinámicamente por NotificationService::renderTemplate():
+        $razon_social, $rfc, $origen, $tipo, $created_at, $link_expediente, $destinatario
+    -->
     <style>
         body { margin: 0; padding: 0; background-color: #ffffff; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
         .container { width: 100%; max-width:800px; margin: 0 auto; background-color: #ffffff; }
         .header { padding: 20px 40px; }
-        .header-logo { float: left; width: 150px; }
+        .header-logo { float: left; width: 150px; transform: rotate(0deg); }
         .header-info { float: right; text-align: right; color: #575756; font-size: 14px; }
         .main-card { 
             background-color: #E3E3E2; 
             margin: 0 20px; 
             padding: 40px; 
-            border-radius: 15px 15px 15px 15px; /* Asymmetric rounding like the image */
+            border-radius: 15px 15px 15px 15px;
             position: relative;
             text-align: justify;
         }
@@ -24,18 +28,17 @@
             margin-bottom: 30px;
             text-transform: uppercase;
         }
-        .megaphone-icon { float: right; width: 100px; opacity: 0.7; }
+        .check-icon { float: right; width: 100px; opacity: 0.7; transform: rotate(0deg); }
         .body-text { color: #575756; font-size: 18px; line-height: 1.4; margin-bottom: 20px; }
-        .highlight { color: #e87b24; font-weight: bold; } /* Orange highlight from the brand */
+        .highlight { color: #28a745; font-weight: bold; }
         
-        /* Specific Supplier Data Table */
-        .data-table { width: 100%; max-width: 660px; background: #ffffff; border-radius: 5px; padding: 20px 0px 20px 20px; margin: 20px 0; border-left: 6px solid #405189; }
+        .data-table { width: 100%; max-width: 660px; background: #ffffff; border-radius: 5px; padding: 20px 0px 20px 20px; margin: 20px 0; border-left: 6px solid #28a745; }
         .label { font-size: 10px; text-transform: uppercase; font-weight: bold; color: #878a99; }
         .value { font-size: 16px; font-weight: bold; color: #405189; }
         
         .btn-action {
             display: inline-block;
-            background-color: #405189;
+            background-color: #28a745;
             color: #ffffff !important;
             padding: 15px 35px;
             border-radius: 5px;
@@ -61,7 +64,7 @@
                 <img src="<?= base_url(); ?>/Assets/images/emails/logo-ldr-dark.png" width="120" alt="LDR Solutions">
             </div>
             <div class="header-info">
-                <strong style="font-size: 18px;">Compras / Finanzas</strong><br>
+                <strong style="font-size: 18px;">Sistema de Proveedores</strong><br>
                 <?= date('d / m / Y') ?>
             </div>
             <div class="clearfix"></div>
@@ -69,15 +72,15 @@
 
         <!-- MAIN CONTENT CARD -->
         <div class="main-card">
-            <img src="<?= base_url(); ?>/Assets/images/emails/icon-megaphone.png" class="megaphone-icon" alt="Aviso">
-            <div class="title">ESTIMADO<br>COLABORADOR:</div>
+            <img src="<?= base_url(); ?>/Assets/images/emails/icon-megaphone.png" class="check-icon" alt="Aviso">
+            <div class="title">¡FELICIDADES<br><?= $destinatario ?>!</div>
             
             <div class="body-text">
-                Les informamos que el proveedor <span class="highlight">{{razon_social}}</span> ha completado satisfactoriamente la carga de su <strong>expediente digital</strong>.
+                Nos complace informarle que su expediente digital ha sido <span class="highlight">aprobado completamente</span> por el equipo de validación de <strong>LDR Solutions</strong>.
             </div>
 
             <div class="body-text">
-                Es fundamental proceder con la validación técnica y legal para asegurar que la identidad visual y fiscal del socio se centra en los estándares de <strong>LDR Solutions</strong>.
+                Su cuenta ya se encuentra <span class="highlight">activa</span> en el sistema y puede comenzar a operar con nosotros.
             </div>
 
             <!-- SUPPLIER DETAILS -->
@@ -86,31 +89,31 @@
                     <tr>
                         <td width="50%" style="padding-bottom: 10px;">
                             <span class="label">RFC / Tax ID</span><br>
-                            <span class="value">{{rfc}}</span>
+                            <span class="value"><?= $rfc ?></span>
                         </td>
                         <td width="50%" style="padding-bottom: 10px;">
                             <span class="label">Origen</span><br>
-                            <span class="value">{{origen}} ({{tipo}})</span>
+                            <span class="value"><?= $origen ?> (<?= $tipo ?>)</span>
                         </td>
                     </tr>
                     <tr>
                         <td colspan="2">
                             <span class="label">Fecha de Registro</span><br>
-                            <span class="value">{{created_at}}</span>
+                            <span class="value"><?= $created_at ?></span>
                         </td>
                     </tr>
                 </table>
             </div>
 
             <div style="text-align: center;">
-                <a href="{{link_expediente}}" class="btn-action">Iniciar Validación de Expediente</a>
+                <a href="<?= $link_expediente ?>" class="btn-action">Ir a mi Portal de Proveedores</a>
             </div>
             
             <div class="body-text" style="margin-top: 30px;">
-                Agradecemos su disposición para ser parte de este proyecto de modernización operativa.
+                Agradecemos su confianza en ser parte de nuestro proveedor de servicios.
             </div>
 
-            <div class="body-text">Saludos.</div>
+            <div class="body-text">Atentamente.</div>
         </div>
     </div>
     <!-- FOOTER PARTNERS BAR -->

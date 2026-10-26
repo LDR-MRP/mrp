@@ -6,6 +6,7 @@ use Requests\Supplier\StoreBankAccountRequest;
 use Requests\Supplier\StoreSupplierRequest;
 use Com_ordenCompraModel;
 use AccountsPayableInvoiceModel;
+use Psr\Log\LogLevel;
 
 class SupplierService
 {
@@ -236,10 +237,14 @@ class SupplierService
             $fileSize = filesize($file['tmp_name']);
             $fileSizeMB = $fileSize / (1024 * 1024); // Convertir a MB
             
-            if ($fileSizeMB > MAX_FILE_SIZE_MB) {
+            $this->logMessage("[uploadDocument] Tamaño archivo: {$fileSizeMB}MB, MAX_FILE_SIZE_MB: " . (defined('MAX_FILE_SIZE_MB') ? MAX_FILE_SIZE_MB : 'NO DEFINIDO'));
+            
+            if (defined('MAX_FILE_SIZE_MB') && $fileSizeMB >= MAX_FILE_SIZE_MB) {
                 // Si el archivo es mayor a 5MB, comprimir en ZIP
                 $zipFileName = "{$docType}_" . bin2hex(random_bytes(4)) . ".zip";
                 $zipFullPath = $uploadPath . $zipFileName;
+                
+                $this->logMessage("[uploadDocument] Creando ZIP: {$zipFullPath}");
                 
                 $zip = new \ZipArchive();
                 if ($zip->open($zipFullPath, \ZipArchive::CREATE) === TRUE) {
@@ -249,7 +254,10 @@ class SupplierService
                     // Actualizar la ruta para usar el archivo ZIP
                     $fullPath = $zipFullPath;
                     $fileName = $zipFileName;
+                    
+                    $this->logMessage("[uploadDocument] ZIP creado exitosamente");
                 } else {
+                    $this->logMessage("[uploadDocument] Error al crear ZIP");
                     throw new Exception("Error al crear el archivo ZIP.", 500);
                 }
             }
@@ -272,7 +280,11 @@ class SupplierService
                 'created_by'      => $userId
             ];
             
+            $this->logMessage("[uploadDocument] Guardando en DB: " . json_encode($dbData));
+            
             $this->expedienteModel->upsertDocument($dbData);
+            
+            $this->logMessage("[uploadDocument] Documento guardado en DB exitosamente");
 
             // 5. Auditoría
             $this->expedienteModel->logAudit($supplierId, AuditAction::UPLOAD_FILE, "Subida de documento: {$docType}", $userId);
@@ -295,29 +307,45 @@ class SupplierService
             if ($newProgress === 100) {
                 $supplier = $this->proveedorModel->getById($supplierId);
 
-                // Resolvemos quiénes deben recibir el correo
-                $recipients = $this->usuarioModel->resolveRecipients('supplier_ready_for_approval', $supplier['id_planta'] ?? 0);
-                
-                if (empty($recipients)) {
-                    $recipients = [MAIL_WEBMASTER];
+                // Resolvemos quiénes deben recibir el correo usando supplier_onboarding_complete
+                try {
+                    $recipients = $this->usuarioModel->resolveRecipients('supplier_onboarding_complete', $supplier['id_planta'] ?? 0);
+                } catch (\PDOException $e) {
+                    $this->logMessage("[resolveRecipients] Tabla sys_notification_distribution no existe, usando fallback");
+                    $recipients = [];
                 }
                 
-                // Preparamos los datos para el template "LDR Premium" que diseñamos
+                // Extraer emails del array de arrays
+                $recipientEmails = [];
+                if (!empty($recipients)) {
+                    foreach ($recipients as $recipient) {
+                        if (isset($recipient['email_user'])) {
+                            $recipientEmails[] = $recipient['email_user'];
+                        }
+                    }
+                }
+                
+                if (empty($recipientEmails)) {
+                    $recipientEmails = [MAIL_WEBMASTER];
+                }
+                
+                // Preparamos los datos para el template
                 $emailData = [
                     'razon_social'    => $supplier['razon_social'],
                     'rfc'             => $supplier['rfc'],
                     'origen'          => $supplier['origen'],
                     'tipo'            => $supplier['tipo'],
                     'created_at'      => date('d/m/Y', strtotime($supplier['created_at'])),
-                    'link_expediente' => base_url() . "/prv_proveedor/edit?id=" . $supplierId
+                    'link_expediente' => base_url() . "/prv_proveedor/edit?id=" . $supplierId,
+                    'destinatario'    => 'COLABORADOR'
                 ];
 
-                // El método sendNotification buscará en 'sys_notification_distribution' 
-                // a quién avisarle según el evento y la planta del proveedor.
+                // Notificar a COLABORADORES que el proveedor está listo para validación
                 $this->sendNotification(
-                    'supplier_ready_for_approval', 
+                    'supplier_onboarding_complete', 
                     $emailData, 
-                    $recipients
+                    $recipientEmails,
+                    'colaborador'
                 );
             }
             // --- FIN DE INTEGRACIÓN ---
@@ -351,10 +379,29 @@ class SupplierService
      */
     private function calculateOnboardingProgress(int $supplierId): int
     {
-        $requiredCount = 6; // Asumido segun tu UI
-        $uploadedCount = $this->expedienteModel->countDocumentsBySupplier($supplierId);
+        // Obtener el perfil del proveedor
+        $supplier = $this->proveedorModel->getById($supplierId);
+        if (!$supplier) return 0;
         
-        $progress = (int)(($uploadedCount / $requiredCount) * 100);
+        // Usar el sistema dinámico de documentos
+        $requiredDocs = DocumentTypeEnum::getRequiredList($supplier['id_tipo_persona'], $supplier['origen']);
+        $requiredCount = count($requiredDocs);
+        
+        // Contar solo documentos obligatorios aprobados
+        $uploaded = $this->expedienteModel->uploadedDocuments($supplierId);
+        $uploadedIndexed = array_column($uploaded, null, 'tipo_documento');
+        
+        $approvedCount = 0;
+        foreach ($requiredDocs as $key => $config) {
+            if ($config['required']) {
+                $fileInfo = $uploadedIndexed[$key] ?? null;
+                if (isset($fileInfo['estatus_validacion']) && (int)$fileInfo['estatus_validacion'] === 1) {
+                    $approvedCount++;
+                }
+            }
+        }
+        
+        $progress = (int)(($approvedCount / $requiredCount) * 100);
         return $progress > 100 ? 100 : $progress;
     }
 
@@ -434,31 +481,58 @@ class SupplierService
 
             $this->expedienteModel->logAudit($supplierId, $auditAction, $logMsg, $userId);
 
+            // 2.5. NOTIFICACIÓN AL PROVEEDOR cuando se rechaza un documento
+            if ($status === 2) {
+                $contactEmail = $this->proveedorModel->getContactEmail($supplierId);
+                $this->logMessage("[supplier_document_rejected] Supplier ID: {$supplierId}, Contact Email: " . ($contactEmail ?? 'NULL') . ", Motivo: " . ($motivo ?? 'NULL'));
+                
+                if (!empty($contactEmail)) {
+                    try {
+                        $this->sendNotification(
+                            'supplier_document_rejected',
+                            [
+                                'razon_social'    => $supplierData['razon_social'],
+                                'rfc'             => $supplierData['rfc'],
+                                'motivo_rechazo' => $motivo,
+                                'link_expediente' => base_url() . "/prv_proveedor/edit?id=" . $supplierId,
+                                'destinatario'    => 'PROVEEDOR'
+                            ],
+                            [$contactEmail],
+                            'proveedor'
+                        );
+                        $this->logMessage("[supplier_document_rejected] Correo enviado exitosamente a: {$contactEmail}");
+                    } catch (\Exception $e) {
+                        $this->logMessage("[supplier_document_rejected] Error enviando correo: " . $e->getMessage());
+                    }
+                } else {
+                    $this->logMessage("[supplier_document_rejected] No se envió correo: proveedor sin email de contacto");
+                }
+            }
+
             // 3. LÓGICA PRO: Verificar si el Onboarding se completó con esta aprobación
             $onboardingComplete = false;
             if ($status === 1) {
                 $onboardingComplete = $this->checkAndActivateSupplier($supplierId, $userId);
                 
                 if ($onboardingComplete) {
-                    // 1. Resolvemos quiénes deben recibir el correo
-                    $recipients = $this->usuarioModel->resolveRecipients('supplier_onboarding_complete', $supplierData['id_planta']);
-                    
-                    if (empty($recipients)) {
-                       $recipients = ['alfredo.sanchez@ldrsolutions.com.mx'];
+                    // NOTIFICACIÓN AL PROVEEDOR (expediente aprobado)
+                    $contactEmail = $this->proveedorModel->getContactEmail($supplierId);
+                    if (!empty($contactEmail)) {
+                        $this->sendNotification(
+                            'supplier_ready_for_approval',
+                            [
+                                'razon_social'    => $supplierData['razon_social'],
+                                'rfc'             => $supplierData['rfc'],
+                                'origen'          => $supplierData['origen'],
+                                'tipo'            => $supplierData['tipo'],
+                                'created_at'      => date('d/m/Y', strtotime($supplierData['created_at'])),
+                                'link_expediente' => base_url() . "/prv_proveedor/edit?id=" . $supplierId,
+                                'destinatario'    => 'PROVEEDOR'
+                            ],
+                            [$contactEmail],
+                            'proveedor'
+                        );
                     }
-                    // NOTIFICACIÓN: Documentos Listos
-                    $this->sendNotification(
-                        'supplier_onboarding_complete',
-                        [
-                            'razon_social'    => $supplierData['razon_social'],
-                            'rfc'             => $supplierData['rfc'],
-                            'origen'          => $supplierData['origen'],
-                            'tipo'            => $supplierData['tipo'],
-                            'created_at'      => date('d/m/Y', strtotime($supplierData['created_at'])),
-                            'link_expediente' => base_url() . "/prv_proveedor/edit?id=" . $supplierId
-                        ],
-                        $recipients
-                    );
                 }
             }
 
@@ -477,18 +551,19 @@ class SupplierService
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
+            error_log("[auditDocument PDO ERROR] " . $p->getMessage() . " | Code: " . $p->getCode() . " | File: " . $p->getFile() . ":" . $p->getLine());
             $this->logMessage($p, \LogLevel::CRITICAL, [
                 'action' => 'auditDocument',
                 'id_user' => $userContext['id']
             ]);
-            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
+            return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos. ". $p->getMessage() );
             
         } catch (\Throwable $e) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
             error_log("[auditDocument ERROR] " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
-            return ServiceResponse::error(message: "Error al auditar documento: " . $e->getMessage());
+            return ServiceResponse::error(message: "Error al auditar documento: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
         }
     }
 

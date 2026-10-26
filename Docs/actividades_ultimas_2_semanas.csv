@@ -1,0 +1,56 @@
+Tarea(epica),Tipo,Categoría,Tarea2,Fecha Estimado Inicio,Fecha Estimado Fin,Estatus
+Configuración inicial,Configuración,Backend,Configurar rutas API en Routes/api.php,2026-09-21,2026-09-22,Completado
+Configuración inicial,Configuración,Backend,Configurar constantes en Config.php y Config_local.php,2026-09-22,2026-09-23,Completado
+Configuración inicial,Análisis,Backend,Analizar estructura de modelos y servicios existentes,2026-09-23,2026-09-24,Completado
+Configuración inicial,Desarrollo,Backend,Implementar métodos CRUD básicos en SupplierController,2026-09-24,2026-09-25,Completado
+Configuración inicial,Desarrollo,Backend,Implementar validaciones en StoreSupplierRequest,2026-09-25,2026-09-26,Completado
+Configuración inicial,Desarrollo,Frontend,Implementar formulario de creación/edición de proveedores,2026-09-26,2026-09-27,Completado
+Configuración inicial,Desarrollo,Frontend,Integrar Velzon y Bootstrap 5 en UI de proveedores,2026-09-27,2026-09-28,Completado
+Validación de documentos,Desarrollo,Backend,Agregar validación de tamaño de archivo (MAX_FILE_SIZE_MB),2026-09-28,2026-09-29,Completado
+Validación de documentos,Desarrollo,Backend,Implementar compresión ZIP para archivos mayores a 5MB,2026-09-29,2026-09-30,Completado
+Validación de documentos,Configuración,Backend,Agregar constantes MAX_FILE_SIZE_MB y MAX_FILE_SIZE_BYTES,2026-09-30,2026-09-30,Completado
+Corrección de errores HTTP 500,Diagnóstico,Backend,Identificar constantes faltantes en Config_local.php,2026-10-01,2026-10-01,Completado
+Corrección de errores HTTP 500,Configuración,Backend,Agregar constantes de módulos (MCDEPARTAMENTOS, MCMARCAS, etc.),2026-10-01,2026-10-02,Completado
+Corrección de errores HTTP 500,Diagnóstico,Backend,Corregir error en /cli_departamentos/indexapi,2026-10-02,2026-10-02,Completado
+Corrección de errores HTTP 500,Corrección,Backend,Corregir error en /api/v1/suppliers/audit-document,2026-10-02,2026-10-03,Completado
+Asignación de plantas a proveedores,Análisis,Backend,Analizar propuesta de asignación obligatoria de plantas,2026-10-03,2026-10-04,Completado
+Asignación de plantas a proveedores,Base de Datos,Backend,Crear tabla pivote prv_rel_proveedores_plantas,2026-10-04,2026-10-05,Completado
+Asignación de plantas a proveedores,Corrección,Base de Datos,Corregir tipos de datos en foreign keys (BIGINT UNSIGNED),2026-10-05,2026-10-05,Completado
+Asignación de plantas a proveedores,Corrección,Backend,Corregir sintaxis SQL en query de usuario,2026-10-05,2026-10-05,Completado
+Asignación de plantas a proveedores,Desarrollo,Backend,Implementar métodos en Prv_proveedorModel (assignPlantas, getPlantasByProveedor),2026-10-06,2026-10-07,Completado
+Asignación de plantas a proveedores,Desarrollo,Backend,Actualizar SupplierService para procesar asignaciones de plantas,2026-10-07,2026-10-08,Completado
+Asignación de plantas a proveedores,Desarrollo,Backend,Crear endpoint API /api/v1/suppliers/{id}/plantas,2026-10-08,2026-10-08,Completado
+Asignación de plantas a proveedores,Desarrollo,Backend,Validaciones en StoreSupplierRequest (plantas, planta_principal),2026-10-08,2026-10-09,Completado
+Asignación de plantas a proveedores,Desarrollo,Frontend,Implementar selector de plantas en create.php,2026-10-09,2026-10-10,Completado
+Asignación de plantas a proveedores,Desarrollo,Frontend,Implementar plantasManager en JavaScript,2026-10-10,2026-10-11,Completado
+Asignación de plantas a proveedores,Corrección,Backend,Corregir transacciones PDO en assignPlantas,2026-10-11,2026-10-11,Completado
+Asignación de plantas a proveedores,Corrección,Backend,Corregir validación de email duplicado en edición,2026-10-11,2026-10-11,Completado
+Asignación de plantas a proveedores,Corrección,Frontend,Corregir serialización de arrays múltiples en FormData,2026-10-11,2026-10-11,Completado
+Asignación de plantas a proveedores,Corrección,Backend,Corregir actualización de plantas en modo edición,2026-10-12,2026-10-12,Completado
+Asignación de plantas a proveedores,Corrección,Backend,Corregir error de integridad en base de datos,2026-10-12,2026-10-13,Completado
+Gestión de colonias,Desarrollo,Frontend,Implementar opción "Otra" para ingreso manual de colonia,2026-10-13,2026-10-14,Completado
+Gestión de colonias,Desarrollo,Frontend,Corregir layout del selector de plantas,2026-10-14,2026-10-14,Completado
+Gestión de colonias,Desarrollo,Frontend,Eliminar sincronización de valor manual con select,2026-10-14,2026-10-14,Completado
+Documentos de proveedores,Configuración,Backend,Actualizar documentos requeridos por tipo de persona (DocumentTypeEnum),2026-10-15,2026-10-15,Completado
+Documentos de proveedores,Configuración,Backend,Configurar PODER y RFC como opcionales para personas morales,2026-10-15,2026-10-15,Completado
+Documentos de proveedores,Configuración,Backend,Agregar REPSE como documento opcional,2026-10-15,2026-10-15,Completado
+Documentos de proveedores,Corrección,Backend,Corregir cálculo de progreso de onboarding para usar DocumentTypeEnum,2026-10-15,2026-10-16,Completado
+Documentos de proveedores,Validación,Backend,Agregar validación de tipo de documento en UploadDocumentRequest,2026-10-16,2026-10-16,Completado
+Documentos de proveedores,Corrección,Backend,Corregir error de tabla sys_notification_distribution en auditDocument,2026-10-16,2026-10-16,Completado
+Notificaciones,Refactorización,Base de Datos,Agregar campo userid a sys_notification_distribution,2026-10-17,2026-10-17,Completado
+Notificaciones,Refactorización,Backend,Actualizar método resolveRecipients para soportar notificaciones por usuario,2026-10-17,2026-10-17,Completado
+Notificaciones,Migración,Base de Datos,Generar script de migración para sys_notification_distribution,2026-10-17,2026-10-17,Completado
+Notificaciones,Migración,Base de Datos,Actualizar INSERTs de sys_notification_distribution con nueva estructura,2026-10-17,2026-10-17,Completado
+Notificaciones,Corrección,Backend,Corregir error trim() en AuditDocumentRequest (motivo_rechazo array),2026-10-20,2026-10-20,Completado
+Notificaciones,Corrección,Backend,Aplanar array de destinatarios en SupplierService,2026-10-20,2026-10-20,Completado
+Notificaciones,Corrección,Frontend,Cambiar templates de correos a sintaxis PHP para variables dinámicas,2026-10-20,2026-10-20,Completado
+Notificaciones,Desarrollo,Backend,Agregar parámetro recipientType en Notifiable y NotificationService,2026-10-20,2026-10-20,Completado
+Notificaciones,Desarrollo,Frontend,Crear template específico para proveedores (supplier_onboarding_complete_supplier.php),2026-10-20,2026-10-20,Completado
+Notificaciones,Desarrollo,Backend,Agregar método getContactEmail en Prv_proveedorModel (prv_det_contactos),2026-10-20,2026-10-20,Completado
+Notificaciones,Corrección,Frontend,Corregir imágenes rotas en templates de correo (transform: rotate(0deg)),2026-10-20,2026-10-20,Completado
+Notificaciones,Corrección,Backend,Ajustar flujo de notificaciones por evento correcto,2026-10-21,2026-10-21,Completado
+Notificaciones,Desarrollo,Frontend,Crear template supplier_ready_for_approval.php para aprobación de documentos,2026-10-21,2026-10-21,Completado
+Notificaciones,Desarrollo,Backend,Agregar notificación de rechazo de documento (supplier_document_rejected),2026-10-21,2026-10-21,Completado
+Notificaciones,Desarrollo,Frontend,Crear template supplier_document_rejected.php para rechazo de documentos,2026-10-21,2026-10-21,Completado
+Notificaciones,Configuración,Backend,Implementar logging usando trait Loggable para notificaciones,2026-10-22,2026-10-22,Completado
+Notificaciones,Corrección,Backend,Corregir evento en uploadDocument para usar supplier_onboarding_complete,2026-10-23,2026-10-23,Completado
