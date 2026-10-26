@@ -184,6 +184,11 @@ foreach ($data['detalle'] as $d) {
   <div style="word-wrap:break-word; white-space:normal;">
     <?= $d['descripcion'] ?>
   </div>
+  <?php if (!empty($d['vines'])) { ?>
+  <div style="font-size:8px; color:#555; margin-top:2px; word-wrap:break-word; white-space:normal;">
+    VIN: <?= htmlspecialchars($d['vines']) ?>
+  </div>
+  <?php } ?>
 </td>
   <td class="t-right num"><?= number_format($d['cantidad'] * $d['signo']) ?></td>
   <td class="t-right num"><?= number_format($d['costo_cantidad'],2) ?></td>

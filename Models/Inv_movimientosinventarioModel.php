@@ -176,13 +176,52 @@ class Inv_movimientosinventarioModel extends Mysql
     ");
     }
 
+    public function selectClientes()
+    {
+        // cli_clientes.estado: 0=Eliminado 1=Inactivo 2=Activo
+        return $this->select_all("
+        SELECT idcliente, codigo_cliente,
+               COALESCE(NULLIF(nombre_comercial, ''), razon_social) AS nombre
+        FROM cli_clientes
+        WHERE estado = 2
+        ORDER BY nombre ASC
+    ");
+    }
+
     public function selectInventarioPredictivo()
     {
         return $this->select_all("
-        SELECT idinventario, cve_articulo, descripcion
+        SELECT idinventario, cve_articulo, descripcion, tipo_elemento
         FROM wms_inventario
         WHERE estado = 2
     ");
+    }
+
+    /**
+     * VINs (unidades físicas) que pueden salir de un almacén para un producto:
+     * estado 2 (en almacén) y que no estén comprometidos en un traslado activo.
+     */
+    public function selectVinesDisponibles(int $inventarioid, int $almacenid): array
+    {
+        return $this->select_all("
+        SELECT ns.id_numeros_serie,
+               ns.numero_serie,
+               NULLIF(TRIM(va.color), '') AS color,
+               va.numero_motor
+        FROM wms_numeros_series ns
+        LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = ns.id_numeros_serie
+        WHERE ns.inventarioid = ?
+          AND ns.almacenid = ?
+          AND ns.estado = '2'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM wms_traslados_unidades_detalle d
+              INNER JOIN wms_traslados_unidades t ON t.idtraslado = d.trasladoid
+              WHERE d.vinid = ns.id_numeros_serie
+                AND t.estado IN (1,2,3)
+          )
+        ORDER BY ns.numero_serie
+    ", [$inventarioid, $almacenid]);
     }
 
     public function insertMovimientoMasivo(
@@ -193,8 +232,18 @@ class Inv_movimientosinventarioModel extends Mysql
         array $cantidades,
         array $costos,
         ?int $id_proveedor = null,
-        ?string $lote = null
+        ?string $lote = null,
+        ?int $id_cliente = null,
+        ?array $series = null,
+        ?int $usuarioid = null
     ) {
+        /*
+         * $series: VINs por partida, mismo índice que $inventarios
+         * ([i] => [id_numeros_serie, ...]). Si viene null (carga masiva,
+         * alta de inventario) se conserva el comportamiento anterior y no se
+         * tocan VINs. Si viene un arreglo (form "Nuevo movimiento"), toda
+         * SALIDA de un producto tipo Unidad (P) debe indicar sus VINs.
+         */
         $concepto = $this->select("SELECT signo, cpn FROM wms_conceptos_mov WHERE idconcepmov = $concepmovid");
         if (!$concepto) return "Concepto inválido";
 
@@ -205,10 +254,23 @@ class Inv_movimientosinventarioModel extends Mysql
             return "Debe seleccionar un proveedor para este concepto de movimiento";
         }
 
+        // Si el concepto de movimiento es de tipo Cliente (cpn = 'C'), el cliente es obligatorio
+        if ($concepto['cpn'] === 'C' && empty($id_cliente)) {
+            return "Debe seleccionar un cliente para este concepto de movimiento";
+        }
+
+        // Cada movimiento solo guarda la contraparte que corresponde a su tipo
+        if ($concepto['cpn'] !== 'P') $id_proveedor = null;
+        if ($concepto['cpn'] !== 'C') $id_cliente = null;
+
+
+        $pdo = $this->getConexion();
 
         try {
+            $pdo->beginTransaction();
 
             $numero_movimiento = 'MOV-' . date('YmdHis') . '-' . rand(100,999);
+            $vinesUsados = [];
 
             $insertados = 0;
 
@@ -233,19 +295,66 @@ class Inv_movimientosinventarioModel extends Mysql
                     throw new Exception("Stock insuficiente en producto ID $inventarioid");
                 }
 
+                // ---- VINs de la partida (solo salidas de unidades, tipo P) ----
+                $vinesPartida = [];
+                if ($series !== null && $signo < 0) {
+                    $prod = $this->select(
+                        "SELECT tipo_elemento, cve_articulo FROM wms_inventario WHERE idinventario = ?",
+                        [(int)$inventarioid]
+                    );
+                    if ($prod && $prod['tipo_elemento'] === 'P') {
+                        $ids = array_values(array_unique(array_filter(array_map('intval', (array)($series[$i] ?? [])))));
+                        if (floor($cantidad) != $cantidad || count($ids) !== (int)$cantidad) {
+                            throw new Exception("La partida {$prod['cve_articulo']} es una unidad: debes seleccionar exactamente "
+                                . (float)$cantidad . " VIN(s) (seleccionados: " . count($ids) . ")");
+                        }
+                        foreach ($ids as $idSerie) {
+                            if (isset($vinesUsados[$idSerie])) {
+                                throw new Exception("Un VIN está repetido en dos partidas del movimiento");
+                            }
+                            $vin = $this->select(
+                                "SELECT id_numeros_serie, numero_serie, estado, inventarioid, almacenid
+                                 FROM wms_numeros_series WHERE id_numeros_serie = ? FOR UPDATE",
+                                [$idSerie]
+                            );
+                            if (!$vin || (int)$vin['inventarioid'] !== (int)$inventarioid) {
+                                throw new Exception("El VIN seleccionado no corresponde al producto {$prod['cve_articulo']}");
+                            }
+                            if ((int)$vin['almacenid'] !== $almacenid) {
+                                throw new Exception("El VIN {$vin['numero_serie']} no está en el almacén seleccionado");
+                            }
+                            if ($vin['estado'] !== '2') {
+                                throw new Exception("El VIN {$vin['numero_serie']} ya no está disponible en almacén");
+                            }
+                            $enTraslado = $this->select(
+                                "SELECT COUNT(*) total FROM wms_traslados_unidades_detalle d
+                                 INNER JOIN wms_traslados_unidades t ON t.idtraslado = d.trasladoid
+                                 WHERE d.vinid = ? AND t.estado IN (1,2,3)",
+                                [$idSerie]
+                            );
+                            if ($enTraslado && (int)$enTraslado['total'] > 0) {
+                                throw new Exception("El VIN {$vin['numero_serie']} está en un traslado activo");
+                            }
+                            $vinesUsados[$idSerie] = true;
+                            $vinesPartida[] = $vin;
+                        }
+                    }
+                }
+
                 // insertar movimiento
-                $this->insert("
+                $idmovinventario = $this->insert("
                 INSERT INTO wms_movimientos_inventario
-                (inventarioid, almacenid, numero_movimiento, concepmovid, id_proveedor,
+                (inventarioid, almacenid, numero_movimiento, concepmovid, id_proveedor, id_cliente,
                  referencia, lote, cantidad, costo_cantidad, existencia, signo,
                  fecha_movimiento, estado)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW(),2)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),2)
             ", [
                     $inventarioid,
                     $almacenid,
                     $numero_movimiento,
                     $concepmovid,
                     $id_proveedor,
+                    $id_cliente,
                     $referencia,
                     $lote,
                     $cantidad,
@@ -266,6 +375,29 @@ class Inv_movimientosinventarioModel extends Mysql
                     $nueva_existencia
                 ]);
 
+                // VINs: marcar como Salida (3) y dejar la trazabilidad
+                foreach ($vinesPartida as $vin) {
+                    $this->update(
+                        "UPDATE wms_numeros_series SET estado = '3' WHERE id_numeros_serie = ?",
+                        [$vin['id_numeros_serie']]
+                    );
+                    $this->insert("
+                    INSERT INTO wms_movimientos_inventario_series
+                    (idmovinventario, numero_movimiento, id_numeros_serie, numero_serie,
+                     almacenid, signo, estado_anterior, usuarioid, fecha)
+                    VALUES (?,?,?,?,?,?,?,?,NOW())
+                ", [
+                        $idmovinventario,
+                        $numero_movimiento,
+                        $vin['id_numeros_serie'],
+                        $vin['numero_serie'],
+                        $almacenid,
+                        $signo,
+                        $vin['estado'],
+                        $usuarioid
+                    ]);
+                }
+
                 $insertados++;
             }
 
@@ -273,11 +405,14 @@ class Inv_movimientosinventarioModel extends Mysql
                 throw new Exception("No se insertó ninguna partida válida");
             }
 
+            $pdo->commit();
+
             return [
                 'numero_movimiento' => $numero_movimiento,
                 'almacenid' => $almacenid
             ];
         } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
             return $e->getMessage();
         }
     }
@@ -287,7 +422,8 @@ class Inv_movimientosinventarioModel extends Mysql
 
     public function selectConceptoInfo($id)
     {
-        return $this->select("SELECT cpn 
+        $id = intval($id);
+        return $this->select("SELECT cpn, signo
         FROM wms_conceptos_mov 
         WHERE idconcepmov = $id
     ");
@@ -321,7 +457,10 @@ public function getDetalleMovimientoReporte($numero, $almacenid)
             m.cantidad,
             m.signo,
             m.costo_cantidad,
-            (m.cantidad * m.signo * m.costo_cantidad) AS total
+            (m.cantidad * m.signo * m.costo_cantidad) AS total,
+            (SELECT GROUP_CONCAT(s.numero_serie ORDER BY s.numero_serie SEPARATOR ', ')
+             FROM wms_movimientos_inventario_series s
+             WHERE s.idmovinventario = m.idmovinventario) AS vines
         FROM wms_movimientos_inventario m
         INNER JOIN wms_inventario i ON i.idinventario = m.inventarioid
         WHERE m.numero_movimiento = '$numero'
