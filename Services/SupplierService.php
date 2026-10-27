@@ -969,9 +969,14 @@ class SupplierService
         $this->logMessage("[mapOnboardingRow] Procesando fila: " . json_encode($row));
         // $this->logMessage("[mapOnboardingRow] id_tipo_persona: " . $row['id_tipo_persona']);
         // $this->logMessage("[mapOnboardingRow] origen: " . $row['origen']);
+        
+        // Manejar caso donde id_tipo_persona es null - usar 'F' como valor por defecto
+        $tipoPersona = $row['id_tipo_persona'] ?? 'F';
+        $origen = $row['origen'] ?? 'Nacional';
+        
         $requiredDocs = \DocumentTypeEnum::getRequiredList(
-            $row['id_tipo_persona'],
-            $row['origen']
+            $tipoPersona,
+            $origen
         );
         
         $requiredCount = count($requiredDocs);
