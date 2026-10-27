@@ -879,16 +879,24 @@ class SupplierService
                 return ServiceResponse::error("Acceso denegado. Rol insuficiente.", 403);
             }
 
+            $this->logMessage("[getOnboardingReport] Iniciando reporte con filtros: " . json_encode($filters));
+
             $rawReport = $this->proveedorModel->getOnboardingReportData($filters);
+            
+            $this->logMessage("[getOnboardingReport] Registros obtenidos: " . count($rawReport));
+            
             $processedReport = [];
 
             foreach ($rawReport as $row) {
                 $processedReport[] = $this->mapOnboardingRow($row);
             }
 
+            $this->logMessage("[getOnboardingReport] Reporte procesado exitosamente");
+
             return ServiceResponse::success($processedReport, "Reporte de onboarding compilado con éxito.");
 
         } catch (\Exception $e) {
+            $this->logMessage("[getOnboardingReport] ERROR: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
             return ServiceResponse::error("Error al compilar el reporte: " . $e->getMessage(), 500);
         }
     }
