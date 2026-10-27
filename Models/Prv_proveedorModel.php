@@ -119,7 +119,7 @@ class Prv_proveedorModel extends Mysql
                 `prv_cat_proveedores`.`estatus_onboarding`,
                 `prv_cat_proveedores`.`estatus_operativo`,          
                 `prv_cat_proveedores`.`created_at`,
-                `prv_cat_proveedores`.`created_by`,
+                concat(`usuarios`.`nombres`,' ',`usuarios`.`apellidos`) as `created_by`,
                 -- Addresses Columns
                 `prv_det_direcciones`.`tipo`,
                 `prv_det_direcciones`.`calle`,
@@ -159,6 +159,8 @@ class Prv_proveedorModel extends Mysql
             -- Financial Config JOIN
             LEFT JOIN `cat_condiciones_pago`
                 ON `cat_condiciones_pago`.`id_condicion` = `prv_det_config_financiera`.`id_condicion_pago`
+            LEFT JOIN `usuarios`
+                ON `usuarios`.`idusuario` = `prv_cat_proveedores`.`created_by`
             -- Onboarding Information JOIN
             -- LEFT JOIN `prv_tra_onboarding`
             --     ON `prv_tra_onboarding`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
