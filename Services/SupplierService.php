@@ -887,8 +887,13 @@ class SupplierService
             
             $processedReport = [];
 
-            foreach ($rawReport as $row) {
-                $processedReport[] = $this->mapOnboardingRow($row);
+            foreach ($rawReport as $index => $row) {
+                try {
+                    $processedReport[] = $this->mapOnboardingRow($row);
+                } catch (\Exception $e) {
+                    $this->logMessage("[getOnboardingReport] ERROR procesando registro {$index}: " . $e->getMessage() . " - Data: " . json_encode($row));
+                    throw $e; // Re-lanzar para capturar en el catch principal
+                }
             }
 
             $this->logMessage("[getOnboardingReport] Reporte procesado exitosamente");
