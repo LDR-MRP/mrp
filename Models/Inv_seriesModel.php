@@ -503,7 +503,7 @@ class Inv_seriesModel extends Mysql
     public function selectSerieById(int $idSerie)
     {
         return $this->select(
-            "SELECT id_numeros_serie, numero_serie, id_cat_modelo_vin
+            "SELECT id_numeros_serie, numero_serie, id_cat_modelo_vin, tipo_generacion
              FROM wms_numeros_series WHERE id_numeros_serie = ? AND estado != 0",
             [$idSerie]
         );
@@ -554,6 +554,11 @@ class Inv_seriesModel extends Mysql
         $serie = $this->selectSerieById($idSerie);
         if (empty($serie)) {
             return ['status' => false, 'msg' => 'El VIN generado no existe o está dado de baja.'];
+        }
+
+        // Unidad importada: no tiene VIN nacional, su VIN ES el VIN de origen
+        if (($serie['tipo_generacion'] ?? '') === 'importado' && $vinOrigen !== $serie['numero_serie']) {
+            return ['status' => false, 'msg' => "Unidad importada: el VIN de origen debe ser el mismo VIN ({$serie['numero_serie']})."];
         }
 
         // Motor / VIN de origen ya usados por OTRO VIN generado
@@ -672,5 +677,182 @@ class Inv_seriesModel extends Mysql
             'msg' => empty($actual) ? 'Asociación registrada.' : 'Asociación actualizada.',
             'tipo' => empty($actual) ? 'nueva' : 'actualizada',
         ];
+    }
+
+    /* =================================================================
+     * UNIDADES IMPORTADAS (sin VIN nacional)
+     * El VIN de la unidad ES el VIN de origen del fabricante. Se guardan en
+     * las mismas tablas que el resto (wms_numeros_series con
+     * tipo_generacion = 'importado', sin VIN base) para que existencias,
+     * traslados, llaves y ventas las vean igual que a cualquier unidad.
+     * ================================================================= */
+
+    /** Productos terminados activos: cve_articulo => [idinventario, descripcion]. */
+    public function mapProductosUnidad(): array
+    {
+        $mapa = [];
+        foreach ($this->select_all(
+            "SELECT idinventario, cve_articulo, descripcion FROM wms_inventario
+             WHERE tipo_elemento = 'P' AND estado != 0 ORDER BY descripcion"
+        ) as $r) {
+            $mapa[strtoupper(trim($r['cve_articulo']))] = $r;
+        }
+        return $mapa;
+    }
+
+    /** Almacenes activos: cve_almacen => [idalmacen, descripcion]. */
+    public function mapAlmacenesActivos(): array
+    {
+        $mapa = [];
+        foreach ($this->select_all(
+            "SELECT idalmacen, cve_almacen, descripcion FROM wms_almacenes
+             WHERE estado = 2 ORDER BY cve_almacen"
+        ) as $r) {
+            $mapa[strtoupper(trim($r['cve_almacen']))] = $r;
+        }
+        return $mapa;
+    }
+
+    /**
+     * VIN / motores que ya existen, para validar el archivo completo con 3 consultas.
+     * Regresa ['vin' => [VIN => true], 'motor' => [MOTOR => VIN], 'origen' => [ORIGEN => VIN]].
+     */
+    public function mapExistentesImportados(array $vins, array $motores): array
+    {
+        $out = ['vin' => [], 'motor' => [], 'origen' => []];
+        foreach (array_chunk(array_values(array_unique(array_filter($vins))), 500) as $b) {
+            $in = implode(',', array_fill(0, count($b), '?'));
+            foreach ($this->select_all("SELECT numero_serie FROM wms_numeros_series WHERE numero_serie IN ($in)", $b) as $r) {
+                $out['vin'][$r['numero_serie']] = true;
+            }
+            foreach ($this->select_all(
+                "SELECT va.vin_origen, s.numero_serie FROM wms_vin_asociaciones va
+                 INNER JOIN wms_numeros_series s ON s.id_numeros_serie = va.id_numeros_serie
+                 WHERE va.vin_origen IN ($in)", $b) as $r) {
+                $out['origen'][$r['vin_origen']] = $r['numero_serie'];
+            }
+        }
+        foreach (array_chunk(array_values(array_unique(array_filter($motores))), 500) as $b) {
+            $in = implode(',', array_fill(0, count($b), '?'));
+            foreach ($this->select_all(
+                "SELECT va.numero_motor, s.numero_serie FROM wms_vin_asociaciones va
+                 INNER JOIN wms_numeros_series s ON s.id_numeros_serie = va.id_numeros_serie
+                 WHERE va.numero_motor IN ($in)", $b) as $r) {
+                $out['motor'][$r['numero_motor']] = $r['numero_serie'];
+            }
+        }
+        return $out;
+    }
+
+    /** idconcepmov del concepto 6 "Ajustes" (entrada), el mismo que usaron las cargas de inventario. */
+    private function conceptoEntradaAjuste(): int
+    {
+        $r = $this->select("SELECT idconcepmov FROM wms_conceptos_mov WHERE cve_concep_mov = '6' LIMIT 1");
+        return !empty($r) ? (int) $r['idconcepmov'] : 6;
+    }
+
+    /**
+     * Alta de UNA unidad importada, todo o nada:
+     * VIN (= VIN de origen) + asociación (motor, origen, color) + entrada al
+     * inventario (concepto 6 Ajustes) + existencia + historial.
+     * Los datos ya vienen normalizados y validados por el controlador.
+     */
+    public function altaUnidadImportada(array $u, string $referencia, $usuarioid, string $origenCaptura = 'MASIVO'): array
+    {
+        $usuarioid = !empty($usuarioid) ? (int) $usuarioid : null;
+        $vin = $u['vin'];
+        $color = $u['color'] !== '' ? $u['color'] : null;
+        $concepto = $this->conceptoEntradaAjuste();
+        $historial = new Inv_vin_historialModel();
+
+        $pdo = $this->conexion;
+        try {
+            $pdo->beginTransaction();
+
+            $idSerie = (int) $this->insert(
+                "INSERT INTO wms_numeros_series
+                 (inventarioid, id_cat_modelo_vin, almacenid, numero_serie, referencia, costo, fecha, estado, tipo_generacion)
+                 VALUES (?, NULL, ?, ?, ?, 0, NOW(), '2', 'importado')",
+                [$u['inventarioid'], $u['almacenid'], $vin, $referencia]
+            );
+
+            $this->insert(
+                "INSERT INTO wms_vin_asociaciones
+                 (id_numeros_serie, numero_motor, vin_origen, color, usuario_alta, fecha_alta)
+                 VALUES (?,?,?,?,?,NOW())",
+                [$idSerie, $u['motor'], $vin, $color, $usuarioid]
+            );
+
+            // existencia: fila del producto en el almacén (se crea si no existe)
+            $this->insert(
+                "INSERT INTO wms_multialmacen (inventarioid, almacenid, existencia)
+                 VALUES (?, ?, 1)
+                 ON DUPLICATE KEY UPDATE existencia = COALESCE(existencia, 0) + 1",
+                [$u['inventarioid'], $u['almacenid']]
+            );
+            $exis = $this->select(
+                "SELECT existencia FROM wms_multialmacen WHERE inventarioid = ? AND almacenid = ?",
+                [$u['inventarioid'], $u['almacenid']]
+            );
+
+            $this->insert(
+                "INSERT INTO wms_movimientos_inventario
+                 (inventarioid, almacenid, numero_movimiento, concepmovid, id_proveedor, referencia, lote,
+                  cantidad, costo_cantidad, precio, costo, existencia, signo, fecha_movimiento, estado)
+                 VALUES (?, ?, ?, ?, NULL, ?, NULL, 1, 0, 0, 0, ?, 1, NOW(), 2)",
+                [$u['inventarioid'], $u['almacenid'], $referencia, $concepto, $vin, (float) ($exis['existencia'] ?? 1)]
+            );
+
+            $base = [
+                'id_numeros_serie' => $idSerie,
+                'numero_serie' => $vin,
+                'id_cat_modelo_vin' => null,
+                'origen' => $origenCaptura,
+                'usuarioid' => $usuarioid,
+            ];
+            $detalle = 'Alta de unidad importada (sin VIN nacional). ' . $referencia
+                . (isset($u['_fila']) ? ', fila ' . $u['_fila'] : '');
+            $historial->registrar($base + ['modulo' => 'GENERADOR', 'accion' => 'GENERACION', 'campo' => 'numero_serie',
+                'valor_nuevo' => $vin, 'detalle' => $detalle]);
+            $historial->registrar($base + ['modulo' => 'ASOCIACION', 'accion' => 'ALTA', 'campo' => 'numero_motor',
+                'valor_nuevo' => $u['motor'], 'detalle' => $detalle]);
+            $historial->registrar($base + ['modulo' => 'ASOCIACION', 'accion' => 'ALTA', 'campo' => 'vin_origen',
+                'valor_nuevo' => $vin, 'detalle' => $detalle]);
+            if ($color !== null) {
+                $historial->registrar($base + ['modulo' => 'ASOCIACION', 'accion' => 'ALTA', 'campo' => 'color',
+                    'valor_nuevo' => $color, 'detalle' => $detalle]);
+            }
+            $historial->registrar($base + ['modulo' => 'INVENTARIO', 'accion' => 'ENTRADA', 'campo' => 'almacenid',
+                'valor_nuevo' => $u['cve_almacen'], 'detalle' => $detalle]);
+
+            $pdo->commit();
+            return ['status' => true, 'id_numeros_serie' => $idSerie];
+        } catch (PDOException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            if ($e->getCode() === '23000') {
+                return ['status' => false, 'msg' => 'El VIN, el número de motor o el VIN de origen ya existe en el sistema.'];
+            }
+            error_log('Inv_seriesModel::altaUnidadImportada: ' . $e->getMessage());
+            return ['status' => false, 'msg' => 'No se pudo registrar la unidad.'];
+        }
+    }
+
+    /** Listado de unidades importadas (para exportar a Excel). */
+    public function selectImportados(): array
+    {
+        return $this->select_all(
+            "SELECT s.numero_serie, va.numero_motor, va.color,
+                    i.cve_articulo, i.descripcion AS producto,
+                    a.cve_almacen, a.descripcion AS almacen,
+                    s.referencia, s.estado, DATE_FORMAT(s.fecha, '%Y-%m-%d') AS fecha
+             FROM wms_numeros_series s
+             INNER JOIN wms_inventario i ON i.idinventario = s.inventarioid
+             LEFT JOIN wms_almacenes a ON a.idalmacen = s.almacenid
+             LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = s.id_numeros_serie
+             WHERE s.tipo_generacion = 'importado' AND s.estado != 0
+             ORDER BY a.cve_almacen, i.descripcion, s.numero_serie"
+        );
     }
 }

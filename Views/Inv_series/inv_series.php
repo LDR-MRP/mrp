@@ -28,6 +28,7 @@
     .tipo-lote  { --tipo-rgb: var(--vz-success-rgb); }
     .tipo-orden { --tipo-rgb: var(--vz-primary-rgb); }
     .tipo-carga { --tipo-rgb: var(--vz-warning-rgb); }
+    .tipo-importado { --tipo-rgb: var(--vz-info-rgb); }
     .modo-card {
         position: relative; display: flex; gap: 1rem; align-items: center;
         padding: 1.1rem 1.25rem 1.1rem 1.4rem; border: 1px solid var(--vz-border-color);
@@ -219,6 +220,9 @@
                                 <button type="button" class="btn btn-soft-info" id="btnCargaAsociacion">
                                     <i class="ri-file-excel-2-line align-bottom me-1"></i> Carga masiva
                                 </button>
+                                <button type="button" class="btn btn-soft-primary" id="btnImportados" title="Unidades importadas sin VIN nacional">
+                                    <i class="ri-ship-line align-bottom me-1"></i> Unidades importadas
+                                </button>
                             </div>
                             <button type="button" class="btn btn-primary btn-label btn-generar-vin" id="btnIrGenerar">
                                 <i class="ri-add-circle-line label-icon align-middle fs-18 me-2"></i> Generar nuevos VIN
@@ -242,11 +246,18 @@
                                 <span class="badge bg-warning-subtle text-warning fs-12 px-2 py-1" id="kpiPendientes">
                                     <i class="ri-error-warning-line align-bottom me-1"></i> — sin asociar
                                 </span>
-                                <div class="ms-auto">
+                                <span class="badge bg-info-subtle text-info fs-12 px-2 py-1" id="kpiImportados" title="Unidades importadas sin VIN nacional (VIN = VIN de origen)">
+                                    <i class="ri-ship-line align-bottom me-1"></i> — importadas
+                                </span>
+                                <div class="ms-auto d-flex gap-2">
+                                    <a class="btn btn-sm btn-soft-info" href="<?= base_url(); ?>/Inv_series/exportarImportados" title="Excel con VIN de origen, motor, color, SKU y almacén de las importadas">
+                                        <i class="ri-download-2-line align-bottom"></i> Exportar importadas
+                                    </a>
                                     <select class="form-select form-select-sm" id="filtroAsociacion" style="min-width:190px">
                                         <option value="">Todos los VIN</option>
                                         <option value="si">Con motor / VIN origen</option>
                                         <option value="no">Sin asociar</option>
+                                        <option value="imp">Importadas (sin VIN nacional)</option>
                                     </select>
                                 </div>
                             </div>
@@ -613,6 +624,8 @@
                                 <label class="btn btn-outline-light text-body" for="refTipoOrden">Órdenes</label>
                                 <input type="radio" class="btn-check" name="filtroTipoRef" id="refTipoCarga" value="carga">
                                 <label class="btn btn-outline-light text-body" for="refTipoCarga">Carga inicial</label>
+                                <input type="radio" class="btn-check" name="filtroTipoRef" id="refTipoImportado" value="importado">
+                                <label class="btn btn-outline-light text-body" for="refTipoImportado">Importadas</label>
                             </div>
                         </div>
                         <div class="ref-list" id="listaRefsAsoc">
@@ -645,6 +658,52 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
                     <button type="button" class="btn btn-success" id="btnProcesarAsociacion">
+                        <i class="ri-upload-2-line align-bottom me-1"></i> Procesar archivo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL UNIDADES IMPORTADAS ================= -->
+    <div class="modal fade" id="modalImportados" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-bottom">
+                    <div>
+                        <h5 class="modal-title mb-0">Unidades importadas</h5>
+                        <p class="text-muted mb-0 fs-12">Sin VIN nacional · el VIN de la unidad es el VIN de origen del fabricante</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info fs-13 py-2 mb-3">
+                        Cada fila da de alta la unidad con su <strong>VIN de origen como VIN</strong>, su número de motor y color,
+                        y la <strong>entrada al inventario</strong> en el almacén indicado (concepto Ajustes). Las unidades con VIN nacional
+                        (3LD...) se siguen generando con <em>Generar nuevos VIN</em> y se asocian con <em>Carga masiva</em>.
+                    </div>
+
+                    <div class="d-flex align-items-center mb-2">
+                        <h6 class="mb-0 flex-grow-1"><span class="carga-paso">1</span> Descarga la plantilla</h6>
+                    </div>
+                    <p class="fs-13 text-muted mb-2">
+                        Columnas: <span class="mono">SKU</span>, <span class="mono">VIN_ORIGEN</span>, <span class="mono">NUMERO_MOTOR</span>,
+                        <span class="mono">COLOR</span> (opcional) y <span class="mono">ALMACEN</span>. El SKU y el almacén se eligen de una lista.
+                    </p>
+                    <a class="btn btn-sm btn-soft-primary mb-3" href="<?= base_url(); ?>/Inv_series/descargarPlantillaImportados">
+                        <i class="ri-download-2-line align-bottom me-1"></i> Descargar plantilla
+                    </a>
+
+                    <h6 class="mb-2"><span class="carga-paso">2</span> Sube el archivo lleno</h6>
+                    <form id="formImportados" onsubmit="return false;">
+                        <label class="form-label fs-13 text-muted" for="archivoImportados">Archivo (.xlsx, .xls o .csv)</label>
+                        <input type="file" class="form-control" id="archivoImportados" name="archivo" accept=".xlsx,.xls,.csv">
+                    </form>
+                    <div id="resultadoImportados" class="mt-3"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" id="btnProcesarImportados">
                         <i class="ri-upload-2-line align-bottom me-1"></i> Procesar archivo
                     </button>
                 </div>

@@ -51,6 +51,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const filtro = document.getElementById("filtroAsociacion").value;
     if (!filtro) return true;
     const row = settings.aoData[dataIndex]._aData;
+    if (filtro === "imp") return row.tipo_generacion === "importado";
     const asociado = !!row.numero_motor;
     return filtro === "si" ? asociado : !asociado;
   });
@@ -59,6 +60,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function pillTipo(t, extra = "") {
     if (t === "lote") return `<span class="tipo-pill tipo-lote ${extra}"><i class="ri-stack-line"></i>Lote</span>`;
     if (t === "carga") return `<span class="tipo-pill tipo-carga ${extra}"><i class="ri-upload-2-line"></i>Carga inicial</span>`;
+    if (t === "importado") return `<span class="tipo-pill tipo-importado ${extra}" title="Sin VIN nacional: el VIN es el VIN de origen"><i class="ri-ship-line"></i>Importada</span>`;
     return `<span class="tipo-pill tipo-orden ${extra}"><i class="ri-file-list-3-line"></i>Orden de trabajo</span>`;
   }
 
@@ -71,12 +73,20 @@ document.addEventListener("DOMContentLoaded", function () {
   function modelosGrupo(rows) {
     const vistos = new Map();
     rows.data().toArray().forEach((r) => {
-      const clave = r.modelo_vin ? r.modelo_vin + "|" + (r.vin_base || "") : "";
+      // Importadas: no tienen VIN base (su VIN es el de origen), se identifican por el producto
+      const clave = r.modelo_vin
+        ? r.modelo_vin + "|" + (r.vin_base || "")
+        : r.tipo_generacion === "importado"
+          ? "imp|" + r.producto
+          : "";
       if (!vistos.has(clave)) vistos.set(clave, r);
     });
     return [...vistos.entries()]
       .map(([clave, r]) =>
-        clave
+        clave.startsWith("imp|")
+          ? `<span class="ms-3 fs-13"><i class="ri-car-line align-bottom text-muted me-1"></i><strong>Modelo:</strong> ${escapeHtml(r.producto)}
+             <span class="text-muted ms-1" title="Unidad importada: su VIN es el VIN de origen y no usa VIN base">(sin VIN base)</span></span>`
+          : clave
           ? `<span class="ms-3 fs-13"><i class="ri-car-line align-bottom text-muted me-1"></i><strong>Modelo:</strong> ${escapeHtml(r.modelo_vin)}
              ${r.vin_base ? `<span class="mono text-muted ms-1">(${escapeHtml(r.vin_base)})</span>` : ""}</span>`
           : `<span class="ms-3 fs-13 text-muted fst-italic" title="VIN generado antes de ligar el modelo del glosario"><i class="ri-car-line align-bottom me-1"></i>Modelo VIN no identificado</span>`,
@@ -103,6 +113,10 @@ document.addEventListener("DOMContentLoaded", function () {
           `<i class="ri-links-line align-bottom me-1"></i> ${asociados} asociados`;
         document.getElementById("kpiPendientes").innerHTML =
           `<i class="ri-error-warning-line align-bottom me-1"></i> ${data.length - asociados} sin asociar`;
+        const kpiImp = document.getElementById("kpiImportados");
+        if (kpiImp) {
+          kpiImp.innerHTML = `<i class="ri-ship-line align-bottom me-1"></i> ${data.filter((r) => r.tipo_generacion === "importado").length} importadas`;
+        }
         return data;
       },
     },
@@ -690,6 +704,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     asoc.motor.value = "";
     asoc.origen.value = "";
+    asoc.origen.readOnly = false;
     asoc.color.value = "";
     asoc.info.innerHTML = "";
     asoc.origen.classList.remove("is-invalid");
@@ -715,9 +730,10 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
         const d = res.data;
+        const esImportada = d.tipo_generacion === "importado";
         asoc.id.value = d.id_numeros_serie;
         asoc.motor.value = d.numero_motor || "";
-        asoc.origen.value = d.vin_origen || "";
+        asoc.origen.value = esImportada ? d.numero_serie : d.vin_origen || "";
         asoc.color.value = d.color || "";
         const estadoAsoc = d.id_asociacion
           ? `<span class="badge bg-success-subtle text-success">Ya asociado · se editará</span>`
@@ -726,9 +742,11 @@ document.addEventListener("DOMContentLoaded", function () {
           <div class="border rounded px-3 py-2 fs-13 d-flex flex-wrap gap-3 align-items-center">
             <span><span class="text-muted">Producto:</span> <strong>${escapeHtml(d.producto)}</strong></span>
             <span><span class="text-muted">Referencia:</span> ${escapeHtml(d.referencia)}</span>
+            ${esImportada ? '<span class="badge bg-info-subtle text-info" title="El VIN de origen es el mismo VIN"><i class="ri-ship-line align-bottom"></i> Importada</span>' : ""}
             <span class="ms-auto">${estadoAsoc}</span>
           </div>`;
         asocHabilitar(true);
+        asoc.origen.readOnly = esImportada; // importada: el VIN de origen ES el VIN
         asoc.motor.focus();
         asoc.motor.select();
       })
@@ -1009,6 +1027,83 @@ document.addEventListener("DOMContentLoaded", function () {
         })
         .catch(() => {
           byId("resultadoCargaAsociacion").innerHTML = '<div class="alert alert-danger mb-0">Error en el servidor.</div>';
+        })
+        .finally(() => {
+          btn.disabled = false;
+          btn.innerHTML = txt;
+        });
+    });
+  }
+
+  /* ---------- unidades importadas (sin VIN nacional) ---------- */
+
+  if (byId("modalImportados") && byId("btnImportados")) {
+    const modalImp = new bootstrap.Modal(byId("modalImportados"));
+
+    byId("btnImportados").addEventListener("click", () => {
+      byId("formImportados").reset();
+      byId("resultadoImportados").innerHTML = "";
+      modalImp.show();
+    });
+
+    byId("btnProcesarImportados").addEventListener("click", function () {
+      const archivo = byId("archivoImportados").files[0];
+      if (!archivo) {
+        Swal.fire("Falta el archivo", "Seleccione el Excel a procesar.", "warning");
+        return;
+      }
+      const fd = new FormData();
+      fd.append("archivo", archivo);
+
+      const btn = this;
+      const txt = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Procesando...';
+      byId("resultadoImportados").innerHTML = "";
+
+      fetch(base_url + "/Inv_series/procesarImportados", { method: "POST", body: fd })
+        .then((res) => res.json())
+        .then((res) => {
+          if (!res.status) {
+            byId("resultadoImportados").innerHTML = `<div class="alert alert-danger mb-0">${escapeHtml(res.msg)}</div>`;
+            return;
+          }
+          const kpi = (lbl, n, color) => `
+            <div class="col-6">
+              <div class="border rounded p-2 text-center">
+                <div class="fs-20 fw-semibold text-${color}">${n}</div>
+                <div class="text-muted fs-12">${lbl}</div>
+              </div>
+            </div>`;
+          let html = `<div class="row g-2 mb-2">
+              ${kpi("Unidades registradas", res.altas, "success")}
+              ${kpi("Omitidas", res.omitidas, res.omitidas ? "danger" : "secondary")}
+            </div>`;
+          if (res.altas) {
+            html += `<p class="fs-13 text-muted mb-2">Quedaron en la referencia <span class="mono fw-semibold">${escapeHtml(res.referencia)}</span>.</p>`;
+          }
+          if (res.omitidas) {
+            html += `
+              <div class="d-flex align-items-center mb-2">
+                <h6 class="mb-0 flex-grow-1">Filas no procesadas${res.omitidas > 50 ? " (primeras 50)" : ""}</h6>
+                <a class="btn btn-sm btn-soft-danger" href="${base_url}/Inv_series/exportarLogImportados">
+                  <i class="ri-download-2-line align-bottom"></i> Descargar log
+                </a>
+              </div>
+              <div class="table-responsive" style="max-height:260px">
+                <table class="table table-sm table-bordered fs-12 mb-0">
+                  <thead class="table-light"><tr><th>Fila</th><th>VIN de origen</th><th>Motivo</th></tr></thead>
+                  <tbody>${res.log
+                    .map((l) => `<tr><td>${l.fila}</td><td class="mono">${escapeHtml(l.vin)}</td><td>${escapeHtml(l.motivo)}</td></tr>`)
+                    .join("")}</tbody>
+                </table>
+              </div>`;
+          }
+          byId("resultadoImportados").innerHTML = html;
+          if (res.altas) tableSeries.ajax.reload(null, false);
+        })
+        .catch(() => {
+          byId("resultadoImportados").innerHTML = '<div class="alert alert-danger mb-0">Error en el servidor.</div>';
         })
         .finally(() => {
           btn.disabled = false;
