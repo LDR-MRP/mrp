@@ -1,4 +1,4 @@
-/* Inventario de unidades (productos tipo P).
+/* Inventario de unidades PT (productos tipo P).
  * Una sola carga (getDatos) y todo se calcula en el navegador:
  *  - Por unidad: matriz sublínea > modelo > año [> color] × almacén (como el Excel de inventario).
  *  - Por almacén: una tarjeta por almacén con los modelos que tiene.
@@ -14,9 +14,11 @@ document.addEventListener("DOMContentLoaded", function () {
   const nombrePlanta = (p) => (p === "OTROS" ? "Otros almacenes" : "Planta " + Number(String(p).slice(2)));
   const anioDe = (u) => String(u.anio ?? "S/A");
   const colorDe = (u) => u.color || "Sin color";
+  const plural = (n, s, p) => `${fmt(n)} ${n === 1 ? s : p || s + "s"}`;
+  const sinMovimiento = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Paleta categórica fija para sublíneas (mismo color en KPIs, barras y encabezados)
-  const PALETA = ["#405189", "#0ab39c", "#f7b84b", "#299cdb", "#f06548", "#6559cc", "#e83e8c", "#878a99", "#3d78e3", "#20c997"];
+  // Paleta categórica fija para sublíneas (mismo color en KPIs, filtros, barras y encabezados)
+  const PALETA = ["#25a0e2", "#0ab39c", "#f7b84b", "#6559cc", "#f06548", "#e83e8c", "#20c997", "#405189", "#fd7e14", "#878a99"];
   const COLORES_UNIDAD = {
     blanco: "#ffffff", blanca: "#ffffff", negro: "#222222", rojo: "#d63939", azul: "#2c6ecb", gris: "#9aa0a6",
     plata: "#c7cbd1", naranja: "#f08c00", verde: "#2f9e44", amarillo: "#fcc419", cafe: "#8d6e63", "café": "#8d6e63",
@@ -25,6 +27,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const hex = COLORES_UNIDAD[String(c).toLowerCase()] || "transparent";
     return `<span class="iu-dot" style="background:${hex}${hex === "transparent" ? ";border-style:dashed" : ""}"></span>`;
   };
+  const vacio = (titulo, texto) =>
+    `<div class="iu-vacio"><div class="ico"><i class="ri-inbox-2-line"></i></div><h6>${titulo}</h6><div class="fs-13">${texto}</div>` +
+    `<button type="button" class="btn btn-sm btn-soft-primary mt-3" data-accion="limpiar"><i class="ri-filter-off-line align-bottom me-1"></i>Limpiar filtros</button></div>`;
 
   let datos = [];
   let ordenSub = [];
@@ -43,6 +48,57 @@ document.addEventListener("DOMContentLoaded", function () {
     return i === -1 ? 99 : i;
   };
   const cmpSub = (a, b) => rankSub(a) - rankSub(b) || String(a).localeCompare(String(b));
+  // Plantas en orden (PL01, PL02…) y "Otros almacenes" al final
+  const cmpPlanta = (a, b) => (a === "OTROS") - (b === "OTROS") || String(a).localeCompare(String(b));
+
+  /* ---------------- Utilidades de UI ---------------- */
+  // Cuenta animada del valor anterior al nuevo
+  function animarNumero(el, valor) {
+    const desde = Number(el.dataset.v || 0);
+    el.dataset.v = valor;
+    if (sinMovimiento || desde === valor) {
+      el.textContent = fmt(valor);
+      return;
+    }
+    const t0 = performance.now();
+    const dur = 450;
+    const paso = (t) => {
+      const p = Math.min(1, (t - t0) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      el.textContent = fmt(Math.round(desde + (valor - desde) * e));
+      if (p < 1 && Number(el.dataset.v) === valor) requestAnimationFrame(paso);
+    };
+    requestAnimationFrame(paso);
+  }
+
+  let tToast;
+  function aviso(msg) {
+    const t = byId("iuToast");
+    t.innerHTML = `<i class="ri-checkbox-circle-line align-bottom me-1"></i>${esc(msg)}`;
+    t.classList.add("on");
+    clearTimeout(tToast);
+    tToast = setTimeout(() => t.classList.remove("on"), 1800);
+  }
+
+  function copiar(texto, msg) {
+    const ok = () => aviso(msg || "Copiado al portapapeles");
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(texto).then(ok, () => copiarViejo(texto, ok));
+    } else copiarViejo(texto, ok);
+  }
+  function copiarViejo(texto, ok) {
+    const ta = document.createElement("textarea");
+    ta.value = texto;
+    ta.style.cssText = "position:fixed;left:-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      ok();
+    } catch (e) {}
+    ta.remove();
+  }
+  const btnCopiar = (vin) => `<button type="button" class="iu-copy" data-copiar="${esc(vin)}" title="Copiar VIN"><i class="ri-file-copy-line"></i></button>`;
 
   /* ---------------- Filtros ---------------- */
   function pasa(u, ignorar) {
@@ -73,28 +129,45 @@ document.addEventListener("DOMContentLoaded", function () {
     const cSub = contarPor(datos.filter((u) => pasa(u, "subs")), (u) => u.sublinea);
     byId("fSublineas").innerHTML = [...new Set(datos.map((u) => u.sublinea))]
       .sort(cmpSub)
-      .map(
-        (s) =>
-          `<button type="button" class="iu-toggle ${estado.subs.has(s) ? "on" : ""}" data-sub="${esc(s)}"><span class="iu-dot" style="background:${colorSub[s]};border:0;margin-right:.3rem"></span>${esc(s)}<span class="n">${fmt(cSub.get(s) || 0)}</span></button>`,
-      )
-      .join(" ");
+      .map((s) => {
+        const n = cSub.get(s) || 0;
+        return `<button type="button" class="iu-toggle ${estado.subs.has(s) ? "on" : ""} ${n ? "" : "vacio"}" data-sub="${esc(s)}" aria-pressed="${estado.subs.has(s)}"><span class="sw" style="background:${colorSub[s]}"></span>${esc(s)}<span class="n">${fmt(n)}</span></button>`;
+      })
+      .join("");
     const cAn = contarPor(datos.filter((u) => pasa(u, "anios")), anioDe);
     byId("fAnios").innerHTML = [...new Set(datos.map(anioDe))]
       .sort()
-      .map(
-        (a) =>
-          `<button type="button" class="iu-toggle ${estado.anios.has(a) ? "on" : ""}" data-anio="${esc(a)}">${esc(a)}<span class="n">${fmt(cAn.get(a) || 0)}</span></button>`,
-      )
-      .join(" ");
-    const n =
-      estado.subs.size + estado.anios.size + (estado.color ? 1 : 0) + (estado.planta ? 1 : 0) + (estado.almacen ? 1 : 0) + (estado.q ? 1 : 0);
-    byId("nFiltros").textContent = n;
-    byId("btnLimpiar").classList.toggle("d-none", n === 0);
+      .map((a) => {
+        const n = cAn.get(a) || 0;
+        return `<button type="button" class="iu-toggle ${estado.anios.has(a) ? "on" : ""} ${n ? "" : "vacio"}" data-anio="${esc(a)}" aria-pressed="${estado.anios.has(a)}">${esc(a)}<span class="n">${fmt(n)}</span></button>`;
+      })
+      .join("");
+  }
+
+  // Barra de "filtros activos": cada filtro se puede quitar de forma individual
+  function pintarActivos() {
+    const p = [];
+    const pill = (tipo, valor, etiqueta, texto) =>
+      `<span class="iu-pill"><small>${etiqueta}:</small> ${texto}<button type="button" data-quitar="${tipo}" data-valor="${esc(valor)}" aria-label="Quitar filtro"><i class="ri-close-line"></i></button></span>`;
+    if (estado.q) p.push(pill("q", "", "Búsqueda", `“${esc(estado.q)}”`));
+    [...estado.subs].sort(cmpSub).forEach((s) => p.push(pill("sub", s, "Sublínea", esc(s))));
+    [...estado.anios].sort().forEach((a) => p.push(pill("anio", a, "Año", esc(a))));
+    if (estado.planta) p.push(pill("planta", "", "Planta", esc(nombrePlanta(estado.planta))));
+    if (estado.almacen) {
+      const a = datos.find((u) => String(u.almacenid) === estado.almacen);
+      p.push(pill("almacen", "", "Almacén", esc(a ? a.cve_almacen : estado.almacen)));
+    }
+    if (estado.color) p.push(pill("color", "", "Color", `${dot(estado.color)} ${esc(estado.color)}`));
+    const cont = byId("iuActivos");
+    cont.classList.toggle("d-none", !p.length);
+    cont.innerHTML = p.length
+      ? `<span class="tit"><i class="ri-filter-3-line align-bottom me-1"></i>Filtros activos</span>${p.join("")}<button type="button" class="btn btn-sm btn-link text-danger text-decoration-none ms-auto p-0" data-accion="limpiar"><i class="ri-close-circle-line align-bottom"></i> Limpiar todo</button>`
+      : "";
   }
 
   /* ---------------- KPIs ---------------- */
   function pintarKpis(lista) {
-    byId("kUnidades").textContent = fmt(lista.length);
+    animarNumero(byId("kUnidades"), lista.length);
     const an = contarPor(lista, anioDe);
     byId("kAnios").innerHTML = [...an.keys()]
       .sort()
@@ -102,19 +175,27 @@ document.addEventListener("DOMContentLoaded", function () {
       .join("");
     const modelos = new Set(lista.map((u) => u.inventarioid));
     const subs = new Set(lista.map((u) => u.sublinea));
-    byId("kModelos").textContent = fmt(modelos.size);
-    byId("kModelosSub").textContent = subs.size ? `en ${subs.size} sublínea${subs.size > 1 ? "s" : ""}` : "";
+    animarNumero(byId("kModelos"), modelos.size);
+    byId("kModelosSub").textContent = subs.size ? `en ${plural(subs.size, "sublínea")}` : "Sin modelos con estos filtros";
     const alms = new Set(lista.map((u) => u.almacenid));
     const plantas = new Set(lista.map((u) => u.planta));
-    byId("kAlmacenes").textContent = fmt(alms.size);
-    byId("kAlmacenesSub").textContent = [...plantas].sort().map(nombrePlanta).join(" · ");
+    animarNumero(byId("kAlmacenes"), alms.size);
+    byId("kAlmacenesSub").textContent = [...plantas].sort(cmpPlanta).map(nombrePlanta).join(" · ");
     const cs = contarPor(lista, (u) => u.sublinea);
     const total = lista.length || 1;
     const orden = [...cs.keys()].sort(cmpSub);
     byId("kStack").innerHTML = orden
-      .map((s) => `<span style="width:${(cs.get(s) * 100) / total}%;background:${colorSub[s]}" title="${esc(s)}: ${fmt(cs.get(s))}"></span>`)
+      .map((s) => {
+        const pct = (cs.get(s) * 100) / total;
+        return `<span style="width:${pct}%;background:${colorSub[s]}" title="${esc(s)}: ${fmt(cs.get(s))} (${pct.toFixed(1)}%)"></span>`;
+      })
       .join("");
-    byId("kLeyenda").innerHTML = orden.map((s) => `<span><i style="background:${colorSub[s]}"></i>${esc(s)} <b>${fmt(cs.get(s))}</b></span>`).join("");
+    byId("kLeyenda").innerHTML = orden
+      .map(
+        (s) =>
+          `<button type="button" class="${estado.subs.has(s) ? "on" : ""}" data-sub="${esc(s)}"><i style="background:${colorSub[s]}"></i>${esc(s)} <b>${fmt(cs.get(s))}</b></button>`,
+      )
+      .join("");
   }
 
   /* ---------------- Vista: por unidad (matriz) ---------------- */
@@ -122,7 +203,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function columnasAlmacen(lista) {
     const m = new Map();
     lista.forEach((u) => m.set(String(u.almacenid), { id: String(u.almacenid), cve: u.cve_almacen, desc: u.almacen, planta: u.planta }));
-    return [...m.values()].sort((a, b) => a.planta.localeCompare(b.planta) || a.cve.localeCompare(b.cve));
+    return [...m.values()].sort((a, b) => cmpPlanta(a.planta, b.planta) || a.cve.localeCompare(b.cve));
   }
   const claveFila = (u) => u.sublinea + "|" + u.inventarioid + "|" + anioDe(u) + (estado.porColor ? "|" + colorDe(u) : "");
 
@@ -144,18 +225,24 @@ document.addEventListener("DOMContentLoaded", function () {
     );
   }
 
+  // Sombreado según cantidad: ayuda a ver de un vistazo dónde se concentra el inventario
+  const alfaTinte = (v, max) => (0.05 + (0.3 * v) / max).toFixed(3);
+  byId("heatLeg").innerHTML = [1, 2, 3, 4, 5].map((i) => `<i style="background:rgba(var(--vz-primary-rgb),${alfaTinte(i, 5)})"></i>`).join("");
+
+  // Sublíneas contraídas en la matriz. Al entrar, todas inician contraídas (se llena en la primera carga).
   const cerradas = new Set();
+  let primeraCarga = true;
   function pintarMatriz(lista) {
     const t = byId("tMatriz");
+    byId("mBar").classList.toggle("invisible", !lista.length);
     if (!lista.length) {
-      t.innerHTML = '<tbody><tr><td class="iu-vacio"><i class="ri-inbox-line fs-24 d-block mb-1"></i>No hay unidades con esos filtros</td></tr></tbody>';
+      t.innerHTML = `<tbody><tr><td>${vacio("No hay unidades con esos filtros", "Prueba quitando algún filtro o cambiando la búsqueda.")}</td></tr></tbody>`;
       return;
     }
     const cols = columnasAlmacen(lista);
     const filas = armarFilas(lista);
     const max = Math.max(...filas.flatMap((f) => Object.values(f.alm)));
-    // Sombreado según cantidad: ayuda a ver de un vistazo dónde se concentra el inventario
-    const tinte = (v) => `background:rgba(var(--vz-primary-rgb),${(0.05 + (0.22 * v) / max).toFixed(3)})`;
+    const tinte = (v) => `background-color:rgba(var(--vz-primary-rgb),${alfaTinte(v, max)})`;
 
     const plantas = [];
     cols.forEach((c, i) => {
@@ -166,19 +253,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let h = '<thead><tr class="plantas"><th class="col-mod"></th>';
     plantas.forEach((p) => (h += `<th class="pl" colspan="${p.n}">${esc(nombrePlanta(p.p))}</th>`));
-    h += '<th class="ini-pl"></th></tr><tr><th class="col-mod">Modelo · año' + (estado.porColor ? " · color" : "") + "</th>";
-    cols.forEach((c, i) => (h += `<th class="num${iniPl.has(i) ? " ini-pl" : ""}" title="${esc(c.cve)} · ${esc(c.desc)}">${esc(corto(c.cve))}</th>`));
-    h += '<th class="num ini-pl">Total</th></tr></thead><tbody>';
+    h += '<th class="ini-pl"></th></tr><tr class="cols"><th class="col-mod">Modelo · año' + (estado.porColor ? " · color" : "") + "</th>";
+    cols.forEach(
+      (c, i) => (h += `<th class="num${iniPl.has(i) ? " ini-pl" : ""}" data-c="${c.id}" title="${esc(c.cve)} · ${esc(c.desc)}">${esc(corto(c.cve))}</th>`),
+    );
+    h += '<th class="num ini-pl" data-c="tot">Total</th></tr></thead><tbody>';
 
     const celdas = (vals, total, clic) =>
       cols
         .map((c, i) => {
           const v = vals[c.id] || 0;
           const cls = "num" + (iniPl.has(i) ? " ini-pl" : "") + (v && clic ? " cel" : "");
-          const attr = v && clic ? ` data-alm="${c.id}" style="${tinte(v)}" title="${esc(c.cve)}: ${fmt(v)} — clic para ver VIN"` : "";
-          return `<td class="${cls}"${attr}>${v ? fmt(v) : '<span class="cero">·</span>'}</td>`;
+          const attr = v && clic ? ` style="${tinte(v)}" title="${esc(c.cve)}: ${fmt(v)} — clic para ver VIN"` : "";
+          return `<td class="${cls}" data-alm="${c.id}"${attr}>${v ? fmt(v) : '<span class="cero">–</span>'}</td>`;
         })
-        .join("") + `<td class="num ini-pl col-tot">${fmt(total)}</td>`;
+        .join("") + `<td class="num ini-pl col-tot" data-alm="tot">${fmt(total)}</td>`;
 
     let sub = null;
     const totCol = {};
@@ -188,29 +277,53 @@ document.addEventListener("DOMContentLoaded", function () {
         const delSub = filas.filter((x) => x.sub === sub);
         const st = {};
         delSub.forEach((x) => Object.entries(x.alm).forEach(([a, v]) => (st[a] = (st[a] || 0) + v)));
-        h += `<tr class="sub${cerradas.has(sub) ? " cerrado" : ""}" data-sub="${esc(sub)}"><td class="col-mod"><span class="caret">▾</span><span class="iu-dot" style="background:${colorSub[sub]};border:0;margin-right:.4rem"></span>${esc(sub)} <span class="text-muted fw-normal fs-12 ms-1">${esc(f.subDesc)}</span></td>${celdas(st, delSub.reduce((s, x) => s + x.total, 0), false)}</tr>`;
+        h += `<tr class="sub${cerradas.has(sub) ? " cerrado" : ""}" data-sub="${esc(sub)}" style="--iu-sc:${colorSub[sub]}"><td class="col-mod"><span class="caret"><i class="ri-arrow-down-s-line"></i></span><span class="iu-dot" style="background:${colorSub[sub]};border:0;margin-right:.45rem"></span>${esc(sub)}<span class="cnt">${esc(f.subDesc)} · ${plural(delSub.length, "renglón", "renglones")}</span></td>${celdas(st, delSub.reduce((s, x) => s + x.total, 0), false)}</tr>`;
       }
       Object.entries(f.alm).forEach(([a, v]) => (totCol[a] = (totCol[a] || 0) + v));
-      h += `<tr class="fila${cerradas.has(sub) ? " d-none" : ""}" data-sub="${esc(sub)}" data-k="${esc(f.k)}"><td class="col-mod" title="Ver todas las unidades"><span class="iu-mod-nom">${esc(f.modelo)}</span><span class="iu-anio">${esc(f.anio)}</span>${
+      h += `<tr class="fila${cerradas.has(sub) ? " d-none" : ""}" data-sub="${esc(sub)}" data-k="${esc(f.k)}"><td class="col-mod" title="Ver todas las unidades de este modelo"><span class="iu-mod-nom">${esc(f.modelo)}</span><span class="iu-anio">${esc(f.anio)}</span>${
         estado.porColor ? `<span class="iu-color">${dot(f.color)}${esc(f.color)}</span>` : ""
       }<span class="iu-mod-cve">${esc(f.cve)}</span></td>${celdas(f.alm, f.total, true)}</tr>`;
     });
-    h += `</tbody><tfoot><tr><td class="col-mod">TOTAL</td>${celdas(totCol, lista.length, false)}</tr></tfoot>`;
+    h += `</tbody><tfoot><tr><td class="col-mod">TOTAL GENERAL</td>${celdas(totCol, lista.length, false)}</tr></tfoot>`;
     t.innerHTML = h;
   }
+
+  function alternarSub(s, cerrar) {
+    if (cerrar) cerradas.add(s);
+    else cerradas.delete(s);
+    const t = byId("tMatriz");
+    t.querySelectorAll("tr.sub").forEach((r) => {
+      if (r.dataset.sub === s) r.classList.toggle("cerrado", cerrar);
+    });
+    t.querySelectorAll("tr.fila").forEach((r) => {
+      if (r.dataset.sub === s) r.classList.toggle("d-none", cerrar);
+    });
+  }
+  byId("btnExpandir").addEventListener("click", () => [...cerradas].forEach((s) => alternarSub(s, false)));
+  byId("btnContraer").addEventListener("click", () =>
+    byId("tMatriz").querySelectorAll("tr.sub").forEach((r) => alternarSub(r.dataset.sub, true)),
+  );
+
+  // Resalta el encabezado del almacén bajo el cursor (lectura de columna)
+  let colHl = null;
+  byId("tMatriz").addEventListener("mouseover", (e) => {
+    const td = e.target.closest("td[data-alm]");
+    const c = td ? td.dataset.alm : null;
+    if (c === colHl) return;
+    const t = byId("tMatriz");
+    if (colHl) t.querySelectorAll(`th[data-c="${colHl}"]`).forEach((th) => th.classList.remove("hl"));
+    colHl = c;
+    if (c) t.querySelectorAll(`th[data-c="${c}"]`).forEach((th) => th.classList.add("hl"));
+  });
+  byId("tMatriz").addEventListener("mouseleave", () => {
+    if (colHl) byId("tMatriz").querySelectorAll(`th[data-c="${colHl}"]`).forEach((th) => th.classList.remove("hl"));
+    colHl = null;
+  });
 
   byId("tMatriz").addEventListener("click", (e) => {
     const subRow = e.target.closest("tr.sub");
     if (subRow) {
-      const s = subRow.dataset.sub;
-      if (cerradas.has(s)) cerradas.delete(s);
-      else cerradas.add(s);
-      subRow.classList.toggle("cerrado", cerradas.has(s));
-      byId("tMatriz")
-        .querySelectorAll("tr.fila")
-        .forEach((r) => {
-          if (r.dataset.sub === s) r.classList.toggle("d-none", cerradas.has(s));
-        });
+      alternarSub(subRow.dataset.sub, !cerradas.has(subRow.dataset.sub));
       return;
     }
     const fila = e.target.closest("tr.fila");
@@ -225,6 +338,7 @@ document.addEventListener("DOMContentLoaded", function () {
       `${u0.descripcion} · ${anioDe(u0)}`,
       [u0.cve_articulo, u0.sublinea, estado.porColor ? colorDe(u0) : null, cel ? u0.cve_almacen : "Todos los almacenes"].filter(Boolean).join(" · "),
       lista,
+      cel ? "Modelo en un almacén" : "Modelo en todos los almacenes",
     );
   });
 
@@ -232,17 +346,19 @@ document.addEventListener("DOMContentLoaded", function () {
   function pintarAlmacenes(lista) {
     const cont = byId("panelAlmacen");
     if (!lista.length) {
-      cont.innerHTML = '<div class="iu-vacio"><i class="ri-inbox-line fs-24 d-block mb-1"></i>No hay unidades con esos filtros</div>';
+      cont.innerHTML = vacio("No hay unidades con esos filtros", "Prueba quitando algún filtro o cambiando la búsqueda.");
       return;
     }
     const cols = columnasAlmacen(lista);
+    const porPlanta = contarPor(lista, (u) => u.planta);
+    const almsPlanta = contarPor(cols, (c) => c.planta);
     let h = "";
     let planta = null;
     cols.forEach((c) => {
       if (c.planta !== planta) {
         if (planta !== null) h += "</div>";
         planta = c.planta;
-        h += `<div class="iu-planta-tit">${esc(nombrePlanta(planta))}</div><div class="row g-3 mb-4">`;
+        h += `<div class="iu-planta-tit"><span><i class="ri-map-pin-2-line align-bottom me-1"></i>${esc(nombrePlanta(planta))}</span><span class="n">${plural(porPlanta.get(planta), "unidad", "unidades")} · ${plural(almsPlanta.get(planta), "almacén", "almacenes")}</span></div><div class="row g-3 mb-4">`;
       }
       const delAlm = lista.filter((u) => String(u.almacenid) === c.id);
       const an = contarPor(delAlm, anioDe);
@@ -254,16 +370,20 @@ document.addEventListener("DOMContentLoaded", function () {
       });
       const mods = [...mod.values()].sort((a, b) => b.n - a.n || a.modelo.localeCompare(b.modelo));
       const maxN = mods[0].n;
+      const pct = (delAlm.length * 100) / lista.length;
       h += `<div class="col-md-6 col-xxl-4"><div class="iu-alm">
               <div class="iu-alm-head">
-                <div><div class="cve">${esc(c.cve)}</div><div class="desc">${esc(c.desc)}</div>
-                  <div class="mt-1">${[...an.keys()].sort().map((a) => `<span class="iu-chip">${esc(a)} <b>${fmt(an.get(a))}</b></span>`).join("")}</div></div>
-                <div class="tot">${fmt(delAlm.length)}<small>unidades</small></div>
+                <div class="r1">
+                  <div><div class="cve">${esc(c.cve)}</div><div class="desc">${esc(c.desc)}</div></div>
+                  <div class="tot">${fmt(delAlm.length)}<small>${delAlm.length === 1 ? "unidad" : "unidades"}</small></div>
+                </div>
+                <div class="iu-share" title="Participación sobre el total filtrado"><span class="trk"><span style="width:${pct}%"></span></span>${pct.toFixed(1)}% del total</div>
+                <div class="iu-chips">${[...an.keys()].sort().map((a) => `<span class="iu-chip">${esc(a)} <b>${fmt(an.get(a))}</b></span>`).join("")}<span class="iu-chip">${plural(mods.length, "modelo")}</span></div>
               </div>
               <ul class="iu-alm-list">${mods
                 .map(
                   (m) => `<li data-alm="${c.id}" data-inv="${m.inv}" data-anio="${esc(m.anio)}" title="Ver VIN">
-                    <span>${esc(m.modelo)}<span class="iu-anio">${esc(m.anio)}</span><span class="subl">${esc(m.sub)}</span></span>
+                    <span class="m">${esc(m.modelo)}<span class="iu-anio">${esc(m.anio)}</span><span class="subl">${esc(m.sub)}</span></span>
                     <span class="n">${fmt(m.n)}</span>
                     <span class="bar"><span style="width:${(m.n * 100) / maxN}%;background:${colorSub[m.sub]}"></span></span></li>`,
                 )
@@ -280,7 +400,7 @@ document.addEventListener("DOMContentLoaded", function () {
     );
     if (!lista.length) return;
     const u0 = lista[0];
-    abrirDetalle(`${u0.descripcion} · ${anioDe(u0)}`, `${u0.cve_articulo} · ${u0.sublinea} · ${u0.cve_almacen}`, lista);
+    abrirDetalle(`${u0.descripcion} · ${anioDe(u0)}`, `${u0.cve_articulo} · ${u0.sublinea} · ${u0.cve_almacen}`, lista, "Modelo en un almacén");
   });
 
   /* ---------------- Vista: listado de VIN ---------------- */
@@ -289,27 +409,30 @@ document.addEventListener("DOMContentLoaded", function () {
       dtListado = $("#tListado").DataTable({
         data: lista,
         columns: [
-          { data: "numero_serie", render: (d, t) => (t === "display" ? `<span class="fw-semibold font-monospace">${esc(d)}</span>` : d) },
-          { data: anioDe },
+          { data: "numero_serie", render: (d, t) => (t === "display" ? `<span class="iu-vin">${esc(d)}</span>${btnCopiar(d)}` : d) },
+          { data: anioDe, render: (d, t) => (t === "display" ? `<span class="iu-anio ms-0">${esc(d)}</span>` : d) },
           { data: colorDe, render: (d, t) => (t === "display" ? `${dot(d)} ${esc(d)}` : d) },
-          { data: "sublinea" },
-          { data: "descripcion" },
-          { data: "cve_articulo" },
+          {
+            data: "sublinea",
+            render: (d, t) => (t === "display" ? `<span class="iu-sub-tag"><span class="iu-dot" style="background:${colorSub[d]};border:0"></span>${esc(d)}</span>` : d),
+          },
+          { data: "descripcion", render: (d, t) => (t === "display" ? `<span class="fw-medium">${esc(d)}</span>` : d) },
+          { data: "cve_articulo", render: (d, t) => (t === "display" ? `<span class="text-muted">${esc(d)}</span>` : d) },
           { data: "cve_almacen", render: (d, t, r) => (t === "display" ? `<span title="${esc(r.almacen)}">${esc(d)}</span>` : d) },
-          { data: "numero_motor", defaultContent: "" },
-          { data: "vin_origen", defaultContent: "" },
-          { data: "referencia" },
+          { data: "numero_motor", defaultContent: "", render: (d, t) => (t === "display" ? (d ? esc(d) : '<span class="text-muted">—</span>') : d || "") },
+          { data: "vin_origen", defaultContent: "", render: (d, t) => (t === "display" ? (d ? `<span class="iu-vin fw-normal">${esc(d)}</span>` : '<span class="text-muted">—</span>') : d || "") },
+          { data: "referencia", defaultContent: "", render: (d, t) => (t === "display" ? esc(d) : d) },
         ],
         order: [[4, "asc"], [1, "asc"], [0, "asc"]],
         pageLength: 25,
         lengthMenu: [25, 50, 100, 500],
-        dom: "<'row mb-2'<'col-sm-6'l><'col-sm-6 text-sm-end'i>><'table-responsive't><'row mt-2'<'col-sm-12'p>>",
+        dom: "<'table-responsive't><'d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3'<'d-flex align-items-center gap-3'li>p>",
         language: {
           lengthMenu: "Mostrar _MENU_",
-          info: "_TOTAL_ unidades",
+          info: "_START_–_END_ de _TOTAL_ unidades",
           infoEmpty: "Sin unidades",
           zeroRecords: "No hay unidades con esos filtros",
-          paginate: { previous: "Anterior", next: "Siguiente" },
+          paginate: { previous: "‹", next: "›" },
         },
       });
     } else {
@@ -318,25 +441,58 @@ document.addEventListener("DOMContentLoaded", function () {
     dtListado.columns.adjust();
   }
 
+  byId("panelListado").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-copiar]");
+    if (b) copiar(b.dataset.copiar, "VIN copiado");
+  });
+
   /* ---------------- Panel de detalle ---------------- */
   let detalleActual = [];
-  function abrirDetalle(titulo, sub, lista) {
+  let detalleVisible = [];
+  function abrirDetalle(titulo, sub, lista, contexto) {
     detalleActual = lista.slice().sort((a, b) => a.numero_serie.localeCompare(b.numero_serie));
+    byId("iuDetalleEye").textContent = contexto || "Detalle de unidades";
     byId("iuDetalleTit").textContent = titulo;
     byId("iuDetalleSub").textContent = sub;
     const porAlm = contarPor(lista, (u) => u.cve_almacen);
     const porColor = contarPor(lista, colorDe);
-    byId("iuDetalleResumen").innerHTML =
-      `<span class="iu-chip"><b>${fmt(lista.length)}</b> unidades</span>` +
-      [...porAlm.keys()].sort().map((a) => `<span class="iu-chip">${esc(a)} <b>${fmt(porAlm.get(a))}</b></span>`).join("") +
-      [...porColor.keys()].sort().map((c) => `<span class="iu-chip">${dot(c)} ${esc(c)} <b>${fmt(porColor.get(c))}</b></span>`).join("");
-    byId("iuDetalleBody").innerHTML = detalleActual
-      .map(
-        (u) => `<tr><td class="vin">${esc(u.numero_serie)}</td><td>${esc(anioDe(u))}</td><td>${dot(colorDe(u))} ${esc(colorDe(u))}</td><td title="${esc(u.almacen)}">${esc(u.cve_almacen)}</td><td>${esc(u.numero_motor || "")}</td><td class="vin">${u.vin_origen ? esc(u.vin_origen) : '<span class="text-muted fw-normal">—</span>'}</td></tr>`,
-      )
-      .join("");
+    byId("dUnidades").textContent = fmt(lista.length);
+    byId("dAlmacenes").textContent = fmt(porAlm.size);
+    byId("dColores").textContent = fmt(porColor.size);
+    byId("dPorAlm").innerHTML = [...porAlm.keys()].sort().map((a) => `<span class="iu-chip">${esc(a)} <b>${fmt(porAlm.get(a))}</b></span>`).join("");
+    byId("dPorColor").innerHTML = [...porColor.keys()].sort().map((c) => `<span class="iu-chip">${dot(c)} ${esc(c)} <b>${fmt(porColor.get(c))}</b></span>`).join("");
+    byId("dBuscar").value = "";
+    pintarDetalle();
     bootstrap.Offcanvas.getOrCreateInstance(byId("iuDetalle")).show();
   }
+
+  function pintarDetalle() {
+    const q = byId("dBuscar").value.trim().toLowerCase();
+    detalleVisible = q
+      ? detalleActual.filter((u) => (u.numero_serie + " " + (u.numero_motor || "") + " " + (u.vin_origen || "") + " " + u.cve_almacen + " " + colorDe(u)).toLowerCase().includes(q))
+      : detalleActual;
+    byId("iuDetalleBody").innerHTML = detalleVisible.length
+      ? detalleVisible
+          .map(
+            (u, i) =>
+              `<tr><td class="text-muted">${i + 1}</td><td><span class="iu-vin">${esc(u.numero_serie)}</span>${btnCopiar(u.numero_serie)}</td><td><span class="iu-anio ms-0">${esc(anioDe(u))}</span></td><td>${dot(colorDe(u))} ${esc(colorDe(u))}</td><td title="${esc(u.almacen)}">${esc(u.cve_almacen)}</td><td>${u.numero_motor ? esc(u.numero_motor) : '<span class="text-muted">—</span>'}</td><td>${u.vin_origen ? `<span class="iu-vin fw-normal">${esc(u.vin_origen)}</span>` : '<span class="text-muted">—</span>'}</td></tr>`,
+          )
+          .join("")
+      : `<tr><td colspan="7" class="text-center text-muted py-4">Ningún VIN coincide con “${esc(q)}”</td></tr>`;
+    byId("dPie").textContent =
+      detalleVisible.length === detalleActual.length
+        ? `${plural(detalleActual.length, "VIN")}`
+        : `Mostrando ${fmt(detalleVisible.length)} de ${plural(detalleActual.length, "VIN")}`;
+  }
+  byId("dBuscar").addEventListener("input", pintarDetalle);
+  byId("iuDetalleBody").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-copiar]");
+    if (b) copiar(b.dataset.copiar, "VIN copiado");
+  });
+  byId("btnDetalleCopiar").addEventListener("click", () => {
+    if (!detalleVisible.length) return;
+    copiar(detalleVisible.map((u) => u.numero_serie).join("\n"), `${plural(detalleVisible.length, "VIN")} copiados`);
+  });
 
   function descargarCSV(nombre, filas) {
     const csv = filas.map((r) => r.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
@@ -353,7 +509,7 @@ document.addEventListener("DOMContentLoaded", function () {
   byId("btnDetalleCSV").addEventListener("click", () =>
     descargarCSV("unidades_detalle.csv", [
       ["VIN", "Año modelo", "Color", "Clave", "Modelo", "Sublínea", "Almacén", "No. motor", "VIN origen", "Referencia"],
-      ...detalleActual.map((u) => [u.numero_serie, anioDe(u), colorDe(u), u.cve_articulo, u.descripcion, u.sublinea, u.cve_almacen, u.numero_motor, u.vin_origen, u.referencia]),
+      ...detalleVisible.map((u) => [u.numero_serie, anioDe(u), colorDe(u), u.cve_articulo, u.descripcion, u.sublinea, u.cve_almacen, u.numero_motor, u.vin_origen, u.referencia]),
     ]),
   );
 
@@ -376,6 +532,7 @@ document.addEventListener("DOMContentLoaded", function () {
       dt.destroy();
       cont.innerHTML = "";
     }, 500);
+    aviso("Generando Excel…");
   }
 
   byId("btnExcel").addEventListener("click", () => {
@@ -427,11 +584,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /* ---------------- Render general ---------------- */
   const PANELES = { unidad: "panelUnidad", almacen: "panelAlmacen", listado: "panelListado" };
+  let vistaPintada = null;
   function render() {
     const lista = filtrados();
     pintarChips();
+    pintarActivos();
     pintarKpis(lista);
-    Object.entries(PANELES).forEach(([v, id]) => byId(id).classList.toggle("d-none", estado.vista !== v));
+
+    // Contadores de cada pestaña y resumen
+    byId("nVUnidad").textContent = fmt(new Set(lista.map((u) => u.inventarioid)).size);
+    byId("nVAlmacen").textContent = fmt(new Set(lista.map((u) => u.almacenid)).size);
+    byId("nVListado").textContent = fmt(lista.length);
+    byId("iuResumen").innerHTML =
+      lista.length === datos.length
+        ? `<b>${fmt(datos.length)}</b> unidades en total`
+        : `Mostrando <b>${fmt(lista.length)}</b> de ${fmt(datos.length)} unidades`;
+
+    document.querySelectorAll(".iu-tab").forEach((b) => {
+      const on = b.dataset.vista === estado.vista;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-selected", on);
+    });
+    Object.entries(PANELES).forEach(([v, id]) => {
+      const p = byId(id);
+      const ver = estado.vista === v;
+      p.classList.toggle("d-none", !ver);
+      // Reinicia la animación de entrada solo al cambiar de vista
+      if (ver && vistaPintada !== v) {
+        p.style.animation = "none";
+        void p.offsetWidth;
+        p.style.animation = "";
+      }
+    });
+    vistaPintada = estado.vista;
     byId("wrapPorColor").classList.toggle("d-none", estado.vista !== "unidad");
     if (estado.vista === "unidad") pintarMatriz(lista);
     else if (estado.vista === "almacen") pintarAlmacenes(lista);
@@ -440,10 +625,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function llenarSelects() {
     const colores = [...new Set(datos.map(colorDe))].sort();
-    byId("fColor").innerHTML = '<option value="">Todos</option>' + colores.map((c) => `<option>${esc(c)}</option>`).join("");
-    const plantas = [...new Set(datos.map((u) => u.planta))].sort();
+    if (estado.color && !colores.includes(estado.color)) estado.color = "";
+    byId("fColor").innerHTML =
+      '<option value="">Todos</option>' + colores.map((c) => `<option ${c === estado.color ? "selected" : ""}>${esc(c)}</option>`).join("");
+    const plantas = [...new Set(datos.map((u) => u.planta))].sort(cmpPlanta);
+    if (estado.planta && !plantas.includes(estado.planta)) estado.planta = "";
     byId("fPlanta").innerHTML =
-      '<option value="">Todas</option>' + plantas.map((p) => `<option value="${esc(p)}">${esc(nombrePlanta(p))}</option>`).join("");
+      '<option value="">Todas</option>' +
+      plantas.map((p) => `<option value="${esc(p)}" ${p === estado.planta ? "selected" : ""}>${esc(nombrePlanta(p))}</option>`).join("");
     pintarSelectAlmacen();
   }
   function pintarSelectAlmacen() {
@@ -454,10 +643,23 @@ document.addEventListener("DOMContentLoaded", function () {
       alms.map((a) => `<option value="${a.id}" ${a.id === estado.almacen ? "selected" : ""}>${esc(a.cve)}</option>`).join("");
   }
 
+  function limpiarFiltros() {
+    Object.assign(estado, { q: "", color: "", planta: "", almacen: "" });
+    estado.subs.clear();
+    estado.anios.clear();
+    byId("fBuscar").value = "";
+    byId("wrapBuscar").classList.remove("lleno");
+    byId("fColor").value = "";
+    byId("fPlanta").value = "";
+    pintarSelectAlmacen();
+    render();
+  }
+
   /* ---------------- Eventos ---------------- */
-  document.querySelectorAll('input[name="iuVista"]').forEach((r) =>
-    r.addEventListener("change", function () {
-      estado.vista = this.value;
+  document.querySelectorAll(".iu-tab").forEach((b) =>
+    b.addEventListener("click", function () {
+      if (estado.vista === this.dataset.vista) return;
+      estado.vista = this.dataset.vista;
       try {
         localStorage.setItem("iu_vista", estado.vista);
       } catch (e) {}
@@ -473,26 +675,47 @@ document.addEventListener("DOMContentLoaded", function () {
   });
   let tBus;
   byId("fBuscar").addEventListener("input", function () {
+    byId("wrapBuscar").classList.toggle("lleno", this.value !== "");
     clearTimeout(tBus);
     tBus = setTimeout(() => {
       estado.q = this.value.trim().toLowerCase();
       render();
     }, 200);
   });
+  byId("btnBuscarClr").addEventListener("click", () => {
+    byId("fBuscar").value = "";
+    byId("wrapBuscar").classList.remove("lleno");
+    estado.q = "";
+    render();
+    byId("fBuscar").focus();
+  });
+  // Atajos: "/" enfoca la búsqueda, Esc la borra
+  document.addEventListener("keydown", (e) => {
+    const enCampo = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    if (e.key === "/" && !enCampo && !document.querySelector(".offcanvas.show, .modal.show")) {
+      e.preventDefault();
+      byId("fBuscar").focus();
+    } else if (e.key === "Escape" && document.activeElement === byId("fBuscar") && byId("fBuscar").value) {
+      byId("btnBuscarClr").click();
+    }
+  });
+  const toggleSet = (set, v) => (set.has(v) ? set.delete(v) : set.add(v));
   byId("fSublineas").addEventListener("click", (e) => {
     const b = e.target.closest("[data-sub]");
     if (!b) return;
-    const s = b.dataset.sub;
-    if (estado.subs.has(s)) estado.subs.delete(s);
-    else estado.subs.add(s);
+    toggleSet(estado.subs, b.dataset.sub);
+    render();
+  });
+  byId("kLeyenda").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-sub]");
+    if (!b) return;
+    toggleSet(estado.subs, b.dataset.sub);
     render();
   });
   byId("fAnios").addEventListener("click", (e) => {
     const b = e.target.closest("[data-anio]");
     if (!b) return;
-    const a = b.dataset.anio;
-    if (estado.anios.has(a)) estado.anios.delete(a);
-    else estado.anios.add(a);
+    toggleSet(estado.anios, b.dataset.anio);
     render();
   });
   byId("fColor").addEventListener("change", function () {
@@ -508,32 +731,77 @@ document.addEventListener("DOMContentLoaded", function () {
     estado.almacen = this.value;
     render();
   });
-  byId("btnLimpiar").addEventListener("click", () => {
-    Object.assign(estado, { q: "", color: "", planta: "", almacen: "" });
-    estado.subs.clear();
-    estado.anios.clear();
-    byId("fBuscar").value = "";
-    byId("fColor").value = "";
-    byId("fPlanta").value = "";
-    pintarSelectAlmacen();
+  // Quitar un filtro desde la barra de activos / botones "Limpiar"
+  document.querySelector(".iu-wrap").addEventListener("click", (e) => {
+    if (e.target.closest('[data-accion="limpiar"]')) {
+      limpiarFiltros();
+      return;
+    }
+    const b = e.target.closest("[data-quitar]");
+    if (!b) return;
+    const v = b.dataset.valor;
+    switch (b.dataset.quitar) {
+      case "q":
+        byId("fBuscar").value = "";
+        byId("wrapBuscar").classList.remove("lleno");
+        estado.q = "";
+        break;
+      case "sub":
+        estado.subs.delete(v);
+        break;
+      case "anio":
+        estado.anios.delete(v);
+        break;
+      case "planta":
+        estado.planta = "";
+        byId("fPlanta").value = "";
+        pintarSelectAlmacen();
+        break;
+      case "almacen":
+        estado.almacen = "";
+        byId("fAlmacen").value = "";
+        break;
+      case "color":
+        estado.color = "";
+        byId("fColor").value = "";
+        break;
+    }
     render();
   });
 
   /* ---------------- Carga ---------------- */
-  byId(estado.vista === "almacen" ? "vAlmacen" : estado.vista === "listado" ? "vListado" : "vUnidad").checked = true;
   byId("fPorColor").checked = estado.porColor;
 
-  fetch(base_url + "/Inv_unidades/getDatos")
-    .then((r) => r.json())
-    .then((d) => {
-      datos = d.unidades || [];
-      ordenSub = d.orden_sublineas || [];
-      [...new Set(datos.map((u) => u.sublinea))].sort(cmpSub).forEach((s, i) => (colorSub[s] = PALETA[i % PALETA.length]));
-      byId("iuGenerado").textContent = `Existencia al ${d.generado} · ${fmt(datos.length)} unidades`;
-      llenarSelects();
-      render();
-    })
-    .catch(() => {
-      byId("iuGenerado").textContent = "No se pudo cargar el inventario.";
-    });
+  function cargar() {
+    const btn = byId("btnRefrescar");
+    const ico = btn.querySelector("i");
+    btn.disabled = true;
+    ico.classList.add("iu-spin");
+    return fetch(base_url + "/Inv_unidades/getDatos")
+      .then((r) => r.json())
+      .then((d) => {
+        datos = d.unidades || [];
+        ordenSub = d.orden_sublineas || [];
+        [...new Set(datos.map((u) => u.sublinea))].sort(cmpSub).forEach((s, i) => (colorSub[s] = PALETA[i % PALETA.length]));
+        if (primeraCarga) {
+          datos.forEach((u) => cerradas.add(u.sublinea));
+          primeraCarga = false;
+        }
+        byId("iuEstado").classList.remove("err");
+        byId("iuEstado").textContent = `Existencia al ${d.generado}`;
+        byId("iuGenerado").textContent = `${plural(datos.length, "VIN")} en inventario`;
+        llenarSelects();
+        render();
+      })
+      .catch(() => {
+        byId("iuEstado").classList.add("err");
+        byId("iuEstado").textContent = "No se pudo cargar el inventario. Intenta con «Actualizar».";
+      })
+      .finally(() => {
+        btn.disabled = false;
+        ico.classList.remove("iu-spin");
+      });
+  }
+  byId("btnRefrescar").addEventListener("click", () => cargar().then(() => datos.length && aviso("Existencia actualizada")));
+  cargar();
 });
