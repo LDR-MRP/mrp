@@ -57,6 +57,7 @@
                                         <th>DIRECCIÓN</th>
                                         <th>ENCARGADO</th>
                                         <th>TELÉFONO</th>
+                                        <th>PLANTA</th>
                                         <th>PRECIO ASIGNADO</th>
                                         <th>ESTATUS</th>
                                         <th>ACCIÓN</th>
@@ -163,6 +164,20 @@
                                                 <select class="form-control" id="listPrecios" name="listPrecios" required=""></select>
                                                 <div class="invalid-feedback">El campo de precios es obligatorio</div>
                                             </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- PLANTA -->
+                                    <div class="col-lg-4 col-sm-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="planta-select">PLANTA</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="planta-addon">Pla</span>
+                                                <select class="form-select" id="planta-select" name="planta-select" aria-describedby="planta-addon">
+                                                    <option value="">-- Sin planta --</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-text">Planta a la que pertenece el almacén. Se usa en Unidades PT, Control de Llaves y Traslados.</div>
                                         </div>
                                     </div>
 
@@ -283,6 +298,10 @@
                             <td id="celcorreo"></td>
                         </tr>
                         <tr>
+                        <tr>
+                            <td>Planta:</td>
+                            <td id="celplanta"></td>
+                        </tr>
                         <tr>
                             <td>Precio asignado:</td>
                             <td id="cellistaprecio"></td>

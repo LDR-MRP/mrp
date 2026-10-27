@@ -7,6 +7,9 @@
  * unidad fisica). Los VIN en estado 1 son generados que aun no se usan.
  * Sublinea: la de Ingenieria (ing_modelo_configuracion); si el producto no
  * tiene configuracion, la de wms_inventario_linea.
+ * Planta: la del almacen (wms_almacenes.plantaid -> mrp_planta). Mientras un
+ * almacen no tenga planta capturada se usa el prefijo de su clave (PL01-...)
+ * como respaldo; si tampoco lo tiene queda como 'SIN' (Sin planta asignada).
  */
 class Inv_unidadesModel extends Mysql
 {
@@ -15,7 +18,9 @@ class Inv_unidadesModel extends Mysql
         parent::__construct();
     }
 
-    private const PLANTA_SQL = "CASE WHEN a.cve_almacen REGEXP '^PL[0-9]{2}-' THEN LEFT(a.cve_almacen, 4) ELSE 'OTROS' END";
+    /** Clave de planta: FK primero, prefijo de la clave como respaldo, 'SIN' si no hay ninguno. */
+    private const PLANTA_SQL = "COALESCE(pl.cve_planta, CASE WHEN a.cve_almacen REGEXP '^PL[0-9]{2}-' THEN LEFT(a.cve_almacen, 4) ELSE 'SIN' END)";
+    private const PLANTA_NOMBRE_SQL = "COALESCE(pl.nombre_planta, CASE WHEN a.cve_almacen REGEXP '^PL[0-9]{2}-' THEN CONCAT('Planta ', CAST(SUBSTRING(a.cve_almacen, 3, 2) AS UNSIGNED)) ELSE 'Sin planta asignada' END)";
 
     /** Un renglon por VIN (unidad fisica). */
     public function selectUnidades(): array
@@ -32,6 +37,7 @@ class Inv_unidadesModel extends Mysql
                        COALESCE(a.cve_almacen, 'SIN ALMACEN') AS cve_almacen,
                        COALESCE(a.descripcion, 'Sin almacén asignado') AS almacen,
                        " . self::PLANTA_SQL . " AS planta,
+                       " . self::PLANTA_NOMBRE_SQL . " AS planta_nombre,
                        an.anio,
                        ns.referencia,
                        va.numero_motor,
@@ -40,6 +46,7 @@ class Inv_unidadesModel extends Mysql
                 FROM wms_numeros_series ns
                 INNER JOIN wms_inventario i ON i.idinventario = ns.inventarioid
                 LEFT JOIN wms_almacenes a  ON a.idalmacen = ns.almacenid
+                LEFT JOIN mrp_planta pl    ON pl.idplanta = a.plantaid
                 LEFT JOIN cat_anio_vin an  ON an.codigo = SUBSTRING(ns.numero_serie, 10, 1) COLLATE utf8mb4_general_ci
                 LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = ns.id_numeros_serie
                 LEFT JOIN (SELECT id_inventario, MIN(id_sublineaproducto) AS idsub

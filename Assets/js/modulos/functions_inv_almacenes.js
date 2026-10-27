@@ -42,6 +42,7 @@ document.addEventListener(
     //  CARGAR ALMACENES POR AJAX
     // --------------------------------------------------------------------
     fntAlmacenes(); // solo llena el select
+    fntPlantas(); // select de planta
 
     // --------------------------------------------------------------------
     //  DATATABLE Almacenes
@@ -59,6 +60,7 @@ document.addEventListener(
         { data: "direccion" },
         { data: "encargado" },
         { data: "telefono" },
+        { data: "planta" },
         { data: "lista_precio" },
         { data: "estado" },
         { data: "options" },
@@ -243,6 +245,7 @@ function fntEditInfo(idalmacen) {
       document.querySelector('#descripcion-almacen-textarea').value = objData.data.descripcion;
       estado.value = objData.data.estado;
       fntAlmacenes(objData.data.listaprecioid);
+      fntPlantas(objData.data.plantaid || "");
       if (firstTab) firstTab.show();
     } else {
       Swal.fire("Error", objData.msg, "error");
@@ -340,6 +343,21 @@ function fntAlmacenes(selectedValue = "") {
 }
 
 // ------------------------------------------------------------------------
+//  SELECT DE PLANTAS (mrp_planta activas) → wms_almacenes.plantaid
+// ------------------------------------------------------------------------
+function fntPlantas(selectedValue = "") {
+  const sel = document.querySelector("#planta-select");
+  if (!sel) return;
+  fetch(base_url + "/Inv_almacenes/getSelectPlantas")
+    .then((r) => r.text())
+    .then((html) => {
+      sel.innerHTML = html;
+      sel.value = selectedValue === null ? "" : String(selectedValue);
+    })
+    .catch(() => {});
+}
+
+// ------------------------------------------------------------------------
 //  VER EL DETALLE DE LA LA almacen
 // ------------------------------------------------------------------------
 function fntViewAlmacen(idalmacen) {
@@ -373,6 +391,9 @@ function fntViewAlmacen(idalmacen) {
           objData.data.correo;
         document.querySelector("#cellistaprecio").innerHTML =
           objData.data.lista_precio;
+        document.querySelector("#celplanta").innerHTML = objData.data.plantaid
+          ? objData.data.cve_planta + " · " + objData.data.nombre_planta
+          : '<span class="badge bg-warning-subtle text-warning">Sin planta asignada</span>';
         document.querySelector("#celFecha").innerHTML =
           objData.data.fecha_creacion;
         document.querySelector("#celEstado").innerHTML = estadoUsuario;
