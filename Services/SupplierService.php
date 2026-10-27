@@ -966,6 +966,9 @@ class SupplierService
      */
     private function mapOnboardingRow(array $row): array
     {
+        $this->logMessage("[mapOnboardingRow] Procesando fila: " . json_encode($row));
+        // $this->logMessage("[mapOnboardingRow] id_tipo_persona: " . $row['id_tipo_persona']);
+        // $this->logMessage("[mapOnboardingRow] origen: " . $row['origen']);
         $requiredDocs = \DocumentTypeEnum::getRequiredList(
             $row['id_tipo_persona'],
             $row['origen']
