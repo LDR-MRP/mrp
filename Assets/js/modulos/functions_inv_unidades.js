@@ -11,7 +11,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const fmt = (n) => Number(n || 0).toLocaleString("es-MX");
   const byId = (id) => document.getElementById(id);
   const corto = (cve) => String(cve).replace(/^PL\d{2}-ALM-/, "");
-  const nombrePlanta = (p) => (p === "OTROS" ? "Otros almacenes" : "Planta " + Number(String(p).slice(2)));
+  // Nombre de planta tal como viene de mrp_planta (wms_almacenes.plantaid); se llena al cargar
+  const nombresPlanta = {};
+  const nombrePlanta = (p) => nombresPlanta[p] || (p === "SIN" ? "Sin planta asignada" : String(p));
   const anioDe = (u) => String(u.anio ?? "S/A");
   const colorDe = (u) => u.color || "Sin color";
   const plural = (n, s, p) => `${fmt(n)} ${n === 1 ? s : p || s + "s"}`;
@@ -48,8 +50,9 @@ document.addEventListener("DOMContentLoaded", function () {
     return i === -1 ? 99 : i;
   };
   const cmpSub = (a, b) => rankSub(a) - rankSub(b) || String(a).localeCompare(String(b));
-  // Plantas en orden (PL01, PL02…) y "Otros almacenes" al final
-  const cmpPlanta = (a, b) => (a === "OTROS") - (b === "OTROS") || String(a).localeCompare(String(b));
+  // Plantas en orden de clave (PL01, PL02…) y "Sin planta asignada" al final
+  const sinPlanta = (p) => p === "SIN" || p === "OTROS";
+  const cmpPlanta = (a, b) => sinPlanta(a) - sinPlanta(b) || String(a).localeCompare(String(b));
 
   /* ---------------- Utilidades de UI ---------------- */
   // Cuenta animada del valor anterior al nuevo
@@ -252,7 +255,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const iniPl = new Set(plantas.map((p) => p.i));
 
     let h = '<thead><tr class="plantas"><th class="col-mod"></th>';
-    plantas.forEach((p) => (h += `<th class="pl" colspan="${p.n}">${esc(nombrePlanta(p.p))}</th>`));
+    plantas.forEach((p) => (h += `<th class="pl" colspan="${p.n}" title="${esc(p.p)}">${esc(nombrePlanta(p.p))}</th>`));
     h += '<th class="ini-pl"></th></tr><tr class="cols"><th class="col-mod">Modelo · año' + (estado.porColor ? " · color" : "") + "</th>";
     cols.forEach(
       (c, i) => (h += `<th class="num${iniPl.has(i) ? " ini-pl" : ""}" data-c="${c.id}" title="${esc(c.cve)} · ${esc(c.desc)}">${esc(corto(c.cve))}</th>`),
@@ -632,7 +635,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (estado.planta && !plantas.includes(estado.planta)) estado.planta = "";
     byId("fPlanta").innerHTML =
       '<option value="">Todas</option>' +
-      plantas.map((p) => `<option value="${esc(p)}" ${p === estado.planta ? "selected" : ""}>${esc(nombrePlanta(p))}</option>`).join("");
+      plantas
+        .map((p) => `<option value="${esc(p)}" ${p === estado.planta ? "selected" : ""}>${esc(sinPlanta(p) ? nombrePlanta(p) : p + " · " + nombrePlanta(p))}</option>`)
+        .join("");
     pintarSelectAlmacen();
   }
   function pintarSelectAlmacen() {
@@ -782,6 +787,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((d) => {
         datos = d.unidades || [];
         ordenSub = d.orden_sublineas || [];
+        datos.forEach((u) => (nombresPlanta[u.planta] = u.planta_nombre || nombresPlanta[u.planta]));
         [...new Set(datos.map((u) => u.sublinea))].sort(cmpSub).forEach((s, i) => (colorSub[s] = PALETA[i % PALETA.length]));
         if (primeraCarga) {
           datos.forEach((u) => cerradas.add(u.sublinea));

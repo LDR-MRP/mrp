@@ -57,6 +57,13 @@ class Inv_almacenes extends Controllers
 				$correo = strClean($_POST['correo-input']);
 				$precio = intval($_POST['listPrecios']);
 				$estado = intval($_POST['estado-select']);
+				// Planta del almacén (wms_almacenes.plantaid -> mrp_planta). Opcional; 0/vacío = sin planta.
+				$plantaid = intval($_POST['planta-select'] ?? 0);
+				$plantaid = $plantaid > 0 ? $plantaid : null;
+				if ($plantaid !== null && !$this->model->existePlantaActiva($plantaid)) {
+					echo json_encode(array("status" => false, "msg" => 'La planta seleccionada no existe o está inactiva.'), JSON_UNESCAPED_UNICODE);
+					die();
+				}
 
 
 				if ($intidalmacen == 0) {
@@ -66,13 +73,13 @@ class Inv_almacenes extends Controllers
 
 					//Crear 
 					if ($_SESSION['permisosMod']['w']) {
-						$request_almacen = $this->model->inserAlmacen($clave_almacen, $descripcion, $direccion, $encargado, $telefono, $correo, $precio, $fecha_creacion, $estado);
+						$request_almacen = $this->model->inserAlmacen($clave_almacen, $descripcion, $direccion, $encargado, $telefono, $correo, $precio, $fecha_creacion, $estado, $plantaid);
 						$option = 1;
 					}
 				} else {
 					//Actualizar
 					if ($_SESSION['permisosMod']['u']) {
-						$request_almacen = $this->model->updateAlmacen($intidalmacen, $clave_almacen, $descripcion, $direccion, $encargado, $telefono, $correo, $precio, $estado);
+						$request_almacen = $this->model->updateAlmacen($intidalmacen, $clave_almacen, $descripcion, $direccion, $encargado, $telefono, $correo, $precio, $estado, $plantaid);
 						$option = 2;
 					}
 				}
@@ -105,6 +112,10 @@ class Inv_almacenes extends Controllers
 				$btnView = '';
 				$btnEdit = '';
 				$btnDelete = '';
+
+				$arrData[$i]['planta'] = empty($arrData[$i]['plantaid'])
+					? '<span class="badge bg-warning-subtle text-warning" title="Asigna la planta desde Editar">Sin planta</span>'
+					: htmlspecialchars($arrData[$i]['cve_planta'] . ' · ' . $arrData[$i]['nombre_planta'], ENT_QUOTES, 'UTF-8');
 
 				if ($arrData[$i]['estado'] == 2) {
 					$arrData[$i]['estado'] = '<span class="badge bg-success">Activo</span>';
@@ -166,6 +177,21 @@ class Inv_almacenes extends Controllers
 		die();
 	}
 
+
+	/** Options del select de planta (solo plantas activas). */
+	public function getSelectPlantas()
+	{
+		if (empty($_SESSION['permisosMod']['r'])) {
+			die();
+		}
+		$htmlOptions = '<option value="">-- Sin planta --</option>';
+		foreach ($this->model->selectPlantas() as $p) {
+			$htmlOptions .= '<option value="' . (int)$p['idplanta'] . '">'
+				. htmlspecialchars($p['cve_planta'] . ' - ' . $p['nombre_planta'], ENT_QUOTES, 'UTF-8') . '</option>';
+		}
+		echo $htmlOptions;
+		die();
+	}
 
 	public function getSelectAlmacenes($idprecio)
 	{

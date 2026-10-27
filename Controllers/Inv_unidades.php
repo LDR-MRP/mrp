@@ -78,10 +78,14 @@ class Inv_unidades extends Controllers
 
         // Columnas: almacenes con unidades, agrupados por planta
         $alms = [];
+        $nombresPlanta = [];
         foreach ($u as $r) {
             $alms[$r['almacenid']] = ['cve' => $r['cve_almacen'], 'planta' => $r['planta']];
+            $nombresPlanta[$r['planta']] = $r['planta_nombre'] ?? $r['planta'];
         }
-        uasort($alms, fn($a, $b) => [$a['planta'], $a['cve']] <=> [$b['planta'], $b['cve']]);
+        // Plantas por clave (PL01, PL02...) y "Sin planta asignada" al final
+        $sinPlanta = fn($p) => in_array($p, ['SIN', 'OTROS'], true) ? 1 : 0;
+        uasort($alms, fn($a, $b) => [$sinPlanta($a['planta']), $a['planta'], $a['cve']] <=> [$sinPlanta($b['planta']), $b['planta'], $b['cve']]);
 
         // Renglones
         $rows = [];
@@ -119,7 +123,7 @@ class Inv_unidades extends Controllers
         $azul = ' style="background-color:#405189;color:#ffffff;font-weight:bold;"';
         $th1 = '<tr' . $azul . '>' . $fijas('', '', '');
         foreach ($porPlanta as $p => $n) {
-            $th1 .= '<td width="' . ($wAlm * $n) . '%" colspan="' . $n . '" align="center">' . ($p === 'OTROS' ? 'Otros' : 'Planta ' . (int)substr($p, 2)) . '</td>';
+            $th1 .= '<td width="' . ($wAlm * $n) . '%" colspan="' . $n . '" align="center">' . $h($nombresPlanta[$p] ?? $p) . '</td>';
         }
         $th1 .= $td($wTotal, '') . '</tr>';
         $th2 = '<tr' . $azul . '>' . $fijas('Modelo', 'Año', 'Color');
@@ -168,7 +172,7 @@ class Inv_unidades extends Controllers
         if ($subs)          $filtros[] = 'Sublínea: ' . implode(', ', $subs);
         if ($anios)         $filtros[] = 'Año: ' . implode(', ', $anios);
         if ($color !== '')  $filtros[] = 'Color: ' . $color;
-        if ($planta !== '') $filtros[] = 'Planta: ' . $planta;
+        if ($planta !== '') $filtros[] = 'Planta: ' . ($nombresPlanta[$planta] ?? $planta);
         if ($almacen > 0 && $alms) $filtros[] = 'Almacén: ' . reset($alms)['cve'];
         if ($q !== '')      $filtros[] = 'Búsqueda: "' . $q . '"';
 
