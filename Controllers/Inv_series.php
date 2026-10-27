@@ -815,6 +815,376 @@ class Inv_series extends Controllers
         $this->enviarExcel($ss, 'Log_Asociacion_VIN_' . date('Ymd_His') . '.xlsx');
     }
 
+    /* =================================================================
+     * UNIDADES IMPORTADAS (sin VIN nacional: VIN = VIN de origen)
+     * Carga masiva: SKU, VIN de origen, número de motor, color y almacén.
+     * Cada fila da de alta el VIN (tipo 'importado'), su asociación, la
+     * entrada al inventario y el historial. Ver Inv_seriesModel::altaUnidadImportada.
+     * ================================================================= */
+
+    public function descargarPlantillaImportados()
+    {
+        if (empty($_SESSION['permisosMod']['r'])) {
+            die();
+        }
+        $txt = \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING;
+        $productos = array_values($this->model->mapProductosUnidad());
+        $almacenes = array_values($this->model->mapAlmacenesActivos());
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $ss->getProperties()->setCreator('LDR Solutions · MRP')->setTitle('Plantilla unidades importadas');
+
+        /* ---------- Instrucciones ---------- */
+        $h1 = $ss->getActiveSheet();
+        $h1->setTitle('Instrucciones');
+        $h1->setCellValue('A1', 'PLANTILLA DE CARGA MASIVA · UNIDADES IMPORTADAS (SIN VIN NACIONAL)');
+        $h1->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $textos = [
+            '1. Usa esta plantilla solo para unidades importadas que NO llevan VIN nacional: su VIN es el VIN de origen del fabricante.',
+            '   Las unidades con VIN nacional (3LD...) se generan en "Generar nuevos VIN" y se asocian con "Carga masiva".',
+            '2. Llena la hoja "Importados" sin modificar los encabezados de la fila 1. Una fila por unidad.',
+            '3. SKU: elige el producto de la lista; se muestra como "SKU | Nombre" (hoja "Productos"). También puedes escribir o pegar solo el SKU.',
+            '4. VIN_ORIGEN: VIN del fabricante, 17 caracteres, sin las letras I, O ni Q. Será el VIN de la unidad en el sistema.',
+            '5. NUMERO_MOTOR: número de motor (hasta 30 caracteres; letras, números, espacio, guion, diagonal y punto).',
+            '6. COLOR: opcional (ej. Blanco, Gris).',
+            '7. ALMACEN: clave del almacén donde está la unidad (elígela de la lista; viene de la hoja "Almacenes").',
+            '8. Cada fila crea el VIN, su asociación (motor, VIN de origen, color) y la entrada al inventario (concepto Ajustes) en ese almacén.',
+            '9. Se omiten las filas cuyo VIN de origen o número de motor ya existan en el sistema o vengan repetidos en el archivo.',
+            '10. Al terminar puedes descargar un log en Excel con las filas que no se procesaron y el motivo.',
+        ];
+        $f = 3;
+        foreach ($textos as $t) {
+            $h1->setCellValue('A' . $f++, $t);
+        }
+        $h1->getColumnDimension('A')->setWidth(130);
+
+        /* ---------- Importados ---------- */
+        $h2 = $ss->createSheet();
+        $h2->setTitle('Importados');
+        $h2->fromArray(['SKU', 'VIN_ORIGEN', 'NUMERO_MOTOR', 'COLOR', 'ALMACEN'], null, 'A1');
+        $h2->getStyle('A1:E1')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+        $h2->getStyle('A1:E1')->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FF0277BD');
+        $h2->freezePane('A2');
+        $ultimaFila = 1000;
+        $h2->getStyle('A2:E' . $ultimaFila)->getNumberFormat()
+            ->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+        foreach (['A' => 55, 'B' => 24, 'C' => 22, 'D' => 14, 'E' => 18] as $c => $w) {
+            $h2->getColumnDimension($c)->setWidth($w);
+        }
+
+        /* ---------- Catálogos ---------- */
+        $h3 = $ss->createSheet();
+        $h3->setTitle('Productos');
+        // Columna C = "SKU | Nombre": es la que alimenta la lista de la hoja Importados,
+        // para que al elegir se vea el nombre; al procesar se toma solo el SKU.
+        $h3->fromArray(['SKU', 'DESCRIPCION', 'SKU | NOMBRE (lista)'], null, 'A1');
+        $h3->getStyle('A1:C1')->getFont()->setBold(true);
+        $r = 2;
+        foreach ($productos as $p) {
+            $h3->setCellValueExplicit('A' . $r, $p['cve_articulo'], $txt);
+            $h3->setCellValue('B' . $r, $p['descripcion']);
+            $h3->setCellValueExplicit('C' . $r, $p['cve_articulo'] . ' | ' . $p['descripcion'], $txt);
+            $r++;
+        }
+        $h3->getColumnDimension('A')->setWidth(32);
+        $h3->getColumnDimension('B')->setWidth(45);
+        $h3->getColumnDimension('C')->setWidth(70);
+        $ultProd = max(2, $r - 1);
+
+        $h4 = $ss->createSheet();
+        $h4->setTitle('Almacenes');
+        $h4->fromArray(['ALMACEN', 'DESCRIPCION'], null, 'A1');
+        $h4->getStyle('A1:B1')->getFont()->setBold(true);
+        $r = 2;
+        foreach ($almacenes as $a) {
+            $h4->setCellValueExplicit('A' . $r, $a['cve_almacen'], $txt);
+            $h4->setCellValue('B' . $r, $a['descripcion']);
+            $r++;
+        }
+        $h4->getColumnDimension('A')->setWidth(20);
+        $h4->getColumnDimension('B')->setWidth(55);
+        $ultAlm = max(2, $r - 1);
+
+        // Listas desplegables (SKU y ALMACEN). En PhpSpreadsheet showDropDown=true
+        // es lo que SÍ muestra la flecha en Excel (el atributo XML está invertido).
+        foreach ([['A', "Productos!\$C\$2:\$C\$$ultProd"], ['E', "Almacenes!\$A\$2:\$A\$$ultAlm"]] as [$col, $formula]) {
+            // objeto nuevo (no getCell()->getDataValidation(), que registraría además
+            // una validación suelta en la fila 2 encimada con la del rango)
+            $dv = new \PhpOffice\PhpSpreadsheet\Cell\DataValidation();
+            $dv->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $dv->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
+            $dv->setAllowBlank(true);
+            $dv->setShowErrorMessage(true);
+            $dv->setShowDropDown(true);
+            $dv->setFormula1($formula);
+            $h2->setDataValidation($col . '2:' . $col . $ultimaFila, $dv);
+        }
+
+        $ss->setActiveSheetIndex(1);
+        $this->enviarExcel($ss, 'Plantilla_Unidades_Importadas.xlsx');
+    }
+
+    public function procesarImportados()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        if (empty($_SESSION['permisosMod']['w'])) {
+            echo json_encode(['status' => false, 'msg' => 'No tienes permisos para dar de alta unidades.'], JSON_UNESCAPED_UNICODE);
+            die();
+        }
+        if (empty($_FILES['archivo']) || $_FILES['archivo']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['status' => false, 'msg' => 'No se recibió el archivo.'], JSON_UNESCAPED_UNICODE);
+            die();
+        }
+        $ext = strtolower(pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ['xlsx', 'xls', 'csv'], true)) {
+            echo json_encode(['status' => false, 'msg' => 'Formato no válido. Usa .xlsx, .xls o .csv.'], JSON_UNESCAPED_UNICODE);
+            die();
+        }
+        if ($_FILES['archivo']['size'] > 15 * 1024 * 1024) {
+            echo json_encode(['status' => false, 'msg' => 'El archivo excede 15 MB.'], JSON_UNESCAPED_UNICODE);
+            die();
+        }
+
+        try {
+            $rows = $this->leerArchivoImportados($_FILES['archivo']['tmp_name']);
+        } catch (\Throwable $e) {
+            error_log('Inv_series::procesarImportados: ' . $e->getMessage());
+            $msg = $e instanceof \RuntimeException ? $e->getMessage() : 'No se pudo leer el archivo.';
+            echo json_encode(['status' => false, 'msg' => $msg], JSON_UNESCAPED_UNICODE);
+            die();
+        }
+        if (empty($rows)) {
+            echo json_encode(['status' => false, 'msg' => 'El archivo no contiene unidades para procesar.'], JSON_UNESCAPED_UNICODE);
+            die();
+        }
+
+        $productos = $this->model->mapProductosUnidad();
+        $almacenes = $this->model->mapAlmacenesActivos();
+        foreach ($rows as &$r) {
+            $r['vin'] = Inv_seriesModel::normalizarVinOrigen($r['origen']);
+            $r['motor'] = Inv_seriesModel::normalizarMotor($r['motor']);
+            $r['color'] = Inv_seriesModel::normalizarColor($r['color']);
+            // la lista de la plantilla trae "SKU | Nombre": solo cuenta lo que va antes del |
+            $r['sku'] = strtoupper(trim(explode('|', $r['sku'])[0]));
+            $r['cve_almacen'] = strtoupper(trim($r['almacen']));
+        }
+        unset($r);
+        $existentes = $this->model->mapExistentesImportados(array_column($rows, 'vin'), array_column($rows, 'motor'));
+
+        $referencia = 'IMP-' . date('Ymd-His');
+        $log = [];
+        $altas = 0;
+        $vistos = ['vin' => [], 'motor' => []];
+
+        foreach ($rows as $r) {
+            $fila = $r['_fila'];
+            $vin = $r['vin'];
+            $logBase = ['fila' => $fila, 'sku' => $r['sku'], 'vin' => $vin, 'motor' => $r['motor'], 'color' => $r['color'], 'almacen' => $r['cve_almacen']];
+
+            if (!isset($productos[$r['sku']])) {
+                $log[] = $logBase + ['motivo' => $r['sku'] === '' ? 'Fila sin SKU.' : 'El SKU no existe como producto terminado activo.'];
+                continue;
+            }
+            if (!isset($almacenes[$r['cve_almacen']])) {
+                $log[] = $logBase + ['motivo' => $r['cve_almacen'] === '' ? 'Fila sin almacén.' : 'El almacén no existe o no está activo.'];
+                continue;
+            }
+            $error = Inv_seriesModel::validarDatosAsociacion($r['motor'], $vin) ?? Inv_seriesModel::validarColor($r['color']);
+            if ($error) {
+                $log[] = $logBase + ['motivo' => $error];
+                continue;
+            }
+            if (isset($vistos['vin'][$vin])) {
+                $log[] = $logBase + ['motivo' => 'VIN de origen repetido en el archivo (fila ' . $vistos['vin'][$vin] . ').'];
+                continue;
+            }
+            if (isset($vistos['motor'][$r['motor']])) {
+                $log[] = $logBase + ['motivo' => 'Número de motor repetido en el archivo (fila ' . $vistos['motor'][$r['motor']] . ').'];
+                continue;
+            }
+            if (isset($existentes['vin'][$vin])) {
+                $log[] = $logBase + ['motivo' => 'El VIN ya está registrado en el sistema.'];
+                continue;
+            }
+            if (isset($existentes['origen'][$vin])) {
+                $log[] = $logBase + ['motivo' => 'El VIN de origen ya está asociado al VIN ' . $existentes['origen'][$vin] . '.'];
+                continue;
+            }
+            if (isset($existentes['motor'][$r['motor']])) {
+                $log[] = $logBase + ['motivo' => 'El número de motor ya está asociado al VIN ' . $existentes['motor'][$r['motor']] . '.'];
+                continue;
+            }
+            $vistos['vin'][$vin] = $fila;
+            $vistos['motor'][$r['motor']] = $fila;
+
+            $res = $this->model->altaUnidadImportada([
+                'inventarioid' => (int) $productos[$r['sku']]['idinventario'],
+                'almacenid' => (int) $almacenes[$r['cve_almacen']]['idalmacen'],
+                'cve_almacen' => $almacenes[$r['cve_almacen']]['cve_almacen'],
+                'vin' => $vin,
+                'motor' => $r['motor'],
+                'color' => $r['color'],
+                '_fila' => $fila,
+            ], $referencia, $_SESSION['idUser'] ?? null, 'MASIVO');
+
+            if (!$res['status']) {
+                $log[] = $logBase + ['motivo' => $res['msg']];
+                continue;
+            }
+            $altas++;
+        }
+
+        $_SESSION['cargaImportadosLog'] = $log;
+
+        echo json_encode([
+            'status' => true,
+            'msg' => "$altas unidad(es) importada(s) registrada(s).",
+            'altas' => $altas,
+            'omitidas' => count($log),
+            'referencia' => $referencia,
+            'log' => array_slice($log, 0, 50),
+        ], JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    public function exportarLogImportados()
+    {
+        if (empty($_SESSION['permisosMod']['r'])) {
+            die();
+        }
+        $log = $_SESSION['cargaImportadosLog'] ?? [];
+        $txt = \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING;
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sh = $ss->getActiveSheet();
+        $sh->setTitle('Log');
+        $sh->setCellValue('A1', 'Unidades importadas NO registradas (carga masiva)');
+        $sh->getStyle('A1')->getFont()->setBold(true)->setSize(13);
+        $sh->setCellValue('A2', 'Generado: ' . date('Y-m-d H:i:s'));
+        $sh->fromArray(['FILA_ARCHIVO', 'SKU', 'VIN_ORIGEN', 'NUMERO_MOTOR', 'COLOR', 'ALMACEN', 'MOTIVO'], null, 'A4');
+        $sh->getStyle('A4:G4')->getFont()->setBold(true);
+        $sh->getStyle('A4:G4')->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FFEFEFEF');
+        $sh->freezePane('A5');
+        $r = 5;
+        foreach ($log as $l) {
+            $sh->setCellValue('A' . $r, $l['fila']);
+            $sh->setCellValueExplicit('B' . $r, (string) $l['sku'], $txt);
+            $sh->setCellValueExplicit('C' . $r, (string) $l['vin'], $txt);
+            $sh->setCellValueExplicit('D' . $r, (string) $l['motor'], $txt);
+            $sh->setCellValueExplicit('E' . $r, (string) $l['color'], $txt);
+            $sh->setCellValueExplicit('F' . $r, (string) $l['almacen'], $txt);
+            $sh->setCellValueExplicit('G' . $r, (string) $l['motivo'], $txt);
+            $r++;
+        }
+        foreach (['A' => 14, 'B' => 28, 'C' => 22, 'D' => 20, 'E' => 12, 'F' => 16, 'G' => 70] as $c => $w) {
+            $sh->getColumnDimension($c)->setWidth($w);
+        }
+        $this->enviarExcel($ss, 'Log_Unidades_Importadas_' . date('Ymd_His') . '.xlsx');
+    }
+
+    /** Listado de unidades importadas: VIN (= VIN de origen), motor, color, SKU y almacén. */
+    public function exportarImportados()
+    {
+        if (empty($_SESSION['permisosMod']['r'])) {
+            die();
+        }
+        $rows = $this->model->selectImportados();
+        $txt = \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING;
+        $estados = ['1' => 'Disponible', '2' => 'En inventario', '3' => 'Salida'];
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sh = $ss->getActiveSheet();
+        $sh->setTitle('Importadas');
+        $sh->fromArray(['VIN / VIN DE ORIGEN', 'NUMERO_MOTOR', 'COLOR', 'SKU', 'PRODUCTO', 'ALMACEN', 'DESCRIPCION ALMACEN', 'REFERENCIA', 'ESTADO', 'FECHA'], null, 'A1');
+        $sh->getStyle('A1:J1')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+        $sh->getStyle('A1:J1')->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FF0277BD');
+        $sh->freezePane('A2');
+        $r = 2;
+        foreach ($rows as $u) {
+            $sh->setCellValueExplicit('A' . $r, (string) $u['numero_serie'], $txt);
+            $sh->setCellValueExplicit('B' . $r, (string) $u['numero_motor'], $txt);
+            $sh->setCellValue('C' . $r, $u['color']);
+            $sh->setCellValueExplicit('D' . $r, (string) $u['cve_articulo'], $txt);
+            $sh->setCellValue('E' . $r, $u['producto']);
+            $sh->setCellValueExplicit('F' . $r, (string) $u['cve_almacen'], $txt);
+            $sh->setCellValue('G' . $r, $u['almacen']);
+            $sh->setCellValue('H' . $r, $u['referencia']);
+            $sh->setCellValue('I' . $r, $estados[(string) $u['estado']] ?? $u['estado']);
+            $sh->setCellValue('J' . $r, $u['fecha']);
+            $r++;
+        }
+        foreach (['A' => 24, 'B' => 20, 'C' => 12, 'D' => 28, 'E' => 34, 'F' => 14, 'G' => 40, 'H' => 34, 'I' => 14, 'J' => 12] as $c => $w) {
+            $sh->getColumnDimension($c)->setWidth($w);
+        }
+        $sh->setAutoFilter('A1:J' . max(1, $r - 1));
+        $this->enviarExcel($ss, 'Unidades_Importadas_' . date('Ymd') . '.xlsx');
+    }
+
+    /** Lee la hoja "Importados" (o la primera) mapeando columnas por encabezado. */
+    private function leerArchivoImportados(string $tmpName): array
+    {
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($tmpName);
+        $sheet = $spreadsheet->sheetNameExists('Importados')
+            ? $spreadsheet->getSheetByName('Importados')
+            : $spreadsheet->getSheet(0);
+
+        $highestRow = $sheet->getHighestDataRow();
+        $highestColIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($sheet->getHighestDataColumn());
+
+        $mapa = [
+            'SKU' => 'sku',
+            'CLAVE_ARTICULO' => 'sku',
+            'VIN_ORIGEN' => 'origen',
+            'VIN_DE_ORIGEN' => 'origen',
+            'COD_ORIGEN' => 'origen',
+            'COD_ORIGEN*' => 'origen',
+            'VIN' => 'origen',
+            'NUMERO_MOTOR' => 'motor',
+            'NUMERO_DE_MOTOR' => 'motor',
+            'MOTOR' => 'motor',
+            'EIN' => 'motor',
+            'COLOR' => 'color',
+            'ALMACEN' => 'almacen',
+        ];
+
+        $columnas = [];
+        for ($col = 1; $col <= $highestColIndex; $col++) {
+            $texto = trim((string) $sheet->getCellByColumnAndRow($col, 1)->getValue());
+            $clave = strtoupper(strtr($texto, ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U']));
+            $clave = preg_replace('/\s+/', '_', $clave);
+            // la primera columna que coincida gana (VIN_ORIGEN antes que VIN)
+            if (isset($mapa[$clave]) && !in_array($mapa[$clave], $columnas, true)) {
+                $columnas[$col] = $mapa[$clave];
+            }
+        }
+        foreach (['sku', 'origen', 'motor', 'almacen'] as $req) {
+            if (!in_array($req, $columnas, true)) {
+                throw new \RuntimeException('No se encontraron los encabezados SKU, VIN_ORIGEN, NUMERO_MOTOR y ALMACEN. Usa la plantilla proporcionada.');
+            }
+        }
+
+        $rows = [];
+        for ($fila = 2; $fila <= $highestRow; $fila++) {
+            $reg = ['sku' => '', 'origen' => '', 'motor' => '', 'color' => '', 'almacen' => ''];
+            foreach ($columnas as $col => $campo) {
+                $reg[$campo] = $this->valorComoTexto($sheet->getCellByColumnAndRow($col, $fila)->getValue());
+            }
+            if (implode('', $reg) === '') {
+                continue;
+            }
+            $reg['_fila'] = $fila;
+            $rows[] = $reg;
+        }
+        return $rows;
+    }
+
     private function enviarExcel($ss, string $filename): void
     {
         if (ob_get_length()) {
