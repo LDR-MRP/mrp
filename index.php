@@ -181,22 +181,16 @@ if (session_status() === PHP_SESSION_NONE) {
 | Capa de identidad SSO
 |--------------------------------------------------------------------------
 |
-| Se dispara ÚNICAMENTE si:
-| - NO es un portal externo (SRM/Orders).
-| - NO es una petición de sistema o archivo estático.
-| - NO existe la sesión local ('mrp_token').
-| - SÍ existe la cookie del SSO central ('token').
+| Se dispara ÚNICAMENTE en la ruta /sso para que:
+| - Al entrar a /login nunca se autologuee automáticamente con el JWT tras cerrar sesión.
+| - La validación e intercambio del JWT de RRHH ocurra exclusivamente en /sso.
 |
 */
 $isInternalContext = !$isExternalPortal && !$isSystemRequest;
-$isLogoutFlow      = ($firstSegment === 'logout') || !empty($_GET['logged_out']);
-$needsSsoSync      = empty($_SESSION['login']) && !empty($_COOKIE['token']) && !$isLogoutFlow;
+$isSsoRoute        = strtolower($firstSegment) === 'sso';
+$needsSsoSync      = $isSsoRoute && empty($_SESSION['login']) && !empty($_COOKIE['token']);
 
 if ($isInternalContext && $needsSsoSync) {
-    /**
-     * El servicio solo se instancia si hay algo que sincronizar 
-     * y estamos en el lugar correcto.
-     */
     $identity = new \Services\IdentityService();
     $identity->attemptSsoSync();
 }
