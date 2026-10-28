@@ -2587,8 +2587,8 @@ class Inv_inventario extends Controllers
 				$row['estado'] = ($row['estado'] == 1)
 					? '<span class="badge bg-success">Disponible</span>'
 					: (($row['estado'] == 3)
-						? '<span class="badge bg-secondary">Salida</span>'
-						: '<span class="badge bg-danger">No disponible</span>');
+						? '<span class="badge bg-secondary">Facturado</span>'
+						: '<span class="badge bg-danger">Tatuado</span>');
 
 				if ($row['tipo_generacion'] === 'lote') {
 					$lote[] = $row;

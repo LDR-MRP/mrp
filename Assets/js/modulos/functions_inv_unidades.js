@@ -50,9 +50,12 @@ document.addEventListener("DOMContentLoaded", function () {
     return i === -1 ? 99 : i;
   };
   const cmpSub = (a, b) => rankSub(a) - rankSub(b) || String(a).localeCompare(String(b));
-  // Plantas en orden de clave (PL01, PL02…) y "Sin planta asignada" al final
-  const sinPlanta = (p) => p === "SIN" || p === "OTROS";
-  const cmpPlanta = (a, b) => sinPlanta(a) - sinPlanta(b) || String(a).localeCompare(String(b));
+  // Plantas en orden de clave (PL01, PL02…), luego "En tránsito" y "Sin planta asignada" al final
+  const sinPlanta = (p) => p === "SIN" || p === "OTROS" || p === "TRANSITO";
+  const rankPlanta = (p) => (p === "TRANSITO" ? 1 : p === "SIN" || p === "OTROS" ? 2 : 0);
+  const cmpPlanta = (a, b) => rankPlanta(a) - rankPlanta(b) || String(a).localeCompare(String(b));
+  const esTransito = (u) => String(u.en_transito) === "1";
+  const badgeTransito = (u) => (esTransito(u) ? '<span class="badge bg-warning-subtle text-warning ms-1">En tránsito</span>' : "");
 
   /* ---------------- Utilidades de UI ---------------- */
   // Cuenta animada del valor anterior al nuevo
@@ -171,6 +174,10 @@ document.addEventListener("DOMContentLoaded", function () {
   /* ---------------- KPIs ---------------- */
   function pintarKpis(lista) {
     animarNumero(byId("kUnidades"), lista.length);
+    const nTransito = lista.filter(esTransito).length;
+    byId("kTransito").textContent = nTransito
+      ? `${fmt(lista.length - nTransito)} físicas · ${fmt(nTransito)} en tránsito`
+      : "";
     const an = contarPor(lista, anioDe);
     byId("kAnios").innerHTML = [...an.keys()]
       .sort()
@@ -412,7 +419,7 @@ document.addEventListener("DOMContentLoaded", function () {
       dtListado = $("#tListado").DataTable({
         data: lista,
         columns: [
-          { data: "numero_serie", render: (d, t) => (t === "display" ? `<span class="iu-vin">${esc(d)}</span>${btnCopiar(d)}` : d) },
+          { data: "numero_serie", render: (d, t, u) => (t === "display" ? `<span class="iu-vin">${esc(d)}</span>${btnCopiar(d)}${badgeTransito(u)}` : d) },
           { data: anioDe, render: (d, t) => (t === "display" ? `<span class="iu-anio ms-0">${esc(d)}</span>` : d) },
           { data: colorDe, render: (d, t) => (t === "display" ? `${dot(d)} ${esc(d)}` : d) },
           {
@@ -478,7 +485,7 @@ document.addEventListener("DOMContentLoaded", function () {
       ? detalleVisible
           .map(
             (u, i) =>
-              `<tr><td class="text-muted">${i + 1}</td><td><span class="iu-vin">${esc(u.numero_serie)}</span>${btnCopiar(u.numero_serie)}</td><td><span class="iu-anio ms-0">${esc(anioDe(u))}</span></td><td>${dot(colorDe(u))} ${esc(colorDe(u))}</td><td title="${esc(u.almacen)}">${esc(u.cve_almacen)}</td><td>${u.numero_motor ? esc(u.numero_motor) : '<span class="text-muted">—</span>'}</td><td>${u.vin_origen ? `<span class="iu-vin fw-normal">${esc(u.vin_origen)}</span>` : '<span class="text-muted">—</span>'}</td></tr>`,
+              `<tr><td class="text-muted">${i + 1}</td><td><span class="iu-vin">${esc(u.numero_serie)}</span>${btnCopiar(u.numero_serie)}${badgeTransito(u)}</td><td><span class="iu-anio ms-0">${esc(anioDe(u))}</span></td><td>${dot(colorDe(u))} ${esc(colorDe(u))}</td><td title="${esc(u.almacen)}">${esc(u.cve_almacen)}</td><td>${u.numero_motor ? esc(u.numero_motor) : '<span class="text-muted">—</span>'}</td><td>${u.vin_origen ? `<span class="iu-vin fw-normal">${esc(u.vin_origen)}</span>` : '<span class="text-muted">—</span>'}</td></tr>`,
           )
           .join("")
       : `<tr><td colspan="7" class="text-center text-muted py-4">Ningún VIN coincide con “${esc(q)}”</td></tr>`;

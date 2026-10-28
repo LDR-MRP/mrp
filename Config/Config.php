@@ -159,7 +159,7 @@ const MPPROVEEDORES = 35;
 
 
 //Submodulos pedidos
-const MCLIENTES_CLIENTES = 37;
+const MCLIENTES_CLIENTES = 36;
 const MCLIENTES_PEDIDOS = 37;
 const MCLIENTES_PROPUESTAS_COMERCIALES = 38;
 const MCLIENTES_AUTORIZACIONES = 39;
@@ -172,6 +172,15 @@ const MCLIENTES_DEVOLUCIONES = 45;
 const MCLIENTES_SEGUIMIENTO = 46;
 const MCLIENTES_REPORTES = 47;
 const MCLIENTES_BITACORA = 48;
+
+// Submódulos Departamentos
+const MCDEPARTAMENTOS = 200;
+const MCMARCAS = 201;
+const MCLI_GRUPOS = 202;
+const MCLI_PUESTOS = 203;
+const MCLI_CONTACTOS = 204;
+const MCLI_REGIONALES = 205;
+const MCLI_TIPOS_CLIENTES = 206;
 
 //Submodulos Compras
 const COM_COMPRAS = 50;
@@ -202,4 +211,8 @@ const COMPRAS_TESORERO = 58;
 
 
 const STATUS = array('Completo', 'Aprobado', 'Cancelado', 'Reembolsado', 'Pendiente', 'Entregado');
+
+// Configuración de subida de archivos
+const MAX_FILE_SIZE_MB = 5; // Tamaño máximo en MB antes de comprimir en ZIP
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // Tamaño máximo en bytes
 ?>
