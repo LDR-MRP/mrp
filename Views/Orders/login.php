@@ -19,10 +19,10 @@
                     <span>Administra todos tus pedidos desde una sola cuenta.</span>
                 </div>
 
-                <div>
-                    <strong>Trazabilidad completa</strong>
-                    <span>Revisa el avance desde solicitud hasta entrega.</span>
-                </div>
+                    <!-- <div>
+                        <strong>Trazabilidad completa</strong>
+                        <span>Revisa el avance desde solicitud hasta entrega.</span>
+                    </div> -->
 
                 <div>
                     <strong>Catálogo actualizado</strong>
