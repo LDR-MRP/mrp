@@ -144,9 +144,9 @@ headerOrders($data);
                             Año: más reciente
                         </option>
 
-                        <option value="stock_desc">
+                        <!-- <option value="stock_desc">
                             Mayor disponibilidad
-                        </option>
+                        </option> -->
 
                     </select>
 
@@ -326,7 +326,7 @@ headerOrders($data);
 
                     <!-- DISPONIBILIDAD -->
 
-                    <div class="filter-group">
+                    <!-- <div class="filter-group">
 
                         <label for="stockFilter">
                             Disponibilidad
@@ -348,7 +348,7 @@ headerOrders($data);
 
                         </select>
 
-                    </div>
+                    </div> -->
 
 
                     <!-- BOTÓN -->
