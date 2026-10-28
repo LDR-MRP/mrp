@@ -1404,13 +1404,13 @@ function construirItemDetalle(
     precio:
       Number(
         unidad.precio
-        || unidad.precio_estimado
+        || unidad.precio_dealer
         || 0
       ),
 
-    precio_estimado:
+    precio_dealer:
       Number(
-        unidad.precio_estimado
+        unidad.precio_dealer
         || unidad.precio
         || 0
       ),
@@ -1620,13 +1620,13 @@ function configurarAgregarCarritoOLD(
           precio:
             Number(
               unidad.precio
-              || unidad.precio_estimado
+              || unidad.precio_dealer
               || 0
             ),
 
-          precio_estimado:
+          precio_dealer:
             Number(
-              unidad.precio_estimado
+              unidad.precio_dealer
               || unidad.precio
               || 0
             ),

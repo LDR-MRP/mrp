@@ -478,11 +478,11 @@ function construirItemCarrito(item,cantidad = 1) {
 
     cat:String(item.modelo || 'unidad').toLowerCase(),
 
-    precio:Number(item.precio || item.precio_estimado || 0),
+    precio:Number(item.precio || item.precio_dealer || 0),
 
-    precio_estimado:
+    precio_dealer:
       Number(
-        item.precio_estimado
+        item.precio_dealer
         || item.precio
         || 0
       ),
@@ -603,7 +603,7 @@ function addToCartOLD(id) {
 
       precio:Number(item.precio || 0),
 
-      precio_estimado:Number(item.precio || 0),
+      precio_dealer:Number(item.precio || 0),
 
       img:String(item.img || ''),
 
@@ -746,7 +746,7 @@ function normalizarProducto(unidad) {
 
     stock:Number(unidad.stock || 0),
 
-    precio:Number(unidad.precio_estimado || 0),
+    precio:Number(unidad.precio_dealer || 0),
 
     img:obtenerRutaImagen(unidad.imagen_caratula)
 
@@ -1577,7 +1577,8 @@ function renderProducts(list) {
                     '${base_url}/Assets/images/no-image.png';
                 "
               >
-
+      
+                  <!--
               <span
                 class="
                   product-stock-badge
@@ -1595,6 +1596,7 @@ function renderProducts(list) {
                 }
 
               </span>
+              -->
 
             </div>
 
@@ -1607,15 +1609,7 @@ function renderProducts(list) {
                   ${escapeHtml(item.marca)}
                 </span>
 
-                ${
-                  item.anio
-                    ? `
-                      <span class="product-year">
-                        ${item.anio}
-                      </span>
-                    `
-                    : ''
-                }
+    
 
               </div>
 

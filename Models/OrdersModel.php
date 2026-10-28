@@ -605,7 +605,7 @@ public function selectUnidadesWeb()
                 marca,
                 motor,
                 stock,
-                precio_estimado,
+                precio_dealer,
                 imagen_caratula
             FROM web_unidades
             WHERE estado = 2
@@ -636,7 +636,7 @@ public function selectUnidadDetalle(int $idunidad)
                 marca,
                 motor,
                 stock,
-                precio_estimado,
+                precio_dealer,
                 imagen_caratula,
                 estado,
                 fecha_creacion,
@@ -947,7 +947,7 @@ public function generarFolioPedido(): string
                 marca,
                 motor,
                 stock,
-                precio_estimado,
+                precio_dealer,
                 estado
             FROM web_unidades
             WHERE idunidad = $idunidad
@@ -1527,7 +1527,7 @@ public function selectDetallesPedidoEditar(int $idpedido) {
             wu.marca,
             wu.motor,
             wu.stock,
-            wu.precio_estimado,
+            wu.precio_dealer,
             wu.imagen_caratula
 
         FROM ped_pedidos_detalle pd
@@ -1611,7 +1611,7 @@ public function validarPedidoEditable(string $clave,int $idcliente) {
 //             marca,
 //             motor,
 //             stock,
-//             precio_estimado,
+//             precio_dealer,
 //             imagen_caratula
 //         FROM web_unidades
 //         WHERE idunidad = ?

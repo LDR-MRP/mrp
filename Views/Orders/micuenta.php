@@ -171,10 +171,10 @@ if (!function_exists('statusPedidoNormalizado')) {
                     <span> Resumen</span>
                 </a>
 
-                <a href="<?= base_url(); ?>/orders/sedes" class="account-menu-item">
+                <!-- <a href="<?= base_url(); ?>/orders/sedes" class="account-menu-item">
                     <i class="ri-map-pin-line"></i>
                     <span> Sedes</span>
-                </a>
+                </a> -->
 
 
                 <a href="<?= base_url(); ?>/orders/micuenta" class="account-menu-item">
@@ -183,22 +183,22 @@ if (!function_exists('statusPedidoNormalizado')) {
                 </a>
 
 
-                <a href="<?= base_url(); ?>/orders/trazabilidad" class="account-menu-item">
+                <!-- <a href="<?= base_url(); ?>/orders/trazabilidad" class="account-menu-item">
                     <i class="ri-line-chart-line"></i>
                     <span>Trazabilidad</span>
-                </a>
+                </a> -->
 
 
-                <a href="<?= base_url(); ?>/orders/documentos" class="account-menu-item">
+                <!-- <a href="<?= base_url(); ?>/orders/documentos" class="account-menu-item">
                     <i class="ri-folder-line"></i>
                     <span>Documentos</span>
-                </a>
+                </a> -->
 
 
-                <a href="<?= base_url(); ?>/orders/perfil" class="account-menu-item">
+                <!-- <a href="<?= base_url(); ?>/orders/perfil" class="account-menu-item">
                     <i class="ri-user-settings-line"></i>
                     <span>Perfil y accesos</span>
-                </a>
+                </a> -->
 
             </nav>
 

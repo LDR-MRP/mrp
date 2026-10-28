@@ -332,7 +332,7 @@ function construirRutaImagenUnidad(
                         <strong>
                             $<?= number_format(
                                 floatval(
-                                    $unidad['precio_estimado']
+                                    $unidad['precio_dealer']
                                 ),
                                 2,
                                 '.',
@@ -349,6 +349,8 @@ function construirRutaImagenUnidad(
 
 
                     <!-- DISPONIBILIDAD -->
+
+                    <!--
 
                     <div class="unit-availability <?= intval(
                         $unidad['stock']
@@ -396,7 +398,7 @@ function construirRutaImagenUnidad(
 
                         </div>
 
-                    </div>
+                    </div>-->
 
 
                     <!-- DATOS PRINCIPALES -->
@@ -646,7 +648,7 @@ function construirRutaImagenUnidad(
                             </strong>
                         </div>
 
-                        <div>
+                        <!-- <div>
                             <span>Disponibilidad registrada</span>
 
                             <strong>
@@ -655,7 +657,7 @@ function construirRutaImagenUnidad(
                                 ); ?>
                                 unidades
                             </strong>
-                        </div>
+                        </div> -->
 
                         <div>
                             <span>Precio estimado</span>
@@ -663,7 +665,7 @@ function construirRutaImagenUnidad(
                             <strong>
                                 $<?= number_format(
                                     floatval(
-                                        $unidad['precio_estimado']
+                                        $unidad['precio_dealer']
                                     ),
                                     2,
                                     '.',
@@ -759,11 +761,11 @@ function construirRutaImagenUnidad(
                     ),
                 'precio' =>
                     floatval(
-                        $unidad['precio_estimado']
+                        $unidad['precio_dealer']
                     ),
-                'precio_estimado' =>
+                'precio_dealer' =>
                     floatval(
-                        $unidad['precio_estimado']
+                        $unidad['precio_dealer']
                     ),
                 'img' =>
                     !empty($imagenes)

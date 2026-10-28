@@ -630,6 +630,9 @@ class Ped_pedidos extends Controllers
 
             $pedido = $this->model->selectPedidoDetalleAdmin($clave);
 
+            // dep($pedido);
+            // exit;
+
 
             if (empty($pedido)) {
                 http_response_code(404);
@@ -804,6 +807,7 @@ class Ped_pedidos extends Controllers
 
     public function enviarCorreoInicioGestionPedido(array $pedido)
     {
+        // dep($pedido);
         try {
 
             /*
@@ -885,7 +889,7 @@ class Ped_pedidos extends Controllers
                  */
                 // 'email' =>$correoDestino,
                 // 'email' => 'carloscc_1997@outlook.com',
-                'correo' => $correoDestino,
+                'email' => $correoDestino,
                 /*
                  * Solicitante
                  */

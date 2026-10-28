@@ -51,6 +51,16 @@ class IdentityService
             // Convertir de stdClass a array asociativo para garantizar acceso por clave
             $decodedArray = json_decode(json_encode($decoded), true);
 
+            // DIAGNÓSTICO TEMPORAL: mostrar contenido del JWT ya validado.
+header('Content-Type: text/plain; charset=utf-8');
+
+echo json_encode(
+    $decodedArray,
+    JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
+);
+
+exit;   
+
             // 4. Delegar el intercambio de tokens y JIT Provisioning al AuthService
             $ssoResponse = $this->authService->authenticateViaSso($decodedArray);
 

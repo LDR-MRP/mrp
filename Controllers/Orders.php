@@ -1917,7 +1917,7 @@ class Orders extends Controllers
                 /*
                  * Nunca se confiamos en en el precio enviado por JavaScript.
                  */
-                $precioUnitario = round((float) ($unidad['precio_estimado'] ?? 0), 2);
+                $precioUnitario = round((float) ($unidad['precio_dealer'] ?? 0), 2);
 
                 if ($precioUnitario < 0) {
                     throw new RuntimeException(
@@ -2470,7 +2470,7 @@ class Orders extends Controllers
              * ========================================================
              */
 
-            $correos_copias = 'carlos.cruz@ldrsolutions.com.mx';
+            $correos_copias = 'carlos.cruz@ldrsolutions.com.mx,alejandro.hernandez@ldrsolutions.com.mx';
 
             /*
              * ========================================================
@@ -2684,7 +2684,7 @@ class Orders extends Controllers
              *
              */
 
-            $urlPedido = base_url() . '/orders/detallepedido/' . rawurlencode();
+            $urlPedido = base_url() . '/ped_pedidos/gestionar/' . rawurlencode($pedido['clave'] ?? '');
 
 
             /*
@@ -2779,7 +2779,7 @@ class Orders extends Controllers
              *
              */
 
-            $correosCopiasCompras = '';
+            $correosCopiasCompras = 'carlos.cruz@ldrsolutions.com.mx,nora.segura@ldrsolutions.com.mx,alejandro.hernandez@ldrsolutions.com.mx';
 
             /*
              * ========================================================
@@ -3142,7 +3142,7 @@ class Orders extends Controllers
                  * ============================================
                  */
 
-                $precioUnitario = floatval($unidad['precio_estimado'] ?? 0);
+                $precioUnitario = floatval($unidad['precio_dealer'] ?? 0);
 
                 /*
                  * ============================================
