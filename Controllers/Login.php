@@ -19,8 +19,8 @@ class Login extends Controllers
 			session_start();
 		}
 
-		// Si aún no hay sesión local pero existe el token de RRHH, sincronizar de forma directa
-		if (empty($_SESSION['login']) && !empty($_COOKIE['token']) && class_exists(\Services\IdentityService::class)) {
+		// Si aún no hay sesión local pero existe el token de RRHH (y no viene de cerrar sesión), sincronizar de forma directa
+		if (empty($_SESSION['login']) && !empty($_COOKIE['token']) && empty($_GET['logged_out']) && class_exists(\Services\IdentityService::class)) {
 			$identity = new \Services\IdentityService();
 			$identity->attemptSsoSync();
 		}

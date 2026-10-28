@@ -189,7 +189,8 @@ if (session_status() === PHP_SESSION_NONE) {
 |
 */
 $isInternalContext = !$isExternalPortal && !$isSystemRequest;
-$needsSsoSync      = empty($_SESSION['login']) && !empty($_COOKIE['token']);
+$isLogoutFlow      = ($firstSegment === 'logout') || !empty($_GET['logged_out']);
+$needsSsoSync      = empty($_SESSION['login']) && !empty($_COOKIE['token']) && !$isLogoutFlow;
 
 if ($isInternalContext && $needsSsoSync) {
     /**
