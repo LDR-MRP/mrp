@@ -17,6 +17,9 @@
                                 <a href="<?= base_url() ?>/Inv_movcargamasiva" class="btn btn-success btn-sm">
                                     <i class="ri-file-excel-2-line align-bottom me-1"></i> Cargas Masivas
                                 </a>
+                                <a href="<?= base_url() ?>/Inv_movventasmasiva" class="btn btn-primary btn-sm">
+                                    <i class="ri-file-excel-2-line align-bottom me-1"></i> Carga masiva de ventas (VINs)
+                                </a>
                             <?php } ?>
                             <ol class="breadcrumb m-0">
                                 <li class="breadcrumb-item"><a href="javascript: void(0);">MRP</a></li>

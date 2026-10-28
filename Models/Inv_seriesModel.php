@@ -241,6 +241,17 @@ class Inv_seriesModel extends Mysql
             ];
         }
 
+        // Lote generado para el almacén de tránsito (ALM-TRANSITO): los VINs
+        // entran con existencia (concepto Ajustes) para poder facturarlos y
+        // después hacer devoluciones aunque no estén físicamente ahí.
+        $esTransito = ($modo === 'lote') && $this->esAlmacenTransito((int) $almacenid);
+        $vinesTransito = [];
+        $pdo = $this->conexion;
+        if ($esTransito) {
+            $pdo->beginTransaction();
+        }
+
+        try {
         for ($i = 0; $i < $cantidad; $i++) {
 
             $vin = strtoupper(trim($lista[$i]));
@@ -284,6 +295,9 @@ class Inv_seriesModel extends Mysql
 
             if ($insert) {
                 $insertados++;
+                if ($esTransito) {
+                    $vinesTransito[] = ['id' => (int) $insert, 'vin' => $vin];
+                }
                 $this->registrarGeneracion($historial, [
                     'id_numeros_serie' => $insert,
                     'numero_serie' => $vin,
@@ -299,12 +313,100 @@ class Inv_seriesModel extends Mysql
             }
         }
 
+            if ($esTransito && !empty($vinesTransito)) {
+                $this->registrarEntradaTransito((int) $inventarioid, (int) $almacenid, (string) $referencia,
+                    (float) $costo, $vinesTransito, $idModeloVin, $usuarioid, $historial);
+            }
+            if ($esTransito) {
+                $pdo->commit();
+            }
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log('Inv_seriesModel::insertarSeriesConfirmadas: ' . $e->getMessage());
+            return [
+                "status" => false,
+                "msg" => "No se pudo generar el lote (no se guardó ningún VIN). Inténtalo de nuevo."
+            ];
+        }
+
         return [
             "status" => $insertados > 0,
             "msg" => $insertados > 0
                 ? "$insertados VIN insertados correctamente"
+                    . ($esTransito ? " y dados de entrada en el almacén de tránsito (concepto Ajustes)" : "")
                 : "No se insertó ningún VIN"
         ];
+    }
+
+    /** Almacén de tránsito: clave ALM-TRANSITO (descripción "ALMACEN DE TRANSITO"). */
+    private function esAlmacenTransito(int $almacenid): bool
+    {
+        $r = $this->select(
+            "SELECT idalmacen FROM wms_almacenes
+             WHERE idalmacen = ?
+               AND (UPPER(TRIM(cve_almacen)) = 'ALM-TRANSITO'
+                    OR UPPER(TRIM(descripcion)) IN ('ALMACEN DE TRANSITO', 'ALMACÉN DE TRANSITO', 'ALMACÉN DE TRÁNSITO'))",
+            [$almacenid]
+        );
+        return !empty($r);
+    }
+
+    /**
+     * Entrada al inventario de un lote de VINs en tránsito: un solo movimiento
+     * (concepto 6 Ajustes) con cantidad = # de VINs, existencia +N en
+     * wms_multialmacen, y cada VIN ligado en wms_movimientos_inventario_series.
+     * Corre dentro de la transacción de insertarSeriesConfirmadas().
+     */
+    private function registrarEntradaTransito(int $inventarioid, int $almacenid, string $referencia, float $costo,
+        array $vines, $idModeloVin, $usuarioid, Inv_vin_historialModel $historial): void
+    {
+        $cantidad = count($vines);
+        $concepto = $this->conceptoEntradaAjuste();
+        $numero = 'MOV-' . date('YmdHis') . '-' . rand(100, 999);
+
+        $this->insert(
+            "INSERT INTO wms_multialmacen (inventarioid, almacenid, existencia)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE existencia = COALESCE(existencia, 0) + VALUES(existencia)",
+            [$inventarioid, $almacenid, $cantidad]
+        );
+        $exis = $this->select(
+            "SELECT existencia FROM wms_multialmacen WHERE inventarioid = ? AND almacenid = ?",
+            [$inventarioid, $almacenid]
+        );
+
+        $idMov = (int) $this->insert(
+            "INSERT INTO wms_movimientos_inventario
+             (inventarioid, almacenid, numero_movimiento, concepmovid, referencia, lote,
+              cantidad, costo_cantidad, existencia, signo, fecha_movimiento, estado)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW(), 2)",
+            [$inventarioid, $almacenid, $numero, $concepto, $referencia, $referencia,
+             $cantidad, $costo, (float) ($exis['existencia'] ?? $cantidad)]
+        );
+
+        foreach ($vines as $v) {
+            $this->insert(
+                "INSERT INTO wms_movimientos_inventario_series
+                 (idmovinventario, numero_movimiento, id_numeros_serie, numero_serie,
+                  almacenid, signo, estado_anterior, usuarioid, fecha)
+                 VALUES (?, ?, ?, ?, ?, 1, '1', ?, NOW())",
+                [$idMov, $numero, $v['id'], $v['vin'], $almacenid, !empty($usuarioid) ? (int) $usuarioid : null]
+            );
+            $this->registrarGeneracion($historial, [
+                'id_numeros_serie' => $v['id'],
+                'numero_serie' => $v['vin'],
+                'id_cat_modelo_vin' => $idModeloVin,
+                'modulo' => 'INVENTARIO',
+                'accion' => 'ENTRADA',
+                'campo' => 'almacenid',
+                'valor_nuevo' => 'ALM-TRANSITO',
+                'detalle' => "Entrada al almacén de tránsito por lote {$referencia} ({$numero}, concepto Ajustes)",
+                'origen' => 'INDIVIDUAL',
+                'usuarioid' => $usuarioid,
+            ]);
+        }
     }
 
 

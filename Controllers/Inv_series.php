@@ -36,9 +36,9 @@ class Inv_series extends Controllers
                 if ($arrData[$i]['estado'] == 1) {
                     $arrData[$i]['estado'] = '<span class="badge bg-success">Disponible</span>';
                 } elseif ($arrData[$i]['estado'] == 3) {
-                    $arrData[$i]['estado'] = '<span class="badge bg-secondary">Salida</span>';
+                    $arrData[$i]['estado'] = '<span class="badge bg-secondary">Facturado</span>';
                 } else {
-                    $arrData[$i]['estado'] = '<span class="badge bg-danger">No disponible</span>';
+                    $arrData[$i]['estado'] = '<span class="badge bg-danger">Tatuado</span>';
                 }
             }
 
@@ -1095,7 +1095,7 @@ class Inv_series extends Controllers
         }
         $rows = $this->model->selectImportados();
         $txt = \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING;
-        $estados = ['1' => 'Disponible', '2' => 'En inventario', '3' => 'Salida'];
+        $estados = ['1' => 'Disponible', '2' => 'Tatuado', '3' => 'Facturado'];
 
         $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sh = $ss->getActiveSheet();

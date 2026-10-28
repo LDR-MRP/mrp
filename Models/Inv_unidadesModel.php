@@ -3,8 +3,12 @@
  * Inventario de unidades (productos tipo P): existencia por almacen, sublinea
  * (segmento), modelo, anio modelo (posicion 10 del VIN -> cat_anio_vin) y color.
  *
- * Unidad = VIN de un producto activo en estado 2 (no disponible: ya es una
- * unidad fisica). Los VIN en estado 1 son generados que aun no se usan.
+ * Unidad = VIN de un producto activo en estado 2 (Tatuado: unidad fisica), mas
+ * los VIN en estado 1 (Disponible) del almacen de transito (ALM-TRANSITO) o
+ * cuyo ultimo movimiento con VIN fue una entrada (devolucion de venta), que
+ * tienen existencia y se pueden facturar aunque no esten fisicamente; se
+ * agrupan aparte como planta 'TRANSITO' ("En transito"). Los demas VIN en
+ * estado 1 son generados que aun no se usan.
  * Sublinea: la de Ingenieria (ing_modelo_configuracion); si el producto no
  * tiene configuracion, la de wms_inventario_linea.
  * Planta: la del almacen (wms_almacenes.plantaid -> mrp_planta). Mientras un
@@ -20,6 +24,8 @@ class Inv_unidadesModel extends Mysql
 
     /** Clave de planta: FK primero, prefijo de la clave como respaldo, 'SIN' si no hay ninguno. */
     private const PLANTA_SQL = "COALESCE(pl.cve_planta, CASE WHEN a.cve_almacen REGEXP '^PL[0-9]{2}-' THEN LEFT(a.cve_almacen, 4) ELSE 'SIN' END)";
+    /** Almacén de tránsito (clave ALM-TRANSITO): sus VINs se muestran aunque no estén tatuados. */
+    private const TRANSITO_SQL = "(UPPER(TRIM(a.cve_almacen)) = 'ALM-TRANSITO' OR UPPER(TRIM(a.descripcion)) IN ('ALMACEN DE TRANSITO', 'ALMACÉN DE TRANSITO', 'ALMACÉN DE TRÁNSITO'))";
     private const PLANTA_NOMBRE_SQL = "COALESCE(pl.nombre_planta, CASE WHEN a.cve_almacen REGEXP '^PL[0-9]{2}-' THEN CONCAT('Planta ', CAST(SUBSTRING(a.cve_almacen, 3, 2) AS UNSIGNED)) ELSE 'Sin planta asignada' END)";
 
     /** Un renglon por VIN (unidad fisica). */
@@ -36,8 +42,10 @@ class Inv_unidadesModel extends Mysql
                        ns.almacenid,
                        COALESCE(a.cve_almacen, 'SIN ALMACEN') AS cve_almacen,
                        COALESCE(a.descripcion, 'Sin almacén asignado') AS almacen,
-                       " . self::PLANTA_SQL . " AS planta,
-                       " . self::PLANTA_NOMBRE_SQL . " AS planta_nombre,
+                       CASE WHEN " . self::TRANSITO_SQL . " THEN 'TRANSITO' ELSE " . self::PLANTA_SQL . " END AS planta,
+                       CASE WHEN " . self::TRANSITO_SQL . " THEN 'En tránsito' ELSE " . self::PLANTA_NOMBRE_SQL . " END AS planta_nombre,
+                       CASE WHEN " . self::TRANSITO_SQL . " THEN 1 ELSE 0 END AS en_transito,
+                       ns.estado,
                        an.anio,
                        ns.referencia,
                        va.numero_motor,
@@ -59,7 +67,16 @@ class Inv_unidadesModel extends Mysql
                 LEFT JOIN wms_sublinea_producto sl ON sl.idsublineaproducto = COALESCE(cfg.idsub, il.idsub)
                 WHERE i.tipo_elemento = 'P'
                   AND i.estado = '2'
-                  AND ns.estado = '2'
+                  -- Tatuados (2) en cualquier almacén + Disponibles (1) del almacén de tránsito
+                  -- o cuyo último movimiento con VIN fue una entrada (p. ej. una devolución)
+                  AND (ns.estado = '2'
+                       OR (ns.estado = '1' AND (" . self::TRANSITO_SQL . "
+                           OR EXISTS (SELECT 1 FROM wms_movimientos_inventario_series ms
+                                      WHERE ms.id_numeros_serie = ns.id_numeros_serie
+                                        AND ms.signo > 0
+                                        AND ms.idmovserie = (SELECT MAX(ms2.idmovserie)
+                                                             FROM wms_movimientos_inventario_series ms2
+                                                             WHERE ms2.id_numeros_serie = ns.id_numeros_serie)))))
                 ORDER BY i.descripcion, a.cve_almacen, ns.numero_serie";
         return $this->select_all($sql);
     }

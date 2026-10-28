@@ -198,8 +198,8 @@ class Inv_movimientosinventarioModel extends Mysql
     }
 
     /**
-     * VINs (unidades físicas) que pueden salir de un almacén para un producto:
-     * estado 2 (en almacén) y que no estén comprometidos en un traslado activo.
+     * VINs que pueden salir de un almacén para un producto: estado 1 (Disponible)
+     * o 2 (Tatuado), y que no estén comprometidos en un traslado activo.
      */
     public function selectVinesDisponibles(int $inventarioid, int $almacenid): array
     {
@@ -212,7 +212,7 @@ class Inv_movimientosinventarioModel extends Mysql
         LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = ns.id_numeros_serie
         WHERE ns.inventarioid = ?
           AND ns.almacenid = ?
-          AND ns.estado = '2'
+          AND ns.estado IN ('1', '2')
           AND NOT EXISTS (
               SELECT 1
               FROM wms_traslados_unidades_detalle d
@@ -281,6 +281,17 @@ class Inv_movimientosinventarioModel extends Mysql
                 $cantidad = (float)$cantidades[$i];
                 $costo    = (float)$costos[$i];
 
+                // Regla: las VENTAS de unidades (tipo P) solo salen de Producto Terminado o de Tránsito
+                if ($series !== null && $signo < 0 && $concepto['cpn'] === 'C') {
+                    $tipo = $this->select("SELECT tipo_elemento FROM wms_inventario WHERE idinventario = ?", [(int)$inventarioid]);
+                    if ($tipo && $tipo['tipo_elemento'] === 'P') {
+                        $alm = $this->almacenVentaUnidades($almacenid);
+                        if (!$alm['permitido']) {
+                            throw new Exception("La unidad está en el almacén {$alm['nombre']}: solo se pueden vender unidades de almacenes de Producto Terminado o de Tránsito");
+                        }
+                    }
+                }
+
                 $row = $this->select("
                 SELECT existencia 
                 FROM wms_multialmacen
@@ -323,8 +334,9 @@ class Inv_movimientosinventarioModel extends Mysql
                             if ((int)$vin['almacenid'] !== $almacenid) {
                                 throw new Exception("El VIN {$vin['numero_serie']} no está en el almacén seleccionado");
                             }
-                            if ($vin['estado'] !== '2') {
-                                throw new Exception("El VIN {$vin['numero_serie']} ya no está disponible en almacén");
+                            // 1 = Disponible, 2 = Tatuado: ambos pueden facturarse. 3 = Facturado ya salió.
+                            if (!in_array($vin['estado'], ['1', '2'], true)) {
+                                throw new Exception("El VIN {$vin['numero_serie']} ya no está disponible en almacén (ya facturado o dado de baja)");
                             }
                             $enTraslado = $this->select(
                                 "SELECT COUNT(*) total FROM wms_traslados_unidades_detalle d
@@ -335,6 +347,44 @@ class Inv_movimientosinventarioModel extends Mysql
                             if ($enTraslado && (int)$enTraslado['total'] > 0) {
                                 throw new Exception("El VIN {$vin['numero_serie']} está en un traslado activo");
                             }
+                            $vin['estado_nuevo'] = '3';
+                            $vinesUsados[$idSerie] = true;
+                            $vinesPartida[] = $vin;
+                        }
+                    }
+                }
+
+                // ---- Devolución de unidades (entrada tipo Cliente, p. ej. "Devol. de venta") ----
+                // El VIN debe estar Facturado (3); regresa como 1 = Disponible al
+                // almacén de esta entrada.
+                if ($series !== null && $signo > 0) {
+                    $prod = $this->select(
+                        "SELECT tipo_elemento, cve_articulo FROM wms_inventario WHERE idinventario = ?",
+                        [(int)$inventarioid]
+                    );
+                    if ($prod && $prod['tipo_elemento'] === 'P') {
+                        $ids = array_values(array_unique(array_filter(array_map('intval', (array)($series[$i] ?? [])))));
+                        $requiere = ($concepto['cpn'] === 'C');
+                        if (($requiere || !empty($ids)) && (floor($cantidad) != $cantidad || count($ids) !== (int)$cantidad)) {
+                            throw new Exception("La devolución de {$prod['cve_articulo']} es de unidades: debe indicar exactamente "
+                                . (float)$cantidad . " VIN(s) (indicados: " . count($ids) . "). Usa la carga masiva de devoluciones.");
+                        }
+                        foreach ($ids as $idSerie) {
+                            if (isset($vinesUsados[$idSerie])) {
+                                throw new Exception("Un VIN está repetido en dos partidas del movimiento");
+                            }
+                            $vin = $this->select(
+                                "SELECT id_numeros_serie, numero_serie, estado, inventarioid, almacenid
+                                 FROM wms_numeros_series WHERE id_numeros_serie = ? FOR UPDATE",
+                                [$idSerie]
+                            );
+                            if (!$vin || (int)$vin['inventarioid'] !== (int)$inventarioid) {
+                                throw new Exception("El VIN indicado no corresponde al producto {$prod['cve_articulo']}");
+                            }
+                            if ($vin['estado'] !== '3') {
+                                throw new Exception("El VIN {$vin['numero_serie']} no está Facturado; no se puede devolver");
+                            }
+                            $vin['estado_nuevo'] = '1';
                             $vinesUsados[$idSerie] = true;
                             $vinesPartida[] = $vin;
                         }
@@ -375,11 +425,12 @@ class Inv_movimientosinventarioModel extends Mysql
                     $nueva_existencia
                 ]);
 
-                // VINs: marcar como Salida (3) y dejar la trazabilidad
+                // VINs: salida -> Facturado (3); devolución -> Disponible (1) y almacén
+                // de la entrada. En ambos casos queda la trazabilidad.
                 foreach ($vinesPartida as $vin) {
                     $this->update(
-                        "UPDATE wms_numeros_series SET estado = '3' WHERE id_numeros_serie = ?",
-                        [$vin['id_numeros_serie']]
+                        "UPDATE wms_numeros_series SET estado = ?, almacenid = ? WHERE id_numeros_serie = ?",
+                        [$vin['estado_nuevo'], $almacenid, $vin['id_numeros_serie']]
                     );
                     $this->insert("
                     INSERT INTO wms_movimientos_inventario_series
@@ -419,6 +470,27 @@ class Inv_movimientosinventarioModel extends Mysql
 
 
 
+
+    /**
+     * ¿Se pueden vender unidades desde este almacén? Solo Producto Terminado
+     * (la clave lleva "ALM-PT", p. ej. PL01-ALM-PT) y el almacén de Tránsito
+     * (ALM-TRANSITO).
+     */
+    public function almacenVentaUnidades(int $almacenid): array
+    {
+        $r = $this->select(
+            "SELECT cve_almacen, descripcion,
+                    (UPPER(TRIM(cve_almacen)) REGEXP '(^|-)ALM-PT(-|$)'
+                     OR UPPER(TRIM(cve_almacen)) = 'ALM-TRANSITO'
+                     OR UPPER(TRIM(descripcion)) IN ('ALMACEN DE TRANSITO', 'ALMACÉN DE TRANSITO', 'ALMACÉN DE TRÁNSITO')) AS permitido
+             FROM wms_almacenes WHERE idalmacen = ?",
+            [$almacenid]
+        );
+        return [
+            'permitido' => !empty($r) && (int) $r['permitido'] === 1,
+            'nombre' => !empty($r) ? $r['descripcion'] : (string) $almacenid,
+        ];
+    }
 
     public function selectConceptoInfo($id)
     {

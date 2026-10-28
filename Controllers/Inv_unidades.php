@@ -84,7 +84,8 @@ class Inv_unidades extends Controllers
             $nombresPlanta[$r['planta']] = $r['planta_nombre'] ?? $r['planta'];
         }
         // Plantas por clave (PL01, PL02...) y "Sin planta asignada" al final
-        $sinPlanta = fn($p) => in_array($p, ['SIN', 'OTROS'], true) ? 1 : 0;
+        // Orden: plantas por clave, luego "En tránsito", luego "Sin planta asignada"
+        $sinPlanta = fn($p) => $p === 'TRANSITO' ? 1 : (in_array($p, ['SIN', 'OTROS'], true) ? 2 : 0);
         uasort($alms, fn($a, $b) => [$sinPlanta($a['planta']), $a['planta'], $a['cve']] <=> [$sinPlanta($b['planta']), $b['planta'], $b['cve']]);
 
         // Renglones

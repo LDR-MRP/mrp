@@ -12,6 +12,9 @@
                         <h4 class="mb-sm-0"><?= $data['page_title'] ?></h4>
 
                         <div class="page-title-right d-flex align-items-center gap-2">
+                            <a href="<?= base_url() ?>/Inv_movventasmasiva" class="btn btn-primary btn-sm">
+                                <i class="ri-file-excel-2-line align-bottom me-1"></i> Carga masiva de ventas (VINs)
+                            </a>
                             <a href="<?= base_url() ?>/Inv_movimientosinventario" class="btn btn-light btn-sm">
                                 <i class="ri-arrow-left-line align-bottom me-1"></i> Volver a Movimientos
                             </a>

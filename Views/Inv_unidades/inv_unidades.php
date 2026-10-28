@@ -281,6 +281,7 @@
                             <div class="iu-ico"><i class="ri-truck-line"></i></div>
                         </div>
                         <div class="iu-chips" id="kAnios" title="Unidades por año modelo"></div>
+                        <div class="sub" id="kTransito"></div>
                     </div>
                 </div>
                 <div class="col-sm-6 col-xl-3">
