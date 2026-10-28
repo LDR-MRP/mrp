@@ -382,27 +382,61 @@ class SupplierService
         // Obtener el perfil del proveedor
         $supplier = $this->proveedorModel->getById($supplierId);
         if (!$supplier) return 0;
-        
+    
         // Usar el sistema dinámico de documentos
-        $requiredDocs = DocumentTypeEnum::getRequiredList($supplier['id_tipo_persona'], $supplier['origen']);
-        $requiredCount = count($requiredDocs);
-        
-        // Contar solo documentos obligatorios aprobados
+        $requiredDocs = DocumentTypeEnum::getRequiredList($supplier['id_tipo_persona'] ?? 'F', $supplier['origen'] ?? 'Nacional');
+        // contar documentos obligatorios
+        $requiredCount = 0;
+        foreach ($requiredDocs as $config){
+            if ($config['required']) {
+                $requiredCount++;
+            }
+        }
+        // Obtener documentos cargados
         $uploaded = $this->expedienteModel->uploadedDocuments($supplierId);
         $uploadedIndexed = array_column($uploaded, null, 'tipo_documento');
-        
-        $approvedCount = 0;
+        // 1. Contar documentos obligatorios aprobados
+        $approvedRequired = 0;
         foreach ($requiredDocs as $key => $config) {
             if ($config['required']) {
                 $fileInfo = $uploadedIndexed[$key] ?? null;
                 if (isset($fileInfo['estatus_validacion']) && (int)$fileInfo['estatus_validacion'] === 1) {
-                    $approvedCount++;
+                    $approvedRequired++;
                 }
             }
         }
+        // 2. Contar documentos opcionales cargados (para el denominador)
+        $uploadedOptional = 0;
+        foreach ($requiredDocs as $key => $config) {
+            if (!$config['required']) {
+                $fileInfo = $uploadedIndexed[$key] ?? null;
+                if ($fileInfo !== null) { // Cargado (independientemente del estatus)
+                    $uploadedOptional++;
+                }
+            }
+        }
+        // 3. Contar documentos opcionales aprobados (para el numerador)
+        $approvedOptional = 0;
+        foreach ($requiredDocs as $key => $config) {
+            if (!$config['required']) {
+                $fileInfo = $uploadedIndexed[$key] ?? null;
+                if (isset($fileInfo['estatus_validacion']) && (int)$fileInfo['estatus_validacion'] === 1) {
+                    $approvedOptional++;
+                }
+            }
+        }
+        // 4. Calcular progreso dinámico
+        $totalForCalculation = $requiredCount + $uploadedOptional;
+        $totalApproved = $approvedRequired + $approvedOptional;
         
-        $progress = (int)(($approvedCount / $requiredCount) * 100);
+        // Si no hay documentos cargados, progreso es 0
+        if ($totalForCalculation === 0) {
+            return 0;
+        }
+        
+        $progress = (int)(($totalApproved / $totalForCalculation) * 100);
         return $progress > 100 ? 100 : $progress;
+    
     }
 
     /**
@@ -415,7 +449,10 @@ class SupplierService
         if (!$supplier) throw new Exception("Proveedor inexistente.");
 
         // 2. Obtener lista dinámica basada en el Enum
-        $requiredDocs = DocumentTypeEnum::getRequiredList($supplier['id_tipo_persona'], $supplier['origen']);
+        $requiredDocs = DocumentTypeEnum::getRequiredList(
+            $supplier['id_tipo_persona'] ?? 'F',
+            $supplier['origen'] ?? 'Nacional'
+        );
         
         // 3. Obtener lo que ya subió
         $uploaded = $this->expedienteModel->uploadedDocuments($supplierId);        
@@ -423,7 +460,10 @@ class SupplierService
 
         // 4. Cruzar información
         $finalList = [];
-        $approvedCount = 0;
+        $approvedRequired = 0;
+        $approvedOptional = 0;
+        $uploadedOptional = 0;
+        $requiredCount = 0;
 
         foreach ($requiredDocs as $key => $config) {
             $fileInfo = $uploadedIndexed[$key] ?? null;
@@ -432,12 +472,35 @@ class SupplierService
                 'file_data' => $fileInfo,
             ]);
 
+            // Contar documentos obligatorios
+            if ($config['required']) {
+                $requiredCount++;
+            }
+
+            // Contar aprobados (obligatorios y opcionales)
             if (isset($fileInfo['estatus_validacion']) && (int)$fileInfo['estatus_validacion'] === 1) {
-                $approvedCount++;
+                if ($config['required']) {
+                    $approvedRequired++;
+                } else {
+                    $approvedOptional++;
+                }
+            }
+
+            // Contar opcionales cargados (para el denominador)
+            if (!$config['required'] && $fileInfo !== null) {
+                $uploadedOptional++;
             }
         }
 
-        $progress = round(($approvedCount / count($requiredDocs)) * 100);
+        // 5. Calcular progreso dinámico (misma lógica que calculateOnboardingProgress)
+        $totalForCalculation = $requiredCount + $uploadedOptional;
+        $totalApproved = $approvedRequired + $approvedOptional;
+        
+        if ($totalForCalculation === 0) {
+            $progress = 0;
+        } else {
+            $progress = round(($totalApproved / $totalForCalculation) * 100);
+        }
         
         return ServiceResponse::success([
             'documents' => $finalList,
@@ -623,12 +686,60 @@ class SupplierService
         if (!$supplier) return ServiceResponse::error("Proveedor no encontrado", 404);
 
         // 1. Cálculos de Documentación (Uso del Enum dinámico)
-        $requiredDocs = DocumentTypeEnum::getRequiredList($supplier['id_tipo_persona'], $supplier['origen']);
-        $totalRequired = count($requiredDocs);
-        $uploadedCount = $this->expedienteModel->countDocumentsBySupplier($supplierId);
-        $approvedCount = $this->expedienteModel->countApprovedDocuments($supplierId);
+        $requiredDocs = DocumentTypeEnum::getRequiredList(
+            $supplier['id_tipo_persona'] ?? 'F',
+            $supplier['origen'] ?? 'Nacional'
+        );
+        
+        // Contar documentos obligatorios del perfil
+        $totalRequired = 0;
+        foreach ($requiredDocs as $config) {
+            if ($config['required']) {
+                $totalRequired++;
+            }
+        }
+        
+        // Obtener documentos cargados
+        $uploaded = $this->expedienteModel->uploadedDocuments($supplierId);
+        $uploadedIndexed = array_column($uploaded, null, 'tipo_documento');
+        
+        // Contar documentos obligatorios aprobados
+        $approvedRequired = 0;
+        foreach ($requiredDocs as $key => $config) {
+            if ($config['required']) {
+                $fileInfo = $uploadedIndexed[$key] ?? null;
+                if (isset($fileInfo['estatus_validacion']) && (int)$fileInfo['estatus_validacion'] === 1) {
+                    $approvedRequired++;
+                }
+            }
+        }
+        
+        // Contar documentos opcionales cargados
+        $uploadedOptional = 0;
+        $approvedOptional = 0;
+        foreach ($requiredDocs as $key => $config) {
+            if (!$config['required']) {
+                $fileInfo = $uploadedIndexed[$key] ?? null;
+                if ($fileInfo !== null) {
+                    $uploadedOptional++;
+                }
+                if (isset($fileInfo['estatus_validacion']) && (int)$fileInfo['estatus_validacion'] === 1) {
+                    $approvedOptional++;
+                }
+            }
+        }
 
-        // 2. Definición de la lógica de cada paso
+        // 2. Calcular progreso dinámico (misma lógica que calculateOnboardingProgress)
+        $totalForCalculation = $totalRequired + $uploadedOptional;
+        $totalApproved = $approvedRequired + $approvedOptional;
+        
+        if ($totalForCalculation === 0) {
+            $progress = 0;
+        } else {
+            $progress = round(($totalApproved / $totalForCalculation) * 100);
+        }
+
+        // 3. Definición de la lógica de cada paso
         $steps = [
             'step1' => [ // Registro Inicial
                 'status' => 'completed', 
@@ -636,13 +747,13 @@ class SupplierService
                 'badge' => 'Completado'
             ],
             'step2' => [ // Expediente Digital
-                'status' => ($uploadedCount >= $totalRequired) ? 'completed' : 'active',
-                'date' => ($uploadedCount > 0) ? 'En proceso' : 'Pendiente',
-                'badge' => "{$uploadedCount} de {$totalRequired} subidos"
+                'status' => ($progress >= 100) ? 'completed' : 'active',
+                'date' => ($totalApproved > 0) ? 'En proceso' : 'Pendiente',
+                'badge' => "{$totalApproved} de {$totalForCalculation} ({$progress}%)"
             ],
             'step3' => [ // Validación (Mesa de Control)
-                'status' => ($approvedCount >= $totalRequired) ? 'completed' : (($uploadedCount >= $totalRequired) ? 'active' : 'pending'),
-                'badge' => ($approvedCount >= $totalRequired) ? 'Verificado' : 'Esperando Aprobación'
+                'status' => ($approvedRequired >= $totalRequired) ? 'completed' : (($approvedRequired > 0) ? 'active' : 'pending'),
+                'badge' => ($approvedRequired >= $totalRequired) ? 'Verificado' : 'Esperando Aprobación'
             ],
             'step4' => [ // Alta en ERP
                 'status' => ($supplier['estatus_onboarding'] === 'Aprobado') ? 'completed' : 'pending',

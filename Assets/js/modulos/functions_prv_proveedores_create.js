@@ -933,6 +933,7 @@ const onboardingManager = {
         };
 
         Object.entries(steps).forEach(([key, info]) => {
+            console.log(key, info);
             const isCompleted = info.status === 'completed';
             const isActive = info.status === 'active';
             
