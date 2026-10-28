@@ -1578,25 +1578,7 @@ function renderProducts(list) {
                 "
               >
       
-                  <!--
-              <span
-                class="
-                  product-stock-badge
-                  ${
-                    stockDisponible
-                      ? 'available'
-                      : 'unavailable'
-                  }
-                ">
 
-                ${
-                  stockDisponible
-                    ? `${item.stock} disponibles`
-                    : 'Sin disponibilidad'
-                }
-
-              </span>
-              -->
 
             </div>
 

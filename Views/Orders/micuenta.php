@@ -205,7 +205,7 @@ if (!function_exists('statusPedidoNormalizado')) {
 
             <!-- SOPORTE -->
 
-            <section class="account-card support-card">
+            <!-- <section class="account-card support-card">
                 <div class="support-icon">
                     <i class="ri-customer-service-2-line"></i>
                 </div>
@@ -226,7 +226,7 @@ if (!function_exists('statusPedidoNormalizado')) {
 
                 </a>
 
-            </section>
+            </section> -->
 
         </aside>
 
