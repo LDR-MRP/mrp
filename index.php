@@ -189,7 +189,7 @@ if (session_status() === PHP_SESSION_NONE) {
 |
 */
 $isInternalContext = !$isExternalPortal && !$isSystemRequest;
-$needsSsoSync      = empty($_SESSION['login']) && isset($_COOKIE['token']) && !isset($_COOKIE['mrp_forced_logout']);
+$needsSsoSync      = empty($_SESSION['login']) && !empty($_COOKIE['token']);
 
 if ($isInternalContext && $needsSsoSync) {
     /**

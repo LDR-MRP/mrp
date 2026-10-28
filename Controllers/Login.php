@@ -15,11 +15,20 @@ class Login extends Controllers
 
 	public function __construct()
 	{
-		session_start();
+		if (session_status() === PHP_SESSION_NONE) {
+			session_start();
+		}
+
+		// Si aún no hay sesión local pero existe el token de RRHH, sincronizar de forma directa
+		if (empty($_SESSION['login']) && !empty($_COOKIE['token']) && class_exists(\Services\IdentityService::class)) {
+			$identity = new \Services\IdentityService();
+			$identity->attemptSsoSync();
+		}
+
 		$raw = $_GET['numerocolaborador'] ?? '';
 		$raw = trim((string)$raw);
 
-		if (isset($_SESSION['login']) && $raw === '') {
+		if (!empty($_SESSION['login']) && $raw === '') {
 			header('Location: ' . base_url() . '/dashboard');
 			die();
 		}
@@ -324,6 +333,7 @@ class Login extends Controllers
 		// 1. Limpiar cookie de bloqueo si existía
 		if (isset($_COOKIE['mrp_forced_logout'])) {
 			setcookie('mrp_forced_logout', '', time() - 3600, '/', COOKIE_DOMAIN);
+			unset($_COOKIE['mrp_forced_logout']);
 		}
 
 		// 2. Intentar la sincronización SSO inmediatamente

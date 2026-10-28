@@ -188,29 +188,76 @@ class AuthService{
         $userModel = new UsuariosModel();
         
         try {
-            // Extraer el payload real (en caso de venir anidado en 'data' o 'user')
-            $data = $rawPayload['data'] ?? $rawPayload['user'] ?? $rawPayload;
+            // Extraer el payload real (en caso de venir anidado en 'data' o 'user' o 'usuario')
+            $data = $rawPayload['data'] ?? $rawPayload['user'] ?? $rawPayload['usuario'] ?? $rawPayload;
+            if (!is_array($data)) {
+                $data = $rawPayload;
+            }
 
-            // Extraer email probando las claves habituales (correo, email, email_user, sub)
-            $email = strtolower(trim(
-                $data['correo'] ?? 
-                $data['email'] ?? 
-                $data['email_user'] ?? 
-                $data['sub'] ?? ''
-            ));
+            // Extraer email probando las claves habituales en nodo interno y raíz
+            $emailCandidate =
+                $data['correo'] ??
+                $data['email'] ??
+                $data['email_user'] ??
+                $data['correo_empresarial'] ??
+                $data['correo_corporativo'] ??
+                $data['correo_institucional'] ??
+                $data['mail'] ??
+                $rawPayload['correo'] ??
+                $rawPayload['email'] ??
+                $rawPayload['email_user'] ??
+                $rawPayload['correo_empresarial'] ??
+                '';
 
-            if (empty($email)) {
-                throw new \Exception("Identidad incompleta: no se encontró correo en el token JWT de RRHH.", 400);
+            if (empty($emailCandidate) && !empty($data['sub']) && filter_var($data['sub'], FILTER_VALIDATE_EMAIL)) {
+                $emailCandidate = $data['sub'];
+            }
+            if (empty($emailCandidate) && !empty($rawPayload['sub']) && filter_var($rawPayload['sub'], FILTER_VALIDATE_EMAIL)) {
+                $emailCandidate = $rawPayload['sub'];
+            }
+
+            $email = strtolower(trim((string)$emailCandidate));
+
+            // Extraer número de colaborador como ancla alternativa o complementaria
+            $numColabCandidate =
+                $data['numerocolaborador'] ??
+                $data['numcolaborador'] ??
+                $data['num_colaborador'] ??
+                $data['numero_colaborador'] ??
+                $data['no_empleado'] ??
+                $data['clave_empleado'] ??
+                $data['id_empleado'] ??
+                $rawPayload['numerocolaborador'] ??
+                $rawPayload['numcolaborador'] ??
+                $rawPayload['num_colaborador'] ??
+                $rawPayload['numero_colaborador'] ??
+                '';
+            $numColaborador = trim((string)$numColabCandidate);
+
+            if (empty($email) && empty($numColaborador)) {
+                throw new \Exception("Identidad incompleta: no se encontró correo ni número de colaborador en el token JWT de RRHH.", 400);
             }
 
             $this->db->beginTransaction();
 
-            // 1. Localizar al usuario por el Anchor (Email)
-            $userBase = $userModel->findByEmail($email);
+            // 1. Localizar al usuario por Email o por Número de Colaborador
+            $userBase = null;
+            if (!empty($email)) {
+                $userBase = $userModel->findByEmail($email);
+            }
+            if (!$userBase && !empty($numColaborador)) {
+                $userBase = $userModel->findByNumColaborador($numColaborador);
+            }
+
             $userId = null;
 
             if (!$userBase) {
                 // 2. JIT Provisioning (Solo si no existe)
+                if (empty($email)) {
+                    $email = "colab_{$numColaborador}@ldrsolutions.com.mx";
+                }
+                $data['_resolved_email'] = $email;
+                $data['_resolved_numcolaborador'] = $numColaborador;
                 $userId = $this->provisionUserFromSso($data, $userModel);
                 $this->logMessage("SSO: Usuario provisionado: {$email}", \LogLevel::INFO);
             } else {
@@ -227,6 +274,7 @@ class AuthService{
 
             // 5. Validar Estatus (Sobre el perfil completo)
             if ((int)$userFull['status'] !== 1) {
+                if ($this->db->inTransaction()) $this->db->rollBack();
                 return \ServiceResponse::error("Acceso denegado: Usuario inactivo.", 403);
             }
 
@@ -236,23 +284,26 @@ class AuthService{
                 'iat'  => $now,
                 'exp'  => $now + (60 * 60 * 10),
                 'data' => [
-                    'id'       => $userFull['idusuario'],
-                    'nombre'   => $userFull['nombres'] . ' ' . $userFull['apellidos'],
-                    'rolid'    => $userFull['rolid'],
-                    'plantaid' => $userFull['plantaid'],
+                    'id'       => (int)$userFull['idusuario'],
+                    'nombre'   => trim($userFull['nombres'] . ' ' . $userFull['apellidos']),
+                    'rolid'    => (int)$userFull['rolid'],
+                    'plantaid' => (int)$userFull['plantaid'],
                     'rol'      => $userFull['rol_nombre'],
                     'planta'   => $userFull['planta_nombre'],
-                    'avatar'   => $userFull['avatar_file'],
+                    'avatar'   => $userFull['avatar_file'] ?: 'avatar_default.svg',
                     'is_vendor'=> false,
                     'auth_type'=> 'SSO_RRHH'
                 ]
             ];
 
-            $userModel->registrarAcceso($userFull['idusuario'], 'SSO Exchange (RRHH)', $_SERVER['REMOTE_ADDR'] ?? '', $_SERVER['HTTP_USER_AGENT'] ?? '');
+            $userModel->registrarAcceso((int)$userFull['idusuario'], 'SSO Exchange (RRHH)', $_SERVER['REMOTE_ADDR'] ?? '', $_SERVER['HTTP_USER_AGENT'] ?? '');
             $this->db->commit();
 
             if (isset($_COOKIE['mrp_forced_logout'])) {
-                setcookie('mrp_forced_logout', '', time() - 3600, '/', COOKIE_DOMAIN);
+                if (!headers_sent()) {
+                    setcookie('mrp_forced_logout', '', time() - 3600, '/', COOKIE_DOMAIN);
+                }
+                unset($_COOKIE['mrp_forced_logout']);
             }
 
             $jwt = \Firebase\JWT\JWT::encode($tokenPayload, JWT_SECRET, 'HS256');
@@ -266,7 +317,7 @@ class AuthService{
             if ($this->db->inTransaction()) $this->db->rollBack();
             $this->logMessage($p, \LogLevel::CRITICAL, ['action' => 'authenticateViaSso', 'id_user' => $email ?? '']);
             return \ServiceResponse::error("Ocurrió un error de integridad en la base de datos.");
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             $this->logMessage($e, \LogLevel::ERROR, ['context' => 'SSO_EXCHANGE']);
             return \ServiceResponse::error($e->getMessage(), 500);
@@ -280,30 +331,43 @@ class AuthService{
     {
         // Mapeo de Sede (RRHH) a Planta (MRP)
         $plantaId = match($data['nombre_sede'] ?? $data['planta'] ?? '') {
-            'CORPORATIVO' => 50,
-            default       => 50
+            'CORPORATIVO' => 1,
+            default       => 1
         };
 
         // Separación simple de nombre completo
-        $fullName = $data['nombre'] ?? $data['nombres'] ?? $data['name'] ?? 'Usuario SSO';
-        $parts = explode(' ', $fullName, 2);
+        $fullName = trim((string)($data['nombre_completo'] ?? $data['nombre'] ?? $data['nombres'] ?? $data['name'] ?? 'Usuario SSO'));
+        $apellidos = trim((string)($data['apellidos'] ?? $data['apellido_paterno'] ?? ''));
+
+        if ($apellidos !== '') {
+            $nombres = $fullName;
+            if (!empty($data['apellido_materno'])) {
+                $apellidos .= ' ' . trim((string)$data['apellido_materno']);
+            }
+        } else {
+            $parts = explode(' ', $fullName, 2);
+            $nombres = $parts[0];
+            $apellidos = $parts[1] ?? '';
+        }
         
-        $email = strtolower(trim(
+        $email = strtolower(trim((string)(
+            $data['_resolved_email'] ??
             $data['correo'] ?? 
             $data['email'] ?? 
             $data['email_user'] ?? 
             $data['sub'] ?? ''
-        ));
+        )));
 
         return $model->insertUserFromSso([
-            'nombres'     => $parts[0],
-            'apellidos'   => $parts[1] ?? '',
-            'email'       => $email,
-            'rolid'       => 3, // Rol 'Empleado' por defecto
-            'plantaid'    => $plantaId,
-            'status'      => 1,
-            'password'    => 'SSO_LDR_IDENTITY', // Placeholder de seguridad
-            'avatar_file' => 'avatar_default.svg'
+            'nombres'        => $nombres,
+            'apellidos'      => $apellidos,
+            'email'          => $email,
+            'numcolaborador' => $data['_resolved_numcolaborador'] ?? null,
+            'rolid'          => 3, // Rol 'Empleado' por defecto
+            'plantaid'       => $plantaId,
+            'status'         => 1,
+            'password'       => 'SSO_LDR_IDENTITY', // Placeholder de seguridad
+            'avatar_file'    => 'avatar_default.svg'
         ]);
     }
 }

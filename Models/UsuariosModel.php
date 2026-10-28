@@ -314,10 +314,30 @@ class UsuariosModel extends Mysql
                        u.nombres, u.apellidos, r.nombrerol as rol_nombre
                 FROM {$this->table} u
                 LEFT JOIN rol r ON u.rolid = r.idrol
-                WHERE u.email_user = ? 
+                WHERE LOWER(TRIM(u.email_user)) = ? 
+                  AND u.status != 0
                 LIMIT 1";
 
-		$params = [strtolower($email)];
+		$params = [strtolower(trim($email))];
+		$request = $this->select($sql, $params);
+
+		return $request ?: null;
+	}
+
+	/**
+	 * Localiza un usuario por su Número de Colaborador (RRHH).
+	 */
+	public function findByNumColaborador(string $numColaborador): ?array
+	{
+		$sql = "SELECT u.idusuario, u.email_user, u.password, u.status, u.rolid, u.plantaid, u.avatar_file,
+                       u.nombres, u.apellidos, r.nombrerol as rol_nombre
+                FROM {$this->table} u
+                LEFT JOIN rol r ON u.rolid = r.idrol
+                WHERE TRIM(u.numcolaborador) = ? 
+                  AND u.status != 0
+                LIMIT 1";
+
+		$params = [trim($numColaborador)];
 		$request = $this->select($sql, $params);
 
 		return $request ?: null;
@@ -325,7 +345,7 @@ class UsuariosModel extends Mysql
 
 	/**
 	 * Recupera el perfil completo para hidratación de sesión (SSO/Legacy).
-	 * Incluye JOINs para obtener nombres de roles y plantas.
+	 * Incluye LEFT JOINs para obtener nombres de roles y plantas sin fallar si plantaid = 0.
 	 */
 	public function loginUserById(int $idUsuario): ?array
 	{
@@ -338,11 +358,11 @@ class UsuariosModel extends Mysql
                     u.plantaid, 
                     u.status, 
                     u.avatar_file,
-                    r.nombrerol as rol_nombre,
-                    p.nombre_planta as planta_nombre
+                    COALESCE(r.nombrerol, 'Empleado') as rol_nombre,
+                    COALESCE(p.nombre_planta, 'Corporativo') as planta_nombre
                 FROM {$this->table} u
-                INNER JOIN rol r ON u.rolid = r.idrol
-                INNER JOIN mrp_planta p ON u.plantaid = p.idplanta
+                LEFT JOIN rol r ON u.rolid = r.idrol
+                LEFT JOIN mrp_planta p ON u.plantaid = p.idplanta
                 WHERE u.idusuario = :id 
                   AND u.status != 0 
                 LIMIT 1";
@@ -362,34 +382,56 @@ class UsuariosModel extends Mysql
 		$sql = "INSERT INTO {$this->table} (
                     nombres, 
                     apellidos, 
+                    telefono,
                     email_user, 
+                    numcolaborador,
                     password, 
                     rolid, 
                     plantaid, 
                     status, 
+                    avatar,
                     avatar_file, 
+                    avatar_seed,
+                    avatar_gender,
+                    avatar_options,
+                    avatar_updated_at,
                     datecreated
                 ) VALUES (
                     :nom, 
                     :ape, 
+                    :tel,
                     :email, 
+                    :numcolab,
                     :pass, 
                     :rol, 
                     :planta, 
                     :status, 
+                    :avatar_legacy,
                     :avatar, 
+                    :seed,
+                    :gender,
+                    :options,
+                    :updated_at,
                     NOW()
                 )";
 
+		$avatarFile = $data['avatar_file'] ?? 'avatar_default.svg';
 		$params = [
-			':nom' => $data['nombres'],
-			':ape' => $data['apellidos'],
-			':email' => strtolower($data['email']),
-			':pass' => $data['password'], // 'SSO_LDR_IDENTITY' o hash dummy
-			':rol' => (int) $data['rolid'],
-			':planta' => (int) $data['plantaid'],
-			':status' => (int) $data['status'],
-			':avatar' => $data['avatar_file'] ?? 'default.png'
+			':nom'           => $data['nombres'],
+			':ape'           => $data['apellidos'],
+			':tel'           => 0,
+			':email'         => strtolower($data['email']),
+			':numcolab'      => !empty($data['numcolaborador']) ? (string)$data['numcolaborador'] : null,
+			':pass'          => $data['password'], // 'SSO_LDR_IDENTITY' o hash dummy
+			':rol'           => (int) $data['rolid'],
+			':planta'        => (int) $data['plantaid'],
+			':status'        => (int) $data['status'],
+			':avatar_legacy' => $avatarFile,
+			':avatar'        => $avatarFile,
+			':seed'          => '',
+			':gender'        => '',
+			':options'       => '',
+			':updated_at'    => ''
 		];
 
 		// El método insert de tu Core devuelve el ID insertado
