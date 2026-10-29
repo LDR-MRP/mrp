@@ -338,8 +338,8 @@
                                                 <i class="ri-toggle-line"></i>
                                             </span>
                                             <select class="form-select" id="estado_cliente" name="estado" required>
-                                                <option value="1">Activo</option>
-                                                <option value="2">Inactivo</option>
+                                                <option value="1">Inactivo</option>
+                                                <option value="2">Activo</option>
                                                 <option value="3">Suspendido</option>
                                             </select>
                                         </div>
