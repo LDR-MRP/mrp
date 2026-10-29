@@ -59,7 +59,7 @@
         </div>
         <div class="col-md-7 order-1 order-md-2">
             <h4>3. Expediente Digital (Compliance)</h4>
-            <p>El sistema exige documentos obligatorios en formato <strong>PDF (Máximo 5MB)</strong>. El progreso de documentación (0-100%) se calcula según el perfil fiscal del proveedor.</p>
+            <p>El sistema exige documentos obligatorios en formato <strong>PDF (Máximo 20MB)</strong>. El progreso de documentación (0-100%) se calcula según el perfil fiscal del proveedor.</p>
             <div class="rule-box">
                 <h6 class="fw-bold"><i class="ri-information-line me-1"></i> Mejores Prácticas:</h6>
                 <p class="mb-0">Si un documento es rechazado, se habilitará la opción <strong>"Reemplazar"</strong>. El sistema borrará el archivo anterior y notificará a validación que existe una nueva versión para revisar.</p>

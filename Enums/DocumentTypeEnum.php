@@ -41,11 +41,15 @@ enum DocumentTypeEnum: string
             $list[] = self::PASAPORTE;
             $list[] = self::DOMICILIO;
         }
-
         // Mapear al formato que espera tu UI
         $response = [];
         foreach ($list as $doc) {
-            $response[$doc->value] = $doc->getConfig();
+            $config = $doc->getConfig();
+            // Si es extranjero, marcar como no requerido
+            if ($origen !== 'Nacional' && $doc === self::DOMICILIO) {
+                $config['required'] = false;
+            }
+            $response[$doc->value] = $config;
         }
 
         return $response;
@@ -63,8 +67,8 @@ enum DocumentTypeEnum: string
             self::RFC => ['name' => 'Cédula de RFC', 'required' => false, 'ext' => 'pdf'],
             self::ID => ['name' => 'Identificación Oficial', 'required' => true, 'ext' => 'pdf'],
             self::DOMICILIO => ['name' => 'Comprobante de Domicilio', 'required' => true, 'ext' => 'pdf'],
-            self::TAX_ID => ['name' => 'Tax ID / Registro Fiscal', 'required' => true, 'ext' => 'pdf'],
-            self::PASAPORTE => ['name' => 'Pasaporte o ID Internacional', 'required' => true, 'ext' => 'pdf'],
+            self::TAX_ID => ['name' => 'Tax ID / Registro Fiscal', 'required' => false, 'ext' => 'pdf'],
+            self::PASAPORTE => ['name' => 'Pasaporte o ID Internacional', 'required' => false, 'ext' => 'pdf'],
             self::REPSE => ['name' => 'REPSE', 'required' => false, 'ext' => 'pdf'],
         };
     }

@@ -32,41 +32,70 @@ class StoreSupplierRequest extends Requests
 
     private function validateBasicRules():void
     {
-        $requiredFields = [
-            // Datos Maestros (prv_cat_proveedores)
-            // 'id_empresa'        => 'La empresa origen es obligatoria para el multi-tenant.',
-            'rfc'               => 'El RFC es obligatorio para la validación fiscal.',
-            'razon_social'      => 'La Razón Social es requerida según la Constancia de Situación Fiscal.',
-            'nombre_comercial'  => 'El Nombre Comercial es necesario para identificar al proveedor.',
-            'id_tipo_persona'   => 'Debe especificar si es Persona Física o Moral.',
-            'id_regimen_fiscal' => 'El Régimen Fiscal es obligatorio para la facturación CFDI 4.0.',
-            'origen'            => 'Especifique si el proveedor es Nacional o Extranjero.',
+        $origen = $this->data['origen'] ?? 'Nacional';
+        $isExtranjero = ($origen === 'Extranjero');
 
-            // Dirección (prv_det_direcciones)
-            'tipo'              => 'Especifique el tipo de dirección (Fiscal, Bodega, etc.).',
-            'calle'             => 'El nombre de la calle es obligatorio.',
-            'num_ext'           => 'El número exterior es requerido.',
-            // 'num_int'           => 'Indique el número interior (use N/A si no aplica).',
-            'colonia'           => 'La colonia debe coincidir con el Código Postal.',
-            'cp'                => 'El Código Postal es obligatorio para la geolocalización.',
+        if ($isExtranjero) {
+            // Validaciones flexibles para extranjeros
+            $requiredFields = [
+                // Datos Maestros (prv_cat_proveedores)
+                'rfc'               => 'El RFC es obligatorio para la validación fiscal.',
+                'razon_social'      => 'La Razón Social es requerida según la Constancia de Situación Fiscal.',
+                'nombre_comercial'  => 'El Nombre Comercial es necesario para identificar al proveedor.',
+                'origen'            => 'Especifique si el proveedor es Nacional o Extranjero.',
 
-            // Finanzas (prv_det_config_financiera)
-            'id_condicion_pago' => 'Debe asignar una condición de pago predeterminada.',
-            // 'cuenta_contable'=> 'La cuenta contable es obligatoria para la integración con ERP.',
-            // 'limite_credito'    => 'El límite de crédito debe ser un valor numérico.',
-            'id_moneda_defecto' => 'Especifique la moneda principal de operación (MXN/USD).',
-            'tasa_iva_default'  => 'Indique la tasa de IVA aplicable (ej. 16.00).',
+                // Dirección (Opcional para extranjeros)
+                'tipo'              => 'Especifique el tipo de dirección (Fiscal, Bodega, etc.).',
 
-            // Contacto (prv_det_contactos)
-            'nombre'            => 'El nombre del contacto principal es obligatorio.',
-            'puesto'            => 'Especifique el cargo o puesto del contacto.',
-            'email'             => 'El correo electrónico es necesario para el envío de O.C.',
-            'telefono'          => 'El número telefónico es obligatorio para seguimiento.',
-            
-            // Plantas
-            'plantas' => 'Debe seleccionar al menos una planta.',
-            'planta_principal' => 'Debe seleccionar una planta principal.',
-        ];
+                // Finanzas (prv_det_config_financiera)
+                'id_condicion_pago' => 'Debe asignar una condición de pago predeterminada.',
+                'id_moneda_defecto' => 'Especifique la moneda principal de operación (MXN/USD).',
+                'tasa_iva_default'  => 'Indique la tasa de IVA aplicable (ej. 16.00).',
+
+                // Contacto (prv_det_contactos)
+                'nombre'            => 'El nombre del contacto principal es obligatorio.',
+                'puesto'            => 'Especifique el cargo o puesto del contacto.',
+                'email'             => 'El correo electrónico es necesario para el envío de O.C.',
+                'telefono'          => 'El número telefónico es obligatorio para seguimiento.',
+                
+                // Plantas
+                'plantas' => 'Debe seleccionar al menos una planta.',
+                'planta_principal' => 'Debe seleccionar una planta principal.',
+            ];
+        } else {
+            // Validaciones estrictas para nacionales
+            $requiredFields = [
+                // Datos Maestros (prv_cat_proveedores)
+                'rfc'               => 'El RFC es obligatorio para la validación fiscal.',
+                'razon_social'      => 'La Razón Social es requerida según la Constancia de Situación Fiscal.',
+                'nombre_comercial'  => 'El Nombre Comercial es necesario para identificar al proveedor.',
+                'id_tipo_persona'   => 'Debe especificar si es Persona Física o Moral.',
+                'id_regimen_fiscal' => 'El Régimen Fiscal es obligatorio para la facturación CFDI 4.0.',
+                'origen'            => 'Especifique si el proveedor es Nacional o Extranjero.',
+
+                // Dirección (prv_det_direcciones)
+                'tipo'              => 'Especifique el tipo de dirección (Fiscal, Bodega, etc.).',
+                'calle'             => 'El nombre de la calle es obligatorio.',
+                'num_ext'           => 'El número exterior es requerido.',
+                'colonia'           => 'La colonia debe coincidir con el Código Postal.',
+                'cp'                => 'El Código Postal es obligatorio para la geolocalización.',
+
+                // Finanzas (prv_det_config_financiera)
+                'id_condicion_pago' => 'Debe asignar una condición de pago predeterminada.',
+                'id_moneda_defecto' => 'Especifique la moneda principal de operación (MXN/USD).',
+                'tasa_iva_default'  => 'Indique la tasa de IVA aplicable (ej. 16.00).',
+
+                // Contacto (prv_det_contactos)
+                'nombre'            => 'El nombre del contacto principal es obligatorio.',
+                'puesto'            => 'Especifique el cargo o puesto del contacto.',
+                'email'             => 'El correo electrónico es necesario para el envío de O.C.',
+                'telefono'          => 'El número telefónico es obligatorio para seguimiento.',
+                
+                // Plantas
+                'plantas' => 'Debe seleccionar al menos una planta.',
+                'planta_principal' => 'Debe seleccionar una planta principal.',
+            ];
+        }
 
         foreach ($requiredFields as $field => $message) {
             // 1. Obtenemos el valor o un string vacío si no existe el índice (blindaje vs null)
@@ -83,7 +112,8 @@ class StoreSupplierRequest extends Requests
             $this->addError('email', 'El correo electrónico no es válido.');
         }
 
-        if (!empty($this->data['rfc']) && !empty($this->data['id_tipo_persona'])) {
+        // Validar RFC solo para nacionales
+        if (!$isExtranjero && !empty($this->data['rfc']) && !empty($this->data['id_tipo_persona'])) {
             $rfc = strtoupper(trim($this->data['rfc']));
             $person = $this->data['id_tipo_persona'];
             $regexMoral  = '/^[A-ZÑ&]{3}[0-9]{6}[A-Z0-9]{3}$/i';

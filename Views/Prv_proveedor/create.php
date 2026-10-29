@@ -191,13 +191,13 @@ headerAdmin($data);
                                                         <input type="text" name="nombre_comercial" class="form-control border-top-0 border-start-0 border-end-0 rounded-0 ps-0">
                                                     </div>
                                                 </div>
-                                                <div class="col-md-6">
+                                                <div class="col-md-6" id="row-tipo_persona">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Tipo de Persona <span class="text-danger-asterisk">*</span></label>
                                                     <select name="id_tipo_persona" id="id_tipo_persona" class="form-select border-dashed">
                                                         <option>Selecciona una opción...</option>
                                                     </select>
                                                 </div>
-                                                <div class="col-md-6">
+                                                <div class="col-md-6" id="row-regimen_fiscal">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Régimen Fiscal <span class="text-danger-asterisk">*</span></label>
                                                     <select name="id_regimen_fiscal" id="id_regimen_fiscal" class="form-select border-dashed">
                                                         <option>Selecciona una opción...</option>
@@ -206,7 +206,7 @@ headerAdmin($data);
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;">
+                                    <div class="card border-0 shadow-lg mb-4" style="border-radius: 10px;" id="card-direccion">
                                         <div class="card-body p-4 text-start">
                                             <h5 class="card-title mb-4 text-uppercase fw-bold text-muted fs-12 ls-1">
                                                 <i class="ri-map-pin-2-line text-info me-1 fs-14 align-middle"></i> Ubicación y Domicilio

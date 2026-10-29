@@ -43,6 +43,8 @@ class SupplierService
      */
     public function store(array $userContext): ServiceResponse
     {
+        $validated = []; // Inicializar para evitar undefined variable en catch
+        
         try {
             $this->db->beginTransaction();
 
@@ -70,6 +72,11 @@ class SupplierService
             return \ServiceResponse::validation(errors: $i->getMessage());
         } catch (\PDOException $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
+            
+            // Logging detallado del error PDO
+            $this->logMessage("[store] PDO ERROR: " . $e->getMessage() . " | Code: " . $e->getCode() . " | File: " . $e->getFile() . ":" . $e->getLine());
+            $this->logMessage("[store] Datos recibidos: " . json_encode($validated));
+            
             // Manejo de duplicados (RFC / Razón Social / Email)
             if ($e->getCode() == 23000) {
                 $errorMsg = $e->getMessage();
@@ -81,6 +88,7 @@ class SupplierService
             return ServiceResponse::error("Error de integridad en base de datos.");
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
+            $this->logMessage("[store] Exception ERROR: " . $e->getMessage() . " | Code: " . $e->getCode() . " | File: " . $e->getFile() . ":" . $e->getLine());
             return ServiceResponse::error($e->getMessage(), (int)$e->getCode() ?: 500);
         }
     }
@@ -100,8 +108,18 @@ class SupplierService
             error_log("Error verificando email duplicado: " . $e->getMessage());
         }
 
+        // Si es extranjero, remover campos fiscales que no se insertan
+        if (($data['origen'] ?? 'Nacional') === 'Extranjero') {
+            $this->logMessage("[processCreation] Removiendo campos fiscales para extranjero");
+            unset($data['id_tipo_persona']);
+            unset($data['id_regimen_fiscal']);
+            $this->logMessage("[processCreation] Datos después de unset: " . json_encode($data));
+        }
+
+        $this->logMessage("[processCreation] Llamando insertSupplier");
         $id = $this->proveedorModel->insertSupplier($data, $userId);
         if (!$id) throw new \Exception("No se pudo crear el maestro.");
+        $this->logMessage("[processCreation] insertSupplier exitoso, ID: " . $id);
 
         $data['limite_credito'] = (float)$data['limite_credito'] ?? null;
         $this->proveedorModel->insertAddress($data, $id, $userId);
@@ -196,12 +214,24 @@ class SupplierService
      */
     public function uploadDocument(array $userContext): ServiceResponse
     {
+        $this->logMessage("[uploadDocument] Iniciando carga de documento");
+        
         $request = new \Requests\Supplier\UploadDocumentRequest();
         
         try {
+            $this->logMessage("[uploadDocument] Validando request");
             $request->validate();
+            $this->logMessage("[uploadDocument] Request validado exitosamente");
             $validated = $request->all();
             $file = $request->files()['archivo'];
+            
+            $this->logMessage("[uploadDocument] Request validado. Datos: " . json_encode($validated));
+            $this->logMessage("[uploadDocument] Archivo recibido: " . json_encode([
+                'name' => $file['name'] ?? 'N/A',
+                'type' => $file['type'] ?? 'N/A',
+                'size' => $file['size'] ?? 'N/A',
+                'error' => $file['error'] ?? 'N/A'
+            ]));
             
             // --- INICIO DE CIRUGÍA: Prevención de IDOR ---
             $isVendor = ($userContext['role'] ?? '') === 'VENDOR' || !empty($userContext['vendor_id']);
@@ -209,14 +239,18 @@ class SupplierService
             if ($isVendor) {
                 // Si es proveedor, forzamos que sea su propio ID (Seguridad SRM)
                 $supplierId = (int)$userContext['vendor_id'];
+                $this->logMessage("[uploadDocument] Usuario VENDOR, usando ID: {$supplierId}");
             } else {
                 // Si es administrador interno, tomamos el del Request validado
                 $supplierId = (int)$validated['id_proveedor'];
+                $this->logMessage("[uploadDocument] Usuario ADMIN, usando ID: {$supplierId}");
             }
             // --- FIN DE CIRUGÍA ---
             
             $docType    = $validated['tipo_documento'];
             $userId     = (int)$userContext['id'];
+            
+            $this->logMessage("[uploadDocument] supplierId: {$supplierId}, docType: {$docType}, userId: {$userId}");
 
             // --- LÓGICA DE REEMPLAZO ---
             // 1. Verificar si ya existe un documento previo para obtener la ruta y borrarlo
@@ -357,20 +391,21 @@ class SupplierService
 
         } catch (\InvalidArgumentException $i) {
             if ($this->db->inTransaction()) $this->db->rollBack();
+            $this->logMessage("[uploadDocument] InvalidArgumentException: " . $i->getMessage());
             return \ServiceResponse::validation(errors: $i->getMessage());
         } catch (\PDOException $p) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
-            $this->logMessage($p, \LogLevel::CRITICAL, [
-                'action' => 'auditDocument',
-                'id_user' => $userContext['id']
-            ]);
+            $this->logMessage("[uploadDocument] PDOException: " . $p->getMessage() . " | Code: " . $p->getCode() . " | File: " . $p->getFile() . ":" . $p->getLine());
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
             
         } catch (Exception $e) {
-            if ($this->db->inTransaction()) $this->db->rollBack();
-            return ServiceResponse::error($e->getMessage());
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage("[uploadDocument] Exception: " . $e->getMessage() . " | Code: " . $e->getCode() . " | File: " . $e->getFile() . ":" . $e->getLine());
+            return ServiceResponse::error(message: $e->getMessage(), code: (int)$e->getCode() ?: 500);
         }
     }
 
@@ -382,27 +417,61 @@ class SupplierService
         // Obtener el perfil del proveedor
         $supplier = $this->proveedorModel->getById($supplierId);
         if (!$supplier) return 0;
-        
+    
         // Usar el sistema dinámico de documentos
-        $requiredDocs = DocumentTypeEnum::getRequiredList($supplier['id_tipo_persona'], $supplier['origen']);
-        $requiredCount = count($requiredDocs);
-        
-        // Contar solo documentos obligatorios aprobados
+        $requiredDocs = DocumentTypeEnum::getRequiredList($supplier['id_tipo_persona'] ?? 'F', $supplier['origen'] ?? 'Nacional');
+        // contar documentos obligatorios
+        $requiredCount = 0;
+        foreach ($requiredDocs as $config){
+            if ($config['required']) {
+                $requiredCount++;
+            }
+        }
+        // Obtener documentos cargados
         $uploaded = $this->expedienteModel->uploadedDocuments($supplierId);
         $uploadedIndexed = array_column($uploaded, null, 'tipo_documento');
-        
-        $approvedCount = 0;
+        // 1. Contar documentos obligatorios aprobados
+        $approvedRequired = 0;
         foreach ($requiredDocs as $key => $config) {
             if ($config['required']) {
                 $fileInfo = $uploadedIndexed[$key] ?? null;
                 if (isset($fileInfo['estatus_validacion']) && (int)$fileInfo['estatus_validacion'] === 1) {
-                    $approvedCount++;
+                    $approvedRequired++;
                 }
             }
         }
+        // 2. Contar documentos opcionales cargados (para el denominador)
+        $uploadedOptional = 0;
+        foreach ($requiredDocs as $key => $config) {
+            if (!$config['required']) {
+                $fileInfo = $uploadedIndexed[$key] ?? null;
+                if ($fileInfo !== null) { // Cargado (independientemente del estatus)
+                    $uploadedOptional++;
+                }
+            }
+        }
+        // 3. Contar documentos opcionales aprobados (para el numerador)
+        $approvedOptional = 0;
+        foreach ($requiredDocs as $key => $config) {
+            if (!$config['required']) {
+                $fileInfo = $uploadedIndexed[$key] ?? null;
+                if (isset($fileInfo['estatus_validacion']) && (int)$fileInfo['estatus_validacion'] === 1) {
+                    $approvedOptional++;
+                }
+            }
+        }
+        // 4. Calcular progreso dinámico
+        $totalForCalculation = $requiredCount + $uploadedOptional;
+        $totalApproved = $approvedRequired + $approvedOptional;
         
-        $progress = (int)(($approvedCount / $requiredCount) * 100);
+        // Si no hay documentos cargados, progreso es 0
+        if ($totalForCalculation === 0) {
+            return 0;
+        }
+        
+        $progress = (int)(($totalApproved / $totalForCalculation) * 100);
         return $progress > 100 ? 100 : $progress;
+    
     }
 
     /**
@@ -415,7 +484,10 @@ class SupplierService
         if (!$supplier) throw new Exception("Proveedor inexistente.");
 
         // 2. Obtener lista dinámica basada en el Enum
-        $requiredDocs = DocumentTypeEnum::getRequiredList($supplier['id_tipo_persona'], $supplier['origen']);
+        $requiredDocs = DocumentTypeEnum::getRequiredList(
+            $supplier['id_tipo_persona'] ?? 'F',
+            $supplier['origen'] ?? 'Nacional'
+        );
         
         // 3. Obtener lo que ya subió
         $uploaded = $this->expedienteModel->uploadedDocuments($supplierId);        
@@ -423,7 +495,10 @@ class SupplierService
 
         // 4. Cruzar información
         $finalList = [];
-        $approvedCount = 0;
+        $approvedRequired = 0;
+        $approvedOptional = 0;
+        $uploadedOptional = 0;
+        $requiredCount = 0;
 
         foreach ($requiredDocs as $key => $config) {
             $fileInfo = $uploadedIndexed[$key] ?? null;
@@ -432,12 +507,35 @@ class SupplierService
                 'file_data' => $fileInfo,
             ]);
 
+            // Contar documentos obligatorios
+            if ($config['required']) {
+                $requiredCount++;
+            }
+
+            // Contar aprobados (obligatorios y opcionales)
             if (isset($fileInfo['estatus_validacion']) && (int)$fileInfo['estatus_validacion'] === 1) {
-                $approvedCount++;
+                if ($config['required']) {
+                    $approvedRequired++;
+                } else {
+                    $approvedOptional++;
+                }
+            }
+
+            // Contar opcionales cargados (para el denominador)
+            if (!$config['required'] && $fileInfo !== null) {
+                $uploadedOptional++;
             }
         }
 
-        $progress = round(($approvedCount / count($requiredDocs)) * 100);
+        // 5. Calcular progreso dinámico (misma lógica que calculateOnboardingProgress)
+        $totalForCalculation = $requiredCount + $uploadedOptional;
+        $totalApproved = $approvedRequired + $approvedOptional;
+        
+        if ($totalForCalculation === 0) {
+            $progress = 0;
+        } else {
+            $progress = round(($totalApproved / $totalForCalculation) * 100);
+        }
         
         return ServiceResponse::success([
             'documents' => $finalList,
@@ -582,10 +680,14 @@ class SupplierService
         $supplier = $this->proveedorModel->getById($supplierId);
         if (!$supplier) return false;
 
-        // 2. Consultar al Enum cuántos documentos se requieren para este perfil exacto
+        // 2. Manejar valores null para extranjeros
+        $tipoPersona = $supplier['id_tipo_persona'] ?? 'F';
+        $origen = $supplier['origen'] ?? 'Nacional';
+
+        // 3. Consultar al Enum cuántos documentos se requieren para este perfil exacto
         $requiredDocsList = DocumentTypeEnum::getRequiredList(
-            $supplier['id_tipo_persona'], 
-            $supplier['origen']
+            $tipoPersona, 
+            $origen
         );
         $requiredCount = count($requiredDocsList);
 
@@ -623,12 +725,60 @@ class SupplierService
         if (!$supplier) return ServiceResponse::error("Proveedor no encontrado", 404);
 
         // 1. Cálculos de Documentación (Uso del Enum dinámico)
-        $requiredDocs = DocumentTypeEnum::getRequiredList($supplier['id_tipo_persona'], $supplier['origen']);
-        $totalRequired = count($requiredDocs);
-        $uploadedCount = $this->expedienteModel->countDocumentsBySupplier($supplierId);
-        $approvedCount = $this->expedienteModel->countApprovedDocuments($supplierId);
+        $requiredDocs = DocumentTypeEnum::getRequiredList(
+            $supplier['id_tipo_persona'] ?? 'F',
+            $supplier['origen'] ?? 'Nacional'
+        );
+        
+        // Contar documentos obligatorios del perfil
+        $totalRequired = 0;
+        foreach ($requiredDocs as $config) {
+            if ($config['required']) {
+                $totalRequired++;
+            }
+        }
+        
+        // Obtener documentos cargados
+        $uploaded = $this->expedienteModel->uploadedDocuments($supplierId);
+        $uploadedIndexed = array_column($uploaded, null, 'tipo_documento');
+        
+        // Contar documentos obligatorios aprobados
+        $approvedRequired = 0;
+        foreach ($requiredDocs as $key => $config) {
+            if ($config['required']) {
+                $fileInfo = $uploadedIndexed[$key] ?? null;
+                if (isset($fileInfo['estatus_validacion']) && (int)$fileInfo['estatus_validacion'] === 1) {
+                    $approvedRequired++;
+                }
+            }
+        }
+        
+        // Contar documentos opcionales cargados
+        $uploadedOptional = 0;
+        $approvedOptional = 0;
+        foreach ($requiredDocs as $key => $config) {
+            if (!$config['required']) {
+                $fileInfo = $uploadedIndexed[$key] ?? null;
+                if ($fileInfo !== null) {
+                    $uploadedOptional++;
+                }
+                if (isset($fileInfo['estatus_validacion']) && (int)$fileInfo['estatus_validacion'] === 1) {
+                    $approvedOptional++;
+                }
+            }
+        }
 
-        // 2. Definición de la lógica de cada paso
+        // 2. Calcular progreso dinámico (misma lógica que calculateOnboardingProgress)
+        $totalForCalculation = $totalRequired + $uploadedOptional;
+        $totalApproved = $approvedRequired + $approvedOptional;
+        
+        if ($totalForCalculation === 0) {
+            $progress = 0;
+        } else {
+            $progress = round(($totalApproved / $totalForCalculation) * 100);
+        }
+
+        // 3. Definición de la lógica de cada paso
         $steps = [
             'step1' => [ // Registro Inicial
                 'status' => 'completed', 
@@ -636,13 +786,13 @@ class SupplierService
                 'badge' => 'Completado'
             ],
             'step2' => [ // Expediente Digital
-                'status' => ($uploadedCount >= $totalRequired) ? 'completed' : 'active',
-                'date' => ($uploadedCount > 0) ? 'En proceso' : 'Pendiente',
-                'badge' => "{$uploadedCount} de {$totalRequired} subidos"
+                'status' => ($progress >= 100) ? 'completed' : 'active',
+                'date' => ($totalApproved > 0) ? 'En proceso' : 'Pendiente',
+                'badge' => "{$totalApproved} de {$totalForCalculation} ({$progress}%)"
             ],
             'step3' => [ // Validación (Mesa de Control)
-                'status' => ($approvedCount >= $totalRequired) ? 'completed' : (($uploadedCount >= $totalRequired) ? 'active' : 'pending'),
-                'badge' => ($approvedCount >= $totalRequired) ? 'Verificado' : 'Esperando Aprobación'
+                'status' => ($approvedRequired >= $totalRequired) ? 'completed' : (($approvedRequired > 0) ? 'active' : 'pending'),
+                'badge' => ($approvedRequired >= $totalRequired) ? 'Verificado' : 'Esperando Aprobación'
             ],
             'step4' => [ // Alta en ERP
                 'status' => ($supplier['estatus_onboarding'] === 'Aprobado') ? 'completed' : 'pending',

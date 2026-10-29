@@ -119,7 +119,7 @@ class Prv_proveedorModel extends Mysql
                 `prv_cat_proveedores`.`estatus_onboarding`,
                 `prv_cat_proveedores`.`estatus_operativo`,          
                 `prv_cat_proveedores`.`created_at`,
-                `prv_cat_proveedores`.`created_by`,
+                concat(`usuarios`.`nombres`,' ',`usuarios`.`apellidos`) as `created_by`,
                 -- Addresses Columns
                 `prv_det_direcciones`.`tipo`,
                 `prv_det_direcciones`.`calle`,
@@ -159,6 +159,8 @@ class Prv_proveedorModel extends Mysql
             -- Financial Config JOIN
             LEFT JOIN `cat_condiciones_pago`
                 ON `cat_condiciones_pago`.`id_condicion` = `prv_det_config_financiera`.`id_condicion_pago`
+            LEFT JOIN `usuarios`
+                ON `usuarios`.`idusuario` = `prv_cat_proveedores`.`created_by`
             -- Onboarding Information JOIN
             -- LEFT JOIN `prv_tra_onboarding`
             --     ON `prv_tra_onboarding`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
@@ -213,28 +215,59 @@ class Prv_proveedorModel extends Mysql
 
     public function insertSupplier(array $h, int $userId): int
     {
-        return $this->insert(
-            "INSERT INTO prv_cat_proveedores (
-                -- id_empresa,
-                rfc,
-                razon_social,
-                nombre_comercial,
-                id_tipo_persona,
-                id_regimen_fiscal,
-                origen,
-                created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [
-                // $h['id_empresa'],
-                $h['rfc'],
-                $h['razon_social'],
-                $h['nombre_comercial'],
-                $h['id_tipo_persona'],
-                $h['id_regimen_fiscal'],
-                $h['origen'],
-                $userId,
-            ]
-        );
+        $origen = $h['origen'] ?? 'Nacional';
+        $isExtranjero = ($origen === 'Extranjero');
+        
+        // Logging para depuración
+        $logFile = fopen('C:/xampp/htdocs/mrp/Logs/mrp-' . date('Y-m-d') . '.log', 'a');
+        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [insertSupplier] Datos recibidos: " . json_encode($h) . "\n");
+        fclose($logFile);
+        
+        if ($isExtranjero) {
+            // Para extranjeros, no insertar id_tipo_persona ni id_regimen_fiscal
+            return $this->insert(
+                "INSERT INTO prv_cat_proveedores (
+                    -- id_empresa,
+                    rfc,
+                    razon_social,
+                    nombre_comercial,
+                    origen,
+                    created_by
+                ) VALUES (?, ?, ?, ?, ?)",
+                [
+                    // $h['id_empresa'],
+                    $h['rfc'],
+                    $h['razon_social'],
+                    $h['nombre_comercial'],
+                    $h['origen'],
+                    $userId,
+                ]
+            );
+        } else {
+            // Para nacionales, insertar todos los campos
+            return $this->insert(
+                "INSERT INTO prv_cat_proveedores (
+                    -- id_empresa,
+                    rfc,
+                    razon_social,
+                    nombre_comercial,
+                    id_tipo_persona,
+                    id_regimen_fiscal,
+                    origen,
+                    created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                [
+                    // $h['id_empresa'],
+                    $h['rfc'],
+                    $h['razon_social'],
+                    $h['nombre_comercial'],
+                    $h['id_tipo_persona'],
+                    $h['id_regimen_fiscal'],
+                    $h['origen'],
+                    $userId,
+                ]
+            );
+        }
     }
 
     public function insertAddress(array $d, int $supplierId, int $userId): int

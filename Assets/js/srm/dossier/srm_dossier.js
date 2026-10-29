@@ -85,7 +85,7 @@ const SrmDossier = {
                         <div class="dz-message needsclick my-2">
                             <i class="ri-upload-cloud-2-line display-5 text-muted opacity-75 mb-2 d-block"></i>
                             <h5 class="fs-13 fw-semibold mb-0">Arrastra el archivo aquí o haz clic.</h5>
-                            <p class="text-muted fs-11 mb-0 mt-1">Formato: PDF • Máx: 5MB</p>
+                            <p class="text-muted fs-11 mb-0 mt-1">Formato: PDF • Máx: 20MB</p>
                         </div>
                     </div>`;
             } else {
@@ -142,7 +142,7 @@ const SrmDossier = {
                                 <h5 class="card-title mb-0 fw-bold text-dark fs-15">${doc.name}</h5>
                                 ${statusBadge}
                             </div>
-                            <p class="text-muted fs-12 mb-0">Obligatorio • Formato PDF • Máx: 5MB</p>
+                            <p class="text-muted fs-12 mb-0">Obligatorio • Formato PDF • Máx: 20MB</p>
                         </div>
                         <div class="card-body">
                             ${bodyContent}
