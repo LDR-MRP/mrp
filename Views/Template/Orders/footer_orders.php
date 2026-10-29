@@ -9,7 +9,8 @@
   const media_url = "<?= media(); ?>";
 </script>
 
-<script src="<?= media(); ?>/js/orders/home.js"></script>
+<script src="<?= media(); ?>/js/orders/home.js?v=1.0.0.4"></script>
+
    <script src="<?= media(); ?>/minimal/libs/sweetalert2/sweetalert2.min.js"></script>
 
    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
