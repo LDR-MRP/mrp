@@ -208,9 +208,61 @@ const cascadeCatalogs = {
     },
 
     events: function() {
+        // Evento para manejar cambio de origen (Nacional/Extranjero)
+        $('select[name="origen"]').on('change', function() {
+            const origen = $(this).val();
+            
+            if (origen === 'Extranjero') {
+                // 1. Remover asteriscos de obligatoriedad en dirección
+                $('#card-direccion .text-danger-asterisk').addClass('d-none');
+                
+                // 2. Ajustar CP para extranjeros: solo números, max 8 dígitos
+                $('#cp').attr('maxlength', '8').attr('placeholder', 'Código Postal (8 dígitos)').attr('type', 'number');
+                
+                // 3. Deshabilitar búsqueda de catálogo de CP
+                $('#cp').off('keyup');
+                
+                // 4. Habilitar captura libre de colonia
+                $('#colonia').addClass('d-none');
+                $('#colonia_manual').removeClass('d-none').prop('required', false);
+                
+                // 5. Habilitar ciudad
+                $('#ciudad').prop('readonly', false).val('');
+                
+                // 6. Hacer municipio y estado editables
+                $('#municipio, #estado').prop('readonly', false).val('');
+                
+                // 7. Ocultar campos fiscales solo para nacionales
+                $('#row-tipo_persona, #row-regimen_fiscal').addClass('d-none');
+                
+                // 8. Mostrar mensaje informativo
+                Sys_Core.UI.notify('Captura libre para direcciones internacionales', 'info');
+            } else {
+                // Restaurar comportamiento Nacional
+                $('#card-direccion .text-danger-asterisk').removeClass('d-none');
+                $('#cp').attr('maxlength', '5').attr('placeholder', '00000').attr('type', 'text');
+                
+                // Re-habilitar búsqueda de catálogo de CP
+                $('#cp').on('keyup', function() {
+                    const cp = $(this).val();
+                    if (cp.length === 5) {
+                        cascadeCatalogs.searchCP(cp);
+                    }
+                });
+                
+                $('#colonia').removeClass('d-none');
+                $('#colonia_manual').addClass('d-none');
+                $('#municipio, #estado').prop('readonly', true);
+                $('#row-tipo_persona, #row-regimen_fiscal').removeClass('d-none');
+            }
+        });
+
         $('#cp').on('keyup', function() {
             const cp = $(this).val();
-            if (cp.length === 5) {
+            const origen = $('select[name="origen"]').val();
+            
+            // Solo buscar catálogo si es Nacional
+            if (origen !== 'Extranjero' && cp.length === 5) {
                 cascadeCatalogs.searchCP(cp);
             }
         });
@@ -454,7 +506,7 @@ const files = {
                         <i class="ri-upload-2-line fs-24 text-primary mb-2 d-block"></i>
                         <p class="fs-13 fw-medium mb-1">Arrastra tu ${doc.name}</p>
                         <p class="text-muted fs-11">O haz clic para explorar en tu equipo</p>
-                        <p class="text-muted fs-11">Máximo 5MB • ${doc.ext.toUpperCase()}</p>
+                        <p class="text-muted fs-11">Máximo 20MB • ${doc.ext.toUpperCase()}</p>
                     </div>`;
             } else {
                 const canAudit = Sys_Core.Auth.hasPermissions(MODS.PRV_PROVEEDORES, 'd') ? true : false;

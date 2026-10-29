@@ -43,6 +43,8 @@ class SupplierService
      */
     public function store(array $userContext): ServiceResponse
     {
+        $validated = []; // Inicializar para evitar undefined variable en catch
+        
         try {
             $this->db->beginTransaction();
 
@@ -70,6 +72,11 @@ class SupplierService
             return \ServiceResponse::validation(errors: $i->getMessage());
         } catch (\PDOException $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
+            
+            // Logging detallado del error PDO
+            $this->logMessage("[store] PDO ERROR: " . $e->getMessage() . " | Code: " . $e->getCode() . " | File: " . $e->getFile() . ":" . $e->getLine());
+            $this->logMessage("[store] Datos recibidos: " . json_encode($validated));
+            
             // Manejo de duplicados (RFC / Razón Social / Email)
             if ($e->getCode() == 23000) {
                 $errorMsg = $e->getMessage();
@@ -81,6 +88,7 @@ class SupplierService
             return ServiceResponse::error("Error de integridad en base de datos.");
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
+            $this->logMessage("[store] Exception ERROR: " . $e->getMessage() . " | Code: " . $e->getCode() . " | File: " . $e->getFile() . ":" . $e->getLine());
             return ServiceResponse::error($e->getMessage(), (int)$e->getCode() ?: 500);
         }
     }
@@ -100,8 +108,18 @@ class SupplierService
             error_log("Error verificando email duplicado: " . $e->getMessage());
         }
 
+        // Si es extranjero, remover campos fiscales que no se insertan
+        if (($data['origen'] ?? 'Nacional') === 'Extranjero') {
+            $this->logMessage("[processCreation] Removiendo campos fiscales para extranjero");
+            unset($data['id_tipo_persona']);
+            unset($data['id_regimen_fiscal']);
+            $this->logMessage("[processCreation] Datos después de unset: " . json_encode($data));
+        }
+
+        $this->logMessage("[processCreation] Llamando insertSupplier");
         $id = $this->proveedorModel->insertSupplier($data, $userId);
         if (!$id) throw new \Exception("No se pudo crear el maestro.");
+        $this->logMessage("[processCreation] insertSupplier exitoso, ID: " . $id);
 
         $data['limite_credito'] = (float)$data['limite_credito'] ?? null;
         $this->proveedorModel->insertAddress($data, $id, $userId);
@@ -196,12 +214,24 @@ class SupplierService
      */
     public function uploadDocument(array $userContext): ServiceResponse
     {
+        $this->logMessage("[uploadDocument] Iniciando carga de documento");
+        
         $request = new \Requests\Supplier\UploadDocumentRequest();
         
         try {
+            $this->logMessage("[uploadDocument] Validando request");
             $request->validate();
+            $this->logMessage("[uploadDocument] Request validado exitosamente");
             $validated = $request->all();
             $file = $request->files()['archivo'];
+            
+            $this->logMessage("[uploadDocument] Request validado. Datos: " . json_encode($validated));
+            $this->logMessage("[uploadDocument] Archivo recibido: " . json_encode([
+                'name' => $file['name'] ?? 'N/A',
+                'type' => $file['type'] ?? 'N/A',
+                'size' => $file['size'] ?? 'N/A',
+                'error' => $file['error'] ?? 'N/A'
+            ]));
             
             // --- INICIO DE CIRUGÍA: Prevención de IDOR ---
             $isVendor = ($userContext['role'] ?? '') === 'VENDOR' || !empty($userContext['vendor_id']);
@@ -209,14 +239,18 @@ class SupplierService
             if ($isVendor) {
                 // Si es proveedor, forzamos que sea su propio ID (Seguridad SRM)
                 $supplierId = (int)$userContext['vendor_id'];
+                $this->logMessage("[uploadDocument] Usuario VENDOR, usando ID: {$supplierId}");
             } else {
                 // Si es administrador interno, tomamos el del Request validado
                 $supplierId = (int)$validated['id_proveedor'];
+                $this->logMessage("[uploadDocument] Usuario ADMIN, usando ID: {$supplierId}");
             }
             // --- FIN DE CIRUGÍA ---
             
             $docType    = $validated['tipo_documento'];
             $userId     = (int)$userContext['id'];
+            
+            $this->logMessage("[uploadDocument] supplierId: {$supplierId}, docType: {$docType}, userId: {$userId}");
 
             // --- LÓGICA DE REEMPLAZO ---
             // 1. Verificar si ya existe un documento previo para obtener la ruta y borrarlo
@@ -357,20 +391,21 @@ class SupplierService
 
         } catch (\InvalidArgumentException $i) {
             if ($this->db->inTransaction()) $this->db->rollBack();
+            $this->logMessage("[uploadDocument] InvalidArgumentException: " . $i->getMessage());
             return \ServiceResponse::validation(errors: $i->getMessage());
         } catch (\PDOException $p) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
-            $this->logMessage($p, \LogLevel::CRITICAL, [
-                'action' => 'auditDocument',
-                'id_user' => $userContext['id']
-            ]);
+            $this->logMessage("[uploadDocument] PDOException: " . $p->getMessage() . " | Code: " . $p->getCode() . " | File: " . $p->getFile() . ":" . $p->getLine());
             return ServiceResponse::error(message: "Ocurrió un error de integridad en la base de datos.");
             
         } catch (Exception $e) {
-            if ($this->db->inTransaction()) $this->db->rollBack();
-            return ServiceResponse::error($e->getMessage());
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $this->logMessage("[uploadDocument] Exception: " . $e->getMessage() . " | Code: " . $e->getCode() . " | File: " . $e->getFile() . ":" . $e->getLine());
+            return ServiceResponse::error(message: $e->getMessage(), code: (int)$e->getCode() ?: 500);
         }
     }
 
@@ -645,10 +680,14 @@ class SupplierService
         $supplier = $this->proveedorModel->getById($supplierId);
         if (!$supplier) return false;
 
-        // 2. Consultar al Enum cuántos documentos se requieren para este perfil exacto
+        // 2. Manejar valores null para extranjeros
+        $tipoPersona = $supplier['id_tipo_persona'] ?? 'F';
+        $origen = $supplier['origen'] ?? 'Nacional';
+
+        // 3. Consultar al Enum cuántos documentos se requieren para este perfil exacto
         $requiredDocsList = DocumentTypeEnum::getRequiredList(
-            $supplier['id_tipo_persona'], 
-            $supplier['origen']
+            $tipoPersona, 
+            $origen
         );
         $requiredCount = count($requiredDocsList);
 
