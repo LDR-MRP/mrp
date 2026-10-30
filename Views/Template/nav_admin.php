@@ -177,7 +177,7 @@
                     !empty($_SESSION['permisos'][16]['r']) || !empty($_SESSION['permisos'][17]['r']) || !empty($_SESSION['permisos'][18]['r']) || !empty($_SESSION['permisos'][19]['r']) || !empty($_SESSION['permisos'][20]['r']) || !empty($_SESSION['permisos'][21]['r'])
                     || !empty($_SESSION['permisos'][22]['r']) || !empty($_SESSION['permisos'][23]['r']) || !empty($_SESSION['permisos'][24]['r']) || !empty($_SESSION['permisos'][25]['r']) || !empty($_SESSION['permisos'][26]['r']) || !empty($_SESSION['permisos'][70]['r'])
                     || !empty($_SESSION['permisos'][72]['r']) || !empty($_SESSION['permisos'][73]['r']) || !empty($_SESSION['permisos'][67]['r']) || !empty($_SESSION['permisos'][68]['r']) || !empty($_SESSION['permisos'][69]['r'])
-                    || !empty($_SESSION['permisos'][74]['r']) || !empty($_SESSION['permisos'][66]['r']) || !empty($_SESSION['permisos'][64]['r']) || !empty($_SESSION['permisos'][63]['r']) || !empty($_SESSION['permisos'][75]['r']) || !empty($_SESSION['permisos'][76]['r']) || !empty($_SESSION['permisos'][MIINVDISTRIBUIDORES]['r'])
+                    || !empty($_SESSION['permisos'][74]['r']) || !empty($_SESSION['permisos'][66]['r']) || !empty($_SESSION['permisos'][64]['r']) || !empty($_SESSION['permisos'][63]['r']) || !empty($_SESSION['permisos'][75]['r']) || !empty($_SESSION['permisos'][76]['r']) || !empty($_SESSION['permisos'][MIINVDISTRIBUIDORES]['r']) || !empty($_SESSION['permisos'][MICOLORESUNIDAD]['r'])
                 ) { ?>
                     <li class="nav-item">
                         <a class="nav-link menu-link" href="#sidebarRequerimientos" data-bs-toggle="collapse" role="button"
@@ -203,7 +203,7 @@
                                     </li>
                                 <?php } ?>
 
-                                <?php if (!empty($_SESSION['permisos'][19]['r']) || !empty($_SESSION['permisos'][23]['r']) || !empty($_SESSION['permisos'][21]['r']) || !empty($_SESSION['permisos'][16]['r']) || !empty($_SESSION['permisos'][70]['r']) || !empty($_SESSION['permisos'][17]['r']) || !empty($_SESSION['permisos'][40]['r']) || !empty($_SESSION['permisos'][63]['r'])) { ?>
+                                <?php if (!empty($_SESSION['permisos'][19]['r']) || !empty($_SESSION['permisos'][23]['r']) || !empty($_SESSION['permisos'][21]['r']) || !empty($_SESSION['permisos'][16]['r']) || !empty($_SESSION['permisos'][70]['r']) || !empty($_SESSION['permisos'][17]['r']) || !empty($_SESSION['permisos'][40]['r']) || !empty($_SESSION['permisos'][63]['r']) || !empty($_SESSION['permisos'][MICOLORESUNIDAD]['r'])) { ?>
                                     <li class="nav-item">
                                         <a href="javascript:void(0)" class="nav-link flex-grow-1" data-key="t-detached"
                                             data-bs-toggle="collapse" data-bs-target="#subCatalogos" aria-expanded="false"
@@ -216,6 +216,13 @@
                                                     <li class="nav-item">
                                                         <a href="<?= base_url(); ?>/inv_almacenes" class="nav-link"
                                                             data-key="t-detached">Almacenes</a>
+                                                    </li>
+                                                <?php } ?>
+
+                                                <?php if (!empty($_SESSION['permisos'][MICOLORESUNIDAD]['r'])) { ?>
+                                                    <li class="nav-item">
+                                                        <a href="<?= base_url(); ?>/inv_coloresunidad" class="nav-link"
+                                                            data-key="t-detached">Colores de unidad</a>
                                                     </li>
                                                 <?php } ?>
 

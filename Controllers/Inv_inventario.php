@@ -1674,17 +1674,18 @@ class Inv_inventario extends Controllers
 			return null;
 		}
 
-		$nombre = $producto['descripcion'] ?? '';
+		$ing = $this->datosIngenieriaPortal($inventarioid);
+		$nombre = $ing['nombre'] ?: ($producto['descripcion'] ?? '');
 		$this->model->insertWebUnidad([
 			'inventarioid' => $inventarioid,
 			'modelo' => $nombre,
 			'clave_modelo' => $producto['cve_articulo'] ?? '',
 			'nombre' => $nombre,
-			'version' => '',
+			'version' => $ing['version'],
 			'descripcion' => '',
 			'anio' => (int) date('Y'),
 			'marca' => $this->model->getMarcaAutoPorLinea($inventarioid),
-			'motor' => '',
+			'motor' => $ing['motor'],
 			'stock' => $this->model->getStockTotalAuto($inventarioid),
 			'precio_estimado' => (float) $this->model->getPrecioPublicoAuto($inventarioid),
 			'imagen_caratula' => '',
@@ -1692,6 +1693,45 @@ class Inv_inventario extends Controllers
 		]);
 
 		return $this->model->getWebUnidadByInventario($inventarioid);
+	}
+
+	// Datos de Ingeniería (ing_modelo_configuracion) que se publican en el
+	// portal para Productos: nombre comercial, versión y motor. Cada valor
+	// viene '' si el producto no tiene ficha o Ingeniería no lo capturó.
+	private function datosIngenieriaPortal(int $inventarioid): array
+	{
+		$vacio = ['nombre' => '', 'version' => '', 'motor' => ''];
+		try {
+			$c = $this->model->selectFichaIngenieriaByInventario($inventarioid);
+		} catch (\Throwable $e) {
+			error_log("Datos de Ingeniería no disponibles (inventario {$inventarioid}): " . $e->getMessage());
+			return $vacio;
+		}
+		if (empty($c)) {
+			return $vacio;
+		}
+
+		return [
+			'nombre' => trim((string) ($c['nombre_comercial'] ?? '')),
+			'version' => trim((string) ($c['version_unidad'] ?? '')),
+			'motor' => trim(($c['motor_fabricante'] ?? '') . ' ' . ($c['motor_modelo'] ?? '')),
+		];
+	}
+
+	// Catálogo de colores activos + los asignados a la unidad. Si las tablas
+	// de colores aún no existen en esta base, no rompe la pestaña Portal Web.
+	private function coloresPortalUnidad(?array $unidad): array
+	{
+		try {
+			$catalogo = $this->model->selectColoresUnidadActivos() ?: [];
+			$asignados = !empty($unidad['idunidad'])
+				? $this->model->selectColoresAsignadosWebUnidad((int) $unidad['idunidad'])
+				: [];
+			return ['disponible' => true, 'catalogo' => $catalogo, 'asignados' => $asignados];
+		} catch (\Throwable $e) {
+			error_log("Colores de unidad no disponibles: " . $e->getMessage());
+			return ['disponible' => false, 'catalogo' => [], 'asignados' => []];
+		}
 	}
 
 	// Datos generales de la ficha técnica de Ingeniería para mostrarlos (solo
@@ -1863,13 +1903,15 @@ class Inv_inventario extends Controllers
 				'clave_modelo' => '',
 				'nombre' => '',
 				'marca' => $this->model->getMarcaAutoPorLinea($inventarioid),
-				'precio_estimado' => $this->model->getPrecioPublicoAuto($inventarioid),
 			];
+
+			// Nombre, versión y motor que se publican vienen de Ingeniería
+			$ing = $this->datosIngenieriaPortal($inventarioid);
 
 			if (empty($unidad)) {
 				$producto = $this->model->selectInventario($inventarioid);
 				$sugerencias['clave_modelo'] = $producto['cve_articulo'] ?? '';
-				$sugerencias['nombre'] = $producto['descripcion'] ?? '';
+				$sugerencias['nombre'] = $ing['nombre'] ?: ($producto['descripcion'] ?? '');
 			}
 
 			echo json_encode([
@@ -1880,6 +1922,9 @@ class Inv_inventario extends Controllers
 					'imagenes' => $imagenes,
 					'stock_actual' => $this->model->getStockTotalAuto($inventarioid),
 					'sugerencias' => $sugerencias,
+					'ingenieria' => $ing,
+					'precios' => $this->model->selectPreciosPortal($inventarioid),
+					'colores' => $this->coloresPortalUnidad($unidad ?: null),
 				]
 			], JSON_UNESCAPED_UNICODE);
 			die();
@@ -1898,7 +1943,6 @@ class Inv_inventario extends Controllers
 				'clave_modelo' => '',
 				'nombre' => '',
 				'marca' => $this->model->getMarcaAutoPorLinea($inventarioid),
-				'precio_estimado' => $this->model->getPrecioPublicoAuto($inventarioid),
 			];
 
 			if (empty($config)) {
@@ -1915,6 +1959,7 @@ class Inv_inventario extends Controllers
 					'imagenes' => $imagenes,
 					'stock_actual' => $this->model->getStockTotalAuto($inventarioid),
 					'sugerencias' => $sugerencias,
+					'precios' => $this->model->selectPreciosPortal($inventarioid),
 				]
 			], JSON_UNESCAPED_UNICODE);
 			die();
@@ -1961,6 +2006,27 @@ class Inv_inventario extends Controllers
 
 			$nombre = strClean($_POST['nombre'] ?? '');
 
+			// Productos: nombre, versión y motor se toman de Ingeniería cuando la
+			// ficha los tiene; si no, se respeta lo capturado a mano.
+			$ing = ($modo === 'unidad') ? $this->datosIngenieriaPortal($inventarioid) : null;
+			if ($ing && $ing['nombre'] !== '') {
+				$nombre = $ing['nombre'];
+			}
+
+			// Precio a publicar: uno de los precios asignados al producto
+			// (pestaña Precio). Si no se elige, se conserva el ya publicado.
+			$idInvPrecio = intval($_POST['id_inv_precio'] ?? 0);
+			if ($idInvPrecio > 0) {
+				$precioSel = $this->model->selectPrecioAsignado($idInvPrecio, $inventarioid);
+				if (empty($precioSel)) {
+					echo json_encode(['status' => false, 'msg' => 'El precio seleccionado no está asignado a este producto o está inactivo']);
+					die();
+				}
+				$precioPortal = (float) $precioSel['precio'];
+			} else {
+				$precioPortal = (float) ($registroPw['precio_estimado'] ?? 0);
+			}
+
 			$publicar = !empty($_POST['web_distribuidores']);
 			$estatusRadio = $_POST['estatus'] ?? '2';
 
@@ -1985,15 +2051,15 @@ class Inv_inventario extends Controllers
 				'descripcion' => strClean($_POST['descripcion'] ?? ''),
 				'marca' => strClean($_POST['marca'] ?? ''),
 				'stock' => $this->model->getStockTotalAuto($inventarioid),
-				'precio_estimado' => (float) ($_POST['precio_estimado'] ?? 0),
+				'precio_estimado' => $precioPortal,
 				'estado' => $estadoFinal,
 			];
 
 			// Version, motor y año solo aplican a Producto (unidad ensamblada);
 			// Refaccion no los usa.
 			if ($modo === 'unidad') {
-				$data['version'] = strClean($_POST['version'] ?? '');
-				$data['motor'] = strClean($_POST['motor'] ?? '');
+				$data['version'] = ($ing && $ing['version'] !== '') ? $ing['version'] : strClean($_POST['version'] ?? '');
+				$data['motor'] = ($ing && $ing['motor'] !== '') ? $ing['motor'] : strClean($_POST['motor'] ?? '');
 				$data['anio'] = $anio;
 			}
 
@@ -2026,9 +2092,21 @@ class Inv_inventario extends Controllers
 					$resp = $idunidad;
 				}
 
+				// Colores destinados a la unidad (web_unidades_colores)
+				$msgColores = '';
+				if ($resp && !empty($_POST['colores_enviados'])) {
+					$colores = isset($_POST['colores']) && is_array($_POST['colores']) ? $_POST['colores'] : [];
+					try {
+						$this->model->guardarColoresWebUnidad((int) $idunidad, $colores);
+					} catch (\Throwable $e) {
+						error_log("No se pudieron guardar los colores (unidad {$idunidad}): " . $e->getMessage());
+						$msgColores = ', pero no se pudieron guardar los colores';
+					}
+				}
+
 				echo json_encode([
 					'status' => $resp ? true : false,
-					'msg' => $resp ? 'Configuración de portal web guardada' : 'Error al guardar la configuración de portal web',
+					'msg' => $resp ? 'Configuración de portal web guardada' . $msgColores : 'Error al guardar la configuración de portal web',
 					'idunidad' => $idunidad,
 				]);
 				die();

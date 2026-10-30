@@ -764,15 +764,85 @@ WHERE idinventario = ?";
     {
         $sql = "SELECT c.*,
                     l.descripcion AS segmento,
-                    s.descripcion AS modelo
+                    s.descripcion AS modelo,
+                    m.fabricante AS motor_fabricante,
+                    m.modelo_motor AS motor_modelo
                 FROM ing_modelo_configuracion c
                 LEFT JOIN wms_sublinea_producto s ON s.idsublineaproducto = c.id_sublineaproducto
                 LEFT JOIN wms_linea_producto l ON l.idlineaproducto = s.lineaproductoid
+                LEFT JOIN ing_cat_motor m ON m.id_motor = c.id_motor
                 WHERE c.id_inventario = ? AND c.deleted_at IS NULL
                 ORDER BY c.id_configuracion DESC
                 LIMIT 1";
 
         return $this->select($sql, [$inventarioid]);
+    }
+
+    // -------- Precios asignados al producto (pestaña Precio) --------
+    // El usuario elige en Portal Web cuál de ellos se publica.
+
+    public function selectPreciosPortal(int $inventarioid)
+    {
+        $sql = "SELECT ip.id_inv_precio, ip.idprecio, p.cve_precio, ip.precio
+            FROM wms_inventario_precios ip
+            INNER JOIN wms_precios p ON p.idprecio = ip.idprecio
+            WHERE ip.inventarioid = ? AND ip.estado = 2 AND p.estado = 2
+            ORDER BY p.cve_precio";
+        return $this->select_all($sql, [$inventarioid]);
+    }
+
+    // Valida que el precio elegido pertenezca al producto y esté activo
+    public function selectPrecioAsignado(int $idInvPrecio, int $inventarioid)
+    {
+        $sql = "SELECT ip.id_inv_precio, ip.precio, p.cve_precio
+            FROM wms_inventario_precios ip
+            INNER JOIN wms_precios p ON p.idprecio = ip.idprecio
+            WHERE ip.id_inv_precio = ? AND ip.inventarioid = ? AND ip.estado = 2 AND p.estado = 2";
+        return $this->select($sql, [$idInvPrecio, $inventarioid]);
+    }
+
+    // -------- Colores de la unidad en el portal --------
+    // Catálogo: wms_colores_unidad (Inventario > Catálogos > Colores de unidad)
+    // Asignación: web_unidades_colores (idunidad de web_unidades <-> idcolor)
+
+    public function selectColoresUnidadActivos()
+    {
+        $sql = "SELECT idcolor, nombre
+            FROM wms_colores_unidad
+            WHERE estado = 2
+            ORDER BY nombre";
+        return $this->select_all($sql);
+    }
+
+    public function selectColoresAsignadosWebUnidad(int $idunidad): array
+    {
+        $sql = "SELECT idcolor FROM web_unidades_colores WHERE idunidad = ?";
+        $rows = $this->select_all($sql, [$idunidad]);
+        return array_map(fn($r) => (int) $r['idcolor'], $rows ?: []);
+    }
+
+    // Reemplaza los colores activos asignados a la unidad por los recibidos.
+    // Las asignaciones a colores inactivos se conservan (el portal no las
+    // muestra) para que reaparezcan si el color se vuelve a activar.
+    public function guardarColoresWebUnidad(int $idunidad, array $idsColores): void
+    {
+        $this->update(
+            "DELETE FROM web_unidades_colores
+             WHERE idunidad = ?
+             AND idcolor IN (SELECT idcolor FROM wms_colores_unidad WHERE estado = 2)",
+            [$idunidad]
+        );
+
+        foreach (array_unique(array_map('intval', $idsColores)) as $idcolor) {
+            if ($idcolor <= 0) {
+                continue;
+            }
+            $this->insert(
+                "INSERT IGNORE INTO web_unidades_colores (idunidad, idcolor, fecha_creacion)
+                 SELECT ?, idcolor, NOW() FROM wms_colores_unidad WHERE idcolor = ? AND estado = 2",
+                [$idunidad, $idcolor]
+            );
+        }
     }
 
     // Reemplaza el archivo de una foto de la galería conservando su orden y si es principal

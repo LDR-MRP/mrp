@@ -788,6 +788,7 @@
                                     <div class="col-md-8">
                                         <label class="form-label">Nombre</label>
                                         <input type="text" id="pw_nombre" name="nombre" class="form-control">
+                                        <small class="text-muted" id="pw_nombre_hint"></small>
                                     </div>
 
                                     <div class="col-md-4">
@@ -798,11 +799,13 @@
                                     <div class="col-md-4" id="pw_wrap_version">
                                         <label class="form-label">Versión</label>
                                         <input type="text" id="pw_version" name="version" class="form-control">
+                                        <small class="text-muted" id="pw_version_hint"></small>
                                     </div>
 
                                     <div class="col-md-4" id="pw_wrap_motor">
                                         <label class="form-label">Motor</label>
                                         <input type="text" id="pw_motor" name="motor" class="form-control">
+                                        <small class="text-muted" id="pw_motor_hint"></small>
                                     </div>
 
                                     <div class="col-md-3" id="pw_wrap_anio">
@@ -811,15 +814,23 @@
                                     </div>
 
                                     <div class="col-md-4">
-                                        <label class="form-label">Precio estimado</label>
-                                        <input type="number" step="0.01" id="pw_precio_estimado" name="precio_estimado" class="form-control">
-                                        <small class="text-muted">Se sugiere con el precio público ya registrado, si existe.</small>
+                                        <label class="form-label">Precio a publicar</label>
+                                        <select id="pw_precio_select" name="id_inv_precio" class="form-select"></select>
+                                        <small class="text-muted" id="pw_precio_hint">Elige uno de los precios asignados al producto en la pestaña Precio.</small>
                                     </div>
 
                                     <div class="col-md-5">
                                         <label class="form-label">Stock disponible</label>
                                         <input type="text" id="pw_stock" class="form-control" readonly>
                                         <small class="text-muted">Se calcula solo con la existencia real del producto; se actualiza al guardar.</small>
+                                    </div>
+
+                                    <!-- Solo Productos (unidades): colores con los que se publica en el portal.
+                                         Catálogo: Inventario > Catálogos > Colores de unidad -->
+                                    <div class="col-12" id="pw_wrap_colores" hidden>
+                                        <label class="form-label d-block">Colores disponibles en el portal</label>
+                                        <div id="pw_colores_lista" class="d-flex flex-wrap gap-2"></div>
+                                        <small class="text-muted">Marca los colores en los que se ofrece esta unidad a los distribuidores.</small>
                                     </div>
 
                                     <!-- Solo Refacciones: en Productos las imágenes se manejan en la pestaña "Fotos portal" -->
