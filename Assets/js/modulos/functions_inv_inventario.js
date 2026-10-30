@@ -3625,7 +3625,6 @@ function cargarTabPortalWeb(idinventario, tipoElemento) {
       const marca = document.getElementById("pw_marca");
       const motor = document.getElementById("pw_motor");
       const anio = document.getElementById("pw_anio");
-      const precio = document.getElementById("pw_precio_estimado");
       const descripcion = document.getElementById("pw_descripcion");
       const chk = document.getElementById("pw_web_distribuidores");
       const radioActivo = document.getElementById("pw_estatus_activo");
@@ -3652,7 +3651,6 @@ function cargarTabPortalWeb(idinventario, tipoElemento) {
         if (marca) marca.value = registro.marca || "";
         if (motor) motor.value = registro.motor || "";
         if (anio) anio.value = registro.anio || "";
-        if (precio) precio.value = registro.precio_estimado || "";
         if (descripcion) descripcion.value = registro.descripcion || "";
 
         const estadoRegistro = parseInt(registro.estado, 10);
@@ -3670,16 +3668,26 @@ function cargarTabPortalWeb(idinventario, tipoElemento) {
         if (marca) marca.value = sugerencias.marca || "";
         if (motor) motor.value = "";
         if (anio) anio.value = new Date().getFullYear();
-        if (precio) precio.value = sugerencias.precio_estimado || "";
         if (descripcion) descripcion.value = "";
         if (chk) chk.checked = false;
         if (radioActivo) radioActivo.checked = true;
       }
 
+      const puedeGuardarPw = cfgPuede("PORTALWEB", registro ? "u" : "w");
       const btnGuardarPw = document.getElementById("btnGuardarPortalWeb");
       if (btnGuardarPw) {
-        btnGuardarPw.classList.toggle("d-none", !cfgPuede("PORTALWEB", registro ? "u" : "w"));
+        btnGuardarPw.classList.toggle("d-none", !puedeGuardarPw);
       }
+
+      // Productos: nombre comercial, versión y motor vienen de Ingeniería
+      const ing = pwModoActual === "unidad" ? res.data.ingenieria || {} : null;
+      aplicarDatoIngenieriaPw(nombre, "pw_nombre_hint", ing, "nombre", "nombre comercial");
+      aplicarDatoIngenieriaPw(version, "pw_version_hint", ing, "version", "versión");
+      aplicarDatoIngenieriaPw(motor, "pw_motor_hint", ing, "motor", "motor");
+
+      renderPreciosPortalWeb(res.data.precios || [], registro, puedeGuardarPw);
+
+      renderColoresPortalWeb(pwModoActual === "unidad" ? res.data.colores : null, puedeGuardarPw);
 
       if (stock) stock.value = res.data.stock_actual ?? 0;
       if (aviso) aviso.style.display = registro ? "none" : "block";
@@ -3697,6 +3705,119 @@ function cargarTabPortalWeb(idinventario, tipoElemento) {
       renderGaleriaPortalWeb(res.data.imagenes || [], pwModoActual);
     })
     .catch((err) => console.error(err));
+}
+
+// Llena un campo con el dato de Ingeniería y lo bloquea; si Ingeniería no lo
+// tiene, el campo queda editable con lo ya guardado. ing = null -> no aplica.
+function aplicarDatoIngenieriaPw(input, hintId, ing, clave, etiqueta) {
+  const hint = document.getElementById(hintId);
+  if (!input) return;
+  const valor = ing ? ing[clave] || "" : "";
+
+  if (ing && valor) {
+    input.value = valor;
+    input.readOnly = true;
+    if (hint) hint.textContent = "Tomado de Ingeniería.";
+  } else {
+    input.readOnly = false;
+    if (hint) hint.textContent = ing ? "Sin " + etiqueta + " en Ingeniería; captúralo manualmente." : "";
+  }
+}
+
+function formatoPrecioPw(valor) {
+  return "$" + Number(valor || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Lista de precios asignados al producto (pestaña Precio) para elegir el que
+// se publica. Se preselecciona el que coincide con el precio ya publicado.
+function renderPreciosPortalWeb(precios, registro, editable) {
+  const sel = document.getElementById("pw_precio_select");
+  const hint = document.getElementById("pw_precio_hint");
+  if (!sel) return;
+
+  sel.innerHTML = "";
+  sel.disabled = !editable;
+  const precioGuardado = registro ? parseFloat(registro.precio_estimado || 0) : 0;
+
+  if (!precios.length) {
+    sel.innerHTML = '<option value="">Sin precios asignados</option>';
+    sel.disabled = true;
+    if (hint) {
+      hint.textContent = precioGuardado > 0
+        ? "Publicado actualmente en " + formatoPrecioPw(precioGuardado) + ". Asigna precios en la pestaña Precio para poder cambiarlo."
+        : "Este producto no tiene precios asignados; agrégalos en la pestaña Precio.";
+    }
+    return;
+  }
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Selecciona el precio a publicar";
+  sel.appendChild(placeholder);
+
+  let seleccionado = false;
+  precios.forEach((p) => {
+    const opt = document.createElement("option");
+    opt.value = p.id_inv_precio;
+    opt.textContent = p.cve_precio + " — " + formatoPrecioPw(p.precio);
+    if (!seleccionado && precioGuardado > 0 && Math.abs(parseFloat(p.precio) - precioGuardado) < 0.005) {
+      opt.selected = true;
+      seleccionado = true;
+    }
+    sel.appendChild(opt);
+  });
+
+  if (hint) {
+    hint.textContent = precioGuardado > 0 && !seleccionado
+      ? "Publicado actualmente en " + formatoPrecioPw(precioGuardado) + ", que ya no coincide con ningún precio asignado. Elige uno."
+      : "Elige uno de los precios asignados al producto en la pestaña Precio.";
+  }
+}
+
+// Colores destinados a la unidad (solo Productos)
+function renderColoresPortalWeb(colores, editable) {
+  const wrap = document.getElementById("pw_wrap_colores");
+  const lista = document.getElementById("pw_colores_lista");
+  if (!wrap || !lista) return;
+
+  lista.innerHTML = "";
+  wrap.hidden = !colores;
+  if (!colores) return;
+
+  if (!colores.disponible) {
+    lista.innerHTML = '<span class="text-muted small">El catálogo de colores aún no está instalado en esta base.</span>';
+    return;
+  }
+
+  const catalogo = colores.catalogo || [];
+  if (!catalogo.length) {
+    lista.innerHTML = '<span class="text-muted small">No hay colores dados de alta. Agrégalos en Inventario &gt; Catálogos &gt; Colores de unidad.</span>';
+    return;
+  }
+
+  const asignados = (colores.asignados || []).map(Number);
+  catalogo.forEach((c) => {
+    const id = "pw_color_" + c.idcolor;
+    const div = document.createElement("div");
+    div.className = "form-check border rounded px-3 py-2 d-flex align-items-center gap-2 mb-0";
+
+    const chk = document.createElement("input");
+    chk.type = "checkbox";
+    chk.className = "form-check-input ms-0 mt-0 pw-color-chk";
+    chk.id = id;
+    chk.value = c.idcolor;
+    chk.checked = asignados.includes(Number(c.idcolor));
+    chk.disabled = !editable;
+
+    const lbl = document.createElement("label");
+    lbl.className = "form-check-label";
+    lbl.htmlFor = id;
+    lbl.appendChild(document.createTextNode(c.nombre));
+
+    div.appendChild(chk);
+    div.appendChild(lbl);
+    lista.appendChild(div);
+  });
 }
 
 function renderGaleriaPortalWeb(imagenes, modo) {
@@ -3896,12 +4017,23 @@ function guardarPortalWeb() {
     fd.append("clave_modelo", claveModelo);
     fd.append("nombre", document.getElementById("pw_nombre").value || "");
     fd.append("marca", document.getElementById("pw_marca").value || "");
-    fd.append(
-      "precio_estimado",
-      document.getElementById("pw_precio_estimado").value || 0,
-    );
+    const selPrecio = document.getElementById("pw_precio_select");
+    const publicar = document.getElementById("pw_web_distribuidores").checked;
+    if (publicar && selPrecio && !selPrecio.disabled && !selPrecio.value) {
+      Swal.fire("Aviso", "Selecciona el precio que se publicará en el portal", "warning");
+      return;
+    }
+    fd.append("id_inv_precio", selPrecio ? selPrecio.value : "");
 
     if (pwModoActual === "unidad") {
+      const wrapColores = document.getElementById("pw_wrap_colores");
+      const chksColores = document.querySelectorAll("#pw_colores_lista .pw-color-chk");
+      if (wrapColores && !wrapColores.hidden && chksColores.length) {
+        fd.append("colores_enviados", 1);
+        chksColores.forEach((chk) => {
+          if (chk.checked) fd.append("colores[]", chk.value);
+        });
+      }
       fd.append("version", document.getElementById("pw_version").value || "");
       fd.append("motor", document.getElementById("pw_motor").value || "");
       fd.append("anio", document.getElementById("pw_anio").value || "");
