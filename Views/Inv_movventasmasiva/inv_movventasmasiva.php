@@ -34,7 +34,7 @@
                     <div class="alert alert-info d-flex align-items-center justify-content-between flex-wrap gap-2" role="alert">
                         <div>
                             <i class="ri-file-excel-2-line align-bottom me-1"></i>
-                            Descarga el layout con <strong>todos los VINs en inventario</strong> (todas las plantas y almacenes), cambia el estatus a <strong>3 - Facturado</strong> con su distribuidor y factura, y súbelo. El archivo es <strong>solo de actualización</strong>.
+                            Descarga el layout con el <strong>histórico general de VINs</strong> (Disponibles, Tatuados y Facturados de todas las plantas y almacenes), cambia el estatus a <strong>3 - Facturado</strong> escribiendo el distribuidor y la factura, y súbelo. El archivo es <strong>solo de actualización</strong>.
                         </div>
                         <button type="button" id="btnDescargarLayoutVentas" class="btn btn-success btn-sm">
                             <i class="ri-download-2-line align-bottom me-1"></i> Descargar layout de VINs
@@ -54,6 +54,8 @@
                             <li>Estatus del VIN: <span class="badge bg-success">1 - Disponible</span> <span class="badge bg-danger">2 - Tatuado</span> <span class="badge bg-secondary">3 - Facturado</span>.</li>
                             <li>Se puede pasar a <strong>3 - Facturado</strong> desde <strong>1 - Disponible</strong> o <strong>2 - Tatuado</strong>. <strong>Una unidad por factura</strong>: cada VIN genera su propio movimiento de Ventas y baja la existencia de su almacén.</li>
                             <li>Solo se venden unidades de almacenes de <strong>Producto Terminado</strong> o de <strong>Tránsito</strong>; las de otros almacenes van al log.</li>
+                            <li>El <strong>DISTRIBUIDOR</strong> es un campo libre: escríbelo tal como debe quedar en la venta.</li>
+                            <li>En los VINs ya <strong>Facturados</strong> puedes corregir el distribuidor o la factura de su venta (solo ventas de una unidad).</li>
                             <li>Si se agregan filas o se modifica el VIN, SKU, nombre, almacén o número de motor, esa fila <strong>no se sube</strong> y queda en el log descargable.</li>
                         </ul>
 

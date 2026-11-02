@@ -801,6 +801,41 @@ WHERE idinventario = ?";
         return $this->select($sql, [$idInvPrecio, $inventarioid]);
     }
 
+    // -------- Precio Dealer -> web_unidades.precio_dealer --------
+    // La lista "Precio Dealer" (wms_precios.cve_precio) es la que alimenta
+    // web_unidades.precio_dealer (precio base para distribuidores, lo usa
+    // Cotizaciones).
+
+    const CVE_PRECIO_DEALER = 'Precio Dealer';
+
+    public function esListaPrecioDealer(int $idprecio): bool
+    {
+        $r = $this->select("SELECT cve_precio FROM wms_precios WHERE idprecio = ?", [$idprecio]);
+        return !empty($r) && trim((string) $r['cve_precio']) === self::CVE_PRECIO_DEALER;
+    }
+
+    // Precio Dealer activo asignado al producto, o null si no tiene
+    public function getPrecioDealerAuto(int $inventarioid)
+    {
+        $sql = "SELECT ip.precio
+            FROM wms_inventario_precios ip
+            INNER JOIN wms_precios p ON p.idprecio = ip.idprecio
+            WHERE ip.inventarioid = ? AND p.cve_precio = ?
+            AND ip.estado = 2 AND p.estado = 2
+            ORDER BY ip.id_inv_precio DESC
+            LIMIT 1";
+        $r = $this->select($sql, [$inventarioid, self::CVE_PRECIO_DEALER]);
+        return !empty($r) ? (float) $r['precio'] : null;
+    }
+
+    // Actualiza precio_dealer de la unidad del portal ligada al producto
+    // (si el producto aún no está en web_unidades no hace nada).
+    public function updatePrecioDealerWebUnidad(int $inventarioid, $precio)
+    {
+        $sql = "UPDATE web_unidades SET precio_dealer = ?, fecha_actualizacion = NOW() WHERE inventarioid = ?";
+        return $this->update($sql, [$precio, $inventarioid]);
+    }
+
     // -------- Colores de la unidad en el portal --------
     // Catálogo: wms_colores_unidad (Inventario > Catálogos > Colores de unidad)
     // Asignación: web_unidades_colores (idunidad de web_unidades <-> idcolor)
@@ -1069,10 +1104,12 @@ WHERE idinventario = ?";
                    p.cve_precio,
                    p.descripcion,
                    ip.precio,
-                   ip.fecha_creacion
+                   ip.fecha_creacion,
+                   ip.estado
             FROM wms_inventario_precios ip
             INNER JOIN wms_precios p ON p.idprecio = ip.idprecio
-            WHERE ip.inventarioid = $idinventario";
+            WHERE ip.inventarioid = $idinventario
+            ORDER BY ip.estado DESC, p.cve_precio";
 
         return $this->select_all($sql);
     }
@@ -1091,6 +1128,27 @@ WHERE idinventario = ?";
 
 
 
+
+    // HABILITAR / INHABILITAR PRECIO ASIGNADO (2 = activo, 1 = inactivo).
+    // Un precio inactivo ya no aparece en la lista de Portal Web.
+    public function updateEstadoInventarioPrecio(int $id_inv_precio, int $inventarioid, int $estado)
+    {
+        $sql = "UPDATE wms_inventario_precios
+            SET estado = ?
+            WHERE id_inv_precio = ? AND inventarioid = ?";
+
+        return $this->update($sql, [$estado, $id_inv_precio, $inventarioid]);
+    }
+
+    // Precio asignado sin importar su estado (para saber qué lista es)
+    public function selectPrecioAsignadoCualquierEstado(int $idInvPrecio, int $inventarioid)
+    {
+        $sql = "SELECT ip.id_inv_precio, ip.precio, ip.estado, p.cve_precio
+            FROM wms_inventario_precios ip
+            INNER JOIN wms_precios p ON p.idprecio = ip.idprecio
+            WHERE ip.id_inv_precio = ? AND ip.inventarioid = ?";
+        return $this->select($sql, [$idInvPrecio, $inventarioid]);
+    }
 
     //-------------------------------------------- INVENTARIO LINEA
     public function insertInventarioLinea($inventarioid, $sublineaproductoid, $fecha, $estado)

@@ -62,7 +62,6 @@ class Inv_movventasmasiva extends Controllers
 		@set_time_limit(300);
 
 		$vines = $this->model->selectVinesLayout();
-		$clientes = $this->model->selectClientesActivos();
 
 		$T = \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING;
 		$FILL = \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID;
@@ -78,12 +77,13 @@ class Inv_movventasmasiva extends Controllers
 		$h1->setTitle('Instrucciones');
 		$h1->setCellValue('A1', 'LAYOUT DE VENTAS / FACTURACIÓN DE UNIDADES (VINs)');
 		$h1->getStyle('A1')->getFont()->setBold(true)->setSize(14);
-		$h1->setCellValue('A2', 'Generado: ' . date('Y-m-d H:i:s') . ' · ' . count($vines) . ' VIN(s) en inventario');
+		$h1->setCellValue('A2', 'Generado: ' . date('Y-m-d H:i:s') . ' · histórico general: ' . count($vines) . ' VIN(s)');
 
 		$instrucciones = [
-			'1. Este archivo es SOLO DE ACTUALIZACIÓN: contiene todos los VINs que hoy están en inventario (todas las plantas y almacenes). No agregues filas: cualquier VIN que no exista se rechaza.',
-			'2. Solo captura las columnas en VERDE: ESTATUS, DISTRIBUIDOR y FACTURA. Las columnas en GRIS (PLANTA, ALMACEN, SKU, NOMBRE, VIN, NUMERO_MOTOR) son informativas: si se modifican, esa fila NO se sube y se manda al log.',
-			'3. Para facturar una unidad cambia ESTATUS a "3 - Facturado", elige el DISTRIBUIDOR de la lista y escribe el número de FACTURA. Se puede facturar un VIN que esté en "1 - Disponible" o en "2 - Tatuado".',
+			'1. Este archivo es SOLO DE ACTUALIZACIÓN: contiene el HISTÓRICO GENERAL de VINs (1 - Disponible, 2 - Tatuado y 3 - Facturado) de todas las plantas y almacenes. No agregues filas: cualquier VIN que no exista se rechaza.',
+			'2. Solo captura las columnas en VERDE: ESTATUS, DISTRIBUIDOR y FACTURA. Las columnas en GRIS (PLANTA, ALMACEN, SKU, NOMBRE, VIN, NUMERO_MOTOR, FECHA_VENTA) son informativas: si se modifican, esa fila NO se sube y se manda al log.',
+			'3. Para facturar una unidad cambia ESTATUS a "3 - Facturado", ESCRIBE el nombre del DISTRIBUIDOR (campo libre) y el número de FACTURA. Se puede facturar un VIN que esté en "1 - Disponible" o en "2 - Tatuado".',
+			'3b. En los VINs que ya están en "3 - Facturado" puedes CORREGIR el DISTRIBUIDOR o la FACTURA de su venta (solo si esa venta es de una sola unidad). No se puede cambiar su ESTATUS aquí: las devoluciones se hacen en la sección de Devoluciones.',
 			'4. Una unidad por factura: cada VIN facturado genera su propio movimiento de Ventas (baja la existencia del almacén donde está el VIN). Una misma FACTURA no puede usarse para dos VINs, ni repetir una factura ya registrada.',
 			'5. No se permiten otros cambios de estatus desde este archivo (por ejemplo 1 -> 2: el tatuado se hace en Planeación). Las filas sin cambios simplemente se ignoran.',
 			'6. Solo se pueden vender unidades que estén en almacenes de PRODUCTO TERMINADO o en el almacén de TRÁNSITO; las de otros almacenes se rechazan. También se rechaza si el VIN está en un traslado activo o el almacén no tiene existencia suficiente.',
@@ -99,24 +99,7 @@ class Inv_movventasmasiva extends Controllers
 		}
 		$h1->getColumnDimension('A')->setWidth(18);
 
-		/* ---------- HOJA 2: DISTRIBUIDORES ---------- */
-		$hc = $ss->createSheet();
-		$hc->setTitle('Distribuidores');
-		$hc->fromArray(['DISTRIBUIDOR', 'CODIGO', 'NOMBRE'], null, 'A1');
-		$hc->getStyle('A1:C1')->getFont()->setBold(true);
-		$hc->getStyle('A1:C1')->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFEFEFEF');
-		$r = 2;
-		foreach ($clientes as $c) {
-			$hc->setCellValueExplicit('A' . $r, $this->etiquetaCliente($c), $T);
-			$hc->setCellValueExplicit('B' . $r, (string) $c['codigo_cliente'], $T);
-			$hc->setCellValueExplicit('C' . $r, (string) $c['nombre'], $T);
-			$r++;
-		}
-		$hc->getColumnDimension('A')->setWidth(50);
-		$hc->getColumnDimension('B')->setWidth(18);
-		$hc->getColumnDimension('C')->setWidth(45);
-
-		/* ---------- HOJA 3: ESTATUS ---------- */
+		/* ---------- HOJA 2: ESTATUS ---------- */
 		$he = $ss->createSheet();
 		$he->setTitle('Estatus');
 		$he->setCellValue('A1', 'ESTATUS');
@@ -128,14 +111,15 @@ class Inv_movventasmasiva extends Controllers
 		}
 		$he->getColumnDimension('A')->setWidth(20);
 
-		/* ---------- HOJA 4: VINES (captura) ---------- */
+		/* ---------- HOJA 3: VINES (captura) ---------- */
 		$hv = $ss->createSheet();
 		$hv->setTitle('VINes');
-		$enc = ['PLANTA', 'ALMACEN', 'SKU', 'NOMBRE', 'VIN', 'NUMERO_MOTOR', 'ESTATUS', 'DISTRIBUIDOR', 'FACTURA'];
+		$enc = ['PLANTA', 'ALMACEN', 'SKU', 'NOMBRE', 'VIN', 'NUMERO_MOTOR', 'ESTATUS', 'DISTRIBUIDOR', 'FACTURA', 'FECHA_VENTA'];
 		$hv->fromArray($enc, null, 'A1');
-		$hv->getStyle('A1:I1')->getFont()->setBold(true);
+		$hv->getStyle('A1:J1')->getFont()->setBold(true);
 		$hv->getStyle('A1:F1')->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFD9D9D9');
 		$hv->getStyle('G1:I1')->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFC6EFCE');
+		$hv->getStyle('J1')->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFD9D9D9');
 
 		$total = count($vines);
 		$ultima = max(2, $total + 1);
@@ -154,26 +138,29 @@ class Inv_movventasmasiva extends Controllers
 			$hv->setCellValueExplicit('E' . $r, (string) $v['numero_serie'], $T);
 			$hv->setCellValueExplicit('F' . $r, (string) $v['numero_motor'], $T);
 			$hv->setCellValueExplicit('G' . $r, $v['estado'] . ' - ' . (self::ESTATUS[$v['estado']] ?? ''), $T);
+			if ($v['estado'] === '3') {
+				$hv->setCellValueExplicit('H' . $r, (string) $v['distribuidor'], $T);
+				$hv->setCellValueExplicit('I' . $r, (string) $v['factura'], $T);
+				$hv->setCellValueExplicit('J' . $r, (string) $v['fecha_venta'], $T);
+			}
 			$r++;
 		}
 
 		if ($total > 0) {
 			$hv->getStyle('A2:F' . $ultima)->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFF2F2F2');
+			$hv->getStyle('J2:J' . $ultima)->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFF2F2F2');
 			$filasDv = min($ultima, self::MAX_FILAS_VALIDACION + 1);
 			$this->agregarValidacionLista($hv, 'G', 2, $filasDv, 'Estatus!$A$2:$A$' . (1 + count(self::ESTATUS)));
-			if (!empty($clientes)) {
-				$this->agregarValidacionLista($hv, 'H', 2, $filasDv, 'Distribuidores!$A$2:$A$' . (1 + count($clientes)));
-			}
-			$hv->setAutoFilter('A1:I' . $ultima);
+			$hv->setAutoFilter('A1:J' . $ultima);
 		}
 		$hv->freezePane('A2');
 
-		$anchos = ['A' => 20, 'B' => 28, 'C' => 20, 'D' => 45, 'E' => 22, 'F' => 22, 'G' => 16, 'H' => 45, 'I' => 18];
+		$anchos = ['A' => 20, 'B' => 28, 'C' => 20, 'D' => 45, 'E' => 22, 'F' => 22, 'G' => 16, 'H' => 45, 'I' => 18, 'J' => 14];
 		foreach ($anchos as $col => $w) {
 			$hv->getColumnDimension($col)->setWidth($w);
 		}
 
-		$ss->setActiveSheetIndex(3);
+		$ss->setActiveSheetIndex(2);
 
 		$filename = 'Layout_Ventas_VINs_' . date('Ymd_His') . '.xlsx';
 		if (ob_get_length()) {
@@ -219,17 +206,6 @@ class Inv_movventasmasiva extends Controllers
 		}
 		$concepmovid = (int) $concepto['idconcepmov'];
 
-		// Catálogo de distribuidores: se acepta "CODIGO - NOMBRE", el código o el nombre
-		$clientesMap = [];
-		foreach ($this->model->selectClientesActivos() as $c) {
-			$id = (int) $c['idcliente'];
-			$clientesMap[$this->normalizarTexto($this->etiquetaCliente($c))] = $id;
-			if (trim((string) $c['codigo_cliente']) !== '') {
-				$clientesMap[$this->normalizarTexto((string) $c['codigo_cliente'])] = $id;
-			}
-			$clientesMap[$this->normalizarTexto((string) $c['nombre'])] = $id;
-		}
-
 		$vinesArchivo = array_values(array_filter(array_map(function ($r) {
 			return strtoupper(trim((string) ($r['vin'] ?? '')));
 		}, $rows)));
@@ -242,6 +218,7 @@ class Inv_movventasmasiva extends Controllers
 
 		$log = [];
 		$aFacturar = [];
+		$aCorregir = [];
 		$vinesVistos = [];
 		$facturasVistas = [];
 		$sinCambios = 0;
@@ -291,12 +268,58 @@ class Inv_movventasmasiva extends Controllers
 			}
 
 			$estadoBD = (string) $bd['estado'];
+			$estadoNuevo = $this->parsearEstatus($estTxt);
+
+			// ---- VIN ya Facturado: solo se puede corregir distribuidor / factura de su venta ----
 			if ($estadoBD === '3') {
-				$log[] = $base + ['motivo' => 'El VIN ya está Facturado'];
+				if ($estadoNuevo !== '3') {
+					$log[] = $base + ['motivo' => 'El VIN está Facturado: su ESTATUS no se cambia aquí (las devoluciones se hacen en la sección de Devoluciones)'];
+					continue;
+				}
+				$cambiaDist = array_key_exists('cliente', $row) && $this->normalizarTexto($cliTxt) !== $this->normalizarTexto((string) $bd['distribuidor']);
+				$cambiaFac = array_key_exists('factura', $row) && $this->normalizarTexto($factura) !== $this->normalizarTexto((string) $bd['factura']);
+				if (!$cambiaDist && !$cambiaFac) {
+					$sinCambios++;
+					continue;
+				}
+				if (empty($bd['idmov_venta'])) {
+					$log[] = $base + ['motivo' => 'No se encontró el movimiento de venta de este VIN; no se puede corregir'];
+					continue;
+				}
+				if ((int) $bd['vines_en_venta'] > 1) {
+					$log[] = $base + ['motivo' => "La venta {$bd['folio_venta']} incluye {$bd['vines_en_venta']} VINs: la corrección de distribuidor/factura solo se permite en ventas de una unidad"];
+					continue;
+				}
+				if ($cambiaDist && $cliTxt === '') {
+					$log[] = $base + ['motivo' => 'El DISTRIBUIDOR no puede quedar vacío en un VIN facturado'];
+					continue;
+				}
+				if ($cambiaFac) {
+					if ($factura === '') {
+						$log[] = $base + ['motivo' => 'La FACTURA no puede quedar vacía en un VIN facturado'];
+						continue;
+					}
+					$facKey = strtoupper($factura);
+					if (isset($facturasVistas[$facKey])) {
+						$log[] = $base + ['motivo' => "La factura {$factura} ya se usa para otro VIN en la fila {$facturasVistas[$facKey]} (una unidad por factura)"];
+						continue;
+					}
+					$otras = array_diff($facturasBD[$facKey] ?? [], [(int) $bd['idmov_venta']]);
+					if (!empty($otras)) {
+						$log[] = $base + ['motivo' => "La factura {$factura} ya está registrada en otro movimiento de Ventas"];
+						continue;
+					}
+					$facturasVistas[$facKey] = $fila;
+				}
+				$aCorregir[] = [
+					'base' => $base,
+					'bd' => $bd,
+					'distribuidor' => $cambiaDist ? $cliTxt : null,
+					'factura' => $cambiaFac ? $factura : null,
+				];
 				continue;
 			}
 
-			$estadoNuevo = $this->parsearEstatus($estTxt);
 			if ($estadoNuevo === null) {
 				$log[] = $base + ['motivo' => 'ESTATUS no válido (usa 1 - Disponible, 2 - Tatuado o 3 - Facturado)'];
 				continue;
@@ -318,14 +341,9 @@ class Inv_movventasmasiva extends Controllers
 				continue;
 			}
 
-			// ---- Facturación 1/2 -> 3 ----
+			// ---- Facturación 1/2 -> 3 (DISTRIBUIDOR es texto libre) ----
 			if ($cliTxt === '') {
-				$log[] = $base + ['motivo' => 'Para facturar debes elegir el DISTRIBUIDOR'];
-				continue;
-			}
-			$idCliente = $clientesMap[$this->normalizarTexto($cliTxt)] ?? null;
-			if (!$idCliente) {
-				$log[] = $base + ['motivo' => "\"{$cliTxt}\" no es un distribuidor activo (elígelo de la lista)"];
+				$log[] = $base + ['motivo' => 'Para facturar debes escribir el DISTRIBUIDOR'];
 				continue;
 			}
 			if ($factura === '') {
@@ -346,7 +364,7 @@ class Inv_movventasmasiva extends Controllers
 			$aFacturar[] = [
 				'base' => $base,
 				'bd' => $bd,
-				'id_cliente' => $idCliente,
+				'distribuidor' => $cliTxt,
 				'factura' => $factura,
 			];
 		}
@@ -369,9 +387,10 @@ class Inv_movventasmasiva extends Controllers
 					[(float) $bd['ultimo_costo']],
 					null,
 					null,
-					(int) $item['id_cliente'],
+					null,
 					[[(int) $bd['id_numeros_serie']]],
-					$usuarioid
+					$usuarioid,
+					$item['distribuidor']
 				);
 				if (is_array($res)) {
 					$facturados++;
@@ -389,6 +408,18 @@ class Inv_movventasmasiva extends Controllers
 			}
 		}
 
+		// ---- Correcciones de ventas ya registradas ----
+		$corregidos = 0;
+		foreach ($aCorregir as $item) {
+			try {
+				$this->model->corregirVenta($item['bd'], $item['distribuidor'], $item['factura'], $usuarioid, (int) $item['base']['fila']);
+				$corregidos++;
+			} catch (\Throwable $e) {
+				error_log('Inv_movventasmasiva::corregirVenta: ' . $e->getMessage());
+				$log[] = $item['base'] + ['motivo' => 'Error al corregir la venta (revisa el formato de los datos)'];
+			}
+		}
+
 		usort($log, function ($a, $b) {
 			return ($a['fila'] ?? 0) <=> ($b['fila'] ?? 0);
 		});
@@ -397,10 +428,12 @@ class Inv_movventasmasiva extends Controllers
 		echo json_encode([
 			'status' => true,
 			'facturados' => $facturados,
+			'corregidos' => $corregidos,
 			'sinCambios' => $sinCambios,
 			'omitidos' => count($log),
 			'totalFilas' => count($rows),
 			'msg' => "Proceso finalizado: {$facturados} VIN(s) facturado(s) (un movimiento de Ventas cada uno), "
+				. "{$corregidos} venta(s) corregida(s), "
 				. count($log) . " fila(s) no subida(s) y {$sinCambios} sin cambios, de " . count($rows) . " fila(s).",
 		], JSON_UNESCAPED_UNICODE);
 		die();
@@ -504,7 +537,7 @@ class Inv_movventasmasiva extends Controllers
 			'2. Para devolver una unidad cambia ESTATUS a "DEVOLUCION". No hay que capturar nada más.',
 			'3. La unidad regresa al mismo almacén del que salió (columna ALMACEN_SALIDA).',
 			'4. Cada VIN devuelto genera su propio movimiento "Devol. de venta" (suma 1 en la existencia de ese almacén) y el VIN queda como 1 - Disponible, listo para venderse otra vez con otra factura.',
-			'5. Las columnas en GRIS son informativas (SKU, NOMBRE, VIN, NUMERO_MOTOR, DISTRIBUIDOR, FACTURA...): si se modifican, esa fila NO se sube y se manda al log. Única excepción: si la venta no tiene DISTRIBUIDOR registrado, puedes capturarlo.',
+			'5. Las columnas en GRIS son informativas (SKU, NOMBRE, VIN, NUMERO_MOTOR, DISTRIBUIDOR, FACTURA...): si se modifican, esa fila NO se sube y se manda al log. Única excepción: si la venta no tiene DISTRIBUIDOR registrado, puedes escribirlo.',
 			'6. Las filas que se dejan en "3 - Facturado" se ignoran. Al terminar puedes descargar el log con lo que no se subió.',
 		];
 		$f = 4;
@@ -609,15 +642,6 @@ class Inv_movventasmasiva extends Controllers
 		}
 		$concepmovid = (int) $concepto['idconcepmov'];
 
-		$distMap = [];
-		foreach ($this->model->selectClientesActivos() as $c) {
-			$distMap[$this->normalizarTexto($this->etiquetaCliente($c))] = (int) $c['idcliente'];
-			if (trim((string) $c['codigo_cliente']) !== '') {
-				$distMap[$this->normalizarTexto((string) $c['codigo_cliente'])] = (int) $c['idcliente'];
-			}
-			$distMap[$this->normalizarTexto((string) $c['nombre'])] = (int) $c['idcliente'];
-		}
-
 		$vinesBD = $this->model->mapVinesFacturados(array_values(array_filter(array_map(function ($r) {
 			return strtoupper(trim((string) ($r['vin'] ?? '')));
 		}, $rows))));
@@ -665,16 +689,14 @@ class Inv_movventasmasiva extends Controllers
 				'distribuidor' => ['DISTRIBUIDOR', $bd['distribuidor']],
 				'almacen_salida' => ['ALMACEN_SALIDA', $bd['almacen_salida']],
 			];
-			// Venta sin distribuidor registrado: se permite capturarlo para la devolución
+			// La devolución lleva el mismo distribuidor de la venta (cliente del catálogo
+			// y/o texto). Si la venta no tiene ninguno, se permite escribirlo en la fila.
 			$distTxt = trim((string) ($row['distribuidor'] ?? ''));
 			$idClienteDev = !empty($bd['id_cliente']) ? (int) $bd['id_cliente'] : null;
-			if (!$idClienteDev && $distTxt !== '') {
+			$distDev = trim((string) $bd['distribuidor_texto']) !== '' ? trim((string) $bd['distribuidor_texto']) : null;
+			if (!$idClienteDev && $distDev === null && $distTxt !== '') {
 				unset($comparar['distribuidor']);
-				$idClienteDev = $distMap[$this->normalizarTexto($distTxt)] ?? null;
-				if (!$idClienteDev) {
-					$log[] = $base + ['motivo' => "\"{$distTxt}\" no es un distribuidor activo"];
-					continue;
-				}
+				$distDev = $distTxt;
 			}
 			foreach ($comparar as $campo => [$etq, $valBD]) {
 				if (array_key_exists($campo, $row) && $this->normalizarTexto((string) $row[$campo]) !== $this->normalizarTexto((string) $valBD)) {
@@ -695,13 +717,14 @@ class Inv_movventasmasiva extends Controllers
 				continue;
 			}
 
-			if (!$idClienteDev) {
-				$log[] = $base + ['motivo' => 'La venta de este VIN no tiene distribuidor registrado: captura el DISTRIBUIDOR en la fila'];
+			if (!$idClienteDev && $distDev === null) {
+				$log[] = $base + ['motivo' => 'La venta de este VIN no tiene distribuidor registrado: escribe el DISTRIBUIDOR en la fila'];
 				continue;
 			}
 
 			// Siempre regresa al almacén del que salió
-			$aDevolver[] = ['base' => $base, 'bd' => $bd, 'almacen' => (int) $bd['almacen_salidaid'], 'id_cliente' => $idClienteDev];
+			$aDevolver[] = ['base' => $base, 'bd' => $bd, 'almacen' => (int) $bd['almacen_salidaid'],
+				'id_cliente' => $idClienteDev, 'distribuidor' => $distDev];
 		}
 
 		require_once 'Models/Inv_movimientosinventarioModel.php';
@@ -721,9 +744,10 @@ class Inv_movventasmasiva extends Controllers
 					[(float) $bd['ultimo_costo']],
 					null,
 					null,
-					(int) $item['id_cliente'],
+					$item['id_cliente'],
 					[[(int) $bd['id_numeros_serie']]],
-					$usuarioid
+					$usuarioid,
+					$item['distribuidor']
 				);
 				if (is_array($res)) {
 					$devueltos++;
@@ -859,6 +883,7 @@ class Inv_movventasmasiva extends Controllers
 			'ESTATUS' => 'estatus',
 			'DISTRIBUIDOR' => 'cliente',
 			'CLIENTE' => 'cliente',
+			'FECHA_VENTA' => 'fecha_venta',
 			'FACTURA' => 'factura',
 		];
 
