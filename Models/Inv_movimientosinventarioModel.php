@@ -235,8 +235,12 @@ class Inv_movimientosinventarioModel extends Mysql
         ?string $lote = null,
         ?int $id_cliente = null,
         ?array $series = null,
-        ?int $usuarioid = null
+        ?int $usuarioid = null,
+        ?string $distribuidor = null
     ) {
+        // $distribuidor: texto libre del distribuidor (carga masiva de ventas).
+        // En conceptos tipo Cliente basta con el cliente del catálogo O con este texto.
+        $distribuidor = ($distribuidor !== null && trim($distribuidor) !== '') ? mb_substr(trim($distribuidor), 0, 200) : null;
         /*
          * $series: VINs por partida, mismo índice que $inventarios
          * ([i] => [id_numeros_serie, ...]). Si viene null (carga masiva,
@@ -255,13 +259,16 @@ class Inv_movimientosinventarioModel extends Mysql
         }
 
         // Si el concepto de movimiento es de tipo Cliente (cpn = 'C'), el cliente es obligatorio
-        if ($concepto['cpn'] === 'C' && empty($id_cliente)) {
+        if ($concepto['cpn'] === 'C' && empty($id_cliente) && $distribuidor === null) {
             return "Debe seleccionar un cliente para este concepto de movimiento";
         }
 
         // Cada movimiento solo guarda la contraparte que corresponde a su tipo
         if ($concepto['cpn'] !== 'P') $id_proveedor = null;
-        if ($concepto['cpn'] !== 'C') $id_cliente = null;
+        if ($concepto['cpn'] !== 'C') {
+            $id_cliente = null;
+            $distribuidor = null;
+        }
 
 
         $pdo = $this->getConexion();
@@ -394,10 +401,10 @@ class Inv_movimientosinventarioModel extends Mysql
                 // insertar movimiento
                 $idmovinventario = $this->insert("
                 INSERT INTO wms_movimientos_inventario
-                (inventarioid, almacenid, numero_movimiento, concepmovid, id_proveedor, id_cliente,
+                (inventarioid, almacenid, numero_movimiento, concepmovid, id_proveedor, id_cliente, distribuidor,
                  referencia, lote, cantidad, costo_cantidad, existencia, signo,
                  fecha_movimiento, estado)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),2)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),2)
             ", [
                     $inventarioid,
                     $almacenid,
@@ -405,6 +412,7 @@ class Inv_movimientosinventarioModel extends Mysql
                     $concepmovid,
                     $id_proveedor,
                     $id_cliente,
+                    $distribuidor,
                     $referencia,
                     $lote,
                     $cantidad,

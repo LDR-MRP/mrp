@@ -933,6 +933,9 @@ class Inv_inventario extends Controllers
 			if ($request === 'exist') {
 				$arrResponse = ['status' => false, 'msg' => 'Ese precio ya está asignado al producto. Usa el botón Editar en la tabla para modificarlo.'];
 			} else if (is_numeric($request) && $request > 0) {
+				if ($this->model->esListaPrecioDealer($idprecio)) {
+					$this->sincronizarPrecioDealerPortal($inventarioid, $precio);
+				}
 				$arrResponse = ['status' => true, 'msg' => 'Precio asignado correctamente'];
 			} else {
 				$arrResponse = ['status' => false, 'msg' => 'Error al guardar precio'];
@@ -964,6 +967,13 @@ class Inv_inventario extends Controllers
 
 			$request = $this->model->updateInventarioPrecio($id_inv_precio, $inventarioid, $precio);
 
+			if ($request) {
+				$asignado = $this->model->selectPrecioAsignado($id_inv_precio, $inventarioid);
+				if (!empty($asignado) && trim((string) $asignado['cve_precio']) === Inv_inventarioModel::CVE_PRECIO_DEALER) {
+					$this->sincronizarPrecioDealerPortal($inventarioid, $precio);
+				}
+			}
+
 			$arrResponse = $request
 				? ['status' => true, 'msg' => 'Precio actualizado correctamente']
 				: ['status' => false, 'msg' => 'Error al actualizar el precio'];
@@ -973,6 +983,56 @@ class Inv_inventario extends Controllers
 
 		die();
 	}
+	// HABILITAR / INHABILITAR PRECIO ASIGNADO
+	// Inactivo = ya no se lista en Portal Web. Si es Precio Dealer, se
+	// recalcula web_unidades.precio_dealer (queda NULL si no hay otro activo).
+	public function setEstadoPrecioInventario()
+	{
+		$this->exigirPermisoCfg(MICFG_PRECIO, 'w');
+
+		if ($_POST) {
+			$id_inv_precio = intval($_POST['id_inv_precio'] ?? 0);
+			$inventarioid  = intval($_POST['inventarioid'] ?? 0);
+			$estado        = intval($_POST['estado'] ?? 0);
+
+			if ($id_inv_precio <= 0 || $inventarioid <= 0 || !in_array($estado, [1, 2], true)) {
+				echo json_encode(['status' => false, 'msg' => 'Datos obligatorios'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			$asignado = $this->model->selectPrecioAsignadoCualquierEstado($id_inv_precio, $inventarioid);
+			if (empty($asignado)) {
+				echo json_encode(['status' => false, 'msg' => 'El precio no pertenece a este producto'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
+
+			$request = $this->model->updateEstadoInventarioPrecio($id_inv_precio, $inventarioid, $estado);
+
+			if ($request && trim((string) $asignado['cve_precio']) === Inv_inventarioModel::CVE_PRECIO_DEALER) {
+				$this->sincronizarPrecioDealerPortal($inventarioid, $this->model->getPrecioDealerAuto($inventarioid));
+			}
+
+			$arrResponse = $request
+				? ['status' => true, 'msg' => $estado === 2 ? 'Precio habilitado' : 'Precio inhabilitado; ya no aparecerá en Portal Web']
+				: ['status' => false, 'msg' => 'No se pudo cambiar el estado del precio'];
+
+			echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+		}
+
+		die();
+	}
+
+	// Copia el Precio Dealer del producto a web_unidades.precio_dealer.
+	// No debe romper el guardado del precio si la columna no existe en alguna base.
+	private function sincronizarPrecioDealerPortal(int $inventarioid, $precio): void
+	{
+		try {
+			$this->model->updatePrecioDealerWebUnidad($inventarioid, $precio);
+		} catch (\Throwable $e) {
+			error_log("No se pudo sincronizar precio_dealer (inventario {$inventarioid}): " . $e->getMessage());
+		}
+	}
+
 	//PRECIOS ASIGNADOS
 	public function getPreciosAsignados($idinventario)
 	{
@@ -1692,6 +1752,11 @@ class Inv_inventario extends Controllers
 			'estado' => 0,
 		]);
 
+		$dealerAuto = $this->model->getPrecioDealerAuto($inventarioid);
+		if ($dealerAuto !== null) {
+			$this->sincronizarPrecioDealerPortal($inventarioid, $dealerAuto);
+		}
+
 		return $this->model->getWebUnidadByInventario($inventarioid);
 	}
 
@@ -2016,6 +2081,7 @@ class Inv_inventario extends Controllers
 			// Precio a publicar: uno de los precios asignados al producto
 			// (pestaña Precio). Si no se elige, se conserva el ya publicado.
 			$idInvPrecio = intval($_POST['id_inv_precio'] ?? 0);
+			$precioDealerSel = null; // se llena si el precio elegido es de la lista Precio Dealer
 			if ($idInvPrecio > 0) {
 				$precioSel = $this->model->selectPrecioAsignado($idInvPrecio, $inventarioid);
 				if (empty($precioSel)) {
@@ -2023,6 +2089,9 @@ class Inv_inventario extends Controllers
 					die();
 				}
 				$precioPortal = (float) $precioSel['precio'];
+				if (trim((string) $precioSel['cve_precio']) === Inv_inventarioModel::CVE_PRECIO_DEALER) {
+					$precioDealerSel = $precioPortal;
+				}
 			} else {
 				$precioPortal = (float) ($registroPw['precio_estimado'] ?? 0);
 			}
@@ -2090,6 +2159,20 @@ class Inv_inventario extends Controllers
 					$data['imagen_caratula'] = $rutaCaratulaNueva ?? '';
 					$idunidad = $this->model->insertWebUnidad($data);
 					$resp = $idunidad;
+				}
+
+				// Precio Dealer: si se eligió de la lista Precio Dealer se guarda en
+				// precio_dealer; si la unidad es nueva, se toma el Precio Dealer
+				// asignado al producto (si tiene).
+				if ($resp) {
+					if ($precioDealerSel !== null) {
+						$this->sincronizarPrecioDealerPortal($inventarioid, $precioDealerSel);
+					} elseif (empty($unidad)) {
+						$dealerAuto = $this->model->getPrecioDealerAuto($inventarioid);
+						if ($dealerAuto !== null) {
+							$this->sincronizarPrecioDealerPortal($inventarioid, $dealerAuto);
+						}
+					}
 				}
 
 				// Colores destinados a la unidad (web_unidades_colores)

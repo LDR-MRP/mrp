@@ -1839,7 +1839,7 @@ function cargartabPrecio(idinventario) {
                 <th>Descripción</th>
                 <th>Precio</th>
                 <th>Fecha</th>
-                ${cfgPuede("PRECIO", "w") ? '<th class="text-center" style="width:90px;">Acciones</th>' : ""}
+                ${cfgPuede("PRECIO", "w") ? '<th class="text-center" style="width:110px;">Acciones</th>' : ""}
               </tr>
             </thead>
             <tbody id="tbodyPrecios"></tbody>
@@ -1893,6 +1893,9 @@ function guardarPrecio(idinventario) {
 }
 
 function refrescarTablaPrecios(idinventario) {
+  // La lista de precios de la pestaña Portal Web también depende de estos precios
+  refrescarPreciosPortalWeb(idinventario);
+
   fetch(base_url + "/Inv_inventario/getPreciosAsignados/" + idinventario)
     .then((res) => res.json())
     .then((data) => {
@@ -1905,17 +1908,27 @@ function refrescarTablaPrecios(idinventario) {
 
       if (data.status && data.data.length > 0) {
         data.data.forEach((item) => {
+          const activo = Number(item.estado) === 2;
           const btnEditar = puedeEditar
-            ? `<td class="text-center">
+            ? `<td class="text-center text-nowrap">
                 <button type="button" class="btn btn-sm btn-outline-primary" title="Editar precio"
                   onclick="editarPrecio(${item.id_inv_precio}, ${idinventario}, ${Number(item.precio) || 0})">
                   <i class="ri-pencil-line"></i>
                 </button>
+                ${activo
+                  ? `<button type="button" class="btn btn-sm btn-outline-danger" title="Inhabilitar (ya no se mostrará en Portal Web)"
+                      onclick="cambiarEstadoPrecio(${item.id_inv_precio}, ${idinventario}, 1)">
+                      <i class="ri-forbid-line"></i>
+                    </button>`
+                  : `<button type="button" class="btn btn-sm btn-outline-success" title="Habilitar"
+                      onclick="cambiarEstadoPrecio(${item.id_inv_precio}, ${idinventario}, 2)">
+                      <i class="ri-checkbox-circle-line"></i>
+                    </button>`}
               </td>`
             : "";
           tbody.innerHTML += `
-            <tr>
-              <td>${item.cve_precio}</td>
+            <tr class="${activo ? "" : "text-muted"}">
+              <td>${item.cve_precio}${activo ? "" : ' <span class="badge bg-secondary">Inactivo</span>'}</td>
               <td>${item.descripcion}</td>
               <td>$${item.precio}</td>
               <td>${item.fecha_creacion ?? ""}</td>
@@ -1927,6 +1940,45 @@ function refrescarTablaPrecios(idinventario) {
         tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center">Sin precios asignados</td></tr>`;
       }
     });
+}
+
+// Inhabilitar (estado 1) o habilitar (estado 2) un precio asignado.
+// Los inactivos no aparecen en la lista de precios de Portal Web.
+function cambiarEstadoPrecio(id_inv_precio, idinventario, estado) {
+  const inhabilitar = estado === 1;
+  Swal.fire({
+    title: inhabilitar ? "¿Inhabilitar precio?" : "¿Habilitar precio?",
+    text: inhabilitar
+      ? "Ya no aparecerá en la lista de precios de Portal Web."
+      : "Volverá a aparecer en la lista de precios de Portal Web.",
+    icon: "question",
+    target: document.getElementById("modalConfigInventario") || "body",
+    showCancelButton: true,
+    confirmButtonText: inhabilitar ? "Inhabilitar" : "Habilitar",
+    cancelButtonText: "Cancelar",
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+
+    const fd = new FormData();
+    fd.append("id_inv_precio", id_inv_precio);
+    fd.append("inventarioid", idinventario);
+    fd.append("estado", estado);
+
+    fetch(base_url + "/Inv_inventario/setEstadoPrecioInventario", {
+      method: "POST",
+      body: fd,
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status) {
+          Swal.fire({ title: "Correcto", text: data.msg, icon: "success", target: document.getElementById("modalConfigInventario") || "body" });
+          refrescarTablaPrecios(idinventario);
+        } else {
+          Swal.fire("Error", data.msg, "error");
+        }
+      })
+      .catch(() => Swal.fire("Error", "No se pudo cambiar el estado del precio", "error"));
+  });
 }
 
 function editarPrecio(id_inv_precio, idinventario, precioActual) {
@@ -3772,6 +3824,30 @@ function renderPreciosPortalWeb(precios, registro, editable) {
       ? "Publicado actualmente en " + formatoPrecioPw(precioGuardado) + ", que ya no coincide con ningún precio asignado. Elige uno."
       : "Elige uno de los precios asignados al producto en la pestaña Precio.";
   }
+}
+
+// Vuelve a cargar solo el select de precios de Portal Web (p. ej. después de
+// asignar o editar un precio en la pestaña Precio), sin tocar lo demás que el
+// usuario ya haya capturado en Portal Web. Conserva la opción elegida si sigue existiendo.
+function refrescarPreciosPortalWeb(idinventario) {
+  const sel = document.getElementById("pw_precio_select");
+  if (!sel || !idinventario || typeof cfgPuede !== "function" || !cfgPuede("PORTALWEB")) return;
+
+  const elegidoAntes = sel.value;
+
+  fetch(base_url + "/Inv_inventario/getPortalWeb/" + idinventario)
+    .then((r) => r.json())
+    .then((res) => {
+      if (!res.status) return;
+      const registro = res.data.unidad || null;
+      const editable = cfgPuede("PORTALWEB", registro ? "u" : "w");
+      renderPreciosPortalWeb(res.data.precios || [], registro, editable);
+
+      if (elegidoAntes && sel.querySelector('option[value="' + elegidoAntes + '"]')) {
+        sel.value = elegidoAntes;
+      }
+    })
+    .catch(() => {});
 }
 
 // Colores destinados a la unidad (solo Productos)

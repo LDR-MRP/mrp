@@ -18,7 +18,19 @@ class Inv_movventasmasivaModel extends Mysql
 
     private const PLANTA_SQL = "COALESCE(pl.nombre_planta, CASE WHEN a.cve_almacen REGEXP '^PL[0-9]{2}-' THEN CONCAT('Planta ', CAST(SUBSTRING(a.cve_almacen, 3, 2) AS UNSIGNED)) ELSE 'Sin planta asignada' END)";
 
-    /** VINs en inventario (Disponible / Tatuado) para el layout. */
+    /** Distribuidor de la última venta: texto capturado o, si no hay, el cliente del catálogo. */
+    private const DIST_VENTA_SQL = "COALESCE(NULLIF(TRIM(mv.distribuidor), ''), CONCAT(NULLIF(cv.codigo_cliente, ''), ' - ', COALESCE(NULLIF(cv.nombre_comercial, ''), cv.razon_social)), COALESCE(NULLIF(cv.nombre_comercial, ''), cv.razon_social), '')";
+
+    /** Última venta (salida con VIN) de un VIN Facturado. */
+    private const JOIN_ULTIMA_VENTA = "
+                LEFT JOIN wms_movimientos_inventario_series sv
+                       ON ns.estado = '3'
+                      AND sv.idmovserie = (SELECT MAX(sv2.idmovserie) FROM wms_movimientos_inventario_series sv2
+                                           WHERE sv2.id_numeros_serie = ns.id_numeros_serie AND sv2.signo < 0)
+                LEFT JOIN wms_movimientos_inventario mv ON mv.idmovinventario = sv.idmovinventario
+                LEFT JOIN cli_clientes cv ON cv.idcliente = mv.id_cliente";
+
+    /** Histórico general: todos los VINs (1 Disponible, 2 Tatuado, 3 Facturado) para el layout. */
     public function selectVinesLayout(): array
     {
         $sql = "SELECT ns.id_numeros_serie,
@@ -28,13 +40,17 @@ class Inv_movventasmasivaModel extends Mysql
                        i.descripcion,
                        COALESCE(a.descripcion, '') AS almacen,
                        " . self::PLANTA_SQL . " AS planta,
-                       COALESCE(va.numero_motor, '') AS numero_motor
+                       COALESCE(va.numero_motor, '') AS numero_motor,
+                       " . self::DIST_VENTA_SQL . " AS distribuidor,
+                       COALESCE(mv.referencia, '') AS factura,
+                       COALESCE(DATE_FORMAT(mv.fecha_movimiento, '%Y-%m-%d'), '') AS fecha_venta
                 FROM wms_numeros_series ns
                 INNER JOIN wms_inventario i ON i.idinventario = ns.inventarioid
                 LEFT JOIN wms_almacenes a  ON a.idalmacen = ns.almacenid
                 LEFT JOIN mrp_planta pl    ON pl.idplanta = a.plantaid
-                LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = ns.id_numeros_serie
-                WHERE ns.estado IN ('1', '2')
+                LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = ns.id_numeros_serie"
+                . self::JOIN_ULTIMA_VENTA . "
+                WHERE ns.estado IN ('1', '2', '3')
                   AND i.tipo_elemento = 'P'
                 ORDER BY planta, almacen, i.cve_articulo, ns.numero_serie";
         return $this->select_all($sql);
@@ -60,11 +76,19 @@ class Inv_movventasmasivaModel extends Mysql
                         i.tipo_elemento,
                         i.ultimo_costo,
                         COALESCE(a.descripcion, '') AS almacen,
-                        COALESCE(va.numero_motor, '') AS numero_motor
+                        COALESCE(va.numero_motor, '') AS numero_motor,
+                        " . self::DIST_VENTA_SQL . " AS distribuidor,
+                        COALESCE(mv.distribuidor, '') AS distribuidor_texto,
+                        COALESCE(mv.referencia, '') AS factura,
+                        mv.idmovinventario AS idmov_venta,
+                        mv.numero_movimiento AS folio_venta,
+                        (SELECT COUNT(*) FROM wms_movimientos_inventario_series sc
+                          WHERE sc.idmovinventario = mv.idmovinventario) AS vines_en_venta
                  FROM wms_numeros_series ns
                  INNER JOIN wms_inventario i ON i.idinventario = ns.inventarioid
                  LEFT JOIN wms_almacenes a  ON a.idalmacen = ns.almacenid
-                 LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = ns.id_numeros_serie
+                 LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = ns.id_numeros_serie"
+                 . self::JOIN_ULTIMA_VENTA . "
                  WHERE ns.estado <> '0'
                    AND ns.numero_serie IN ($ph)",
                 $bloque
@@ -108,23 +132,79 @@ class Inv_movventasmasivaModel extends Mysql
         return $row ?: null;
     }
 
-    /** Facturas (referencias) ya usadas en movimientos de Ventas activos. */
+    /**
+     * Facturas (referencias) ya usadas en movimientos de Ventas activos:
+     * [FACTURA => [idmovinventario, ...]] (para poder excluir la propia venta al corregir).
+     */
     public function facturasUsadas(int $concepmovid, array $facturas): array
     {
         $usadas = [];
         foreach (array_chunk(array_values(array_unique($facturas)), 500) as $bloque) {
             $ph = implode(',', array_fill(0, count($bloque), '?'));
             $rows = $this->select_all(
-                "SELECT DISTINCT referencia
+                "SELECT referencia, idmovinventario
                  FROM wms_movimientos_inventario
                  WHERE concepmovid = ? AND estado = 2 AND referencia IN ($ph)",
                 array_merge([$concepmovid], $bloque)
             );
             foreach ($rows as $r) {
-                $usadas[strtoupper(trim($r['referencia']))] = true;
+                $usadas[strtoupper(trim($r['referencia']))][] = (int) $r['idmovinventario'];
             }
         }
         return $usadas;
+    }
+
+    /**
+     * Corrige distribuidor (texto) y/o factura de la venta de un VIN facturado
+     * y deja cada cambio en el historial del VIN.
+     */
+    public function corregirVenta(array $bd, ?string $distribuidor, ?string $factura, $usuarioid, int $fila): void
+    {
+        $pdo = $this->getConexion();
+        $pdo->beginTransaction();
+        try {
+            $sets = [];
+            $vals = [];
+            $hist = [];
+            if ($distribuidor !== null) {
+                $sets[] = 'distribuidor = ?';
+                $vals[] = mb_substr($distribuidor, 0, 200);
+                $hist[] = ['distribuidor', $bd['distribuidor'], $distribuidor];
+            }
+            if ($factura !== null) {
+                $sets[] = 'referencia = ?';
+                $vals[] = $factura;
+                $hist[] = ['factura', $bd['factura'], $factura];
+            }
+            if (empty($sets)) {
+                $pdo->rollBack();
+                return;
+            }
+            $vals[] = (int) $bd['idmov_venta'];
+            $this->update("UPDATE wms_movimientos_inventario SET " . implode(', ', $sets) . " WHERE idmovinventario = ?", $vals);
+
+            $historial = new Inv_vin_historialModel(); // Models/ se carga con el autoload
+            foreach ($hist as [$campo, $antes, $despues]) {
+                $historial->registrar([
+                    'id_numeros_serie' => $bd['id_numeros_serie'],
+                    'numero_serie' => $bd['numero_serie'],
+                    'modulo' => 'VENTAS',
+                    'accion' => 'CORRECCION',
+                    'campo' => $campo,
+                    'valor_anterior' => $antes,
+                    'valor_nuevo' => $despues,
+                    'detalle' => "Corrección desde carga masiva de ventas (venta {$bd['folio_venta']}, fila {$fila})",
+                    'origen' => 'MASIVO',
+                    'usuarioid' => $usuarioid,
+                ]);
+            }
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 
     /* =================================================================
@@ -144,7 +224,9 @@ class Inv_movventasmasivaModel extends Mysql
                COALESCE(a.descripcion, '') AS almacen_salida,
                COALESCE(m.referencia, '') AS factura,
                m.id_cliente,
-               COALESCE(CONCAT(NULLIF(c.codigo_cliente, ''), ' - ', COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social)),
+               COALESCE(m.distribuidor, '') AS distribuidor_texto,
+               COALESCE(NULLIF(TRIM(m.distribuidor), ''),
+                        CONCAT(NULLIF(c.codigo_cliente, ''), ' - ', COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social)),
                         COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social), '') AS distribuidor,
                DATE_FORMAT(COALESCE(m.fecha_movimiento, s.fecha), '%Y-%m-%d') AS fecha_venta,
                COALESCE(s.estado_anterior, '2') AS estado_regreso
