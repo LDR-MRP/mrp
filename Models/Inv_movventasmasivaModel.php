@@ -222,6 +222,8 @@ class Inv_movventasmasivaModel extends Mysql
                COALESCE(va.numero_motor, '') AS numero_motor,
                COALESCE(s.almacenid, ns.almacenid) AS almacen_salidaid,
                COALESCE(a.descripcion, '') AS almacen_salida,
+               " . self::PLANTA_SQL . " AS planta,
+               COALESCE(m.numero_movimiento, '') AS folio_venta,
                COALESCE(m.referencia, '') AS factura,
                m.id_cliente,
                COALESCE(m.distribuidor, '') AS distribuidor_texto,
@@ -239,6 +241,7 @@ class Inv_movventasmasivaModel extends Mysql
         LEFT JOIN wms_movimientos_inventario m ON m.idmovinventario = s.idmovinventario
         LEFT JOIN cli_clientes c ON c.idcliente = m.id_cliente
         LEFT JOIN wms_almacenes a ON a.idalmacen = COALESCE(s.almacenid, ns.almacenid)
+        LEFT JOIN mrp_planta pl ON pl.idplanta = a.plantaid
         WHERE ns.estado = '3'
           AND i.tipo_elemento = 'P'";
 
@@ -283,6 +286,35 @@ class Inv_movventasmasivaModel extends Mysql
              LIMIT 1"
         );
         return $row ?: null;
+    }
+
+    /**
+     * Totales para los indicadores de la pantalla: VINs de producto por
+     * estatus y facturados con venta en el mes en curso.
+     */
+    public function selectResumen(): array
+    {
+        $row = $this->select(
+            "SELECT SUM(ns.estado = '1') AS disponibles,
+                    SUM(ns.estado = '2') AS tatuadas,
+                    SUM(ns.estado = '3') AS facturadas
+             FROM wms_numeros_series ns
+             INNER JOIN wms_inventario i ON i.idinventario = ns.inventarioid
+             WHERE ns.estado IN ('1', '2', '3')
+               AND i.tipo_elemento = 'P'"
+        ) ?: [];
+        $mes = $this->select(
+            "SELECT COUNT(*) AS n
+             FROM (" . self::SQL_FACTURADOS . ") f
+             WHERE f.fecha_venta >= DATE_FORMAT(CURDATE(), '%Y-%m-01')"
+        ) ?: [];
+
+        return [
+            'disponibles'    => (int) ($row['disponibles'] ?? 0),
+            'tatuadas'       => (int) ($row['tatuadas'] ?? 0),
+            'facturadas'     => (int) ($row['facturadas'] ?? 0),
+            'facturadas_mes' => (int) ($mes['n'] ?? 0),
+        ];
     }
 
     public function selectAlmacenesActivos(): array
