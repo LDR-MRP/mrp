@@ -1663,7 +1663,7 @@ function renderProducts(list) {
               <div class="product-price">
 
                 <span>
-                  Precio estimado
+                  Precio
                 </span>
 
                 <strong>

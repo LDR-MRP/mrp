@@ -675,7 +675,7 @@ function construirRutaImagenUnidad(
                         </div> -->
 
                         <div>
-                            <span>Precio estimado</span>
+                            <span>Precio</span>
 
                             <strong>
                                 $<?= number_format(
