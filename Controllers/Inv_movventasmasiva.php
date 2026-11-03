@@ -786,6 +786,64 @@ class Inv_movventasmasiva extends Controllers
 			'Log de VINs NO devueltos (Carga masiva de devoluciones)', 'Log_CargaMasiva_Devoluciones_');
 	}
 
+	/* ===============================
+	   UNIDADES FACTURADAS (consulta)
+	=============================== */
+
+	/** Indicadores de la pantalla: disponibles, tatuadas, facturadas y facturadas del mes. */
+	public function getResumen()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+		if (empty($_SESSION['permisosMod']['r'])) {
+			echo json_encode(['status' => false, 'msg' => 'Sin permisos.'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+		try {
+			echo json_encode(['status' => true, 'data' => $this->model->selectResumen()], JSON_UNESCAPED_UNICODE);
+		} catch (\Throwable $e) {
+			error_log('Inv_movventasmasiva::getResumen ' . $e->getMessage());
+			echo json_encode(['status' => false, 'msg' => 'No fue posible obtener los indicadores.'], JSON_UNESCAPED_UNICODE);
+		}
+		die();
+	}
+
+	/** Listado de VINs facturados con su última venta, filtrable por fecha de venta. */
+	public function getFacturadas()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+		if (empty($_SESSION['permisosMod']['r'])) {
+			echo json_encode(['status' => false, 'msg' => 'Sin permisos.', 'data' => []], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+		@set_time_limit(120);
+
+		$desde = $this->fechaValida($_GET['desde'] ?? '');
+		$hasta = $this->fechaValida($_GET['hasta'] ?? '');
+
+		try {
+			$data = [];
+			foreach ($this->model->selectVinesFacturados($desde, $hasta) as $v) {
+				$data[] = [
+					'fecha_venta'    => (string) $v['fecha_venta'],
+					'vin'            => (string) $v['numero_serie'],
+					'numero_motor'   => (string) $v['numero_motor'],
+					'sku'            => (string) $v['cve_articulo'],
+					'descripcion'    => (string) $v['descripcion'],
+					'planta'         => (string) $v['planta'],
+					'almacen_salida' => (string) $v['almacen_salida'],
+					'distribuidor'   => (string) $v['distribuidor'],
+					'factura'        => (string) $v['factura'],
+					'folio_venta'    => (string) $v['folio_venta'],
+				];
+			}
+			echo json_encode(['status' => true, 'data' => $data], JSON_UNESCAPED_UNICODE);
+		} catch (\Throwable $e) {
+			error_log('Inv_movventasmasiva::getFacturadas ' . $e->getMessage());
+			echo json_encode(['status' => false, 'msg' => 'No fue posible consultar las unidades facturadas.', 'data' => []], JSON_UNESCAPED_UNICODE);
+		}
+		die();
+	}
+
 	private function fechaValida(string $f): ?string
 	{
 		$f = trim($f);
