@@ -100,10 +100,8 @@ const MIUNIDADES = 83; // Inventario > Unidades por año modelo (Inv_unidades)
 const MIINVDISTRIBUIDORES = 85; // Inventario > Inventario de distribuidores (Inv_invdistribuidores)
 const MICOLORESUNIDAD = 86; // Inventario > Catálogos > Colores de unidad (Inv_coloresunidad)
 const MICOBRANZAUNIDADES = 87; // Inventario > Cobranza de unidades (Inv_cobranzaunidades)
-const MIMONEDAS = 70;
-const MIASIGNACIONESINV = 71;
-const MIREPORTES = 72;
-const MIMOVIMIENTOSALMACEN = 73;
+const MICOBRANZAUNIDADES = 87; // Inventario > Cobranza de unidades (Inv_cobranzaunidades)
+const MIMO= 73;
 const MISEDES = 67;
 const MIZONAS = 68;
 const MIUBICACIONES = 69;
@@ -217,5 +215,4 @@ const STATUS = array('Completo', 'Aprobado', 'Cancelado', 'Reembolsado', 'Pendie
 
 // Configuración de subida de archivos
 const MAX_FILE_SIZE_MB = 5; // Tamaño máximo en MB antes de comprimir en ZIP
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // Tamaño máximo en bytes
-?>
+conconst MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // Tamaño máximo en bytes
