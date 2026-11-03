@@ -49,7 +49,37 @@ document.addEventListener("DOMContentLoaded", function () {
   // ------------------------------------------------------------------
   const inpDesde = document.getElementById("factDesde");
   const inpHasta = document.getElementById("factHasta");
+  const selDist = document.getElementById("factDistribuidor");
+  const selModelo = document.getElementById("factModelo");
+  const SIN_DIST = "__SIN__";
   let tableFacturadas = null;
+
+  // Llena un select con valores únicos ordenados, conservando la selección actual si sigue existiendo.
+  function llenarSelect(sel, valores, textoTodos, incluirVacio) {
+    if (!sel) return;
+    const actual = sel.value;
+    const unicos = Array.from(new Set(valores.filter((v) => v))).sort((a, b) => a.localeCompare(b, "es"));
+    const conteo = {};
+    valores.forEach((v) => (conteo[v || SIN_DIST] = (conteo[v || SIN_DIST] || 0) + 1));
+    sel.innerHTML = "";
+    sel.add(new Option(textoTodos, ""));
+    unicos.forEach((v) => sel.add(new Option(v + " (" + conteo[v] + ")", v)));
+    if (incluirVacio && conteo[SIN_DIST]) sel.add(new Option("Sin distribuidor (" + conteo[SIN_DIST] + ")", SIN_DIST));
+    sel.value = Array.from(sel.options).some((o) => o.value === actual) ? actual : "";
+  }
+
+  // Filtro por distribuidor y modelo (exacto, del lado del cliente)
+  $.fn.dataTable.ext.search.push(function (settings, data, idx, row) {
+    if (settings.nTable.id !== "tableFacturadas") return true;
+    const d = selDist ? selDist.value : "";
+    const m = selModelo ? selModelo.value : "";
+    if (d) {
+      const dist = (row.distribuidor || "").trim();
+      if (d === SIN_DIST ? dist !== "" : dist !== d) return false;
+    }
+    if (m && (row.descripcion || "") !== m) return false;
+    return true;
+  });
 
   function textoPeriodo() {
     const d = inpDesde ? inpDesde.value : "";
@@ -68,7 +98,10 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     document.getElementById("factTotUnidades").textContent = fmtNum(rows.length);
     document.getElementById("factTotDistribuidores").textContent = fmtNum(dist.size);
-    document.getElementById("factPeriodo").textContent = textoPeriodo();
+    let periodo = textoPeriodo();
+    if (selDist && selDist.value) periodo += " · " + (selDist.value === SIN_DIST ? "Sin distribuidor" : selDist.value);
+    if (selModelo && selModelo.value) periodo += " · " + selModelo.value;
+    document.getElementById("factPeriodo").textContent = periodo;
   }
 
   if (document.getElementById("tableFacturadas")) {
@@ -79,20 +112,9 @@ document.addEventListener("DOMContentLoaded", function () {
       lengthMenu: [10, 25, 50, 100],
       order: [[0, "desc"]],
       dom:
-        "<'row align-items-center mb-2'<'col-md-6 d-flex align-items-center gap-2'lB><'col-md-6'f>>" +
+        "<'row align-items-center mb-2'<'col-md-6'l><'col-md-6'f>>" +
         "rt" +
         "<'row align-items-center mt-2'<'col-md-5'i><'col-md-7'p>>",
-      buttons: [
-        {
-          extend: "excelHtml5",
-          text: '<i class="ri-file-excel-2-line align-bottom me-1"></i> Exportar Excel',
-          className: "btn btn-soft-success btn-sm",
-          title: "Unidades facturadas",
-          filename: function () {
-            return "Unidades_Facturadas_" + ymd(new Date());
-          },
-        },
-      ],
       ajax: {
         url: base_url + "/Inv_movventasmasiva/getFacturadas",
         type: "GET",
@@ -108,8 +130,10 @@ document.addEventListener("DOMContentLoaded", function () {
             actualizarResumenTabla([]);
             return [];
           }
-          actualizarResumenTabla(json.data || []);
-          return json.data || [];
+          const rows = json.data || [];
+          llenarSelect(selDist, rows.map((r) => (r.distribuidor || "").trim()), "Todos los distribuidores", true);
+          llenarSelect(selModelo, rows.map((r) => r.descripcion || ""), "Todos los modelos", false);
+          return rows;
         },
         error: function (xhr) {
           console.error(xhr.responseText);
@@ -149,6 +173,14 @@ document.addEventListener("DOMContentLoaded", function () {
         url: "https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json",
         emptyTable: "No hay unidades facturadas en el periodo seleccionado.",
       },
+    });
+
+    tableFacturadas.on("draw", function () {
+      actualizarResumenTabla(tableFacturadas.rows({ search: "applied" }).data().toArray());
+    });
+
+    [selDist, selModelo].forEach((sel) => {
+      if (sel) sel.addEventListener("change", () => tableFacturadas.draw());
     });
 
     // Recalcular anchos al volver a la pestaña (la tabla se pudo dibujar oculta)
@@ -225,6 +257,8 @@ document.addEventListener("DOMContentLoaded", function () {
       inpDesde.value = "";
       inpHasta.value = "";
       marcarRapido("todo");
+      if (selDist) selDist.value = "";
+      if (selModelo) selModelo.value = "";
       if (tableFacturadas) tableFacturadas.search("");
       recargarFacturadas();
     });

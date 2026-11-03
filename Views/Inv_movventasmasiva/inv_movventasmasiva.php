@@ -42,7 +42,6 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
     .mvm-filters { background: var(--vz-light-bg-subtle); border: 1px solid var(--vz-border-color); border-radius: .5rem; padding: .9rem 1rem; }
     .mvm-filters .btn-group .btn { white-space: nowrap; }
     #tableFacturadas td.mvm-vin { font-family: var(--vz-font-monospace); font-size: .82rem; }
-    #tableFacturadas_wrapper .dt-buttons { margin-bottom: .5rem; }
 </style>
 
 <div class="main-content">
@@ -60,11 +59,8 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
                         </div>
 
                         <div class="page-title-right d-flex align-items-center gap-2 mt-2 mt-sm-0">
-                            <a href="<?= base_url() ?>/Inv_movcargamasiva" class="btn btn-soft-secondary btn-sm">
-                                <i class="ri-inbox-archive-line align-bottom me-1"></i> Carga de entradas
-                            </a>
                             <a href="<?= base_url() ?>/Inv_movimientosinventario" class="btn btn-soft-secondary btn-sm">
-                                <i class="ri-arrow-left-line align-bottom me-1"></i> Movimientos
+                                <i class="ri-arrow-left-line align-bottom me-1"></i> Regresar
                             </a>
                         </div>
                     </div>
@@ -115,7 +111,7 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
                         <div class="card-body">
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1 overflow-hidden">
-                                    <p class="text-uppercase fw-semibold text-muted text-truncate mb-2 fs-12">Disponibles</p>
+                                    <p class="text-uppercase fw-semibold text-muted text-truncate mb-2 fs-12">VIN disponibles</p>
                                     <h3 class="fw-semibold mb-1" id="kpiDisponibles">—</h3>
                                     <span class="text-muted fs-12">Listas para facturar</span>
                                 </div>
@@ -133,7 +129,7 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
                         <div class="card-body">
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1 overflow-hidden">
-                                    <p class="text-uppercase fw-semibold text-muted text-truncate mb-2 fs-12">Tatuadas</p>
+                                    <p class="text-uppercase fw-semibold text-muted text-truncate mb-2 fs-12">Unidades en inventario</p>
                                     <h3 class="fw-semibold mb-1" id="kpiTatuadas">—</h3>
                                     <span class="text-muted fs-12">También se pueden facturar</span>
                                 </div>
@@ -186,21 +182,34 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
                                         <label class="form-label fs-12 text-muted mb-1" for="factHasta">Venta hasta</label>
                                         <input type="date" class="form-control form-control-sm" id="factHasta">
                                     </div>
-                                    <div class="col-lg-5">
-                                        <div class="btn-group btn-group-sm w-100" role="group" aria-label="Periodo rápido" id="factRapidos">
-                                            <button type="button" class="btn btn-outline-primary" data-rango="mes">Este mes</button>
-                                            <button type="button" class="btn btn-outline-primary" data-rango="mesant">Mes anterior</button>
-                                            <button type="button" class="btn btn-outline-primary" data-rango="30">Últimos 30 días</button>
-                                            <button type="button" class="btn btn-outline-primary" data-rango="todo">Todo</button>
-                                        </div>
+                                    <div class="col-sm-6 col-lg-3">
+                                        <label class="form-label fs-12 text-muted mb-1" for="factDistribuidor">Distribuidor</label>
+                                        <select class="form-select form-select-sm" id="factDistribuidor">
+                                            <option value="">Todos los distribuidores</option>
+                                        </select>
                                     </div>
-                                    <div class="col-lg-3 d-flex gap-2">
+                                    <div class="col-sm-6 col-lg-3">
+                                        <label class="form-label fs-12 text-muted mb-1" for="factModelo">Modelo</label>
+                                        <select class="form-select form-select-sm" id="factModelo">
+                                            <option value="">Todos los modelos</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-2 d-flex gap-2">
                                         <button type="button" class="btn btn-primary btn-sm flex-grow-1" id="btnFiltrarFacturadas">
                                             <i class="ri-search-line align-bottom me-1"></i> Consultar
                                         </button>
                                         <button type="button" class="btn btn-soft-secondary btn-sm" id="btnLimpiarFacturadas" title="Limpiar filtros">
                                             <i class="ri-refresh-line align-bottom"></i>
                                         </button>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                                    <span class="fs-12 text-muted">Periodo rápido:</span>
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Periodo rápido" id="factRapidos">
+                                        <button type="button" class="btn btn-outline-primary" data-rango="mes">Este mes</button>
+                                        <button type="button" class="btn btn-outline-primary" data-rango="mesant">Mes anterior</button>
+                                        <button type="button" class="btn btn-outline-primary" data-rango="30">Últimos 30 días</button>
+                                        <button type="button" class="btn btn-outline-primary" data-rango="todo">Todo</button>
                                     </div>
                                 </div>
                             </div>

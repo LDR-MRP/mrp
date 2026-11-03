@@ -85,6 +85,7 @@ const MIMONEDAS = 70;
 const MIASIGNACIONESINV = 71;
 const MIREPORTES = 72;
 const MIMOVIMIENTOSALMACEN = 73;
+const MICOBRANZAUNIDADES = 87; // Inventario > Cobranza de unidades (Inv_cobranzaunidades)
 const MISEDES = 67;
 const MIZONAS = 68;
 const MIUBICACIONES = 69;

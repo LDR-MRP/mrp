@@ -99,6 +99,7 @@ const MIMULTIALMACENES = 26;
 const MIUNIDADES = 83; // Inventario > Unidades por año modelo (Inv_unidades)
 const MIINVDISTRIBUIDORES = 85; // Inventario > Inventario de distribuidores (Inv_invdistribuidores)
 const MICOLORESUNIDAD = 86; // Inventario > Catálogos > Colores de unidad (Inv_coloresunidad)
+const MICOBRANZAUNIDADES = 87; // Inventario > Cobranza de unidades (Inv_cobranzaunidades)
 const MIMONEDAS = 70;
 const MIASIGNACIONESINV = 71;
 const MIREPORTES = 72;

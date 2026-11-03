@@ -321,7 +321,7 @@ class Inv_movventasmasiva extends Controllers
 			}
 
 			if ($estadoNuevo === null) {
-				$log[] = $base + ['motivo' => 'ESTATUS no válido (usa 1 - Disponible, 2 - Tatuado o 3 - Facturado)'];
+				$log[] = $base + ['motivo' => "ESTATUS '{$estTxt}' no válido: usa 1 - Disponible, 2 - Tatuado o 3 - Facturado (el número debe coincidir con el texto; revisa si Excel cambió el número al arrastrar la celda)"];
 				continue;
 			}
 
@@ -867,8 +867,19 @@ class Inv_movventasmasiva extends Controllers
 		if ($t === '') {
 			return null;
 		}
-		if (preg_match('/^([123])(\s*-.*)?$/', $t, $m)) {
-			return $m[1];
+		// "número - texto": el texto debe corresponder al número. Así una serie
+		// generada al arrastrar la celda en Excel ("2 - Tatuado" -> "3 - Tatuado")
+		// se rechaza en vez de leerse como otro estatus (3 = Facturado).
+		if (preg_match('/^(\d+)\s*(?:-\s*(.*))?$/', $t, $m)) {
+			$num = $m[1];
+			$resto = trim($m[2] ?? '');
+			if (!isset(self::ESTATUS[$num])) {
+				return null;
+			}
+			if ($resto !== '' && $resto !== $this->normalizarTexto(self::ESTATUS[$num])) {
+				return null;
+			}
+			return (string) $num;
 		}
 		foreach (self::ESTATUS as $k => $v) {
 			if ($t === $this->normalizarTexto($v)) {
