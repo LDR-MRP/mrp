@@ -3,7 +3,7 @@ namespace Libraries\Core;
 
 class ApiRouter {
     public static function dispatch(string $requestedUrl): void {
-        // 1. Cargamos el archivo donde el usuario define las rutas. 
+        // 1. Cargamos el archivo donde el usuario define las rutas.
         // Este sí usa require porque no es una clase, es un script procedimental.
         $routesFile = __DIR__ . '/../../Routes/api.php';
         if (file_exists($routesFile)) {

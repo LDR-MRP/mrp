@@ -14,6 +14,22 @@ headerAdmin($data);
                     +
                 }
 
+                .banco-suggestion-item {
+                    padding: 8px 12px;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    transition: background 0.2s;
+                }
+
+                .banco-suggestion-item:hover {
+                    background: #f8f9fa;
+                }
+
+                .banco-suggestion-item.nuevo {
+                    color: #0ab39c;
+                    font-weight: 500;
+                }
+
                 .custom-timeline-container {
                     position: relative;
                     width: 100%;
@@ -494,10 +510,26 @@ headerAdmin($data);
                                                 <!-- Banco -->
                                                 <div class="col-md-8">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Institución Bancaria <span class="text-danger-asterisk">*</span></label>
-                                                    <select name="id_banco" id="id_banco" class="form-select border-dashed">
-                                                        <option value="">Selecciona un banco...</option>
-                                                        <!-- Opciones cargadas por JS desde cat_bancos -->
-                                                    </select>
+                                                    <div class="input-group" style="position: relative;">
+                                                        <input type="text"
+                                                               id="banco_autocomplete"
+                                                               class="form-control border-dashed"
+                                                               placeholder="Buscar o agregar banco..."
+                                                               autocomplete="off">
+                                                        <input type="hidden" name="id_banco" id="id_banco" value="">
+                                                        <button type="button"
+                                                                class="btn btn-outline-info"
+                                                                id="btn-agregar-banco-rapido"
+                                                                title="Agregar banco nuevo"
+                                                                style="display: none;">
+                                                            <i class="ri-add-line"></i>
+                                                        </button>
+                                                        <!-- Lista de sugerencias -->
+                                                        <div id="banco-suggestions" class="dropdown-menu w-100 d-none p-2 shadow" style="position: absolute; top: 100%; left: 0; z-index: 1000; max-height: 200px; overflow-y: auto; background: white; border: 1px solid #dee2e6; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                                                            <!-- Sugerencias vía JS -->
+                                                        </div>
+                                                    </div>
+                                                    <small class="text-muted fs-11 mt-1">Escribe para buscar del catálogo o agrega uno nuevo</small>
                                                 </div>
                                                 <!-- Moneda -->
                                                 <div class="col-md-4">
@@ -727,6 +759,41 @@ headerAdmin($data);
                 </div>
                 <!-- End Tabs Content Section -->
             </section>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Registrar Nuevo Banco -->
+<div class="modal fade" id="modalNuevoBanco" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="ri-bank-line align-middle me-2"></i>
+                    Registrar Nuevo Banco
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label text-uppercase fs-11 fw-bold text-muted">Nombre Corto <span class="text-danger-asterisk">*</span></label>
+                    <input type="text" id="nuevo_banco_nombre_corto" class="form-control border-dashed" placeholder="Ej: Bank of America">
+                    <small class="text-muted fs-11">Nombre corto del banco (3-50 caracteres)</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-uppercase fs-11 fw-bold text-muted">Razón Social <span class="text-danger-asterisk">*</span></label>
+                    <input type="text" id="nuevo_banco_razon_social" class="form-control border-dashed" placeholder="Ej: Bank of America S.A.">
+                    <small class="text-muted fs-11">Razón social completa del banco</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="ri-close-line align-middle me-1"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" id="btn-guardar-banco">
+                    <i class="ri-save-line align-middle me-1"></i> Guardar Banco
+                </button>
+            </div>
         </div>
     </div>
 </div>

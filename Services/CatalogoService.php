@@ -40,7 +40,39 @@ class CatalogoService
 
     public function bancos()
     {
-        return ServiceResponse::success($this->catBancoModel->all());
+        $bancos = $this->catBancoModel->all();
+        error_log('[CatalogoService::bancos] Bancos devueltos: ' . json_encode($bancos));
+        return ServiceResponse::success($bancos);
+    }
+
+    public function guardarBanco(array $data, int $userId)
+    {
+        // Generar ID manualmente (la tabla no tiene AUTO_INCREMENT)
+        $maxIdResult = $this->catBancoModel->select("SELECT MAX(id_banco) as max_id FROM cat_bancos");
+        $nextId = ($maxIdResult[0]['max_id'] ?? 0) + 1;
+
+        $sql = "INSERT INTO cat_bancos (
+                    id_banco,
+                    nombre_corto,
+                    razon_social,
+                    origen_registro,
+                    estatus
+                ) VALUES (?, ?, ?, ?, 1)";
+
+        $values = [
+            $nextId,
+            $data['nombre_corto'],
+            $data['razon_social'],
+            $data['origen_registro'] ?? 'USUARIO'
+        ];
+
+        $bancoId = $this->catBancoModel->insert($sql, $values);
+
+        if (!$bancoId) {
+            return ServiceResponse::error("No se pudo crear el banco.");
+        }
+
+        return ServiceResponse::success(['id_banco' => $nextId], "Banco registrado exitosamente.", 201);
     }
 
     public function codigospostales(mixed $cp)

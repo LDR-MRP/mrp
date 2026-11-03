@@ -676,36 +676,43 @@ class SupplierService
      */
     private function checkAndActivateSupplier(int $supplierId, int $adminId): bool
     {
-        // 1. Obtener los datos maestros para conocer el perfil fiscal (tipo persona y origen)
+        // 1. Obtener datos del proveedor
         $supplier = $this->proveedorModel->getById($supplierId);
         if (!$supplier) return false;
 
-        // 2. Manejar valores null para extranjeros
         $tipoPersona = $supplier['id_tipo_persona'] ?? 'F';
         $origen = $supplier['origen'] ?? 'Nacional';
 
-        // 3. Consultar al Enum cuántos documentos se requieren para este perfil exacto
-        $requiredDocsList = DocumentTypeEnum::getRequiredList(
-            $tipoPersona, 
-            $origen
-        );
-        $requiredCount = count($requiredDocsList);
+        // 2. Obtener configuración de documentos según perfil
+        $requiredDocsList = DocumentTypeEnum::getRequiredList($tipoPersona, $origen);
+        
+        // 3. Obtener documentos cargados del proveedor
+        $uploaded = $this->expedienteModel->uploadedDocuments($supplierId);
+        $uploadedIndexed = array_column($uploaded, null, 'tipo_documento');
 
-        // 3. Contamos cuántos documentos tienen estatus_validacion = 1 (Aprobado) en la BD
-        $approvedCount = $this->expedienteModel->countApprovedDocuments($supplierId);
+        // 4. Contar documentos REQUERIDOS aprobados
+        $approvedRequired = 0;
+        $totalRequired = 0;
+        
+        foreach ($requiredDocsList as $docType => $config) {
+            if ($config['required']) {
+                $totalRequired++;
+                $fileInfo = $uploadedIndexed[$docType] ?? null;
+                if (isset($fileInfo['estatus_validacion']) && (int)$fileInfo['estatus_validacion'] === 1) {
+                    $approvedRequired++;
+                }
+            }
+        }
 
-        // 4. Lógica de activación dinámica
-        // Validamos que el conteo de aprobados sea igual o mayor al requerido para este perfil
-        if ($requiredCount > 0 && $approvedCount >= $requiredCount) {
-            
-            // El proveedor ha cumplido con su onboarding específico
+        // 5. Verificar si todos los requeridos están aprobados (opcionales no bloquean)
+        if ($totalRequired > 0 && $approvedRequired >= $totalRequired) {
+            // CRITERIO: Solo requeridos aprobados, ignorar opcionales
             $this->proveedorModel->updateOnboardingStatus($supplierId, 'Aprobado', $adminId);
             
-            // Auditoría con detalle de la métrica de cumplimiento
             $this->proveedorModel->logAudit(
                 $supplierId, 
                 AuditAction::FINALIZED, 
-                "Onboarding completado con éxito. Cumplimiento de expediente: {$approvedCount}/{$requiredCount} documentos aprobados.", 
+                "Onboarding completado. Requeridos aprobados: {$approvedRequired}/{$totalRequired}. Opcionales cargados no bloquean finalización.", 
                 $adminId
             );
 
