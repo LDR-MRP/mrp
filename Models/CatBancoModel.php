@@ -17,7 +17,8 @@ class CatBancoModel extends Mysql
                 nombre_corto,
                 razon_social,
                 estatus
-            FROM cat_bancos;"
+            FROM cat_bancos
+            WHERE estatus = 1;"
         );
     }
 
@@ -28,5 +29,13 @@ class CatBancoModel extends Mysql
     {
         $sql = "SELECT id_banco, nombre_corto FROM cat_bancos WHERE id_banco = ?";
         return $this->select($sql, [$idBanco]) ?: null;
+    }
+
+    /**
+     * Inserta un nuevo banco en el catálogo (agregado por usuario).
+     */
+    public function insert(string $query, array $arrValues): int
+    {
+        return parent::insert($query, $arrValues);
     }
 }

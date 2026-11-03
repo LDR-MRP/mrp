@@ -935,6 +935,186 @@ const bankingManager = {
 };
 
 /**
+ * Autocomplete para selección/creación de bancos
+ */
+const bancoAutocomplete = {
+    bancoCatalogo: [],
+
+    init: function() {
+        this.loadCatalogs();
+        this.events();
+    },
+
+    loadCatalogs: function() {
+        console.log('[bancoAutocomplete] Cargando catálogo de bancos...');
+        Sys_Core.Net.get({
+            url: `${Sys_Core.Config.baseUrl}/api/v1/catalogs/bancos`,
+            onSuccess: (res) => {
+                console.log('[bancoAutocomplete] Respuesta recibida:', res);
+                if (res.status && res.data) {
+                    this.bancoCatalogo = res.data;
+                    console.log('[bancoAutocomplete] Catálogo cargado:', this.bancoCatalogo.length, 'bancos');
+                } else {
+                    console.error('[bancoAutocomplete] Error en respuesta:', res);
+                }
+            },
+            onError: (err) => {
+                console.error('[bancoAutocomplete] Error al cargar catálogo:', err);
+            }
+        });
+    },
+
+    events: function() {
+        const self = this;
+
+        // Autocomplete mientras escribe
+        $('#banco_autocomplete').on('keyup', function() {
+            const query = $(this).val().toLowerCase();
+            const $suggestions = $('#banco-suggestions');
+            const $btnAgregar = $('#btn-agregar-banco-rapido');
+
+            console.log('[bancoAutocomplete] keyup - query:', query, 'catálogo length:', self.bancoCatalogo.length);
+
+            if (query.length < 2) {
+                $suggestions.addClass('d-none').removeClass('show');
+                $btnAgregar.hide();
+                return;
+            }
+
+            const coincidencias = self.bancoCatalogo.filter(b =>
+                b.nombre_corto.toLowerCase().includes(query) ||
+                b.razon_social.toLowerCase().includes(query)
+            );
+
+            console.log('[bancoAutocomplete] coincidencias:', coincidencias.length);
+
+            if (coincidencias.length > 0) {
+                let html = coincidencias.map(b =>
+                    `<div class="banco-suggestion-item" data-id="${b.id_banco}" data-nombre="${b.nombre_corto}">
+                        ${b.nombre_corto}
+                    </div>`
+                ).join('');
+
+                console.log('[bancoAutocomplete] HTML generado:', html);
+                $suggestions.html(html).removeClass('d-none').addClass('show');
+                console.log('[bancoAutocomplete] Dropdown debería ser visible, clase d-none removida y show agregada');
+                console.log('[bancoAutocomplete] Clases actuales:', $suggestions.attr('class'));
+                console.log('[bancoAutocomplete] Elemento visible:', $suggestions.is(':visible'));
+                console.log('[bancoAutocomplete] Computed display:', $suggestions.css('display'));
+                $btnAgregar.hide();
+            } else {
+                $suggestions.html(`
+                    <div class="banco-suggestion-item nuevo" data-action="modal">
+                        <i class="ri-add-circle-line"></i> Registrar nuevo banco
+                    </div>
+                `).removeClass('d-none').addClass('show');
+
+                $btnAgregar.show();
+            }
+        });
+
+        // Selección de sugerencia
+        $(document).on('click', '.banco-suggestion-item', function() {
+            const action = $(this).data('action');
+
+            if (action === 'modal') {
+                // Abrir modal para registrar nuevo banco
+                const query = $('#banco_autocomplete').val();
+                $('#nuevo_banco_nombre_corto').val(query);
+                $('#nuevo_banco_razon_social').val('');
+                $('#modalNuevoBanco').modal('show');
+                $('#banco-suggestions').addClass('d-none').removeClass('show');
+            } else {
+                const id = $(this).data('id');
+                const nombre = $(this).data('nombre');
+
+                $('#banco_autocomplete').val(nombre);
+                $('#id_banco').val(id);
+                $('#banco-suggestions').addClass('d-none').removeClass('show');
+            }
+        });
+
+        // Botón "+" como alternativa para abrir modal
+        $('#btn-agregar-banco-rapido').on('click', function() {
+            const query = $('#banco_autocomplete').val();
+            $('#nuevo_banco_nombre_corto').val(query);
+            $('#nuevo_banco_razon_social').val('');
+            $('#modalNuevoBanco').modal('show');
+        });
+
+        // Botón "Guardar Banco" en el modal
+        $('#btn-guardar-banco').on('click', function() {
+            const nombreCorto = $('#nuevo_banco_nombre_corto').val().trim();
+            const razonSocial = $('#nuevo_banco_razon_social').val().trim();
+
+            // Validación
+            if (!nombreCorto) {
+                alert('Debe ingresar el nombre corto del banco');
+                return;
+            }
+            if (nombreCorto.length < 3) {
+                alert('El nombre corto debe tener al menos 3 caracteres');
+                return;
+            }
+            if (!razonSocial) {
+                alert('Debe ingresar la razón social del banco');
+                return;
+            }
+
+            // Deshabilitar botón
+            $(this).prop('disabled', true).html('<i class="ri-loader-4-line spin"></i> Guardando...');
+
+            Sys_Core.Net.post({
+                url: `${Sys_Core.Config.baseUrl}/ajax/guardar_banco.php`,
+                payload: {
+                    nombre_corto: nombreCorto,
+                    razon_social: razonSocial,
+                    origen_registro: 'USUARIO'
+                },
+                onSuccess: (res) => {
+                    if (res.status === 'success') {
+                        // Cerrar modal
+                        $('#modalNuevoBanco').modal('hide');
+
+                        // Seleccionar el banco creado
+                        $('#banco_autocomplete').val(nombreCorto);
+                        $('#id_banco').val(res.data.id_banco);
+                        $('#banco-suggestions').addClass('d-none').removeClass('show');
+                        $('#btn-agregar-banco-rapido').hide();
+
+                        // Agregar al catálogo local
+                        self.bancoCatalogo.push({
+                            id_banco: res.data.id_banco,
+                            nombre_corto: nombreCorto,
+                            razon_social: razonSocial
+                        });
+
+                        Sys_Core.UI.notify('Banco registrado exitosamente', 'success');
+
+                        // Limpiar campos del modal
+                        $('#nuevo_banco_nombre_corto').val('');
+                        $('#nuevo_banco_razon_social').val('');
+                    } else {
+                        alert('Error: ' + (res.error || 'No se pudo crear el banco'));
+                    }
+                },
+                onComplete: () => {
+                    // Restaurar botón
+                    $('#btn-guardar-banco').prop('disabled', false).html('<i class="ri-save-line align-middle me-1"></i> Guardar Banco');
+                }
+            });
+        });
+
+        // Cerrar al hacer clic fuera
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('.input-group').length && !$(e.target).closest('#banco-suggestions').length) {
+                $('#banco-suggestions').addClass('d-none').removeClass('show');
+            }
+        });
+    }
+};
+
+/**
  * Gestión visual del Stepper de Onboarding
  */
 const onboardingManager = {
@@ -1124,5 +1304,6 @@ $(document).ready(() => {
     plantasManager.init();
     files.init();
     bankingManager.init();
+    bancoAutocomplete.init();
     onboardingManager.init();
 });

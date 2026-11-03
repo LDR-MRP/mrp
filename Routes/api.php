@@ -184,7 +184,10 @@ Route::get('api/v1/currencies', [CurrencyController::class, 'index'])->middlewar
 Route::get('api/v1/catalogs/product-lines', [Catalogo::class, 'productLines'])->middleware([AuthMiddleware::class]);
 
 // -- PAYMENT METHODS --
-Route::get('api/v1/catalogs/payment-methods', [Catalogo::class, 'paymentMethods'])->middleware([AuthMiddleware::class]);
+Route::get('api/v1/catalogs/payment-methods', ['Catalogo', 'paymentMethods'])->middleware([AuthMiddleware::class]);
+
+// -- BANCOS --
+Route::get('api/v1/catalogs/bancos', ['Catalogo', 'bancos'])->middleware([AuthMiddleware::class]);
 
 // -- Plantas
 Route::get('api/v1/catalogs/plants', [Catalogo::class, 'plants'])->middleware([AuthMiddleware::class]);
