@@ -80,10 +80,10 @@ class Inv_movventasmasiva extends Controllers
 		$h1->setCellValue('A2', 'Generado: ' . date('Y-m-d H:i:s') . ' · histórico general: ' . count($vines) . ' VIN(s)');
 
 		$instrucciones = [
-			'1. Este archivo es SOLO DE ACTUALIZACIÓN: contiene el HISTÓRICO GENERAL de VINs (1 - Disponible, 2 - Tatuado y 3 - Facturado) de todas las plantas y almacenes. No agregues filas: cualquier VIN que no exista se rechaza.',
+			'1. Este archivo es SOLO DE ACTUALIZACIÓN: contiene el HISTÓRICO GENERAL de VINs (Disponible, Tatuado y Facturado) de todas las plantas y almacenes. No agregues filas: cualquier VIN que no exista se rechaza.',
 			'2. Solo captura las columnas en VERDE: ESTATUS, DISTRIBUIDOR y FACTURA. Las columnas en GRIS (PLANTA, ALMACEN, SKU, NOMBRE, VIN, NUMERO_MOTOR, FECHA_VENTA) son informativas: si se modifican, esa fila NO se sube y se manda al log.',
-			'3. Para facturar una unidad cambia ESTATUS a "3 - Facturado", ESCRIBE el nombre del DISTRIBUIDOR (campo libre) y el número de FACTURA. Se puede facturar un VIN que esté en "1 - Disponible" o en "2 - Tatuado".',
-			'3b. En los VINs que ya están en "3 - Facturado" puedes CORREGIR el DISTRIBUIDOR o la FACTURA de su venta (solo si esa venta es de una sola unidad). No se puede cambiar su ESTATUS aquí: las devoluciones se hacen en la sección de Devoluciones.',
+			'3. Para facturar una unidad cambia ESTATUS a "Facturado" (elígelo de la lista), ESCRIBE el nombre del DISTRIBUIDOR (campo libre) y el número de FACTURA. Se puede facturar un VIN que esté en "Disponible" o en "Tatuado". Puedes arrastrar la celda para copiar el mismo estatus a varias filas.',
+			'3b. En los VINs que ya están en "Facturado" puedes CORREGIR el DISTRIBUIDOR o la FACTURA de su venta (solo si esa venta es de una sola unidad). No se puede cambiar su ESTATUS aquí: las devoluciones se hacen en la sección de Devoluciones.',
 			'4. Una unidad por factura: cada VIN facturado genera su propio movimiento de Ventas (baja la existencia del almacén donde está el VIN). Una misma FACTURA no puede usarse para dos VINs, ni repetir una factura ya registrada.',
 			'5. No se permiten otros cambios de estatus desde este archivo (por ejemplo 1 -> 2: el tatuado se hace en Planeación). Las filas sin cambios simplemente se ignoran.',
 			'6. Solo se pueden vender unidades que estén en almacenes de PRODUCTO TERMINADO o en el almacén de TRÁNSITO; las de otros almacenes se rechazan. También se rechaza si el VIN está en un traslado activo o el almacén no tiene existencia suficiente.',
@@ -106,7 +106,7 @@ class Inv_movventasmasiva extends Controllers
 		$he->getStyle('A1')->getFont()->setBold(true);
 		$r = 2;
 		foreach (self::ESTATUS as $k => $v) {
-			$he->setCellValue('A' . $r, $k . ' - ' . $v);
+			$he->setCellValue('A' . $r, $v);
 			$r++;
 		}
 		$he->getColumnDimension('A')->setWidth(20);
@@ -137,7 +137,7 @@ class Inv_movventasmasiva extends Controllers
 			$hv->setCellValueExplicit('D' . $r, (string) $v['descripcion'], $T);
 			$hv->setCellValueExplicit('E' . $r, (string) $v['numero_serie'], $T);
 			$hv->setCellValueExplicit('F' . $r, (string) $v['numero_motor'], $T);
-			$hv->setCellValueExplicit('G' . $r, $v['estado'] . ' - ' . (self::ESTATUS[$v['estado']] ?? ''), $T);
+			$hv->setCellValueExplicit('G' . $r, self::ESTATUS[$v['estado']] ?? '', $T);
 			if ($v['estado'] === '3') {
 				$hv->setCellValueExplicit('H' . $r, (string) $v['distribuidor'], $T);
 				$hv->setCellValueExplicit('I' . $r, (string) $v['factura'], $T);
@@ -321,13 +321,13 @@ class Inv_movventasmasiva extends Controllers
 			}
 
 			if ($estadoNuevo === null) {
-				$log[] = $base + ['motivo' => "ESTATUS '{$estTxt}' no válido: usa 1 - Disponible, 2 - Tatuado o 3 - Facturado (el número debe coincidir con el texto; revisa si Excel cambió el número al arrastrar la celda)"];
+				$log[] = $base + ['motivo' => "ESTATUS '{$estTxt}' no válido: usa Disponible, Tatuado o Facturado (si trae número, debe coincidir con el texto)"];
 				continue;
 			}
 
 			if ($estadoNuevo === $estadoBD) {
 				if ($cliTxt !== '' || $factura !== '') {
-					$log[] = $base + ['motivo' => 'Se capturó distribuidor/factura pero el ESTATUS no se cambió a 3 - Facturado'];
+					$log[] = $base + ['motivo' => 'Se capturó distribuidor/factura pero el ESTATUS no se cambió a Facturado'];
 				} else {
 					$sinCambios++;
 				}
@@ -336,8 +336,8 @@ class Inv_movventasmasiva extends Controllers
 
 			if (!(in_array($estadoBD, ['1', '2'], true) && $estadoNuevo === '3')) {
 				$log[] = $base + ['motivo' => 'Cambio de estatus no permitido en este archivo: '
-					. $estadoBD . ' - ' . self::ESTATUS[$estadoBD] . ' -> ' . $estadoNuevo . ' - ' . self::ESTATUS[$estadoNuevo]
-					. ' (solo se permite pasar a 3 - Facturado desde 1 - Disponible o 2 - Tatuado)'];
+					. self::ESTATUS[$estadoBD] . ' -> ' . self::ESTATUS[$estadoNuevo]
+					. ' (solo se permite pasar a Facturado desde Disponible o Tatuado)'];
 				continue;
 			}
 
@@ -536,9 +536,9 @@ class Inv_movventasmasiva extends Controllers
 			'1. Este archivo es SOLO DE ACTUALIZACIÓN: contiene los VINs que hoy están Facturados. No agregues filas: un VIN que no esté facturado se rechaza.',
 			'2. Para devolver una unidad cambia ESTATUS a "DEVOLUCION". No hay que capturar nada más.',
 			'3. La unidad regresa al mismo almacén del que salió (columna ALMACEN_SALIDA).',
-			'4. Cada VIN devuelto genera su propio movimiento "Devol. de venta" (suma 1 en la existencia de ese almacén) y el VIN queda como 1 - Disponible, listo para venderse otra vez con otra factura.',
+			'4. Cada VIN devuelto genera su propio movimiento "Devol. de venta" (suma 1 en la existencia de ese almacén) y el VIN queda como Disponible, listo para venderse otra vez con otra factura.',
 			'5. Las columnas en GRIS son informativas (SKU, NOMBRE, VIN, NUMERO_MOTOR, DISTRIBUIDOR, FACTURA...): si se modifican, esa fila NO se sube y se manda al log. Única excepción: si la venta no tiene DISTRIBUIDOR registrado, puedes escribirlo.',
-			'6. Las filas que se dejan en "3 - Facturado" se ignoran. Al terminar puedes descargar el log con lo que no se subió.',
+			'6. Las filas que se dejan en "Facturado" se ignoran. Al terminar puedes descargar el log con lo que no se subió.',
 		];
 		$f = 4;
 		foreach ($inst as $txt) {
@@ -553,7 +553,7 @@ class Inv_movventasmasiva extends Controllers
 		/* ---------- OPCIONES DE ESTATUS ---------- */
 		$he = $ss->createSheet();
 		$he->setTitle('Estatus');
-		$he->fromArray([['ESTATUS'], ['3 - Facturado'], ['DEVOLUCION']], null, 'A1');
+		$he->fromArray([['ESTATUS'], ['Facturado'], ['DEVOLUCION']], null, 'A1');
 		$he->getStyle('A1')->getFont()->setBold(true);
 
 		/* ---------- DEVOLUCIONES (captura) ---------- */
@@ -574,7 +574,7 @@ class Inv_movventasmasiva extends Controllers
 		$r = 2;
 		foreach ($vines as $v) {
 			$fila = [$v['almacen_salida'], $v['cve_articulo'], $v['descripcion'], $v['numero_serie'], $v['numero_motor'],
-				$v['distribuidor'], $v['factura'], $v['fecha_venta'], '3 - Facturado'];
+				$v['distribuidor'], $v['factura'], $v['fecha_venta'], 'Facturado'];
 			foreach ($fila as $k => $val) {
 				$hv->setCellValueExplicit(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($k + 1) . $r, (string) $val, $T);
 			}
@@ -860,7 +860,7 @@ class Inv_movventasmasiva extends Controllers
 		return $cod !== '' ? $cod . ' - ' . $c['nombre'] : (string) $c['nombre'];
 	}
 
-	/** "3 - Facturado", "3", "Facturado" -> '3'. */
+	/** "Facturado", "3" o "3 - Facturado" (layouts anteriores) -> '3'. */
 	private function parsearEstatus(string $txt): ?string
 	{
 		$t = $this->normalizarTexto($txt);

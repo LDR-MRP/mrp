@@ -66,7 +66,7 @@
                                 <div class="col-md-3">
                                     <label class="form-label">Concepto</label>
                                     <select id="filtroConcepto" class="form-control">
-                                        <option value="">Todos</option>
+                                        <option value="">Todos </option>
                                     </select>
                                 </div>
 

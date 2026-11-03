@@ -77,7 +77,7 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
                                 <div class="flex-grow-1 overflow-hidden">
                                     <p class="text-uppercase fw-semibold text-muted text-truncate mb-2 fs-12">Facturadas (histórico)</p>
                                     <h3 class="fw-semibold mb-1" id="kpiFacturadas">—</h3>
-                                    <span class="text-muted fs-12">VINs en estatus 3 - Facturado</span>
+                                    <span class="text-muted fs-12">VINs en estatus Facturado</span>
                                 </div>
                                 <div class="avatar-sm flex-shrink-0">
                                     <span class="avatar-title bg-primary-subtle text-primary rounded-3">
@@ -257,7 +257,7 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
                                         <div class="mvm-step-body">
                                             <h6>Captura en Excel</h6>
                                             <p class="text-muted fs-13 mb-0">
-                                                Cambia <strong>ESTATUS</strong> a <span class="badge bg-secondary">3 - Facturado</span> y escribe el
+                                                Cambia <strong>ESTATUS</strong> a <span class="badge bg-secondary">Facturado</span> y escribe el
                                                 <strong>DISTRIBUIDOR</strong> (texto libre) y la <strong>FACTURA</strong>. Solo se editan las columnas en verde.
                                             </p>
                                         </div>
@@ -298,7 +298,7 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
                                     <div class="border rounded-3 p-3 h-100">
                                         <h6 class="fw-semibold mb-2"><i class="ri-information-line text-primary me-1"></i> Reglas de la carga</h6>
                                         <ul class="mvm-rules">
-                                            <li><i class="ri-arrow-right-circle-line text-primary"></i><span>Se factura desde <span class="badge bg-success">1 - Disponible</span> o <span class="badge bg-danger">2 - Tatuado</span>.</span></li>
+                                            <li><i class="ri-arrow-right-circle-line text-primary"></i><span>Se factura desde <span class="badge bg-success">Disponible</span> o <span class="badge bg-danger">Tatuado</span>.</span></li>
                                             <li><i class="ri-file-paper-2-line text-primary"></i><span><strong>Una unidad por factura:</strong> cada VIN genera su propio movimiento de Ventas y baja la existencia de su almacén.</span></li>
                                             <li><i class="ri-building-line text-primary"></i><span>Solo se venden unidades de almacenes de <strong>Producto Terminado</strong> o <strong>Tránsito</strong>.</span></li>
                                             <li><i class="ri-edit-2-line text-primary"></i><span>En VINs ya facturados puedes <strong>corregir</strong> el distribuidor o la factura (ventas de una unidad).</span></li>
@@ -380,7 +380,7 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
                                         <ul class="mvm-rules">
                                             <li><i class="ri-home-4-line text-warning"></i><span>La unidad regresa al <strong>mismo almacén</strong> del que salió.</span></li>
                                             <li><i class="ri-exchange-line text-warning"></i><span>Cada VIN genera un movimiento <strong>Devol. de venta</strong> (suma 1 en multialmacén).</span></li>
-                                            <li><i class="ri-checkbox-circle-line text-success"></i><span>El VIN queda en <span class="badge bg-success">1 - Disponible</span>, listo para volver a venderse.</span></li>
+                                            <li><i class="ri-checkbox-circle-line text-success"></i><span>El VIN queda en <span class="badge bg-success">Disponible</span>, listo para volver a venderse.</span></li>
                                         </ul>
                                     </div>
                                 </div>
