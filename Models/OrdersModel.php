@@ -663,6 +663,7 @@ public function selectImagenesUnidad(int $idunidad)
     $sql = "SELECT
                 idimagen,
                 idunidad,
+                idunidad_color,
                 nombre_original,
                 nombre_archivo,
                 ruta_archivo,
@@ -680,6 +681,42 @@ public function selectImagenesUnidad(int $idunidad)
     return $this->select_all($sql);
 }
 
+
+    // 2026-11-02: Variantes de color disponibles en el catálogo.
+    public function selectColoresUnidad(int $idunidad) {
+        $idunidad = (int)$idunidad;
+        return $this->select_all("SELECT uc.idunidad_color, uc.idunidad, uc.es_predeterminado, uc.orden,
+            c.nombre AS nombre_color, c.codigo_hex
+            FROM web_unidades_colores uc INNER JOIN web_colores c ON c.idcolor=uc.idcolor
+            WHERE uc.idunidad=$idunidad AND uc.estado=2 AND c.estado=2
+            ORDER BY uc.es_predeterminado DESC,uc.orden ASC,uc.idunidad_color ASC");
+    }
+    // Rechaza un color de otro modelo o desactivado; NULL solo para modelos sin variantes.
+    public function validarColorUnidad(int $idunidad, int $idunidadColor): bool {
+        $idunidad=(int)$idunidad; $idunidadColor=(int)$idunidadColor;
+        if ($idunidadColor<=0) {
+            $row=$this->select("SELECT COUNT(*) AS total FROM web_unidades_colores uc
+                INNER JOIN web_colores c ON c.idcolor=uc.idcolor
+                WHERE uc.idunidad=$idunidad AND uc.estado=2 AND c.estado=2");
+            return (int)($row['total']??0)===0;
+        }
+        $row=$this->select("SELECT uc.idunidad_color FROM web_unidades_colores uc
+            INNER JOIN web_colores c ON c.idcolor=uc.idcolor
+            WHERE uc.idunidad=$idunidad AND uc.idunidad_color=$idunidadColor
+            AND uc.estado=2 AND c.estado=2 LIMIT 1");
+        return !empty($row);
+    }
+    public function selectColoresCatalogo(): array {
+        $rows=$this->select_all("SELECT uc.idunidad_color,uc.idunidad,uc.es_predeterminado,
+            c.nombre AS nombre_color,c.codigo_hex,
+            (SELECT wi.ruta_archivo FROM web_unidades_imagenes wi
+             WHERE wi.idunidad=uc.idunidad AND wi.idunidad_color=uc.idunidad_color AND wi.estado=2
+             ORDER BY wi.es_principal DESC,wi.orden ASC,wi.idimagen ASC LIMIT 1) AS imagen_color
+            FROM web_unidades_colores uc
+            INNER JOIN web_colores c ON c.idcolor=uc.idcolor
+            WHERE uc.estado=2 AND c.estado=2 ORDER BY uc.es_predeterminado DESC,uc.orden ASC");
+        return is_array($rows)?$rows:[];
+    }
 
     /**
      * Obtiene las sucursales activas pertenecientes
@@ -1040,6 +1077,7 @@ public function insertPedidoDetalle(array $data) {
     $sql = "INSERT INTO ped_pedidos_detalle (
             idpedido,
             idunidad,
+            idunidad_color,
             tipo_entrega,
             idsucursal_entrega,
             direccion_entrega,
@@ -1058,6 +1096,7 @@ public function insertPedidoDetalle(array $data) {
             fecha_actualizacion
         )
         VALUES (
+            ?,
             ?,
             ?,
             ?,
@@ -1092,6 +1131,7 @@ public function insertPedidoDetalle(array $data) {
                 'idunidad'
             ]
         ),
+        !empty($data['idunidad_color']) ? (int)$data['idunidad_color'] : null,
 
         $data[
             'tipo_entrega'
@@ -1343,6 +1383,7 @@ public function selectPedidosCliente(int $idcliente)
                 ) AS total_modelos
 
             FROM ped_pedidos_detalle pd
+            WHERE pd.estado = 2
 
             GROUP BY
                 pd.idpedido
@@ -1501,6 +1542,8 @@ public function selectDetallesPedidoEditar(int $idpedido) {
             pd.idpedido_detalle,
             pd.idpedido,
             pd.idunidad,
+            pd.idunidad_color,
+            (SELECT c.nombre FROM web_unidades_colores uc JOIN web_colores c ON c.idcolor=uc.idcolor WHERE uc.idunidad_color=pd.idunidad_color) AS nombre_color,
             pd.tipo_entrega,
             pd.idsucursal_entrega,
             pd.direccion_entrega,
@@ -1528,7 +1571,10 @@ public function selectDetallesPedidoEditar(int $idpedido) {
             wu.motor,
             wu.stock,
             wu.precio_dealer,
-            wu.imagen_caratula
+            COALESCE((SELECT wi.ruta_archivo FROM web_unidades_imagenes wi
+                      WHERE wi.idunidad=pd.idunidad AND wi.idunidad_color=pd.idunidad_color
+                        AND wi.estado=2 ORDER BY wi.es_principal DESC,wi.orden ASC,wi.idimagen ASC LIMIT 1),
+                     wu.imagen_caratula) AS imagen_caratula
 
         FROM ped_pedidos_detalle pd
 
@@ -1668,6 +1714,7 @@ public function updatePedidoCabecera(int $idpedido,array $data) {
 public function updatePedidoDetalle(int $idpedidoDetalle,int $idpedido,array $data) {
     $sql = "UPDATE ped_pedidos_detalle
         SET
+            idunidad_color = ?,
             tipo_entrega = ?,
             idsucursal_entrega = ?,
             direccion_entrega = ?,
@@ -1686,6 +1733,7 @@ public function updatePedidoDetalle(int $idpedidoDetalle,int $idpedido,array $da
     ";
 
     $arrData = [
+        !empty($data['idunidad_color']) ? (int)$data['idunidad_color'] : null,
         $data['tipo_entrega'],
         $data['idsucursal_entrega'],
         $data['direccion_entrega'],
@@ -1950,6 +1998,16 @@ public function selectDetallesPedido(int $idpedido) {
             d.idpedido_detalle,
             d.idpedido,
             d.idunidad,
+            d.idunidad_color,
+            col.nombre AS nombre_color,
+            col.codigo_hex AS codigo_hex_color,
+            (SELECT wi.ruta_archivo
+               FROM web_unidades_imagenes AS wi
+              WHERE wi.idunidad = d.idunidad
+                AND wi.idunidad_color = d.idunidad_color
+                AND wi.estado = 2
+              ORDER BY wi.es_principal DESC, wi.orden ASC, wi.idimagen ASC
+              LIMIT 1) AS imagen_color,
 
             d.tipo_entrega,
             d.idsucursal_entrega,
@@ -2000,6 +2058,12 @@ public function selectDetallesPedido(int $idpedido) {
         INNER JOIN web_unidades AS u
             ON u.idunidad = d.idunidad
 
+
+        LEFT JOIN web_unidades_colores AS uc
+            ON uc.idunidad_color = d.idunidad_color
+           AND uc.idunidad = d.idunidad
+        LEFT JOIN web_colores AS col
+            ON col.idcolor = uc.idcolor
 
         LEFT JOIN cli_clientes_sucursales AS s
             ON s.idsucursal = d.idsucursal_entrega

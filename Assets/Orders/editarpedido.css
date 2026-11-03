@@ -1194,3 +1194,10 @@ strong {
         text-align: left;
     }
 }
+/* 2026-11-02 | Selector de color dentro de la columna de contenido */
+.edit-order-page .edit-order-item { align-items: start; }
+.edit-order-page .edit-item-content { min-width: 0; }
+.edit-order-page .edit-item-color-control { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; margin: 0 0 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; }
+.edit-order-page .edit-item-color-control .form-label { margin: 0; color: #334155; font-size: .82rem; }
+.edit-order-page .edit-item-color-control .form-select { width: 100%; min-width: 0; max-width: 420px; min-height: 42px; border-radius: 9px; background-color: #fff; }
+@media (max-width: 575px) { .edit-order-page .edit-order-item { grid-template-columns: minmax(0,1fr); padding: 12px; gap: 12px; } .edit-order-page .edit-item-image { width: 100%; height: 175px; } .edit-order-page .edit-item-image img { object-fit: contain; } .edit-order-page .edit-item-color-control .form-select { max-width: none; } }

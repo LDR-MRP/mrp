@@ -25,6 +25,7 @@ document.addEventListener(
     configurarZoom();
     configurarCantidad();
     configurarAgregarCarrito(unidad);
+    configurarColoresDetalle();
   }
 );
 
@@ -216,16 +217,16 @@ function configurarSlider() {
 
   let currentIndex = 0;
   let autoplay = null;
+  document.getElementById('unitSliderTrack')?.addEventListener('colorGalleryChanged',()=>{
+    const first=slides.findIndex(x=>x.style.display!=='none');
+    if(first>=0) mostrarSlide(first);
+  });
 
   function mostrarSlide(index) {
 
-    if (index < 0) {
-      index = slides.length - 1;
-    }
-
-    if (index >= slides.length) {
-      index = 0;
-    }
+    const disponibles=slides.map((slide,i)=>slide.style.display==='none'?-1:i).filter(i=>i>=0);
+    if (!disponibles.length) return;
+    if (!disponibles.includes(index)) index=disponibles[0];
 
     currentIndex = index;
 
@@ -251,7 +252,7 @@ function configurarSlider() {
 
     if (counter) {
       counter.textContent =
-        `${currentIndex + 1} / ${slides.length}`;
+        `${disponibles.indexOf(currentIndex)+1} / ${disponibles.length}`;
     }
 
     thumbnails[currentIndex]
@@ -274,15 +275,13 @@ function configurarSlider() {
   }
 
   function siguiente() {
-    mostrarSlide(
-      currentIndex + 1
-    );
+    const disponibles=slides.map((x,i)=>x.style.display==='none'?-1:i).filter(i=>i>=0);
+    mostrarSlide(disponibles[(disponibles.indexOf(currentIndex)+1)%disponibles.length]);
   }
 
   function anterior() {
-    mostrarSlide(
-      currentIndex - 1
-    );
+    const disponibles=slides.map((x,i)=>x.style.display==='none'?-1:i).filter(i=>i>=0);
+    mostrarSlide(disponibles[(disponibles.indexOf(currentIndex)-1+disponibles.length)%disponibles.length]);
   }
 
   function iniciarAutoplay() {
@@ -1167,7 +1166,7 @@ function agregarDesdeDetalleCarritoNormal(
         === Number(
           unidad.idunidad
           || unidad.id
-        )
+        ) && Number(item.idunidad_color || 0) === Number(document.getElementById("unidadColorSelect")?.value || 0)
     );
 
 
@@ -1254,7 +1253,7 @@ function agregarDesdeDetalleAPedidoEdicion(
         === Number(
           unidad.idunidad
           || unidad.id
-        )
+        ) && Number(item.idunidad_color || 0) === Number(document.getElementById("unidadColorSelect")?.value || 0)
     );
 
 
@@ -1349,6 +1348,8 @@ function construirItemDetalle(
         || unidad.idunidad
       ),
 
+    idunidad_color: Number(document.getElementById("unidadColorSelect")?.value || 0),
+    nombre_color: document.getElementById("unidadColorSelect")?.selectedOptions?.[0]?.dataset?.name || "",
     idunidad:
       Number(
         unidad.idunidad
@@ -1417,7 +1418,8 @@ function construirItemDetalle(
 
     img:
       String(
-        unidad.img
+        document.querySelector('#unitSliderTrack .unit-slide.active img')?.src
+        || unidad.img
         || unidad.imagen_caratula
         || ''
       ),
@@ -1541,7 +1543,7 @@ function configurarAgregarCarritoOLD(
             === Number(
               unidad.idunidad
               || unidad.id
-            )
+            ) && Number(item.idunidad_color || 0) === Number(document.getElementById("unidadColorSelect")?.value || 0)
         );
 
       if (existing) {
@@ -1733,4 +1735,26 @@ function mostrarMensajeDetalle(
   return Promise.resolve({
     isConfirmed: false
   });
+}
+// 2026-11-02: Las imágenes ya están en DOM; cambiar color no realiza solicitudes HTTP.
+function configurarColoresDetalle() {
+  const selector=document.getElementById('unidadColorSelect');
+  if (!selector) return;
+  const slides=[...document.querySelectorAll('#unitSliderTrack .unit-slide')];
+  const thumbs=[...document.querySelectorAll('#unitThumbnails .unit-thumbnail')];
+  const actualizar=()=>{
+    const color=Number(selector.value||0);
+    const propios=slides.filter(x=>Number(x.dataset.colorId||0)===color);
+    const visibles=propios.length ? propios : slides.filter(x=>Number(x.dataset.colorId||0)===0);
+    slides.forEach((x)=>{x.style.display=visibles.includes(x)?'':'none';x.classList.toggle('active',x===visibles[0]);});
+    thumbs.forEach((x)=>{const i=Number(x.dataset.slideIndex||0);x.style.display=visibles.includes(slides[i])?'':'none';x.classList.toggle('active',slides[i]===visibles[0]);});
+    document.querySelector('#unitSliderTrack')?.dispatchEvent(new CustomEvent('colorGalleryChanged',{bubbles:true}));
+    const counter=document.getElementById('unitSliderCounter');if(counter)counter.textContent=visibles.length?'1 / '+visibles.length:'0 / 0';
+    // Precargar miniaturas de las demás variantes para un cambio visual rápido.
+  };
+  selector.addEventListener('change',actualizar);
+  actualizar();
+  const primeras=new Map();
+  slides.forEach(x=>{const key=Number(x.dataset.colorId||0);if(!primeras.has(key))primeras.set(key,x);});
+  primeras.forEach(x=>{const img=x.querySelector('img');if(img?.src){const preload=new Image();preload.src=img.src;}});
 }

@@ -3716,3 +3716,13 @@ estilos nuevos  */
 
 
 
+
+/* 2026-11-02 | Selector de colores integrado en la galería */
+.unit-detail-layout { align-items: start; }
+.unit-gallery { min-width: 0; }
+.unit-color-panel { display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #e5e9f0; border-radius: 14px; background: #fff; box-shadow: 0 4px 18px rgba(15,23,42,.04); }
+.unit-color-panel .form-label { margin: 0; color: #1e293b; font-size: .9rem; font-weight: 700; }
+.unit-color-select { width: 100%; min-height: 44px; border-radius: 10px; border-color: #cbd5e1; background-color: #f8fafc; font-weight: 600; }
+.unit-color-select:focus { border-color: #1B2B86; box-shadow: 0 0 0 3px rgba(27,43,134,.1); }
+.unit-color-help { display: block; font-size: .8rem; line-height: 1.4; color: #64748b; }
+@media (max-width: 767px) { .unit-gallery { padding: 12px; } .unit-color-panel { padding: 13px; margin-bottom: 12px; } .unit-slider { height: clamp(230px,65vw,360px); } .unit-thumbnail { flex-basis: 70px; width: 70px; height: 55px; } }

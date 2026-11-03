@@ -226,6 +226,7 @@ function rutaImagenPedido(
             'idpedido_detalle'
         ]
     ); ?>"
+    data-color-id="<?= (int)($detalle['idunidad_color'] ?? 0) ?>"
     data-unit-id="<?= intval(
         $detalle[
             'idunidad'
@@ -241,7 +242,6 @@ function rutaImagenPedido(
         ?? 0
     ); ?>"
 >
-
                                 <div class="edit-item-image">
 
                                     <img
@@ -263,6 +263,17 @@ function rutaImagenPedido(
 
 
                                 <div class="edit-item-content">
+                                <?php $opcionesColor=array_values(array_filter($data['colores_catalogo']??[],fn($c)=>(int)$c['idunidad']===(int)$detalle['idunidad'])); ?>
+                                <div class="edit-item-color-control">
+                                  <label class="form-label fw-semibold">Color solicitado</label>
+                                  <select class="form-select" data-color-select <?= empty($opcionesColor)?'disabled':'' ?>>
+                                  <?php if(empty($opcionesColor)): ?><option value="0">Sin variantes de color</option><?php endif; ?>
+                                  <?php foreach($opcionesColor as $c): ?>
+                                  <option value="<?= (int)$c['idunidad_color'] ?>" data-image="<?= htmlspecialchars(!empty($c['imagen_color']) ? rutaImagenPedido($c['imagen_color']) : '',ENT_QUOTES,'UTF-8') ?>" <?= (int)$c['idunidad_color']===(int)($detalle['idunidad_color']??0)?'selected':'' ?>><?= htmlspecialchars($c['nombre_color'],ENT_QUOTES,'UTF-8') ?></option>
+                                  <?php endforeach; ?>
+                                  </select>
+                                </div>
+
 
                                     <div class="edit-item-heading">
 
@@ -801,6 +812,7 @@ window.EDIT_ORDER = <?= json_encode(
                 'folio_pedido'
             ],
 
+        'colores' => $data['colores_catalogo'] ?? [],
         'sucursales' =>
             array_map(
                 function ($sucursal) {

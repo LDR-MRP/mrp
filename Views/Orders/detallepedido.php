@@ -566,11 +566,17 @@ foreach ($detalles as $detalle) {
                         $destino = $detalle['direccion_entrega'] ?? 'No especificada';
                     }
 
-                    $imagen = trim($detalle['imagen_caratula'] ?? '');
-                    $imagen = base_url() . '/' . $imagen;
-                    if ($imagen === '') {
-                        $imagen = base_url() . '/Assets/images/no-image.png';
+                    // Imagen principal del color elegido; si no existe, usar carátula del modelo.
+                    $rutaImagen = trim((string)($detalle['imagen_color'] ?? ''));
+                    if ($rutaImagen === '') {
+                        $rutaImagen = trim((string)($detalle['imagen_caratula'] ?? ''));
                     }
+                    if ($rutaImagen === '') {
+                        $rutaImagen = 'Assets/images/no-image.png';
+                    }
+                    $imagen = preg_match('~^https?://~i', $rutaImagen)
+                        ? $rutaImagen
+                        : base_url() . '/' . ltrim($rutaImagen, '/');
 
                     ?>
 
@@ -598,6 +604,12 @@ foreach ($detalles as $detalle) {
                                     <h3>
 
                                         <?= htmlspecialchars($detalle['nombre'] ?? $detalle['modelo'] ?? 'Unidad', ENT_QUOTES, 'UTF-8'); ?>
+                                        <small class="d-flex align-items-center gap-2 mt-2 text-muted" style="font-size:.82rem; font-weight:500;">
+                                            <?php if (!empty($detalle['codigo_hex_color']) && preg_match('/^#[0-9a-fA-F]{6}$/', (string)$detalle['codigo_hex_color'])): ?>
+                                                <span aria-hidden="true" style="display:inline-block;width:15px;height:15px;flex:none;border-radius:50%;border:1px solid #cbd5e1;background:<?= htmlspecialchars($detalle['codigo_hex_color'], ENT_QUOTES, 'UTF-8') ?>;"></span>
+                                            <?php endif; ?>
+                                            Color solicitado: <strong><?= htmlspecialchars(trim((string)($detalle['nombre_color'] ?? '')) ?: 'No especificado', ENT_QUOTES, 'UTF-8') ?></strong>
+                                        </small>
 
                                     </h3>
 

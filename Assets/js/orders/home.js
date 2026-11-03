@@ -279,6 +279,15 @@ function addToCart(id) {
     return;
   }
 
+  // 2026-11-02: Los modelos con variantes requieren elegir color en su detalle.
+  if (Array.isArray(item.colores) && item.colores.length) {
+    const context=getCatalogContext();
+    let url=getUrlDetalleUnidad(item.id);
+    if (context.esEdicion) url+=(url.includes('?')?'&':'?')+'modo=editar&pedido='+encodeURIComponent(context.pedido);
+    window.location.href=url;
+    return;
+  }
+
   const context =getCatalogContext();
 
   /*

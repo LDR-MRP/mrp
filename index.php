@@ -4,66 +4,112 @@ declare(strict_types=1);
 
 ob_start();
 
-// Ocultar errores al público
-ini_set('display_errors', 0);
-ini_set('display_startup_errors', 0);
+// Ocultar errores al público.
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
 
-// Forzar el registro de errores
+// Registrar errores.
 ini_set('log_errors', '1');
-
-// Usar la ruta absoluta automática hacia un archivo en esta misma carpeta
 ini_set('error_log', __DIR__ . '/debug_local.log');
 
-// Solo errores fatales y de parseo
 error_reporting(E_ERROR | E_PARSE | E_COMPILE_ERROR);
 
-/**
- * --------------------------------------------------------------------------
- * CONFIGURACIÓN DE COOKIES Y SESIÓN (SSO)
- * --------------------------------------------------------------------------
- */
+/*
+|--------------------------------------------------------------------------
+| Configuración del entorno
+|--------------------------------------------------------------------------
+| Modificado: 03/11/2026
+| Soporte para el VirtualHost local http://mrp.com/.
+|--------------------------------------------------------------------------
+*/
 
-// 1. Detectar el Host actual
-$httpHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+// Normalizar el host y quitar un posible puerto.
+$httpHost = strtolower(
+    trim((string) ($_SERVER['HTTP_HOST'] ?? 'localhost'))
+);
 
-// 2. Determinar si estamos en entorno local
-// Buscamos si el host es localhost, termina en .localhost o es una IP de red local
-$isLocal = (bool)preg_match('/(^localhost|\.localhost)|^127\.0\.0\.1/', $httpHost);
+$hostname = parse_url('http://' . $httpHost, PHP_URL_HOST);
+
+$hostname = is_string($hostname)
+    ? rtrim($hostname, '.')
+    : 'localhost';
+
+$isLocal = in_array(
+    $hostname,
+    [
+        'localhost',
+        '127.0.0.1',
+        '[::1]',
+        'mrp.com',
+        'www.mrp.com',
+    ],
+    true
+) || str_ends_with($hostname, '.localhost');
+
+// Detectar HTTPS directo.
+$esHttps =
+    (
+        !empty($_SERVER['HTTPS'])
+        && strtolower((string) $_SERVER['HTTPS']) !== 'off'
+    )
+    || (int) ($_SERVER['SERVER_PORT'] ?? 0) === 443;
+
+// Conservar la detección por proxy en producción.
+if (!$isLocal) {
+    $esHttps = $esHttps
+        || (
+            !empty($_SERVER['HTTP_X_FORWARDED_PROTO'])
+            && strtolower(
+                trim((string) $_SERVER['HTTP_X_FORWARDED_PROTO'])
+            ) === 'https'
+        );
+}
 
 if ($isLocal) {
-    /**
-     * ENTORNO: LOCAL
-     * Si se accede directamente via 'localhost' o IP, el dominio de la cookie debe ser vacuo '' 
-     * para que el navegador acepte la cookie de sesión/JWT sin rechazarla.
-     */
-    $cookieDomain = (str_contains($httpHost, 'ldrhumanresources.localhost')) ? '.ldrhumanresources.localhost' : '';
+    $isSharedLocalDomain =
+        $hostname === 'ldrhumanresources.localhost'
+        || str_ends_with(
+            $hostname,
+            '.ldrhumanresources.localhost'
+        );
+
     define('ENV_TYPE', 'local');
-    define('COOKIE_DOMAIN', $cookieDomain);
-    define('COOKIE_SECURE', false);
-    define('CONFIG_FILE', __DIR__ . "/Config/Config_local.php");
-} else {
-    /**
-     * ENTORNO: PRODUCCIÓN
-     * Dominio: .ldrhumanresources.com (Permite compartir entre rrhh. y mrp.)
-     * Secure: true (Obligatorio ya que Hostinger usa Certificados SSL)
+
+    define(
+        'COOKIE_DOMAIN',
+        $isSharedLocalDomain ? '.ldrhumanresources.localhost' : ''
+    );
+
+    define('COOKIE_SECURE', $esHttps);
+
+    /*
+     * Tu Config.php contiene los datos de MySQL de XAMPP.
+     * Config_local.php contiene los datos de Docker (mrp-db).
      */
+    define('CONFIG_FILE', __DIR__ . '/Config/Config.php');
+} else {
     define('ENV_TYPE', 'production');
     define('COOKIE_DOMAIN', '.ldrhumanresources.com');
     define('COOKIE_SECURE', true);
-    define('CONFIG_FILE', __DIR__ . "/Config/Config.php");
+    define('CONFIG_FILE', __DIR__ . '/Config/Config.php');
 }
 
-// Opcional: Tiempo de vida estándar (10 horas = 36000 seg)
 define('COOKIE_EXPIRE', time() + 36000);
 
-require_once(CONFIG_FILE);
-require_once("Helpers/Helpers.php");
+/*
+|--------------------------------------------------------------------------
+| Cargar configuración y dependencias
+|--------------------------------------------------------------------------
+*/
 
-if (file_exists('vendor/autoload.php')) {
-    require_once 'vendor/autoload.php';
+require_once CONFIG_FILE;
+require_once __DIR__ . '/Helpers/Helpers.php';
+
+if (is_file(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
 }
 
-require_once("Libraries/Core/Autoload.php");
+require_once __DIR__ . '/Libraries/Core/Autoload.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -71,7 +117,7 @@ require_once("Libraries/Core/Autoload.php");
 |--------------------------------------------------------------------------
 */
 
-$url = !empty($_GET['url'])
+$url = !empty($_GET['url']) && is_string($_GET['url'])
     ? $_GET['url']
     : 'login';
 
@@ -81,96 +127,64 @@ if (str_starts_with($url, 'mrp/')) {
     $url = substr($url, 4);
 }
 
-if (empty($url) || $url === 'mrp' || $url === 'index.php') {
+if ($url === '' || $url === 'mrp' || $url === 'index.php') {
     $url = 'login';
 }
 
 /*
 |--------------------------------------------------------------------------
-| Definición del contexto de portal
-| - Identificamos si la petición pertenece a un portal externo o es ruido técnico.
+| Contexto del portal
 |--------------------------------------------------------------------------
 */
-$uriPath      = ltrim((string)$url, '/');
+
+$uriPath = ltrim($url, '/');
 $firstSegment = explode('/', $uriPath)[0] ?? '';
+$normalizedSegment = strtolower($firstSegment);
 
-// Portales que manejan su propia identidad y NO deben disparar el IdentityService administrativo
-$isExternalPortal = in_array($firstSegment, ['srm', 'orders'], true);
+// Portales con identidad independiente.
+$isExternalPortal = in_array(
+    $normalizedSegment,
+    ['srm', 'orders'],
+    true
+);
 
-// Peticiones técnicas (.well-known, devtools, etc) o archivos estáticos
-$isSystemRequest = str_starts_with($firstSegment, '.')
-    || $firstSegment === 'Assets'
-    || preg_match('/\.(?:json|ico|css|js|png|jpg|jpeg|gif|webp|svg|map)$/i', $url);
+// Peticiones técnicas y archivos estáticos.
+$isSystemRequest =
+    str_starts_with($firstSegment, '.')
+    || $normalizedSegment === 'assets'
+    || preg_match(
+        '/\.(?:json|ico|css|js|png|jpg|jpeg|gif|webp|svg|map)$/i',
+        $url
+    ) === 1;
 
 /*
 |--------------------------------------------------------------------------
-| Configuración independiente de sesiones
+| Sesiones independientes
 |--------------------------------------------------------------------------
-|
-| Panel administrativo:
-|   PHPSESSID
-|
-| Portal de pedidos:
-|   PEDIDOSSESSID
-|
+| Administrativo: PHPSESSID
+| Pedidos:        PEDIDOSSESSID
+|--------------------------------------------------------------------------
 */
 
 if (session_status() === PHP_SESSION_NONE) {
+    $esPortalPedidos = preg_match(
+        '#^orders(?:/|$)#i',
+        $url
+    ) === 1;
 
-    /*
-     * Detectar si la solicitud pertenece al Portal de Pedidos.
-     *
-     * Ejemplos que detectará:
-     * orders/login
-     * orders/autenticar
-     * orders/validarPin
-     * orders/micuenta
-     */
-    $esPortalPedidos =
-        preg_match(
-            '#^orders(?:/|$)#i',
-            $url
-        ) === 1;
+    session_name(
+        $esPortalPedidos
+            ? 'PEDIDOSSESSID'
+            : 'PHPSESSID'
+    );
 
-    /*
-     * Detectar HTTPS directo o mediante proxy.
-     */
-    $esHttps =
-        (
-            !empty($_SERVER['HTTPS'])
-            && strtolower($_SERVER['HTTPS']) !== 'off'
-        )
-        || (
-            !empty($_SERVER['HTTP_X_FORWARDED_PROTO'])
-            && strtolower(
-                $_SERVER['HTTP_X_FORWARDED_PROTO']
-            ) === 'https'
-        );
-
-    /*
-     * Asignar nombre de sesión según el módulo.
-     */
-    if ($esPortalPedidos) {
-        session_name('PEDIDOSSESSID');
-    } else {
-        session_name('PHPSESSID');
-    }
-
-    /*
-     * Configuración de la cookie.
-     *
-     * Se recomienda path "/" porque todas las rutas
-     * pasan por el mismo index.php.
-     *
-     * La diferencia real entre sesiones será el nombre.
-     */
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => '/',
         'domain' => '',
         'secure' => $esHttps,
         'httponly' => true,
-        'samesite' => 'Lax'
+        'samesite' => 'Lax',
     ]);
 
     session_start();
@@ -178,17 +192,20 @@ if (session_status() === PHP_SESSION_NONE) {
 
 /*
 |--------------------------------------------------------------------------
-| Capa de identidad SSO
+| Identidad SSO
 |--------------------------------------------------------------------------
-|
-| Se dispara ÚNICAMENTE en la ruta /sso para que:
-| - Al entrar a /login nunca se autologuee automáticamente con el JWT tras cerrar sesión.
-| - La validación e intercambio del JWT de RRHH ocurra exclusivamente en /sso.
-|
+| Sincronizar únicamente al entrar a /sso.
+|--------------------------------------------------------------------------
 */
+
 $isInternalContext = !$isExternalPortal && !$isSystemRequest;
-$isSsoRoute        = strtolower($firstSegment) === 'sso';
-$needsSsoSync      = $isSsoRoute && empty($_SESSION['login']) && !empty($_COOKIE['token']);
+
+$isSsoRoute = $normalizedSegment === 'sso';
+
+$needsSsoSync =
+    $isSsoRoute
+    && empty($_SESSION['login'])
+    && !empty($_COOKIE['token']);
 
 if ($isInternalContext && $needsSsoSync) {
     $identity = new \Services\IdentityService();
@@ -197,7 +214,7 @@ if ($isInternalContext && $needsSsoSync) {
 
 /*
 |--------------------------------------------------------------------------
-| Bifurcación hacia API
+| Enrutamiento API
 |--------------------------------------------------------------------------
 */
 
@@ -212,26 +229,22 @@ if (str_starts_with(strtolower($url), 'api/')) {
 |--------------------------------------------------------------------------
 */
 
-$arrUrl = explode("/", $url);
+$arrUrl = explode('/', $url);
 
 $controller = $arrUrl[0];
 $method = $arrUrl[0];
-$params = "";
+$params = '';
 
 if (!empty($arrUrl[1])) {
-    if ($arrUrl[1] != "") {
-        $method = $arrUrl[1];
-    }
+    $method = $arrUrl[1];
 }
 
 if (!empty($arrUrl[2])) {
-    if ($arrUrl[2] != "") {
-        for ($i = 2; $i < count($arrUrl); $i++) {
-            $params .= $arrUrl[$i] . ',';
-        }
-
-        $params = trim($params, ',');
+    for ($i = 2; $i < count($arrUrl); $i++) {
+        $params .= $arrUrl[$i] . ',';
     }
+
+    $params = trim($params, ',');
 }
 
-require_once("Libraries/Core/Load.php");
+require_once __DIR__ . '/Libraries/Core/Load.php';

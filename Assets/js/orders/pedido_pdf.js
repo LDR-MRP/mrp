@@ -294,6 +294,14 @@ async function generarPdfPedido(pedido,detalles) {
                             }
                             : {},
 
+                        {
+                            text: `Color solicitado: ${String(detalle.nombre_color || detalle.color_solicitado || detalle.color || 'No especificado')}`,
+                            fontSize: 8,
+                            bold: true,
+                            color: '#344054',
+                            margin: [0, 4, 0, 0]
+                        },
+
                         detalle.clave_modelo
                             ? {
                                 text:`Clave: ${detalle.clave_modelo}`,

@@ -1377,6 +1377,13 @@ class Orders extends Controllers
             }
 
             $unidades = $this->model->selectUnidadesWeb();
+            $coloresCatalogo = $this->model->selectColoresCatalogo();
+            $unidades = is_array($unidades) ? $unidades : [];
+            foreach ($unidades as &$unidadItem) {
+                $unidadItem['colores'] = array_values(array_filter($coloresCatalogo,
+                    fn($c) => (int)$c['idunidad'] === (int)$unidadItem['idunidad']));
+            }
+            unset($unidadItem);
 
             echo json_encode([
                 'status' => true,
@@ -1441,6 +1448,7 @@ class Orders extends Controllers
             }
 
             $imagenes = $this->model->selectImagenesUnidad($idunidad);
+            $data['colores'] = $this->model->selectColoresUnidad($idunidad);
 
             if (empty($imagenes) && !empty($unidadDetalle['imagen_caratula'])) {
                 $imagenes = [
@@ -1844,6 +1852,7 @@ class Orders extends Controllers
 
                 $idproducto = (int) ($productoEntrada['idproducto'] ?? 0);
                 $cantidad = (int) ($productoEntrada['cantidad'] ?? 0);
+                $idunidadColor = (int)($productoEntrada['idunidad_color'] ?? 0);
 
                 if ($idproducto <= 0) {
                     throw new RuntimeException(
@@ -1869,6 +1878,9 @@ class Orders extends Controllers
                     );
                 }
 
+                if (!$this->model->validarColorUnidad($idproducto, $idunidadColor)) {
+                    throw new RuntimeException('Selecciona un color válido para ' . $unidad['nombre'] . '.');
+                }
                 $tipoEntrega = strtoupper($this->limpiarTexto($productoEntrada['tipo_entrega'] ?? '', 30));
                 $idsucursalEntrega = null;
                 $direccionEntrega = null;
@@ -1940,6 +1952,7 @@ class Orders extends Controllers
                 $detallesProcesados[] = [
 
                     'idunidad' => $idproducto,
+                    'idunidad_color' => $idunidadColor ?: null,
                     'nombre_producto' => (string) $unidad['nombre'],
                     'tipo_entrega' => $tipoEntrega,
                     'idsucursal_entrega' => $idsucursalEntrega,
@@ -2331,6 +2344,11 @@ class Orders extends Controllers
              * ========================================================
              */
 
+            // 2026-11-03: Resolver nombre del color solicitado desde el catálogo real.
+            $nombresColoresCorreo = [];
+            foreach ($this->model->selectColoresCatalogo() as $varianteCorreo) {
+                $nombresColoresCorreo[(int)$varianteCorreo['idunidad_color']] = (string)$varianteCorreo['nombre_color'];
+            }
             $detalleCorreo = [];
 
             foreach ($detallesProcesados as $detalle) {
@@ -2361,6 +2379,8 @@ class Orders extends Controllers
                 $detalleCorreo[] = [
 
                     'idunidad' => intval($detalle['idunidad'] ?? 0),
+                    'idunidad_color' => intval($detalle['idunidad_color'] ?? 0),
+                    'nombre_color' => $nombresColoresCorreo[(int)($detalle['idunidad_color'] ?? 0)] ?? 'No especificado',
                     'nombre' => $detalle['nombre_producto'] ?? 'Unidad',
                     'cantidad' => intval($detalle['cantidad_solicitada'] ?? 0),
                     'precio_unitario' => floatval($detalle['precio_unitario'] ?? 0),
@@ -2470,7 +2490,7 @@ class Orders extends Controllers
              * ========================================================
              */
 
-            $correos_copias = 'carlos.cruz@ldrsolutions.com.mx,alejandro.hernandez@ldrsolutions.com.mx';
+            $correos_copias = 'carlos.cruz@ldrsolutions.com.mx';
 
             /*
              * ========================================================
@@ -2614,6 +2634,11 @@ class Orders extends Controllers
              * ========================================================
              */
 
+            // 2026-11-03: Resolver nombre del color solicitado desde el catálogo real.
+            $nombresColoresCorreo = [];
+            foreach ($this->model->selectColoresCatalogo() as $varianteCorreo) {
+                $nombresColoresCorreo[(int)$varianteCorreo['idunidad_color']] = (string)$varianteCorreo['nombre_color'];
+            }
             $detalleCorreo = [];
 
 
@@ -2665,6 +2690,8 @@ class Orders extends Controllers
                 $detalleCorreo[] = [
 
                     'idunidad' => intval($detalle['idunidad'] ?? 0),
+                    'idunidad_color' => intval($detalle['idunidad_color'] ?? 0),
+                    'nombre_color' => $nombresColoresCorreo[(int)($detalle['idunidad_color'] ?? 0)] ?? 'No especificado',
                     'nombre' => $detalle['nombre_producto'] ?? 'Unidad',
                     'cantidad' => intval($detalle['cantidad_solicitada'] ?? 0),
                     'precio_unitario' => floatval($detalle['precio_unitario'] ?? 0),
@@ -2779,7 +2806,7 @@ class Orders extends Controllers
              *
              */
 
-            $correosCopiasCompras = 'carlos.cruz@ldrsolutions.com.mx,nora.segura@ldrsolutions.com.mx,alejandro.hernandez@ldrsolutions.com.mx';
+            $correosCopiasCompras = 'carlos.cruz@ldrsolutions.com.mx';
 
             /*
              * ========================================================
@@ -2899,6 +2926,7 @@ class Orders extends Controllers
              */
 
             $detalles = $this->model->selectDetallesPedidoEditar(intval($pedido['idpedido']));
+            $data['colores_catalogo'] = $this->model->selectColoresCatalogo();
 
             /*
              * ============================================
@@ -3065,6 +3093,7 @@ class Orders extends Controllers
                 // $idunidad =intval($producto['idunidad']?? $producto['idproducto']?? 0);
                 $idunidad = intval($producto['idunidad'] ?? 0);
                 $cantidad = intval($producto['cantidad'] ?? 0);
+                $idunidadColor = (int)($producto['idunidad_color'] ?? 0);
                 if ($idunidad <= 0 || $cantidad <= 0) {
 
                     throw new Exception(
@@ -3080,6 +3109,9 @@ class Orders extends Controllers
                     throw new Exception(
                         'Una de las unidades ya no se encuentra disponible en el catálogo.'
                     );
+                }
+                if (!$this->model->validarColorUnidad($idunidad, $idunidadColor)) {
+                    throw new Exception('Selecciona un color válido para la unidad.');
                 }
                 /*
                  * ============================================
@@ -3184,6 +3216,7 @@ class Orders extends Controllers
                         $idpedidoDetalle,
                         $idpedido,
                         [
+                            'idunidad_color' => $idunidadColor ?: null,
                             'tipo_entrega' => $tipoEntrega,
                             'idsucursal_entrega' => $idsucursalEntrega,
                             'direccion_entrega' => $direccionEntrega,
@@ -3309,6 +3342,7 @@ class Orders extends Controllers
                                 [
                                     'idpedido' => $idpedido,
                                     'idunidad' => $idunidad,
+                                    'idunidad_color' => $idunidadColor ?: null,
                                     'tipo_entrega' => $tipoEntrega,
                                     'idsucursal_entrega' => $idsucursalEntrega,
                                     'direccion_entrega' => $direccionEntrega,

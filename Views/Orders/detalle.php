@@ -22,6 +22,8 @@ $urlCatalogo .='#catalogo';
 
 $unidad = $data['unidad'] ?? null;
 $imagenes = $data['imagenes'] ?? [];
+$colores = $data['colores'] ?? [];
+
 
 // dep($imagenes);
 
@@ -120,6 +122,19 @@ function construirRutaImagenUnidad(
                 =========================================== -->
 
                 <div class="unit-gallery">
+                <?php if (!empty($colores)): ?>
+                <div class="unit-color-panel">
+                  <label for="unidadColorSelect" class="form-label fw-semibold">Color de la unidad</label>
+                  <select id="unidadColorSelect" class="form-select unit-color-select" required>
+                    <?php foreach ($colores as $c): ?>
+                    <option value="<?= (int)$c['idunidad_color'] ?>" data-name="<?= htmlspecialchars($c['nombre_color'], ENT_QUOTES, 'UTF-8') ?>"
+                     <?= !empty($c['es_predeterminado'])?'selected':'' ?>><?= htmlspecialchars($c['nombre_color'], ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                  <small class="unit-color-help">Las fotografías cambian al seleccionar un color.</small>
+                </div>
+                <?php endif; ?>
+
 
                     <div class="unit-slider" id="unitSlider">
 
@@ -137,7 +152,7 @@ function construirRutaImagenUnidad(
                                         );
                                     ?>
 
-                                    <article class="unit-slide <?= $index === 0
+                                    <article data-color-id="<?= (int)($imagen['idunidad_color'] ?? 0) ?>" class="unit-slide <?= $index === 0
                                         ? 'active'
                                         : ''; ?>" data-index="<?= $index; ?>">
 
@@ -241,7 +256,7 @@ function construirRutaImagenUnidad(
                                     );
                                 ?>
 
-                                <button type="button" class="unit-thumbnail <?= $index === 0
+                                <button type="button" data-color-id="<?= (int)($imagen['idunidad_color'] ?? 0) ?>" class="unit-thumbnail <?= $index === 0
                                     ? 'active'
                                     : ''; ?>" data-slide-index="<?= $index; ?>"
                                     aria-label="Mostrar imagen <?= $index + 1; ?>">
@@ -739,6 +754,7 @@ function construirRutaImagenUnidad(
                 'idunidad' => intval(
                     $unidad['idunidad']
                 ),
+                'colores' => $colores,
                 'modelo' =>
                     $unidad['modelo'],
                 'clave_modelo' =>

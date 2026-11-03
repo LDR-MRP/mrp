@@ -505,7 +505,7 @@ function renderCart() {
 
   container.innerHTML = cart
     .map((item) => {
-      const id = Number(item.id);
+      const id = cartItemKey(item);
 
       const quantity = Math.max(
         1,
@@ -608,6 +608,7 @@ function renderCart() {
 
               </div>
 
+              <div class="small text-muted mb-1">${item.nombre_color ? 'Color: '+escapeHtml(item.nombre_color) : 'Sin color especificado'}</div>
               <p class="cart-product-description">
                 ${escapeHtml(
                   item.desc || ""
@@ -772,8 +773,8 @@ function getCartItem(id) {
 
   return cart.find(
     (item) =>
-      Number(item.id)
-      === Number(id)
+      cartItemKey(item)
+      === String(id)
   );
 }
 
@@ -785,8 +786,8 @@ function changeCartQty(id, change) {
 
   const item = cart.find(
     (product) =>
-      Number(product.id)
-      === Number(id)
+      cartItemKey(product)
+      === String(id)
   );
 
   if (!item) {
@@ -821,8 +822,8 @@ function setCartQty(id, value) {
 
   const item = cart.find(
     (product) =>
-      Number(product.id)
-      === Number(id)
+      cartItemKey(product)
+      === String(id)
   );
 
   if (!item) {
@@ -857,8 +858,8 @@ function setCartQty(id, value) {
 function removeCart(id) {
   const cart = getCart().filter(
     (item) =>
-      Number(item.id)
-      !== Number(id)
+      cartItemKey(item)
+      !== String(id)
   );
 
   setCart(cart);
@@ -876,8 +877,8 @@ function setDeliveryDestination(
 
   const item = cart.find(
     (product) =>
-      Number(product.id)
-      === Number(id)
+      cartItemKey(product)
+      === String(id)
   );
 
   if (!item) {
@@ -922,8 +923,8 @@ function setOtherAddress(id, value) {
 
   const item = cart.find(
     (product) =>
-      Number(product.id)
-      === Number(id)
+      cartItemKey(product)
+      === String(id)
   );
 
   if (!item) {
@@ -954,7 +955,7 @@ function validateDeliveryDestinations(
   cart
 ) {
   for (const item of cart) {
-    const id = Number(item.id);
+    const id = cartItemKey(item);
 
     const name =
       item.nombre
@@ -1169,6 +1170,7 @@ async function generateRequest() {
     productos: cart.map(
       (item) => ({
         idproducto: Number(item.id),
+        idunidad_color: Number(item.idunidad_color || 0),
 
         cantidad: Math.max(
           1,
@@ -1555,3 +1557,5 @@ document.addEventListener(
   "DOMContentLoaded",
   initCart
 );
+// Identidad del renglón: modelo y color; evita fusionar unidades de distinto color.
+function cartItemKey(item) { return String(Number(item.idunidad||item.id||0))+':'+String(Number(item.idunidad_color||0)); }

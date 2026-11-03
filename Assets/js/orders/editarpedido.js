@@ -109,7 +109,7 @@ function cargarNuevasUnidadesPedido() {
        * Verificaos si esa unidad YA existe
        * dentro del pedido original.
        */
-      const cardExistente =container.querySelector(`.edit-order-item[data-unit-id="${idunidad}"]`);
+      const cardExistente =container.querySelector(`.edit-order-item[data-unit-id="${idunidad}"][data-color-id="${Number(item.idunidad_color||0)}"]`);
 
 
       /*
@@ -168,6 +168,7 @@ function generarHTMLNuevaUnidad(
       "
       data-detail-id="0"
       data-unit-id="${idunidad}"
+      data-color-id="${Number(item.idunidad_color||0)}"
       data-price="${precioUnitario}"
       data-new-item="1"
     >
@@ -192,6 +193,15 @@ function generarHTMLNuevaUnidad(
 
 
       <div class="edit-item-content">
+      <div class="edit-item-color-control"><label class="form-label fw-semibold">Color solicitado</label>
+        <select class="form-select" data-color-select>
+        ${!Number(item.idunidad_color||0) && (window.EDIT_ORDER?.colores||[]).some(c=>Number(c.idunidad)===idunidad) ? '<option value="0" selected disabled>Selecciona un color</option>' : ''}
+        ${((window.EDIT_ORDER?.colores||[]).filter(c=>Number(c.idunidad)===idunidad).map(c=>`<option value="${Number(c.idunidad_color)}" data-image="${escapeHtmlEdit(c.imagen_color ? (String(c.imagen_color).startsWith('http') ? c.imagen_color : `${base_url}/${String(c.imagen_color).replace(/^\/+/, '')}`) : '')}" ${Number(c.idunidad_color)===Number(item.idunidad_color||0)?'selected':''}>${escapeHtmlEdit(c.nombre_color)}</option>`).join(''))||'<option value="0">Sin variantes</option>'}
+        </select></div>
+
+        <!-- El selector es parte del contenido para respetar CSS Grid. -->
+        <div class="edit-item-color-slot"></div>
+
 
         <div class="edit-item-heading">
 
@@ -665,7 +675,7 @@ function configurarDetalle(
       const idunidad =Number(card.dataset.unitId || 0);
 
       if (esNueva) {
-        eliminarUnidadTemporalEdicion(idunidad);
+        eliminarUnidadTemporalEdicion(idunidad,Number(card.dataset.colorId||0));
       }
       card.remove();
       recalcularResumen();
@@ -686,7 +696,7 @@ function configurarDetalle(
   actualizarEntrega(card);
 }
 
-function eliminarUnidadTemporalEdicion(idunidad) {
+function eliminarUnidadTemporalEdicion(idunidad,idunidadColor=0) {
 
   const storageKey =getPedidoEdicionStorageKey();
 
@@ -702,9 +712,7 @@ function eliminarUnidadTemporalEdicion(idunidad) {
           item.idunidad
           || item.id
         )
-        !== Number(
-          idunidad
-        )
+        !== Number(idunidad) || Number(item.idunidad_color||0)!==Number(idunidadColor)
     );
 
   if (actualizadas.length) {
@@ -933,6 +941,7 @@ function obtenerProductosEditar() {
       return {
         idpedido_detalle:Number(card.dataset.detailId || 0),
         idunidad:Number(card.dataset.unitId || 0),
+        idunidad_color:Number(card.querySelector("[data-color-select]")?.value || 0),
         cantidad:Math.max(1,Number(card.querySelector('[data-qty]')?.value || 1)),
         tipo_entrega:card.querySelector('[data-delivery-type]')?.value || '',
         idsucursal_entrega:card.querySelector('[data-sucursal]')?.value || null,
@@ -1189,3 +1198,28 @@ function mostrarAlertaEditar(icon,title,text) {
 
   return Promise.resolve();
 }
+// 2026-11-02: Mantener el selector dentro del contenido y mostrar foto principal por color.
+document.addEventListener('change', function(event) {
+  const select = event.target.closest('.edit-order-item [data-color-select]');
+  if (!select) return;
+  const card = select.closest('.edit-order-item');
+  const image = card?.querySelector('.edit-item-image img');
+  const selected = select.selectedOptions?.[0];
+  if (image && selected?.dataset.image) image.src = selected.dataset.image;
+  if (card) card.dataset.colorId = String(select.value || 0);
+});
+function sincronizarColoresEdicion() {
+  document.querySelectorAll('.edit-order-item').forEach(card => {
+    const selector = card.querySelector('[data-color-select]');
+    const content = card.querySelector('.edit-item-content');
+    if (!selector || !content) return;
+    const wrapper = selector.closest('.edit-item-color-control');
+    if (wrapper && wrapper.parentElement !== content) content.prepend(wrapper);
+    const image = card.querySelector('.edit-item-image img');
+    const selected = selector.selectedOptions?.[0];
+    if (image && selected?.dataset.image) image.src = selected.dataset.image;
+  });
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', sincronizarColoresEdicion);
+} else { sincronizarColoresEdicion(); }
