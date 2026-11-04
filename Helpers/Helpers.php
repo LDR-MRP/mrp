@@ -254,9 +254,9 @@ function sendMailLocalCron(
 
         $mail->SMTPAuth =true;
 
-        $mail->Username ='notificacion@ldrsolutions.com.mx';
+        $mail->Username ='soporte1@ldrsolutions.com.mx';
 
-        $mail->Password = 'ppiz zylc bpod tczi';
+        $mail->Password = 'digw vhnh bypt qmgt';
 
         $mail->SMTPSecure =PHPMailer::ENCRYPTION_SMTPS;
 
@@ -270,7 +270,7 @@ function sendMailLocalCron(
          * ========================================================
          */
 
-        $mail->setFrom('notificacion@ldrsolutions.com.mx','Notificaciones LDR');
+        $mail->setFrom('soporte1@ldrsolutions.com.mx','Notificaciones LDR');
 
 
         /*
