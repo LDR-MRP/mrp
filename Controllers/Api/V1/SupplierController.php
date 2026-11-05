@@ -56,7 +56,19 @@ class SupplierController
      */
     public function getDocuments(int $id): string
     {
+        // Logging para rastrear incidencias
+        $logPath = __DIR__ . '/../../Logs/mrp-' . date('Y-m-d') . '.log';
+        $logFile = fopen($logPath, 'a');
+        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [getDocuments] Iniciando obtención de documentos para proveedor ID: " . $id . "\n");
+        fclose($logFile);
+
         $response = $this->supplierService->documents($id);
+
+        // Logging de respuesta
+        $logFile = fopen($logPath, 'a');
+        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [getDocuments] Respuesta del servicio: " . json_encode($response) . "\n");
+        fclose($logFile);
+
         return $this->apiResponse($response);
     }
 
