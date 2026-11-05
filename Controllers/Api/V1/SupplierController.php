@@ -49,6 +49,7 @@ class SupplierController
         $logFile = fopen($logPath, 'a');
         fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [uploadDocument] Iniciando subida de documento\n");
         fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [uploadDocument] Request data: " . json_encode($this->request) . "\n");
+        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [uploadDocument] FILES: " . json_encode($_FILES) . "\n");
         fclose($logFile);
 
         try {

@@ -14,7 +14,17 @@ class UploadDocumentRequest extends Requests
         try {
             // Ruta dinámica para producción
             $logPath = __DIR__ . '/../../Logs/mrp-' . date('Y-m-d') . '.log';
+
+            // Log antes de abrir el archivo para depuración
+            error_log("[UploadDocumentRequest] Intentando abrir log en: " . $logPath);
+
             $logFile = fopen($logPath, 'a');
+
+            if (!$logFile) {
+                error_log("[UploadDocumentRequest] ERROR: No se pudo abrir el archivo de log");
+            } else {
+                fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Archivo de log abierto correctamente\n");
+            }
 
             // Logging de configuración de PHP
             fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Config PHP: " . json_encode([
