@@ -39,7 +39,9 @@
                                 <thead>
                                     <tr>
                                         <th>NOMBRE</th>
-                                        <th>DESCRIPCIÓN</th>
+                                        <th>CÓDIGO</th>
+                                        <th>MUESTRA</th>
+                                        <th>UNIDADES</th>
                                         <th>FECHA CREACIÓN</th>
                                         <th>ESTATUS</th>
                                         <th>ACCIONES</th>
@@ -64,9 +66,18 @@
                                             <option value="1">Inactivo</option>
                                         </select>
                                     </div>
-                                    <div class="col-12">
-                                        <label class="form-label" for="color_descripcion">DESCRIPCIÓN</label>
-                                        <textarea class="form-control" id="color_descripcion" name="descripcion" rows="2" maxlength="255" placeholder="Opcional"></textarea>
+                                    <div class="col-lg-6">
+                                        <label class="form-label" for="color_codigo">CÓDIGO</label>
+                                        <input type="text" class="form-control" id="color_codigo" name="codigo" maxlength="50" placeholder="Opcional, ej. código del fabricante">
+                                        <small class="text-muted">No se puede repetir entre colores.</small>
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <label class="form-label" for="color_hex">MUESTRA DE COLOR</label>
+                                        <div class="input-group">
+                                            <input type="color" class="form-control form-control-color" id="color_picker" value="#FFFFFF" title="Elegir color" style="max-width:4rem">
+                                            <input type="text" class="form-control text-uppercase" id="color_hex" name="codigo_hex" maxlength="7" placeholder="#RRGGBB (opcional)">
+                                        </div>
+                                        <small class="text-muted">Se muestra como círculo de color en el portal de distribuidores.</small>
                                     </div>
                                 </div>
                                 <div class="d-flex mt-4">

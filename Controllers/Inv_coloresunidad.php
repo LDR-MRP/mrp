@@ -1,7 +1,8 @@
 <?php
 // Inventario > Catálogos > Colores de unidad
-// Alta de los colores que después se asignan a cada unidad en la pestaña
-// "Portal Web" de Configuración de productos (Inv_inventario).
+// Alta de los colores (tabla web_colores) que después se asignan a cada
+// unidad en la pestaña "Portal Web" de Configuración de productos
+// (Inv_inventario, tabla web_unidades_colores).
 class Inv_coloresunidad extends Controllers
 {
     public function __construct()
@@ -43,29 +44,38 @@ class Inv_coloresunidad extends Controllers
 
         $idcolor = intval($_POST['idcolor'] ?? 0);
         $nombre = strClean(trim($_POST['nombre'] ?? ''));
-        $descripcion = strClean(trim($_POST['descripcion'] ?? ''));
+        $codigo = strClean(trim($_POST['codigo'] ?? ''));
+        $codigo = $codigo === '' ? null : mb_substr($codigo, 0, 50);
+        $hex = strtoupper(trim($_POST['codigo_hex'] ?? ''));
         $estado = intval($_POST['estado'] ?? 2) === 1 ? 1 : 2;
 
         if ($nombre === '') {
             $this->responder(['status' => false, 'msg' => 'El nombre del color es obligatorio']);
         }
+        if ($hex !== '' && !preg_match('/^#[0-9A-F]{6}$/', $hex)) {
+            $this->responder(['status' => false, 'msg' => 'La muestra de color debe tener el formato #RRGGBB']);
+        }
+        $hex = $hex === '' ? null : $hex;
 
         if ($idcolor === 0) {
             if (empty($_SESSION['permisosMod']['w'])) {
                 $this->responder(['status' => false, 'msg' => 'No tienes permiso para crear colores']);
             }
-            $resp = $this->model->insertColor($nombre, $descripcion, $estado);
+            $resp = $this->model->insertColor($nombre, $codigo, $hex, $estado);
             $msgOk = 'Color registrado correctamente';
         } else {
             if (empty($_SESSION['permisosMod']['u'])) {
                 $this->responder(['status' => false, 'msg' => 'No tienes permiso para actualizar colores']);
             }
-            $resp = $this->model->updateColor($idcolor, $nombre, $descripcion, $estado);
+            $resp = $this->model->updateColor($idcolor, $nombre, $codigo, $hex, $estado);
             $msgOk = 'Color actualizado correctamente';
         }
 
         if ($resp === "exist") {
             $this->responder(['status' => false, 'msg' => '¡Atención! Ya existe un color con ese nombre']);
+        }
+        if ($resp === "exist_codigo") {
+            $this->responder(['status' => false, 'msg' => '¡Atención! Ya existe un color con ese código']);
         }
 
         $this->responder($resp !== false
@@ -82,6 +92,11 @@ class Inv_coloresunidad extends Controllers
         $arrData = $this->model->selectColores();
         foreach ($arrData as &$row) {
             $id = (int) $row['idcolor'];
+            $hexRow = (string) ($row['codigo_hex'] ?? '');
+            $row['muestra'] = preg_match('/^#[0-9A-Fa-f]{6}$/', $hexRow)
+                ? '<span class="d-inline-flex align-items-center gap-2"><span style="display:inline-block;width:22px;height:22px;border-radius:50%;border:1px solid #ced4da;background:' . $hexRow . '"></span>' . $hexRow . '</span>'
+                : '<span class="text-muted">—</span>';
+            $row['codigo'] = $row['codigo'] ?? '';
             $row['estado_badge'] = ((int) $row['estado'] === 2)
                 ? '<span class="badge bg-success">Activo</span>'
                 : '<span class="badge bg-danger">Inactivo</span>';

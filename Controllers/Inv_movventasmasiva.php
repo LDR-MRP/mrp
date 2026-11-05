@@ -4,8 +4,8 @@
  * Extensión de Inv_movimientosinventario (reutiliza su permiso MIMOVIMIENTOS).
  *
  * Flujo:
- *  1. descargarLayout(): todos los VINs en inventario (1=Disponible, 2=Tatuado)
- *     de todas las plantas y almacenes, con SKU, nombre, VIN, motor, estatus,
+ *  1. descargarLayout(): los VINs (1=Disponible, 2=Tatuado, 3=Facturado) que están
+ *     en almacenes de Producto Terminado o Tránsito (los únicos donde se puede vender), con SKU, nombre, VIN, motor, estatus,
  *     y columnas DISTRIBUIDOR / FACTURA para capturar.
  *  2. procesarCarga(): SOLO ACTUALIZA. Cambios permitidos: 1 -> 3 y 2 -> 3 (Facturado)
  *     con distribuidor y factura. Cada VIN facturado = un movimiento de Ventas
@@ -80,13 +80,13 @@ class Inv_movventasmasiva extends Controllers
 		$h1->setCellValue('A2', 'Generado: ' . date('Y-m-d H:i:s') . ' · histórico general: ' . count($vines) . ' VIN(s)');
 
 		$instrucciones = [
-			'1. Este archivo es SOLO DE ACTUALIZACIÓN: contiene el HISTÓRICO GENERAL de VINs (Disponible, Tatuado y Facturado) de todas las plantas y almacenes. No agregues filas: cualquier VIN que no exista se rechaza.',
+			'1. Este archivo es SOLO DE ACTUALIZACIÓN: contiene el HISTÓRICO GENERAL de VINs (Disponible, Tatuado y Facturado) de los almacenes de PRODUCTO TERMINADO y TRÁNSITO de todas las plantas. No agregues filas: cualquier VIN que no exista se rechaza.',
 			'2. Solo captura las columnas en VERDE: ESTATUS, DISTRIBUIDOR y FACTURA. Las columnas en GRIS (PLANTA, ALMACEN, SKU, NOMBRE, VIN, NUMERO_MOTOR, FECHA_VENTA) son informativas: si se modifican, esa fila NO se sube y se manda al log.',
 			'3. Para facturar una unidad cambia ESTATUS a "Facturado" (elígelo de la lista), ESCRIBE el nombre del DISTRIBUIDOR (campo libre) y el número de FACTURA. Se puede facturar un VIN que esté en "Disponible" o en "Tatuado". Puedes arrastrar la celda para copiar el mismo estatus a varias filas.',
 			'3b. En los VINs que ya están en "Facturado" puedes CORREGIR el DISTRIBUIDOR o la FACTURA de su venta (solo si esa venta es de una sola unidad). No se puede cambiar su ESTATUS aquí: las devoluciones se hacen en la sección de Devoluciones.',
 			'4. Una unidad por factura: cada VIN facturado genera su propio movimiento de Ventas (baja la existencia del almacén donde está el VIN). Una misma FACTURA no puede usarse para dos VINs, ni repetir una factura ya registrada.',
 			'5. No se permiten otros cambios de estatus desde este archivo (por ejemplo 1 -> 2: el tatuado se hace en Planeación). Las filas sin cambios simplemente se ignoran.',
-			'6. Solo se pueden vender unidades que estén en almacenes de PRODUCTO TERMINADO o en el almacén de TRÁNSITO; las de otros almacenes se rechazan. También se rechaza si el VIN está en un traslado activo o el almacén no tiene existencia suficiente.',
+			'6. Solo se pueden vender unidades que estén en almacenes de PRODUCTO TERMINADO o en el almacén de TRÁNSITO (por eso el layout solo trae esos almacenes); las de otros almacenes se rechazan. También se rechaza si el VIN está en un traslado activo o el almacén no tiene existencia suficiente.',
 			'7. Al terminar puedes descargar el log en Excel con las filas que no se subieron y el motivo.',
 		];
 		$f = 4;

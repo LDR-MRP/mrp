@@ -1799,6 +1799,29 @@ class Inv_inventario extends Controllers
 		}
 	}
 
+	// Galería destino de una foto según $_POST['idunidad_color']: null = general
+	// (sin color). Si llega un color, debe estar asignado y activo en ESA
+	// unidad (el FK no valida que sea de la misma unidad); si no, responde error.
+	private function idUnidadColorSolicitado(int $idunidad): ?int
+	{
+		$idUnidadColor = intval($_POST['idunidad_color'] ?? 0);
+		if ($idUnidadColor <= 0) {
+			return null;
+		}
+
+		if (empty($this->model->selectUnidadColorActivo($idUnidadColor, $idunidad))) {
+			echo json_encode(['status' => false, 'msg' => 'El color seleccionado no está asignado a esta unidad'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		return $idUnidadColor;
+	}
+
+	private static function idUnidadColorDe(array $imagen): ?int
+	{
+		return !empty($imagen['idunidad_color']) ? (int) $imagen['idunidad_color'] : null;
+	}
+
 	// Datos generales de la ficha técnica de Ingeniería para mostrarlos (solo
 	// lectura) en "Fotos portal". Si la tabla de Ingeniería no existe en esta
 	// base o el producto no viene de Ingeniería, regresa null sin romper la pestaña.
@@ -1853,10 +1876,12 @@ class Inv_inventario extends Controllers
 		$imagenes = [];
 
 		if (!empty($registro)) {
-			$imagenes = ($modo === 'unidad')
-				? $this->model->selectImagenesWebUnidad((int) $registro['idunidad'])
-				: $this->model->selectImagenesPortalWebRefaccion((int) $registro['idportalweb']);
+			// Todas las fotos (general + por color); el JS las separa por galería
+			$imagenes = $this->model->selectTodasImagenesWebUnidad((int) $registro['idunidad']);
 		}
+
+		// Catálogo de colores + los asignados a la unidad (se asignan aquí mismo)
+		$colores = $this->coloresPortalUnidad($registro ?: null);
 
 		echo json_encode([
 			'status' => true,
@@ -1865,9 +1890,51 @@ class Inv_inventario extends Controllers
 				'registro_existe' => !empty($registro),
 				'imagen_caratula' => $registro['imagen_caratula'] ?? '',
 				'imagenes' => $imagenes,
+				'colores' => $colores['asignados'],
+				'catalogo_colores' => $colores['catalogo'],
+				'colores_disponible' => $colores['disponible'],
 				'ficha' => $this->fichaGeneralIngenieria($inventarioid),
 			]
 		], JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	// "Fotos portal": colores en los que se ofrece la unidad (web_unidades_colores).
+	// Se guarda al momento de marcar/desmarcar. Recibe colores[] en el orden en
+	// que se muestran y color_predeterminado. Quitar un color no borra sus
+	// fotos: solo se ocultan hasta que se vuelva a marcar.
+	public function guardarColoresFotosWeb()
+	{
+		$this->exigirPermisoFotos('u');
+		header('Content-Type: application/json; charset=utf-8');
+
+		$inventarioid = intval($_POST['inventarioid'] ?? 0);
+		if ($inventarioid <= 0 || $this->tipoPortalWeb($inventarioid) !== 'unidad') {
+			echo json_encode(['status' => false, 'msg' => 'Los colores solo aplican a Productos'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$unidad = $this->model->getWebUnidadByInventario($inventarioid);
+		if (empty($unidad)) {
+			$unidad = $this->crearWebUnidadBorrador($inventarioid);
+		}
+		if (empty($unidad)) {
+			echo json_encode(['status' => false, 'msg' => 'No se pudo crear el registro de portal web del producto'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$colores = isset($_POST['colores']) && is_array($_POST['colores']) ? $_POST['colores'] : [];
+		$predeterminado = intval($_POST['color_predeterminado'] ?? 0);
+
+		try {
+			$this->model->guardarColoresWebUnidad((int) $unidad['idunidad'], $colores, $predeterminado);
+		} catch (\Throwable $e) {
+			error_log("No se pudieron guardar los colores (unidad {$unidad['idunidad']}): " . $e->getMessage());
+			echo json_encode(['status' => false, 'msg' => 'No se pudieron guardar los colores'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		echo json_encode(['status' => true, 'msg' => 'Colores guardados'], JSON_UNESCAPED_UNICODE);
 		die();
 	}
 
@@ -1989,7 +2056,6 @@ class Inv_inventario extends Controllers
 					'sugerencias' => $sugerencias,
 					'ingenieria' => $ing,
 					'precios' => $this->model->selectPreciosPortal($inventarioid),
-					'colores' => $this->coloresPortalUnidad($unidad ?: null),
 				]
 			], JSON_UNESCAPED_UNICODE);
 			die();
@@ -2175,21 +2241,9 @@ class Inv_inventario extends Controllers
 					}
 				}
 
-				// Colores destinados a la unidad (web_unidades_colores)
-				$msgColores = '';
-				if ($resp && !empty($_POST['colores_enviados'])) {
-					$colores = isset($_POST['colores']) && is_array($_POST['colores']) ? $_POST['colores'] : [];
-					try {
-						$this->model->guardarColoresWebUnidad((int) $idunidad, $colores);
-					} catch (\Throwable $e) {
-						error_log("No se pudieron guardar los colores (unidad {$idunidad}): " . $e->getMessage());
-						$msgColores = ', pero no se pudieron guardar los colores';
-					}
-				}
-
 				echo json_encode([
 					'status' => $resp ? true : false,
-					'msg' => $resp ? 'Configuración de portal web guardada' . $msgColores : 'Error al guardar la configuración de portal web',
+					'msg' => $resp ? 'Configuración de portal web guardada' : 'Error al guardar la configuración de portal web',
 					'idunidad' => $idunidad,
 				]);
 				die();
@@ -2269,11 +2323,15 @@ class Inv_inventario extends Controllers
 			}
 
 			$idunidad = (int) $unidad['idunidad'];
-			$actuales = $this->model->countImagenesWebUnidad($idunidad);
+			// Galería destino: general (null) o la de un color de la unidad.
+			// El máximo de fotos es por galería (por color).
+			$idUnidadColor = $this->idUnidadColorSolicitado($idunidad);
+			$actuales = $this->model->countImagenesWebUnidad($idunidad, $idUnidadColor);
 			$nuevas = count(array_filter($_FILES['imagenes']['name']));
 
 			if ($actuales + $nuevas > $maxImagenes) {
-				echo json_encode(['status' => false, 'msg' => "Solo puedes tener máximo {$maxImagenes} evidencias por unidad"]);
+				$donde = $idUnidadColor === null ? 'en la galería general' : 'por color';
+				echo json_encode(['status' => false, 'msg' => "Solo puedes tener máximo {$maxImagenes} fotos {$donde}"], JSON_UNESCAPED_UNICODE);
 				die();
 			}
 
@@ -2286,14 +2344,11 @@ class Inv_inventario extends Controllers
 			}
 
 			$subidas = 0;
-			$orden = $actuales;
-			$yaTienePrincipal = false;
-
-			foreach ($this->model->selectImagenesWebUnidad($idunidad) as $img) {
-				if ((int) $img['es_principal'] === 1) {
-					$yaTienePrincipal = true;
-				}
-			}
+			$orden = $this->model->siguienteOrdenImagenWebUnidad($idunidad, $idUnidadColor) - 1;
+			// La principal es una sola por modelo (galería general): las fotos
+			// de color nunca se marcan como principales
+			$yaTienePrincipal = $idUnidadColor !== null
+				|| $this->model->tienePrincipalImagenWebUnidad($idunidad, null);
 
 			foreach ($_FILES['imagenes']['tmp_name'] as $key => $tmp) {
 
@@ -2314,7 +2369,7 @@ class Inv_inventario extends Controllers
 						$orden++;
 						$esPrincipal = (!$yaTienePrincipal) ? 1 : 0;
 
-						$this->model->insertImagenWebUnidad($idunidad, $nombreOriginal, $nombreArchivo, $rutaRelativa, $orden, $esPrincipal);
+						$this->model->insertImagenWebUnidad($idunidad, $nombreOriginal, $nombreArchivo, $rutaRelativa, $orden, $esPrincipal, $idUnidadColor);
 
 						if ($esPrincipal) {
 							$yaTienePrincipal = true;
@@ -2330,7 +2385,7 @@ class Inv_inventario extends Controllers
 			echo json_encode([
 				'status' => $subidas > 0,
 				'msg' => $subidas > 0 ? "Se subieron {$subidas} imagen(es)" : 'No se pudo subir ninguna imagen',
-				'imagenes' => $this->model->selectImagenesWebUnidad($idunidad)
+				'imagenes' => $this->model->selectImagenesWebUnidad($idunidad, $idUnidadColor)
 			], JSON_UNESCAPED_UNICODE);
 			die();
 		}
@@ -2555,6 +2610,7 @@ class Inv_inventario extends Controllers
 		}
 
 		$idunidad = (int) $imagen['idunidad'];
+		$idUnidadColor = self::idUnidadColorDe($imagen);
 		$eraPrincipal = (int) $imagen['es_principal'] === 1;
 
 		$ruta = $this->rutaAbsolutaPortalWeb($imagen['ruta_archivo']);
@@ -2565,19 +2621,15 @@ class Inv_inventario extends Controllers
 
 		$resp = $this->model->deleteImagenWebUnidad($id);
 
-		if ($resp && $eraPrincipal) {
-			$restantes = $this->model->selectImagenesWebUnidad($idunidad);
-
-			if (!empty($restantes)) {
-				$nuevaPrincipal = $restantes[0];
-				$this->model->marcarPrincipalImagenWebUnidad((int) $nuevaPrincipal['idimagen'], $idunidad);
-			}
+		// Si era la principal (solo existe en la galería general) se reasigna
+		if ($resp && $eraPrincipal && $idUnidadColor === null) {
+			$this->model->asegurarPrincipalImagenWebUnidad($idunidad, null);
 		}
 
 		echo json_encode([
 			'status' => $resp ? true : false,
 			'msg' => $resp ? 'Imagen eliminada' : 'Error al eliminar la imagen',
-			'imagenes' => $this->model->selectImagenesWebUnidad($idunidad)
+			'imagenes' => $this->model->selectImagenesWebUnidad($idunidad, $idUnidadColor)
 		], JSON_UNESCAPED_UNICODE);
 		die();
 	}
@@ -2637,7 +2689,7 @@ class Inv_inventario extends Controllers
 		echo json_encode([
 			'status' => $resp ? true : false,
 			'msg' => $resp ? 'Foto reemplazada' : 'Error al reemplazar la foto',
-			'imagenes' => $this->model->selectImagenesWebUnidad($idunidad)
+			'imagenes' => $this->model->selectImagenesWebUnidad($idunidad, self::idUnidadColorDe($imagen))
 		], JSON_UNESCAPED_UNICODE);
 		die();
 	}
@@ -2689,13 +2741,64 @@ class Inv_inventario extends Controllers
 		}
 
 		$idunidad = (int) $imagen['idunidad'];
+		$idUnidadColor = self::idUnidadColorDe($imagen);
 
-		$this->model->marcarPrincipalImagenWebUnidad($idimagen, $idunidad);
+		// La principal es una sola por modelo: solo fotos de la galería general
+		if ($idUnidadColor !== null) {
+			echo json_encode(['status' => false, 'msg' => 'Solo una foto de la galería general puede ser la principal'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$this->model->marcarPrincipalImagenWebUnidad($idimagen, $idunidad, null);
 
 		echo json_encode([
 			'status' => true,
 			'msg' => 'Imagen marcada como principal',
-			'imagenes' => $this->model->selectImagenesWebUnidad($idunidad)
+			'imagenes' => $this->model->selectImagenesWebUnidad($idunidad, $idUnidadColor)
+		], JSON_UNESCAPED_UNICODE);
+		die();
+	}
+
+	// "Fotos portal": pasa una foto ya subida de una galería a otra (general
+	// <-> color, o entre colores) sin volver a subir el archivo. Sirve para
+	// acomodar por color las fotos que ya estaban en la galería general.
+	public function moverImagenColorPortalWeb()
+	{
+		$this->exigirPermisoFotos('u');
+		header('Content-Type: application/json; charset=utf-8');
+
+		$idimagen = intval($_POST['idimagen'] ?? 0);
+		$imagen = $idimagen > 0 ? $this->model->selectImagenWebUnidad($idimagen) : null;
+
+		if (empty($imagen)) {
+			echo json_encode(['status' => false, 'msg' => 'No se encontró la foto']);
+			die();
+		}
+
+		$idunidad = (int) $imagen['idunidad'];
+		$origen = self::idUnidadColorDe($imagen);
+		$destino = $this->idUnidadColorSolicitado($idunidad);
+
+		if ($origen === $destino) {
+			echo json_encode(['status' => false, 'msg' => 'La foto ya está en esa galería'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		if ($this->model->countImagenesWebUnidad($idunidad, $destino) >= 5) {
+			echo json_encode(['status' => false, 'msg' => 'La galería destino ya tiene el máximo de 5 fotos'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
+
+		$resp = $this->model->moverImagenWebUnidad($idimagen, $idunidad, $destino);
+
+		// Si era la principal (galería general), la general toma otra
+		if ($resp && (int) $imagen['es_principal'] === 1 && $origen === null) {
+			$this->model->asegurarPrincipalImagenWebUnidad($idunidad, null);
+		}
+
+		echo json_encode([
+			'status' => $resp,
+			'msg' => $resp ? 'Foto movida' : 'No se pudo mover la foto',
 		], JSON_UNESCAPED_UNICODE);
 		die();
 	}

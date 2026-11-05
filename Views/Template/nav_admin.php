@@ -378,7 +378,7 @@
                                 <?php if (!empty($_SESSION['permisos'][MIINVDISTRIBUIDORES]['r'])) { ?>
                                     <li class="nav-item">
                                         <a href="<?= base_url(); ?>/inv_invdistribuidores" class="nav-link"
-                                            data-key="t-detached">Inventario distribuidores</a>
+                                            data-key="t-detached">Retail distribuidores</a>
                                     </li>
                                 <?php } ?>
 
