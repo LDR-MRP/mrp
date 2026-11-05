@@ -40,12 +40,14 @@ Route::post('api/v1/suppliers', [SupplierController::class, 'store'])->middlewar
 // Listado y Detalle
 Route::get('api/v1/suppliers', [SupplierController::class, 'index'])->middleware([AuthMiddleware::class]);
 Route::get('api/v1/suppliers/kpis', [SupplierController::class, 'kpis'])->middleware([AuthMiddleware::class]);
-Route::get('api/v1/suppliers/{id}', [SupplierController::class, 'show'])->middleware([AuthMiddleware::class]);
 
-// Expediente Digital
+// Expediente Digital (Rutas específicas primero)
 Route::post('api/v1/suppliers/documents', [SupplierController::class, 'uploadDocument'])->middleware([AuthMiddleware::class]);
 Route::get('api/v1/suppliers/{id}/documents', [SupplierController::class, 'getDocuments'])->middleware([AuthMiddleware::class]);
 Route::post('api/v1/suppliers/audit-document', [SupplierController::class, 'auditDocument'])->middleware([AuthMiddleware::class]);
+
+// Detalle de proveedor (Ruta general después)
+Route::get('api/v1/suppliers/{id}', [SupplierController::class, 'show'])->middleware([AuthMiddleware::class]);
 
 // --- GESTIÓN BANCARIA DE PROVEEDORES ---
 // Listar cuentas de un proveedor específico

@@ -479,19 +479,9 @@ class SupplierService
      */
     public function documents(int $supplierId): ServiceResponse
     {
-        // Logging para rastrear incidencias
-        $logPath = __DIR__ . '/../Logs/mrp-' . date('Y-m-d') . '.log';
-        $logFile = fopen($logPath, 'a');
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [documents] Iniciando para proveedor ID: " . $supplierId . "\n");
-        fclose($logFile);
-
         // 1. Obtener el perfil del proveedor para saber qué exigirle
         $supplier = $this->proveedorModel->getById($supplierId);
         if (!$supplier) throw new Exception("Proveedor inexistente.");
-
-        $logFile = fopen($logPath, 'a');
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [documents] Proveedor encontrado: " . json_encode($supplier) . "\n");
-        fclose($logFile);
 
         // 2. Obtener lista dinámica basada en el Enum
         $requiredDocs = DocumentTypeEnum::getRequiredList(
@@ -499,17 +489,9 @@ class SupplierService
             $supplier['origen'] ?? 'Nacional'
         );
 
-        $logFile = fopen($logPath, 'a');
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [documents] Documentos requeridos: " . json_encode($requiredDocs) . "\n");
-        fclose($logFile);
-
         // 3. Obtener lo que ya subió
         $uploaded = $this->expedienteModel->uploadedDocuments($supplierId);
         $uploadedIndexed = array_column($uploaded, null, 'tipo_documento');
-
-        $logFile = fopen($logPath, 'a');
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [documents] Documentos cargados: " . json_encode($uploaded) . "\n");
-        fclose($logFile);
 
         // 4. Cruzar información
         $finalList = [];
@@ -545,10 +527,6 @@ class SupplierService
             }
         }
 
-        $logFile = fopen($logPath, 'a');
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [documents] Contadores - Required: " . $requiredCount . ", ApprovedRequired: " . $approvedRequired . ", ApprovedOptional: " . $approvedOptional . ", UploadedOptional: " . $uploadedOptional . "\n");
-        fclose($logFile);
-
         // 5. Calcular progreso dinámico (misma lógica que calculateOnboardingProgress)
         $totalForCalculation = $requiredCount + $uploadedOptional;
         $totalApproved = $approvedRequired + $approvedOptional;
@@ -558,10 +536,6 @@ class SupplierService
         } else {
             $progress = round(($totalApproved / $totalForCalculation) * 100);
         }
-
-        $logFile = fopen($logPath, 'a');
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [documents] Progreso calculado: " . $progress . "% (TotalForCalculation: " . $totalForCalculation . ", TotalApproved: " . $totalApproved . ")\n");
-        fclose($logFile);
 
         return ServiceResponse::success([
             'documents' => $finalList,
