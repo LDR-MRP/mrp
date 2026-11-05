@@ -498,7 +498,13 @@ class Prv_proveedorModel extends Mysql
      */
     public function getById(int $id): ?array
     {
-        $sql = "SELECT 
+        // Logging para rastrear incidencias
+        $logPath = __DIR__ . '/../Logs/mrp-' . date('Y-m-d') . '.log';
+        $logFile = fopen($logPath, 'a');
+        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [Prv_proveedorModel::getById] Buscando proveedor ID: " . $id . "\n");
+        fclose($logFile);
+
+        $sql = "SELECT
                     id_proveedor,
                     id_empresa,
                     rfc,
@@ -512,12 +518,16 @@ class Prv_proveedorModel extends Mysql
                     estatus_operativo,
                     id_planta,        -- Para validaciones de Scope (IDOR)
                     created_at
-                FROM `{$this->table}` 
-                WHERE id_proveedor = ? 
-                  AND deleted_at IS NULL 
+                FROM `{$this->table}`
+                WHERE id_proveedor = ?
+                  AND deleted_at IS NULL
                 LIMIT 1";
 
         $result = $this->select($sql, [$id]);
+
+        $logFile = fopen($logPath, 'a');
+        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [Prv_proveedorModel::getById] Resultado: " . ($result ? json_encode($result) : 'NULL') . "\n");
+        fclose($logFile);
 
         // Retornamos null si el objeto Mysql devuelve false o vacío
         return $result ?: null;
