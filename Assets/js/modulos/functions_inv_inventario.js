@@ -4255,11 +4255,11 @@ let fwTieneCaratula = false;
 let fwIdReemplazo = null;
 
 // Fotos por color: cada color asignado a la unidad (web_unidades_colores)
-// tiene su propia galería en web_unidades_imagenes (idunidad_color). Con
-// "General" (fwColorActual = null) o la de un color. La "Imagen principal"
-// es una sola por modelo (carátula de web_unidades, la que sale en el
-// catálogo del portal) y no cambia con el color. Las fotos de color no se
-// marcan como principales.
+// tiene su propia galería en web_unidades_imagenes (idunidad_color). Ya no
+// hay galería general: toda foto pertenece a un color, así que para subir
+// hay que tener un color asignado y seleccionado (fwColorActual). La "Imagen
+// principal" es una sola por modelo (carátula de web_unidades, la que sale en
+// el catálogo del portal) y no depende del color.
 let fwColores = [];
 let fwCatalogoColores = [];
 let fwColoresDisponible = true;
@@ -4292,7 +4292,7 @@ function cargarTabFotosWeb(idinventario, tipoElemento) {
   if (fwModoActual === null) return;
 
   const hid = document.getElementById("fw_inventarioid");
-  // Al abrir otro producto se empieza en la galería General
+  // Al abrir otro producto se vuelve a elegir el color (el predeterminado)
   if (hid && hid.value !== String(idinventario)) fwColorActual = null;
   if (hid) hid.value = idinventario;
 
@@ -4320,8 +4320,12 @@ function refrescarFotosWeb(idinventario) {
       fwColoresDisponible = d.colores_disponible !== false;
       fwImagenesTodas = Array.isArray(d.imagenes) ? d.imagenes : [];
       fwCaratulaGeneral = d.imagen_caratula || "";
-      // Si el color que estaba seleccionado ya no está asignado, se regresa a General
-      if (fwColorActual !== null && !fwColorSel()) fwColorActual = null;
+      // Si no hay color seleccionado (o ya no está asignado) se toma el
+      // predeterminado, o el primero
+      if (!fwColorSel()) {
+        const pred = fwColores.find((c) => Number(c.es_predeterminado) === 1) || fwColores[0] || null;
+        fwColorActual = pred ? Number(pred.idunidad_color) : null;
+      }
 
       renderAsignacionColoresFotosWeb();
       renderColoresFotosWeb();
@@ -4550,24 +4554,22 @@ function renderColoresFotosWeb() {
 
   const chip = (id, nombre, hex, cuenta, extra) => {
     const activo = id === fwColorActual;
-    const muestra =
-      id === null
-        ? '<i class="ri-image-line"></i>'
-        : `<span class="fw-color-muestra" style="background:${/^#[0-9A-Fa-f]{6}$/.test(hex || "") ? hex : "transparent"}"></span>`;
+    const muestra = `<span class="fw-color-muestra" style="background:${/^#[0-9A-Fa-f]{6}$/.test(hex || "") ? hex : "transparent"}"></span>`;
     return `
-      <button type="button" class="fw-color-chip ${activo ? "activo" : ""}" data-color="${id === null ? "" : id}">
+      <button type="button" class="fw-color-chip ${activo ? "activo" : ""}" data-color="${id}">
         ${muestra}<span>${fwEscape(nombre)}</span>${extra || ""}
         <span class="fw-color-cuenta">${cuenta}/${MAX_IMAGENES_PORTAL_WEB}</span>
       </button>`;
   };
 
-  let html = chip(null, "General", "", fwImagenesDe(null).length);
+  let html = "";
   fwColores.forEach((c) => {
     const id = Number(c.idunidad_color);
     const pred = Number(c.es_predeterminado) === 1 ? ' <i class="ri-star-fill text-warning" title="Color predeterminado"></i>' : "";
     html += chip(id, c.nombre, c.codigo_hex, fwImagenesDe(id).length, pred);
   });
   cont.innerHTML = html;
+  cont.classList.toggle("d-none", !fwColores.length);
 
   if (vacio) vacio.classList.toggle("d-none", fwColores.length > 0);
 }
@@ -4586,11 +4588,11 @@ function renderVistaFotosWeb() {
   if (subGal) {
     subGal.textContent = color
       ? `Fotos de la unidad en color ${color.nombre}`
-      : "Fotos adicionales que se muestran en el detalle de la unidad";
+      : "Primero marca al menos un color de la unidad";
   }
 
   renderCaratulaFotosWeb(fwCaratulaGeneral);
-  renderGaleriaFotosWeb(fwImagenesDe(color ? Number(color.idunidad_color) : null));
+  renderGaleriaFotosWeb(color ? fwImagenesDe(Number(color.idunidad_color)) : []);
 }
 
 // ---------- imagen principal (carátula) ----------
@@ -4700,13 +4702,15 @@ function renderGaleriaFotosWeb(imagenes) {
   const cont = document.getElementById("fw_galeria");
   const contador = document.getElementById("fw_contador");
   const btnAgregar = document.getElementById("fw_btn_agregar_fotos");
-  // En la galería de un color no hay principal (es una sola por modelo)
-  const enColor = !!fwColorSel();
+  // Toda foto es de un color y no hay principal en la galería (la principal
+  // es la carátula del modelo). Sin color seleccionado no se puede subir.
+  const enColor = true;
+  const hayColor = !!fwColorSel();
 
   fwTotalImagenes = imagenes.length;
   if (imagenes.length) fwMostrarAvisoSinRegistro(false);
 
-  const puedeAgregar = cfgPuede("FOTOSWEB", "w");
+  const puedeAgregar = hayColor && cfgPuede("FOTOSWEB", "w");
   const puedeActualizar = cfgPuede("FOTOSWEB", "u");
   const puedeEliminar = cfgPuede("FOTOSWEB", "d");
   const restantes = MAX_IMAGENES_PORTAL_WEB - fwTotalImagenes;
@@ -4721,6 +4725,14 @@ function renderGaleriaFotosWeb(imagenes) {
     btnAgregar.title = restantes <= 0 ? "Ya tienes el máximo de fotos" : "";
   }
   if (!cont) return;
+
+  if (!hayColor) {
+    cont.innerHTML = `
+      <div class="col-12">
+        <div class="fw-vacio"><i class="ri-palette-line d-block mb-1"></i>Para subir fotos, primero marca arriba los colores de la unidad.</div>
+      </div>`;
+    return;
+  }
 
   if (!imagenes.length && !puedeAgregar) {
     cont.innerHTML = `
@@ -4750,9 +4762,9 @@ function renderGaleriaFotosWeb(imagenes) {
         <button type="button" class="fw-acc-cambiar" data-accion="cambiar" data-id="${id}" title="Reemplazar esta foto">
           <i class="ri-image-edit-line"></i>Cambiar
         </button>`;
-      if (fwColores.length) {
+      if (fwColores.length > 1) {
         acciones += `
-        <button type="button" class="fw-acc-color" data-accion="color" data-id="${id}" title="Pasar esta foto a otro color o a la galería general">
+        <button type="button" class="fw-acc-color" data-accion="color" data-id="${id}" title="Pasar esta foto a otro color">
           <i class="ri-palette-line"></i>Color
         </button>`;
       }
@@ -4807,6 +4819,10 @@ function fwAbrirSelectorGaleria() {
 function fwSubirFotos(archivos) {
   const idinventario = document.getElementById("fw_inventarioid")?.value;
   if (!idinventario || !archivos.length) return;
+  if (!fwColorSel()) {
+    Swal.fire("Aviso", "Selecciona el color de las fotos", "warning");
+    return;
+  }
 
   const disponibles = MAX_IMAGENES_PORTAL_WEB - fwTotalImagenes;
   if (archivos.length > disponibles) {
@@ -4826,7 +4842,7 @@ function fwSubirFotos(archivos) {
 
   const fd = new FormData();
   fd.append("inventarioid", idinventario);
-  if (fwColorActual !== null) fd.append("idunidad_color", fwColorActual);
+  fd.append("idunidad_color", fwColorActual);
   archivos.forEach((f) => fd.append("imagenes[]", f));
 
   fwCargando(archivos.length === 1 ? "Subiendo foto..." : `Subiendo ${archivos.length} fotos...`);
@@ -4933,11 +4949,9 @@ function eliminarFotoFotosWeb(id) {
   });
 }
 
-// Pasa una foto ya subida a otra galería (otro color o General), sin volver
-// a subirla. Sirve para acomodar las fotos que ya estaban en la general.
+// Pasa una foto ya subida a otro color, sin volver a subirla
 function fwMoverFotoColor(id) {
   const opciones = {};
-  if (fwColorActual !== null) opciones[""] = "General (sin color)";
   fwColores.forEach((c) => {
     const idc = Number(c.idunidad_color);
     if (idc !== fwColorActual) {
@@ -4947,17 +4961,16 @@ function fwMoverFotoColor(id) {
   if (!Object.keys(opciones).length) return;
 
   Swal.fire({
-    title: "Pasar foto a…",
+    title: "Pasar foto al color…",
     input: "select",
     inputOptions: opciones,
-    inputPlaceholder: "Selecciona la galería",
+    inputPlaceholder: "Selecciona el color",
     showCancelButton: true,
     confirmButtonText: "Mover",
     cancelButtonText: "Cancelar",
     inputValidator: (v) => {
-      if (v === undefined || v === null || (v === "" && !("" in opciones))) return "Selecciona una galería";
-      const destino = v === "" ? null : Number(v);
-      if (fwImagenesDe(destino).length >= MAX_IMAGENES_PORTAL_WEB) return `Esa galería ya tiene ${MAX_IMAGENES_PORTAL_WEB} fotos`;
+      if (!v) return "Selecciona el color";
+      if (fwImagenesDe(Number(v)).length >= MAX_IMAGENES_PORTAL_WEB) return `Ese color ya tiene ${MAX_IMAGENES_PORTAL_WEB} fotos`;
       return null;
     },
   }).then((result) => {
@@ -4965,7 +4978,7 @@ function fwMoverFotoColor(id) {
 
     const fd = new FormData();
     fd.append("idimagen", id);
-    if (result.value !== "") fd.append("idunidad_color", result.value);
+    fd.append("idunidad_color", result.value);
 
     fwPost("moverImagenColorPortalWeb", fd)
       .then((res) => {

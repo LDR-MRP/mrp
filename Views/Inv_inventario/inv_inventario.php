@@ -1011,7 +1011,7 @@
                                 <div class="card fw-card">
                                     <div class="card-header">
                                         <h6 class="fw-titulo"><i class="ri-palette-line"></i> Colores de la unidad</h6>
-                                        <div class="fw-subtitulo">Marca los colores en los que se ofrece a los distribuidores y elige el predeterminado (<i class="ri-star-fill text-warning"></i>). Se guarda al momento. Quitar un color oculta sus fotos, no las borra.</div>
+                                        <div class="fw-subtitulo">Marca los colores en los que se ofrece a los distribuidores y elige el predeterminado (<i class="ri-star-fill text-warning"></i>). Cada foto de la galería pertenece a un color, así que se necesita al menos uno. Se guarda al momento; quitar un color oculta sus fotos, no las borra.</div>
                                     </div>
                                     <div class="card-body">
                                         <div class="fw-colores" id="fw_asig_colores"></div>
@@ -1072,7 +1072,7 @@
                                             <div class="fw-colores" id="fw_colores"></div>
                                             <p class="fw-nota mb-0 mt-2 d-none" id="fw_colores_vacio">
                                                 <i class="ri-information-line align-middle"></i>
-                                                Esta unidad no tiene colores asignados. Márcalos arriba en "Colores de la unidad"; mientras tanto solo hay galería general.
+                                                Esta unidad no tiene colores asignados. Para subir fotos, marca al menos un color arriba en "Colores de la unidad".
                                             </p>
                                         </div>
                                         <div class="row g-3" id="fw_galeria"></div>
