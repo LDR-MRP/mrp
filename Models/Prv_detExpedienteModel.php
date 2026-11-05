@@ -134,13 +134,7 @@ class Prv_detExpedienteModel extends Mysql
      */
     public function uploadedDocuments(int $id_proveedor): array
     {
-        // Logging para rastrear incidencias
-        $logPath = __DIR__ . '/../Logs/mrp-' . date('Y-m-d') . '.log';
-        $logFile = fopen($logPath, 'a');
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [Prv_detExpedienteModel::uploadedDocuments] Buscando documentos para proveedor ID: " . $id_proveedor . "\n");
-        fclose($logFile);
-
-        $result = $this->select_all(
+        return $this->select_all(
             query:
                 "SELECT
                     id_documento,
@@ -161,12 +155,6 @@ class Prv_detExpedienteModel extends Mysql
                 $id_proveedor
             ]
         );
-
-        $logFile = fopen($logPath, 'a');
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [Prv_detExpedienteModel::uploadedDocuments] Documentos encontrados: " . count($result) . "\n");
-        fclose($logFile);
-
-        return $result;
     }
 
     public function auditDocument(array $values, int $userId): bool

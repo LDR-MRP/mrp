@@ -22,12 +22,6 @@ enum DocumentTypeEnum: string
      */
     public static function getRequiredList(string $tipoPersona, string $origen): array
     {
-        // Logging para rastrear incidencias
-        $logPath = __DIR__ . '/../Logs/mrp-' . date('Y-m-d') . '.log';
-        $logFile = fopen($logPath, 'a');
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [DocumentTypeEnum::getRequiredList] TipoPersona: " . $tipoPersona . ", Origen: " . $origen . "\n");
-        fclose($logFile);
-
         $list = [];
 
         if ($origen === 'Nacional') {
@@ -57,10 +51,6 @@ enum DocumentTypeEnum: string
             }
             $response[$doc->value] = $config;
         }
-
-        $logFile = fopen($logPath, 'a');
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [DocumentTypeEnum::getRequiredList] Lista generada: " . json_encode($response) . "\n");
-        fclose($logFile);
 
         return $response;
     }

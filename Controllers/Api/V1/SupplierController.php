@@ -44,10 +44,27 @@ class SupplierController
      */
     public function uploadDocument(): string
     {
-       
-        $response = $this->supplierService->uploadDocument($this->request['auth_user']);
-        
-        return $this->apiResponse($response);
+        // Logging para rastrear incidencias
+        $logPath = __DIR__ . '/../../Logs/mrp-' . date('Y-m-d') . '.log';
+        $logFile = fopen($logPath, 'a');
+        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [uploadDocument] Iniciando subida de documento\n");
+        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [uploadDocument] Request data: " . json_encode($this->request) . "\n");
+        fclose($logFile);
+
+        try {
+            $response = $this->supplierService->uploadDocument($this->request['auth_user']);
+
+            $logFile = fopen($logPath, 'a');
+            fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [uploadDocument] Respuesta del servicio: " . json_encode($response) . "\n");
+            fclose($logFile);
+
+            return $this->apiResponse($response);
+        } catch (\Exception $e) {
+            $logFile = fopen($logPath, 'a');
+            fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [uploadDocument] Exception: " . $e->getMessage() . " | File: " . $e->getFile() . ":" . $e->getLine() . "\n");
+            fclose($logFile);
+            throw $e;
+        }
     }
 
     /**
@@ -56,18 +73,7 @@ class SupplierController
      */
     public function getDocuments(int $id): string
     {
-        // Logging para rastrear incidencias
-        $logPath = __DIR__ . '/../../Logs/mrp-' . date('Y-m-d') . '.log';
-        $logFile = fopen($logPath, 'a');
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [getDocuments] Iniciando obtención de documentos para proveedor ID: " . $id . "\n");
-        fclose($logFile);
-
         $response = $this->supplierService->documents($id);
-
-        // Logging de respuesta
-        $logFile = fopen($logPath, 'a');
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [getDocuments] Respuesta del servicio: " . json_encode($response) . "\n");
-        fclose($logFile);
 
         return $this->apiResponse($response);
     }
