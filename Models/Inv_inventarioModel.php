@@ -720,40 +720,89 @@ WHERE idinventario = ?";
     }
 
     // -------- Imágenes (web_unidades_imagenes) --------
+    // Cada foto pertenece a la galería general de la unidad (idunidad_color
+    // NULL) o a la galería de uno de sus colores (web_unidades_colores).
+    // El orden y el límite de fotos son por unidad + color; por eso se filtra
+    // con "idunidad_color <=> ?", que también empata NULL con NULL.
+    // La imagen principal del modelo es una sola (web_unidades.imagen_caratula
+    // + es_principal de la galería general); las fotos de color nunca son principales.
 
-    public function insertImagenWebUnidad($idunidad, $nombreOriginal, $nombreArchivo, $rutaArchivo, $orden, $esPrincipal)
+    public function insertImagenWebUnidad($idunidad, $nombreOriginal, $nombreArchivo, $rutaArchivo, $orden, $esPrincipal, ?int $idUnidadColor = null)
     {
         $sql = "INSERT INTO web_unidades_imagenes
-            (idunidad, nombre_original, nombre_archivo, ruta_archivo, orden, es_principal, estado, fecha_creacion)
-            VALUES (?,?,?,?,?,?,2,NOW())";
+            (idunidad, idunidad_color, nombre_original, nombre_archivo, ruta_archivo, orden, es_principal, estado, fecha_creacion)
+            VALUES (?,?,?,?,?,?,?,2,NOW())";
 
-        return $this->insert($sql, [$idunidad, $nombreOriginal, $nombreArchivo, $rutaArchivo, $orden, $esPrincipal]);
+        return $this->insert($sql, [$idunidad, $idUnidadColor, $nombreOriginal, $nombreArchivo, $rutaArchivo, $orden, $esPrincipal]);
     }
 
-    public function countImagenesWebUnidad(int $idunidad)
+    public function countImagenesWebUnidad(int $idunidad, ?int $idUnidadColor = null)
     {
-        $sql = "SELECT COUNT(*) AS total FROM web_unidades_imagenes WHERE idunidad = $idunidad AND estado != 0";
-        $r = $this->select($sql);
+        $sql = "SELECT COUNT(*) AS total FROM web_unidades_imagenes
+            WHERE idunidad = ? AND idunidad_color <=> ? AND estado != 0";
+        $r = $this->select($sql, [$idunidad, $idUnidadColor]);
         return (int) ($r['total'] ?? 0);
     }
 
-    public function selectImagenesWebUnidad(int $idunidad)
+    // Siguiente posición libre de la galería (no se usa el conteo porque al
+    // borrar fotos quedan huecos y se repetiría el orden)
+    public function siguienteOrdenImagenWebUnidad(int $idunidad, ?int $idUnidadColor = null): int
     {
-        $sql = "SELECT idimagen, idunidad, nombre_original, nombre_archivo, ruta_archivo, orden, es_principal
+        $sql = "SELECT COALESCE(MAX(orden), 0) + 1 AS siguiente FROM web_unidades_imagenes
+            WHERE idunidad = ? AND idunidad_color <=> ? AND estado != 0";
+        $r = $this->select($sql, [$idunidad, $idUnidadColor]);
+        return (int) ($r['siguiente'] ?? 1);
+    }
+
+    public function tienePrincipalImagenWebUnidad(int $idunidad, ?int $idUnidadColor = null): bool
+    {
+        $sql = "SELECT COUNT(*) AS total FROM web_unidades_imagenes
+            WHERE idunidad = ? AND idunidad_color <=> ? AND estado != 0 AND es_principal = 1";
+        $r = $this->select($sql, [$idunidad, $idUnidadColor]);
+        return (int) ($r['total'] ?? 0) > 0;
+    }
+
+    // Galería de la unidad: general (sin color) o la de un color
+    public function selectImagenesWebUnidad(int $idunidad, ?int $idUnidadColor = null)
+    {
+        $sql = "SELECT idimagen, idunidad, idunidad_color, nombre_original, nombre_archivo, ruta_archivo, orden, es_principal
             FROM web_unidades_imagenes
-            WHERE idunidad = $idunidad AND estado != 0
+            WHERE idunidad = ? AND idunidad_color <=> ? AND estado != 0
             ORDER BY orden ASC, idimagen ASC";
 
-        return $this->select_all($sql);
+        return $this->select_all($sql, [$idunidad, $idUnidadColor]);
+    }
+
+    // Todas las fotos de la unidad (general + colores), para "Fotos portal"
+    public function selectTodasImagenesWebUnidad(int $idunidad)
+    {
+        $sql = "SELECT idimagen, idunidad, idunidad_color, nombre_original, nombre_archivo, ruta_archivo, orden, es_principal
+            FROM web_unidades_imagenes
+            WHERE idunidad = ? AND estado != 0
+            ORDER BY idunidad_color IS NOT NULL, idunidad_color, orden ASC, idimagen ASC";
+
+        return $this->select_all($sql, [$idunidad]);
     }
 
     public function selectImagenWebUnidad(int $idimagen)
     {
-        $sql = "SELECT idimagen, idunidad, nombre_original, nombre_archivo, ruta_archivo, orden, es_principal
+        $sql = "SELECT idimagen, idunidad, idunidad_color, nombre_original, nombre_archivo, ruta_archivo, orden, es_principal
             FROM web_unidades_imagenes
-            WHERE idimagen = $idimagen";
+            WHERE idimagen = ?";
 
-        return $this->select($sql);
+        return $this->select($sql, [$idimagen]);
+    }
+
+    // Cambia una foto de galería (general <-> color, o de un color a otro).
+    // Se va al final de la galería destino. En un color nunca es principal; si
+    // regresa a la general y ésta no tiene principal, pasa a serlo.
+    public function moverImagenWebUnidad(int $idimagen, int $idunidad, ?int $idUnidadColorDestino): bool
+    {
+        $orden = $this->siguienteOrdenImagenWebUnidad($idunidad, $idUnidadColorDestino);
+        $esPrincipal = ($idUnidadColorDestino === null && !$this->tienePrincipalImagenWebUnidad($idunidad, null)) ? 1 : 0;
+
+        $sql = "UPDATE web_unidades_imagenes SET idunidad_color = ?, orden = ?, es_principal = ? WHERE idimagen = ? AND idunidad = ?";
+        return (bool) $this->update($sql, [$idUnidadColorDestino, $orden, $esPrincipal, $idimagen, $idunidad]);
     }
 
     // Ficha técnica de Ingeniería (ing_modelo_configuracion) ligada al producto
@@ -837,45 +886,74 @@ WHERE idinventario = ?";
     }
 
     // -------- Colores de la unidad en el portal --------
-    // Catálogo: wms_colores_unidad (Inventario > Catálogos > Colores de unidad)
-    // Asignación: web_unidades_colores (idunidad de web_unidades <-> idcolor)
+    // Catálogo: web_colores (Inventario > Catálogos > Colores de unidad)
+    // Asignación: web_unidades_colores (idunidad_color, orden, es_predeterminado,
+    // estado 2 = asignado / 1 = quitado). Las fotos por color cuelgan de
+    // idunidad_color, por eso una asignación nunca se borra: al quitar el
+    // color se pone estado 1 y sus fotos se ocultan hasta que se vuelva a asignar.
 
     public function selectColoresUnidadActivos()
     {
-        $sql = "SELECT idcolor, nombre
-            FROM wms_colores_unidad
+        $sql = "SELECT idcolor, nombre, codigo_hex
+            FROM web_colores
             WHERE estado = 2
             ORDER BY nombre";
         return $this->select_all($sql);
     }
 
+    // Colores asignados (activos) a la unidad, con cuántas fotos tiene cada uno
     public function selectColoresAsignadosWebUnidad(int $idunidad): array
     {
-        $sql = "SELECT idcolor FROM web_unidades_colores WHERE idunidad = ?";
-        $rows = $this->select_all($sql, [$idunidad]);
-        return array_map(fn($r) => (int) $r['idcolor'], $rows ?: []);
+        $sql = "SELECT uc.idunidad_color, uc.idcolor, c.nombre, c.codigo_hex, uc.orden, uc.es_predeterminado,
+                (SELECT COUNT(*) FROM web_unidades_imagenes i
+                 WHERE i.idunidad_color = uc.idunidad_color AND i.estado != 0) AS total_fotos
+            FROM web_unidades_colores uc
+            INNER JOIN web_colores c ON c.idcolor = uc.idcolor
+            WHERE uc.idunidad = ? AND uc.estado = 2 AND c.estado = 2
+            ORDER BY uc.orden ASC, c.nombre ASC";
+        return $this->select_all($sql, [$idunidad]) ?: [];
     }
 
-    // Reemplaza los colores activos asignados a la unidad por los recibidos.
-    // Las asignaciones a colores inactivos se conservan (el portal no las
-    // muestra) para que reaparezcan si el color se vuelve a activar.
-    public function guardarColoresWebUnidad(int $idunidad, array $idsColores): void
+    // Valida que el color asignado pertenezca a la unidad y esté activo
+    public function selectUnidadColorActivo(int $idUnidadColor, int $idunidad)
     {
+        $sql = "SELECT uc.idunidad_color, uc.idunidad, uc.idcolor, c.nombre
+            FROM web_unidades_colores uc
+            INNER JOIN web_colores c ON c.idcolor = uc.idcolor
+            WHERE uc.idunidad_color = ? AND uc.idunidad = ? AND uc.estado = 2 AND c.estado = 2";
+        return $this->select($sql, [$idUnidadColor, $idunidad]);
+    }
+
+    // $idsColores llega en el orden en que se muestran. Los colores activos
+    // del catálogo que no vengan se marcan como quitados (estado 1); las
+    // asignaciones a colores inactivos del catálogo no se tocan.
+    public function guardarColoresWebUnidad(int $idunidad, array $idsColores, int $idColorPredeterminado = 0): void
+    {
+        $ids = [];
+        foreach ($idsColores as $id) {
+            $id = (int) $id;
+            if ($id > 0 && !in_array($id, $ids, true)) {
+                $ids[] = $id;
+            }
+        }
+        if (!in_array($idColorPredeterminado, $ids, true)) {
+            $idColorPredeterminado = $ids[0] ?? 0;
+        }
+
         $this->update(
-            "DELETE FROM web_unidades_colores
-             WHERE idunidad = ?
-             AND idcolor IN (SELECT idcolor FROM wms_colores_unidad WHERE estado = 2)",
+            "UPDATE web_unidades_colores
+             SET estado = 1, es_predeterminado = 0
+             WHERE idunidad = ? AND estado = 2
+             AND idcolor IN (SELECT idcolor FROM web_colores WHERE estado = 2)",
             [$idunidad]
         );
 
-        foreach (array_unique(array_map('intval', $idsColores)) as $idcolor) {
-            if ($idcolor <= 0) {
-                continue;
-            }
+        foreach ($ids as $i => $idcolor) {
             $this->insert(
-                "INSERT IGNORE INTO web_unidades_colores (idunidad, idcolor, fecha_creacion)
-                 SELECT ?, idcolor, NOW() FROM wms_colores_unidad WHERE idcolor = ? AND estado = 2",
-                [$idunidad, $idcolor]
+                "INSERT INTO web_unidades_colores (idunidad, idcolor, orden, es_predeterminado, estado)
+                 SELECT ?, idcolor, ?, ?, 2 FROM web_colores WHERE idcolor = ? AND estado = 2
+                 ON DUPLICATE KEY UPDATE estado = 2, orden = VALUES(orden), es_predeterminado = VALUES(es_predeterminado)",
+                [$idunidad, $i + 1, $idcolor === $idColorPredeterminado ? 1 : 0, $idcolor]
             );
         }
     }
@@ -889,22 +967,36 @@ WHERE idinventario = ?";
 
     public function deleteImagenWebUnidad(int $idimagen)
     {
-        $sql = "DELETE FROM web_unidades_imagenes WHERE idimagen = $idimagen";
-        return $this->delete($sql);
+        $sql = "DELETE FROM web_unidades_imagenes WHERE idimagen = ?";
+        return $this->update($sql, [$idimagen]);
     }
 
-    public function limpiarPrincipalImagenesWebUnidad(int $idunidad)
+    public function limpiarPrincipalImagenesWebUnidad(int $idunidad, ?int $idUnidadColor = null)
     {
-        $sql = "UPDATE web_unidades_imagenes SET es_principal = 0 WHERE idunidad = ?";
-        return $this->update($sql, [$idunidad]);
+        $sql = "UPDATE web_unidades_imagenes SET es_principal = 0 WHERE idunidad = ? AND idunidad_color <=> ?";
+        return $this->update($sql, [$idunidad, $idUnidadColor]);
     }
 
-    public function marcarPrincipalImagenWebUnidad(int $idimagen, int $idunidad)
+    // Principal dentro de la galería de la foto (general o su color)
+    public function marcarPrincipalImagenWebUnidad(int $idimagen, int $idunidad, ?int $idUnidadColor = null)
     {
-        $this->limpiarPrincipalImagenesWebUnidad($idunidad);
+        $this->limpiarPrincipalImagenesWebUnidad($idunidad, $idUnidadColor);
 
         $sql = "UPDATE web_unidades_imagenes SET es_principal = 1 WHERE idimagen = ?";
         return $this->update($sql, [$idimagen]);
+    }
+
+    // Si la galería (general o de un color) se quedó sin principal, la
+    // primera foto que quede pasa a serlo.
+    public function asegurarPrincipalImagenWebUnidad(int $idunidad, ?int $idUnidadColor = null): void
+    {
+        if ($this->tienePrincipalImagenWebUnidad($idunidad, $idUnidadColor)) {
+            return;
+        }
+        $restantes = $this->selectImagenesWebUnidad($idunidad, $idUnidadColor);
+        if (!empty($restantes)) {
+            $this->marcarPrincipalImagenWebUnidad((int) $restantes[0]['idimagen'], $idunidad, $idUnidadColor);
+        }
     }
 
 

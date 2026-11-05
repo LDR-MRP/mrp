@@ -30,7 +30,16 @@ class Inv_movventasmasivaModel extends Mysql
                 LEFT JOIN wms_movimientos_inventario mv ON mv.idmovinventario = sv.idmovinventario
                 LEFT JOIN cli_clientes cv ON cv.idcliente = mv.id_cliente";
 
-    /** Histórico general: todos los VINs (1 Disponible, 2 Tatuado, 3 Facturado) para el layout. */
+    /**
+     * Almacenes desde los que se pueden vender unidades: Producto Terminado
+     * (clave con "ALM-PT", p. ej. PL01-ALM-PT) y Tránsito. Misma regla que
+     * Inv_movimientosinventarioModel::almacenVentaUnidades().
+     */
+    private const ALMACEN_VENTA_SQL = "(UPPER(TRIM(a.cve_almacen)) REGEXP '(^|-)ALM-PT(-|$)'
+                     OR UPPER(TRIM(a.cve_almacen)) = 'ALM-TRANSITO'
+                     OR UPPER(TRIM(a.descripcion)) IN ('ALMACEN DE TRANSITO', 'ALMACÉN DE TRANSITO', 'ALMACÉN DE TRÁNSITO'))";
+
+    /** Histórico general del layout: VINs (1 Disponible, 2 Tatuado, 3 Facturado) en almacenes de PT o Tránsito. */
     public function selectVinesLayout(): array
     {
         $sql = "SELECT ns.id_numeros_serie,
@@ -52,6 +61,7 @@ class Inv_movventasmasivaModel extends Mysql
                 . self::JOIN_ULTIMA_VENTA . "
                 WHERE ns.estado IN ('1', '2', '3')
                   AND i.tipo_elemento = 'P'
+                  AND " . self::ALMACEN_VENTA_SQL . "
                 ORDER BY planta, almacen, i.cve_articulo, ns.numero_serie";
         return $this->select_all($sql);
     }
