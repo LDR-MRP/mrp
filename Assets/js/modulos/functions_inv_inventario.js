@@ -3739,8 +3739,6 @@ function cargarTabPortalWeb(idinventario, tipoElemento) {
 
       renderPreciosPortalWeb(res.data.precios || [], registro, puedeGuardarPw);
 
-      renderColoresPortalWeb(pwModoActual === "unidad" ? res.data.colores : null, puedeGuardarPw);
-
       if (stock) stock.value = res.data.stock_actual ?? 0;
       if (aviso) aviso.style.display = registro ? "none" : "block";
 
@@ -3848,52 +3846,6 @@ function refrescarPreciosPortalWeb(idinventario) {
       }
     })
     .catch(() => {});
-}
-
-// Colores destinados a la unidad (solo Productos)
-function renderColoresPortalWeb(colores, editable) {
-  const wrap = document.getElementById("pw_wrap_colores");
-  const lista = document.getElementById("pw_colores_lista");
-  if (!wrap || !lista) return;
-
-  lista.innerHTML = "";
-  wrap.hidden = !colores;
-  if (!colores) return;
-
-  if (!colores.disponible) {
-    lista.innerHTML = '<span class="text-muted small">El catálogo de colores aún no está instalado en esta base.</span>';
-    return;
-  }
-
-  const catalogo = colores.catalogo || [];
-  if (!catalogo.length) {
-    lista.innerHTML = '<span class="text-muted small">No hay colores dados de alta. Agrégalos en Inventario &gt; Catálogos &gt; Colores de unidad.</span>';
-    return;
-  }
-
-  const asignados = (colores.asignados || []).map(Number);
-  catalogo.forEach((c) => {
-    const id = "pw_color_" + c.idcolor;
-    const div = document.createElement("div");
-    div.className = "form-check border rounded px-3 py-2 d-flex align-items-center gap-2 mb-0";
-
-    const chk = document.createElement("input");
-    chk.type = "checkbox";
-    chk.className = "form-check-input ms-0 mt-0 pw-color-chk";
-    chk.id = id;
-    chk.value = c.idcolor;
-    chk.checked = asignados.includes(Number(c.idcolor));
-    chk.disabled = !editable;
-
-    const lbl = document.createElement("label");
-    lbl.className = "form-check-label";
-    lbl.htmlFor = id;
-    lbl.appendChild(document.createTextNode(c.nombre));
-
-    div.appendChild(chk);
-    div.appendChild(lbl);
-    lista.appendChild(div);
-  });
 }
 
 function renderGaleriaPortalWeb(imagenes, modo) {
@@ -4102,14 +4054,6 @@ function guardarPortalWeb() {
     fd.append("id_inv_precio", selPrecio ? selPrecio.value : "");
 
     if (pwModoActual === "unidad") {
-      const wrapColores = document.getElementById("pw_wrap_colores");
-      const chksColores = document.querySelectorAll("#pw_colores_lista .pw-color-chk");
-      if (wrapColores && !wrapColores.hidden && chksColores.length) {
-        fd.append("colores_enviados", 1);
-        chksColores.forEach((chk) => {
-          if (chk.checked) fd.append("colores[]", chk.value);
-        });
-      }
       fd.append("version", document.getElementById("pw_version").value || "");
       fd.append("motor", document.getElementById("pw_motor").value || "");
       fd.append("anio", document.getElementById("pw_anio").value || "");
@@ -4310,6 +4254,34 @@ let fwTotalImagenes = 0;
 let fwTieneCaratula = false;
 let fwIdReemplazo = null;
 
+// Fotos por color: cada color asignado a la unidad (web_unidades_colores)
+// tiene su propia galería en web_unidades_imagenes (idunidad_color). Con
+// "General" (fwColorActual = null) o la de un color. La "Imagen principal"
+// es una sola por modelo (carátula de web_unidades, la que sale en el
+// catálogo del portal) y no cambia con el color. Las fotos de color no se
+// marcan como principales.
+let fwColores = [];
+let fwCatalogoColores = [];
+let fwColoresDisponible = true;
+let fwImagenesTodas = [];
+let fwColorActual = null;
+let fwCaratulaGeneral = "";
+
+function fwColorSel() {
+  return fwColores.find((c) => Number(c.idunidad_color) === fwColorActual) || null;
+}
+
+function fwImagenesDe(idUnidadColor) {
+  return fwImagenesTodas.filter((img) =>
+    idUnidadColor === null ? !img.idunidad_color : Number(img.idunidad_color) === idUnidadColor,
+  );
+}
+
+function fwRecargar() {
+  const idinventario = document.getElementById("fw_inventarioid")?.value;
+  if (idinventario) refrescarFotosWeb(idinventario);
+}
+
 function cargarTabFotosWeb(idinventario, tipoElemento) {
   const li = document.getElementById("liTabFotosWeb");
 
@@ -4320,6 +4292,8 @@ function cargarTabFotosWeb(idinventario, tipoElemento) {
   if (fwModoActual === null) return;
 
   const hid = document.getElementById("fw_inventarioid");
+  // Al abrir otro producto se empieza en la galería General
+  if (hid && hid.value !== String(idinventario)) fwColorActual = null;
   if (hid) hid.value = idinventario;
 
   refrescarFotosWeb(idinventario);
@@ -4340,8 +4314,18 @@ function refrescarFotosWeb(idinventario) {
       if (contenido) contenido.hidden = false;
 
       renderFichaFotosWeb(d.ficha || null);
-      renderCaratulaFotosWeb(d.imagen_caratula || "");
-      renderGaleriaFotosWeb(d.imagenes || []);
+
+      fwColores = Array.isArray(d.colores) ? d.colores : [];
+      fwCatalogoColores = Array.isArray(d.catalogo_colores) ? d.catalogo_colores : [];
+      fwColoresDisponible = d.colores_disponible !== false;
+      fwImagenesTodas = Array.isArray(d.imagenes) ? d.imagenes : [];
+      fwCaratulaGeneral = d.imagen_caratula || "";
+      // Si el color que estaba seleccionado ya no está asignado, se regresa a General
+      if (fwColorActual !== null && !fwColorSel()) fwColorActual = null;
+
+      renderAsignacionColoresFotosWeb();
+      renderColoresFotosWeb();
+      renderVistaFotosWeb();
     })
     .catch((err) => console.error(err));
 }
@@ -4459,6 +4443,156 @@ function renderFichaFotosWeb(ficha) {
   wrap.hidden = false;
 }
 
+// ---------- colores de la unidad (asignación) ----------
+// Los asignados salen primero en su orden; el orden en que se guardan es el
+// que se ve. Se guarda en cuanto se marca/desmarca o se cambia el predeterminado.
+
+function renderAsignacionColoresFotosWeb() {
+  const cont = document.getElementById("fw_asig_colores");
+  if (!cont) return;
+
+  if (!fwColoresDisponible) {
+    cont.innerHTML = '<span class="text-muted small">El catálogo de colores aún no está instalado en esta base.</span>';
+    return;
+  }
+  if (!fwCatalogoColores.length) {
+    cont.innerHTML =
+      '<span class="text-muted small">No hay colores dados de alta. Agrégalos en Inventario &gt; Catálogos &gt; Colores de unidad.</span>';
+    return;
+  }
+
+  const editable = cfgPuede("FOTOSWEB", "u");
+  const porColor = new Map(fwColores.map((a) => [Number(a.idcolor), a]));
+  const ordenados = [
+    ...fwColores.map((a) => fwCatalogoColores.find((c) => Number(c.idcolor) === Number(a.idcolor))).filter(Boolean),
+    ...fwCatalogoColores.filter((c) => !porColor.has(Number(c.idcolor))),
+  ];
+
+  cont.innerHTML = ordenados
+    .map((c) => {
+      const asignado = porColor.get(Number(c.idcolor)) || null;
+      const pred = asignado && Number(asignado.es_predeterminado) === 1;
+      const fotos = asignado ? Number(asignado.total_fotos) || 0 : 0;
+      const hex = /^#[0-9A-Fa-f]{6}$/.test(c.codigo_hex || "") ? c.codigo_hex : "transparent";
+      return `
+        <div class="fw-asig-color ${asignado ? "marcado" : ""}" data-idcolor="${Number(c.idcolor)}" data-fotos="${fotos}" data-nombre="${fwEscape(c.nombre)}">
+          <label>
+            <input type="checkbox" class="form-check-input m-0 fw-asig-chk" ${asignado ? "checked" : ""} ${editable ? "" : "disabled"}>
+            <span class="fw-color-muestra" style="background:${hex}"></span>${fwEscape(c.nombre)}
+          </label>
+          ${
+            asignado
+              ? `<button type="button" class="fw-asig-pred ${pred ? "activo" : ""}" ${editable && !pred ? "" : "disabled"}
+                   title="${pred ? "Color predeterminado" : "Hacer predeterminado"}"><i class="${pred ? "ri-star-fill" : "ri-star-line"}"></i></button>`
+              : ""
+          }
+        </div>`;
+    })
+    .join("");
+}
+
+function fwGuardarAsignacionColores(idPredeterminado) {
+  const idinventario = document.getElementById("fw_inventarioid")?.value;
+  const cont = document.getElementById("fw_asig_colores");
+  if (!idinventario || !cont) return;
+
+  const fd = new FormData();
+  fd.append("inventarioid", idinventario);
+  cont.querySelectorAll(".fw-asig-color").forEach((el) => {
+    if (el.querySelector(".fw-asig-chk")?.checked) fd.append("colores[]", el.dataset.idcolor);
+  });
+  if (!idPredeterminado) {
+    const actual = fwColores.find((c) => Number(c.es_predeterminado) === 1);
+    idPredeterminado = actual ? actual.idcolor : "";
+  }
+  fd.append("color_predeterminado", idPredeterminado || "");
+
+  fwPost("guardarColoresFotosWeb", fd)
+    .then((res) => {
+      if (res.status) fwToast(res.msg);
+      else fwError(res.msg);
+      fwRecargar();
+    })
+    .catch((err) => {
+      console.error(err);
+      fwError("No se pudieron guardar los colores");
+      fwRecargar();
+    });
+}
+
+function fwCambioAsignacionColor(chk) {
+  const item = chk.closest(".fw-asig-color");
+  const fotos = Number(item?.dataset.fotos) || 0;
+
+  if (!chk.checked && fotos > 0) {
+    Swal.fire({
+      title: `¿Quitar ${item.dataset.nombre}?`,
+      text: `Tiene ${fotos} foto(s). Se ocultarán del portal (no se borran) y regresan si lo vuelves a marcar.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, quitar",
+      cancelButtonText: "Cancelar",
+    }).then((r) => {
+      if (r.isConfirmed) fwGuardarAsignacionColores();
+      else chk.checked = true;
+    });
+    return;
+  }
+  fwGuardarAsignacionColores();
+}
+
+// ---------- selector de color ----------
+
+function renderColoresFotosWeb() {
+  const cont = document.getElementById("fw_colores");
+  const vacio = document.getElementById("fw_colores_vacio");
+  if (!cont) return;
+
+  const chip = (id, nombre, hex, cuenta, extra) => {
+    const activo = id === fwColorActual;
+    const muestra =
+      id === null
+        ? '<i class="ri-image-line"></i>'
+        : `<span class="fw-color-muestra" style="background:${/^#[0-9A-Fa-f]{6}$/.test(hex || "") ? hex : "transparent"}"></span>`;
+    return `
+      <button type="button" class="fw-color-chip ${activo ? "activo" : ""}" data-color="${id === null ? "" : id}">
+        ${muestra}<span>${fwEscape(nombre)}</span>${extra || ""}
+        <span class="fw-color-cuenta">${cuenta}/${MAX_IMAGENES_PORTAL_WEB}</span>
+      </button>`;
+  };
+
+  let html = chip(null, "General", "", fwImagenesDe(null).length);
+  fwColores.forEach((c) => {
+    const id = Number(c.idunidad_color);
+    const pred = Number(c.es_predeterminado) === 1 ? ' <i class="ri-star-fill text-warning" title="Color predeterminado"></i>' : "";
+    html += chip(id, c.nombre, c.codigo_hex, fwImagenesDe(id).length, pred);
+  });
+  cont.innerHTML = html;
+
+  if (vacio) vacio.classList.toggle("d-none", fwColores.length > 0);
+}
+
+function fwSeleccionarColor(id) {
+  fwColorActual = id;
+  renderColoresFotosWeb();
+  renderVistaFotosWeb();
+}
+
+// La imagen principal siempre es la del modelo; la galería es la seleccionada
+function renderVistaFotosWeb() {
+  const color = fwColorSel();
+  const subGal = document.getElementById("fw_galeria_subtitulo");
+
+  if (subGal) {
+    subGal.textContent = color
+      ? `Fotos de la unidad en color ${color.nombre}`
+      : "Fotos adicionales que se muestran en el detalle de la unidad";
+  }
+
+  renderCaratulaFotosWeb(fwCaratulaGeneral);
+  renderGaleriaFotosWeb(fwImagenesDe(color ? Number(color.idunidad_color) : null));
+}
+
 // ---------- imagen principal (carátula) ----------
 
 function renderCaratulaFotosWeb(ruta) {
@@ -4511,7 +4645,8 @@ function fwSubirCaratula(archivo) {
   fwPost("subirCaratulaPortalWeb", fd)
     .then((res) => {
       if (res.status) {
-        renderCaratulaFotosWeb(res.imagen_caratula || "");
+        fwCaratulaGeneral = res.imagen_caratula || "";
+        renderCaratulaFotosWeb(fwCaratulaGeneral);
         fwToast(res.msg);
       } else {
         fwError(res.msg);
@@ -4526,6 +4661,7 @@ function fwSubirCaratula(archivo) {
 function fwQuitarCaratula() {
   const idinventario = document.getElementById("fw_inventarioid")?.value;
   if (!idinventario) return;
+
 
   Swal.fire({
     title: "¿Quitar imagen principal?",
@@ -4544,6 +4680,7 @@ function fwQuitarCaratula() {
     fwPost("eliminarCaratulaPortalWeb", fd)
       .then((res) => {
         if (res.status) {
+          fwCaratulaGeneral = "";
           renderCaratulaFotosWeb("");
           fwToast(res.msg);
         } else {
@@ -4563,6 +4700,8 @@ function renderGaleriaFotosWeb(imagenes) {
   const cont = document.getElementById("fw_galeria");
   const contador = document.getElementById("fw_contador");
   const btnAgregar = document.getElementById("fw_btn_agregar_fotos");
+  // En la galería de un color no hay principal (es una sola por modelo)
+  const enColor = !!fwColorSel();
 
   fwTotalImagenes = imagenes.length;
   if (imagenes.length) fwMostrarAvisoSinRegistro(false);
@@ -4594,20 +4733,29 @@ function renderGaleriaFotosWeb(imagenes) {
   let html = "";
 
   imagenes.forEach((img, i) => {
-    const esPrincipal = parseInt(img.es_principal, 10) === 1;
+    const esPrincipal = !enColor && parseInt(img.es_principal, 10) === 1;
     const id = parseInt(img.idimagen, 10);
     const src = buildRutaCaratulaPortalWeb(img.ruta_archivo);
 
     let acciones = "";
-    if (puedeActualizar) {
+    if (puedeActualizar && !enColor) {
       acciones += `
         <button type="button" class="fw-acc-principal ${esPrincipal ? "activa" : ""}" data-accion="principal" data-id="${id}"
           ${esPrincipal ? "disabled" : ""} title="${esPrincipal ? "Es la foto principal" : "Marcar como principal"}">
           <i class="${esPrincipal ? "ri-star-fill" : "ri-star-line"}"></i>Principal
-        </button>
+        </button>`;
+    }
+    if (puedeActualizar) {
+      acciones += `
         <button type="button" class="fw-acc-cambiar" data-accion="cambiar" data-id="${id}" title="Reemplazar esta foto">
           <i class="ri-image-edit-line"></i>Cambiar
         </button>`;
+      if (fwColores.length) {
+        acciones += `
+        <button type="button" class="fw-acc-color" data-accion="color" data-id="${id}" title="Pasar esta foto a otro color o a la galería general">
+          <i class="ri-palette-line"></i>Color
+        </button>`;
+      }
     }
     if (puedeEliminar) {
       acciones += `
@@ -4678,13 +4826,14 @@ function fwSubirFotos(archivos) {
 
   const fd = new FormData();
   fd.append("inventarioid", idinventario);
+  if (fwColorActual !== null) fd.append("idunidad_color", fwColorActual);
   archivos.forEach((f) => fd.append("imagenes[]", f));
 
   fwCargando(archivos.length === 1 ? "Subiendo foto..." : `Subiendo ${archivos.length} fotos...`);
   fwPost("subirImagenPortalWeb", fd)
     .then((res) => {
       if (res.status) {
-        renderGaleriaFotosWeb(res.imagenes || []);
+        fwRecargar();
         fwToast(res.msg);
       } else {
         fwError(res.msg);
@@ -4722,7 +4871,7 @@ function fwReemplazarFoto(id, archivo) {
   fwPost("reemplazarImagenPortalWeb", fd)
     .then((res) => {
       if (res.status) {
-        renderGaleriaFotosWeb(res.imagenes || []);
+        fwRecargar();
         fwToast(res.msg);
       } else {
         fwError(res.msg);
@@ -4741,7 +4890,7 @@ function marcarPrincipalFotosWeb(id) {
   fwPost("marcarImagenPrincipalPortalWeb", fd)
     .then((res) => {
       if (res.status) {
-        renderGaleriaFotosWeb(res.imagenes || []);
+        fwRecargar();
         fwToast("Foto marcada como principal");
       } else {
         fwError(res.msg);
@@ -4771,7 +4920,7 @@ function eliminarFotoFotosWeb(id) {
     fwPost("deleteImagenPortalWeb", fd)
       .then((res) => {
         if (res.status) {
-          renderGaleriaFotosWeb(res.imagenes || []);
+          fwRecargar();
           fwToast(res.msg);
         } else {
           fwError(res.msg);
@@ -4780,6 +4929,56 @@ function eliminarFotoFotosWeb(id) {
       .catch((err) => {
         console.error(err);
         fwError("No se pudo eliminar la foto");
+      });
+  });
+}
+
+// Pasa una foto ya subida a otra galería (otro color o General), sin volver
+// a subirla. Sirve para acomodar las fotos que ya estaban en la general.
+function fwMoverFotoColor(id) {
+  const opciones = {};
+  if (fwColorActual !== null) opciones[""] = "General (sin color)";
+  fwColores.forEach((c) => {
+    const idc = Number(c.idunidad_color);
+    if (idc !== fwColorActual) {
+      opciones[idc] = `${c.nombre} (${fwImagenesDe(idc).length}/${MAX_IMAGENES_PORTAL_WEB})`;
+    }
+  });
+  if (!Object.keys(opciones).length) return;
+
+  Swal.fire({
+    title: "Pasar foto a…",
+    input: "select",
+    inputOptions: opciones,
+    inputPlaceholder: "Selecciona la galería",
+    showCancelButton: true,
+    confirmButtonText: "Mover",
+    cancelButtonText: "Cancelar",
+    inputValidator: (v) => {
+      if (v === undefined || v === null || (v === "" && !("" in opciones))) return "Selecciona una galería";
+      const destino = v === "" ? null : Number(v);
+      if (fwImagenesDe(destino).length >= MAX_IMAGENES_PORTAL_WEB) return `Esa galería ya tiene ${MAX_IMAGENES_PORTAL_WEB} fotos`;
+      return null;
+    },
+  }).then((result) => {
+    if (!result.isConfirmed) return;
+
+    const fd = new FormData();
+    fd.append("idimagen", id);
+    if (result.value !== "") fd.append("idunidad_color", result.value);
+
+    fwPost("moverImagenColorPortalWeb", fd)
+      .then((res) => {
+        if (res.status) {
+          fwRecargar();
+          fwToast(res.msg);
+        } else {
+          fwError(res.msg);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        fwError("No se pudo mover la foto");
       });
   });
 }
@@ -4815,6 +5014,24 @@ function eliminarFotoFotosWeb(id) {
     fwIdReemplazo = null;
   });
 
+  const asig = document.getElementById("fw_asig_colores");
+  if (asig) {
+    asig.addEventListener("change", function (e) {
+      if (e.target.classList.contains("fw-asig-chk")) fwCambioAsignacionColor(e.target);
+    });
+    asig.addEventListener("click", function (e) {
+      const btn = e.target.closest(".fw-asig-pred");
+      if (!btn || btn.disabled) return;
+      fwGuardarAsignacionColores(btn.closest(".fw-asig-color").dataset.idcolor);
+    });
+  }
+
+  document.getElementById("fw_colores")?.addEventListener("click", function (e) {
+    const el = e.target.closest("[data-color]");
+    if (!el) return;
+    fwSeleccionarColor(el.dataset.color === "" ? null : Number(el.dataset.color));
+  });
+
   const galeria = document.getElementById("fw_galeria");
   if (galeria) {
     galeria.addEventListener("click", function (e) {
@@ -4836,6 +5053,9 @@ function eliminarFotoFotosWeb(id) {
         case "eliminar":
           eliminarFotoFotosWeb(id);
           break;
+        case "color":
+          fwMoverFotoColor(id);
+          break;
         case "agregar":
           fwAbrirSelectorGaleria();
           break;
@@ -4850,6 +5070,15 @@ function eliminarFotoFotosWeb(id) {
       fwModoActual = null;
       fwTotalImagenes = 0;
       fwIdReemplazo = null;
+      fwColores = [];
+      fwCatalogoColores = [];
+      fwImagenesTodas = [];
+      fwColorActual = null;
+      fwCaratulaGeneral = "";
+      const chips = document.getElementById("fw_colores");
+      if (chips) chips.innerHTML = "";
+      const asigCont = document.getElementById("fw_asig_colores");
+      if (asigCont) asigCont.innerHTML = "";
 
       const li = document.getElementById("liTabFotosWeb");
       if (li) li.hidden = true;

@@ -825,14 +825,6 @@
                                         <small class="text-muted">Se calcula solo con la existencia real del producto; se actualiza al guardar.</small>
                                     </div>
 
-                                    <!-- Solo Productos (unidades): colores con los que se publica en el portal.
-                                         Catálogo: Inventario > Catálogos > Colores de unidad -->
-                                    <div class="col-12" id="pw_wrap_colores" hidden>
-                                        <label class="form-label d-block">Colores disponibles en el portal</label>
-                                        <div id="pw_colores_lista" class="d-flex flex-wrap gap-2"></div>
-                                        <small class="text-muted">Marca los colores en los que se ofrece esta unidad a los distribuidores.</small>
-                                    </div>
-
                                     <!-- Solo Refacciones: en Productos las imágenes se manejan en la pestaña "Fotos portal" -->
                                     <div class="col-12" id="pw_bloque_caratula">
                                         <label class="form-label">Imagen principal (carátula)</label>
@@ -964,6 +956,19 @@
                             #tabFotosWeb .fw-ficha-dato .fw-ficha-label { font-size: .72rem; color: var(--bs-secondary-color, #878a99); text-transform: uppercase; letter-spacing: .02em; margin-bottom: .1rem; }
                             #tabFotosWeb .fw-ficha-dato .fw-ficha-valor { font-size: .9rem; font-weight: 600; color: var(--bs-body-color, #212529); word-break: break-word; }
                             #tabFotosWeb .fw-nota { font-size: .75rem; color: var(--bs-secondary-color, #878a99); }
+                            #tabFotosWeb .fw-colores { display: flex; flex-wrap: wrap; gap: .5rem; }
+                            #tabFotosWeb .fw-color-chip { display: inline-flex; align-items: center; gap: .45rem; border: 1px solid var(--bs-border-color, #ced4da); background: var(--bs-body-bg, #fff); color: var(--bs-body-color, #212529); border-radius: 2rem; padding: .35rem .8rem; font-size: .82rem; font-weight: 500; transition: border-color .15s, box-shadow .15s; }
+                            #tabFotosWeb .fw-color-chip:hover { border-color: var(--bs-primary); }
+                            #tabFotosWeb .fw-color-chip.activo { border-color: var(--bs-primary); box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb, 64, 81, 137), .25); font-weight: 600; }
+                            #tabFotosWeb .fw-color-muestra { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #ced4da; display: inline-block; }
+                            #tabFotosWeb .fw-color-chip .fw-color-cuenta { font-size: .7rem; color: var(--bs-secondary-color, #878a99); font-weight: 500; }
+                            #tabFotosWeb .fw-acciones .fw-acc-color:hover { color: var(--bs-info); }
+                            #tabFotosWeb .fw-asig-color { display: inline-flex; align-items: center; gap: .45rem; border: 1px solid var(--bs-border-color, #ced4da); border-radius: .5rem; padding: .4rem .7rem; font-size: .85rem; background: var(--bs-body-bg, #fff); }
+                            #tabFotosWeb .fw-asig-color.marcado { border-color: var(--bs-primary); background: rgba(var(--bs-primary-rgb, 64, 81, 137), .05); }
+                            #tabFotosWeb .fw-asig-color label { display: inline-flex; align-items: center; gap: .45rem; margin: 0; cursor: pointer; }
+                            #tabFotosWeb .fw-asig-pred { border: 0; background: transparent; padding: 0 .1rem; line-height: 1; color: var(--bs-secondary-color, #adb5bd); font-size: 1rem; }
+                            #tabFotosWeb .fw-asig-pred.activo { color: #f7b84b; }
+                            #tabFotosWeb .fw-asig-pred:disabled { cursor: default; }
                             @media (max-width: 575.98px) { #tabFotosWeb .fw-acciones button { font-size: .6rem; padding: .4rem 0; } #tabFotosWeb .fw-acciones button i { font-size: .95rem; } }
                         </style>
 
@@ -1000,13 +1005,27 @@
                                 </div>
                             </div>
 
+                            <!-- Colores en los que se ofrece la unidad (web_unidades_colores).
+                                 Catálogo: Inventario > Catálogos > Colores de unidad -->
+                            <div class="col-12">
+                                <div class="card fw-card">
+                                    <div class="card-header">
+                                        <h6 class="fw-titulo"><i class="ri-palette-line"></i> Colores de la unidad</h6>
+                                        <div class="fw-subtitulo">Marca los colores en los que se ofrece a los distribuidores y elige el predeterminado (<i class="ri-star-fill text-warning"></i>). Se guarda al momento. Quitar un color oculta sus fotos, no las borra.</div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="fw-colores" id="fw_asig_colores"></div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Imagen principal (carátula) -->
                             <div class="col-lg-4">
                                 <div class="card fw-card h-100">
                                     <div class="card-header d-flex align-items-center justify-content-between">
                                         <div>
                                             <h6 class="fw-titulo"><i class="ri-image-2-line"></i> Imagen principal</h6>
-                                            <div class="fw-subtitulo">Portada de la unidad en el portal</div>
+                                            <div class="fw-subtitulo" id="fw_caratula_subtitulo">Portada de la unidad en el portal</div>
                                         </div>
                                     </div>
                                     <div class="card-body d-flex flex-column">
@@ -1018,7 +1037,7 @@
                                                 <small>Haz clic para subirla</small>
                                             </div>
                                         </div>
-                                        <p class="fw-nota mt-2 mb-3">Es lo primero que ven los distribuidores. Se recomienda foto horizontal (4:3) de al menos 1200 px.</p>
+                                        <p class="fw-nota mt-2 mb-3" id="fw_caratula_nota">Es lo primero que ven los distribuidores. Se recomienda foto horizontal (4:3) de al menos 1200 px.</p>
                                         <div class="d-flex gap-2 mt-auto" id="fw_caratula_acciones">
                                             <button type="button" class="btn btn-primary btn-sm flex-fill" id="fw_btn_subir_caratula">
                                                 <i class="ri-upload-2-line align-middle me-1"></i><span id="fw_btn_subir_caratula_txt">Subir imagen</span>
@@ -1037,7 +1056,7 @@
                                     <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
                                         <div>
                                             <h6 class="fw-titulo"><i class="ri-gallery-line"></i> Galería de fotos</h6>
-                                            <div class="fw-subtitulo">Fotos adicionales que se muestran en el detalle de la unidad</div>
+                                            <div class="fw-subtitulo" id="fw_galeria_subtitulo">Fotos adicionales que se muestran en el detalle de la unidad</div>
                                         </div>
                                         <div class="d-flex align-items-center gap-2">
                                             <span class="badge rounded-pill border text-body bg-transparent px-2 py-1" id="fw_contador">0 / 5</span>
@@ -1047,6 +1066,15 @@
                                         </div>
                                     </div>
                                     <div class="card-body">
+                                        <!-- Galería a editar: General o uno de los colores asignados en Portal Web.
+                                             La imagen principal es una sola por modelo (tarjeta de la izquierda). -->
+                                        <div class="mb-3" id="fw_colores_wrap">
+                                            <div class="fw-colores" id="fw_colores"></div>
+                                            <p class="fw-nota mb-0 mt-2 d-none" id="fw_colores_vacio">
+                                                <i class="ri-information-line align-middle"></i>
+                                                Esta unidad no tiene colores asignados. Márcalos arriba en "Colores de la unidad"; mientras tanto solo hay galería general.
+                                            </p>
+                                        </div>
                                         <div class="row g-3" id="fw_galeria"></div>
                                         <p class="fw-nota mb-0 mt-3">
                                             <i class="ri-information-line align-middle"></i>
@@ -1280,4 +1308,4 @@
 
 
 <!-- end main content-->
-<?php footerAdmin($data); ?>
+<?php footerAdmin($data); ?>

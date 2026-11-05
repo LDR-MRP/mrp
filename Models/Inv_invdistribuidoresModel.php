@@ -1,136 +1,104 @@
 <?php
 /**
- * Inventario de distribuidores (conteo reportado).
- * Tablas: wms_inv_dist_cortes / wms_inv_dist_detalle (ver Docs/desarrollo/inventario_distribuidores).
- * No mueve existencias: las unidades ya salieron del MRP con su venta (VIN 3 = Facturado).
+ * RETAIL DE DISTRIBUIDORES.
+ * Tablas: wms_dist_retail_cargas / wms_dist_retail
+ * (ver Docs/desarrollo/inventario_distribuidores/migracion_retail_distribuidores_20261104.sql).
+ *
+ * Datos tal cual los manda el área (hoja "Retail"): NO se relacionan con
+ * wms_numeros_series, wms_inventario ni cli_clientes.
  */
 class Inv_invdistribuidoresModel extends Mysql
 {
-    public const CVE_ALMACEN = 'ALM-DISTRIBUIDORES';
+    /** Columnas de wms_dist_retail que llegan del archivo (orden del INSERT). */
+    public const COLUMNAS = [
+        'mes_retail', 'distribuidor', 'vin', 'modelo', 'anio_modelo', 'tipo', 'estatus', 'observaciones',
+        'fecha_facturacion', 'fecha_facturacion_txt', 'folio_fiscal', 'razon_social', 'rfc', 'direccion',
+        'codigo_postal', 'telefono', 'email', 'tipo_pago', 'institucion', 'enganche', 'plazo', 'vendedor',
+        'modelo_gen', 'motor', 'fila_archivo',
+    ];
+
+    /** Columnas por las que busca la caja de búsqueda del listado. */
+    private const COLUMNAS_BUSQUEDA = ['r.vin', 'r.distribuidor', 'r.modelo', 'r.modelo_gen', 'r.razon_social',
+        'r.rfc', 'r.folio_fiscal', 'r.vendedor', 'r.estatus', 'r.motor'];
 
     public function __construct()
     {
         parent::__construct();
     }
 
-    /* ===============================================================
-     * CATÁLOGOS
-     * =============================================================== */
-
-    public function selectAlmacenDistribuidores(): ?array
+    public function tablasListas(): bool
     {
         $row = $this->select(
-            "SELECT idalmacen, cve_almacen, descripcion FROM wms_almacenes
-             WHERE cve_almacen = ? AND estado = 2 LIMIT 1",
-            [self::CVE_ALMACEN]
+            "SELECT COUNT(*) AS n FROM information_schema.tables
+             WHERE table_schema = DATABASE() AND table_name IN ('wms_dist_retail', 'wms_dist_retail_cargas')"
         );
-        return $row ?: null;
-    }
-
-    /** Distribuidores activos (cli_tipos_cliente.nombre = 'Distribuidor'). */
-    public function selectDistribuidores(): array
-    {
-        return $this->select_all(
-            "SELECT c.idcliente,
-                    c.codigo_cliente,
-                    COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social) AS nombre
-             FROM cli_clientes c
-             INNER JOIN cli_tipos_cliente t ON t.id = c.idtipo_cliente
-             WHERE c.estado = 2
-               AND t.estado = 2
-               AND t.nombre = 'Distribuidor'
-             ORDER BY nombre"
-        );
+        return (int) ($row['n'] ?? 0) === 2;
     }
 
     /* ===============================================================
-     * VINs FACTURADOS (estatus 3) con el cliente de su última venta.
-     * Misma lógica que Inv_movventasmasivaModel::SQL_FACTURADOS.
-     * =============================================================== */
-
-    private const SQL_VIN_BASE = "
-        SELECT ns.id_numeros_serie,
-               ns.numero_serie,
-               ns.estado,
-               ns.inventarioid,
-               i.cve_articulo,
-               i.descripcion,
-               COALESCE(va.numero_motor, '') AS numero_motor,
-               COALESCE(va.color, '') AS color,
-               COALESCE(m.referencia, '') AS factura,
-               m.id_cliente,
-               DATE_FORMAT(COALESCE(m.fecha_movimiento, s.fecha), '%Y-%m-%d') AS fecha_venta
-        FROM wms_numeros_series ns
-        INNER JOIN wms_inventario i ON i.idinventario = ns.inventarioid
-        LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = ns.id_numeros_serie
-        LEFT JOIN wms_movimientos_inventario_series s
-               ON s.idmovserie = (SELECT MAX(s2.idmovserie) FROM wms_movimientos_inventario_series s2
-                                  WHERE s2.id_numeros_serie = ns.id_numeros_serie AND s2.signo < 0)
-        LEFT JOIN wms_movimientos_inventario m ON m.idmovinventario = s.idmovinventario";
-
-    /** Datos de los VINs del archivo (cualquier estatus distinto de 0) como [VIN => fila]. */
-    public function mapVines(array $vines): array
-    {
-        $map = [];
-        foreach (array_chunk(array_values(array_unique($vines)), 500) as $bloque) {
-            $ph = implode(',', array_fill(0, count($bloque), '?'));
-            $rows = $this->select_all(
-                self::SQL_VIN_BASE . " WHERE ns.estado <> '0' AND ns.numero_serie IN ($ph)",
-                $bloque
-            );
-            foreach ($rows as $r) {
-                $map[strtoupper($r['numero_serie'])] = $r;
-            }
-        }
-        return $map;
-    }
-
-    /* ===============================================================
-     * CORTES
+     * CARGA
      * =============================================================== */
 
     /**
-     * Inserta un corte con sus VINs (todo o nada).
-     * $vines: [['id_numeros_serie','numero_serie','inventarioid','ubicacion','observaciones','fila'], ...]
-     * Regresa el folio o lanza excepción.
+     * Guarda una carga completa (todo o nada). Antes de insertar BORRA los
+     * renglones existentes de los meses que trae el archivo, así el archivo
+     * acumulado que mandan cada mes reemplaza esos meses sin duplicar.
+     *
+     * @param array $filas  renglones con las llaves de self::COLUMNAS
+     * @param array $meses  ['2025-01-01', ...]
+     * @return array ['idcarga','folio','reemplazadas']
      */
-    public function insertCorte(int $clienteid, int $almacenid, string $fechaCorte, ?string $observaciones,
-                                ?string $archivo, ?int $usuarioid, array $vines): string
+    public function insertCarga(array $cab, array $filas, array $meses): array
     {
         $db = $this->getConexion();
         $db->beginTransaction();
         try {
-            $idcorte = (int) $this->insert(
-                "INSERT INTO wms_inv_dist_cortes
-                    (folio, clienteid, almacenid, fecha_corte, observaciones, archivo, total_vines, usuarioid, estado)
-                 VALUES (?, ?, ?, ?, ?, ?, 0, ?, 2)",
-                ['TMP-' . uniqid('', true), $clienteid, $almacenid, $fechaCorte, $observaciones, $archivo, $usuarioid]
+            sort($meses);
+            $idcarga = (int) $this->insert(
+                "INSERT INTO wms_dist_retail_cargas
+                    (folio, archivo, hoja, total_filas, total_cargadas, total_omitidas, mes_desde, mes_hasta,
+                     meses, observaciones, usuarioid, estado)
+                 VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 2)",
+                [
+                    'TMP-' . uniqid('', true), $cab['archivo'], $cab['hoja'], $cab['total_filas'], $cab['total_omitidas'],
+                    $meses ? reset($meses) : null, $meses ? end($meses) : null,
+                    implode(',', array_map(function ($m) { return substr($m, 0, 7); }, $meses)),
+                    $cab['observaciones'], $cab['usuarioid'],
+                ]
             );
-            $folio = 'CID-' . str_pad((string) $idcorte, 6, '0', STR_PAD_LEFT);
+            $folio = 'RTD-' . str_pad((string) $idcarga, 6, '0', STR_PAD_LEFT);
 
-            $sqlDet = "INSERT INTO wms_inv_dist_detalle
-                          (corteid, clienteid, id_numeros_serie, numero_serie, inventarioid, estatus_distribuidor, ubicacion, observaciones, fila_archivo)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            foreach ($vines as $v) {
-                $this->insert($sqlDet, [
-                    $idcorte,
-                    $clienteid,
-                    (int) $v['id_numeros_serie'],
-                    $v['numero_serie'],
-                    (int) $v['inventarioid'],
-                    $v['estatus'],
-                    $v['ubicacion'] !== '' ? $v['ubicacion'] : null,
-                    $v['observaciones'] !== '' ? $v['observaciones'] : null,
-                    $v['fila'] ?? null,
-                ]);
+            // 1) Reemplazo de meses
+            $reemplazadas = 0;
+            foreach (array_chunk($meses, 200) as $bloque) {
+                $ph = implode(',', array_fill(0, count($bloque), '?'));
+                $st = $db->prepare("DELETE FROM wms_dist_retail WHERE mes_retail IN ($ph)");
+                $st->execute($bloque);
+                $reemplazadas += $st->rowCount();
+            }
+
+            // 2) Inserción multi-renglón (300 por sentencia)
+            $cols = array_merge(['cargaid'], self::COLUMNAS);
+            $tupla = '(' . implode(',', array_fill(0, count($cols), '?')) . ')';
+            foreach (array_chunk($filas, 300) as $bloque) {
+                $params = [];
+                foreach ($bloque as $f) {
+                    $params[] = $idcarga;
+                    foreach (self::COLUMNAS as $c) {
+                        $params[] = $f[$c] ?? null;
+                    }
+                }
+                $sql = 'INSERT INTO wms_dist_retail (' . implode(',', $cols) . ') VALUES '
+                    . implode(',', array_fill(0, count($bloque), $tupla));
+                $db->prepare($sql)->execute($params);
             }
 
             $this->update(
-                "UPDATE wms_inv_dist_cortes SET folio = ?, total_vines = ? WHERE idcorte = ?",
-                [$folio, count($vines), $idcorte]
+                "UPDATE wms_dist_retail_cargas SET folio = ?, total_cargadas = ?, filas_reemplazadas = ? WHERE idcarga = ?",
+                [$folio, count($filas), $reemplazadas, $idcarga]
             );
             $db->commit();
-            return $folio;
+            return ['idcarga' => $idcarga, 'folio' => $folio, 'reemplazadas' => $reemplazadas];
         } catch (\Throwable $e) {
             if ($db->inTransaction()) {
                 $db->rollBack();
@@ -139,147 +107,215 @@ class Inv_invdistribuidoresModel extends Mysql
         }
     }
 
-    public function selectCortes(): array
+    public function selectCargas(): array
     {
         return $this->select_all(
-            "SELECT co.idcorte,
-                    co.folio,
-                    co.clienteid,
-                    COALESCE(CONCAT(NULLIF(c.codigo_cliente, ''), ' - ', COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social)),
-                             COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social), '') AS distribuidor,
-                    DATE_FORMAT(co.fecha_corte, '%Y-%m-%d') AS fecha_corte,
-                    co.total_vines,
-                    COALESCE(co.observaciones, '') AS observaciones,
-                    COALESCE(co.archivo, '') AS archivo,
-                    DATE_FORMAT(co.fecha_creacion, '%Y-%m-%d %H:%i') AS fecha_creacion,
+            "SELECT c.idcarga,
+                    c.folio,
+                    COALESCE(c.archivo, '') AS archivo,
+                    c.total_filas,
+                    c.total_cargadas,
+                    c.total_omitidas,
+                    c.filas_reemplazadas,
+                    DATE_FORMAT(c.mes_desde, '%Y-%m') AS mes_desde,
+                    DATE_FORMAT(c.mes_hasta, '%Y-%m') AS mes_hasta,
+                    COALESCE(c.observaciones, '') AS observaciones,
+                    DATE_FORMAT(c.fecha_creacion, '%Y-%m-%d %H:%i') AS fecha_creacion,
                     TRIM(CONCAT(COALESCE(u.nombres, ''), ' ', COALESCE(u.apellidos, ''))) AS usuario,
-                    co.estado,
-                    (co.idcorte = v.idvigente) AS vigente
-             FROM wms_inv_dist_cortes co
-             LEFT JOIN cli_clientes c ON c.idcliente = co.clienteid
-             LEFT JOIN usuarios u ON u.idusuario = co.usuarioid
-             LEFT JOIN (" . self::SQL_VIGENTES . ") v ON v.clienteid = co.clienteid
-             ORDER BY co.idcorte DESC"
+                    c.estado,
+                    COALESCE(v.vigentes, 0) AS vigentes
+             FROM wms_dist_retail_cargas c
+             LEFT JOIN usuarios u ON u.idusuario = c.usuarioid
+             LEFT JOIN (SELECT cargaid, COUNT(*) AS vigentes FROM wms_dist_retail GROUP BY cargaid) v
+                    ON v.cargaid = c.idcarga
+             ORDER BY c.idcarga DESC"
         );
     }
 
-    public function selectCorte(int $idcorte): ?array
+    public function selectCarga(int $idcarga): ?array
     {
-        $row = $this->select(
-            "SELECT idcorte, folio, clienteid, estado FROM wms_inv_dist_cortes WHERE idcorte = ?",
-            [$idcorte]
-        );
+        $row = $this->select("SELECT idcarga, folio, estado FROM wms_dist_retail_cargas WHERE idcarga = ?", [$idcarga]);
         return $row ?: null;
     }
 
-    public function selectDetalleCorte(int $idcorte): array
+    /** Borra los renglones que siguen vigentes de esa carga y la marca como eliminada. */
+    public function eliminarCarga(int $idcarga): int
     {
-        return $this->select_all(
-            "SELECT d.numero_serie AS vin,
-                    i.cve_articulo,
-                    i.descripcion,
-                    COALESCE(va.numero_motor, '') AS numero_motor,
-                    d.estatus_distribuidor,
-                    COALESCE(d.ubicacion, '') AS ubicacion,
-                    COALESCE(d.observaciones, '') AS observaciones
-             FROM wms_inv_dist_detalle d
-             INNER JOIN wms_inventario i ON i.idinventario = d.inventarioid
-             LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = d.id_numeros_serie
-             WHERE d.corteid = ?
-             ORDER BY i.cve_articulo, d.numero_serie",
-            [$idcorte]
-        );
-    }
-
-    public function cancelarCorte(int $idcorte): bool
-    {
-        return $this->updateAffected(
-            "UPDATE wms_inv_dist_cortes SET estado = 0 WHERE idcorte = ? AND estado = 2",
-            [$idcorte]
-        ) > 0;
+        $db = $this->getConexion();
+        $db->beginTransaction();
+        try {
+            $st = $db->prepare("DELETE FROM wms_dist_retail WHERE cargaid = ?");
+            $st->execute([$idcarga]);
+            $borrados = $st->rowCount();
+            $this->update("UPDATE wms_dist_retail_cargas SET estado = 0 WHERE idcarga = ?", [$idcarga]);
+            $db->commit();
+            return $borrados;
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            throw $e;
+        }
     }
 
     /* ===============================================================
-     * INVENTARIO VIGENTE Y CONCILIACIÓN
-     * Corte vigente = último corte activo del distribuidor
-     * (mayor fecha_corte; si empata, el más reciente en subirse).
+     * CONSULTAS
      * =============================================================== */
 
-    private const SQL_VIGENTES = "
-        SELECT x.clienteid,
-               (SELECT y.idcorte FROM wms_inv_dist_cortes y
-                WHERE y.clienteid = x.clienteid AND y.estado = 2
-                ORDER BY y.fecha_corte DESC, y.idcorte DESC LIMIT 1) AS idvigente
-        FROM wms_inv_dist_cortes x
-        WHERE x.estado = 2
-        GROUP BY x.clienteid";
-
-    /** VINs del corte vigente de cada distribuidor, con su estatus actual de facturación. */
-    public function selectInventarioVigente(?int $clienteid = null): array
+    /** Valores distintos para llenar los filtros. */
+    public function selectCatalogosFiltro(): array
     {
-        $sql = "SELECT d.numero_serie AS vin,
-                       d.clienteid,
-                       COALESCE(CONCAT(NULLIF(c.codigo_cliente, ''), ' - ', COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social)),
-                                COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social), '') AS distribuidor,
-                       vb.cve_articulo,
-                       vb.descripcion,
-                       vb.numero_motor,
-                       vb.color,
-                       vb.factura,
-                       vb.fecha_venta,
-                       d.estatus_distribuidor,
-                       COALESCE(d.ubicacion, '') AS ubicacion,
-                       COALESCE(d.observaciones, '') AS observaciones,
-                       co.folio,
-                       DATE_FORMAT(co.fecha_corte, '%Y-%m-%d') AS fecha_corte,
-                       CASE WHEN vb.estado = '3' AND vb.id_cliente = d.clienteid THEN 1 ELSE 0 END AS conciliado
-                FROM (" . self::SQL_VIGENTES . ") v
-                INNER JOIN wms_inv_dist_cortes co ON co.idcorte = v.idvigente
-                INNER JOIN wms_inv_dist_detalle d ON d.corteid = co.idcorte
-                INNER JOIN (" . self::SQL_VIN_BASE . "
-                            WHERE ns.id_numeros_serie IN (SELECT dd.id_numeros_serie FROM wms_inv_dist_detalle dd)) vb
-                        ON vb.id_numeros_serie = d.id_numeros_serie
-                LEFT JOIN cli_clientes c ON c.idcliente = d.clienteid";
-        $params = [];
-        if ($clienteid) {
-            $sql .= " WHERE d.clienteid = ?";
-            $params[] = $clienteid;
-        }
-        $sql .= " ORDER BY distribuidor, vb.cve_articulo, d.numero_serie";
-        return $this->select_all($sql, $params);
+        $col = function (string $campo) {
+            return array_column($this->select_all(
+                "SELECT DISTINCT $campo AS v FROM wms_dist_retail WHERE $campo IS NOT NULL AND $campo <> '' ORDER BY v"
+            ), 'v');
+        };
+        return [
+            'distribuidores' => $col('distribuidor'),
+            'modelos' => $col('modelo_gen'),
+            'estatus' => $col('estatus'),
+            'tipos_pago' => $col('tipo_pago'),
+            'meses' => array_column($this->select_all(
+                "SELECT DISTINCT DATE_FORMAT(mes_retail, '%Y-%m') AS v FROM wms_dist_retail ORDER BY v DESC"
+            ), 'v'),
+        ];
     }
 
     /**
-     * Todos los VINs facturados (estatus 3) a distribuidores, marcando si
-     * aparecen en el corte vigente de ese mismo distribuidor.
+     * WHERE común para listado / exportación / resumen.
+     * $f: distribuidor, modelo_gen, estatus, tipo_pago, mes_desde (YYYY-MM), mes_hasta (YYYY-MM), search
      */
-    public function selectFacturadosConciliacion(?int $clienteid = null): array
+    private function construirWhere(array $f, array &$params): string
     {
-        $sql = "SELECT vb.numero_serie AS vin,
-                       vb.id_cliente AS clienteid,
-                       COALESCE(CONCAT(NULLIF(c.codigo_cliente, ''), ' - ', COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social)),
-                                COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social), '') AS distribuidor,
-                       vb.cve_articulo,
-                       vb.descripcion,
-                       vb.numero_motor,
-                       vb.factura,
-                       vb.fecha_venta,
-                       co.folio,
-                       DATE_FORMAT(co.fecha_corte, '%Y-%m-%d') AS fecha_corte,
-                       COALESCE(d.estatus_distribuidor, '') AS estatus_distribuidor,
-                       CASE WHEN d.iddetalle IS NULL THEN 0 ELSE 1 END AS reportado
-                FROM (" . self::SQL_VIN_BASE . " WHERE ns.estado = '3' AND i.tipo_elemento = 'P') vb
-                INNER JOIN cli_clientes c ON c.idcliente = vb.id_cliente
-                INNER JOIN cli_tipos_cliente t ON t.id = c.idtipo_cliente AND t.nombre = 'Distribuidor'
-                LEFT JOIN (" . self::SQL_VIGENTES . ") v ON v.clienteid = vb.id_cliente
-                LEFT JOIN wms_inv_dist_cortes co ON co.idcorte = v.idvigente
-                LEFT JOIN wms_inv_dist_detalle d ON d.corteid = co.idcorte AND d.id_numeros_serie = vb.id_numeros_serie";
-        $params = [];
-        if ($clienteid) {
-            $sql .= " WHERE vb.id_cliente = ?";
-            $params[] = $clienteid;
+        $w = ['1=1'];
+        foreach (['distribuidor', 'modelo_gen', 'estatus', 'tipo_pago'] as $c) {
+            if (($f[$c] ?? '') !== '') {
+                $w[] = "r.$c = ?";
+                $params[] = $f[$c];
+            }
         }
-        $sql .= " ORDER BY distribuidor, reportado, vb.cve_articulo, vb.numero_serie";
-        return $this->select_all($sql, $params);
+        if (($f['mes_desde'] ?? '') !== '') {
+            $w[] = 'r.mes_retail >= ?';
+            $params[] = $f['mes_desde'] . '-01';
+        }
+        if (($f['mes_hasta'] ?? '') !== '') {
+            $w[] = 'r.mes_retail <= ?';
+            $params[] = $f['mes_hasta'] . '-01';
+        }
+        if (($f['search'] ?? '') !== '') {
+            $or = [];
+            foreach (self::COLUMNAS_BUSQUEDA as $c) {
+                $or[] = "$c LIKE ?";
+                $params[] = '%' . $f['search'] . '%';
+            }
+            $w[] = '(' . implode(' OR ', $or) . ')';
+        }
+        return implode(' AND ', $w);
+    }
+
+    private const SELECT_RETAIL = "
+        SELECT r.idretail,
+               DATE_FORMAT(r.mes_retail, '%Y-%m') AS mes_retail,
+               r.distribuidor, r.vin, r.modelo, r.anio_modelo, r.tipo, r.estatus, r.observaciones,
+               COALESCE(DATE_FORMAT(r.fecha_facturacion, '%Y-%m-%d'), r.fecha_facturacion_txt) AS fecha_facturacion,
+               r.folio_fiscal, r.razon_social, r.rfc, r.direccion, r.codigo_postal, r.telefono, r.email,
+               r.tipo_pago, r.institucion, r.enganche, r.plazo, r.vendedor, r.modelo_gen, r.motor,
+               c.folio AS folio_carga
+        FROM wms_dist_retail r
+        LEFT JOIN wms_dist_retail_cargas c ON c.idcarga = r.cargaid";
+
+    /** Listado paginado para DataTables serverSide. */
+    public function selectRetailPaginado(array $f): array
+    {
+        $total = (int) ($this->select("SELECT COUNT(*) AS n FROM wms_dist_retail")['n'] ?? 0);
+
+        $params = [];
+        $where = $this->construirWhere($f, $params);
+        $filtrados = (int) ($this->select("SELECT COUNT(*) AS n FROM wms_dist_retail r WHERE $where", $params)['n'] ?? 0);
+
+        $start = max(0, (int) $f['start']);
+        $length = (int) $f['length'];
+        $limit = $length > 0 ? ' LIMIT ' . $start . ', ' . min($length, 500) : ' LIMIT 500';
+
+        $rows = $this->select_all(
+            self::SELECT_RETAIL . " WHERE $where ORDER BY {$f['order_col']} {$f['order_dir']}, r.idretail" . $limit,
+            $params
+        );
+        return ['recordsTotal' => $total, 'recordsFiltered' => $filtrados, 'data' => $rows];
+    }
+
+    /** Todos los renglones filtrados (exportación). */
+    public function selectRetailExport(array $f): array
+    {
+        $params = [];
+        $where = $this->construirWhere($f, $params);
+        return $this->select_all(
+            self::SELECT_RETAIL . " WHERE $where ORDER BY r.mes_retail, r.distribuidor, r.vin",
+            $params
+        );
+    }
+
+    /** KPIs con los mismos filtros del listado. */
+    public function selectKpis(array $f): array
+    {
+        $params = [];
+        $where = $this->construirWhere($f, $params);
+        $row = $this->select(
+            "SELECT COUNT(*) AS total,
+                    COUNT(DISTINCT r.distribuidor) AS distribuidores,
+                    COUNT(DISTINCT r.mes_retail) AS meses,
+                    DATE_FORMAT(MAX(r.mes_retail), '%Y-%m') AS ultimo_mes
+             FROM wms_dist_retail r WHERE $where",
+            $params
+        );
+        $ultimo = $row['ultimo_mes'] ?? null;
+        $enUltimo = 0;
+        if ($ultimo) {
+            $p2 = $params;
+            $p2[] = $ultimo . '-01';
+            $enUltimo = (int) ($this->select(
+                "SELECT COUNT(*) AS n FROM wms_dist_retail r WHERE $where AND r.mes_retail = ?",
+                $p2
+            )['n'] ?? 0);
+        }
+        return [
+            'total' => (int) ($row['total'] ?? 0),
+            'distribuidores' => (int) ($row['distribuidores'] ?? 0),
+            'meses' => (int) ($row['meses'] ?? 0),
+            'ultimo_mes' => $ultimo ?? '',
+            'en_ultimo_mes' => $enUltimo,
+        ];
+    }
+
+    /**
+     * Matriz de unidades por mes para un año: agrupado por distribuidor o por modelo_gen.
+     * Regresa [['grupo' => 'X', 'm1'..'m12' => n, 'total' => n], ...]
+     */
+    public function selectResumenAnual(int $anio, string $agrupar, array $f): array
+    {
+        $campo = $agrupar === 'modelo_gen' ? "COALESCE(NULLIF(r.modelo_gen, ''), '(sin modelo)')" : 'r.distribuidor';
+        $f['mes_desde'] = $anio . '-01';
+        $f['mes_hasta'] = $anio . '-12';
+        $params = [];
+        $where = $this->construirWhere($f, $params);
+        $sel = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $sel[] = "SUM(MONTH(r.mes_retail) = $m) AS m$m";
+        }
+        return $this->select_all(
+            "SELECT $campo AS grupo, " . implode(', ', $sel) . ", COUNT(*) AS total
+             FROM wms_dist_retail r
+             WHERE $where
+             GROUP BY grupo
+             ORDER BY total DESC, grupo",
+            $params
+        );
+    }
+
+    public function selectAniosDisponibles(): array
+    {
+        return array_map('intval', array_column($this->select_all(
+            "SELECT DISTINCT YEAR(mes_retail) AS a FROM wms_dist_retail ORDER BY a DESC"
+        ), 'a'));
     }
 }
