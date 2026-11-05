@@ -217,56 +217,70 @@ class Prv_proveedorModel extends Mysql
     {
         $origen = $h['origen'] ?? 'Nacional';
         $isExtranjero = ($origen === 'Extranjero');
-        
-        // Logging para depuración
-        $logFile = fopen('C:/xampp/htdocs/mrp/Logs/mrp-' . date('Y-m-d') . '.log', 'a');
+
+        // Logging para depuración con ruta dinámica
+        $logPath = __DIR__ . '/../Logs/mrp-' . date('Y-m-d') . '.log';
+        $logFile = fopen($logPath, 'a');
         fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [insertSupplier] Datos recibidos: " . json_encode($h) . "\n");
+        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [insertSupplier] Origen: " . $origen . ", isExtranjero: " . ($isExtranjero ? 'true' : 'false') . "\n");
         fclose($logFile);
-        
-        if ($isExtranjero) {
-            // Para extranjeros, no insertar id_tipo_persona ni id_regimen_fiscal
-            return $this->insert(
-                "INSERT INTO prv_cat_proveedores (
-                    -- id_empresa,
-                    rfc,
-                    razon_social,
-                    nombre_comercial,
-                    origen,
-                    created_by
-                ) VALUES (?, ?, ?, ?, ?, ?)",
-                [
-                    // $h['id_empresa'],
-                    $h['rfc'],
-                    $h['razon_social'],
-                    $h['nombre_comercial'],
-                    $h['origen'],
-                    $userId,
-                ]
-            );
-        } else {
-            // Para nacionales, insertar todos los campos
-            return $this->insert(
-                "INSERT INTO prv_cat_proveedores (
-                    -- id_empresa,
-                    rfc,
-                    razon_social,
-                    nombre_comercial,
-                    id_tipo_persona,
-                    id_regimen_fiscal,
-                    origen,
-                    created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                [
-                    // $h['id_empresa'],
-                    $h['rfc'],
-                    $h['razon_social'],
-                    $h['nombre_comercial'],
-                    $h['id_tipo_persona'],
-                    $h['id_regimen_fiscal'],
-                    $h['origen'],
-                    $userId,
-                ]
-            );
+
+        try {
+            if ($isExtranjero) {
+                // Para extranjeros, no insertar id_tipo_persona ni id_regimen_fiscal
+                fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [insertSupplier] Ejecutando INSERT extranjero\n");
+                $result = $this->insert(
+                    "INSERT INTO prv_cat_proveedores (
+                        -- id_empresa,
+                        rfc,
+                        razon_social,
+                        nombre_comercial,
+                        origen,
+                        created_by
+                    ) VALUES (?, ?, ?, ?, ?, ?)",
+                    [
+                        // $h['id_empresa'],
+                        $h['rfc'],
+                        $h['razon_social'],
+                        $h['nombre_comercial'],
+                        $h['origen'],
+                        $userId,
+                    ]
+                );
+            } else {
+                // Para nacionales, insertar todos los campos
+                fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [insertSupplier] Ejecutando INSERT nacional\n");
+                $result = $this->insert(
+                    "INSERT INTO prv_cat_proveedores (
+                        -- id_empresa,
+                        rfc,
+                        razon_social,
+                        nombre_comercial,
+                        id_tipo_persona,
+                        id_regimen_fiscal,
+                        origen,
+                        created_by
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    [
+                        // $h['id_empresa'],
+                        $h['rfc'],
+                        $h['razon_social'],
+                        $h['nombre_comercial'],
+                        $h['id_tipo_persona'],
+                        $h['id_regimen_fiscal'],
+                        $h['origen'],
+                        $userId,
+                    ]
+                );
+            }
+
+            fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [insertSupplier] Resultado: " . $result . "\n");
+            fclose($logFile);
+            return $result;
+        } catch (\Exception $e) {
+            fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [insertSupplier] Exception: " . $e->getMessage() . "\n");
+            fclose($logFile);
+            throw $e;
         }
     }
 
