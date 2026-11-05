@@ -10,74 +10,50 @@ class UploadDocumentRequest extends Requests
 {
     public function rules(): void
     {
-        $logFile = null;
         try {
-            // Ruta dinámica para producción
-            $logPath = __DIR__ . '/../../Logs/mrp-' . date('Y-m-d') . '.log';
-
-            // Log antes de abrir el archivo para depuración
-            error_log("[UploadDocumentRequest] Intentando abrir log en: " . $logPath);
-
-            $logFile = fopen($logPath, 'a');
-
-            if (!$logFile) {
-                error_log("[UploadDocumentRequest] ERROR: No se pudo abrir el archivo de log");
-            } else {
-                fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Archivo de log abierto correctamente\n");
-            }
-
-            // Logging de configuración de PHP
-            fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Config PHP: " . json_encode([
-                'upload_max_filesize' => ini_get('upload_max_filesize'),
-                'post_max_size' => ini_get('post_max_size'),
-                'max_execution_time' => ini_get('max_execution_time'),
-                'memory_limit' => ini_get('memory_limit'),
-                'MAX_FILE_SIZE_BYTES' => defined('MAX_FILE_SIZE_BYTES') ? MAX_FILE_SIZE_BYTES : 'NO DEFINIDO'
-            ]) . "\n");
-
-            fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Iniciando validación\n");
-            fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Datos recibidos: " . json_encode($this->data) . "\n");
-            fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Archivos recibidos: " . json_encode($this->files()) . "\n");
+            error_log("[UploadDocumentRequest] Iniciando validación");
+            error_log("[UploadDocumentRequest] Datos recibidos: " . json_encode($this->data));
+            error_log("[UploadDocumentRequest] Archivos recibidos: " . json_encode($this->files()));
 
             // 1. Validar ID del Proveedor
             if (empty($this->data['id_proveedor']) || !is_numeric($this->data['id_proveedor'])) {
                 $this->addError('id_proveedor', 'ID de proveedor inválido.');
-                fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Error: ID de proveedor inválido\n");
+                error_log("[UploadDocumentRequest] Error: ID de proveedor inválido");
             }
 
             // 2. Validar Tipo de Documento
-            fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Paso 2: Validando tipo_documento\n");
+            error_log("[UploadDocumentRequest] Paso 2: Validando tipo_documento");
             if (empty($this->data['tipo_documento'])) {
                 $this->addError('tipo_documento', 'El tipo de documento es obligatorio.');
-                fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Error: Tipo de documento vacío\n");
+                error_log("[UploadDocumentRequest] Error: Tipo de documento vacío");
             } else {
-                fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Obteniendo proveedor ID: " . $this->data['id_proveedor'] . "\n");
+                error_log("[UploadDocumentRequest] Obteniendo proveedor ID: " . $this->data['id_proveedor']);
                 $supplierId = (int)$this->data['id_proveedor'];
                 $proveedorModel = new \Prv_proveedorModel();
                 $supplier = $proveedorModel->getById($supplierId);
 
-                fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Proveedor obtenido: " . ($supplier ? 'YES' : 'NO') . "\n");
+                error_log("[UploadDocumentRequest] Proveedor obtenido: " . ($supplier ? 'YES' : 'NO'));
 
                 if (!$supplier) {
                     $this->addError('id_proveedor', 'El proveedor no existe.');
-                    fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Error: Proveedor no existe\n");
+                    error_log("[UploadDocumentRequest] Error: Proveedor no existe");
                 } else {
-                    fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Datos proveedor: " . json_encode([
+                    error_log("[UploadDocumentRequest] Datos proveedor: " . json_encode([
                         'id_tipo_persona' => $supplier['id_tipo_persona'],
                         'origen' => $supplier['origen']
-                    ]) . "\n");
+                    ]));
 
                     // Manejar valores null para extranjeros
                     $tipoPersona = $supplier['id_tipo_persona'] ?? 'F';
                     $origen = $supplier['origen'] ?? 'Nacional';
 
-                    fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Obteniendo documentos permitidos con defaults\n");
+                    error_log("[UploadDocumentRequest] Obteniendo documentos permitidos con defaults");
                     $allowedDocs = \DocumentTypeEnum::getRequiredList($tipoPersona, $origen);
-                    fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Documentos permitidos obtenidos\n");
+                    error_log("[UploadDocumentRequest] Documentos permitidos obtenidos");
 
                     if (!array_key_exists($this->data['tipo_documento'], $allowedDocs)) {
                         $this->addError('tipo_documento', 'El tipo de documento no es válido para el perfil de este proveedor.');
-                        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Error: Tipo de documento no válido. Documentos permitidos: " . json_encode(array_keys($allowedDocs)) . "\n");
+                        error_log("[UploadDocumentRequest] Error: Tipo de documento no válido. Documentos permitidos: " . json_encode(array_keys($allowedDocs)));
                     }
                 }
             }
@@ -85,52 +61,46 @@ class UploadDocumentRequest extends Requests
             // 3. Validar el Archivo Físico
             if (empty($this->files()['archivo'])) {
                 $this->addError('archivo', 'No se ha seleccionado ningún archivo.');
-                fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Error: No se seleccionó archivo\n");
+                error_log("[UploadDocumentRequest] Error: No se seleccionó archivo");
             } else {
                 $file = $this->files()['archivo'];
 
-                fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Archivo info: " . json_encode([
+                error_log("[UploadDocumentRequest] Archivo info: " . json_encode([
                     'name' => $file['name'],
                     'type' => $file['type'],
                     'size' => $file['size'],
                     'error' => $file['error']
-                ]) . "\n");
+                ]));
 
                 $maxSize = defined('MAX_FILE_SIZE_BYTES') ? MAX_FILE_SIZE_BYTES : (20 * 1024 * 1024);
                 if ($file['size'] > $maxSize) {
                     $maxSizeMB = $maxSize / (1024 * 1024);
                     $this->addError('archivo', "El archivo excede el límite de {$maxSizeMB}MB.");
-                    fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Error: Archivo excede tamaño. Tamaño: " . ($file['size'] / (1024*1024)) . "MB, Límite: {$maxSizeMB}MB\n");
+                    error_log("[UploadDocumentRequest] Error: Archivo excede tamaño. Tamaño: " . ($file['size'] / (1024*1024)) . "MB, Límite: {$maxSizeMB}MB");
                 }
 
                 $allowedMime = 'application/pdf';
                 $finfo = new \finfo(FILEINFO_MIME_TYPE);
                 $mimeType = $finfo->file($file['tmp_name']);
 
-                fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] MIME type detectado: {$mimeType}\n");
+                error_log("[UploadDocumentRequest] MIME type detectado: {$mimeType}");
 
                 if ($mimeType !== $allowedMime) {
                     $this->addError('archivo', 'Solo se permiten archivos en formato PDF original.');
-                    fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Error: MIME type inválido\n");
+                    error_log("[UploadDocumentRequest] Error: MIME type inválido");
                 }
             }
 
             // Logging final
             if (!empty($this->errors)) {
-                fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Validación falló. Errores: " . json_encode($this->errors) . "\n");
+                error_log("[UploadDocumentRequest] Validación falló. Errores: " . json_encode($this->errors));
             } else {
-                fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] Validación completada sin errores\n");
+                error_log("[UploadDocumentRequest] Validación completada sin errores");
             }
 
         } catch (\Exception $e) {
-            if ($logFile) {
-                fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [UploadDocumentRequest] EXCEPTION: " . $e->getMessage() . " | File: " . $e->getFile() . ":" . $e->getLine() . "\n");
-            }
-            throw $e; // Re-lanzar para que el código original maneje el error
-        } finally {
-            if ($logFile) {
-                fclose($logFile);
-            }
+            error_log("[UploadDocumentRequest] EXCEPTION: " . $e->getMessage() . " | File: " . $e->getFile() . ":" . $e->getLine());
+            throw $e;
         }
     }
 }
