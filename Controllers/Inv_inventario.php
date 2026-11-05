@@ -2323,15 +2323,18 @@ class Inv_inventario extends Controllers
 			}
 
 			$idunidad = (int) $unidad['idunidad'];
-			// Galería destino: general (null) o la de un color de la unidad.
-			// El máximo de fotos es por galería (por color).
+			// Toda foto de unidad pertenece a un color (ya no hay galería
+			// general). El máximo de fotos es por color.
 			$idUnidadColor = $this->idUnidadColorSolicitado($idunidad);
+			if ($idUnidadColor === null) {
+				echo json_encode(['status' => false, 'msg' => 'Selecciona el color de las fotos. Si la unidad no tiene colores, márcalos en "Colores de la unidad".'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
 			$actuales = $this->model->countImagenesWebUnidad($idunidad, $idUnidadColor);
 			$nuevas = count(array_filter($_FILES['imagenes']['name']));
 
 			if ($actuales + $nuevas > $maxImagenes) {
-				$donde = $idUnidadColor === null ? 'en la galería general' : 'por color';
-				echo json_encode(['status' => false, 'msg' => "Solo puedes tener máximo {$maxImagenes} fotos {$donde}"], JSON_UNESCAPED_UNICODE);
+				echo json_encode(['status' => false, 'msg' => "Solo puedes tener máximo {$maxImagenes} fotos por color"], JSON_UNESCAPED_UNICODE);
 				die();
 			}
 
@@ -2778,6 +2781,11 @@ class Inv_inventario extends Controllers
 		$idunidad = (int) $imagen['idunidad'];
 		$origen = self::idUnidadColorDe($imagen);
 		$destino = $this->idUnidadColorSolicitado($idunidad);
+
+		if ($destino === null) {
+			echo json_encode(['status' => false, 'msg' => 'Selecciona el color destino'], JSON_UNESCAPED_UNICODE);
+			die();
+		}
 
 		if ($origen === $destino) {
 			echo json_encode(['status' => false, 'msg' => 'La foto ya está en esa galería'], JSON_UNESCAPED_UNICODE);
