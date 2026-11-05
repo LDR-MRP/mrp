@@ -223,7 +223,6 @@ class Prv_proveedorModel extends Mysql
         $logFile = fopen($logPath, 'a');
         fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [insertSupplier] Datos recibidos: " . json_encode($h) . "\n");
         fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [insertSupplier] Origen: " . $origen . ", isExtranjero: " . ($isExtranjero ? 'true' : 'false') . "\n");
-        fclose($logFile);
 
         try {
             if ($isExtranjero) {
