@@ -44,27 +44,22 @@ class SupplierController
      */
     public function uploadDocument(): string
     {
-        // Logging para rastrear incidencias
-        $logPath = __DIR__ . '/../../Logs/mrp-' . date('Y-m-d') . '.log';
-        $logFile = fopen($logPath, 'a');
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [uploadDocument] Iniciando subida de documento\n");
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [uploadDocument] Request data: " . json_encode($this->request) . "\n");
-        fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [uploadDocument] FILES: " . json_encode($_FILES) . "\n");
-        fclose($logFile);
+        // Validar que el usuario esté autenticado
+        if (!isset($this->request['auth_user']) || empty($this->request['auth_user'])) {
+            return $this->apiResponse([
+                'status' => false,
+                'error' => 'No autorizado: Token de autenticación no proporcionado o inválido'
+            ], 401);
+        }
 
         try {
             $response = $this->supplierService->uploadDocument($this->request['auth_user']);
-
-            $logFile = fopen($logPath, 'a');
-            fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.INFO: [uploadDocument] Respuesta del servicio: " . json_encode($response) . "\n");
-            fclose($logFile);
-
             return $this->apiResponse($response);
         } catch (\Exception $e) {
-            $logFile = fopen($logPath, 'a');
-            fwrite($logFile, "[" . date('Y-m-d H:i:s') . "] local.ERROR: [uploadDocument] Exception: " . $e->getMessage() . " | File: " . $e->getFile() . ":" . $e->getLine() . "\n");
-            fclose($logFile);
-            throw $e;
+            return $this->apiResponse([
+                'status' => false,
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 

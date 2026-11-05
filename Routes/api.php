@@ -43,6 +43,8 @@ Route::get('api/v1/suppliers/kpis', [SupplierController::class, 'kpis'])->middle
 
 // Expediente Digital (Rutas específicas primero)
 Route::post('api/v1/suppliers/documents', [SupplierController::class, 'uploadDocument'])->middleware([AuthMiddleware::class]);
+
+// ->middleware([AuthMiddleware::class]);
 Route::get('api/v1/suppliers/{id}/documents', [SupplierController::class, 'getDocuments'])->middleware([AuthMiddleware::class]);
 Route::post('api/v1/suppliers/audit-document', [SupplierController::class, 'auditDocument'])->middleware([AuthMiddleware::class]);
 
