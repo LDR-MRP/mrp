@@ -38,10 +38,10 @@
                     </div>
                 </div>
 
-                <!-- 3. BLOQUE DE KPIS CIRCULARES -->
+                <!-- 3. BLOQUE DE KPIS HOMOLOGADOS -->
                 <div class="row mb-4">
                     <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                        <div class="card card-animate border-0 shadow-sm rounded-3">
+                        <div class="card card-animate border-0 shadow-sm rounded-3 h-100" style="cursor: pointer;" onclick="filtrarEvidenciasPorCard('En Tránsito', 'chip-evid-transito');" title="Filtrar viajes en tránsito">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
@@ -60,7 +60,7 @@
                     </div>
 
                     <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                        <div class="card card-animate border-0 shadow-sm rounded-3">
+                        <div class="card card-animate border-0 shadow-sm rounded-3 h-100">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
@@ -79,7 +79,7 @@
                     </div>
 
                     <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                        <div class="card card-animate border-0 shadow-sm rounded-3">
+                        <div class="card card-animate border-0 shadow-sm rounded-3 h-100" style="cursor: pointer;" onclick="filtrarEvidenciasPorCard('Entregado', 'chip-evid-entregado');" title="Filtrar viajes entregados">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
@@ -98,13 +98,13 @@
                     </div>
 
                     <div class="col-xl-3 col-md-6">
-                        <div class="card card-animate border-0 shadow-sm rounded-3">
+                        <div class="card card-animate border-0 shadow-sm rounded-3 h-100">
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
                                         <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Cobertura Evidencias</p>
                                         <h4 class="fs-22 fw-bold text-body mb-2" id="cardEvidCobertura">0%</h4>
-                                        <span class="badge bg-soft-secondary text-secondary fw-medium mb-0 px-2 py-1">Completes</span>
+                                        <span class="badge bg-soft-secondary text-secondary fw-medium mb-0 px-2 py-1">Completitud</span>
                                     </div>
                                     <div class="avatar-sm flex-shrink-0">
                                         <span class="avatar-title bg-secondary-subtle text-secondary rounded-circle fs-3">
@@ -117,9 +117,35 @@
                     </div>
                 </div>
 
-                <!-- 4. DATATABLE CARD ESTILIZADA -->
-                <div class="card border-0 shadow-xl">
+                <!-- 4. DATATABLE CARD ESTILIZADA CON CHIPS DE FILTRO -->
+                <div class="card border-0 shadow-xl rounded-3 overflow-hidden">
                     <div class="bg-primary" style="height: 4px;"></div>
+                    <div class="card-header bg-white py-3 px-4 border-bottom border-light-subtle">
+                        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                            <!-- Buscador -->
+                            <div class="d-flex align-items-center w-100" style="max-width: 360px;">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-light border-end-0"><i class="ri-search-line text-muted"></i></span>
+                                    <input type="text" id="buscarEvidenciasInput" class="form-control bg-light border-start-0" placeholder="Buscar folio, trasladista..." oninput="filtrarTablaEvidencias(this.value);">
+                                    <button class="btn btn-light border border-start-0 text-muted" type="button" onclick="document.getElementById('buscarEvidenciasInput').value=''; filtrarTablaEvidencias('');" title="Limpiar"><i class="ri-close-line"></i></button>
+                                </div>
+                            </div>
+
+                            <!-- Chips de Filtro Rápido -->
+                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                <span class="fs-11 text-muted text-uppercase fw-bold me-1 d-none d-xl-inline"><i class="ri-filter-3-line me-1"></i>Filtro:</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 fs-12 active chip-evid-btn" id="chip-evid-todos" onclick="filtrarEvidenciasPorChip('', this);">
+                                    📌 Todos
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fs-12 chip-evid-btn" id="chip-evid-transito" onclick="filtrarEvidenciasPorChip('En Tránsito', this);">
+                                    🚚 En Tránsito
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fs-12 chip-evid-btn" id="chip-evid-entregado" onclick="filtrarEvidenciasPorChip('Entregado', this);">
+                                    ✅ Entregados
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     <div class="card-body">
                         <div class="table-responsive">
                             <table id="tableEvidencias" class="table table-hover table-lg align-middle mb-0" style="width:100% !important;">
@@ -128,7 +154,7 @@
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Folio Envío</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Trasladista</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Origen</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Total VINs</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">VINs / Unidades</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Evidencias Adjuntas</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado</th>
                                         <th scope="col" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
@@ -157,13 +183,15 @@
     <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg rounded-3">
             <div class="modal-header bg-light border-bottom-0 pb-3">
-                <div>
-                    <h5 class="modal-title fw-bold text-primary mb-0" id="titleModalEvidencia">
-                        <i id="icoModalHeader" class="ri-checkbox-circle-line me-1 text-success"></i> <span id="txtModalHeaderTitulo">Recepción y Evidencias de Entrega en Destino</span> <span id="lblFolioEvidencia" class="badge bg-primary text-white fs-13 ms-2"></span>
-                    </h5>
-                    <small class="text-muted" id="subModalHeaderDesc">Inspección física en destino, fotografías de recepción y cierre final de viaje</small>
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <div>
+                        <h5 class="modal-title fw-bold text-primary mb-0" id="titleModalEvidencia">
+                            <i id="icoModalHeader" class="ri-checkbox-circle-line me-1 text-success"></i> <span id="txtModalHeaderTitulo">Recepción y Evidencias de Entrega en Destino</span> <span id="lblFolioEvidencia" class="badge bg-primary text-white fs-13 ms-2"></span>
+                        </h5>
+                        <small class="text-muted" id="subModalHeaderDesc">Inspección física en destino, fotografías de recepción y cierre final de viaje</small>
+                    </div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
                 <!-- FORMULARIO DE INSPECCIÓN (ADAPTABLE A PLANTA O DESTINO) -->
@@ -183,16 +211,23 @@
                         <input type="hidden" id="modo_evidencia_actual" value="destino">
                         
                         <div class="row g-3 mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold text-muted fs-11 text-uppercase" id="labelSelectUnidad">Seleccionar Unidad / VIN a Entregar <span class="text-danger">*</span></label>
                                 <select class="form-select fs-13 fw-semibold border-success" id="select_evid_unidad" name="id_unidad" onchange="actualizarVinSeleccionado(this);" required>
                                     <option value="">-- Seleccionar Unidad --</option>
                                 </select>
                                 <input type="hidden" id="vin_confirmado_entrega" name="vin" value="">
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold text-muted fs-11 text-uppercase" id="labelComentariosInspeccion">Notas u Observaciones de Inspección</label>
-                                <input type="text" class="form-control fs-13" id="chk_comentarios_entrega" name="comentarios" placeholder="Condiciones físicas, fallas detectadas, firma de recibo, etc.">
+                            <div class="col-md-4" id="divSubtipoEntrega">
+                                <label class="form-label fw-bold text-muted fs-11 text-uppercase" id="labelSubtipoEntrega">Tipo de Receptor</label>
+                                <select class="form-select fs-13" id="subtipo_entrega_destino" name="subtipo_receptor">
+                                    <option value="DISTRIBUIDOR">Distribuidor Autorizado / Concesionario</option>
+                                    <option value="CLIENTE_FINAL">Cliente Final / Particular</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-muted fs-11 text-uppercase" id="labelComentariosInspeccion">Notas u Observaciones</label>
+                                <input type="text" class="form-control fs-13" id="chk_comentarios_entrega" name="comentarios" placeholder="Fallas, condición física, firma...">
                             </div>
                         </div>
 
@@ -342,6 +377,52 @@
             <div class="modal-footer bg-white border-top py-3 px-4 d-flex justify-content-end">
                 <button type="button" class="btn btn-secondary rounded-pill fw-semibold px-4" data-bs-dismiss="modal">
                     <i class="ri-close-line me-1"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DETALLE DE VINS ASIGNADOS AL ENVÍO -->
+<div class="modal fade" id="modalDetalleVins" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-light border-bottom py-3 px-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="avatar-sm bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center">
+                        <i class="ri-car-line fs-20"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark mb-0">
+                            Unidades del Envío <span id="lblFolioModalVins" class="badge bg-primary text-white fs-13 ms-2"></span>
+                        </h5>
+                        <small class="text-muted">Desglose de VINs, modelos y estado físico de entrega</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="table-responsive border rounded-3 bg-white">
+                    <table class="table table-hover align-middle mb-0 fs-13">
+                        <thead class="bg-light">
+                            <tr>
+                                <th style="width: 50px;" class="text-center">#</th>
+                                <th>VIN / Serie</th>
+                                <th>Modelo</th>
+                                <th class="text-center" style="width: 130px;">Estado Físico</th>
+                                <th class="text-end pe-3" style="width: 90px;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bodyListaVinsEnvio">
+                            <!-- Inyectado dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top py-2 px-4 d-flex justify-content-between align-items-center">
+                <small class="text-muted" id="lblTotalVinsModalFooter">0 unidades asignadas</small>
+                <button type="button" class="btn btn-secondary rounded-pill fw-semibold px-4" data-bs-dismiss="modal">
+                    Cerrar
                 </button>
             </div>
         </div>

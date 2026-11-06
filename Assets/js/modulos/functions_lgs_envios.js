@@ -49,14 +49,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 "render": function (data, type, row) {
                     let badge = '';
                     switch(parseInt(data)) {
-                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>Creado</span>'; break;
-                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>En Aprobación</span>'; break;
+                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>Borrador</span>'; break;
+                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>Por Aprobar</span>'; break;
                         case 3: badge = '<span class="badge bg-soft-primary text-primary fs-12"><i class="ri-checkbox-circle-line me-1"></i>Aprobado</span>'; break;
                         case 4: badge = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Rechazado</span>'; break;
-                        case 5: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-calendar-check-line me-1"></i>Programado</span>'; break;
-                        case 6: badge = '<span class="badge bg-soft-info text-info fs-12"><i class="ri-truck-line me-1"></i>Ejecutado</span>'; break;
+                        case 5: badge = '<span class="badge fs-12" style="background-color: rgba(139, 92, 246, 0.15); color: #8B5CF6;"><i class="ri-calendar-check-line me-1"></i>Programado</span>'; break;
+                        case 6: badge = '<span class="badge bg-soft-primary text-primary border border-primary fs-12"><i class="ri-truck-line me-1"></i>En Tránsito</span>'; break;
                         case 7: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-double-line me-1"></i>Entregado</span>'; break;
-                        case 8: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-line me-1"></i>Confirmado</span>'; break;
+                        case 8: badge = '<span class="badge bg-soft-dark text-dark fs-12"><i class="ri-check-line me-1"></i>Finalizado</span>'; break;
                         default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
                     }
                     if (row && parseInt(row.is_pausado) === 1) {
@@ -247,24 +247,52 @@ function filtrarTablaPorVin(term) {
 function filtrarPorEstadoChip(filtro, btn) {
     document.querySelectorAll('.filter-chip-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
-    const inputSearch = document.getElementById('buscarVinBandeja');
-    if (inputSearch) inputSearch.value = filtro;
+    
     if (typeof tableEnvios !== "undefined" && tableEnvios) {
-        tableEnvios.search(filtro).draw();
+        if (!filtro) {
+            tableEnvios.search('').draw();
+        } else {
+            tableEnvios.search(filtro).draw();
+        }
     }
 }
 
+/**
+ * Permite filtrar la tabla haciendo clic en las cards de KPIs superiores
+ */
+function filtrarPorEstadoCard(filtro, chipId) {
+    const chipBtn = document.getElementById(chipId);
+    filtrarPorEstadoChip(filtro, chipBtn);
+    
+    // Desplazamiento suave hacia la tabla para comodidad del usuario
+    const tablaCard = document.getElementById('tableEnvios');
+    if (tablaCard) {
+        tablaCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+/**
+ * Calcula y actualiza las 8 métricas de los KPIs superiores en tiempo real
+ */
 function actualizarMetricasEnvios(data) {
     if (!Array.isArray(data)) return;
     
     let total = data.length;
     let creados = data.filter(e => parseInt(e.id_estado) === 1).length;
+    let porAprobar = data.filter(e => parseInt(e.id_estado) === 2).length;
+    let aprobados = data.filter(e => parseInt(e.id_estado) === 3).length;
+    let programados = data.filter(e => parseInt(e.id_estado) === 5).length;
     let transito = data.filter(e => parseInt(e.id_estado) === 6).length;
-    let entregados = data.filter(e => parseInt(e.id_estado) === 7).length;
+    let pausados = data.filter(e => parseInt(e.is_pausado) === 1).length;
+    let entregados = data.filter(e => parseInt(e.id_estado) === 7 || parseInt(e.id_estado) === 8).length;
 
     if (document.getElementById('cardTotalEnvios')) document.getElementById('cardTotalEnvios').innerText = total;
     if (document.getElementById('cardEnviosCreados')) document.getElementById('cardEnviosCreados').innerText = creados;
+    if (document.getElementById('cardEnviosPorAprobar')) document.getElementById('cardEnviosPorAprobar').innerText = porAprobar;
+    if (document.getElementById('cardEnviosAprobados')) document.getElementById('cardEnviosAprobados').innerText = aprobados;
+    if (document.getElementById('cardEnviosProgramados')) document.getElementById('cardEnviosProgramados').innerText = programados;
     if (document.getElementById('cardEnviosTransito')) document.getElementById('cardEnviosTransito').innerText = transito;
+    if (document.getElementById('cardEnviosPausados')) document.getElementById('cardEnviosPausados').innerText = pausados;
     if (document.getElementById('cardEnviosEntregados')) document.getElementById('cardEnviosEntregados').innerText = entregados;
 }
 
@@ -383,7 +411,7 @@ function onDistribuidorChange(selectDistribuidor) {
 
     // Buscar sedes del distribuidor en el catálogo local de ubicaciones
     const ubicaciones = getCatalogoUbicaciones();
-    const sedes = ubicaciones.filter(u => String(u.id_distribuidor) === String(idDistribuidor) && parseInt(u.id_tipo_destino) === 1);
+    const sedes = ubicaciones.filter(u => String(u.id_distribuidor) === String(idDistribuidor) && (u.activo === undefined || u.activo == 1));
 
     if (selectSede) {
         if (sedes.length === 1) {
@@ -797,20 +825,21 @@ function agregarNodoRuta(data, isCarga = false) {
                 </div>
             </div>
             <div class="row g-2 mb-1">
-                <!-- Columna Izquierda: Distribuidor (Siempre visible a la izquierda) -->
+                <!-- Columna Izquierda: Distribuidor Facturado (Siempre visible e informativo) -->
                 <div class="col-md-5">
                     <label class="form-label fs-11 text-muted mb-1 fw-bold">
-                        <i class="ri-building-2-line text-primary me-1"></i>Distribuidor <span class="badge bg-soft-info text-info fs-10 fw-normal ms-1">Bandeja / Ref.</span>
+                        <i class="ri-file-text-line text-primary me-1"></i>Distribuidor Facturado <span class="badge bg-soft-primary text-primary fs-10 fw-semibold ms-1">Facturación</span>
                     </label>
-                    <select class="form-select form-select-sm nodo-select-distribuidor" onchange="onDistribuidorChange(this)">
+                    <select class="form-select form-select-sm nodo-select-distribuidor" onchange="onDistribuidorChange(this)" title="Distribuidor con quien está facturada la unidad">
                         ${buildDistribuidorOptions(selDistribuidorId)}
                     </select>
+                    <small class="text-muted fs-10 d-block mt-1"><i class="ri-information-line me-1 text-info"></i>Entidad con quien se facturó el pedido.</small>
                 </div>
-                <!-- Columna Derecha: Sede de Catálogo (si no es abierto) o Destino Abierto (si es abierto) -->
+                <!-- Columna Derecha: Sede de Catálogo (si no es abierto) o Destino Real de Entrega (si es abierto) -->
                 <div class="col-md-7">
                     <!-- Modo Catálogo: Sede -->
                     <div class="nodo-bloque-catalogo" style="${esAbiertoInicial ? 'display: none;' : ''}">
-                        <label class="form-label fs-11 text-muted mb-1 fw-bold"><i class="ri-store-2-line text-warning me-1"></i>Sede</label>
+                        <label class="form-label fs-11 text-muted mb-1 fw-bold"><i class="ri-store-2-line text-warning me-1"></i>Sede / Concesionario de Catálogo</label>
                         <select class="form-select form-select-sm nodo-select-sede" onchange="onSedeChange(this)" ${selDistribuidorId ? '' : 'disabled'}>
                             <option value="">Primero seleccione distribuidor</option>
                         </select>
@@ -821,16 +850,16 @@ function agregarNodoRuta(data, isCarga = false) {
                             </select>
                         </details>
                     </div>
-                    <!-- Modo Abierto: Nombre / Dirección libre -->
+                    <!-- Modo Abierto: Destino Real de Entrega / Dirección física -->
                     <div class="nodo-bloque-abierto" style="${esAbiertoInicial ? '' : 'display: none;'}">
                         <label class="form-label fs-11 text-muted mb-1 fw-bold">
-                            <i class="ri-map-pin-user-line text-danger me-1"></i>Destino Abierto / Dirección Real <span class="text-danger">*</span>
+                            <i class="ri-map-pin-user-line text-danger me-1"></i>Destino Real de Entrega / Dónde va físicamente <span class="text-danger">*</span>
                         </label>
                         <input type="text" class="form-control form-control-sm nodo-nombre-libre" 
                             value="${escapeHtmlEnvios(nombreLibre)}" 
-                            placeholder="Ej. Bodega Particular El Roble, Carr. México-Puebla Km 45" 
+                            placeholder="Ej. Bodega Particular El Roble, Sucursal Tlalnepantla, Carr. México-Puebla Km 45..." 
                             oninput="alCambiarNombreLibreNodo(this)">
-                        <small class="text-muted fs-10 d-block mt-1"><i class="ri-information-line me-1 text-primary"></i>Punto fuera de catálogo con KM manuales.</small>
+                        <small class="text-muted fs-10 d-block mt-1"><i class="ri-truck-line me-1 text-success"></i>Facturado al distribuidor de la izquierda; destino físico real donde se entrega la unidad.</small>
                     </div>
                 </div>
             </div>`;
@@ -1973,6 +2002,22 @@ function fntEditRuta(idEnvio) {
                     }
                     if (document.getElementById('motivo_monto_abierto')) {
                         document.getElementById('motivo_monto_abierto').value = envio.motivo_monto_abierto || '';
+                    }
+
+                    // Cargar Telemetría y Pre-confirmación de Cita con Cliente
+                    const tieneTelemetria = (parseInt(envio.madrina_con_telemetria) === 1);
+                    if (document.getElementById('madrina_con_telemetria')) {
+                        document.getElementById('madrina_con_telemetria').checked = tieneTelemetria;
+                    }
+                    const citaConfirmada = (parseInt(envio.confirmacion_cita_cliente) === 1);
+                    if (document.getElementById('confirmacion_cita_cliente')) {
+                        document.getElementById('confirmacion_cita_cliente').checked = citaConfirmada;
+                        if (document.getElementById('divContactoConfirmacion')) {
+                            document.getElementById('divContactoConfirmacion').style.display = citaConfirmada ? 'block' : 'none';
+                        }
+                    }
+                    if (document.getElementById('contacto_confirmacion_cliente')) {
+                        document.getElementById('contacto_confirmacion_cliente').value = envio.contacto_confirmacion_cliente || '';
                     }
 
                     // Llenar los nodos

@@ -19,14 +19,31 @@ class Lgs_aprobaciones extends Controllers
      */
     public function Lgs_aprobaciones(): void
     {
+        require_once("Services/Lgs_gastosadicionalesService.php");
+        $gastosService = new Lgs_gastosadicionalesService();
+        $catalogosGastos = $gastosService->getCatalogos();
+
+        $userId = intval($_SESSION['idUser'] ?? ($_SESSION['userData']['idusuario'] ?? 1));
+        $userRole = intval($_SESSION['userData']['idrol'] ?? ($_SESSION['rolid'] ?? 0));
+        $esAprobador = $this->service->tienePermisoAprobacion($userId);
+
         $this->views->getView(
             $this,
             "../Lgs_aprobaciones/index",
             [
-                'page_tag' => "Aprobaciones Logística",
-                'page_title' => "Panel de Aprobación",
-                'page_name' => "lgs_aprobaciones",
-                'page_functions_js' => "functions_lgs_aprobaciones.js",
+                'page_tag'          => "Aprobaciones Logística",
+                'page_title'        => "Panel de Aprobación",
+                'page_name'         => "lgs_aprobaciones",
+                'page_functions_js' => [
+                    "modulos/functions_lgs_buscador_envios.js",
+                    "modulos/functions_lgs_buscador_incidencias.js",
+                    "modulos/functions_lgs_gastosadicionales.js",
+                    "modulos/functions_lgs_aprobaciones.js"
+                ],
+                'catalogos'         => $catalogosGastos,
+                'es_aprobador'      => $esAprobador,
+                'id_user'           => $userId,
+                'id_rol'            => $userRole,
             ]
         );
     }
@@ -85,10 +102,18 @@ class Lgs_aprobaciones extends Controllers
             $this->service->resolverPlaneacion($idPlaneacion, $decision, $observaciones, $userId);
             
             $msg = ($decision === 'aprobar') ? "Planeación APROBADA con éxito." : "Planeación RECHAZADA.";
-            echo $this->successResponse(null, $msg);
+            echo json_encode([
+                'status' => true,
+                'msg'    => $msg
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
 
-        } catch (Exception $e) {
-            echo $this->errorResponse($e->getMessage(), 500);
+        } catch (Throwable $e) {
+            echo json_encode([
+                'status' => false,
+                'msg'    => $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
         }
     }
 }

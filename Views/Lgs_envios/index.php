@@ -27,6 +27,7 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     overflow: hidden;
     position: relative;
+    cursor: pointer;
 }
 .kpi-card-modern:hover {
     transform: translateY(-3px);
@@ -46,6 +47,9 @@
 .kpi-card-modern.border-top-warning::before { background: #F59E0B; }
 .kpi-card-modern.border-top-info::before { background: #0284C7; }
 .kpi-card-modern.border-top-success::before { background: #10B981; }
+.kpi-card-modern.border-top-danger::before { background: #EF4444; }
+.kpi-card-modern.border-top-purple::before { background: #8B5CF6; }
+.kpi-card-modern.border-top-secondary::before { background: #64748B; }
 
 /* Smart Search Pill */
 .search-pill-modern {
@@ -225,15 +229,16 @@
                     </div>
                 </div>
 
-                <!-- 3. BLOQUE DE KPIS MODERNOS -->
+                <!-- 3. BLOQUE DE KPIS MODERNOS (HOMOLOGADO CON TODOS LOS ESTADOS) -->
                 <div class="row mb-4 g-3">
-                    <div class="col-xl-3 col-md-6">
-                        <div class="kpi-card-modern border-top-primary p-3">
+                    <!-- 1. Total Envíos -->
+                    <div class="col-xxl-3 col-xl-3 col-md-6 col-sm-6">
+                        <div class="kpi-card-modern border-top-primary p-3" onclick="filtrarPorEstadoCard('', 'chip-estado-todos');" title="Ver todos los envíos">
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1 overflow-hidden">
                                     <p class="text-uppercase fw-bold text-muted text-truncate mb-1 fs-11 ls-1">Total Envíos</p>
                                     <h4 class="fs-22 fw-bold text-dark mb-0"><span class="counter-value" id="cardTotalEnvios">0</span></h4>
-                                    <small class="text-muted fs-11">Viajes programados</small>
+                                    <small class="text-muted fs-11">Viajes registrados</small>
                                 </div>
                                 <div class="avatar-sm flex-shrink-0 ms-2">
                                     <span class="avatar-title bg-primary-subtle text-primary rounded-circle fs-3">
@@ -244,16 +249,17 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-3 col-md-6">
-                        <div class="kpi-card-modern border-top-warning p-3">
+                    <!-- 2. En Planeación / Borrador -->
+                    <div class="col-xxl-3 col-xl-3 col-md-6 col-sm-6">
+                        <div class="kpi-card-modern border-top-secondary p-3" onclick="filtrarPorEstadoCard('Borrador', 'chip-estado-planeacion');" title="Filtrar envíos en planeación / borrador">
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1 overflow-hidden">
                                     <p class="text-uppercase fw-bold text-muted text-truncate mb-1 fs-11 ls-1">En Planeación</p>
                                     <h4 class="fs-22 fw-bold text-dark mb-0"><span class="counter-value" id="cardEnviosCreados">0</span></h4>
-                                    <small class="text-muted fs-11">Sin consolidar / Borrador</small>
+                                    <small class="text-muted fs-11">Borradores / Abiertos</small>
                                 </div>
                                 <div class="avatar-sm flex-shrink-0 ms-2">
-                                    <span class="avatar-title bg-warning-subtle text-warning rounded-circle fs-3">
+                                    <span class="avatar-title bg-secondary-subtle text-secondary rounded-circle fs-3">
                                         <i class="ri-draft-line"></i>
                                     </span>
                                 </div>
@@ -261,8 +267,63 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-3 col-md-6">
-                        <div class="kpi-card-modern border-top-info p-3">
+                    <!-- 3. Por Aprobar -->
+                    <div class="col-xxl-3 col-xl-3 col-md-6 col-sm-6">
+                        <div class="kpi-card-modern border-top-warning p-3" onclick="filtrarPorEstadoCard('Por Aprobar', 'chip-estado-por-aprobar');" title="Filtrar envíos por aprobar">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <p class="text-uppercase fw-bold text-muted text-truncate mb-1 fs-11 ls-1">Por Aprobar</p>
+                                    <h4 class="fs-22 fw-bold text-dark mb-0"><span class="counter-value" id="cardEnviosPorAprobar">0</span></h4>
+                                    <small class="text-muted fs-11">En revisión</small>
+                                </div>
+                                <div class="avatar-sm flex-shrink-0 ms-2">
+                                    <span class="avatar-title bg-warning-subtle text-warning rounded-circle fs-3">
+                                        <i class="ri-time-line"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Aprobados -->
+                    <div class="col-xxl-3 col-xl-3 col-md-6 col-sm-6">
+                        <div class="kpi-card-modern border-top-info p-3" onclick="filtrarPorEstadoCard('Aprobado', 'chip-estado-aprobado');" title="Filtrar envíos aprobados">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <p class="text-uppercase fw-bold text-muted text-truncate mb-1 fs-11 ls-1">Aprobados</p>
+                                    <h4 class="fs-22 fw-bold text-dark mb-0"><span class="counter-value" id="cardEnviosAprobados">0</span></h4>
+                                    <small class="text-muted fs-11">Autorizados</small>
+                                </div>
+                                <div class="avatar-sm flex-shrink-0 ms-2">
+                                    <span class="avatar-title bg-info-subtle text-info rounded-circle fs-3">
+                                        <i class="ri-checkbox-circle-line"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Programados -->
+                    <div class="col-xxl-3 col-xl-3 col-md-6 col-sm-6">
+                        <div class="kpi-card-modern border-top-purple p-3" onclick="filtrarPorEstadoCard('Programado', 'chip-estado-programado');" title="Filtrar envíos programados">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <p class="text-uppercase fw-bold text-muted text-truncate mb-1 fs-11 ls-1">Programados</p>
+                                    <h4 class="fs-22 fw-bold text-dark mb-0"><span class="counter-value" id="cardEnviosProgramados">0</span></h4>
+                                    <small class="text-muted fs-11">Fecha y chofer asignados</small>
+                                </div>
+                                <div class="avatar-sm flex-shrink-0 ms-2">
+                                    <span class="avatar-title rounded-circle fs-3" style="background-color: rgba(139, 92, 246, 0.15); color: #8B5CF6;">
+                                        <i class="ri-calendar-check-line"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. En Tránsito -->
+                    <div class="col-xxl-3 col-xl-3 col-md-6 col-sm-6">
+                        <div class="kpi-card-modern border-top-primary p-3" onclick="filtrarPorEstadoCard('En Tránsito', 'chip-estado-transito');" title="Filtrar envíos en tránsito">
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1 overflow-hidden">
                                     <p class="text-uppercase fw-bold text-muted text-truncate mb-1 fs-11 ls-1">En Tránsito</p>
@@ -270,7 +331,7 @@
                                     <small class="text-muted fs-11">En ruta activa</small>
                                 </div>
                                 <div class="avatar-sm flex-shrink-0 ms-2">
-                                    <span class="avatar-title bg-info-subtle text-info rounded-circle fs-3">
+                                    <span class="avatar-title bg-primary-subtle text-primary rounded-circle fs-3">
                                         <i class="ri-truck-line"></i>
                                     </span>
                                 </div>
@@ -278,8 +339,27 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-3 col-md-6">
-                        <div class="kpi-card-modern border-top-success p-3">
+                    <!-- 7. Pausados -->
+                    <div class="col-xxl-3 col-xl-3 col-md-6 col-sm-6">
+                        <div class="kpi-card-modern border-top-danger p-3" onclick="filtrarPorEstadoCard('PAUSADO', 'chip-estado-pausado');" title="Filtrar envíos en pausa operativa">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <p class="text-uppercase fw-bold text-muted text-truncate mb-1 fs-11 ls-1">Pausados</p>
+                                    <h4 class="fs-22 fw-bold text-danger mb-0"><span class="counter-value" id="cardEnviosPausados">0</span></h4>
+                                    <small class="text-muted fs-11">Incidencias en ruta</small>
+                                </div>
+                                <div class="avatar-sm flex-shrink-0 ms-2">
+                                    <span class="avatar-title bg-danger-subtle text-danger rounded-circle fs-3">
+                                        <i class="ri-pause-circle-line"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 8. Entregados -->
+                    <div class="col-xxl-3 col-xl-3 col-md-6 col-sm-6">
+                        <div class="kpi-card-modern border-top-success p-3" onclick="filtrarPorEstadoCard('Entregado', 'chip-estado-entregado');" title="Filtrar envíos entregados">
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1 overflow-hidden">
                                     <p class="text-uppercase fw-bold text-muted text-truncate mb-1 fs-11 ls-1">Entregados</p>
@@ -301,7 +381,7 @@
                     <div class="card-header bg-white py-3 px-4 border-bottom border-light-subtle">
                         <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
                             <!-- Buscador en tiempo real -->
-                            <div class="search-pill-modern d-flex align-items-center w-100" style="max-width: 420px;">
+                            <div class="search-pill-modern d-flex align-items-center w-100" style="max-width: 380px;">
                                 <i class="ri-search-line text-muted me-2"></i>
                                 <input type="text" id="buscarVinBandeja" class="w-100"
                                        placeholder="Buscar por VIN, folio, origen, destino, chofer..."
@@ -311,26 +391,32 @@
                                 </button>
                             </div>
 
-                            <!-- Píldoras de Filtro Rápido (Chips) -->
-                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <!-- Píldoras de Filtro Rápido (Chips Homologados) -->
+                            <div class="d-flex align-items-center gap-1 flex-wrap">
                                 <span class="fs-11 text-muted text-uppercase fw-bold me-1 d-none d-xl-inline"><i class="ri-filter-3-line me-1"></i>Filtro:</span>
                                 <button type="button" class="filter-chip-btn active" id="chip-estado-todos" onclick="filtrarPorEstadoChip('', this);">
                                     📌 Todos
                                 </button>
-                                <button type="button" class="filter-chip-btn" id="chip-estado-planeacion" onclick="filtrarPorEstadoChip('Creado', this);">
-                                    ⏳ En Planeación
+                                <button type="button" class="filter-chip-btn" id="chip-estado-planeacion" onclick="filtrarPorEstadoChip('Borrador', this);">
+                                    📝 En Planeación
                                 </button>
-                                <button type="button" class="filter-chip-btn" id="chip-estado-transito" onclick="filtrarPorEstadoChip('Ejecutado', this);">
+                                <button type="button" class="filter-chip-btn" id="chip-estado-por-aprobar" onclick="filtrarPorEstadoChip('Por Aprobar', this);">
+                                    ⏳ Por Aprobar
+                                </button>
+                                <button type="button" class="filter-chip-btn" id="chip-estado-aprobado" onclick="filtrarPorEstadoChip('Aprobado', this);">
+                                    📋 Aprobados
+                                </button>
+                                <button type="button" class="filter-chip-btn" id="chip-estado-programado" onclick="filtrarPorEstadoChip('Programado', this);">
+                                    📅 Programados
+                                </button>
+                                <button type="button" class="filter-chip-btn" id="chip-estado-transito" onclick="filtrarPorEstadoChip('En Tránsito', this);">
                                     🚚 En Tránsito
+                                </button>
+                                <button type="button" class="filter-chip-btn" id="chip-estado-pausado" onclick="filtrarPorEstadoChip('PAUSADO', this);">
+                                    ⏸️ Pausados
                                 </button>
                                 <button type="button" class="filter-chip-btn" id="chip-estado-entregado" onclick="filtrarPorEstadoChip('Entregado', this);">
                                     ✅ Entregados
-                                </button>
-                                <button type="button" class="filter-chip-btn" id="chip-estado-slc" onclick="filtrarPorEstadoChip('SLC', this);">
-                                    🟢 SLC
-                                </button>
-                                <button type="button" class="filter-chip-btn" id="chip-estado-sll" onclick="filtrarPorEstadoChip('SLL', this);">
-                                    🟡 SLL
                                 </button>
                             </div>
                         </div>
@@ -446,6 +532,13 @@
                                                 Check Lowboy <span class="badge bg-dark ms-1">Tarifa $80</span>
                                             </label>
                                         </div>
+                                        <!-- Check Telemetría (Visible si es Madrina o Plataforma) -->
+                                        <div id="divCheckTelemetria" class="mt-2 form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="madrina_con_telemetria" name="madrina_con_telemetria" value="1">
+                                            <label class="form-check-label fw-bold text-dark fs-12" for="madrina_con_telemetria">
+                                                <i class="ri-radar-line text-primary me-1"></i> Unidad de transporte con Telemetría GPS
+                                            </label>
+                                        </div>
                                     </div>
 
                                     <div class="col-md-6">
@@ -466,6 +559,21 @@
                                             <option value="SLC">Local Corto SLC (0-40 KM)</option>
                                             <option value="SLL">Local Largo SLL (41-80 KM)</option>
                                         </select>
+                                    </div>
+
+                                    <!-- Pre-confirmación de Cita / Recepción con Cliente para evitar envíos fallidos -->
+                                    <div class="col-md-12 mt-2">
+                                        <div class="p-2 border rounded-3 bg-light d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="confirmacion_cita_cliente" name="confirmacion_cita_cliente" value="1" onchange="document.getElementById('divContactoConfirmacion').style.display = this.checked ? 'block' : 'none';">
+                                                <label class="form-check-label fw-bold text-dark fs-12" for="confirmacion_cita_cliente">
+                                                    <i class="ri-checkbox-circle-line text-success me-1"></i> Cita de entrega pre-confirmada con Distribuidor / Cliente (Evita gastos y KM extra)
+                                                </label>
+                                            </div>
+                                            <div class="flex-grow-1" id="divContactoConfirmacion" style="display: none; max-width: 320px;">
+                                                <input type="text" class="form-control form-control-sm" id="contacto_confirmacion_cliente" name="contacto_confirmacion_cliente" placeholder="Nombre / Teléfono de quien confirmó cita...">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -120,7 +120,8 @@ function fntVerUnidad(idLgsUnidad) {
     fetch(base_url + '/Lgs_bandeja/getUnidad/' + idLgsUnidad)
         .then(r => r.json())
         .then(res => {
-            if (!res.success) throw new Error(res.message);
+            let isOk = (res.status === 'success' || res.status === true || res.success === true || res.code === 200);
+            if (!isOk) throw new Error(res.message || 'Error al obtener datos');
             const d = res.data;
             document.getElementById('detalleUnidadBody').innerHTML = `
                 <table class="table table-sm table-bordered">
@@ -150,7 +151,8 @@ function fntAsignarDestino(idLgsUnidad) {
     fetch(base_url + '/Lgs_bandeja/getUnidad/' + idLgsUnidad)
         .then(r => r.json())
         .then(res => {
-            if (res.success && res.data) {
+            let isOk = (res.status === 'success' || res.status === true || res.success === true || res.code === 200);
+            if (isOk && res.data) {
                 const d = res.data;
                 document.getElementById('asig_vin_label').textContent = '(VIN: ' + (d.vin || '') + ' - ' + (d.modelo_unidad || '') + ')';
                 if (d.id_motivo) document.getElementById('asig_id_motivo').value = d.id_motivo;
@@ -184,7 +186,8 @@ function fntGuardarDestino() {
     fetch(base_url + '/Lgs_bandeja/asignarDestino', { method: 'POST', body: fd })
         .then(r => r.json())
         .then(res => {
-            if (!res.success) throw new Error(res.message);
+            let isOk = (res.status === 'success' || res.status === true || res.success === true || res.code === 200);
+            if (!isOk) throw new Error(res.message || 'Error al guardar');
             bootstrap.Modal.getInstance(document.getElementById('modalAsignarDestino')).hide();
             Sys_Core.UI.notify(res.message || 'Guardado correctamente.', 'success');
             recargarBandeja();
@@ -215,7 +218,8 @@ function fntGuardarFechas() {
     fetch(base_url + '/Lgs_bandeja/registrarFechas', { method: 'POST', body: fd })
         .then(r => r.json())
         .then(res => {
-            if (!res.success) throw new Error(res.message);
+            let isOk = (res.status === 'success' || res.status === true || res.success === true || res.code === 200);
+            if (!isOk) throw new Error(res.message || 'Error al registrar fechas');
             bootstrap.Modal.getInstance(document.getElementById('modalFechas')).hide();
             Sys_Core.UI.notify(res.message, 'success');
             recargarBandeja();
@@ -241,7 +245,8 @@ function fntSiguienteArea(idLgsUnidad) {
         fetch(base_url + '/Lgs_bandeja/siguienteArea', { method: 'POST', body: fd })
             .then(r => r.json())
             .then(res => {
-                if (!res.success) throw new Error(res.message);
+                let isOk = (res.status === 'success' || res.status === true || res.success === true || res.code === 200);
+                if (!isOk) throw new Error(res.message || 'Error al actualizar área');
                 Sys_Core.UI.notify(res.message, 'success');
                 recargarBandeja();
             })

@@ -874,8 +874,10 @@ Se utiliza con fines de configuración y ajustes visuales del layout.
 
     <?php if (is_array($data['page_functions_js'])) { ?>
 
-        <?php foreach ($data['page_functions_js'] as $js) { ?>
-            <script src="<?= media(); ?>/js/<?= $js; ?>?v=<?= time(); ?>"></script>
+        <?php foreach ($data['page_functions_js'] as $js) { 
+            $scriptPath = (strpos($js, '/') === false) ? 'modulos/' . $js : ltrim($js, '/');
+        ?>
+            <script src="<?= media(); ?>/js/<?= $scriptPath; ?>?v=<?= time(); ?>"></script>
         <?php } ?>
 
     <?php } else { ?>

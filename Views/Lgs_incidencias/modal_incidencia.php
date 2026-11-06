@@ -163,9 +163,9 @@
                         </div>
 
                         <div class="col-md-7" id="divArchivoInicial">
-                            <label class="form-label fs-12 fw-medium text-muted">Adjuntar Evidencia Fotográfica / Documento (Opcional)</label>
-                            <input type="file" id="archivo_evidencia" name="archivo_evidencia" class="form-control" accept="image/*,video/mp4,application/pdf">
-                            <div class="form-text fs-11">Permitido: JPG, PNG, WEBP, PDF, MP4 (máx. 10MB).</div>
+                            <label class="form-label fs-12 fw-medium text-muted">Adjuntar Evidencias Fotográficas / Documentos (Múltiples permitidos)</label>
+                            <input type="file" id="archivo_evidencia" name="archivos_evidencia[]" class="form-control" accept="image/*,video/mp4,application/pdf" multiple>
+                            <div class="form-text fs-11">Permitido: JPG, PNG, WEBP, PDF, MP4 (puede seleccionar varias fotos simultáneamente).</div>
                         </div>
                         <div class="col-md-5" id="divTipoArchivoInicial">
                             <label class="form-label fs-12 fw-medium text-muted">Tipo de Evidencia</label>

@@ -19,7 +19,7 @@ class Lgs_evidenciasModel extends Mysql
      */
     public function getEnviosParaEvidencias(): array
     {
-        $sql = "SELECT 
+        $sql = "SELECT
                     e.id_envio,
                     e.folio,
                     e.fecha_salida_real,
@@ -29,6 +29,28 @@ class Lgs_evidenciasModel extends Mysql
                     pr.razon_social AS trasladista,
                     tt.nombre AS tipo_traslado,
                     (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) AS total_vins,
+                    (
+                        SELECT GROUP_CONCAT(DISTINCT COALESCE(u.vin, ut.clave) ORDER BY ev.posicion_acomodo ASC SEPARATOR ', ')
+                        FROM lgs_envios_vins ev
+                        LEFT JOIN lgs_unidades_envios u ON ev.id_unidad = u.id_unidad
+                        LEFT JOIN mrp_unidades_terminadas ut ON ev.id_unidad = ut.idunidad
+                        WHERE ev.id_envio = e.id_envio
+                    ) AS vins_lista,
+                    (
+                        SELECT JSON_ARRAYAGG(
+                            JSON_OBJECT(
+                                'id_unidad', ev.id_unidad,
+                                'vin', COALESCE(u.vin, ut.clave, 'S/VIN'),
+                                'modelo', COALESCE(u.modelo, 'Unidad'),
+                                'posicion', COALESCE(ev.posicion_acomodo, 1),
+                                'estado_fisico', COALESCE(ev.estado_unidad_fisico, 'EN_PATIO')
+                            )
+                        )
+                        FROM lgs_envios_vins ev
+                        LEFT JOIN lgs_unidades_envios u ON ev.id_unidad = u.id_unidad
+                        LEFT JOIN mrp_unidades_terminadas ut ON ev.id_unidad = ut.idunidad
+                        WHERE ev.id_envio = e.id_envio
+                    ) AS vins_detalle_json,
                     (SELECT COUNT(*) FROM lgs_evidencias WHERE id_envio = e.id_envio AND tipo_evidencia = 1) AS total_evidencias_planta,
                     (SELECT COUNT(*) FROM lgs_evidencias WHERE id_envio = e.id_envio AND tipo_evidencia = 2) AS total_evidencias_destino,
                     (SELECT COUNT(*) FROM lgs_evidencias WHERE id_envio = e.id_envio) AS total_evidencias
@@ -124,18 +146,54 @@ class Lgs_evidenciasModel extends Mysql
     }
 
     /**
-     * Finaliza y marca el envío como Entregado en Destino (Estado 7)
+     * Finaliza y marca el envío y todas sus unidades como Entregado en Destino (Estado 7)
      */
     public function registrarEntregaFinal(PDO $db, int $idEnvio, string $fechaLlegada, int $userId): void
     {
-        $sql = "UPDATE lgs_envios 
-                SET id_estado = 7, fecha_llegada_real = :fecha_llegada
-                WHERE id_envio = :id_envio";
-        
-        $stmt = $db->prepare($sql);
-        $stmt->execute([
+        // 1. Actualizar el envío a estado 7 (Entregado) y registrar fecha real de llegada
+        $sqlEnvio = "UPDATE lgs_envios 
+                     SET id_estado = 7, fecha_llegada_real = :fecha_llegada
+                     WHERE id_envio = :id_envio";
+        $stmtEnvio = $db->prepare($sqlEnvio);
+        $stmtEnvio->execute([
             'fecha_llegada' => $fechaLlegada,
             'id_envio' => $idEnvio
         ]);
+
+        // 2. Marcar todos los VINs asignados al envío como ENTREGADO con su fecha real
+        $sqlVins = "UPDATE lgs_envios_vins 
+                    SET estado_unidad_fisico = 'ENTREGADO', 
+                        fecha_entrega_real = COALESCE(fecha_entrega_real, :fecha_llegada)
+                    WHERE id_envio = :id_envio";
+        $stmtVins = $db->prepare($sqlVins);
+        $stmtVins->execute([
+            'fecha_llegada' => $fechaLlegada,
+            'id_envio' => $idEnvio
+        ]);
+
+        // 3. Sincronizar lgs_unidades (Bandeja de Unidades) a id_estado_proceso = 3 (Entregado)
+        $stmtIds = $db->prepare("SELECT id_unidad FROM lgs_envios_vins WHERE id_envio = ?");
+        $stmtIds->execute([$idEnvio]);
+        $unitIds = $stmtIds->fetchAll(PDO::FETCH_COLUMN);
+
+        if (!empty($unitIds)) {
+            $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
+            $sqlUnidades = "UPDATE lgs_unidades 
+                            SET id_estado_proceso = 3, 
+                                fecha_llegada = COALESCE(fecha_llegada, ?),
+                                updated_by = ?,
+                                updated_at = NOW() 
+                            WHERE id_unidad IN ({$placeholders})";
+            $paramsUnidades = array_merge([$fechaLlegada, $userId], $unitIds);
+            $stmtUnidades = $db->prepare($sqlUnidades);
+            $stmtUnidades->execute($paramsUnidades);
+
+            // 4. Actualizar estatus en lgs_unidades_envios
+            $sqlEnviosUnidades = "UPDATE lgs_unidades_envios 
+                                  SET estatus = 'entregado' 
+                                  WHERE id_unidad IN ({$placeholders})";
+            $stmtEnviosUnidades = $db->prepare($sqlEnviosUnidades);
+            $stmtEnviosUnidades->execute($unitIds);
+        }
     }
 }

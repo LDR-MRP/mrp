@@ -66,8 +66,16 @@ class Lgs_ejecucionModel extends Mysql
             $wherePlanta = "";
             $params = [];
             if ($plantaId !== null && $plantaId > 0) {
-                $wherePlanta = " AND e.id_origen = :planta_id ";
-                $params['planta_id'] = $plantaId;
+                // Resolver las ubicaciones correspondientes a la planta del usuario
+                $ubiStmt = $this->getConexion()->prepare("SELECT id_ubicacion FROM lgs_cat_ubicaciones WHERE id_planta_mrp = :pid OR id_ubicacion = :pid2 OR id_almacen_wms = :pid3");
+                $ubiStmt->execute(['pid' => $plantaId, 'pid2' => $plantaId, 'pid3' => $plantaId]);
+                $ubiList = $ubiStmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+                $ubiList[] = $plantaId;
+                $inUbi = implode(',', array_map('intval', array_unique($ubiList)));
+
+                $wherePlanta = " AND (e.id_origen IN ($inUbi) OR EXISTS (
+                    SELECT 1 FROM lgs_envios_nodos n0 WHERE n0.id_envio = e.id_envio AND n0.orden = 0 AND n0.id_ubicacion IN ($inUbi)
+                )) ";
             }
 
             $sql = "SELECT 
@@ -79,12 +87,16 @@ class Lgs_ejecucionModel extends Mysql
                         e.km_total,
                         e.costo_total,
                         e.fecha_confirmada_recoleccion,
-                        o.nombre AS origen,
+                        COALESCE(e.confirmado_destino, 0) AS confirmado_destino,
+                        e.confirmado_destino_contacto,
+                        e.confirmado_destino_fecha_cita,
+                        COALESCE(ubi.nombre, o.nombre, (SELECT COALESCE(u0.nombre, n0.destino_nombre_libre) FROM lgs_envios_nodos n0 LEFT JOIN lgs_cat_ubicaciones u0 ON n0.id_ubicacion = u0.id_ubicacion WHERE n0.id_envio = e.id_envio AND n0.orden = 0 LIMIT 1), 'Sede Origen') AS origen,
                         pr.razon_social AS trasladista,
                         tt.nombre AS tipo_traslado,
                         (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) AS total_vins,
                         (SELECT COUNT(*) FROM lgs_solicitudes_entrega WHERE id_envio = e.id_envio AND confirmado = 1) AS vins_entregados
                     FROM lgs_envios e
+                    LEFT JOIN lgs_cat_ubicaciones ubi ON e.id_origen = ubi.id_ubicacion
                     LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
                     LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
                     LEFT JOIN lgs_cat_tipo_traslado tt ON e.id_tipo_traslado = tt.id_tipo_traslado
@@ -98,8 +110,9 @@ class Lgs_ejecucionModel extends Mysql
             $wherePlanta = "";
             $params = [];
             if ($plantaId !== null && $plantaId > 0) {
-                $wherePlanta = " AND e.id_origen = :planta_id ";
+                $wherePlanta = " AND (e.id_origen = :planta_id OR EXISTS (SELECT 1 FROM lgs_envios_nodos n0 WHERE n0.id_envio = e.id_envio AND n0.orden = 0 AND n0.id_ubicacion = :planta_id2)) ";
                 $params['planta_id'] = $plantaId;
+                $params['planta_id2'] = $plantaId;
             }
             $sqlFallback = "SELECT 
                         e.id_envio,
@@ -110,12 +123,13 @@ class Lgs_ejecucionModel extends Mysql
                         e.km_total,
                         e.costo_total,
                         NULL AS fecha_confirmada_recoleccion,
-                        o.nombre AS origen,
+                        COALESCE(ubi.nombre, o.nombre, 'Sede Origen') AS origen,
                         pr.razon_social AS trasladista,
                         tt.nombre AS tipo_traslado,
                         (SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = e.id_envio) AS total_vins,
                         0 AS vins_entregados
                     FROM lgs_envios e
+                    LEFT JOIN lgs_cat_ubicaciones ubi ON e.id_origen = ubi.id_ubicacion
                     LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
                     LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
                     LEFT JOIN lgs_cat_tipo_traslado tt ON e.id_tipo_traslado = tt.id_tipo_traslado
@@ -144,14 +158,14 @@ class Lgs_ejecucionModel extends Mysql
         CREATE TABLE IF NOT EXISTS lgs_evidencias (
             id_evidencia BIGINT AUTO_INCREMENT PRIMARY KEY,
             id_envio BIGINT NOT NULL,
-            id_vin BIGINT DEFAULT NULL,
-            tipo TINYINT DEFAULT 1,
-            nombre_archivo VARCHAR(255) NOT NULL,
-            tipo_archivo VARCHAR(10) DEFAULT 'jpg',
+            id_unidad BIGINT DEFAULT NULL,
+            tipo_evidencia TINYINT NOT NULL COMMENT '1: Salida, 2: Llegada',
+            ruta_archivo VARCHAR(255) NOT NULL,
+            observaciones TEXT DEFAULT NULL,
             created_by BIGINT UNSIGNED DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             KEY idx_ev_envio (id_envio),
-            KEY idx_ev_vin (id_vin)
+            KEY idx_ev_unidad (id_unidad)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
         CREATE TABLE IF NOT EXISTS lgs_trasladistas_checklist (
@@ -204,7 +218,7 @@ class Lgs_ejecucionModel extends Mysql
                         se.fecha_confirmacion,
                         se.confirmado_by,
                         (
-                            (SELECT COUNT(*) FROM lgs_evidencias WHERE id_envio = ev.id_envio AND (id_vin = ev.id_unidad OR id_vin IS NULL))
+                            (SELECT COUNT(*) FROM lgs_evidencias WHERE id_envio = ev.id_envio AND (id_unidad = ev.id_unidad OR id_unidad IS NULL))
                             +
                             (SELECT COUNT(*) FROM lgs_checklist_evidencias ce 
                              INNER JOIN lgs_trasladistas_checklist tc ON ce.id_checklist = tc.id_checklist 
@@ -441,18 +455,17 @@ class Lgs_ejecucionModel extends Mysql
     public function insertarEvidenciaUnificada(PDO $db, int $idEnvio, int $idUnidad, int $tipoEvidencia, string $rutaArchivo, ?string $observaciones, int $userId): void
     {
         try {
-            // Columnas reales de lgs_evidencias: id_envio, id_vin, tipo, nombre_archivo, tipo_archivo, created_by
-            $ext = pathinfo($rutaArchivo, PATHINFO_EXTENSION) ?: 'jpg';
-            $sql = "INSERT INTO lgs_evidencias (id_envio, id_vin, tipo, nombre_archivo, tipo_archivo, created_by)
-                    VALUES (:id_envio, :id_vin, :tipo, :nombre, :tipo_arch, :user)";
+            $idUnidadVal = ($idUnidad > 0) ? $idUnidad : null;
+            $sql = "INSERT INTO lgs_evidencias (id_envio, id_unidad, tipo_evidencia, ruta_archivo, observaciones, created_by, created_at)
+                    VALUES (:id_envio, :id_unidad, :tipo_evidencia, :ruta_archivo, :observaciones, :created_by, NOW())";
             $stmt = $db->prepare($sql);
             $stmt->execute([
-                'id_envio'   => $idEnvio,
-                'id_vin'     => $idUnidad,
-                'tipo'       => $tipoEvidencia,
-                'nombre'     => $rutaArchivo,
-                'tipo_arch'  => $ext,
-                'user'       => $userId
+                'id_envio'       => $idEnvio,
+                'id_unidad'      => $idUnidadVal,
+                'tipo_evidencia' => $tipoEvidencia,
+                'ruta_archivo'   => $rutaArchivo,
+                'observaciones'  => $observaciones,
+                'created_by'     => $userId
             ]);
         } catch (Throwable $e) {
             error_log("Error insertando evidencia unificada: " . $e->getMessage());
@@ -462,8 +475,7 @@ class Lgs_ejecucionModel extends Mysql
     public function getEvidenciasPorUnidad(int $idEnvio, int $idUnidad): array
     {
         try {
-            // Columnas reales: lgs_evidencias(id_evidencia, id_envio, id_vin, tipo, nombre_archivo, tipo_archivo, created_by, created_at)
-            // Columnas reales: lgs_checklist_evidencias(id_evidencia, id_checklist, tipo_foto, ruta_archivo, created_at)
+            // Unir fotos específicas del checklist con fotos unificadas del envío
             $sql = "SELECT 
                         ce.id_evidencia,
                         1 AS tipo_evidencia,
@@ -481,15 +493,15 @@ class Lgs_ejecucionModel extends Mysql
                     
                     SELECT 
                         ev.id_evidencia, 
-                        ev.tipo AS tipo_evidencia, 
+                        ev.tipo_evidencia AS tipo_evidencia, 
                         'general' AS tipo_foto,
-                        ev.nombre_archivo AS ruta_archivo, 
+                        ev.ruta_archivo AS ruta_archivo, 
                         '' AS comentarios,
                         '' AS vin_escaneado,
-                        CONCAT('Evidencia tipo ', ev.tipo) AS observaciones, 
+                        COALESCE(ev.observaciones, CONCAT('Evidencia tipo ', ev.tipo_evidencia)) AS observaciones, 
                         ev.created_at 
                     FROM lgs_evidencias ev
-                    WHERE ev.id_envio = ? AND (ev.id_vin = ? OR ev.id_vin IS NULL)
+                    WHERE ev.id_envio = ? AND (ev.id_unidad = ? OR ev.id_unidad IS NULL)
                     
                     ORDER BY created_at DESC";
             
@@ -533,9 +545,9 @@ class Lgs_ejecucionModel extends Mysql
 
             // Fallback: si no se encontraron por id_unidad, buscar por id_envio
             if (empty($res)) {
-                $sqlFallback = "SELECT id_evidencia, tipo AS tipo_evidencia, 'general' AS tipo_foto, nombre_archivo AS ruta_archivo, 
+                $sqlFallback = "SELECT id_evidencia, tipo_evidencia AS tipo_evidencia, 'general' AS tipo_foto, ruta_archivo AS ruta_archivo, 
                                        ? AS comentarios, '' AS vin_escaneado,
-                                       CONCAT('Evidencia tipo ', tipo) AS observaciones, created_at 
+                                       COALESCE(observaciones, CONCAT('Evidencia tipo ', tipo_evidencia)) AS observaciones, created_at 
                                 FROM lgs_evidencias 
                                 WHERE id_envio = ? 
                                 ORDER BY created_at DESC";
@@ -571,7 +583,7 @@ class Lgs_ejecucionModel extends Mysql
 
         // 3. Eliminar los registros unificados de evidencias
         try {
-            $sql3 = "DELETE FROM lgs_evidencias WHERE id_envio = ? AND id_vin = ?";
+            $sql3 = "DELETE FROM lgs_evidencias WHERE id_envio = ? AND id_unidad = ?";
             $stmt3 = $db->prepare($sql3);
             $stmt3->execute([$idEnvio, $idUnidad]);
         } catch (Throwable $e) {}

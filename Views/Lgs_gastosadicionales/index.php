@@ -1,5 +1,11 @@
 <?php headerAdmin($data); ?>
 
+<script>
+    const ES_APROBADOR_GASTOS = <?= !empty($data['es_aprobador']) ? 'true' : 'false' ?>;
+    const CURRENT_USER_ID = <?= intval($data['id_user'] ?? 0) ?>;
+    const CURRENT_USER_ROLE = <?= intval($data['id_rol'] ?? 0) ?>;
+</script>
+
 <div class="main-content">
     <div class="page-content">
         <div class="container-fluid">

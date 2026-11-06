@@ -399,4 +399,53 @@
     </div>
 </div>
 
+<!-- MODAL CONFIRMAR CITA / RECEPCIÓN CLIENTE O DISTRIBUIDOR -->
+<div class="modal fade" id="modalConfirmarDestinoCliente" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header bg-success-subtle border-bottom-0 pb-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm me-3">
+                        <span class="avatar-title bg-success text-white rounded-circle fs-3 shadow-sm">
+                            <i class="ri-phone-check-line"></i>
+                        </span>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-success mb-0">Confirmación de Cita en Destino</h5>
+                        <small class="text-muted">Envío: <strong id="conf_dest_lbl_folio" class="text-dark">-</strong></small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formConfirmarDestinoCliente">
+                    <input type="hidden" id="conf_dest_id_envio" name="id_envio" value="">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted fs-11 text-uppercase">Nombre del Contacto Receptor <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="conf_dest_contacto" name="contacto" placeholder="Ej. Juan Pérez - Jefe de Patio / Distribuidor" required>
+                        <small class="text-muted">Persona que confirmó la disponibilidad para recibir las unidades.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted fs-11 text-uppercase">Fecha y Hora Pactada de Cita <span class="text-danger">*</span></label>
+                        <input type="datetime-local" class="form-control fw-semibold" id="conf_dest_fecha_cita" name="fecha_cita" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted fs-11 text-uppercase">Notas / Acuerdos Especiales</label>
+                        <textarea class="form-control" id="conf_dest_notas" name="notas" rows="3" placeholder="Restricciones de horario, acceso a patio, documentos requeridos..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light border-top-0 pt-3 d-flex justify-content-between">
+                <button type="button" class="btn btn-sm btn-light border px-3 rounded-pill fw-semibold" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-sm btn-success px-4 rounded-pill fw-semibold shadow-sm" onclick="guardarConfirmacionDestino();">
+                    <i class="ri-checkbox-circle-line me-1"></i> Confirmar Cita y Autorizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php footerAdmin($data); ?>
