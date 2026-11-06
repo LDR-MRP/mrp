@@ -1,6 +1,15 @@
 <?php
 /** Consultas de Backorders agrupadas por pedido. Solo lectura. */
+require_once __DIR__ . '/../Services/PedPedidosZonaHoraria.php';
 class Ped_backordersModel extends Mysql {
+    public function __construct()
+    {
+        parent::__construct();
+        $this->configurarZonaHorariaPedidos();
+    }
+
+    use PedPedidosZonaHoraria;
+
     private function condiciones(string $busqueda, string $estado): array {
         $where = ['p.estado = 2'];
         $params = [];

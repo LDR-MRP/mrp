@@ -1,6 +1,15 @@
 <?php
 /** 2026-11-04. Flujo comercial auditado; utiliza el PDO compartido de Mysql. */
+require_once __DIR__ . '/PedPedidosZonaHoraria.php';
 class PedRevisionService extends Mysql {
+    public function __construct()
+    {
+        parent::__construct();
+        $this->configurarZonaHorariaPedidos();
+    }
+
+    use PedPedidosZonaHoraria;
+
  private function run(string $sql,array $args=[]):PDOStatement {$s=$this->getConexion()->prepare($sql);$s->execute($args);return $s;}
  private function row(string $sql,array $args=[]):?array {return $this->run($sql,$args)->fetch(PDO::FETCH_ASSOC)?:null;}
  private function rows(string $sql,array $args=[]):array {return $this->run($sql,$args)->fetchAll(PDO::FETCH_ASSOC);}

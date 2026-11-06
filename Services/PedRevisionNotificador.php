@@ -1,7 +1,16 @@
 <?php
 /** Avisos posteriores al COMMIT. Un error SMTP no revierte una aprobación confirmada. */
+require_once __DIR__ . '/PedPedidosZonaHoraria.php';
 class PedRevisionNotificador extends Mysql
 {
+    public function __construct()
+    {
+        parent::__construct();
+        $this->configurarZonaHorariaPedidos();
+    }
+
+    use PedPedidosZonaHoraria;
+
     private function datos(string $clave): ?array
     {
         return $this->select('SELECT p.clave,p.folio_pedido,p.estatus,p.estatus_revision_comercial,p.idcliente,p.total,

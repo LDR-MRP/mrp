@@ -1,11 +1,15 @@
 <?php
 
+require_once __DIR__ . '/../Services/PedPedidosZonaHoraria.php';
 class OrdersModel extends Mysql
 {
+    use PedPedidosZonaHoraria;
+
 
     public function __construct()
     {
         parent::__construct();
+        $this->configurarZonaHorariaPedidos();
     }
 
     public function selectUsuarioPorCorreo(string $correo) {
