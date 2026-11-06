@@ -146,28 +146,7 @@ class Ped_pedidosModel extends Mysql
             ) AS backorder_resumen ON backorder_resumen.idpedido = p.idpedido
             WHERE
                 {$where}
-            ORDER BY
-
-                CASE p.estatus
-                    WHEN 'PENDIENTE' THEN 1
-                    WHEN 'EN_REVISION' THEN 2
-                    WHEN 'AUTORIZADO' THEN 3
-                    WHEN 'RECHAZADO' THEN 4
-                    WHEN 'FINALIZADO' THEN 5
-                    WHEN 'CANCELADO' THEN 6
-                    ELSE 7
-                END ASC,
-
-                CASE p.prioridad
-                    WHEN 'URGENTE' THEN 1
-                    WHEN 'ALTA' THEN 2
-                    WHEN 'MEDIA' THEN 3
-                    WHEN 'BAJA' THEN 4
-                    ELSE 5
-
-                END ASC,
-                p.fecha_pedido DESC,
-                p.idpedido DESC
+            ORDER BY p.fecha_creacion DESC, p.idpedido DESC
             LIMIT {$limite}
             OFFSET {$offset}
         ";

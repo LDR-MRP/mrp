@@ -33,6 +33,7 @@ async function inicializarModuloPedidos() {
 
     configurarEventosPedidos();
     document.getElementById("btnReportePedidosPdf")?.addEventListener("click", generarReportePedidosFiltradosPdf);
+    document.getElementById("btnReportePedidosExcel")?.addEventListener("click", generarReportePedidosFiltradosExcel);
     await cargarDistribuidoresPedidos();
     await cargarPedidos();
 
@@ -2350,7 +2351,7 @@ async function generarReportePedidosFiltradosPdf() {
         const doc = {
             pageSize:'A4',pageOrientation:'landscape',pageMargins:[30,42,30,42],
             header:(current,total)=>({text:`Reporte de pedidos · ${current}/${total}`,alignment:'right',margin:[0,17,30,0],fontSize:8,color:'#64748b'}),
-            footer:(current,total)=>({text:`Gestión comercial · Generado ${new Date().toLocaleString('es-MX')} · Página ${current} de ${total}`,alignment:'center',fontSize:8,color:'#64748b',margin:[0,15,0,0]}),
+            footer:(current,total)=>({text:`Gestión comercial · Generado ${new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',dateStyle:'short',timeStyle:'medium'}).format(new Date())} · Página ${current} de ${total}`,alignment:'center',fontSize:8,color:'#64748b',margin:[0,15,0,0]}),
             content:[
                 {columns:[logo?{image:logo,width:110}:{text:'FOTON',bold:true,fontSize:18}, {stack:[{text:'REPORTE GENERAL DE PEDIDOS',bold:true,fontSize:17,color:'#17365d'},{text:'Gestión comercial · Reporte filtrado',fontSize:10,color:'#64748b'}],alignment:'right'}],margin:[0,0,0,14]},
                 {text:'Filtros aplicados: '+filtroTexto,fontSize:9,color:'#475569',margin:[0,0,0,12]},
@@ -2359,9 +2360,61 @@ async function generarReportePedidosFiltradosPdf() {
             ],defaultStyle:{fontSize:9}
         };
         Swal.close();
-        pdfMake.createPdf(doc).download(`reporte_pedidos_${new Date().toISOString().slice(0,10)}.pdf`);
+        pdfMake.createPdf(doc).download(`reporte_pedidos_${new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}.pdf`);
     } catch(error) {
         console.error('[PED_REPORTE]',error);
         Swal.fire('No se pudo generar el reporte',error.message||'Intenta nuevamente.','error');
     } finally { if (boton) boton.disabled=false; }
+}
+
+
+/** Exportación Excel XML Spreadsheet 2003, compatible con Excel y sin dependencias externas.
+ * Usa exactamente el mismo endpoint y filtros del reporte PDF.
+ */
+async function generarReportePedidosFiltradosExcel() {
+    const boton = document.getElementById('btnReportePedidosExcel');
+    const filtros = obtenerFiltrosPedidos();
+    delete filtros.pagina; delete filtros.limite;
+    const params = new URLSearchParams();
+    Object.entries(filtros).forEach(([k,v]) => { if (v !== '' && v != null) params.set(k,v); });
+    const xmlEsc = value => String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+    const cell = (value, numeric=false, style='') => {
+        const num = Number(value);
+        const type = numeric && Number.isFinite(num) ? 'Number' : 'String';
+        const safe = type === 'Number' ? num : xmlEsc(value);
+        return `<Cell${style ? ` ss:StyleID="${style}"` : ''}><Data ss:Type="${type}">${safe}</Data></Cell>`;
+    };
+    const row = values => `<Row>${values.join('')}</Row>`;
+    try {
+        if (boton) boton.disabled = true;
+        Swal.fire({title:'Generando reporte Excel',text:'Consultando todos los pedidos que cumplen los filtros…',allowOutsideClick:false,allowEscapeKey:false,showConfirmButton:false,didOpen:()=>Swal.showLoading()});
+        const resp = await fetch(`${base_url}/ped_pedidos/getReportePedidos?${params}`,{headers:{Accept:'application/json'},cache:'no-store'});
+        const result = await resp.json();
+        if (!resp.ok || !result.status) throw new Error(result.message || 'No se pudieron consultar los pedidos.');
+        const pedidos = result.data?.pedidos || [];
+        if (!pedidos.length) { await Swal.fire('Sin resultados','No hay pedidos para exportar con los filtros actuales.','info'); return; }
+        const fechaMexico = new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',dateStyle:'short',timeStyle:'medium'}).format(new Date());
+        const encabezados = ['Folio','Distribuidor','Fecha del pedido','Fecha requerida','Unidades','Estado','Situación comercial','Prioridad','Total MXN','Compromiso Backorder MXN'];
+        const filas = pedidos.map(p => row([
+            cell(p.folio_pedido || p.clave),cell(p.nombre_comercial || p.razon_social),cell(p.fecha_pedido),cell(p.fecha_requerida),cell(p.total_unidades ?? p.cantidad_unidades ?? 0,true),cell(p.estatus),cell(p.estatus_revision_comercial),cell(p.prioridad),cell(p.total,true,'Money'),cell(p.importe_backorder,true,'Money')
+        ]));
+        const suma = pedidos.reduce((n,p)=>n+Number(p.total||0),0);
+        const sumaBack = pedidos.reduce((n,p)=>n+Number(p.importe_backorder||0),0);
+        const filtrosAplicados = Object.entries(filtros).filter(([,v])=>v).map(([k,v])=>`${k}: ${v}`).join(' | ') || 'Sin filtros';
+        const xml = `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>`+
+        `<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">`+
+        `<Styles><Style ss:ID="Header"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#17365D" ss:Pattern="Solid"/></Style><Style ss:ID="Money"><NumberFormat ss:Format="&quot;$&quot;#,##0.00"/></Style></Styles>`+
+        `<Worksheet ss:Name="Pedidos"><Table>`+
+        row([cell('FOTON | REPORTE GENERAL DE PEDIDOS')])+row([cell('Generado (México): '+fechaMexico)])+
+        row([cell('Filtros: '+filtrosAplicados)])+row([cell('Total de pedidos: '+pedidos.length),cell('Importe total',false),cell(suma,true,'Money'),cell('Compromiso Backorders'),cell(sumaBack,true,'Money')])+row([])+
+        row(encabezados.map(h=>cell(h,false,'Header')))+filas.join('')+
+        `</Table></Worksheet></Workbook>`;
+        const blob = new Blob([xml],{type:'application/vnd.ms-excel;charset=utf-8'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href=url; a.download=`reporte_pedidos_${new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}.xls`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),1500);
+        Swal.close();
+    } catch(error) { console.error('[PED_EXCEL]',error); Swal.fire('No se pudo generar el Excel',error.message||'Intenta nuevamente.','error'); }
+    finally { if (boton) boton.disabled=false; }
 }

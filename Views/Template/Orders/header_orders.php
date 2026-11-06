@@ -31,7 +31,7 @@ $esVistaPublica = in_array($pageName, ['login', 'restablecer-password'], true);
 
     <?php if (!empty($data['page_styles']) && is_array($data['page_styles'])): ?>
         <?php foreach ($data['page_styles'] as $style): ?>
-            <link rel="stylesheet" href="<?= media(); ?>/<?= $style; ?>">
+            <link rel="stylesheet" href="<?= media(); ?>/<?= $style; ?>?v=1.4.5.4">
         <?php endforeach; ?>
     <?php endif; ?>
 

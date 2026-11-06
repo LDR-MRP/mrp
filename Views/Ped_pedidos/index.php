@@ -47,6 +47,9 @@
 
                             <a href="<?= base_url() ?>/ped_backorders" class="btn btn-soft-primary"><i class="ri-stack-line me-1"></i>Backorders</a>
 
+                            <button type="button" class="btn btn-soft-success" id="btnReportePedidosExcel">
+                                <i class="ri-file-excel-2-line me-1"></i> Reporte Excel
+                            </button>
                             <button type="button" class="btn btn-soft-danger" id="btnReportePedidosPdf">
                                 <i class="ri-file-pdf-2-line me-1"></i> Reporte PDF
                             </button>
