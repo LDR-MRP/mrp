@@ -3,8 +3,8 @@
  * Inventarios > Cobranza de unidades.
  *
  * Consulta de las unidades Facturadas (VIN en estado 3) y su estatus de pago:
- * 0 Pendiente, 1 Crédito, 2 Parcialmente pagada, 3 Pagada. Solo estatus, sin
- * montos. Se actualiza de forma individual (modal) o masiva (layout Excel de
+ * 0 Pendiente, 1 Crédito, 2 Parcialmente pagada, 3 Pagada. Solo estatus y fecha
+ * de pago (para Parcialmente pagada / Pagada), sin montos. Se actualiza de forma individual (modal) o masiva (layout Excel de
  * solo actualización, con log de lo que no se aplicó).
  *
  * Permisos (módulo MICOBRANZAUNIDADES): r = consultar y descargar,
@@ -89,6 +89,18 @@ class Inv_cobranzaunidades extends Controllers
 			if ($id <= 0 || $estatus === '' || !isset(Inv_cobranzaunidadesModel::ESTATUS[(int) $estatus])) {
 				return ['status' => false, 'msg' => 'Selecciona un estatus válido.'];
 			}
+			$estatus = (int) $estatus;
+			$fechaPago = null;
+			$txtFecha = trim((string) ($_POST['fecha_pago'] ?? ''));
+			if ($txtFecha !== '' && in_array($estatus, Inv_cobranzaunidadesModel::ESTATUS_CON_FECHA, true)) {
+				$fechaPago = $this->parsearFecha($txtFecha);
+				if ($fechaPago === null) {
+					return ['status' => false, 'msg' => 'La fecha de pago no es válida.'];
+				}
+				if ($fechaPago > date('Y-m-d')) {
+					return ['status' => false, 'msg' => 'La fecha de pago no puede ser posterior a hoy.'];
+				}
+			}
 			$u = $this->model->selectUnidad($id);
 			if (!$u) {
 				return ['status' => false, 'msg' => 'La unidad ya no está facturada (pudo haberse devuelto). Actualiza la tabla.'];
@@ -96,11 +108,11 @@ class Inv_cobranzaunidades extends Controllers
 			if ($idmov > 0 && (int) $u['idmovinventario'] !== $idmov) {
 				return ['status' => false, 'msg' => 'La venta de esta unidad cambió (devolución y nueva venta). Actualiza la tabla.'];
 			}
-			$cambio = $this->model->guardarEstatus($u, (int) $estatus, $this->usuarioId(), 'INDIVIDUAL');
+			$cambio = $this->model->guardarEstatus($u, $estatus, $fechaPago, $this->usuarioId(), 'INDIVIDUAL');
 			$u = $this->model->selectUnidad($id);
 			return [
 				'status' => true,
-				'msg' => $cambio ? 'Estatus actualizado.' : 'La unidad ya tenía ese estatus.',
+				'msg' => $cambio ? 'Estatus actualizado.' : 'La unidad ya tenía ese estatus y fecha de pago.',
 				'data' => $u ? $this->filaPublica($u) : null,
 			];
 		}, 'u', 'No fue posible actualizar el estatus.');
@@ -137,11 +149,12 @@ class Inv_cobranzaunidades extends Controllers
 		$h1->setCellValue('A2', 'Generado: ' . date('Y-m-d H:i:s') . ' · ' . count($unidades) . ' unidad(es) · ' . $this->textoFiltros($filtros));
 		$txt = [
 			'1. Este archivo es SOLO DE ACTUALIZACIÓN: trae las unidades FACTURADAS con los filtros que tenías en pantalla. No agregues filas.',
-			'2. Solo captura la columna en VERDE: ESTATUS_PAGO, eligiendo de la lista: Pendiente, Crédito, Parcialmente pagada o Pagada. Puedes arrastrar la celda para copiar el mismo estatus a varias filas.',
-			'3. Las columnas en GRIS son informativas. VIN y FOLIO_VENTA se usan para identificar la venta: no los modifiques.',
-			'4. Las filas sin cambio de estatus se ignoran.',
-			'5. Si un VIN se devolvió (o se volvió a vender) después de descargar este archivo, su fila no se aplica y queda en el log.',
-			'6. Al terminar puedes descargar el log en Excel con las filas que no se aplicaron y el motivo.',
+			'2. Solo captura las columnas en VERDE: ESTATUS_PAGO, eligiendo de la lista: Pendiente, Crédito, Parcialmente pagada o Pagada. Puedes arrastrar la celda para copiar el mismo estatus a varias filas.',
+			'3. FECHA_PAGO (opcional) va en formato dd/mm/aaaa y solo aplica a Parcialmente pagada o Pagada (en parcial, captura la fecha del último pago). No puede ser posterior a hoy. Si la dejas vacía se conserva la que ya tenía la unidad. Al pasar una unidad a Pendiente o Crédito su fecha de pago se borra.',
+			'4. Las columnas en GRIS son informativas. VIN y FOLIO_VENTA se usan para identificar la venta: no los modifiques.',
+			'5. Las filas sin cambio de estatus ni de fecha de pago se ignoran.',
+			'6. Si un VIN se devolvió (o se volvió a vender) después de descargar este archivo, su fila no se aplica y queda en el log.',
+			'7. Al terminar puedes descargar el log en Excel con las filas que no se aplicaron y el motivo.',
 		];
 		$f = 4;
 		foreach ($txt as $t) {
@@ -168,11 +181,11 @@ class Inv_cobranzaunidades extends Controllers
 		/* ---------- UNIDADES ---------- */
 		$hu = $ss->createSheet();
 		$hu->setTitle('Unidades');
-		$enc = ['FECHA_VENTA', 'VIN', 'NUMERO_MOTOR', 'SKU', 'MODELO', 'DISTRIBUIDOR', 'FACTURA', 'FOLIO_VENTA', 'ESTATUS_PAGO'];
+		$enc = ['FECHA_VENTA', 'VIN', 'NUMERO_MOTOR', 'SKU', 'MODELO', 'DISTRIBUIDOR', 'FACTURA', 'FOLIO_VENTA', 'ESTATUS_PAGO', 'FECHA_PAGO'];
 		$hu->fromArray($enc, null, 'A1');
-		$hu->getStyle('A1:I1')->getFont()->setBold(true);
+		$hu->getStyle('A1:J1')->getFont()->setBold(true);
 		$hu->getStyle('A1:H1')->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFD9D9D9');
-		$hu->getStyle('I1')->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFC6EFCE');
+		$hu->getStyle('I1:J1')->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFC6EFCE');
 
 		$total = count($unidades);
 		$ultima = max(2, $total + 1);
@@ -180,6 +193,8 @@ class Inv_cobranzaunidades extends Controllers
 			$hu->getStyle($col . '2:' . $col . $ultima)->getNumberFormat()
 				->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
 		}
+		$ultimaCaptura = min($ultima, self::MAX_FILAS_VALIDACION + 1);
+		$hu->getStyle('J2:J' . $ultimaCaptura)->getNumberFormat()->setFormatCode('dd/mm/yyyy');
 
 		$r = 2;
 		foreach ($unidades as $u) {
@@ -193,17 +208,22 @@ class Inv_cobranzaunidades extends Controllers
 			$hu->setCellValueExplicit('H' . $r, (string) $u['folio_venta'], $T);
 			$e = (int) $u['estatus_pago'];
 			$hu->setCellValueExplicit('I' . $r, $estatus[$e] ?? '', $T);
+			if (!empty($u['fecha_pago'])) {
+				// Fecha real de Excel (no texto) para que se pueda ordenar/filtrar y capturar igual.
+				$hu->setCellValue('J' . $r, \PhpOffice\PhpSpreadsheet\Shared\Date::stringToExcel($u['fecha_pago']));
+			}
 			$r++;
 		}
 
 		if ($total > 0) {
 			$hu->getStyle('A2:H' . $ultima)->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFF2F2F2');
-			$this->agregarValidacionLista($hu, 'I', 2, min($ultima, self::MAX_FILAS_VALIDACION + 1),
+			$this->agregarValidacionLista($hu, 'I', 2, $ultimaCaptura,
 				'Estatus!$A$2:$A$' . (1 + count($estatus)));
-			$hu->setAutoFilter('A1:I' . $ultima);
+			$this->agregarValidacionFecha($hu, 'J', 2, $ultimaCaptura);
+			$hu->setAutoFilter('A1:J' . $ultima);
 		}
 		$hu->freezePane('A2');
-		$anchos = ['A' => 14, 'B' => 22, 'C' => 20, 'D' => 26, 'E' => 34, 'F' => 40, 'G' => 16, 'H' => 28, 'I' => 24];
+		$anchos = ['A' => 14, 'B' => 22, 'C' => 20, 'D' => 26, 'E' => 34, 'F' => 40, 'G' => 16, 'H' => 28, 'I' => 24, 'J' => 14];
 		foreach ($anchos as $col => $w) {
 			$hu->getColumnDimension($col)->setWidth($w);
 		}
@@ -240,6 +260,7 @@ class Inv_cobranzaunidades extends Controllers
 				'vin' => $row['vin'] ?? '',
 				'sku' => $row['sku'] ?? '',
 				'estatus' => $row['estatus_pago'] ?? '',
+				'fecha_pago' => $row['fecha_pago'] ?? '',
 				'motivo' => $motivo,
 			];
 		};
@@ -254,6 +275,7 @@ class Inv_cobranzaunidades extends Controllers
 		$bd = $this->model->mapUnidadesPorVin($vines);
 
 		$usuarioid = $this->usuarioId();
+		$hoy = date('Y-m-d');
 		$vistos = [];
 		$actualizados = 0;
 		$sinCambio = 0;
@@ -290,12 +312,39 @@ class Inv_cobranzaunidades extends Controllers
 				$addLog($row, "La venta del VIN cambió desde que se descargó el layout (folio actual {$u['folio_venta']}).");
 				continue;
 			}
-			if ((int) $u['estatus_pago'] === $nuevo) {
+
+			/* FECHA_PAGO: opcional; vacía = conserva la actual. Solo para Parcialmente pagada / Pagada. */
+			$fechaActual = !empty($u['fecha_pago']) ? (string) $u['fecha_pago'] : null;
+			$txtFecha = trim($row['fecha_pago'] ?? '');
+			$fechaArchivo = null;
+			if ($txtFecha !== '') {
+				$fechaArchivo = $this->parsearFecha($txtFecha);
+				if ($fechaArchivo === null) {
+					$addLog($row, "FECHA_PAGO '{$txtFecha}' no es una fecha válida. Usa dd/mm/aaaa.");
+					continue;
+				}
+				if ($fechaArchivo > $hoy) {
+					$addLog($row, 'FECHA_PAGO no puede ser posterior a hoy.');
+					continue;
+				}
+			}
+			if (in_array($nuevo, Inv_cobranzaunidadesModel::ESTATUS_CON_FECHA, true)) {
+				$fechaFinal = $fechaArchivo ?? $fechaActual;
+			} else {
+				// La fecha que ya tenía (la que viene precargada en el layout) se borra; una distinta es un error de captura.
+				if ($fechaArchivo !== null && $fechaArchivo !== $fechaActual) {
+					$addLog($row, 'FECHA_PAGO solo aplica a Parcialmente pagada o Pagada.');
+					continue;
+				}
+				$fechaFinal = null;
+			}
+
+			if ((int) $u['estatus_pago'] === $nuevo && $fechaActual === $fechaFinal) {
 				$sinCambio++;
 				continue;
 			}
 			try {
-				$this->model->guardarEstatus($u, $nuevo, $usuarioid, 'MASIVA');
+				$this->model->guardarEstatus($u, $nuevo, $fechaFinal, $usuarioid, 'MASIVA');
 				$actualizados++;
 			} catch (\Throwable $e) {
 				error_log('Inv_cobranzaunidades::procesarCarga ' . $vin . ': ' . $e->getMessage());
@@ -330,12 +379,12 @@ class Inv_cobranzaunidades extends Controllers
 		$sh = $ss->getActiveSheet();
 		$sh->setTitle('Log');
 		$sh->setCellValue('A1', 'Log de unidades NO actualizadas (Cobranza de unidades)');
-		$sh->mergeCells('A1:E1');
+		$sh->mergeCells('A1:F1');
 		$sh->getStyle('A1')->getFont()->setBold(true)->setSize(13);
 		$sh->setCellValue('A2', 'Generado: ' . date('Y-m-d H:i:s'));
-		$sh->fromArray(['FILA_ARCHIVO', 'VIN', 'SKU', 'ESTATUS_PAGO', 'MOTIVO'], null, 'A4');
-		$sh->getStyle('A4:E4')->getFont()->setBold(true);
-		$sh->getStyle('A4:E4')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+		$sh->fromArray(['FILA_ARCHIVO', 'VIN', 'SKU', 'ESTATUS_PAGO', 'FECHA_PAGO', 'MOTIVO'], null, 'A4');
+		$sh->getStyle('A4:F4')->getFont()->setBold(true);
+		$sh->getStyle('A4:F4')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
 			->getStartColor()->setARGB('FFEFEFEF');
 		$sh->freezePane('A5');
 		$r = 5;
@@ -344,10 +393,11 @@ class Inv_cobranzaunidades extends Controllers
 			$sh->setCellValueExplicit('B' . $r, (string) $it['vin'], $T);
 			$sh->setCellValueExplicit('C' . $r, (string) $it['sku'], $T);
 			$sh->setCellValueExplicit('D' . $r, (string) $it['estatus'], $T);
-			$sh->setCellValueExplicit('E' . $r, (string) $it['motivo'], $T);
+			$sh->setCellValueExplicit('E' . $r, $this->fechaParaLog((string) ($it['fecha_pago'] ?? '')), $T);
+			$sh->setCellValueExplicit('F' . $r, (string) $it['motivo'], $T);
 			$r++;
 		}
-		foreach (['A' => 14, 'B' => 22, 'C' => 26, 'D' => 24, 'E' => 90] as $col => $w) {
+		foreach (['A' => 14, 'B' => 22, 'C' => 26, 'D' => 24, 'E' => 14, 'F' => 90] as $col => $w) {
 			$sh->getColumnDimension($col)->setWidth($w);
 		}
 		$this->enviarXlsx($ss, 'Log_Cobranza_Unidades_' . date('Ymd_His') . '.xlsx');
@@ -389,6 +439,7 @@ class Inv_cobranzaunidades extends Controllers
 			'folio_venta' => (string) $u['folio_venta'],
 			'almacen_salida' => (string) $u['almacen_salida'],
 			'estatus_pago' => (int) $u['estatus_pago'],
+			'fecha_pago' => (string) ($u['fecha_pago'] ?? ''),
 			'fecha_estatus' => (string) ($u['fecha_estatus'] ?? ''),
 			'usuario_estatus' => (string) ($u['usuario_estatus'] ?? ''),
 		];
@@ -488,6 +539,64 @@ class Inv_cobranzaunidades extends Controllers
 		}
 	}
 
+	private function agregarValidacionFecha($hoja, string $columna, int $desde, int $hasta): void
+	{
+		for ($fila = $desde; $fila <= $hasta; $fila++) {
+			$dv = $hoja->getCell($columna . $fila)->getDataValidation();
+			$dv->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_DATE);
+			$dv->setOperator(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::OPERATOR_BETWEEN);
+			$dv->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_STOP);
+			$dv->setAllowBlank(true);
+			$dv->setShowInputMessage(true);
+			$dv->setShowErrorMessage(true);
+			$dv->setPromptTitle('Fecha de pago');
+			$dv->setPrompt('dd/mm/aaaa. Solo para Parcialmente pagada o Pagada.');
+			$dv->setErrorTitle('Fecha no válida');
+			$dv->setError('Captura una fecha válida (dd/mm/aaaa) que no sea posterior a hoy.');
+			$dv->setFormula1('DATE(2000,1,1)');
+			$dv->setFormula2('TODAY()');
+		}
+	}
+
+	/**
+	 * Interpreta una fecha del layout y la devuelve en Y-m-d (o null si no es válida).
+	 * Acepta el número de serie de Excel (celda con formato fecha) y texto en
+	 * dd/mm/aaaa, dd-mm-aaaa, dd.mm.aaaa, aaaa-mm-dd o aaaa/mm/dd (con o sin hora).
+	 */
+	private function parsearFecha(string $txt): ?string
+	{
+		$t = trim($txt);
+		if ($t === '') {
+			return null;
+		}
+		if (preg_match('/^\d{4,5}(\.\d+)?$/', $t)) {
+			$serial = (float) $t;
+			if ($serial < 1 || $serial > 2958465) {
+				return null;
+			}
+			return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($serial)->format('Y-m-d');
+		}
+		$t = preg_replace('/[\sT]+\d{1,2}:\d{2}(:\d{2})?.*$/', '', $t);
+		if (preg_match('/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/', $t, $m)) {
+			[$y, $mes, $d] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+		} elseif (preg_match('/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/', $t, $m)) {
+			[$d, $mes, $y] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+		} else {
+			return null;
+		}
+		if ($y < 2000 || !checkdate($mes, $d, $y)) {
+			return null;
+		}
+		return sprintf('%04d-%02d-%02d', $y, $mes, $d);
+	}
+
+	/** En el log muestra la fecha como dd/mm/aaaa si se pudo interpretar; si no, tal cual venía. */
+	private function fechaParaLog(string $txt): string
+	{
+		$f = $txt !== '' ? $this->parsearFecha($txt) : null;
+		return $f ? date('d/m/Y', strtotime($f)) : $txt;
+	}
+
 	private function enviarXlsx($ss, string $filename): void
 	{
 		if (ob_get_length()) {
@@ -538,7 +647,7 @@ class Inv_cobranzaunidades extends Controllers
 		$highestRow = $sheet->getHighestDataRow();
 		$highestCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($sheet->getHighestDataColumn());
 
-		$mapa = ['VIN' => 'vin', 'SKU' => 'sku', 'FOLIO_VENTA' => 'folio_venta', 'ESTATUS_PAGO' => 'estatus_pago'];
+		$mapa = ['VIN' => 'vin', 'SKU' => 'sku', 'FOLIO_VENTA' => 'folio_venta', 'ESTATUS_PAGO' => 'estatus_pago', 'FECHA_PAGO' => 'fecha_pago'];
 		$columnas = [];
 		for ($col = 1; $col <= $highestCol; $col++) {
 			$texto = trim((string) $sheet->getCellByColumnAndRow($col, 1)->getValue());
