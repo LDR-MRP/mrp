@@ -18,6 +18,8 @@ $metricas = $data['metricas'] ?? [
 ];
 
 $pedidos = $data['pedidos'] ?? [];
+$solicitudesComerciales = $data['solicitudes_comerciales'] ?? [];
+$totalSolicitudesComerciales = count($solicitudesComerciales);
 
 // dep($pedidos);
 
@@ -183,6 +185,15 @@ if (!function_exists('statusPedidoNormalizado')) {
                 </a>
 
 
+                <!-- 2026-11-04: acceso a la bandeja de aprobaciones comerciales -->
+                <a href="<?= base_url(); ?>/orders/solicitudescomerciales" class="account-menu-item account-approval-menu">
+                    <i class="ri-shield-check-line"></i>
+                    <span>Solicitudes por aprobar</span>
+                    <?php if ($totalSolicitudesComerciales > 0): ?>
+                        <span class="account-approval-count"><?= (int)$totalSolicitudesComerciales; ?></span>
+                    <?php endif; ?>
+                </a>
+
                 <!-- <a href="<?= base_url(); ?>/orders/trazabilidad" class="account-menu-item">
                     <i class="ri-line-chart-line"></i>
                     <span>Trazabilidad</span>
@@ -205,7 +216,7 @@ if (!function_exists('statusPedidoNormalizado')) {
 
             <!-- SOPORTE -->
 
-            <!-- <section class="account-card support-card">
+            <section class="account-card support-card">
                 <div class="support-icon">
                     <i class="ri-customer-service-2-line"></i>
                 </div>
@@ -218,7 +229,7 @@ if (!function_exists('statusPedidoNormalizado')) {
                     </p>
                 </div>
 
-                <a href="mailto:soporte@ldrsolutions.com" class="support-button">
+                <a href="mailto:servicedeskit@ldrsolutions.com.mx" class="support-button">
 
                     Contactar soporte
 
@@ -226,7 +237,7 @@ if (!function_exists('statusPedidoNormalizado')) {
 
                 </a>
 
-            </section> -->
+            </section>
 
         </aside>
 
@@ -237,6 +248,18 @@ if (!function_exists('statusPedidoNormalizado')) {
 
         <section class="account-content">
 
+
+            <?php if ($totalSolicitudesComerciales > 0): ?>
+            <!-- 2026-11-04: alerta visible únicamente cuando Comercial ya envió una revisión -->
+            <section class="account-approval-alert" role="status" aria-live="polite">
+                <div class="account-approval-alert-icon"><i class="ri-notification-3-line"></i></div>
+                <div class="account-approval-alert-body">
+                    <strong>¡Tienes <?= (int)$totalSolicitudesComerciales; ?> <?= $totalSolicitudesComerciales === 1 ? 'solicitud comercial pendiente' : 'solicitudes comerciales pendientes'; ?> de revisar!</strong>
+                    <p>Comercial ha enviado <?= $totalSolicitudesComerciales === 1 ? 'una propuesta' : 'propuestas' ?> con las condiciones de tus pedidos. Consulta cantidades, colores y precios antes de responder.</p>
+                </div>
+                <a href="<?= base_url(); ?>/orders/solicitudescomerciales" class="account-approval-alert-action">Revisar solicitudes <i class="ri-arrow-right-line"></i></a>
+            </section>
+            <?php endif; ?>
 
             <!-- HERO -->
 
@@ -772,10 +795,10 @@ if (!function_exists('statusPedidoNormalizado')) {
 
 
                                                 <a href="<?= base_url(); ?>/orders/detallepedido/<?= rawurlencode($clavePedido); ?>"
-                                                    class="button-order-action button-order-view" title="Consultar pedido">
+                                                    class="button-order-action button-order-view" title="Consultar pedido y seguimiento">
                                                     <i class="ri-eye-line"></i>
                                                     <span>
-                                                        Ver detalle
+                                                        Seguimiento
                                                     </span>
                                                 </a>
 

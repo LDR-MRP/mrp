@@ -26,6 +26,7 @@ const ENVIRONMENT = 0;
 const API_URL = "/api/v1";
 const JWT_SECRET = "kgIO9A1mT1CZU+QTKjLjFXrYE2wuogGEHyqoK0Z/t/8=";
 const JWT_SECRET_RRHH = "mi_super_secret_ultra_seguro_123456789";
+const PED_COMERCIAL_NOTIFICACION_EMAIL="nora.segura@ldrsolutions.com.mx";
 
 const SPD = ".";
 const SPM = ",";

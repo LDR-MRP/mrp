@@ -32,6 +32,7 @@ document.addEventListener(
 async function inicializarModuloPedidos() {
 
     configurarEventosPedidos();
+    document.getElementById("btnReportePedidosPdf")?.addEventListener("click", generarReportePedidosFiltradosPdf);
     await cargarDistribuidoresPedidos();
     await cargarPedidos();
 
@@ -171,6 +172,7 @@ function configurarEventosPedidos() {
      * ========================================================
      */
 
+    ["filterSituacionComercial", "filterBackorder"].forEach(id => document.getElementById(id)?.addEventListener("change", () => {paginaActualPedidos = 1; cargarPedidos();}));
     document.getElementById("filterPrioridad")
         ?.addEventListener(
             "change",
@@ -387,6 +389,8 @@ async function cargarPedidos() {
             parametros.append("estatus",filtros.estatus);
         }
 
+        if (filtros.situacion_comercial) parametros.append("situacion_comercial", filtros.situacion_comercial);
+        if (filtros.backorder) parametros.append("backorder", filtros.backorder);
         if (filtros.prioridad) {
             parametros.append("prioridad",filtros.prioridad);
         }
@@ -511,6 +515,8 @@ function obtenerFiltrosPedidos() {
         limite:PEDIDOS_POR_PAGINA,
         busqueda:obtenerValorElementoPedidos("filterSearch"),
         estatus:obtenerValorElementoPedidos("filterEstatus").toUpperCase(),
+        situacion_comercial:obtenerValorElementoPedidos("filterSituacionComercial").toUpperCase(),
+        backorder:obtenerValorElementoPedidos("filterBackorder").toUpperCase(),
         prioridad:obtenerValorElementoPedidos("filterPrioridad").toUpperCase(),
         idcliente:obtenerValorElementoPedidos("filterDistribuidor"),
         desde:obtenerValorElementoPedidos("filterDesde"),
@@ -741,9 +747,9 @@ function crearFilaPedido(pedido) {
         =================================================== -->
         <td class="text-center">
 
-            ${obtenerBadgeEstatusPedido(
-                estatus
-            )}
+            ${obtenerBadgeEstatusPedido(estatus)}
+            ${estatus === 'EN_REVISION' && pedido.estatus_revision_comercial === 'AJUSTE_SOLICITADO' ? '<div class="mt-1 small text-warning fw-medium"><i class="ri-chat-3-line me-1"></i>Ajustes solicitados</div>' : ''}
+            ${estatus === 'EN_REVISION' && pedido.estatus_revision_comercial === 'PENDIENTE_ACEPTACION' ? '<div class="mt-1 small text-primary fw-medium"><i class="ri-send-plane-line me-1"></i>Esperando respuesta</div>' : ''}
 
         </td>
 
@@ -778,19 +784,6 @@ function crearFilaPedido(pedido) {
 <td class="text-end">
 
     <div class="d-flex justify-content-end gap-2">
-
-        <!-- VER DETALLE -->
-        <button
-            type="button"
-            class="btn btn-sm btn-soft-secondary"
-            data-action="ver-pedido"
-            data-clave="${escaparHtmlPedidos(clave)}"
-            title="Ver detalle del pedido">
-
-            <i class="ri-eye-line"></i>
-
-        </button>
-
 
         <!-- IMPRIMIR PEDIDO -->
         <button
@@ -1107,7 +1100,7 @@ function actualizarIndicadoresPedidos(indicadores) {
     const totalPedidos =Number(indicadores.total_pedidos || 0);
     const pendientes =Number(indicadores.pendientes || 0);
     const enRevision =Number(indicadores.en_revision || 0);
-    const importe =Number(indicadores.importe_total || 0);
+    const importe =Number(indicadores.importe_backorders || 0);
     actualizarTextoElementoPedidos("statTotalPedidos",totalPedidos.toLocaleString("es-MX"));
     actualizarTextoElementoPedidos("statPendientes",pendientes.toLocaleString("es-MX"));
     actualizarTextoElementoPedidos("statEnRevision",enRevision.toLocaleString("es-MX"));
@@ -1456,6 +1449,8 @@ async function limpiarFiltrosPedidos() {
 
         "filterSearch",
         "filterEstatus",
+        "filterSituacionComercial",
+        "filterBackorder",
         "filterPrioridad",
         "filterDistribuidor",
         "filterDesde",
@@ -1976,13 +1971,15 @@ function generarBotonGestionPedido(pedido) {
 
             <button
                 type="button"
-                class="btn btn-sm btn-soft-secondary"
-                disabled
-                title="Este pedido ya no puede gestionarse">
+                class="btn btn-sm btn-soft-info"
+                data-action="gestionar-pedido"
+                data-clave="${escaparHtmlPedidos(clave)}"
+                data-estatus="${escaparHtmlPedidos(estatus)}"
+                title="Consultar el pedido y su motivo de cierre, sin modificarlo">
 
-                <i class="ri-forbid-line me-1"></i>
+                <i class="ri-eye-line me-1"></i>
 
-                Gestión
+                Consultar
 
             </button>
 
@@ -2316,4 +2313,55 @@ function abrirGestionPedido(boton) {
   
     window.location.href =`${base_url}/ped_pedidos/gestionar/${encodeURIComponent(clave)}`;
 
+}
+
+/** PDF filtrado: recupera todos los pedidos coincidentes, no solo la página visible. */
+async function generarReportePedidosFiltradosPdf() {
+    const boton = document.getElementById('btnReportePedidosPdf');
+    if (typeof pdfMake === 'undefined') {
+        Swal.fire('PDF no disponible', 'No se encontró la biblioteca pdfMake.', 'error');
+        return;
+    }
+    const filtros = obtenerFiltrosPedidos();
+    delete filtros.pagina; delete filtros.limite;
+    const params = new URLSearchParams();
+    Object.entries(filtros).forEach(([k,v]) => { if (v !== '' && v != null) params.set(k,v); });
+    try {
+        if (boton) boton.disabled = true;
+        Swal.fire({title:'Preparando reporte',text:'Consultando los pedidos filtrados…',allowOutsideClick:false,allowEscapeKey:false,didOpen:()=>Swal.showLoading()});
+        const resp = await fetch(`${base_url}/ped_pedidos/getReportePedidos?${params}`, {headers:{Accept:'application/json'},cache:'no-store'});
+        const result = await resp.json();
+        if (!resp.ok || !result.status) throw new Error(result.message || 'Error consultando pedidos');
+        const pedidos = result.data.pedidos || [];
+        if (!pedidos.length) { Swal.fire('Sin resultados','No hay pedidos con los filtros seleccionados.','info'); return; }
+        const moneda = n => Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
+        const estado = p => String(p.estatus||'').replaceAll('_',' ');
+        const body = [[{text:'Pedido',bold:true},{text:'Distribuidor',bold:true},{text:'Fecha',bold:true},{text:'Estado / situación',bold:true},{text:'Prioridad',bold:true},{text:'Total',bold:true},{text:'Backorder',bold:true}],...pedidos.map(p=>[
+            String(p.folio_pedido||p.clave||''),String(p.nombre_comercial||p.razon_social||''),String(p.fecha_pedido||'').slice(0,10),estado(p)+(p.estatus_revision_comercial?' / '+String(p.estatus_revision_comercial).replaceAll('_',' '):''),String(p.prioridad||''),moneda(p.total),moneda(p.importe_backorder)
+        ])];
+        const suma = pedidos.reduce((a,p)=>a+Number(p.total||0),0);
+        const sumaBack = pedidos.reduce((a,p)=>a+Number(p.importe_backorder||0),0);
+        const filtroTexto = Object.entries(filtros).filter(([k,v])=>v).map(([k,v])=>`${k}: ${v}`).join('   |   ') || 'Sin filtros';
+        let logo = null;
+        try {
+            const img = await fetch(`${base_url}/Assets/images/logo-cotizaciones.png`);
+            if (img.ok) { const blob=await img.blob(); logo=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob);}); }
+        } catch (e) { console.warn('Logo no disponible:',e); }
+        const doc = {
+            pageSize:'A4',pageOrientation:'landscape',pageMargins:[30,42,30,42],
+            header:(current,total)=>({text:`Reporte de pedidos · ${current}/${total}`,alignment:'right',margin:[0,17,30,0],fontSize:8,color:'#64748b'}),
+            footer:(current,total)=>({text:`Gestión comercial · Generado ${new Date().toLocaleString('es-MX')} · Página ${current} de ${total}`,alignment:'center',fontSize:8,color:'#64748b',margin:[0,15,0,0]}),
+            content:[
+                {columns:[logo?{image:logo,width:110}:{text:'FOTON',bold:true,fontSize:18}, {stack:[{text:'REPORTE GENERAL DE PEDIDOS',bold:true,fontSize:17,color:'#17365d'},{text:'Gestión comercial · Reporte filtrado',fontSize:10,color:'#64748b'}],alignment:'right'}],margin:[0,0,0,14]},
+                {text:'Filtros aplicados: '+filtroTexto,fontSize:9,color:'#475569',margin:[0,0,0,12]},
+                {columns:[{text:`Pedidos: ${pedidos.length}`,bold:true},{text:`Importe de pedidos: ${moneda(suma)}`,bold:true},{text:`Compromiso Backorders: ${moneda(sumaBack)}`,bold:true}],margin:[0,0,0,14]},
+                {table:{headerRows:1,widths:[75,'*',65,115,55,80,80],body},layout:'lightHorizontalLines',fontSize:8}
+            ],defaultStyle:{fontSize:9}
+        };
+        Swal.close();
+        pdfMake.createPdf(doc).download(`reporte_pedidos_${new Date().toISOString().slice(0,10)}.pdf`);
+    } catch(error) {
+        console.error('[PED_REPORTE]',error);
+        Swal.fire('No se pudo generar el reporte',error.message||'Intenta nuevamente.','error');
+    } finally { if (boton) boton.disabled=false; }
 }

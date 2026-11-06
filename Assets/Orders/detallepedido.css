@@ -689,3 +689,17 @@
     }
 
 }
+/* Seguimiento del pedido: hitos accesibles y responsivos */
+.pedido-tracking{list-style:none;padding:12px 0 0;margin:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.pedido-tracking__step{position:relative;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;padding:8px 4px 12px}
+.pedido-tracking__step:not(:last-child)::after{content:"";position:absolute;top:28px;left:calc(50% + 25px);width:calc(100% - 38px);height:3px;background:var(--vz-border-color,#e2e8f0);border-radius:9px}
+.pedido-tracking__step.is-done:not(:last-child)::after{background:#86c9ac}
+.pedido-tracking__marker{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--vz-light,#f3f6f9);border:2px solid var(--vz-border-color,#dce4ec);color:var(--vz-secondary-color,#718096);font-size:21px;z-index:1;box-shadow:0 3px 12px rgba(15,23,42,.04)}
+.pedido-tracking__step.is-done .pedido-tracking__marker{background:#e7f7ef;border-color:#38a875;color:#16754b}
+.pedido-tracking__step.is-current .pedido-tracking__marker{background:#157347;border-color:#157347;color:white;box-shadow:0 0 0 5px rgba(21,115,71,.13)}
+.pedido-tracking__step.is-stopped .pedido-tracking__marker{background:#fff0f0;border-color:#eab0b0;color:#b42332}
+.pedido-tracking__body{display:flex;flex-direction:column;gap:5px;line-height:1.35}
+.pedido-tracking__body strong{font-size:12px;color:var(--vz-heading-color,#344054)}
+.pedido-tracking__body small{font-size:11px;color:var(--vz-secondary-color,#798597)}
+.pedido-tracking__step.is-current .pedido-tracking__body strong{color:#16804d}
+@media(max-width:767px){.pedido-tracking{grid-template-columns:1fr;gap:0;padding:4px 0}.pedido-tracking__step{flex-direction:row;text-align:left;align-items:flex-start;gap:14px;padding:9px 4px 17px}.pedido-tracking__step:not(:last-child)::after{top:50px;left:24px;width:3px;height:calc(100% - 40px)}.pedido-tracking__marker{flex:none;width:40px;height:40px}.pedido-tracking__body{padding-top:3px}.pedido-tracking__body strong{font-size:13px}}

@@ -214,18 +214,18 @@ headerOrders($data);
                     </div>
 
 
-                    <!-- MARCA -->
+                    <!-- SEGMENTO -->
 
                     <div class="filter-group">
 
                         <label for="brandFilter">
-                            Marca
+                            Segmento
                         </label>
 
                         <select id="brandFilter">
 
                             <option value="todos">
-                                Todas las marcas
+                                Todos los segmentos
                             </option>
 
                         </select>

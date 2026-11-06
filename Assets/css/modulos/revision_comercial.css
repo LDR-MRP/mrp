@@ -1,0 +1,6 @@
+/* 2026-11-04 | Interfaz de gestión; variables Velzon claro/oscuro. */
+.commercial-panel{background:var(--vz-card-bg,#fff);color:var(--vz-body-color,#495057)}
+.commercial-table-admin{min-width:1120px}.commercial-table-admin th{font-size:.78rem;white-space:nowrap}.commercial-table-admin td{vertical-align:middle}.commercial-table-admin input{min-width:95px}.commercial-table-admin select{min-width:135px}.commercial-table-admin textarea{min-width:190px}.commercial-panel .bg-body-secondary{background:var(--vz-light,#f3f6f9)!important}
+
+/* 2026-11-04: cálculos visibles por fila, responsive, variables Velzon */
+.commercial-table-admin{min-width:1120px}.commercial-table-admin .rc-importe{min-width:205px}.commercial-table-admin .rc-descuento-celda{min-width:190px}.commercial-table-admin .rc-precio{min-width:120px}.commercial-table-admin .rc-motivo{min-width:170px}.commercial-table-admin .rc-operacion{font-size:11px}.rc-totales{max-width:420px;width:100%;color:var(--vz-body-color,inherit)}.rc-totales>div{display:flex;justify-content:space-between;gap:18px;margin-bottom:8px}.rc-totales .rc-total-general{border-top:1px solid var(--vz-border-color,#ddd);padding-top:12px;font-size:18px;font-weight:700}.rc-descuento-tipo{max-width:108px}.rc-descuento-aplicado{font-size:11px}@media(max-width:768px){.rc-totales{max-width:none}.commercial-table-admin{min-width:1000px}}
