@@ -7,6 +7,9 @@
  * Sin registro = Pendiente. Si el VIN se devuelve deja de estar Facturado y
  * sale de la lista; si se vuelve a vender, la nueva venta arranca Pendiente.
  * Cada cambio se registra en wms_vin_historial (modulo = 'COBRANZA').
+ *
+ * fecha_pago (opcional) solo aplica a Parcialmente pagada / Pagada; para
+ * Pendiente o Crédito se guarda NULL.
  */
 class Inv_cobranzaunidadesModel extends Mysql
 {
@@ -16,6 +19,9 @@ class Inv_cobranzaunidadesModel extends Mysql
         2 => 'Parcialmente pagada',
         3 => 'Pagada',
     ];
+
+    /** Estatus que admiten fecha de pago. */
+    public const ESTATUS_CON_FECHA = [2, 3];
 
     public function __construct()
     {
@@ -38,6 +44,7 @@ class Inv_cobranzaunidadesModel extends Mysql
                         COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social), '') AS distribuidor,
                DATE_FORMAT(COALESCE(m.fecha_movimiento, s.fecha), '%Y-%m-%d') AS fecha_venta,
                COALESCE(cb.estatus_pago, 0) AS estatus_pago,
+               DATE_FORMAT(cb.fecha_pago, '%Y-%m-%d') AS fecha_pago,
                DATE_FORMAT(cb.fecha_modifica, '%Y-%m-%d %H:%i') AS fecha_estatus,
                TRIM(CONCAT(COALESCE(u.nombres, ''), ' ', COALESCE(u.apellidos, ''))) AS usuario_estatus
         FROM wms_numeros_series ns
@@ -125,18 +132,23 @@ class Inv_cobranzaunidadesModel extends Mysql
     }
 
     /**
-     * Guarda el estatus de pago de la venta vigente del VIN y deja rastro en
-     * wms_vin_historial. Devuelve false si no hubo cambio.
+     * Guarda estatus y fecha de pago de la venta vigente del VIN y deja rastro en
+     * wms_vin_historial. $fechaPago es el valor final (Y-m-d o null); para
+     * estatus sin fecha se fuerza null. Devuelve false si no hubo cambio.
      */
-    public function guardarEstatus(array $u, int $nuevo, ?int $usuarioid, string $origen): bool
+    public function guardarEstatus(array $u, int $nuevo, ?string $fechaPago, ?int $usuarioid, string $origen): bool
     {
+        if (!in_array($nuevo, self::ESTATUS_CON_FECHA, true)) {
+            $fechaPago = null;
+        }
         $anterior = (int) $u['estatus_pago'];
-        if ($anterior === $nuevo) {
+        $fechaAnt = !empty($u['fecha_pago']) ? (string) $u['fecha_pago'] : null;
+        if ($anterior === $nuevo && $fechaAnt === $fechaPago) {
             return false;
         }
         $this->conexion->beginTransaction();
         try {
-            $this->escribirEstatus($u, $anterior, $nuevo, $usuarioid, $origen);
+            $this->escribirEstatus($u, $anterior, $nuevo, $fechaAnt, $fechaPago, $usuarioid, $origen);
             $this->conexion->commit();
         } catch (\Throwable $e) {
             if ($this->conexion->inTransaction()) {
@@ -147,29 +159,35 @@ class Inv_cobranzaunidadesModel extends Mysql
         return true;
     }
 
-    private function escribirEstatus(array $u, int $anterior, int $nuevo, ?int $usuarioid, string $origen): void
+    private function escribirEstatus(array $u, int $anterior, int $nuevo, ?string $fechaAnt, ?string $fechaPago, ?int $usuarioid, string $origen): void
     {
         $this->insert(
-            "INSERT INTO vta_cobranza_unidades (idmovinventario, id_numeros_serie, estatus_pago, usuario_modifica, fecha_modifica)
-             VALUES (?, ?, ?, ?, NOW())
+            "INSERT INTO vta_cobranza_unidades (idmovinventario, id_numeros_serie, estatus_pago, fecha_pago, usuario_modifica, fecha_modifica)
+             VALUES (?, ?, ?, ?, ?, NOW())
              ON DUPLICATE KEY UPDATE estatus_pago = VALUES(estatus_pago),
+                                     fecha_pago = VALUES(fecha_pago),
                                      usuario_modifica = VALUES(usuario_modifica),
                                      fecha_modifica = NOW()",
-            [(int) $u['idmovinventario'], (int) $u['id_numeros_serie'], $nuevo, $usuarioid]
+            [(int) $u['idmovinventario'], (int) $u['id_numeros_serie'], $nuevo, $fechaPago, $usuarioid]
         );
+        $detalle = mb_substr('Venta ' . $u['folio_venta'] . ' · Factura ' . $u['factura'], 0, 500);
+        if ($anterior !== $nuevo) {
+            $this->registrarHistorial($u, 'ESTATUS_PAGO', 'estatus_pago',
+                self::ESTATUS[$anterior] ?? (string) $anterior, self::ESTATUS[$nuevo], $detalle, $origen, $usuarioid);
+        }
+        if ($fechaAnt !== $fechaPago) {
+            $this->registrarHistorial($u, 'FECHA_PAGO', 'fecha_pago',
+                $fechaAnt ?? '', $fechaPago ?? '', $detalle, $origen, $usuarioid);
+        }
+    }
+
+    private function registrarHistorial(array $u, string $accion, string $campo, string $ant, string $nvo, string $detalle, string $origen, ?int $usuarioid): void
+    {
         $this->insert(
             "INSERT INTO wms_vin_historial
              (id_numeros_serie, numero_serie, modulo, accion, campo, valor_anterior, valor_nuevo, detalle, origen, usuarioid, fecha)
-             VALUES (?, ?, 'COBRANZA', 'ESTATUS_PAGO', 'estatus_pago', ?, ?, ?, ?, ?, NOW())",
-            [
-                (int) $u['id_numeros_serie'],
-                $u['numero_serie'],
-                self::ESTATUS[$anterior] ?? (string) $anterior,
-                self::ESTATUS[$nuevo],
-                mb_substr('Venta ' . $u['folio_venta'] . ' · Factura ' . $u['factura'], 0, 500),
-                $origen,
-                $usuarioid,
-            ]
+             VALUES (?, ?, 'COBRANZA', ?, ?, ?, ?, ?, ?, ?, NOW())",
+            [(int) $u['id_numeros_serie'], $u['numero_serie'], $accion, $campo, $ant, $nvo, $detalle, $origen, $usuarioid]
         );
     }
 
@@ -178,7 +196,7 @@ class Inv_cobranzaunidadesModel extends Mysql
     {
         return $this->select_all(
             "SELECT DATE_FORMAT(h.fecha, '%Y-%m-%d %H:%i') AS fecha,
-                    h.valor_anterior, h.valor_nuevo, h.detalle, h.origen,
+                    h.campo, h.valor_anterior, h.valor_nuevo, h.detalle, h.origen,
                     TRIM(CONCAT(COALESCE(u.nombres, ''), ' ', COALESCE(u.apellidos, ''))) AS usuario
              FROM wms_vin_historial h
              LEFT JOIN usuarios u ON u.idusuario = h.usuarioid

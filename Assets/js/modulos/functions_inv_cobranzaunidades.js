@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const divLoading = document.querySelector("#divLoading");
   const COLORES = { 0: "danger", 1: "info", 2: "warning", 3: "success" };
   const SIN_DIST = "__SIN__";
+  const ESTATUS_CON_FECHA = ["2", "3"]; // Parcialmente pagada, Pagada
 
   const inpDesde = document.getElementById("cobDesde");
   const inpHasta = document.getElementById("cobHasta");
@@ -202,6 +203,10 @@ document.addEventListener("DOMContentLoaded", function () {
         render: (d, t) => (t === "display" ? badgeEstatus(d) : t === "filter" ? COB_ESTATUS[d] : d),
       },
       {
+        data: "fecha_pago",
+        render: (d, t) => (t === "display" ? (d ? fechaCorta(d) : '<span class="text-muted">—</span>') : t === "filter" ? fechaCorta(d) : d || ""),
+      },
+      {
         data: "fecha_estatus",
         render: function (d, t, row) {
           if (t !== "display") return d || "";
@@ -263,6 +268,8 @@ document.addEventListener("DOMContentLoaded", function () {
       document.getElementById("cobMMov").value = u.idmovinventario;
       const opt = document.getElementById("cobOpt" + u.estatus_pago);
       if (opt) opt.checked = true;
+      document.getElementById("cobMFechaPago").value = u.fecha_pago || "";
+      toggleFechaPago();
     }
     const ul = document.getElementById("cobMHistorial");
     ul.innerHTML = '<li class="text-muted">Cargando…</li>';
@@ -279,7 +286,9 @@ document.addEventListener("DOMContentLoaded", function () {
         ul.innerHTML = h
           .map(
             (x) =>
-              "<li><div><strong>" + esc(x.valor_anterior) + "</strong> → <strong>" + esc(x.valor_nuevo) + "</strong>" +
+              "<li><div>" + (x.campo === "fecha_pago"
+                ? "Fecha de pago: <strong>" + (x.valor_anterior ? fechaCorta(x.valor_anterior) : "—") + "</strong> → <strong>" + (x.valor_nuevo ? fechaCorta(x.valor_nuevo) : "—") + "</strong>"
+                : "<strong>" + esc(x.valor_anterior) + "</strong> → <strong>" + esc(x.valor_nuevo) + "</strong>") +
               ' <span class="badge bg-light text-muted border ms-1">' + (x.origen === "MASIVA" ? "Excel" : "Individual") + "</span></div>" +
               '<div class="text-muted">' + fechaCorta(x.fecha) + " · " + esc(x.usuario || "—") + " · " + esc(x.detalle) + "</div></li>"
           )
@@ -289,7 +298,19 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   const formEstatus = document.getElementById("formCobEstatus");
+
+  // La fecha de pago solo aplica a Parcialmente pagada / Pagada
+  function toggleFechaPago() {
+    if (!formEstatus) return;
+    const sel = formEstatus.querySelector('input[name="estatus_pago"]:checked');
+    const aplica = !!sel && ESTATUS_CON_FECHA.includes(sel.value);
+    const inp = document.getElementById("cobMFechaPago");
+    document.getElementById("cobMFechaWrap").style.display = aplica ? "" : "none";
+    inp.disabled = !aplica;
+  }
+
   if (formEstatus) {
+    formEstatus.querySelectorAll('input[name="estatus_pago"]').forEach((r) => r.addEventListener("change", toggleFechaPago));
     formEstatus.addEventListener("submit", function (e) {
       e.preventDefault();
       if (!formEstatus.querySelector('input[name="estatus_pago"]:checked')) {
