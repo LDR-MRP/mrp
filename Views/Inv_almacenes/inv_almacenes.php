@@ -59,6 +59,7 @@
                                         <th>TELÉFONO</th>
                                         <th>PLANTA</th>
                                         <th>PRECIO ASIGNADO</th>
+                                        <th>FACTURABLE</th>
                                         <th>ESTATUS</th>
                                         <th>ACCIÓN</th>
 
@@ -178,6 +179,21 @@
                                                 </select>
                                             </div>
                                             <div class="form-text">Planta a la que pertenece el almacén. Se usa en Unidades PT, Control de Llaves y Traslados.</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- FACTURABLE -->
+                                    <div class="col-lg-4 col-sm-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="facturable-select">FACTURABLE</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="facturable-addon">Fac</span>
+                                                <select class="form-select" id="facturable-select" name="facturable-select" aria-describedby="facturable-addon">
+                                                    <option value="0" selected>No</option>
+                                                    <option value="1">Sí</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-text">Indica si las unidades de este almacén se pueden facturar.</div>
                                         </div>
                                     </div>
 
@@ -305,6 +321,10 @@
                         <tr>
                             <td>Precio asignado:</td>
                             <td id="cellistaprecio"></td>
+                        </tr>
+                        <tr>
+                            <td>Facturable:</td>
+                            <td id="celfacturable"></td>
                         </tr>
                         <tr>
                             <td>Fecha Registro:</td>

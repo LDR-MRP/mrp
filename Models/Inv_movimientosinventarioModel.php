@@ -272,9 +272,13 @@ class Inv_movimientosinventarioModel extends Mysql
 
 
         $pdo = $this->getConexion();
+        // Si el llamador ya abrió una transacción (p. ej. devolución + cancelación
+        // de la facturación del VIN), se trabaja dentro de ella: aquí no se hace
+        // commit ni rollback, y ante un error el llamador debe hacer rollback.
+        $propia = !$pdo->inTransaction();
 
         try {
-            $pdo->beginTransaction();
+            if ($propia) $pdo->beginTransaction();
 
             $numero_movimiento = 'MOV-' . date('YmdHis') . '-' . rand(100,999);
             $vinesUsados = [];
@@ -464,14 +468,14 @@ class Inv_movimientosinventarioModel extends Mysql
                 throw new Exception("No se insertó ninguna partida válida");
             }
 
-            $pdo->commit();
+            if ($propia) $pdo->commit();
 
             return [
                 'numero_movimiento' => $numero_movimiento,
                 'almacenid' => $almacenid
             ];
         } catch (Exception $e) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
+            if ($propia && $pdo->inTransaction()) $pdo->rollBack();
             return $e->getMessage();
         }
     }

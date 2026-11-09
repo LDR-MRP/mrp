@@ -113,7 +113,7 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
                                 <div class="flex-grow-1 overflow-hidden">
                                     <p class="text-uppercase fw-semibold text-muted text-truncate mb-2 fs-12">VIN disponibles</p>
                                     <h3 class="fw-semibold mb-1" id="kpiDisponibles">—</h3>
-                                    <span class="text-muted fs-12">Listas para facturar</span>
+                                    <span class="text-muted fs-12">Sin facturar</span>
                                 </div>
                                 <div class="avatar-sm flex-shrink-0">
                                     <span class="avatar-title bg-success-subtle text-success rounded-3">
@@ -131,7 +131,7 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
                                 <div class="flex-grow-1 overflow-hidden">
                                     <p class="text-uppercase fw-semibold text-muted text-truncate mb-2 fs-12">Unidades en inventario</p>
                                     <h3 class="fw-semibold mb-1" id="kpiTatuadas">—</h3>
-                                    <span class="text-muted fs-12">También se pueden facturar</span>
+                                    <span class="text-muted fs-12">Tatuadas sin facturar</span>
                                 </div>
                                 <div class="avatar-sm flex-shrink-0">
                                     <span class="avatar-title bg-danger-subtle text-danger rounded-3">
@@ -231,7 +231,7 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
                                         <th>DISTRIBUIDOR</th>
                                         <th>FACTURA</th>
                                         <th>ALMACÉN SALIDA</th>
-                                        <th>FOLIO MOV.</th>
+                                        <th>SALIDA INV.</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -246,7 +246,7 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
                                         <div class="mvm-step-num">1</div>
                                         <div class="mvm-step-body">
                                             <h6>Descarga el layout de VINs</h6>
-                                            <p class="text-muted fs-13 mb-2">Trae el histórico general de VINs (Disponibles, Tatuados y Facturados) de todas las plantas y almacenes.</p>
+                                            <p class="text-muted fs-13 mb-2">Trae los VINs Disponibles y Tatuados de los almacenes facturables, más todos los VINs ya Facturados.</p>
                                             <button type="button" id="btnDescargarLayoutVentas" class="btn btn-success btn-sm">
                                                 <i class="ri-file-excel-2-line align-bottom me-1"></i> Descargar layout de VINs
                                             </button>
@@ -299,8 +299,9 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
                                         <h6 class="fw-semibold mb-2"><i class="ri-information-line text-primary me-1"></i> Reglas de la carga</h6>
                                         <ul class="mvm-rules">
                                             <li><i class="ri-arrow-right-circle-line text-primary"></i><span>Se factura desde <span class="badge bg-success">Disponible</span> o <span class="badge bg-danger">Tatuado</span>.</span></li>
-                                            <li><i class="ri-file-paper-2-line text-primary"></i><span><strong>Una unidad por factura:</strong> cada VIN genera su propio movimiento de Ventas y baja la existencia de su almacén.</span></li>
-                                            <li><i class="ri-building-line text-primary"></i><span>Solo se venden unidades de almacenes de <strong>Producto Terminado</strong> o <strong>Tránsito</strong>.</span></li>
+                                            <li><i class="ri-file-paper-2-line text-primary"></i><span><strong>Una unidad por factura.</strong> Facturar <strong>no descuenta inventario</strong> ni cambia el estatus del VIN: se puede facturar aunque la unidad aún no esté ensamblada.</span></li>
+                                            <li><i class="ri-truck-line text-primary"></i><span>La salida de inventario se registra cuando <strong>Logística</strong> toma la unidad.</span></li>
+                                            <li><i class="ri-building-line text-primary"></i><span>Solo se facturan VINs de almacenes marcados como <strong>facturables</strong>.</span></li>
                                             <li><i class="ri-edit-2-line text-primary"></i><span>En VINs ya facturados puedes <strong>corregir</strong> el distribuidor o la factura (ventas de una unidad).</span></li>
                                             <li><i class="ri-error-warning-line text-warning"></i><span>Filas nuevas o con VIN, SKU, nombre, almacén o motor modificados <strong>no se suben</strong> y quedan en el log.</span></li>
                                         </ul>
@@ -378,9 +379,9 @@ $puedeEscribir = !empty($_SESSION['permisosMod']['w']);
                                     <div class="border rounded-3 p-3 h-100">
                                         <h6 class="fw-semibold mb-2"><i class="ri-information-line text-warning me-1"></i> Qué pasa al devolver</h6>
                                         <ul class="mvm-rules">
-                                            <li><i class="ri-home-4-line text-warning"></i><span>La unidad regresa al <strong>mismo almacén</strong> del que salió.</span></li>
-                                            <li><i class="ri-exchange-line text-warning"></i><span>Cada VIN genera un movimiento <strong>Devol. de venta</strong> (suma 1 en multialmacén).</span></li>
-                                            <li><i class="ri-checkbox-circle-line text-success"></i><span>El VIN queda en <span class="badge bg-success">Disponible</span>, listo para volver a venderse.</span></li>
+                                            <li><i class="ri-close-circle-line text-warning"></i><span>La factura queda <strong>cancelada</strong> y el VIN se puede volver a facturar.</span></li>
+                                            <li><i class="ri-checkbox-circle-line text-success"></i><span>Si la unidad <strong>aún no salía</strong> del inventario, solo se cancela la factura: el VIN no cambia.</span></li>
+                                            <li><i class="ri-exchange-line text-warning"></i><span>Si <strong>ya había salido</strong>, regresa al mismo almacén con un movimiento <strong>Devol. de venta</strong> (suma 1) y queda <span class="badge bg-success">Disponible</span>.</span></li>
                                         </ul>
                                     </div>
                                 </div>

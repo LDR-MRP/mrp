@@ -105,8 +105,9 @@ class Inv_cobranzaunidades extends Controllers
 			if (!$u) {
 				return ['status' => false, 'msg' => 'La unidad ya no está facturada (pudo haberse devuelto). Actualiza la tabla.'];
 			}
-			if ($idmov > 0 && (int) $u['idmovinventario'] !== $idmov) {
-				return ['status' => false, 'msg' => 'La venta de esta unidad cambió (devolución y nueva venta). Actualiza la tabla.'];
+			// "idmovinventario" del formulario lleva el id de la facturación vigente (wms_vin_facturacion)
+			if ($idmov > 0 && (int) $u['idfacturacion'] !== $idmov) {
+				return ['status' => false, 'msg' => 'La factura de esta unidad cambió (devolución y nueva factura). Actualiza la tabla.'];
 			}
 			$cambio = $this->model->guardarEstatus($u, $estatus, $fechaPago, $this->usuarioId(), 'INDIVIDUAL');
 			$u = $this->model->selectUnidad($id);
@@ -428,7 +429,7 @@ class Inv_cobranzaunidades extends Controllers
 	{
 		return [
 			'id_numeros_serie' => (int) $u['id_numeros_serie'],
-			'idmovinventario' => (int) $u['idmovinventario'],
+			'idmovinventario' => (int) $u['idfacturacion'], // token de la facturación vigente (nombre conservado por el JS)
 			'fecha_venta' => (string) $u['fecha_venta'],
 			'vin' => (string) $u['numero_serie'],
 			'numero_motor' => (string) $u['numero_motor'],

@@ -62,6 +62,7 @@ document.addEventListener(
         { data: "telefono" },
         { data: "planta" },
         { data: "lista_precio" },
+        { data: "facturable" },
         { data: "estado" },
         { data: "options" },
       ],
@@ -244,6 +245,8 @@ function fntEditInfo(idalmacen) {
       document.querySelector("#correo-input").value = objData.data.correo;
       document.querySelector('#descripcion-almacen-textarea').value = objData.data.descripcion;
       estado.value = objData.data.estado;
+      document.querySelector("#facturable-select").value =
+        String(objData.data.facturable) === "1" ? "1" : "0";
       fntAlmacenes(objData.data.listaprecioid);
       fntPlantas(objData.data.plantaid || "");
       if (firstTab) firstTab.show();
@@ -394,6 +397,10 @@ function fntViewAlmacen(idalmacen) {
         document.querySelector("#celplanta").innerHTML = objData.data.plantaid
           ? objData.data.cve_planta + " · " + objData.data.nombre_planta
           : '<span class="badge bg-warning-subtle text-warning">Sin planta asignada</span>';
+        document.querySelector("#celfacturable").innerHTML =
+          String(objData.data.facturable) === "1"
+            ? '<span class="badge bg-success-subtle text-success">Sí</span>'
+            : '<span class="badge bg-secondary-subtle text-secondary">No</span>';
         document.querySelector("#celFecha").innerHTML =
           objData.data.fecha_creacion;
         document.querySelector("#celEstado").innerHTML = estadoUsuario;
