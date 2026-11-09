@@ -1,11 +1,11 @@
 <?php
 // Archivo simple para guardar bancos sin routing complejo
-error_log('[guardar_banco.php] INICIO - Archivo cargado');
+error_log('[guardar_banco.php] INICIO - Archivo cargado V2');
 
 try {
     session_start();
     header('Content-Type: application/json');
-    error_log('[guardar_banco.php] Session iniciada');
+    error_log('[guardar_banco.php] Session iniciada V2');
 
     // Leer JSON del body
     $body = file_get_contents('php://input');
@@ -64,16 +64,17 @@ try {
     $stmt->bind_param("sssss", $nextId, $data['nombre_corto'], $data['razon_social'], $direccion, $origenRegistro);
 
     if ($stmt->execute()) {
-        error_log('[guardar_banco.php] Banco creado exitosamente');
+        error_log('[guardar_banco.php] Banco creado exitosamente V2 - ID: ' . $nextId);
         echo json_encode([
             'status' => 'success',
             'code' => 201,
-            'message' => 'Banco registrado exitosamente',
-            'data' => ['id_banco' => $nextId]
+            'message' => 'Banco registrado exitosamente V2',
+            'data' => ['id_banco' => $nextId],
+            'timestamp' => time()
         ]);
     } else {
-        error_log('[guardar_banco.php] Error al insertar: ' . $stmt->error);
-        echo json_encode(['status' => false, 'error' => 'Error al insertar: ' . $stmt->error]);
+        error_log('[guardar_banco.php] Error al insertar V2: ' . $stmt->error);
+        echo json_encode(['status' => false, 'error' => 'Error al insertar V2: ' . $stmt->error]);
     }
 
     $stmt->close();

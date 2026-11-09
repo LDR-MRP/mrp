@@ -945,7 +945,7 @@ const bancoAutocomplete = {
         this.events();
     },
 
-    loadCatalogs: function() {
+    loadCatalogs: function(callback) {
         console.log('[bancoAutocomplete] Cargando catálogo de bancos...');
         Sys_Core.Net.get({
             url: `${Sys_Core.Config.baseUrl}/api/v1/catalogs/bancos`,
@@ -954,6 +954,7 @@ const bancoAutocomplete = {
                 if (res.status && res.data) {
                     this.bancoCatalogo = res.data;
                     console.log('[bancoAutocomplete] Catálogo cargado:', this.bancoCatalogo.length, 'bancos');
+                    if (callback) callback();
                 } else {
                     console.error('[bancoAutocomplete] Error en respuesta:', res);
                 }
@@ -1069,6 +1070,10 @@ const bancoAutocomplete = {
             // Deshabilitar botón
             $(this).prop('disabled', true).html('<i class="ri-loader-4-line spin"></i> Guardando...');
 
+            console.log('[Guardar Banco] Enviando datos:', { nombreCorto, razonSocial, direccion });
+            console.log('[Guardar Banco] URL:', `${Sys_Core.Config.baseUrl}/ajax/guardar_banco.php`);
+            console.log('[Guardar Banco] Sys_Core.Config.baseUrl:', Sys_Core.Config.baseUrl);
+
             Sys_Core.Net.post({
                 url: `${Sys_Core.Config.baseUrl}/ajax/guardar_banco.php`,
                 payload: {
@@ -1077,39 +1082,57 @@ const bancoAutocomplete = {
                     direccion: direccion,
                     origen_registro: 'USUARIO'
                 },
-                onSuccess: (res) => {
-                    if (res.status === 'success') {
-                        // Cerrar modal
-                        $('#modalNuevoBanco').modal('hide');
+                onDone: (res) => {
+                    console.log('[Guardar Banco] Respuesta recibida:', res);
 
-                        // Seleccionar el banco creado
+                    if (res.status === 'success') {
+                        console.log('[Guardar Banco] Banco creado con ID:', res.data.id_banco);
+
+                        // Seleccionar el banco creado en el formulario principal
                         $('#banco_autocomplete').val(nombreCorto);
                         $('#id_banco').val(res.data.id_banco);
                         $('#direccion_banco').val(direccion || '');
                         $('#banco-suggestions').addClass('d-none').removeClass('show');
                         $('#btn-agregar-banco-rapido').hide();
 
+                        console.log('[Guardar Banco] Campos autocompletados:', {
+                            banco_autocomplete: $('#banco_autocomplete').val(),
+                            id_banco: $('#id_banco').val(),
+                            direccion_banco: $('#direccion_banco').val()
+                        });
+
                         // Agregar al catálogo local
-                        self.bancoCatalogo.push({
+                        const nuevoBanco = {
                             id_banco: res.data.id_banco,
                             nombre_corto: nombreCorto,
                             razon_social: razonSocial,
                             direccion: direccion
-                        });
+                        };
+                        self.bancoCatalogo.push(nuevoBanco);
 
-                        Sys_Core.UI.notify('Banco registrado exitosamente', 'success');
+                        console.log('[Guardar Banco] Catálogo local actualizado. Total bancos:', self.bancoCatalogo.length);
+                        console.log('[Guardar Banco] Nuevo banco en catálogo:', nuevoBanco);
 
                         // Limpiar campos del modal
                         $('#nuevo_banco_nombre_corto').val('');
                         $('#nuevo_banco_razon_social').val('');
                         $('#nuevo_banco_direccion').val('');
+
+                        // Recargar catálogo desde el servidor para asegurar sincronización
+                        self.loadCatalogs(function() {
+                            console.log('[Guardar Banco] Catálogo recargado desde servidor');
+                        });
+
+                        // Cerrar modal - forzar cerrar el backdrop también
+                        $('#modalNuevoBanco').modal('hide');
+                        $('.modal-backdrop').remove();
+                        $('body').removeClass('modal-open');
+
+                        console.log('[Guardar Banco] Modal cerrado');
                     } else {
+                        console.error('[Guardar Banco] Error en respuesta:', res);
                         alert('Error: ' + (res.error || 'No se pudo crear el banco'));
                     }
-                },
-                onComplete: () => {
-                    // Restaurar botón
-                    $('#btn-guardar-banco').prop('disabled', false).html('<i class="ri-save-line align-middle me-1"></i> Guardar Banco');
                 }
             });
         });
