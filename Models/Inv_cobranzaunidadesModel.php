@@ -2,11 +2,13 @@
 /**
  * Cobranza de unidades: estatus de pago de cada VIN facturado.
  *
- * El estatus vive en vta_cobranza_unidades ligado a la VENTA vigente del VIN
- * (último movimiento de salida en wms_movimientos_inventario_series) + VIN.
- * Sin registro = Pendiente. Si el VIN se devuelve deja de estar Facturado y
- * sale de la lista; si se vuelve a vender, la nueva venta arranca Pendiente.
- * Cada cambio se registra en wms_vin_historial (modulo = 'COBRANZA').
+ * El estatus vive en vta_cobranza_unidades ligado a la FACTURACIÓN vigente del
+ * VIN (wms_vin_facturacion, estatus 1 o 2) + VIN. La facturación ya no implica
+ * salida de inventario, así que la unidad aparece aquí desde que se factura,
+ * haya salido o no. Sin registro = Pendiente. Si la factura se cancela o la
+ * unidad se devuelve, sale de la lista; si se vuelve a facturar, la nueva
+ * factura arranca Pendiente. Cada cambio se registra en wms_vin_historial
+ * (modulo = 'COBRANZA').
  *
  * fecha_pago (opcional) solo aplica a Parcialmente pagada / Pagada; para
  * Pendiente o Crédito se guarda NULL.
@@ -28,7 +30,7 @@ class Inv_cobranzaunidadesModel extends Mysql
         parent::__construct();
     }
 
-    /** VINs Facturados (3) de producto con los datos de su venta vigente y su estatus de pago. */
+    /** VINs con facturación vigente (tipo P) con los datos de su factura y su estatus de pago. */
     private const SQL_BASE = "
         SELECT ns.id_numeros_serie,
                ns.numero_serie,
@@ -36,30 +38,26 @@ class Inv_cobranzaunidadesModel extends Mysql
                i.descripcion,
                COALESCE(va.numero_motor, '') AS numero_motor,
                COALESCE(a.descripcion, '') AS almacen_salida,
-               s.idmovinventario,
-               COALESCE(m.numero_movimiento, s.numero_movimiento, '') AS folio_venta,
-               COALESCE(m.referencia, '') AS factura,
-               COALESCE(NULLIF(TRIM(m.distribuidor), ''),
-                        CONCAT(NULLIF(c.codigo_cliente, ''), ' - ', COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social)),
-                        COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social), '') AS distribuidor,
-               DATE_FORMAT(COALESCE(m.fecha_movimiento, s.fecha), '%Y-%m-%d') AS fecha_venta,
+               f.idfacturacion,
+               f.idmov_venta AS idmovinventario,
+               COALESCE(m.numero_movimiento, '') AS folio_venta,
+               f.factura,
+               f.distribuidor,
+               DATE_FORMAT(f.fecha_factura, '%Y-%m-%d') AS fecha_venta,
                COALESCE(cb.estatus_pago, 0) AS estatus_pago,
                DATE_FORMAT(cb.fecha_pago, '%Y-%m-%d') AS fecha_pago,
                DATE_FORMAT(cb.fecha_modifica, '%Y-%m-%d %H:%i') AS fecha_estatus,
                TRIM(CONCAT(COALESCE(u.nombres, ''), ' ', COALESCE(u.apellidos, ''))) AS usuario_estatus
-        FROM wms_numeros_series ns
+        FROM wms_vin_facturacion f
+        INNER JOIN wms_numeros_series ns ON ns.id_numeros_serie = f.id_numeros_serie
         INNER JOIN wms_inventario i ON i.idinventario = ns.inventarioid
-        INNER JOIN wms_movimientos_inventario_series s
-               ON s.idmovserie = (SELECT MAX(s2.idmovserie) FROM wms_movimientos_inventario_series s2
-                                  WHERE s2.id_numeros_serie = ns.id_numeros_serie AND s2.signo < 0)
-        LEFT JOIN wms_movimientos_inventario m ON m.idmovinventario = s.idmovinventario
-        LEFT JOIN cli_clientes c ON c.idcliente = m.id_cliente
-        LEFT JOIN wms_almacenes a ON a.idalmacen = COALESCE(s.almacenid, ns.almacenid)
+        LEFT JOIN wms_movimientos_inventario m ON m.idmovinventario = f.idmov_venta
+        LEFT JOIN wms_almacenes a ON a.idalmacen = COALESCE(f.almacenid_salida, ns.almacenid)
         LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = ns.id_numeros_serie
         LEFT JOIN vta_cobranza_unidades cb
-               ON cb.idmovinventario = s.idmovinventario AND cb.id_numeros_serie = ns.id_numeros_serie
+               ON cb.idfacturacion = f.idfacturacion AND cb.id_numeros_serie = ns.id_numeros_serie
         LEFT JOIN usuarios u ON u.idusuario = cb.usuario_modifica
-        WHERE ns.estado = '3'
+        WHERE f.estatus IN (1, 2)
           AND i.tipo_elemento = 'P'";
 
     /**
@@ -162,15 +160,17 @@ class Inv_cobranzaunidadesModel extends Mysql
     private function escribirEstatus(array $u, int $anterior, int $nuevo, ?string $fechaAnt, ?string $fechaPago, ?int $usuarioid, string $origen): void
     {
         $this->insert(
-            "INSERT INTO vta_cobranza_unidades (idmovinventario, id_numeros_serie, estatus_pago, fecha_pago, usuario_modifica, fecha_modifica)
-             VALUES (?, ?, ?, ?, ?, NOW())
+            "INSERT INTO vta_cobranza_unidades (idfacturacion, idmovinventario, id_numeros_serie, estatus_pago, fecha_pago, usuario_modifica, fecha_modifica)
+             VALUES (?, ?, ?, ?, ?, ?, NOW())
              ON DUPLICATE KEY UPDATE estatus_pago = VALUES(estatus_pago),
                                      fecha_pago = VALUES(fecha_pago),
                                      usuario_modifica = VALUES(usuario_modifica),
+                                     idmovinventario = VALUES(idmovinventario),
                                      fecha_modifica = NOW()",
-            [(int) $u['idmovinventario'], (int) $u['id_numeros_serie'], $nuevo, $fechaPago, $usuarioid]
+            [(int) $u['idfacturacion'], !empty($u['idmovinventario']) ? (int) $u['idmovinventario'] : null,
+             (int) $u['id_numeros_serie'], $nuevo, $fechaPago, $usuarioid]
         );
-        $detalle = mb_substr('Venta ' . $u['folio_venta'] . ' · Factura ' . $u['factura'], 0, 500);
+        $detalle = mb_substr('Factura ' . $u['factura'] . ($u['folio_venta'] !== '' ? ' · Venta ' . $u['folio_venta'] : ' · sin salida de inventario'), 0, 500);
         if ($anterior !== $nuevo) {
             $this->registrarHistorial($u, 'ESTATUS_PAGO', 'estatus_pago',
                 self::ESTATUS[$anterior] ?? (string) $anterior, self::ESTATUS[$nuevo], $detalle, $origen, $usuarioid);

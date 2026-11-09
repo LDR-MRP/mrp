@@ -2,12 +2,20 @@
 /**
  * Carga masiva de VENTAS / FACTURACIÓN de unidades (VINs).
  *
- * El layout se DESCARGA con todos los VINs que siguen en inventario
- * (estado 1 = Disponible, 2 = Tatuado) de todas las plantas y almacenes.
- * Al subirlo solo se ACTUALIZA: el único cambio permitido es
- * 2 = Tatuado -> 3 = Facturado, con cliente y factura; cada VIN facturado
- * genera su propio movimiento de Ventas (una unidad por factura), que baja
- * wms_multialmacen y deja la trazabilidad en wms_movimientos_inventario_series.
+ * La facturación vive en wms_vin_facturacion y está SEPARADA del estatus
+ * físico del VIN (wms_numeros_series.estado) y del inventario:
+ *  - Facturar solo crea el registro (estatus 1 = Facturado, pendiente de
+ *    salida). El VIN conserva su estado (1 Disponible / 2 Tatuado), así que
+ *    producción lo puede seguir tatuando y la entrada de fin de ensamble
+ *    ocurre normal. Se puede facturar exista o no la unidad físicamente.
+ *  - La salida de inventario (movimiento de Ventas) se registrará cuando
+ *    Logística tome la unidad; entonces la facturación pasa a estatus 2.
+ *  - Devolver/cancelar deja la facturación en 0. Si ya hubo salida, además
+ *    se registra la entrada "Devol. de venta".
+ *
+ * El layout trae los VINs (1 Disponible, 2 Tatuado) de los almacenes
+ * marcados como facturables (wms_almacenes.facturable = 1) y todos los VINs
+ * con facturación vigente.
  */
 class Inv_movventasmasivaModel extends Mysql
 {
@@ -18,50 +26,38 @@ class Inv_movventasmasivaModel extends Mysql
 
     private const PLANTA_SQL = "COALESCE(pl.nombre_planta, CASE WHEN a.cve_almacen REGEXP '^PL[0-9]{2}-' THEN CONCAT('Planta ', CAST(SUBSTRING(a.cve_almacen, 3, 2) AS UNSIGNED)) ELSE 'Sin planta asignada' END)";
 
-    /** Distribuidor de la última venta: texto capturado o, si no hay, el cliente del catálogo. */
-    private const DIST_VENTA_SQL = "COALESCE(NULLIF(TRIM(mv.distribuidor), ''), CONCAT(NULLIF(cv.codigo_cliente, ''), ' - ', COALESCE(NULLIF(cv.nombre_comercial, ''), cv.razon_social)), COALESCE(NULLIF(cv.nombre_comercial, ''), cv.razon_social), '')";
+    /** Facturación vigente del VIN (a lo más una, por el índice único vin_activo). */
+    private const JOIN_FACT = "
+                LEFT JOIN wms_vin_facturacion f
+                       ON f.id_numeros_serie = ns.id_numeros_serie AND f.estatus IN (1, 2)
+                LEFT JOIN wms_movimientos_inventario mv ON mv.idmovinventario = f.idmov_venta";
 
-    /** Última venta (salida con VIN) de un VIN Facturado. */
-    private const JOIN_ULTIMA_VENTA = "
-                LEFT JOIN wms_movimientos_inventario_series sv
-                       ON ns.estado = '3'
-                      AND sv.idmovserie = (SELECT MAX(sv2.idmovserie) FROM wms_movimientos_inventario_series sv2
-                                           WHERE sv2.id_numeros_serie = ns.id_numeros_serie AND sv2.signo < 0)
-                LEFT JOIN wms_movimientos_inventario mv ON mv.idmovinventario = sv.idmovinventario
-                LEFT JOIN cli_clientes cv ON cv.idcliente = mv.id_cliente";
+    /** Estatus que ve el usuario: Facturado si tiene facturación vigente; si no, el físico. */
+    private const ESTADO_SQL = "CASE WHEN f.idfacturacion IS NOT NULL OR ns.estado = '3' THEN '3' ELSE ns.estado END";
 
-    /**
-     * Almacenes desde los que se pueden vender unidades: Producto Terminado
-     * (clave con "ALM-PT", p. ej. PL01-ALM-PT) y Tránsito. Misma regla que
-     * Inv_movimientosinventarioModel::almacenVentaUnidades().
-     */
-    private const ALMACEN_VENTA_SQL = "(UPPER(TRIM(a.cve_almacen)) REGEXP '(^|-)ALM-PT(-|$)'
-                     OR UPPER(TRIM(a.cve_almacen)) = 'ALM-TRANSITO'
-                     OR UPPER(TRIM(a.descripcion)) IN ('ALMACEN DE TRANSITO', 'ALMACÉN DE TRANSITO', 'ALMACÉN DE TRÁNSITO'))";
-
-    /** Histórico general del layout: VINs (1 Disponible, 2 Tatuado, 3 Facturado) en almacenes de PT o Tránsito. */
+    /** Histórico del layout: VINs de almacenes facturables + VINs con facturación vigente. */
     public function selectVinesLayout(): array
     {
         $sql = "SELECT ns.id_numeros_serie,
                        ns.numero_serie,
-                       ns.estado,
+                       " . self::ESTADO_SQL . " AS estado,
                        i.cve_articulo,
                        i.descripcion,
                        COALESCE(a.descripcion, '') AS almacen,
                        " . self::PLANTA_SQL . " AS planta,
                        COALESCE(va.numero_motor, '') AS numero_motor,
-                       " . self::DIST_VENTA_SQL . " AS distribuidor,
-                       COALESCE(mv.referencia, '') AS factura,
-                       COALESCE(DATE_FORMAT(mv.fecha_movimiento, '%Y-%m-%d'), '') AS fecha_venta
+                       COALESCE(f.distribuidor, '') AS distribuidor,
+                       COALESCE(f.factura, '') AS factura,
+                       COALESCE(DATE_FORMAT(f.fecha_factura, '%Y-%m-%d'), '') AS fecha_venta
                 FROM wms_numeros_series ns
                 INNER JOIN wms_inventario i ON i.idinventario = ns.inventarioid
                 LEFT JOIN wms_almacenes a  ON a.idalmacen = ns.almacenid
                 LEFT JOIN mrp_planta pl    ON pl.idplanta = a.plantaid
                 LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = ns.id_numeros_serie"
-                . self::JOIN_ULTIMA_VENTA . "
-                WHERE ns.estado IN ('1', '2', '3')
-                  AND i.tipo_elemento = 'P'
-                  AND " . self::ALMACEN_VENTA_SQL . "
+                . self::JOIN_FACT . "
+                WHERE i.tipo_elemento = 'P'
+                  AND (f.idfacturacion IS NOT NULL
+                       OR (ns.estado IN ('1', '2') AND a.estado = 2 AND a.facturable = 1))
                 ORDER BY planta, almacen, i.cve_articulo, ns.numero_serie";
         return $this->select_all($sql);
     }
@@ -78,27 +74,28 @@ class Inv_movventasmasivaModel extends Mysql
             $rows = $this->select_all(
                 "SELECT ns.id_numeros_serie,
                         ns.numero_serie,
-                        ns.estado,
+                        " . self::ESTADO_SQL . " AS estado,
+                        ns.estado AS estado_fisico,
                         ns.inventarioid,
                         ns.almacenid,
                         i.cve_articulo,
                         i.descripcion,
                         i.tipo_elemento,
-                        i.ultimo_costo,
                         COALESCE(a.descripcion, '') AS almacen,
+                        COALESCE(a.facturable, 0) AS almacen_facturable,
                         COALESCE(va.numero_motor, '') AS numero_motor,
-                        " . self::DIST_VENTA_SQL . " AS distribuidor,
-                        COALESCE(mv.distribuidor, '') AS distribuidor_texto,
-                        COALESCE(mv.referencia, '') AS factura,
-                        mv.idmovinventario AS idmov_venta,
-                        mv.numero_movimiento AS folio_venta,
+                        f.idfacturacion,
+                        COALESCE(f.distribuidor, '') AS distribuidor,
+                        COALESCE(f.factura, '') AS factura,
+                        f.idmov_venta,
+                        COALESCE(mv.numero_movimiento, '') AS folio_venta,
                         (SELECT COUNT(*) FROM wms_movimientos_inventario_series sc
-                          WHERE sc.idmovinventario = mv.idmovinventario) AS vines_en_venta
+                          WHERE sc.idmovinventario = f.idmov_venta) AS vines_en_venta
                  FROM wms_numeros_series ns
                  INNER JOIN wms_inventario i ON i.idinventario = ns.inventarioid
                  LEFT JOIN wms_almacenes a  ON a.idalmacen = ns.almacenid
                  LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = ns.id_numeros_serie"
-                 . self::JOIN_ULTIMA_VENTA . "
+                 . self::JOIN_FACT . "
                  WHERE ns.estado <> '0'
                    AND ns.numero_serie IN ($ph)",
                 $bloque
@@ -129,7 +126,7 @@ class Inv_movventasmasivaModel extends Mysql
         );
     }
 
-    /** Concepto de Ventas (clave 51, tipo Cliente, salida). */
+    /** Concepto de Ventas (clave 51, tipo Cliente, salida). Se usará en la salida de Logística. */
     public function selectConceptoVentas(): ?array
     {
         $row = $this->select(
@@ -143,30 +140,98 @@ class Inv_movventasmasivaModel extends Mysql
     }
 
     /**
-     * Facturas (referencias) ya usadas en movimientos de Ventas activos:
-     * [FACTURA => [idmovinventario, ...]] (para poder excluir la propia venta al corregir).
+     * Facturas ya usadas en facturaciones vigentes:
+     * [FACTURA => [idfacturacion, ...]] (para poder excluir la propia al corregir).
      */
-    public function facturasUsadas(int $concepmovid, array $facturas): array
+    public function facturasUsadas(array $facturas): array
     {
         $usadas = [];
         foreach (array_chunk(array_values(array_unique($facturas)), 500) as $bloque) {
             $ph = implode(',', array_fill(0, count($bloque), '?'));
             $rows = $this->select_all(
-                "SELECT referencia, idmovinventario
-                 FROM wms_movimientos_inventario
-                 WHERE concepmovid = ? AND estado = 2 AND referencia IN ($ph)",
-                array_merge([$concepmovid], $bloque)
+                "SELECT UPPER(TRIM(factura)) AS factura, idfacturacion
+                 FROM wms_vin_facturacion
+                 WHERE estatus IN (1, 2) AND UPPER(TRIM(factura)) IN ($ph)",
+                $bloque
             );
             foreach ($rows as $r) {
-                $usadas[strtoupper(trim($r['referencia']))][] = (int) $r['idmovinventario'];
+                $usadas[$r['factura']][] = (int) $r['idfacturacion'];
             }
         }
         return $usadas;
     }
 
     /**
-     * Corrige distribuidor (texto) y/o factura de la venta de un VIN facturado
-     * y deja cada cambio en el historial del VIN.
+     * Registra la facturación de un VIN (estatus 1 = pendiente de salida).
+     * No toca wms_numeros_series ni el inventario. Devuelve true o el motivo
+     * del rechazo (string).
+     */
+    public function registrarFacturacion(array $bd, string $distribuidor, string $factura, ?int $usuarioid, int $fila)
+    {
+        $pdo = $this->getConexion();
+        $pdo->beginTransaction();
+        try {
+            $vin = $this->select(
+                "SELECT id_numeros_serie, numero_serie, estado FROM wms_numeros_series WHERE id_numeros_serie = ? FOR UPDATE",
+                [(int) $bd['id_numeros_serie']]
+            );
+            if (!$vin || !in_array((string) $vin['estado'], ['1', '2'], true)) {
+                $pdo->rollBack();
+                return 'El VIN ya no está Disponible ni Tatuado (pudo cambiar desde que se descargó el layout)';
+            }
+            $vigente = $this->select(
+                "SELECT idfacturacion, factura FROM wms_vin_facturacion
+                 WHERE id_numeros_serie = ? AND estatus IN (1, 2) FOR UPDATE",
+                [(int) $bd['id_numeros_serie']]
+            );
+            if ($vigente) {
+                $pdo->rollBack();
+                return "El VIN ya está facturado (factura {$vigente['factura']})";
+            }
+            $repetida = $this->select(
+                "SELECT numero_serie FROM wms_vin_facturacion
+                 WHERE estatus IN (1, 2) AND UPPER(TRIM(factura)) = UPPER(TRIM(?)) LIMIT 1",
+                [$factura]
+            );
+            if ($repetida) {
+                $pdo->rollBack();
+                return "La factura {$factura} ya está registrada para el VIN {$repetida['numero_serie']}";
+            }
+
+            $this->insert(
+                "INSERT INTO wms_vin_facturacion
+                 (id_numeros_serie, numero_serie, distribuidor, factura, fecha_factura, estatus, origen, usuario_factura)
+                 VALUES (?, ?, ?, ?, NOW(), 1, 'MASIVO', ?)",
+                [(int) $vin['id_numeros_serie'], $vin['numero_serie'], mb_substr($distribuidor, 0, 200),
+                 mb_substr($factura, 0, 50), $usuarioid]
+            );
+
+            (new Inv_vin_historialModel())->registrar([
+                'id_numeros_serie' => $vin['id_numeros_serie'],
+                'numero_serie' => $vin['numero_serie'],
+                'modulo' => 'VENTAS',
+                'accion' => 'FACTURACION',
+                'campo' => 'facturacion',
+                'valor_anterior' => 'Sin facturar',
+                'valor_nuevo' => 'Facturado',
+                'detalle' => "Factura {$factura} · {$distribuidor} (carga masiva, fila {$fila}; sin salida de inventario)",
+                'origen' => 'MASIVO',
+                'usuarioid' => $usuarioid,
+            ]);
+            $pdo->commit();
+            return true;
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Corrige distribuidor y/o factura de una facturación vigente. Si ya tiene
+     * movimiento de Ventas (de una sola unidad) también se corrige ahí, para
+     * que ambos queden iguales. Cada cambio queda en el historial del VIN.
      */
     public function corregirVenta(array $bd, ?string $distribuidor, ?string $factura, $usuarioid, int $fila): void
     {
@@ -175,24 +240,37 @@ class Inv_movventasmasivaModel extends Mysql
         try {
             $sets = [];
             $vals = [];
+            $setsMov = [];
+            $valsMov = [];
             $hist = [];
             if ($distribuidor !== null) {
+                $d = mb_substr($distribuidor, 0, 200);
                 $sets[] = 'distribuidor = ?';
-                $vals[] = mb_substr($distribuidor, 0, 200);
+                $vals[] = $d;
+                $setsMov[] = 'distribuidor = ?';
+                $valsMov[] = $d;
                 $hist[] = ['distribuidor', $bd['distribuidor'], $distribuidor];
             }
             if ($factura !== null) {
-                $sets[] = 'referencia = ?';
-                $vals[] = $factura;
+                $sets[] = 'factura = ?';
+                $vals[] = mb_substr($factura, 0, 50);
+                $setsMov[] = 'referencia = ?';
+                $valsMov[] = $factura;
                 $hist[] = ['factura', $bd['factura'], $factura];
             }
             if (empty($sets)) {
                 $pdo->rollBack();
                 return;
             }
-            $vals[] = (int) $bd['idmov_venta'];
-            $this->update("UPDATE wms_movimientos_inventario SET " . implode(', ', $sets) . " WHERE idmovinventario = ?", $vals);
+            $vals[] = (int) $bd['idfacturacion'];
+            $this->update("UPDATE wms_vin_facturacion SET " . implode(', ', $sets) . " WHERE idfacturacion = ?", $vals);
 
+            if (!empty($bd['idmov_venta']) && (int) $bd['vines_en_venta'] <= 1) {
+                $valsMov[] = (int) $bd['idmov_venta'];
+                $this->update("UPDATE wms_movimientos_inventario SET " . implode(', ', $setsMov) . " WHERE idmovinventario = ?", $valsMov);
+            }
+
+            $ref = $bd['folio_venta'] !== '' ? "venta {$bd['folio_venta']}" : 'sin salida de inventario';
             $historial = new Inv_vin_historialModel(); // Models/ se carga con el autoload
             foreach ($hist as [$campo, $antes, $despues]) {
                 $historial->registrar([
@@ -203,7 +281,7 @@ class Inv_movventasmasivaModel extends Mysql
                     'campo' => $campo,
                     'valor_anterior' => $antes,
                     'valor_nuevo' => $despues,
-                    'detalle' => "Corrección desde carga masiva de ventas (venta {$bd['folio_venta']}, fila {$fila})",
+                    'detalle' => "Corrección desde carga masiva de ventas ({$ref}, fila {$fila})",
                     'origen' => 'MASIVO',
                     'usuarioid' => $usuarioid,
                 ]);
@@ -217,8 +295,38 @@ class Inv_movventasmasivaModel extends Mysql
         }
     }
 
+    /**
+     * Deja una facturación en 0 (Cancelado/Devuelto) y lo registra en el
+     * historial. NO abre transacción: el llamador la controla (en la
+     * devolución con salida va junto con la entrada de inventario).
+     */
+    public function cancelarFacturacion(array $bd, string $motivo, ?int $usuarioid): void
+    {
+        $n = $this->updateAffected(
+            "UPDATE wms_vin_facturacion
+             SET estatus = 0, fecha_cancelacion = NOW(), usuario_cancela = ?, motivo_cancelacion = ?
+             WHERE idfacturacion = ? AND estatus IN (1, 2)",
+            [$usuarioid, mb_substr($motivo, 0, 255), (int) $bd['idfacturacion']]
+        );
+        if ($n !== 1) {
+            throw new \RuntimeException('La facturación del VIN ya no está vigente');
+        }
+        (new Inv_vin_historialModel())->registrar([
+            'id_numeros_serie' => $bd['id_numeros_serie'],
+            'numero_serie' => $bd['numero_serie'],
+            'modulo' => 'VENTAS',
+            'accion' => 'DEVOLUCION',
+            'campo' => 'facturacion',
+            'valor_anterior' => 'Facturado',
+            'valor_nuevo' => 'Devuelto',
+            'detalle' => "Factura {$bd['factura']} · {$motivo}",
+            'origen' => 'MASIVO',
+            'usuarioid' => $usuarioid,
+        ]);
+    }
+
     /* =================================================================
-     * DEVOLUCIONES: VINs Facturados (3) con los datos de su última venta
+     * DEVOLUCIONES / CONSULTA: facturaciones vigentes (1 y 2)
      * ================================================================= */
 
     private const SQL_FACTURADOS = "
@@ -230,42 +338,39 @@ class Inv_movventasmasivaModel extends Mysql
                i.descripcion,
                i.ultimo_costo,
                COALESCE(va.numero_motor, '') AS numero_motor,
-               COALESCE(s.almacenid, ns.almacenid) AS almacen_salidaid,
+               f.idfacturacion,
+               f.estatus AS estatus_fact,
+               f.idmov_venta,
+               COALESCE(f.almacenid_salida, ns.almacenid) AS almacen_salidaid,
                COALESCE(a.descripcion, '') AS almacen_salida,
                " . self::PLANTA_SQL . " AS planta,
                COALESCE(m.numero_movimiento, '') AS folio_venta,
-               COALESCE(m.referencia, '') AS factura,
-               m.id_cliente,
-               COALESCE(m.distribuidor, '') AS distribuidor_texto,
-               COALESCE(NULLIF(TRIM(m.distribuidor), ''),
-                        CONCAT(NULLIF(c.codigo_cliente, ''), ' - ', COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social)),
-                        COALESCE(NULLIF(c.nombre_comercial, ''), c.razon_social), '') AS distribuidor,
-               DATE_FORMAT(COALESCE(m.fecha_movimiento, s.fecha), '%Y-%m-%d') AS fecha_venta,
-               COALESCE(s.estado_anterior, '2') AS estado_regreso
-        FROM wms_numeros_series ns
+               f.factura,
+               f.id_cliente,
+               f.distribuidor AS distribuidor_texto,
+               f.distribuidor,
+               DATE_FORMAT(f.fecha_factura, '%Y-%m-%d') AS fecha_venta
+        FROM wms_vin_facturacion f
+        INNER JOIN wms_numeros_series ns ON ns.id_numeros_serie = f.id_numeros_serie
         INNER JOIN wms_inventario i ON i.idinventario = ns.inventarioid
         LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = ns.id_numeros_serie
-        LEFT JOIN wms_movimientos_inventario_series s
-               ON s.idmovserie = (SELECT MAX(s2.idmovserie) FROM wms_movimientos_inventario_series s2
-                                  WHERE s2.id_numeros_serie = ns.id_numeros_serie AND s2.signo < 0)
-        LEFT JOIN wms_movimientos_inventario m ON m.idmovinventario = s.idmovinventario
-        LEFT JOIN cli_clientes c ON c.idcliente = m.id_cliente
-        LEFT JOIN wms_almacenes a ON a.idalmacen = COALESCE(s.almacenid, ns.almacenid)
+        LEFT JOIN wms_movimientos_inventario m ON m.idmovinventario = f.idmov_venta
+        LEFT JOIN wms_almacenes a ON a.idalmacen = COALESCE(f.almacenid_salida, ns.almacenid)
         LEFT JOIN mrp_planta pl ON pl.idplanta = a.plantaid
-        WHERE ns.estado = '3'
+        WHERE f.estatus IN (1, 2)
           AND i.tipo_elemento = 'P'";
 
-    /** VINs facturados para el layout de devoluciones (filtro opcional por fecha de venta). */
+    /** VINs facturados para el layout de devoluciones (filtro opcional por fecha de factura). */
     public function selectVinesFacturados(?string $desde = null, ?string $hasta = null): array
     {
         $sql = self::SQL_FACTURADOS;
         $params = [];
         if ($desde) {
-            $sql .= " AND DATE(COALESCE(m.fecha_movimiento, s.fecha)) >= ?";
+            $sql .= " AND DATE(f.fecha_factura) >= ?";
             $params[] = $desde;
         }
         if ($hasta) {
-            $sql .= " AND DATE(COALESCE(m.fecha_movimiento, s.fecha)) <= ?";
+            $sql .= " AND DATE(f.fecha_factura) <= ?";
             $params[] = $hasta;
         }
         $sql .= " ORDER BY fecha_venta DESC, i.cve_articulo, ns.numero_serie";
@@ -299,31 +404,32 @@ class Inv_movventasmasivaModel extends Mysql
     }
 
     /**
-     * Totales para los indicadores de la pantalla: VINs de producto por
-     * estatus y facturados con venta en el mes en curso.
+     * Totales para los indicadores de la pantalla: VINs de producto sin
+     * facturar por estatus físico, facturados vigentes y facturados del mes.
      */
     public function selectResumen(): array
     {
         $row = $this->select(
-            "SELECT SUM(ns.estado = '1') AS disponibles,
-                    SUM(ns.estado = '2') AS tatuadas,
-                    SUM(ns.estado = '3') AS facturadas
+            "SELECT SUM(ns.estado = '1' AND f.idfacturacion IS NULL) AS disponibles,
+                    SUM(ns.estado = '2' AND f.idfacturacion IS NULL) AS tatuadas
              FROM wms_numeros_series ns
              INNER JOIN wms_inventario i ON i.idinventario = ns.inventarioid
-             WHERE ns.estado IN ('1', '2', '3')
+             LEFT JOIN wms_vin_facturacion f
+                    ON f.id_numeros_serie = ns.id_numeros_serie AND f.estatus IN (1, 2)
+             WHERE ns.estado IN ('1', '2')
                AND i.tipo_elemento = 'P'"
         ) ?: [];
-        $mes = $this->select(
-            "SELECT COUNT(*) AS n
-             FROM (" . self::SQL_FACTURADOS . ") f
-             WHERE f.fecha_venta >= DATE_FORMAT(CURDATE(), '%Y-%m-01')"
+        $fac = $this->select(
+            "SELECT COUNT(*) AS facturadas,
+                    SUM(x.fecha_venta >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) AS mes
+             FROM (" . self::SQL_FACTURADOS . ") x"
         ) ?: [];
 
         return [
             'disponibles'    => (int) ($row['disponibles'] ?? 0),
             'tatuadas'       => (int) ($row['tatuadas'] ?? 0),
-            'facturadas'     => (int) ($row['facturadas'] ?? 0),
-            'facturadas_mes' => (int) ($mes['n'] ?? 0),
+            'facturadas'     => (int) ($fac['facturadas'] ?? 0),
+            'facturadas_mes' => (int) ($fac['mes'] ?? 0),
         ];
     }
 

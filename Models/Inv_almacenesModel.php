@@ -32,7 +32,8 @@ class Inv_almacenesModel extends Mysql
         string $listaprecioid,
         string $fecha,
         int $estado,
-        ?int $plantaid = null
+        ?int $plantaid = null,
+        int $facturable = 0
     ) {
 
         $sql = "SELECT * FROM wms_almacenes 
@@ -44,8 +45,8 @@ class Inv_almacenesModel extends Mysql
         }
 
         $query_insert = "INSERT INTO wms_almacenes
-        (cve_almacen, descripcion, direccion, encargado, telefono, correo, listaprecioid, plantaid, fecha_creacion, estado)
-        VALUES (?,?,?,?,?,?,?,?,?,?)
+        (cve_almacen, descripcion, direccion, encargado, telefono, correo, listaprecioid, plantaid, facturable, fecha_creacion, estado)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?)
     ";
 
         return $this->insert($query_insert, [
@@ -57,6 +58,7 @@ class Inv_almacenesModel extends Mysql
             $correo,
             $listaprecioid,
             $plantaid,
+            $facturable,
             $fecha,
             $estado
         ]);
@@ -79,6 +81,7 @@ class Inv_almacenesModel extends Mysql
             alm.plantaid,
             pl.cve_planta,
             pl.nombre_planta,
+            alm.facturable,
             alm.fecha_creacion,
             alm.estado
         FROM wms_almacenes alm
@@ -122,6 +125,7 @@ class Inv_almacenesModel extends Mysql
                 alm.plantaid,
                 pl.cve_planta,
                 pl.nombre_planta,
+                alm.facturable,
                 alm.fecha_creacion,
                 alm.estado
             FROM wms_almacenes alm
@@ -171,7 +175,8 @@ class Inv_almacenesModel extends Mysql
         string $correo,
         string $listaprecioid,
         int $estado,
-        ?int $plantaid = null
+        ?int $plantaid = null,
+        int $facturable = 0
     ) {
         // VALIDAR DUPLICADO (SIN ?)
         $sql = "SELECT * FROM wms_almacenes 
@@ -193,6 +198,7 @@ class Inv_almacenesModel extends Mysql
                 correo = ?,
                 listaprecioid = ?,
                 plantaid = ?,
+                facturable = ?,
                 estado = ?
             WHERE idalmacen = ?";
 
@@ -205,6 +211,7 @@ class Inv_almacenesModel extends Mysql
             $correo,
             $listaprecioid,
             $plantaid,
+            $facturable,
             $estado,
             $idalmacen
         ]);

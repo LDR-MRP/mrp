@@ -60,6 +60,8 @@ class Inv_almacenes extends Controllers
 				// Planta del almacén (wms_almacenes.plantaid -> mrp_planta). Opcional; 0/vacío = sin planta.
 				$plantaid = intval($_POST['planta-select'] ?? 0);
 				$plantaid = $plantaid > 0 ? $plantaid : null;
+				// Almacén facturable (wms_almacenes.facturable): 0 = No, 1 = Sí
+				$facturable = intval($_POST['facturable-select'] ?? 0) === 1 ? 1 : 0;
 				if ($plantaid !== null && !$this->model->existePlantaActiva($plantaid)) {
 					echo json_encode(array("status" => false, "msg" => 'La planta seleccionada no existe o está inactiva.'), JSON_UNESCAPED_UNICODE);
 					die();
@@ -73,13 +75,13 @@ class Inv_almacenes extends Controllers
 
 					//Crear 
 					if ($_SESSION['permisosMod']['w']) {
-						$request_almacen = $this->model->inserAlmacen($clave_almacen, $descripcion, $direccion, $encargado, $telefono, $correo, $precio, $fecha_creacion, $estado, $plantaid);
+						$request_almacen = $this->model->inserAlmacen($clave_almacen, $descripcion, $direccion, $encargado, $telefono, $correo, $precio, $fecha_creacion, $estado, $plantaid, $facturable);
 						$option = 1;
 					}
 				} else {
 					//Actualizar
 					if ($_SESSION['permisosMod']['u']) {
-						$request_almacen = $this->model->updateAlmacen($intidalmacen, $clave_almacen, $descripcion, $direccion, $encargado, $telefono, $correo, $precio, $estado, $plantaid);
+						$request_almacen = $this->model->updateAlmacen($intidalmacen, $clave_almacen, $descripcion, $direccion, $encargado, $telefono, $correo, $precio, $estado, $plantaid, $facturable);
 						$option = 2;
 					}
 				}
@@ -116,6 +118,10 @@ class Inv_almacenes extends Controllers
 				$arrData[$i]['planta'] = empty($arrData[$i]['plantaid'])
 					? '<span class="badge bg-warning-subtle text-warning" title="Asigna la planta desde Editar">Sin planta</span>'
 					: htmlspecialchars($arrData[$i]['cve_planta'] . ' · ' . $arrData[$i]['nombre_planta'], ENT_QUOTES, 'UTF-8');
+
+				$arrData[$i]['facturable'] = intval($arrData[$i]['facturable']) === 1
+					? '<span class="badge bg-success-subtle text-success">Sí</span>'
+					: '<span class="badge bg-secondary-subtle text-secondary">No</span>';
 
 				if ($arrData[$i]['estado'] == 2) {
 					$arrData[$i]['estado'] = '<span class="badge bg-success">Activo</span>';

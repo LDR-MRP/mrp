@@ -4,14 +4,15 @@
  * Extensión de Inv_movimientosinventario (reutiliza su permiso MIMOVIMIENTOS).
  *
  * Flujo:
- *  1. descargarLayout(): los VINs (1=Disponible, 2=Tatuado, 3=Facturado) que están
- *     en almacenes de Producto Terminado o Tránsito (los únicos donde se puede vender), con SKU, nombre, VIN, motor, estatus,
- *     y columnas DISTRIBUIDOR / FACTURA para capturar.
- *  2. procesarCarga(): SOLO ACTUALIZA. Cambios permitidos: 1 -> 3 y 2 -> 3 (Facturado)
- *     con distribuidor y factura. Cada VIN facturado = un movimiento de Ventas
- *     (una unidad por factura) vía Inv_movimientosinventarioModel::
- *     insertMovimientoMasivo(), que baja wms_multialmacen, marca el VIN en
- *     estado 3 y lo liga en wms_movimientos_inventario_series.
+ *  1. descargarLayout(): los VINs (1=Disponible, 2=Tatuado) de los almacenes
+ *     marcados como facturables (wms_almacenes.facturable = 1) y todos los VINs
+ *     con facturación vigente, con SKU, nombre, VIN, motor, estatus y columnas
+ *     DISTRIBUIDOR / FACTURA para capturar.
+ *  2. procesarCarga(): SOLO ACTUALIZA. Cambios permitidos: 1 -> Facturado y
+ *     2 -> Facturado con distribuidor y factura (una unidad por factura).
+ *     Facturar SOLO registra en wms_vin_facturacion: NO cambia el estado del
+ *     VIN ni genera movimiento de inventario, así producción lo puede seguir
+ *     tatuando. La salida de Ventas se registrará cuando Logística tome la unidad.
  *     Cualquier fila nueva, VIN/SKU/nombre/almacén/motor modificado o cambio
  *     de estatus no permitido se omite y va al log descargable.
  */
@@ -80,13 +81,13 @@ class Inv_movventasmasiva extends Controllers
 		$h1->setCellValue('A2', 'Generado: ' . date('Y-m-d H:i:s') . ' · histórico general: ' . count($vines) . ' VIN(s)');
 
 		$instrucciones = [
-			'1. Este archivo es SOLO DE ACTUALIZACIÓN: contiene el HISTÓRICO GENERAL de VINs (Disponible, Tatuado y Facturado) de los almacenes de PRODUCTO TERMINADO y TRÁNSITO de todas las plantas. No agregues filas: cualquier VIN que no exista se rechaza.',
+			'1. Este archivo es SOLO DE ACTUALIZACIÓN: contiene los VINs (Disponible y Tatuado) de los almacenes FACTURABLES de todas las plantas, más todos los VINs ya Facturados. No agregues filas: cualquier VIN que no exista se rechaza.',
 			'2. Solo captura las columnas en VERDE: ESTATUS, DISTRIBUIDOR y FACTURA. Las columnas en GRIS (PLANTA, ALMACEN, SKU, NOMBRE, VIN, NUMERO_MOTOR, FECHA_VENTA) son informativas: si se modifican, esa fila NO se sube y se manda al log.',
 			'3. Para facturar una unidad cambia ESTATUS a "Facturado" (elígelo de la lista), ESCRIBE el nombre del DISTRIBUIDOR (campo libre) y el número de FACTURA. Se puede facturar un VIN que esté en "Disponible" o en "Tatuado". Puedes arrastrar la celda para copiar el mismo estatus a varias filas.',
-			'3b. En los VINs que ya están en "Facturado" puedes CORREGIR el DISTRIBUIDOR o la FACTURA de su venta (solo si esa venta es de una sola unidad). No se puede cambiar su ESTATUS aquí: las devoluciones se hacen en la sección de Devoluciones.',
-			'4. Una unidad por factura: cada VIN facturado genera su propio movimiento de Ventas (baja la existencia del almacén donde está el VIN). Una misma FACTURA no puede usarse para dos VINs, ni repetir una factura ya registrada.',
+			'3b. En los VINs que ya están en "Facturado" puedes CORREGIR el DISTRIBUIDOR o la FACTURA (si ya tuvo salida de inventario, solo cuando esa venta es de una sola unidad). No se puede cambiar su ESTATUS aquí: las devoluciones se hacen en la sección de Devoluciones.',
+			'4. Una unidad por factura: una misma FACTURA no puede usarse para dos VINs, ni repetir una factura ya registrada. Facturar NO descuenta inventario ni cambia el estatus físico del VIN (se puede facturar aunque la unidad aún no esté ensamblada); la salida de inventario se registra cuando Logística toma la unidad.',
 			'5. No se permiten otros cambios de estatus desde este archivo (por ejemplo 1 -> 2: el tatuado se hace en Planeación). Las filas sin cambios simplemente se ignoran.',
-			'6. Solo se pueden vender unidades que estén en almacenes de PRODUCTO TERMINADO o en el almacén de TRÁNSITO (por eso el layout solo trae esos almacenes); las de otros almacenes se rechazan. También se rechaza si el VIN está en un traslado activo o el almacén no tiene existencia suficiente.',
+			'6. Solo se pueden facturar VINs que estén en almacenes marcados como FACTURABLES (catálogo de Almacenes); los de otros almacenes se rechazan.',
 			'7. Al terminar puedes descargar el log en Excel con las filas que no se subieron y el motivo.',
 		];
 		$f = 4;
@@ -199,13 +200,6 @@ class Inv_movventasmasiva extends Controllers
 			die();
 		}
 
-		$concepto = $this->model->selectConceptoVentas();
-		if (!$concepto) {
-			echo json_encode(['status' => false, 'msg' => 'No existe un concepto de Ventas activo (tipo Cliente, salida).'], JSON_UNESCAPED_UNICODE);
-			die();
-		}
-		$concepmovid = (int) $concepto['idconcepmov'];
-
 		$vinesArchivo = array_values(array_filter(array_map(function ($r) {
 			return strtoupper(trim((string) ($r['vin'] ?? '')));
 		}, $rows)));
@@ -214,7 +208,7 @@ class Inv_movventasmasiva extends Controllers
 		$facturasArchivo = array_values(array_filter(array_map(function ($r) {
 			return strtoupper(trim((string) ($r['factura'] ?? '')));
 		}, $rows)));
-		$facturasBD = $this->model->facturasUsadas($concepmovid, $facturasArchivo);
+		$facturasBD = $this->model->facturasUsadas($facturasArchivo);
 
 		$log = [];
 		$aFacturar = [];
@@ -282,11 +276,11 @@ class Inv_movventasmasiva extends Controllers
 					$sinCambios++;
 					continue;
 				}
-				if (empty($bd['idmov_venta'])) {
-					$log[] = $base + ['motivo' => 'No se encontró el movimiento de venta de este VIN; no se puede corregir'];
+				if (empty($bd['idfacturacion'])) {
+					$log[] = $base + ['motivo' => 'No se encontró la facturación de este VIN; no se puede corregir'];
 					continue;
 				}
-				if ((int) $bd['vines_en_venta'] > 1) {
+				if (!empty($bd['idmov_venta']) && (int) $bd['vines_en_venta'] > 1) {
 					$log[] = $base + ['motivo' => "La venta {$bd['folio_venta']} incluye {$bd['vines_en_venta']} VINs: la corrección de distribuidor/factura solo se permite en ventas de una unidad"];
 					continue;
 				}
@@ -299,14 +293,18 @@ class Inv_movventasmasiva extends Controllers
 						$log[] = $base + ['motivo' => 'La FACTURA no puede quedar vacía en un VIN facturado'];
 						continue;
 					}
+					if (mb_strlen($factura) > 20) {
+						$log[] = $base + ['motivo' => 'La FACTURA no puede tener más de 20 caracteres'];
+						continue;
+					}
 					$facKey = strtoupper($factura);
 					if (isset($facturasVistas[$facKey])) {
 						$log[] = $base + ['motivo' => "La factura {$factura} ya se usa para otro VIN en la fila {$facturasVistas[$facKey]} (una unidad por factura)"];
 						continue;
 					}
-					$otras = array_diff($facturasBD[$facKey] ?? [], [(int) $bd['idmov_venta']]);
+					$otras = array_diff($facturasBD[$facKey] ?? [], [(int) $bd['idfacturacion']]);
 					if (!empty($otras)) {
-						$log[] = $base + ['motivo' => "La factura {$factura} ya está registrada en otro movimiento de Ventas"];
+						$log[] = $base + ['motivo' => "La factura {$factura} ya está registrada para otro VIN"];
 						continue;
 					}
 					$facturasVistas[$facKey] = $fila;
@@ -341,7 +339,11 @@ class Inv_movventasmasiva extends Controllers
 				continue;
 			}
 
-			// ---- Facturación 1/2 -> 3 (DISTRIBUIDOR es texto libre) ----
+			// ---- Facturación 1/2 -> Facturado (DISTRIBUIDOR es texto libre) ----
+			if ((int) $bd['almacen_facturable'] !== 1) {
+				$log[] = $base + ['motivo' => "El VIN está en el almacén {$bd['almacen']}, que no está marcado como facturable"];
+				continue;
+			}
 			if ($cliTxt === '') {
 				$log[] = $base + ['motivo' => 'Para facturar debes escribir el DISTRIBUIDOR'];
 				continue;
@@ -350,13 +352,18 @@ class Inv_movventasmasiva extends Controllers
 				$log[] = $base + ['motivo' => 'Para facturar debes capturar la FACTURA'];
 				continue;
 			}
+			if (mb_strlen($factura) > 20) {
+				// La factura será la referencia del movimiento de Ventas (wms_movimientos_inventario.referencia, 20)
+				$log[] = $base + ['motivo' => 'La FACTURA no puede tener más de 20 caracteres'];
+				continue;
+			}
 			$facKey = strtoupper($factura);
 			if (isset($facturasVistas[$facKey])) {
 				$log[] = $base + ['motivo' => "La factura {$factura} ya se usa para otro VIN en la fila {$facturasVistas[$facKey]} (una unidad por factura)"];
 				continue;
 			}
 			if (isset($facturasBD[$facKey])) {
-				$log[] = $base + ['motivo' => "La factura {$factura} ya está registrada en otro movimiento de Ventas"];
+				$log[] = $base + ['motivo' => "La factura {$factura} ya está registrada para otro VIN"];
 				continue;
 			}
 			$facturasVistas[$facKey] = $fila;
@@ -369,42 +376,21 @@ class Inv_movventasmasiva extends Controllers
 			];
 		}
 
-		// ---- Un movimiento de Ventas por VIN (todo o nada por VIN) ----
-		require_once 'Models/Inv_movimientosinventarioModel.php';
-		$movModel = new Inv_movimientosinventarioModel();
+		// ---- Facturación: solo registro en wms_vin_facturacion (sin movimiento de inventario) ----
 		$usuarioid = !empty($_SESSION['idUser']) ? intval($_SESSION['idUser']) : null;
 		$facturados = 0;
 
 		foreach ($aFacturar as $item) {
-			$bd = $item['bd'];
 			try {
-				$res = $movModel->insertMovimientoMasivo(
-					(int) $bd['almacenid'],
-					$concepmovid,
-					$item['factura'],
-					[(int) $bd['inventarioid']],
-					[1],
-					[(float) $bd['ultimo_costo']],
-					null,
-					null,
-					null,
-					[[(int) $bd['id_numeros_serie']]],
-					$usuarioid,
-					$item['distribuidor']
-				);
-				if (is_array($res)) {
+				$res = $this->model->registrarFacturacion($item['bd'], $item['distribuidor'], $item['factura'], $usuarioid, (int) $item['base']['fila']);
+				if ($res === true) {
 					$facturados++;
 				} else {
-					$motivo = (string) $res;
-					if (stripos($motivo, 'Stock insuficiente') === 0) {
-						$motivo = "Sin existencia en multialmacén para el SKU {$bd['cve_articulo']} en {$bd['almacen']} "
-							. '(el VIN está en inventario pero la existencia del almacén está en 0; revisa el inventario de ese almacén)';
-					}
-					$log[] = $item['base'] + ['motivo' => $motivo];
+					$log[] = $item['base'] + ['motivo' => (string) $res];
 				}
 			} catch (\Throwable $e) {
 				error_log('Inv_movventasmasiva::procesarCarga: ' . $e->getMessage());
-				$log[] = $item['base'] + ['motivo' => 'Error al guardar la venta (revisa el formato de los datos)'];
+				$log[] = $item['base'] + ['motivo' => 'Error al guardar la facturación (revisa el formato de los datos)'];
 			}
 		}
 
@@ -432,7 +418,7 @@ class Inv_movventasmasiva extends Controllers
 			'sinCambios' => $sinCambios,
 			'omitidos' => count($log),
 			'totalFilas' => count($rows),
-			'msg' => "Proceso finalizado: {$facturados} VIN(s) facturado(s) (un movimiento de Ventas cada uno), "
+			'msg' => "Proceso finalizado: {$facturados} VIN(s) facturado(s) (sin salida de inventario), "
 				. "{$corregidos} venta(s) corregida(s), "
 				. count($log) . " fila(s) no subida(s) y {$sinCambios} sin cambios, de " . count($rows) . " fila(s).",
 		], JSON_UNESCAPED_UNICODE);
@@ -502,11 +488,12 @@ class Inv_movventasmasiva extends Controllers
 
 	/* =================================================================
 	   DEVOLUCIONES
-	   Layout con los VINs Facturados (3) y los datos de su última venta.
-	   Para devolver: ESTATUS = "DEVOLUCION". Cada VIN genera su propio
-	   movimiento "Devol. de venta" en el almacén del que salió (suma 1 en
-	   multialmacén) y el VIN regresa como 1 = Disponible, listo para volver
-	   a venderse con otra factura.
+	   Layout con los VINs con facturación vigente (wms_vin_facturacion 1 y 2).
+	   Para devolver: ESTATUS = "DEVOLUCION". La facturación queda cancelada (0).
+	   - Sin salida de inventario (1): solo se cancela; el VIN no se toca.
+	   - Con salida de inventario (2): además se genera el movimiento
+	     "Devol. de venta" en el almacén del que salió (suma 1 en multialmacén)
+	     y el VIN regresa como 1 = Disponible.
 	================================================================= */
 	public function descargarLayoutDevoluciones()
 	{
@@ -534,9 +521,9 @@ class Inv_movventasmasiva extends Controllers
 		$h1->setCellValue('A2', 'Generado: ' . date('Y-m-d H:i:s') . ' · ' . count($vines) . ' VIN(s) facturado(s)' . $rango);
 		$inst = [
 			'1. Este archivo es SOLO DE ACTUALIZACIÓN: contiene los VINs que hoy están Facturados. No agregues filas: un VIN que no esté facturado se rechaza.',
-			'2. Para devolver una unidad cambia ESTATUS a "DEVOLUCION". No hay que capturar nada más.',
-			'3. La unidad regresa al mismo almacén del que salió (columna ALMACEN_SALIDA).',
-			'4. Cada VIN devuelto genera su propio movimiento "Devol. de venta" (suma 1 en la existencia de ese almacén) y el VIN queda como Disponible, listo para venderse otra vez con otra factura.',
+			'2. Para devolver una unidad cambia ESTATUS a "DEVOLUCION". No hay que capturar nada más. La factura queda cancelada y el VIN se puede volver a facturar con otra factura.',
+			'3. Si la unidad AÚN NO tuvo salida de inventario (columna FOLIO_SALIDA vacía), solo se cancela la factura: el VIN conserva su estatus y su almacén.',
+			'4. Si la unidad YA tuvo salida de inventario, además se genera un movimiento "Devol. de venta" en el almacén del que salió (columna ALMACEN_SALIDA, suma 1 en la existencia) y el VIN queda como Disponible.',
 			'5. Las columnas en GRIS son informativas (SKU, NOMBRE, VIN, NUMERO_MOTOR, DISTRIBUIDOR, FACTURA...): si se modifican, esa fila NO se sube y se manda al log. Única excepción: si la venta no tiene DISTRIBUIDOR registrado, puedes escribirlo.',
 			'6. Las filas que se dejan en "Facturado" se ignoran. Al terminar puedes descargar el log con lo que no se subió.',
 		];
@@ -559,11 +546,12 @@ class Inv_movventasmasiva extends Controllers
 		/* ---------- DEVOLUCIONES (captura) ---------- */
 		$hv = $ss->createSheet();
 		$hv->setTitle('Devoluciones');
-		$enc = ['ALMACEN_SALIDA', 'SKU', 'NOMBRE', 'VIN', 'NUMERO_MOTOR', 'DISTRIBUIDOR', 'FACTURA', 'FECHA_VENTA', 'ESTATUS'];
+		$enc = ['ALMACEN_SALIDA', 'SKU', 'NOMBRE', 'VIN', 'NUMERO_MOTOR', 'DISTRIBUIDOR', 'FACTURA', 'FECHA_VENTA', 'ESTATUS', 'FOLIO_SALIDA'];
 		$hv->fromArray($enc, null, 'A1');
-		$hv->getStyle('A1:I1')->getFont()->setBold(true);
+		$hv->getStyle('A1:J1')->getFont()->setBold(true);
 		$hv->getStyle('A1:H1')->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFD9D9D9');
 		$hv->getStyle('I1')->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFC6EFCE');
+		$hv->getStyle('J1')->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFD9D9D9');
 
 		$total = count($vines);
 		$ultima = max(2, $total + 1);
@@ -574,7 +562,7 @@ class Inv_movventasmasiva extends Controllers
 		$r = 2;
 		foreach ($vines as $v) {
 			$fila = [$v['almacen_salida'], $v['cve_articulo'], $v['descripcion'], $v['numero_serie'], $v['numero_motor'],
-				$v['distribuidor'], $v['factura'], $v['fecha_venta'], 'Facturado'];
+				$v['distribuidor'], $v['factura'], $v['fecha_venta'], 'Facturado', $v['folio_venta']];
 			foreach ($fila as $k => $val) {
 				$hv->setCellValueExplicit(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($k + 1) . $r, (string) $val, $T);
 			}
@@ -582,12 +570,13 @@ class Inv_movventasmasiva extends Controllers
 		}
 		if ($total > 0) {
 			$hv->getStyle('A2:H' . $ultima)->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFF2F2F2');
+			$hv->getStyle('J2:J' . $ultima)->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFF2F2F2');
 			$filasDv = min($ultima, self::MAX_FILAS_VALIDACION + 1);
 			$this->agregarValidacionLista($hv, 'I', 2, $filasDv, 'Estatus!$A$2:$A$3');
-			$hv->setAutoFilter('A1:I' . $ultima);
+			$hv->setAutoFilter('A1:J' . $ultima);
 		}
 		$hv->freezePane('A2');
-		$anchos = ['A' => 30, 'B' => 18, 'C' => 40, 'D' => 22, 'E' => 20, 'F' => 40, 'G' => 18, 'H' => 14, 'I' => 16];
+		$anchos = ['A' => 30, 'B' => 18, 'C' => 40, 'D' => 22, 'E' => 20, 'F' => 40, 'G' => 18, 'H' => 14, 'I' => 16, 'J' => 24];
 		foreach ($anchos as $col => $w) {
 			$hv->getColumnDimension($col)->setWidth($w);
 		}
@@ -731,30 +720,45 @@ class Inv_movventasmasiva extends Controllers
 		$movModel = new Inv_movimientosinventarioModel();
 		$usuarioid = !empty($_SESSION['idUser']) ? intval($_SESSION['idUser']) : null;
 		$devueltos = 0;
+		$pdo = $this->model->getConexion();
 
 		foreach ($aDevolver as $item) {
 			$bd = $item['bd'];
+			$conSalida = (int) $bd['estatus_fact'] === 2;
 			try {
-				$res = $movModel->insertMovimientoMasivo(
-					(int) $item['almacen'],
-					$concepmovid,
-					(string) $bd['factura'], // misma referencia con la que salió (la de la venta)
-					[(int) $bd['inventarioid']],
-					[1],
-					[(float) $bd['ultimo_costo']],
-					null,
-					null,
-					$item['id_cliente'],
-					[[(int) $bd['id_numeros_serie']]],
-					$usuarioid,
-					$item['distribuidor']
-				);
-				if (is_array($res)) {
-					$devueltos++;
+				$pdo->beginTransaction();
+				if ($conSalida) {
+					// Ya salió del inventario: entrada "Devol. de venta" en la misma transacción
+					$res = $movModel->insertMovimientoMasivo(
+						(int) $item['almacen'],
+						$concepmovid,
+						(string) $bd['factura'], // misma referencia con la que salió (la de la venta)
+						[(int) $bd['inventarioid']],
+						[1],
+						[(float) $bd['ultimo_costo']],
+						null,
+						null,
+						$item['id_cliente'],
+						[[(int) $bd['id_numeros_serie']]],
+						$usuarioid,
+						$item['distribuidor']
+					);
+					if (!is_array($res)) {
+						$pdo->rollBack();
+						$log[] = $item['base'] + ['motivo' => (string) $res];
+						continue;
+					}
+					$motivo = "Devolución con entrada {$res['numero_movimiento']} (carga masiva, fila {$item['base']['fila']})";
 				} else {
-					$log[] = $item['base'] + ['motivo' => (string) $res];
+					$motivo = "Cancelación sin movimiento de inventario (carga masiva, fila {$item['base']['fila']})";
 				}
+				$this->model->cancelarFacturacion($bd, $motivo, $usuarioid);
+				$pdo->commit();
+				$devueltos++;
 			} catch (\Throwable $e) {
+				if ($pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
 				error_log('Inv_movventasmasiva::procesarDevoluciones: ' . $e->getMessage());
 				$log[] = $item['base'] + ['motivo' => 'Error al guardar la devolución (revisa el formato de los datos)'];
 			}
@@ -771,7 +775,7 @@ class Inv_movventasmasiva extends Controllers
 			'sinCambios' => $sinCambios,
 			'omitidos' => count($log),
 			'totalFilas' => count($rows),
-			'msg' => "Proceso finalizado: {$devueltos} VIN(s) devuelto(s) (un movimiento de devolución cada uno), "
+			'msg' => "Proceso finalizado: {$devueltos} VIN(s) devuelto(s) (factura cancelada; con entrada de inventario solo los que ya habían salido), "
 				. count($log) . " fila(s) no subida(s) y {$sinCambios} sin cambios, de " . count($rows) . " fila(s).",
 		], JSON_UNESCAPED_UNICODE);
 		die();
@@ -833,7 +837,7 @@ class Inv_movventasmasiva extends Controllers
 					'almacen_salida' => (string) $v['almacen_salida'],
 					'distribuidor'   => (string) $v['distribuidor'],
 					'factura'        => (string) $v['factura'],
-					'folio_venta'    => (string) $v['folio_venta'],
+					'folio_venta'    => $v['folio_venta'] !== '' ? (string) $v['folio_venta'] : 'Pendiente de salida',
 				];
 			}
 			echo json_encode(['status' => true, 'data' => $data], JSON_UNESCAPED_UNICODE);
