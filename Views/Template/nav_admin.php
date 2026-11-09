@@ -623,6 +623,13 @@
                             <?php } ?>
 
                             <?php if (!empty($_SESSION['permisos'][LGS_PLANEACIONES]['r'])) { ?>
+                            <!-- Preplaneaciones para Planta -->
+                            <li class="nav-item">
+                                <a href="<?= base_url(); ?>/Lgs_preplaneaciones" class="nav-link"
+                                    data-key="t-lgs-preplaneaciones">
+                                    <i class="ri-calendar-check-line align-bottom me-1"></i> Preplaneación Planta
+                                </a>
+                            </li>
                             <!-- Mis Planeaciones -->
                             <li class="nav-item">
                                 <a href="<?= base_url(); ?>/Lgs_planeaciones" class="nav-link"

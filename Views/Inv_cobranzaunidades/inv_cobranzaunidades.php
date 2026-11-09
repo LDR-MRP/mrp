@@ -187,6 +187,7 @@ $estatusPago = $data['estatus_pago'];
                                         <th>DISTRIBUIDOR</th>
                                         <th>FACTURA</th>
                                         <th>ESTATUS DE PAGO</th>
+                                        <th>FECHA PAGO</th>
                                         <th>ACTUALIZADO</th>
                                         <th>SKU</th>
                                         <th>FOLIO MOV.</th>
@@ -215,12 +216,13 @@ $estatusPago = $data['estatus_pago'];
                                         <div class="cob-step">
                                             <div class="cob-step-num">2</div>
                                             <div class="cob-step-body">
-                                                <h6>Captura el estatus</h6>
-                                                <p class="text-muted fs-13 mb-0">Solo edita la columna verde <strong>ESTATUS_PAGO</strong>:
+                                                <h6>Captura el estatus y la fecha de pago</h6>
+                                                <p class="text-muted fs-13 mb-1">Solo edita las columnas verdes. <strong>ESTATUS_PAGO</strong>:
                                                     <?php foreach ($estatusPago as $k => $v) { ?>
                                                         <span class="badge bg-light text-body border"><?= $v ?></span>
                                                     <?php } ?>
                                                 </p>
+                                                <p class="text-muted fs-13 mb-0"><strong>FECHA_PAGO</strong> (opcional, dd/mm/aaaa): solo para Parcialmente pagada o Pagada; en parcial, la del último pago.</p>
                                             </div>
                                         </div>
                                         <div class="cob-step">
@@ -252,7 +254,8 @@ $estatusPago = $data['estatus_pago'];
                                             <h6 class="fw-semibold mb-2"><i class="ri-information-line text-primary me-1"></i> Cómo funciona</h6>
                                             <ul class="list-unstyled text-muted fs-13 mb-0">
                                                 <li class="mb-2"><i class="ri-checkbox-blank-circle-fill fs-10 me-2 text-primary"></i>Es <strong class="text-body">solo de actualización</strong>: no agregues filas.</li>
-                                                <li class="mb-2"><i class="ri-checkbox-blank-circle-fill fs-10 me-2 text-primary"></i>Las filas sin cambio de estatus se ignoran.</li>
+                                                <li class="mb-2"><i class="ri-checkbox-blank-circle-fill fs-10 me-2 text-primary"></i>Las filas sin cambio de estatus ni de fecha de pago se ignoran.</li>
+                                                <li class="mb-2"><i class="ri-checkbox-blank-circle-fill fs-10 me-2 text-primary"></i>Si dejas <strong class="text-body">FECHA_PAGO</strong> vacía se conserva la que ya tenía; al pasar a Pendiente o Crédito se borra. No puede ser posterior a hoy.</li>
                                                 <li class="mb-2"><i class="ri-checkbox-blank-circle-fill fs-10 me-2 text-primary"></i>VIN y FOLIO_VENTA identifican la venta: si la unidad se devolvió o se volvió a vender después de descargar, esa fila va al log.</li>
                                                 <li class="mb-0"><i class="ri-checkbox-blank-circle-fill fs-10 me-2 text-primary"></i>Cada cambio queda en el historial de la unidad (quién y cuándo).</li>
                                             </ul>
@@ -299,6 +302,11 @@ $estatusPago = $data['estatus_pago'];
                                         <label for="cobOpt<?= $k ?>"><span class="cob-dot bg-<?= $colores[$k] ?>"></span><?= $v ?></label>
                                     </div>
                                 <?php } ?>
+                            </div>
+                            <div class="mb-3" id="cobMFechaWrap">
+                                <label class="form-label fw-semibold" for="cobMFechaPago">Fecha de pago <span class="text-muted fw-normal fs-12">(opcional)</span></label>
+                                <input type="date" class="form-control" name="fecha_pago" id="cobMFechaPago" max="<?= date('Y-m-d') ?>">
+                                <div class="form-text">Solo para Parcialmente pagada o Pagada. En parcial, la fecha del último pago.</div>
                             </div>
                         </form>
                     <?php } ?>

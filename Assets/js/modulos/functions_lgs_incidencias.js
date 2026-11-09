@@ -663,7 +663,15 @@ function renderModalDetalle(data) {
         $('#btnCrearGastoDesdeDetalle').removeClass('d-none').attr('onclick', `crearGastoParaEstaIncidencia();`);
     }
 
-    $('#modalDetalleIncidencia').modal('show');
+    // Configurar enlace para descargar todas las evidencias en ZIP
+    $('#btnDescargarZipEvidencias').attr('href', `${base_url}/Lgs_incidencias/descargarZipEvidencias/${data.id_incidencia}`);
+
+    let mEl = document.getElementById('modalDetalleIncidencia');
+    if (mEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        (bootstrap.Modal.getInstance(mEl) || new bootstrap.Modal(mEl)).show();
+    } else {
+        $('#modalDetalleIncidencia').modal('show');
+    }
 }
 
 function renderEstadoGastoBadge(estado) {

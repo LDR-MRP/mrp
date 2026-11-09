@@ -45,6 +45,14 @@
 
                         <div class="d-flex align-items-center gap-2">
 
+                            <a href="<?= base_url() ?>/ped_backorders" class="btn btn-soft-primary"><i class="ri-stack-line me-1"></i>Backorders</a>
+
+                            <button type="button" class="btn btn-soft-success" id="btnReportePedidosExcel">
+                                <i class="ri-file-excel-2-line me-1"></i> Reporte Excel
+                            </button>
+                            <button type="button" class="btn btn-soft-danger" id="btnReportePedidosPdf">
+                                <i class="ri-file-pdf-2-line me-1"></i> Reporte PDF
+                            </button>
                             <button
                                 type="button"
                                 class="btn btn-soft-primary"
@@ -272,7 +280,7 @@
                                         class="text-uppercase fw-medium text-muted
                                                text-truncate mb-0">
 
-                                        Importe solicitado
+                                        Monto comprometido en Backorders
 
                                     </p>
 
@@ -294,7 +302,7 @@
                                     </h4>
 
                                     <span class="text-muted fs-12">
-                                        Total acumulado
+                                        Pedidos aceptados con backorder vigente
                                     </span>
 
                                 </div>
@@ -443,6 +451,25 @@
 
                                     </select>
 
+                                </div>
+
+                                <div class="col-12 col-md-6 col-lg-4 col-xxl-2">
+                                    <label class="form-label" for="filterSituacionComercial">Situación comercial</label>
+                                    <select class="form-select" id="filterSituacionComercial">
+                                        <option value="">Todas</option>
+                                        <option value="PENDIENTE_ACEPTACION">Esperando respuesta</option>
+                                        <option value="AJUSTE_SOLICITADO">Ajustes solicitados</option>
+                                        <option value="ACEPTADA">Aceptada</option>
+                                        <option value="RECHAZADA">Rechazada</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-4 col-xxl-2">
+                                    <label class="form-label" for="filterBackorder">Compromiso Backorder</label>
+                                    <select class="form-select" id="filterBackorder">
+                                        <option value="">Todos</option>
+                                        <option value="CON">Con backorder</option>
+                                        <option value="SIN">Sin backorder</option>
+                                    </select>
                                 </div>
 
                                 <!-- PRIORIDAD -->

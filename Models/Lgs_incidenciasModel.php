@@ -312,8 +312,8 @@ class Lgs_incidenciasModel extends Mysql
                 INNER JOIN lgs_cat_tipos_incidencia ti ON i.id_tipo_incidencia = ti.id_tipo_incidencia
                 LEFT JOIN prv_cat_proveedores pr ON i.id_proveedor = pr.id_proveedor
                 LEFT JOIN lgs_cat_absorcion_danios ad ON i.id_absorcion = ad.id_absorcion
-                LEFT JOIN persona u_reg ON i.created_by = u_reg.idpersona
-                LEFT JOIN persona u_dict ON i.dictaminado_by = u_dict.idpersona
+                LEFT JOIN usuarios u_reg ON i.created_by = u_reg.idusuario
+                LEFT JOIN usuarios u_dict ON i.dictaminado_by = u_dict.idusuario
                 WHERE i.id_incidencia = ? AND i.deleted_at IS NULL";
 
         $inc = $this->select($sql, [$idIncidencia]);
@@ -332,7 +332,7 @@ class Lgs_incidenciasModel extends Mysql
         // Evidencias
         $sqlEv = "SELECT ie.*, CONCAT(p.nombres, ' ', p.apellidos) AS subido_por 
                   FROM lgs_det_incidencias_evidencias ie
-                  LEFT JOIN persona p ON ie.created_by = p.idpersona
+                  LEFT JOIN usuarios p ON ie.created_by = p.idusuario
                   WHERE ie.id_incidencia = ?
                   ORDER BY ie.id_evidencia DESC";
         $inc['evidencias'] = $this->select_all($sqlEv, [$idIncidencia]) ?: [];
@@ -340,7 +340,7 @@ class Lgs_incidenciasModel extends Mysql
         // Historial / Logs
         $sqlLogs = "SELECT l.*, CONCAT(p.nombres, ' ', p.apellidos) AS usuario_nombre 
                     FROM log_lgs_incidencias l
-                    LEFT JOIN persona p ON l.id_usuario = p.idpersona
+                    LEFT JOIN usuarios p ON l.id_usuario = p.idusuario
                     WHERE l.id_incidencia = ?
                     ORDER BY l.id ASC";
         $inc['logs'] = $this->select_all($sqlLogs, [$idIncidencia]) ?: [];

@@ -21,7 +21,7 @@
                 )
             );
 
-            $gestionIniciada = $estatusPedido !== 'PENDIENTE';
+            $gestionIniciada = $estatusPedido !== 'PENDIENTE' && $estatusPedido !== 'RECHAZADO';
 
             ?>
 
@@ -127,6 +127,9 @@
 
             </div>
 
+
+            <?php $estadoRevision=$data['revision_comercial']['estatus']??'NO_INICIADA';$porcentaje=match(true){$estatusPedido==='ENTREGADO'=>100,$estatusPedido==='FACTURADO'=>95,$estatusPedido==='AUTORIZADO'=>85,$estatusPedido==='BACK_ORDER'=>65,$estadoRevision==='ACEPTADA'=>65,$estadoRevision==='PENDIENTE_ACEPTACION'=>45,$estadoRevision==='AJUSTE_SOLICITADO'=>35,$estatusPedido==='EN_REVISION'=>25,default=>10}; ?>
+            <div class="card border-0 shadow-sm"><div class="card-body"><div class="d-flex justify-content-between flex-wrap gap-2 mb-2"><strong><i class="ri-route-line text-primary me-1"></i>Trazabilidad del pedido</strong><span class="small text-muted"><?= $estatusPedido==='RECHAZADO'?'Pedido rechazado · proceso cerrado':$porcentaje.'% · avance por etapas' ?></span></div><div class="progress" style="height:9px" role="progressbar" aria-valuenow="<?= $estatusPedido==='RECHAZADO'?0:$porcentaje ?>" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar <?= $estatusPedido==='RECHAZADO'?'bg-danger':'' ?>" style="width:<?= $estatusPedido==='RECHAZADO'?100:$porcentaje ?>%"></div></div><small class="text-muted d-block mt-2">Solicitud → Revisión → Aprobación → Backorder → Asignación → Entrega. Indicador orientativo por etapas, no por unidades asignadas.</small></div></div>
 
             <!-- =====================================================
                  RESUMEN SUPERIOR
@@ -271,38 +274,15 @@
                             <a class="nav-link" data-bs-toggle="tab" href="#tabRevision" role="tab">
 
                                 <i class="ri-checkbox-multiple-line me-1"></i>
-                                Revisión
+                                Revisión comercial
 
                             </a>
 
                         </li>
 
 
-                        <li class="nav-item">
-
-                            <a class="nav-link" data-bs-toggle="tab" href="#tabDisponibilidad" role="tab">
-
-                                <i class="ri-stack-line me-1"></i>
-                                Disponibilidad / Backorder
-
-                            </a>
-
-                        </li>
-
-
-                        <li class="nav-item">
-
-                            <a class="nav-link" data-bs-toggle="tab" href="#tabOrdenesVenta" role="tab">
-
-                                <i class="ri-file-paper-2-line me-1"></i>
-                                Órdenes de Venta
-
-                            </a>
-
-                        </li>
-
-
-                        <li class="nav-item">
+                                                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabBackorder" role="tab"><i class="ri-stack-line me-1"></i>Backorders vinculados</a></li>
+<li class="nav-item">
 
                             <a class="nav-link" data-bs-toggle="tab" href="#tabAsignacion" role="tab">
 
@@ -316,10 +296,10 @@
 
                         <li class="nav-item">
 
-                            <a class="nav-link" data-bs-toggle="tab" href="#tabFacturacion" role="tab">
+                            <a class="nav-link" data-bs-toggle="tab" href="#tabOrdenesVenta" role="tab">
 
-                                <i class="ri-bill-line me-1"></i>
-                                Facturación / Entrega
+                                <i class="ri-file-paper-2-line me-1"></i>
+                                Órdenes de Venta
 
                             </a>
 
@@ -351,442 +331,12 @@
                              RESUMEN
                         ================================================== -->
 
-                        <div class="tab-pane active" id="tabResumen" role="tabpanel">
-
-                            <div class="row g-4">
-
-                                <div class="col-lg-6">
-
-                                    <h5 class="mb-3">
-                                        Información del pedido
-                                    </h5>
-
-                                    <div class="table-responsive">
-
-                                        <table class="table table-borderless mb-0">
-
-                                            <tbody>
-
-                                                <tr>
-                                                    <td class="text-muted">
-                                                        Fecha pedido
-                                                    </td>
-
-                                                    <td class="fw-medium">
-                                                        <?= htmlspecialchars(
-                                                            $pedido['fecha_pedido']
-                                                            ?? ''
-                                                        ); ?>
-                                                    </td>
-                                                </tr>
-
-                                                <tr>
-                                                    <td class="text-muted">
-                                                        Fecha requerida
-                                                    </td>
-
-                                                    <td class="fw-medium">
-                                                        <?= htmlspecialchars(
-                                                            $pedido['fecha_requerida']
-                                                            ?? ''
-                                                        ); ?>
-                                                    </td>
-                                                </tr>
-
-                                                <tr>
-                                                    <td class="text-muted">
-                                                        Mes facturación
-                                                    </td>
-
-                                                    <td class="fw-medium">
-                                                        <?= htmlspecialchars(
-                                                            $pedido['mes_facturacion_deseado']
-                                                            ?? ''
-                                                        ); ?>
-                                                    </td>
-                                                </tr>
-
-                                                <tr>
-                                                    <td class="text-muted">
-                                                        Prioridad
-                                                    </td>
-
-                                                    <td class="fw-medium">
-                                                        <?= htmlspecialchars(
-                                                            $pedido['prioridad']
-                                                            ?? ''
-                                                        ); ?>
-                                                    </td>
-                                                </tr>
-
-                                            </tbody>
-
-                                        </table>
-
-                                    </div>
-
-                                </div>
-
-
-                                <div class="col-lg-6">
-
-                                    <h5 class="mb-3">
-                                        Solicitante
-                                    </h5>
-
-                                    <p class="mb-1 fw-medium">
-
-                                        <?= htmlspecialchars(
-                                            trim(
-                                                ($pedido['nombre_usuario'] ?? '')
-                                                . ' '
-                                                . ($pedido['apellido_usuario'] ?? '')
-                                            )
-                                        ); ?>
-
-                                    </p>
-
-                                    <p class="text-muted mb-3">
-
-                                        <?= htmlspecialchars(
-                                            $pedido['correo_usuario']
-                                            ?? ''
-                                        ); ?>
-
-                                    </p>
-
-
-                                    <h6>
-                                        Observaciones
-                                    </h6>
-
-                                    <p class="text-muted mb-0">
-
-                                        <?= nl2br(
-                                            htmlspecialchars(
-                                                $pedido['observaciones']
-                                                ?: 'Sin observaciones.'
-                                            )
-                                        ); ?>
-
-                                    </p>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-
-                        <!-- =================================================
-                             REVISIÓN
-                        ================================================== -->
-
-                        <div class="tab-pane" id="tabRevision" role="tabpanel">
-
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-
-                                <div>
-
-                                    <h5 class="mb-1">
-                                        Revisión y autorización
-                                    </h5>
-
-                                    <p class="text-muted mb-0">
-                                        Define las cantidades que serán atendidas.
-                                    </p>
-
-                                </div>
-
-                            </div>
-
-
-                            <div class="table-responsive">
-
-                                <table class="table table-hover align-middle">
-
-                                    <thead class="table-light">
-
-                                        <tr>
-
-                                            <th>Modelo</th>
-                                            <th class="text-center">Solicitadas</th>
-                                            <th class="text-center">Autorizadas</th>
-                                            <th class="text-end">Precio</th>
-                                            <th class="text-end">Importe</th>
-
-                                        </tr>
-
-                                    </thead>
-
-                                    <tbody>
-
-                                        <?php foreach ($detalles as $detalle) { ?>
-
-                                            <tr>
-
-                                                <td>
-
-                                                    <div class="fw-medium">
-
-                                                        <?= htmlspecialchars(
-                                                            $detalle['modelo']
-                                                            ?? ''
-                                                        ); ?>
-
-                                                    </div>
-
-                                                    <small class="text-muted">
-
-                                                        <?= htmlspecialchars(
-                                                            $detalle['version']
-                                                            ?? ''
-                                                        ); ?>
-
-                                                    </small>
-
-                                                </td>
-
-
-                                                <td class="text-center fw-medium">
-
-                                                    <?= intval(
-                                                        $detalle['cantidad_solicitada']
-                                                        ?? 0
-                                                    ); ?>
-
-                                                </td>
-
-
-                                                <td style="width:150px;">
-
-                                                    <input type="number"
-                                                        class="form-control text-center cantidad-autorizada" min="0" max="<?= intval(
-                                                            $detalle['cantidad_solicitada']
-                                                            ?? 0
-                                                        ); ?>" value="<?= intval(
-                                                             $detalle['cantidad_autorizada']
-                                                             ?? 0
-                                                         ); ?>" data-detalle="<?= intval(
-                                                              $detalle['idpedido_detalle']
-                                                          ); ?>" <?= !$gestionIniciada ? 'disabled' : ''; ?>>
-
-                                                </td>
-
-
-                                                <td class="text-end">
-
-                                                    $<?= number_format(
-                                                        floatval(
-                                                            $detalle['precio_unitario']
-                                                            ?? 0
-                                                        ),
-                                                        2
-                                                    ); ?>
-
-                                                </td>
-
-
-                                                <td class="text-end fw-medium">
-
-                                                    $<?= number_format(
-                                                        floatval(
-                                                            $detalle['total']
-                                                            ?? 0
-                                                        ),
-                                                        2
-                                                    ); ?>
-
-                                                </td>
-
-                                            </tr>
-
-                                        <?php } ?>
-
-                                    </tbody>
-
-                                </table>
-
-                            </div>
-
-
-                            <div class="text-end mt-3">
-
-                                <button type="button"
-                                    class="btn btn-primary accion-gestion-pedido <?= !$gestionIniciada ? 'd-none' : ''; ?>"
-                                    id="btnGuardarRevision">
-
-                                    <i class="ri-save-line me-1"></i>
-                                    Guardar revisión
-
-                                </button>
-
-                            </div>
-
-                        </div>
-
-
-                        <!-- =================================================
-                             DISPONIBILIDAD
-                        ================================================== -->
-
-                        <div class="tab-pane" id="tabDisponibilidad" role="tabpanel">
-
-                            <h5>
-                                Disponibilidad y Backorder
-                            </h5>
-
-                            <p class="text-muted">
-                                Aquí mostraremos las unidades disponibles,
-                                reservas y cantidades pendientes.
-                            </p>
-
-                            <div id="contenidoDisponibilidadPedido"></div>
-
-                        </div>
-
-
-                        <!-- =================================================
-                             ÓRDENES DE VENTA
-                        ================================================== -->
-
-                        <div class="tab-pane" id="tabOrdenesVenta" role="tabpanel">
-
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-
-                                <div>
-
-                                    <h5 class="mb-1">
-                                        Órdenes de Venta
-                                    </h5>
-
-                                    <p class="text-muted mb-0">
-                                        Órdenes generadas a partir del pedido.
-                                    </p>
-
-                                </div>
-
-
-                                <button type="button"
-                                    class="btn btn-primary accion-gestion-pedido <?= !$gestionIniciada ? 'd-none' : ''; ?>"
-                                    id="btnNuevaOrdenVenta">
-
-                                    <i class="ri-add-line me-1"></i>
-                                    Generar Orden de Venta
-
-                                </button>
-
-                            </div>
-
-
-                            <div id="contenidoOrdenesVenta"></div>
-
-                        </div>
-
-
-                        <!-- =================================================
-                             ASIGNACIÓN
-                        ================================================== -->
-
-                        <div class="tab-pane" id="tabAsignacion" role="tabpanel">
-
-                            <h5>
-                                Asignación de unidades
-                            </h5>
-
-                            <p class="text-muted">
-                                Aquí se realizará la asignación definitiva
-                                de las unidades y VIN.
-                            </p>
-
-                            <div id="contenidoAsignacionesPedido"></div>
-
-                        </div>
-
-
-                        <!-- =================================================
-                             FACTURACIÓN
-                        ================================================== -->
-
-                        <div class="tab-pane" id="tabFacturacion" role="tabpanel">
-
-                            <h5>
-                                Facturación y entregas
-                            </h5>
-
-                            <p class="text-muted">
-                                Seguimiento de unidades facturadas y entregadas.
-                            </p>
-
-                            <div id="contenidoFacturacionPedido"></div>
-
-                        </div>
-
-
-                        <!-- =================================================
-                             HISTORIAL
-                        ================================================== -->
-
-                        <div class="tab-pane" id="tabHistorial" role="tabpanel">
-
-                            <h5 class="mb-4">
-                                Historial del pedido
-                            </h5>
-
-                            <?php if (empty($bitacora)) { ?>
-
-                                <div class="text-center py-5 text-muted">
-
-                                    <i class="ri-history-line fs-1"></i>
-
-                                    <p class="mt-2 mb-0">
-                                        No hay movimientos registrados.
-                                    </p>
-
-                                </div>
-
-                            <?php } else { ?>
-
-                                <div class="timeline">
-
-                                    <?php foreach ($bitacora as $evento) { ?>
-
-                                        <div class="mb-4">
-
-                                            <div class="fw-medium">
-
-                                                <?= htmlspecialchars(
-                                                    $evento['descripcion']
-                                                    ?? ''
-                                                ); ?>
-
-                                            </div>
-
-                                            <small class="text-muted">
-
-                                                <?= htmlspecialchars(
-                                                    $evento['fecha_creacion']
-                                                    ?? ''
-                                                ); ?>
-
-                                                ·
-
-                                                <?= htmlspecialchars(
-                                                    $evento['origen']
-                                                    ?? ''
-                                                ); ?>
-
-                                            </small>
-
-                                        </div>
-
-                                    <?php } ?>
-
-                                </div>
-
-                            <?php } ?>
-
-                        </div>
+                                                <?php include __DIR__ . '/gestion/resumen.php'; ?>
+                        <?php include __DIR__ . '/gestion/revision.php'; ?>
+                        <?php include __DIR__ . '/gestion/backorder.php'; ?>
+                        <?php include __DIR__ . '/gestion/asignacion.php'; ?>
+                        <?php include __DIR__ . '/gestion/ordenes_venta.php'; ?>
+                        <?php include __DIR__ . '/gestion/historial.php'; ?>
 
 
                     </div>
@@ -814,4 +364,19 @@
 </script>
 
 
+<?php if($rev && $lineasRev): $pdfLineas=[]; foreach($lineasRev as $pl){$pdfLineas[]=['modelo'=>$pl['nombre']?:$pl['modelo'],'color'=>$pl['nombre_color']??'','cantidad'=>(int)$pl['cantidad_propuesta'],'precio'=>(float)$pl['precio_unitario'],'subtotal'=>(float)$pl['subtotal'],'descuento'=>(float)$pl['descuento'],'iva'=>(float)$pl['iva'],'total'=>(float)$pl['total']];} $pdfInfo=['folio'=>$pedido['folio_pedido']??'','version'=>(int)$rev['numero_revision'],'estado'=>$rev['estatus'],'subtotal'=>(float)$rev['subtotal'],'descuento'=>(float)$rev['descuento'],'iva'=>(float)$rev['iva'],'total'=>(float)$rev['total'],'lineas'=>$pdfLineas]; ?><script type="application/json" id="propuestaPdfData"><?= json_encode($pdfInfo,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE) ?></script><?php endif; ?>
+<script>window.PED_REVISION_TASA_IVA = <?= json_encode((float)(max(0,(float)($pedido['subtotal']??0)-(float)($pedido['descuento']??0))>0 ? (float)($pedido['iva']??0)/max(0.01,(float)($pedido['subtotal']??0)-(float)($pedido['descuento']??0)) : 0.16)) ?>;</script>
+<script>window.PED_REVISION_CSRF = <?= json_encode($_SESSION['ped_revision_csrf'] ?? '') ?>;</script>
+<link rel="stylesheet" href="<?= base_url() ?>/Assets/css/modulos/revision_comercial.css">
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  function activarBackorder() {
+    if (location.hash !== '#tabBackorder' || !window.bootstrap) return;
+    const enlace = document.querySelector('a[data-bs-toggle="tab"][href="#tabBackorder"]');
+    if (enlace) bootstrap.Tab.getOrCreateInstance(enlace).show();
+  }
+  activarBackorder();
+  window.addEventListener('hashchange', activarBackorder);
+});
+</script>
 <?php footerAdmin($data); ?>

@@ -123,9 +123,15 @@ function initTableGastos() {
                     let id = row.id_gasto;
                     let est = parseInt(row.id_estado);
 
+                    let esAprobador = (typeof ES_APROBADOR_GASTOS !== 'undefined') ? ES_APROBADOR_GASTOS : false;
+                    let currentUid = (typeof CURRENT_USER_ID !== 'undefined') ? CURRENT_USER_ID : 0;
+                    let currentRole = (typeof CURRENT_USER_ROLE !== 'undefined') ? CURRENT_USER_ROLE : 0;
+                    let esCreador = (row.created_by && parseInt(row.created_by) === currentUid);
+                    let puedeAprobar = esAprobador && (!esCreador || currentRole === 1);
+
                     let btnRevision = (est === 1) ? `<li><a class="dropdown-item text-warning" href="javascript:void(0);" onclick="enviarRevisionGasto(${id});"><i class="ri-send-plane-line me-2"></i> Enviar a Revisión</a></li>` : '';
-                    let btnAprobar = (est === 1 || est === 2) ? `<li><a class="dropdown-item text-success" href="javascript:void(0);" onclick="aprobarGastoDirecto(${id});"><i class="ri-check-line me-2"></i> Aprobar Gasto</a></li>` : '';
-                    let btnRechazar = (est === 1 || est === 2) ? `<li><a class="dropdown-item text-danger" href="javascript:void(0);" onclick="rechazarGastoDirecto(${id});"><i class="ri-close-line me-2"></i> Rechazar Gasto</a></li>` : '';
+                    let btnAprobar = (puedeAprobar && (est === 1 || est === 2)) ? `<li><a class="dropdown-item text-success" href="javascript:void(0);" onclick="aprobarGastoDirecto(${id});"><i class="ri-check-line me-2"></i> Aprobar Gasto</a></li>` : '';
+                    let btnRechazar = (puedeAprobar && (est === 1 || est === 2)) ? `<li><a class="dropdown-item text-danger" href="javascript:void(0);" onclick="rechazarGastoDirecto(${id});"><i class="ri-close-line me-2"></i> Rechazar Gasto</a></li>` : '';
                     let btnDocumentar = (est === 3) ? `<li><a class="dropdown-item text-primary" href="javascript:void(0);" onclick="abrirModalDocumentar(${id});"><i class="ri-file-text-line me-2"></i> Documentar Financieramente</a></li>` : '';
 
                     return `
@@ -184,6 +190,17 @@ function actualizarKpisGastos(data) {
     $('#kpiPorDocumentar').text(porDocumentar);
     $('#kpiTotalCargos').text(new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalCargos));
     $('#kpiTotalDeducciones').text(new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalDeducciones));
+
+    // Actualizar badge en el pill del Tab de Gastos (vista de Aprobaciones)
+    var badgeGastos = document.getElementById('badgeGastosPendientesAprob');
+    if (badgeGastos) {
+        if (pendientes > 0) {
+            badgeGastos.textContent = pendientes;
+            badgeGastos.classList.remove('d-none');
+        } else {
+            badgeGastos.classList.add('d-none');
+        }
+    }
 }
 
 function initFiltrosEvents() {
@@ -198,6 +215,53 @@ function limpiarFiltros() {
     $('#filtro_proveedor').val('');
     $('#filtro_independiente').val('');
     tableGastos.ajax.reload();
+}
+
+/**
+ * Filtra el DataTable de gastos usando los chips de acceso rápido.
+ * Usado tanto en el módulo Gastos Adicionales como en el Tab de Aprobaciones.
+ * @param {string} tipo  - Identificador del chip: 'todos', 'pendientes', 'directos', 'incidencias', 'aprobados', 'rechazados'
+ * @param {HTMLElement|null} btn - Elemento del botón chip que se activó
+ */
+function filtrarGastosPorChip(tipo, btn) {
+    // Actualizar estado visual de chips
+    document.querySelectorAll('.chip-gasto-btn').forEach(function(b) {
+        b.classList.remove('active');
+    });
+    if (btn) btn.classList.add('active');
+
+    // Mapear tipo de chip a valores de filtro
+    switch (tipo) {
+        case 'pendientes':
+            $('#filtro_estado').val('pendientes');
+            $('#filtro_independiente').val('');
+            break;
+        case 'directos':
+            $('#filtro_estado').val('');
+            $('#filtro_independiente').val('1');
+            break;
+        case 'incidencias':
+            $('#filtro_estado').val('');
+            $('#filtro_independiente').val('0');
+            break;
+        case 'aprobados':
+            $('#filtro_estado').val('3');
+            $('#filtro_independiente').val('');
+            break;
+        case 'rechazados':
+            $('#filtro_estado').val('4');
+            $('#filtro_independiente').val('');
+            break;
+        default: // 'todos'
+            $('#filtro_estado').val('');
+            $('#filtro_independiente').val('');
+            break;
+    }
+    $('#filtro_tipo').val('');
+
+    if (typeof tableGastos !== 'undefined' && tableGastos) {
+        tableGastos.ajax.reload();
+    }
 }
 
 /**
@@ -292,6 +356,24 @@ function onOrigenModoChange() {
         $('#id_incidencia').prop('required', false);
         $('#id_envio_indep').prop('required', true);
         $('#justificacion_independiente').prop('required', true);
+    }
+}
+
+function toggleMotivosAbiertos(checkbox) {
+    if (checkbox.checked) {
+        $('#secGastoCatalogo').addClass('d-none');
+        $('#secGastoAbierto').removeClass('d-none');
+        $('#panelCalculoDinamico').addClass('d-none');
+        $('#id_tipo_gasto').removeAttr('required');
+        $('#concepto_abierto').attr('required', 'required');
+        $('#monto_abierto').attr('required', 'required');
+    } else {
+        $('#secGastoCatalogo').removeClass('d-none');
+        $('#secGastoAbierto').addClass('d-none');
+        $('#panelCalculoDinamico').removeClass('d-none');
+        $('#id_tipo_gasto').attr('required', 'required');
+        $('#concepto_abierto').removeAttr('required');
+        $('#monto_abierto').removeAttr('required');
     }
 }
 
@@ -764,11 +846,17 @@ function renderModalDetalleGasto(data) {
     $('#gdetBadgeEstado').html(renderEstadoGastoBadge(parseInt(data.id_estado)));
     $('#gdetBadgeNaturaleza').text(data.naturaleza).removeClass().addClass('badge ' + (data.naturaleza === 'CARGO' ? 'bg-danger' : 'bg-success'));
 
-    // Botones de acción según estado
+    // Botones de acción según estado y permisos
     let est = parseInt(data.id_estado);
+    let esAprobador = (typeof ES_APROBADOR_GASTOS !== 'undefined') ? ES_APROBADOR_GASTOS : false;
+    let currentUid = (typeof CURRENT_USER_ID !== 'undefined') ? CURRENT_USER_ID : 0;
+    let currentRole = (typeof CURRENT_USER_ROLE !== 'undefined') ? CURRENT_USER_ROLE : 0;
+    let esCreador = (data.created_by && parseInt(data.created_by) === currentUid);
+    let puedeAprobar = esAprobador && (!esCreador || currentRole === 1);
+
     $('#btnAccionEnviarRevision').toggleClass('d-none', est !== 1);
-    $('#btnAccionAprobar').toggleClass('d-none', est !== 1 && est !== 2);
-    $('#btnAccionRechazar').toggleClass('d-none', est !== 1 && est !== 2);
+    $('#btnAccionAprobar').toggleClass('d-none', !puedeAprobar || (est !== 1 && est !== 2));
+    $('#btnAccionRechazar').toggleClass('d-none', !puedeAprobar || (est !== 1 && est !== 2));
     $('#btnAccionDocumentar').toggleClass('d-none', est !== 3);
 
     // Tab 1
@@ -885,7 +973,12 @@ function renderModalDetalleGasto(data) {
     });
     $('#gdetListaLogs').html(htmlLogs || '<li class="list-group-item px-0 text-muted">Sin registros.</li>');
 
-    $('#modalDetalleGasto').modal('show');
+    let mEl = document.getElementById('modalDetalleGasto');
+    if (mEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        (bootstrap.Modal.getInstance(mEl) || new bootstrap.Modal(mEl)).show();
+    } else {
+        $('#modalDetalleGasto').modal('show');
+    }
 }
 
 /**

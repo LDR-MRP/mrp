@@ -249,29 +249,29 @@
                         <div class="col-md-3">
                             <div class="p-3 rounded-3 bg-light border border-light">
                                 <span class="text-muted fs-11 text-uppercase fw-bold d-block mb-1">Costo Base Tarifario</span>
-                                <h4 class="mb-0 fw-bold text-secondary">$<?= number_format(floatval($totales['costo_planeado'] ?? 0), 2) ?></h4>
+                                <h4 class="mb-0 fw-bold text-secondary" id="lbl-audit-costo-base">$<?= number_format(floatval($totales['costo_planeado'] ?? 0), 2) ?></h4>
                                 <small class="text-muted fs-11">Aprobado inicialmente</small>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="p-3 rounded-3 bg-soft-danger border border-danger-subtle">
                                 <span class="text-danger fs-11 text-uppercase fw-bold d-block mb-1">Gastos Adicionales (Cargos)</span>
-                                <h4 class="mb-0 fw-bold text-danger">+$<?= number_format(floatval($totales['total_cargos'] ?? 0), 2) ?></h4>
-                                <small class="text-danger fs-11"><?= intval($totales['gastos_count'] ?? 0) ?> gastos registrados</small>
+                                <h4 class="mb-0 fw-bold text-danger" id="lbl-audit-cargos">+$<?= number_format(floatval($totales['total_cargos'] ?? 0), 2) ?></h4>
+                                <small class="text-danger fs-11" id="lbl-audit-gastos-count"><?= intval($totales['gastos_count'] ?? 0) ?> gastos registrados</small>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="p-3 rounded-3 bg-soft-success border border-success-subtle">
                                 <span class="text-success fs-11 text-uppercase fw-bold d-block mb-1">Costo Real Acumulado</span>
-                                <h4 class="mb-0 fw-bold text-success">$<?= number_format(floatval($totales['costo_real'] ?? 0), 2) ?></h4>
+                                <h4 class="mb-0 fw-bold text-success" id="lbl-audit-costo-real">$<?= number_format(floatval($totales['costo_real'] ?? 0), 2) ?></h4>
                                 <small class="text-success fs-11">Base + Cargos aplicados</small>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="p-3 rounded-3 bg-soft-warning border border-warning-subtle">
                                 <span class="text-warning fs-11 text-uppercase fw-bold d-block mb-1">Incidencias en Ruta / Entrega</span>
-                                <h4 class="mb-0 fw-bold text-dark"><?= intval($totales['incidencias_count'] ?? 0) ?></h4>
-                                <small class="text-muted fs-11"><?= intval($totales['vins_count'] ?? 0) ?> VINs en el envío</small>
+                                <h4 class="mb-0 fw-bold text-dark" id="lbl-audit-incidencias-count"><?= intval($totales['incidencias_count'] ?? 0) ?></h4>
+                                <small class="text-muted fs-11" id="lbl-audit-vins-count"><?= intval($totales['vins_count'] ?? 0) ?> VINs en el envío</small>
                             </div>
                         </div>
                     </div>
@@ -280,17 +280,17 @@
                     <ul class="nav nav-segmented mb-3" role="tablist">
                         <li class="nav-item">
                             <a class="nav-link active" data-bs-toggle="pill" href="#tab-audit-vins" role="tab">
-                                <i class="ri-car-line me-1"></i> Costo Real por VIN (<?= count($audit['vins'] ?? []) ?>)
+                                <i class="ri-car-line me-1"></i> Costo Real por VIN (<span id="lbl-audit-tab-vins-count"><?= count($audit['vins'] ?? []) ?></span>)
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" data-bs-toggle="pill" href="#tab-audit-gastos" role="tab">
-                                <i class="ri-money-dollar-circle-line me-1"></i> Gastos Adicionales (<?= count($audit['gastos'] ?? []) ?>)
+                                <i class="ri-money-dollar-circle-line me-1"></i> Gastos Adicionales (<span id="lbl-audit-tab-gastos-count"><?= count($audit['gastos'] ?? []) ?></span>)
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" data-bs-toggle="pill" href="#tab-audit-incidencias" role="tab">
-                                <i class="ri-alarm-warning-line me-1"></i> Incidencias Operativas (<?= count($audit['incidencias'] ?? []) ?>)
+                                <i class="ri-alarm-warning-line me-1"></i> Incidencias Operativas (<span id="lbl-audit-tab-incidencias-count"><?= count($audit['incidencias'] ?? []) ?></span>)
                             </a>
                         </li>
                     </ul>
@@ -302,16 +302,16 @@
                                 <table class="table table-sm table-hover align-middle mb-0">
                                     <thead class="table-light fs-11 text-uppercase text-muted">
                                         <tr>
-                                            <th>#</th>
-                                            <th>VIN</th>
-                                            <th class="text-end">Costo Base Planeado</th>
-                                            <th class="text-end">Gastos Adicionales</th>
-                                            <th class="text-end">Deducciones</th>
-                                            <th class="text-end fw-bold text-dark">Costo Real Total</th>
-                                            <th class="text-center">Gastos Activos</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="fs-13">
+                                             <th>#</th>
+                                             <th>VIN</th>
+                                             <th class="text-end">Costo Base Planeado</th>
+                                             <th class="text-end">Gastos Adicionales</th>
+                                             <th class="text-end">Deducciones</th>
+                                             <th class="text-end fw-bold text-dark">Costo Real Total</th>
+                                             <th class="text-center">Gastos Activos</th>
+                                         </tr>
+                                     </thead>
+                                     <tbody class="fs-13" id="tbody-audit-vins">
                                         <?php if (!empty($audit['vins'])): ?>
                                             <?php foreach ($audit['vins'] as $idx => $v): ?>
                                                 <tr>

@@ -148,10 +148,21 @@
                     </div>
 
                     <!-- PASO 2: TIPO DE GASTO Y PARÁMETROS DE CÁLCULO -->
-                    <div class="row g-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                        <span class="fs-12 fw-bold text-primary"><i class="ri-money-dollar-circle-line me-1"></i> 2. Concepto y Parámetros del Gasto</span>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="check_motivos_abiertos" name="es_motivo_abierto" value="1" onchange="toggleMotivosAbiertos(this);">
+                            <label class="form-check-label fw-semibold fs-12 text-dark" for="check_motivos_abiertos">
+                                <i class="ri-edit-line text-warning me-1"></i> Modo Inputs / Motivos Abiertos
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN CATALOGO CERRADO -->
+                    <div id="secGastoCatalogo" class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fs-12 fw-medium text-muted">Concepto / Tipo de Gasto <span class="text-danger">*</span></label>
-                            <select id="id_tipo_gasto" name="id_tipo_gasto" class="form-select" required onchange="onTipoGastoChange();">
+                            <select id="id_tipo_gasto" name="id_tipo_gasto" class="form-select" onchange="onTipoGastoChange();">
                                 <option value="">Seleccione tipo de gasto...</option>
                                 <?php foreach ($data['catalogos']['tipos_gasto'] as $tg): ?>
                                     <option value="<?= $tg['id_tipo_gasto']; ?>" 
@@ -182,6 +193,28 @@
                             <label class="form-label fs-12 fw-medium text-muted">Fecha del Gasto <span class="text-danger">*</span></label>
                             <input type="datetime-local" id="fecha_gasto" name="fecha_gasto" class="form-control" required>
                         </div>
+                    </div>
+
+                    <!-- SECCIÓN INPUTS ABIERTOS -->
+                    <div id="secGastoAbierto" class="row g-3 mb-3 d-none p-3 border rounded-3 bg-white shadow-xs">
+                        <div class="col-md-5">
+                            <label class="form-label fs-12 fw-bold text-dark">Concepto / Título del Gasto Abierto <span class="text-danger">*</span></label>
+                            <input type="text" id="concepto_abierto" name="concepto_abierto" class="form-control" placeholder="Ej. Peaje emergente por cierre de autopista">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fs-12 fw-bold text-dark">Motivo / Causa Extraordinaria <span class="text-danger">*</span></label>
+                            <input type="text" id="motivo_abierto" name="motivo_abierto" class="form-control" placeholder="Ej. Desvío obligatorio indicado por Guardia Nacional">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fs-12 fw-bold text-dark">Monto Total ($) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" id="monto_abierto" name="monto_abierto" class="form-control fw-bold text-primary" placeholder="0.00">
+                        </div>
+                        <div class="col-12">
+                            <span class="badge bg-soft-info text-info border border-info px-2 py-1 fs-11">
+                                <i class="ri-shield-user-line me-1"></i> Autorización Requerida: Este gasto extra requerirá la aprobación obligatoria de Dirección / Finanzas.
+                            </span>
+                        </div>
+                    </div>
 
                         <!-- PANEL DINÁMICO SEGÚN TIPO DE CÁLCULO -->
                         <div class="col-12" id="panelCalculoDinamico">

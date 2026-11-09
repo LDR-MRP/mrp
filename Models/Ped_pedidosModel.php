@@ -1,11 +1,15 @@
 <?php
 
+require_once __DIR__ . '/../Services/PedPedidosZonaHoraria.php';
 class Ped_pedidosModel extends Mysql
 {
+    use PedPedidosZonaHoraria;
+
 
     public function __construct()
     {
         parent::__construct();
+        $this->configurarZonaHorariaPedidos();
     }
 
 
@@ -66,6 +70,7 @@ class Ped_pedidosModel extends Mysql
                 p.observaciones,
 
                 p.estatus,
+                p.estatus_revision_comercial,
                 p.estado,
 
                 p.fecha_creacion,
@@ -110,7 +115,8 @@ class Ped_pedidosModel extends Mysql
                 COALESCE(resumen.total_unidades,0) AS total_unidades,
                 COALESCE(resumen.total_autorizadas,0) AS total_autorizadas,
                 COALESCE(resumen.total_facturadas,0) AS total_facturadas,
-                COALESCE(resumen.total_pendientes,0) AS total_pendientes
+                COALESCE(resumen.total_pendientes,0) AS total_pendientes,
+                COALESCE(backorder_resumen.importe_backorder,0) AS importe_backorder
 
             FROM ped_pedidos AS p
 
@@ -136,30 +142,15 @@ class Ped_pedidosModel extends Mysql
             ) AS resumen
                 ON resumen.idpedido = p.idpedido
 
+            LEFT JOIN (
+                SELECT idpedido, SUM(total) AS importe_backorder
+                FROM ped_backorder
+                WHERE estatus <> 'CANCELADO'
+                GROUP BY idpedido
+            ) AS backorder_resumen ON backorder_resumen.idpedido = p.idpedido
             WHERE
                 {$where}
-            ORDER BY
-
-                CASE p.estatus
-                    WHEN 'PENDIENTE' THEN 1
-                    WHEN 'EN_REVISION' THEN 2
-                    WHEN 'AUTORIZADO' THEN 3
-                    WHEN 'RECHAZADO' THEN 4
-                    WHEN 'FINALIZADO' THEN 5
-                    WHEN 'CANCELADO' THEN 6
-                    ELSE 7
-                END ASC,
-
-                CASE p.prioridad
-                    WHEN 'URGENTE' THEN 1
-                    WHEN 'ALTA' THEN 2
-                    WHEN 'MEDIA' THEN 3
-                    WHEN 'BAJA' THEN 4
-                    ELSE 5
-
-                END ASC,
-                p.fecha_pedido DESC,
-                p.idpedido DESC
+            ORDER BY p.fecha_creacion DESC, p.idpedido DESC
             LIMIT {$limite}
             OFFSET {$offset}
         ";
@@ -220,6 +211,12 @@ class Ped_pedidosModel extends Mysql
             LEFT JOIN cli_usuarios_acceso AS ua
                 ON ua.idusuario_acceso = p.idusuario_acceso
 
+            LEFT JOIN (
+                SELECT idpedido, SUM(total) AS importe
+                FROM ped_backorder
+                WHERE estatus <> 'CANCELADO'
+                GROUP BY idpedido
+            ) bres ON bres.idpedido = p.idpedido
             WHERE
                 {$where}
         ";
@@ -248,6 +245,7 @@ class Ped_pedidosModel extends Mysql
 
         $filtrosIndicadores =$filtros;
         $filtrosIndicadores['estatus'] ='';
+        $filtrosIndicadores['situacion_comercial'] = '';
 
         /*
          * ========================================================
@@ -354,7 +352,8 @@ class Ped_pedidosModel extends Mysql
                         END
                     ),
                     0
-                ) AS importe_total
+                ) AS importe_total,
+                COALESCE(SUM(CASE WHEN p.estatus NOT IN ('CANCELADO','RECHAZADO') THEN COALESCE(bres.importe,0) ELSE 0 END),0) AS importe_backorders
 
 
             FROM ped_pedidos AS p
@@ -367,6 +366,13 @@ class Ped_pedidosModel extends Mysql
             LEFT JOIN cli_usuarios_acceso AS ua
                 ON ua.idusuario_acceso = p.idusuario_acceso
 
+            /* Importe vigente por pedido; evita duplicar importes al agrupar. */
+            LEFT JOIN (
+                SELECT idpedido, SUM(total) AS importe
+                FROM ped_backorder
+                WHERE estatus <> 'CANCELADO'
+                GROUP BY idpedido
+            ) AS bres ON bres.idpedido = p.idpedido
 
             WHERE
                 {$where}
@@ -386,7 +392,8 @@ class Ped_pedidosModel extends Mysql
                 'rechazados' =>0,
                 'cancelados' =>0,
                 'finalizados' =>0,
-                'importe_total' =>0
+                'importe_total' =>0,
+                'importe_backorders' => 0
             ];
 
         }
@@ -399,7 +406,8 @@ class Ped_pedidosModel extends Mysql
             'rechazados' =>intval($request['rechazados'] ?? 0),
             'cancelados' =>intval($request['cancelados'] ?? 0),
             'finalizados' =>intval($request['finalizados'] ?? 0),
-            'importe_total' =>floatval($request['importe_total'] ?? 0)
+            'importe_total' =>floatval($request['importe_total'] ?? 0),
+            'importe_backorders' => floatval($request['importe_backorders'] ?? 0)
         ];
 
     }
@@ -911,6 +919,20 @@ class Ped_pedidosModel extends Mysql
                 $parametros[] =$estatus;
             }
 
+        }
+
+        // Situación de la revisión comercial: filtro independiente del estado del pedido.
+        $situacion = strtoupper(trim((string)($filtros['situacion_comercial'] ?? '')));
+        if (in_array($situacion, ['PENDIENTE_ACEPTACION','AJUSTE_SOLICITADO','ACEPTADA','RECHAZADA'], true)) {
+            $condiciones[] = 'p.estatus_revision_comercial = ?';
+            $parametros[] = $situacion;
+        }
+
+        $backorder = strtoupper(trim((string)($filtros['backorder'] ?? '')));
+        if ($backorder === 'CON') {
+            $condiciones[] = "EXISTS (SELECT 1 FROM ped_backorder b WHERE b.idpedido=p.idpedido AND b.estatus <> 'CANCELADO')";
+        } elseif ($backorder === 'SIN') {
+            $condiciones[] = "NOT EXISTS (SELECT 1 FROM ped_backorder b WHERE b.idpedido=p.idpedido AND b.estatus <> 'CANCELADO')";
         }
 
         /*

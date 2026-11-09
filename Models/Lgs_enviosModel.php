@@ -25,6 +25,10 @@ class Lgs_enviosModel extends Mysql
             'monto_pactado',
             'motivo_monto_abierto',
             'is_lowboy',
+            'madrina_con_telemetria',
+            'km_real_telemetria',
+            'confirmacion_cita_cliente',
+            'contacto_confirmacion_cliente',
             'id_motivo',
             'id_proveedor',
             'id_origen',
@@ -109,8 +113,9 @@ class Lgs_enviosModel extends Mysql
             return 'EN-000001';
         }
         
-        $num = intval(substr($ultimo, 3)) + 1;
-        return 'EN-' . str_pad($num, 6, '0', STR_PAD_LEFT);
+        preg_match('/\d+$/', $ultimo, $matches);
+        $num = !empty($matches[0]) ? (intval($matches[0]) + 1) : 1;
+        return 'EN-' . str_pad((string)$num, 6, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -397,22 +402,23 @@ class Lgs_enviosModel extends Mysql
 
         // 4. Ubicaciones
         try {
-            $ubicaciones = $this->select_all("SELECT id_ubicacion AS id, nombre, direccion, lat, lng, id_tipo_destino, id_distribuidor FROM lgs_cat_ubicaciones WHERE activo = 1 ORDER BY nombre ASC");
+            $this->sincronizarPlantasYAlmacenes();
+            $ubicaciones = $this->select_all("SELECT id_ubicacion AS id, nombre, direccion, lat, lng, id_tipo_destino, id_distribuidor, id_planta_mrp, id_almacen_wms FROM lgs_cat_ubicaciones WHERE activo = 1 ORDER BY nombre ASC");
         } catch (Throwable $e) {
             $ubicaciones = [];
         }
 
-        // Dividir orígenes y destinos según lo esperado (por retrocompatibilidad en el front)
+        // Orígenes: Plantas (5), Almacenes (4) o ubicaciones asignadas
         $origenes = array_filter($ubicaciones, function($u) {
-            return $u['id_tipo_destino'] == 5; // Planta
+            $tipo = (int)($u['id_tipo_destino'] ?? 0);
+            return in_array($tipo, [3, 4, 5], true) || !empty($u['id_planta_mrp']) || !empty($u['id_almacen_wms']);
         });
         
-        $destinos = array_filter($ubicaciones, function($u) {
-            return $u['id_tipo_destino'] != 5; // No es planta
-        });
+        // Destinos: TODAS las ubicaciones (incluyendo Plantas para traslados interplanta, Almacenes y Distribuidores)
+        $destinos = $ubicaciones;
 
         // Aseguramos que los arrays estén indexados numéricamente
-        $origenes = array_values($origenes);
+        $origenes = array_values(!empty($origenes) ? $origenes : $ubicaciones);
         $destinos = array_values($destinos);
 
         // 5. Distribuidores
@@ -431,6 +437,54 @@ class Lgs_enviosModel extends Mysql
             'ubicaciones'    => $ubicaciones,
             'distribuidores' => $distribuidores ?: []
         ];
+    }
+
+    /**
+     * Sincroniza automáticamente las plantas (mrp_planta) y almacenes (wms_almacenes) en lgs_cat_ubicaciones
+     */
+    public function sincronizarPlantasYAlmacenes(): void
+    {
+        try {
+            $db = $this->getConexion();
+            
+            // 1. Asegurar columnas de relación en lgs_cat_ubicaciones
+            $col1 = $db->query("SHOW COLUMNS FROM lgs_cat_ubicaciones LIKE 'id_planta_mrp'")->fetch();
+            if (!$col1) {
+                $db->exec("ALTER TABLE lgs_cat_ubicaciones ADD COLUMN id_planta_mrp INT NULL AFTER id_distribuidor");
+            }
+            $col2 = $db->query("SHOW COLUMNS FROM lgs_cat_ubicaciones LIKE 'id_almacen_wms'")->fetch();
+            if (!$col2) {
+                $db->exec("ALTER TABLE lgs_cat_ubicaciones ADD COLUMN id_almacen_wms INT NULL AFTER id_planta_mrp");
+            }
+
+            // 2. Sincronizar mrp_planta (Tipo 5: Planta)
+            $plantas = $this->select_all("SELECT idplanta, nombre_planta, direccion FROM mrp_planta WHERE estado != 0") ?: [];
+            foreach ($plantas as $p) {
+                $nom = trim($p['nombre_planta'] ?? '');
+                if (empty($nom)) continue;
+                $exist = $this->select("SELECT id_ubicacion FROM lgs_cat_ubicaciones WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?)) OR id_planta_mrp = ? LIMIT 1", [$nom, $p['idplanta']]);
+                if ($exist) {
+                    $db->prepare("UPDATE lgs_cat_ubicaciones SET id_planta_mrp = ?, id_tipo_destino = 5, activo = 1 WHERE id_ubicacion = ?")->execute([$p['idplanta'], $exist['id_ubicacion']]);
+                } else {
+                    $db->prepare("INSERT INTO lgs_cat_ubicaciones (nombre, direccion, id_tipo_destino, id_planta_mrp, activo) VALUES (?, ?, 5, ?, 1)")->execute([$nom, $p['direccion'] ?? null, $p['idplanta']]);
+                }
+            }
+
+            // 3. Sincronizar wms_almacenes (Tipo 4: Almacén)
+            $almacenes = $this->select_all("SELECT idalmacen, descripcion, direccion FROM wms_almacenes WHERE estado != 0") ?: [];
+            foreach ($almacenes as $a) {
+                $nom = trim($a['descripcion'] ?? '');
+                if (empty($nom)) continue;
+                $exist = $this->select("SELECT id_ubicacion FROM lgs_cat_ubicaciones WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?)) OR id_almacen_wms = ? LIMIT 1", [$nom, $a['idalmacen']]);
+                if ($exist) {
+                    $db->prepare("UPDATE lgs_cat_ubicaciones SET id_almacen_wms = ?, id_tipo_destino = 4, activo = 1 WHERE id_ubicacion = ?")->execute([$a['idalmacen'], $exist['id_ubicacion']]);
+                } else {
+                    $db->prepare("INSERT INTO lgs_cat_ubicaciones (nombre, direccion, id_tipo_destino, id_almacen_wms, activo) VALUES (?, ?, 4, ?, 1)")->execute([$nom, $a['direccion'] ?? null, $a['idalmacen']]);
+                }
+            }
+        } catch (Throwable $e) {
+            // Manejo silencioso para no interrumpir
+        }
     }
 
     /**
@@ -472,7 +526,27 @@ class Lgs_enviosModel extends Mysql
                 }
             }
 
-            // 3. Insertar los faltantes en lgs_cat_destinos
+            // 3. Sincronizar Plantas y Almacenes (mrp_planta) tanto en Destinos (tipo 5) como en Orígenes
+            $sqlPlantas = "SELECT idplanta, nombre_planta, direccion FROM mrp_planta WHERE nombre_planta IS NOT NULL AND TRIM(nombre_planta) <> ''";
+            $plantasRows = $this->select_all($sqlPlantas) ?: [];
+            foreach ($plantasRows as $pl) {
+                $nomPlanta = trim($pl['nombre_planta']);
+                $dirPlanta = trim($pl['direccion'] ?? '');
+                
+                // Asegurar en lgs_cat_origenes
+                $existOrig = $this->select("SELECT id_origen FROM lgs_cat_origenes WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?)) LIMIT 1", [$nomPlanta]);
+                if (empty($existOrig)) {
+                    $this->insert("INSERT INTO lgs_cat_origenes (nombre, direccion, activo) VALUES (?, ?, 1)", [$nomPlanta, $dirPlanta]);
+                }
+
+                // Agregar a lista de destinos con tipo 5 = PLANTA
+                $keyPlanta = mb_strtolower($nomPlanta);
+                if (!isset($lista[$keyPlanta])) {
+                    $lista[$keyPlanta] = ['nombre' => $nomPlanta, 'direccion' => $dirPlanta, 'tipo' => 5];
+                }
+            }
+
+            // 4. Insertar los faltantes en lgs_cat_destinos
             foreach ($lista as $item) {
                 $nom  = $item['nombre'];
                 $dir  = $item['direccion'];
@@ -558,7 +632,11 @@ class Lgs_enviosModel extends Mysql
                         e.pausado_by,
                         e.fecha_reanudacion,
                         e.reanudado_by,
-                        e.notas_reanudacion
+                        e.notas_reanudacion,
+                        COALESCE(e.madrina_con_telemetria, 0) AS madrina_con_telemetria,
+                        e.km_real_telemetria,
+                        COALESCE(e.confirmacion_cita_cliente, 0) AS confirmacion_cita_cliente,
+                        e.contacto_confirmacion_cliente
                     FROM lgs_envios e
                     LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
                     LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
@@ -600,7 +678,11 @@ class Lgs_enviosModel extends Mysql
                         NULL AS motivo_pausa,
                         NULL AS fecha_pausa,
                         NULL AS fecha_reanudacion,
-                        NULL AS notas_reanudacion
+                        NULL AS notas_reanudacion,
+                        COALESCE(e.madrina_con_telemetria, 0) AS madrina_con_telemetria,
+                        e.km_real_telemetria,
+                        COALESCE(e.confirmacion_cita_cliente, 0) AS confirmacion_cita_cliente,
+                        e.contacto_confirmacion_cliente
                     FROM lgs_envios e
                     LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
                     LEFT JOIN lgs_cat_origenes o ON e.id_origen = o.id_origen
@@ -1073,7 +1155,32 @@ class Lgs_enviosModel extends Mysql
                 $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `notas_reanudacion` TEXT NULL AFTER `reanudado_by`");
             } catch (Throwable $e) {}
             try {
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `madrina_con_telemetria` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_lowboy`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `km_real_telemetria` DECIMAL(10,2) NULL DEFAULT NULL AFTER `madrina_con_telemetria`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `confirmacion_cita_cliente` TINYINT(1) NOT NULL DEFAULT 0 AFTER `km_real_telemetria`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios` ADD COLUMN `contacto_confirmacion_cliente` VARCHAR(150) NULL DEFAULT NULL AFTER `confirmacion_cita_cliente`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios_vins` ADD COLUMN `odometro_inicial` INT NULL DEFAULT NULL AFTER `recibe_nombre`");
+            } catch (Throwable $e) {}
+            try {
+                $db->exec("ALTER TABLE `lgs_envios_vins` ADD COLUMN `odometro_final` INT NULL DEFAULT NULL AFTER `odometro_inicial`");
+            } catch (Throwable $e) {}
+            try {
                 $db->exec("ALTER TABLE `prv_cat_proveedores` ADD COLUMN `modalidad_envio_default` ENUM('ESCALONADO', 'DIRECTO') NOT NULL DEFAULT 'DIRECTO' AFTER `origen`");
+            } catch (Throwable $e) {}
+            // Consolidación de distribuidores y corrección de sedes
+            try {
+                $db->exec("UPDATE lgs_cat_ubicaciones SET id_distribuidor = 148 WHERE id_ubicacion IN (141, 156, 157)");
+                $db->exec("UPDATE lgs_cat_ubicaciones SET id_distribuidor = 53 WHERE id_ubicacion IN (137, 22)");
+                $db->exec("UPDATE lgs_cat_distribuidores SET activo = 0 WHERE id_distribuidor = 18");
+                $db->exec("ALTER TABLE lgs_cat_distribuidores ADD UNIQUE KEY uq_distribuidor_nombre (nombre)");
             } catch (Throwable $e) {}
         } catch (Throwable $e) {
             // Silencioso si ya existe o no hay permisos DDL

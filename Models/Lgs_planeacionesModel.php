@@ -34,6 +34,12 @@ class Lgs_planeacionesModel extends Mysql
         return $this->table;
     }
 
+    public function getPlaneacion(int $idPlaneacion): array
+    {
+        $sql = "SELECT * FROM lgs_planeaciones WHERE id_planeacion = ?";
+        return $this->select($sql, [$idPlaneacion]) ?: [];
+    }
+
     public function getConexion(): PDO {
         return $this->conexion;
     }
@@ -52,7 +58,7 @@ class Lgs_planeacionesModel extends Mysql
             return 'EX-000001';
         }
         
-        $num = intval(substr($ultimo, 3)) + 1;
+        $num = preg_match('/\d+$/', $ultimo, $matches) ? ((int)$matches[0] + 1) : 1;
         return 'EX-' . str_pad($num, 6, '0', STR_PAD_LEFT);
     }
 
@@ -269,15 +275,24 @@ class Lgs_planeacionesModel extends Mysql
     /**
      * Reabre una planeación rechazada, regresándola y a sus envíos a estado borrador (1)
      */
-    public function reabrirPlaneacion(PDO $db, int $idPlaneacion): void
+    /**
+     * Reabre una planeación regresándola y a sus envíos a estado borrador (1) con motivo registrado
+     */
+    public function reabrirPlaneacion(PDO $db, int $idPlaneacion, string $motivo = ''): array
     {
+        // 0. Obtener datos de la planeación antes de actualizar
+        $stmtPlan = $db->prepare("SELECT folio, descripcion, (SELECT COUNT(*) FROM lgs_planeaciones_envios WHERE id_planeacion = lgs_planeaciones.id_planeacion) AS total_rutas, costo_total FROM lgs_planeaciones WHERE id_planeacion = ?");
+        $stmtPlan->execute([$idPlaneacion]);
+        $planData = $stmtPlan->fetch(PDO::FETCH_ASSOC) ?: [];
+
         // 1. Cambiar estado de la planeación a 1 (Borrador / Reabierto)
+        $obsReapertura = !empty($motivo) ? " [Reabierto: {$motivo}]" : " [Reabierto para corrección]";
         $sql = "UPDATE lgs_planeaciones 
                 SET id_estado = 1, 
-                    obs_aprobador = CONCAT(COALESCE(obs_aprobador, ''), ' [Reabierto para corrección]')
+                    obs_aprobador = CONCAT(COALESCE(obs_aprobador, ''), ?)
                 WHERE id_planeacion = ?";
         $stmt = $db->prepare($sql);
-        $stmt->execute([$idPlaneacion]);
+        $stmt->execute([$obsReapertura, $idPlaneacion]);
 
         // 2. Desbloquear los envíos para que vuelvan a estado 1 (Creado / Editable)
         $sqlEnvios = "UPDATE lgs_envios e
@@ -286,6 +301,8 @@ class Lgs_planeacionesModel extends Mysql
                       WHERE pe.id_planeacion = ?";
         $stmtEnv = $db->prepare($sqlEnvios);
         $stmtEnv->execute([$idPlaneacion]);
+
+        return $planData;
     }
 
     /**

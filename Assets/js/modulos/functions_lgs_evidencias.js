@@ -16,7 +16,59 @@ document.addEventListener('DOMContentLoaded', function () {
             { "data": "folio" },
             { "data": "trasladista" },
             { "data": "origen" },
-            { "data": "total_vins" },
+            { 
+                "data": "total_vins",
+                "render": function (data, type, row) {
+                    let total = parseInt(data) || 0;
+                    let listaVins = row.vins_lista || '';
+                    let detalleVins = [];
+                    try {
+                        detalleVins = typeof row.vins_detalle_json === 'string' 
+                            ? JSON.parse(row.vins_detalle_json || '[]') 
+                            : (row.vins_detalle_json || []);
+                    } catch (e) {
+                        detalleVins = [];
+                    }
+
+                    if (total === 0) {
+                        return '<span class="badge bg-light text-muted border">Sin VINs</span>';
+                    }
+
+                    if (total === 1) {
+                        let vinObj = (detalleVins && detalleVins.length > 0) ? detalleVins[0] : null;
+                        let vinTexto = vinObj ? vinObj.vin : (listaVins || 'S/VIN');
+                        let modeloTexto = vinObj ? (vinObj.modelo || '') : '';
+                        
+                        return `
+                            <div class="d-flex flex-column align-items-start">
+                                <span class="badge bg-soft-primary text-primary font-monospace fs-12 px-2 py-1 mb-1 border border-primary-subtle" title="VIN de la unidad">
+                                    <i class="ri-barcode-line me-1"></i>${vinTexto}
+                                </span>
+                                ${modeloTexto ? `<small class="text-muted fs-11 text-truncate" style="max-width: 170px;" title="${modeloTexto}">${modeloTexto}</small>` : ''}
+                                <span class="d-none">${listaVins}</span>
+                            </div>
+                        `;
+                    } else {
+                        let primerVin = (detalleVins && detalleVins.length > 0) ? detalleVins[0].vin : '';
+                        return `
+                            <div class="d-flex flex-column align-items-start">
+                                <div class="d-flex align-items-center gap-1 mb-1">
+                                    <span class="badge bg-primary fs-12 px-2 py-1 shadow-xs">
+                                        <i class="ri-car-line me-1"></i>${total} VINs
+                                    </span>
+                                    <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-0 fs-11" onclick="fntVerDetalleVins(${row.id_envio}, '${row.folio}')" title="Ver lista de VINs asignados">
+                                        <i class="ri-eye-line me-1"></i>Ver lista
+                                    </button>
+                                </div>
+                                <span class="text-muted font-monospace fs-11" title="Primer VIN: ${primerVin}">
+                                    ${primerVin ? primerVin.substring(0, 11) + '...' : ''}
+                                </span>
+                                <span class="d-none">${listaVins}</span>
+                            </div>
+                        `;
+                    }
+                }
+            },
             { 
                 "data": "total_evidencias",
                 "render": function (data, type, row) {
@@ -46,32 +98,55 @@ document.addEventListener('DOMContentLoaded', function () {
                 "render": function (data, type, row) {
                     let estado = parseInt(row.id_estado);
                     let folio = row.folio;
+                    let totalPlanta = parseInt(row.total_evidencias_planta) || 0;
                     
-                    // 1. Botón Entrega Planta (Logística) - Disponible desde Aprobado (3), Programado (5), En Tránsito (6), Entregado (7)
-                    let btnPlanta = `<button class="btn btn-sm btn-soft-warning text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1 fw-semibold me-1 shadow-sm" onClick="fntAbrirEvidencias(${data}, '${folio}', ${estado}, 'planta')" title="Inspección y Evidencias de Entrega de Planta (Logística)">
+                    // 1. Botón Ver Evidencias de Entrega Planta (Requerimiento #10)
+                    let btnVerPlanta = `<button class="btn btn-sm ${totalPlanta > 0 ? 'btn-soft-warning text-dark' : 'btn-light text-muted border'} rounded-pill px-2 py-1 fw-semibold me-1" onClick="fntVerEvidenciasPlanta(${data}, '${folio}')" title="Ver Evidencias de Entrega Planta (${totalPlanta} registradas)">
+                                            <i class="ri-eye-line me-1"></i> Ver Planta ${totalPlanta > 0 ? `(${totalPlanta})` : ''}
+                                        </button>`;
+
+                    // 2. Botón Inspección Entrega Planta (Logística)
+                    let btnPlanta = `<button class="btn btn-sm btn-soft-warning text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1 fw-semibold me-1 shadow-sm" onClick="fntAbrirEvidencias(${data}, '${folio}', ${estado}, 'planta')" title="Inspección y Evidencias de Entrega de Planta (Patio)">
                                         <i class="ri-building-line me-1"></i> Entrega Planta
                                      </button>`;
 
-                    // 2. Botón Entrega Destino (Distribuidor / Cliente Final) - Habilitado para En Tránsito (6) y Entregado (7)
+                    // 3. Botón Acuse de Recibo de Trasladista
+                    let btnReciboTrasladista = `<button class="btn btn-sm btn-soft-secondary border rounded-pill px-2 py-1 fw-semibold me-1 shadow-sm" onClick="fntAbrirEvidencias(${data}, '${folio}', ${estado}, 'recibo_trasladista')" title="Acuse y Firma de Recepción del Trasladista">
+                                                    <i class="ri-file-user-line me-1"></i> Recibo Trasladista
+                                                </button>`;
+
+                    // 4. Botón Entrega Destino (Distribuidor / Cliente Final) - Habilitado para En Tránsito (6) y Entregado (7)
                     let btnDestino = '';
+                    let btnCerrarEntrega = '';
                     if (estado >= 6) {
                         let btnDestClass = estado === 6 ? 'btn-success shadow-sm' : 'btn-soft-success';
                         let btnDestText = estado === 6 ? 'Entrega Destino' : 'Ver Destino';
-                        btnDestino = `<button class="btn btn-sm ${btnDestClass} rounded-pill px-2 py-1 fw-semibold me-1" onClick="fntAbrirEvidencias(${data}, '${folio}', ${estado}, 'destino')" title="Recepción y Cierre en Destino">
+                        btnDestino = `<button class="btn btn-sm ${btnDestClass} rounded-pill px-2 py-1 fw-semibold me-1" onClick="fntAbrirEvidencias(${data}, '${folio}', ${estado}, 'destino')" title="Recepción y Cierre en Destino (Distribuidor o Cliente Final)">
                                         <i class="ri-checkbox-circle-line me-1"></i> ${btnDestText}
                                       </button>`;
+
+                        if (estado === 6) {
+                            btnCerrarEntrega = `<button class="btn btn-sm btn-outline-success rounded-pill px-2 py-1 fw-semibold me-1 shadow-xs" onClick="fntConfirmarEntregaDirecta(${data}, '${folio}')" title="Confirmar Entrega en Destino (Cierre Definitivo de Envío y Unidades)">
+                                                    <i class="ri-check-double-line me-1"></i> Cerrar Entrega
+                                                </button>`;
+                        }
                     } else {
                         btnDestino = `<button class="btn btn-sm btn-light text-muted border rounded-pill px-2 py-1 fw-medium me-1" disabled title="Disponible al estar el viaje en tránsito">
                                         <i class="ri-lock-line me-1"></i> Entrega Destino
                                       </button>`;
                     }
 
-                    // 3. Botón Ver Galería Completa
+                    // 5. Botón PDF Hoja de Entrega / Traspaso
+                    let btnPdf = `<a href="${base_url}/Lgs_evidencias/hoja_entrega_pdf/${data}" target="_blank" class="btn btn-sm btn-soft-danger border border-danger-subtle rounded-pill px-2 py-1 fw-semibold me-1 shadow-sm" title="Imprimir / Ver Hoja de Entrega y Traspaso en PDF">
+                                    <i class="ri-file-pdf-line me-1 text-danger"></i> Hoja Entrega
+                                  </a>`;
+
+                    // 6. Botón Ver Galería Completa
                     let btnGaleria = `<button class="btn btn-sm btn-soft-primary rounded-circle p-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;" onClick="fntAbrirGaleriaCompleta(${data}, '${folio}')" title="Ver Galería Completa">
                                         <i class="ri-gallery-line"></i>
                                       </button>`;
 
-                    return `<div class="text-end pe-2 d-flex align-items-center justify-content-end">${btnPlanta}${btnDestino}${btnGaleria}</div>`;
+                    return `<div class="text-end pe-2 d-flex align-items-center justify-content-end">${btnVerPlanta}${btnPlanta}${btnReciboTrasladista}${btnDestino}${btnCerrarEntrega}${btnPdf}${btnGaleria}</div>`;
                 }
             }
         ],
@@ -102,6 +177,51 @@ function actualizarMetricasEvidencias(data) {
     if (document.getElementById('cardEvidCobertura')) document.getElementById('cardEvidCobertura').innerText = cobertura + '%';
 }
 
+/**
+ * Filtro por buscador de texto en evidencias
+ */
+function filtrarTablaEvidencias(term) {
+    if (typeof tableEvidencias !== "undefined" && tableEvidencias) {
+        tableEvidencias.search(term).draw();
+    }
+}
+
+/**
+ * Filtra el DataTable por estado usando los chips de acceso rápido
+ */
+function filtrarEvidenciasPorChip(filtro, btn) {
+    document.querySelectorAll('.chip-evid-btn').forEach(b => {
+        b.classList.remove('active');
+        b.classList.replace('btn-secondary', 'btn-outline-secondary');
+        b.classList.replace('btn-primary', 'btn-outline-primary');
+        b.classList.replace('btn-success', 'btn-outline-success');
+    });
+    
+    if (btn) {
+        btn.classList.add('active');
+        if (btn.classList.contains('btn-outline-secondary')) btn.classList.replace('btn-outline-secondary', 'btn-secondary');
+        if (btn.classList.contains('btn-outline-primary')) btn.classList.replace('btn-outline-primary', 'btn-primary');
+        if (btn.classList.contains('btn-outline-success')) btn.classList.replace('btn-outline-success', 'btn-success');
+    }
+    
+    if (typeof tableEvidencias !== "undefined" && tableEvidencias) {
+        tableEvidencias.search(filtro).draw();
+    }
+}
+
+/**
+ * Permite filtrar la tabla haciendo clic en las cards superiores
+ */
+function filtrarEvidenciasPorCard(filtro, chipId) {
+    const chipBtn = document.getElementById(chipId);
+    filtrarEvidenciasPorChip(filtro, chipBtn);
+    
+    const tableEl = document.getElementById('tableEvidencias');
+    if (tableEl) {
+        tableEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
 function fntAbrirEvidencias(idEnvio, folio, idEstado, modo = 'destino') {
     document.getElementById('id_envio_evidencia').value = idEnvio;
     document.getElementById('lblFolioEvidencia').innerText = folio;
@@ -125,11 +245,14 @@ function fntAbrirEvidencias(idEnvio, folio, idEstado, modo = 'destino') {
     const txtBtnGuardar = document.getElementById('txtBtnGuardar');
     const cardCierre = document.getElementById('cardCierreDestino');
 
-    // Adaptar Modal según Modo (Planta vs Destino)
+    const divSubtipo = document.getElementById('divSubtipoEntrega');
+
+    // Adaptar Modal según Modo (Planta vs Recibo Trasladista vs Destino)
     if (modo === 'planta') {
+        if (divSubtipo) divSubtipo.classList.add('d-none');
         if (tipoChecklistInput) tipoChecklistInput.value = 'salida_planta';
         if (icoModalHeader) icoModalHeader.className = 'ri-building-line me-1 text-warning';
-        if (txtModalHeaderTitulo) txtModalHeaderTitulo.innerText = 'Inspección de Entrega de Planta (Logística)';
+        if (txtModalHeaderTitulo) txtModalHeaderTitulo.innerText = 'Inspección de Entrega de Planta (Patio)';
         if (subModalHeaderDesc) subModalHeaderDesc.innerText = 'Control de calidad y estado físico de la unidad en patio / salida de planta (evitar omisión de fallas)';
         
         if (cardFormulario) {
@@ -157,7 +280,39 @@ function fntAbrirEvidencias(idEnvio, folio, idEstado, modo = 'destino') {
 
         // Ocultar siempre el cierre final en modo planta
         if (cardCierre) cardCierre.style.display = 'none';
+    } else if (modo === 'recibo_trasladista') {
+        if (divSubtipo) divSubtipo.classList.add('d-none');
+        if (tipoChecklistInput) tipoChecklistInput.value = 'recibo_trasladista';
+        if (icoModalHeader) icoModalHeader.className = 'ri-file-user-line me-1 text-primary';
+        if (txtModalHeaderTitulo) txtModalHeaderTitulo.innerText = 'Acuse de Recibo del Trasladista (Entrega en Planta)';
+        if (subModalHeaderDesc) subModalHeaderDesc.innerText = 'Documento, firma y validación de entrega de unidades de Planta al Trasladista';
+        
+        if (cardFormulario) {
+            cardFormulario.style.background = '#EEF2FF';
+            cardFormulario.style.borderColor = '#C7D2FE';
+        }
+        if (icoFormulario) icoFormulario.className = 'ri-file-signature-line me-1 text-primary';
+        if (txtTituloFormulario) txtTituloFormulario.innerText = 'Cargar Acuse y Firma del Trasladista';
+        if (badgeFormulario) {
+            badgeFormulario.style.background = '#E0E7FF';
+            badgeFormulario.style.color = '#3730A3';
+            badgeFormulario.style.border = '1px solid #A5B4FC';
+        }
+        if (txtBadgeFormulario) txtBadgeFormulario.innerText = 'Recibo de Trasladista';
+        if (labelSelectUnidad) labelSelectUnidad.innerHTML = 'Seleccionar Unidad / VIN a Entregar al Chofer <span class="text-danger">*</span>';
+        if (lblTituloFotos) lblTituloFotos.innerHTML = '<i class="ri-file-shield-line me-1 text-primary"></i> Documentación de Entrega y Acuse de Recibo:';
+        if (lblFotoOdometro) lblFotoOdometro.innerText = '5. Acuse Firmado / Remisión';
+        if (txtBtnAgregarExtra) txtBtnAgregarExtra.innerText = '+ Documento Adicional';
+        
+        if (btnGuardarInspeccion) {
+            btnGuardarInspeccion.className = 'btn btn-primary px-4 rounded-pill fw-semibold fs-13 shadow-sm text-white';
+        }
+        if (icoBtnGuardar) icoBtnGuardar.className = 'ri-checkbox-circle-line me-1';
+        if (txtBtnGuardar) txtBtnGuardar.innerText = 'Guardar Acuse de Trasladista';
+
+        if (cardCierre) cardCierre.style.display = 'none';
     } else {
+        if (divSubtipo) divSubtipo.classList.remove('d-none');
         if (tipoChecklistInput) tipoChecklistInput.value = 'entrega_destino';
         if (icoModalHeader) icoModalHeader.className = 'ri-checkbox-circle-line me-1 text-success';
         if (txtModalHeaderTitulo) txtModalHeaderTitulo.innerText = 'Recepción y Evidencias de Entrega en Destino';
@@ -215,14 +370,14 @@ function fntAbrirEvidencias(idEnvio, folio, idEstado, modo = 'destino') {
     if (inputFecha) inputFecha.value = now.toISOString().slice(0, 16);
 
     // Cargar selector de VINs del envío según el modo
-    cargarVinsEnSelector(idEnvio, modo);
+    cargarVinsEnSelector(idEnvio, modo, idEstado);
 
     // Cargar evidencias asociadas
     cargarEvidenciasLista(idEnvio);
     $('#modalEvidencias').modal('show');
 }
 
-function cargarVinsEnSelector(idEnvio, modo = 'destino') {
+function cargarVinsEnSelector(idEnvio, modo = 'destino', idEstado = 0) {
     const select = document.getElementById('select_evid_unidad');
     if (!select) return;
 
@@ -235,8 +390,10 @@ function cargarVinsEnSelector(idEnvio, modo = 'destino') {
             let html = `<option value="">${defaultLabel}</option>`;
             const vins = res.data || [];
             vins.forEach(v => {
-                if (modo === 'planta' || v.estado_unidad_fisico !== 'ENTREGADO') {
-                    html += `<option value="${v.id_unidad}" data-vin="${v.vin}">${v.vin} (${v.modelo || 'Unidad'}) - Pos #${v.posicion_acomodo || 1}</option>`;
+                let yaEntregado = (v.estado_unidad_fisico === 'ENTREGADO');
+                let tagEntregado = yaEntregado ? ' [Ya Entregado]' : '';
+                if (modo === 'planta' || parseInt(idEstado) === 7 || !yaEntregado) {
+                    html += `<option value="${v.id_unidad}" data-vin="${v.vin}">${v.vin} (${v.modelo || 'Unidad'}) - Pos #${v.posicion_acomodo || 1}${tagEntregado}</option>`;
                 }
             });
             select.innerHTML = html;
@@ -498,8 +655,8 @@ function verEvidenciasUnidad(idEnvio, idUnidad, vin) {
             }
 
             const data = res.data;
-            const checklist = data.checklist || {};
-            const fotos = data.fotos || [];
+            const checklist = (data && data.checklist) ? data.checklist : { comentarios: (Array.isArray(data) && data[0] ? data[0].comentarios : '') };
+            const fotos = Array.isArray(data) ? data : (data.fotos || []);
 
             if (checklist.comentarios && checklist.comentarios.trim() !== '') {
                 obsCont.innerHTML = `
@@ -734,4 +891,157 @@ function renderGridCardsEvidencias(lista) {
     html += '</div>';
     return html;
 }
+
+/**
+ * Abre la galería filtrando y activando la pestaña de evidencias de Planta directamente
+ */
+function fntVerEvidenciasPlanta(idEnvio, folio) {
+    fntAbrirGaleriaCompleta(idEnvio, folio);
+    setTimeout(() => {
+        let tabPlanta = document.querySelector('a[href="#tabGaleriaPlanta"]');
+        if (tabPlanta) {
+            let tab = new bootstrap.Tab(tabPlanta);
+            tab.show();
+        }
+    }, 450);
+}
+
+/**
+ * Despliega el modal con la lista detallada de VINs asignados al envío
+ */
+function fntVerDetalleVins(idEnvio, folio) {
+    const lblFolio = document.getElementById('lblFolioModalVins');
+    const tbody = document.getElementById('bodyListaVinsEnvio');
+    const footerTxt = document.getElementById('lblTotalVinsModalFooter');
+
+    if (lblFolio) lblFolio.innerText = folio;
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-primary spinner-border-sm" role="status"></div> Cargando unidades...</td></tr>';
+
+    $('#modalDetalleVins').modal('show');
+
+    fetch(base_url + '/Lgs_ejecucion/getDetalleDespacho/' + idEnvio)
+        .then(res => res.json())
+        .then(res => {
+            const vins = res.data || [];
+            if (footerTxt) footerTxt.innerText = `${vins.length} unidad(es) asignada(s)`;
+
+            if (vins.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No hay unidades asignadas a este envío.</td></tr>';
+                return;
+            }
+
+            let html = '';
+            vins.forEach((v, idx) => {
+                let badgeEstado = '';
+                switch (v.estado_unidad_fisico) {
+                    case 'ENTREGADO':
+                        badgeEstado = '<span class="badge bg-success"><i class="ri-checkbox-circle-line me-1"></i>Entregado</span>';
+                        break;
+                    case 'EN_RUTA':
+                        badgeEstado = '<span class="badge bg-primary"><i class="ri-truck-line me-1"></i>En Ruta</span>';
+                        break;
+                    case 'EN_ENTREGAS':
+                        badgeEstado = '<span class="badge bg-info"><i class="ri-time-line me-1"></i>En Carga</span>';
+                        break;
+                    default:
+                        badgeEstado = '<span class="badge bg-warning text-dark"><i class="ri-parking-box-line me-1"></i>En Patio</span>';
+                        break;
+                }
+
+                html += `
+                    <tr>
+                        <td class="text-center fw-bold text-muted">${v.posicion_acomodo || (idx + 1)}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="font-monospace fw-bold text-dark fs-13">${v.vin}</span>
+                                <button type="button" class="btn btn-sm btn-link text-muted p-0" onclick="navigator.clipboard.writeText('${v.vin}'); Swal.fire({toast:true, position:'top-end', icon:'success', title:'VIN copiado', showConfirmButton:false, timer:1500});" title="Copiar VIN">
+                                    <i class="ri-file-copy-line"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td>${v.modelo || 'Unidad'}</td>
+                        <td class="text-center">${badgeEstado}</td>
+                        <td class="text-end pe-3">
+                            <button type="button" class="btn btn-sm btn-soft-primary rounded-pill px-2 py-0 fs-11" onclick="$('#modalDetalleVins').modal('hide'); verEvidenciasUnidad(${idEnvio}, ${v.id_unidad}, '${v.vin}');" title="Ver evidencias de esta unidad">
+                                <i class="ri-eye-line me-1"></i>Evidencias
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        })
+        .catch(() => {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Error al consultar las unidades del envío.</td></tr>';
+        });
+}
+
+/**
+ * Permite confirmar la entrega final en destino de forma directa y sincronizada en BD
+ */
+function fntConfirmarEntregaDirecta(idEnvio, folio) {
+    let now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    let fechaActual = now.toISOString().slice(0, 16);
+
+    Swal.fire({
+        title: `Confirmar Entrega en Destino`,
+        html: `
+            <div class="text-start">
+                <p class="text-muted fs-13 mb-3">
+                    ¿Confirmar que el envío <strong class="text-primary font-monospace">${folio}</strong> llegó a su destino final?
+                    Todas sus unidades asociadas se actualizarán como <strong>Entregadas</strong> tanto en este módulo como en la <strong>Bandeja de Unidades</strong> y el <strong>Monitoreo GPS</strong>.
+                </p>
+                <label class="form-label fw-bold fs-12 text-uppercase text-muted">Fecha y Hora Real de Llegada:</label>
+                <input type="datetime-local" id="swal_fecha_llegada_directa" class="form-control" value="${fechaActual}">
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#198754',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="ri-check-double-line me-1"></i> Sí, Finalizar Traslado',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            const fecha = document.getElementById('swal_fecha_llegada_directa').value;
+            if (!fecha) {
+                Swal.showValidationMessage('Debe ingresar la fecha y hora de llegada');
+            }
+            return { fecha: fecha };
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            Swal.fire({
+                title: 'Finalizando Envío...',
+                text: 'Actualizando estatus del envío y unidades a Entregado.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            let formData = new FormData();
+            formData.append('id_envio', idEnvio);
+            formData.append('fecha_llegada_real', result.value.fecha);
+
+            fetch(base_url + '/Lgs_evidencias/confirmarEntrega', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(objData => {
+                if (objData.status === 'success' || objData.status === true) {
+                    Swal.fire("¡Traslado Finalizado!", objData.message || "El envío y sus unidades han sido marcados como Entregados exitosamente.", "success");
+                    if (typeof tableEvidencias !== 'undefined' && tableEvidencias) {
+                        tableEvidencias.ajax.reload();
+                    }
+                } else {
+                    Swal.fire("Error", objData.message || "No se pudo confirmar la entrega.", "error");
+                }
+            })
+            .catch(() => {
+                Swal.fire("Error", "Error de comunicación con el servidor.", "error");
+            });
+        }
+    });
+}
+
 

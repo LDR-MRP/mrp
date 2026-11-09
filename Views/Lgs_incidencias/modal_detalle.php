@@ -122,11 +122,16 @@
 
                     <!-- TAB 3: EVIDENCIAS -->
                     <div class="tab-pane" id="tab-evidencias" role="tabpanel">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                             <h6 class="fw-semibold text-body mb-0">Archivos y Evidencias Adjuntas</h6>
-                            <button type="button" class="btn btn-sm btn-primary" onclick="abrirModalSubirEvidencia();">
-                                <i class="ri-upload-cloud-line me-1"></i> Subir Nueva Evidencia
-                            </button>
+                            <div class="d-flex gap-2">
+                                <a id="btnDescargarZipEvidencias" href="#" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3 shadow-xs">
+                                    <i class="ri-folder-zip-line me-1"></i> Descargar Todas en ZIP
+                                </a>
+                                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 shadow-xs" onclick="abrirModalSubirEvidencia();">
+                                    <i class="ri-upload-cloud-line me-1"></i> Subir Nueva Evidencia
+                                </button>
+                            </div>
                         </div>
                         <div class="row g-3" id="detContenedorEvidencias">
                             <!-- Render dinámico de evidencias -->

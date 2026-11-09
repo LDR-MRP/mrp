@@ -65,10 +65,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 "render": function (data) {
                     let badge = '';
                     switch(parseInt(data)) {
-                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12">Borrador</span>'; break;
-                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12">Pendiente Aprobación</span>'; break;
-                        case 3: badge = '<span class="badge bg-soft-danger text-danger fs-12">Rechazada</span>'; break;
-                        case 5: badge = '<span class="badge bg-soft-success text-success fs-12">Aprobada</span>'; break;
+                        case 1: badge = '<span class="badge bg-soft-secondary text-secondary fs-12"><i class="ri-draft-line me-1"></i>Borrador</span>'; break;
+                        case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>Pendiente Aprobación</span>'; break;
+                        case 3:
+                        case 4: badge = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Rechazada</span>'; break;
+                        case 5: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-checkbox-circle-line me-1"></i>Aprobada</span>'; break;
                         default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
                     }
                     return badge;
@@ -117,14 +118,65 @@ function actualizarMetricasPlaneaciones(data) {
     if (!Array.isArray(data)) return;
     
     let total = data.length;
+    let borradores = data.filter(p => parseInt(p.id_estado) === 1).length;
     let pendientes = data.filter(p => parseInt(p.id_estado) === 2).length;
     let aprobadas = data.filter(p => parseInt(p.id_estado) === 5).length;
+    let rechazadas = data.filter(p => parseInt(p.id_estado) === 3 || parseInt(p.id_estado) === 4).length;
     let montoTotal = data.reduce((acc, p) => acc + (parseFloat(p.costo_total) || 0), 0);
 
     if (document.getElementById('cardTotalPlaneaciones')) document.getElementById('cardTotalPlaneaciones').innerText = total;
+    if (document.getElementById('cardPlanBorradores')) document.getElementById('cardPlanBorradores').innerText = borradores;
     if (document.getElementById('cardPlanPendientes')) document.getElementById('cardPlanPendientes').innerText = pendientes;
     if (document.getElementById('cardPlanAprobadas')) document.getElementById('cardPlanAprobadas').innerText = aprobadas;
+    if (document.getElementById('cardPlanRechazadas')) document.getElementById('cardPlanRechazadas').innerText = rechazadas;
     if (document.getElementById('cardPlanMontoTotal')) document.getElementById('cardPlanMontoTotal').innerText = '$' + montoTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/**
+ * Filtro de tabla por input de búsqueda
+ */
+function filtrarTablaPlaneaciones(term) {
+    if (typeof tablePlaneaciones !== "undefined" && tablePlaneaciones) {
+        tablePlaneaciones.search(term).draw();
+    }
+}
+
+/**
+ * Filtra el DataTable por estado usando los chips de acceso rápido
+ */
+function filtrarPlanPorChip(filtro, btn) {
+    document.querySelectorAll('.chip-plan-btn').forEach(b => {
+        b.classList.remove('active');
+        b.classList.replace('btn-secondary', 'btn-outline-secondary');
+        b.classList.replace('btn-warning', 'btn-outline-warning');
+        b.classList.replace('btn-success', 'btn-outline-success');
+        b.classList.replace('btn-danger', 'btn-outline-danger');
+    });
+    
+    if (btn) {
+        btn.classList.add('active');
+        if (btn.classList.contains('btn-outline-secondary')) btn.classList.replace('btn-outline-secondary', 'btn-secondary');
+        if (btn.classList.contains('btn-outline-warning')) btn.classList.replace('btn-outline-warning', 'btn-warning');
+        if (btn.classList.contains('btn-outline-success')) btn.classList.replace('btn-outline-success', 'btn-success');
+        if (btn.classList.contains('btn-outline-danger')) btn.classList.replace('btn-outline-danger', 'btn-danger');
+    }
+    
+    if (typeof tablePlaneaciones !== "undefined" && tablePlaneaciones) {
+        tablePlaneaciones.search(filtro).draw();
+    }
+}
+
+/**
+ * Permite filtrar la tabla haciendo clic en las cards de métricas
+ */
+function filtrarPlanPorCard(filtro, chipId) {
+    const chipBtn = document.getElementById(chipId);
+    filtrarPlanPorChip(filtro, chipBtn);
+    
+    const tableEl = document.getElementById('tablePlaneaciones');
+    if (tableEl) {
+        tableEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 }
 
 function openModalPlan() {
@@ -268,35 +320,40 @@ function fntEditPlan(idPlaneacion) {
     request.open("GET", ajaxUrl, true);
     request.send();
     request.onreadystatechange = function () {
-        if (request.readyState == 4 && request.status == 200) {
-            Swal.close();
-            try {
-                let objData = JSON.parse(request.responseText);
-                if (objData.status && objData.data) {
-                    const plan = objData.data;
-                    
-                    document.querySelector("#id_planeacion").value = plan.id_planeacion;
-                    document.querySelector("#titulo_plan").value = plan.descripcion || '';
-                    
-                    document.querySelector("#form-plan-title").innerText = 'Editar Planeación ' + plan.folio;
-                    document.querySelector("#breadcrumb-form-plan").innerText = 'Editar Planeación';
-                    document.querySelector("#btnTextPlan").innerText = 'Guardar Cambios';
+        if (request.readyState == 4) {
+            if (request.status == 200) {
+                Swal.close();
+                try {
+                    let objData = JSON.parse(request.responseText);
+                    if (objData.status && objData.data) {
+                        const plan = objData.data;
+                        
+                        document.querySelector("#id_planeacion").value = plan.id_planeacion;
+                        document.querySelector("#titulo_plan").value = plan.descripcion || '';
+                        
+                        document.querySelector("#form-plan-title").innerText = 'Editar Planeación ' + plan.folio;
+                        document.querySelector("#breadcrumb-form-plan").innerText = 'Editar Planeación';
+                        document.querySelector("#btnTextPlan").innerText = 'Guardar Cambios';
 
-                    fntSwitchView('form');
-                    
-                    let enviosIds = [];
-                    if (plan.envios) {
-                        plan.envios.forEach(e => {
-                            enviosIds.push(parseInt(e.id_envio));
-                        });
+                        fntSwitchView('form');
+                        
+                        let enviosIds = [];
+                        if (plan.envios) {
+                            plan.envios.forEach(e => {
+                                enviosIds.push(parseInt(e.id_envio));
+                            });
+                        }
+                        
+                        cargarEnviosDisponibles(plan.id_planeacion, enviosIds);
+                    } else {
+                        Swal.fire("Error", objData.msg || "No se pudo obtener la información", "error");
                     }
-                    
-                    cargarEnviosDisponibles(plan.id_planeacion, enviosIds);
-                } else {
-                    Swal.fire("Error", objData.msg || "No se pudo obtener la información", "error");
+                } catch (e) {
+                    Swal.fire("Error", "Error al procesar los datos de la planeación", "error");
                 }
-            } catch (e) {
-                Swal.fire("Error", "Error al procesar los datos de la planeación", "error");
+            } else {
+                Swal.close();
+                Swal.fire("Error", "No se pudo obtener la información de la planeación desde el servidor.", "error");
             }
         }
     };
@@ -316,8 +373,9 @@ function fntViewPlan(idPlaneacion) {
     request.open("GET", ajaxUrl, true);
     request.send();
     request.onreadystatechange = function () {
-        if (request.readyState == 4 && request.status == 200) {
-            Swal.close();
+        if (request.readyState == 4) {
+            if (request.status == 200) {
+                Swal.close();
             try {
                 let objData = JSON.parse(request.responseText);
                 if (objData.status && objData.data) {
@@ -464,7 +522,15 @@ function fntViewPlan(idPlaneacion) {
                     }
 
                     // 4. Abrir Modal
-                    $('#modalViewDetallePlan').modal('show');
+                    let modalEl = document.getElementById('modalViewDetallePlan');
+                    if (modalEl) {
+                        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                            let m = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                            m.show();
+                        } else if (typeof $ !== 'undefined') {
+                            $('#modalViewDetallePlan').modal('show');
+                        }
+                    }
 
                 } else {
                     Swal.fire("Error", objData.msg || "No se pudo obtener el detalle de la planeación", "error");
@@ -473,49 +539,65 @@ function fntViewPlan(idPlaneacion) {
                 console.error(e);
                 Swal.fire("Error", "Error al procesar los datos de la planeación", "error");
             }
+        } else {
+            Swal.close();
+            Swal.fire("Error", "No se pudo obtener el detalle de la planeación desde el servidor.", "error");
         }
-    };
+    }
+};
 }
 
 function fntReabrirPlan(idPlaneacion) {
+    document.getElementById('reabrir_id_planeacion').value = idPlaneacion;
+    document.getElementById('reabrir_motivo_select').value = '';
+    document.getElementById('reabrir_motivo_detalle').value = '';
+    
+    let modal = new bootstrap.Modal(document.getElementById('modalReabrirPlan'));
+    modal.show();
+}
+
+function confirmarReaperturaPlan() {
+    const idPlaneacion = document.getElementById('reabrir_id_planeacion').value;
+    const motivoSelect = document.getElementById('reabrir_motivo_select').value.trim();
+    const motivoDetalle = document.getElementById('reabrir_motivo_detalle').value.trim();
+
+    if (!motivoSelect) {
+        Swal.fire("Atención", "Seleccione el motivo principal de la reapertura.", "warning");
+        return;
+    }
+    if (!motivoDetalle) {
+        Swal.fire("Atención", "Ingrese la justificación o detalle del reajuste.", "warning");
+        return;
+    }
+
     Swal.fire({
-        title: '¿Reabrir Planeación?',
-        text: 'La planeación y sus envíos regresarán a estado editable (Borrador) para que puedas realizar modificaciones.',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#ffc107',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: '<i class="ri-restart-line me-1"></i> Sí, reabrir',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            Swal.fire({
-                title: 'Reabriendo...',
-                text: 'Por favor espere.',
-                allowOutsideClick: false,
-                didOpen: () => { Swal.showLoading() }
-            });
-
-            let request = new XMLHttpRequest();
-            let ajaxUrl = base_url + '/Lgs_planeaciones/reabrir';
-            let formData = new FormData();
-            formData.append('id_planeacion', idPlaneacion);
-
-            request.open("POST", ajaxUrl, true);
-            request.send(formData);
-            request.onreadystatechange = function () {
-                if (request.readyState == 4 && request.status == 200) {
-                    let objData = JSON.parse(request.responseText);
-                    if (objData.status) {
-                        Swal.fire("¡Planeación Reabierta!", objData.msg, "success");
-                        tablePlaneaciones.ajax.reload();
-                    } else {
-                        Swal.fire("Error", objData.msg || "No se pudo reabrir la planeación", "error");
-                    }
-                }
-            };
-        }
+        title: 'Reabriendo...',
+        text: 'Desbloqueando envíos y notificando a los entes autorizadores...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
     });
+
+    let request = new XMLHttpRequest();
+    let ajaxUrl = base_url + '/Lgs_planeaciones/reabrir';
+    let formData = new FormData();
+    formData.append('id_planeacion', idPlaneacion);
+    formData.append('motivo_select', motivoSelect);
+    formData.append('motivo_detalle', motivoDetalle);
+
+    request.open("POST", ajaxUrl, true);
+    request.send(formData);
+    request.onreadystatechange = function () {
+        if (request.readyState == 4 && request.status == 200) {
+            let objData = JSON.parse(request.responseText);
+            if (objData.status) {
+                bootstrap.Modal.getInstance(document.getElementById('modalReabrirPlan')).hide();
+                Swal.fire("¡Planeación Reabierta!", objData.msg, "success");
+                tablePlaneaciones.ajax.reload();
+            } else {
+                Swal.fire("Error", objData.msg || "No se pudo reabrir la planeación", "error");
+            }
+        }
+    };
 }
 
 function fntEnviarAprobacionPlan(idPlaneacion) {
@@ -548,7 +630,7 @@ function fntEnviarAprobacionPlan(idPlaneacion) {
                 if (request.readyState == 4 && request.status == 200) {
                     let objData = JSON.parse(request.responseText);
                     if (objData.status) {
-                        $('#modalVerDetallePlan').modal('hide');
+                        $('#modalViewDetallePlan').modal('hide');
                         Swal.fire("¡Enviada con Éxito!", objData.msg, "success");
                         tablePlaneaciones.ajax.reload();
                     } else {

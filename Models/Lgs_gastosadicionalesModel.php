@@ -149,7 +149,8 @@ class Lgs_gastosadicionalesModel extends Mysql
                     ) AS vins_afectados_str
                 FROM lgs_tra_incidencias i
                 INNER JOIN lgs_envios e ON i.id_envio = e.id_envio
-                LEFT JOIN lgs_planeaciones plan ON e.id_planeacion = plan.id_planeacion
+                LEFT JOIN lgs_planeaciones_envios pe ON pe.id_envio = e.id_envio
+                LEFT JOIN lgs_planeaciones plan ON pe.id_planeacion = plan.id_planeacion
                 INNER JOIN lgs_cat_tipos_incidencia ti ON i.id_tipo_incidencia = ti.id_tipo_incidencia
                 LEFT JOIN prv_cat_proveedores p ON i.id_proveedor = p.id_proveedor
                 LEFT JOIN lgs_cat_absorcion_danios ad ON i.id_absorcion = ad.id_absorcion
@@ -198,8 +199,12 @@ class Lgs_gastosadicionalesModel extends Mysql
         $params = [];
 
         if (!empty($filtros['id_estado'])) {
-            $where .= " AND g.id_estado = ?";
-            $params[] = intval($filtros['id_estado']);
+            if ($filtros['id_estado'] === 'pendientes' || $filtros['id_estado'] === '1,2') {
+                $where .= " AND g.id_estado IN (1, 2)";
+            } else {
+                $where .= " AND g.id_estado = ?";
+                $params[] = intval($filtros['id_estado']);
+            }
         }
         if (!empty($filtros['id_tipo_gasto'])) {
             $where .= " AND g.id_tipo_gasto = ?";
@@ -282,8 +287,8 @@ class Lgs_gastosadicionalesModel extends Mysql
                 LEFT JOIN lgs_cat_motivos_gasto_adicional mg ON g.id_motivo_gasto = mg.id_motivo_gasto
                 LEFT JOIN prv_cat_proveedores pr ON g.id_proveedor = pr.id_proveedor
                 LEFT JOIN lgs_cat_absorcion_danios ad ON g.id_absorcion = ad.id_absorcion
-                LEFT JOIN persona u_reg ON g.created_by = u_reg.idpersona
-                LEFT JOIN persona u_apr ON g.aprobado_by = u_apr.idpersona
+                LEFT JOIN usuarios u_reg ON g.created_by = u_reg.idusuario
+                LEFT JOIN usuarios u_apr ON g.aprobado_by = u_apr.idusuario
                 WHERE g.id_gasto = ? AND g.deleted_at IS NULL";
 
         $gasto = $this->select($sql, [$idGasto]);
@@ -302,7 +307,7 @@ class Lgs_gastosadicionalesModel extends Mysql
         // Documentos soporte
         $sqlDocs = "SELECT gd.*, CONCAT(p.nombres, ' ', p.apellidos) AS subido_por 
                     FROM lgs_det_gastos_adicionales_docs gd
-                    LEFT JOIN persona p ON gd.created_by = p.idpersona
+                    LEFT JOIN usuarios p ON gd.created_by = p.idusuario
                     WHERE gd.id_gasto = ?
                     ORDER BY gd.id_documento DESC";
         $gasto['documentos'] = $this->select_all($sqlDocs, [$idGasto]) ?: [];
@@ -310,7 +315,7 @@ class Lgs_gastosadicionalesModel extends Mysql
         // Logs
         $sqlLogs = "SELECT lg.*, CONCAT(p.nombres, ' ', p.apellidos) AS usuario_nombre 
                     FROM log_lgs_gastos_adicionales lg
-                    LEFT JOIN persona p ON lg.id_usuario = p.idpersona
+                    LEFT JOIN usuarios p ON lg.id_usuario = p.idusuario
                     WHERE lg.id_gasto = ?
                     ORDER BY lg.id ASC";
         $gasto['logs'] = $this->select_all($sqlLogs, [$idGasto]) ?: [];
@@ -543,27 +548,33 @@ class Lgs_gastosadicionalesModel extends Mysql
                         ORDER BY cr.id_envio_vin ASC";
             $vins = $this->select_all($sqlVins, [$idEnvio]) ?: [];
         } catch (Throwable $e) {
-            // Fallback seguro directo a lgs_envios_vins si la vista de costos aún no existe en base de datos
+            // Intentar auto-crear la vista si no existía y reintentar
             try {
-                $sqlFallback = "SELECT 
-                                    ev.id AS id_envio_vin,
-                                    ev.id_envio,
-                                    ev.id_unidad,
-                                    COALESCE(u.vin, ut.clave, CONCAT('VIN-', ev.id_unidad)) AS vin,
-                                    COALESCE(ev.costo_unidad, 0.00) AS costo_planeado_unidad,
-                                    0.00 AS total_cargos_adicionales,
-                                    0.00 AS total_deducciones,
-                                    COALESCE(ev.costo_unidad, 0.00) AS costo_real_unidad,
-                                    COALESCE(ev.costo_unidad, 0.00) AS costo_neto_unidad,
-                                    0 AS total_gastos_activos
-                                FROM lgs_envios_vins ev
-                                LEFT JOIN lgs_unidades_envios u ON u.id_unidad = ev.id_unidad
-                                LEFT JOIN mrp_unidades_terminadas ut ON ut.idunidad = ev.id_unidad
-                                WHERE ev.id_envio = ?
-                                ORDER BY ev.id ASC";
-                $vins = $this->select_all($sqlFallback, [$idEnvio]) ?: [];
-            } catch (Throwable $e2) {
-                $vins = [];
+                $this->ensureVistaCostoRealVin();
+                $vins = $this->select_all($sqlVins, [$idEnvio]) ?: [];
+            } catch (Throwable $eReintento) {
+                // Fallback seguro directo a lgs_envios_vins si la vista no puede ser creada
+                try {
+                    $sqlFallback = "SELECT 
+                                        ev.id AS id_envio_vin,
+                                        ev.id_envio,
+                                        ev.id_unidad,
+                                        COALESCE(u.vin, ut.clave, CONCAT('VIN-', ev.id_unidad)) AS vin,
+                                        COALESCE(ev.costo_unidad, 0.00) AS costo_planeado_unidad,
+                                        0.00 AS total_cargos_adicionales,
+                                        0.00 AS total_deducciones,
+                                        COALESCE(ev.costo_unidad, 0.00) AS costo_real_unidad,
+                                        COALESCE(ev.costo_unidad, 0.00) AS costo_neto_unidad,
+                                        0 AS total_gastos_activos
+                                    FROM lgs_envios_vins ev
+                                    LEFT JOIN lgs_unidades_envios u ON u.id_unidad = ev.id_unidad
+                                    LEFT JOIN mrp_unidades_terminadas ut ON ut.idunidad = ev.id_unidad
+                                    WHERE ev.id_envio = ?
+                                    ORDER BY ev.id ASC";
+                    $vins = $this->select_all($sqlFallback, [$idEnvio]) ?: [];
+                } catch (Throwable $e2) {
+                    $vins = [];
+                }
             }
         }
 
@@ -639,6 +650,36 @@ class Lgs_gastosadicionalesModel extends Mysql
             'gastos' => $gastos,
             'incidencias' => $incidencias
         ];
+    }
+
+    /**
+     * Asegura que la vista SQL `vw_lgs_costo_real_vin` exista en la base de datos
+     */
+    public function ensureVistaCostoRealVin(): void
+    {
+        try {
+            $sql = "CREATE OR REPLACE VIEW `vw_lgs_costo_real_vin` AS
+            SELECT 
+                ev.id AS id_envio_vin,
+                ev.id_envio,
+                ev.id_unidad,
+                COALESCE(u.vin, ut.clave, CONCAT('VIN-', ev.id_unidad)) AS vin,
+                COALESCE(ev.costo_unidad, 0.00) AS costo_planeado_unidad,
+                COALESCE(SUM(CASE WHEN g.naturaleza = 'CARGO' AND g.id_estado IN (3, 5) THEN gv.monto ELSE 0 END), 0.00) AS total_cargos_adicionales,
+                COALESCE(SUM(CASE WHEN g.naturaleza = 'DEDUCCION' AND g.id_estado IN (3, 5) THEN gv.monto ELSE 0 END), 0.00) AS total_deducciones,
+                (COALESCE(ev.costo_unidad, 0.00) + COALESCE(SUM(CASE WHEN g.naturaleza = 'CARGO' AND g.id_estado IN (3, 5) THEN gv.monto ELSE 0 END), 0.00)) AS costo_real_unidad,
+                (COALESCE(ev.costo_unidad, 0.00) + COALESCE(SUM(CASE WHEN g.naturaleza = 'CARGO' AND g.id_estado IN (3, 5) THEN gv.monto ELSE 0 END), 0.00) - COALESCE(SUM(CASE WHEN g.naturaleza = 'DEDUCCION' AND g.id_estado IN (3, 5) THEN gv.monto ELSE 0 END), 0.00)) AS costo_neto_unidad,
+                COUNT(DISTINCT CASE WHEN g.id_estado IN (1, 2, 3, 5) THEN g.id_gasto END) AS total_gastos_activos
+            FROM lgs_envios_vins ev
+            LEFT JOIN lgs_unidades_envios u ON u.id_unidad = ev.id_unidad
+            LEFT JOIN mrp_unidades_terminadas ut ON ut.idunidad = ev.id_unidad
+            LEFT JOIN lgs_det_gastos_adicionales_vins gv ON gv.id_envio_vin = ev.id
+            LEFT JOIN lgs_tra_gastos_adicionales g ON g.id_gasto = gv.id_gasto AND g.deleted_at IS NULL
+            GROUP BY ev.id, ev.id_envio, ev.id_unidad, u.vin, ut.clave, ev.costo_unidad";
+            $this->conexion->exec($sql);
+        } catch (Throwable $e) {
+            // Ignorar en caso de restricciones de privilegios DDL
+        }
     }
 }
 

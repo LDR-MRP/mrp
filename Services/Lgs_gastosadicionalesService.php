@@ -287,6 +287,7 @@ class Lgs_gastosadicionalesService
             }
 
             $db->commit();
+            $this->notificarSolicitudAprobacionGasto($idGasto, 'NUEVO_GASTO');
             return $idGasto;
         } catch (Exception $e) {
             if ($db->inTransaction()) {
@@ -312,9 +313,42 @@ class Lgs_gastosadicionalesService
 
             $this->model->updateEstadoGasto($db, $idGasto, 2, "Gasto enviado a revisión para aprobación", $userId);
             $db->commit();
+            $this->notificarSolicitudAprobacionGasto($idGasto, 'REVISION');
         } catch (Exception $e) {
             if ($db->inTransaction()) $db->rollBack();
             throw $e;
+        }
+    }
+
+    /**
+     * Valida si el usuario cuenta con el permiso desacoplado para autorizar gastos adicionales
+     * Regla: 1 solo nivel (Solicitante -> Aprobador), validado por PERMISO (no casado con persona o puesto)
+     */
+    public function tienePermisoAprobacion(int $userId): bool
+    {
+        $userRole = (int)($_SESSION['userData']['idrol'] ?? ($_SESSION['rolid'] ?? 0));
+        if ($userRole === 1 || $userRole === 70) return true; // Administrador general o Admin Logística
+
+        // 1. Revisar permisos en sesión para módulo de gastos (162) o aprobaciones (157)
+        if (!empty($_SESSION['permisos'][162]['u']) || !empty($_SESSION['permisos'][157]['u']) ||
+            !empty($_SESSION['permisos'][162]['w']) || !empty($_SESSION['permisos'][157]['w'])) {
+            return true;
+        }
+
+        // 2. Revisar en base de datos permisos por rol o usuario
+        try {
+            $db = $this->model->getConexion();
+            $stmt = $db->prepare("
+                SELECT COUNT(*) 
+                FROM usuarios u
+                LEFT JOIN permisos p ON p.rolid = u.rolid AND p.moduloid IN (157, 162) AND (p.u = 1 OR p.w = 1)
+                LEFT JOIN lgs_aprobadores ap ON ap.id_usuario = u.idusuario AND ap.activo = 1
+                WHERE u.idusuario = ? AND (u.rolid IN (1, 70) OR p.idpermiso IS NOT NULL OR ap.id IS NOT NULL)
+            ");
+            $stmt->execute([$userId]);
+            return (int)$stmt->fetchColumn() > 0;
+        } catch (Throwable $e) {
+            return false;
         }
     }
 
@@ -335,18 +369,20 @@ class Lgs_gastosadicionalesService
             }
 
             // Validar permiso de aprobador
-            if (!$this->model->esUsuarioAprobador($userId)) {
-                throw new Exception("No cuenta con permisos de aprobador para autorizar este gasto adicional.");
+            if (!$this->tienePermisoAprobacion($userId)) {
+                throw new Exception("Acceso Denegado: No cuenta con el permiso requerido para autorizar gastos adicionales.");
             }
 
-            // Segregación de funciones: quien registró no puede aprobar su propio gasto
-            if (intval($g['created_by']) === $userId) {
-                throw new Exception("Segregación de funciones: el usuario que registró el gasto no puede autorizarlo.");
+            // Segregación de funciones: quien registró no puede aprobar su propio gasto (salvo admin rol 1)
+            $userRole = (int)($_SESSION['userData']['idrol'] ?? 0);
+            if (intval($g['created_by']) === $userId && $userRole !== 1) {
+                throw new Exception("Segregación de funciones: el usuario solicitante que registró el gasto no puede autorizarlo.");
             }
 
             $this->model->updateEstadoGasto($db, $idGasto, 3, "Gasto aprobado por el usuario autorizador", $userId);
 
             $db->commit();
+            $this->notificarResolucionGasto($idGasto, 'APROBADO', null, $userId);
         } catch (Exception $e) {
             if ($db->inTransaction()) $db->rollBack();
             throw $e;
@@ -373,8 +409,8 @@ class Lgs_gastosadicionalesService
                 throw new Exception("Solo se pueden rechazar gastos pendientes.");
             }
 
-            if (!$this->model->esUsuarioAprobador($userId)) {
-                throw new Exception("No cuenta con permisos de aprobador para rechazar este gasto.");
+            if (!$this->tienePermisoAprobacion($userId)) {
+                throw new Exception("Acceso Denegado: No cuenta con el permiso requerido para rechazar gastos adicionales.");
             }
 
             $sql = "UPDATE lgs_tra_gastos_adicionales SET id_estado = 4, motivo_rechazo = ?, updated_by = ?, updated_at = NOW() WHERE id_gasto = ?";
@@ -389,6 +425,7 @@ class Lgs_gastosadicionalesService
             }
 
             $db->commit();
+            $this->notificarResolucionGasto($idGasto, 'RECHAZADO', $motivo, $userId);
         } catch (Exception $e) {
             if ($db->inTransaction()) $db->rollBack();
             throw $e;
@@ -602,5 +639,256 @@ class Lgs_gastosadicionalesService
         }
 
         return $reparto;
+    }
+
+    /**
+     * Obtiene los correos electrónicos de los usuarios con facultades de aprobación
+     */
+    private function obtenerCorreosAprobadores(): array
+    {
+        try {
+            $db = $this->model->getConexion();
+            $sqlAprob = "
+                SELECT DISTINCT u.email_user 
+                FROM usuarios u
+                LEFT JOIN permisos p ON p.rolid = u.rolid AND p.moduloid IN (157, 162) AND (p.u = 1 OR p.w = 1)
+                LEFT JOIN lgs_aprobadores ap ON ap.id_usuario = u.idusuario AND ap.activo = 1
+                WHERE (u.rolid = 1 OR p.idpermiso IS NOT NULL OR ap.id IS NOT NULL)
+                  AND u.status = 1 
+                  AND u.email_user IS NOT NULL
+            ";
+            $stmt = $db->query($sqlAprob);
+            $correos = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+            $destinatarios = array_filter(array_unique($correos), function($e) {
+                return filter_var(trim((string)$e), FILTER_VALIDATE_EMAIL);
+            });
+
+            if (defined('MAIL_WEBMASTER') && filter_var(MAIL_WEBMASTER, FILTER_VALIDATE_EMAIL)) {
+                $destinatarios[] = MAIL_WEBMASTER;
+            }
+
+            return array_values(array_unique($destinatarios));
+        } catch (Throwable $e) {
+            error_log("Error obteniendo correos de aprobadores de gastos: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Obtiene el correo electrónico de un usuario por su ID
+     */
+    private function obtenerEmailUsuario(int $userId): ?string
+    {
+        try {
+            $db = $this->model->getConexion();
+            $stmt = $db->prepare("SELECT email_user FROM usuarios WHERE idusuario = ? AND status = 1");
+            $stmt->execute([$userId]);
+            $correo = $stmt->fetchColumn();
+            return ($correo && filter_var(trim((string)$correo), FILTER_VALIDATE_EMAIL)) ? trim((string)$correo) : null;
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Envía un correo electrónico en formato HTML mediante PHPMailer (con fallback a mail)
+     */
+    private function enviarEmailHtml(array $destinatarios, string $asunto, string $html): void
+    {
+        if (empty($destinatarios)) return;
+
+        try {
+            if (class_exists('\\PHPMailer\\PHPMailer\\PHPMailer') && defined('MAIL_HOST') && !empty(MAIL_HOST)) {
+                $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+                $mail->isSMTP();
+                $mail->Host       = MAIL_HOST;
+                $mail->SMTPAuth   = true;
+                $mail->Username   = MAIL_USER;
+                $mail->Password   = MAIL_PASS;
+                $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+                $mail->Port       = MAIL_PORT;
+                $mail->CharSet    = 'UTF-8';
+                $fromName         = defined('MAIL_FROM_NAME') ? MAIL_FROM_NAME : 'MRP Logística';
+                $mail->setFrom(MAIL_USER, $fromName);
+
+                foreach ($destinatarios as $correo) {
+                    $mail->addAddress($correo);
+                }
+
+                $mail->isHTML(true);
+                $mail->Subject = $asunto;
+                $mail->Body    = $html;
+                $mail->send();
+            } else {
+                $headers = "MIME-Version: 1.0\r\nContent-type: text/html; charset=UTF-8\r\nFrom: no-reply@ldrsolutions.com.mx\r\n";
+                @mail(implode(',', $destinatarios), $asunto, $html, $headers);
+            }
+        } catch (Throwable $th) {
+            error_log("Error enviando correo de gastos adicionales: " . $th->getMessage());
+        }
+    }
+
+    /**
+     * Notifica a los aprobadores sobre una nueva solicitud de gasto adicional o envío a revisión
+     */
+    public function notificarSolicitudAprobacionGasto(int $idGasto, string $tipoEvento = 'REVISION'): void
+    {
+        try {
+            $g = $this->model->getGastoDetalle($idGasto);
+            if (!$g) return;
+
+            $destinatarios = $this->obtenerCorreosAprobadores();
+            if (empty($destinatarios)) return;
+
+            $folio = $g['folio'] ?? 'GA-' . $idGasto;
+            $tipoGasto = $g['tipo_gasto'] ?? 'Gasto Adicional';
+            $monto = '$' . number_format((float)($g['monto_final'] ?? 0), 2);
+            $solicitante = $g['registrado_por'] ?? 'Operador';
+            $envio = !empty($g['folio_envio']) ? $g['folio_envio'] : 'Gasto Independiente';
+            $descripcion = htmlspecialchars($g['descripcion'] ?? 'Sin descripción', ENT_QUOTES, 'UTF-8');
+            $naturaleza = $g['naturaleza'] ?? 'CARGO';
+            $colorNaturaleza = ($naturaleza === 'CARGO') ? '#DC2626' : '#16A34A';
+            $baseUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : '';
+
+            $tituloHeader = ($tipoEvento === 'REVISION') 
+                ? 'Gasto Adicional Enviado a Revisión' 
+                : 'Nuevo Gasto Adicional Registrado';
+            $asunto = "🔔 Autorización Requerida: {$folio} ({$tipoGasto}) - {$monto}";
+
+            $html = "
+            <div style='font-family: Arial, sans-serif; max-width: 650px; margin: auto; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;'>
+                <div style='background-color: #C46623; color: #ffffff; padding: 22px; text-align: center;'>
+                    <h2 style='margin: 0; font-size: 19px; text-transform: uppercase;'>{$tituloHeader}</h2>
+                    <p style='margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;'>Folio: <strong>{$folio}</strong></p>
+                </div>
+                <div style='padding: 24px; background-color: #ffffff;'>
+                    <p style='font-size: 14px; color: #334155;'>
+                        Se ha solicitado la aprobación de un gasto adicional extraordinario en el módulo de logística.
+                    </p>
+                    <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0;'>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B; width: 35%;'><strong>Tipo de Gasto:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'><strong>{$tipoGasto}</strong></td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Importe Solicitado:</strong></td>
+                            <td style='padding: 8px 0; color: {$colorNaturaleza}; font-weight: bold; font-size: 15px;'>{$monto} MXN ({$naturaleza})</td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Envío Asociado:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>{$envio}</td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Solicitante:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>{$solicitante}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 8px 0; color: #64748B; vertical-align: top;'><strong>Concepto / Justificación:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A; line-height: 1.4;'>{$descripcion}</td>
+                        </tr>
+                    </table>
+                    <div style='text-align: center; margin-top: 24px;'>
+                        <a href='{$baseUrl}/Lgs_gastosadicionales' style='background-color: #C46623; color: #ffffff; text-decoration: none; padding: 11px 26px; border-radius: 20px; font-weight: bold; font-size: 13px; display: inline-block;'>
+                            Revisar y Dictaminar Gasto
+                        </a>
+                    </div>
+                </div>
+            </div>";
+
+            $this->enviarEmailHtml($destinatarios, $asunto, $html);
+        } catch (Throwable $e) {
+            error_log("Error al notificar solicitud de aprobación de gasto: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Notifica al solicitante sobre la resolución (Aprobado o Rechazado) del gasto adicional
+     */
+    public function notificarResolucionGasto(int $idGasto, string $resolucion, ?string $motivo = null, int $aprobadorId = 0): void
+    {
+        try {
+            $g = $this->model->getGastoDetalle($idGasto);
+            if (!$g) return;
+
+            $destinatarios = [];
+            $creatorId = intval($g['created_by'] ?? 0);
+            if ($creatorId > 0) {
+                $emailCreador = $this->obtenerEmailUsuario($creatorId);
+                if ($emailCreador) {
+                    $destinatarios[] = $emailCreador;
+                }
+            }
+
+            if (defined('MAIL_WEBMASTER') && filter_var(MAIL_WEBMASTER, FILTER_VALIDATE_EMAIL)) {
+                $destinatarios[] = MAIL_WEBMASTER;
+            }
+
+            $destinatarios = array_values(array_unique($destinatarios));
+            if (empty($destinatarios)) return;
+
+            $folio = $g['folio'] ?? 'GA-' . $idGasto;
+            $tipoGasto = $g['tipo_gasto'] ?? 'Gasto Adicional';
+            $monto = '$' . number_format((float)($g['monto_final'] ?? 0), 2);
+            $aprobadorNombre = !empty($g['aprobado_por']) ? $g['aprobado_por'] : 'Aprobador de Logística';
+            $baseUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : '';
+
+            $esAprobado = ($resolucion === 'APROBADO');
+            $headerColor = $esAprobado ? '#16A34A' : '#DC2626';
+            $asunto = $esAprobado 
+                ? "✅ Gasto Adicional {$folio} APROBADO ({$monto})" 
+                : "❌ Gasto Adicional {$folio} RECHAZADO";
+
+            $mensajeIntro = $esAprobado
+                ? "Su solicitud de gasto adicional ha sido <strong>APROBADA</strong> y se encuentra autorizada en el sistema para proceder con su documentación financiera (factura o comprobante fiscal)."
+                : "Su solicitud de gasto adicional ha sido <strong>RECHAZADA</strong> por la coordinación.";
+
+            $filaMotivo = '';
+            if (!$esAprobado && !empty($motivo)) {
+                $motivoSeguro = htmlspecialchars($motivo, ENT_QUOTES, 'UTF-8');
+                $filaMotivo = "
+                <tr style='border-bottom: 1px solid #F1F5F9;'>
+                    <td style='padding: 8px 0; color: #DC2626; vertical-align: top;'><strong>Motivo del Rechazo:</strong></td>
+                    <td style='padding: 8px 0; color: #991B1B; font-weight: bold; line-height: 1.4;'>{$motivoSeguro}</td>
+                </tr>";
+            }
+
+            $html = "
+            <div style='font-family: Arial, sans-serif; max-width: 650px; margin: auto; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;'>
+                <div style='background-color: {$headerColor}; color: #ffffff; padding: 22px; text-align: center;'>
+                    <h2 style='margin: 0; font-size: 19px; text-transform: uppercase;'>Gasto Adicional " . ($esAprobado ? 'Aprobado' : 'Rechazado') . "</h2>
+                    <p style='margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;'>Folio: <strong>{$folio}</strong></p>
+                </div>
+                <div style='padding: 24px; background-color: #ffffff;'>
+                    <p style='font-size: 14px; color: #334155;'>
+                        {$mensajeIntro}
+                    </p>
+                    <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0;'>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B; width: 35%;'><strong>Tipo de Gasto:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'><strong>{$tipoGasto}</strong></td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Importe:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A; font-weight: bold;'>{$monto} MXN</td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Dictaminado por:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>{$aprobadorNombre}</td>
+                        </tr>
+                        {$filaMotivo}
+                    </table>
+                    <div style='text-align: center; margin-top: 24px;'>
+                        <a href='{$baseUrl}/Lgs_gastosadicionales' style='background-color: {$headerColor}; color: #ffffff; text-decoration: none; padding: 11px 26px; border-radius: 20px; font-weight: bold; font-size: 13px; display: inline-block;'>
+                            " . ($esAprobado ? 'Documentar Comprobante' : 'Ver Detalle en Sistema') . "
+                        </a>
+                    </div>
+                </div>
+            </div>";
+
+            $this->enviarEmailHtml($destinatarios, $asunto, $html);
+        } catch (Throwable $e) {
+            error_log("Error al notificar resolución de gasto: " . $e->getMessage());
+        }
     }
 }

@@ -34,7 +34,10 @@ class Lgs_incidencias extends Controllers
                 'page_tag'          => "Incidencias Operativas",
                 'page_title'        => "Gestión de Incidencias en Ruta",
                 'page_name'         => "lgs_incidencias",
-                'page_functions_js' => "functions_lgs_incidencias.js",
+                'page_functions_js' => [
+                    "modulos/functions_lgs_buscador_envios.js",
+                    "modulos/functions_lgs_incidencias.js"
+                ],
                 'catalogos'         => $catalogos,
             ]
         );
@@ -179,8 +182,12 @@ class Lgs_incidencias extends Controllers
                 'descripcion'        => $descripcion,
             ], $vinsRaw, $userId);
 
-            // Subir evidencia inicial si viene en la misma petición
-            if (isset($_FILES['archivo_evidencia']) && $_FILES['archivo_evidencia']['error'] === UPLOAD_ERR_OK) {
+            // Subir evidencias iniciales (soporta archivo individual o múltiples archivos)
+            if (!empty($_FILES['archivos_evidencia']['name'])) {
+                $tipoEv = $_POST['tipo_evidencia_inicial'] ?? 'FOTO';
+                $idVinEv = !empty($_POST['id_envio_vin_evidencia']) ? intval($_POST['id_envio_vin_evidencia']) : null;
+                $this->procesarArchivosMultiples($idIncidencia, $idVinEv, $tipoEv, $_FILES['archivos_evidencia'], $userId);
+            } elseif (isset($_FILES['archivo_evidencia']) && $_FILES['archivo_evidencia']['error'] === UPLOAD_ERR_OK) {
                 $tipoEv = $_POST['tipo_evidencia_inicial'] ?? 'FOTO';
                 $idVinEv = !empty($_POST['id_envio_vin_evidencia']) ? intval($_POST['id_envio_vin_evidencia']) : null;
                 $this->service->subirEvidencia($idIncidencia, $idVinEv, $tipoEv, $_FILES['archivo_evidencia'], $userId);
@@ -305,20 +312,52 @@ class Lgs_incidencias extends Controllers
                 throw new Exception("ID de incidencia no válido.");
             }
 
-            if (!isset($_FILES['archivo']) || $_FILES['archivo']['error'] !== UPLOAD_ERR_OK) {
-                throw new Exception("No se ha enviado un archivo válido.");
-            }
-
             $userId = $_SESSION['idUser'] ?? 1;
             $tipo = $_POST['tipo'] ?? 'FOTO';
             $idEnvioVin = !empty($_POST['id_envio_vin']) ? intval($_POST['id_envio_vin']) : null;
 
-            $res = $this->service->subirEvidencia($idIncidencia, $idEnvioVin, $tipo, $_FILES['archivo'], $userId);
-
-            echo $this->successResponse($res, "Evidencia agregada exitosamente.");
+            if (!empty($_FILES['archivos']['name'])) {
+                $res = $this->procesarArchivosMultiples($idIncidencia, $idEnvioVin, $tipo, $_FILES['archivos'], $userId);
+                echo $this->successResponse($res, count($res) . " evidencias agregadas exitosamente.");
+            } elseif (isset($_FILES['archivo']) && $_FILES['archivo']['error'] === UPLOAD_ERR_OK) {
+                $res = $this->service->subirEvidencia($idIncidencia, $idEnvioVin, $tipo, $_FILES['archivo'], $userId);
+                echo $this->successResponse($res, "Evidencia agregada exitosamente.");
+            } else {
+                throw new Exception("No se ha enviado ningún archivo válido.");
+            }
         } catch (Throwable $e) {
             echo $this->errorResponse($e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Procesa la subida de un array múltiple de archivos
+     */
+    private function procesarArchivosMultiples(int $idIncidencia, ?int $idEnvioVin, string $tipo, array $filesMulti, int $userId): array
+    {
+        $resultados = [];
+        if (!empty($filesMulti['name'])) {
+            if (is_array($filesMulti['name'])) {
+                $total = count($filesMulti['name']);
+                for ($i = 0; $i < $total; $i++) {
+                    if (($filesMulti['error'][$i] ?? 1) === UPLOAD_ERR_OK) {
+                        $fileSingle = [
+                            'name'     => $filesMulti['name'][$i],
+                            'type'     => $filesMulti['type'][$i] ?? '',
+                            'tmp_name' => $filesMulti['tmp_name'][$i],
+                            'error'    => $filesMulti['error'][$i],
+                            'size'     => $filesMulti['size'][$i] ?? 0,
+                        ];
+                        $resultados[] = $this->service->subirEvidencia($idIncidencia, $idEnvioVin, $tipo, $fileSingle, $userId);
+                    }
+                }
+            } else {
+                if (($filesMulti['error'] ?? 1) === UPLOAD_ERR_OK) {
+                    $resultados[] = $this->service->subirEvidencia($idIncidencia, $idEnvioVin, $tipo, $filesMulti, $userId);
+                }
+            }
+        }
+        return $resultados;
     }
 
     /**
@@ -383,6 +422,66 @@ class Lgs_incidencias extends Controllers
         } catch (Throwable $e) {
             header("HTTP/1.0 500 Internal Server Error");
             die("Error al descargar archivo.");
+        }
+    }
+
+    /**
+     * GET: Descarga empaquetada de todas las evidencias de una incidencia en formato ZIP
+     * URL: {{base_url}}/Lgs_incidencias/descargarZipEvidencias/10
+     */
+    public function descargarZipEvidencias($idIncidencia = 0): void
+    {
+        try {
+            $idIncidencia = intval($idIncidencia);
+            if ($idIncidencia <= 0) die("ID de incidencia no válido.");
+
+            $model = new Lgs_incidenciasModel();
+            $db = $model->getConexion();
+            $stmt = $db->prepare("SELECT folio FROM lgs_incidencias WHERE id_incidencia = ?");
+            $stmt->execute([$idIncidencia]);
+            $folio = $stmt->fetchColumn() ?: "INC-{$idIncidencia}";
+
+            $stmtEv = $db->prepare("SELECT ruta_archivo, nombre_original FROM lgs_det_incidencias_evidencias WHERE id_incidencia = ?");
+            $stmtEv->execute([$idIncidencia]);
+            $evidencias = $stmtEv->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($evidencias)) {
+                die("<div style='font-family: Arial; padding: 30px; text-align: center;'><h3>Sin Evidencias</h3><p>Esta incidencia no cuenta con evidencias registradas aún.</p></div>");
+            }
+
+            $zip = new ZipArchive();
+            $tempZip = tempnam(sys_get_temp_dir(), 'ev_zip_') . '.zip';
+
+            if ($zip->open($tempZip, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                die("No se pudo crear el archivo ZIP temporal.");
+            }
+
+            $idx = 1;
+            $archivosAgregados = 0;
+            foreach ($evidencias as $ev) {
+                $filePath = $ev['ruta_archivo'];
+                if (file_exists($filePath)) {
+                    $ext = pathinfo($filePath, PATHINFO_EXTENSION);
+                    $nom = $ev['nombre_original'] ?: ("evidencia_{$idx}." . $ext);
+                    $zip->addFile($filePath, "{$folio}/" . basename($nom));
+                    $archivosAgregados++;
+                    $idx++;
+                }
+            }
+            $zip->close();
+
+            if ($archivosAgregados === 0 || !file_exists($tempZip) || filesize($tempZip) === 0) {
+                die("<div style='font-family: Arial; padding: 30px; text-align: center;'><h3>Archivos no disponibles</h3><p>Los archivos de evidencia físicos no se encuentran en el servidor.</p></div>");
+            }
+
+            header('Content-Type: application/zip');
+            header('Content-Disposition: attachment; filename="Evidencias_' . $folio . '.zip"');
+            header('Content-Length: ' . filesize($tempZip));
+            readfile($tempZip);
+            @unlink($tempZip);
+            exit;
+        } catch (Throwable $e) {
+            die("Error al generar paquete ZIP: " . $e->getMessage());
         }
     }
 }

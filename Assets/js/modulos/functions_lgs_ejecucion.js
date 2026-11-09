@@ -72,7 +72,7 @@ function initTableEjecucion() {
             },
             { 
                 "data": "id_estado",
-                "render": function (data) {
+                "render": function (data, type, row) {
                     let badge = '';
                     switch(parseInt(data)) {
                         case 3: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-checkbox-check-line me-1"></i>Aprobado</span>'; break;
@@ -81,6 +81,16 @@ function initTableEjecucion() {
                         case 7: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-check-double-line me-1"></i>Entregado</span>'; break;
                         default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
                     }
+
+                    // Requerimiento #9: Confirmación de cita/recepción en destino para evitar viajes fallidos
+                    let confDest = parseInt(row.confirmado_destino) || 0;
+                    let folioEsc = row.folio ? String(row.folio).replace(/'/g, "\\'") : '';
+                    if (confDest === 1) {
+                        badge += `<div class="mt-1"><span class="badge bg-soft-success text-success fs-11" title="Cita pactada: ${row.confirmado_destino_fecha_cita || ''}"><i class="ri-phone-check-line me-1"></i>Cita Confirmada</span></div>`;
+                    } else if (parseInt(data) === 3 || parseInt(data) === 5) {
+                        badge += `<div class="mt-1"><button type="button" class="btn btn-xs btn-outline-danger py-0 px-2 rounded-pill fs-11 fw-bold" onclick="abrirModalConfirmarDestino(${row.id_envio}, '${folioEsc}')" title="Clic para confirmar recepción antes de salida"><i class="ri-alert-line me-1"></i>Cita Pendiente</button></div>`;
+                    }
+
                     return badge;
                 }
             },
@@ -90,10 +100,11 @@ function initTableEjecucion() {
                     let folioStr = row.folio ? String(row.folio).replace(/'/g, "\\'") : '';
                     let fechaSalidaStr = row.fecha_salida_real ? String(row.fecha_salida_real).replace(/'/g, "\\'") : '';
                     let obsEncoded = row.observaciones ? encodeURIComponent(row.observaciones) : '';
+                    let confDest = parseInt(row.confirmado_destino) || 0;
 
                     if (parseInt(row.id_estado) === 3 || parseInt(row.id_estado) === 5) {
                         return `<div class="text-end pe-3">
-                                    <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold shadow-sm" onClick="fntDespachar(${data}, '${folioStr}', '${fechaSalidaStr}', '${obsEncoded}')" title="Mesa de Despacho">
+                                    <button class="btn btn-sm ${confDest === 1 ? 'btn-primary' : 'btn-outline-primary'} rounded-pill px-3 fw-semibold shadow-sm" onClick="fntDespachar(${data}, '${folioStr}', '${fechaSalidaStr}', '${obsEncoded}', ${confDest})" title="Mesa de Despacho">
                                         <i class="ri-truck-line me-1"></i> Despacho / Salida
                                     </button>
                                 </div>`;
@@ -164,7 +175,30 @@ function actualizarMetricasEjecucion(data) {
     if (document.getElementById('badgeCountHistorico')) document.getElementById('badgeCountHistorico').innerText = historicoCount;
 }
 
-function fntDespachar(idEnvio, folio, fechaSalida, obsEncoded) {
+function fntDespachar(idEnvio, folio, fechaSalida, obsEncoded, confirmadoDestino = null) {
+    if (confirmadoDestino === null) {
+        let envioRow = rawDataEjecucion.find(e => parseInt(e.id_envio) === parseInt(idEnvio));
+        confirmadoDestino = envioRow ? (parseInt(envioRow.confirmado_destino) || 0) : 0;
+    }
+
+    if (parseInt(confirmadoDestino) !== 1) {
+        Swal.fire({
+            title: '¡Cita en Destino Obligatoria!',
+            html: `Para evitar viajes en falso y costos por kilómetros extras, el envío <b>${folio}</b> debe contar con la confirmación previa de recepción por parte del cliente o distribuidor.<br><br>¿Deseas registrar la cita y contacto ahora?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '<i class="ri-phone-check-line me-1"></i> Registrar Cita Ahora',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#0ab39c',
+            cancelButtonColor: '#f06548'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                abrirModalConfirmarDestino(idEnvio, folio);
+            }
+        });
+        return;
+    }
+
     document.getElementById('id_envio_despacho').value = idEnvio;
     document.getElementById('lblFolioDespacho').innerText = folio;
     
@@ -306,9 +340,6 @@ function cargarAcomodoPlanta(idEnvio, isHistorico = false) {
                                         <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold shadow-sm" onclick="verEvidencias(${idEnvio}, ${vin.id_unidad}, '${vin.vin}');" title="Ver Evidencias y Observaciones de Salida">
                                             <i class="ri-camera-lens-fill me-1"></i> Ver Evidencias
                                         </button>
-                                        <a href="${base_url}/Lgs_envios/hoja_entrega_pdf/${idEnvio}/${vin.id_unidad}" target="_blank" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-semibold shadow-sm" title="Imprimir Hoja de Entrega / Traspaso">
-                                            <i class="ri-printer-line me-1"></i> Imprimir Hoja
-                                        </a>
                                     </div>
                                 `;
                             } else if (isConfirmed) {
@@ -322,9 +353,6 @@ function cargarAcomodoPlanta(idEnvio, isHistorico = false) {
                                         <button class="btn btn-sm btn-outline-danger rounded-pill px-2" onclick="revertirValidacion(${idEnvio}, ${vin.id_unidad}, '${vin.vin}');" title="Deshacer Validación">
                                             <i class="ri-arrow-go-back-line"></i> Revertir
                                         </button>
-                                        <a href="${base_url}/Lgs_envios/hoja_entrega_pdf/${idEnvio}/${vin.id_unidad}" target="_blank" class="btn btn-sm btn-outline-dark rounded-pill px-2" title="Imprimir Hoja de Entrega / Traspaso">
-                                            <i class="ri-printer-line"></i> Imprimir
-                                        </a>
                                     </div>
                                 </div>
                                 `;
@@ -834,4 +862,103 @@ function verEvidencias(idEnvio, idUnidad, vin) {
         .catch(() => {
             grid.innerHTML = '<div class="alert alert-danger w-100 text-center py-3">Falla al comunicar con el servidor.</div>';
         });
+}
+
+/**
+ * Requerimiento #9: Validación de recepción en destino antes de despachar
+ */
+function abrirModalConfirmarDestino(idEnvio, folio) {
+    let envioRow = rawDataEjecucion.find(e => parseInt(e.id_envio) === parseInt(idEnvio));
+    const inputId = document.getElementById('conf_dest_id_envio');
+    if (inputId) inputId.value = idEnvio;
+
+    const inputContacto = document.getElementById('conf_dest_contacto');
+    if (inputContacto) inputContacto.value = envioRow ? (envioRow.confirmado_destino_contacto || '') : '';
+    
+    let fechaCita = envioRow ? (envioRow.confirmado_destino_fecha_cita || '') : '';
+    if (!fechaCita || fechaCita === 'null') {
+        let now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        fechaCita = now.toISOString().slice(0, 16);
+    } else {
+        fechaCita = fechaCita.replace(' ', 'T').slice(0, 16);
+    }
+    const inputFecha = document.getElementById('conf_dest_fecha_cita');
+    if (inputFecha) inputFecha.value = fechaCita;
+
+    const inputNotas = document.getElementById('conf_dest_notas');
+    if (inputNotas) inputNotas.value = envioRow ? (envioRow.confirmado_destino_notas || '') : '';
+
+    const lblFolio = document.getElementById('conf_dest_lbl_folio');
+    if (lblFolio) lblFolio.innerText = folio || ('EN-' + idEnvio);
+
+    let modalEl = document.getElementById('modalConfirmarDestinoCliente');
+    if (modalEl) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            let modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        } else if (typeof $ !== 'undefined') {
+            $('#modalConfirmarDestinoCliente').modal('show');
+        }
+    }
+}
+
+function guardarConfirmacionDestino() {
+    let form = document.getElementById('formConfirmarDestinoCliente');
+    if (!form) return;
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    let formData = new FormData(form);
+    let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+    let ajaxUrl = base_url + '/Lgs_ejecucion/confirmarDestino';
+
+    Swal.fire({
+        title: 'Validando Cita de Recepción...',
+        text: 'Guardando datos y autorizando despacho del envío',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    request.open("POST", ajaxUrl, true);
+    request.send(formData);
+    request.onreadystatechange = function () {
+        if (request.readyState == 4) {
+            Swal.close();
+            if (request.status == 200) {
+                try {
+                    let objData = JSON.parse(request.responseText);
+                    let isSuccess = (objData.status === 'success' || objData.status === true || objData.code === 200);
+                    if (isSuccess) {
+                        let modalEl = document.getElementById('modalConfirmarDestinoCliente');
+                        if (modalEl) {
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                let modalInstance = bootstrap.Modal.getInstance(modalEl);
+                                if (modalInstance) modalInstance.hide();
+                            } else if (typeof $ !== 'undefined') {
+                                $('#modalConfirmarDestinoCliente').modal('hide');
+                            }
+                        }
+                        Swal.fire("¡Cita Confirmada!", objData.message || objData.msg || "La recepción ha sido validada y el envío queda autorizado para despacho.", "success");
+                        if (tableEjecucion) tableEjecucion.ajax.reload(null, false);
+                    } else {
+                        Swal.fire("Error", objData.message || objData.msg || "No se pudo registrar la confirmación.", "error");
+                    }
+                } catch (e) {
+                    Swal.fire("Error", "Respuesta inválida del servidor: " + request.responseText, "error");
+                }
+            } else {
+                let errText = "Error de comunicación con el servidor (" + request.status + ")";
+                try {
+                    let errObj = JSON.parse(request.responseText);
+                    if (errObj && (errObj.message || errObj.msg)) {
+                        errText = errObj.message || errObj.msg;
+                    }
+                } catch(e) {}
+                Swal.fire("Error", errText, "error");
+            }
+        }
+    };
 }

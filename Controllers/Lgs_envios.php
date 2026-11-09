@@ -305,6 +305,9 @@ class Lgs_envios extends Controllers
                 'destino_nombre_libre' => !empty($lastFree) ? $lastFree : ($_POST['destino_nombre_libre'] ?? ''),
                 'km_total'         => 0,
                 'is_lowboy'        => intval($_POST['is_lowboy'] ?? 0),
+                'madrina_con_telemetria' => intval($_POST['madrina_con_telemetria'] ?? 0),
+                'confirmacion_cita_cliente' => intval($_POST['confirmacion_cita_cliente'] ?? 0),
+                'contacto_confirmacion_cliente' => trim($_POST['contacto_confirmacion_cliente'] ?? ''),
                 'fecha_tentativa_envio'   => !empty($_POST['fecha_tentativa_envio']) ? str_replace('T', ' ', $_POST['fecha_tentativa_envio']) : null,
                 'fecha_tentativa_llegada' => !empty($_POST['fecha_tentativa_llegada']) ? str_replace('T', ' ', $_POST['fecha_tentativa_llegada']) : null,
                 'observaciones'    => $_POST['observaciones'] ?? '',
@@ -371,6 +374,9 @@ class Lgs_envios extends Controllers
                                             fecha_tentativa_envio = :fecha_tentativa_envio,
                                             fecha_tentativa_llegada = :fecha_tentativa_llegada,
                                             is_lowboy = :is_lowboy,
+                                            madrina_con_telemetria = :madrina_con_telemetria,
+                                            confirmacion_cita_cliente = :confirmacion_cita_cliente,
+                                            contacto_confirmacion_cliente = :contacto_confirmacion_cliente,
                                             observaciones = :observaciones,
                                             updated_by = :updated_by,
                                             updated_at = NOW()
@@ -391,6 +397,9 @@ class Lgs_envios extends Controllers
                     'fecha_tentativa_envio'   => $data['fecha_tentativa_envio'],
                     'fecha_tentativa_llegada' => $data['fecha_tentativa_llegada'],
                     'is_lowboy'        => $data['is_lowboy'],
+                    'madrina_con_telemetria' => $data['madrina_con_telemetria'],
+                    'confirmacion_cita_cliente' => $data['confirmacion_cita_cliente'],
+                    'contacto_confirmacion_cliente' => $data['contacto_confirmacion_cliente'],
                     'observaciones'    => $data['observaciones'],
                     'updated_by'       => $userId,
                     'id_envio'         => $idEnvio
@@ -650,15 +659,25 @@ class Lgs_envios extends Controllers
                 }
             }
 
+            $auditoriaFinanciera = null;
+            if (file_exists("Models/Lgs_gastosadicionalesModel.php")) {
+                try {
+                    require_once("Models/Lgs_gastosadicionalesModel.php");
+                    $gaModel = new Lgs_gastosadicionalesModel();
+                    $auditoriaFinanciera = $gaModel->getAuditoriaCostoRealEnvio($idEnvio);
+                } catch (Throwable $e) {}
+            }
+
             $data = [
-                'envio'       => $envio,
-                'madrinas'    => $madrinas,
-                'plataformas' => $plataformas,
-                'choferes'    => $choferes,
-                'vins'        => $vins,
-                'existentes' => $existentes,
-                'paradas'    => $paradas,
-                'nodos'      => $nodos,
+                'envio'               => $envio,
+                'madrinas'            => $madrinas,
+                'plataformas'         => $plataformas,
+                'choferes'            => $choferes,
+                'vins'                => $vins,
+                'existentes'          => $existentes,
+                'paradas'             => $paradas,
+                'nodos'               => $nodos,
+                'auditoria_financiera'=> $auditoriaFinanciera,
             ];
 
             echo $this->successResponse($data, "Datos de acomodo obtenidos correctamente");
@@ -821,6 +840,11 @@ class Lgs_envios extends Controllers
             $service = new Lgs_enviosService();
             $costoTotal = $service->recalcularCostoTotal($idEnvio);
 
+            // Asegurar asignación unitaria de costos a cada VIN
+            try {
+                $service->asegurarCostosVins($idEnvio);
+            } catch (Throwable $th) {}
+
             // Recalcular los otros envíos afectados que perdieron unidades
             if (!empty($enviosAfectados)) {
                 foreach ($enviosAfectados as $idAf) {
@@ -830,9 +854,19 @@ class Lgs_envios extends Controllers
                 }
             }
 
+            $auditoriaFinanciera = null;
+            if (file_exists("Models/Lgs_gastosadicionalesModel.php")) {
+                try {
+                    require_once("Models/Lgs_gastosadicionalesModel.php");
+                    $gaModel = new Lgs_gastosadicionalesModel();
+                    $auditoriaFinanciera = $gaModel->getAuditoriaCostoRealEnvio($idEnvio);
+                } catch (Throwable $e) {}
+            }
+
             echo $this->successResponse([
-                'id_envio' => $idEnvio,
-                'costo_total' => $costoTotal
+                'id_envio'             => $idEnvio,
+                'costo_total'          => $costoTotal,
+                'auditoria_financiera' => $auditoriaFinanciera,
             ], "Acomodo de unidades guardado exitosamente");
 
         } catch (Throwable $e) {
@@ -1011,6 +1045,13 @@ class Lgs_envios extends Controllers
             // Asegurar que el costo unitario por segmento esté calculado para este envío
             if (file_exists(__DIR__ . '/../sync_unit_costs.php')) { @unlink(__DIR__ . '/../sync_unit_costs.php'); }
             $this->service->asegurarCostosVins($idEnvio, $db);
+
+            // Si no se proporcionó una unidad específica, tomar la primera unidad del envío
+            if ($idUnidad <= 0) {
+                $stmtFirstVin = $db->prepare("SELECT id_unidad FROM lgs_envios_vins WHERE id_envio = ? ORDER BY id ASC LIMIT 1");
+                $stmtFirstVin->execute([$idEnvio]);
+                $idUnidad = (int)$stmtFirstVin->fetchColumn();
+            }
 
             $stmt = $db->prepare("
                 SELECT 

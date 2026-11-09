@@ -340,6 +340,10 @@
                                         <i id="ico_odometro" class="ri-dashboard-3-line fs-2 text-muted opacity-50"></i>
                                     </div>
                                     <input type="file" id="file_odometro" name="odometro" accept="image/*" capture="environment" class="d-none" onchange="previewImage(this, 'odometro')">
+                                    <div class="input-group input-group-sm mt-2">
+                                        <span class="input-group-text bg-light text-muted fw-bold"><i class="ri-speed-up-line me-1"></i>KM Odómetro:</span>
+                                        <input type="number" step="1" min="0" class="form-control" id="chk_valor_odometro" name="valor_odometro" placeholder="Ej. 15">
+                                    </div>
                                 </div>
                             </div>
 

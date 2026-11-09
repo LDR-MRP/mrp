@@ -46,7 +46,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     let badge = '';
                     switch(parseInt(data)) {
                         case 2: badge = '<span class="badge bg-soft-warning text-warning fs-12"><i class="ri-time-line me-1"></i>Pendiente Aprobación</span>'; break;
-                        case 3: badge = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Rechazada</span>'; break;
+                        case 3:
+                        case 4: badge = '<span class="badge bg-soft-danger text-danger fs-12"><i class="ri-close-circle-line me-1"></i>Rechazada</span>'; break;
                         case 5: badge = '<span class="badge bg-soft-success text-success fs-12"><i class="ri-checkbox-circle-line me-1"></i>Aprobada</span>'; break;
                         default: badge = '<span class="badge bg-light text-dark fs-12">Estado ' + data + '</span>'; break;
                     }
@@ -99,13 +100,60 @@ function actualizarMetricasAprobaciones(data) {
     if (document.getElementById('cardMontoAutorizado')) document.getElementById('cardMontoAutorizado').innerText = '$' + montoAutorizado.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+/**
+ * Filtro por buscador de texto
+ */
+function filtrarTablaAprobaciones(term) {
+    if (typeof tableAprobaciones !== "undefined" && tableAprobaciones) {
+        tableAprobaciones.search(term).draw();
+    }
+}
+
+/**
+ * Filtra el DataTable por estado usando los chips de acceso rápido
+ */
+function filtrarAprobPorChip(filtro, btn) {
+    document.querySelectorAll('.chip-aprob-btn').forEach(b => {
+        b.classList.remove('active');
+        b.classList.replace('btn-secondary', 'btn-outline-secondary');
+        b.classList.replace('btn-warning', 'btn-outline-warning');
+        b.classList.replace('btn-success', 'btn-outline-success');
+        b.classList.replace('btn-danger', 'btn-outline-danger');
+    });
+    
+    if (btn) {
+        btn.classList.add('active');
+        if (btn.classList.contains('btn-outline-secondary')) btn.classList.replace('btn-outline-secondary', 'btn-secondary');
+        if (btn.classList.contains('btn-outline-warning')) btn.classList.replace('btn-outline-warning', 'btn-warning');
+        if (btn.classList.contains('btn-outline-success')) btn.classList.replace('btn-outline-success', 'btn-success');
+        if (btn.classList.contains('btn-outline-danger')) btn.classList.replace('btn-outline-danger', 'btn-danger');
+    }
+    
+    if (typeof tableAprobaciones !== "undefined" && tableAprobaciones) {
+        tableAprobaciones.search(filtro).draw();
+    }
+}
+
+/**
+ * Permite filtrar la tabla haciendo clic en las cards de métricas
+ */
+function filtrarAprobPorCard(filtro, chipId) {
+    const chipBtn = document.getElementById(chipId);
+    filtrarAprobPorChip(filtro, chipBtn);
+    
+    const tableEl = document.getElementById('tableAprobaciones');
+    if (tableEl) {
+        tableEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
 function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
     // 1. Limpiar Modal
     document.querySelector("#formAprobacion").reset();
     document.getElementById('id_planeacion').value = idPlaneacion;
     document.getElementById('lblFolioModal').innerText = folio || ('PL-' + idPlaneacion);
     document.getElementById('lblCostoModal').innerText = '$' + (parseFloat(costo) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    document.getElementById('lblKmModal').innerText = (parseFloat(km) || 0).toFixed(2) + ' km';
+    document.getElementById('lblKmModal').innerText = (parseFloat(km) || 0).toFixed(2);
     document.getElementById('lblObsOperador').innerText = (obs == 'null' || !obs) ? 'Sin observaciones del operador.' : obs;
     
     const contEnvios = document.getElementById('vdp_contenedor_envios');
@@ -116,7 +164,15 @@ function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
     if (btnApprove) btnApprove.style.display = '';
     if (btnReject) btnReject.style.display = '';
     
-    $('#modalEvaluarPlan').modal('show');
+    let modalEl = document.getElementById('modalEvaluarPlan');
+    if (modalEl) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            let m = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            m.show();
+        } else if (typeof $ !== 'undefined') {
+            $('#modalEvaluarPlan').modal('show');
+        }
+    }
     
     // 2. Cargar detalle de rutas (envíos)
     let request = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
@@ -125,10 +181,12 @@ function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
     request.open("GET", ajaxUrl, true);
     request.send();
     request.onreadystatechange = function () {
-        if (request.readyState == 4 && request.status == 200) {
-            let objData = JSON.parse(request.responseText);
-            const contEnvios = document.getElementById('vdp_contenedor_envios');
-            if (contEnvios) contEnvios.innerHTML = '';
+        if (request.readyState == 4) {
+            if (request.status == 200) {
+                try {
+                    let objData = JSON.parse(request.responseText);
+                    const contEnvios = document.getElementById('vdp_contenedor_envios');
+                    if (contEnvios) contEnvios.innerHTML = '';
             
             if (objData.status && objData.data && objData.data.length > 0) {
                 let calcCosto = 0;
@@ -210,13 +268,21 @@ function fntEvaluarPlan(idPlaneacion, folio, costo, km, obs) {
                     document.getElementById('lblCostoModal').innerText = '$' + calcCosto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
                 if (!km || parseFloat(km) === 0) {
-                    document.getElementById('lblKmModal').innerText = calcKm.toFixed(2) + ' km';
+                    document.getElementById('lblKmModal').innerText = calcKm.toFixed(2);
                 }
             } else {
                 if (contEnvios) contEnvios.innerHTML = '<div class="alert alert-soft-secondary text-center py-3">No hay envíos vinculados a esta planeación.</div>';
             }
+        } catch (e) {
+            const contEnvios = document.getElementById('vdp_contenedor_envios');
+            if (contEnvios) contEnvios.innerHTML = '<div class="alert alert-danger text-center py-3">Error al procesar la respuesta del servidor.</div>';
         }
+    } else {
+        const contEnvios = document.getElementById('vdp_contenedor_envios');
+        if (contEnvios) contEnvios.innerHTML = '<div class="alert alert-danger text-center py-3"><i class="ri-error-warning-line me-1"></i> No se pudo obtener el desglose de envíos del servidor.</div>';
     }
+}
+};
 }
 
 function fntViewDetalle(idPlaneacion, folio, costo, km, obs) {
@@ -271,14 +337,31 @@ function ejecutarAjaxDecision() {
     request.open("POST", ajaxUrl, true);
     request.send(formData);
     request.onreadystatechange = function () {
-        if (request.readyState == 4 && request.status == 200) {
-            let objData = JSON.parse(request.responseText);
-            if (objData.status) {
-                $('#modalEvaluarPlan').modal("hide");
-                Swal.fire("Resolución Exitosa", objData.msg, "success");
-                tableAprobaciones.ajax.reload();
-            } else {
-                Swal.fire("Error", objData.msg, "error");
+        if (request.readyState == 4) {
+            Swal.close();
+            try {
+                let objData = JSON.parse(request.responseText);
+                if (objData.status === true || objData.status === 'success') {
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        let modalEl = document.getElementById('modalEvaluarPlan');
+                        if (modalEl) {
+                            let m = bootstrap.Modal.getInstance(modalEl);
+                            if (m) m.hide();
+                        }
+                    } else if (typeof $ !== 'undefined') {
+                        $('#modalEvaluarPlan').modal("hide");
+                    }
+                    Swal.fire("Resolución Exitosa", objData.msg || objData.message || "Operación realizada", "success");
+                    if (typeof tableAprobaciones !== 'undefined' && tableAprobaciones) {
+                        tableAprobaciones.ajax.reload();
+                    }
+                } else {
+                    let msg = (objData && (objData.msg || objData.message)) ? (objData.msg || objData.message) : 'No se pudo procesar la resolución.';
+                    Swal.fire("Atención", msg, "warning");
+                }
+            } catch (e) {
+                console.error(e);
+                Swal.fire("Error", "Error al procesar la respuesta del servidor.", "error");
             }
         }
     };

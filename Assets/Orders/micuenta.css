@@ -2069,3 +2069,14 @@ select.account-input {
     }
 
 }
+/* 2026-11-04 | Aviso de aprobaciones, adaptable a claro/oscuro. */
+.account-approval-menu {display:flex;align-items:center;gap:9px}
+.account-approval-count {margin-left:auto;display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 7px;border-radius:999px;background:#f36b12;color:#fff;font-size:12px;font-weight:800}
+.account-approval-alert {display:flex;align-items:center;gap:16px;padding:20px 22px;margin-bottom:22px;border:1px solid #f59e0b;border-left:5px solid #f59e0b;border-radius:15px;background:#fffbeb;color:#78350f;box-shadow:0 9px 28px rgba(146,64,14,.1)}
+.account-approval-alert-icon {display:grid;place-items:center;flex:none;width:50px;height:50px;border-radius:14px;background:#fef3c7;font-size:27px;color:#b45309}
+.account-approval-alert-body {flex:1;min-width:0}.account-approval-alert-body strong {font-size:16px}.account-approval-alert-body p {margin:6px 0 0;color:#92400e;line-height:1.5}
+.account-approval-alert-action {display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 17px;border-radius:10px;background:#b45309;color:#fff!important;text-decoration:none;font-weight:700;white-space:nowrap}
+.account-approval-alert-action:hover {background:#92400e}
+[data-bs-theme="dark"] .account-approval-alert,[data-layout-mode="dark"] .account-approval-alert {background:#302616;color:#fde68a;border-color:#b45309}
+[data-bs-theme="dark"] .account-approval-alert-body p,[data-layout-mode="dark"] .account-approval-alert-body p {color:#fcd34d}
+@media(max-width:800px){.account-approval-alert{align-items:flex-start;flex-wrap:wrap}.account-approval-alert-action{width:100%}}

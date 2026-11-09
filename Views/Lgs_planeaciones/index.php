@@ -45,18 +45,18 @@
                     </div>
                 </div>
 
-                <!-- 3. BLOQUE DE KPIS CIRCULARES -->
-                <div class="row mb-4">
-                    <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                        <div class="card card-animate border-0 shadow-sm rounded-3">
-                            <div class="card-body">
+                <!-- 3. BLOQUE DE KPIS HOMOLOGADOS -->
+                <div class="row mb-4 g-3">
+                    <div class="col-xxl-2 col-lg-4 col-sm-6">
+                        <div class="card card-animate border-0 shadow-sm rounded-3 h-100" style="cursor: pointer;" onclick="filtrarPlanPorCard('', 'chip-plan-todas');" title="Ver todas las planeaciones">
+                            <div class="card-body p-3">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Total Planeaciones</p>
-                                        <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="cardTotalPlaneaciones">0</span></h4>
-                                        <span class="badge bg-soft-primary text-primary fw-medium mb-0 px-2 py-1">Registradas</span>
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-1 fs-11 ls-1">Total Planes</p>
+                                        <h4 class="fs-20 fw-bold text-dark mb-1"><span class="counter-value" id="cardTotalPlaneaciones">0</span></h4>
+                                        <small class="text-muted fs-11">Registradas</small>
                                     </div>
-                                    <div class="avatar-sm flex-shrink-0">
+                                    <div class="avatar-sm flex-shrink-0 ms-2">
                                         <span class="avatar-title bg-primary-subtle text-primary rounded-circle fs-3">
                                             <i class="ri-file-list-3-line"></i>
                                         </span>
@@ -66,16 +66,35 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                        <div class="card card-animate border-0 shadow-sm rounded-3">
-                            <div class="card-body">
+                    <div class="col-xxl-2 col-lg-4 col-sm-6">
+                        <div class="card card-animate border-0 shadow-sm rounded-3 h-100" style="cursor: pointer;" onclick="filtrarPlanPorCard('Borrador', 'chip-plan-borrador');" title="Filtrar borradores y reabiertas">
+                            <div class="card-body p-3">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Pendientes Revisión</p>
-                                        <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="cardPlanPendientes">0</span></h4>
-                                        <span class="badge bg-soft-warning text-warning fw-medium mb-0 px-2 py-1">En Proceso</span>
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-1 fs-11 ls-1">Borradores</p>
+                                        <h4 class="fs-20 fw-bold text-secondary mb-1"><span class="counter-value" id="cardPlanBorradores">0</span></h4>
+                                        <small class="text-muted fs-11">Reabiertas / Edición</small>
                                     </div>
-                                    <div class="avatar-sm flex-shrink-0">
+                                    <div class="avatar-sm flex-shrink-0 ms-2">
+                                        <span class="avatar-title bg-secondary-subtle text-secondary rounded-circle fs-3">
+                                            <i class="ri-draft-line"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xxl-2 col-lg-4 col-sm-6">
+                        <div class="card card-animate border-0 shadow-sm rounded-3 h-100" style="cursor: pointer;" onclick="filtrarPlanPorCard('Pendiente Aprobación', 'chip-plan-pendiente');" title="Filtrar pendientes de revisión">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-1 fs-11 ls-1">Por Revisar</p>
+                                        <h4 class="fs-20 fw-bold text-warning mb-1"><span class="counter-value" id="cardPlanPendientes">0</span></h4>
+                                        <small class="text-muted fs-11">En Aprobación</small>
+                                    </div>
+                                    <div class="avatar-sm flex-shrink-0 ms-2">
                                         <span class="avatar-title bg-warning-subtle text-warning rounded-circle fs-3">
                                             <i class="ri-time-line"></i>
                                         </span>
@@ -85,16 +104,16 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                        <div class="card card-animate border-0 shadow-sm rounded-3">
-                            <div class="card-body">
+                    <div class="col-xxl-2 col-lg-4 col-sm-6">
+                        <div class="card card-animate border-0 shadow-sm rounded-3 h-100" style="cursor: pointer;" onclick="filtrarPlanPorCard('Aprobada', 'chip-plan-aprobada');" title="Filtrar planeaciones aprobadas">
+                            <div class="card-body p-3">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Planeaciones Aprobadas</p>
-                                        <h4 class="fs-22 fw-bold text-body mb-2"><span class="counter-value" id="cardPlanAprobadas">0</span></h4>
-                                        <span class="badge bg-soft-success text-success fw-medium mb-0 px-2 py-1">Autorizadas</span>
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-1 fs-11 ls-1">Aprobadas</p>
+                                        <h4 class="fs-20 fw-bold text-success mb-1"><span class="counter-value" id="cardPlanAprobadas">0</span></h4>
+                                        <small class="text-muted fs-11">Autorizadas</small>
                                     </div>
-                                    <div class="avatar-sm flex-shrink-0">
+                                    <div class="avatar-sm flex-shrink-0 ms-2">
                                         <span class="avatar-title bg-success-subtle text-success rounded-circle fs-3">
                                             <i class="ri-check-double-line"></i>
                                         </span>
@@ -104,16 +123,35 @@
                         </div>
                     </div>
 
-                    <div class="col-xl-3 col-md-6">
-                        <div class="card card-animate border-0 shadow-sm rounded-3">
-                            <div class="card-body">
+                    <div class="col-xxl-2 col-lg-4 col-sm-6">
+                        <div class="card card-animate border-0 shadow-sm rounded-3 h-100" style="cursor: pointer;" onclick="filtrarPlanPorCard('Rechazada', 'chip-plan-rechazada');" title="Filtrar planeaciones rechazadas">
+                            <div class="card-body p-3">
                                 <div class="d-flex align-items-center">
                                     <div class="flex-grow-1 overflow-hidden">
-                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Monto Planeado</p>
-                                        <h4 class="fs-22 fw-bold text-body mb-2" id="cardPlanMontoTotal">$0.00</h4>
-                                        <span class="badge bg-soft-info text-info fw-medium mb-0 px-2 py-1">Estimado</span>
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-1 fs-11 ls-1">Rechazadas</p>
+                                        <h4 class="fs-20 fw-bold text-danger mb-1"><span class="counter-value" id="cardPlanRechazadas">0</span></h4>
+                                        <small class="text-muted fs-11">No autorizadas</small>
                                     </div>
-                                    <div class="avatar-sm flex-shrink-0">
+                                    <div class="avatar-sm flex-shrink-0 ms-2">
+                                        <span class="avatar-title bg-danger-subtle text-danger rounded-circle fs-3">
+                                            <i class="ri-close-circle-line"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xxl-2 col-lg-4 col-sm-6">
+                        <div class="card card-animate border-0 shadow-sm rounded-3 h-100">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <p class="text-uppercase fw-bold text-muted text-truncate mb-1 fs-11 ls-1">Monto Total</p>
+                                        <h4 class="fs-20 fw-bold text-dark mb-1" id="cardPlanMontoTotal">$0.00</h4>
+                                        <small class="text-muted fs-11">Costo estimado</small>
+                                    </div>
+                                    <div class="avatar-sm flex-shrink-0 ms-2">
                                         <span class="avatar-title bg-info-subtle text-info rounded-circle fs-3">
                                             <i class="ri-money-dollar-circle-line"></i>
                                         </span>
@@ -124,9 +162,41 @@
                     </div>
                 </div>
 
-                <!-- 4. DATATABLE CARD ESTILIZADA -->
-                <div class="card border-0 shadow-xl">
+                <!-- 4. DATATABLE CARD ESTILIZADA CON CHIPS DE FILTRO -->
+                <div class="card border-0 shadow-xl rounded-3 overflow-hidden">
                     <div class="bg-primary" style="height: 4px;"></div>
+                    <div class="card-header bg-white py-3 px-4 border-bottom border-light-subtle">
+                        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                            <!-- Buscador en tiempo real -->
+                            <div class="d-flex align-items-center w-100" style="max-width: 360px;">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-light border-end-0"><i class="ri-search-line text-muted"></i></span>
+                                    <input type="text" id="buscarPlanInput" class="form-control bg-light border-start-0" placeholder="Buscar folio, título, creador..." oninput="filtrarTablaPlaneaciones(this.value);">
+                                    <button class="btn btn-light border border-start-0 text-muted" type="button" onclick="document.getElementById('buscarPlanInput').value=''; filtrarTablaPlaneaciones('');" title="Limpiar"><i class="ri-close-line"></i></button>
+                                </div>
+                            </div>
+
+                            <!-- Chips de Filtro Rápido Homologados -->
+                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                <span class="fs-11 text-muted text-uppercase fw-bold me-1 d-none d-xl-inline"><i class="ri-filter-3-line me-1"></i>Filtro:</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 fs-12 active chip-plan-btn" id="chip-plan-todas" onclick="filtrarPlanPorChip('', this);">
+                                    📌 Todas
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 fs-12 chip-plan-btn" id="chip-plan-borrador" onclick="filtrarPlanPorChip('Borrador', this);">
+                                    📝 Borradores
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 py-1 fs-12 chip-plan-btn" id="chip-plan-pendiente" onclick="filtrarPlanPorChip('Pendiente Aprobación', this);">
+                                    ⏳ Por Revisar
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fs-12 chip-plan-btn" id="chip-plan-aprobada" onclick="filtrarPlanPorChip('Aprobada', this);">
+                                    ✅ Aprobadas
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 fs-12 chip-plan-btn" id="chip-plan-rechazada" onclick="filtrarPlanPorChip('Rechazada', this);">
+                                    ❌ Rechazadas
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     <div class="card-body">
                         <div class="table-responsive">
                             <table id="tablePlaneaciones" class="table table-hover table-lg align-middle mb-0" style="width:100% !important;">
@@ -373,6 +443,64 @@
                         <i class="ri-shield-check-line me-1"></i> Ir al Panel de Aprobaciones
                     </a>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL REAPERTURA DE PLANEACIÓN (REAJUSTE / EDICIÓN) -->
+<div class="modal fade" id="modalReabrirPlan" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header bg-warning-subtle border-bottom-0 pb-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm me-3">
+                        <span class="avatar-title bg-warning text-white rounded-circle fs-3 shadow-sm">
+                            <i class="ri-restart-line"></i>
+                        </span>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark mb-0">Reabrir Planeación para Edición</h5>
+                        <small class="text-muted">Desbloquea los envíos y notifica a los entes aprobadores</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formReabrirPlan" onsubmit="event.preventDefault(); confirmarReaperturaPlan();">
+                    <input type="hidden" id="reabrir_id_planeacion" name="id_planeacion" value="">
+
+                    <div class="mb-3">
+                        <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">
+                            Motivo Principal de Reapertura <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select fw-semibold" id="reabrir_motivo_select" name="motivo_select" required>
+                            <option value="">-- Seleccione Motivo --</option>
+                            <option value="Ajuste en Unidades / VINs">Ajuste en Unidades / VINs (Agregar o retirar unidades)</option>
+                            <option value="Cambio de Trasladista / Tarifa">Cambio de Trasladista / Tarifa negociada</option>
+                            <option value="Reprogramación de Fechas o Ruta">Reprogramación de Fechas o Ruta de entrega</option>
+                            <option value="Cancelación o Modificación Comercial">Cancelación o Modificación por Comercial/Cliente</option>
+                            <option value="Corrección de Datos Operativos">Corrección de Datos Operativos</option>
+                            <option value="Otro Motivo Abierto">Otro Motivo Abierto / Extraordinario</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">
+                            Detalle / Justificación del Reajuste <span class="text-danger">*</span>
+                        </label>
+                        <textarea class="form-control" id="reabrir_motivo_detalle" name="motivo_detalle" rows="3" required placeholder="Describa el motivo específico por el cual la planeación regresa a edición..."></textarea>
+                        <small class="text-muted fs-11 mt-1 d-block">
+                            <i class="ri-mail-send-line text-primary me-1"></i> Esta justificación se enviará por correo a los entes autorizadores.
+                        </small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light border-top-0 pt-3">
+                <button type="button" class="btn btn-sm btn-light border px-3 rounded-pill fw-semibold" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-sm btn-warning px-4 rounded-pill fw-bold text-dark shadow-sm" onclick="confirmarReaperturaPlan();">
+                    <i class="ri-restart-line me-1"></i> Confirmar y Notificar
+                </button>
             </div>
         </div>
     </div>

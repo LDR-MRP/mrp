@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../Services/PedRevisionService.php';
 class Ped_pedidos extends Controllers
 {
     public function __construct()
@@ -131,6 +132,8 @@ class Ped_pedidos extends Controllers
             $hasta = trim((string) ($_GET['hasta'] ?? ''));
             $fechaRequerida = trim((string) ($_GET['fecha_requerida'] ?? ''));
             $mesFacturacion = trim((string) ($_GET['mes_facturacion'] ?? ''));
+            $situacionComercial = strtoupper(trim((string) ($_GET['situacion_comercial'] ?? '')));
+            $backorder = strtoupper(trim((string) ($_GET['backorder'] ?? '')));
 
             /*
              * ====================================================
@@ -237,6 +240,8 @@ class Ped_pedidos extends Controllers
                 'hasta' => $hasta,
                 'fecha_requerida' => $fechaRequerida,
                 'mes_facturacion' => $mesFacturacion,
+                'situacion_comercial' => $situacionComercial,
+                'backorder' => $backorder,
                 'limite' => $limite,
                 'offset' => $offset
             ];
@@ -331,6 +336,56 @@ class Ped_pedidos extends Controllers
                 'message' => 'No fue posible obtener los pedidos.'
             ]);
 
+        }
+    }
+
+    /** Reporte completo filtrado; no modifica pedidos ni sus estados. */
+    public function getReportePedidos()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        if (empty($_SESSION['login']) || empty($_SESSION['userData'])) {
+            http_response_code(401);
+            echo json_encode(['status'=>false,'message'=>'Sesión no válida.']);
+            return;
+        }
+        try {
+            $filtros = [
+                'busqueda' => trim((string)($_GET['busqueda'] ?? '')),
+                'estatus' => strtoupper(trim((string)($_GET['estatus'] ?? ''))),
+                'situacion_comercial' => strtoupper(trim((string)($_GET['situacion_comercial'] ?? ''))),
+                'backorder' => strtoupper(trim((string)($_GET['backorder'] ?? ''))),
+                'prioridad' => strtoupper(trim((string)($_GET['prioridad'] ?? ''))),
+                'idcliente' => (int)($_GET['idcliente'] ?? 0),
+                'desde' => trim((string)($_GET['desde'] ?? '')),
+                'hasta' => trim((string)($_GET['hasta'] ?? '')),
+                'fecha_requerida' => trim((string)($_GET['fecha_requerida'] ?? '')),
+                'mes_facturacion' => trim((string)($_GET['mes_facturacion'] ?? '')),
+                'offset' => 0,
+                'limite' => 50000
+            ];
+            foreach (['desde','hasta','fecha_requerida'] as $campo) {
+                if ($filtros[$campo] !== '' && !$this->validarFecha($filtros[$campo])) {
+                    throw new InvalidArgumentException('Fecha no válida: '.$campo);
+                }
+            }
+            if ($filtros['desde'] !== '' && $filtros['hasta'] !== '' && $filtros['desde'] > $filtros['hasta']) {
+                throw new InvalidArgumentException('Rango de fechas no válido.');
+            }
+            if ($filtros['mes_facturacion'] !== '' && !$this->validarMes($filtros['mes_facturacion'])) {
+                throw new InvalidArgumentException('Mes de facturación no válido.');
+            }
+            $total = $this->model->countPedidos($filtros);
+            if ($total > 50000) {
+                http_response_code(422);
+                echo json_encode(['status'=>false,'message'=>'El reporte supera 50,000 pedidos. Reduce el rango de filtros.']);
+                return;
+            }
+            $pedidos = $this->model->selectPedidos($filtros);
+            echo json_encode(['status'=>true,'data'=>['pedidos'=>$pedidos,'total'=>$total,'filtros'=>$filtros]],JSON_UNESCAPED_UNICODE);
+        } catch (Throwable $e) {
+            error_log('[PED_REPORTE] '.$e->getMessage());
+            http_response_code(500);
+            echo json_encode(['status'=>false,'message'=>'No fue posible generar el reporte.']);
         }
     }
 
@@ -1125,9 +1180,21 @@ class Ped_pedidos extends Controllers
             $data['detalles'] = $detalles;
 
             $data['bitacora'] = $bitacora;
+            // 2026-11-04: datos de la revisión y del backorder, sin alterar pedido original.
+            $revisionService = new PedRevisionService();
+            $data['revision_comercial'] = $revisionService->ultima((int)$pedido['idpedido']);
+            $data['versiones_comerciales'] = $revisionService->versiones((int)$pedido['idpedido']);
+            $data['lineas_revision'] = $data['revision_comercial'] ? $revisionService->lineas((int)$data['revision_comercial']['idrevision']) : [];
+            $data['backorders_comerciales'] = $revisionService->backorders((int)$pedido['idpedido']);
+            $data['respuestas_comerciales'] = $revisionService->respuestas((int)$pedido['idpedido']);
+            $data['colores_revision'] = [];
+            foreach ($data['lineas_revision'] as $linea) {
+                $data['colores_revision'][(int)$linea['idunidad']] = $revisionService->colores((int)$linea['idunidad']);
+            }
+            if (empty($_SESSION['ped_revision_csrf'])) $_SESSION['ped_revision_csrf'] = bin2hex(random_bytes(24));
 
 
-            $data['page_functions_js'] = ["modulos/clientes_pedidos/pedidos/gestionar.js", "orders/pedido_pdf.js"];
+            $data['page_functions_js'] = ["modulos/clientes_pedidos/pedidos/gestionar.js", "orders/pedido_pdf.js", "modulos/clientes_pedidos/pedidos/revision_comercial.js", "orders/propuesta_comercial_pdf.js", "modulos/clientes_pedidos/pedidos/historial_reporte.js"];
 
             $this->views->getView($this, 'gestionar', $data);
 
@@ -1148,6 +1215,38 @@ class Ped_pedidos extends Controllers
 
 
 
+
+    /** 2026-11-04 | API de revisión comercial (solo sesión administrativa). */
+    public function revisionComercialApi()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['status'=>false,'msg'=>'Método no permitido']); return; }
+        $token = (string)($_SERVER['HTTP_X_PED_CSRF'] ?? '');
+        if (!$token || !hash_equals((string)($_SESSION['ped_revision_csrf']??''),$token)) { http_response_code(403); echo json_encode(['status'=>false,'msg'=>'Token de seguridad inválido']); return; }
+        $usuario=(int)($_SESSION['idUser']??$_SESSION['userData']['id_usuario']??$_SESSION['userData']['idusuario']??0);
+        if ($usuario<=0) { http_response_code(403); echo json_encode(['status'=>false,'msg'=>'Sesión no válida']); return; }
+        try {
+            $input=json_decode(file_get_contents('php://input'),true);
+            if (!is_array($input)) throw new RuntimeException('Solicitud JSON inválida.');
+            $clave=trim((string)($input['clave']??''));
+            if (!preg_match('/^[a-zA-Z0-9_-]{1,150}$/',$clave)) throw new RuntimeException('Clave de pedido inválida.');
+            $svc=new PedRevisionService(); 
+            $accion=$input['accion']??'';
+            switch($accion){
+                case 'crear': $result=$svc->crear($clave,$usuario);break;
+                case 'guardar': $result=$svc->guardar($clave,$usuario,$input['lineas']??[],(string)($input['observaciones']??''));break;
+                case 'enviar': $result=$svc->enviar($clave,$usuario);break;
+                default: throw new RuntimeException('Acción no reconocida.');
+            }
+            if ($accion === 'enviar') {
+                try {
+                    require_once __DIR__ . '/../Services/PedRevisionNotificador.php';
+                    (new PedRevisionNotificador())->distribuidor($clave, 'ENVIADA');
+                } catch (Throwable $mailError) { error_log('Notificación propuesta enviada: '.$mailError->getMessage()); }
+            }
+            echo json_encode(['status'=>true,'msg'=>'Operación realizada correctamente','data'=>$result],JSON_UNESCAPED_UNICODE);
+        } catch(Throwable $e) { http_response_code(422); error_log('revisionComercialApi: '.$e->getMessage()); echo json_encode(['status'=>false,'msg'=>$e->getMessage()],JSON_UNESCAPED_UNICODE); }
+    }
 }
 
 

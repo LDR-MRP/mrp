@@ -1,0 +1,3 @@
+/* 2026-11-04 | Interfaz de gestión; variables Velzon claro/oscuro. */
+.commercial-panel{background:var(--vz-card-bg,#fff);color:var(--vz-body-color,#495057)}
+.commercial-table-admin{min-width:1120px}.commercial-table-admin th{font-size:.78rem;white-space:nowrap}.commercial-table-admin td{vertical-align:middle}.commercial-table-admin input{min-width:95px}.commercial-table-admin select{min-width:135px}.commercial-table-admin textarea{min-width:190px}.commercial-panel .bg-body-secondary{background:var(--vz-light,#f3f6f9)!important}

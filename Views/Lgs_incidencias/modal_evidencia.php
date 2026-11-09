@@ -31,9 +31,9 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fs-12 fw-medium text-muted">Seleccionar Archivo <span class="text-danger">*</span></label>
-                        <input type="file" id="evidencia_archivo" name="archivo" class="form-control" required accept="image/*,video/mp4,application/pdf">
-                        <div class="form-text fs-11">Permitido: JPG, PNG, WEBP, PDF, MP4 (máx. 10MB / video 25MB).</div>
+                        <label class="form-label fs-12 fw-medium text-muted">Seleccionar Archivo(s) de Evidencia <span class="text-danger">*</span></label>
+                        <input type="file" id="evidencia_archivo" name="archivos[]" class="form-control" required accept="image/*,video/mp4,application/pdf" multiple>
+                        <div class="form-text fs-11">Permitido: JPG, PNG, WEBP, PDF, MP4 (puede seleccionar varias fotos simultáneamente).</div>
                     </div>
 
                 </div>

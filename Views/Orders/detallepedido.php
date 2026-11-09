@@ -226,6 +226,48 @@ foreach ($detalles as $detalle) {
              ESTATUS
         =================================================== -->
 
+        <?php
+        // Seguimiento por hitos conocidos, no porcentaje de unidades ni promesas de entrega.
+        $pasosSeguimiento = [
+            ['Pedido recibido', true],
+            ['Revisión comercial', in_array($estatus, ['EN_REVISION','BACK_ORDER','AUTORIZADO','FACTURADO','ENTREGADO'], true)],
+            ['Propuesta aceptada / Backorder', in_array($estatus, ['BACK_ORDER','AUTORIZADO','FACTURADO','ENTREGADO'], true)],
+            ['Orden de venta / Facturación', in_array($estatus, ['FACTURADO','ENTREGADO'], true)],
+            ['Entrega', $estatus === 'ENTREGADO'],
+        ];
+        ?>
+        <section class="card border-0 shadow-sm mb-4" aria-label="Seguimiento del pedido">
+          <div class="card-body p-4">
+            <h3 class="h5 mb-2"><i class="ri-route-line me-2 text-primary"></i>Seguimiento de mi pedido</h3>
+            <?php if (in_array($estatus,['RECHAZADO','CANCELADO'],true)): ?>
+              <div class="alert alert-danger mb-3"><i class="ri-close-circle-line me-1"></i>Este pedido está <?= htmlspecialchars(strtolower($estatus),ENT_QUOTES,'UTF-8') ?>. Consulta el detalle y las comunicaciones comerciales para conocer el motivo.</div>
+            <?php else: ?>
+              <p class="text-muted small">Etapas generales del proceso. La asignación y entrega requieren confirmación operativa; este indicador no representa porcentaje de unidades surtidas.</p>
+            <?php endif; ?>
+            <?php
+              $ultimoHito = 0;
+              foreach ($pasosSeguimiento as $indiceHito => $paso) {
+                  if ($paso[1]) $ultimoHito = $indiceHito;
+              }
+              $seguimientoDetenido = in_array($estatus, ['RECHAZADO','CANCELADO'], true);
+            ?>
+            <ol class="pedido-tracking" aria-label="Etapas del pedido">
+              <?php foreach ($pasosSeguimiento as $indiceHito => $paso):
+                $completado = (bool) $paso[1];
+                $actual = !$seguimientoDetenido && $indiceHito === $ultimoHito;
+                $claseHito = $seguimientoDetenido ? 'is-stopped' : ($actual ? 'is-current' : ($completado ? 'is-done' : 'is-upcoming'));
+              ?>
+                <li class="pedido-tracking__step <?= $claseHito ?>" <?= $actual ? 'aria-current="step"' : '' ?>>
+                  <span class="pedido-tracking__marker"><i class="<?= $seguimientoDetenido ? 'ri-subtract-line' : ($completado ? 'ri-check-line' : 'ri-time-line') ?>" aria-hidden="true"></i></span>
+                  <span class="pedido-tracking__body">
+                    <strong><?= htmlspecialchars($paso[0], ENT_QUOTES, 'UTF-8') ?></strong>
+                    <small><?= $seguimientoDetenido ? 'Proceso detenido' : ($actual ? 'Etapa actual' : ($completado ? 'Etapa registrada' : 'Pendiente')) ?></small>
+                  </span>
+                </li>
+              <?php endforeach; ?>
+            </ol>
+          </div>
+        </section>
         <div class="order-detail-status-card">
 
             <div class="order-detail-status-item">

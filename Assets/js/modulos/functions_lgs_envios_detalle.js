@@ -134,7 +134,12 @@ function cargarDatosDetalle() {
                     // 4. Inicializar Sortables
                     initSortables();
 
-                    // 5. Recalcular costo si ya existen asignaciones cargadas o auto-sincronizar si quedó inconsistente en BD
+                    // 5. Actualizar tarjetas KPI y desglose de Auditoría Financiera
+                    if (objData.data.auditoria_financiera) {
+                        actualizarAuditoriaFinancieraUI(objData.data.auditoria_financiera);
+                    }
+
+                    // 6. Recalcular costo si ya existen asignaciones cargadas o auto-sincronizar si quedó inconsistente en BD
                     if (tieneVinsAsignados) {
                         guardarAcomodoAuto();
                     } else if (parseFloat(g_envioData.costo_total || 0) > 0) {
@@ -1333,6 +1338,9 @@ function guardarAcomodoAuto() {
                         let costoTxt = objData.data && objData.data.costo_total ? '$' + parseFloat(objData.data.costo_total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00';
                         lblCosto.innerText = costoTxt;
                     }
+                    if (objData.data && objData.data.auditoria_financiera) {
+                        actualizarAuditoriaFinancieraUI(objData.data.auditoria_financiera);
+                    }
                 } else {
                     if (lblCosto) lblCosto.innerText = 'Error';
                 }
@@ -1717,4 +1725,87 @@ function regresarABorrador() {
             }
         }
     });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+/**
+ * Actualiza en tiempo real las 4 tarjetas KPI de Auditoría y el desglose de Costo Real por VIN
+ */
+function actualizarAuditoriaFinancieraUI(audit) {
+    if (!audit || typeof audit !== 'object') return;
+    const totales = audit.totales || {};
+
+    const lblCostoBase = document.getElementById('lbl-audit-costo-base');
+    const lblCargos = document.getElementById('lbl-audit-cargos');
+    const lblGastosCount = document.getElementById('lbl-audit-gastos-count');
+    const lblCostoReal = document.getElementById('lbl-audit-costo-real');
+    const lblIncidenciasCount = document.getElementById('lbl-audit-incidencias-count');
+    const lblVinsCount = document.getElementById('lbl-audit-vins-count');
+    const tabVinsCount = document.getElementById('lbl-audit-tab-vins-count');
+    const tabGastosCount = document.getElementById('lbl-audit-tab-gastos-count');
+    const tabIncidenciasCount = document.getElementById('lbl-audit-tab-incidencias-count');
+    const tbodyVins = document.getElementById('tbody-audit-vins');
+
+    const fmtMoney = (val) => '$' + (parseFloat(val) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    if (lblCostoBase) lblCostoBase.innerText = fmtMoney(totales.costo_planeado);
+    if (lblCargos) {
+        const cargos = parseFloat(totales.total_cargos) || 0;
+        lblCargos.innerText = (cargos > 0 ? '+$' : '$') + (cargos).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    if (lblGastosCount) lblGastosCount.innerText = `${parseInt(totales.gastos_count) || 0} gastos registrados`;
+    if (lblCostoReal) lblCostoReal.innerText = fmtMoney(totales.costo_real);
+    if (lblIncidenciasCount) lblIncidenciasCount.innerText = parseInt(totales.incidencias_count) || 0;
+    if (lblVinsCount) lblVinsCount.innerText = `${parseInt(totales.vins_count) || 0} VINs en el envío`;
+
+    const vins = audit.vins || [];
+    const gastos = audit.gastos || [];
+    const incidencias = audit.incidencias || [];
+
+    if (tabVinsCount) tabVinsCount.innerText = vins.length;
+    if (tabGastosCount) tabGastosCount.innerText = gastos.length;
+    if (tabIncidenciasCount) tabIncidenciasCount.innerText = incidencias.length;
+
+    if (tbodyVins) {
+        if (vins.length === 0) {
+            tbodyVins.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">No hay unidades cargadas en este envío.</td></tr>';
+        } else {
+            let html = '';
+            vins.forEach((v, idx) => {
+                const cPlaneado = parseFloat(v.costo_planeado_unidad) || 0;
+                const cCargos = parseFloat(v.total_cargos_adicionales) || 0;
+                const cDeduc = parseFloat(v.total_deducciones) || 0;
+                const cReal = parseFloat(v.costo_real_unidad) || 0;
+                const gActivos = parseInt(v.total_gastos_activos) || 0;
+
+                const txtCargos = cCargos > 0 ? `+$${cCargos.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00';
+                const txtDeduc = cDeduc > 0 ? `-$${cDeduc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$0.00';
+                const badgeGastos = gActivos > 0 ? `<span class="badge bg-soft-warning text-warning rounded-pill">${gActivos} gasto(s)</span>` : `<span class="text-muted fs-11">Sin extras</span>`;
+
+                html += `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td>
+                            <span class="badge bg-light text-dark font-monospace fs-12 px-2 py-1 border">${escapeHtml(v.vin || '')}</span>
+                        </td>
+                        <td class="text-end text-muted">${fmtMoney(cPlaneado)}</td>
+                        <td class="text-end text-danger fw-medium">${txtCargos}</td>
+                        <td class="text-end text-success fw-medium">${txtDeduc}</td>
+                        <td class="text-end fw-bold text-success fs-14">${fmtMoney(cReal)}</td>
+                        <td class="text-center">${badgeGastos}</td>
+                    </tr>
+                `;
+            });
+            tbodyVins.innerHTML = html;
+        }
+    }
 }

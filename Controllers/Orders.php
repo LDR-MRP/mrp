@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../Services/PedRevisionService.php';
 class Orders extends Controllers
 {
     public function __construct()
@@ -255,6 +256,8 @@ class Orders extends Controllers
 
             $data['pedidos'] = is_array($pedidos) ? $pedidos : [];
             $data['conteo_estatus'] = $conteoEstatus;
+            // 2026-11-04: bandeja de propuestas enviadas por Comercial.
+            $data['solicitudes_comerciales'] = $this->model->selectSolicitudesComercialesCliente($idcliente);
 
 
             /*
@@ -4225,4 +4228,68 @@ public function cancelarPedido()
 }
 
 
+
+    /** 2026-11-04 | Bandeja de solicitudes comerciales del distribuidor. */
+    public function solicitudescomerciales()
+    {
+        $idcliente = (int) ($_SESSION['portal_idcliente'] ?? 0);
+        $idusuario = (int) ($_SESSION['portal_idusuario_acceso'] ?? 0);
+        if ($idcliente <= 0 || $idusuario <= 0) {
+            header('Location: ' . base_url() . '/orders/login'); exit;
+        }
+        $data = [
+            'page_tag' => 'Solicitudes comerciales - LDR Solutions',
+            'page_name' => 'solicitudescomerciales',
+            'page_styles' => ['Orders/solicitudescomerciales.css'],
+            'solicitudes' => $this->model->selectSolicitudesComercialesCliente($idcliente)
+        ];
+        $this->views->getView($this, '../Orders/solicitudescomerciales', $data);
+    }
+
+    /** 2026-11-04 | Vista de una propuesta: nunca se recibe un ID interno por URL. */
+    public function verpropuestacomercial($clave = '')
+    {
+        if (empty($_SESSION['ped_revision_portal_csrf'])) $_SESSION['ped_revision_portal_csrf'] = bin2hex(random_bytes(24));
+        $idcliente = (int) ($_SESSION['portal_idcliente'] ?? 0);
+        $idusuario = (int) ($_SESSION['portal_idusuario_acceso'] ?? 0);
+        if ($idcliente <= 0 || $idusuario <= 0) {
+            header('Location: ' . base_url() . '/orders/login'); exit;
+        }
+        $propuesta = $this->model->selectPropuestaComercialCliente($idcliente, trim((string)$clave));
+        if (!$propuesta) {
+            http_response_code(404);
+        }
+        $data = [
+            'page_tag' => 'Revisión comercial - LDR Solutions',
+            'page_name' => 'verpropuestacomercial',
+            'page_styles' => ['Orders/solicitudescomerciales.css'],
+            'page_functions_js' => ['orders/respuesta_comercial.js', 'orders/propuesta_comercial_pdf.js'],
+            'propuesta' => $propuesta,
+            'detalles_propuesta' => $propuesta ? $this->model->selectDetallePropuestaComercial((int)$propuesta['idrevision']) : []
+        ];
+        $this->views->getView($this, '../Orders/verpropuestacomercial', $data);
+    }
+
+    /** 2026-11-04 | Respuesta del distribuidor y alta de backorder en una transacción. */
+    public function responderPropuestaComercial()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        if ($_SERVER['REQUEST_METHOD']!=='POST') { http_response_code(405); echo json_encode(['status'=>false,'msg'=>'Método no permitido']);return; }
+        $cliente=(int)($_SESSION['portal_idcliente']??0);$usuario=(int)($_SESSION['portal_idusuario_acceso']??0);
+        if ($cliente<=0||$usuario<=0) { http_response_code(401);echo json_encode(['status'=>false,'msg'=>'Inicia sesión']);return; }
+        $token=(string)($_SERVER['HTTP_X_PED_CSRF']??'');
+        if (!$token||!hash_equals((string)($_SESSION['ped_revision_portal_csrf']??''),$token)) { http_response_code(403);echo json_encode(['status'=>false,'msg'=>'Token de seguridad inválido']);return; }
+        try {
+            $body=json_decode(file_get_contents('php://input'),true);
+            if(!is_array($body))throw new RuntimeException('Solicitud inválida.');
+            $clave=trim((string)($body['clave']??''));if(!preg_match('/^[a-zA-Z0-9_-]{1,150}$/',$clave))throw new RuntimeException('Pedido inválido.');
+            $svc=new PedRevisionService();
+            $resultado=$svc->responder($clave,$cliente,$usuario,(string)($body['respuesta']??''),(string)($body['observaciones']??''),(string)($_SERVER['REMOTE_ADDR']??''),(string)($_SERVER['HTTP_USER_AGENT']??''));
+            try {
+                require_once __DIR__ . '/../Services/PedRevisionNotificador.php';
+                (new PedRevisionNotificador())->comercial($clave, (string)$body['respuesta'], (string)($body['observaciones'] ?? ''));
+            } catch (Throwable $mailError) { error_log('Notificación respuesta propuesta: '.$mailError->getMessage()); }
+            echo json_encode(['status'=>true,'msg'=>'Respuesta registrada correctamente','data'=>$resultado],JSON_UNESCAPED_UNICODE);
+        } catch(Throwable $e) {http_response_code(422);error_log('responderPropuestaComercial: '.$e->getMessage());echo json_encode(['status'=>false,'msg'=>'No fue posible registrar la respuesta. Verifica que la propuesta siga vigente o contacta a Comercial.'],JSON_UNESCAPED_UNICODE);}
+    }
 }

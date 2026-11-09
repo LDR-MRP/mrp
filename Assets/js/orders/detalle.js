@@ -1076,22 +1076,6 @@ function configurarAgregarCarrito(
       }
 
 
-      if (
-        Number(
-          unidad.stock || 0
-        ) <= 0
-      ) {
-
-        mostrarMensajeDetalle(
-          'warning',
-          'Sin disponibilidad',
-          'Esta unidad no cuenta con disponibilidad actualmente.'
-        );
-
-        return;
-      }
-
-
       let quantity =
         parseInt(
           quantityInput.value,
@@ -1497,20 +1481,6 @@ function configurarAgregarCarritoOLD(
       /*
        * Validar disponibilidad.
        */
-      if (
-        Number(
-          unidad.stock || 0
-        ) <= 0
-      ) {
-
-        mostrarMensajeDetalle(
-          'warning',
-          'Sin disponibilidad',
-          'Esta unidad no cuenta con disponibilidad actualmente.'
-        );
-
-        return;
-      }
 
       let quantity =
         parseInt(

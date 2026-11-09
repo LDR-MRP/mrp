@@ -556,17 +556,6 @@ function addToCartOLD(id) {
     return;
   }
 
-  if (Number(item.stock || 0) <= 0) {
-
-    mostrarMensajeCarrito(
-      'warning',
-      'Sin disponibilidad',
-      'Esta unidad no cuenta con disponibilidad actualmente.'
-    );
-
-    return;
-  }
-
   const cart =getCart();
 
   const found =
@@ -868,7 +857,7 @@ function cargarOpcionesFiltros() {
     products.map(
       item => item.marca
     ),
-    'Todas las marcas'
+    'Todos los segmentos'
   );
 
   cargarSelectUnico(
@@ -1644,6 +1633,11 @@ function renderProducts(list) {
 
 
                 <div>
+                  <span>Año modelo</span>
+                  <strong>${Number(item.anio) > 0 ? escapeHtml(item.anio) : 'No especificado'}</strong>
+                </div>
+
+                <div>
 
                   <span>
                     Motor
@@ -1688,24 +1682,6 @@ function renderProducts(list) {
                   Ver detalle
 
                 </a>
-
-
-                <button
-                  type="button"
-                  class="
-                    btn
-                    btn-primary
-                    btn-small
-                  "
-                  onclick="
-                    addToCart(
-                      ${item.id}
-                    )
-                  ">
-
-                  Agregar
-
-                </button>
 
               </div>
 

@@ -26,6 +26,9 @@ class Lgs_gastosadicionales extends Controllers
     public function Lgs_gastosadicionales(): void
     {
         $catalogos = $this->service->getCatalogos();
+        $userId = intval($_SESSION['idUser'] ?? ($_SESSION['userData']['idusuario'] ?? 1));
+        $userRole = intval($_SESSION['userData']['idrol'] ?? ($_SESSION['rolid'] ?? 0));
+        $esAprobador = $this->service->tienePermisoAprobacion($userId);
 
         $this->views->getView(
             $this,
@@ -34,8 +37,15 @@ class Lgs_gastosadicionales extends Controllers
                 'page_tag'          => "Gastos Adicionales",
                 'page_title'        => "Gestión Financiera de Gastos Adicionales",
                 'page_name'         => "lgs_gastosadicionales",
-                'page_functions_js' => "functions_lgs_gastosadicionales.js",
+                'page_functions_js' => [
+                    "modulos/functions_lgs_buscador_envios.js",
+                    "modulos/functions_lgs_buscador_incidencias.js",
+                    "modulos/functions_lgs_gastosadicionales.js"
+                ],
                 'catalogos'         => $catalogos,
+                'es_aprobador'      => $esAprobador,
+                'id_user'           => $userId,
+                'id_rol'            => $userRole,
             ]
         );
     }

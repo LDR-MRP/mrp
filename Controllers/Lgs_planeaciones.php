@@ -121,14 +121,17 @@ class Lgs_planeaciones extends Controllers
     {
         try {
             $userId = $_SESSION['idUser'] ?? 1;
+            $userName = $_SESSION['userData']['nombres'] ?? 'Usuario Logística';
             $idPlaneacion = intval($_POST['id_planeacion'] ?? 0);
+            $motivoSelect = trim($_POST['motivo_select'] ?? 'Reajuste operativo');
+            $motivoDetalle = trim($_POST['motivo_detalle'] ?? '');
 
             if ($idPlaneacion <= 0) {
                 throw new Exception("ID de planeación no válido.");
             }
 
-            $this->service->reabrirPlaneacion($idPlaneacion, $userId);
-            echo $this->successResponse(null, "Planeación y sus envíos reabiertos con éxito.");
+            $this->service->reabrirPlaneacion($idPlaneacion, $motivoSelect, $motivoDetalle, $userId, $userName);
+            echo $this->successResponse(null, "Planeación y sus envíos reabiertos con éxito. Se ha notificado a los entes autorizadores.");
         } catch (Exception $e) {
             echo $this->errorResponse($e->getMessage(), 500);
         }

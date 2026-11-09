@@ -1,6 +1,17 @@
 <?php
 
 headerOrders($data);
+?>
+<style>
+.orders-color-empty{display:flex;gap:16px;align-items:flex-start;padding:20px 22px;border:1px solid #e8c889;border-left:4px solid #d6a341;border-radius:14px;background:linear-gradient(115deg,#fff9e9,#fffdf7);color:#634c20;box-shadow:0 6px 18px rgba(122,93,33,.05);margin:16px 0}
+.orders-color-empty__icon{width:46px;height:46px;flex:none;display:grid;place-items:center;border-radius:12px;background:#fff0c7;color:#a06d0b;font-size:24px}
+.orders-color-empty__content strong{display:block;font-size:15px;margin:1px 0 6px}
+.orders-color-empty__content p{margin:0 0 10px;line-height:1.55;font-size:13px;color:#765f35}
+.orders-color-empty__hint{font-size:12px;font-weight:600;color:#986b1d}
+@media(max-width:575px){.orders-color-empty{padding:16px;gap:12px}.orders-color-empty__icon{width:40px;height:40px;font-size:20px}}
+</style>
+<?php
+
 
 
 
@@ -126,13 +137,23 @@ function construirRutaImagenUnidad(
                 <div class="unit-color-panel">
                   <label for="unidadColorSelect" class="form-label fw-semibold">Color de la unidad</label>
                   <select id="unidadColorSelect" class="form-select unit-color-select" required>
+                    
                     <?php foreach ($colores as $c): ?>
                     <option value="<?= (int)$c['idunidad_color'] ?>" data-name="<?= htmlspecialchars($c['nombre_color'], ENT_QUOTES, 'UTF-8') ?>"
-                     <?= !empty($c['es_predeterminado'])?'selected':'' ?>><?= htmlspecialchars($c['nombre_color'], ENT_QUOTES, 'UTF-8') ?></option>
+                     <?= (int)($c['es_predeterminado'] ?? 0) === 1 || (!array_filter($colores, static fn($color) => (int)($color['es_predeterminado'] ?? 0) === 1) && $c === reset($colores)) ? 'selected' : '' ?>><?= htmlspecialchars($c['nombre_color'], ENT_QUOTES, 'UTF-8') ?></option>
                     <?php endforeach; ?>
                   </select>
                   <small class="unit-color-help">Las fotografías cambian al seleccionar un color.</small>
                 </div>
+                <?php else: ?>
+                <div class="orders-color-empty" role="status" aria-live="polite">
+  <span class="orders-color-empty__icon"><i class="ri-palette-line" aria-hidden="true"></i></span>
+  <div class="orders-color-empty__content">
+    <strong>Colores temporalmente no disponibles</strong>
+    <p>Esta unidad todavía no tiene colores configurados. Para garantizar que tu pedido incluya la versión correcta, no es posible agregarla al carrito por el momento.</p>
+    <span class="orders-color-empty__hint"><i class="ri-information-line me-1" aria-hidden="true"></i>Consulta con tu asesor comercial para conocer la disponibilidad.</span>
+  </div>
+</div>
                 <?php endif; ?>
 
 
@@ -519,7 +540,7 @@ function construirRutaImagenUnidad(
 
                             </div>
 
-                            <button type="button" class="btn btn-primary unit-add-cart" id="btnAddDetailCart">
+                            <button type="button" class="btn btn-primary unit-add-cart" id="btnAddDetailCart" <?= empty($colores) ? 'disabled title="Sin colores disponibles"' : '' ?>>
 
                                 Agregar al carrito
                             </button>

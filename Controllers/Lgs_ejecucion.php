@@ -74,7 +74,10 @@ class Lgs_ejecucion extends Controllers
     public function getEnviosDespacho(): void
     {
         try {
-            $plantaId = ($_SESSION['userData']['idrol'] ?? 0) == 1 ? null : ($_SESSION['userData']['plantaid'] ?? null);
+            $userRole = (int)($_SESSION['userData']['idrol'] ?? 0);
+            $userPlantaId = (int)($_SESSION['userData']['plantaid'] ?? ($_SESSION['plantaid'] ?? 0));
+            // Si es Administrador (rol 1), ve todas las sedes; otros roles ven solo su planta asignada
+            $plantaId = ($userRole === 1) ? null : ($userPlantaId > 0 ? $userPlantaId : null);
             $data = $this->service->getEnviosDespacho($plantaId);
             echo json_encode($data, JSON_UNESCAPED_UNICODE);
             exit;
@@ -134,6 +137,30 @@ class Lgs_ejecucion extends Controllers
 
             $this->service->confirmarFechaRecoleccion($idEnvio, $fechaRecoleccion);
             echo $this->successResponse(null, "Fecha de recolección programada y unidades listas en área de entregas.");
+        } catch (Throwable $e) {
+            echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST: Confirma la recepción / cita previa con el cliente o distribuidor
+     * URL: {{base_url}}/Lgs_ejecucion/confirmarDestino
+     */
+    public function confirmarDestino(): void
+    {
+        try {
+            $userId = $_SESSION['idUser'] ?? 1;
+            $idEnvio = intval($_POST['id_envio'] ?? 0);
+            $contacto = trim($_POST['contacto'] ?? '');
+            $fechaCita = $_POST['fecha_cita'] ?? date('Y-m-d H:i:s');
+            $notas = trim($_POST['notas'] ?? '');
+
+            if ($idEnvio <= 0 || empty($contacto)) {
+                throw new Exception("El ID de envío y el nombre del contacto receptor son obligatorios.");
+            }
+
+            $this->service->confirmarCitaDestino($idEnvio, $contacto, $fechaCita, $notas, $userId);
+            echo $this->successResponse(null, "Confirmación de cita registrada. El envío ha sido habilitado para despacho.");
         } catch (Throwable $e) {
             echo $this->errorResponse($e->getMessage(), 500);
         }

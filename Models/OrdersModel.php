@@ -1,11 +1,15 @@
 <?php
 
+require_once __DIR__ . '/../Services/PedPedidosZonaHoraria.php';
 class OrdersModel extends Mysql
 {
+    use PedPedidosZonaHoraria;
+
 
     public function __construct()
     {
         parent::__construct();
+        $this->configurarZonaHorariaPedidos();
     }
 
     public function selectUsuarioPorCorreo(string $correo) {
@@ -691,15 +695,12 @@ public function selectImagenesUnidad(int $idunidad)
             WHERE uc.idunidad=$idunidad AND uc.estado=2 AND c.estado=2
             ORDER BY uc.es_predeterminado DESC,uc.orden ASC,uc.idunidad_color ASC");
     }
-    // Rechaza un color de otro modelo o desactivado; NULL solo para modelos sin variantes.
+    // Toda solicitud nueva debe tener una variante activa del modelo.
+    // Nunca se acepta NULL o 0, incluso si el catálogo aún no tiene colores.
     public function validarColorUnidad(int $idunidad, int $idunidadColor): bool {
-        $idunidad=(int)$idunidad; $idunidadColor=(int)$idunidadColor;
-        if ($idunidadColor<=0) {
-            $row=$this->select("SELECT COUNT(*) AS total FROM web_unidades_colores uc
-                INNER JOIN web_colores c ON c.idcolor=uc.idcolor
-                WHERE uc.idunidad=$idunidad AND uc.estado=2 AND c.estado=2");
-            return (int)($row['total']??0)===0;
-        }
+        $idunidad=(int)$idunidad;
+        $idunidadColor=(int)$idunidadColor;
+        if ($idunidad<=0 || $idunidadColor<=0) return false;
         $row=$this->select("SELECT uc.idunidad_color FROM web_unidades_colores uc
             INNER JOIN web_colores c ON c.idcolor=uc.idcolor
             WHERE uc.idunidad=$idunidad AND uc.idunidad_color=$idunidadColor
@@ -2241,4 +2242,59 @@ public function cancelarPedidoModel(
 
 
 
+
+    /** 2026-11-04 | Propuestas comerciales pendientes para el cliente autenticado. */
+    public function selectSolicitudesComercialesCliente(int $idcliente): array
+    {
+        if ($idcliente <= 0) return [];
+        $sql = "SELECT r.idrevision, r.numero_revision, r.fecha_envio, r.total,
+                       r.observaciones_comercial, p.folio_pedido, p.clave,
+                       p.fecha_pedido
+                FROM ped_pedidos_revisiones r
+                INNER JOIN ped_pedidos p ON p.idpedido = r.idpedido
+                WHERE p.idcliente = {$idcliente}
+                  AND p.estado = 2
+                  AND r.estatus = 'PENDIENTE_ACEPTACION'
+                ORDER BY r.fecha_envio DESC, r.idrevision DESC";
+        $resultado = $this->select_all($sql);
+        return is_array($resultado) ? $resultado : [];
+    }
+
+    /** 2026-11-04 | Consulta una propuesta usando únicamente la clave pública y el cliente. */
+    public function selectPropuestaComercialCliente(int $idcliente, string $clave): ?array
+    {
+        if ($idcliente <= 0 || !preg_match('/^[a-zA-Z0-9_-]{1,150}$/', $clave)) return null;
+        $claveSegura = $clave;
+        $sql = "SELECT r.*, p.folio_pedido, p.clave, p.fecha_pedido,
+                       p.observaciones AS observaciones_originales
+                FROM ped_pedidos_revisiones r
+                INNER JOIN ped_pedidos p ON p.idpedido = r.idpedido
+                WHERE p.idcliente = ? AND p.clave = ?
+                  AND p.estado = 2 AND r.estatus = 'PENDIENTE_ACEPTACION'
+                ORDER BY r.numero_revision DESC LIMIT 1";
+        $fila = $this->select($sql, [$idcliente, $claveSegura]);
+        return is_array($fila) && $fila ? $fila : null;
+    }
+
+    /** 2026-11-04 | Detalles de una versión congelada, con colores originales y propuestos. */
+    public function selectDetallePropuestaComercial(int $idrevision): array
+    {
+        if ($idrevision <= 0) return [];
+        $sql = "SELECT d.idrevision_detalle, d.tipo_cambio, d.cantidad_solicitada_original,
+                       d.cantidad_propuesta, d.precio_unitario_original, d.precio_unitario,
+                       d.descuento, d.descuento_tipo, d.descuento_valor, d.subtotal, d.iva, d.total, d.motivo_ajuste,
+                       d.idunidad_color, d.idunidad_color_original,
+                       u.nombre AS nombre_unidad, u.modelo, u.version,
+                       co.nombre AS color_propuesto, cor.nombre AS color_original
+                FROM ped_pedidos_revision_detalle d
+                LEFT JOIN web_unidades u ON u.idunidad = d.idunidad
+                LEFT JOIN web_unidades_colores uc ON uc.idunidad_color = d.idunidad_color
+                LEFT JOIN web_colores co ON co.idcolor = uc.idcolor
+                LEFT JOIN web_unidades_colores uco ON uco.idunidad_color = d.idunidad_color_original
+                LEFT JOIN web_colores cor ON cor.idcolor = uco.idcolor
+                WHERE d.idrevision = {$idrevision}
+                ORDER BY d.orden ASC, d.idrevision_detalle ASC";
+        $filas = $this->select_all($sql);
+        return is_array($filas) ? $filas : [];
+    }
 }
