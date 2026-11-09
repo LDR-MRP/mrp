@@ -15,10 +15,13 @@ function initTableBandeja() {
     if (tableBandeja) {
         tableBandeja.destroy();
     }
-    const estado   = document.getElementById('filtroEstado')?.value   ?? '';
-    const destino  = document.getElementById('filtroDestino')?.value  ?? '';
-    const motivo   = document.getElementById('filtroMotivo')?.value   ?? '';
-    const busqueda = document.getElementById('filtroBusqueda')?.value ?? '';
+    const estado     = document.getElementById('filtroEstado')?.value     ?? '';
+    const activado   = document.getElementById('filtroActivacionComercial')?.value ?? '';
+    const finanzas   = document.getElementById('filtroFinanzas')?.value   ?? '';
+    const destConf   = document.getElementById('filtroDestinoConfirmado')?.value ?? '';
+    const destino    = document.getElementById('filtroDestino')?.value    ?? '';
+    const motivo     = document.getElementById('filtroMotivo')?.value     ?? '';
+    const busqueda   = document.getElementById('filtroBusqueda')?.value   ?? '';
 
     tableBandeja = $('#tableBandeja').DataTable({
         aProcessing: true,
@@ -26,6 +29,9 @@ function initTableBandeja() {
         ajax: {
             url: base_url + '/Lgs_bandeja/getBandeja'
                 + '?estado=' + encodeURIComponent(estado)
+                + '&activado_comercial=' + encodeURIComponent(activado)
+                + '&estatus_finanzas=' + encodeURIComponent(finanzas)
+                + '&destino_confirmado=' + encodeURIComponent(destConf)
                 + '&destino=' + encodeURIComponent(destino)
                 + '&motivo=' + encodeURIComponent(motivo)
                 + '&busqueda=' + encodeURIComponent(busqueda),
@@ -37,46 +43,79 @@ function initTableBandeja() {
         },
         columns: [
             { data: 'id_lgs_unidad' },
-            { data: 'vin' },
-            { data: 'num_serie' },
-            { data: 'modelo_unidad' },
-            {
-                data: 'motivo_envio',
-                render: function (data) {
-                    return data ? '<span class="badge bg-info">' + _esc(data) + '</span>' : '<span class="text-muted">—</span>';
+            { 
+                data: 'vin',
+                render: function(data, _, row) {
+                    return '<strong class="text-primary fs-12">' + _esc(data) + '</strong><br><small class="text-muted">N/S: ' + _esc(row.num_serie || 'S/N') + '</small>';
+                }
+            },
+            { 
+                data: 'modelo_unidad',
+                render: function(data) {
+                    return '<span class="badge bg-soft-secondary text-dark">' + _esc(data || 'Unidad') + '</span>';
+                }
+            },
+            { 
+                data: 'folio_pedido',
+                render: function(data) {
+                    return (data && data !== '-') 
+                        ? '<span class="badge bg-soft-primary text-primary fw-medium"><i class="ri-file-list-3-line me-1"></i>' + _esc(data) + '</span>'
+                        : '<span class="text-muted fs-11">Sin Pedido</span>';
                 }
             },
             {
-                data: 'tipo_destino',
+                data: 'destino_pedido',
                 render: function (data) {
-                    return data ? '<span class="badge bg-secondary">' + _esc(data) + '</span>' : '<span class="text-muted">—</span>';
+                    return (data && data !== 'Por Definir') 
+                        ? '<div class="fs-12"><i class="ri-map-pin-line text-muted me-1"></i><strong>' + _esc(data) + '</strong><br><span class="badge bg-light text-muted fs-10">Origen: Pedidos</span></div>' 
+                        : '<span class="badge bg-soft-secondary text-muted">Sin Destino en Pedidos</span>';
                 }
             },
             {
                 data: 'destino_descripcion',
+                render: function (data, _, row) {
+                    if (parseInt(row.destino_confirmado) === 1) {
+                        return '<div class="fs-12"><span class="badge bg-soft-success text-success border border-success-subtle px-2 py-1"><i class="ri-checkbox-circle-fill me-1"></i>' + _esc(data) + '</span></div>';
+                    }
+                    return '<div class="fs-12"><span class="badge bg-soft-warning text-dark border border-warning-subtle px-2 py-1"><i class="ri-time-line me-1"></i>Por Confirmar</span></div>';
+                }
+            },
+            {
+                data: 'estatus_finanzas',
                 render: function (data) {
-                    return data ? _esc(data) : '<span class="text-muted">—</span>';
+                    const st = (data || 'PENDIENTE').toUpperCase();
+                    switch(st) {
+                        case 'PAGADO':
+                            return '<span class="badge bg-success px-2 py-1"><i class="ri-check-line me-1"></i>Pagado</span>';
+                        case 'CREDITO_AUTORIZADO':
+                            return '<span class="badge bg-info px-2 py-1"><i class="ri-shield-check-line me-1"></i>Crédito Aut.</span>';
+                        case 'PARCIAL_AUTORIZADO':
+                            return '<span class="badge bg-warning text-dark px-2 py-1">Parcial Aut.</span>';
+                        default:
+                            return '<span class="badge bg-soft-danger text-danger px-2 py-1">Pendiente Fin.</span>';
+                    }
+                }
+            },
+            {
+                data: 'activado_comercial',
+                render: function (data) {
+                    if (parseInt(data) === 1) {
+                        return '<span class="badge bg-primary px-2 py-1"><i class="ri-flashlight-fill me-1"></i>Listo Despacho</span>';
+                    }
+                    return '<span class="badge bg-soft-secondary text-muted px-2 py-1"><i class="ri-time-line me-1"></i>Preplaneación</span>';
                 }
             },
             {
                 data: 'estado_proceso_texto',
                 render: function (data, _, row) {
-                    const clases = { 1: 'bg-warning text-dark', 2: 'bg-primary', 3: 'bg-success' };
-                    const cls = clases[row.id_estado_proceso] || 'bg-secondary';
+                    const clases = { 1: 'bg-soft-warning text-warning border', 2: 'bg-soft-primary text-primary border', 3: 'bg-soft-success text-success border' };
+                    const cls = clases[row.id_estado_proceso] || 'bg-light text-dark';
                     let html = '<span class="badge ' + cls + '">' + _esc(data) + '</span>';
                     if (row.envio_folio) {
                         html += '<br><a href="' + base_url + '/Lgs_envios/detalle/' + row.envio_id + '" class="badge bg-soft-info text-info border border-info mt-1 text-decoration-none" title="Ver Acomodo / Envío"><i class="ri-truck-line me-1"></i>' + _esc(row.envio_folio) + '</a>';
                     }
                     return html;
                 }
-            },
-            {
-                data: 'fecha_salida',
-                render: function (data) { return data ? _esc(data) : '<span class="text-muted">—</span>'; }
-            },
-            {
-                data: 'fecha_llegada',
-                render: function (data) { return data ? _esc(data) : '<span class="text-muted">—</span>'; }
             },
             { data: 'options', orderable: false }
         ],
@@ -251,6 +290,92 @@ function fntSiguienteArea(idLgsUnidad) {
                 recargarBandeja();
             })
             .catch(err => Sys_Core.UI.notify(err.message, 'error'));
+    });
+}
+
+// ─── Puntos 5, 8 y 9: Acciones Rápidas en Bandeja ───────────────────────────
+
+/**
+ * Confirmar el destino derivado de pedidos con un clic (Punto 5)
+ */
+function fntConfirmarDestinoPedido(idLgsUnidad, destinoPedido) {
+    Swal.fire({
+        title: 'Confirmar Destino de Pedidos',
+        html: `¿Desea confirmar el destino originado en pedidos: <br><strong class="text-primary">${_esc(destinoPedido)}</strong> como ubicación logística de entrega?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, confirmar destino',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#0ab39c'
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        const fd = new FormData();
+        fd.append('id_lgs_unidad', idLgsUnidad);
+
+        fetch(base_url + '/Lgs_bandeja/confirmarDestinoPedido', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(res => {
+                let isOk = (res.status === 'success' || res.status === true || res.success === true || res.code === 200);
+                if (!isOk) throw new Error(res.message || 'Error al confirmar destino');
+                if (typeof Sys_Core !== 'undefined' && Sys_Core.UI) {
+                    Sys_Core.UI.notify(res.message || 'Destino confirmado', 'success');
+                } else {
+                    Swal.fire('Éxito', res.message || 'Destino confirmado', 'success');
+                }
+                recargarBandeja();
+            })
+            .catch(err => {
+                if (typeof Sys_Core !== 'undefined' && Sys_Core.UI) {
+                    Sys_Core.UI.notify(err.message, 'error');
+                } else {
+                    Swal.fire('Error', err.message, 'error');
+                }
+            });
+    });
+}
+
+/**
+ * Conmutar activación comercial (Punto 9)
+ */
+function fntToggleActivacion(idLgsUnidad, nextVal) {
+    const titulo = (nextVal === 1) ? '¿Activar para Despacho en Firme?' : '¿Regresar a Solo Preplaneación?';
+    const texto = (nextVal === 1) 
+        ? 'Esta unidad quedará habilitada para agregarse a envíos ejecutables.'
+        : 'La unidad quedará limitada a estimaciones de preplaneación sin despacho físico.';
+
+    Swal.fire({
+        title: titulo,
+        text: texto,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: (nextVal === 1) ? 'Sí, activar para envío' : 'Sí, marcar preplaneación',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: (nextVal === 1) ? '#0284c7' : '#64748b'
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        const fd = new FormData();
+        fd.append('id_lgs_unidad', idLgsUnidad);
+        fd.append('activado', nextVal);
+
+        fetch(base_url + '/Lgs_bandeja/setActivacionComercial', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(res => {
+                let isOk = (res.status === 'success' || res.status === true || res.success === true || res.code === 200);
+                if (!isOk) throw new Error(res.message || 'Error al actualizar estatus comercial');
+                if (typeof Sys_Core !== 'undefined' && Sys_Core.UI) {
+                    Sys_Core.UI.notify(res.message || 'Estatus comercial actualizado', 'success');
+                } else {
+                    Swal.fire('Éxito', res.message || 'Estatus comercial actualizado', 'success');
+                }
+                recargarBandeja();
+            })
+            .catch(err => {
+                if (typeof Sys_Core !== 'undefined' && Sys_Core.UI) {
+                    Sys_Core.UI.notify(err.message, 'error');
+                } else {
+                    Swal.fire('Error', err.message, 'error');
+                }
+            });
     });
 }
 

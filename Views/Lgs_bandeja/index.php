@@ -122,9 +122,9 @@
                     <div class="bg-primary" style="height: 4px;"></div>
                     <div class="card-body">
                         <!-- Filtros Rápidos -->
-                        <div class="row g-3 mb-4">
+                        <div class="row g-3 mb-3">
                             <div class="col-md-3">
-                                <label class="form-label fs-11 fw-bold text-muted text-uppercase mb-1">Filtrar por Estado</label>
+                                <label class="form-label fs-11 fw-bold text-muted text-uppercase mb-1">Filtrar por Estado Logístico</label>
                                 <select id="filtroEstado" class="form-select bg-light border-0" onchange="recargarBandeja()">
                                     <option value="">Estado: Todos</option>
                                     <option value="1">Pendiente</option>
@@ -133,15 +133,43 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label fs-11 fw-bold text-muted text-uppercase mb-1">Filtrar por Destino</label>
-                                <select id="filtroDestino" class="form-select bg-light border-0" onchange="recargarBandeja()">
+                                <label class="form-label fs-11 fw-bold text-muted text-uppercase mb-1">Activación Comercial (Punto 9)</label>
+                                <select id="filtroActivacionComercial" class="form-select bg-light border-0" onchange="recargarBandeja()">
+                                    <option value="">Comercial: Todos</option>
+                                    <option value="1">🚀 Listo para Despacho (Activado)</option>
+                                    <option value="0">📝 Solo Preplaneación</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fs-11 fw-bold text-muted text-uppercase mb-1">Estatus Finanzas (Punto 8)</label>
+                                <select id="filtroFinanzas" class="form-select bg-light border-0" onchange="recargarBandeja()">
+                                    <option value="">Finanzas: Todos</option>
+                                    <option value="PAGADO">Pagado</option>
+                                    <option value="CREDITO_AUTORIZADO">Crédito Autorizado</option>
+                                    <option value="PARCIAL_AUTORIZADO">Parcialmente Pagado</option>
+                                    <option value="PENDIENTE">Pendiente Finanzas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fs-11 fw-bold text-muted text-uppercase mb-1">Confirmación Destino (Punto 5)</label>
+                                <select id="filtroDestinoConfirmado" class="form-select bg-light border-0" onchange="recargarBandeja()">
                                     <option value="">Destino: Todos</option>
+                                    <option value="1">✅ Destino Confirmado</option>
+                                    <option value="0">⚠️ Pendiente de Confirmar</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fs-11 fw-bold text-muted text-uppercase mb-1">Filtrar por Destino Logístico</label>
+                                <select id="filtroDestino" class="form-select bg-light border-0" onchange="recargarBandeja()">
+                                    <option value="">Destino: Todos los Catálogos</option>
                                     <?php foreach ($data['destinos'] as $dest): ?>
                                         <option value="<?= intval($dest['id_destino']); ?>"><?= htmlspecialchars($dest['descripcion'], ENT_QUOTES, 'UTF-8'); ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label fs-11 fw-bold text-muted text-uppercase mb-1">Filtrar por Motivo</label>
                                 <select id="filtroMotivo" class="form-select bg-light border-0" onchange="recargarBandeja()">
                                     <option value="">Motivo: Todos</option>
@@ -150,9 +178,9 @@
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label fs-11 fw-bold text-muted text-uppercase mb-1">Búsqueda Rápida</label>
-                                <input type="text" id="filtroBusqueda" class="form-control bg-light border-0" placeholder="Buscar VIN o N/S..." oninput="recargarBandeja()">
+                                <input type="text" id="filtroBusqueda" class="form-control bg-light border-0" placeholder="Buscar VIN, pedido o destino..." oninput="recargarBandeja()">
                             </div>
                         </div>
 
@@ -161,15 +189,14 @@
                                 <thead class="bg-light">
                                     <tr>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">ID</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">VIN</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">N/S</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">VIN / N/S</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Modelo</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Motivo Envío</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Tipo Destino</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Destino</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Pedido</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Destino de Pedidos (Punto 5)</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Destino Confirmado</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Finanzas (Punto 8)</th>
+                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Comercial (Punto 9)</th>
                                         <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Estado</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Salida</th>
-                                        <th scope="col" class="text-uppercase text-muted fs-11 fw-bold ls-1 py-3">Llegada</th>
                                         <th scope="col" class="text-end text-uppercase text-muted fs-11 fw-bold ls-1 py-3 pe-4">Acciones</th>
                                     </tr>
                                 </thead>

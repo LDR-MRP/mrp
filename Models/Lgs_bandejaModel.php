@@ -101,13 +101,36 @@ class Lgs_bandejaModel extends Mysql {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
             $this->insert($sqlEntrega, []);
 
+            // 6. Asegurar columnas de Pedidos, Finanzas y Activación Comercial en lgs_unidades (Puntos 5, 8 y 9)
+            $cols = $this->select_all("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lgs_unidades'");
+            $colNames = array_column($cols ?: [], 'COLUMN_NAME');
+            if (!in_array('id_pedido', $colNames)) {
+                $this->insert("ALTER TABLE lgs_unidades ADD COLUMN id_pedido bigint(20) DEFAULT NULL AFTER id_destino", []);
+            }
+            if (!in_array('folio_pedido', $colNames)) {
+                $this->insert("ALTER TABLE lgs_unidades ADD COLUMN folio_pedido varchar(50) DEFAULT NULL AFTER id_pedido", []);
+            }
+            if (!in_array('destino_pedido', $colNames)) {
+                $this->insert("ALTER TABLE lgs_unidades ADD COLUMN destino_pedido varchar(255) DEFAULT NULL AFTER folio_pedido", []);
+            }
+            if (!in_array('estatus_finanzas', $colNames)) {
+                $this->insert("ALTER TABLE lgs_unidades ADD COLUMN estatus_finanzas varchar(50) DEFAULT 'PENDIENTE' AFTER destino_descripcion", []);
+            }
+            if (!in_array('activado_comercial', $colNames)) {
+                $this->insert("ALTER TABLE lgs_unidades ADD COLUMN activado_comercial tinyint(1) NOT NULL DEFAULT 0 AFTER estatus_finanzas", []);
+            }
+            if (!in_array('fecha_activacion_comercial', $colNames)) {
+                $this->insert("ALTER TABLE lgs_unidades ADD COLUMN fecha_activacion_comercial datetime DEFAULT NULL AFTER activado_comercial", []);
+            }
+
         } catch (Throwable $e) {
             // Manejo silencioso para no interrumpir el flujo si las tablas ya están creadas
         }
     }
 
     /**
-     * Obtiene todos los VINs elegibles para la bandeja de logística.
+     * Obtiene todos los VINs elegibles para la bandeja de logística con información enriquecida
+     * de Pedidos (Punto 5), Finanzas (Punto 8) y Activación Comercial (Punto 9).
      */
     public function getUnidadesBandeja(array $filtros = []): array {
         $where  = "WHERE 1=1";
@@ -117,6 +140,27 @@ class Lgs_bandejaModel extends Mysql {
         if (!empty($filtros['id_estado_proceso'])) {
             $where .= " AND lu.id_estado_proceso = ?";
             $params[] = intval($filtros['id_estado_proceso']);
+        }
+
+        // Filtro por activación comercial (Punto 9: 1 = Listo para Despacho, 0 = Solo Preplaneación)
+        if (isset($filtros['activado_comercial']) && $filtros['activado_comercial'] !== '') {
+            $where .= " AND lu.activado_comercial = ?";
+            $params[] = intval($filtros['activado_comercial']);
+        }
+
+        // Filtro por estatus de finanzas (Punto 8: PAGADO, CREDITO_AUTORIZADO, PENDIENTE)
+        if (!empty($filtros['estatus_finanzas'])) {
+            $where .= " AND lu.estatus_finanzas = ?";
+            $params[] = trim($filtros['estatus_finanzas']);
+        }
+
+        // Filtro por confirmación de destino (Punto 5)
+        if (isset($filtros['destino_confirmado']) && $filtros['destino_confirmado'] !== '') {
+            if (intval($filtros['destino_confirmado']) === 1) {
+                $where .= " AND lu.destino_descripcion IS NOT NULL AND TRIM(lu.destino_descripcion) <> '' AND lu.destino_descripcion <> 'Por Confirmar'";
+            } else {
+                $where .= " AND (lu.destino_descripcion IS NULL OR TRIM(lu.destino_descripcion) = '' OR lu.destino_descripcion = 'Por Confirmar')";
+            }
         }
 
         // Filtro por destino
@@ -131,10 +175,13 @@ class Lgs_bandejaModel extends Mysql {
             $params[] = intval($filtros['id_motivo']);
         }
 
-        // Búsqueda por VIN o folio
+        // Búsqueda por VIN, folio de pedido o descripción
         if (!empty($filtros['busqueda'])) {
-            $where .= " AND (u.vin LIKE ? OR u.num_serie LIKE ? OR ut.clave LIKE ? OR ut.num_unidad LIKE ?)";
+            $where .= " AND (u.vin LIKE ? OR u.num_serie LIKE ? OR ut.clave LIKE ? OR ut.num_unidad LIKE ? OR lu.folio_pedido LIKE ? OR lu.destino_pedido LIKE ? OR lu.destino_descripcion LIKE ?)";
             $term = '%' . $filtros['busqueda'] . '%';
+            $params[] = $term;
+            $params[] = $term;
+            $params[] = $term;
             $params[] = $term;
             $params[] = $term;
             $params[] = $term;
@@ -150,7 +197,26 @@ class Lgs_bandejaModel extends Mysql {
                     'Blanco' AS color_unidad,
                     COALESCE(m.descripcion, 'Sin Asignar') AS motivo_envio,
                     COALESCE(d.descripcion, 'Sin Asignar') AS tipo_destino,
-                    COALESCE(lu.destino_descripcion, u.destino, 'Por Definir') AS destino_descripcion,
+                    -- Destino original de Pedidos (Punto 5)
+                    COALESCE(lu.destino_pedido, u.destino, 'Por Definir') AS destino_pedido,
+                    -- Destino logístico confirmado por Adriana
+                    COALESCE(lu.destino_descripcion, lu.destino_pedido, u.destino, 'Por Confirmar') AS destino_descripcion,
+                    CASE 
+                        WHEN lu.destino_descripcion IS NOT NULL AND TRIM(lu.destino_descripcion) <> '' AND lu.destino_descripcion <> 'Por Confirmar' THEN 1 
+                        ELSE 0 
+                    END AS destino_confirmado,
+                    -- Folio de Pedido asociado
+                    COALESCE(lu.folio_pedido, '-') AS folio_pedido,
+                    lu.id_pedido,
+                    -- Estatus Finanzas (Punto 8)
+                    COALESCE(lu.estatus_finanzas, 'PENDIENTE') AS estatus_finanzas,
+                    -- Activación Comercial vs Preplaneación (Punto 9)
+                    lu.activado_comercial,
+                    lu.fecha_activacion_comercial,
+                    CASE lu.activado_comercial
+                        WHEN 1 THEN 'Listo para Despacho'
+                        ELSE 'Solo Preplaneación'
+                    END AS activacion_comercial_texto,
                     lu.id_estado_proceso,
                     CASE lu.id_estado_proceso
                         WHEN 1 THEN 'Pendiente'
@@ -338,5 +404,63 @@ class Lgs_bandejaModel extends Mysql {
                 SET id_estado = 3, confirmado_by = ?
                 WHERE id_entrega_interna = ? AND id_estado = 1";
         return (bool) $this->update($sql, [$userId, $idEntrega]);
+    }
+
+    /**
+     * Confirma el destino que viene de Pedidos (Punto 5 de la minuta).
+     * Adriana analiza y confirma con un clic el destino originado en el pedido comercial.
+     */
+    public function confirmarDestinoDesdePedido(int $idLgsUnidad, int $userId): bool {
+        $sql = "UPDATE lgs_unidades
+                SET destino_descripcion = COALESCE(NULLIF(destino_pedido, ''), destino_descripcion),
+                    updated_by          = ?,
+                    updated_at          = NOW()
+                WHERE id_lgs_unidad = ?";
+        return (bool) $this->update($sql, [$userId, $idLgsUnidad]);
+    }
+
+    /**
+     * Ajusta el destino confirmado si Adriana tras validar con pedidos requiere especificar
+     * un nodo, patio o ubicación logística exacta (Punto 5 de la minuta).
+     */
+    public function ajustarDestino(int $idLgsUnidad, string $destinoConfirmado, int $userId): bool {
+        $sql = "UPDATE lgs_unidades
+                SET destino_descripcion = ?,
+                    updated_by          = ?,
+                    updated_at          = NOW()
+                WHERE id_lgs_unidad = ?";
+        return (bool) $this->update($sql, [
+            htmlspecialchars(trim($destinoConfirmado), ENT_QUOTES, 'UTF-8'),
+            $userId,
+            $idLgsUnidad
+        ]);
+    }
+
+    /**
+     * Activa o desactiva la unidad para despacho comercial (Punto 9 de la minuta).
+     * 1 = Activado por Comercial (Listo para despacho en firme)
+     * 0 = Solo Preplaneación (Permitido para rutas preliminares pero no despacho)
+     */
+    public function toggleActivacionComercial(int $idLgsUnidad, int $activado, int $userId): bool {
+        $sql = "UPDATE lgs_unidades
+                SET activado_comercial         = ?,
+                    fecha_activacion_comercial = IF(? = 1, NOW(), fecha_activacion_comercial),
+                    updated_by                 = ?,
+                    updated_at                 = NOW()
+                WHERE id_lgs_unidad = ?";
+        return (bool) $this->update($sql, [$activado, $activado, $userId, $idLgsUnidad]);
+    }
+
+    /**
+     * Actualiza el estatus de finanzas de la unidad (Punto 8 de la minuta).
+     * Valores: PAGADO, CREDITO_AUTORIZADO, PARCIAL_AUTORIZADO, PENDIENTE
+     */
+    public function actualizarEstatusFinanzas(int $idLgsUnidad, string $estatusFinanzas, int $userId): bool {
+        $sql = "UPDATE lgs_unidades
+                SET estatus_finanzas = ?,
+                    updated_by       = ?,
+                    updated_at       = NOW()
+                WHERE id_lgs_unidad = ?";
+        return (bool) $this->update($sql, [trim($estatusFinanzas), $userId, $idLgsUnidad]);
     }
 }

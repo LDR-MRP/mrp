@@ -98,4 +98,48 @@ class Lgs_bandejaService {
     public function cancelarEntregaInterna(int $idEntrega, int $userId): bool {
         return $this->model->cancelarEntregaInterna($idEntrega, $userId);
     }
+
+    // ─── Puntos 5, 8 y 9 (Minuta 04/11) ──────────────────────────────────────
+
+    /**
+     * Confirma el destino que viene de Pedidos (Punto 5).
+     * Adriana analiza la ubicación de pedidos y la confirma como destino logístico.
+     */
+    public function confirmarDestinoDesdePedido(int $idLgsUnidad, int $userId): bool {
+        return $this->model->confirmarDestinoDesdePedido($idLgsUnidad, $userId);
+    }
+
+    /**
+     * Ajusta el destino confirmado si Adriana requiere especificar un nodo o patio logístico (Punto 5).
+     */
+    public function ajustarDestino(int $idLgsUnidad, string $destinoConfirmado, int $userId): bool {
+        $destinoConfirmado = trim($destinoConfirmado);
+        if (empty($destinoConfirmado)) {
+            throw new Exception("El destino confirmado no puede estar vacío.");
+        }
+        return $this->model->ajustarDestino($idLgsUnidad, $destinoConfirmado, $userId);
+    }
+
+    /**
+     * Activa o desactiva la unidad para despacho comercial (Punto 9).
+     * 1 = Activado por Comercial (Listo para despacho en firme)
+     * 0 = Solo Preplaneación (Permitido para rutas preliminares pero no despacho)
+     */
+    public function toggleActivacionComercial(int $idLgsUnidad, int $activado, int $userId): bool {
+        $activadoVal = ($activado === 1 || $activado === true) ? 1 : 0;
+        return $this->model->toggleActivacionComercial($idLgsUnidad, $activadoVal, $userId);
+    }
+
+    /**
+     * Actualiza el estatus de finanzas de la unidad (Punto 8).
+     * Valores válidos: PAGADO, CREDITO_AUTORIZADO, PARCIAL_AUTORIZADO, PENDIENTE
+     */
+    public function actualizarEstatusFinanzas(int $idLgsUnidad, string $estatusFinanzas, int $userId): bool {
+        $validos = ['PAGADO', 'CREDITO_AUTORIZADO', 'PARCIAL_AUTORIZADO', 'PENDIENTE'];
+        $estatusUpper = strtoupper(trim($estatusFinanzas));
+        if (!in_array($estatusUpper, $validos)) {
+            throw new Exception("Estatus financiero no válido. Opciones permitidas: " . implode(', ', $validos));
+        }
+        return $this->model->actualizarEstatusFinanzas($idLgsUnidad, $estatusUpper, $userId);
+    }
 }
