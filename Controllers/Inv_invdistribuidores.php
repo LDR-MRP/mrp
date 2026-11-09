@@ -1,33 +1,32 @@
 <?php
 /**
- * RETAIL DE DISTRIBUIDORES.
+ * RETAIL E INVENTARIO DE DISTRIBUIDORES.
  *
- * Almacena el retail que captura el área en una tabla propia, SIN relación
- * con unidades, VINs del MRP ni el catálogo de clientes.
+ * Dos bases en el mismo módulo, con la misma mecánica, guardadas en tablas
+ * propias SIN relación con unidades, VINs del MRP ni el catálogo de clientes:
  *
- * - SOLO se acepta la plantilla del módulo (descargarPlantilla): hoja "Retail"
- *   (captura libre, sin listas ni validaciones) + hoja oculta "Catalogos" con la marca
- *   MARCA_PLANTILLA en A1. exportarRetail genera el mismo formato.
+ *  - RETAIL (tipo=retail): hoja "Retail" del archivo BD_RT_INV_<MES><AA>.xlsx.
+ *    Periodo = MES RETAIL. Tablas wms_dist_retail_cargas / wms_dist_retail. Folio RTD-000001.
+ *  - INVENTARIO (tipo=inventario): hoja "Inventarios" del mismo archivo.
+ *    Periodo = AÑO R + MES R (foto del inventario de cada distribuidor en ese mes).
+ *    Tablas wms_dist_inventario_cargas / wms_dist_inventario. Folio IND-000001.
  *
- * - Cada archivo subido es una CARGA (historial con folio RTD-000001).
- * - El archivo es acumulado: al subirlo se REEMPLAZAN los meses (MES RETAIL)
- *   que trae; los meses que no vienen en el archivo se conservan.
- * - Obligatorios por renglón: DISTRIBUIDOR, VIN y MES RETAIL. Lo demás es opcional.
+ * - SOLO se acepta la plantilla del módulo (descargarPlantilla?tipo=...): hoja de captura
+ *   libre + hoja oculta "Catalogos" con la marca de esa base en A1. exportar genera el mismo formato.
+ * - Cada archivo subido es una CARGA (historial). El archivo es acumulado: al subirlo se
+ *   REEMPLAZAN los meses que trae; los meses que no vienen se conservan.
+ * - Obligatorios por renglón: DISTRIBUIDOR, VIN y el periodo. Lo demás es opcional.
  *
- * Permiso propio: módulo 85 (MIINVDISTRIBUIDORES).
- * Tablas: wms_dist_retail_cargas / wms_dist_retail.
+ * Permiso propio: módulo 85 (MIINVDISTRIBUIDORES), el mismo para las dos bases.
  */
 class Inv_invdistribuidores extends Controllers
 {
-	private const HOJA = 'Retail';
 	private const HOJA_CATALOGOS = 'Catalogos';
-	/** Marca en Catalogos!A1: solo se aceptan archivos hechos desde la plantilla del módulo. */
-	private const MARCA_PLANTILLA = 'PLANTILLA_RETAIL_DISTRIBUIDORES_V1';
 	/** Renglones con formato de texto/fecha en la plantilla. */
 	private const FILAS_PLANTILLA = 20000;
 
-	/** Encabezado del archivo (normalizado: sin acentos ni signos) => campo. */
-	private const MAPA_ENCABEZADOS = [
+	/** Encabezados comunes del archivo (normalizados: sin acentos ni signos) => campo. */
+	private const MAPA_COMUN = [
 		'DISTRIBUIDOR' => 'distribuidor',
 		'VIN' => 'vin',
 		'NIV' => 'vin',
@@ -46,9 +45,6 @@ class Inv_invdistribuidores extends Controllers
 		'DIRECCION' => 'direccion',
 		'CODIGOPOSTAL' => 'codigo_postal',
 		'CP' => 'codigo_postal',
-		'TELEFONO' => 'telefono',
-		'EMAIL' => 'email',
-		'CORREO' => 'email',
 		'TIPODEPAGO' => 'tipo_pago',
 		'INSTITUCION' => 'institucion',
 		'ENGANCHE' => 'enganche',
@@ -57,38 +53,122 @@ class Inv_invdistribuidores extends Controllers
 		'VENDEDOR' => 'vendedor',
 		'MODELOGEN' => 'modelo_gen',
 		'MODELOGENERICO' => 'modelo_gen',
-		'MOTOR' => 'motor',
-		'MESRETAIL' => 'mes_retail',
 	];
 
-	/** Encabezados de la plantilla / exportación (mismo orden que el archivo original). */
-	private const ENCABEZADOS = [
-		'DISTRIBUIDOR' => 'distribuidor',
-		'VIN' => 'vin',
-		'MODELO' => 'modelo',
-		'AÑO modelo' => 'anio_modelo',
-		'TIPO' => 'tipo',
-		'ESTATUS' => 'estatus',
-		'OBSERVACIONES' => 'observaciones',
-		'FECHA DE FACTURACIÓN' => 'fecha_facturacion',
-		'FOLIO FISCAL' => 'folio_fiscal',
-		'NOMBRE O RAZÓN SOCIAL' => 'razon_social',
-		'R.F.C.' => 'rfc',
-		'DIRECCIÓN' => 'direccion',
-		'CODIGO POSTAL' => 'codigo_postal',
-		'TELEFONO' => 'telefono',
-		'E-MAIL' => 'email',
-		'TIPO DE PAGO' => 'tipo_pago',
-		'INSTITUCIÓN' => 'institucion',
-		'ENGANCHE' => 'enganche',
-		'PLAZO' => 'plazo',
-		'NOMBRE DEL VENDEDOR' => 'vendedor',
-		'MODELO GEN' => 'modelo_gen',
-		'MOTOR' => 'motor',
-		'MES RETAIL' => 'mes_retail',
+	/**
+	 * Configuración de archivo por base.
+	 * - encabezados: plantilla / exportación en el MISMO orden que la hoja original
+	 *   (así se puede pegar el bloque completo). Campo null = columna que se ignora.
+	 * - mapa: encabezados adicionales a MAPA_COMUN.
+	 * - crudos: campos que se leen sin convertir a texto (fechas / periodo).
+	 * - obligatorios: campos con encabezado verde.
+	 */
+	private const TIPOS = [
+		'retail' => [
+			'nombre' => 'Retail',
+			'hoja' => 'Retail',
+			'marca' => 'PLANTILLA_RETAIL_DISTRIBUIDORES_V1',
+			'archivo' => 'Retail_Distribuidores',
+			'log' => 'cargaRetailDistLog',
+			'periodo_txt' => 'MES RETAIL',
+			'mapa' => [
+				'TELEFONO' => 'telefono',
+				'EMAIL' => 'email',
+				'CORREO' => 'email',
+				'MOTOR' => 'motor',
+				'MESRETAIL' => 'mes_retail',
+			],
+			'encabezados' => [
+				'DISTRIBUIDOR' => 'distribuidor',
+				'VIN' => 'vin',
+				'MODELO' => 'modelo',
+				'AÑO modelo' => 'anio_modelo',
+				'TIPO' => 'tipo',
+				'ESTATUS' => 'estatus',
+				'OBSERVACIONES' => 'observaciones',
+				'FECHA DE FACTURACIÓN' => 'fecha_facturacion',
+				'FOLIO FISCAL' => 'folio_fiscal',
+				'NOMBRE O RAZÓN SOCIAL' => 'razon_social',
+				'R.F.C.' => 'rfc',
+				'DIRECCIÓN' => 'direccion',
+				'CODIGO POSTAL' => 'codigo_postal',
+				'TELEFONO' => 'telefono',
+				'E-MAIL' => 'email',
+				'TIPO DE PAGO' => 'tipo_pago',
+				'INSTITUCIÓN' => 'institucion',
+				'ENGANCHE' => 'enganche',
+				'PLAZO' => 'plazo',
+				'NOMBRE DEL VENDEDOR' => 'vendedor',
+				'MODELO GEN' => 'modelo_gen',
+				'MOTOR' => 'motor',
+				'MES RETAIL' => 'mes_retail',
+			],
+			'anchos' => [40, 22, 30, 11, 18, 26, 30, 14, 26, 40, 16, 50, 12, 14, 28, 20, 26, 12, 10, 30, 16, 16, 12],
+			'crudos' => ['mes_retail', 'fecha_facturacion'],
+			'requeridos_hoja' => ['mes_retail'],
+			'obligatorios' => ['distribuidor', 'vin', 'mes_retail'],
+			'texto' => ['vin', 'folio_fiscal', 'rfc', 'codigo_postal', 'telefono', 'motor', 'enganche', 'plazo'],
+			/** Índice de columna del DataTable => columna SQL. */
+			'orden' => [
+				0 => 'r.mes_retail', 1 => 'r.distribuidor', 2 => 'r.vin', 3 => 'r.modelo', 4 => 'r.modelo_gen',
+				5 => 'r.anio_modelo', 6 => 'r.estatus', 7 => 'r.fecha_facturacion', 8 => 'r.razon_social',
+				9 => 'r.tipo_pago', 10 => 'r.vendedor',
+			],
+			'filtro4' => 'tipo_pago',
+		],
+		'inventario' => [
+			'nombre' => 'Inventario',
+			'hoja' => 'Inventarios',
+			'marca' => 'PLANTILLA_INVENTARIO_DISTRIBUIDORES_V1',
+			'archivo' => 'Inventario_Distribuidores',
+			'log' => 'cargaInvDistLog',
+			'periodo_txt' => 'AÑO R / MES R',
+			'mapa' => [
+				'MODELOHOMO' => 'modelo_gen',
+				'MODELOHOMOLOGADO' => 'modelo_gen',
+				'ANOR' => 'anio_r',
+				'MESR' => 'mes_r',
+			],
+			'encabezados' => [
+				'DISTRIBUIDOR' => 'distribuidor',
+				'VIN' => 'vin',
+				'MODELO' => 'modelo',
+				'AÑO' => 'anio_modelo',
+				'TIPO' => 'tipo',
+				'ESTATUS' => 'estatus',
+				'OBSERVACIONES' => 'observaciones',
+				'FECHA DE FACTURACIÓN' => 'fecha_facturacion',
+				'FOLIO FISCAL' => 'folio_fiscal',
+				'NOMBRE O RAZÓN SOCIAL' => 'razon_social',
+				'R.F.C.' => 'rfc',
+				'DIRECCIÓN' => 'direccion',
+				'CODIGO POSTAL' => 'codigo_postal',
+				'X' => null,
+				'Y' => null,
+				'TIPO DE PAGO' => 'tipo_pago',
+				'INSTITUCIÓN' => 'institucion',
+				'ENGANCHE' => 'enganche',
+				'PLAZO' => 'plazo',
+				'NOMBRE DEL VENDEDOR' => 'vendedor',
+				'MODELO HOMO' => 'modelo_gen',
+				'AÑO R' => 'anio_r',
+				'MES R' => 'mes_r',
+			],
+			'anchos' => [40, 22, 30, 9, 24, 26, 34, 14, 26, 40, 16, 50, 12, 6, 6, 20, 26, 12, 10, 30, 18, 9, 8],
+			'crudos' => ['fecha_facturacion', 'anio_r', 'mes_r'],
+			'requeridos_hoja' => ['anio_r', 'mes_r'],
+			'obligatorios' => ['distribuidor', 'vin', 'anio_r', 'mes_r'],
+			'texto' => ['vin', 'folio_fiscal', 'rfc', 'codigo_postal', 'enganche', 'plazo'],
+			'orden' => [
+				0 => 'r.mes_inventario', 1 => 'r.distribuidor', 2 => 'r.vin', 3 => 'r.modelo', 4 => 'r.modelo_gen',
+				5 => 'r.anio_modelo', 6 => 'r.tipo', 7 => 'r.estatus', 8 => 'r.observaciones',
+				9 => 'r.fecha_facturacion', 10 => 'r.razon_social',
+			],
+			'filtro4' => 'tipo',
+		],
 	];
 
-	/** Largo máximo por columna (igual que la tabla). */
+	/** Largo máximo por columna (igual que las tablas). */
 	private const LARGOS = [
 		'distribuidor' => 150, 'vin' => 30, 'modelo' => 120, 'tipo' => 60, 'estatus' => 80,
 		'observaciones' => 255, 'fecha_facturacion_txt' => 60, 'folio_fiscal' => 80, 'razon_social' => 200,
@@ -97,12 +177,9 @@ class Inv_invdistribuidores extends Controllers
 		'modelo_gen' => 40, 'motor' => 40,
 	];
 
-	/** Orden permitido del listado (índice de columna DataTables => columna SQL). */
-	private const ORDEN = [
-		0 => 'r.mes_retail', 1 => 'r.distribuidor', 2 => 'r.vin', 3 => 'r.modelo', 4 => 'r.modelo_gen',
-		5 => 'r.anio_modelo', 6 => 'r.estatus', 7 => 'r.fecha_facturacion', 8 => 'r.razon_social',
-		9 => 'r.tipo_pago', 10 => 'r.vendedor',
-	];
+	/** Columnas de la tabla que NO son texto libre (se arman aparte en procesarCarga). */
+	private const NO_TEXTO = ['mes_retail', 'mes_inventario', 'distribuidor', 'vin', 'anio_modelo',
+		'fecha_facturacion', 'fecha_facturacion_txt', 'fila_archivo'];
 
 	public function __construct()
 	{
@@ -127,11 +204,12 @@ class Inv_invdistribuidores extends Controllers
 			die();
 		}
 
-		$data['page_tag'] = "Retail distribuidores";
-		$data['page_title'] = "Retail de distribuidores";
+		$data['page_tag'] = "Distribuidores";
+		$data['page_title'] = "Retail e inventario de distribuidores";
 		$data['page_name'] = "invdistribuidores";
 		$data['page_functions_js'] = "functions_inv_invdistribuidores.js";
-		$data['tablas_listas'] = $this->model->tablasListas();
+		$data['tablas_listas'] = $this->model->tablasListas('retail');
+		$data['tablas_inventario_listas'] = $this->model->tablasListas('inventario');
 		$this->views->getView($this, "inv_invdistribuidores", $data);
 	}
 
@@ -143,27 +221,36 @@ class Inv_invdistribuidores extends Controllers
 		if (empty($_SESSION['permisosMod']['r'])) {
 			die();
 		}
-		$out = $this->model->selectCatalogosFiltro();
-		$out['anios'] = $this->model->selectAniosDisponibles();
+		$tipo = $this->tipoRequest($_GET);
+		if (!$this->model->tablasListas($tipo)) {
+			$this->json(['distribuidores' => [], 'modelos' => [], 'estatus' => [], 'filtro4' => [], 'meses' => [], 'anios' => []]);
+		}
+		$out = $this->model->selectCatalogosFiltro($tipo);
+		$out['anios'] = $this->model->selectAniosDisponibles($tipo);
 		$this->json($out);
 	}
 
-	/** Listado (DataTables serverSide). */
-	public function getRetail()
+	/** Listado (DataTables serverSide). ?tipo=retail|inventario */
+	public function getListado()
 	{
 		if (empty($_SESSION['permisosMod']['r'])) {
 			die();
 		}
 		$req = $_POST + $_GET;
+		$tipo = $this->tipoRequest($req);
+		if (!$this->model->tablasListas($tipo)) {
+			$this->json(['draw' => (int) ($req['draw'] ?? 0), 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => []]);
+		}
+		$orden = self::TIPOS[$tipo]['orden'];
 		$f = $this->filtrosRequest($req);
 		$f['search'] = mb_substr(trim((string) ($req['search']['value'] ?? '')), 0, 100);
 		$idx = (int) ($req['order'][0]['column'] ?? 0);
-		$f['order_col'] = self::ORDEN[$idx] ?? 'r.mes_retail';
+		$f['order_col'] = $orden[$idx] ?? $orden[0];
 		$f['order_dir'] = strtolower((string) ($req['order'][0]['dir'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
 		$f['start'] = (int) ($req['start'] ?? 0);
 		$f['length'] = (int) ($req['length'] ?? 25);
 
-		$res = $this->model->selectRetailPaginado($f);
+		$res = $this->model->selectPaginado($tipo, $f);
 		$this->json([
 			'draw' => (int) ($req['draw'] ?? 0),
 			'recordsTotal' => $res['recordsTotal'],
@@ -172,12 +259,45 @@ class Inv_invdistribuidores extends Controllers
 		]);
 	}
 
+	/** Compatibilidad con la ruta anterior. */
+	public function getRetail()
+	{
+		$this->getListado();
+	}
+
 	public function getKpis()
 	{
 		if (empty($_SESSION['permisosMod']['r'])) {
 			die();
 		}
-		$this->json($this->model->selectKpis($this->filtrosRequest($_GET)));
+		$tipo = $this->tipoRequest($_GET);
+		if (!$this->model->tablasListas($tipo)) {
+			$this->json(['total' => 0, 'distribuidores' => 0, 'meses' => 0, 'ultimo_mes' => '', 'en_ultimo_mes' => 0, 'distribuidores_ultimo_mes' => 0]);
+		}
+		$this->json($this->model->selectKpis($tipo, $this->filtrosRequest($_GET)));
+	}
+
+	/**
+	 * Tendencia mensual + top de distribuidores del último mes (para la gráfica).
+	 * Respeta todos los filtros, incluido el rango de meses.
+	 */
+	public function getTendencia()
+	{
+		if (empty($_SESSION['permisosMod']['r'])) {
+			die();
+		}
+		$tipo = $this->tipoRequest($_GET);
+		if (!$this->model->tablasListas($tipo)) {
+			$this->json(['serie' => [], 'top' => [], 'mes_top' => '']);
+		}
+		$f = $this->filtrosRequest($_GET);
+		$serie = $this->model->selectTendencia($tipo, $f, 36);
+		$mesTop = $serie ? end($serie)['mes'] : '';
+		$this->json([
+			'serie' => $serie,
+			'mes_top' => $mesTop,
+			'top' => $mesTop !== '' ? $this->model->selectTopDistribuidores($tipo, $f, $mesTop, 8) : [],
+		]);
 	}
 
 	/** Matriz por mes de un año (agrupar=distribuidor|modelo_gen). */
@@ -186,13 +306,17 @@ class Inv_invdistribuidores extends Controllers
 		if (empty($_SESSION['permisosMod']['r'])) {
 			die();
 		}
+		$tipo = $this->tipoRequest($_GET);
+		if (!$this->model->tablasListas($tipo)) {
+			$this->json([]);
+		}
 		$anio = (int) ($_GET['anio'] ?? date('Y'));
 		if ($anio < 2000 || $anio > 2100) {
 			$anio = (int) date('Y');
 		}
 		$agrupar = ($_GET['agrupar'] ?? '') === 'modelo_gen' ? 'modelo_gen' : 'distribuidor';
 		$f = $this->filtrosRequest($_GET);
-		$this->json($this->model->selectResumenAnual($anio, $agrupar, $f));
+		$this->json($this->model->selectResumenAnual($tipo, $anio, $agrupar, $f));
 	}
 
 	public function getCargas()
@@ -200,7 +324,11 @@ class Inv_invdistribuidores extends Controllers
 		if (empty($_SESSION['permisosMod']['r'])) {
 			die();
 		}
-		$this->json($this->model->selectCargas());
+		$tipo = $this->tipoRequest($_GET);
+		if (!$this->model->tablasListas($tipo)) {
+			$this->json([]);
+		}
+		$this->json($this->model->selectCargas($tipo));
 	}
 
 	public function eliminarCarga()
@@ -208,20 +336,22 @@ class Inv_invdistribuidores extends Controllers
 		if (empty($_SESSION['permisosMod']['d'])) {
 			$this->json(['status' => false, 'msg' => 'No tienes permisos para eliminar cargas.']);
 		}
+		$tipo = $this->tipoRequest($_POST);
 		$id = (int) ($_POST['idcarga'] ?? 0);
-		$carga = $id > 0 ? $this->model->selectCarga($id) : null;
+		$carga = $id > 0 ? $this->model->selectCarga($tipo, $id) : null;
 		if (!$carga || (int) $carga['estado'] !== 2) {
 			$this->json(['status' => false, 'msg' => 'La carga no existe o ya fue eliminada.']);
 		}
 		try {
-			$borrados = $this->model->eliminarCarga($id);
+			$borrados = $this->model->eliminarCarga($tipo, $id);
 		} catch (\Throwable $e) {
 			error_log('Inv_invdistribuidores::eliminarCarga: ' . $e->getMessage());
 			$this->json(['status' => false, 'msg' => 'No fue posible eliminar la carga.']);
 		}
+		$que = $tipo === 'inventario' ? 'inventario' : 'retail';
 		$this->json([
 			'status' => true,
-			'msg' => "Carga {$carga['folio']} eliminada: se borraron {$borrados} renglón(es) de retail que seguían vigentes.",
+			'msg' => "Carga {$carga['folio']} eliminada: se borraron {$borrados} renglón(es) de {$que} que seguían vigentes.",
 		]);
 	}
 
@@ -230,17 +360,24 @@ class Inv_invdistribuidores extends Controllers
 	=============================== */
 	public function procesarCarga()
 	{
+		$tipo = $this->tipoRequest($_POST);
+		$cfg = self::TIPOS[$tipo];
+		$que = strtolower($cfg['nombre']);
 		if (empty($_SESSION['permisosMod']['w'])) {
-			$this->json(['status' => false, 'msg' => 'No tienes permisos para subir el retail.']);
+			$this->json(['status' => false, 'msg' => "No tienes permisos para subir el {$que}."]);
 		}
-		if (!$this->model->tablasListas()) {
-			$this->json(['status' => false, 'msg' => 'Faltan las tablas del módulo. Corre el script migracion_retail_distribuidores_20261104.sql.']);
+		if (!$this->model->tablasListas($tipo)) {
+			$script = $tipo === 'inventario' ? 'migracion_inventario_distribuidores_20261109.sql' : 'migracion_retail_distribuidores_20261104.sql';
+			$this->json(['status' => false, 'msg' => "Faltan las tablas de {$que}. Corre el script {$script}."]);
 		}
 		@set_time_limit(900);
 		@ini_set('memory_limit', '1024M');
 
 		$observaciones = mb_substr(trim(strip_tags((string) ($_POST['observaciones'] ?? ''))), 0, 255);
-		[$hoja, $rows] = $this->obtenerFilasArchivo();
+		[$hoja, $rows] = $this->obtenerFilasArchivo($tipo);
+
+		$colMes = $tipo === 'inventario' ? 'mes_inventario' : 'mes_retail';
+		$columnasTexto = array_values(array_diff(Inv_invdistribuidoresModel::TIPOS[$tipo]['columnas'], self::NO_TEXTO));
 
 		$log = [];
 		$filas = [];
@@ -261,16 +398,22 @@ class Inv_invdistribuidores extends Controllers
 				$log[] = $base + ['tipo' => 'No cargada', 'motivo' => 'Falta el DISTRIBUIDOR'];
 				continue;
 			}
-			$mes = $this->parseMes($row['mes_retail_raw'] ?? null);
-			if ($mes === null) {
+
+			if ($tipo === 'inventario') {
+				[$mes, $error] = $this->parsePeriodoInventario($row['anio_r_raw'] ?? null, $row['mes_r_raw'] ?? null);
+			} else {
+				$mes = $this->parseMes($row['mes_retail_raw'] ?? null);
 				$val = $this->valorComoTexto($row['mes_retail_raw'] ?? '');
-				$log[] = $base + ['tipo' => 'No cargada', 'motivo' => $val === '' ? 'Falta el MES RETAIL' : "MES RETAIL \"{$val}\" no es una fecha válida"];
+				$error = $val === '' ? 'Falta el MES RETAIL' : "MES RETAIL \"{$val}\" no es una fecha válida";
+			}
+			if ($mes === null) {
+				$log[] = $base + ['tipo' => 'No cargada', 'motivo' => $error];
 				continue;
 			}
 
 			$clave = $mes . '|' . $vin;
 			if (isset($vistos[$clave])) {
-				$log[] = $base + ['tipo' => 'Aviso', 'motivo' => 'VIN repetido en el mismo MES RETAIL (también en la fila ' . $vistos[$clave] . '); se cargaron ambos'];
+				$log[] = $base + ['tipo' => 'Aviso', 'motivo' => 'VIN repetido en el mismo mes (también en la fila ' . $vistos[$clave] . '); se cargaron ambos'];
 			} else {
 				$vistos[$clave] = $fila;
 			}
@@ -284,7 +427,7 @@ class Inv_invdistribuidores extends Controllers
 			$anio = ctype_digit($anio) && (int) $anio >= 1980 && (int) $anio <= 2100 ? (int) $anio : null;
 
 			$reg = [
-				'mes_retail' => $mes,
+				$colMes => $mes,
 				'distribuidor' => $dist,
 				'vin' => $vin,
 				'anio_modelo' => $anio,
@@ -292,14 +435,12 @@ class Inv_invdistribuidores extends Controllers
 				'fecha_facturacion_txt' => $fecha['txt'],
 				'fila_archivo' => $fila,
 			];
-			foreach (['modelo', 'tipo', 'estatus', 'observaciones', 'folio_fiscal', 'razon_social', 'rfc', 'direccion',
-				'codigo_postal', 'telefono', 'email', 'tipo_pago', 'institucion', 'enganche', 'plazo', 'vendedor',
-				'modelo_gen', 'motor'] as $c) {
+			foreach ($columnasTexto as $c) {
 				$v = trim((string) ($row[$c] ?? ''));
 				$reg[$c] = $v === '' ? null : $v;
 			}
 			foreach (self::LARGOS as $c => $max) {
-				if ($reg[$c] !== null && mb_strlen($reg[$c]) > $max) {
+				if (isset($reg[$c]) && mb_strlen($reg[$c]) > $max) {
 					$reg[$c] = mb_substr($reg[$c], 0, $max);
 				}
 			}
@@ -313,17 +454,17 @@ class Inv_invdistribuidores extends Controllers
 		usort($log, function ($a, $b) {
 			return ($a['fila'] ?? 0) <=> ($b['fila'] ?? 0);
 		});
-		$_SESSION['cargaRetailDistLog'] = $log;
+		$_SESSION[$cfg['log']] = $log;
 
 		if (empty($filas)) {
 			$this->json([
 				'status' => true, 'cargados' => 0, 'omitidos' => $omitidas, 'avisos' => $avisos,
-				'msg' => 'No se cargó nada: ninguna fila tiene DISTRIBUIDOR, VIN y MES RETAIL válidos. Revisa el log.',
+				'msg' => "No se cargó nada: ninguna fila tiene DISTRIBUIDOR, VIN y {$cfg['periodo_txt']} válidos. Revisa el log.",
 			]);
 		}
 
 		try {
-			$res = $this->model->insertCarga([
+			$res = $this->model->insertCarga($tipo, [
 				'archivo' => mb_substr(basename((string) $_FILES['archivo']['name']), 0, 255),
 				'hoja' => $hoja,
 				'total_filas' => count($rows),
@@ -332,7 +473,7 @@ class Inv_invdistribuidores extends Controllers
 				'usuarioid' => !empty($_SESSION['idUser']) ? (int) $_SESSION['idUser'] : null,
 			], $filas, array_keys($meses));
 		} catch (\Throwable $e) {
-			error_log('Inv_invdistribuidores::procesarCarga: ' . $e->getMessage());
+			error_log('Inv_invdistribuidores::procesarCarga(' . $tipo . '): ' . $e->getMessage());
 			$this->json(['status' => false, 'msg' => 'Error al guardar la carga; no se modificó nada. Detalle en el log del servidor.']);
 		}
 
@@ -340,7 +481,7 @@ class Inv_invdistribuidores extends Controllers
 		sort($listaMeses);
 		$rango = substr(reset($listaMeses), 0, 7) . (count($listaMeses) > 1 ? ' a ' . substr(end($listaMeses), 0, 7) : '');
 
-		$msg = "Carga {$res['folio']}: " . number_format(count($filas)) . ' renglón(es) de retail guardados ('
+		$msg = "Carga {$res['folio']}: " . number_format(count($filas)) . " renglón(es) de {$que} guardados ("
 			. count($listaMeses) . " mes(es): {$rango}).";
 		if ($res['reemplazadas'] > 0) {
 			$msg .= ' Se reemplazaron ' . number_format($res['reemplazadas']) . ' renglón(es) que ya existían de esos meses.';
@@ -373,69 +514,82 @@ class Inv_invdistribuidores extends Controllers
 			die();
 		}
 		@ini_set('memory_limit', '1024M');
-		$ss = $this->construirPlantilla([]);
-		$this->enviarXlsx($ss, 'Plantilla_Retail_Distribuidores_' . date('Ymd') . '.xlsx');
+		$tipo = $this->tipoRequest($_GET);
+		$ss = $this->construirPlantilla($tipo, []);
+		$this->enviarXlsx($ss, 'Plantilla_' . self::TIPOS[$tipo]['archivo'] . '_' . date('Ymd') . '.xlsx');
 	}
 
 	/**
 	 * Exporta lo filtrado EN FORMATO PLANTILLA (con la marca),
 	 * así se puede corregir y volver a subir.
 	 */
-	public function exportarRetail()
+	public function exportar()
 	{
 		if (empty($_SESSION['permisosMod']['r'])) {
 			die();
 		}
 		@set_time_limit(600);
 		@ini_set('memory_limit', '1024M');
+		$tipo = $this->tipoRequest($_GET);
 		$f = $this->filtrosRequest($_GET);
 		$f['search'] = mb_substr(trim((string) ($_GET['search'] ?? '')), 0, 100);
-		$ss = $this->construirPlantilla($this->model->selectRetailExport($f));
-		$this->enviarXlsx($ss, 'Retail_Distribuidores_' . date('Ymd_His') . '.xlsx');
+		$rows = $this->model->tablasListas($tipo) ? $this->model->selectExport($tipo, $f) : [];
+		$ss = $this->construirPlantilla($tipo, $rows);
+		$this->enviarXlsx($ss, self::TIPOS[$tipo]['archivo'] . '_' . date('Ymd_His') . '.xlsx');
+	}
+
+	/** Compatibilidad con la ruta anterior. */
+	public function exportarRetail()
+	{
+		$this->exportar();
 	}
 
 	/**
-	 * Arma la plantilla oficial: hoja "Retail" (captura libre, sin validaciones),
-	 * hoja "Instrucciones" y hoja oculta "Catalogos" (solo la marca de plantilla).
-	 * Si $rows trae datos, la hoja Retail sale prellenada.
+	 * Arma la plantilla oficial: hoja de captura (sin validaciones), hoja "Instrucciones"
+	 * y hoja oculta "Catalogos" (solo la marca de plantilla). Si $rows trae datos, sale prellenada.
 	 */
-	private function construirPlantilla(array $rows)
+	private function construirPlantilla(string $tipo, array $rows)
 	{
+		$cfg = self::TIPOS[$tipo];
 		$NF = \PhpOffice\PhpSpreadsheet\Style\NumberFormat::class;
 		$T = \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING;
-		$col = function (string $campo): string {
-			$i = array_search($campo, array_values(self::ENCABEZADOS), true);
+		$campos = array_values($cfg['encabezados']);
+		$col = function (string $campo) use ($campos): string {
+			$i = array_search($campo, $campos, true);
 			return \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
 		};
 		$hasta = max(self::FILAS_PLANTILLA, count($rows) + 1000);
 
 		$ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-		$ss->getProperties()->setCreator('LDR Solutions · MRP')->setTitle('Plantilla Retail de distribuidores');
+		$ss->getProperties()->setCreator('LDR Solutions · MRP')->setTitle('Plantilla ' . $cfg['nombre'] . ' de distribuidores');
 
 		/* ---------- Hoja oculta con la marca de plantilla ---------- */
 		$hc = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($ss, self::HOJA_CATALOGOS);
 		$ss->addSheet($hc);
-		$hc->setCellValue('A1', self::MARCA_PLANTILLA);
+		$hc->setCellValue('A1', $cfg['marca']);
 		$hc->setCellValue('B1', 'No modificar ni borrar esta hoja');
 		$hc->setSheetState(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_HIDDEN);
 
-		/* ---------- Retail (captura) ---------- */
+		/* ---------- Hoja de captura ---------- */
 		$sh = $ss->getSheet(0);
-		$sh->setTitle(self::HOJA);
-		$this->escribirEncabezados($sh);
+		$sh->setTitle($cfg['hoja']);
+		$this->escribirEncabezados($sh, $cfg);
 
-		// Formatos por columna
-		foreach (['vin', 'folio_fiscal', 'rfc', 'codigo_postal', 'telefono', 'motor', 'enganche', 'plazo'] as $c) {
+		foreach ($cfg['texto'] as $c) {
 			$sh->getStyle($col($c) . '2:' . $col($c) . $hasta)->getNumberFormat()->setFormatCode($NF::FORMAT_TEXT);
 		}
 		$sh->getStyle($col('fecha_facturacion') . '2:' . $col('fecha_facturacion') . $hasta)->getNumberFormat()->setFormatCode('dd/mm/yyyy');
-		$sh->getStyle($col('mes_retail') . '2:' . $col('mes_retail') . $hasta)->getNumberFormat()->setFormatCode('mmm-yyyy');
+		if ($tipo === 'retail') {
+			$sh->getStyle($col('mes_retail') . '2:' . $col('mes_retail') . $hasta)->getNumberFormat()->setFormatCode('mmm-yyyy');
+		}
 
 		// Datos (exportación)
-		$campos = array_values(self::ENCABEZADOS);
 		$r = 2;
 		foreach ($rows as $row) {
 			foreach ($campos as $i => $campo) {
+				if ($campo === null) {
+					continue;
+				}
 				$v = $row[$campo] ?? null;
 				if ($v === null || $v === '') {
 					continue;
@@ -444,7 +598,7 @@ class Inv_invdistribuidores extends Controllers
 				if ($campo === 'mes_retail' || ($campo === 'fecha_facturacion' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $v))) {
 					$fecha = $campo === 'mes_retail' ? $v . '-01' : $v;
 					$sh->setCellValue($cell, \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel(new \DateTime($fecha)));
-				} elseif ($campo === 'anio_modelo') {
+				} elseif (in_array($campo, ['anio_modelo', 'anio_r', 'mes_r'], true)) {
 					$sh->setCellValue($cell, (int) $v);
 				} else {
 					$sh->setCellValueExplicit($cell, (string) $v, $T);
@@ -458,23 +612,40 @@ class Inv_invdistribuidores extends Controllers
 		/* ---------- Instrucciones ---------- */
 		$ins = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($ss, 'Instrucciones');
 		$ss->addSheet($ins, 1);
-		$lineas = [
-			'PLANTILLA DE RETAIL DE DISTRIBUIDORES',
-			'',
-			'1. Solo se acepta ESTA plantilla (descargada del módulo). No cambies el nombre de la hoja "Retail" ni sus encabezados.',
-			'2. Obligatorias por fila (encabezado verde): DISTRIBUIDOR, VIN y MES RETAIL. Las demás columnas son opcionales.',
-			'3. MES RETAIL: el mes de la venta (p. ej. 01/09/2026). FECHA DE FACTURACIÓN: de preferencia dd/mm/aaaa.',
-			'4. Las celdas no tienen listas ni restricciones: captura o pega los datos como los manejan.',
-			'5. No borres la hoja oculta "Catalogos": es la que identifica a la plantilla.',
-			'6. El archivo es acumulado: al subirlo se REEMPLAZAN los meses que trae; los meses que no vengan se conservan.',
-			'7. Las filas que no se puedan cargar y los avisos quedan en un log descargable.',
-			'8. "Exportar" del módulo descarga los datos en este mismo formato: puedes corregirlos y volver a subir el archivo.',
-		];
+		if ($tipo === 'inventario') {
+			$lineas = [
+				'PLANTILLA DE INVENTARIO DE DISTRIBUIDORES',
+				'',
+				'1. Solo se acepta ESTA plantilla (descargada del módulo). No cambies el nombre de la hoja "Inventarios" ni sus encabezados.',
+				'2. Las columnas están en el mismo orden que la hoja "Inventarios" del archivo BD_RT_INV: puedes copiar el bloque completo (sin encabezados) y pegarlo desde la celda A2.',
+				'3. Obligatorias por fila (encabezado verde): DISTRIBUIDOR, VIN, AÑO R y MES R. Las demás columnas son opcionales.',
+				'4. AÑO R / MES R: el mes del inventario (p. ej. 2026 y 9 = inventario de septiembre 2026).',
+				'5. Las columnas X y Y (encabezado gris) no se guardan; existen solo para que el pegado coincida con el archivo original.',
+				'6. Las celdas no tienen listas ni restricciones: captura o pega los datos como los manejan.',
+				'7. No borres la hoja oculta "Catalogos": es la que identifica a la plantilla.',
+				'8. El archivo es acumulado: al subirlo se REEMPLAZAN los meses que trae; los meses que no vengan se conservan.',
+				'9. Las filas que no se puedan cargar y los avisos quedan en un log descargable.',
+				'10. "Exportar" del módulo descarga los datos en este mismo formato: puedes corregirlos y volver a subir el archivo.',
+			];
+		} else {
+			$lineas = [
+				'PLANTILLA DE RETAIL DE DISTRIBUIDORES',
+				'',
+				'1. Solo se acepta ESTA plantilla (descargada del módulo). No cambies el nombre de la hoja "Retail" ni sus encabezados.',
+				'2. Obligatorias por fila (encabezado verde): DISTRIBUIDOR, VIN y MES RETAIL. Las demás columnas son opcionales.',
+				'3. MES RETAIL: el mes de la venta (p. ej. 01/09/2026). FECHA DE FACTURACIÓN: de preferencia dd/mm/aaaa.',
+				'4. Las celdas no tienen listas ni restricciones: captura o pega los datos como los manejan.',
+				'5. No borres la hoja oculta "Catalogos": es la que identifica a la plantilla.',
+				'6. El archivo es acumulado: al subirlo se REEMPLAZAN los meses que trae; los meses que no vengan se conservan.',
+				'7. Las filas que no se puedan cargar y los avisos quedan en un log descargable.',
+				'8. "Exportar" del módulo descarga los datos en este mismo formato: puedes corregirlos y volver a subir el archivo.',
+			];
+		}
 		foreach ($lineas as $i => $txt) {
 			$ins->setCellValue('A' . ($i + 1), $txt);
 		}
 		$ins->getStyle('A1')->getFont()->setBold(true)->setSize(14);
-		$ins->getColumnDimension('A')->setWidth(130);
+		$ins->getColumnDimension('A')->setWidth(150);
 
 		$ss->setActiveSheetIndex(0);
 		return $ss;
@@ -485,18 +656,20 @@ class Inv_invdistribuidores extends Controllers
 		if (empty($_SESSION['permisosMod']['r'])) {
 			die();
 		}
+		$tipo = $this->tipoRequest($_GET);
+		$cfg = self::TIPOS[$tipo];
 		$T = \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING;
 		$ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
 		$sh = $ss->getActiveSheet();
 		$sh->setTitle('Log');
-		$sh->setCellValue('A1', 'Log de carga de Retail de distribuidores');
+		$sh->setCellValue('A1', 'Log de carga de ' . $cfg['nombre'] . ' de distribuidores');
 		$sh->getStyle('A1')->getFont()->setBold(true)->setSize(13);
 		$sh->setCellValue('A2', 'Generado: ' . date('Y-m-d H:i:s'));
 		$sh->fromArray(['FILA_ARCHIVO', 'TIPO', 'DISTRIBUIDOR', 'VIN', 'MOTIVO'], null, 'A4');
 		$sh->getStyle('A4:E4')->getFont()->setBold(true);
 		$sh->freezePane('A5');
 		$r = 5;
-		foreach ($_SESSION['cargaRetailDistLog'] ?? [] as $it) {
+		foreach ($_SESSION[$cfg['log']] ?? [] as $it) {
 			$sh->setCellValue('A' . $r, $it['fila'] ?? '');
 			$sh->setCellValueExplicit('B' . $r, (string) ($it['tipo'] ?? ''), $T);
 			$sh->setCellValueExplicit('C' . $r, (string) ($it['distribuidor'] ?? ''), $T);
@@ -507,7 +680,7 @@ class Inv_invdistribuidores extends Controllers
 		foreach (['A' => 14, 'B' => 12, 'C' => 40, 'D' => 22, 'E' => 100] as $c => $w) {
 			$sh->getColumnDimension($c)->setWidth($w);
 		}
-		$this->enviarXlsx($ss, 'Log_Retail_Distribuidores_' . date('Ymd_His') . '.xlsx');
+		$this->enviarXlsx($ss, 'Log_' . $cfg['archivo'] . '_' . date('Ymd_His') . '.xlsx');
 	}
 
 	/* ===============================
@@ -521,11 +694,18 @@ class Inv_invdistribuidores extends Controllers
 		die();
 	}
 
-	/** Filtros comunes (distribuidor, modelo_gen, estatus, tipo_pago, mes_desde, mes_hasta). */
+	/** tipo=retail|inventario (default retail). */
+	private function tipoRequest(array $req): string
+	{
+		$t = (string) ($req['tipo'] ?? '');
+		return isset(self::TIPOS[$t]) ? $t : 'retail';
+	}
+
+	/** Filtros comunes (distribuidor, modelo_gen, estatus, tipo_pago, tipo, mes_desde, mes_hasta). */
 	private function filtrosRequest(array $req): array
 	{
 		$f = [];
-		foreach (['distribuidor', 'modelo_gen', 'estatus', 'tipo_pago'] as $c) {
+		foreach (['distribuidor', 'modelo_gen', 'estatus', 'tipo_pago', 'tipo'] as $c) {
 			$f[$c] = mb_substr(trim((string) ($req['f_' . $c] ?? '')), 0, 200);
 		}
 		foreach (['mes_desde', 'mes_hasta'] as $c) {
@@ -535,22 +715,27 @@ class Inv_invdistribuidores extends Controllers
 		return $f;
 	}
 
-	private function escribirEncabezados($sh): void
+	private function escribirEncabezados($sh, array $cfg): void
 	{
 		$FILL = \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID;
-		$enc = array_keys(self::ENCABEZADOS);
-		$ult = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($enc));
+		$CO = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::class;
+		$enc = array_keys($cfg['encabezados']);
+		$campos = array_values($cfg['encabezados']);
+		$ult = $CO::stringFromColumnIndex(count($enc));
 		$sh->fromArray($enc, null, 'A1');
 		$sh->getStyle("A1:{$ult}1")->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
 		$sh->getStyle("A1:{$ult}1")->getFill()->setFillType($FILL)->getStartColor()->setARGB('FF1F4E78');
-		// Obligatorias en verde
-		foreach (['A1', 'B1', 'W1'] as $c) {
-			$sh->getStyle($c)->getFill()->setFillType($FILL)->getStartColor()->setARGB('FF198754');
+		foreach ($campos as $i => $campo) {
+			$celda = $CO::stringFromColumnIndex($i + 1) . '1';
+			if ($campo === null) {          // Ignoradas en gris
+				$sh->getStyle($celda)->getFill()->setFillType($FILL)->getStartColor()->setARGB('FFA6A6A6');
+			} elseif (in_array($campo, $cfg['obligatorios'], true)) {   // Obligatorias en verde
+				$sh->getStyle($celda)->getFill()->setFillType($FILL)->getStartColor()->setARGB('FF198754');
+			}
 		}
 		$sh->freezePane('A2');
-		$anchos = [40, 22, 30, 11, 18, 26, 30, 14, 26, 40, 16, 50, 12, 14, 28, 20, 26, 12, 10, 30, 16, 16, 12];
-		foreach ($anchos as $i => $w) {
-			$sh->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1))->setWidth($w);
+		foreach ($cfg['anchos'] as $i => $w) {
+			$sh->getColumnDimension($CO::stringFromColumnIndex($i + 1))->setWidth($w);
 		}
 	}
 
@@ -569,7 +754,7 @@ class Inv_invdistribuidores extends Controllers
 	}
 
 	/** Lee el Excel subido; si algo falla responde JSON y termina. Regresa [hoja, filas]. */
-	private function obtenerFilasArchivo(): array
+	private function obtenerFilasArchivo(string $tipo): array
 	{
 		if (empty($_FILES['archivo']) || $_FILES['archivo']['error'] !== UPLOAD_ERR_OK) {
 			$this->json(['status' => false, 'msg' => 'Selecciona un archivo válido (.xlsx). Si el archivo es grande, revisa upload_max_filesize del servidor.']);
@@ -583,7 +768,7 @@ class Inv_invdistribuidores extends Controllers
 		}
 
 		try {
-			$res = $this->leerArchivo($_FILES['archivo']['tmp_name']);
+			$res = $this->leerArchivo($tipo, $_FILES['archivo']['tmp_name']);
 		} catch (\Throwable $e) {
 			error_log('Inv_invdistribuidores::leerArchivo: ' . $e->getMessage());
 			$this->json(['status' => false, 'msg' => 'No fue posible leer el archivo: ' . $e->getMessage()]);
@@ -595,23 +780,32 @@ class Inv_invdistribuidores extends Controllers
 	}
 
 	/**
-	 * Valida que sea la plantilla del módulo (marca en Catalogos!A1), lee la hoja "Retail"
-	 * y mapea columnas por encabezado.
-	 * Las fechas se dejan en crudo (*_raw) para interpretarlas después.
+	 * Valida que sea la plantilla de esa base (marca en Catalogos!A1), lee su hoja
+	 * y mapea columnas por encabezado. Fechas y periodo se dejan en crudo (*_raw).
 	 */
-	private function leerArchivo(string $tmpName): array
+	private function leerArchivo(string $tipo, string $tmpName): array
 	{
+		$cfg = self::TIPOS[$tipo];
+		$otro = $tipo === 'inventario' ? self::TIPOS['retail'] : self::TIPOS['inventario'];
+		$mapa = self::MAPA_COMUN + $cfg['mapa'];
+		$hoja = $cfg['hoja'];
+
 		$reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($tmpName);
 		$reader->setReadDataOnly(true);
 		$nombres = $reader->listWorksheetNames($tmpName);
-		$noEsPlantilla = new \RuntimeException('el archivo no es la plantilla del módulo. Descarga la plantilla, pega tus datos en la hoja "Retail", y súbela.');
-		if (!in_array(self::HOJA, $nombres, true) || !in_array(self::HOJA_CATALOGOS, $nombres, true)) {
+		$noEsPlantilla = new \RuntimeException('el archivo no es la plantilla de ' . strtolower($cfg['nombre'])
+			. ' del módulo. Descarga la plantilla de ' . strtolower($cfg['nombre']) . ', pega tus datos en la hoja "' . $hoja . '", y súbela.');
+		if (!in_array(self::HOJA_CATALOGOS, $nombres, true)) {
 			throw $noEsPlantilla;
 		}
-		$hoja = self::HOJA;
-		$reader->setLoadSheetsOnly([$hoja, self::HOJA_CATALOGOS]);
+		$reader->setLoadSheetsOnly(array_values(array_intersect($nombres, [$hoja, self::HOJA_CATALOGOS])));
 		$spreadsheet = $reader->load($tmpName);
-		if (trim((string) $spreadsheet->getSheetByName(self::HOJA_CATALOGOS)->getCell('A1')->getValue()) !== self::MARCA_PLANTILLA) {
+		$marca = trim((string) $spreadsheet->getSheetByName(self::HOJA_CATALOGOS)->getCell('A1')->getValue());
+		if ($marca === $otro['marca']) {
+			throw new \RuntimeException('subiste la plantilla de ' . strtolower($otro['nombre']) . ' estando en '
+				. strtolower($cfg['nombre']) . '. Cambia a "' . $otro['nombre'] . '" arriba o usa la plantilla de ' . strtolower($cfg['nombre']) . '.');
+		}
+		if ($marca !== $cfg['marca'] || !in_array($hoja, $nombres, true)) {
 			throw $noEsPlantilla;
 		}
 		$sheet = $spreadsheet->getSheetByName($hoja);
@@ -629,8 +823,8 @@ class Inv_invdistribuidores extends Controllers
 			$cols = [];
 			foreach ($datos[$i] as $col => $texto) {
 				$clave = preg_replace('/[^A-Z0-9]/', '', strtoupper($this->quitarAcentos(trim((string) $texto))));
-				if (isset(self::MAPA_ENCABEZADOS[$clave]) && !in_array(self::MAPA_ENCABEZADOS[$clave], $cols, true)) {
-					$cols[$col] = self::MAPA_ENCABEZADOS[$clave];
+				if (isset($mapa[$clave]) && !in_array($mapa[$clave], $cols, true)) {
+					$cols[$col] = $mapa[$clave];
 				}
 			}
 			if (in_array('vin', $cols, true) && in_array('distribuidor', $cols, true)) {
@@ -642,8 +836,11 @@ class Inv_invdistribuidores extends Controllers
 		if ($filaEnc === null) {
 			throw new \RuntimeException('en la hoja "' . $hoja . '" no se encontraron los encabezados DISTRIBUIDOR y VIN.');
 		}
-		if (!in_array('mes_retail', $columnas, true)) {
-			throw new \RuntimeException('en la hoja "' . $hoja . '" falta la columna MES RETAIL.');
+		$encPorCampo = array_flip(array_filter($cfg['encabezados']));
+		foreach ($cfg['requeridos_hoja'] as $req) {
+			if (!in_array($req, $columnas, true)) {
+				throw new \RuntimeException('en la hoja "' . $hoja . '" falta la columna ' . strtoupper($encPorCampo[$req] ?? $req) . '.');
+			}
 		}
 
 		$rows = [];
@@ -652,7 +849,7 @@ class Inv_invdistribuidores extends Controllers
 			$vacio = true;
 			foreach ($columnas as $col => $campo) {
 				$raw = $datos[$i][$col] ?? null;
-				if (in_array($campo, ['mes_retail', 'fecha_facturacion'], true)) {
+				if (in_array($campo, $cfg['crudos'], true)) {
 					$reg[$campo . '_raw'] = $raw;
 				} else {
 					$reg[$campo] = $this->valorComoTexto($raw);
@@ -668,6 +865,35 @@ class Inv_invdistribuidores extends Controllers
 			$rows[] = $reg;
 		}
 		return [$hoja, $rows];
+	}
+
+	/**
+	 * Periodo del inventario a partir de AÑO R y MES R => ['YYYY-MM-01'|null, motivo].
+	 * MES R normalmente es 1..12; si viene como fecha (01/09/2026 o serial de Excel) se toma de ahí.
+	 */
+	private function parsePeriodoInventario($anioRaw, $mesRaw): array
+	{
+		$anioTxt = $this->valorComoTexto($anioRaw);
+		$mesTxt = $this->valorComoTexto($mesRaw);
+		if ($mesTxt === '') {
+			return [null, 'Falta el MES R'];
+		}
+		// MES R como fecha completa
+		if (!ctype_digit($mesTxt) || (int) $mesTxt > 12) {
+			$m = $this->parseMes($mesRaw);
+			return $m !== null ? [$m, ''] : [null, "MES R \"{$mesTxt}\" no es un mes válido (1 a 12)"];
+		}
+		$mes = (int) $mesTxt;
+		if ($mes < 1) {
+			return [null, "MES R \"{$mesTxt}\" no es un mes válido (1 a 12)"];
+		}
+		if ($anioTxt === '') {
+			return [null, 'Falta el AÑO R'];
+		}
+		if (!ctype_digit($anioTxt) || (int) $anioTxt < 2000 || (int) $anioTxt > 2100) {
+			return [null, "AÑO R \"{$anioTxt}\" no es un año válido"];
+		}
+		return [sprintf('%04d-%02d-01', (int) $anioTxt, $mes), ''];
 	}
 
 	/** MES RETAIL => 'YYYY-MM-01' o null. */
