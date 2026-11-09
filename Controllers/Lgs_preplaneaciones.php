@@ -6,7 +6,8 @@ class Lgs_preplaneaciones extends Controllers
 {
     use ApiResponser;
 
-    private Lgs_preplaneacionesModel $model;
+    /** @var Lgs_preplaneacionesModel */
+    public $model;
 
     public function __construct()
     {
@@ -44,6 +45,10 @@ class Lgs_preplaneaciones extends Controllers
      */
     public function getPreplaneaciones(): void
     {
+        if (ob_get_length()) {
+            ob_clean();
+        }
+        header('Content-Type: application/json; charset=utf-8');
         try {
             $data = $this->model->getPreplaneaciones();
             echo json_encode($data, JSON_UNESCAPED_UNICODE);
