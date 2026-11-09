@@ -5,14 +5,14 @@ declare(strict_types=1);
 ob_start();
 
 // Ocultar errores al público.
-ini_set('display_errors', '0');
-ini_set('display_startup_errors', '0');
+// ini_set('display_errors', '1');  // TEMPORAL: Habilitado para diagnosticar error 500
+// ini_set('display_startup_errors', '1');  // TEMPORAL: Habilitado para diagnosticar error 500
 
-// Registrar errores.
-ini_set('log_errors', '1');
-ini_set('error_log', __DIR__ . '/debug_local.log');
+// // Registrar errores.
+// ini_set('log_errors', '1');
+// ini_set('error_log', __DIR__ . '/debug_local.log');
 
-error_reporting(E_ERROR | E_PARSE | E_COMPILE_ERROR);
+// error_reporting(E_ALL);  // TEMPORAL: Mostrar todos los errores para diagnóstico
 
 /*
 |--------------------------------------------------------------------------
@@ -83,10 +83,10 @@ if ($isLocal) {
     define('COOKIE_SECURE', $esHttps);
 
     /*
-     * Tu Config.php contiene los datos de MySQL de XAMPP.
-     * Config_local.php contiene los datos de Docker (mrp-db).
+     * Config_local.php contiene los datos de MySQL de XAMPP (localhost).
+     * Config.php contiene los datos de producción.
      */
-    define('CONFIG_FILE', __DIR__ . '/Config/Config.php');
+    define('CONFIG_FILE', __DIR__ . '/Config/Config_local.php');
 } else {
     define('ENV_TYPE', 'production');
     define('COOKIE_DOMAIN', '.ldrhumanresources.com');

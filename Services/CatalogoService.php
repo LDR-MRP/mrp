@@ -55,14 +55,16 @@ class CatalogoService
                     id_banco,
                     nombre_corto,
                     razon_social,
+                    direccion,
                     origen_registro,
                     estatus
-                ) VALUES (?, ?, ?, ?, 1)";
+                ) VALUES (?, ?, ?, ?, ?, 1)";
 
         $values = [
             $nextId,
             $data['nombre_corto'],
             $data['razon_social'],
+            $data['direccion'] ?? null,
             $data['origen_registro'] ?? 'USUARIO'
         ];
 

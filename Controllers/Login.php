@@ -189,7 +189,7 @@ class Login extends Controllers
 
 			// 	dep($_POST);
 			// exit; 
-			error_reporting(0);
+			// error_reporting(0);
 			$correos_copias = "carlos.cruz@ldrsolutions.com.mx";
 
 			if (empty($_POST['txtEmailReset'])) {

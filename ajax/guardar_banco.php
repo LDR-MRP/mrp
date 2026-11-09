@@ -59,8 +59,9 @@ try {
 
     // Insertar banco
     $origenRegistro = $data['origen_registro'] ?? 'USUARIO';
-    $stmt = $conn->prepare("INSERT INTO cat_bancos (id_banco, nombre_corto, razon_social, origen_registro, estatus) VALUES (?, ?, ?, ?, 1)");
-    $stmt->bind_param("ssss", $nextId, $data['nombre_corto'], $data['razon_social'], $origenRegistro);
+    $direccion = $data['direccion'] ?? '';
+    $stmt = $conn->prepare("INSERT INTO cat_bancos (id_banco, nombre_corto, razon_social, direccion, origen_registro, estatus) VALUES (?, ?, ?, ?, ?, 1)");
+    $stmt->bind_param("sssss", $nextId, $data['nombre_corto'], $data['razon_social'], $direccion, $origenRegistro);
 
     if ($stmt->execute()) {
         error_log('[guardar_banco.php] Banco creado exitosamente');

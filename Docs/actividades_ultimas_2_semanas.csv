@@ -54,3 +54,11 @@ Notificaciones,Desarrollo,Backend,Agregar notificación de rechazo de documento 
 Notificaciones,Desarrollo,Frontend,Crear template supplier_document_rejected.php para rechazo de documentos,2026-10-21,2026-10-21,Completado
 Notificaciones,Configuración,Backend,Implementar logging usando trait Loggable para notificaciones,2026-10-22,2026-10-22,Completado
 Notificaciones,Corrección,Backend,Corregir evento en uploadDocument para usar supplier_onboarding_complete,2026-10-23,2026-10-23,Completado
+Gestión bancaria de proveedores,Análisis,Backend,Analizar propuesta de autocomplete con modal para registro de bancos nuevos,2026-10-28,2026-10-28,Completado
+Gestión bancaria de proveedores,Desarrollo,Backend,Crear migración SQL para aumentar id_banco a CHAR(10),2026-10-28,2026-10-28,Pendiente
+Gestión bancaria de proveedores,Desarrollo,Backend,Implementar endpoint ajax/guardar_banco.php con conexión mysqli directa,2026-10-28,2026-10-29,Completado
+Gestión bancaria de proveedores,Desarrollo,Backend,Implementar generación de ID con nomenclatura X0000N,2026-10-29,2026-10-29,Completado
+Gestión bancaria de proveedores,Desarrollo,Frontend,Agregar modal Bootstrap 5 para captura de bancos nuevos,2026-10-29,2026-10-29,Completado
+Gestión bancaria de proveedores,Desarrollo,Frontend,Integrar modal con autocomplete de bancos,2026-10-29,2026-10-29,Completado
+Gestión bancaria de proveedores,Corrección,Backend,Corregir constante DB_PASSWORD en ajax/guardar_banco.php,2026-10-29,2026-10-29,Completado
+Gestión bancaria de proveedores,Corrección,Backend,Corregir bind_param en mysqli prepared statement,2026-10-29,2026-10-29,Completado

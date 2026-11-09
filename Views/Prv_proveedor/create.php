@@ -540,6 +540,14 @@ headerAdmin($data);
                                                         <option value="EUR">EUR - Euro</option>
                                                     </select>
                                                 </div>
+                                                <!-- Dirección -->
+                                                <div class="col-md-12 mb-3">
+                                                    <label class="form-label text-uppercase fs-10 fw-bold text-muted mb-1">Dirección <span class="text-danger">*</span></label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text bg-light border-0 text-muted"><i class="ri-map-pin-line"></i></span>
+                                                        <input type="text" name="direccion" id="direccion_banco" class="form-control bg-light-subtle border-0" placeholder="Ej. Av. Principal 123, Colonia Centro" required>
+                                                    </div>
+                                                </div>
                                                 <!-- CLABE -->
                                                 <div class="col-md-12">
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">CLABE Interbancaria (Nacional) <span class="text-danger-asterisk">*</span></label>
@@ -784,6 +792,11 @@ headerAdmin($data);
                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Razón Social <span class="text-danger-asterisk">*</span></label>
                     <input type="text" id="nuevo_banco_razon_social" class="form-control border-dashed" placeholder="Ej: Bank of America S.A.">
                     <small class="text-muted fs-11">Razón social completa del banco</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-uppercase fs-11 fw-bold text-muted">Dirección</label>
+                    <input type="text" id="nuevo_banco_direccion" class="form-control border-dashed" placeholder="Ej: Av. Reforma 123, CDMX">
+                    <small class="text-muted fs-11">Dirección física del banco</small>
                 </div>
             </div>
             <div class="modal-footer">
