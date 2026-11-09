@@ -27,3 +27,4 @@ Thumbs.db
 # Documentación interna de desarrollo, bases de datos y scripts
 docs_desarrollo/
 docs_desarrollo_logistica/
+*.sql

@@ -80,6 +80,25 @@ document.addEventListener('DOMContentLoaded', function () {
             actualizarMetricasAprobaciones(settings.json || []);
         }
     });
+
+    // Control de ajuste de DataTables al cambiar entre pestañas
+    var tabGastosBtn = document.getElementById('tab-gastos-btn');
+    if (tabGastosBtn) {
+        tabGastosBtn.addEventListener('shown.bs.tab', function () {
+            if (typeof tableGastos !== 'undefined' && tableGastos) {
+                tableGastos.columns.adjust();
+            }
+        });
+    }
+
+    var tabPlaneacionesBtn = document.getElementById('tab-planeaciones-btn');
+    if (tabPlaneacionesBtn) {
+        tabPlaneacionesBtn.addEventListener('shown.bs.tab', function () {
+            if (typeof tableAprobaciones !== 'undefined' && tableAprobaciones) {
+                tableAprobaciones.columns.adjust();
+            }
+        });
+    }
 });
 
 function actualizarMetricasAprobaciones(data) {
@@ -98,6 +117,12 @@ function actualizarMetricasAprobaciones(data) {
     if (document.getElementById('cardMontoPendiente')) document.getElementById('cardMontoPendiente').innerText = '$' + montoPendiente.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (document.getElementById('cardAprobAutorizadas')) document.getElementById('cardAprobAutorizadas').innerText = countAutorizadas;
     if (document.getElementById('cardMontoAutorizado')) document.getElementById('cardMontoAutorizado').innerText = '$' + montoAutorizado.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Actualizar badge en la pestaña de Planeaciones
+    let badgePlaneaciones = document.getElementById('badgePlaneacionesPendientes');
+    if (badgePlaneaciones) {
+        badgePlaneaciones.innerText = countPendientes;
+    }
 }
 
 /**

@@ -1,5 +1,7 @@
 <?php
 
+require_once('Services/Lgs_notificacionesHelper.php');
+
 class Lgs_planeacionesService {
 
     private Lgs_planeacionesModel $model;
@@ -186,28 +188,8 @@ class Lgs_planeacionesService {
             $rutas = $planData['total_rutas'] ?? 0;
             $monto = isset($planData['costo_total']) ? '$' . number_format((float)$planData['costo_total'], 2) : '$0.00';
 
-            // Consultar dinámicamente correos de usuarios con permiso de aprobación (no casado con personas ni puestos fijos)
             $db = $this->model->getConexion();
-            $sqlAprob = "
-                SELECT DISTINCT u.email_user 
-                FROM usuarios u
-                LEFT JOIN permisos p ON p.rolid = u.rolid AND p.moduloid = 157 AND (p.u = 1 OR p.w = 1)
-                LEFT JOIN lgs_aprobadores ap ON ap.id_usuario = u.idusuario AND ap.activo = 1
-                WHERE (u.rolid = 1 OR p.idpermiso IS NOT NULL OR ap.id IS NOT NULL)
-                  AND u.status = 1 
-                  AND u.email_user IS NOT NULL
-            ";
-            $stmt = $db->query($sqlAprob);
-            $correos = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
-
-            $destinatarios = array_filter(array_unique($correos), function($e) {
-                return filter_var(trim($e), FILTER_VALIDATE_EMAIL);
-            });
-
-            if (defined('MAIL_WEBMASTER') && filter_var(MAIL_WEBMASTER, FILTER_VALIDATE_EMAIL)) {
-                $destinatarios[] = MAIL_WEBMASTER;
-            }
-
+            $destinatarios = Lgs_notificacionesHelper::getCorreosAprobadores($db);
             if (empty($destinatarios)) return;
 
             $baseUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : '';
@@ -248,29 +230,7 @@ class Lgs_planeacionesService {
                 </div>
             </div>";
 
-            // Enviar correo mediante mail() estándar o PHPMailer si está disponible
-            if (class_exists('\\PHPMailer\\PHPMailer\\PHPMailer') && defined('MAIL_HOST') && !empty(MAIL_HOST)) {
-                $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
-                $mail->isSMTP();
-                $mail->Host       = MAIL_HOST;
-                $mail->SMTPAuth   = true;
-                $mail->Username   = MAIL_USER;
-                $mail->Password   = MAIL_PASS;
-                $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
-                $mail->Port       = MAIL_PORT;
-                $mail->CharSet    = 'UTF-8';
-                $mail->setFrom(MAIL_USER, 'MRP Logística');
-                foreach ($destinatarios as $correo) {
-                    $mail->addAddress($correo);
-                }
-                $mail->isHTML(true);
-                $mail->Subject = $asunto;
-                $mail->Body    = $html;
-                $mail->send();
-            } else {
-                $headers = "MIME-Version: 1.0\r\nContent-type: text/html; charset=UTF-8\r\nFrom: no-reply@ldrsolutions.com.mx\r\n";
-                @mail(implode(',', $destinatarios), $asunto, $html, $headers);
-            }
+            Lgs_notificacionesHelper::enviar($destinatarios, $asunto, $html);
         } catch (Throwable $ignored) {
             error_log("Error al enviar notificación de reapertura de planeación: " . $ignored->getMessage());
         }
@@ -285,9 +245,146 @@ class Lgs_planeacionesService {
             $db->beginTransaction();
             $this->model->enviarAprobacion($db, $idPlaneacion);
             $db->commit();
+
+            // Disparar notificación a Javier (Aprobador) y aviso informativo a Finanzas (Punto 3 de la minuta)
+            $this->notificarSolicitudAprobacion($idPlaneacion, $userId);
         } catch (Exception $e) {
-            $db->rollBack();
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
             throw $e;
+        }
+    }
+
+    /**
+     * Dispara notificación de aprobación a Javier y notificación informativa a Finanzas (Punto 3 de Minuta)
+     * Regla Minuta: Pasa directo de logística, no aprueba finanzas solo se notifica. La única aprobación es Javier.
+     */
+    private function notificarSolicitudAprobacion(int $idPlaneacion, int $userId): void
+    {
+        try {
+            $db = $this->model->getConexion();
+            $stmt = $db->prepare("
+                SELECT p.id_planeacion, p.folio, p.descripcion, p.costo_total, p.created_at,
+                       (SELECT COUNT(*) FROM lgs_planeaciones_envios WHERE id_planeacion = p.id_planeacion) AS total_rutas,
+                       (SELECT COUNT(*) FROM lgs_envios_vins ev INNER JOIN lgs_planeaciones_envios pe ON ev.id_envio = pe.id_envio WHERE pe.id_planeacion = p.id_planeacion) AS total_vins,
+                       CONCAT(COALESCE(u.nombres, ''), ' ', COALESCE(u.apellidos, '')) AS solicitante
+                FROM lgs_planeaciones p
+                LEFT JOIN usuarios u ON p.created_by = u.idusuario
+                WHERE p.id_planeacion = ?
+            ");
+            $stmt->execute([$idPlaneacion]);
+            $plan = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$plan) return;
+
+            $folio = $plan['folio'] ?? "PL-" . str_pad((string)$idPlaneacion, 4, '0', STR_PAD_LEFT);
+            $descripcion = $plan['descripcion'] ?? 'Planeación de Traslados';
+            $costoTotal = '$' . number_format((float)($plan['costo_total'] ?? 0), 2);
+            $totalRutas = (int)($plan['total_rutas'] ?? 0);
+            $totalVins = (int)($plan['total_vins'] ?? 0);
+            $solicitante = trim($plan['solicitante'] ?? '') ?: 'Operador de Logística';
+            $fechaEnvio = date('Y-m-d H:i');
+            $baseUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : '';
+
+            // 1. Notificación a Javier Rodríguez (Aprobador Único en lgs_aprobadores)
+            $aprobadores = Lgs_notificacionesHelper::getCorreosAprobadores($db);
+            if (!empty($aprobadores)) {
+                $asuntoAprob = "📋 SOLICITUD DE APROBACIÓN: Planeación {$folio} ({$totalVins} VINs / {$totalRutas} Rutas)";
+                $htmlAprob = "
+                <div style='font-family: Arial, sans-serif; max-width: 650px; margin: auto; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;'>
+                    <div style='background-color: #1E3A8A; color: #ffffff; padding: 22px; text-align: center;'>
+                        <h2 style='margin: 0; font-size: 19px; text-transform: uppercase;'>Solicitud de Aprobación de Planeación</h2>
+                        <p style='margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;'>Folio: <strong>{$folio}</strong></p>
+                    </div>
+                    <div style='padding: 24px; background-color: #ffffff;'>
+                        <p style='font-size: 14px; color: #334155;'>
+                            Estimado(a) Director Corporativo,<br><br>
+                            El área de Logística ha consolidado la planeación de envíos <strong>{$folio}</strong> y requiere de su revisión y autorización formal para proceder con el despacho en firme.
+                        </p>
+                        <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0;'>
+                            <tr style='border-bottom: 1px solid #F1F5F9;'>
+                                <td style='padding: 8px 0; color: #64748B; width: 35%;'><strong>Planeación:</strong></td>
+                                <td style='padding: 8px 0; color: #0F172A;'><strong>{$folio}</strong> - {$descripcion}</td>
+                            </tr>
+                            <tr style='border-bottom: 1px solid #F1F5F9;'>
+                                <td style='padding: 8px 0; color: #64748B;'><strong>Solicitante:</strong></td>
+                                <td style='padding: 8px 0; color: #0F172A;'>{$solicitante}</td>
+                            </tr>
+                            <tr style='border-bottom: 1px solid #F1F5F9;'>
+                                <td style='padding: 8px 0; color: #64748B;'><strong>Rutas / Envíos:</strong></td>
+                                <td style='padding: 8px 0; color: #0F172A;'>{$totalRutas} trayectos consolidables</td>
+                            </tr>
+                            <tr style='border-bottom: 1px solid #F1F5F9;'>
+                                <td style='padding: 8px 0; color: #64748B;'><strong>Total Unidades:</strong></td>
+                                <td style='padding: 8px 0; color: #0284C7; font-weight: bold;'>{$totalVins} VINs</td>
+                            </tr>
+                            <tr style='border-bottom: 1px solid #F1F5F9;'>
+                                <td style='padding: 8px 0; color: #64748B;'><strong>Costo Total Estimado:</strong></td>
+                                <td style='padding: 8px 0; color: #16A34A; font-weight: bold;'>{$costoTotal}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 8px 0; color: #64748B;'><strong>Fecha / Hora:</strong></td>
+                                <td style='padding: 8px 0; color: #0F172A;'>{$fechaEnvio}</td>
+                            </tr>
+                        </table>
+                        <div style='text-align: center; margin-top: 24px;'>
+                            <a href='{$baseUrl}/Lgs_aprobaciones' style='background-color: #1E3A8A; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 20px; font-weight: bold; font-size: 13px; display: inline-block;'>
+                                Revisar y Autorizar en Sistema
+                            </a>
+                        </div>
+                    </div>
+                </div>";
+                Lgs_notificacionesHelper::enviar($aprobadores, $asuntoAprob, $htmlAprob);
+            }
+
+            // 2. Notificación Informativa a Finanzas (Contador, Tesorero, Cobranza) — NO APRUEBA
+            $finanzas = Lgs_notificacionesHelper::getCorreosFinanzas($db);
+            if (!empty($finanzas)) {
+                $asuntoFin = "📊 AVISO INFORMATIVO: Planeación {$folio} en Proceso de Autorización ({$totalVins} VINs)";
+                $htmlFin = "
+                <div style='font-family: Arial, sans-serif; max-width: 650px; margin: auto; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;'>
+                    <div style='background-color: #047857; color: #ffffff; padding: 22px; text-align: center;'>
+                        <h2 style='margin: 0; font-size: 19px; text-transform: uppercase;'>Aviso Informativo de Traslados de Unidades</h2>
+                        <p style='margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;'>Folio: <strong>{$folio}</strong></p>
+                    </div>
+                    <div style='padding: 24px; background-color: #ffffff;'>
+                        <div style='background-color: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 12px; margin-bottom: 16px;'>
+                            <p style='margin: 0; font-size: 13px; color: #166534;'>
+                                ℹ️ <strong>Nota Importante:</strong> Esta notificación es exclusivamente <strong>informativa</strong> para la previsión contable y de flujo de tesorería. <strong>El área de Finanzas no requiere realizar ninguna acción de aprobación</strong>. El plan se encuentra en revisión con Dirección Corporativa (Javier Rodríguez Murrieta).
+                            </p>
+                        </div>
+                        <p style='font-size: 14px; color: #334155;'>
+                            Se comparte el resumen económico y volumétrico de los fletes programados por Logística:
+                        </p>
+                        <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0;'>
+                            <tr style='border-bottom: 1px solid #F1F5F9;'>
+                                <td style='padding: 8px 0; color: #64748B; width: 35%;'><strong>Planeación:</strong></td>
+                                <td style='padding: 8px 0; color: #0F172A;'><strong>{$folio}</strong> - {$descripcion}</td>
+                            </tr>
+                            <tr style='border-bottom: 1px solid #F1F5F9;'>
+                                <td style='padding: 8px 0; color: #64748B;'><strong>Rutas / Envíos:</strong></td>
+                                <td style='padding: 8px 0; color: #0F172A;'>{$totalRutas} trayectos</td>
+                            </tr>
+                            <tr style='border-bottom: 1px solid #F1F5F9;'>
+                                <td style='padding: 8px 0; color: #64748B;'><strong>Total Unidades:</strong></td>
+                                <td style='padding: 8px 0; color: #047857; font-weight: bold;'>{$totalVins} VINs</td>
+                            </tr>
+                            <tr style='border-bottom: 1px solid #F1F5F9;'>
+                                <td style='padding: 8px 0; color: #64748B;'><strong>Costo Total Estimado:</strong></td>
+                                <td style='padding: 8px 0; color: #16A34A; font-weight: bold;'>{$costoTotal}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 8px 0; color: #64748B;'><strong>Fecha / Hora:</strong></td>
+                                <td style='padding: 8px 0; color: #0F172A;'>{$fechaEnvio}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>";
+                Lgs_notificacionesHelper::enviar($finanzas, $asuntoFin, $htmlFin);
+            }
+        } catch (Throwable $e) {
+            error_log("Error al notificar solicitud de aprobación: " . $e->getMessage());
         }
     }
 }

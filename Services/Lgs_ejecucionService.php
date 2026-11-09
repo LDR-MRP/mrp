@@ -1,6 +1,7 @@
 <?php
 
 require_once "Models/Lgs_ejecucionModel.php";
+require_once "Services/Lgs_notificacionesHelper.php";
 
 class Lgs_ejecucionService {
 
@@ -407,11 +408,139 @@ class Lgs_ejecucionService {
             if ($db->inTransaction()) {
                 $db->commit();
             }
+
+            // Notificación de confirmación de entrega a Comercial (Punto 2 de Minuta)
+            $this->notificarEntregaDestinoAComercial($db, $idEnvio, $nombreRecibe, $comentarios, $userId);
         } catch (Throwable $e) {
             if ($db->inTransaction()) {
                 $db->rollBack();
             }
             throw $e;
+        }
+    }
+
+    /**
+     * Dispara notificación de confirmación de entrega al área Comercial (Punto 2 de la Minuta)
+     * Regla Minuta: Mandar confirmación de entrega a comercial no a distribuidor... para saber a dónde van.
+     */
+    private function notificarEntregaDestinoAComercial(PDO $db, int $idEnvio, string $nombreRecibe, string $comentarios, int $userId): void
+    {
+        try {
+            $sql = "SELECT 
+                        e.folio,
+                        COALESCE(d.nombre, ub.nombre, 'Destino Autorizado') AS destino,
+                        COALESCE(dist.nombre, 'Distribuidor Comercial') AS distribuidor,
+                        pr.razon_social AS trasladista,
+                        CONCAT(COALESCE(ch.nombre, ''), ' ', COALESCE(ch.apellidos, '')) AS chofer,
+                        COALESCE(m.numero_economico, m.placas, '-') AS madrina,
+                        e.fecha_llegada_real
+                    FROM lgs_envios e
+                    LEFT JOIN lgs_cat_destinos d ON e.id_destino = d.id_destino
+                    LEFT JOIN lgs_cat_ubicaciones ub ON e.id_destino = ub.id_ubicacion
+                    LEFT JOIN lgs_cat_distribuidores dist ON e.id_distribuidor = dist.id_distribuidor
+                    LEFT JOIN prv_cat_proveedores pr ON e.id_proveedor = pr.id_proveedor
+                    LEFT JOIN prv_det_choferes ch ON e.id_chofer = ch.id_chofer
+                    LEFT JOIN prv_det_madrinas m ON e.id_madrina = m.id_madrina
+                    WHERE e.id_envio = ?";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$idEnvio]);
+            $envio = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$envio) return;
+
+            // Consultar VINs entregados
+            $stmtVins = $db->prepare("
+                SELECT ev.vin, COALESCE(u.modelo, '-') AS modelo, COALESCE(u.color, '-') AS color, ev.recibe_nombre
+                FROM lgs_envios_vins ev
+                LEFT JOIN lgs_unidades u ON ev.id_unidad = u.id_unidad
+                WHERE ev.id_envio = ?
+            ");
+            $stmtVins->execute([$idEnvio]);
+            $vinsList = $stmtVins->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $totalVins = count($vinsList);
+
+            $folio = $envio['folio'] ?? "EN-" . str_pad((string)$idEnvio, 6, '0', STR_PAD_LEFT);
+            $destino = $envio['destino'] ?? '-';
+            $distribuidor = $envio['distribuidor'] ?? '-';
+            $trasladista = $envio['trasladista'] ?? '-';
+            $chofer = trim($envio['chofer'] ?? '') ?: 'Chofer Asignado';
+            $madrina = $envio['madrina'] ?? '-';
+            $fechaEntrega = date('Y-m-d H:i');
+            $baseUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : '';
+
+            $destComercial = Lgs_notificacionesHelper::getCorreosComercial($db);
+            if (empty($destComercial)) return;
+
+            // Armar tabla de VINs entregados
+            $filasVins = '';
+            foreach ($vinsList as $v) {
+                $filasVins .= "<tr style='border-bottom: 1px solid #E2E8F0;'>
+                    <td style='padding: 6px 8px; font-family: monospace; font-weight: bold;'>{$v['vin']}</td>
+                    <td style='padding: 6px 8px;'>{$v['modelo']}</td>
+                    <td style='padding: 6px 8px;'>{$v['color']}</td>
+                </tr>";
+            }
+
+            $asunto = "🏁 CONFIRMACIÓN DE ENTREGA: Envío {$folio} Recibido en {$destino} ({$totalVins} VINs)";
+            $html = "
+            <div style='font-family: Arial, sans-serif; max-width: 650px; margin: auto; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;'>
+                <div style='background-color: #0284C7; color: #ffffff; padding: 22px; text-align: center;'>
+                    <h2 style='margin: 0; font-size: 19px; text-transform: uppercase;'>Confirmación de Entrega en Destino</h2>
+                    <p style='margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;'>Folio Envío: <strong>{$folio}</strong></p>
+                </div>
+                <div style='padding: 24px; background-color: #ffffff;'>
+                    <p style='font-size: 14px; color: #334155;'>
+                        Estimado equipo Comercial,<br><br>
+                        Se confirma que el traslado de unidades correspondiente al envío <strong>{$folio}</strong> ha concluido satisfactoriamente con la entrega física en destino final.
+                    </p>
+                    <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0;'>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B; width: 35%;'><strong>Destino:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'><strong>{$destino}</strong> ({$distribuidor})</td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Recibido por:</strong></td>
+                            <td style='padding: 8px 0; color: #0284C7; font-weight: bold;'>{$nombreRecibe}</td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Fecha / Hora Entrega:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>{$fechaEntrega}</td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Trasladista / Chofer:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>{$trasladista} · {$chofer} (Placas: {$madrina})</td>
+                        </tr>
+                        " . (!empty($comentarios) ? "
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Comentarios de Entrega:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>{$comentarios}</td>
+                        </tr>" : "") . "
+                    </table>
+
+                    <h4 style='margin: 20px 0 10px 0; font-size: 14px; color: #0F172A;'>Unidades Entregadas ({$totalVins} VINs):</h4>
+                    <table style='width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;'>
+                        <thead>
+                            <tr style='background-color: #F8FAFC; text-align: left; border-bottom: 2px solid #E2E8F0;'>
+                                <th style='padding: 6px 8px; color: #475569;'>VIN</th>
+                                <th style='padding: 6px 8px; color: #475569;'>Modelo</th>
+                                <th style='padding: 6px 8px; color: #475569;'>Color</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {$filasVins}
+                        </tbody>
+                    </table>
+
+                    <div style='text-align: center; margin-top: 24px;'>
+                        <a href='{$baseUrl}/Lgs_evidencias' style='background-color: #0284C7; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 20px; font-weight: bold; font-size: 13px; display: inline-block;'>
+                            Consultar Evidencias y Remisiones en Sistema
+                        </a>
+                    </div>
+                </div>
+            </div>";
+
+            Lgs_notificacionesHelper::enviar($destComercial, $asunto, $html);
+        } catch (Throwable $e) {
+            error_log("Error al notificar entrega a comercial: " . $e->getMessage());
         }
     }
 

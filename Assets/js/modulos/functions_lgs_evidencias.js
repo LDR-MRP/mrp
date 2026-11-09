@@ -136,17 +136,22 @@ document.addEventListener('DOMContentLoaded', function () {
                                       </button>`;
                     }
 
-                    // 5. Botón PDF Hoja de Entrega / Traspaso
+                    // 5. Botón Carga Masiva ZIP (Punto 6 Adriana)
+                    let btnZip = `<button class="btn btn-sm btn-soft-warning border border-warning-subtle text-warning-emphasis rounded-pill px-2 py-1 fw-semibold me-1 shadow-xs" onClick="fntAbrirEvidencias(${data}, '${folio}', ${estado}, 'destino', true)" title="Carga Masiva de Evidencias en archivo .ZIP">
+                                    <i class="ri-folder-zip-fill text-warning me-1"></i> Carga ZIP
+                                  </button>`;
+
+                    // 6. Botón PDF Hoja de Entrega / Traspaso
                     let btnPdf = `<a href="${base_url}/Lgs_evidencias/hoja_entrega_pdf/${data}" target="_blank" class="btn btn-sm btn-soft-danger border border-danger-subtle rounded-pill px-2 py-1 fw-semibold me-1 shadow-sm" title="Imprimir / Ver Hoja de Entrega y Traspaso en PDF">
                                     <i class="ri-file-pdf-line me-1 text-danger"></i> Hoja Entrega
                                   </a>`;
 
-                    // 6. Botón Ver Galería Completa
+                    // 7. Botón Ver Galería Completa
                     let btnGaleria = `<button class="btn btn-sm btn-soft-primary rounded-circle p-1" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;" onClick="fntAbrirGaleriaCompleta(${data}, '${folio}')" title="Ver Galería Completa">
                                         <i class="ri-gallery-line"></i>
                                       </button>`;
 
-                    return `<div class="text-end pe-2 d-flex align-items-center justify-content-end">${btnVerPlanta}${btnPlanta}${btnReciboTrasladista}${btnDestino}${btnCerrarEntrega}${btnPdf}${btnGaleria}</div>`;
+                    return `<div class="text-end pe-2 d-flex align-items-center justify-content-end">${btnVerPlanta}${btnPlanta}${btnReciboTrasladista}${btnDestino}${btnCerrarEntrega}${btnZip}${btnPdf}${btnGaleria}</div>`;
                 }
             }
         ],
@@ -158,6 +163,9 @@ document.addEventListener('DOMContentLoaded', function () {
             actualizarMetricasEvidencias(settings.json || []);
         }
     });
+
+    // Configurar soporte Drag & Drop para la carga ZIP de evidencias
+    setupZipDragAndDrop('contenedor_preview_zip_evid', 'file_zip_evid');
 });
 
 function actualizarMetricasEvidencias(data) {
@@ -222,7 +230,7 @@ function filtrarEvidenciasPorCard(filtro, chipId) {
     }
 }
 
-function fntAbrirEvidencias(idEnvio, folio, idEstado, modo = 'destino') {
+function fntAbrirEvidencias(idEnvio, folio, idEstado, modo = 'destino', abrirEnZip = false) {
     document.getElementById('id_envio_evidencia').value = idEnvio;
     document.getElementById('lblFolioEvidencia').innerText = folio;
     document.getElementById('modo_evidencia_actual').value = modo;
@@ -358,6 +366,16 @@ function fntAbrirEvidencias(idEnvio, folio, idEstado, modo = 'destino') {
         if (icoEl) icoEl.classList.remove('d-none');
     });
 
+    // Resetear input y preview de ZIP
+    if (document.getElementById('file_zip_evid')) document.getElementById('file_zip_evid').value = '';
+    limpiarZipInput('file_zip_evid', 'contenedor_preview_zip_evid');
+    const tabTargetId = abrirEnZip ? 'tab-fotos-zip-evid' : 'tab-fotos-ind-evid';
+    const tabEl = document.getElementById(tabTargetId);
+    if (tabEl && typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+        const bsTab = bootstrap.Tab.getOrCreateInstance(tabEl);
+        bsTab.show();
+    }
+
     // Limpiar contenedor de extras
     const contExtras = document.getElementById('contenedor_extras_entrega');
     if (contExtras) contExtras.innerHTML = '';
@@ -457,6 +475,78 @@ function agregarExtraEntrega() {
     if (cont) cont.insertAdjacentHTML('beforeend', html);
 }
 
+function previewZipFile(input, targetId) {
+    const card = document.getElementById(targetId);
+    if (!card) return;
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+        card.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between p-3 bg-soft-warning border border-warning rounded-3 shadow-xs">
+                <div class="d-flex align-items-center">
+                    <i class="ri-folder-zip-fill fs-1 text-warning me-3"></i>
+                    <div class="text-start">
+                        <h6 class="mb-0 fw-bold fs-13 text-dark">${file.name}</h6>
+                        <small class="text-muted">${sizeMb} MB · Listo para descomprimir y registrar</small>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-1" style="width: 28px; height: 28px;" onclick="limpiarZipInput('${input.id}', '${targetId}')" title="Quitar archivo">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+        `;
+    }
+}
+
+function limpiarZipInput(inputId, targetId) {
+    const input = document.getElementById(inputId);
+    if (input) input.value = '';
+    const card = document.getElementById(targetId);
+    if (card) {
+        card.innerHTML = `
+            <div class="p-4 text-center border-dashed rounded-3 bg-light" style="border: 2px dashed #CBD5E1; cursor: pointer; transition: all 0.2s;" onclick="document.getElementById('${inputId}').click();">
+                <i class="ri-folder-zip-line fs-1 text-warning mb-2 d-block"></i>
+                <span class="fs-13 fw-bold text-dark d-block">Haz clic aquí o arrastra tu archivo .ZIP</span>
+                <small class="text-muted d-block mt-1">Sube un archivo ZIP con todas las fotos de la unidad dentro de una carpeta.</small>
+                <span class="badge bg-soft-info text-info mt-2">Formatos: JPG, PNG, WEBP (Hasta 50MB)</span>
+            </div>
+        `;
+    }
+}
+
+function setupZipDragAndDrop(containerId, inputId) {
+    const el = document.getElementById(containerId);
+    const input = document.getElementById(inputId);
+    if (!el || !input) return;
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        el.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            el.style.borderColor = '#F59E0B';
+            el.style.backgroundColor = '#FEF3C7';
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        el.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            el.style.borderColor = '#CBD5E1';
+            el.style.backgroundColor = '#F8FAFC';
+        }, false);
+    });
+
+    el.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length > 0) {
+            input.files = files;
+            previewZipFile(input, containerId);
+        }
+    }, false);
+}
+
 function guardarInspeccionEntrega() {
     const idEnvio = document.getElementById('id_envio_evidencia').value;
     const selectUnidad = document.getElementById('select_evid_unidad');
@@ -474,6 +564,18 @@ function guardarInspeccionEntrega() {
             ? "Por favor seleccione la unidad / VIN que está inspeccionando en planta." 
             : "Por favor seleccione la unidad / VIN que está recibiendo o entregando.";
         Swal.fire("Atención", msg, "warning");
+        return;
+    }
+
+    const tabZipActive = document.getElementById('tab-fotos-zip-evid')?.classList.contains('active');
+    const zipInput = document.getElementById('file_zip_evid');
+
+    if (tabZipActive) {
+        if (!zipInput || zipInput.files.length === 0) {
+            Swal.fire("Atención", "Debe seleccionar un archivo .ZIP con las fotos de la unidad.", "warning");
+            return;
+        }
+        enviarInspeccionEntregaForm();
         return;
     }
 
@@ -545,6 +647,13 @@ function enviarInspeccionEntregaForm() {
                 if (imgEl) { imgEl.classList.add('d-none'); imgEl.src = ''; }
                 if (icoEl) icoEl.classList.remove('d-none');
             });
+            if (document.getElementById('file_zip_evid')) document.getElementById('file_zip_evid').value = '';
+            limpiarZipInput('file_zip_evid', 'contenedor_preview_zip_evid');
+            const tabInd = document.getElementById('tab-fotos-ind-evid');
+            if (tabInd && typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+                const bsTab = bootstrap.Tab.getOrCreateInstance(tabInd);
+                bsTab.show();
+            }
             const contExtras = document.getElementById('contenedor_extras_entrega');
             if (contExtras) contExtras.innerHTML = '';
 
@@ -642,6 +751,11 @@ function verEvidenciasUnidad(idEnvio, idUnidad, vin) {
     if (subEl) subEl.innerText = `Envío #${idEnvio} · Fotografías y observaciones de inspección`;
     if (obsCont) obsCont.innerHTML = '';
     if (gridEl) gridEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Cargando evidencias fotográficas...</p></div>';
+
+    const btnZip = document.getElementById('btnDescargarZipEnvio');
+    if (btnZip) {
+        btnZip.href = `${base_url}/Lgs_evidencias/descargarZipEvidencias/${idEnvio}`;
+    }
 
     const modal = new bootstrap.Modal(document.getElementById('modalVerEvidencias'));
     modal.show();
@@ -800,6 +914,11 @@ function fntAbrirGaleriaCompleta(idEnvio, folio) {
     if (subEl) subEl.innerText = `Envío #${idEnvio} · Inspecciones fotográficas de Planta y Destino`;
     if (obsCont) obsCont.innerHTML = '';
     if (gridEl) gridEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Cargando galería fotográfica...</p></div>';
+
+    const btnZipGaleria = document.getElementById('btnDescargarZipEnvio');
+    if (btnZipGaleria) {
+        btnZipGaleria.href = `${base_url}/Lgs_evidencias/descargarZipEvidencias/${idEnvio}`;
+    }
 
     const modal = new bootstrap.Modal(document.getElementById('modalVerEvidencias'));
     modal.show();

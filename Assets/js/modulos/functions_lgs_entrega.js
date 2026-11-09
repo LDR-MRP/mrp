@@ -3,6 +3,7 @@ let currentEnvioVins = [];
 
 document.addEventListener('DOMContentLoaded', function () {
     cargarViajesTransito();
+    setupZipDragAndDrop('contenedor_preview_zip_entrega', 'file_zip_entrega');
 });
 
 function cargarViajesTransito() {
@@ -204,6 +205,77 @@ function previewImage(input, pos) {
     }
 }
 
+function previewZipFile(input, targetId) {
+    const card = document.getElementById(targetId);
+    if (!card) return;
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+        card.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between p-2 bg-soft-warning border border-warning rounded-3 shadow-xs">
+                <div class="d-flex align-items-center">
+                    <i class="ri-folder-zip-fill fs-2 text-warning me-2"></i>
+                    <div class="text-start">
+                        <span class="mb-0 fw-bold fs-12 text-dark d-block text-truncate" style="max-width: 180px;">${file.name}</span>
+                        <small class="text-muted fs-11">${sizeMb} MB · ZIP Listo</small>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-1" style="width: 26px; height: 26px;" onclick="limpiarZipInput('${input.id}', '${targetId}')" title="Quitar">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+        `;
+    }
+}
+
+function limpiarZipInput(inputId, targetId) {
+    const input = document.getElementById(inputId);
+    if (input) input.value = '';
+    const card = document.getElementById(targetId);
+    if (card) {
+        card.innerHTML = `
+            <div class="p-3 text-center border-dashed rounded-3 bg-light" style="border: 2px dashed #CBD5E1; cursor: pointer;" onclick="document.getElementById('${inputId}').click();">
+                <i class="ri-folder-zip-line fs-1 text-warning mb-1 d-block"></i>
+                <span class="fs-12 fw-bold text-dark d-block">Seleccionar archivo .ZIP</span>
+                <small class="text-muted d-block mt-1">Sube el ZIP con la remisión, firma y fotos de entrega en una carpeta.</small>
+            </div>
+        `;
+    }
+}
+
+function setupZipDragAndDrop(containerId, inputId) {
+    const el = document.getElementById(containerId);
+    const input = document.getElementById(inputId);
+    if (!el || !input) return;
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        el.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            el.style.borderColor = '#F59E0B';
+            el.style.backgroundColor = '#FEF3C7';
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        el.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            el.style.borderColor = '#CBD5E1';
+            el.style.backgroundColor = '#F8FAFC';
+        }, false);
+    });
+
+    el.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length > 0) {
+            input.files = files;
+            previewZipFile(input, containerId);
+        }
+    }, false);
+}
+
 function guardarEntregaDestino() {
     const idEnvio = document.getElementById('ent_id_envio').value;
     const qrValido = document.getElementById('qr_cliente_validado').value;
@@ -219,10 +291,20 @@ function guardarEntregaDestino() {
         return;
     }
 
-    // Validar fotos obligatorias de remisión y firma
-    if (document.getElementById('file_remision').files.length === 0 || document.getElementById('file_firma').files.length === 0) {
-        Swal.fire("Atención", "Debe adjuntar la foto de la remisión firmada y la firma del receptor.", "warning");
-        return;
+    const tabZipActive = document.getElementById('tab-fotos-zip-entrega')?.classList.contains('active');
+    const zipInput = document.getElementById('file_zip_entrega');
+
+    if (tabZipActive) {
+        if (!zipInput || zipInput.files.length === 0) {
+            Swal.fire("Atención", "Debe seleccionar un archivo .ZIP con las evidencias de entrega.", "warning");
+            return;
+        }
+    } else {
+        // Validar fotos obligatorias de remisión y firma
+        if (document.getElementById('file_remision').files.length === 0 || document.getElementById('file_firma').files.length === 0) {
+            Swal.fire("Atención", "Debe adjuntar la foto de la remisión firmada y la firma del receptor, o utilizar la pestaña de Carga Masiva (ZIP).", "warning");
+            return;
+        }
     }
 
     const form = document.getElementById('formEntregaFinal');

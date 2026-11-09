@@ -291,68 +291,100 @@
 
                         <!-- 3. Fotografías de Evidencia -->
                         <div class="mb-3">
-                            <div class="d-flex align-items-center justify-content-between mb-3 border-top pt-3">
-                                <h6 class="fw-bold fs-13 mb-0"><i class="ri-camera-lens-line me-1 text-primary"></i>Paso 2: 5 Fotos Obligatorias</h6>
+                            <div class="d-flex align-items-center justify-content-between mb-2 border-top pt-3">
+                                <h6 class="fw-bold fs-13 mb-0"><i class="ri-camera-lens-line me-1 text-primary"></i>Paso 2: Evidencias Fotográficas</h6>
                                 <span class="badge bg-soft-primary text-primary px-2 py-1 fs-11">Evidencia 360°</span>
                             </div>
+
+                            <!-- PESTAÑAS: FOTOS INDIVIDUALES vs CARGA MASIVA (ZIP) -->
+                            <ul class="nav nav-pills nav-custom nav-custom-light mb-3" id="pills-inspeccion-chofer" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active rounded-pill px-3 py-1 fs-11 fw-semibold" id="tab-fotos-ind-chofer" data-bs-toggle="pill" data-bs-target="#pane-fotos-ind-chofer" type="button" role="tab">
+                                        <i class="ri-camera-line me-1"></i> Fotos Individuales (5)
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link rounded-pill px-3 py-1 fs-11 fw-semibold text-warning-emphasis bg-soft-warning border border-warning-subtle" id="tab-fotos-zip-chofer" data-bs-toggle="pill" data-bs-target="#pane-fotos-zip-chofer" type="button" role="tab">
+                                        <i class="ri-folder-zip-fill me-1 text-warning"></i> Carga Masiva (ZIP)
+                                    </button>
+                                </li>
+                            </ul>
                             
-                            <div class="row g-2 mb-3">
-                                <div class="col-6">
-                                    <span class="fs-11 text-muted fw-bold d-block mb-1">1. Frente</span>
-                                    <div class="photo-preview text-muted" onclick="triggerFile('file_frente')">
-                                        <img id="img_frente" class="d-none">
-                                        <i id="ico_frente" class="ri-image-add-line fs-2 text-muted opacity-50"></i>
+                            <div class="tab-content" id="pills-chofer-content">
+                                <!-- PESTAÑA 1: FOTOS INDIVIDUALES -->
+                                <div class="tab-pane fade show active" id="pane-fotos-ind-chofer" role="tabpanel">
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-6">
+                                            <span class="fs-11 text-muted fw-bold d-block mb-1">1. Frente</span>
+                                            <div class="photo-preview text-muted" onclick="triggerFile('file_frente')">
+                                                <img id="img_frente" class="d-none">
+                                                <i id="ico_frente" class="ri-image-add-line fs-2 text-muted opacity-50"></i>
+                                            </div>
+                                            <input type="file" id="file_frente" name="frente" accept="image/*" capture="environment" class="d-none" onchange="previewImage(this, 'frente')">
+                                        </div>
+                                        
+                                        <div class="col-6">
+                                            <span class="fs-11 text-muted fw-bold d-block mb-1">2. Atrás</span>
+                                            <div class="photo-preview text-muted" onclick="triggerFile('file_atras')">
+                                                <img id="img_atras" class="d-none">
+                                                <i id="ico_atras" class="ri-image-add-line fs-2 text-muted opacity-50"></i>
+                                            </div>
+                                            <input type="file" id="file_atras" name="atras" accept="image/*" capture="environment" class="d-none" onchange="previewImage(this, 'atras')">
+                                        </div>
+                                        
+                                        <div class="col-6">
+                                            <span class="fs-11 text-muted fw-bold d-block mb-1">3. Lateral Izquierdo</span>
+                                            <div class="photo-preview text-muted" onclick="triggerFile('file_lateral_izq')">
+                                                <img id="img_lateral_izq" class="d-none">
+                                                <i id="ico_lateral_izq" class="ri-image-add-line fs-2 text-muted opacity-50"></i>
+                                            </div>
+                                            <input type="file" id="file_lateral_izq" name="lateral_izq" accept="image/*" capture="environment" class="d-none" onchange="previewImage(this, 'lateral_izq')">
+                                        </div>
+                                        
+                                        <div class="col-6">
+                                            <span class="fs-11 text-muted fw-bold d-block mb-1">4. Lateral Derecho</span>
+                                            <div class="photo-preview text-muted" onclick="triggerFile('file_lateral_der')">
+                                                <img id="img_lateral_der" class="d-none">
+                                                <i id="ico_lateral_der" class="ri-image-add-line fs-2 text-muted opacity-50"></i>
+                                            </div>
+                                            <input type="file" id="file_lateral_der" name="lateral_der" accept="image/*" capture="environment" class="d-none" onchange="previewImage(this, 'lateral_der')">
+                                        </div>
+
+                                        <div class="col-12 mt-2">
+                                            <span class="fs-11 text-muted fw-bold d-block mb-1">5. Kilometraje / Odómetro</span>
+                                            <div class="photo-preview text-muted" onclick="triggerFile('file_odometro')" style="height: 100px;">
+                                                <img id="img_odometro" class="d-none">
+                                                <i id="ico_odometro" class="ri-dashboard-3-line fs-2 text-muted opacity-50"></i>
+                                            </div>
+                                            <input type="file" id="file_odometro" name="odometro" accept="image/*" capture="environment" class="d-none" onchange="previewImage(this, 'odometro')">
+                                        </div>
                                     </div>
-                                    <input type="file" id="file_frente" name="frente" accept="image/*" capture="environment" class="d-none" onchange="previewImage(this, 'frente')">
-                                </div>
-                                
-                                <div class="col-6">
-                                    <span class="fs-11 text-muted fw-bold d-block mb-1">2. Atrás</span>
-                                    <div class="photo-preview text-muted" onclick="triggerFile('file_atras')">
-                                        <img id="img_atras" class="d-none">
-                                        <i id="ico_atras" class="ri-image-add-line fs-2 text-muted opacity-50"></i>
+
+                                    <!-- Contenedor dinámico de extras -->
+                                    <div id="contenedor_extras_chofer" class="row g-2 mb-3"></div>
+                                    <div class="text-center mb-3">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100 rounded-pill border-dashed py-2 fw-semibold" onclick="agregarEvidenciaExtraChofer();">
+                                            <i class="ri-add-circle-line me-1"></i> Agregar Fotografía Adicional
+                                        </button>
                                     </div>
-                                    <input type="file" id="file_atras" name="atras" accept="image/*" capture="environment" class="d-none" onchange="previewImage(this, 'atras')">
-                                </div>
-                                
-                                <div class="col-6">
-                                    <span class="fs-11 text-muted fw-bold d-block mb-1">3. Lateral Izquierdo</span>
-                                    <div class="photo-preview text-muted" onclick="triggerFile('file_lateral_izq')">
-                                        <img id="img_lateral_izq" class="d-none">
-                                        <i id="ico_lateral_izq" class="ri-image-add-line fs-2 text-muted opacity-50"></i>
-                                    </div>
-                                    <input type="file" id="file_lateral_izq" name="lateral_izq" accept="image/*" capture="environment" class="d-none" onchange="previewImage(this, 'lateral_izq')">
-                                </div>
-                                
-                                <div class="col-6">
-                                    <span class="fs-11 text-muted fw-bold d-block mb-1">4. Lateral Derecho</span>
-                                    <div class="photo-preview text-muted" onclick="triggerFile('file_lateral_der')">
-                                        <img id="img_lateral_der" class="d-none">
-                                        <i id="ico_lateral_der" class="ri-image-add-line fs-2 text-muted opacity-50"></i>
-                                    </div>
-                                    <input type="file" id="file_lateral_der" name="lateral_der" accept="image/*" capture="environment" class="d-none" onchange="previewImage(this, 'lateral_der')">
                                 </div>
 
-                                <div class="col-12 mt-2">
-                                    <span class="fs-11 text-muted fw-bold d-block mb-1">5. Kilometraje / Odómetro</span>
-                                    <div class="photo-preview text-muted" onclick="triggerFile('file_odometro')" style="height: 100px;">
-                                        <img id="img_odometro" class="d-none">
-                                        <i id="ico_odometro" class="ri-dashboard-3-line fs-2 text-muted opacity-50"></i>
+                                <!-- PESTAÑA 2: CARGA MASIVA CON ZIP -->
+                                <div class="tab-pane fade" id="pane-fotos-zip-chofer" role="tabpanel">
+                                    <div class="mb-3" id="contenedor_preview_zip_chofer">
+                                        <div class="p-3 text-center border-dashed rounded-3 bg-light" style="border: 2px dashed #CBD5E1; cursor: pointer;" onclick="document.getElementById('file_zip_chofer').click();">
+                                            <i class="ri-folder-zip-line fs-1 text-warning mb-1 d-block"></i>
+                                            <span class="fs-12 fw-bold text-dark d-block">Seleccionar archivo .ZIP</span>
+                                            <small class="text-muted d-block mt-1">Sube el ZIP con las fotos de la unidad.</small>
+                                        </div>
                                     </div>
-                                    <input type="file" id="file_odometro" name="odometro" accept="image/*" capture="environment" class="d-none" onchange="previewImage(this, 'odometro')">
-                                    <div class="input-group input-group-sm mt-2">
-                                        <span class="input-group-text bg-light text-muted fw-bold"><i class="ri-speed-up-line me-1"></i>KM Odómetro:</span>
-                                        <input type="number" step="1" min="0" class="form-control" id="chk_valor_odometro" name="valor_odometro" placeholder="Ej. 15">
-                                    </div>
+                                    <input type="file" id="file_zip_chofer" name="archivo_zip" accept=".zip,application/zip,application/x-zip-compressed" class="d-none" onchange="previewZipFile(this, 'contenedor_preview_zip_chofer')">
                                 </div>
                             </div>
 
-                            <!-- Contenedor dinámico de extras -->
-                            <div id="contenedor_extras_chofer" class="row g-2 mb-3"></div>
-                            <div class="text-center mb-3">
-                                <button type="button" class="btn btn-sm btn-outline-secondary w-100 rounded-pill border-dashed py-2 fw-semibold" onclick="agregarEvidenciaExtraChofer();">
-                                    <i class="ri-add-circle-line me-1"></i> Agregar Fotografía Adicional
-                                </button>
+                            <div class="input-group input-group-sm mb-3">
+                                <span class="input-group-text bg-light text-muted fw-bold"><i class="ri-speed-up-line me-1"></i>KM Odómetro:</span>
+                                <input type="number" step="1" min="0" class="form-control" id="chk_valor_odometro" name="valor_odometro" placeholder="Ej. 15">
                             </div>
 
                             <div class="mb-2">

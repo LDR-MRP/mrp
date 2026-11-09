@@ -2,6 +2,7 @@ let activeHtml5QrcodeScanner = null;
 
 document.addEventListener('DOMContentLoaded', function () {
     cargarEnviosChofer();
+    setupZipDragAndDrop('contenedor_preview_zip_chofer', 'file_zip_chofer');
 });
 
 function cargarEnviosChofer() {
@@ -136,6 +137,15 @@ function abrirInspeccionVin(idEnvio, idUnidad, vin) {
     document.getElementById('contenedor_extras_chofer').innerHTML = '';
     window.extraEvidenciaCountChofer = 0;
 
+    // Resetear pestaña de Carga Masiva (ZIP)
+    if (document.getElementById('file_zip_chofer')) document.getElementById('file_zip_chofer').value = '';
+    limpiarZipInput('file_zip_chofer', 'contenedor_preview_zip_chofer');
+    const tabInd = document.getElementById('tab-fotos-ind-chofer');
+    if (tabInd && typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+        const bsTab = bootstrap.Tab.getOrCreateInstance(tabInd);
+        bsTab.show();
+    }
+
     const modal = new bootstrap.Modal(document.getElementById('modalInspeccionVin'));
     modal.show();
 }
@@ -157,6 +167,77 @@ function previewImage(input, pos) {
         }
         reader.readAsDataURL(input.files[0]);
     }
+}
+
+function previewZipFile(input, targetId) {
+    const card = document.getElementById(targetId);
+    if (!card) return;
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+        card.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between p-2 bg-soft-warning border border-warning rounded-3 shadow-xs">
+                <div class="d-flex align-items-center">
+                    <i class="ri-folder-zip-fill fs-2 text-warning me-2"></i>
+                    <div class="text-start">
+                        <span class="mb-0 fw-bold fs-12 text-dark d-block text-truncate" style="max-width: 180px;">${file.name}</span>
+                        <small class="text-muted fs-11">${sizeMb} MB · ZIP Listo</small>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-1" style="width: 26px; height: 26px;" onclick="limpiarZipInput('${input.id}', '${targetId}')" title="Quitar">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+        `;
+    }
+}
+
+function limpiarZipInput(inputId, targetId) {
+    const input = document.getElementById(inputId);
+    if (input) input.value = '';
+    const card = document.getElementById(targetId);
+    if (card) {
+        card.innerHTML = `
+            <div class="p-3 text-center border-dashed rounded-3 bg-light" style="border: 2px dashed #CBD5E1; cursor: pointer;" onclick="document.getElementById('${inputId}').click();">
+                <i class="ri-folder-zip-line fs-1 text-warning mb-1 d-block"></i>
+                <span class="fs-12 fw-bold text-dark d-block">Seleccionar archivo .ZIP</span>
+                <small class="text-muted d-block mt-1">Sube el ZIP con las fotos de la unidad.</small>
+            </div>
+        `;
+    }
+}
+
+function setupZipDragAndDrop(containerId, inputId) {
+    const el = document.getElementById(containerId);
+    const input = document.getElementById(inputId);
+    if (!el || !input) return;
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        el.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            el.style.borderColor = '#F59E0B';
+            el.style.backgroundColor = '#FEF3C7';
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        el.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            el.style.borderColor = '#CBD5E1';
+            el.style.backgroundColor = '#F8FAFC';
+        }, false);
+    });
+
+    el.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length > 0) {
+            input.files = files;
+            previewZipFile(input, containerId);
+        }
+    }, false);
 }
 
 function iniciarEscaneo() {
@@ -192,12 +273,22 @@ function guardarInspeccion() {
         return;
     }
 
-    // Validar fotos obligatorias
-    const inputsFotos = ['file_frente', 'file_atras', 'file_lateral_izq', 'file_lateral_der', 'file_odometro'];
-    for(let i=0; i<inputsFotos.length; i++) {
-        if (document.getElementById(inputsFotos[i]).files.length === 0) {
-            Swal.fire("Atención", "Debe cargar todas las fotos de inspección obligatorias antes de guardar.", "warning");
+    const tabZipActive = document.getElementById('tab-fotos-zip-chofer')?.classList.contains('active');
+    const zipInput = document.getElementById('file_zip_chofer');
+
+    if (tabZipActive) {
+        if (!zipInput || zipInput.files.length === 0) {
+            Swal.fire("Atención", "Debe seleccionar un archivo .ZIP con las fotos de la unidad.", "warning");
             return;
+        }
+    } else {
+        // Validar fotos obligatorias individuales
+        const inputsFotos = ['file_frente', 'file_atras', 'file_lateral_izq', 'file_lateral_der', 'file_odometro'];
+        for(let i=0; i<inputsFotos.length; i++) {
+            if (document.getElementById(inputsFotos[i]).files.length === 0) {
+                Swal.fire("Atención", "Debe cargar todas las fotos de inspección obligatorias antes de guardar, o utilizar la pestaña de Carga Masiva (ZIP).", "warning");
+                return;
+            }
         }
     }
 

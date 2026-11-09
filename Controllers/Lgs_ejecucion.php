@@ -251,24 +251,34 @@ class Lgs_ejecucion extends Controllers
             $idEnvio = intval($_POST['id_envio'] ?? 0);
             $idUnidad = intval($_POST['id_unidad'] ?? 0);
             $tipoChecklist = $_POST['tipo_checklist'] ?? '';
-            $vin = $_POST['vin'] ?? '';
+            $vin = trim($_POST['vin'] ?? '');
             $comentarios = $_POST['comentarios'] ?? '';
+
+            if (empty($vin) && $idUnidad > 0) {
+                $vin = $this->service->obtenerVinUnidad($idUnidad) ?: "VIN-{$idUnidad}";
+            }
 
             if ($idEnvio === 0 || $idUnidad === 0 || empty($tipoChecklist) || empty($vin)) {
                 throw new Exception("Parámetros incompletos para guardar el checklist.");
             }
 
-            // Sanitizar archivos cargados
+            // Soporte para Carga Masiva mediante archivo ZIP
+            $zipFile = null;
+            if (isset($_FILES['archivo_zip']) && $_FILES['archivo_zip']['error'] === UPLOAD_ERR_OK) {
+                $zipFile = $_FILES['archivo_zip'];
+            }
+
+            // Sanitizar archivos cargados individuales
             $fotos = [];
             if (!empty($_FILES)) {
                 foreach ($_FILES as $key => $file) {
-                    if ($file['error'] === UPLOAD_ERR_OK) {
+                    if ($key !== 'archivo_zip' && $file['error'] === UPLOAD_ERR_OK) {
                         $fotos[$key] = $file;
                     }
                 }
             }
 
-            $this->service->registrarChecklistTrasladista($idEnvio, $idUnidad, $tipoChecklist, $vin, $userId, $comentarios, $fotos);
+            $this->service->registrarChecklistTrasladista($idEnvio, $idUnidad, $tipoChecklist, $vin, $userId, $comentarios, $fotos, $zipFile);
             echo $this->successResponse(null, "Checklist e inspección registrados exitosamente.");
         } catch (Throwable $e) {
             echo $this->errorResponse($e->getMessage(), 500);
@@ -348,16 +358,22 @@ class Lgs_ejecucion extends Controllers
                 throw new Exception("El ID de envío y el nombre de quien recibe son requeridos.");
             }
 
+            // Soporte para Carga Masiva mediante archivo ZIP
+            $zipFile = null;
+            if (isset($_FILES['archivo_zip']) && $_FILES['archivo_zip']['error'] === UPLOAD_ERR_OK) {
+                $zipFile = $_FILES['archivo_zip'];
+            }
+
             $fotos = [];
             if (!empty($_FILES)) {
                 foreach ($_FILES as $key => $file) {
-                    if ($file['error'] === UPLOAD_ERR_OK) {
+                    if ($key !== 'archivo_zip' && $file['error'] === UPLOAD_ERR_OK) {
                         $fotos[$key] = $file;
                     }
                 }
             }
 
-            $this->service->finalizarEntregaDestino($idEnvio, $nombreRecibe, $comentarios, $fotos, $userId);
+            $this->service->finalizarEntregaDestino($idEnvio, $nombreRecibe, $comentarios, $fotos, $userId, $zipFile);
             
             echo $this->successResponse(null, "Entrega finalizada con éxito. El viaje ha sido cerrado en el sistema.");
         } catch (Throwable $e) {

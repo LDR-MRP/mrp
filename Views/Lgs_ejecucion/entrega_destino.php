@@ -215,23 +215,54 @@
             <form id="formEntregaFinal" enctype="multipart/form-data">
                 <input type="hidden" id="ent_id_envio" name="id_envio">
                 
-                <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <span class="fs-11 text-muted fw-bold d-block mb-1">Foto Remisión Sellada</span>
-                        <div class="photo-preview text-muted" onclick="triggerFile('file_remision')">
-                            <img id="img_remision" class="d-none">
-                            <i id="ico_remision" class="ri-file-paper-2-line fs-2 text-muted opacity-50"></i>
+                <!-- PESTAÑAS: FOTOS INDIVIDUALES vs CARGA MASIVA (ZIP) -->
+                <ul class="nav nav-pills nav-custom nav-custom-light mb-3" id="pills-entrega-chofer" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active rounded-pill px-3 py-1 fs-11 fw-semibold" id="tab-fotos-ind-entrega" data-bs-toggle="pill" data-bs-target="#pane-fotos-ind-entrega" type="button" role="tab">
+                            <i class="ri-file-text-line me-1"></i> Comprobantes (Remisión / Firma)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-pill px-3 py-1 fs-11 fw-semibold text-warning-emphasis bg-soft-warning border border-warning-subtle" id="tab-fotos-zip-entrega" data-bs-toggle="pill" data-bs-target="#pane-fotos-zip-entrega" type="button" role="tab">
+                            <i class="ri-folder-zip-fill me-1 text-warning"></i> Carga Masiva (ZIP)
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="pills-entrega-content">
+                    <!-- PESTAÑA 1: ARCHIVOS INDIVIDUALES -->
+                    <div class="tab-pane fade show active" id="pane-fotos-ind-entrega" role="tabpanel">
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <span class="fs-11 text-muted fw-bold d-block mb-1">Foto Remisión Sellada</span>
+                                <div class="photo-preview text-muted" onclick="triggerFile('file_remision')">
+                                    <img id="img_remision" class="d-none">
+                                    <i id="ico_remision" class="ri-file-paper-2-line fs-2 text-muted opacity-50"></i>
+                                </div>
+                                <input type="file" id="file_remision" name="evidencia_remision" accept="image/*" capture="environment" class="d-none" onchange="previewImage(this, 'remision')">
+                            </div>
+
+                            <div class="col-6">
+                                <span class="fs-11 text-muted fw-bold d-block mb-1">Firma Digital / Foto Receptor</span>
+                                <div class="photo-preview text-muted" onclick="triggerFile('file_firma')">
+                                    <img id="img_firma" class="d-none">
+                                    <i id="ico_firma" class="ri-edit-2-line fs-2 text-muted opacity-50"></i>
+                                </div>
+                                <input type="file" id="file_firma" name="evidencia_firma" accept="image/*" class="d-none" onchange="previewImage(this, 'firma')">
+                            </div>
                         </div>
-                        <input type="file" id="file_remision" name="evidencia_remision" accept="image/*" capture="environment" class="d-none" onchange="previewImage(this, 'remision')">
                     </div>
 
-                    <div class="col-6">
-                        <span class="fs-11 text-muted fw-bold d-block mb-1">Firma Digital / Foto Receptor</span>
-                        <div class="photo-preview text-muted" onclick="triggerFile('file_firma')">
-                            <img id="img_firma" class="d-none">
-                            <i id="ico_firma" class="ri-edit-2-line fs-2 text-muted opacity-50"></i>
+                    <!-- PESTAÑA 2: CARGA MASIVA CON ZIP -->
+                    <div class="tab-pane fade" id="pane-fotos-zip-entrega" role="tabpanel">
+                        <div class="mb-3" id="contenedor_preview_zip_entrega">
+                            <div class="p-3 text-center border-dashed rounded-3 bg-light" style="border: 2px dashed #CBD5E1; cursor: pointer;" onclick="document.getElementById('file_zip_entrega').click();">
+                                <i class="ri-folder-zip-line fs-1 text-warning mb-1 d-block"></i>
+                                <span class="fs-12 fw-bold text-dark d-block">Seleccionar archivo .ZIP</span>
+                                <small class="text-muted d-block mt-1">Sube el ZIP con la remisión, firma y fotos de entrega en una carpeta.</small>
+                            </div>
                         </div>
-                        <input type="file" id="file_firma" name="evidencia_firma" accept="image/*" class="d-none" onchange="previewImage(this, 'firma')">
+                        <input type="file" id="file_zip_entrega" name="archivo_zip" accept=".zip,application/zip,application/x-zip-compressed" class="d-none" onchange="previewZipFile(this, 'contenedor_preview_zip_entrega')">
                     </div>
                 </div>
 

@@ -81,11 +81,14 @@ const MICONCEPTOSMOVIMIENTOS = 23;
 const MIKARDEX = 24;
 const MILOTESPEDIMENTOS = 25;
 const MIMULTIALMACENES = 26;
+const MIUNIDADES = 83; // Inventario > Unidades por año modelo (Inv_unidades)
+const MIINVDISTRIBUIDORES = 85; // Inventario > Retail de distribuidores (Inv_invdistribuidores)
+const MICOLORESUNIDAD = 86; // Inventario > Catálogos > Colores de unidad (Inv_coloresunidad)
+const MICOBRANZAUNIDADES = 87; // Inventario > Cobranza de unidades (Inv_cobranzaunidades)
 const MIMONEDAS = 70;
 const MIASIGNACIONESINV = 71;
 const MIREPORTES = 72;
 const MIMOVIMIENTOSALMACEN = 73;
-const MICOBRANZAUNIDADES = 87; // Inventario > Cobranza de unidades (Inv_cobranzaunidades)
 const MISEDES = 67;
 const MIZONAS = 68;
 const MIUBICACIONES = 69;
@@ -106,49 +109,7 @@ const ING_ESPECIFICACIONES = 81;
 const ING_CONFIGURACIONES = 82;
 const ING_JURIDICO = 84; // Perfil Jurídico: solo carga de certificaciones
 
-// Submódulos Capacidad
-const MCESTACIONESTRABAJO = 27;
-const MCLINEAS = 28;
-const MCPLANTAS = 29;
-
-// Submódulos Proveedores
-const MPPROVEEDORES = 35;
-
-// Submódulos pedidos / Clientes
-const MCLIENTES_CLIENTES = 37;
-const MCLIENTES_PEDIDOS = 37;
-const MCLIENTES_PROPUESTAS_COMERCIALES = 38;
-const MCLIENTES_AUTORIZACIONES = 39;
-const MCLIENTES_ASIGNACION_UNIDADES = 40;
-const MCLIENTES_BACKORDERS = 41;
-const MCLIENTES_FACTURAS = 42;
-const MCLIENTES_ENTREGAS = 43;
-const MCLIENTES_CANCELACIONES = 44;
-const MCLIENTES_DEVOLUCIONES = 45;
-const MCLIENTES_SEGUIMIENTO = 46;
-const MCLIENTES_REPORTES = 47;
-const MCLIENTES_BITACORA = 48;
-
-// Submódulos Clientes (anteriores)
-const MCCLIENTES = 39;
-const MCMARCAS = 40;
-const MCDEPARTAMENTOS = 41;
-const MCLI_GRUPOS = 42;
-const MCLI_PUESTOS = 43;
-const MCLI_CONTACTOS = 44;
-const MCLI_REGIONALES = 45;
-const MCLI_TIPOS_CLIENTES = 46;
-
-// Submódulos Compras
-const COM_COMPRAS = 50;
-const COM_NEGOCIACIONES = 56;
-const COM_REQUISICIONES = 51;
-const COM_ORDENES = 52;
-const PRV_PROVEEDORES = 53;
-const CXP_FACTURAS = 54;
-const CXP_PAGOS = 55;
-
-// Módulos Logística
+// Submódulos Logística
 const LGS_BANDEJA = 150;
 const LGS_COSTOS = 151;
 const LGS_MADRINAS = 152;
@@ -162,6 +123,60 @@ const LGS_EVIDENCIAS = 159;
 const LGS_PANELRUTAS = 160;
 const LGS_INCIDENCIAS = 161;
 const LGS_GASTOSADICIONALES = 162;
+
+// Permisos por pestaña del modal "Configuración de productos" (Inv_inventario)
+const MICFG_MONEDA = 180;
+const MICFG_PRECIO = 181;
+const MICFG_FISCAL = 182;
+const MICFG_IMPUESTO = 183;
+const MICFG_LINEA = 184;
+const MICFG_UBICACIONES = 185;
+const MICFG_PROVEEDORES = 186;
+const MICFG_CANTIDADES = 187;
+const MICFG_PORTALWEB = 188;
+const MICFG_VINES = 189;
+const MICFG_FOTOSWEB = 190; // Pestaña "Fotos portal" (solo carátula y galería; perfil Marketing)
+
+// Submódulos Capacidad
+const MCESTACIONESTRABAJO = 27;
+const MCLINEAS = 28;
+const MCPLANTAS = 29;
+
+// Submódulos Proveedores
+const MPPROVEEDORES = 35;
+
+// Submódulos pedidos
+const MCLIENTES_CLIENTES = 36;
+const MCLIENTES_PEDIDOS = 37;
+const MCLIENTES_PROPUESTAS_COMERCIALES = 38;
+const MCLIENTES_AUTORIZACIONES = 39;
+const MCLIENTES_ASIGNACION_UNIDADES = 40;
+const MCLIENTES_BACKORDERS = 41;
+const MCLIENTES_FACTURAS = 42;
+const MCLIENTES_ENTREGAS = 43;
+const MCLIENTES_CANCELACIONES = 44;
+const MCLIENTES_DEVOLUCIONES = 45;
+const MCLIENTES_SEGUIMIENTO = 46;
+const MCLIENTES_REPORTES = 47;
+const MCLIENTES_BITACORA = 48;
+
+// Submódulos Departamentos
+const MCDEPARTAMENTOS = 200;
+const MCMARCAS = 201;
+const MCLI_GRUPOS = 202;
+const MCLI_PUESTOS = 203;
+const MCLI_CONTACTOS = 204;
+const MCLI_REGIONALES = 205;
+const MCLI_TIPOS_CLIENTES = 206;
+
+// Submódulos Compras
+const COM_COMPRAS = 50;
+const COM_NEGOCIACIONES = 56;
+const COM_REQUISICIONES = 51;
+const COM_ORDENES = 52;
+const PRV_PROVEEDORES = 53;
+const CXP_FACTURAS = 54;
+const CXP_PAGOS = 55;
 
 const PERROR = 9;
 
@@ -180,3 +195,8 @@ const COMPRAS_CONTADOR = 57;
 const COMPRAS_TESORERO = 58;
 
 const STATUS = array('Completo', 'Aprobado', 'Cancelado', 'Reembolsado', 'Pendiente', 'Entregado');
+
+// Configuración de subida de archivos
+const MAX_FILE_SIZE_MB = 5; // Tamaño máximo en MB antes de comprimir en ZIP
+const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // Tamaño máximo en bytes (20 MB)
+?>

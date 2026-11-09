@@ -80,7 +80,27 @@ class Lgs_evidencias extends Controllers
             $rutaArchivo = $_POST['ruta_archivo'] ?? '';
             $observaciones = $_POST['observaciones'] ?? $_POST['notas'] ?? '';
 
-            // Si viene un archivo subido por formulario
+            // Soporte para Carga Masiva mediante archivo ZIP
+            $zipFile = null;
+            if (isset($_FILES['archivo_zip']) && $_FILES['archivo_zip']['error'] === UPLOAD_ERR_OK) {
+                $zipFile = $_FILES['archivo_zip'];
+            } elseif (isset($_FILES['archivo']) && $_FILES['archivo']['error'] === UPLOAD_ERR_OK) {
+                $ext = strtolower(pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION));
+                if ($ext === 'zip') {
+                    $zipFile = $_FILES['archivo'];
+                }
+            }
+
+            if ($zipFile !== null) {
+                if ($idEnvio === 0) {
+                    throw new Exception("El ID de envío es obligatorio para procesar el archivo ZIP.");
+                }
+                $ids = $this->service->guardarEvidenciasZip($idEnvio, $idUnidad, $tipoEvidencia, $zipFile, $observaciones, $userId);
+                echo $this->successResponse(['total_fotos' => count($ids), 'ids' => $ids], "Se procesaron y guardaron " . count($ids) . " fotografías desde el archivo ZIP.");
+                return;
+            }
+
+            // Si viene un archivo subido individual por formulario
             if (isset($_FILES['archivo']) && $_FILES['archivo']['error'] === UPLOAD_ERR_OK) {
                 $uploadDir = 'Assets/images/uploads/evidencias/';
                 if (!file_exists($uploadDir)) {
@@ -110,6 +130,46 @@ class Lgs_evidencias extends Controllers
             echo $this->successResponse(['id_evidencia' => $idEvidencia], "Evidencia registrada correctamente.");
         } catch (Exception $e) {
             echo $this->errorResponse($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * GET: Descarga un paquete ZIP con todas las evidencias fotográficas de un envío
+     * URL: {{base_url}}/Lgs_evidencias/descargarZipEvidencias/15
+     */
+    public function descargarZipEvidencias($idEnvio = 0): void
+    {
+        try {
+            $idEnvio = intval($idEnvio);
+            if ($idEnvio <= 0) {
+                throw new Exception("ID de envío no válido.");
+            }
+
+            $resultado = $this->service->generarZipEvidenciasEnvio($idEnvio);
+            $zipPath = $resultado['path'];
+            $filename = $resultado['filename'];
+
+            if (!file_exists($zipPath)) {
+                throw new Exception("El archivo ZIP no se generó correctamente.");
+            }
+
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+
+            header('Content-Type: application/zip');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Content-Length: ' . filesize($zipPath));
+            header('Pragma: no-cache');
+            header('Expires: 0');
+            header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+
+            readfile($zipPath);
+            @unlink($zipPath);
+            exit;
+        } catch (Throwable $e) {
+            echo "<script>alert('Error al descargar evidencias: " . addslashes($e->getMessage()) . "'); window.close();</script>";
+            exit;
         }
     }
 

@@ -5,9 +5,13 @@ class Conexion{
 	private $conect;
 
 	public function __construct(){
-		$connectionString = "mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=".DB_CHARSET;
+		$host = getenv('DB_HOST') ?: DB_HOST;
+		$dbName = getenv('DB_NAME') ?: DB_NAME;
+		$user = getenv('DB_USER') ?: DB_USER;
+		$pass = getenv('DB_PASSWORD') ?: DB_PASSWORD;
+		$connectionString = "mysql:host=".$host.";dbname=".$dbName.";charset=".DB_CHARSET;
 		try{
-			$this->conect = new PDO($connectionString, DB_USER, DB_PASSWORD);
+			$this->conect = new PDO($connectionString, $user, $pass);
 			$this->conect->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		    //echo "conexión exitosa";
 		}catch(PDOException $e){

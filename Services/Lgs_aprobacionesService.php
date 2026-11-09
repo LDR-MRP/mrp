@@ -1,5 +1,7 @@
 <?php
 
+require_once('Services/Lgs_notificacionesHelper.php');
+
 class Lgs_aprobacionesService {
 
     private Lgs_aprobacionesModel $model;
@@ -93,13 +95,223 @@ class Lgs_aprobacionesService {
             // 2. Liberamos o bloqueamos los envíos que estaban adentro
             $this->model->updateEstadoEnviosMasivo($db, $idPlaneacion, $estadoEnvio);
             
-            // Opcional: Aquí se podría integrar el servicio de correos para notificar al operador.
-            // NotificationService::notifyOperadorLogistica($idPlaneacion, $decision, $observaciones);
-            
             $db->commit();
+
+            // Disparar notificaciones post-resolución
+            if ($decision === 'aprobar') {
+                $this->notificarResolucionAprobada($idPlaneacion, $observaciones, $userId);
+            } else {
+                $this->notificarResolucionRechazada($idPlaneacion, $observaciones, $userId);
+            }
         } catch (Exception $e) {
-            $db->rollBack();
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
             throw $e;
+        }
+    }
+
+    /**
+     * Notifica la aprobación a Logística (para despachar) y a Finanzas (informativo de gasto comprometido)
+     */
+    private function notificarResolucionAprobada(int $idPlaneacion, string $observaciones, int $aprobadorId): void
+    {
+        try {
+            $db = $this->model->getConexion();
+            $stmt = $db->prepare("
+                SELECT p.id_planeacion, p.folio, p.descripcion, p.costo_total,
+                       (SELECT COUNT(*) FROM lgs_planeaciones_envios WHERE id_planeacion = p.id_planeacion) AS total_rutas,
+                       (SELECT COUNT(*) FROM lgs_envios_vins ev INNER JOIN lgs_planeaciones_envios pe ON ev.id_envio = pe.id_envio WHERE pe.id_planeacion = p.id_planeacion) AS total_vins,
+                       u.email_user AS creador_email,
+                       CONCAT(COALESCE(u.nombres, ''), ' ', COALESCE(u.apellidos, '')) AS solicitante,
+                       CONCAT(COALESCE(ap.nombres, ''), ' ', COALESCE(ap.apellidos, '')) AS aprobador_nombre
+                FROM lgs_planeaciones p
+                LEFT JOIN usuarios u ON p.created_by = u.idusuario
+                LEFT JOIN usuarios ap ON ap.idusuario = ?
+                WHERE p.id_planeacion = ?
+            ");
+            $stmt->execute([$aprobadorId, $idPlaneacion]);
+            $plan = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$plan) return;
+
+            $folio = $plan['folio'] ?? "PL-" . str_pad((string)$idPlaneacion, 4, '0', STR_PAD_LEFT);
+            $descripcion = $plan['descripcion'] ?? 'Planeación de Traslados';
+            $costoTotal = '$' . number_format((float)($plan['costo_total'] ?? 0), 2);
+            $totalRutas = (int)($plan['total_rutas'] ?? 0);
+            $totalVins = (int)($plan['total_vins'] ?? 0);
+            $aprobador = trim($plan['aprobador_nombre'] ?? '') ?: 'Dirección Corporativa';
+            $obsTexto = trim($observaciones) ?: 'Sin observaciones adicionales.';
+            $fechaAprob = date('Y-m-d H:i');
+            $baseUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : '';
+
+            // A. Notificación al equipo de Logística
+            $destLogistica = Lgs_notificacionesHelper::getCorreosLogistica($db);
+            if (!empty($plan['creador_email']) && filter_var($plan['creador_email'], FILTER_VALIDATE_EMAIL)) {
+                $destLogistica[] = $plan['creador_email'];
+            }
+
+            $asuntoLog = "✅ PLANEACIÓN APROBADA: {$folio} Lista para Mesa de Despacho ({$totalVins} VINs)";
+            $htmlLog = "
+            <div style='font-family: Arial, sans-serif; max-width: 650px; margin: auto; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;'>
+                <div style='background-color: #16A34A; color: #ffffff; padding: 22px; text-align: center;'>
+                    <h2 style='margin: 0; font-size: 19px; text-transform: uppercase;'>Planeación Autorizada</h2>
+                    <p style='margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;'>Folio: <strong>{$folio}</strong></p>
+                </div>
+                <div style='padding: 24px; background-color: #ffffff;'>
+                    <p style='font-size: 14px; color: #334155;'>
+                        La planeación de envíos <strong>{$folio}</strong> ha sido <strong>APROBADA</strong> por <strong>{$aprobador}</strong>. Los envíos han pasado automáticamente a estado <strong>CONFIRMADO</strong> y están listos para despacho en patio.
+                    </p>
+                    <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0;'>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B; width: 35%;'><strong>Planeación:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'><strong>{$folio}</strong> - {$descripcion}</td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Autorizado por:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>{$aprobador}</td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Unidades / Rutas:</strong></td>
+                            <td style='padding: 8px 0; color: #16A34A; font-weight: bold;'>{$totalVins} VINs en {$totalRutas} trayectos</td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Monto Autorizado:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A; font-weight: bold;'>{$costoTotal}</td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Observaciones:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>{$obsTexto}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Fecha / Hora:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>{$fechaAprob}</td>
+                        </tr>
+                    </table>
+                    <div style='text-align: center; margin-top: 24px;'>
+                        <a href='{$baseUrl}/Lgs_ejecucion' style='background-color: #16A34A; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 20px; font-weight: bold; font-size: 13px; display: inline-block;'>
+                            Ir a Mesa de Despacho
+                        </a>
+                    </div>
+                </div>
+            </div>";
+            Lgs_notificacionesHelper::enviar($destLogistica, $asuntoLog, $htmlLog);
+
+            // B. Notificación Informativa a Finanzas (Contador, Tesorero, Cobranza)
+            $destFinanzas = Lgs_notificacionesHelper::getCorreosFinanzas($db);
+            if (!empty($destFinanzas)) {
+                $asuntoFin = "💰 AVISO FINANZAS: Gasto de Fletes Aprobado para Planeación {$folio} ({$costoTotal})";
+                $htmlFin = "
+                <div style='font-family: Arial, sans-serif; max-width: 650px; margin: auto; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;'>
+                    <div style='background-color: #047857; color: #ffffff; padding: 22px; text-align: center;'>
+                        <h2 style='margin: 0; font-size: 19px; text-transform: uppercase;'>Aviso de Gasto Logístico Comprometido</h2>
+                        <p style='margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;'>Folio: <strong>{$folio}</strong></p>
+                    </div>
+                    <div style='padding: 24px; background-color: #ffffff;'>
+                        <p style='font-size: 14px; color: #334155;'>
+                            Se informa a las áreas de Tesorería, Contabilidad y Cobranza que la planeación <strong>{$folio}</strong> ha sido <strong>AUTORIZADA</strong> por Dirección Corporativa ({$aprobador}). El importe correspondiente ha quedado formalmente programado para ejecución logística.
+                        </p>
+                        <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0;'>
+                            <tr style='border-bottom: 1px solid #F1F5F9;'>
+                                <td style='padding: 8px 0; color: #64748B; width: 35%;'><strong>Planeación:</strong></td>
+                                <td style='padding: 8px 0; color: #0F172A;'><strong>{$folio}</strong> - {$descripcion}</td>
+                            </tr>
+                            <tr style='border-bottom: 1px solid #F1F5F9;'>
+                                <td style='padding: 8px 0; color: #64748B;'><strong>Importe Total:</strong></td>
+                                <td style='padding: 8px 0; color: #047857; font-weight: bold; font-size: 15px;'>{$costoTotal}</td>
+                            </tr>
+                            <tr style='border-bottom: 1px solid #F1F5F9;'>
+                                <td style='padding: 8px 0; color: #64748B;'><strong>Volumen:</strong></td>
+                                <td style='padding: 8px 0; color: #0F172A;'>{$totalVins} VINs en {$totalRutas} trayectos</td>
+                            </tr>
+                            <tr style='border-bottom: 1px solid #F1F5F9;'>
+                                <td style='padding: 8px 0; color: #64748B;'><strong>Autorizado por:</strong></td>
+                                <td style='padding: 8px 0; color: #0F172A;'>{$aprobador}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 8px 0; color: #64748B;'><strong>Fecha de Autorización:</strong></td>
+                                <td style='padding: 8px 0; color: #0F172A;'>{$fechaAprob}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>";
+                Lgs_notificacionesHelper::enviar($destFinanzas, $asuntoFin, $htmlFin);
+            }
+        } catch (Throwable $e) {
+            error_log("Error al notificar resolución aprobada: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Notifica el rechazo al equipo de Logística para que realice las correcciones pertinentes
+     */
+    private function notificarResolucionRechazada(int $idPlaneacion, string $observaciones, int $aprobadorId): void
+    {
+        try {
+            $db = $this->model->getConexion();
+            $stmt = $db->prepare("
+                SELECT p.id_planeacion, p.folio, p.descripcion,
+                       u.email_user AS creador_email,
+                       CONCAT(COALESCE(ap.nombres, ''), ' ', COALESCE(ap.apellidos, '')) AS aprobador_nombre
+                FROM lgs_planeaciones p
+                LEFT JOIN usuarios u ON p.created_by = u.idusuario
+                LEFT JOIN usuarios ap ON ap.idusuario = ?
+                WHERE p.id_planeacion = ?
+            ");
+            $stmt->execute([$aprobadorId, $idPlaneacion]);
+            $plan = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$plan) return;
+
+            $folio = $plan['folio'] ?? "PL-" . str_pad((string)$idPlaneacion, 4, '0', STR_PAD_LEFT);
+            $descripcion = $plan['descripcion'] ?? 'Planeación de Traslados';
+            $aprobador = trim($plan['aprobador_nombre'] ?? '') ?: 'Dirección Corporativa';
+            $obsTexto = trim($observaciones) ?: 'Sin comentarios adicionales.';
+            $fechaRechazo = date('Y-m-d H:i');
+            $baseUrl = defined('BASE_URL') ? rtrim(BASE_URL, '/') : '';
+
+            $destLogistica = Lgs_notificacionesHelper::getCorreosLogistica($db);
+            if (!empty($plan['creador_email']) && filter_var($plan['creador_email'], FILTER_VALIDATE_EMAIL)) {
+                $destLogistica[] = $plan['creador_email'];
+            }
+
+            $asunto = "❌ PLANEACIÓN REGRESADA: {$folio} Requiere Ajustes";
+            $html = "
+            <div style='font-family: Arial, sans-serif; max-width: 650px; margin: auto; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;'>
+                <div style='background-color: #DC2626; color: #ffffff; padding: 22px; text-align: center;'>
+                    <h2 style='margin: 0; font-size: 19px; text-transform: uppercase;'>Planeación Regresada para Corrección</h2>
+                    <p style='margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;'>Folio: <strong>{$folio}</strong></p>
+                </div>
+                <div style='padding: 24px; background-color: #ffffff;'>
+                    <p style='font-size: 14px; color: #334155;'>
+                        La planeación de envíos <strong>{$folio}</strong> ha sido <strong>RECHAZADA / REGRESADA</strong> por <strong>{$aprobador}</strong>. Los envíos han retornado a estado editable para permitir su replanificación y solventar las observaciones señaladas.
+                    </p>
+                    <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0;'>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B; width: 35%;'><strong>Planeación:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'><strong>{$folio}</strong> - {$descripcion}</td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Revisado por:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>{$aprobador}</td>
+                        </tr>
+                        <tr style='border-bottom: 1px solid #F1F5F9;'>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Motivo / Observaciones:</strong></td>
+                            <td style='padding: 8px 0; color: #DC2626; font-weight: bold;'>{$obsTexto}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 8px 0; color: #64748B;'><strong>Fecha / Hora:</strong></td>
+                            <td style='padding: 8px 0; color: #0F172A;'>{$fechaRechazo}</td>
+                        </tr>
+                    </table>
+                    <div style='text-align: center; margin-top: 24px;'>
+                        <a href='{$baseUrl}/Lgs_planeaciones' style='background-color: #DC2626; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 20px; font-weight: bold; font-size: 13px; display: inline-block;'>
+                            Replanear en Sistema
+                        </a>
+                    </div>
+                </div>
+            </div>";
+            Lgs_notificacionesHelper::enviar($destLogistica, $asunto, $html);
+        } catch (Throwable $e) {
+            error_log("Error al notificar resolución rechazada: " . $e->getMessage());
         }
     }
 }

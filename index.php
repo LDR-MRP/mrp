@@ -83,10 +83,11 @@ if ($isLocal) {
     define('COOKIE_SECURE', $esHttps);
 
     /*
-     * Config_local.php contiene los datos de MySQL de XAMPP (localhost).
+    /*
+     * Config_local.php contiene los datos de MySQL local (mrp-db / localhost).
      * Config.php contiene los datos de producción.
      */
-    define('CONFIG_FILE', __DIR__ . '/Config/Config_local.php');
+    define('CONFIG_FILE', file_exists(__DIR__ . '/Config/Config_local.php') ? __DIR__ . '/Config/Config_local.php' : __DIR__ . '/Config/Config.php');
 } else {
     define('ENV_TYPE', 'production');
     define('COOKIE_DOMAIN', '.ldrhumanresources.com');
