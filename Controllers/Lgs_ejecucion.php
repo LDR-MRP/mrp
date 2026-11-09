@@ -9,7 +9,9 @@ class Lgs_ejecucion extends Controllers
     public function __construct()
     {
         parent::__construct();
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         $this->service = new Lgs_ejecucionService();
     }
 

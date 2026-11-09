@@ -10,7 +10,9 @@ class Lgs_envios extends Controllers
     public function __construct()
     {
         parent::__construct();
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         
         $this->service = new Lgs_enviosService();
         $this->enviosModel = new Lgs_enviosModel();
@@ -46,6 +48,10 @@ class Lgs_envios extends Controllers
      */
     public function getEnvios(): void
     {
+        if (ob_get_length()) {
+            ob_clean();
+        }
+        header('Content-Type: application/json; charset=utf-8');
         try {
             $data = $this->service->getAllEnvios();
             echo json_encode($data, JSON_UNESCAPED_UNICODE);

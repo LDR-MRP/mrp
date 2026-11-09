@@ -1,8 +1,10 @@
 <?php 
 	
+	#[AllowDynamicProperties]
 	class Controllers
 	{
 		public Views $views;
+		public $model;
 
 		public function __construct()
 		{
