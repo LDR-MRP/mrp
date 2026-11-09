@@ -990,7 +990,7 @@ const bancoAutocomplete = {
 
             if (coincidencias.length > 0) {
                 let html = coincidencias.map(b =>
-                    `<div class="banco-suggestion-item" data-id="${b.id_banco}" data-nombre="${b.nombre_corto}">
+                    `<div class="banco-suggestion-item" data-id="${b.id_banco}" data-nombre="${b.nombre_corto}" data-direccion="${b.direccion || ''}">
                         ${b.nombre_corto}
                     </div>`
                 ).join('');
@@ -1022,14 +1022,17 @@ const bancoAutocomplete = {
                 const query = $('#banco_autocomplete').val();
                 $('#nuevo_banco_nombre_corto').val(query);
                 $('#nuevo_banco_razon_social').val('');
+                $('#nuevo_banco_direccion').val('');
                 $('#modalNuevoBanco').modal('show');
                 $('#banco-suggestions').addClass('d-none').removeClass('show');
             } else {
                 const id = $(this).data('id');
                 const nombre = $(this).data('nombre');
+                const direccion = $(this).data('direccion');
 
                 $('#banco_autocomplete').val(nombre);
                 $('#id_banco').val(id);
+                $('#direccion_banco').val(direccion || '');
                 $('#banco-suggestions').addClass('d-none').removeClass('show');
             }
         });
@@ -1039,6 +1042,7 @@ const bancoAutocomplete = {
             const query = $('#banco_autocomplete').val();
             $('#nuevo_banco_nombre_corto').val(query);
             $('#nuevo_banco_razon_social').val('');
+            $('#nuevo_banco_direccion').val('');
             $('#modalNuevoBanco').modal('show');
         });
 
@@ -1046,6 +1050,7 @@ const bancoAutocomplete = {
         $('#btn-guardar-banco').on('click', function() {
             const nombreCorto = $('#nuevo_banco_nombre_corto').val().trim();
             const razonSocial = $('#nuevo_banco_razon_social').val().trim();
+            const direccion = $('#nuevo_banco_direccion').val().trim();
 
             // Validación
             if (!nombreCorto) {
@@ -1069,6 +1074,7 @@ const bancoAutocomplete = {
                 payload: {
                     nombre_corto: nombreCorto,
                     razon_social: razonSocial,
+                    direccion: direccion,
                     origen_registro: 'USUARIO'
                 },
                 onSuccess: (res) => {
@@ -1079,6 +1085,7 @@ const bancoAutocomplete = {
                         // Seleccionar el banco creado
                         $('#banco_autocomplete').val(nombreCorto);
                         $('#id_banco').val(res.data.id_banco);
+                        $('#direccion_banco').val(direccion || '');
                         $('#banco-suggestions').addClass('d-none').removeClass('show');
                         $('#btn-agregar-banco-rapido').hide();
 
@@ -1086,7 +1093,8 @@ const bancoAutocomplete = {
                         self.bancoCatalogo.push({
                             id_banco: res.data.id_banco,
                             nombre_corto: nombreCorto,
-                            razon_social: razonSocial
+                            razon_social: razonSocial,
+                            direccion: direccion
                         });
 
                         Sys_Core.UI.notify('Banco registrado exitosamente', 'success');
@@ -1094,6 +1102,7 @@ const bancoAutocomplete = {
                         // Limpiar campos del modal
                         $('#nuevo_banco_nombre_corto').val('');
                         $('#nuevo_banco_razon_social').val('');
+                        $('#nuevo_banco_direccion').val('');
                     } else {
                         alert('Error: ' + (res.error || 'No se pudo crear el banco'));
                     }

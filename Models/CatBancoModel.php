@@ -16,6 +16,7 @@ class CatBancoModel extends Mysql
                 id_banco,
                 nombre_corto,
                 razon_social,
+                direccion,
                 estatus
             FROM cat_bancos
             WHERE estatus = 1;"
@@ -27,7 +28,7 @@ class CatBancoModel extends Mysql
      */
     public function findById(string $idBanco): ?array
     {
-        $sql = "SELECT id_banco, nombre_corto FROM cat_bancos WHERE id_banco = ?";
+        $sql = "SELECT id_banco, nombre_corto, razon_social, direccion FROM cat_bancos WHERE id_banco = ?";
         return $this->select($sql, [$idBanco]) ?: null;
     }
 
