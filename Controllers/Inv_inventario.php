@@ -942,7 +942,10 @@ class Inv_inventario extends Controllers
 			);
 
 			if ($request === 'exist') {
-				$arrResponse = ['status' => false, 'msg' => 'Ese precio ya está asignado al producto para ese año modelo. Usa el botón Editar en la tabla para modificarlo.'];
+				$msgExiste = $this->model->esUnidadPrecio($inventarioid)
+					? 'Ese precio ya está asignado al producto para ese año modelo. Usa el botón Editar en la tabla para modificarlo.'
+					: 'Ese precio ya está asignado al producto. Usa el botón Editar en la tabla para modificarlo.';
+				$arrResponse = ['status' => false, 'msg' => $msgExiste];
 			} else if (is_numeric($request) && $request > 0) {
 				if ($this->model->esListaPrecioDealer($idprecio)) {
 					// El portal toma el Precio Dealer del año más reciente

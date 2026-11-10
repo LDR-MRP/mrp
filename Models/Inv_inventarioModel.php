@@ -688,23 +688,25 @@ WHERE idinventario = ?";
 
     public function getPrecioPublicoAuto(int $inventarioid)
     {
+        $t = $this->tablaPrecios($inventarioid);
+        $anio = $this->colAnioPrecio($inventarioid);
         $sql = "SELECT ip.precio
-            FROM wms_inventario_precios ip
+            FROM {$t} ip
             INNER JOIN wms_precios p ON p.idprecio = ip.idprecio
-            WHERE ip.inventarioid = $inventarioid
+            WHERE ip.inventarioid = ?
             AND p.cve_precio = 'Precio público'
             AND ip.estado = 2
-            ORDER BY ip.anio_precio DESC, ip.id_inv_precio DESC
+            ORDER BY {$anio} DESC, ip.id_inv_precio DESC
             LIMIT 1";
 
-        $r = $this->select($sql);
+        $r = $this->select($sql, [$inventarioid]);
 
         if (!empty($r['precio'])) {
             return (float) $r['precio'];
         }
 
-        $sql2 = "SELECT ultimo_costo FROM wms_inventario WHERE idinventario = $inventarioid";
-        $r2 = $this->select($sql2);
+        $sql2 = "SELECT ultimo_costo FROM wms_inventario WHERE idinventario = ?";
+        $r2 = $this->select($sql2, [$inventarioid]);
 
         return (float) ($r2['ultimo_costo'] ?? 0);
     }
@@ -832,19 +834,22 @@ WHERE idinventario = ?";
 
     public function selectPreciosPortal(int $inventarioid)
     {
-        $sql = "SELECT ip.id_inv_precio, ip.idprecio, p.cve_precio, ip.anio_precio, ip.precio
-            FROM wms_inventario_precios ip
+        $t = $this->tablaPrecios($inventarioid);
+        $anio = $this->colAnioPrecio($inventarioid);
+        $sql = "SELECT ip.id_inv_precio, ip.idprecio, p.cve_precio, {$anio} AS anio_precio, ip.precio
+            FROM {$t} ip
             INNER JOIN wms_precios p ON p.idprecio = ip.idprecio
             WHERE ip.inventarioid = ? AND ip.estado = 2 AND p.estado = 2
-            ORDER BY p.cve_precio, ip.anio_precio DESC";
+            ORDER BY p.cve_precio, {$anio} DESC";
         return $this->select_all($sql, [$inventarioid]);
     }
 
     // Valida que el precio elegido pertenezca al producto y esté activo
     public function selectPrecioAsignado(int $idInvPrecio, int $inventarioid)
     {
+        $t = $this->tablaPrecios($inventarioid);
         $sql = "SELECT ip.id_inv_precio, ip.precio, p.cve_precio
-            FROM wms_inventario_precios ip
+            FROM {$t} ip
             INNER JOIN wms_precios p ON p.idprecio = ip.idprecio
             WHERE ip.id_inv_precio = ? AND ip.inventarioid = ? AND ip.estado = 2 AND p.estado = 2";
         return $this->select($sql, [$idInvPrecio, $inventarioid]);
@@ -866,12 +871,14 @@ WHERE idinventario = ?";
     // Precio Dealer activo asignado al producto, o null si no tiene
     public function getPrecioDealerAuto(int $inventarioid)
     {
+        $t = $this->tablaPrecios($inventarioid);
+        $anio = $this->colAnioPrecio($inventarioid);
         $sql = "SELECT ip.precio
-            FROM wms_inventario_precios ip
+            FROM {$t} ip
             INNER JOIN wms_precios p ON p.idprecio = ip.idprecio
             WHERE ip.inventarioid = ? AND p.cve_precio = ?
             AND ip.estado = 2 AND p.estado = 2
-            ORDER BY ip.anio_precio DESC, ip.id_inv_precio DESC
+            ORDER BY {$anio} DESC, ip.id_inv_precio DESC
             LIMIT 1";
         $r = $this->select($sql, [$inventarioid, self::CVE_PRECIO_DEALER]);
         return !empty($r) ? (float) $r['precio'] : null;
@@ -1160,9 +1167,39 @@ WHERE idinventario = ?";
     }
 
     //--------------------------------------------INVENTARIO PRECIOS
+    //--------------------------------------------PRECIOS: tabla según tipo de producto
+    // Unidades (tipo_elemento = 'P') -> wms_inventario_precios (con año modelo).
+    // Todo lo demás (refacciones, componentes, herramientas, kits, servicios)
+    // -> wms_inventario_precios_articulos (sin año). Mismas columnas salvo anio_precio.
+    const TABLA_PRECIOS_UNIDADES  = 'wms_inventario_precios';
+    const TABLA_PRECIOS_ARTICULOS = 'wms_inventario_precios_articulos';
+
+    private $cacheEsUnidad = [];
+
+    public function esUnidadPrecio(int $inventarioid): bool
+    {
+        if (!isset($this->cacheEsUnidad[$inventarioid])) {
+            $r = $this->select("SELECT tipo_elemento FROM wms_inventario WHERE idinventario = ?", [$inventarioid]);
+            $this->cacheEsUnidad[$inventarioid] = !empty($r) && $r['tipo_elemento'] === 'P';
+        }
+        return $this->cacheEsUnidad[$inventarioid];
+    }
+
+    private function tablaPrecios(int $inventarioid): string
+    {
+        return $this->esUnidadPrecio($inventarioid) ? self::TABLA_PRECIOS_UNIDADES : self::TABLA_PRECIOS_ARTICULOS;
+    }
+
+    // Columna de año para SELECT/ORDER BY (NULL en artículos, que no tienen año)
+    private function colAnioPrecio(int $inventarioid, string $alias = 'ip'): string
+    {
+        return $this->esUnidadPrecio($inventarioid) ? "{$alias}.anio_precio" : 'NULL';
+    }
+
     public function setPrecioInventario(int $inventarioid, int $idprecio)
     {
-        $sql = "INSERT INTO wms_inventario_precios (inventarioid,idprecio,estado) 
+        $t = $this->tablaPrecios($inventarioid);
+        $sql = "INSERT INTO {$t} (inventarioid,idprecio,estado)
             VALUES (?,?,2)";
 
         return $this->insert($sql, [$inventarioid, $idprecio]);
@@ -1172,40 +1209,58 @@ WHERE idinventario = ?";
     // puede tener la misma lista en varios años, pero no repetida en el mismo año.
     public function insertInventarioPrecio($inventarioid, $idprecio, $precio, $fecha, $estado, ?int $anio = null)
     {
-        // evitar duplicados (misma lista y mismo año)
-        $sql = "SELECT id_inv_precio FROM wms_inventario_precios
-            WHERE inventarioid = ? AND idprecio = ? AND anio_precio <=> ?";
-        $existe = $this->select($sql, [(int) $inventarioid, (int) $idprecio, $anio]);
+        $inventarioid = (int) $inventarioid;
+        $idprecio = (int) $idprecio;
 
+        if (!$this->esUnidadPrecio($inventarioid)) {
+            // Artículos: sin año; una sola vez cada lista
+            $t = self::TABLA_PRECIOS_ARTICULOS;
+            $existe = $this->select("SELECT id_inv_precio FROM {$t} WHERE inventarioid = ? AND idprecio = ?", [$inventarioid, $idprecio]);
+            if (!empty($existe)) {
+                return "exist";
+            }
+            return $this->insert(
+                "INSERT INTO {$t} (inventarioid, idprecio, precio, fecha_creacion, estado) VALUES (?,?,?,?,?)",
+                [$inventarioid, $idprecio, $precio, $fecha, $estado]
+            );
+        }
+
+        // Unidades: evitar duplicados (misma lista y mismo año)
+        $t = self::TABLA_PRECIOS_UNIDADES;
+        $existe = $this->select(
+            "SELECT id_inv_precio FROM {$t} WHERE inventarioid = ? AND idprecio = ? AND anio_precio <=> ?",
+            [$inventarioid, $idprecio, $anio]
+        );
         if (!empty($existe)) {
             return "exist";
         }
 
-        $sql = "INSERT INTO wms_inventario_precios
-            (inventarioid, idprecio, anio_precio, precio, fecha_creacion, estado)
-            VALUES (?,?,?,?,?,?)";
-
-        return $this->insert($sql, [$inventarioid, $idprecio, $anio, $precio, $fecha, $estado]);
+        return $this->insert(
+            "INSERT INTO {$t} (inventarioid, idprecio, anio_precio, precio, fecha_creacion, estado) VALUES (?,?,?,?,?,?)",
+            [$inventarioid, $idprecio, $anio, $precio, $fecha, $estado]
+        );
     }
 
     public function getPreciosAsignados($idinventario)
     {
         $idinventario = intval($idinventario);
+        $t = $this->tablaPrecios($idinventario);
+        $anio = $this->colAnioPrecio($idinventario);
 
         $sql = "SELECT ip.id_inv_precio,
                    ip.idprecio,
                    p.cve_precio,
                    p.descripcion,
-                   ip.anio_precio,
+                   {$anio} AS anio_precio,
                    ip.precio,
                    ip.fecha_creacion,
                    ip.estado
-            FROM wms_inventario_precios ip
+            FROM {$t} ip
             INNER JOIN wms_precios p ON p.idprecio = ip.idprecio
-            WHERE ip.inventarioid = $idinventario
-            ORDER BY ip.estado DESC, p.cve_precio, ip.anio_precio DESC";
+            WHERE ip.inventarioid = ?
+            ORDER BY ip.estado DESC, p.cve_precio, {$anio} DESC";
 
-        return $this->select_all($sql);
+        return $this->select_all($sql, [$idinventario]);
     }
 
     // EDITAR PRECIO ASIGNADO (valida que el registro pertenezca al producto)
@@ -1213,10 +1268,20 @@ WHERE idinventario = ?";
     // misma lista con ese año para el producto.
     public function updateInventarioPrecio(int $id_inv_precio, int $inventarioid, float $precio, ?int $anio = null)
     {
+        if (!$this->esUnidadPrecio($inventarioid)) {
+            // Artículos: solo el precio (no tienen año)
+            $t = self::TABLA_PRECIOS_ARTICULOS;
+            return $this->update(
+                "UPDATE {$t} SET precio = ? WHERE id_inv_precio = ? AND inventarioid = ?",
+                [$precio, $id_inv_precio, $inventarioid]
+            );
+        }
+
+        $t = self::TABLA_PRECIOS_UNIDADES;
         $dup = $this->select(
             "SELECT o.id_inv_precio
-             FROM wms_inventario_precios o
-             INNER JOIN wms_inventario_precios ip ON ip.id_inv_precio = ? AND ip.inventarioid = ?
+             FROM {$t} o
+             INNER JOIN {$t} ip ON ip.id_inv_precio = ? AND ip.inventarioid = ?
              WHERE o.inventarioid = ip.inventarioid
                AND o.idprecio = ip.idprecio
                AND o.anio_precio <=> ?
@@ -1228,7 +1293,7 @@ WHERE idinventario = ?";
             return "exist";
         }
 
-        $sql = "UPDATE wms_inventario_precios
+        $sql = "UPDATE {$t}
             SET precio = ?, anio_precio = ?
             WHERE id_inv_precio = ? AND inventarioid = ?";
 
@@ -1244,7 +1309,8 @@ WHERE idinventario = ?";
     // Un precio inactivo ya no aparece en la lista de Portal Web.
     public function updateEstadoInventarioPrecio(int $id_inv_precio, int $inventarioid, int $estado)
     {
-        $sql = "UPDATE wms_inventario_precios
+        $t = $this->tablaPrecios($inventarioid);
+        $sql = "UPDATE {$t}
             SET estado = ?
             WHERE id_inv_precio = ? AND inventarioid = ?";
 
@@ -1254,8 +1320,9 @@ WHERE idinventario = ?";
     // Precio asignado sin importar su estado (para saber qué lista es)
     public function selectPrecioAsignadoCualquierEstado(int $idInvPrecio, int $inventarioid)
     {
+        $t = $this->tablaPrecios($inventarioid);
         $sql = "SELECT ip.id_inv_precio, ip.precio, ip.estado, p.cve_precio
-            FROM wms_inventario_precios ip
+            FROM {$t} ip
             INNER JOIN wms_precios p ON p.idprecio = ip.idprecio
             WHERE ip.id_inv_precio = ? AND ip.inventarioid = ?";
         return $this->select($sql, [$idInvPrecio, $inventarioid]);
