@@ -48,6 +48,7 @@ class Lgs_ejecucionService {
      * Registra la salida física/despacho del envío y genera las solicitudes para planta
      */
     public function registrarDespacho(int $idEnvio, string $fechaSalida, ?string $evidenciasJson, int $userId): void {
+        $this->model->asegurarColumnasDestino();
         $db = $this->model->getConexion();
         try {
             if (!$db->inTransaction()) {
@@ -96,6 +97,7 @@ class Lgs_ejecucionService {
      */
     public function confirmarCitaDestino(int $idEnvio, string $contacto, string $fechaCita, string $notas, int $userId): void
     {
+        $this->model->asegurarColumnasDestino();
         $db = $this->model->getConexion();
         $stmt = $db->prepare("UPDATE lgs_envios SET 
             confirmado_destino = 1,

@@ -10,6 +10,7 @@ class Lgs_ejecucionModel extends Mysql
         parent::__construct();
         try {
             $this->crearTablaSolicitudesSiNoExiste();
+            $this->asegurarColumnasDestino();
         } catch (Throwable $ignored) {}
     }
 
@@ -143,77 +144,93 @@ class Lgs_ejecucionModel extends Mysql
 
     public function crearTablaSolicitudesSiNoExiste(): void
     {
-        $sql = "CREATE TABLE IF NOT EXISTS lgs_solicitudes_entrega (
-            id_solicitud INT AUTO_INCREMENT PRIMARY KEY,
-            id_envio INT NOT NULL,
-            id_unidad INT NOT NULL,
-            orden_acomodo INT DEFAULT 1,
-            confirmado TINYINT(1) DEFAULT 0,
-            fecha_confirmacion DATETIME NULL,
-            confirmado_by INT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY uk_envio_unidad (id_envio, id_unidad)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        $db = $this->getConexion();
+        $tablas = [
+            "CREATE TABLE IF NOT EXISTS lgs_solicitudes_entrega (
+                id_solicitud INT AUTO_INCREMENT PRIMARY KEY,
+                id_envio INT NOT NULL,
+                id_unidad INT NOT NULL,
+                orden_acomodo INT DEFAULT 1,
+                confirmado TINYINT(1) DEFAULT 0,
+                fecha_confirmacion DATETIME NULL,
+                confirmado_by INT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uk_envio_unidad (id_envio, id_unidad)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 
-        CREATE TABLE IF NOT EXISTS lgs_evidencias (
-            id_evidencia BIGINT AUTO_INCREMENT PRIMARY KEY,
-            id_envio BIGINT NOT NULL,
-            id_unidad BIGINT DEFAULT NULL,
-            tipo_evidencia TINYINT NOT NULL COMMENT '1: Salida, 2: Llegada',
-            ruta_archivo VARCHAR(255) NOT NULL,
-            observaciones TEXT DEFAULT NULL,
-            created_by BIGINT UNSIGNED DEFAULT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            KEY idx_ev_envio (id_envio),
-            KEY idx_ev_unidad (id_unidad)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            "CREATE TABLE IF NOT EXISTS lgs_evidencias (
+                id_evidencia BIGINT AUTO_INCREMENT PRIMARY KEY,
+                id_envio BIGINT NOT NULL,
+                id_unidad BIGINT DEFAULT NULL,
+                tipo_evidencia TINYINT NOT NULL COMMENT '1: Salida, 2: Llegada',
+                ruta_archivo VARCHAR(255) NOT NULL,
+                observaciones TEXT DEFAULT NULL,
+                created_by BIGINT UNSIGNED DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_ev_envio (id_envio),
+                KEY idx_ev_unidad (id_unidad)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 
-        CREATE TABLE IF NOT EXISTS lgs_trasladistas_checklist (
-            id_checklist BIGINT AUTO_INCREMENT PRIMARY KEY,
-            id_envio BIGINT NOT NULL,
-            id_unidad BIGINT NOT NULL,
-            tipo_checklist ENUM('entrada_trasladista','salida_planta','entrega_destino') NOT NULL DEFAULT 'entrada_trasladista',
-            vin_escaneado VARCHAR(50) DEFAULT NULL,
-            usuario_registro_id INT DEFAULT NULL,
-            comentarios TEXT DEFAULT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            KEY idx_chk_envio_unidad (id_envio, id_unidad)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            "CREATE TABLE IF NOT EXISTS lgs_trasladistas_checklist (
+                id_checklist BIGINT AUTO_INCREMENT PRIMARY KEY,
+                id_envio BIGINT NOT NULL,
+                id_unidad BIGINT NOT NULL,
+                tipo_checklist ENUM('entrada_trasladista','salida_planta','entrega_destino') NOT NULL DEFAULT 'entrada_trasladista',
+                vin_escaneado VARCHAR(50) DEFAULT NULL,
+                usuario_registro_id INT DEFAULT NULL,
+                comentarios TEXT DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_chk_envio_unidad (id_envio, id_unidad)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 
-        CREATE TABLE IF NOT EXISTS lgs_checklist_evidencias (
-            id_evidencia BIGINT AUTO_INCREMENT PRIMARY KEY,
-            id_checklist BIGINT NOT NULL,
-            tipo_foto VARCHAR(50) NOT NULL,
-            ruta_archivo VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            KEY idx_chk_ev (id_checklist)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
-        $this->getConexion()->exec($sql);
+            "CREATE TABLE IF NOT EXISTS lgs_checklist_evidencias (
+                id_evidencia BIGINT AUTO_INCREMENT PRIMARY KEY,
+                id_checklist BIGINT NOT NULL,
+                tipo_foto VARCHAR(50) NOT NULL,
+                ruta_archivo VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_chk_ev (id_checklist)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        ];
 
-        // Asegurar columnas de confirmación de cita en lgs_envios
+        foreach ($tablas as $sql) {
+            try {
+                $db->exec($sql);
+            } catch (Throwable $e) {}
+        }
+    }
+
+    /**
+     * Asegura la existencia de las columnas de confirmación de cita en lgs_envios
+     */
+    public function asegurarColumnasDestino(): void
+    {
         try {
+            $db = $this->getConexion();
             $cols = $this->select_all("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lgs_envios'") ?: [];
-            $colNames = array_column($cols, 'COLUMN_NAME');
+            $colNames = array_map(function($c) {
+                return strtolower((string)($c['COLUMN_NAME'] ?? $c['column_name'] ?? ''));
+            }, $cols);
 
-            if (!in_array('confirmado_destino', $colNames)) {
-                $this->getConexion()->exec("ALTER TABLE lgs_envios ADD COLUMN confirmado_destino TINYINT(1) NOT NULL DEFAULT 0 AFTER id_destino");
+            $columnas = [
+                'confirmado_destino'            => "ALTER TABLE lgs_envios ADD COLUMN confirmado_destino TINYINT(1) NOT NULL DEFAULT 0 AFTER id_destino",
+                'confirmado_destino_contacto'   => "ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_contacto VARCHAR(150) NULL DEFAULT NULL AFTER confirmado_destino",
+                'confirmado_destino_fecha_cita' => "ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_fecha_cita DATETIME NULL DEFAULT NULL AFTER confirmado_destino_contacto",
+                'confirmado_destino_notas'      => "ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_notas TEXT NULL DEFAULT NULL AFTER confirmado_destino_fecha_cita",
+                'confirmado_destino_by'         => "ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_by BIGINT NULL DEFAULT NULL AFTER confirmado_destino_notas",
+                'confirmado_destino_at'         => "ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_at DATETIME NULL DEFAULT NULL AFTER confirmado_destino_by",
+            ];
+
+            foreach ($columnas as $col => $sqlAlter) {
+                if (empty($colNames) || !in_array($col, $colNames)) {
+                    try {
+                        $db->exec($sqlAlter);
+                    } catch (Throwable $e) {}
+                }
             }
-            if (!in_array('confirmado_destino_contacto', $colNames)) {
-                $this->getConexion()->exec("ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_contacto VARCHAR(150) NULL DEFAULT NULL AFTER confirmado_destino");
-            }
-            if (!in_array('confirmado_destino_fecha_cita', $colNames)) {
-                $this->getConexion()->exec("ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_fecha_cita DATETIME NULL DEFAULT NULL AFTER confirmado_destino_contacto");
-            }
-            if (!in_array('confirmado_destino_notas', $colNames)) {
-                $this->getConexion()->exec("ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_notas TEXT NULL DEFAULT NULL AFTER confirmado_destino_fecha_cita");
-            }
-            if (!in_array('confirmado_destino_by', $colNames)) {
-                $this->getConexion()->exec("ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_by BIGINT NULL DEFAULT NULL AFTER confirmado_destino_notas");
-            }
-            if (!in_array('confirmado_destino_at', $colNames)) {
-                $this->getConexion()->exec("ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_at DATETIME NULL DEFAULT NULL AFTER confirmado_destino_by");
-            }
-        } catch (Throwable $e) {}
+        } catch (Throwable $e) {
+            error_log("Error en Lgs_ejecucionModel::asegurarColumnasDestino: " . $e->getMessage());
+        }
     }
 
     /**
