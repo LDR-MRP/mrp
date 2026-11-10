@@ -189,6 +189,31 @@ class Lgs_ejecucionModel extends Mysql
             KEY idx_chk_ev (id_checklist)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
         $this->getConexion()->exec($sql);
+
+        // Asegurar columnas de confirmación de cita en lgs_envios
+        try {
+            $cols = $this->select_all("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lgs_envios'") ?: [];
+            $colNames = array_column($cols, 'COLUMN_NAME');
+
+            if (!in_array('confirmado_destino', $colNames)) {
+                $this->getConexion()->exec("ALTER TABLE lgs_envios ADD COLUMN confirmado_destino TINYINT(1) NOT NULL DEFAULT 0 AFTER id_destino");
+            }
+            if (!in_array('confirmado_destino_contacto', $colNames)) {
+                $this->getConexion()->exec("ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_contacto VARCHAR(150) NULL DEFAULT NULL AFTER confirmado_destino");
+            }
+            if (!in_array('confirmado_destino_fecha_cita', $colNames)) {
+                $this->getConexion()->exec("ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_fecha_cita DATETIME NULL DEFAULT NULL AFTER confirmado_destino_contacto");
+            }
+            if (!in_array('confirmado_destino_notas', $colNames)) {
+                $this->getConexion()->exec("ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_notas TEXT NULL DEFAULT NULL AFTER confirmado_destino_fecha_cita");
+            }
+            if (!in_array('confirmado_destino_by', $colNames)) {
+                $this->getConexion()->exec("ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_by BIGINT NULL DEFAULT NULL AFTER confirmado_destino_notas");
+            }
+            if (!in_array('confirmado_destino_at', $colNames)) {
+                $this->getConexion()->exec("ALTER TABLE lgs_envios ADD COLUMN confirmado_destino_at DATETIME NULL DEFAULT NULL AFTER confirmado_destino_by");
+            }
+        } catch (Throwable $e) {}
     }
 
     /**
