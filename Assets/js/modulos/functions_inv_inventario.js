@@ -1706,8 +1706,13 @@ function cfgAjustarFormLinea() {
   if (card) card.classList.toggle("d-none", !cfgPuede("LINEA", "w") && !modoEdicion);
 }
 
+// Tipo de elemento del producto abierto en el modal de configuración.
+// Solo las unidades (P) manejan año modelo en sus precios.
+let cfgTipoElemento = "";
+
 function fntConfigInventario(idinventario) {
   currentInventarioId = idinventario; // 👈 AQUI
+  cfgTipoElemento = "";
 
   fetch(base_url + "/Inv_inventario/getInventario/" + idinventario)
     .then((res) => res.json())
@@ -1715,6 +1720,7 @@ function fntConfigInventario(idinventario) {
       if (!res.status) return;
 
       const d = res.data;
+      cfgTipoElemento = d.tipo_elemento || "";
 
       document.getElementById("cfg_cve").innerText = d.cve_articulo;
       document.getElementById("cfg_desc").innerText = d.descripcion;
@@ -1827,26 +1833,27 @@ function cargartabPrecio(idinventario) {
     .then((html) => {
       const cont = document.getElementById("contentPrecio");
       if (!cont) return;
+      const esUnidad = cfgTipoElemento === "P";
 
       cont.innerHTML = `
         <div class="card cfg-card cfg-card-form">
-          ${cfgHeader("ri-price-tag-3-line", "Asignar precio", "Precio del producto por lista de precios y año modelo")}
+          ${cfgHeader("ri-price-tag-3-line", "Asignar precio", esUnidad ? "Precio de la unidad por lista de precios y año modelo" : "Precio del artículo por lista de precios")}
           <div class="card-body">
         <div class="row g-3">
 
-          <div class="col-md-4">
+          <div class="${esUnidad ? "col-md-4" : "col-md-5"}">
             <label class="form-label">Lista de precios</label>
             <select id="cfg_precio" class="form-select">
               ${html}
             </select>
           </div>
-
+          ${esUnidad ? `
           <div class="col-md-2">
             <label class="form-label">Año modelo</label>
             <input type="number" id="cfg_precio_anio" class="form-control" min="2000" max="2100" step="1" placeholder="Ej. 2027">
-          </div>
+          </div>` : ""}
 
-          <div class="col-md-4">
+          <div class="${esUnidad ? "col-md-4" : "col-md-5"}">
             <label class="form-label">Precio actual</label>
             <input type="number" step="0.01" id="cfg_precio_num" class="form-control">
           </div>
@@ -1869,7 +1876,7 @@ function cargartabPrecio(idinventario) {
             <thead>
               <tr>
                 <th>Lista</th>
-                <th>Año modelo</th>
+                ${esUnidad ? "<th>Año modelo</th>" : ""}
                 <th>Descripción</th>
                 <th class="text-end">Precio</th>
                 <th>Fecha</th>
@@ -1942,7 +1949,8 @@ function refrescarTablaPrecios(idinventario) {
 
       tbody.innerHTML = "";
       const puedeEditar = cfgPuede("PRECIO", "w");
-      const cols = puedeEditar ? 6 : 5;
+      const esUnidad = cfgTipoElemento === "P";
+      const cols = (puedeEditar ? 5 : 4) + (esUnidad ? 1 : 0);
 
       if (data.status && data.data.length > 0) {
         data.data.forEach((item) => {
@@ -1967,7 +1975,7 @@ function refrescarTablaPrecios(idinventario) {
           tbody.innerHTML += `
             <tr class="${activo ? "" : "text-muted"}">
               <td class="fw-semibold">${item.cve_precio}${activo ? "" : ' <span class="badge bg-secondary-subtle text-secondary">Inactivo</span>'}</td>
-              <td>${item.anio_precio ? `<span class="badge bg-primary-subtle text-primary">${item.anio_precio}</span>` : '<span class="text-muted">—</span>'}</td>
+              ${esUnidad ? `<td>${item.anio_precio ? `<span class="badge bg-primary-subtle text-primary">${item.anio_precio}</span>` : '<span class="text-muted">—</span>'}</td>` : ""}
               <td>${item.descripcion}</td>
               <td class="text-end">${formatoPrecioPw(item.precio)}</td>
               <td>${item.fecha_creacion ?? ""}</td>
@@ -2027,9 +2035,10 @@ function editarPrecio(id_inv_precio, idinventario, precioActual, anioActual = nu
     target: document.getElementById("modalConfigInventario") || "body",
     html: `
       <div class="text-start">
+        ${cfgTipoElemento === "P" ? `
         <label class="form-label fw-semibold" for="swal_precio_anio">Año modelo</label>
         <input type="number" id="swal_precio_anio" class="form-control mb-3" min="2000" max="2100" step="1"
-          placeholder="Ej. 2027 (vacío = sin año)" value="${anioActual ?? ""}">
+          placeholder="Ej. 2027 (vacío = sin año)" value="${anioActual ?? ""}">` : ""}
         <label class="form-label fw-semibold" for="swal_precio_valor">Precio</label>
         <input type="number" id="swal_precio_valor" class="form-control" step="0.01" min="0.01" value="${precioActual}">
       </div>`,
@@ -2039,7 +2048,7 @@ function editarPrecio(id_inv_precio, idinventario, precioActual, anioActual = nu
     cancelButtonText: "Cancelar",
     preConfirm: () => {
       const precio = document.getElementById("swal_precio_valor").value;
-      const anio = document.getElementById("swal_precio_anio").value.trim();
+      const anio = (document.getElementById("swal_precio_anio")?.value || "").trim();
       if (!precio || Number(precio) <= 0) {
         Swal.showValidationMessage("Ingrese un precio válido");
         return false;
