@@ -921,20 +921,32 @@ class Inv_inventario extends Controllers
 			$precio = floatval($_POST['precio']);
 			$fecha = date('Y-m-d H:i:s');
 			$estado = 2;
+			// Año modelo del precio (opcional)
+			$txtAnio = trim((string) ($_POST['anio_precio'] ?? ''));
+			$anio = null;
+			if ($txtAnio !== '') {
+				if (!preg_match('/^\d{4}$/', $txtAnio) || (int) $txtAnio < 2000 || (int) $txtAnio > 2100) {
+					echo json_encode(['status' => false, 'msg' => 'El año modelo debe ser de 4 dígitos (por ejemplo 2027)'], JSON_UNESCAPED_UNICODE);
+					die();
+				}
+				$anio = (int) $txtAnio;
+			}
 
 			$request = $this->model->insertInventarioPrecio(
 				$inventarioid,
 				$idprecio,
 				$precio,
 				$fecha,
-				$estado
+				$estado,
+				$anio
 			);
 
 			if ($request === 'exist') {
-				$arrResponse = ['status' => false, 'msg' => 'Ese precio ya está asignado al producto. Usa el botón Editar en la tabla para modificarlo.'];
+				$arrResponse = ['status' => false, 'msg' => 'Ese precio ya está asignado al producto para ese año modelo. Usa el botón Editar en la tabla para modificarlo.'];
 			} else if (is_numeric($request) && $request > 0) {
 				if ($this->model->esListaPrecioDealer($idprecio)) {
-					$this->sincronizarPrecioDealerPortal($inventarioid, $precio);
+					// El portal toma el Precio Dealer del año más reciente
+					$this->sincronizarPrecioDealerPortal($inventarioid, $this->model->getPrecioDealerAuto($inventarioid));
 				}
 				$arrResponse = ['status' => true, 'msg' => 'Precio asignado correctamente'];
 			} else {
@@ -970,7 +982,8 @@ class Inv_inventario extends Controllers
 			if ($request) {
 				$asignado = $this->model->selectPrecioAsignado($id_inv_precio, $inventarioid);
 				if (!empty($asignado) && trim((string) $asignado['cve_precio']) === Inv_inventarioModel::CVE_PRECIO_DEALER) {
-					$this->sincronizarPrecioDealerPortal($inventarioid, $precio);
+					// El portal toma el Precio Dealer del año más reciente
+					$this->sincronizarPrecioDealerPortal($inventarioid, $this->model->getPrecioDealerAuto($inventarioid));
 				}
 			}
 

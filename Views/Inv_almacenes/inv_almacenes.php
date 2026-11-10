@@ -59,6 +59,7 @@
                                         <th>TELÉFONO</th>
                                         <th>PLANTA</th>
                                         <th>PRECIO ASIGNADO</th>
+                                        <th>PT</th>
                                         <th>FACTURABLE</th>
                                         <th>ESTATUS</th>
                                         <th>ACCIÓN</th>
@@ -179,6 +180,21 @@
                                                 </select>
                                             </div>
                                             <div class="form-text">Planta a la que pertenece el almacén. Se usa en Unidades PT, Control de Llaves y Traslados.</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- PRODUCTO TERMINADO -->
+                                    <div class="col-lg-4 col-sm-6">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="pt-select">PRODUCTO TERMINADO</label>
+                                            <div class="input-group mb-3">
+                                                <span class="input-group-text" id="pt-addon">PT</span>
+                                                <select class="form-select" id="pt-select" name="pt-select" aria-describedby="pt-addon">
+                                                    <option value="0" selected>No</option>
+                                                    <option value="1">Sí</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-text">Indica si es un almacén de Producto Terminado.</div>
                                         </div>
                                     </div>
 
@@ -321,6 +337,10 @@
                         <tr>
                             <td>Precio asignado:</td>
                             <td id="cellistaprecio"></td>
+                        </tr>
+                        <tr>
+                            <td>Producto terminado:</td>
+                            <td id="celpt"></td>
                         </tr>
                         <tr>
                             <td>Facturable:</td>
