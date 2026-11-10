@@ -976,8 +976,22 @@ class Inv_inventario extends Controllers
 				echo json_encode(['status' => false, 'msg' => 'Ingrese un precio válido'], JSON_UNESCAPED_UNICODE);
 				die();
 			}
+			// Año modelo del precio (opcional; vacío = sin año)
+			$txtAnio = trim((string) ($_POST['anio_precio'] ?? ''));
+			$anio = null;
+			if ($txtAnio !== '') {
+				if (!preg_match('/^\d{4}$/', $txtAnio) || (int) $txtAnio < 2000 || (int) $txtAnio > 2100) {
+					echo json_encode(['status' => false, 'msg' => 'El año modelo debe ser de 4 dígitos (por ejemplo 2027)'], JSON_UNESCAPED_UNICODE);
+					die();
+				}
+				$anio = (int) $txtAnio;
+			}
 
-			$request = $this->model->updateInventarioPrecio($id_inv_precio, $inventarioid, $precio);
+			$request = $this->model->updateInventarioPrecio($id_inv_precio, $inventarioid, $precio, $anio);
+			if ($request === 'exist') {
+				echo json_encode(['status' => false, 'msg' => 'Ya existe otro precio de esa lista con ese año modelo para este producto.'], JSON_UNESCAPED_UNICODE);
+				die();
+			}
 
 			if ($request) {
 				$asignado = $this->model->selectPrecioAsignado($id_inv_precio, $inventarioid);

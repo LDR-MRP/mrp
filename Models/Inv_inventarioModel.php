@@ -1209,13 +1209,30 @@ WHERE idinventario = ?";
     }
 
     // EDITAR PRECIO ASIGNADO (valida que el registro pertenezca al producto)
-    public function updateInventarioPrecio(int $id_inv_precio, int $inventarioid, float $precio)
+    // Edita precio y año modelo. Devuelve "exist" si ya hay otro precio de la
+    // misma lista con ese año para el producto.
+    public function updateInventarioPrecio(int $id_inv_precio, int $inventarioid, float $precio, ?int $anio = null)
     {
+        $dup = $this->select(
+            "SELECT o.id_inv_precio
+             FROM wms_inventario_precios o
+             INNER JOIN wms_inventario_precios ip ON ip.id_inv_precio = ? AND ip.inventarioid = ?
+             WHERE o.inventarioid = ip.inventarioid
+               AND o.idprecio = ip.idprecio
+               AND o.anio_precio <=> ?
+               AND o.id_inv_precio <> ip.id_inv_precio
+             LIMIT 1",
+            [$id_inv_precio, $inventarioid, $anio]
+        );
+        if (!empty($dup)) {
+            return "exist";
+        }
+
         $sql = "UPDATE wms_inventario_precios
-            SET precio = ?
+            SET precio = ?, anio_precio = ?
             WHERE id_inv_precio = ? AND inventarioid = ?";
 
-        return $this->update($sql, [$precio, $id_inv_precio, $inventarioid]);
+        return $this->update($sql, [$precio, $anio, $id_inv_precio, $inventarioid]);
     }
 
 

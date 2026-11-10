@@ -1950,7 +1950,7 @@ function refrescarTablaPrecios(idinventario) {
           const btnEditar = puedeEditar
             ? `<td class="text-center text-nowrap">
                 <button type="button" class="btn btn-sm btn-outline-primary" title="Editar precio"
-                  onclick="editarPrecio(${item.id_inv_precio}, ${idinventario}, ${Number(item.precio) || 0})">
+                  onclick="editarPrecio(${item.id_inv_precio}, ${idinventario}, ${Number(item.precio) || 0}, ${item.anio_precio ? Number(item.anio_precio) : "null"})">
                   <i class="ri-pencil-line"></i>
                 </button>
                 ${activo
@@ -2020,19 +2020,35 @@ function cambiarEstadoPrecio(id_inv_precio, idinventario, estado) {
   });
 }
 
-function editarPrecio(id_inv_precio, idinventario, precioActual) {
+function editarPrecio(id_inv_precio, idinventario, precioActual, anioActual = null) {
   Swal.fire({
     title: "Editar precio",
     // Renderizar dentro del modal de Bootstrap: su focus-trap bloquea inputs fuera de él
     target: document.getElementById("modalConfigInventario") || "body",
-    input: "number",
-    inputValue: precioActual,
-    inputAttributes: { step: "0.01", min: "0.01" },
+    html: `
+      <div class="text-start">
+        <label class="form-label fw-semibold" for="swal_precio_anio">Año modelo</label>
+        <input type="number" id="swal_precio_anio" class="form-control mb-3" min="2000" max="2100" step="1"
+          placeholder="Ej. 2027 (vacío = sin año)" value="${anioActual ?? ""}">
+        <label class="form-label fw-semibold" for="swal_precio_valor">Precio</label>
+        <input type="number" id="swal_precio_valor" class="form-control" step="0.01" min="0.01" value="${precioActual}">
+      </div>`,
+    focusConfirm: false,
     showCancelButton: true,
     confirmButtonText: "Guardar",
     cancelButtonText: "Cancelar",
-    inputValidator: (value) => {
-      if (!value || Number(value) <= 0) return "Ingrese un precio válido";
+    preConfirm: () => {
+      const precio = document.getElementById("swal_precio_valor").value;
+      const anio = document.getElementById("swal_precio_anio").value.trim();
+      if (!precio || Number(precio) <= 0) {
+        Swal.showValidationMessage("Ingrese un precio válido");
+        return false;
+      }
+      if (anio !== "" && (!/^\d{4}$/.test(anio) || Number(anio) < 2000 || Number(anio) > 2100)) {
+        Swal.showValidationMessage("El año modelo debe ser de 4 dígitos (por ejemplo 2027)");
+        return false;
+      }
+      return { precio, anio };
     },
   }).then((result) => {
     if (!result.isConfirmed) return;
@@ -2040,7 +2056,8 @@ function editarPrecio(id_inv_precio, idinventario, precioActual) {
     const fd = new FormData();
     fd.append("id_inv_precio", id_inv_precio);
     fd.append("inventarioid", idinventario);
-    fd.append("precio", result.value);
+    fd.append("precio", result.value.precio);
+    fd.append("anio_precio", result.value.anio);
 
     fetch(base_url + "/Inv_inventario/updatePrecioInventario", {
       method: "POST",
