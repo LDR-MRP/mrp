@@ -120,7 +120,6 @@
 
 
 
-
                         <div class="tab-pane" id="agregarMovimiento" role="tabpanel">
                             <form id="formMovimiento" autocomplete="off" class="was-validated">
 

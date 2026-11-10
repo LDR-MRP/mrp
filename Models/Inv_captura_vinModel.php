@@ -213,7 +213,6 @@ WHERE id_cat_modelo_vin = ?";
     | historial: se guardan descripciones, no ids de catálogo)
     |--------------------------------------------------------------------------
     */
-
     public function selectModeloVinDetalle($id)
     {
         $sql = "SELECT m.id_cat_modelo_vin, m.modelo, m.vin_base,
