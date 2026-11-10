@@ -881,7 +881,7 @@ function actualizarTotales() {
 
   // 🔹 Mostrar totales
   document.getElementById("total_partidas").textContent = partidas;
-  document.getElementById("total_kit").textContent = totalCantidad.toFixed(2);
+  document.getElementById("total_kit").textContent = totalCantidad.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // ------------------------------------------------------------------------
@@ -1615,6 +1615,21 @@ const CFG_TABS_PERMISO = {
   "#tabVines": "VINES",
 };
 
+// Encabezado de tarjeta de las pestañas de configuración (estilo común, ver <style> del modal)
+function cfgHeader(icono, titulo, subtitulo) {
+  return `<div class="card-header">
+      <h6 class="cfg-titulo"><i class="${icono}"></i> ${titulo}</h6>
+      <div class="cfg-subtitulo">${subtitulo}</div>
+    </div>`;
+}
+
+// Badge de estado (2 = activo)
+function cfgBadgeEstado(estado) {
+  return Number(estado) === 2
+    ? '<span class="badge bg-success-subtle text-success">Activo</span>'
+    : '<span class="badge bg-secondary-subtle text-secondary">Inactivo</span>';
+}
+
 function cfgPuede(clave, accion = "r") {
   try {
     const idModulo = MODS["MICFG_" + clave];
@@ -1681,12 +1696,14 @@ function cfgAjustarFiscal(enEdicion = false) {
   );
   const btn = document.getElementById("btnGuardarFiscal");
   if (btn) btn.classList.toggle("d-none", !hayVisible);
+  const card = document.getElementById("cardFiscalForm");
+  if (card) card.classList.toggle("d-none", !hayVisible);
 }
 
 // Línea: el mismo formulario sirve para alta (Crear) y edición (Actualizar)
 function cfgAjustarFormLinea() {
-  const row = document.querySelector("#contentLinea .row.g-3.mb-3");
-  if (row) row.classList.toggle("d-none", !cfgPuede("LINEA", "w") && !modoEdicion);
+  const card = document.querySelector("#contentLinea .cfg-card-form");
+  if (card) card.classList.toggle("d-none", !cfgPuede("LINEA", "w") && !modoEdicion);
 }
 
 function fntConfigInventario(idinventario) {
@@ -1747,7 +1764,10 @@ function cargarTabMoneda(idinventario) {
       if (!cont) return;
 
       cont.innerHTML = `
-        <div class="row g-3 mb-3">
+        <div class="card cfg-card cfg-card-form">
+          ${cfgHeader("ri-money-dollar-circle-line", "Asignar moneda", "Moneda en la que se maneja el producto y su tipo de cambio")}
+          <div class="card-body">
+        <div class="row g-3">
 
           <div class="col-md-5">
             <label class="form-label">Moneda</label>
@@ -1764,30 +1784,33 @@ function cargarTabMoneda(idinventario) {
           <div class="col-md-2 align-self-end">
             <button class="btn btn-primary w-100"
               onclick="guardarMoneda(${idinventario})">
-              Guardar
+              <i class="ri-save-line"></i> Guardar
             </button>
           </div>
 
         </div>
+          </div>
+        </div>
 
-        <div class="mt-2">
-        <br/>
-          <h5>Monedas asignadas</h5>
-          <table class="table table-striped table-bordered">
-            <thead style="background-color: #ff896534;">
+        <div class="card cfg-card cfg-card-tabla">
+          ${cfgHeader("ri-list-check-2", "Monedas asignadas", "Monedas registradas para este producto")}
+          <div class="card-body table-responsive">
+          <table class="table table-hover align-middle cfg-tabla">
+            <thead>
               <tr>
                 <th>ID</th>
                 <th>Moneda</th>
-                <th>Tipo de cambio</th>
+                <th class="text-end">Tipo de cambio</th>
                 <th>Estado</th>
               </tr>
             </thead>
             <tbody id="tbodyMonedas"></tbody>
           </table>
+          </div>
         </div>
       `;
 
-      if (!cfgPuede("MONEDA", "w")) cont.querySelector(".row.g-3.mb-3")?.remove();
+      if (!cfgPuede("MONEDA", "w")) cont.querySelector(".cfg-card-form")?.remove();
 
       // ✅ ahora sí existe el tbody
       refrescarTablaMonedas(idinventario);
@@ -1806,16 +1829,24 @@ function cargartabPrecio(idinventario) {
       if (!cont) return;
 
       cont.innerHTML = `
-        <div class="row g-3 mb-3">
+        <div class="card cfg-card cfg-card-form">
+          ${cfgHeader("ri-price-tag-3-line", "Asignar precio", "Precio del producto por lista de precios y año modelo")}
+          <div class="card-body">
+        <div class="row g-3">
 
-          <div class="col-md-5">
-            <label class="form-label">Catalogo de precios</label>
+          <div class="col-md-4">
+            <label class="form-label">Lista de precios</label>
             <select id="cfg_precio" class="form-select">
               ${html}
             </select>
           </div>
 
-          <div class="col-md-5">
+          <div class="col-md-2">
+            <label class="form-label">Año modelo</label>
+            <input type="number" id="cfg_precio_anio" class="form-control" min="2000" max="2100" step="1" placeholder="Ej. 2027">
+          </div>
+
+          <div class="col-md-4">
             <label class="form-label">Precio actual</label>
             <input type="number" step="0.01" id="cfg_precio_num" class="form-control">
           </div>
@@ -1823,31 +1854,35 @@ function cargartabPrecio(idinventario) {
           <div class="col-md-2 align-self-end">
             <button class="btn btn-primary w-100"
               onclick="guardarPrecio(${idinventario})">
-              Guardar
+              <i class="ri-save-line"></i> Guardar
             </button>
           </div>
 
         </div>
+          </div>
+        </div>
 
-        <div class="mt-2">
-        <br/>
-          <h5>Precios asignados</h5>
-          <table class="table table-striped table-bordered">
-            <thead style="background-color: #ff896534;">
+        <div class="card cfg-card cfg-card-tabla">
+          ${cfgHeader("ri-list-check-2", "Precios asignados", "Los precios activos se pueden publicar en Portal Web")}
+          <div class="card-body table-responsive">
+          <table class="table table-hover align-middle cfg-tabla">
+            <thead>
               <tr>
-                <th>Clave</th>
+                <th>Lista</th>
+                <th>Año modelo</th>
                 <th>Descripción</th>
-                <th>Precio</th>
+                <th class="text-end">Precio</th>
                 <th>Fecha</th>
                 ${cfgPuede("PRECIO", "w") ? '<th class="text-center" style="width:110px;">Acciones</th>' : ""}
               </tr>
             </thead>
             <tbody id="tbodyPrecios"></tbody>
           </table>
+          </div>
         </div>
       `;
 
-      if (!cfgPuede("PRECIO", "w")) cont.querySelector(".row.g-3.mb-3")?.remove();
+      if (!cfgPuede("PRECIO", "w")) cont.querySelector(".cfg-card-form")?.remove();
 
       refrescarTablaPrecios(idinventario);
     });
@@ -1866,6 +1901,7 @@ function guardarPrecio(idinventario) {
   formData.append("inventarioid", idinventario);
   formData.append("idprecio", idprecio);
   formData.append("precio", precio);
+  formData.append("anio_precio", document.getElementById("cfg_precio_anio")?.value || "");
 
   fetch(base_url + "/Inv_inventario/setPrecioInventario", {
     method: "POST",
@@ -1881,6 +1917,8 @@ function guardarPrecio(idinventario) {
 
         // ✅ LIMPIAR INPUT PRECIO
         document.getElementById("cfg_precio_num").value = "";
+        const anioInp = document.getElementById("cfg_precio_anio");
+        if (anioInp) anioInp.value = "";
 
         // O también puedes usar:
         // select.value = "";
@@ -1904,7 +1942,7 @@ function refrescarTablaPrecios(idinventario) {
 
       tbody.innerHTML = "";
       const puedeEditar = cfgPuede("PRECIO", "w");
-      const cols = puedeEditar ? 5 : 4;
+      const cols = puedeEditar ? 6 : 5;
 
       if (data.status && data.data.length > 0) {
         data.data.forEach((item) => {
@@ -1928,16 +1966,17 @@ function refrescarTablaPrecios(idinventario) {
             : "";
           tbody.innerHTML += `
             <tr class="${activo ? "" : "text-muted"}">
-              <td>${item.cve_precio}${activo ? "" : ' <span class="badge bg-secondary">Inactivo</span>'}</td>
+              <td class="fw-semibold">${item.cve_precio}${activo ? "" : ' <span class="badge bg-secondary-subtle text-secondary">Inactivo</span>'}</td>
+              <td>${item.anio_precio ? `<span class="badge bg-primary-subtle text-primary">${item.anio_precio}</span>` : '<span class="text-muted">—</span>'}</td>
               <td>${item.descripcion}</td>
-              <td>$${item.precio}</td>
+              <td class="text-end">${formatoPrecioPw(item.precio)}</td>
               <td>${item.fecha_creacion ?? ""}</td>
               ${btnEditar}
             </tr>
           `;
         });
       } else {
-        tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center">Sin precios asignados</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${cols}" class="text-center text-muted py-3">Sin precios asignados</td></tr>`;
       }
     });
 }
@@ -2030,7 +2069,10 @@ function cargarTabLineas(idinventario) {
       const cont = document.getElementById("contentLinea");
 
       cont.innerHTML = `
-        <div class="row g-3 mb-3">
+        <div class="card cfg-card cfg-card-form">
+          ${cfgHeader("ri-node-tree", "Asignar línea", "Línea y sublínea (segmento) a la que pertenece el producto")}
+          <div class="card-body">
+        <div class="row g-3">
 
           <!-- LINEA -->
           <div class="col-md-5">
@@ -2050,16 +2092,18 @@ function cargarTabLineas(idinventario) {
 
           <div class="col-md-2 align-self-end">
             <button class="btn btn-primary w-100" onclick="guardarLinea(${idinventario})">
-              Guardar
+              <i class="ri-save-line"></i> Guardar
             </button>
           </div>
         </div>
+          </div>
+        </div>
 
-        <div class="mt-2">
-        <br/>
-          <h5>Líneas asignadas</h5>
-          <table class="table table-striped table-bordered">
-            <thead style="background-color: #ff896534;">
+        <div class="card cfg-card cfg-card-tabla">
+          ${cfgHeader("ri-list-check-2", "Líneas asignadas", "Líneas registradas para este producto")}
+          <div class="card-body table-responsive">
+          <table class="table table-hover align-middle cfg-tabla">
+            <thead>
               <tr>
                 <th>ID</th>
                 <th>Línea</th>
@@ -2071,6 +2115,7 @@ function cargarTabLineas(idinventario) {
             </thead>
             <tbody id="tbodyLineasAsignadas"></tbody>
           </table>
+          </div>
         </div>
       `;
 
@@ -2117,11 +2162,11 @@ function refrescarTablaLineas(idinventario) {
             <td>${linea.linea}</td>
             <td>${linea.sublinea}</td>
             <td>${linea.fecha_creacion}</td>
-            <td>${linea.estado == 2 ? "Activo" : "Inactivo"}</td>
+            <td>${cfgBadgeEstado(linea.estado)}</td>
             <td>
-              ${cfgPuede("LINEA", "u") ? `<button class="btn btn-sm btn-warning"
+              ${cfgPuede("LINEA", "u") ? `<button class="btn btn-sm btn-outline-primary" title="Editar línea"
                 onclick="editarLinea(${linea.id_inv_linea}, ${linea.idsublineaproducto}, ${linea.idlinea})">
-                Editar
+                <i class="ri-pencil-line"></i>
               </button>` : ""}
             </td>
           </tr>
@@ -2273,7 +2318,7 @@ function refrescarTablaMonedas(idinventario) {
       if (!data.data || data.data.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="4" class="text-center">No hay monedas asignadas</td>
+            <td colspan="4" class="text-center text-muted py-3">No hay monedas asignadas</td>
           </tr>`;
         return;
       }
@@ -2283,8 +2328,8 @@ function refrescarTablaMonedas(idinventario) {
           <tr>
             <td>${moneda.idmoneda}</td>
             <td>${moneda.descripcion}</td>
-            <td>${moneda.tipo_cambio ?? ""}</td>
-            <td>${moneda.estado == 2 ? "Activo" : "Inactivo"}</td>
+            <td class="text-end">${moneda.tipo_cambio ?? ""}</td>
+            <td>${cfgBadgeEstado(moneda.estado)}</td>
           </tr>
         `;
       });
@@ -2561,7 +2606,7 @@ function refrescarTablaLtpd() {
             <td>${r.tipo === "L" ? "Lote" : "Pedimento"}</td>
             <td>${r.almacen}</td>
             <td>${r.clave}</td>
-            <td>${r.cantidad}</td>
+            <td class="text-end">${formatoNumero(r.cantidad)}</td>
             <td>${r.fecha_produccion_lote ?? ""}</td>
             <td>${r.fecha_caducidad ?? ""}</td>
             <td>${r.estado == 2 ? "Activo" : "Inactivo"}</td>
@@ -2928,7 +2973,7 @@ function refrescarFiscal(idinventario) {
           <td>${f.clave_sat}</td>
           <td>${f.desc_sat}</td>
           <td class="text-center">
-            ${cfgPuede("FISCAL", "u") ? `<button class="btn btn-sm btn-warning" onclick="editarFiscal('sat')">Editar</button>` : ""}
+            ${cfgPuede("FISCAL", "u") ? `<button class="btn btn-sm btn-outline-primary" title="Editar" onclick="editarFiscal('sat')"><i class="ri-pencil-line"></i></button>` : ""}
           </td>
         </tr>`;
       }
@@ -2940,7 +2985,7 @@ function refrescarFiscal(idinventario) {
           <td>${f.clave_unidad_sat}</td>
           <td>${f.desc_unidad_sat}</td>
           <td class="text-center">
-            ${cfgPuede("FISCAL", "u") ? `<button class="btn btn-sm btn-warning" onclick="editarFiscal('unidad')">Editar</button>` : ""}
+            ${cfgPuede("FISCAL", "u") ? `<button class="btn btn-sm btn-outline-primary" title="Editar" onclick="editarFiscal('unidad')"><i class="ri-pencil-line"></i></button>` : ""}
           </td>
         </tr>`;
       }
@@ -2952,7 +2997,7 @@ function refrescarFiscal(idinventario) {
           <td>${f.clave_fraccion_sat}</td>
           <td>${f.desc_fraccion_sat}</td>
           <td class="text-center">
-            ${cfgPuede("FISCAL", "u") ? `<button class="btn btn-sm btn-warning" onclick="editarFiscal('fraccion')">Editar</button>` : ""}
+            ${cfgPuede("FISCAL", "u") ? `<button class="btn btn-sm btn-outline-primary" title="Editar" onclick="editarFiscal('fraccion')"><i class="ri-pencil-line"></i></button>` : ""}
           </td>
         </tr>`;
       }
@@ -2964,7 +3009,7 @@ function refrescarFiscal(idinventario) {
           <td>${f.clave_aduana_sat}</td>
           <td>${f.desc_aduana_sat}</td>
           <td class="text-center">
-            ${cfgPuede("FISCAL", "u") ? `<button class="btn btn-sm btn-warning" onclick="editarFiscal('aduana')">Editar</button>` : ""}
+            ${cfgPuede("FISCAL", "u") ? `<button class="btn btn-sm btn-outline-primary" title="Editar" onclick="editarFiscal('aduana')"><i class="ri-pencil-line"></i></button>` : ""}
           </td>
         </tr>`;
       }
@@ -3000,6 +3045,7 @@ function ocultarFormularioFiscal() {
   document.querySelectorAll(".bloqueFiscalForm").forEach((b) => {
     b.classList.add("d-none");
   });
+  cfgAjustarFiscal(); // oculta también la tarjeta y el botón si no queda ningún bloque
 }
 
 function mostrarFormularioFiscal() {
@@ -3104,7 +3150,7 @@ function refrescarTablaImpuestos(idinventario) {
       if (!res.data || res.data.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="3" class="text-center text-muted">
+            <td colspan="2" class="text-center text-muted py-3">
               Sin impuestos asignados
             </td>
           </tr>`;
@@ -3115,7 +3161,7 @@ function refrescarTablaImpuestos(idinventario) {
         tbody.innerHTML += `
           <tr>
             <td>${i.descripcion}</td>
-            <td>${i.estado == 2 ? "Activo" : "Inactivo"}</td>
+            <td>${cfgBadgeEstado(i.estado)}</td>
           </tr>
         `;
       });
@@ -3168,7 +3214,7 @@ function refrescarTablaUbicaciones(idinventario) {
       data.data.forEach((u) => {
         tbody.innerHTML += `
           <tr>
-            <td>${u.cantidad}</td>
+            <td class="text-end">${formatoNumero(u.cantidad)}</td>
             <td>${u.ubicacion}</td>
             <td>${u.fecha_creacion}</td>
           </tr>
@@ -3288,7 +3334,7 @@ function refrescarTablaProveedores(idinventario) {
       if (!res.data || res.data.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="3" class="text-center text-muted">
+            <td colspan="2" class="text-center text-muted py-3">
               Sin proveedores asignados
             </td>
           </tr>`;
@@ -3299,7 +3345,7 @@ function refrescarTablaProveedores(idinventario) {
         tbody.innerHTML += `
           <tr>
             <td>${i.nombre_comercial}</td>
-            <td>${i.estado == 2 ? "Activo" : "Inactivo"}</td>
+            <td>${cfgBadgeEstado(i.estado)}</td>
           </tr>
         `;
       });
@@ -3330,10 +3376,10 @@ function cargarCantidades(inventarioid) {
     data: { inventarioid: inventarioid },
     dataType: "json",
     success: function (res) {
-      $("#existencia_total").val(res.existencia_total ?? 0);
-      $("#stock_minimo").val(res.stock_minimo ?? 0);
-      $("#stock_maximo").val(res.stock_maximo ?? 0);
-      $("#apartado").val(res.apartado ?? 0);
+      $("#existencia_total").val(formatoNumero(res.existencia_total ?? 0));
+      $("#stock_minimo").val(formatoNumero(res.stock_minimo ?? 0));
+      $("#stock_maximo").val(formatoNumero(res.stock_maximo ?? 0));
+      $("#apartado").val(formatoNumero(res.apartado ?? 0));
     },
     error: function () {
       $("#existencia_total").val(0);
@@ -3359,10 +3405,10 @@ function cargarCantidades(inventarioid) {
           html += `
             <tr>
               <td>${row.almacen}</td>
-              <td>${row.existencia ?? 0}</td>
-              <td>${row.stock_minimo ?? 0}</td>
-              <td>${row.stock_maximo ?? 0}</td>
-              <td>${row.apartado ?? 0}</td>
+              <td class="text-end">${formatoNumero(row.existencia ?? 0)}</td>
+              <td class="text-end">${formatoNumero(row.stock_minimo ?? 0)}</td>
+              <td class="text-end">${formatoNumero(row.stock_maximo ?? 0)}</td>
+              <td class="text-end">${formatoNumero(row.apartado ?? 0)}</td>
             </tr>
           `;
         });
@@ -3778,6 +3824,13 @@ function formatoPrecioPw(valor) {
   return "$" + Number(valor || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// Cantidades / existencias con separador de miles (hasta 2 decimales, sin forzarlos)
+function formatoNumero(valor) {
+  const n = Number(valor);
+  if (valor === null || valor === undefined || valor === "" || isNaN(n)) return valor ?? "";
+  return n.toLocaleString("es-MX", { maximumFractionDigits: 2 });
+}
+
 // Lista de precios asignados al producto (pestaña Precio) para elegir el que
 // se publica. Se preselecciona el que coincide con el precio ya publicado.
 function renderPreciosPortalWeb(precios, registro, editable) {
@@ -3809,7 +3862,7 @@ function renderPreciosPortalWeb(precios, registro, editable) {
   precios.forEach((p) => {
     const opt = document.createElement("option");
     opt.value = p.id_inv_precio;
-    opt.textContent = p.cve_precio + " — " + formatoPrecioPw(p.precio);
+    opt.textContent = p.cve_precio + (p.anio_precio ? " " + p.anio_precio : "") + " — " + formatoPrecioPw(p.precio);
     if (!seleccionado && precioGuardado > 0 && Math.abs(parseFloat(p.precio) - precioGuardado) < 0.005) {
       opt.selected = true;
       seleccionado = true;

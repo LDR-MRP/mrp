@@ -299,71 +299,102 @@
 
             <div class="modal-body">
 
+                <style>
+                    /* Estilo común de las pestañas de configuración (mismo lenguaje que "Fotos portal") */
+                    #modalConfigInventario .cfg-producto { display: flex; flex-wrap: wrap; gap: .75rem; margin-bottom: 1rem; }
+                    #modalConfigInventario .cfg-dato { flex: 1 1 160px; padding: .6rem .85rem; border-radius: .5rem; background: var(--bs-tertiary-bg, #f3f6f9); }
+                    #modalConfigInventario .cfg-dato.cfg-dato-ancho { flex: 3 1 280px; }
+                    #modalConfigInventario .cfg-dato-label { font-size: .72rem; color: var(--bs-secondary-color, #878a99); text-transform: uppercase; letter-spacing: .02em; margin-bottom: .1rem; }
+                    #modalConfigInventario .cfg-dato-valor { font-size: .95rem; font-weight: 600; color: var(--bs-body-color, #212529); word-break: break-word; }
+                    #modalConfigInventario .cfg-nav { border-bottom: 1px solid var(--bs-border-color, #e9ebec); flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+                    #modalConfigInventario .cfg-nav .nav-link { display: flex; align-items: center; gap: .35rem; white-space: nowrap; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--bs-secondary-color, #878a99); font-weight: 500; padding: .65rem .85rem; margin-bottom: -1px; transition: color .15s, border-color .15s; }
+                    #modalConfigInventario .cfg-nav .nav-link i { font-size: 1.05rem; line-height: 1; }
+                    #modalConfigInventario .cfg-nav .nav-link:hover { color: var(--bs-primary); }
+                    #modalConfigInventario .cfg-nav .nav-link.active { color: var(--bs-primary); border-bottom-color: var(--bs-primary); background: transparent; }
+                    #modalConfigInventario .cfg-card { border: 1px solid var(--bs-border-color, #e9ebec); border-radius: .6rem; box-shadow: 0 1px 3px rgba(56, 65, 74, .08); margin-bottom: 1rem; }
+                    #modalConfigInventario .cfg-card > .card-header { background: transparent; border-bottom: 1px solid var(--bs-border-color, #e9ebec); padding: .85rem 1.1rem; }
+                    #modalConfigInventario .cfg-card > .card-body { padding: 1rem 1.1rem; }
+                    #modalConfigInventario .cfg-card > .card-footer { background: transparent; border-top: 1px solid var(--bs-border-color, #e9ebec); padding: .75rem 1.1rem; text-align: right; }
+                    #modalConfigInventario .cfg-titulo { font-size: .95rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: .4rem; }
+                    #modalConfigInventario .cfg-titulo i { font-size: 1.15rem; color: var(--bs-primary); }
+                    #modalConfigInventario .cfg-subtitulo { font-size: .78rem; color: var(--bs-secondary-color, #878a99); }
+                    #modalConfigInventario .cfg-card .form-label { font-size: .8rem; font-weight: 600; color: var(--bs-secondary-color, #6c757d); margin-bottom: .3rem; }
+                    #modalConfigInventario .cfg-card-tabla > .card-body { padding: 0; }
+                    #modalConfigInventario .cfg-tabla { margin-bottom: 0; }
+                    #modalConfigInventario .cfg-tabla thead th { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--bs-secondary-color, #878a99); background: var(--bs-tertiary-bg, #f3f6f9); border-bottom: 1px solid var(--bs-border-color, #e9ebec); white-space: nowrap; padding: .6rem .9rem; }
+                    #modalConfigInventario .cfg-tabla td { vertical-align: middle; padding: .6rem .9rem; border-color: var(--bs-border-color, #f0f1f3); }
+                    #modalConfigInventario .cfg-tabla tbody tr:last-child td { border-bottom: 0; }
+                    #modalConfigInventario .cfg-kpi { height: 100%; padding: .85rem 1rem; border-radius: .6rem; border: 1px solid var(--bs-border-color, #e9ebec); display: flex; align-items: center; gap: .85rem; background: var(--bs-body-bg, #fff); }
+                    #modalConfigInventario .cfg-kpi-icono { width: 2.6rem; height: 2.6rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+                    #modalConfigInventario .cfg-kpi-label { font-size: .72rem; color: var(--bs-secondary-color, #878a99); text-transform: uppercase; letter-spacing: .02em; font-weight: 600; }
+                    /* Resultados de búsqueda de claves SAT (ProdServ, Unidad, Fracción, Aduana) */
+                    .sat-item, .satunidad-item, .satfraccion-item, .sataduana-item { cursor: pointer; border-radius: .375rem; border-left: 3px solid transparent; padding-right: .75rem; transition: background-color .12s, border-color .12s, color .12s; }
+                    .sat-item:hover, .satunidad-item:hover, .satfraccion-item:hover, .sataduana-item:hover { background-color: rgba(var(--bs-primary-rgb, 64, 81, 137), .12); border-left-color: var(--bs-primary); color: var(--bs-primary); font-weight: 600; }
+                    .sat-item:active, .satunidad-item:active, .satfraccion-item:active, .sataduana-item:active { background-color: rgba(var(--bs-primary-rgb, 64, 81, 137), .22); }
+                    #modalConfigInventario .cfg-kpi .cfg-kpi-valor { font-size: 1.35rem; font-weight: 700; padding: 0; border: 0; background: transparent; color: var(--bs-body-color, #212529); width: 100%; box-shadow: none; }
+                </style>
+
                 <!-- INFO -->
-                <div class="card mb-3 informacionmodalproducto">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <strong>Clave:</strong>
-                                <div id="cfg_cve"></div>
-                            </div>
-                            <div class="col-md-6">
-                                <strong>Descripción:</strong>
-                                <div id="cfg_desc"></div>
-                            </div>
-                            <div class="col-md-3">
-                                <strong>Tipo:</strong>
-                                <div id="cfg_tipo"></div>
-                            </div>
-                        </div>
+                <div class="cfg-producto informacionmodalproducto">
+                    <div class="cfg-dato">
+                        <div class="cfg-dato-label">Clave</div>
+                        <div class="cfg-dato-valor" id="cfg_cve"></div>
+                    </div>
+                    <div class="cfg-dato cfg-dato-ancho">
+                        <div class="cfg-dato-label">Descripción</div>
+                        <div class="cfg-dato-valor" id="cfg_desc"></div>
+                    </div>
+                    <div class="cfg-dato">
+                        <div class="cfg-dato-label">Tipo</div>
+                        <div class="cfg-dato-valor" id="cfg_tipo"></div>
                     </div>
                 </div>
 
                 <!-- TABS -->
-                <ul class="nav nav-tabs" role="tablist">
+                <ul class="nav nav-tabs cfg-nav" role="tablist">
                     <li class="nav-item">
-                        <a class="nav-link active" data-bs-toggle="tab" href="#tabMoneda">Moneda</a>
+                        <a class="nav-link active" data-bs-toggle="tab" href="#tabMoneda"><i class="ri-money-dollar-circle-line"></i> Moneda</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" href="#tabPrecio">Precio</a>
+                        <a class="nav-link" data-bs-toggle="tab" href="#tabPrecio"><i class="ri-price-tag-3-line"></i> Precio</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" href="#tabFiscal">Fiscal</a>
+                        <a class="nav-link" data-bs-toggle="tab" href="#tabFiscal"><i class="ri-government-line"></i> Fiscal</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" href="#tabImpuesto">Impuesto</a>
+                        <a class="nav-link" data-bs-toggle="tab" href="#tabImpuesto"><i class="ri-percent-line"></i> Impuesto</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" href="#tabLinea">Línea</a>
+                        <a class="nav-link" data-bs-toggle="tab" href="#tabLinea"><i class="ri-node-tree"></i> Línea</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" href="#tabUbicaciones">
-                            Ubicaciones
+                            <i class="ri-map-pin-line"></i> Ubicaciones
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" href="#tabProveedores">
-                            Proveedores
+                            <i class="ri-truck-line"></i> Proveedores
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" href="#tabCantidades">
-                            Cantidades
+                            <i class="ri-stack-line"></i> Cantidades
                         </a>
                     </li>
                     <li class="nav-item" id="liTabPortalWeb" hidden>
                         <a class="nav-link" data-bs-toggle="tab" href="#tabPortalWeb">
-                            Portal Web
+                            <i class="ri-global-line"></i> Portal Web
                         </a>
                     </li>
                     <li class="nav-item" id="liTabFotosWeb" hidden>
                         <a class="nav-link" data-bs-toggle="tab" href="#tabFotosWeb">
-                            Fotos portal
+                            <i class="ri-image-2-line"></i> Fotos portal
                         </a>
                     </li>
                     <li class="nav-item" id="liTabVines" hidden>
                         <a class="nav-link" data-bs-toggle="tab" href="#tabVines">
-                            VIN / NIV
+                            <i class="ri-barcode-line"></i> VIN / NIV
                         </a>
                     </li>
                 </ul>
@@ -385,6 +416,12 @@
                     <!--tab fiscal-->
                     <div class="tab-pane fade" id="tabFiscal">
                         <div id="contentFiscal">
+                            <div class="card cfg-card" id="cardFiscalForm">
+                                <div class="card-header">
+                                    <h6 class="cfg-titulo"><i class="ri-government-line"></i> Datos fiscales</h6>
+                                    <div class="cfg-subtitulo">Claves del SAT para facturación y comercio exterior</div>
+                                </div>
+                                <div class="card-body d-flex flex-column gap-3">
                             <div class="row g-3 bloqueFiscalForm" data-grupo="sat">
                                 <!--CLAVE SAT-->
                                 <div class="col-md-6 position-relative">
@@ -461,21 +498,22 @@
                                 </div>
                             </div>
 
-                            <div class="row mt-4">
-                                <div class="col-12 text-end">
+                                </div>
+                                <div class="card-footer">
                                     <button type="button" class="btn btn-primary" id="btnGuardarFiscal">
                                         <i class="ri-save-line"></i> Guardar datos fiscales
                                     </button>
                                 </div>
                             </div>
 
-                            <hr>
-
-                            <div id="bloqueFiscalTabla" class="mt-2">
-                                <br />
-                                <h5>Datos fiscales asignados</h5>
-                                <table class="table table-striped table-bordered">
-                                    <thead style="background-color: #ff896534;">
+                            <div id="bloqueFiscalTabla" class="card cfg-card cfg-card-tabla">
+                                <div class="card-header">
+                                    <h6 class="cfg-titulo"><i class="ri-file-list-3-line"></i> Datos fiscales asignados</h6>
+                                    <div class="cfg-subtitulo">Claves registradas para este producto</div>
+                                </div>
+                                <div class="card-body table-responsive">
+                                <table class="table table-hover align-middle cfg-tabla">
+                                    <thead>
                                         <tr>
                                             <th>Tipo</th>
                                             <th>Clave</th>
@@ -485,6 +523,7 @@
                                     </thead>
                                     <tbody id="tbodyFiscal"></tbody>
                                 </table>
+                                </div>
                             </div>
 
                         </div>
@@ -494,7 +533,12 @@
                     <div class="tab-pane fade" id="tabImpuesto">
                         <div id="contentImpuesto">
 
-                            <form id="formImpuestoInventario">
+                            <form id="formImpuestoInventario" class="card cfg-card">
+                                <div class="card-header">
+                                    <h6 class="cfg-titulo"><i class="ri-percent-line"></i> Asignar impuesto</h6>
+                                    <div class="cfg-subtitulo">Impuestos que se aplican al vender este producto</div>
+                                </div>
+                                <div class="card-body">
                                 <input type="hidden" id="imp_inventarioid" name="inventarioid">
 
                                 <div class="row g-3">
@@ -507,17 +551,21 @@
 
                                     <div class="col-md-4 d-flex align-items-end">
                                         <button type="submit" class="btn btn-primary w-100">
-                                            Registrar impuesto
+                                            <i class="ri-add-line"></i> Registrar impuesto
                                         </button>
                                     </div>
                                 </div>
+                                </div>
                             </form>
 
-                            <div class="mt-2">
-                                <br />
-                                <h5>Impuestos asignados</h5>
-                                <table class="table table-striped table-bordered">
-                                    <thead style="background-color: #ff896534;">
+                            <div class="card cfg-card cfg-card-tabla">
+                                <div class="card-header">
+                                    <h6 class="cfg-titulo"><i class="ri-list-check-2"></i> Impuestos asignados</h6>
+                                    <div class="cfg-subtitulo">Impuestos registrados para este producto</div>
+                                </div>
+                                <div class="card-body table-responsive">
+                                <table class="table table-hover align-middle cfg-tabla">
+                                    <thead>
                                         <tr>
                                             <th>Impuesto</th>
                                             <th>Estado</th>
@@ -525,6 +573,7 @@
                                     </thead>
                                     <tbody id="tbodyImpuestosCfg"></tbody>
                                 </table>
+                                </div>
                             </div>
 
                         </div>
@@ -560,8 +609,8 @@
                         <!-- ✅ TABLA -->
                         <div class="mt-4">
                             <h5>Lotes / Pedimentos asignados</h5>
-                            <table class="table table-striped table-bordered">
-                                <thead style="background-color: #ff896534;">
+                            <table class="table table-hover align-middle cfg-tabla">
+                                <thead>
                                     <tr>
                                         <th>Tipo</th>
                                         <th>Almacén</th>
@@ -625,42 +674,51 @@
                     <!--tab de las ubicaciones-->
                     <div class="tab-pane fade" id="tabUbicaciones">
 
-                        <form id="formUbicacionInventario">
+                        <form id="formUbicacionInventario" class="card cfg-card">
+                            <div class="card-header">
+                                    <h6 class="cfg-titulo"><i class="ri-map-pin-line"></i> Asignar ubicación</h6>
+                                    <div class="cfg-subtitulo">Dónde se guarda físicamente el producto dentro del almacén</div>
+                                </div>
+                            <div class="card-body">
                             <input type="hidden" id="inv_id" name="inventarioid">
 
-                            <div class="row">
+                            <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label>Ubicación</label>
+                                    <label class="form-label" for="ubicacion_id">Ubicación</label>
                                     <select id="ubicacion_id" name="ubicacionid" class="form-select"></select>
                                 </div>
 
                                 <div class="col-md-3">
-                                    <label>Cantidad</label>
+                                    <label class="form-label" for="cantidad">Cantidad</label>
                                     <input type="number" id="cantidad" name="cantidad" class="form-control">
                                 </div>
 
                                 <div class="col-md-3 d-flex align-items-end">
-                                    <button class="btn btn-success w-100">
-                                        Asignar
+                                    <button class="btn btn-primary w-100">
+                                        <i class="ri-add-line"></i> Asignar
                                     </button>
                                 </div>
                             </div>
+                            </div>
                         </form>
 
-                        <div class="mt-2">
-                            <br />
-                            <h5>Ubicación asignada</h5>
-                            <table class="table table-striped table-bordered">
-                                <thead style="background-color: #ff896534;">
-                                    <thead style="background-color: #ff896534;">
-                                        <tr>
-                                            <th>Cantidad</th>
-                                            <th>Ubicación</th>
-                                            <th>Fecha</th>
-                                        </tr>
-                                    </thead>
+                        <div class="card cfg-card cfg-card-tabla">
+                            <div class="card-header">
+                                    <h6 class="cfg-titulo"><i class="ri-list-check-2"></i> Ubicaciones asignadas</h6>
+                                    <div class="cfg-subtitulo">Cantidad del producto en cada ubicación</div>
+                                </div>
+                            <div class="card-body table-responsive">
+                            <table class="table table-hover align-middle cfg-tabla">
+                                <thead>
+                                    <tr>
+                                        <th class="text-end">Cantidad</th>
+                                        <th>Ubicación</th>
+                                        <th>Fecha</th>
+                                    </tr>
+                                </thead>
                                 <tbody id="tbodyUbicaciones"></tbody>
                             </table>
+                            </div>
                         </div>
 
                     </div>
@@ -670,12 +728,17 @@
 
                         <div id="contentProveedor">
 
-                            <form id="formProveedores">
+                            <form id="formProveedores" class="card cfg-card">
+                                <div class="card-header">
+                                    <h6 class="cfg-titulo"><i class="ri-truck-line"></i> Asignar proveedor</h6>
+                                    <div class="cfg-subtitulo">Proveedores que surten este producto</div>
+                                </div>
+                                <div class="card-body">
                                 <input type="hidden" id="prov_inventarioid" name="inventarioid">
 
                                 <div class="row g-3">
                                     <div class="col-md-8">
-                                        <label class="form-label">Proveedores</label>
+                                        <label class="form-label">Proveedor</label>
                                         <select id="cfg_proveedor" name="id_proveedor" class="form-select">
                                             <option value="">Seleccione un proveedor</option>
                                         </select>
@@ -683,17 +746,21 @@
 
                                     <div class="col-md-4 d-flex align-items-end">
                                         <button type="submit" class="btn btn-primary w-100">
-                                            Registrar proveedor
+                                            <i class="ri-add-line"></i> Registrar proveedor
                                         </button>
                                     </div>
                                 </div>
+                                </div>
                             </form>
 
-                            <div class="mt-2">
-                                <br />
-                                <h5>Proveedores asignados</h5>
-                                <table class="table table-striped table-bordered">
-                                    <thead style="background-color: #ff896534;">
+                            <div class="card cfg-card cfg-card-tabla">
+                                <div class="card-header">
+                                    <h6 class="cfg-titulo"><i class="ri-list-check-2"></i> Proveedores asignados</h6>
+                                    <div class="cfg-subtitulo">Proveedores registrados para este producto</div>
+                                </div>
+                                <div class="card-body table-responsive">
+                                <table class="table table-hover align-middle cfg-tabla">
+                                    <thead>
                                         <tr>
                                             <th>Proveedor</th>
                                             <th>Estado</th>
@@ -701,6 +768,7 @@
                                     </thead>
                                     <tbody id="tbodyProveedoresCfg"></tbody>
                                 </table>
+                                </div>
                             </div>
 
                         </div>
@@ -714,44 +782,65 @@
                         <input type="hidden" id="inventarioid_cantidades">
 
                         <!-- Resumen general -->
-                        <div class="row">
-                            <div class="col-md-6">
-                                <label>Existencia</label>
-                                <input type="text" id="existencia_total" class="form-control" readonly>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-3 col-sm-6">
+                                <div class="cfg-kpi">
+                                    <span class="cfg-kpi-icono bg-primary-subtle text-primary"><i class="ri-stack-line"></i></span>
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <div class="cfg-kpi-label">Existencia</div>
+                                        <input type="text" id="existencia_total" class="cfg-kpi-valor" readonly tabindex="-1">
+                                    </div>
+                                </div>
                             </div>
-
-                            <div class="col-md-6">
-                                <label>Stock mínimo</label>
-                                <input type="text" id="stock_minimo" class="form-control" readonly>
+                            <div class="col-md-3 col-sm-6">
+                                <div class="cfg-kpi">
+                                    <span class="cfg-kpi-icono bg-warning-subtle text-warning"><i class="ri-arrow-down-circle-line"></i></span>
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <div class="cfg-kpi-label">Stock mínimo</div>
+                                        <input type="text" id="stock_minimo" class="cfg-kpi-valor" readonly tabindex="-1">
+                                    </div>
+                                </div>
                             </div>
-
-                            <div class="col-md-6 mt-3">
-                                <label>Stock máximo</label>
-                                <input type="text" id="stock_maximo" class="form-control" readonly>
+                            <div class="col-md-3 col-sm-6">
+                                <div class="cfg-kpi">
+                                    <span class="cfg-kpi-icono bg-success-subtle text-success"><i class="ri-arrow-up-circle-line"></i></span>
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <div class="cfg-kpi-label">Stock máximo</div>
+                                        <input type="text" id="stock_maximo" class="cfg-kpi-valor" readonly tabindex="-1">
+                                    </div>
+                                </div>
                             </div>
-
-                            <div class="col-md-6 mt-3">
-                                <label>Apartado</label>
-                                <input type="text" id="apartado" class="form-control" readonly>
+                            <div class="col-md-3 col-sm-6">
+                                <div class="cfg-kpi">
+                                    <span class="cfg-kpi-icono bg-info-subtle text-info"><i class="ri-lock-line"></i></span>
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <div class="cfg-kpi-label">Apartado</div>
+                                        <input type="text" id="apartado" class="cfg-kpi-valor" readonly tabindex="-1">
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Detalle por almacenes -->
-                        <div class="mt-3" id="contenedorAlmacenes" style="display:none;">
-                            <br />
-                            <h5>Almacenes</h5>
-                            <table class="table table-striped table-bordered">
-                                <thead style="background-color: #ff896534;">
+                        <div class="card cfg-card cfg-card-tabla" id="contenedorAlmacenes" style="display:none;">
+                            <div class="card-header">
+                                    <h6 class="cfg-titulo"><i class="ri-store-2-line"></i> Existencia por almacén</h6>
+                                    <div class="cfg-subtitulo">Detalle de cantidades en cada almacén</div>
+                                </div>
+                            <div class="card-body table-responsive">
+                            <table class="table table-hover align-middle cfg-tabla">
+                                <thead>
                                     <tr>
                                         <th>Almacén</th>
-                                        <th>Existencia</th>
-                                        <th>Stock mínimo</th>
-                                        <th>Stock máximo</th>
-                                        <th>Apartado</th>
+                                        <th class="text-end">Existencia</th>
+                                        <th class="text-end">Stock mínimo</th>
+                                        <th class="text-end">Stock máximo</th>
+                                        <th class="text-end">Apartado</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tbodyAlmacenes"></tbody>
                             </table>
+                            </div>
                         </div>
 
                     </div>
@@ -1308,4 +1397,4 @@
 
 
 <!-- end main content-->
-<?php footerAdmin($data); ?>
+<?php footerAdmin($data); ?>
