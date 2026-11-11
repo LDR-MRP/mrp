@@ -102,7 +102,7 @@ headerOrders($data);
                 </p>
                 <p class="small mt-2 mb-0" style="color:#866313;font-weight:600" role="note">
                     <i class="ri-information-line me-1" aria-hidden="true"></i>
-                    Precios publicados en pesos mexicanos (MXN). No incluyen IVA; el impuesto se calcula por separado.
+                    Los precios mostrados no incluyen IVA. El impuesto correspondiente se agregará al importe final de la compra.
                 </p>
 
             </div>

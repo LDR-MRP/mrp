@@ -1665,7 +1665,7 @@ function renderProducts(list) {
                   ${formatMoney(item.precio)}
 
                 </strong>
-                <small class="d-block mt-1" style="font-size:12px;color:#806327">Precio sin IVA</small>
+                <small class="d-inline-flex align-items-center gap-1 mt-2 px-2 py-1 rounded" style="font-size:12px;font-weight:700;color:#785600;background:#fff4d6;border:1px solid #f2d58b" aria-label="El precio publicado no incluye IVA"><i class="ri-information-line" aria-hidden="true"></i>Precio antes de IVA</small>
 
               </div>
 
