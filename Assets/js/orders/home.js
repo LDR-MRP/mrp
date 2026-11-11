@@ -1665,6 +1665,7 @@ function renderProducts(list) {
                   ${formatMoney(item.precio)}
 
                 </strong>
+                <small class="d-block mt-1" style="font-size:12px;color:#806327">Precio sin IVA</small>
 
               </div>
 

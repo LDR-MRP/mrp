@@ -2248,7 +2248,7 @@ public function cancelarPedidoModel(
     {
         if ($idcliente <= 0) return [];
         $sql = "SELECT r.idrevision, r.numero_revision, r.fecha_envio, r.total,
-                       r.observaciones_comercial, p.folio_pedido, p.clave,
+                       r.observaciones_comercial, (SELECT GROUP_CONCAT(DISTINCT wi.cve_articulo ORDER BY wi.cve_articulo SEPARATOR ', ') FROM ped_pedidos_revision_detalle rd INNER JOIN web_unidades wu ON wu.idunidad = rd.idunidad LEFT JOIN wms_inventario wi ON wi.idinventario = wu.inventarioid WHERE rd.idrevision = r.idrevision AND rd.cantidad_propuesta > 0 AND wi.cve_articulo IS NOT NULL) AS skus, p.folio_pedido, p.clave,
                        p.fecha_pedido
                 FROM ped_pedidos_revisiones r
                 INNER JOIN ped_pedidos p ON p.idpedido = r.idpedido
@@ -2282,12 +2282,13 @@ public function cancelarPedidoModel(
         if ($idrevision <= 0) return [];
         $sql = "SELECT d.idrevision_detalle, d.tipo_cambio, d.cantidad_solicitada_original,
                        d.cantidad_propuesta, d.precio_unitario_original, d.precio_unitario,
-                       d.descuento, d.descuento_tipo, d.descuento_valor, d.subtotal, d.iva, d.total, d.motivo_ajuste,
+                       d.descuento, d.descuento_tipo, d.descuento_valor, d.fondo_publicidad_unitario, d.fondo_publicidad_total, d.subtotal, d.iva, d.total, d.motivo_ajuste,
                        d.idunidad_color, d.idunidad_color_original,
-                       u.nombre AS nombre_unidad, u.modelo, u.version,
+                       u.nombre AS nombre_unidad, u.modelo, u.version, wi.cve_articulo AS sku,
                        co.nombre AS color_propuesto, cor.nombre AS color_original
                 FROM ped_pedidos_revision_detalle d
                 LEFT JOIN web_unidades u ON u.idunidad = d.idunidad
+                LEFT JOIN wms_inventario wi ON wi.idinventario = u.inventarioid
                 LEFT JOIN web_unidades_colores uc ON uc.idunidad_color = d.idunidad_color
                 LEFT JOIN web_colores co ON co.idcolor = uc.idcolor
                 LEFT JOIN web_unidades_colores uco ON uco.idunidad_color = d.idunidad_color_original

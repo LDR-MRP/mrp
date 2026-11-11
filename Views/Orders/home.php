@@ -100,6 +100,10 @@ headerOrders($data);
                     Consulta modelos disponibles y utiliza los filtros
                     para encontrar rápidamente la unidad que necesitas.
                 </p>
+                <p class="small mt-2 mb-0" style="color:#866313;font-weight:600" role="note">
+                    <i class="ri-information-line me-1" aria-hidden="true"></i>
+                    Precios publicados en pesos mexicanos (MXN). No incluyen IVA; el impuesto se calcula por separado.
+                </p>
 
             </div>
 

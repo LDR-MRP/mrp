@@ -302,7 +302,7 @@
                                     </h4>
 
                                     <span class="text-muted fs-12">
-                                        Pedidos aceptados con backorder vigente
+                                        Suma de importes en Backorders vigentes
                                     </span>
 
                                 </div>

@@ -2560,7 +2560,7 @@ class Orders extends Controllers
              * ========================================================
              */
 
-            $correoCompras = 'carlosbunti97@gmail.com';
+            $correoCompras = 'nora.segura@ldrsolutions.com.mx';
 
             if ($correoCompras === '' || !filter_var($correoCompras, FILTER_VALIDATE_EMAIL)) {
 

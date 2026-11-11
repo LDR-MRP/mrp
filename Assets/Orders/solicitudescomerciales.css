@@ -31,3 +31,20 @@
 .commercial-trace-fill{height:100%;background:linear-gradient(90deg,#ea580c,#f59e0b);border-radius:99px}
 .commercial-trace small{display:block;color:var(--cr-muted);margin-top:10px}
 @media(max-width:650px){.commercial-response-actions{flex-direction:column}.commercial-response-actions button,.commercial-pdf-action button{width:100%}}
+
+/* Ajuste de legibilidad de importes grandes en solicitudes por aprobar. */
+.commercial-item-main{min-width:0;flex:1 1 auto}
+.commercial-item-actions{min-width:0;flex:0 1 260px;max-width:100%}
+.commercial-item-actions>strong{display:block;max-width:100%;font-size:clamp(15px,1.7vw,20px);line-height:1.3;text-align:right;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.commercial-item-actions>a{max-width:100%;white-space:normal;text-align:center}
+.commercial-totals{width:min(100%,430px);max-width:100%;box-sizing:border-box}
+.commercial-totals>div{align-items:baseline;min-width:0}
+.commercial-totals strong{font-size:clamp(13px,1.5vw,17px);text-align:right;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.commercial-totals .commercial-grand-total strong{font-size:clamp(15px,1.8vw,21px)}
+.commercial-table{min-width:1300px}
+.commercial-table th,.commercial-table td{padding:11px 9px;font-size:12px}
+.commercial-table td strong{font-size:12px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+@media(max-width:700px){.commercial-item-actions{flex:1 1 auto;width:100%}.commercial-item-actions>strong{text-align:left}}
+
+/* SKU de las unidades incluidas en cada propuesta pendiente. */
+.commercial-item-main .commercial-skus{display:block;margin:7px 0 5px;overflow-wrap:anywhere;line-height:1.45}

@@ -723,7 +723,7 @@ function crearFilaPedido(pedido) {
             <span class="fw-semibold text-body">
 
                 ${formatearMonedaPedidos(
-                    pedido.total
+                    pedido.total_mostrado ?? pedido.total
                 )}
 
             </span>
@@ -2337,10 +2337,18 @@ async function generarReportePedidosFiltradosPdf() {
         if (!pedidos.length) { Swal.fire('Sin resultados','No hay pedidos con los filtros seleccionados.','info'); return; }
         const moneda = n => Number(n||0).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
         const estado = p => String(p.estatus||'').replaceAll('_',' ');
-        const body = [[{text:'Pedido',bold:true},{text:'Distribuidor',bold:true},{text:'Fecha',bold:true},{text:'Estado / situación',bold:true},{text:'Prioridad',bold:true},{text:'Total',bold:true},{text:'Backorder',bold:true}],...pedidos.map(p=>[
-            String(p.folio_pedido||p.clave||''),String(p.nombre_comercial||p.razon_social||''),String(p.fecha_pedido||'').slice(0,10),estado(p)+(p.estatus_revision_comercial?' / '+String(p.estatus_revision_comercial).replaceAll('_',' '):''),String(p.prioridad||''),moneda(p.total),moneda(p.importe_backorder)
+        // Cada monto se muestra completo y alineado; se evita truncar cifras grandes.
+        const celdaMoneda = valor => ({text:moneda(valor),alignment:'right',noWrap:true,fontSize:7.1,margin:[1,5,1,5]});
+        const encabezado = titulo => ({text:titulo,bold:true,fontSize:7.1,color:'#ffffff',fillColor:'#26354b',margin:[2,6,2,6]});
+        const body = [[...['Pedido','Nombre comercial / razón social','Fecha','Estado / situación','Prioridad','Total vigente','Backorder'].map(encabezado)],...pedidos.map(p=>[
+            {text:String(p.folio_pedido||p.clave||''),fontSize:7.4},
+            {text:[p.nombre_comercial,p.razon_social].filter(Boolean).join(' / '),fontSize:7.2},
+            {text:String(p.fecha_pedido||'').slice(0,10),fontSize:7.2,noWrap:true},
+            {text:estado(p)+(p.estatus_revision_comercial?' / '+String(p.estatus_revision_comercial).replaceAll('_',' '):''),fontSize:7.2},
+            {text:String(p.prioridad||''),fontSize:7.2},
+            celdaMoneda(p.total_mostrado ?? p.total),celdaMoneda(p.importe_backorder)
         ])];
-        const suma = pedidos.reduce((a,p)=>a+Number(p.total||0),0);
+        const suma = pedidos.reduce((a,p)=>a+Number(p.total_mostrado ?? p.total ?? 0),0);
         const sumaBack = pedidos.reduce((a,p)=>a+Number(p.importe_backorder||0),0);
         const filtroTexto = Object.entries(filtros).filter(([k,v])=>v).map(([k,v])=>`${k}: ${v}`).join('   |   ') || 'Sin filtros';
         let logo = null;
@@ -2355,8 +2363,8 @@ async function generarReportePedidosFiltradosPdf() {
             content:[
                 {columns:[logo?{image:logo,width:110}:{text:'FOTON',bold:true,fontSize:18}, {stack:[{text:'REPORTE GENERAL DE PEDIDOS',bold:true,fontSize:17,color:'#17365d'},{text:'Gestión comercial · Reporte filtrado',fontSize:10,color:'#64748b'}],alignment:'right'}],margin:[0,0,0,14]},
                 {text:'Filtros aplicados: '+filtroTexto,fontSize:9,color:'#475569',margin:[0,0,0,12]},
-                {columns:[{text:`Pedidos: ${pedidos.length}`,bold:true},{text:`Importe de pedidos: ${moneda(suma)}`,bold:true},{text:`Compromiso Backorders: ${moneda(sumaBack)}`,bold:true}],margin:[0,0,0,14]},
-                {table:{headerRows:1,widths:[75,'*',65,115,55,80,80],body},layout:'lightHorizontalLines',fontSize:8}
+                {columns:[{width:'auto',text:`Pedidos: ${pedidos.length}`,bold:true,fontSize:8},{width:'*',text:`Importe de pedidos: ${moneda(suma)}`,bold:true,fontSize:8,alignment:'center'},{width:'auto',text:`Compromiso Backorders: ${moneda(sumaBack)}`,bold:true,fontSize:8,alignment:'right'}],columnGap:10,margin:[0,0,0,14]},
+                {table:{headerRows:1,dontBreakRows:true,widths:[64,'*',60,102,48,94,94],body},layout:{hLineColor:()=> '#e2e8f0',vLineWidth:()=>0,paddingLeft:()=>3,paddingRight:()=>3,paddingTop:()=>4,paddingBottom:()=>4},fontSize:7.2}
             ],defaultStyle:{fontSize:9}
         };
         Swal.close();
@@ -2394,11 +2402,11 @@ async function generarReportePedidosFiltradosExcel() {
         const pedidos = result.data?.pedidos || [];
         if (!pedidos.length) { await Swal.fire('Sin resultados','No hay pedidos para exportar con los filtros actuales.','info'); return; }
         const fechaMexico = new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',dateStyle:'short',timeStyle:'medium'}).format(new Date());
-        const encabezados = ['Folio','Distribuidor','Fecha del pedido','Fecha requerida','Unidades','Estado','Situación comercial','Prioridad','Total MXN','Compromiso Backorder MXN'];
+        const encabezados = ['Folio','Nombre comercial / razón social','Fecha del pedido','Fecha requerida','Unidades','Estado','Situación comercial','Prioridad','Total vigente MXN','Compromiso Backorder MXN'];
         const filas = pedidos.map(p => row([
-            cell(p.folio_pedido || p.clave),cell(p.nombre_comercial || p.razon_social),cell(p.fecha_pedido),cell(p.fecha_requerida),cell(p.total_unidades ?? p.cantidad_unidades ?? 0,true),cell(p.estatus),cell(p.estatus_revision_comercial),cell(p.prioridad),cell(p.total,true,'Money'),cell(p.importe_backorder,true,'Money')
+            cell(p.folio_pedido || p.clave),cell([p.nombre_comercial,p.razon_social].filter(Boolean).join(' / ')),cell(p.fecha_pedido),cell(p.fecha_requerida),cell(p.total_unidades ?? p.cantidad_unidades ?? 0,true),cell(p.estatus),cell(p.estatus_revision_comercial),cell(p.prioridad),cell(p.total_mostrado ?? p.total,true,'Money'),cell(p.importe_backorder,true,'Money')
         ]));
-        const suma = pedidos.reduce((n,p)=>n+Number(p.total||0),0);
+        const suma = pedidos.reduce((n,p)=>n+Number(p.total_mostrado ?? p.total ?? 0),0);
         const sumaBack = pedidos.reduce((n,p)=>n+Number(p.importe_backorder||0),0);
         const filtrosAplicados = Object.entries(filtros).filter(([,v])=>v).map(([k,v])=>`${k}: ${v}`).join(' | ') || 'Sin filtros';
         const xml = `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>`+

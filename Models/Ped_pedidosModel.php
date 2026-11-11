@@ -116,7 +116,15 @@ class Ped_pedidosModel extends Mysql
                 COALESCE(resumen.total_autorizadas,0) AS total_autorizadas,
                 COALESCE(resumen.total_facturadas,0) AS total_facturadas,
                 COALESCE(resumen.total_pendientes,0) AS total_pendientes,
-                COALESCE(backorder_resumen.importe_backorder,0) AS importe_backorder
+                COALESCE(backorder_resumen.importe_backorder,0) AS importe_backorder,
+                /* Importe mostrado: en BACK_ORDER se utiliza el compromiso vigente,
+                   sin alterar el total original ni inventar importes si no hay Backorders. */
+                CASE
+                    WHEN p.estatus = 'BACK_ORDER'
+                         AND backorder_resumen.idpedido IS NOT NULL
+                    THEN COALESCE(backorder_resumen.importe_backorder, 0)
+                    ELSE p.total
+                END AS total_mostrado
 
             FROM ped_pedidos AS p
 
@@ -353,7 +361,7 @@ class Ped_pedidosModel extends Mysql
                     ),
                     0
                 ) AS importe_total,
-                COALESCE(SUM(CASE WHEN p.estatus NOT IN ('CANCELADO','RECHAZADO') THEN COALESCE(bres.importe,0) ELSE 0 END),0) AS importe_backorders
+                COALESCE(SUM(COALESCE(bres.importe,0)),0) AS importe_backorders
 
 
             FROM ped_pedidos AS p
@@ -1116,7 +1124,14 @@ class Ped_pedidosModel extends Mysql
             COALESCE(resumen.total_solicitadas, 0) AS total_unidades,
             COALESCE(resumen.total_autorizadas, 0) AS total_autorizadas,
             COALESCE(resumen.total_facturadas, 0) AS total_facturadas,
-            COALESCE(resumen.total_pendientes, 0) AS total_pendientes
+            COALESCE(resumen.total_pendientes, 0) AS total_pendientes,
+            COALESCE(backorder_resumen.importe_backorder, 0) AS importe_backorder,
+            CASE
+                WHEN p.estatus = 'BACK_ORDER'
+                     AND backorder_resumen.idpedido IS NOT NULL
+                THEN COALESCE(backorder_resumen.importe_backorder, 0)
+                ELSE p.total
+            END AS total_mostrado
 
         FROM ped_pedidos AS p
 
@@ -1142,6 +1157,14 @@ class Ped_pedidosModel extends Mysql
             GROUP BY idpedido
         ) AS resumen
             ON resumen.idpedido = p.idpedido
+
+        LEFT JOIN (
+            SELECT idpedido, SUM(total) AS importe_backorder
+            FROM ped_backorder
+            WHERE estatus <> 'CANCELADO'
+            GROUP BY idpedido
+        ) AS backorder_resumen
+            ON backorder_resumen.idpedido = p.idpedido
 
         WHERE p.clave = '{$clave}'
           AND p.estado = 2

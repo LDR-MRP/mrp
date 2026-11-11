@@ -376,9 +376,11 @@ function construirRutaImagenUnidad(
                             ); ?> MXN
                         </strong>
 
+                        <small class="d-block" style="font-weight:600;color:#866313">
+                            Precio publicado sin IVA. El impuesto se calcula por separado.
+                        </small>
                         <small>
-                            Precio sujeto a disponibilidad,
-                            condiciones comerciales e impuestos aplicables.
+                            Precio sujeto a disponibilidad y condiciones comerciales.
                         </small>
 
                     </div>
@@ -708,6 +710,7 @@ function construirRutaImagenUnidad(
                                     ','
                                 ); ?> MXN
                             </strong>
+                            <small class="d-block" style="font-size:12px;color:#866313">Precio sin IVA</small>
                         </div>
 
                     </div>

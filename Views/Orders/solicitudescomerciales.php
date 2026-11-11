@@ -17,7 +17,7 @@ $esc = static fn($v) => htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
    <div class="commercial-list">
     <?php foreach ($solicitudes as $solicitud): ?>
      <article class="commercial-item">
-      <div class="commercial-item-main"><span class="commercial-pill"><i class="ri-time-line"></i> Pendiente de revisión</span><h2>Pedido <?= $esc($solicitud['folio_pedido'] ?? ''); ?></h2><p>Propuesta comercial · Versión <?= (int)($solicitud['numero_revision'] ?? 0); ?></p><small>Enviada: <?= $esc(!empty($solicitud['fecha_envio']) ? date('d/m/Y H:i', strtotime($solicitud['fecha_envio'])) : 'Sin fecha'); ?></small></div>
+      <div class="commercial-item-main"><span class="commercial-pill"><i class="ri-time-line"></i> Pendiente de revisión</span><h2>Pedido <?= $esc($solicitud['folio_pedido'] ?? ''); ?></h2><p>Propuesta comercial · Versión <?= (int)($solicitud['numero_revision'] ?? 0); ?></p><small class="commercial-skus"><i class="ri-barcode-line" aria-hidden="true"></i> SKU: <?= $esc($solicitud['skus'] ?: 'No disponible') ?></small><small>Enviada: <?= $esc(!empty($solicitud['fecha_envio']) ? date('d/m/Y H:i', strtotime($solicitud['fecha_envio'])) : 'Sin fecha'); ?></small></div>
       <div class="commercial-item-actions"><strong>$<?= number_format((float)($solicitud['total'] ?? 0),2); ?> MXN</strong><a href="<?= base_url(); ?>/orders/verpropuestacomercial/<?= rawurlencode((string)$solicitud['clave']); ?>">Ver propuesta <i class="ri-arrow-right-line"></i></a></div>
      </article>
     <?php endforeach; ?>

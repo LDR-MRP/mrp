@@ -224,14 +224,14 @@
                         <div class="card-body">
 
                             <p class="text-muted mb-1">
-                                Total solicitado
+                                <?= $estatusPedido === 'BACK_ORDER' && isset($pedido['total_mostrado']) ? 'Total vigente (Backorders)' : 'Total solicitado'; ?>
                             </p>
 
                             <h5 class="mb-0">
 
                                 $<?= number_format(
                                     floatval(
-                                        $pedido['total'] ?? 0
+                                        $pedido['total_mostrado'] ?? $pedido['total'] ?? 0
                                     ),
                                     2
                                 ); ?>
