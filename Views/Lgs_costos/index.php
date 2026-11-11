@@ -658,10 +658,10 @@
                                                     <thead class="table-light">
                                                         <tr class="text-uppercase fs-11 text-muted">
                                                             <th style="width: 250px;">Segmento Vehicular</th>
-                                                            <th style="display: none;">Costo Base / KM ($)</th>
-                                                            <th style="width: 170px;">Local Corto SLC<br><small class="text-muted">(0-40 KM)</small><br><span class="badge bg-warning text-dark fs-10 mt-1">&ge; 3 unidades</span></th>
-                                                            <th style="width: 170px;">Local Largo SLL<br><small class="text-muted">(41-80 KM)</small><br><span class="badge bg-warning text-dark fs-10 mt-1">&ge; 3 unidades</span></th>
-                                                            <th>Desglose de Factores por Unidad (2 a 9 Unidades)</th>
+                                                            <th style="display: none;">Costo Base / KM ($ sin IVA)</th>
+                                                            <th style="width: 170px;">Local Corto SLC (sin IVA)<br><small class="text-muted">(0-40 KM)</small><br><span class="badge bg-warning text-dark fs-10 mt-1">&ge; 3 unidades</span></th>
+                                                            <th style="width: 170px;">Local Largo SLL (sin IVA)<br><small class="text-muted">(41-80 KM)</small><br><span class="badge bg-warning text-dark fs-10 mt-1">&ge; 3 unidades</span></th>
+                                                            <th>Desglose de Factores por Unidad (Precios sin IVA: 2 a 9 Unidades)</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody id="tbodyTarifasMadrina">
@@ -706,9 +706,9 @@
                                                     <thead class="table-light">
                                                         <tr class="text-uppercase fs-11 text-muted">
                                                             <th style="width: 250px;">Segmento Vehicular</th>
-                                                            <th style="width: 170px;">Costo / KM ($)</th>
-                                                            <th style="width: 170px;">Local Corto SLC<br><small class="text-muted">(0-40 KM)</small></th>
-                                                            <th style="width: 170px;">Local Largo SLL<br><small class="text-muted">(41-80 KM)</small></th>
+                                                            <th style="width: 170px;">Costo / KM ($ sin IVA)</th>
+                                                            <th style="width: 170px;">Local Corto SLC (sin IVA)<br><small class="text-muted">(0-40 KM)</small></th>
+                                                            <th style="width: 170px;">Local Largo SLL (sin IVA)<br><small class="text-muted">(41-80 KM)</small></th>
                                                             <th></th>
                                                         </tr>
                                                     </thead>

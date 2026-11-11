@@ -8,11 +8,18 @@ declare(strict_types=1);
  */
 class Lgs_zipEvidenciasHelper
 {
-    private const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+    private const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'jfif', 'bmp', 'pdf'];
     private const ALLOWED_MIME_TYPES = [
         'image/jpeg',
+        'image/pjpeg',
         'image/png',
-        'image/webp'
+        'image/x-png',
+        'image/webp',
+        'image/jfif',
+        'image/bmp',
+        'image/x-ms-bmp',
+        'application/pdf',
+        'application/x-pdf'
     ];
     private const MAX_FILES_PER_ZIP = 50;
     private const MAX_UNCOMPRESSED_BYTES = 104857600; // 100 MB
@@ -71,25 +78,26 @@ class Lgs_zipEvidenciasHelper
                 if (!$stat) continue;
 
                 $entryName = $stat['name'];
+                $normalizedEntry = str_replace('\\', '/', $entryName);
 
                 // Ignorar carpetas y metadatos de sistemas operativos (macOS, Windows)
-                if (str_ends_with($entryName, '/') || str_ends_with($entryName, '\\')) {
+                if (str_ends_with($entryName, '/') || str_ends_with($entryName, '\\') || str_ends_with($normalizedEntry, '/')) {
                     continue;
                 }
-                if (str_contains($entryName, '__MACOSX') || basename($entryName) === '.DS_Store' || basename($entryName) === 'Thumbs.db') {
+                if (str_contains($normalizedEntry, '__MACOSX') || basename($normalizedEntry) === '.DS_Store' || basename($normalizedEntry) === 'Thumbs.db') {
                     continue;
                 }
 
                 // Prevención de Zip Slip (Path Traversal)
-                if (str_contains($entryName, '..') || str_starts_with($entryName, '/') || str_starts_with($entryName, '\\')) {
+                if (str_contains($normalizedEntry, '..') || str_starts_with($normalizedEntry, '/')) {
                     throw new Exception("El archivo ZIP contiene rutas sospechosas o no seguras ({$entryName}).");
                 }
 
-                $fileBase = basename($entryName);
+                $fileBase = basename($normalizedEntry);
                 $fileExt = strtolower(pathinfo($fileBase, PATHINFO_EXTENSION));
 
                 if (!in_array($fileExt, self::ALLOWED_EXTENSIONS, true)) {
-                    // Ignorar archivos que no sean imágenes válidas (evitar scripts o ejecutables)
+                    // Ignorar archivos que no sean imágenes o documentos válidos
                     continue;
                 }
 

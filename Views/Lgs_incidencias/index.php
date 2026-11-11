@@ -47,9 +47,9 @@
             </div>
 
             <!-- ── SECCIÓN 3: KPIS OPERATIVOS ────────────────────────────── -->
-            <div class="row mb-4">
-                <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                    <div class="card card-animate border-0 shadow-sm rounded-3">
+            <div class="row mb-4 g-3">
+                <div class="col-xl col-md-6 col-sm-6">
+                    <div class="card card-animate border-0 shadow-sm rounded-3 h-100">
                         <div class="card-body">
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1 overflow-hidden">
@@ -65,8 +65,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                    <div class="card card-animate border-0 shadow-sm rounded-3">
+                <div class="col-xl col-md-6 col-sm-6">
+                    <div class="card card-animate border-0 shadow-sm rounded-3 h-100">
                         <div class="card-body">
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1 overflow-hidden">
@@ -82,8 +82,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                    <div class="card card-animate border-0 shadow-sm rounded-3">
+                <div class="col-xl col-md-6 col-sm-6">
+                    <div class="card card-animate border-0 shadow-sm rounded-3 h-100">
                         <div class="card-body">
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1 overflow-hidden">
@@ -99,8 +99,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-xl-3 col-md-6 mb-3 mb-xl-0">
-                    <div class="card card-animate border-0 shadow-sm rounded-3">
+                <div class="col-xl col-md-6 col-sm-6">
+                    <div class="card card-animate border-0 shadow-sm rounded-3 h-100">
                         <div class="card-body">
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1 overflow-hidden">
@@ -110,6 +110,23 @@
                                 <div class="avatar-sm flex-shrink-0">
                                     <span class="avatar-title bg-danger-subtle text-danger rounded-circle fs-3">
                                         <i class="ri-shield-user-line"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl col-md-12 col-sm-12">
+                    <div class="card card-animate border-0 shadow-sm rounded-3 h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1"><span id="lblPeriodoMontoIncidencias">Monto en Gastos</span> (sin IVA)</p>
+                                    <h4 class="fs-20 fw-bold text-danger mb-0"><span id="kpiMontoIncidencias">$0.00</span></h4>
+                                </div>
+                                <div class="avatar-sm flex-shrink-0">
+                                    <span class="avatar-title bg-danger-subtle text-danger rounded-circle fs-3">
+                                        <i class="ri-money-dollar-circle-line"></i>
                                     </span>
                                 </div>
                             </div>
@@ -170,6 +187,31 @@
                                 <option value="0">En tránsito</option>
                                 <option value="1">Post-entrega (Reclamo)</option>
                             </select>
+                        </div>
+
+                        <!-- FILTRO DE PERÍODO / MONTO -->
+                        <div class="col-12 pt-2 border-top">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <label class="form-label fs-12 fw-medium text-muted mb-0 me-1">
+                                    <i class="ri-calendar-line text-primary me-1"></i>Período:
+                                </label>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-secondary btn-periodo-incidencias active" id="btnPeriodoIncidenciasTodos" onclick="cambiarPeriodoIncidencias('', this)">Todos</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-periodo-incidencias" id="btnPeriodoIncidenciasSemana" onclick="cambiarPeriodoIncidencias('semana', this)">Esta Semana</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-periodo-incidencias" id="btnPeriodoIncidenciasMes" onclick="cambiarPeriodoIncidencias('mes', this)">Este Mes</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-periodo-incidencias" id="btnPeriodoIncidenciasAnio" onclick="cambiarPeriodoIncidencias('anio', this)">Este Año</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-periodo-incidencias" id="btnPeriodoIncidenciasAbierta" onclick="cambiarPeriodoIncidencias('abierta', this)">Rango de Fechas</button>
+                                </div>
+
+                                <div id="boxFiltroFechaIncidencias" class="d-none d-inline-flex align-items-center gap-1 ms-2">
+                                    <input type="date" id="filtro_incidencia_fecha_inicio" class="form-control form-control-sm" style="width: 135px;" title="Fecha Desde">
+                                    <span class="text-muted fs-12">-</span>
+                                    <input type="date" id="filtro_incidencia_fecha_fin" class="form-control form-control-sm" style="width: 135px;" title="Fecha Hasta">
+                                    <button type="button" class="btn btn-sm btn-primary px-2" onclick="tableIncidencias.ajax.reload()" title="Aplicar fechas">
+                                        <i class="ri-check-line"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

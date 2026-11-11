@@ -1,6 +1,7 @@
 let tableIncidencias;
 let currentIncidenciaDetalle = null;
 let vinsActualesEnvio = [];
+let filtroPeriodoIncidenciasActual = '';
 
 document.addEventListener('DOMContentLoaded', function () {
     initTableIncidencias();
@@ -26,6 +27,11 @@ function initTableIncidencias() {
                 d.id_tipo_incidencia = $('#filtro_tipo').val();
                 d.id_proveedor = $('#filtro_proveedor').val();
                 d.es_post_entrega = $('#filtro_post_entrega').val();
+                d.periodo = filtroPeriodoIncidenciasActual;
+                if (filtroPeriodoIncidenciasActual === 'abierta') {
+                    d.fecha_desde = $('#filtro_incidencia_fecha_inicio').val();
+                    d.fecha_hasta = $('#filtro_incidencia_fecha_fin').val();
+                }
             },
             "dataSrc": function (json) {
                 let data = json || [];
@@ -169,6 +175,7 @@ function actualizarKpis(data) {
     let investigacion = 0;
     let conGastos = 0;
     let postEntrega = 0;
+    let totalMontoGastos = 0;
 
     data.forEach(item => {
         let st = parseInt(item.id_estado);
@@ -176,12 +183,47 @@ function actualizarKpis(data) {
         if (st === 2) investigacion++;
         if (st === 4) conGastos++;
         if (parseInt(item.es_post_entrega) === 1) postEntrega++;
+        totalMontoGastos += parseFloat(item.monto_total_gastos || 0);
     });
 
     $('#kpiAbiertas').text(abiertas);
     $('#kpiInvestigacion').text(investigacion);
     $('#kpiConGastos').text(conGastos);
     $('#kpiPostEntrega').text(postEntrega);
+    if (document.getElementById('kpiMontoIncidencias')) {
+        document.getElementById('kpiMontoIncidencias').innerText = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalMontoGastos);
+    }
+}
+
+function cambiarPeriodoIncidencias(periodo, btn) {
+    filtroPeriodoIncidenciasActual = periodo;
+    document.querySelectorAll('.btn-periodo-incidencias').forEach(b => {
+        b.classList.remove('active', 'btn-primary');
+        b.classList.add('btn-outline-secondary');
+    });
+    if (btn) {
+        btn.classList.add('active');
+        btn.classList.remove('btn-outline-secondary');
+    }
+
+    const boxFecha = document.getElementById('boxFiltroFechaIncidencias');
+    if (periodo === 'abierta') {
+        if (boxFecha) boxFecha.classList.remove('d-none');
+    } else {
+        if (boxFecha) boxFecha.classList.add('d-none');
+        $('#filtro_incidencia_fecha_inicio').val('');
+        $('#filtro_incidencia_fecha_fin').val('');
+        tableIncidencias.ajax.reload();
+    }
+
+    let lbl = 'Monto en Gastos';
+    if (periodo === 'semana') lbl = 'Monto en Gastos (Semana)';
+    else if (periodo === 'mes') lbl = 'Monto en Gastos (Mes)';
+    else if (periodo === 'anio') lbl = 'Monto en Gastos (Año)';
+    else if (periodo === 'abierta') lbl = 'Monto en Gastos (Rango)';
+    if (document.getElementById('lblPeriodoMontoIncidencias')) {
+        document.getElementById('lblPeriodoMontoIncidencias').innerText = lbl;
+    }
 }
 
 function initFiltrosEvents() {
@@ -195,6 +237,23 @@ function limpiarFiltros() {
     $('#filtro_tipo').val('');
     $('#filtro_proveedor').val('');
     $('#filtro_post_entrega').val('');
+    $('#filtro_incidencia_fecha_inicio').val('');
+    $('#filtro_incidencia_fecha_fin').val('');
+    filtroPeriodoIncidenciasActual = '';
+    document.querySelectorAll('.btn-periodo-incidencias').forEach(b => {
+        b.classList.remove('active', 'btn-primary');
+        b.classList.add('btn-outline-secondary');
+    });
+    const btnTodos = document.getElementById('btnPeriodoIncidenciasTodos');
+    if (btnTodos) {
+        btnTodos.classList.add('active');
+        btnTodos.classList.remove('btn-outline-secondary');
+    }
+    const boxFecha = document.getElementById('boxFiltroFechaIncidencias');
+    if (boxFecha) boxFecha.classList.add('d-none');
+    if (document.getElementById('lblPeriodoMontoIncidencias')) {
+        document.getElementById('lblPeriodoMontoIncidencias').innerText = 'Monto en Gastos';
+    }
     tableIncidencias.ajax.reload();
 }
 
@@ -223,6 +282,7 @@ function openModalIncidencia(selectedEnvioId = 0) {
     $('#alertaTipoIncidencia').addClass('d-none');
     $('#divArchivoInicial').removeClass('d-none');
     $('#divTipoArchivoInicial').removeClass('d-none');
+    $('#preview_evidencias_iniciales').empty();
 
     // Poner fecha y hora actual local
     let now = new Date();
@@ -751,6 +811,7 @@ function abrirModalSubirEvidencia(idIncidencia = null) {
     if (!id) return;
 
     $('#formSubirEvidencia')[0].reset();
+    $('#preview_evidencias_modal').empty();
     $('#evidencia_id_incidencia').val(id);
 
     // Llenar select de VINs si tenemos detalle
@@ -810,4 +871,71 @@ function escapeHtml(text) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+/**
+ * Previsualización dinámica interactiva de múltiples evidencias adjuntas
+ */
+function previsualizarEvidenciasIncidencia(input, containerId) {
+    const cont = document.getElementById(containerId);
+    if (!cont) return;
+    cont.innerHTML = '';
+
+    if (!input.files || input.files.length === 0) return;
+
+    const files = Array.from(input.files);
+    const headerInfo = document.createElement('div');
+    headerInfo.className = 'col-12 mb-1';
+    headerInfo.innerHTML = `<span class="badge bg-soft-primary text-primary fs-11 fw-semibold"><i class="ri-attachment-2 me-1"></i>${files.length} archivo(s) seleccionado(s)</span>`;
+    cont.appendChild(headerInfo);
+
+    files.forEach((file, index) => {
+        const col = document.createElement('div');
+        col.className = 'col-md-4 col-sm-6';
+
+        const sizeKb = Math.round(file.size / 1024);
+        const isImg = file.type.startsWith('image/');
+        const isPdf = file.type === 'application/pdf';
+        const isVideo = file.type.startsWith('video/');
+
+        if (isImg) {
+            const card = document.createElement('div');
+            card.className = 'border rounded p-1 bg-light position-relative text-center';
+            card.style.height = '110px';
+            card.style.overflow = 'hidden';
+
+            const img = document.createElement('img');
+            img.className = 'rounded w-100 h-100';
+            img.style.objectFit = 'cover';
+            img.alt = file.name;
+
+            const reader = new FileReader();
+            reader.onload = (e) => { img.src = e.target.result; };
+            reader.readAsDataURL(file);
+
+            const overlay = document.createElement('div');
+            overlay.className = 'position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-75 text-white px-2 py-1 fs-10 text-truncate';
+            overlay.innerText = `${file.name} (${sizeKb} KB)`;
+
+            card.appendChild(img);
+            card.appendChild(overlay);
+            col.appendChild(card);
+        } else {
+            const card = document.createElement('div');
+            card.className = 'border rounded p-2 bg-light d-flex align-items-center';
+            card.style.height = '60px';
+
+            let iconClass = isPdf ? 'ri-file-pdf-fill text-danger' : (isVideo ? 'ri-video-fill text-info' : 'ri-file-fill text-secondary');
+            card.innerHTML = `
+                <i class="${iconClass} fs-2 me-2"></i>
+                <div class="overflow-hidden">
+                    <div class="fs-11 fw-semibold text-truncate text-dark" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
+                    <small class="text-muted fs-10">${sizeKb} KB</small>
+                </div>
+            `;
+            col.appendChild(card);
+        }
+
+        cont.appendChild(col);
+    });
 }

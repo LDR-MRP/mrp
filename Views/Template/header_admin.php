@@ -1,3 +1,19 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+if (empty($_SESSION['login'])) {
+    if (!headers_sent()) {
+        header('Location: ' . base_url() . '/login');
+    } else {
+        echo '<script>window.location.href = "' . base_url() . '/login";</script>';
+    }
+    die();
+}
+$avatarFileHeader = !empty($_SESSION['avatar_file']) ? $_SESSION['avatar_file'] : 'avatar_default.svg';
+$userNameHeader   = !empty($_SESSION['userData']['nombres']) ? $_SESSION['userData']['nombres'] : 'Usuario';
+$userRolHeader    = !empty($_SESSION['userData']['nombrerol']) ? $_SESSION['userData']['nombrerol'] : '';
+?>
 <!doctype html>
 <html lang="en" data-layout="horizontal" data-topbar="light" data-sidebar="light" data-sidebar-size="lg" data-sidebar-image="none" data-preloader="disable">
 
@@ -498,10 +514,10 @@
                         <div class="dropdown ms-sm-3 header-item topbar-user">
                             <button type="button" class="btn" id="page-header-user-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <span class="d-flex align-items-center">
-                                    <img class="rounded-circle header-profile-user" src="<?= media(); ?>/avatars/<?= $_SESSION['avatar_file']; ?>" alt="Header Avatar">
+                                    <img class="rounded-circle header-profile-user" src="<?= media(); ?>/avatars/<?= $avatarFileHeader; ?>" alt="Header Avatar">
                                     <span class="text-start ms-xl-2">
-                                        <span class="d-none d-xl-inline-block ms-1 fw-medium user-name-text"><?= $_SESSION['userData']['nombres']; ?></span>
-                                        <span class="d-none d-xl-block ms-1 fs-12 user-name-sub-text"><?= $_SESSION['userData']['nombrerol']; ?></span>
+                                        <span class="d-none d-xl-inline-block ms-1 fw-medium user-name-text"><?= $userNameHeader; ?></span>
+                                        <span class="d-none d-xl-block ms-1 fs-12 user-name-sub-text"><?= $userRolHeader; ?></span>
                                     </span>
                                 </span>
                             </button>
@@ -516,7 +532,7 @@
                             ?>
                             <div class="dropdown-menu dropdown-menu-end">
                                 <!-- item-->
-                                <h6 class="dropdown-header">Bienvedid@ <?= $_SESSION['userData']['nombres']; ?>!</h6>
+                                <h6 class="dropdown-header">Bienvedid@ <?= $userNameHeader; ?>!</h6>
                                 <a class="dropdown-item" href="<?= base_url(); ?>/usuarios/perfil"><i class="mdi mdi-account-circle text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Perfil</span></a>
                                 <!-- <a class="dropdown-item" href="apps-chat.html"><i class="mdi mdi-message-text-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Mensajes</span></a> -->
                                 <!-- <a class="dropdown-item" href="apps-tasks-kanban.html"><i class="mdi mdi-calendar-check-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Tablero de tareas</span></a> -->

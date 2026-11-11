@@ -15,6 +15,10 @@ class Lgs_preplaneaciones extends Controllers
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
+        if (empty($_SESSION['login'])) {
+            header('Location: ' . base_url() . '/login');
+            die();
+        }
         $this->model = new Lgs_preplaneacionesModel();
     }
 

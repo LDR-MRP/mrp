@@ -53,7 +53,7 @@ class Lgs_tarifaCalculator
         if ($idTipoTraslado === 1) { // Madrina
             $preciosMadrina = [2 => 40.0, 3 => 26.66, 4 => 17.0, 5 => 17.0, 6 => 17.0, 7 => 15.0, 8 => 15.0, 9 => 13.0, 10 => 13.0];
             $precioBase = $preciosMadrina[$volumenVins] ?? 17.0;
-            $factor = round($precioBase / $costoPorKm, 4);
+            $factor = round($precioBase / $costoPorKm, 5);
         } elseif ($idTipoTraslado === 3) { // Plataforma
             $factor = ($volumenVins <= 1) ? 2.5 : ($volumenVins === 2 ? 1.5 : 1.0);
         }
@@ -121,7 +121,7 @@ class Lgs_tarifaCalculator
 
         return [
             'monto_calculado'        => round($montoCalculado, 2),
-            'tarifa_aplicada'        => round($precioKmUnitario, 2),
+            'tarifa_aplicada'        => round($precioKmUnitario, 5),
             'tipo_servicio_original' => $servicioOriginal,
             'tipo_servicio_nuevo'    => $servicioNuevo,
             'km_aprobados'           => $kmAprobados,

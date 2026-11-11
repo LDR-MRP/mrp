@@ -88,6 +88,9 @@ class Lgs_gastosadicionales extends Controllers
                 'id_tipo_gasto'    => $_GET['id_tipo_gasto'] ?? null,
                 'id_proveedor'     => $_GET['id_proveedor'] ?? null,
                 'es_independiente' => $_GET['es_independiente'] ?? null,
+                'periodo'          => $_GET['periodo'] ?? null,
+                'fecha_inicio'     => $_GET['fecha_inicio'] ?? null,
+                'fecha_fin'        => $_GET['fecha_fin'] ?? null,
             ];
             $data = $this->service->getGastos($filtros);
             echo json_encode($data, JSON_UNESCAPED_UNICODE);

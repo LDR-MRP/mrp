@@ -2,6 +2,7 @@ let tableGastos;
 let currentGastoDetalle = null;
 let vinsDisponiblesEnvio = [];
 let calcTimeout = null;
+let filtroPeriodoGastosActual = '';
 
 document.addEventListener('DOMContentLoaded', function () {
     initTableGastos();
@@ -27,6 +28,11 @@ function initTableGastos() {
                 d.id_tipo_gasto = $('#filtro_tipo').val();
                 d.id_proveedor = $('#filtro_proveedor').val();
                 d.es_independiente = $('#filtro_independiente').val();
+                d.periodo = filtroPeriodoGastosActual;
+                if (filtroPeriodoGastosActual === 'abierta') {
+                    d.fecha_inicio = $('#filtro_gasto_fecha_inicio').val();
+                    d.fecha_fin = $('#filtro_gasto_fecha_fin').val();
+                }
             },
             "dataSrc": function (json) {
                 let data = json || [];
@@ -209,11 +215,68 @@ function initFiltrosEvents() {
     });
 }
 
+function cambiarPeriodoGastos(periodo, btn) {
+    filtroPeriodoGastosActual = periodo;
+    document.querySelectorAll('.btn-periodo-gastos').forEach(b => {
+        b.classList.remove('active', 'btn-primary');
+        b.classList.add('btn-outline-secondary');
+    });
+    if (btn) {
+        btn.classList.add('active');
+        btn.classList.remove('btn-outline-secondary');
+    }
+
+    const boxFecha = document.getElementById('boxFiltroFechaGastos');
+    if (periodo === 'abierta') {
+        if (boxFecha) boxFecha.classList.remove('d-none');
+    } else {
+        if (boxFecha) boxFecha.classList.add('d-none');
+        $('#filtro_gasto_fecha_inicio').val('');
+        $('#filtro_gasto_fecha_fin').val('');
+        tableGastos.ajax.reload();
+    }
+
+    // Actualizar labels descriptivos de KPIs
+    let periodoLabel = 'Cargos Adicionales';
+    let deduccionLabel = 'Deducciones por Recuperar';
+    if (periodo === 'semana') {
+        periodoLabel = 'Cargos Adicionales (Semana)';
+        deduccionLabel = 'Deducciones (Semana)';
+    } else if (periodo === 'mes') {
+        periodoLabel = 'Cargos Adicionales (Mes)';
+        deduccionLabel = 'Deducciones (Mes)';
+    } else if (periodo === 'anio') {
+        periodoLabel = 'Cargos Adicionales (Año)';
+        deduccionLabel = 'Deducciones (Año)';
+    } else if (periodo === 'abierta') {
+        periodoLabel = 'Cargos Adicionales (Rango)';
+        deduccionLabel = 'Deducciones (Rango)';
+    }
+    if (document.getElementById('lblPeriodoCargos')) document.getElementById('lblPeriodoCargos').innerText = periodoLabel;
+    if (document.getElementById('lblPeriodoDeducciones')) document.getElementById('lblPeriodoDeducciones').innerText = deduccionLabel;
+}
+
 function limpiarFiltros() {
     $('#filtro_estado').val('');
     $('#filtro_tipo').val('');
     $('#filtro_proveedor').val('');
     $('#filtro_independiente').val('');
+    $('#filtro_gasto_fecha_inicio').val('');
+    $('#filtro_gasto_fecha_fin').val('');
+    filtroPeriodoGastosActual = '';
+    document.querySelectorAll('.btn-periodo-gastos').forEach(b => {
+        b.classList.remove('active', 'btn-primary');
+        b.classList.add('btn-outline-secondary');
+    });
+    const btnTodos = document.getElementById('btnPeriodoGastosTodos');
+    if (btnTodos) {
+        btnTodos.classList.add('active');
+        btnTodos.classList.remove('btn-outline-secondary');
+    }
+    const boxFecha = document.getElementById('boxFiltroFechaGastos');
+    if (boxFecha) boxFecha.classList.add('d-none');
+    if (document.getElementById('lblPeriodoCargos')) document.getElementById('lblPeriodoCargos').innerText = 'Cargos Adicionales';
+    if (document.getElementById('lblPeriodoDeducciones')) document.getElementById('lblPeriodoDeducciones').innerText = 'Deducciones por Recuperar';
     tableGastos.ajax.reload();
 }
 
@@ -597,7 +660,7 @@ function onTipoGastoChange() {
                         <input type="number" id="cantidad" name="cantidad" class="form-control" min="1" step="0.5" value="1" required oninput="calcularPreviewGasto();">
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fs-12 fw-medium text-muted">Precio Unitario ($) <span class="text-danger">*</span></label>
+                        <label class="form-label fs-12 fw-medium text-muted">Precio Unitario ($ sin IVA) <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
                             <input type="number" id="precio_unitario" name="precio_unitario" class="form-control" min="0" step="0.5" required oninput="calcularPreviewGasto();" placeholder="Ej. 1500.00">
@@ -615,7 +678,7 @@ function onTipoGastoChange() {
             <div class="p-3 border rounded bg-light-subtle">
                 <div class="row g-2">
                     <div class="col-md-5">
-                        <label class="form-label fs-12 fw-medium text-muted">Monto Total a Asignar ($ MXN) <span class="text-danger">*</span></label>
+                        <label class="form-label fs-12 fw-medium text-muted">Monto Total a Asignar ($ MXN sin IVA) <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
                             <input type="number" id="monto_final_input" name="monto_final" class="form-control" min="0.01" step="0.01" required oninput="calcularPreviewGasto();" placeholder="Ej. 3500.00">

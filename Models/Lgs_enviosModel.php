@@ -156,6 +156,7 @@ class Lgs_enviosModel extends Mysql
                             ELSE COALESCE(e.costo_total, 0.00) 
                         END AS costo_total,
                         e.fecha_tentativa_envio,
+                        e.created_at,
                         e.id_estado,
                         COALESCE(e.is_pausado, 0) AS is_pausado,
                         e.motivo_pausa,
@@ -226,6 +227,7 @@ class Lgs_enviosModel extends Mysql
                             ELSE COALESCE(e.costo_total, 0.00) 
                         END AS costo_total,
                         e.fecha_tentativa_envio,
+                        e.created_at,
                         e.id_estado,
                         0 AS is_pausado,
                         NULL AS motivo_pausa,

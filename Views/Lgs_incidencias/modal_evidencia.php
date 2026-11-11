@@ -32,8 +32,9 @@
 
                     <div class="mb-3">
                         <label class="form-label fs-12 fw-medium text-muted">Seleccionar Archivo(s) de Evidencia <span class="text-danger">*</span></label>
-                        <input type="file" id="evidencia_archivo" name="archivos[]" class="form-control" required accept="image/*,video/mp4,application/pdf" multiple>
+                        <input type="file" id="evidencia_archivo" name="archivos[]" class="form-control" required accept="image/*,video/mp4,application/pdf" multiple onchange="previsualizarEvidenciasIncidencia(this, 'preview_evidencias_modal');">
                         <div class="form-text fs-11">Permitido: JPG, PNG, WEBP, PDF, MP4 (puede seleccionar varias fotos simultáneamente).</div>
+                        <div id="preview_evidencias_modal" class="row g-2 mt-2"></div>
                     </div>
 
                 </div>

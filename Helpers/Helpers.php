@@ -25,6 +25,17 @@ function media()
 }
 function headerAdmin($data = "")
 {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    if (empty($_SESSION['login'])) {
+        if (!headers_sent()) {
+            header('Location: ' . BASE_URL . '/login');
+        } else {
+            echo '<script>window.location.href = "' . BASE_URL . '/login";</script>';
+        }
+        die();
+    }
     $view_header = "Views/Template/header_admin.php";
     require_once($view_header);
 }
@@ -451,8 +462,8 @@ function getPermisos(int $idmodulo)
         $permisos = is_array($arrPermisos) ? $arrPermisos : [];
         $permisosMod = $permisos[$idmodulo] ?? "";
 
-        // Si es Administrador (rol 1), garantizar acceso completo a módulos del sistema y logística
-        if ($idrol === 1) {
+        // Si es Administrador (rol 1) o Planeador / Gerente de Logística (rol 65), garantizar acceso a módulos de logística
+        if ($idrol === 1 || $idrol === 65) {
             $logisticaModulos = [150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162];
             foreach ($logisticaModulos as $modId) {
                 if (empty($permisos[$modId]['r'])) {

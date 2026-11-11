@@ -618,7 +618,7 @@ class Lgs_gastosadicionalesService
         $cuotaBase = floor(($montoTotal / $numVins) * 100) / 100;
         $centavosSobrantes = round($montoTotal - ($cuotaBase * $numVins), 2);
 
-        $porcentajeBase = round(100.0 / $numVins, 4);
+        $porcentajeBase = round(100.0 / $numVins, 5);
         $reparto = [];
 
         foreach ($vins as $idx => $v) {

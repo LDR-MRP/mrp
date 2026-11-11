@@ -163,7 +163,7 @@ class Lgs_ejecucionService {
     /**
      * Registra checklist digital con evidencias fotográficas
      */
-    public function registrarChecklistTrasladista(int $idEnvio, int $idUnidad, string $tipoChecklist, string $vin, int $userId, ?string $comentarios, array $fotosFiles): void {
+    public function registrarChecklistTrasladista(int $idEnvio, int $idUnidad, string $tipoChecklist, string $vin, int $userId, ?string $comentarios, array $fotosFiles, ?array $zipFile = null): void {
         $db = $this->model->getConexion();
         try {
             if (!$db->inTransaction()) {
@@ -187,7 +187,22 @@ class Lgs_ejecucionService {
             // 3. Procesar y guardar cada archivo fotográfico (en checklist y sincronizado en lgs_evidencias)
             $tipoEvidenciaNum = ($tipoChecklist === 'entrega_destino') ? 2 : 1; // 1=Salida/Patio, 2=Llegada/Destino
 
-            if (empty($fotosFiles)) {
+            // Soporte de extracción masiva vía ZIP
+            if ($zipFile !== null && isset($zipFile['tmp_name']) && file_exists($zipFile['tmp_name'])) {
+                require_once 'Services/Lgs_zipEvidenciasHelper.php';
+                $zipHelper = new Lgs_zipEvidenciasHelper();
+                $prefix = 'ev_' . $idChecklist . '_';
+                $context = ($tipoChecklist === 'entrega_destino') ? 'entrega_destino' : 'inspeccion';
+                $fotosExtraidas = $zipHelper->procesarZip($zipFile, $uploadDir, $prefix, $context);
+
+                foreach ($fotosExtraidas as $f) {
+                    $this->model->registrarChecklistEvidencia($db, $idChecklist, $f['key'], $f['destFile']);
+                    $obsEvidencia = "Foto " . ucfirst($f['key']) . " (" . $vin . ")" . ($comentarios ? " - " . $comentarios : "");
+                    $this->model->insertarEvidenciaUnificada($db, $idEnvio, $idUnidad, $tipoEvidenciaNum, $f['destFile'], $obsEvidencia, $userId);
+                }
+            }
+
+            if (empty($fotosFiles) && $zipFile === null) {
                 error_log("Checklist sin fotos subidas en _FILES o con error (error > 0) para el VIN: $vin");
             }
 
@@ -221,8 +236,8 @@ class Lgs_ejecucionService {
                 $stmt = $db->prepare($sqlUpVin);
                 $paramsUp = ($valorOdometro !== null) ? [$valorOdometro, $idEnvio, $idUnidad] : [$idEnvio, $idUnidad];
                 $stmt->execute($paramsUp);
-            } elseif ($tipoChecklist === 'salida_planta') {
-                // Al confirmar salida de planta
+            } elseif ($tipoChecklist === 'salida_planta' || $tipoChecklist === 'recibo_trasladista') {
+                // Al confirmar salida de planta o recibo de trasladista
                 $sqlUpVin = "UPDATE lgs_envios_vins SET estado_unidad_fisico = 'EN_RUTA'" . ($valorOdometro !== null ? ", odometro_inicial = ?" : "") . " WHERE id_envio = ? AND id_unidad = ?";
                 $stmt = $db->prepare($sqlUpVin);
                 $paramsUp = ($valorOdometro !== null) ? [$valorOdometro, $idEnvio, $idUnidad] : [$idEnvio, $idUnidad];
@@ -230,7 +245,7 @@ class Lgs_ejecucionService {
             }
 
             // Comprobar si se terminó de cargar la última unidad en la plataforma/madrina
-            if ($tipoChecklist === 'salida_planta' || $tipoChecklist === 'entrada_trasladista') {
+            if ($tipoChecklist === 'salida_planta' || $tipoChecklist === 'entrada_trasladista' || $tipoChecklist === 'recibo_trasladista') {
                 $sqlCheckCarga = "SELECT COUNT(*) FROM lgs_envios_vins WHERE id_envio = ? AND (estado_unidad_fisico NOT IN ('EN_RUTA', 'EN_ENTREGAS', 'ENTREGADO') OR estado_unidad_fisico IS NULL)";
                 $stmtCheckCarga = $db->prepare($sqlCheckCarga);
                 $stmtCheckCarga->execute([$idEnvio]);
@@ -663,6 +678,31 @@ class Lgs_ejecucionService {
             }
         } catch (Throwable $e) {
             error_log("Error al notificar carga completa a logística: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Resuelve el VIN de una unidad dada para evitar fallos si el formulario no lo envía explícito
+     */
+    public function obtenerVinUnidad(int $idUnidad): ?string
+    {
+        try {
+            $db = $this->model->getConexion();
+            $stmt = $db->prepare("
+                SELECT COALESCE(u.vin, ut.clave, lu.vin, ev.vin) as vin
+                FROM lgs_envios_vins ev
+                LEFT JOIN lgs_unidades_envios u ON ev.id_unidad = u.id_unidad
+                LEFT JOIN mrp_unidades_terminadas ut ON ev.id_unidad = ut.idunidad
+                LEFT JOIN lgs_unidades lu ON ev.id_unidad = lu.id_unidad
+                WHERE ev.id_unidad = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$idUnidad]);
+            $vin = $stmt->fetchColumn();
+            return $vin ? (string)$vin : null;
+        } catch (Throwable $e) {
+            error_log("Error al obtenerVinUnidad: " . $e->getMessage());
+            return null;
         }
     }
 }

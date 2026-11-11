@@ -115,10 +115,14 @@ document.addEventListener('DOMContentLoaded', function () {
                                                     <i class="ri-file-user-line me-1"></i> Recibo Trasladista
                                                 </button>`;
 
-                    // 4. Botón Entrega Destino (Distribuidor / Cliente Final) - Habilitado para En Tránsito (6) y Entregado (7)
+                    // 4. Botón Entrega Destino (Distribuidor / Cliente Final) - Habilitado sólo si ya cuenta con Evidencias de Planta (recibo de planta) y está En Tránsito (6) o Entregado (7)
                     let btnDestino = '';
                     let btnCerrarEntrega = '';
-                    if (estado >= 6) {
+                    if (totalPlanta === 0) {
+                        btnDestino = `<button class="btn btn-sm btn-light text-muted border rounded-pill px-2 py-1 fw-medium me-1" disabled title="Bloqueado: Debe registrar primero la Inspección / Recibo de Entrega en Planta">
+                                        <i class="ri-lock-line me-1"></i> Entrega Destino
+                                      </button>`;
+                    } else if (estado >= 6) {
                         let btnDestClass = estado === 6 ? 'btn-success shadow-sm' : 'btn-soft-success';
                         let btnDestText = estado === 6 ? 'Entrega Destino' : 'Ver Destino';
                         btnDestino = `<button class="btn btn-sm ${btnDestClass} rounded-pill px-2 py-1 fw-semibold me-1" onClick="fntAbrirEvidencias(${data}, '${folio}', ${estado}, 'destino')" title="Recepción y Cierre en Destino (Distribuidor o Cliente Final)">
@@ -136,10 +140,17 @@ document.addEventListener('DOMContentLoaded', function () {
                                       </button>`;
                     }
 
-                    // 5. Botón Carga Masiva ZIP (Punto 6 Adriana)
-                    let btnZip = `<button class="btn btn-sm btn-soft-warning border border-warning-subtle text-warning-emphasis rounded-pill px-2 py-1 fw-semibold me-1 shadow-xs" onClick="fntAbrirEvidencias(${data}, '${folio}', ${estado}, 'destino', true)" title="Carga Masiva de Evidencias en archivo .ZIP">
+                    // 5. Botón Carga Masiva ZIP (Punto 6 Adriana - Condicionado a contar con entrega en planta previa)
+                    let btnZip = '';
+                    if (totalPlanta > 0) {
+                        btnZip = `<button class="btn btn-sm btn-soft-warning border border-warning-subtle text-warning-emphasis rounded-pill px-2 py-1 fw-semibold me-1 shadow-xs" onClick="fntAbrirEvidencias(${data}, '${folio}', ${estado}, 'destino', true)" title="Carga Masiva de Evidencias en archivo .ZIP">
                                     <i class="ri-folder-zip-fill text-warning me-1"></i> Carga ZIP
                                   </button>`;
+                    } else {
+                        btnZip = `<button class="btn btn-sm btn-light text-muted border rounded-pill px-2 py-1 fw-medium me-1" disabled title="Bloqueado: Requiere primero cargar evidencias de Entrega en Planta">
+                                    <i class="ri-lock-line me-1"></i> Carga ZIP
+                                  </button>`;
+                    }
 
                     // 6. Botón PDF Hoja de Entrega / Traspaso
                     let btnPdf = `<a href="${base_url}/Lgs_evidencias/hoja_entrega_pdf/${data}" target="_blank" class="btn btn-sm btn-soft-danger border border-danger-subtle rounded-pill px-2 py-1 fw-semibold me-1 shadow-sm" title="Imprimir / Ver Hoja de Entrega y Traspaso en PDF">
@@ -551,7 +562,16 @@ function guardarInspeccionEntrega() {
     const idEnvio = document.getElementById('id_envio_evidencia').value;
     const selectUnidad = document.getElementById('select_evid_unidad');
     const idUnidad = selectUnidad ? selectUnidad.value : '';
-    const vin = document.getElementById('vin_confirmado_entrega').value;
+    let vin = document.getElementById('vin_confirmado_entrega')?.value || '';
+    if (!vin && selectUnidad && selectUnidad.selectedIndex >= 0) {
+        const opt = selectUnidad.options[selectUnidad.selectedIndex];
+        if (opt) {
+            vin = opt.getAttribute('data-vin') || (opt.text ? opt.text.split(' ')[0] : '');
+            if (document.getElementById('vin_confirmado_entrega')) {
+                document.getElementById('vin_confirmado_entrega').value = vin;
+            }
+        }
+    }
     const modo = document.getElementById('modo_evidencia_actual') ? document.getElementById('modo_evidencia_actual').value : 'destino';
 
     if (!idEnvio) {

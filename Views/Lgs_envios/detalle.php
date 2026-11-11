@@ -149,10 +149,16 @@
                     <?php 
                         if ($estadoEnvio === 1): 
                     ?>
+                        <a href="<?= base_url(); ?>/Lgs_envios?edit=<?= $data['id_envio']; ?>" class="btn btn-light border rounded-pill px-3 py-2 shadow-sm me-2 fw-semibold text-secondary" title="Modificar paradas, nodos y datos de ruta del envío">
+                            <i class="ri-route-line me-1 text-primary"></i> Editar Ruta / Envío
+                        </a>
                         <button class="btn btn-primary rounded-pill px-4 py-2 shadow-sm fw-bold" onclick="guardarAcomodo(true);" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
                             <i class="ri-check-double-line me-1"></i> Finalizar y Volver
                         </button>
                     <?php elseif ($puedeEditar): ?>
+                        <a href="<?= base_url(); ?>/Lgs_envios?edit=<?= $data['id_envio']; ?>" class="btn btn-light border rounded-pill px-3 py-2 shadow-sm me-2 fw-semibold text-secondary" title="Modificar paradas, nodos y datos de ruta del envío">
+                            <i class="ri-route-line me-1 text-primary"></i> Editar Ruta / Envío
+                        </a>
                         <a href="<?= base_url(); ?>/Lgs_envios" class="btn btn-light border rounded-pill px-4 py-2 shadow-sm me-2 fw-semibold text-secondary">
                             <i class="ri-arrow-go-back-line me-1"></i> Volver
                         </a>
@@ -160,6 +166,9 @@
                             <i class="ri-edit-line me-1"></i> <?= $enPlaneacionAbierta ? 'Editar (Regresa a Borrador)' : 'Editar (Regresa a Borrador)' ?>
                         </button>
                     <?php else: ?>
+                        <a href="<?= base_url(); ?>/Lgs_envios?edit=<?= $data['id_envio']; ?>" class="btn btn-light border rounded-pill px-3 py-2 shadow-sm me-2 fw-semibold text-secondary" title="Consultar configuración de ruta">
+                            <i class="ri-route-line me-1 text-primary"></i> Ver Ruta / Envío
+                        </a>
                         <a href="<?= base_url(); ?>/Lgs_envios" class="btn btn-light border rounded-pill px-4 py-2 shadow-sm fw-semibold text-secondary">
                             <i class="ri-arrow-go-back-line me-1"></i> Volver (Solo Lectura)
                         </a>

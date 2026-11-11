@@ -376,6 +376,53 @@
                     </div>
                 </div>
 
+                <!-- 3.1 BARRA DE FILTRO POR PERÍODO Y MONTO TOTAL (SIN IVA) -->
+                <div class="row align-items-center mb-3 g-2">
+                    <div class="col-xl-8 col-lg-7">
+                        <div class="d-flex align-items-center gap-2 flex-wrap bg-white p-2 rounded-3 border border-light-subtle shadow-xs">
+                            <span class="fs-12 fw-bold text-muted text-uppercase ls-1 me-1">
+                                <i class="ri-calendar-todo-line text-primary me-1"></i>Período:
+                            </span>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-secondary btn-periodo-envios active" id="btnPeriodoTodos" onclick="cambiarPeriodoEnvios('todos', this)">Todos</button>
+                                <button type="button" class="btn btn-outline-secondary btn-periodo-envios" id="btnPeriodoSemana" onclick="cambiarPeriodoEnvios('semana', this)">Esta Semana</button>
+                                <button type="button" class="btn btn-outline-secondary btn-periodo-envios" id="btnPeriodoMes" onclick="cambiarPeriodoEnvios('mes', this)">Este Mes</button>
+                                <button type="button" class="btn btn-outline-secondary btn-periodo-envios" id="btnPeriodoAnio" onclick="cambiarPeriodoEnvios('anio', this)">Este Año</button>
+                                <button type="button" class="btn btn-outline-secondary btn-periodo-envios" id="btnPeriodoAbierta" onclick="cambiarPeriodoEnvios('abierta', this)">Fecha Abierta</button>
+                            </div>
+                            
+                            <div id="boxFiltroFechaAbiertaEnvios" class="d-none d-inline-flex align-items-center gap-1 ms-1">
+                                <input type="date" id="filtroEnvioFechaInicio" class="form-control form-control-sm" style="width: 135px;" title="Fecha Inicio">
+                                <span class="text-muted fs-12">-</span>
+                                <input type="date" id="filtroEnvioFechaFin" class="form-control form-control-sm" style="width: 135px;" title="Fecha Fin">
+                                <button type="button" class="btn btn-sm btn-primary px-2" onclick="aplicarFiltroFechaAbiertaEnvios()" title="Aplicar rango de fechas">
+                                    <i class="ri-check-line"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-light border px-2" onclick="limpiarFiltroFechasEnvios()" title="Limpiar fechas">
+                                    <i class="ri-close-line"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-4 col-lg-5">
+                        <div class="d-flex align-items-center justify-content-lg-end justify-content-start bg-white p-2 rounded-3 border border-light-subtle shadow-xs">
+                            <div class="text-end me-3">
+                                <span class="fs-11 text-muted text-uppercase fw-semibold d-block">Monto Total (sin IVA)</span>
+                                <span class="fs-18 fw-bold text-success" id="cardMontoTotalEnvios">$0.00</span>
+                            </div>
+                            <div class="avatar-xs flex-shrink-0">
+                                <span class="avatar-title bg-success-subtle text-success rounded-circle fs-4">
+                                    <i class="ri-money-dollar-circle-line"></i>
+                                </span>
+                            </div>
+                            <div class="ms-2 ps-2 border-start">
+                                <span class="badge bg-soft-primary text-primary fs-11" id="badgeEnviosFiltradosCount">0 viajes</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 4. DATATABLE CARD -->
                 <div class="card border border-light-subtle shadow-sm bg-white rounded-3 mb-4">
                     <div class="card-header bg-white py-3 px-4 border-bottom border-light-subtle">
@@ -434,7 +481,7 @@
                                         <th scope="col" class="py-3">Fecha Prog.</th>
                                         <th scope="col" class="py-3">VINs Asignados</th>
                                         <th scope="col" class="py-3">Trasladista</th>
-                                        <th scope="col" class="py-3">Costo Est.</th>
+                                        <th scope="col" class="py-3">Costo Est. (sin IVA)</th>
                                         <th scope="col" class="py-3">Distancia (KM)</th>
                                         <th scope="col" class="py-3">Tipo</th>
                                         <th scope="col" class="py-3">Motivo</th>
@@ -654,7 +701,7 @@
                                     </div>
                                     <div class="row g-3">
                                         <div class="col-md-5">
-                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Monto Total Pactado ($ MXN) <span class="text-danger">*</span></label>
+                                            <label class="form-label text-uppercase fs-11 fw-bold text-muted mb-1">Monto Total Pactado ($ MXN sin IVA) <span class="text-danger">*</span></label>
                                             <div class="input-group">
                                                 <span class="input-group-text bg-light border fw-bold text-muted">$</span>
                                                 <input type="number" step="0.01" min="0" class="form-control fw-bold fs-14 text-success" id="monto_pactado" name="monto_pactado" placeholder="0.00" oninput="actualizarCostoEstimadoPorMontoAbierto();">
@@ -749,6 +796,9 @@
                                     <button type="button" id="btnActionForm" class="btn btn-primary rounded-pill py-2 shadow-sm fw-bold" onclick="saveEnvio();" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
                                         <i class="ri-save-3-line align-middle me-1"></i> <span id="btnText">Guardar Envío</span>
                                     </button>
+                                    <a href="javascript:void(0);" id="btnIrAcomodoDirecto" class="btn btn-soft-info border border-info-subtle rounded-pill py-2 fw-semibold text-info-emphasis" style="display:none;" onclick="irAcomodoDesdeFormulario();">
+                                        <i class="ri-truck-line align-middle fs-16 me-1 text-info"></i> Ir al Acomodo de VINs
+                                    </a>
                                     <button type="button" id="btnReabrirEditar" class="btn btn-warning rounded-pill py-2 shadow-sm fw-semibold" onclick="fntReabrirParaEditar()" style="display:none;">
                                         <i class="ri-lock-unlock-line align-middle me-1"></i> Reabrir para Editar
                                     </button>

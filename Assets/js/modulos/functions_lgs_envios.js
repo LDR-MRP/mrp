@@ -227,8 +227,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    tableEnvios.on('search.dt', function() {
+        if (tableEnvios) {
+            const dataFiltrada = tableEnvios.rows({ search: 'applied' }).data().toArray();
+            actualizarMetricasEnvios(dataFiltrada);
+        }
+    });
+
     // Cargar Catálogos Iniciales
     cargarProveedoresTrasladistas();
+
+    // Auto-apertura si viene parámetro ?edit=ID en URL (Navegación directa desde Acomodo o alertas)
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit');
+    if (editId) {
+        setTimeout(() => {
+            fntEditRuta(parseInt(editId));
+        }, 300);
+    }
 });
 
 /**
@@ -271,8 +287,106 @@ function filtrarPorEstadoCard(filtro, chipId) {
     }
 }
 
+let filtroPeriodoEnviosActual = 'todos';
+let filtroFechaInicioEnvios = null;
+let filtroFechaFinEnvios = null;
+
+// Hook de búsqueda personalizada en DataTables para tableEnvios por período
+if (typeof $ !== "undefined" && $.fn && $.fn.dataTable && $.fn.dataTable.ext) {
+    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+        if (settings.sTableId !== 'tableEnvios') return true;
+        if (filtroPeriodoEnviosActual === 'todos') return true;
+
+        const row = (settings.aoData && settings.aoData[dataIndex]) ? settings.aoData[dataIndex]._aData : null;
+        if (!row) return true;
+
+        const fechaStr = row.fecha_tentativa_envio || row.created_at;
+        if (!fechaStr || fechaStr === 'null') return false;
+
+        const fParts = fechaStr.split(' ')[0].split('T')[0];
+        if (!fParts) return false;
+
+        const rowDate = new Date(fParts + 'T00:00:00');
+        if (isNaN(rowDate.getTime())) return false;
+
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (filtroPeriodoEnviosActual === 'semana') {
+            const dayOfWeek = today.getDay();
+            const diffToMon = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+            const monday = new Date(today.getFullYear(), today.getMonth(), diffToMon);
+            const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6, 23, 59, 59, 999);
+            return rowDate >= monday && rowDate <= sunday;
+        } else if (filtroPeriodoEnviosActual === 'mes') {
+            return rowDate.getFullYear() === now.getFullYear() && rowDate.getMonth() === now.getMonth();
+        } else if (filtroPeriodoEnviosActual === 'anio') {
+            return rowDate.getFullYear() === now.getFullYear();
+        } else if (filtroPeriodoEnviosActual === 'abierta') {
+            if (filtroFechaInicioEnvios) {
+                const dInicio = new Date(filtroFechaInicioEnvios + 'T00:00:00');
+                if (rowDate < dInicio) return false;
+            }
+            if (filtroFechaFinEnvios) {
+                const dFin = new Date(filtroFechaFinEnvios + 'T23:59:59');
+                if (rowDate > dFin) return false;
+            }
+            return true;
+        }
+
+        return true;
+    });
+}
+
 /**
- * Calcula y actualiza las 8 métricas de los KPIs superiores en tiempo real
+ * Permite cambiar el período temporal de envíos (todos, semana, mes, año, abierta)
+ */
+function cambiarPeriodoEnvios(periodo, btn) {
+    filtroPeriodoEnviosActual = periodo;
+    document.querySelectorAll('.btn-periodo-envios').forEach(b => {
+        b.classList.remove('active', 'btn-primary');
+        b.classList.add('btn-outline-secondary');
+    });
+    if (btn) {
+        btn.classList.add('active');
+        btn.classList.remove('btn-outline-secondary');
+    }
+
+    const boxAbierta = document.getElementById('boxFiltroFechaAbiertaEnvios');
+    if (periodo === 'abierta') {
+        if (boxAbierta) boxAbierta.classList.remove('d-none');
+    } else {
+        if (boxAbierta) boxAbierta.classList.add('d-none');
+        filtroFechaInicioEnvios = null;
+        filtroFechaFinEnvios = null;
+        if (tableEnvios) tableEnvios.draw();
+    }
+}
+
+/**
+ * Aplica el rango de fechas abiertas
+ */
+function aplicarFiltroFechaAbiertaEnvios() {
+    const dIni = document.getElementById('filtroEnvioFechaInicio')?.value;
+    const dFin = document.getElementById('filtroEnvioFechaFin')?.value;
+    filtroFechaInicioEnvios = dIni || null;
+    filtroFechaFinEnvios = dFin || null;
+    if (tableEnvios) tableEnvios.draw();
+}
+
+/**
+ * Limpia el filtro de fechas abiertas
+ */
+function limpiarFiltroFechasEnvios() {
+    if (document.getElementById('filtroEnvioFechaInicio')) document.getElementById('filtroEnvioFechaInicio').value = '';
+    if (document.getElementById('filtroEnvioFechaFin')) document.getElementById('filtroEnvioFechaFin').value = '';
+    filtroFechaInicioEnvios = null;
+    filtroFechaFinEnvios = null;
+    if (tableEnvios) tableEnvios.draw();
+}
+
+/**
+ * Calcula y actualiza las métricas y monto total (sin IVA) en tiempo real
  */
 function actualizarMetricasEnvios(data) {
     if (!Array.isArray(data)) return;
@@ -286,6 +400,25 @@ function actualizarMetricasEnvios(data) {
     let pausados = data.filter(e => parseInt(e.is_pausado) === 1).length;
     let entregados = data.filter(e => parseInt(e.id_estado) === 7 || parseInt(e.id_estado) === 8).length;
 
+    // Calcular monto total de envíos visibles / filtrados
+    let totalCosto = 0;
+    let enviosFiltrados = 0;
+    if (typeof tableEnvios !== "undefined" && tableEnvios && tableEnvios.rows) {
+        try {
+            const rowsVisibles = tableEnvios.rows({ search: 'applied' }).data().toArray();
+            enviosFiltrados = rowsVisibles.length;
+            rowsVisibles.forEach(e => {
+                totalCosto += parseFloat(e.costo_total || 0);
+            });
+        } catch (err) {
+            enviosFiltrados = data.length;
+            data.forEach(e => { totalCosto += parseFloat(e.costo_total || 0); });
+        }
+    } else {
+        enviosFiltrados = data.length;
+        data.forEach(e => { totalCosto += parseFloat(e.costo_total || 0); });
+    }
+
     if (document.getElementById('cardTotalEnvios')) document.getElementById('cardTotalEnvios').innerText = total;
     if (document.getElementById('cardEnviosCreados')) document.getElementById('cardEnviosCreados').innerText = creados;
     if (document.getElementById('cardEnviosPorAprobar')) document.getElementById('cardEnviosPorAprobar').innerText = porAprobar;
@@ -294,6 +427,13 @@ function actualizarMetricasEnvios(data) {
     if (document.getElementById('cardEnviosTransito')) document.getElementById('cardEnviosTransito').innerText = transito;
     if (document.getElementById('cardEnviosPausados')) document.getElementById('cardEnviosPausados').innerText = pausados;
     if (document.getElementById('cardEnviosEntregados')) document.getElementById('cardEnviosEntregados').innerText = entregados;
+
+    if (document.getElementById('cardMontoTotalEnvios')) {
+        document.getElementById('cardMontoTotalEnvios').innerText = '$' + totalCosto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    if (document.getElementById('badgeEnviosFiltradosCount')) {
+        document.getElementById('badgeEnviosFiltradosCount').innerText = `${enviosFiltrados} viaje${enviosFiltrados === 1 ? '' : 's'}`;
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -1739,8 +1879,10 @@ function openModal() {
     // Resetear botones de acción
     const btnAction = document.getElementById('btnActionForm');
     const btnReabrir = document.getElementById('btnReabrirEditar');
+    const btnAcomodo = document.getElementById('btnIrAcomodoDirecto');
     if (btnAction) btnAction.style.display = '';
     if (btnReabrir) btnReabrir.style.display = 'none';
+    if (btnAcomodo) btnAcomodo.style.display = 'none';
 
     // Re-habilitar campos que pudieran estar deshabilitados de una vista previa
     document.querySelectorAll('#formEnvio select, #formEnvio input:not([type=hidden]), #formEnvio textarea').forEach(el => el.disabled = false);
@@ -1873,10 +2015,26 @@ function ejecutarGuardadoEnvioFinal() {
                 try {
                     let objData = JSON.parse(request.responseText);
                     if (objData.status === 'success' || objData.status === true || objData.code === 200) {
+                        const idEnvioGuardado = (objData.data && objData.data.id_envio) ? objData.data.id_envio : (objData.id_envio || null);
                         document.querySelector("#formEnvio").reset();
-                        Swal.fire("Envíos", objData.message || objData.msg || "Guardado exitosamente con ruta multi-nodo", "success");
                         if (typeof tableEnvios !== 'undefined' && tableEnvios) tableEnvios.ajax.reload();
-                        fntSwitchView('grid');
+                        
+                        Swal.fire({
+                            title: "¡Envío Guardado!",
+                            text: objData.message || objData.msg || "Guardado exitosamente con ruta multi-nodo.",
+                            icon: "success",
+                            showCancelButton: true,
+                            confirmButtonColor: "#C46623",
+                            cancelButtonColor: "#64748B",
+                            confirmButtonText: '<i class="ri-dashboard-line me-1"></i> Ir al Acomodo de VINs',
+                            cancelButtonText: '<i class="ri-list-check me-1"></i> Ir al Listado de Envíos'
+                        }).then((result) => {
+                            if (result.isConfirmed && idEnvioGuardado) {
+                                window.location.href = base_url + '/Lgs_envios/detalle/' + idEnvioGuardado;
+                            } else {
+                                fntSwitchView('grid');
+                            }
+                        });
                     } else {
                         Swal.fire("Error", objData.message || objData.msg || "Error al guardar el envío", "error");
                     }
@@ -2049,9 +2207,14 @@ function fntEditRuta(idEnvio) {
                     const btnAction = document.getElementById('btnActionForm');
                     const btnReabrirEditar = document.getElementById('btnReabrirEditar');
                     
-                    if (estadoEnvio === 1) {
-                        // Estado 1 (Creado): edición normal
-                        if (btnAction) btnAction.style.display = '';
+                    if (estadoEnvio === 1 || estadoEnvio === 4) {
+                        // Estado 1 (Creado) o Estado 4 (Regresado / Rechazado para ajuste): edición habilitada
+                        if (btnAction) {
+                            btnAction.style.display = '';
+                            if (document.querySelector('#btnText')) {
+                                document.querySelector('#btnText').innerHTML = (estadoEnvio === 4) ? "Actualizar y Reajustar Envío" : "Actualizar Envío";
+                            }
+                        }
                         if (btnReabrirEditar) btnReabrirEditar.style.display = 'none';
                         document.querySelectorAll('#formEnvio select, #formEnvio input:not([type=hidden]), #formEnvio textarea').forEach(el => el.disabled = false);
                         document.querySelectorAll('#btnAgregarDescarga, #btnAgregarCarga').forEach(el => el.style.display = '');
@@ -2075,6 +2238,12 @@ function fntEditRuta(idEnvio) {
                         document.querySelectorAll('#btnAgregarDescarga, #btnAgregarCarga').forEach(el => el.style.display = 'none');
                     }
 
+                    const btnAcomodo = document.getElementById('btnIrAcomodoDirecto');
+                    if (btnAcomodo) {
+                        btnAcomodo.style.display = '';
+                        btnAcomodo.setAttribute('data-id-envio', envio.id_envio);
+                    }
+
                     fntSwitchView('form');
                 }
             } catch (e) {
@@ -2083,6 +2252,14 @@ function fntEditRuta(idEnvio) {
             }
         }
     };
+}
+
+function irAcomodoDesdeFormulario() {
+    const btn = document.getElementById('btnIrAcomodoDirecto');
+    const id = btn ? btn.getAttribute('data-id-envio') : null;
+    if (id) {
+        window.location.href = base_url + '/Lgs_envios/detalle/' + id;
+    }
 }
 
 function fntViewEnvio(idEnvio) {

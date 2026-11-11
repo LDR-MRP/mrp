@@ -238,13 +238,23 @@ class Lgs_incidenciasModel extends Mysql
             $params[] = intval($filtros['es_post_entrega']);
         }
 
+        if (!empty($filtros['periodo'])) {
+            if ($filtros['periodo'] === 'semana') {
+                $where .= " AND YEARWEEK(COALESCE(i.fecha_incidente, i.created_at), 1) = YEARWEEK(CURDATE(), 1)";
+            } elseif ($filtros['periodo'] === 'mes') {
+                $where .= " AND YEAR(COALESCE(i.fecha_incidente, i.created_at)) = YEAR(CURDATE()) AND MONTH(COALESCE(i.fecha_incidente, i.created_at)) = MONTH(CURDATE())";
+            } elseif ($filtros['periodo'] === 'anio') {
+                $where .= " AND YEAR(COALESCE(i.fecha_incidente, i.created_at)) = YEAR(CURDATE())";
+            }
+        }
+
         if (!empty($filtros['fecha_desde'])) {
-            $where .= " AND DATE(i.fecha_incidente) >= ?";
+            $where .= " AND DATE(COALESCE(i.fecha_incidente, i.created_at)) >= ?";
             $params[] = $filtros['fecha_desde'];
         }
 
         if (!empty($filtros['fecha_hasta'])) {
-            $where .= " AND DATE(i.fecha_incidente) <= ?";
+            $where .= " AND DATE(COALESCE(i.fecha_incidente, i.created_at)) <= ?";
             $params[] = $filtros['fecha_hasta'];
         }
 

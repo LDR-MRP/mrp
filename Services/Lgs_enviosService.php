@@ -1015,11 +1015,11 @@ class Lgs_enviosService {
         if ($idTipoTraslado === 1) { // Madrina
             $sacbePrecios = [1=>17, 2=>17, 3=>17, 4=>17, 5=>17, 6=>17, 7=>15, 8=>15, 9=>13, 10=>13];
             $precioBaseMadrina = $sacbePrecios[$volumenVins] ?? 13;
-            $factor = round($precioBaseMadrina / $costoPorKm, 4);
+            $factor = round($precioBaseMadrina / $costoPorKm, 5);
         } elseif ($idTipoTraslado === 3) { // Plataforma
             // Plataformas cobran un equivalente a mover un Lowboy (~$80/km total)
-            // Factor = (80 / 18) / N = 4.4444 / N
-            $factor = max(0.20, 4.4444 / $volumenVins);
+            // Factor = (80 / 18) / N = 4.44444 / N
+            $factor = round(max(0.20, 4.44444 / $volumenVins), 5);
         }
 
         return [

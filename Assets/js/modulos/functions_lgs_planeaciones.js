@@ -86,9 +86,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                           <button class="btn btn-sm btn-soft-success rounded-pill px-3 fw-semibold me-1" onClick="fntEnviarAprobacionPlan(${data})" title="Enviar a Aprobación">
                                             <i class="ri-send-plane-fill me-1"></i> Enviar
                                           </button>`;
-                    } else if (parseInt(row.id_estado) === 3 || parseInt(row.id_estado) === 2) {
-                        btnActionExtra = `<button class="btn btn-sm btn-soft-warning rounded-pill px-3 fw-semibold me-1" onClick="fntReabrirPlan(${data})" title="Reabrir y Desbloquear Planeación">
-                                            <i class="ri-restart-line me-1"></i> Reabrir
+                    } else if (parseInt(row.id_estado) === 3 || parseInt(row.id_estado) === 2 || parseInt(row.id_estado) === 5) {
+                        btnActionExtra = `<button class="btn btn-sm btn-soft-warning rounded-pill px-3 fw-semibold me-1" onClick="fntReabrirPlan(${data})" title="Solicitar Reapertura y Desbloquear Planeación">
+                                            <i class="ri-restart-line me-1"></i> Solicitar Reapertura
                                           </button>`;
                     } else if (parseInt(row.id_estado) === 4) {
                         btnActionExtra = `<button class="btn btn-sm btn-soft-info rounded-pill px-3 fw-semibold me-1" onClick="clonarPlaneacion(${data})" title="Clonar (Reutilizar Histórico)">
@@ -506,14 +506,17 @@ function fntViewPlan(idPlaneacion) {
                             `;
                         } else if (st === 2) {
                             footerActions.innerHTML = `
+                                <button type="button" class="btn btn-sm btn-soft-warning rounded-pill px-4 fw-semibold shadow-sm me-2" onclick="$('#modalViewDetallePlan').modal('hide'); fntReabrirPlan(${plan.id_planeacion});">
+                                    <i class="ri-restart-line me-1"></i> Solicitar Reapertura
+                                </button>
                                 <a href="${base_url}/Lgs_aprobaciones" class="btn btn-sm btn-primary rounded-pill px-4 fw-semibold shadow-sm">
                                     <i class="ri-shield-check-line me-1"></i> Ir al Panel de Aprobaciones
                                 </a>
                             `;
-                        } else if (st === 3) {
+                        } else if (st === 3 || st === 5) {
                             footerActions.innerHTML = `
                                 <button type="button" class="btn btn-sm btn-soft-warning rounded-pill px-4 fw-semibold shadow-sm" onclick="$('#modalViewDetallePlan').modal('hide'); fntReabrirPlan(${plan.id_planeacion});">
-                                    <i class="ri-restart-line me-1"></i> Reabrir Planeación
+                                    <i class="ri-restart-line me-1"></i> Solicitar Reapertura
                                 </button>
                             `;
                         } else {

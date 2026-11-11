@@ -375,9 +375,9 @@ function renderTarifasMadrina(madrinaMatriz) {
         tdCostoKm.innerHTML = `
             <div class="input-group input-group-sm">
                 <span class="input-group-text bg-light">$</span>
-                <input type="number" step="0.01" class="form-control text-end fw-bold madrina-costo-km" 
+                <input type="number" step="0.00001" class="form-control text-end fw-bold madrina-costo-km" 
                        data-idx="${idx}" name="madrina_segmentos[${idx}][costo_por_km]" 
-                       value="${parseFloat(item.costo_por_km || 0).toFixed(2)}" 
+                       value="${parseFloat(item.costo_por_km || 0)}" 
                        oninput="syncMadrinaCostoKm(this); recalcularTotalesTarifas();">
             </div>
         `;
@@ -386,9 +386,9 @@ function renderTarifasMadrina(madrinaMatriz) {
         tdSlc.innerHTML = `
             <div class="input-group input-group-sm">
                 <span class="input-group-text bg-light">$</span>
-                <input type="number" step="0.01" class="form-control text-end fw-bold madrina-slc" 
+                <input type="number" step="0.00001" class="form-control text-end fw-bold madrina-slc" 
                        name="madrina_segmentos[${idx}][precio_slc]" 
-                       value="${parseFloat(item.precio_slc || 0).toFixed(2)}"
+                       value="${parseFloat(item.precio_slc || 0)}" 
                        oninput="syncMadrinaSlc(this)">
             </div>
         `;
@@ -397,9 +397,9 @@ function renderTarifasMadrina(madrinaMatriz) {
         tdSll.innerHTML = `
             <div class="input-group input-group-sm">
                 <span class="input-group-text bg-light">$</span>
-                <input type="number" step="0.01" class="form-control text-end fw-bold madrina-sll" 
+                <input type="number" step="0.00001" class="form-control text-end fw-bold madrina-sll" 
                        name="madrina_segmentos[${idx}][precio_sll]" 
-                       value="${parseFloat(item.precio_sll || 0).toFixed(2)}"
+                       value="${parseFloat(item.precio_sll || 0)}" 
                        oninput="syncMadrinaSll(this)">
             </div>
         `;
@@ -480,7 +480,7 @@ function renderTarifasMadrina(madrinaMatriz) {
                             <label class="fs-10 text-muted mb-0 d-block text-uppercase fw-semibold">Precio por Unidad</label>
                             <div class="input-group input-group-sm mb-1">
                                 <span class="input-group-text p-1 fs-11">$</span>
-                                <input type="number" step="0.01" 
+                                <input type="number" step="0.00001" 
                                        class="form-control form-control-sm text-end fw-bold factor-madrina-${idx} ${esDiferente ? 'text-danger' : ''}" 
                                        data-idx="${idx}" data-unit="${u}" 
                                        name="madrina_segmentos[${idx}][factores][${u}]" 
@@ -565,9 +565,9 @@ function renderTarifasChofer(choferMatriz) {
         tdCCostoKm.innerHTML = `
             <div class="input-group input-group-sm">
                 <span class="input-group-text bg-light">$</span>
-                <input type="number" step="0.01" class="form-control text-end fw-bold chofer-costo-km" 
+                <input type="number" step="0.00001" class="form-control text-end fw-bold chofer-costo-km" 
                         name="chofer_segmentos[${cIdx}][costo_por_km]" 
-                        value="${parseFloat(cItem.costo_por_km || 0).toFixed(2)}">
+                        value="${parseFloat(cItem.costo_por_km || 0)}">
             </div>
         `;
 
@@ -575,9 +575,9 @@ function renderTarifasChofer(choferMatriz) {
         tdCSlc.innerHTML = `
             <div class="input-group input-group-sm">
                 <span class="input-group-text bg-light">$</span>
-                <input type="number" step="0.01" class="form-control text-end fw-bold" 
+                <input type="number" step="0.00001" class="form-control text-end fw-bold" 
                        name="chofer_segmentos[${cIdx}][precio_slc]" 
-                       value="${parseFloat(cItem.precio_slc || 0).toFixed(2)}">
+                       value="${parseFloat(cItem.precio_slc || 0)}">
             </div>
         `;
 
@@ -585,9 +585,9 @@ function renderTarifasChofer(choferMatriz) {
         tdCSll.innerHTML = `
             <div class="input-group input-group-sm">
                 <span class="input-group-text bg-light">$</span>
-                <input type="number" step="0.01" class="form-control text-end fw-bold" 
+                <input type="number" step="0.00001" class="form-control text-end fw-bold" 
                        name="chofer_segmentos[${cIdx}][precio_sll]" 
-                       value="${parseFloat(cItem.precio_sll || 0).toFixed(2)}">
+                       value="${parseFloat(cItem.precio_sll || 0)}">
             </div>
         `;
         
@@ -629,9 +629,9 @@ function renderTarifasPlataforma(plataformaMatriz) {
         tdCostoKm.innerHTML = `
             <div class="input-group input-group-sm">
                 <span class="input-group-text bg-light">$</span>
-                <input type="number" step="0.01" class="form-control text-end fw-bold plataforma-costo-km" 
+                <input type="number" step="0.00001" class="form-control text-end fw-bold plataforma-costo-km" 
                        data-idx="${idx}" name="plataforma_segmentos[${idx}][costo_por_km]" 
-                       value="${parseFloat(item.costo_por_km || 0).toFixed(2)}" 
+                       value="${parseFloat(item.costo_por_km || 0)}" 
                        oninput="syncPlataformaCostoKm(this); recalcularTotalesTarifasPlataforma();">
             </div>
         `;
@@ -727,7 +727,7 @@ function renderTarifasPlataforma(plataformaMatriz) {
                             <label class="fs-10 text-muted mb-0 d-block text-uppercase fw-semibold">Precio por Unidad</label>
                             <div class="input-group input-group-sm mb-1">
                                 <span class="input-group-text p-1 fs-11">$</span>
-                                <input type="number" step="0.01" 
+                                <input type="number" step="0.00001" 
                                        class="form-control form-control-sm text-end fw-bold factor-plataforma-${idx} ${esDiferente ? 'text-danger' : ''}" 
                                        data-idx="${idx}" data-unit="${u}" 
                                        name="plataforma_segmentos[${idx}][factores][${u}]" 
@@ -743,19 +743,19 @@ function renderTarifasPlataforma(plataformaMatriz) {
                                 <label class="fs-10 text-muted mb-0 d-block text-uppercase fw-semibold">Local Corto SLC</label>
                                 <div class="input-group input-group-sm mb-1">
                                     <span class="input-group-text p-1 fs-11">$</span>
-                                    <input type="number" step="0.01" 
+                                    <input type="number" step="0.00001" 
                                            class="form-control form-control-sm text-end fw-bold plataforma-slc-${u}" 
                                            name="plataforma_segmentos[${idx}][slc][${u}]" 
-                                           value="${parseFloat((item.slc_factores && item.slc_factores[u]) ? item.slc_factores[u] : (item.precio_slc || 0)).toFixed(2)}"
+                                           value="${parseFloat((item.slc_factores && item.slc_factores[u]) ? item.slc_factores[u] : (item.precio_slc || 0))}"
                                            oninput="syncPlataformaFactorSlc(this, ${u})">
                                 </div>
                                 <label class="fs-10 text-muted mb-0 d-block text-uppercase fw-semibold">Local Largo SLL</label>
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text p-1 fs-11">$</span>
-                                    <input type="number" step="0.01" 
+                                    <input type="number" step="0.00001" 
                                            class="form-control form-control-sm text-end fw-bold plataforma-sll-${u}" 
                                            name="plataforma_segmentos[${idx}][sll][${u}]" 
-                                           value="${parseFloat((item.sll_factores && item.sll_factores[u]) ? item.sll_factores[u] : (item.precio_sll || 0)).toFixed(2)}"
+                                           value="${parseFloat((item.sll_factores && item.sll_factores[u]) ? item.sll_factores[u] : (item.precio_sll || 0))}"
                                            oninput="syncPlataformaFactorSll(this, ${u})">
                                 </div>
                             </div>

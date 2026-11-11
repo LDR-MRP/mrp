@@ -114,6 +114,7 @@ class Lgs_incidencias extends Controllers
                 'id_tipo_incidencia'  => $_GET['id_tipo_incidencia'] ?? null,
                 'id_proveedor'        => $_GET['id_proveedor'] ?? null,
                 'es_post_entrega'     => $_GET['es_post_entrega'] ?? null,
+                'periodo'             => $_GET['periodo'] ?? null,
                 'fecha_desde'         => $_GET['fecha_desde'] ?? null,
                 'fecha_hasta'         => $_GET['fecha_hasta'] ?? null,
             ];

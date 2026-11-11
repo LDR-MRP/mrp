@@ -93,7 +93,7 @@
                         <div class="card-body">
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1 overflow-hidden">
-                                    <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Cargos Adicionales (Mes)</p>
+                                    <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1"><span id="lblPeriodoCargos">Cargos Adicionales</span> (sin IVA)</p>
                                     <h4 class="fs-20 fw-bold text-danger mb-0"><span id="kpiTotalCargos">$0.00</span></h4>
                                 </div>
                                 <div class="avatar-sm flex-shrink-0">
@@ -110,7 +110,7 @@
                         <div class="card-body">
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1 overflow-hidden">
-                                    <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1">Deducciones por Recuperar</p>
+                                    <p class="text-uppercase fw-bold text-muted text-truncate mb-2 fs-11 ls-1"><span id="lblPeriodoDeducciones">Deducciones por Recuperar</span> (sin IVA)</p>
                                     <h4 class="fs-20 fw-bold text-success mb-0"><span id="kpiTotalDeducciones">$0.00</span></h4>
                                 </div>
                                 <div class="avatar-sm flex-shrink-0">
@@ -175,6 +175,31 @@
                                 <option value="0">Ligado a Incidencia</option>
                                 <option value="1">Gasto Independiente</option>
                             </select>
+                        </div>
+
+                        <!-- FILTRO DE PERÍODO / MONTO -->
+                        <div class="col-12 pt-2 border-top">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <label class="form-label fs-12 fw-medium text-muted mb-0 me-1">
+                                    <i class="ri-calendar-line text-primary me-1"></i>Período:
+                                </label>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-secondary btn-periodo-gastos active" id="btnPeriodoGastosTodos" onclick="cambiarPeriodoGastos('', this)">Todos</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-periodo-gastos" id="btnPeriodoGastosSemana" onclick="cambiarPeriodoGastos('semana', this)">Esta Semana</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-periodo-gastos" id="btnPeriodoGastosMes" onclick="cambiarPeriodoGastos('mes', this)">Este Mes</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-periodo-gastos" id="btnPeriodoGastosAnio" onclick="cambiarPeriodoGastos('anio', this)">Este Año</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-periodo-gastos" id="btnPeriodoGastosAbierta" onclick="cambiarPeriodoGastos('abierta', this)">Rango de Fechas</button>
+                                </div>
+
+                                <div id="boxFiltroFechaGastos" class="d-none d-inline-flex align-items-center gap-1 ms-2">
+                                    <input type="date" id="filtro_gasto_fecha_inicio" class="form-control form-control-sm" style="width: 135px;" title="Fecha Desde">
+                                    <span class="text-muted fs-12">-</span>
+                                    <input type="date" id="filtro_gasto_fecha_fin" class="form-control form-control-sm" style="width: 135px;" title="Fecha Hasta">
+                                    <button type="button" class="btn btn-sm btn-primary px-2" onclick="tableGastos.ajax.reload()" title="Aplicar fechas">
+                                        <i class="ri-check-line"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

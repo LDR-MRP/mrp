@@ -13,6 +13,10 @@ class Lgs_envios extends Controllers
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
+        if (empty($_SESSION['login'])) {
+            header('Location: ' . base_url() . '/login');
+            die();
+        }
         
         $this->service = new Lgs_enviosService();
         $this->enviosModel = new Lgs_enviosModel();

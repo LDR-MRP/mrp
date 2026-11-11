@@ -206,7 +206,7 @@
                             <input type="text" id="motivo_abierto" name="motivo_abierto" class="form-control" placeholder="Ej. Desvío obligatorio indicado por Guardia Nacional">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fs-12 fw-bold text-dark">Monto Total ($) <span class="text-danger">*</span></label>
+                            <label class="form-label fs-12 fw-bold text-dark">Monto Total ($ sin IVA) <span class="text-danger">*</span></label>
                             <input type="number" step="0.01" min="0" id="monto_abierto" name="monto_abierto" class="form-control fw-bold text-primary" placeholder="0.00">
                         </div>
                         <div class="col-12">
@@ -216,6 +216,8 @@
                         </div>
                     </div>
 
+                    <!-- PARÁMETROS DINÁMICOS Y DESCRIPCIÓN -->
+                    <div class="row g-3 mb-3">
                         <!-- PANEL DINÁMICO SEGÚN TIPO DE CÁLCULO -->
                         <div class="col-12" id="panelCalculoDinamico">
                             <!-- Inyectado dinámicamente: inputs para KM, Días x Tarifa o Monto Libre -->
@@ -239,17 +241,17 @@
                                 <button type="button" class="btn btn-outline-light text-dark" onclick="seleccionarVinsGasto('NINGUNO');">Limpiar</button>
                             </div>
                         </div>
-                        <div class="card-body p-2" style="max-height: 200px; overflow-y: auto;">
+                        <div class="card-body p-2" style="max-height: 220px; overflow-y: auto; overflow-x: hidden;">
                             <div id="vinsGastoEmpty" class="text-center py-3 text-muted fs-12">
                                 Seleccione una incidencia o envío para cargar las unidades transportadas.
                             </div>
-                            <div id="vinsGastoCheckboxList" class="row g-2"></div>
+                            <div id="vinsGastoCheckboxList" class="row g-2 m-0"></div>
                         </div>
                         <div class="card-footer bg-light-subtle py-2 px-3">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="fs-12">Unidades asignadas: <strong id="lblVinsAsignadosCount">0</strong></span>
                                 <span class="fs-13 fw-bold text-dark">
-                                    Cuota por Unidad: <span id="lblCuotaPorVin" class="text-primary">$0.00</span>
+                                    Cuota por Unidad (sin IVA): <span id="lblCuotaPorVin" class="text-primary">$0.00</span>
                                 </span>
                             </div>
                         </div>

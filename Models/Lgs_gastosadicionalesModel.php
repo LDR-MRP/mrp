@@ -221,6 +221,23 @@ class Lgs_gastosadicionalesModel extends Mysql
                 $where .= " AND g.id_incidencia IS NOT NULL";
             }
         }
+        if (!empty($filtros['periodo'])) {
+            if ($filtros['periodo'] === 'semana') {
+                $where .= " AND YEARWEEK(COALESCE(g.fecha_gasto, g.created_at), 1) = YEARWEEK(CURDATE(), 1)";
+            } elseif ($filtros['periodo'] === 'mes') {
+                $where .= " AND YEAR(COALESCE(g.fecha_gasto, g.created_at)) = YEAR(CURDATE()) AND MONTH(COALESCE(g.fecha_gasto, g.created_at)) = MONTH(CURDATE())";
+            } elseif ($filtros['periodo'] === 'anio') {
+                $where .= " AND YEAR(COALESCE(g.fecha_gasto, g.created_at)) = YEAR(CURDATE())";
+            }
+        }
+        if (!empty($filtros['fecha_inicio'])) {
+            $where .= " AND DATE(COALESCE(g.fecha_gasto, g.created_at)) >= ?";
+            $params[] = $filtros['fecha_inicio'];
+        }
+        if (!empty($filtros['fecha_fin'])) {
+            $where .= " AND DATE(COALESCE(g.fecha_gasto, g.created_at)) <= ?";
+            $params[] = $filtros['fecha_fin'];
+        }
 
         $sql = "SELECT 
                     g.id_gasto,

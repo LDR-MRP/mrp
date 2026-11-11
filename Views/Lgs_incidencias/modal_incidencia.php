@@ -164,8 +164,9 @@
 
                         <div class="col-md-7" id="divArchivoInicial">
                             <label class="form-label fs-12 fw-medium text-muted">Adjuntar Evidencias Fotográficas / Documentos (Múltiples permitidos)</label>
-                            <input type="file" id="archivo_evidencia" name="archivos_evidencia[]" class="form-control" accept="image/*,video/mp4,application/pdf" multiple>
+                            <input type="file" id="archivo_evidencia" name="archivos_evidencia[]" class="form-control" accept="image/*,video/mp4,application/pdf" multiple onchange="previsualizarEvidenciasIncidencia(this, 'preview_evidencias_iniciales');">
                             <div class="form-text fs-11">Permitido: JPG, PNG, WEBP, PDF, MP4 (puede seleccionar varias fotos simultáneamente).</div>
+                            <div id="preview_evidencias_iniciales" class="row g-2 mt-2"></div>
                         </div>
                         <div class="col-md-5" id="divTipoArchivoInicial">
                             <label class="form-label fs-12 fw-medium text-muted">Tipo de Evidencia</label>
