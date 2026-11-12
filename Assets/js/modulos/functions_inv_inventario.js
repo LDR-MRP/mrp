@@ -1855,7 +1855,7 @@ function cargartabPrecio(idinventario) {
 
           <div class="${esUnidad ? "col-md-4" : "col-md-5"}">
             <label class="form-label">Precio actual</label>
-            <input type="number" step="0.01" id="cfg_precio_num" class="form-control">
+            <input type="number" step="any" id="cfg_precio_num" class="form-control">
           </div>
 
           <div class="col-md-2 align-self-end">
@@ -2040,7 +2040,7 @@ function editarPrecio(id_inv_precio, idinventario, precioActual, anioActual = nu
         <input type="number" id="swal_precio_anio" class="form-control mb-3" min="2000" max="2100" step="1"
           placeholder="Ej. 2027 (vacío = sin año)" value="${anioActual ?? ""}">` : ""}
         <label class="form-label fw-semibold" for="swal_precio_valor">Precio</label>
-        <input type="number" id="swal_precio_valor" class="form-control" step="0.01" min="0.01" value="${precioActual}">
+        <input type="number" id="swal_precio_valor" class="form-control" step="any" min="0.000001" value="${precioActual}">
       </div>`,
     focusConfirm: false,
     showCancelButton: true,

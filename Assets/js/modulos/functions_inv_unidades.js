@@ -34,6 +34,8 @@ document.addEventListener("DOMContentLoaded", function () {
     `<button type="button" class="btn btn-sm btn-soft-primary mt-3" data-accion="limpiar"><i class="ri-filter-off-line align-bottom me-1"></i>Limpiar filtros</button></div>`;
 
   let datos = [];
+  let transito = []; // Order delivery plan por producto y mes de carga (sin entrada al inventario)
+  let contratosODP = []; // mismo plan, por contrato (detalle)
   let ordenSub = [];
   const colorSub = {};
   let dtListado = null;
@@ -41,7 +43,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const estado = { vista: "unidad", q: "", subs: new Set(), anios: new Set(), color: "", planta: "", almacen: "", porColor: false };
   try {
     const v = localStorage.getItem("iu_vista");
-    if (["unidad", "almacen", "listado"].includes(v)) estado.vista = v;
+    if (["unidad", "almacen", "listado", "transito"].includes(v)) estado.vista = v;
     estado.porColor = localStorage.getItem("iu_porColor") === "1";
   } catch (e) {}
 
@@ -175,9 +177,11 @@ document.addEventListener("DOMContentLoaded", function () {
   function pintarKpis(lista) {
     animarNumero(byId("kUnidades"), lista.length);
     const nTransito = lista.filter(esTransito).length;
-    byId("kTransito").textContent = nTransito
-      ? `${fmt(lista.length - nTransito)} físicas · ${fmt(nTransito)} en tránsito`
-      : "";
+    const porLlegar = transitoFiltrado().reduce((s, t) => s + Number(t.qty || 0), 0);
+    byId("kTransito").textContent = [
+      nTransito ? `${fmt(lista.length - nTransito)} físicas · ${fmt(nTransito)} en tránsito` : "",
+      porLlegar ? `+ ${fmt(porLlegar)} por llegar (Order delivery plan)` : "",
+    ].filter(Boolean).join(" · ");
     const an = contarPor(lista, anioDe);
     byId("kAnios").innerHTML = [...an.keys()]
       .sort()
@@ -545,55 +549,111 @@ document.addEventListener("DOMContentLoaded", function () {
     aviso("Generando Excel…");
   }
 
-  byId("btnExcel").addEventListener("click", () => {
-    const lista = filtrados();
-    const hoy = new Date().toISOString().slice(0, 10);
-    if (estado.vista === "unidad") {
-      const cols = columnasAlmacen(lista);
-      exportarXlsx(
-        "Inventario de unidades por almacén",
-        "inventario_unidades_" + hoy,
-        ["Sublínea", "Clave", "Modelo", "Año modelo", ...(estado.porColor ? ["Color"] : []), ...cols.map((c) => c.cve), "Total"],
-        armarFilas(lista).map((f) => [f.sub, f.cve, f.modelo, f.anio, ...(estado.porColor ? [f.color] : []), ...cols.map((c) => f.alm[c.id] || 0), f.total]),
-      );
-    } else if (estado.vista === "almacen") {
-      const m = new Map();
-      lista.forEach((u) => {
-        const k = [u.planta, u.cve_almacen, u.sublinea, u.cve_articulo, anioDe(u)].join("|");
-        if (!m.has(k)) m.set(k, [nombrePlanta(u.planta), u.cve_almacen, u.almacen, u.sublinea, u.cve_articulo, u.descripcion, anioDe(u), 0]);
-        m.get(k)[7]++;
-      });
-      exportarXlsx(
-        "Unidades por almacén",
-        "unidades_por_almacen_" + hoy,
-        ["Planta", "Almacén", "Descripción almacén", "Sublínea", "Clave", "Modelo", "Año modelo", "Unidades"],
-        [...m.values()].sort((a, b) => a[1].localeCompare(b[1]) || b[7] - a[7]),
-      );
-    } else {
-      exportarXlsx(
-        "Listado de unidades (VIN)",
-        "unidades_vin_" + hoy,
-        ["VIN", "Año modelo", "Color", "Sublínea", "Clave", "Modelo", "Almacén", "No. motor", "VIN origen", "Referencia"],
-        lista.map((u) => [u.numero_serie, anioDe(u), colorDe(u), u.sublinea, u.cve_articulo, u.descripcion, u.cve_almacen, u.numero_motor || "", u.vin_origen || "", u.referencia]),
-      );
-    }
-  });
+  /* Reporte ejecutivo: inventario real (izq.) vs. tránsito del Order delivery plan (der.).
+     Respeta los filtros de segmento y búsqueda. */
+  const abrirEjecutivo = (formato) => (e) => {
+    e.preventDefault();
+    const p = new URLSearchParams({ formato, sub: [...estado.subs].join(","), q: estado.q });
+    window.open(base_url + "/Inv_unidades/reporteEjecutivo?" + p.toString(), "_blank");
+  };
+  byId("btnEjecutivoPDF").addEventListener("click", abrirEjecutivo("pdf"));
+  byId("btnEjecutivoXLSX").addEventListener("click", abrirEjecutivo("xlsx"));
 
-  byId("btnPDF").addEventListener("click", () => {
-    const p = new URLSearchParams({
-      sub: [...estado.subs].join(","),
-      anio: [...estado.anios].join(","),
-      color: estado.color,
-      planta: estado.planta,
-      almacen: estado.almacen,
-      q: estado.q,
-      porColor: estado.porColor ? 1 : 0,
+  /* ---------------- Vista: en tránsito (Order delivery plan) ---------------- */
+  const MESES_C = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  const mesTxt = (ym) => (ym ? MESES_C[Number(ym.slice(5, 7)) - 1] + " " + ym.slice(0, 4) : "");
+  const fechaTxt = (v) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || "");
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : v || "—";
+  };
+  // Texto de contratos por producto, para que la búsqueda también encuentre por contrato
+  let textoContratos = {};
+  function pasaTransito(t) {
+    if (estado.subs.size && !estado.subs.has(t.sublinea)) return false;
+    if (estado.q) {
+      const txt = (t.cve_articulo + " " + t.descripcion + " " + t.sublinea + " " + (textoContratos[t.inventarioid] || "")).toLowerCase();
+      if (!txt.includes(estado.q)) return false;
+    }
+    return true;
+  }
+  function transitoFiltrado() {
+    return transito.filter(pasaTransito);
+  }
+
+  const abiertosODP = new Set();
+  function pintarTransito(lista) {
+    const t = byId("tTransito");
+    if (!lista.length) {
+      t.innerHTML = `<tbody><tr><td>${
+        transito.length
+          ? vacio("No hay unidades por llegar con esos filtros", "Prueba quitando la sublínea o cambiando la búsqueda.")
+          : '<div class="iu-vacio"><div class="ico"><i class="ri-ship-2-line"></i></div><h6>Sin unidades en tránsito</h6><div class="fs-13">Aún no hay cargas del Order delivery plan.</div></div>'
+      }</td></tr></tbody>`;
+      return;
+    }
+    const meses = [...new Set(lista.map((x) => x.mes))].sort();
+    const filas = new Map();
+    lista.forEach((x) => {
+      if (!filas.has(x.inventarioid))
+        filas.set(x.inventarioid, { id: x.inventarioid, sub: x.sublinea, subDesc: x.sublinea_desc, cve: x.cve_articulo, modelo: x.descripcion, mes: {}, total: 0 });
+      const f = filas.get(x.inventarioid);
+      f.mes[x.mes] = (f.mes[x.mes] || 0) + Number(x.qty || 0);
+      f.total += Number(x.qty || 0);
     });
-    window.open(base_url + "/Inv_unidades/reportePDF?" + p.toString(), "_blank");
+    const orden = [...filas.values()].sort((a, b) => cmpSub(a.sub, b.sub) || a.modelo.localeCompare(b.modelo));
+    const max = Math.max(1, ...orden.flatMap((f) => Object.values(f.mes)));
+    const tinte = (v) => `background-color:rgba(212,98,42,${(0.05 + (0.3 * v) / max).toFixed(3)})`;
+    const celdas = (vals, total, sombra) =>
+      meses
+        .map((m, i) => {
+          const v = vals[m] || 0;
+          return `<td class="num${i === 0 ? " ini-pl" : ""}"${v && sombra ? ` style="${tinte(v)}"` : ""}>${v ? fmt(v) : '<span class="cero">–</span>'}</td>`;
+        })
+        .join("") + `<td class="num ini-pl col-tot">${fmt(total)}</td>`;
+
+    let h = `<thead><tr class="plantas"><th class="col-mod"></th><th class="pl" colspan="${meses.length}">ALM-TRANSITO · por mes de carga</th><th class="ini-pl"></th></tr>`;
+    h += `<tr class="cols"><th class="col-mod">Modelo</th>${meses.map((m, i) => `<th class="num${i === 0 ? " ini-pl" : ""}">${esc(mesTxt(m))}</th>`).join("")}<th class="num ini-pl">Total</th></tr></thead><tbody>`;
+    let sub = null;
+    const tot = {};
+    let gran = 0;
+    orden.forEach((f) => {
+      if (f.sub !== sub) {
+        sub = f.sub;
+        const delSub = orden.filter((x) => x.sub === sub);
+        const st = {};
+        delSub.forEach((x) => Object.entries(x.mes).forEach(([m, v]) => (st[m] = (st[m] || 0) + v)));
+        h += `<tr class="sub" style="--iu-sc:${colorSub[sub] || "#878a99"}"><td class="col-mod"><span class="iu-dot" style="background:${colorSub[sub] || "#878a99"};border:0;margin-right:.45rem"></span>${esc(sub)}<span class="cnt">${esc(f.subDesc)} · ${plural(delSub.length, "modelo")}</span></td>${celdas(st, delSub.reduce((s, x) => s + x.total, 0), false)}</tr>`;
+      }
+      Object.entries(f.mes).forEach(([m, v]) => (tot[m] = (tot[m] || 0) + v));
+      gran += f.total;
+      const abierta = abiertosODP.has(String(f.id));
+      h += `<tr class="fila${abierta ? " abierta" : ""}" data-inv="${esc(f.id)}" title="Ver contratos"><td class="col-mod"><i class="ri-arrow-${abierta ? "down" : "right"}-s-line text-muted me-1"></i><span class="iu-mod-nom">${esc(f.modelo)}</span><span class="iu-mod-cve">${esc(f.cve)}</span></td>${celdas(f.mes, f.total, true)}</tr>`;
+      if (abierta) {
+        contratosODP
+          .filter((c) => String(c.inventarioid) === String(f.id) && meses.includes(c.mes))
+          .forEach((c) => {
+            h += `<tr class="det"><td class="col-mod ps-4"><span class="ct">${esc(c.contrato || "Sin contrato")}</span>${
+              c.modelo ? ` · ${esc(c.modelo)}` : ""
+            } · ETA ${esc(fechaTxt(c.eta))}${c.status ? ` <span class="st">${esc(c.status)}</span>` : ""}</td>${meses
+              .map((m, i) => `<td class="num${i === 0 ? " ini-pl" : ""}">${m === c.mes ? fmt(c.qty) : ""}</td>`)
+              .join("")}<td class="num ini-pl"></td></tr>`;
+          });
+      }
+    });
+    h += `</tbody><tfoot><tr><td class="col-mod">TOTAL POR LLEGAR</td>${celdas(tot, gran, false)}</tr></tfoot>`;
+    t.innerHTML = h;
+  }
+  byId("tTransito").addEventListener("click", (e) => {
+    const fila = e.target.closest("tr.fila");
+    if (!fila) return;
+    const id = fila.dataset.inv;
+    if (abiertosODP.has(id)) abiertosODP.delete(id);
+    else abiertosODP.add(id);
+    pintarTransito(transitoFiltrado());
   });
 
   /* ---------------- Render general ---------------- */
-  const PANELES = { unidad: "panelUnidad", almacen: "panelAlmacen", listado: "panelListado" };
+  const PANELES = { unidad: "panelUnidad", almacen: "panelAlmacen", listado: "panelListado", transito: "panelTransito" };
   let vistaPintada = null;
   function render() {
     const lista = filtrados();
@@ -605,6 +665,8 @@ document.addEventListener("DOMContentLoaded", function () {
     byId("nVUnidad").textContent = fmt(new Set(lista.map((u) => u.inventarioid)).size);
     byId("nVAlmacen").textContent = fmt(new Set(lista.map((u) => u.almacenid)).size);
     byId("nVListado").textContent = fmt(lista.length);
+    const listaTr = transitoFiltrado();
+    byId("nVTransito").textContent = fmt(listaTr.reduce((s, t) => s + Number(t.qty || 0), 0));
     byId("iuResumen").innerHTML =
       lista.length === datos.length
         ? `<b>${fmt(datos.length)}</b> unidades en total`
@@ -630,6 +692,7 @@ document.addEventListener("DOMContentLoaded", function () {
     byId("wrapPorColor").classList.toggle("d-none", estado.vista !== "unidad");
     if (estado.vista === "unidad") pintarMatriz(lista);
     else if (estado.vista === "almacen") pintarAlmacenes(lista);
+    else if (estado.vista === "transito") pintarTransito(listaTr);
     else pintarListado(lista);
   }
 
@@ -793,9 +856,13 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((r) => r.json())
       .then((d) => {
         datos = d.unidades || [];
+        transito = d.transito || [];
+        contratosODP = d.transito_contratos || [];
+        textoContratos = {};
+        contratosODP.forEach((c) => (textoContratos[c.inventarioid] = (textoContratos[c.inventarioid] || "") + " " + c.contrato + " " + c.modelo));
         ordenSub = d.orden_sublineas || [];
         datos.forEach((u) => (nombresPlanta[u.planta] = u.planta_nombre || nombresPlanta[u.planta]));
-        [...new Set(datos.map((u) => u.sublinea))].sort(cmpSub).forEach((s, i) => (colorSub[s] = PALETA[i % PALETA.length]));
+        [...new Set([...datos.map((u) => u.sublinea), ...transito.map((t) => t.sublinea)])].sort(cmpSub).forEach((s, i) => (colorSub[s] = PALETA[i % PALETA.length]));
         if (primeraCarga) {
           datos.forEach((u) => cerradas.add(u.sublinea));
           primeraCarga = false;
