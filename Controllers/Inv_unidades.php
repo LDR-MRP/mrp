@@ -242,8 +242,8 @@ class Inv_unidades extends Controllers
     private const C_OSCURO = '1F2430';
     private const C_SEG = 'EEF0F4';
     private const C_LINEA = 'D5D9E0';
-    /** Columnas de existencia del inventario real (en este orden). */
-    private const GRUPOS_INVENTARIO = ['PLANTA' => 'Planta', 'TRANSITO' => 'En tránsito', 'OTRAS' => 'Otras ubicaciones'];
+    /** Almacenes que en el reporte ejecutivo van en su propia columna (clave => encabezado); el resto suma en "Planta". */
+    private const ALMACENES_APARTE = ['ALM-XIAN' => 'XIAN', 'ALM-VELCEN' => 'VELCEN'];
 
     public function reporteEjecutivo()
     {
@@ -289,9 +289,16 @@ class Inv_unidades extends Controllers
             }
             $color = trim((string) ($r['color'] ?? '')) !== '' ? mb_convert_case(trim($r['color']), MB_CASE_TITLE, 'UTF-8') : self::COLOR_TRANSITO;   // sin color = Blanco
             $k = $fila($r['sublinea'], $r['sublinea_desc'], $r['inventarioid'], $r['cve_articulo'], $r['descripcion'], $color);
-            // Solo existencias: los almacenes se agrupan (Planta / En tránsito / Otras ubicaciones)
-            $aid = $r['planta'] === 'TRANSITO' ? 'TRANSITO' : (in_array($r['planta'], ['SIN', 'OTROS'], true) ? 'OTRAS' : 'PLANTA');
-            $alms[$aid] = ['cve' => self::GRUPOS_INVENTARIO[$aid], 'planta' => $aid];
+            // Solo existencias: todos los almacenes se agrupan en "Planta", excepto los
+            // que se muestran por separado (ALMACENES_APARTE: XIAN y VELCEN).
+            $cveAlm = strtoupper(trim((string) $r['cve_almacen']));
+            if (isset(self::ALMACENES_APARTE[$cveAlm])) {
+                $aid = 'ALM:' . $cveAlm;
+                $alms[$aid] = ['cve' => self::ALMACENES_APARTE[$cveAlm], 'orden' => 1];
+            } else {
+                $aid = 'PLANTA';
+                $alms[$aid] = ['cve' => 'Planta', 'orden' => 0];
+            }
             $rows[$k]['alm'][$aid] = ($rows[$k]['alm'][$aid] ?? 0) + 1;
             $rows[$k]['inv']++;
         }
@@ -310,8 +317,7 @@ class Inv_unidades extends Controllers
         $meses = array_keys($meses);
         sort($meses);
 
-        $alms = array_intersect_key(self::GRUPOS_INVENTARIO, $alms);
-        $alms = array_map(fn($n) => ['cve' => $n], $alms);
+        uasort($alms, fn($a, $b) => [$a['orden'], $a['cve']] <=> [$b['orden'], $b['cve']]);
         uasort($rows, fn($a, $b) => [self::ordenSublinea($a['sub']), $a['sub'], mb_strtoupper($a['modelo']), $a['cve'], mb_strtoupper($a['color'])]
                                 <=> [self::ordenSublinea($b['sub']), $b['sub'], mb_strtoupper($b['modelo']), $b['cve'], mb_strtoupper($b['color'])]);
 
@@ -805,13 +811,13 @@ class Inv_unidades extends Controllers
         // Encabezado: fila 1 bloques; fila 2 columnas de inventario + ALM-TRANSITO; fila 3 meses
         $thead = '<thead><tr><td width="' . ($wMod + $wColor) . '%" colspan="2" style="' . $sOsc . '"></td>'
             . ($nAlm ? '<td width="' . ($wDin * $nAlm) . '%" colspan="' . $nAlm . '" align="center" style="' . $sInv . '">INVENTARIO REAL · en almacenes</td>' : '')
-            . ($nMes ? '<td width="' . ($wDin * $nMes) . '%" colspan="' . $nMes . '" align="center" style="' . $sTra . '">EN TRÁNSITO · por mes de carga</td>' : '')
+            . ($nMes ? '<td width="' . ($wDin * $nMes) . '%" colspan="' . $nMes . '" align="center" style="' . $sTra . '">EN TRÁNSITO</td>' : '')
             . $td($wTot, '', ' style="' . $sOsc . '"') . '</tr><tr>'
             . '<td width="' . ($wMod + $wColor) . '%" colspan="2" style="' . $sOsc . '"></td>';
         foreach ($alms as $a) {
             $thead .= $td($wDin, $h($a['cve']), ' align="center" style="' . $sInv . '"');
         }
-        $thead .= ($nMes ? '<td width="' . ($wDin * $nMes) . '%" colspan="' . $nMes . '" align="center" style="' . $sTra . 'font-size:6.5pt;">ALM-TRANSITO</td>' : '')
+        $thead .= ($nMes ? '<td width="' . ($wDin * $nMes) . '%" colspan="' . $nMes . '" align="center" style="' . $sTra . 'font-size:6.5pt;">ALM-TRANSITO · mes de carga</td>' : '')
             . $td($wTot, 'TOTAL', ' align="center" style="' . $sOsc . '"') . '</tr><tr>'
             . $td($wMod, 'Modelo', ' style="' . $sOsc . '"') . $td($wColor, 'Color', ' style="' . $sOsc . '"');
         foreach ($alms as $a) {
