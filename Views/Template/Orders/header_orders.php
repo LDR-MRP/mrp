@@ -27,7 +27,7 @@ $esVistaPublica = in_array($pageName, ['login', 'restablecer-password'], true);
 
     <title><?= htmlspecialchars($data['page_tag'] ?? 'Portal de Pedidos - LDR Solutions', ENT_QUOTES, 'UTF-8'); ?></title>
 
-    <link rel="stylesheet" href="<?= media(); ?>/Orders/styles.css">
+    <link rel="stylesheet" href="<?= media(); ?>/Orders/styles.css?v=1.5.0.4">
 
     <?php if (!empty($data['page_styles']) && is_array($data['page_styles'])): ?>
         <?php foreach ($data['page_styles'] as $style): ?>
