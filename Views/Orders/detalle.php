@@ -324,16 +324,6 @@ function construirRutaImagenUnidad(
 
                             <?php endif; ?>
 
-                            <?php if (!empty($unidad['anio'])): ?>
-
-                                <span class="unit-year-tag">
-                                    Modelo <?= intval(
-                                        $unidad['anio']
-                                    ); ?>
-                                </span>
-
-                            <?php endif; ?>
-
                         </div>
 
                         <h1>
@@ -359,30 +349,20 @@ function construirRutaImagenUnidad(
                     </div>
 
 
-                    <div class="unit-price-block">
-
-                        <span>
-                            Precio estimado
-                        </span>
-
-                        <strong>
-                            $<?= number_format(
-                                floatval(
-                                    $unidad['precio_dealer']
-                                ),
-                                2,
-                                '.',
-                                ','
-                            ); ?> MXN
+                    <div class="unit-price-block orders-detail-tax-price">
+                        <span class="orders-detail-tax-price__label">Precio de venta</span>
+                        <strong class="orders-detail-tax-price__amount">
+                            $<?= number_format((float) $unidad['precio_dealer'], 2, '.', ','); ?> MXN
                         </strong>
-
-                        <small class="d-block" style="font-weight:600;color:#866313">
-                            Precio publicado sin IVA. El impuesto se calcula por separado.
+                        <span class="orders-detail-tax-price__included">
+                            <i class="ri-checkbox-circle-line" aria-hidden="true"></i>
+                            IVA (16 %) incluido
+                        </span>
+                        <small class="orders-detail-tax-price__base">
+                            Precio antes de IVA:
+                            $<?= number_format(round((float) $unidad['precio_dealer'] / 1.16, 2), 2, '.', ','); ?> MXN
                         </small>
-                        <small>
-                            Precio sujeto a disponibilidad y condiciones comerciales.
-                        </small>
-
+                        <small class="orders-detail-tax-price__note">Precio sujeto a disponibilidad y condiciones comerciales.</small>
                     </div>
 
 
@@ -446,7 +426,7 @@ function construirRutaImagenUnidad(
                         <div>
 
                             <span>
-                                Marca
+                                Segmento
                             </span>
 
                             <strong>
@@ -473,20 +453,6 @@ function construirRutaImagenUnidad(
                                     ENT_QUOTES,
                                     'UTF-8'
                                 ); ?>
-                            </strong>
-
-                        </div>
-
-                        <div>
-
-                            <span>
-                                Año
-                            </span>
-
-                            <strong>
-                                <?= !empty($unidad['anio'])
-                                    ? intval($unidad['anio'])
-                                    : 'No especificado'; ?>
                             </strong>
 
                         </div>
@@ -625,7 +591,7 @@ function construirRutaImagenUnidad(
                         </div>
 
                         <div>
-                            <span>Marca</span>
+                            <span>Segmento</span>
 
                             <strong>
                                 <?= htmlspecialchars(
@@ -660,16 +626,6 @@ function construirRutaImagenUnidad(
                                     ENT_QUOTES,
                                     'UTF-8'
                                 ); ?>
-                            </strong>
-                        </div>
-
-                        <div>
-                            <span>Año</span>
-
-                            <strong>
-                                <?= !empty($unidad['anio'])
-                                    ? intval($unidad['anio'])
-                                    : 'No especificado'; ?>
                             </strong>
                         </div>
 
@@ -710,7 +666,7 @@ function construirRutaImagenUnidad(
                                     ','
                                 ); ?> MXN
                             </strong>
-                            <small class="d-block" style="font-size:12px;color:#866313">Precio sin IVA</small>
+                            <small class="orders-spec-tax-note">IVA (16 %) incluido</small>
                         </div>
 
                     </div>

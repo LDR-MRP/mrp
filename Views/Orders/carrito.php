@@ -100,7 +100,7 @@ $idusuarioAccesoPortal = (int) (
                     </div>
 
                     <div class="summary-row">
-                        <span>Subtotal estimado (sin IVA)</span>
+                        <span>Base estimada sin IVA</span>
 
                         <strong id="subtotalEstimated">
                             $0.00
@@ -108,7 +108,7 @@ $idusuarioAccesoPortal = (int) (
                     </div>
 
                     <div class="summary-row">
-                        <span>IVA estimado (16 %)</span>
+                        <span>IVA incluido (16 %)</span>
 
                         <strong id="ivaEstimated">
                             $0.00
@@ -116,7 +116,7 @@ $idusuarioAccesoPortal = (int) (
                     </div>
 
                     <div class="summary-row summary-row-total">
-                        <span>Total estimado (con IVA)</span>
+                        <span>Total estimado (IVA incluido)</span>
 
                         <strong id="totalEstimated">
                             $0.00

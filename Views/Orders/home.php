@@ -102,7 +102,7 @@ headerOrders($data);
                 </p>
                 <p class="small mt-2 mb-0" style="color:#866313;font-weight:600" role="note">
                     <i class="ri-information-line me-1" aria-hidden="true"></i>
-                    Los precios mostrados no incluyen IVA. El impuesto correspondiente se agregará al importe final de la compra.
+                    Los precios publicados ya incluyen IVA (16 %). Consulta el desglose de impuestos en cada unidad.
                 </p>
 
             </div>
@@ -142,10 +142,6 @@ headerOrders($data);
 
                         <option value="precio_desc">
                             Precio: mayor a menor
-                        </option>
-
-                        <option value="anio_desc">
-                            Año: más reciente
                         </option>
 
                         <!-- <option value="stock_desc">
@@ -252,37 +248,6 @@ headerOrders($data);
                             </option>
 
                         </select>
-
-                    </div>
-
-
-                    <!-- AÑO -->
-
-                    <div class="filter-group">
-
-                        <label>
-                            Año
-                        </label>
-
-                        <div class="filter-grid-two">
-
-                            <select id="yearFromFilter">
-
-                                <option value="">
-                                    Desde
-                                </option>
-
-                            </select>
-
-                            <select id="yearToFilter">
-
-                                <option value="">
-                                    Hasta
-                                </option>
-
-                            </select>
-
-                        </div>
 
                     </div>
 

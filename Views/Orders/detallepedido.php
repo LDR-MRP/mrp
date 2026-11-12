@@ -655,7 +655,7 @@ foreach ($detalles as $detalle) {
 
                                     </h3>
 
-                                    <p>
+                                    <!-- <p>
 
                                         <?= htmlspecialchars(
                                             trim(
@@ -676,7 +676,7 @@ foreach ($detalles as $detalle) {
                                             'UTF-8'
                                         ); ?>
 
-                                    </p>
+                                    </p> -->
 
                                 </div>
 

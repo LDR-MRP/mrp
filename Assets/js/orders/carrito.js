@@ -348,14 +348,15 @@ function calculateCartTotals(cart) {
     0
   );
 
-  const iva = subtotal * IVA_RATE;
-
-  const total = subtotal + iva;
+  // Los precios publicados ya incluyen IVA: desglosar sin volver a cobrarlo.
+  const total = Math.round(subtotal * 100) / 100;
+  const baseSinIva = Math.round(total / (1 + IVA_RATE) * 100) / 100;
+  const iva = Math.round((total - baseSinIva) * 100) / 100;
 
   return {
     totalModels,
     totalUnits,
-    subtotal,
+    subtotal: baseSinIva,
     iva,
     total,
   };

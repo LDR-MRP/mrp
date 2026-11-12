@@ -1631,12 +1631,6 @@ function renderProducts(list) {
 
                 </div>
 
-
-                <div>
-                  <span>Año modelo</span>
-                  <strong>${Number(item.anio) > 0 ? escapeHtml(item.anio) : 'No especificado'}</strong>
-                </div>
-
                 <div>
 
                   <span>
@@ -1654,19 +1648,11 @@ function renderProducts(list) {
               </div>
 
 
-              <div class="product-price">
-
-                <span>
-                  Precio
-                </span>
-
-                <strong>
-
-                  ${formatMoney(item.precio)}
-
-                </strong>
-                <small class="d-inline-flex align-items-center gap-1 mt-2 px-2 py-1 rounded" style="font-size:12px;font-weight:700;color:#785600;background:#fff4d6;border:1px solid #f2d58b" aria-label="El precio publicado no incluye IVA"><i class="ri-information-line" aria-hidden="true"></i>Precio antes de IVA</small>
-
+              <div class="product-price orders-tax-price">
+                <span class="orders-tax-price__label">Precio de venta</span>
+                <strong class="orders-tax-price__amount">${formatMoney(item.precio)}</strong>
+                <span class="orders-tax-price__included"><i class="ri-checkbox-circle-line" aria-hidden="true"></i> IVA (16 %) incluido</span>
+                <small class="orders-tax-price__base">Precio antes de IVA: <span>${formatMoney(Math.round((Number(item.precio) || 0) / 1.16 * 100) / 100)}</span></small>
               </div>
 
 

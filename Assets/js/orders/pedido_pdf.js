@@ -255,9 +255,7 @@ async function generarPdfPedido(pedido,detalles) {
 
             const descripcionModelo =
                 [
-                    detalle.marca,
-                    detalle.version,
-                    detalle.anio
+                    detalle.marca
                 ]
                     .filter(Boolean)
                     .join(" · ");

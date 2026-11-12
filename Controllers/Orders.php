@@ -1943,10 +1943,11 @@ class Orders extends Controllers
                 }
 
                 $descuentoDetalle = 0.00;
-                $subtotalDetalle = round($precioUnitario * $cantidad, 2);
-                $baseIva = round($subtotalDetalle - $descuentoDetalle, 2);
-                $ivaDetalle = round($baseIva * $tasaIva, 2);
-                $totalDetalle = round($baseIva + $ivaDetalle, 2);
+                // Precio publicado con IVA incluido: desglosar, nunca agregar 16 % otra vez.
+                $importeConIva = round($precioUnitario * $cantidad, 2);
+                $totalDetalle = round($importeConIva - $descuentoDetalle, 2);
+                $subtotalDetalle = round($totalDetalle / (1 + $tasaIva), 2);
+                $ivaDetalle = round($totalDetalle - $subtotalDetalle, 2);
                 $subtotalPedido += $subtotalDetalle;
                 $descuentoPedido += $descuentoDetalle;
                 $ivaPedido += $ivaDetalle;
@@ -3186,9 +3187,10 @@ class Orders extends Controllers
                  */
 
                 $descuentoDetalle = 0;
-                $subtotalDetalle = $precioUnitario * $cantidad;
-                $ivaDetalle = $subtotalDetalle * 0.16;
-                $totalDetalle = $subtotalDetalle + $ivaDetalle;
+                // Actualización de pedido: el precio de catálogo ya incluye IVA.
+                $totalDetalle = round($precioUnitario * $cantidad, 2);
+                $subtotalDetalle = round($totalDetalle / 1.16, 2);
+                $ivaDetalle = round($totalDetalle - $subtotalDetalle, 2);
 
                 /*
                  * ============================================
