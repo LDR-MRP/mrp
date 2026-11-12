@@ -78,7 +78,85 @@ class Inv_unidadesModel extends Mysql
                                                              FROM wms_movimientos_inventario_series ms2
                                                              WHERE ms2.id_numeros_serie = ns.id_numeros_serie)))))
                 ORDER BY i.descripcion, a.cve_almacen, ns.numero_serie";
-        return $this->select_all($sql);
+        return array_merge($this->select_all($sql), $this->selectUnidadesSinVin());
+    }
+
+    /**
+     * Almacenes cuyas unidades se controlan por existencia y no por VIN (XIAN y VELCEN):
+     * entran con movimientos de compra sin lote ni VIN generado.
+     */
+    public const ALMACENES_SIN_VIN = ['ALM-XIAN', 'ALM-VELCEN'];
+
+    /**
+     * Unidades sin VIN de los almacenes de ALMACENES_SIN_VIN: existencia del último
+     * movimiento vigente por producto y almacén, menos los VIN tatuados que ya tenga
+     * ahí (para no contarlos dos veces si después se les generan VINs). Se devuelve un
+     * renglón por unidad, con la misma forma que selectUnidades() y numero_serie
+     * 'SIN VIN', para que la pantalla y el reporte ejecutivo las cuenten igual.
+     */
+    public function selectUnidadesSinVin(): array
+    {
+        $claves = "'" . implode("','", self::ALMACENES_SIN_VIN) . "'";
+        $sql = "SELECT i.idinventario AS inventarioid,
+                       i.cve_articulo,
+                       i.descripcion,
+                       COALESCE(sl.cve_sublinea_producto, 'SIN SUBLINEA') AS sublinea,
+                       COALESCE(sl.descripcion, 'Sin sublínea') AS sublinea_desc,
+                       a.idalmacen AS almacenid,
+                       a.cve_almacen,
+                       a.descripcion AS almacen,
+                       " . self::PLANTA_SQL . " AS planta,
+                       " . self::PLANTA_NOMBRE_SQL . " AS planta_nombre,
+                       m.existencia - COALESCE(v.vins, 0) AS cantidad,
+                       DATE_FORMAT(m.fecha_movimiento, '%Y-%m-%d') AS fecha
+                FROM (SELECT inventarioid, almacenid, MAX(idmovinventario) AS idmov
+                      FROM wms_movimientos_inventario
+                      WHERE estado = 2
+                      GROUP BY inventarioid, almacenid) u
+                INNER JOIN wms_movimientos_inventario m ON m.idmovinventario = u.idmov
+                INNER JOIN wms_almacenes a ON a.idalmacen = u.almacenid
+                INNER JOIN wms_inventario i ON i.idinventario = u.inventarioid
+                LEFT JOIN mrp_planta pl ON pl.idplanta = a.plantaid
+                LEFT JOIN (SELECT inventarioid, almacenid, COUNT(*) AS vins
+                           FROM wms_numeros_series WHERE estado = '2'
+                           GROUP BY inventarioid, almacenid) v
+                       ON v.inventarioid = u.inventarioid AND v.almacenid = u.almacenid
+                " . self::SUBLINEA_JOIN . "
+                WHERE UPPER(TRIM(a.cve_almacen)) IN ($claves)
+                  AND i.tipo_elemento = 'P'
+                  AND i.estado = '2'
+                  AND m.existencia - COALESCE(v.vins, 0) > 0
+                ORDER BY i.descripcion, a.cve_almacen";
+        $out = [];
+        foreach ($this->select_all($sql) as $r) {
+            $n = (int) $r['cantidad'];
+            for ($k = 1; $k <= $n; $k++) {
+                $out[] = [
+                    'id_numeros_serie' => 'SV-' . $r['almacenid'] . '-' . $r['inventarioid'] . '-' . $k,
+                    'numero_serie'  => 'SIN VIN',
+                    'sin_vin'       => 1,
+                    'color'         => null,
+                    'inventarioid'  => $r['inventarioid'],
+                    'cve_articulo'  => $r['cve_articulo'],
+                    'descripcion'   => $r['descripcion'],
+                    'sublinea'      => $r['sublinea'],
+                    'sublinea_desc' => $r['sublinea_desc'],
+                    'almacenid'     => $r['almacenid'],
+                    'cve_almacen'   => $r['cve_almacen'],
+                    'almacen'       => $r['almacen'],
+                    'planta'        => $r['planta'],
+                    'planta_nombre' => $r['planta_nombre'],
+                    'en_transito'   => 0,
+                    'estado'        => '2',
+                    'anio'          => null,
+                    'referencia'    => null,
+                    'numero_motor'  => null,
+                    'vin_origen'    => null,
+                    'fecha'         => $r['fecha'],
+                ];
+            }
+        }
+        return $out;
     }
 
     /** JOIN de sublínea (Ingeniería primero, luego wms_inventario_linea) para el alias i = wms_inventario. */
