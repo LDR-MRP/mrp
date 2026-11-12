@@ -80,4 +80,78 @@ class Inv_unidadesModel extends Mysql
                 ORDER BY i.descripcion, a.cve_almacen, ns.numero_serie";
         return $this->select_all($sql);
     }
+
+    /** JOIN de sublínea (Ingeniería primero, luego wms_inventario_linea) para el alias i = wms_inventario. */
+    private const SUBLINEA_JOIN = "LEFT JOIN (SELECT id_inventario, MIN(id_sublineaproducto) AS idsub
+                           FROM ing_modelo_configuracion
+                           WHERE deleted_at IS NULL AND id_inventario IS NOT NULL
+                           GROUP BY id_inventario) cfg ON cfg.id_inventario = i.idinventario
+                LEFT JOIN (SELECT inventarioid, MIN(sublineaproductoid) AS idsub
+                           FROM wms_inventario_linea WHERE estado = 2
+                           GROUP BY inventarioid) il ON il.inventarioid = i.idinventario
+                LEFT JOIN wms_sublinea_producto sl ON sl.idsublineaproducto = COALESCE(cfg.idsub, il.idsub)";
+
+    /**
+     * Unidades en tránsito del Order delivery plan (wms_odp) por producto y mes de carga.
+     * No tienen entrada al inventario; regresa [] si el módulo aún no tiene tablas.
+     */
+    public function selectTransitoODP(): array
+    {
+        $t = $this->select("SELECT COUNT(*) AS n FROM information_schema.tables
+                            WHERE table_schema = DATABASE() AND table_name = 'wms_odp'");
+        if ((int) ($t['n'] ?? 0) === 0) {
+            return [];
+        }
+        return $this->select_all(
+            "SELECT o.inventarioid,
+                    i.cve_articulo,
+                    i.descripcion,
+                    COALESCE(sl.cve_sublinea_producto, 'SIN SUBLINEA') AS sublinea,
+                    COALESCE(sl.descripcion, 'Sin sublínea') AS sublinea_desc,
+                    DATE_FORMAT(o.mes_carga, '%Y-%m') AS mes,
+                    SUM(o.qty) AS qty
+             FROM wms_odp o
+             INNER JOIN wms_inventario i ON i.idinventario = o.inventarioid
+             " . self::SUBLINEA_JOIN . "
+             GROUP BY o.inventarioid, i.cve_articulo, i.descripcion, sublinea, sublinea_desc, mes"
+        );
+    }
+
+    /** Renglones del Order delivery plan agrupados por contrato (detalle de la vista En tránsito). */
+    public function selectTransitoContratos(): array
+    {
+        $t = $this->select("SELECT COUNT(*) AS n FROM information_schema.tables
+                            WHERE table_schema = DATABASE() AND table_name = 'wms_odp'");
+        if ((int) ($t['n'] ?? 0) === 0) {
+            return [];
+        }
+        return $this->select_all(
+            "SELECT o.inventarioid,
+                    COALESCE(o.contrato, '') AS contrato,
+                    COALESCE(o.modelo, '') AS modelo,
+                    COALESCE(DATE_FORMAT(o.eta_pod, '%Y-%m-%d'), o.eta_pod_txt, '') AS eta,
+                    COALESCE(o.status, '') AS status,
+                    DATE_FORMAT(o.mes_carga, '%Y-%m') AS mes,
+                    SUM(o.qty) AS qty
+             FROM wms_odp o
+             GROUP BY o.inventarioid, contrato, modelo, eta, status, mes
+             ORDER BY mes, contrato"
+        );
+    }
+
+    /** [inventarioid => nombre comercial de Ingeniería] de los productos tipo P. */
+    public function selectNombresComerciales(): array
+    {
+        $out = [];
+        foreach ($this->select_all(
+            "SELECT id_inventario, MIN(nombre_comercial) AS nombre
+             FROM ing_modelo_configuracion
+             WHERE deleted_at IS NULL AND id_inventario IS NOT NULL
+               AND nombre_comercial IS NOT NULL AND TRIM(nombre_comercial) <> ''
+             GROUP BY id_inventario"
+        ) as $r) {
+            $out[(int) $r['id_inventario']] = trim($r['nombre']);
+        }
+        return $out;
+    }
 }

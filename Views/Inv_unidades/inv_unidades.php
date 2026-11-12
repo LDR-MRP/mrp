@@ -240,6 +240,17 @@
         .iu-dstats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; }
         .iu-bar, .iu-filtros, .iu-activos, .iu-body { padding-left: 1rem; padding-right: 1rem; }
     }
+    /* ---- Vista En tránsito (Order delivery plan) ---- */
+    .iu-odp-nota { display: flex; gap: .6rem; align-items: flex-start; font-size: .8rem; color: var(--vz-secondary-color);
+        background: rgba(212, 98, 42, .07); border: 1px solid rgba(212, 98, 42, .25); border-radius: .5rem; padding: .55rem .8rem; margin-bottom: .75rem; }
+    .iu-odp-nota i { color: #d4622a; font-size: 1.1rem; line-height: 1; }
+    .iu-odp thead tr.plantas th.pl { background: rgba(212, 98, 42, .12); color: #b14f1f; }
+    .iu-odp tr.fila { cursor: pointer; }
+    .iu-odp tr.fila.abierta td { background: rgba(212, 98, 42, .06); }
+    .iu-odp tr.det td { font-size: .78rem; background: var(--vz-light); border-top: 0; }
+    .iu-odp tr.det .ct { font-family: SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; }
+    .iu-odp tr.det .st { display: inline-block; font-size: .7rem; padding: .05rem .45rem; border-radius: 50rem; background: rgba(212, 98, 42, .12); color: #b14f1f; }
+    .iu-odp td.col-tot { color: #b14f1f; }
 </style>
 <div id="contentAjax"></div>
 <div class="main-content">
@@ -260,11 +271,13 @@
                     <button type="button" class="btn btn-sm btn-light" id="btnRefrescar" title="Volver a consultar la existencia">
                         <i class="ri-refresh-line"></i> Actualizar
                     </button>
-                    <button type="button" class="btn btn-sm btn-soft-success" id="btnExcel" title="Exporta la vista actual con los filtros aplicados">
+                    <button type="button" class="btn btn-sm btn-soft-success" id="btnEjecutivoXLSX"
+                        title="Reporte ejecutivo en Excel: inventario real vs. unidades en tránsito. Respeta sublínea y búsqueda">
                         <i class="ri-file-excel-2-line"></i> Excel
                     </button>
-                    <button type="button" class="btn btn-sm btn-soft-danger" id="btnPDF" title="Reporte PDF de la matriz con los filtros aplicados">
-                        <i class="ri-file-pdf-2-line"></i> Reporte PDF
+                    <button type="button" class="btn btn-sm btn-soft-danger" id="btnEjecutivoPDF"
+                        title="Reporte ejecutivo en PDF: inventario real vs. unidades en tránsito. Respeta sublínea y búsqueda">
+                        <i class="ri-file-pdf-2-line"></i> PDF
                     </button>
                 </div>
             </div>
@@ -333,6 +346,9 @@
                         <button type="button" class="iu-tab" data-vista="listado" role="tab" title="Un renglón por VIN">
                             <i class="ri-barcode-line"></i><span class="txt">Listado de VIN</span><span class="n" id="nVListado">–</span>
                         </button>
+                        <button type="button" class="iu-tab" data-vista="transito" role="tab" title="Unidades por llegar (Order delivery plan)">
+                            <i class="ri-ship-2-line"></i><span class="txt">En tránsito</span><span class="n" id="nVTransito">–</span>
+                        </button>
                     </div>
                     <div class="iu-busca" id="wrapBuscar">
                         <i class="ri-search-line"></i>
@@ -396,6 +412,19 @@
                             <span><i class="ri-cursor-line"></i>Clic en un número: VIN de ese modelo en ese almacén</span>
                             <span><i class="ri-car-line"></i>Clic en el modelo: todas sus unidades</span>
                             <span><i class="ri-folder-open-line"></i>Clic en la sublínea: contraer / expandir</span>
+                        </div>
+                    </div>
+                    <div id="panelTransito" class="iu-panel d-none">
+                        <div class="iu-odp-nota">
+                            <i class="ri-ship-2-line"></i>
+                            <span>Unidades por llegar del <b>Order delivery plan</b>, por mes de carga. Aún no tienen entrada al inventario.
+                            Aplican los filtros de sublínea y búsqueda (también por contrato); año, color, planta y almacén no aplican.</span>
+                        </div>
+                        <div class="iu-scroll">
+                            <table class="iu-matriz iu-odp" id="tTransito"><tbody></tbody></table>
+                        </div>
+                        <div class="iu-hint">
+                            <span><i class="ri-cursor-line"></i>Clic en el modelo: ver sus contratos (contrato, modelo, QTY, ETA y status)</span>
                         </div>
                     </div>
                     <div id="panelAlmacen" class="iu-panel d-none"></div>
