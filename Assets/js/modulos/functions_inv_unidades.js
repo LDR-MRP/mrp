@@ -106,6 +106,9 @@ document.addEventListener("DOMContentLoaded", function () {
     } catch (e) {}
     ta.remove();
   }
+  const esSinVin = (u) => String(u.sin_vin) === "1";
+  // Unidades de XIAN / VELCEN: se controlan por existencia, todavía sin VIN
+  const vinHtml = (u) => (esSinVin(u) ? '<span class="badge bg-secondary-subtle text-secondary">Sin VIN</span>' : `<span class="iu-vin">${esc(u.numero_serie)}</span>${btnCopiar(u.numero_serie)}`);
   const btnCopiar = (vin) => `<button type="button" class="iu-copy" data-copiar="${esc(vin)}" title="Copiar VIN"><i class="ri-file-copy-line"></i></button>`;
 
   /* ---------------- Filtros ---------------- */
@@ -423,7 +426,7 @@ document.addEventListener("DOMContentLoaded", function () {
       dtListado = $("#tListado").DataTable({
         data: lista,
         columns: [
-          { data: "numero_serie", render: (d, t, u) => (t === "display" ? `<span class="iu-vin">${esc(d)}</span>${btnCopiar(d)}${badgeTransito(u)}` : d) },
+          { data: "numero_serie", render: (d, t, u) => (t === "display" ? `${vinHtml(u)}${badgeTransito(u)}` : d) },
           { data: anioDe, render: (d, t) => (t === "display" ? `<span class="iu-anio ms-0">${esc(d)}</span>` : d) },
           { data: colorDe, render: (d, t) => (t === "display" ? `${dot(d)} ${esc(d)}` : d) },
           {
@@ -489,7 +492,7 @@ document.addEventListener("DOMContentLoaded", function () {
       ? detalleVisible
           .map(
             (u, i) =>
-              `<tr><td class="text-muted">${i + 1}</td><td><span class="iu-vin">${esc(u.numero_serie)}</span>${btnCopiar(u.numero_serie)}${badgeTransito(u)}</td><td><span class="iu-anio ms-0">${esc(anioDe(u))}</span></td><td>${dot(colorDe(u))} ${esc(colorDe(u))}</td><td title="${esc(u.almacen)}">${esc(u.cve_almacen)}</td><td>${u.numero_motor ? esc(u.numero_motor) : '<span class="text-muted">—</span>'}</td><td>${u.vin_origen ? `<span class="iu-vin fw-normal">${esc(u.vin_origen)}</span>` : '<span class="text-muted">—</span>'}</td></tr>`,
+              `<tr><td class="text-muted">${i + 1}</td><td>${vinHtml(u)}${badgeTransito(u)}</td><td><span class="iu-anio ms-0">${esc(anioDe(u))}</span></td><td>${dot(colorDe(u))} ${esc(colorDe(u))}</td><td title="${esc(u.almacen)}">${esc(u.cve_almacen)}</td><td>${u.numero_motor ? esc(u.numero_motor) : '<span class="text-muted">—</span>'}</td><td>${u.vin_origen ? `<span class="iu-vin fw-normal">${esc(u.vin_origen)}</span>` : '<span class="text-muted">—</span>'}</td></tr>`,
           )
           .join("")
       : `<tr><td colspan="7" class="text-center text-muted py-4">Ningún VIN coincide con “${esc(q)}”</td></tr>`;
@@ -505,7 +508,9 @@ document.addEventListener("DOMContentLoaded", function () {
   });
   byId("btnDetalleCopiar").addEventListener("click", () => {
     if (!detalleVisible.length) return;
-    copiar(detalleVisible.map((u) => u.numero_serie).join("\n"), `${plural(detalleVisible.length, "VIN")} copiados`);
+    const vins = detalleVisible.filter((u) => !esSinVin(u));
+    if (!vins.length) return aviso("Estas unidades aún no tienen VIN");
+    copiar(vins.map((u) => u.numero_serie).join("\n"), `${plural(vins.length, "VIN")} copiados`);
   });
 
   function descargarCSV(nombre, filas) {
@@ -869,7 +874,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         byId("iuEstado").classList.remove("err");
         byId("iuEstado").textContent = `Existencia al ${d.generado}`;
-        byId("iuGenerado").textContent = `${plural(datos.length, "VIN")} en inventario`;
+        byId("iuGenerado").textContent = `${plural(datos.length, "unidad", "unidades")} en inventario`;
         llenarSelects();
         render();
       })

@@ -297,7 +297,7 @@ class Inv_unidades extends Controllers
                 $alms[$aid] = ['cve' => self::ALMACENES_APARTE[$cveAlm], 'orden' => 1];
             } else {
                 $aid = 'PLANTA';
-                $alms[$aid] = ['cve' => 'Planta', 'orden' => 0];
+                $alms[$aid] = ['cve' => 'Planta/Montenegro', 'orden' => 0];
             }
             $rows[$k]['alm'][$aid] = ($rows[$k]['alm'][$aid] ?? 0) + 1;
             $rows[$k]['inv']++;
@@ -531,6 +531,10 @@ class Inv_unidades extends Controllers
         $sh->getColumnDimension('C')->setWidth(14);
         for ($c = $cInv0; $c <= $cTot; $c++) {
             $sh->getColumnDimension($L($c))->setWidth(13);
+        }
+        $ci = $cInv0;
+        foreach ($alms as $a) {                      // columnas con nombre largo (Planta/Montenegro)
+            $sh->getColumnDimension($L($ci++))->setWidth(max(13, mb_strlen($a['cve']) + 3));
         }
 
         // Encabezado: fila 5 bloques, filas 6-7 columnas (meses: ALM-TRANSITO en 6, mes en 7)
@@ -815,7 +819,7 @@ class Inv_unidades extends Controllers
             . $td($wTot, '', ' style="' . $sOsc . '"') . '</tr><tr>'
             . '<td width="' . ($wMod + $wColor) . '%" colspan="2" style="' . $sOsc . '"></td>';
         foreach ($alms as $a) {
-            $thead .= $td($wDin, $h($a['cve']), ' align="center" style="' . $sInv . '"');
+            $thead .= $td($wDin, str_replace('/', '/<br>', $h($a['cve'])), ' align="center" style="' . $sInv . '"');
         }
         $thead .= ($nMes ? '<td width="' . ($wDin * $nMes) . '%" colspan="' . $nMes . '" align="center" style="' . $sTra . 'font-size:6.5pt;">ALM-TRANSITO · mes de carga</td>' : '')
             . $td($wTot, 'TOTAL', ' align="center" style="' . $sOsc . '"') . '</tr><tr>'
