@@ -287,7 +287,7 @@ class Inv_unidades extends Controllers
             if (!$pasa($r['sublinea'], $r['cve_articulo'] . ' ' . $r['descripcion'] . ' ' . ($nombres[(int) $r['inventarioid']] ?? ''))) {
                 continue;
             }
-            $color = trim((string) ($r['color'] ?? '')) !== '' ? mb_convert_case(trim($r['color']), MB_CASE_TITLE, 'UTF-8') : 'Sin color';
+            $color = trim((string) ($r['color'] ?? '')) !== '' ? mb_convert_case(trim($r['color']), MB_CASE_TITLE, 'UTF-8') : self::COLOR_TRANSITO;   // sin color = Blanco
             $k = $fila($r['sublinea'], $r['sublinea_desc'], $r['inventarioid'], $r['cve_articulo'], $r['descripcion'], $color);
             // Solo existencias: los almacenes se agrupan (Planta / En tránsito / Otras ubicaciones)
             $aid = $r['planta'] === 'TRANSITO' ? 'TRANSITO' : (in_array($r['planta'], ['SIN', 'OTROS'], true) ? 'OTRAS' : 'PLANTA');
