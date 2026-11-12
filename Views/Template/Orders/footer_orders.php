@@ -9,7 +9,7 @@
   const media_url = "<?= media(); ?>";
 </script>
 
-<script src="<?= media(); ?>/js/orders/home.js?v=1.4.0.4"></script>
+<script src="<?= media(); ?>/js/orders/home.js?v=1.5.0.4"></script>
 
    <script src="<?= media(); ?>/minimal/libs/sweetalert2/sweetalert2.min.js"></script>
 
