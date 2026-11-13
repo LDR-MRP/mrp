@@ -3,6 +3,12 @@ namespace Libraries\Core;
 
 class ApiRouter {
     public static function dispatch(string $requestedUrl): void {
+        $logFile = 'Logs/mrp-' . date('Y-m-d') . '.log';
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] [ApiRouter::dispatch] URL solicitada: {$requestedUrl}\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] [ApiRouter::dispatch] Método: {$_SERVER['REQUEST_METHOD']}\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+
         // 1. Cargamos el archivo donde el usuario define las rutas.
         // Este sí usa require porque no es una clase, es un script procedimental.
         $routesFile = __DIR__ . '/../../Routes/api.php';
@@ -12,6 +18,14 @@ class ApiRouter {
 
         $requestedUrl = trim($requestedUrl, '/');
         $requestMethod = $_SERVER['REQUEST_METHOD'];
+
+        // 2. Preparar el request array con $_POST y $_FILES
+        $request = array_merge($_POST, $_FILES);
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] [ApiRouter::dispatch] Request (POST + FILES): " . json_encode($request) . "\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] [ApiRouter::dispatch] Rutas registradas: " . json_encode(Route::$routes) . "\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
 
         // 2. Iteramos las rutas registradas en la clase Route
         foreach (Route::$routes as $route) {
@@ -50,12 +64,12 @@ class ApiRouter {
                 };
 
                 // Ejecutamos Pipeline (También cargado por Autoload)
-                Pipeline::process([], $middlewares, $coreAction);
+                Pipeline::process($request, $middlewares, $coreAction);
                 return;
             }
         }
 
-        self::sendError(404, "Endpoint no encontrado.");
+        self::sendError(404, "Endpoint no encontrado: {$requestedUrl}");
     }
 
     private static function sendError(int $code, string $message): void {

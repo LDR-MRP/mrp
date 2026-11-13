@@ -10,6 +10,7 @@ enum AuditAction: string
     case UPDATED = 'actualizacion';
     case DELETED = 'eliminacion_logica';
     case RESTORED = 'restauracion';
+    case REACTIVATED = 'reactivacion'; // NUEVO: Para reactivación de cuentas bancarias
     
     // --- ESTADOS ERP ---
     case CANCELED = 'cancelacion';

@@ -76,4 +76,7 @@ class Prv_proveedor  extends Controllers{
         // Renderiza de forma Stateless: Views/Prv_proveedor/reporte.php
         $this->views->getView($this, "../Prv_proveedor/reporte", $data);
     }
+    public function delete($id, $accion){
+        die("delete");
+    }
 }

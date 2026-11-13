@@ -89,17 +89,22 @@ class Prv_StoreBankAccountRequest extends Requests
     private function validateBusinessRules(): void
     {
         // 1. Prevención de Fraude (CLABE Duplicada)
-        // Ningún proveedor debería tener la misma CLABE que otro. Si esto pasa, 
+        // Ningún proveedor debería tener la misma CLABE que otro. Si esto pasa,
         // alguien está intentando desviar fondos a una cuenta ya conocida.
         if (!empty($this->data['clabe'])) {
-            $cuentaExistente = $this->prv_detCuentaBancariaModel->findByClabe($this->data['clabe']);
-            
+            $cuentaExistente = $this->prv_detCuentaBancariaModel->findByClabeIncludingDeleted($this->data['clabe']);
+
             if ($cuentaExistente) {
-                // Si la CLABE existe, verificamos si le pertenece a OTRO proveedor
-                if ((int)$cuentaExistente['id_proveedor'] !== (int)$this->data['id_proveedor']) {
-                    $this->addError('clabe', 'ALERTA: Esta CLABE ya se encuentra registrada a nombre de otro proveedor en el sistema. Contacte a Contraloría.');
+                // Si la CLABE existe y está dada de baja, sugerir reactivación
+                if (!empty($cuentaExistente['deleted_at'])) {
+                    $this->addError('clabe', 'Esta CLABE ya existe pero está dada de baja. Use la opción de reactivación en lugar de crear una nueva cuenta.');
                 } else {
-                    $this->addError('clabe', 'Este proveedor ya tiene registrada esta misma CLABE.');
+                    // Si la CLABE existe y está activa, verificamos si le pertenece a OTRO proveedor
+                    if ((int)$cuentaExistente['id_proveedor'] !== (int)$this->data['id_proveedor']) {
+                        $this->addError('clabe', 'ALERTA: Esta CLABE ya se encuentra registrada a nombre de otro proveedor en el sistema. Contacte a Contraloría.');
+                    } else {
+                        $this->addError('clabe', 'Este proveedor ya tiene registrada esta misma CLABE.');
+                    }
                 }
             }
         }
