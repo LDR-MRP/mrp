@@ -52,6 +52,10 @@ Route::post('api/v1/suppliers/audit-document', [SupplierController::class, 'audi
 Route::get('api/v1/suppliers/{id}/banks', [SupplierController::class, 'getBanks'])->middleware([AuthMiddleware::class]);
 // Registrar nueva cuenta
 Route::post('api/v1/suppliers/store-bank', [SupplierController::class, 'storeBank'])->middleware([AuthMiddleware::class]);
+// Verificar estado de CLABE (para reactivación)
+Route::get('api/v1/suppliers/check-clabe/{clabe}', [SupplierController::class, 'checkClabe'])->middleware([AuthMiddleware::class]);
+// Reactivar cuenta bancaria
+Route::post('api/v1/suppliers/reactivate-bank', [SupplierController::class, 'reactivateBank'])->middleware([AuthMiddleware::class]);
 // Aprobar o Rechazar cuenta (Compliance L2)
 Route::post('api/v1/suppliers/audit-bank', [SupplierController::class, 'auditBankAccount'])->middleware([AuthMiddleware::class]);
 // Eliminar cuenta (Soft Delete)

@@ -517,6 +517,7 @@ headerAdmin($data);
                                                                placeholder="Buscar o agregar banco..."
                                                                autocomplete="off">
                                                         <input type="hidden" name="id_banco" id="id_banco" value="">
+                                                        <input type="hidden" name="id_cuenta_bancaria" id="id_cuenta_bancaria" value="">
                                                         <button type="button"
                                                                 class="btn btn-outline-info"
                                                                 id="btn-agregar-banco-rapido"
@@ -545,7 +546,7 @@ headerAdmin($data);
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">CLABE Interbancaria (Nacional) <span class="text-danger-asterisk">*</span></label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
                                                         <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-numbers-line"></i></span>
-                                                        <input type="text" name="clabe" class="form-control border-0 fs-16 fw-medium" maxlength="18" placeholder="18 dígitos">
+                                                        <input type="text" id="clabe" name="clabe" class="form-control border-0 fs-16 fw-medium" maxlength="18" placeholder="18 dígitos">
                                                     </div>
                                                 </div>
                                                 <!-- Cuenta -->
@@ -553,7 +554,7 @@ headerAdmin($data);
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">Número de Cuenta</label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
                                                         <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-bank-line"></i></span>
-                                                        <input type="text" name="cuenta" class="form-control border-0 fs-15" maxlength="20" placeholder="Ej. 0123456789">
+                                                        <input type="text" id="cuenta" name="cuenta" class="form-control border-0 fs-15" maxlength="20" placeholder="Ej. 0123456789">
                                                     </div>
                                                 </div>
                                                 <!-- Es Principal -->
@@ -589,7 +590,7 @@ headerAdmin($data);
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">SWIFT / BIC</label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
                                                         <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-global-line"></i></span>
-                                                        <input type="text" name="swift_bic" class="form-control border-0 fs-15" maxlength="15" placeholder="Código SWIFT">
+                                                        <input type="text" id="swift_bic" name="swift_bic" class="form-control border-0 fs-15" maxlength="15" placeholder="Código SWIFT">
                                                     </div>
                                                 </div>
                                                 <!-- IBAN -->
@@ -597,7 +598,7 @@ headerAdmin($data);
                                                     <label class="form-label text-uppercase fs-11 fw-bold text-muted">IBAN</label>
                                                     <div class="input-group border rounded-3 overflow-hidden shadow-none">
                                                         <span class="input-group-text border-0 text-muted fw-bold"><i class="ri-money-euro-circle-line"></i></span>
-                                                        <input type="text" name="iban" class="form-control border-0 fs-15" maxlength="34" placeholder="Código IBAN">
+                                                        <input type="text" id="iban" name="iban" class="form-control border-0 fs-15" maxlength="34" placeholder="Código IBAN">
                                                     </div>
                                                 </div>
                                             </div>
@@ -792,6 +793,67 @@ headerAdmin($data);
                 </button>
                 <button type="button" class="btn btn-primary" id="btn-guardar-banco">
                     <i class="ri-save-line align-middle me-1"></i> Guardar Banco
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Reactivar Cuenta Bancaria -->
+<div class="modal fade" id="modalReactivarCuenta" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-soft-warning">
+                <h5 class="modal-title">
+                    <i class="ri-refresh-line text-warning align-middle me-2"></i>
+                    Reactivar Cuenta Bancaria
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning d-flex align-items-center" role="alert">
+                    <i class="ri-information-line fs-20 me-3"></i>
+                    <div>
+                        Se encontró una cuenta bancaria con esta CLABE que fue dada de baja anteriormente.
+                    </div>
+                </div>
+                
+                <h6 class="fw-bold mb-3">Datos del registro original:</h6>
+                
+                <div class="card bg-light border-0">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="text-muted fs-11">Banco</label>
+                                <div class="fw-medium" id="react-banco">-</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="text-muted fs-11">Moneda</label>
+                                <div class="fw-medium" id="react-moneda">-</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="text-muted fs-11">Cuenta</label>
+                                <div class="fw-medium" id="react-cuenta">-</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="text-muted fs-11">Fecha de baja</label>
+                                <div class="fw-medium text-danger" id="react-fecha-baja">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <p class="text-muted fs-12 mt-3 mb-0">
+                    Al reactivar, se recuperará el registro original con su historial. 
+                    Podrás modificar campos opcionales (SWIFT, IBAN, PDF) antes de guardar.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="ri-close-line align-middle me-1"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-warning" id="btnConfirmarReactivacion">
+                    <i class="ri-refresh-line align-middle me-1"></i> Reactivar
                 </button>
             </div>
         </div>

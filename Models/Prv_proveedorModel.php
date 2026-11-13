@@ -233,7 +233,7 @@ class Prv_proveedorModel extends Mysql
                     nombre_comercial,
                     origen,
                     created_by
-                ) VALUES (?, ?, ?, ?, ?)",
+                ) VALUES (?, ?, ?, ?, ?, ?)",
                 [
                     // $h['id_empresa'],
                     $h['rfc'],

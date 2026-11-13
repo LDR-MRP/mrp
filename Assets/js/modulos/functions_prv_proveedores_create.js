@@ -668,6 +668,7 @@ const bankingManager = {
 
     init: function() {
         this.events();
+        this.validateClabeOnBlur(); // Agregar validación on blur de CLABE
     },
 
     events: function() {
@@ -931,6 +932,197 @@ const bankingManager = {
                 this.loadAccounts(idProveedor);
             }
         });
+    },
+
+    /**
+     * Valida la CLABE al perder el foco para detectar cuentas inactivas.
+     */
+    validateClabeOnBlur: function() {
+        const self = this;
+        let debounceTimer;
+
+        $('#clabe').on('blur', function() {
+            const clabe = $(this).val().trim();
+
+            // No validar si está vacío o no tiene 18 dígitos
+            if (!clabe || clabe.length !== 18) {
+                return;
+            }
+
+            // Debounce para evitar consultas repetitivas
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                Sys_Core.Net.get({
+                    url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers/check-clabe/${clabe}`,
+                    onSuccess: (res) => {
+                        console.log('[bankingManager] Respuesta de check-clabe:', res);
+                        if (res.status && res.data) {
+                            if (res.data.exists && !res.data.inactive) {
+                                // CLABE existe y está activa
+                                $('#clabe').addClass('is-invalid');
+                                // Crear elemento de error si no existe
+                                if ($('#clabe-error').length === 0) {
+                                    $('#clabe').after('<div id="clabe-error" class="invalid-feedback"></div>');
+                                }
+                                $('#clabe-error').text(res.data.message || 'Esta CLABE ya está registrada').show();
+                            } else if (res.data.exists && res.data.inactive) {
+                                // CLABE existe y está inactiva - mostrar modal de reactivación
+                                console.log('[bankingManager] Datos de cuenta inactiva:', res.data.data);
+                                self.showReactivationModal(res.data.data);
+                            } else {
+                                // CLABE no existe - limpiar errores
+                                $('#clabe').removeClass('is-invalid');
+                                $('#clabe-error').hide();
+                            }
+                        }
+                    },
+                    onError: (err) => {
+                        console.error('Error al verificar CLABE:', err);
+                    }
+                });
+            }, 500);
+        });
+    },
+
+    /**
+     * Muestra el modal de reactivación con datos del registro inactivo.
+     */
+    showReactivationModal: function(cuentaData) {
+        console.log('[bankingManager] showReactivationModal llamado con datos:', cuentaData);
+
+        // Llenar datos en el modal
+        $('#react-banco').text(cuentaData.nombre_banco || 'N/A');
+        $('#react-moneda').text(cuentaData.id_moneda || 'N/A');
+        $('#react-cuenta').text(cuentaData.cuenta || 'N/A');
+        $('#react-fecha-baja').text(cuentaData.deleted_at || 'N/A');
+
+        // Guardar datos para precarga
+        this.reactivationData = cuentaData;
+        console.log('[bankingManager] reactivationData establecido:', this.reactivationData);
+
+        // Guardar referencia a 'this' para usar en el evento
+        const self = this;
+
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('modalReactivarCuenta'));
+        modal.show();
+        console.log('[bankingManager] Modal mostrado');
+
+        // Manejar botón de confirmación
+        $('#btnConfirmarReactivacion').off('click').on('click', function() {
+            console.log('[bankingManager] Botón de reactivación clickeado');
+            modal.hide();
+            self.preloadReactivationData(cuentaData);
+        });
+
+        // Manejar botón de cancelación
+        $('#btnCancelarReactivacion').off('click').on('click', function() {
+            console.log('[bankingManager] Reactivación cancelada por el usuario');
+            modal.hide();
+
+            // Limpiar el estado de reactivación
+            self.reactivationData = null;
+
+            // Resetear el botón a su estado original
+            self.resetBankButton();
+
+            // Limpiar el campo CLABE para permitir otra búsqueda
+            $('#clabe').val('');
+        });
+    },
+
+    /**
+     * Restaura el botón a su estado original (Guardar Cuenta).
+     */
+    resetBankButton: function() {
+        $('#btnGuardarCuenta').html('<i class="ri-save-line align-middle me-1"></i> Guardar Cuenta');
+    },
+
+    /**
+     * Precarga los datos del registro inactivo en el formulario.
+     */
+    preloadReactivationData: function(cuentaData) {
+        console.log('[bankingManager] Precargando datos:', cuentaData);
+
+        // Precargar campos del formulario
+        $('#id_banco').val(cuentaData.id_banco); // Campo hidden para el servidor
+        $('#id_cuenta_bancaria').val(cuentaData.id_cuenta_bancaria); // Campo hidden para identificar reactivación
+        $('#banco_autocomplete').val(cuentaData.nombre_banco); // Campo visible para el usuario
+        $('#id_moneda_banco').val(cuentaData.id_moneda);
+        $('#cuenta').val(cuentaData.cuenta);
+        $('#clabe').val(cuentaData.clabe);
+        $('#swift_bic').val(cuentaData.swift_bic || '');
+        $('#iban').val(cuentaData.iban || '');
+
+        // Marcar cuenta principal
+        if (cuentaData.es_principal == 1) {
+            $('#banco_principal_si').prop('checked', true);
+        } else {
+            $('#banco_principal_no').prop('checked', true);
+        }
+
+        // Notificar al usuario
+        Sys_Core.UI.notify('Datos precargados. Puedes modificar campos opcionales y guardar para reactivar.', 'info');
+
+        // Cambiar texto del botón de guardar SOLO cuando hay datos de reactivación
+        $('#btnGuardarCuenta').html('<i class="ri-refresh-line align-middle me-1"></i> Reactivar Cuenta');
+    },
+
+    /**
+     * Modificado para manejar reactivación o creación normal.
+     */
+    storeAccount: function() {
+        console.log('[bankingManager] storeAccount llamado');
+        console.log('[bankingManager] reactivationData:', this.reactivationData);
+
+        const idProveedor = Sys_Core.URL.getParam('id');
+        if (!idProveedor) {
+            Sys_Core.UI.notify('Debes guardar los Datos Maestros primero.', 'warning');
+            return;
+        }
+
+        const form = document.getElementById('formDatosBancarios');
+        const payload = new FormData(form);
+        payload.append('id_proveedor', idProveedor);
+
+        // Verificar si es reactivación
+        if (this.reactivationData && this.reactivationData.id_cuenta_bancaria) {
+            console.log('[bankingManager] Es reactivación, ID cuenta:', this.reactivationData.id_cuenta_bancaria);
+            payload.append('id_cuenta_bancaria', this.reactivationData.id_cuenta_bancaria);
+
+            console.log('[bankingManager] FormData completo:');
+            for (let pair of payload.entries()) {
+                console.log(pair[0], pair[1]);
+            }
+
+            Sys_Core.Net.post({
+                url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers/reactivate-bank`,
+                payload: payload,
+                successMsg: 'Cuenta bancaria reactivada. El estatus se ha reseteado a PENDIENTE para validación.',
+                onDone: () => {
+                    console.log('[bankingManager] Reactivación exitosa');
+                    this.reactivationData = null; // Limpiar datos de reactivación
+                    $('#id_cuenta_bancaria').val(''); // Limpiar campo hidden
+                    Sys_Core.UI.clearForm('#formDatosBancarios');
+                    $('#banco_principal_no').prop('checked', true);
+                    this.resetBankButton(); // Restaurar botón a estado original
+                    this.loadAccounts(idProveedor);
+                }
+            });
+        } else {
+            console.log('[bankingManager] Es creación normal');
+            // Flujo normal de creación
+            Sys_Core.Net.post({
+                url: `${Sys_Core.Config.baseUrl}/api/v1/suppliers/store-bank`,
+                payload: payload,
+                successMsg: 'Cuenta bancaria agregada y enviada a revisión.',
+                onDone: () => {
+                    Sys_Core.UI.clearForm('#formDatosBancarios');
+                    $('#banco_principal_no').prop('checked', true);
+                    this.loadAccounts(idProveedor);
+                }
+            });
+        }
     }
 };
 

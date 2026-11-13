@@ -127,6 +127,40 @@ class SupplierController
         return $this->apiResponse($response);
     }
 
+    /**
+     * Verifica el estado de una CLABE para detección de reactivación.
+     * GET /api/v1/suppliers/check-clabe/{clabe}
+     */
+    public function checkClabe($clabeString): string
+    {
+        $clabe = $clabeString;
+        if (empty($clabe)) {
+            return $this->apiResponse([
+                'status' => false,
+                'error' => 'CLABE no proporcionada'
+            ], 400);
+        }
+        
+        return $this->apiResponse(
+            $this->supplierService->checkClabeStatus($clabe)
+        );
+    }
+
+    /**
+     * Reactiva una cuenta bancaria dada de baja.
+     * POST /api/v1/suppliers/reactivate-bank
+     */
+    public function reactivateBank(): string
+    {
+        $logFile = 'Logs/mrp-' . date('Y-m-d') . '.log';
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierController::reactivateBank] Request recibida: " . json_encode($this->request) . "\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+        return $this->apiResponse(
+            $this->supplierService->reactivateBankAccount($this->request, $this->request['auth_user'])
+        );
+    }
+
     public function getOnboardingTimeline(int $id): string
     {
         return $this->apiResponse($this->supplierService->getOnboardingTimeline($id));

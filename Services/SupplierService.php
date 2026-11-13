@@ -15,6 +15,7 @@ class SupplierService
     private readonly \Prv_proveedorModel $proveedorModel;
     private readonly \Prv_detExpedienteModel $expedienteModel;
     private readonly \Prv_detCuentaBancariaModel $bankModel;
+    private readonly \CatBancoModel $catBancoModel;
     private readonly Com_ordenCompraModel $poModel;
     private readonly AccountsPayableInvoiceModel $cxpModel;
     private readonly \UsuariosModel $usuarioModel;
@@ -24,6 +25,7 @@ class SupplierService
         $this->proveedorModel = new \Prv_proveedorModel();
         $this->expedienteModel = new \Prv_detExpedienteModel();
         $this->bankModel = new \Prv_detCuentaBancariaModel();
+        $this->catBancoModel = new \CatBancoModel();
         $this->usuarioModel = new \UsuariosModel();
         $this->poModel = new Com_ordenCompraModel;
         $this->cxpModel = new AccountsPayableInvoiceModel;
@@ -858,6 +860,20 @@ class SupplierService
                 $this->bankModel->resetPrincipalAccounts($supplierId);
             }
 
+            // NUEVA VALIDACIÓN: Verificar si la CLABE existe en registro inactivo
+            if (!empty($validated['clabe'])) {
+                $cuentaInactiva = $this->bankModel->findByClabeIncludingDeleted($validated['clabe']);
+                
+                if ($cuentaInactiva && !is_null($cuentaInactiva['deleted_at'])) {
+                    // CLABE existe en registro dado de baja
+                    return ServiceResponse::error(
+                        'Esta CLABE ya existe en un registro dado de baja. Por favor, use la opción de reactivación al perder el foco del campo CLABE.',
+                        409,
+                        ['requires_reactivation' => true, 'id_cuenta' => $cuentaInactiva['id_cuenta_bancaria']]
+                    );
+                }
+            }
+
             // 3. Preparar data para el Modelo (Mapeo de UI a DB)
             // Función de utilidad rápida para convertir '' en NULL
             $nullify = fn($value) => (trim((string)$value) === '') ? null : trim((string)$value);
@@ -910,6 +926,198 @@ class SupplierService
             
         } catch (\Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
+            return ServiceResponse::error($e->getMessage(), (int)$e->getCode() ?: 500);
+        }
+    }
+
+    /**
+     * Verifica el estado de una CLABE para detección de reactivación.
+     */
+    public function checkClabeStatus(string $clabe): ServiceResponse
+    {
+        $logFile = 'Logs/mrp-' . date('Y-m-d') . '.log';
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::checkClabeStatus] Buscando CLABE: {$clabe}\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+        $cuenta = $this->bankModel->findByClabeIncludingDeleted($clabe);
+
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::checkClabeStatus] Cuenta encontrada: " . json_encode($cuenta) . "\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+        if (!$cuenta) {
+            // CLABE no existe
+            $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::checkClabeStatus] CLABE no existe\n";
+            file_put_contents($logFile, $logMsg, FILE_APPEND);
+            return ServiceResponse::success([
+                'exists' => false,
+                'inactive' => false
+            ]);
+        }
+
+        // CLABE existe
+        $isInactive = !is_null($cuenta['deleted_at']);
+
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::checkClabeStatus] deleted_at: " . ($cuenta['deleted_at'] ?? 'NULL') . "\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::checkClabeStatus] isInactive: " . ($isInactive ? 'TRUE' : 'FALSE') . "\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+        // Si está inactiva, incluir datos completos para precarga
+        if ($isInactive) {
+            // Obtener nombre del banco
+            $banco = $this->catBancoModel->findById($cuenta['id_banco']);
+
+            $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::checkClabeStatus] Banco encontrado: " . json_encode($banco) . "\n";
+            file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+            return ServiceResponse::success([
+                'exists' => true,
+                'inactive' => true,
+                'data' => [
+                    'id_cuenta_bancaria' => $cuenta['id_cuenta_bancaria'],
+                    'id_proveedor' => $cuenta['id_proveedor'],
+                    'id_banco' => $cuenta['id_banco'],
+                    'nombre_banco' => $banco['nombre_corto'] ?? '',
+                    'id_moneda' => $cuenta['id_moneda'],
+                    'cuenta' => $cuenta['cuenta'],
+                    'clabe' => $cuenta['clabe'],
+                    'swift_bic' => $cuenta['swift_bic'],
+                    'iban' => $cuenta['iban'],
+                    'url_pdf' => $cuenta['url_pdf'],
+                    'es_principal' => $cuenta['es_principal'],
+                    'deleted_at' => $cuenta['deleted_at'],
+                    'created_at' => $cuenta['created_at']
+                ]
+            ]);
+        }
+
+        // CLABE existe y está activa
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::checkClabeStatus] CLABE está activa\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+        return ServiceResponse::success([
+            'exists' => true,
+            'inactive' => false,
+            'message' => 'Esta CLABE ya está registrada en el sistema'
+        ]);
+    }
+
+    /**
+     * Reactiva una cuenta bancaria dada de baja.
+     */
+    public function reactivateBankAccount(array $data, array $userContext): ServiceResponse
+    {
+        $logFile = 'Logs/mrp-' . date('Y-m-d') . '.log';
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] Iniciando reactivación\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] Data recibida: " . json_encode($data) . "\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] UserContext: " . json_encode($userContext) . "\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+        $idCuenta = (int)$data['id_cuenta_bancaria'];
+        $userId = (int)$userContext['id'];
+
+        $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] ID Cuenta: {$idCuenta}, UserID: {$userId}\n";
+        file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+        try {
+            $this->db->beginTransaction();
+            $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] Transacción iniciada\n";
+            file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+            // 1. Verificar que la cuenta exista y esté dada de baja
+            $cuenta = $this->bankModel->findById($idCuenta);
+            $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] Cuenta encontrada: " . json_encode($cuenta) . "\n";
+            file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+            if (!$cuenta) {
+                throw new \Exception('Cuenta bancaria no encontrada', 404);
+            }
+
+            if (is_null($cuenta['deleted_at'])) {
+                throw new \Exception('Esta cuenta ya está activa', 400);
+            }
+
+            $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] Cuenta está dada de baja, procediendo a reactivar\n";
+            file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+            // 2. Procesar nuevo PDF si se proporcionó
+            $urlPdf = $cuenta['url_pdf']; // Mantener el original por defecto
+            if (!empty($data['caratula_pdf']) && $data['caratula_pdf']['error'] === UPLOAD_ERR_OK) {
+                $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] Procesando nuevo PDF\n";
+                file_put_contents($logFile, $logMsg, FILE_APPEND);
+                $supplierId = (int)$data['id_proveedor'];
+                $relativeDir = "Assets/uploads/expedientes/prov_{$supplierId}/";
+                $uploadPath = __DIR__ . '/../' . $relativeDir;
+
+                if (!is_dir($uploadPath)) {
+                    mkdir($uploadPath, 0755, true);
+                }
+
+                $fileName = "caratula_bancaria_reactivada_" . bin2hex(random_bytes(4)) . ".pdf";
+                $fullPath = $uploadPath . $fileName;
+
+                if (!move_uploaded_file($data['caratula_pdf']['tmp_name'], $fullPath)) {
+                    throw new \Exception("Error al mover el archivo de carátula.", 500);
+                }
+
+                $urlPdf = $relativeDir . $fileName;
+                $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] Nuevo PDF guardado: {$urlPdf}\n";
+                file_put_contents($logFile, $logMsg, FILE_APPEND);
+            }
+
+            // 3. Reactivar cuenta
+            $updateData = [
+                'url_pdf' => $urlPdf
+            ];
+
+            if (!empty($data['swift_bic'])) {
+                $updateData['swift_bic'] = $data['swift_bic'];
+            }
+
+            if (!empty($data['iban'])) {
+                $updateData['iban'] = $data['iban'];
+            }
+
+            $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] Llamando a bankModel->reactivate con updateData: " . json_encode($updateData) . "\n";
+            file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+            $result = $this->bankModel->reactivate($idCuenta, $updateData, $userId);
+
+            $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] Resultado de reactivate: " . ($result ? 'EXITOSO' : 'FALLIDO') . "\n";
+            file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+            // 4. Auditoría
+            $this->proveedorModel->logAudit(
+                (int)$data['id_proveedor'],
+                AuditAction::REACTIVATED,
+                "Cuenta bancaria reactivada (CLABE: {$cuenta['clabe']}).",
+                $userId
+            );
+
+            $this->db->commit();
+            $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] Transacción commit exitosa\n";
+            file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+            return ServiceResponse::success(
+                ['id' => $idCuenta],
+                "Cuenta bancaria reactivada correctamente.",
+                200
+            );
+
+        } catch (\Exception $e) {
+            $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] EXCEPCIÓN: " . $e->getMessage() . "\n";
+            file_put_contents($logFile, $logMsg, FILE_APPEND);
+            $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] EXCEPCIÓN Código: " . $e->getCode() . "\n";
+            file_put_contents($logFile, $logMsg, FILE_APPEND);
+            $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] EXCEPCIÓN Trace: " . $e->getTraceAsString() . "\n";
+            file_put_contents($logFile, $logMsg, FILE_APPEND);
+
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+                $logMsg = "[" . date('Y-m-d H:i:s') . "] [SupplierService::reactivateBankAccount] Transacción rollback ejecutada\n";
+                file_put_contents($logFile, $logMsg, FILE_APPEND);
+            }
             return ServiceResponse::error($e->getMessage(), (int)$e->getCode() ?: 500);
         }
     }
