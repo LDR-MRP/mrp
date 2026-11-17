@@ -204,13 +204,15 @@ class Prv_proveedorModel extends Mysql
         return $this->select_all($query, $params);
     }
 
-    public function destroy(int $supplierId)
+    public function destroy(int $supplierId, int $userId)
     {
-        $query = sprintf(
-            "UPDATE prv_cat_proveedores SET estatus = 0, deleted_at = NOW() WHERE idproveedor = %d;",
-            $supplierId
-        );
-        return $this->delete($query);
+        $sql = "UPDATE `{$this->table}`
+                SET estatus_operativo = 0,
+                    deleted_at = NOW(),
+                    deleted_by = ?
+                WHERE id_proveedor = ?";
+
+        return $this->update($sql, [$userId, $supplierId]);
     }
 
     public function insertSupplier(array $h, int $userId): int
