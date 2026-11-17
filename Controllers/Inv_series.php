@@ -47,6 +47,56 @@ class Inv_series extends Controllers
         die();
     }
 
+    /** Encabezados de grupo del listado + KPIs (los VINs se cargan por grupo). */
+    public function getGruposSeries()
+    {
+        if ($_SESSION['permisosMod']['r']) {
+            $filtro = (string) ($_GET['filtro'] ?? '');
+            $q = mb_substr((string) ($_GET['q'] ?? ''), 0, 60);
+            echo json_encode([
+                'kpis'   => $this->model->kpisSeries(),
+                'grupos' => $this->model->selectGruposSeries($filtro, $q),
+            ], JSON_UNESCAPED_UNICODE);
+        }
+        die();
+    }
+
+    /** VINs de una referencia, paginados en servidor (DataTables serverSide). */
+    public function getSeriesReferencia()
+    {
+        if ($_SESSION['permisosMod']['r']) {
+            $ref = (string) ($_GET['ref'] ?? '');
+            $filtro = (string) ($_GET['filtro'] ?? '');
+            $q = mb_substr((string) ($_GET['q'] ?? ''), 0, 60);
+            $res = $ref === ''
+                ? ['total' => 0, 'filtrados' => 0, 'data' => []]
+                : $this->model->selectSeriesReferencia(
+                    $ref, $filtro, $q,
+                    (int) ($_GET['start'] ?? 0),
+                    (int) ($_GET['length'] ?? 25),
+                    (int) ($_GET['order'][0]['column'] ?? 6),
+                    (string) ($_GET['order'][0]['dir'] ?? 'desc')
+                );
+            foreach ($res['data'] as &$r) {
+                if ($r['estado'] == 1) {
+                    $r['estado'] = '<span class="badge bg-success">Disponible</span>';
+                } elseif ($r['estado'] == 3) {
+                    $r['estado'] = '<span class="badge bg-secondary">Facturado</span>';
+                } else {
+                    $r['estado'] = '<span class="badge bg-danger">Tatuado</span>';
+                }
+            }
+            unset($r);
+            echo json_encode([
+                'draw'            => (int) ($_GET['draw'] ?? 0),
+                'recordsTotal'    => $res['total'],
+                'recordsFiltered' => $res['filtrados'],
+                'data'            => $res['data'],
+            ], JSON_UNESCAPED_UNICODE);
+        }
+        die();
+    }
+
     public function getProductos()
     {
         if ($_SESSION['permisosMod']['r']) {
