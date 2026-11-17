@@ -8,7 +8,9 @@ class Prv_proveedor  extends Controllers{
     {
         parent::__construct();
 
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
         getPermisos(PRV_PROVEEDORES);
     }
@@ -76,7 +78,53 @@ class Prv_proveedor  extends Controllers{
         // Renderiza de forma Stateless: Views/Prv_proveedor/reporte.php
         $this->views->getView($this, "../Prv_proveedor/reporte", $data);
     }
-    public function delete($id, $accion){
-        die("delete");
+    public function delete(){
+        // Recibir datos del POST body
+        $idProveedor = $_POST['idproveedor'] ?? null;
+        $rfc = $_POST['rfc'] ?? null;
+
+        if (empty($idProveedor)) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'ID de proveedor no proporcionado'
+            ]);
+            return;
+        }
+
+        // Obtener ID del usuario en sesión
+        $userId = $_SESSION['idUser'] ?? null;
+
+        if (empty($userId)) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Usuario no autenticado'
+            ]);
+            return;
+        }
+
+        // Instanciar modelo
+        $proveedorModel = new Prv_proveedorModel();
+
+        try {
+            // Ejecutar soft-delete
+            $result = $proveedorModel->destroy((int)$idProveedor, (int)$userId);
+
+            if ($result) {
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Proveedor eliminado correctamente'
+                ]);
+            } else {
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => 'Error al eliminar el proveedor'
+                ]);
+            }
+        } catch (\Exception $e) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
     }
 }
