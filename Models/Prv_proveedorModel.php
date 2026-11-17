@@ -150,12 +150,15 @@ class Prv_proveedorModel extends Mysql
             -- Addresses JOIN
             LEFT JOIN `prv_det_direcciones`
                 ON `prv_det_direcciones`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
+                AND `prv_det_direcciones`.`deleted_at` IS NULL
             -- Contacts JOIN
             LEFT JOIN `prv_det_contactos`
                 ON `prv_det_contactos`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
+                AND `prv_det_contactos`.`deleted_at` IS NULL
             -- Financial Config JOIN
             LEFT JOIN `prv_det_config_financiera`
                 ON `prv_det_config_financiera`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
+                AND `prv_det_config_financiera`.`deleted_at` IS NULL
             -- Financial Config JOIN
             LEFT JOIN `cat_condiciones_pago`
                 ON `cat_condiciones_pago`.`id_condicion` = `prv_det_config_financiera`.`id_condicion_pago`
@@ -164,7 +167,7 @@ class Prv_proveedorModel extends Mysql
             -- Onboarding Information JOIN
             -- LEFT JOIN `prv_tra_onboarding`
             --     ON `prv_tra_onboarding`.`id_proveedor` = `prv_cat_proveedores`.`id_proveedor`
-            WHERE true\n";
+            WHERE `prv_cat_proveedores`.`deleted_at` IS NULL";
 
         if(array_key_exists('id_proveedor', $filters)){ $sql .= "AND `prv_cat_proveedores`.`id_proveedor` = '{$filters['id_proveedor']}'"; }
         if(array_key_exists('estado', $filters)){ $sql .= "AND ``estado` = '{$filters['estado']}'"; }
