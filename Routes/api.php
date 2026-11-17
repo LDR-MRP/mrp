@@ -55,7 +55,7 @@ Route::get('api/v1/suppliers/{id}', [SupplierController::class, 'show'])->middle
 // Listar cuentas de un proveedor específico
 Route::get('api/v1/suppliers/{id}/banks', [SupplierController::class, 'getBanks'])->middleware([AuthMiddleware::class]);
 // Registrar nueva cuenta
-Route::post('api/v1/suppliers/store-bank', [SupplierController::class, 'storeBank'])->middleware([AuthMiddleware::class]);
+Route::post('api/v1/suppliers/store-bank', [SupplierController::class, 'fvstoreBank'])->middleware([AuthMiddleware::class]);
 // Verificar estado de CLABE (para reactivación)
 Route::get('api/v1/suppliers/check-clabe/{clabe}', [SupplierController::class, 'checkClabe'])->middleware([AuthMiddleware::class]);
 // Reactivar cuenta bancaria
