@@ -41,20 +41,17 @@ function armarVin(base, consecutivo) {
 document.addEventListener("DOMContentLoaded", function () {
   /* ================================================================
    * LISTADO
+   * Se cargan solo los encabezados de grupo (una fila por referencia);
+   * los VINs de cada grupo se piden al abrirlo, paginados en el servidor.
+   * Antes se mandaban y pintaban todos los VINs de golpe (miles de filas).
    * ============================================================== */
   const sinAsociar = '<span class="asoc-vacio">Sin asociar</span>';
   const puedeEscribir = typeof PUEDE_ESCRIBIR_VIN !== "undefined" && PUEDE_ESCRIBIR_VIN;
+  const gruposAbiertos = new Set();
+  const tablasHijas = {};
 
-  // Filtro "Todos / Con asociación / Sin asociar"
-  $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
-    if (settings.nTable.id !== "tableSeries") return true;
-    const filtro = document.getElementById("filtroAsociacion").value;
-    if (!filtro) return true;
-    const row = settings.aoData[dataIndex]._aData;
-    if (filtro === "imp") return row.tipo_generacion === "importado";
-    const asociado = !!row.numero_motor;
-    return filtro === "si" ? asociado : !asociado;
-  });
+  const filtroActual = () => document.getElementById("filtroAsociacion").value;
+  const busquedaActual = () => (document.getElementById("buscarSeries")?.value || "").trim();
 
   // Etiqueta del tipo de generación: lote / orden de trabajo / carga inicial (Excel de inventario)
   function pillTipo(t, extra = "") {
@@ -64,155 +61,204 @@ document.addEventListener("DOMContentLoaded", function () {
     return `<span class="tipo-pill tipo-orden ${extra}"><i class="ri-file-list-3-line"></i>Orden de trabajo</span>`;
   }
 
-  // Encabezado de grupo: tipo de generación (lote / orden / carga) y modelo(s) VIN del grupo
-  function tipoGrupo(rows) {
-    const tipos = [...new Set(rows.data().toArray().map((r) => r.tipo_generacion))];
-    return tipos.map((t) => pillTipo(t, "ms-2")).join("");
-  }
-
-  function modelosGrupo(rows) {
-    const vistos = new Map();
-    rows.data().toArray().forEach((r) => {
-      // Importadas: no tienen VIN base (su VIN es el de origen), se identifican por el producto
-      const clave = r.modelo_vin
-        ? r.modelo_vin + "|" + (r.vin_base || "")
-        : r.tipo_generacion === "importado"
-          ? "imp|" + r.producto
-          : "";
-      if (!vistos.has(clave)) vistos.set(clave, r);
-    });
-    return [...vistos.entries()]
-      .map(([clave, r]) =>
-        clave.startsWith("imp|")
-          ? `<span class="ms-3 fs-13"><i class="ri-car-line align-bottom text-muted me-1"></i><strong>Modelo:</strong> ${escapeHtml(r.producto)}
-             <span class="text-muted ms-1" title="Unidad importada: su VIN es el VIN de origen y no usa VIN base">(sin VIN base)</span></span>`
-          : clave
-          ? `<span class="ms-3 fs-13"><i class="ri-car-line align-bottom text-muted me-1"></i><strong>Modelo:</strong> ${escapeHtml(r.modelo_vin)}
-             ${r.vin_base ? `<span class="mono text-muted ms-1">(${escapeHtml(r.vin_base)})</span>` : ""}</span>`
-          : `<span class="ms-3 fs-13 text-muted fst-italic" title="VIN generado antes de ligar el modelo del glosario"><i class="ri-car-line align-bottom me-1"></i>Modelo VIN no identificado</span>`,
+  // Modelos del grupo: VIN base del glosario o, si no tiene (importadas), el producto
+  function modelosGrupo(modelos) {
+    const MAX = 3;
+    const icono = '<i class="ri-car-line align-bottom text-muted me-1"></i>';
+    let html = modelos
+      .slice(0, MAX)
+      .map(
+        (m) =>
+          `<span class="ms-3 fs-13">${icono}<strong>Modelo:</strong> ${escapeHtml(m.modelo)}${
+            m.vin_base ? ` <span class="mono text-muted">(${escapeHtml(m.vin_base)})</span>` : ""
+          }</span>`,
       )
       .join("");
+    if (modelos.length > MAX) {
+      const resto = modelos.slice(MAX).map((m) => m.modelo + (m.vin_base ? ` (${m.vin_base})` : "")).join("\n");
+      html += `<span class="ms-3 fs-13 text-muted" title="${escapeHtml(resto)}">+${modelos.length - MAX} modelos más</span>`;
+    }
+    return html;
+  }
+
+  function encabezadoGrupo(g) {
+    const abierto = gruposAbiertos.has(g.referencia);
+    return `
+      <i class="${abierto ? "ri-arrow-down-s-line" : "ri-arrow-right-s-line"} align-middle fs-16 me-1 icono-grupo"></i>
+      <strong>Referencia:</strong> ${escapeHtml(g.referencia)}
+      ${g.tipos.map((t) => pillTipo(t, "ms-2")).join("")}
+      <span class="badge bg-light text-body border ms-1">${g.total} VIN</span>
+      ${modelosGrupo(g.modelos)}
+      <button class="btn btn-sm btn-soft-danger float-end btn-pdf-group" data-ref="${escapeHtml(g.referencia)}">
+        <i class="ri-file-pdf-2-line align-bottom"></i> Descargar PDF
+      </button>`;
   }
 
   tableSeries = $("#tableSeries").DataTable({
     ajax: {
-      url: base_url + "/Inv_series/getSeries",
+      url: base_url + "/Inv_series/getGruposSeries",
+      data: (d) => {
+        d.filtro = filtroActual();
+        d.q = busquedaActual();
+      },
       dataSrc: function (json) {
-        const data = Array.isArray(json) ? json : [];
-        // Llave para mantener juntas las filas de cada referencia: el agrupador (rowGroup)
-        // abre un grupo nuevo cada vez que cambia la referencia entre filas consecutivas,
-        // y con fechas empatadas (cargas masivas) las referencias se intercalaban.
-        // Grupos: el más reciente primero; dentro del grupo manda el orden que elija el usuario.
-        const fechaGrupo = {};
-        data.forEach((r) => {
-          if (!fechaGrupo[r.referencia] || r.fecha > fechaGrupo[r.referencia]) fechaGrupo[r.referencia] = r.fecha;
-        });
-        data.forEach((r) => (r.orden_grupo = fechaGrupo[r.referencia] + "|" + r.referencia));
-        const asociados = data.filter((r) => r.numero_motor).length;
+        const k = (json && json.kpis) || { total: 0, asociados: 0, importados: 0 };
         document.getElementById("kpiAsociados").innerHTML =
-          `<i class="ri-links-line align-bottom me-1"></i> ${asociados} asociados`;
+          `<i class="ri-links-line align-bottom me-1"></i> ${k.asociados} asociados`;
         document.getElementById("kpiPendientes").innerHTML =
-          `<i class="ri-error-warning-line align-bottom me-1"></i> ${data.length - asociados} sin asociar`;
+          `<i class="ri-error-warning-line align-bottom me-1"></i> ${k.total - k.asociados} sin asociar`;
         const kpiImp = document.getElementById("kpiImportados");
-        if (kpiImp) {
-          kpiImp.innerHTML = `<i class="ri-ship-line align-bottom me-1"></i> ${data.filter((r) => r.tipo_generacion === "importado").length} importadas`;
-        }
-        return data;
+        if (kpiImp) kpiImp.innerHTML = `<i class="ri-ship-line align-bottom me-1"></i> ${k.importados} importadas`;
+        const grupos = (json && json.grupos) || [];
+        // Con búsqueda o filtro y pocos grupos de resultado, se abren solos
+        if ((filtroActual() || busquedaActual()) && grupos.length <= 3) grupos.forEach((g) => gruposAbiertos.add(g.referencia));
+        return grupos;
       },
     },
-    columns: [
-      // responsivePriority: menor número = se queda visible; el resto pasa al "+" cuando no cabe
-      { data: "producto", responsivePriority: 5 },
-      { data: "almacen", responsivePriority: 8 },
-      { data: "numero_serie", responsivePriority: 1, render: (d) => `<span class="mono fw-semibold">${escapeHtml(d)}</span>` },
-      { data: "numero_motor", responsivePriority: 3, defaultContent: "", render: (d) => (d ? `<span class="mono">${escapeHtml(d)}</span>` : sinAsociar) },
-      { data: "vin_origen", responsivePriority: 4, defaultContent: "", render: (d) => (d ? `<span class="mono">${escapeHtml(d)}</span>` : sinAsociar) },
-      { data: "color", responsivePriority: 10, defaultContent: "", render: (d) => (d ? escapeHtml(d) : '<span class="text-muted">—</span>') },
-      { data: "referencia", responsivePriority: 6 },
-      { data: "fecha", responsivePriority: 9 },
-      { data: "estado", responsivePriority: 7 },
-      {
-        data: "numero_serie",
-        responsivePriority: 2,
-        orderable: false,
-        render: function (data, type, row) {
-          const asociar = puedeEscribir
-            ? `<button type="button" class="btn btn-sm btn-soft-${row.numero_motor ? "secondary" : "success"} btn-asociar" data-vin="${escapeHtml(data)}" title="${row.numero_motor ? "Editar asociación" : "Asociar motor / VIN de origen"}">
-                <i class="${row.numero_motor ? "ri-pencil-line" : "ri-links-line"} align-bottom"></i> ${row.numero_motor ? "Editar" : "Asociar"}
-              </button>`
-            : "";
-          return `
-            ${asociar}
-            <button type="button" class="btn btn-sm btn-soft-dark btn-historial" data-id="${row.id_numeros_serie}" data-vin="${escapeHtml(data)}" title="Historial">
-              <i class="ri-history-line align-bottom"></i>
-            </button>
-            <a href="${base_url}/Inv_series/generarCodigoPDF/${data}" target="_blank" class="btn btn-sm btn-soft-primary" title="Código de barras">
-              <i class="ri-barcode-line align-bottom"></i> Código
-            </a>
-            <a href="${base_url}/Inv_series/generarQRPDF/${data}" target="_blank" class="btn btn-sm btn-soft-success" title="Código QR">
-              <i class="ri-qr-code-line align-bottom"></i> QR
-            </a>`;
+    columns: [{ data: "referencia", render: (d, type, row) => (type === "display" ? encabezadoGrupo(row) : d) }],
+    createdRow: (tr) => tr.classList.add("group-row"),
+    ordering: false,
+    searching: false,
+    lengthChange: false,
+    pageLength: 25,
+    autoWidth: false,
+    deferRender: true,
+    bDestroy: true,
+    language: { emptyTable: "Sin VINs para mostrar", zeroRecords: "Sin VINs para mostrar" },
+  });
+
+  // Reabre los grupos que estaban abiertos cada vez que se redibuja (recarga, cambio de página)
+  tableSeries.on("draw", function () {
+    tableSeries.rows({ page: "current" }).every(function () {
+      const ref = this.data().referencia;
+      if (gruposAbiertos.has(ref) && !this.child.isShown()) abrirGrupo(this);
+    });
+  });
+
+  function abrirGrupo(row) {
+    const ref = row.data().referencia;
+    const cont = $(`
+      <div class="vin-grupo p-2">
+        <table class="table table-sm table-bordered dt-responsive nowrap table-striped align-middle mb-0" style="width:100%">
+          <thead><tr>
+            <th>PRODUCTO</th><th>ALMACÉN</th><th>NÚMERO VIN</th><th>NÚMERO DE MOTOR</th>
+            <th>VIN DE ORIGEN</th><th>COLOR</th><th>FECHA</th><th>ESTADO</th><th>ACCIONES</th>
+          </tr></thead>
+        </table>
+      </div>`);
+    row.child(cont, "p-0").show();
+    $(row.node()).find(".icono-grupo").removeClass("ri-arrow-right-s-line").addClass("ri-arrow-down-s-line");
+
+    if (tablasHijas[ref]) tablasHijas[ref].destroy();
+    tablasHijas[ref] = cont.find("table").DataTable({
+      serverSide: true,
+      processing: true,
+      ajax: {
+        url: base_url + "/Inv_series/getSeriesReferencia",
+        data: (d) => {
+          d.ref = ref;
+          d.filtro = filtroActual();
+          d.q = busquedaActual();
         },
       },
-      // Oculta: solo para mantener juntas las filas de cada grupo (ver dataSrc)
-      { data: "orden_grupo", visible: false, searchable: false, defaultContent: "" },
-    ],
-    responsive: true,
-    bDestroy: true,
-    paging: false,
-    order: [[7, "desc"]],
-    orderFixed: { pre: [[10, "desc"]] }, // columna oculta orden_grupo
-    rowGroup: {
-      dataSrc: "referencia",
-      startRender: function (rows, group) {
-        if (collapsedGroups[group] === undefined) collapsedGroups[group] = true; // inicia colapsado
-        // con un filtro de asociación activo se muestran los grupos abiertos
-        const collapsed = document.getElementById("filtroAsociacion").value ? false : collapsedGroups[group];
-        rows.nodes().each((r) => (r.style.display = collapsed ? "none" : ""));
-
-        return $(`
-          <tr class="group-row" data-name="${escapeHtml(group)}">
-            <td colspan="10">
-              <i class="${collapsed ? "ri-arrow-right-s-line" : "ri-arrow-down-s-line"} align-middle fs-16 me-1"></i>
-              <strong>Referencia:</strong> ${escapeHtml(group)}
-              ${tipoGrupo(rows)}
-              <span class="badge bg-light text-body border ms-1">${rows.count()} VIN</span>
-              ${modelosGrupo(rows)}
-              <button class="btn btn-sm btn-soft-danger float-end btn-pdf-group" data-ref="${escapeHtml(group)}">
-                <i class="ri-file-pdf-2-line align-bottom"></i> Descargar PDF
+      columns: [
+        // responsivePriority: menor número = se queda visible; el resto pasa al "+" cuando no cabe
+        { data: "producto", responsivePriority: 5 },
+        { data: "almacen", responsivePriority: 8 },
+        { data: "numero_serie", responsivePriority: 1, render: (d) => `<span class="mono fw-semibold">${escapeHtml(d)}</span>` },
+        { data: "numero_motor", responsivePriority: 3, defaultContent: "", render: (d) => (d ? `<span class="mono">${escapeHtml(d)}</span>` : sinAsociar) },
+        { data: "vin_origen", responsivePriority: 4, defaultContent: "", render: (d) => (d ? `<span class="mono">${escapeHtml(d)}</span>` : sinAsociar) },
+        { data: "color", responsivePriority: 10, defaultContent: "", render: (d) => (d ? escapeHtml(d) : '<span class="text-muted">—</span>') },
+        { data: "fecha", responsivePriority: 9 },
+        { data: "estado", responsivePriority: 7 },
+        {
+          data: "numero_serie",
+          responsivePriority: 2,
+          orderable: false,
+          render: function (data, type, row) {
+            const asociar = puedeEscribir
+              ? `<button type="button" class="btn btn-sm btn-soft-${row.numero_motor ? "secondary" : "success"} btn-asociar" data-vin="${escapeHtml(data)}" title="${row.numero_motor ? "Editar asociación" : "Asociar motor / VIN de origen"}">
+                  <i class="${row.numero_motor ? "ri-pencil-line" : "ri-links-line"} align-bottom"></i> ${row.numero_motor ? "Editar" : "Asociar"}
+                </button>`
+              : "";
+            return `
+              ${asociar}
+              <button type="button" class="btn btn-sm btn-soft-dark btn-historial" data-id="${row.id_numeros_serie}" data-vin="${escapeHtml(data)}" title="Historial">
+                <i class="ri-history-line align-bottom"></i>
               </button>
-            </td>
-          </tr>`);
-      },
-    },
+              <a href="${base_url}/Inv_series/generarCodigoPDF/${data}" target="_blank" class="btn btn-sm btn-soft-primary" title="Código de barras">
+                <i class="ri-barcode-line align-bottom"></i> Código
+              </a>
+              <a href="${base_url}/Inv_series/generarQRPDF/${data}" target="_blank" class="btn btn-sm btn-soft-success" title="Código QR">
+                <i class="ri-qr-code-line align-bottom"></i> QR
+              </a>`;
+          },
+        },
+      ],
+      order: [[6, "desc"]],
+      searching: false,
+      pageLength: 25,
+      lengthMenu: [10, 25, 50, 100],
+      responsive: true,
+      autoWidth: false,
+      language: { processing: "Cargando VINs…", emptyTable: "Sin VINs", zeroRecords: "Sin VINs" },
+    });
+  }
+
+  function cerrarGrupo(row) {
+    const ref = row.data().referencia;
+    if (tablasHijas[ref]) {
+      tablasHijas[ref].destroy();
+      delete tablasHijas[ref];
+    }
+    row.child.hide();
+    $(row.node()).find(".icono-grupo").removeClass("ri-arrow-down-s-line").addClass("ri-arrow-right-s-line");
+  }
+
+  // Recarga encabezados y los grupos abiertos (después de asociar, cargar, generar…)
+  window.recargarSeries = function () {
+    Object.keys(tablasHijas).forEach((ref) => {
+      tablasHijas[ref].destroy();
+      delete tablasHijas[ref];
+    });
+    tableSeries.ajax.reload(null, false);
+  };
+
+  $("#tableSeries").on("click", "tbody tr.group-row", function (e) {
+    if ($(e.target).closest(".btn-pdf-group").length) return;
+    const row = tableSeries.row(this);
+    const ref = row.data().referencia;
+    if (row.child.isShown()) {
+      gruposAbiertos.delete(ref);
+      cerrarGrupo(row);
+    } else {
+      gruposAbiertos.add(ref);
+      abrirGrupo(row);
+    }
   });
 
-  // Los grupos inician colapsados: DataTables mide el ancho sin filas visibles y
-  // cree que todo cabe. Se recalcula el modo responsivo en cada dibujado para que
-  // las columnas que no caben siempre pasen al "+" (antes solo pasaba tras recargar).
-  let recalculandoResponsive = false;
-  tableSeries.on("draw", function () {
-    if (recalculandoResponsive) return;
-    recalculandoResponsive = true;
-    setTimeout(() => {
-      tableSeries.columns.adjust().responsive.recalc();
-      recalculandoResponsive = false;
-    }, 0);
+  document.getElementById("filtroAsociacion").addEventListener("change", () => {
+    gruposAbiertos.clear();
+    recargarSeries();
   });
 
-  $("#tableSeries tbody").on("click", "tr.group-row", function () {
-    if (document.getElementById("filtroAsociacion").value) return; // abiertos mientras hay filtro
-    const group = $(this).data("name");
-    collapsedGroups[group] = !collapsedGroups[group];
-    tableSeries.draw(false);
-  });
-
-  document.getElementById("filtroAsociacion").addEventListener("change", () => tableSeries.draw());
+  let tBusqueda;
+  const inputBuscar = document.getElementById("buscarSeries");
+  if (inputBuscar) {
+    inputBuscar.addEventListener("input", () => {
+      clearTimeout(tBusqueda);
+      tBusqueda = setTimeout(() => {
+        gruposAbiertos.clear();
+        recargarSeries();
+      }, 400);
+    });
+  }
 
   $("#tableSeries tbody").on("click", ".btn-pdf-group", function (e) {
     e.stopPropagation();
     window.open(base_url + "/Inv_series/generarOrdenPDF/" + $(this).data("ref"), "_blank");
   });
+
 
   /* ================================================================
    * NAVEGACIÓN listado ⇄ generar (botón principal del encabezado)
@@ -234,7 +280,7 @@ document.addEventListener("DOMContentLoaded", function () {
       ? "Nuevo lote de VIN · consecutivo por año de fabricación (posición 10)"
       : "VINes generados, agrupados por orden o lote";
 
-    if (!generar) tableSeries.columns.adjust().responsive.recalc();
+    if (!generar) tableSeries.columns.adjust();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -625,7 +671,7 @@ document.addEventListener("DOMContentLoaded", function () {
           bootstrap.Modal.getInstance(byId("modalPreviewSeries")).hide();
           Swal.fire({ icon: "success", title: "VIN registrados", text: data.msg });
           limpiarTodo();
-          tableSeries.ajax.reload(null, false);
+          recargarSeries();
           mostrarSeccion(false);
         } else {
           Swal.fire("Error", data.msg, "error");
@@ -841,7 +887,7 @@ document.addEventListener("DOMContentLoaded", function () {
             Swal.fire("No se guardó", res.msg, "error");
             return;
           }
-          tableSeries.ajax.reload(null, false);
+          recargarSeries();
           Swal.fire({
             toast: true, position: "top-end", timer: 2200, showConfirmButton: false,
             icon: res.tipo === "sin_cambios" ? "info" : "success",
@@ -1022,7 +1068,7 @@ document.addEventListener("DOMContentLoaded", function () {
               </div>`;
           }
           byId("resultadoCargaAsociacion").innerHTML = html;
-          tableSeries.ajax.reload(null, false);
+          recargarSeries();
           cargarRefs(); // actualiza el avance de asociación de cada lote / orden
         })
         .catch(() => {
@@ -1100,7 +1146,7 @@ document.addEventListener("DOMContentLoaded", function () {
               </div>`;
           }
           byId("resultadoImportados").innerHTML = html;
-          if (res.altas) tableSeries.ajax.reload(null, false);
+          if (res.altas) recargarSeries();
         })
         .catch(() => {
           byId("resultadoImportados").innerHTML = '<div class="alert alert-danger mb-0">Error en el servidor.</div>';

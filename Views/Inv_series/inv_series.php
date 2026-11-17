@@ -131,7 +131,8 @@
     }
 
     /* listado agrupado */
-    #tableSeries tr.group-row > td { background: var(--vz-tertiary-bg); cursor: pointer; }
+    #tableSeries tr.group-row > td { background: var(--vz-tertiary-bg); cursor: pointer; white-space: normal; }
+    #tableSeries .vin-grupo { background: var(--vz-secondary-bg); }
 
     /* asociación motor / VIN de origen */
     .asoc-paso { display: flex; gap: .85rem; align-items: flex-start; margin-bottom: 1.1rem; }
@@ -253,6 +254,8 @@
                                     <a class="btn btn-sm btn-soft-info" href="<?= base_url(); ?>/Inv_series/exportarImportados" title="Excel con VIN de origen, motor, color, SKU y almacén de las importadas">
                                         <i class="ri-download-2-line align-bottom"></i> Exportar importadas
                                     </a>
+                                    <input type="search" class="form-control form-control-sm" id="buscarSeries" style="min-width:260px"
+                                           placeholder="Buscar VIN, motor, referencia, modelo…" autocomplete="off">
                                     <select class="form-select form-select-sm" id="filtroAsociacion" style="min-width:190px">
                                         <option value="">Todos los VIN</option>
                                         <option value="si">Con motor / VIN origen</option>
@@ -261,22 +264,10 @@
                                     </select>
                                 </div>
                             </div>
-                            <table id="tableSeries" class="table table-bordered dt-responsive nowrap table-striped align-middle" style="width:100%">
+                            <table id="tableSeries" class="table table-bordered align-middle" style="width:100%">
                                 <thead>
-                                                <tr>
-                                                    <th>PRODUCTO</th>
-                                                    <th>ALMACÉN</th>
-                                                    <th>NÚMERO VIN</th>
-                                                    <th>NÚMERO DE MOTOR</th>
-                                                    <th>VIN DE ORIGEN</th>
-                                                    <th>COLOR</th>
-                                                    <th>REFERENCIA</th>
-                                                    <th>FECHA</th>
-                                                    <th>ESTADO</th>
-                                                    <th>ACCIONES</th>
-                                                    <th>ORDEN GRUPO</th>
-                                                </tr>
-                                            </thead>
+                                    <tr><th>VINs POR REFERENCIA (orden, lote o carga)</th></tr>
+                                </thead>
                             </table>
                         </div>
 

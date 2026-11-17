@@ -32,6 +32,120 @@ class Inv_seriesModel extends Mysql
         return $this->select_all($sql);
     }
 
+    /**
+     * Filtros comunes del listado de VINs (filtro de asociación + búsqueda libre).
+     * Devuelve [sql, params] para concatenar al WHERE.
+     */
+    private function filtrosListado(string $filtro, string $q): array
+    {
+        $sql = "";
+        $params = [];
+        if ($filtro === 'si') {
+            $sql .= " AND va.numero_motor IS NOT NULL AND va.numero_motor <> ''";
+        } elseif ($filtro === 'no') {
+            $sql .= " AND (va.numero_motor IS NULL OR va.numero_motor = '')";
+        } elseif ($filtro === 'imp') {
+            $sql .= " AND s.tipo_generacion = 'importado'";
+        }
+        $q = trim($q);
+        if ($q !== '') {
+            $like = '%' . $q . '%';
+            $sql .= " AND (s.numero_serie LIKE ? OR s.referencia LIKE ? OR va.numero_motor LIKE ?
+                       OR va.vin_origen LIKE ? OR i.descripcion LIKE ? OR a.descripcion LIKE ?
+                       OR mv.modelo LIKE ?)";
+            array_push($params, $like, $like, $like, $like, $like, $like, $like);
+        }
+        return [$sql, $params];
+    }
+
+    private function fromListado(): string
+    {
+        return " FROM wms_numeros_series s
+            INNER JOIN wms_inventario i ON s.inventarioid = i.idinventario
+            INNER JOIN wms_almacenes a ON s.almacenid = a.idalmacen
+            LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = s.id_numeros_serie
+            LEFT JOIN cat_modelos_vin mv ON mv.id_cat_modelo_vin = s.id_cat_modelo_vin
+            WHERE s.estado != 0";
+    }
+
+    /** KPIs globales del listado (sin filtros). */
+    public function kpisSeries(): array
+    {
+        $r = $this->select("SELECT COUNT(*) AS total,
+                   SUM(va.numero_motor IS NOT NULL AND va.numero_motor <> '') AS asociados,
+                   SUM(s.tipo_generacion = 'importado') AS importados
+            FROM wms_numeros_series s
+            LEFT JOIN wms_vin_asociaciones va ON va.id_numeros_serie = s.id_numeros_serie
+            WHERE s.estado != 0");
+        return [
+            'total'      => (int) ($r['total'] ?? 0),
+            'asociados'  => (int) ($r['asociados'] ?? 0),
+            'importados' => (int) ($r['importados'] ?? 0),
+        ];
+    }
+
+    /**
+     * Un renglón por referencia (orden / lote / carga) con sus totales y modelos,
+     * para pintar solo los encabezados de grupo; los VINs se piden al abrir el grupo.
+     */
+    public function selectGruposSeries(string $filtro = '', string $q = ''): array
+    {
+        [$where, $params] = $this->filtrosListado($filtro, $q);
+        $grupos = $this->select_all("SELECT s.referencia,
+                   MAX(s.fecha) AS fecha,
+                   GROUP_CONCAT(DISTINCT s.tipo_generacion) AS tipos,
+                   COUNT(*) AS total" . $this->fromListado() . $where . "
+            GROUP BY s.referencia
+            ORDER BY fecha DESC, s.referencia", $params);
+
+        // Modelos por grupo: VIN base del glosario o, si no tiene (importadas), el producto
+        $mods = $this->select_all("SELECT s.referencia, mv.modelo, mv.vin_base, i.descripcion AS producto, COUNT(*) AS n"
+            . $this->fromListado() . $where . "
+            GROUP BY s.referencia, s.id_cat_modelo_vin, s.inventarioid
+            ORDER BY n DESC", $params);
+
+        $porRef = [];
+        foreach ($mods as $m) {
+            $texto = $m['modelo'] ?: $m['producto'];
+            $base  = $m['modelo'] ? (string) $m['vin_base'] : '';
+            $porRef[$m['referencia']][$texto . '|' . $base] = ['modelo' => $texto, 'vin_base' => $base];
+        }
+        foreach ($grupos as &$g) {
+            $g['modelos'] = array_values($porRef[$g['referencia']] ?? []);
+            $g['tipos'] = $g['tipos'] ? explode(',', $g['tipos']) : [];
+        }
+        unset($g);
+        return $grupos;
+    }
+
+    /**
+     * VINs de una referencia, paginados (se cargan al abrir el grupo).
+     * Devuelve ['total' => int, 'filtrados' => int, 'data' => array].
+     */
+    public function selectSeriesReferencia(string $referencia, string $filtro = '', string $q = '',
+                                           int $start = 0, int $length = 25, int $orderCol = 6, string $orderDir = 'desc'): array
+    {
+        $cols = ['i.descripcion', 'a.descripcion', 's.numero_serie', 'va.numero_motor', 'va.vin_origen', 'va.color', 's.fecha', 's.estado'];
+        $orderBy = ($cols[$orderCol] ?? 's.fecha') . (strtolower($orderDir) === 'asc' ? ' ASC' : ' DESC');
+
+        $total = $this->select("SELECT COUNT(*) AS n FROM wms_numeros_series s WHERE s.estado != 0 AND s.referencia = ?", [$referencia]);
+
+        [$where, $params] = $this->filtrosListado($filtro, $q);
+        array_unshift($params, $referencia);
+        $filtrados = $this->select("SELECT COUNT(*) AS n" . $this->fromListado() . " AND s.referencia = ?" . $where, $params);
+
+        $length = max(1, min($length, 500));
+        $start = max(0, $start);
+        $data = $this->select_all("SELECT s.id_numeros_serie, s.numero_serie, s.referencia, s.fecha, s.estado,
+                   s.tipo_generacion, i.descripcion AS producto, a.descripcion AS almacen,
+                   va.numero_motor, va.vin_origen, va.color"
+            . $this->fromListado() . " AND s.referencia = ?" . $where . "
+            ORDER BY $orderBy, s.numero_serie
+            LIMIT $start, $length", $params);
+
+        return ['total' => (int) ($total['n'] ?? 0), 'filtrados' => (int) ($filtrados['n'] ?? 0), 'data' => $data];
+    }
+
     public function searchProductosOrden()
     {
         $sql = "SELECT 
