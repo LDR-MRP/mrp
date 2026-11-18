@@ -555,14 +555,26 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   /* Reporte ejecutivo: inventario real (izq.) vs. tránsito del Order delivery plan (der.).
-     Respeta los filtros de segmento y búsqueda. */
-  const abrirEjecutivo = (formato) => (e) => {
+     Respeta todos los filtros de la pantalla (sublínea, año, color, planta, almacén y búsqueda). */
+  // tipo: "direccion" = solo unidades con VIN asignado; "finanzas" = todo (sin VIN y tránsito)
+  const abrirEjecutivo = (formato, tipo) => (e) => {
     e.preventDefault();
-    const p = new URLSearchParams({ formato, sub: [...estado.subs].join(","), q: estado.q });
+    const p = new URLSearchParams({
+      formato,
+      tipo,
+      sub: [...estado.subs].join(","),
+      anio: [...estado.anios].join(","),
+      color: estado.color,
+      planta: estado.planta,
+      almacen: estado.almacen,
+      q: estado.q,
+    });
     window.open(base_url + "/Inv_unidades/reporteEjecutivo?" + p.toString(), "_blank");
   };
-  byId("btnEjecutivoPDF").addEventListener("click", abrirEjecutivo("pdf"));
-  byId("btnEjecutivoXLSX").addEventListener("click", abrirEjecutivo("xlsx"));
+  byId("btnDireccionXLSX").addEventListener("click", abrirEjecutivo("xlsx", "direccion"));
+  byId("btnDireccionPDF").addEventListener("click", abrirEjecutivo("pdf", "direccion"));
+  byId("btnEjecutivoXLSX").addEventListener("click", abrirEjecutivo("xlsx", "finanzas"));
+  byId("btnEjecutivoPDF").addEventListener("click", abrirEjecutivo("pdf", "finanzas"));
 
   /* ---------------- Vista: en tránsito (Order delivery plan) ---------------- */
   const MESES_C = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];

@@ -271,14 +271,26 @@
                     <button type="button" class="btn btn-sm btn-light" id="btnRefrescar" title="Volver a consultar la existencia">
                         <i class="ri-refresh-line"></i> Actualizar
                     </button>
-                    <button type="button" class="btn btn-sm btn-soft-success" id="btnEjecutivoXLSX"
-                        title="Reporte ejecutivo en Excel: inventario real vs. unidades en tránsito. Respeta sublínea y búsqueda">
-                        <i class="ri-file-excel-2-line"></i> Excel
-                    </button>
-                    <button type="button" class="btn btn-sm btn-soft-danger" id="btnEjecutivoPDF"
-                        title="Reporte ejecutivo en PDF: inventario real vs. unidades en tránsito. Respeta sublínea y búsqueda">
-                        <i class="ri-file-pdf-2-line"></i> PDF
-                    </button>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-soft-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"
+                            title="Solo unidades con VIN asignado (sin unidades sin VIN ni tránsito). Respeta los filtros aplicados">
+                            <i class="ri-briefcase-4-line"></i> Reporte Dirección
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" id="btnDireccionXLSX"><i class="ri-file-excel-2-line text-success me-1"></i> Excel</a></li>
+                            <li><a class="dropdown-item" href="#" id="btnDireccionPDF"><i class="ri-file-pdf-2-line text-danger me-1"></i> PDF</a></li>
+                        </ul>
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-soft-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"
+                            title="Todo: unidades con VIN, sin VIN y en tránsito (Order delivery plan). Respeta los filtros aplicados">
+                            <i class="ri-money-dollar-circle-line"></i> Reporte Finanzas
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" id="btnEjecutivoXLSX"><i class="ri-file-excel-2-line text-success me-1"></i> Excel</a></li>
+                            <li><a class="dropdown-item" href="#" id="btnEjecutivoPDF"><i class="ri-file-pdf-2-line text-danger me-1"></i> PDF</a></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
