@@ -403,6 +403,7 @@
                         <tr>
                             <th>Clave</th>
                             <th>Descripción</th>
+                            <th>Tipo</th>
                             <th></th>
                         </tr>
                     </thead>

@@ -110,16 +110,21 @@ class Inv_multialmacenesModel extends Mysql
         ]);
     }
 
+    /**
+     * Buscador de articulos: todo el inventario activo de cualquier tipo_elemento
+     * (K=Kit, C=Componente, P=Producto, S=Servicio, H=Herramienta, R=Refaccion).
+     */
     public function searchInventarios(string $term)
     {
-        $sql = "SELECT idinventario, cve_articulo, descripcion
+        $like = '%' . trim($term) . '%';
+        $sql = "SELECT idinventario, cve_articulo, descripcion, tipo_elemento
             FROM wms_inventario
-            WHERE estado=2 
-              AND tipo_elemento IN ('P','C','H')
-              AND (cve_articulo LIKE '%{$term}%' 
-              OR descripcion LIKE '%{$term}%')
-            LIMIT 10";
-        return $this->select_all($sql);
+            WHERE estado = 2
+              AND tipo_elemento IN ('K','C','P','S','H','R')
+              AND (cve_articulo LIKE ? OR descripcion LIKE ?)
+            ORDER BY (cve_articulo LIKE ?) DESC, cve_articulo
+            LIMIT 50";
+        return $this->select_all($sql, [$like, $like, trim($term) . '%']);
     }
 
     public function buscarExistencias($q)
@@ -135,11 +140,12 @@ class Inv_multialmacenesModel extends Mysql
             FROM wms_multialmacen m
             INNER JOIN wms_inventario i ON m.inventarioid = i.idinventario
             INNER JOIN wms_almacenes a ON m.almacenid = a.idalmacen
-            WHERE i.cve_articulo LIKE '%{$q}%'
-               OR i.descripcion LIKE '%{$q}%'
+            WHERE i.cve_articulo LIKE ?
+               OR i.descripcion LIKE ?
             LIMIT 50";
 
-    return $this->select_all($sql);
+    $like = '%' . trim((string)$q) . '%';
+    return $this->select_all($sql, [$like, $like]);
 }
 
 public function updateStockMinMax($id, $min, $max)

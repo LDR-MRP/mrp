@@ -336,6 +336,8 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 
+const TIPOS_BUSCADOR = { K: "Kit", C: "Componente", P: "Producto", S: "Servicio", H: "Herramienta", R: "Refacción" };
+
 document
   .getElementById("inputBuscarArticulo")
   .addEventListener("keyup", function () {
@@ -346,16 +348,21 @@ document
       return;
     }
 
-    fetch(base_url + "/Inv_multialmacenes/buscarArticulos?q=" + q)
+    fetch(base_url + "/Inv_multialmacenes/buscarArticulos?q=" + encodeURIComponent(q))
       .then((r) => r.json())
       .then((data) => {
         let html = "";
+
+        if (!data.length) {
+          html = `<tr><td colspan="4" class="text-center text-muted">Sin resultados</td></tr>`;
+        }
 
         data.forEach((row) => {
           html += `
             <tr>
               <td>${row.cve_articulo}</td>
               <td>${row.descripcion}</td>
+              <td><span class="badge bg-light text-body border tipo-badge">${TIPOS_BUSCADOR[row.tipo_elemento] || row.tipo_elemento}</span></td>
               <td>
                 <button class="btn btn-sm btn-primary"
                   onclick="seleccionarArticulo('${row.cve_articulo}')">
@@ -383,7 +390,7 @@ document.getElementById("bodyBuscarArticulo").innerHTML = "";
 }
 
 function cargarExistencias(clave) {
-  fetch(base_url + "/Inv_multialmacenes/buscarExistencias?q=" + clave)
+  fetch(base_url + "/Inv_multialmacenes/buscarExistencias?q=" + encodeURIComponent(clave))
     .then((r) => r.json())
     .then((data) => {
       let html = "";

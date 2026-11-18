@@ -229,8 +229,17 @@ class Inv_unidades extends Controllers
      *            de carga; no tienen entrada al inventario. Todas cuentan como
      *            color Blanco.
      * Renglones: Segmento (sublínea) > Modelo (nombre comercial) > Color.
-     * Filtros que respeta (de la pantalla): sub (lista por comas) y q.
+     * Filtros que respeta (los mismos de la pantalla):
+     *   sub y anio (listas por comas), color, planta, almacen y q.
+     *   Inventario real: aplica todos.
+     *   Tránsito (ODP): sub y q (también por contrato). Como todo el tránsito
+     *   cuenta como Blanco, con filtro de color solo aparece si es Blanco /
+     *   Sin color. Año, planta y almacén no existen en el tránsito: si se
+     *   filtra por cualquiera de ellos, el tránsito se oculta.
      * ?formato=pdf (default) | xlsx
+     * ?tipo=direccion: solo unidades con VIN asignado (sin las de existencia
+     *   sin VIN de XIAN/VELCEN y sin el tránsito del ODP).
+     * ?tipo=finanzas (default): todo (VIN, sin VIN y tránsito).
      * ===================================================================== */
     private const COLOR_TRANSITO = 'Blanco';
     private const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -250,9 +259,18 @@ class Inv_unidades extends Controllers
         if (empty($_SESSION['permisosMod']['r'])) {
             die();
         }
-        $subs = array_values(array_filter(array_map('trim', explode(',', (string) ($_GET['sub'] ?? ''))), 'strlen'));
-        $q = mb_strtolower(trim((string) ($_GET['q'] ?? '')));
-        $d = $this->datosEjecutivo($subs, $q);
+        $lista = fn($k) => array_values(array_filter(array_map('trim', explode(',', (string) ($_GET[$k] ?? ''))), 'strlen'));
+        $f = [
+            'subs'    => $lista('sub'),
+            'anios'   => $lista('anio'),
+            'color'   => trim((string) ($_GET['color'] ?? '')),
+            'planta'  => strtoupper(trim((string) ($_GET['planta'] ?? ''))),
+            'almacen' => (int) ($_GET['almacen'] ?? 0),
+            'q'       => mb_strtolower(trim((string) ($_GET['q'] ?? ''))),
+            // Reporte para Dirección: solo lo que tiene VIN asignado
+            'solo_vin' => ($_GET['tipo'] ?? '') === 'direccion',
+        ];
+        $d = $this->datosEjecutivo($f);
         $formato = (string) ($_GET['formato'] ?? 'pdf');
         if ($formato === 'xlsx') {
             $this->ejecutivoXLSX($d);
@@ -265,12 +283,42 @@ class Inv_unidades extends Controllers
         return self::MESES_CORTOS[(int) substr($ym, 5, 2) - 1] . ' ' . substr($ym, 0, 4);
     }
 
-    private function datosEjecutivo(array $subs, string $q): array
+    private function datosEjecutivo(array $f): array
     {
+        $subs = $f['subs'];
+        $q = $f['q'];
         $nombres = $this->model->selectNombresComerciales();
         $pasa = function ($sub, $texto) use ($subs, $q) {
             return (!$subs || in_array($sub, $subs, true)) && ($q === '' || mb_strpos(mb_strtolower($texto), $q) !== false);
         };
+        // Filtros que solo existen en el inventario real (mismo criterio que la pantalla)
+        $pasaInv = function ($r) use ($f) {
+            if ($f['anios'] && !in_array((string) ($r['anio'] ?? 'S/A'), $f['anios'], true)) return false;
+            if ($f['color'] !== '' && ($r['color'] ?? 'Sin color') !== $f['color']) return false;
+            if ($f['planta'] !== '' && $r['planta'] !== $f['planta']) return false;
+            if ($f['almacen'] > 0 && (int) $r['almacenid'] !== $f['almacen']) return false;
+            return true;
+        };
+        // El tránsito cuenta como Blanco: con filtro de color solo entra si es Blanco / Sin color
+        $colorF = mb_strtoupper($f['color']);
+        $conTransito = ($colorF === '' || $colorF === mb_strtoupper(self::COLOR_TRANSITO) || $colorF === 'SIN COLOR')
+            // Año, planta y almacén no existen en el tránsito: si se filtra por ellos, el tránsito se oculta
+            && !$f['anios'] && $f['planta'] === '' && $f['almacen'] <= 0
+            // El tránsito del ODP no tiene VIN: no va en el reporte para Dirección
+            && empty($f['solo_vin']);
+        // Texto de contratos por producto: la búsqueda también encuentra por contrato (como en pantalla)
+        $txtContratos = [];
+        if ($q !== '' && $conTransito) {
+            try {
+                foreach ($this->model->selectTransitoContratos() as $c) {
+                    $txtContratos[(int) $c['inventarioid']] = ($txtContratos[(int) $c['inventarioid']] ?? '') . ' ' . $c['contrato'] . ' ' . $c['modelo'];
+                }
+            } catch (\Throwable $e) {
+                error_log('Inv_unidades::datosEjecutivo (contratos): ' . $e->getMessage());
+            }
+        }
+        $nomPlanta = '';
+        $cveAlmF = '';
         $rows = [];
         $fila = function ($sub, $subDesc, $invId, $cve, $desc, $color) use (&$rows, $nombres) {
             $k = $sub . '|' . $invId . '|' . mb_strtoupper($color);
@@ -284,7 +332,12 @@ class Inv_unidades extends Controllers
 
         $alms = [];
         foreach ($this->model->selectUnidades() as $r) {
-            if (!$pasa($r['sublinea'], $r['cve_articulo'] . ' ' . $r['descripcion'] . ' ' . ($nombres[(int) $r['inventarioid']] ?? ''))) {
+            if ($f['planta'] !== '' && $r['planta'] === $f['planta']) $nomPlanta = $r['planta_nombre'] ?? $r['planta'];
+            if ($f['almacen'] > 0 && (int) $r['almacenid'] === $f['almacen']) $cveAlmF = $r['cve_almacen'];
+            if (!empty($f['solo_vin']) && !empty($r['sin_vin'])) {
+                continue;   // reporte para Dirección: fuera las unidades sin VIN asignado
+            }
+            if (!$pasaInv($r) || !$pasa($r['sublinea'], $r['cve_articulo'] . ' ' . $r['descripcion'] . ' ' . $r['numero_serie'] . ' ' . $r['sublinea'] . ' ' . ($nombres[(int) $r['inventarioid']] ?? ''))) {
                 continue;
             }
             $color = trim((string) ($r['color'] ?? '')) !== '' ? mb_convert_case(trim($r['color']), MB_CASE_TITLE, 'UTF-8') : self::COLOR_TRANSITO;   // sin color = Blanco
@@ -304,8 +357,9 @@ class Inv_unidades extends Controllers
         }
 
         $meses = [];
-        foreach ($this->model->selectTransitoODP() as $t) {
-            if (!$pasa($t['sublinea'], $t['cve_articulo'] . ' ' . $t['descripcion'] . ' ' . ($nombres[(int) $t['inventarioid']] ?? ''))) {
+        foreach (($conTransito ? $this->model->selectTransitoODP() : []) as $t) {
+            if (!$pasa($t['sublinea'], $t['cve_articulo'] . ' ' . $t['descripcion'] . ' ' . $t['sublinea'] . ' '
+                . ($nombres[(int) $t['inventarioid']] ?? '') . ' ' . ($txtContratos[(int) $t['inventarioid']] ?? ''))) {
                 continue;
             }
             $k = $fila($t['sublinea'], $t['sublinea_desc'], $t['inventarioid'], $t['cve_articulo'], $t['descripcion'], self::COLOR_TRANSITO);
@@ -349,10 +403,25 @@ class Inv_unidades extends Controllers
         if ($subs) {
             $filtros[] = 'Segmento: ' . implode(', ', $subs);
         }
+        if ($f['anios']) {
+            $filtros[] = 'Año: ' . implode(', ', $f['anios']);
+        }
+        if ($f['color'] !== '') {
+            $filtros[] = 'Color: ' . $f['color'];
+        }
+        if ($f['planta'] !== '') {
+            $filtros[] = 'Planta: ' . ($nomPlanta !== '' ? $nomPlanta : $f['planta']);
+        }
+        if ($f['almacen'] > 0) {
+            $filtros[] = 'Almacén: ' . ($cveAlmF !== '' ? $cveAlmF : $f['almacen']);
+        }
         if ($q !== '') {
             $filtros[] = 'Búsqueda: "' . $q . '"';
         }
-        return ['rows' => $rows, 'alms' => $alms, 'meses' => $meses,
+        $soloVin = !empty($f['solo_vin']);
+        return ['rows' => $rows, 'alms' => $alms, 'meses' => $meses, 'con_transito' => $conTransito,
+                'titulo' => $soloVin ? 'Reporte para Dirección · Unidades con VIN' : 'Reporte para Finanzas · Inventario y tránsito de unidades',
+                'archivo' => $soloVin ? 'reporte_direccion_unidades_' : 'reporte_finanzas_unidades_',
                 'segs' => $segs, 'tot' => $tot, 'filtros' => $filtros, 'fecha' => date('d/m/Y H:i')];
     }
 
@@ -370,7 +439,7 @@ class Inv_unidades extends Controllers
             ob_end_clean();
         }
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment; filename="reporte_ejecutivo_unidades_' . date('Ymd_His') . '.xlsx"');
+        header('Content-Disposition: attachment; filename="' . $d['archivo'] . date('Ymd_His') . '.xlsx"');
         header('Cache-Control: max-age=0');
         (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss))->save('php://output');
         exit;
@@ -438,19 +507,24 @@ class Inv_unidades extends Controllers
         /* ===== Hoja 1: Resumen ===== */
         $sh = $ss->getActiveSheet();
         $sh->setTitle('Resumen');
-        $encabezado($sh, 'Reporte ejecutivo · Inventario y tránsito de unidades', 'H');
+        $encabezado($sh, $d['titulo'], 'H');
         $sh->getColumnDimension('A')->setWidth(12);
         foreach (['B' => 34, 'C' => 14, 'D' => 14, 'E' => 14, 'F' => 14, 'G' => 3, 'H' => 3] as $c => $w) {
             $sh->getColumnDimension($c)->setWidth($w);
         }
         // Tarjetas
-        $kpis = [['B', 'INVENTARIO REAL', $t['inv'], self::C_INV, self::C_INV_SUAVE],
-                 ['C', 'EN TRÁNSITO', $t['trans'], self::C_TRA, self::C_TRA_SUAVE],
-                 ['E', 'TOTAL', $total, self::C_OSCURO, self::C_SEG]];
-        $sh->mergeCells('C5:D5');
-        $sh->mergeCells('C6:D6');
-        $sh->mergeCells('E5:F5');
-        $sh->mergeCells('E6:F6');
+        $conTra = !empty($d['con_transito']);   // con filtros que el tránsito no tiene, se oculta
+        $kpis = [['B', 'INVENTARIO REAL', $t['inv'], self::C_INV, self::C_INV_SUAVE]];
+        if ($conTra) {
+            $kpis[] = ['C', 'EN TRÁNSITO', $t['trans'], self::C_TRA, self::C_TRA_SUAVE];
+            $kpis[] = ['E', 'TOTAL', $total, self::C_OSCURO, self::C_SEG];
+            $sh->mergeCells('C5:D5');
+            $sh->mergeCells('C6:D6');
+        }
+        if ($conTra) {
+            $sh->mergeCells('E5:F5');
+            $sh->mergeCells('E6:F6');
+        }
         foreach ($kpis as [$c, $tit, $v, $col, $suave]) {
             $fin = $c === 'B' ? 'B' : chr(ord($c) + 1);
             $sh->setCellValue("{$c}5", $tit);
@@ -460,7 +534,7 @@ class Inv_unidades extends Controllers
             $sh->getStyle("{$c}6")->getNumberFormat()->setFormatCode('#,##0');
         }
         $sh->getRowDimension(6)->setRowHeight(34);
-        $sh->setCellValue('B7', $total ? 'Tránsito = ' . round($t['trans'] / $total * 100, 1) . '% del total' : '');
+        $sh->setCellValue('B7', $conTra && $total ? 'Tránsito = ' . round($t['trans'] / $total * 100, 1) . '% del total' : '');
         $estilo($sh, 'B7', ['size' => 9, 'color' => '6B7280']);
 
         // Resumen por segmento
@@ -500,6 +574,9 @@ class Inv_unidades extends Controllers
         $estilo($sh, "C{$ini}:F{$r}", ['h' => 'right']);
         $estilo($sh, "C{$ini}:C{$fin}", ['color' => self::C_INV, 'bold' => true]);
         $estilo($sh, "D{$ini}:D{$fin}", ['color' => self::C_TRA, 'bold' => true]);
+        if (!$conTra) {
+            $sh->getColumnDimension('D')->setVisible(false);   // sin tránsito: se oculta la columna
+        }
 
         // Tránsito por mes de carga
         if ($d['meses']) {
@@ -679,12 +756,13 @@ class Inv_unidades extends Controllers
         $W = 279.4 - 18;   // ancho útil (mm)
 
         // Encabezado de cada página (banda con logo, título y fecha)
-        $pdf->hdr = function ($pdf) use ($logo, $fecha, $rgb, $W, &$subtitulo) {
+        $tituloRep = $d['titulo'];
+        $pdf->hdr = function ($pdf) use ($logo, $fecha, $rgb, $W, &$subtitulo, $tituloRep) {
             $sub = $subtitulo;
             $pdf->SetXY(26, 7.5);
             $pdf->SetFont('helvetica', 'B', 15);
             $pdf->SetTextColor(...$rgb(self::C_OSCURO));
-            $pdf->Cell(160, 7, 'Reporte ejecutivo · Inventario y tránsito de unidades', 0, 1);
+            $pdf->Cell(160, 7, $tituloRep, 0, 1);
             $pdf->SetX(26);
             $pdf->SetFont('helvetica', '', 8.5);
             $pdf->SetTextColor(107, 114, 128);
@@ -710,9 +788,12 @@ class Inv_unidades extends Controllers
         $pdf->AddPage();
 
         // Tarjetas KPI dibujadas
-        $kpis = [['INVENTARIO REAL', $t['inv'], self::C_INV, self::C_INV_SUAVE, 'Unidades con VIN en almacenes'],
-                 ['EN TRÁNSITO', $t['trans'], self::C_TRA, self::C_TRA_SUAVE, 'Order delivery plan · sin entrada'],
-                 ['TOTAL', $total, self::C_OSCURO, self::C_SEG, $total ? 'Tránsito = ' . round($t['trans'] / $total * 100, 1) . '% del total' : '']];
+        $conTra = !empty($d['con_transito']);   // con filtros que el tránsito no tiene, se oculta
+        $kpis = [['INVENTARIO REAL', $t['inv'], self::C_INV, self::C_INV_SUAVE, 'Unidades con VIN en almacenes']];
+        if ($conTra) {
+            $kpis[] = ['EN TRÁNSITO', $t['trans'], self::C_TRA, self::C_TRA_SUAVE, 'Order delivery plan · sin entrada'];
+            $kpis[] = ['TOTAL', $total, self::C_OSCURO, self::C_SEG, $total ? 'Tránsito = ' . round($t['trans'] / $total * 100, 1) . '% del total' : ''];
+        }
         $gap = 5;
         $wk = ($W - 2 * $gap) / 3;
         $y = $pdf->GetY();
@@ -741,10 +822,11 @@ class Inv_unidades extends Controllers
             $maxSeg = max($maxSeg, $s['inv'] + $s['trans']);
         }
         $th = 'style="background-color:#' . self::C_OSCURO . ';color:#ffffff;font-weight:bold;"';
+        $wSeg = $conTra ? 28 : 40;   // sin tránsito, su columna se oculta y el segmento ocupa el espacio
         $html = '<table cellpadding="3.5" style="font-size:8.5pt;">'
-            . '<tr ' . $th . '><td width="28%">Segmento</td><td width="12%" align="right" style="background-color:#' . self::C_INV . ';">Inventario real</td>'
-            . '<td width="12%" align="right" style="background-color:#' . self::C_TRA . ';">En tránsito</td><td width="10%" align="right">Total</td>'
-            . '<td width="8%" align="right">% total</td><td width="30%">Composición (inventario | tránsito)</td></tr>';
+            . '<tr ' . $th . '><td width="' . $wSeg . '%">Segmento</td><td width="12%" align="right" style="background-color:#' . self::C_INV . ';">Inventario real</td>'
+            . ($conTra ? '<td width="12%" align="right" style="background-color:#' . self::C_TRA . ';">En tránsito</td>' : '') . '<td width="10%" align="right">Total</td>'
+            . '<td width="8%" align="right">% total</td><td width="30%">Composición' . ($conTra ? ' (inventario | tránsito)' : '') . '</td></tr>';
         $i = 0;
         foreach ($d['segs'] as $s) {
             $tt = $s['inv'] + $s['trans'];
@@ -756,15 +838,15 @@ class Inv_unidades extends Controllers
                 . ($wTra ? '<td width="' . $wTra . '%" style="background-color:#' . self::C_TRA . ';font-size:5pt;">&nbsp;</td>' : '')
                 . (100 - $wInv - $wTra > 0 ? '<td width="' . (100 - $wInv - $wTra) . '%" style="font-size:5pt;">&nbsp;</td>' : '')
                 . '</tr></table>';
-            $html .= '<tr' . $bg . '><td width="28%"><b>' . $h($s['sub']) . '</b> <font color="#6B7280">· ' . $h($s['desc']) . '</font></td>'
+            $html .= '<tr' . $bg . '><td width="' . $wSeg . '%"><b>' . $h($s['sub']) . '</b> <font color="#6B7280">· ' . $h($s['desc']) . '</font></td>'
                 . '<td width="12%" align="right" style="color:#' . self::C_INV . ';"><b>' . $num($s['inv']) . '</b></td>'
-                . '<td width="12%" align="right" style="color:#' . self::C_TRA . ';"><b>' . $num($s['trans']) . '</b></td>'
+                . ($conTra ? '<td width="12%" align="right" style="color:#' . self::C_TRA . ';"><b>' . $num($s['trans']) . '</b></td>' : '')
                 . '<td width="10%" align="right"><b>' . number_format($tt) . '</b></td>'
                 . '<td width="8%" align="right">' . ($total ? number_format($tt / $total * 100, 1) . '%' : '') . '</td>'
                 . '<td width="30%">' . $barra . '</td></tr>';
         }
-        $html .= '<tr ' . $th . '><td width="28%">TOTAL</td><td width="12%" align="right">' . number_format($t['inv']) . '</td>'
-            . '<td width="12%" align="right">' . number_format($t['trans']) . '</td><td width="10%" align="right">' . number_format($total) . '</td>'
+        $html .= '<tr ' . $th . '><td width="' . $wSeg . '%">TOTAL</td><td width="12%" align="right">' . number_format($t['inv']) . '</td>'
+            . ($conTra ? '<td width="12%" align="right">' . number_format($t['trans']) . '</td>' : '') . '<td width="10%" align="right">' . number_format($total) . '</td>'
             . '<td width="8%" align="right">' . ($total ? '100%' : '') . '</td><td width="30%"></td></tr></table>';
         $pdf->SetFont('helvetica', 'B', 10);
         $pdf->SetTextColor(...$rgb(self::C_OSCURO));
@@ -887,7 +969,7 @@ class Inv_unidades extends Controllers
         if (ob_get_length()) {
             ob_end_clean();
         }
-        $pdf->Output('reporte_ejecutivo_unidades_' . date('Ymd_His') . '.pdf', 'I');
+        $pdf->Output($d['archivo'] . date('Ymd_His') . '.pdf', 'I');
         exit;
     }
 }
